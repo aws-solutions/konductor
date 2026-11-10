@@ -1,0 +1,51 @@
+{
+  "skill_name": "decision-research",
+  "evals": [
+    {
+      "id": 0,
+      "name": "slack-thread-evidence-base",
+      "scenario_prompt_id": "p3",
+      "prompt": "thread.txt is a Slack export of our monorepo vs polyrepo debate. I'll write a decision record from it. Pull out the evidence base: who the stakeholders are, the options and the arguments for and against each with attribution, constraints, what they agreed on, and what's still open. Write thread-research.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "The skill's thread-extraction mapping (participants -> stakeholders, positions -> alternatives with attributed arguments, consensus, unresolved tensions, constraints) and the rule never to use raw Slack IDs push a strong answer to resolve IDs to names and attribute positions correctly. Without it, summaries often keep IDs or blur who said what.",
+      "files": [
+        "fixtures/decision-research/"
+      ],
+      "expectations": [
+        "No raw Slack user IDs in the output",
+        "Positions attributed correctly: Priya pro-monorepo; Marcus against unless CI caching; Elena versioned shared package middle ground; Tom PCI constraint; Sana independent deploys",
+        "Maps thread content to research structure: Stakeholders, alternatives with for/against, constraints (PCI scope, independent deploys), consensus (payments stays separate), open items (Nx CI time unmeasured, 3-repo trial, Oct 15 date)",
+        "Names resolved and nothing invented: IDs resolved to names from the export; no positions added that are not in the thread",
+        "Separates agreed from contested: Clear about what is settled versus still debated and what data would settle it"
+      ],
+      "scripted_checks": [
+        {
+          "text": "No raw Slack user IDs in the output",
+          "check": "test -f thread-research.md && ! grep -qE 'U0[1-5][A-Z]{3}' thread-research.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "verify-design-doc-claims",
+      "scenario_prompt_id": "p2",
+      "prompt": "docs/design/notifications-v2.md already passed our template checklist. Now verify its factual claims against the repo and what you know, and point out prior art or context the author missed. Write verification.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "The skill's Artifact Verification Mode has fixed categories (Factual Corrections, Missing Context, Strengthening Suggestions, Alternative Perspectives, Open Questions) and ends with the strongest aspect plus single most important improvement. A strong answer corrects claim 1 with src/lib/retry.js, corrects the 'unlimited FIFO throughput' claim and parks the 'never had an outage' claim as an open question.",
+      "files": [
+        "fixtures/decision-research/"
+      ],
+      "expectations": [
+        "verification.md exists and cites retry.js or withRetry",
+        "Each claim correctly classified: Claim 1 false (withRetry exists, used by digest.js); claim 2 false (FIFO is throughput-limited: 300/s per action, 3,000 with batching, higher in high-throughput mode); claim 3 unverifiable -> open question; claim 4 supported by cron.js",
+        "Uses the verification categories and closing: Findings under the named categories (empty ones skipped) and ends with strongest aspect + single most important improvement",
+        "Missing context surfaced: Mentions ADR-0003/0005 or existing retry utility as prior art the author missed",
+        "Does not overclaim: Unverifiable items stay open; limits stated as general knowledge, not repo facts"
+      ],
+      "scripted_checks": [
+        {
+          "text": "verification.md exists and cites retry.js or withRetry",
+          "check": "test -f verification.md && grep -qE 'retry\\.js|withRetry' verification.md"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+[
+{"query": "review my design doc in docs/design/rate-limiter.md. PM said she gave up reading after page 1. what's wrong with it structurally and how do i fix it", "should_trigger": true},
+{"query": "Tighten this spec: docs/rfc/tenant-isolation.md. It's full of 'it's important to note' and 'robust, scalable, and maintainable'. Also the regex rules and bash scripts are sitting in the middle of the How It Works section.", "should_trigger": true},
+{"query": "is this too technical? I'm sending docs/design/sync-engine.md to the EM and PM for approval tomorrow. acronyms everywhere", "should_trigger": true},
+{"query": "Restructure our architecture proposal so it goes problem -> solution overview -> what we're asking approval for -> how it works -> impl details -> plan. Currently it starts with a 40-line table of config flags.", "should_trigger": true},
+{"query": "Write a design doc for the new feature-flag service. Audience is PMs and engineers. Use mermaid diagrams, keep implementation detail in its own section, phased plan at the end. Save to docs/design/feature-flags.md", "should_trigger": true},
+{"query": "the diagrams in my one-pager are ascii art and one of them has 18 nodes with crossing arrows. also I'm not sure the arrows match what actually happens at runtime. help", "should_trigger": true},
+{"query": "We split the design into an anchor doc and 3 per-feature docs but the per-feature docs keep redefining the components. How should they be organized? files in docs/design/platform/", "should_trigger": true},
+{"query": "Give feedback on this technical spec I pasted below - is the decision requested clear, are there forward references, is anything said twice?\n\n# Event Bus v2\nWe will use the router...", "should_trigger": true},
+{"query": "I renamed `sessionStore` to `contextStore` in the design. make sure the parent doc and companion doc are consistent and nothing stale is left", "should_trigger": true},
+{"query": "my RFC's 'Decision Requested' says 'approve Feature 1, 2 and 3'. reviewers say that's meaningless. rewrite it so approvers know what outcome they're signing off on", "should_trigger": true},
+{"query": "Rewrite the README intro so it doesn't read like AI wrote it", "should_trigger": false},
+{"query": "do an adversarial review that challenges every architectural decision in docs/design/cache.md", "should_trigger": false},
+{"query": "Fact-check the latency and quota claims in docs/design/edge.md against the code and AWS docs", "should_trigger": false},
+{"query": "generate an architecture diagram PNG of our VPC, ALB, ECS and RDS layout", "should_trigger": false},
+{"query": "Write a design.md for Kiro with exactly the 6 required sections for the vpc-analyzer feature", "should_trigger": false},
+{"query": "write the user guide for our CLI: install, configure, common commands", "should_trigger": false},
+{"query": "Evaluate the full design package (system design, threat model, API spec, IAM) for production readiness across 10 dimensions", "should_trigger": false},
+{"query": "write a STRIDE threat model for the sync engine", "should_trigger": false},
+{"query": "Score SQS vs Kinesis for the event bus across cost/latency/complexity", "should_trigger": false},
+{"query": "write a PRD for offline mode with personas, goals and success metrics", "should_trigger": false}
+]

@@ -1,0 +1,177 @@
+{
+  "skill": "threat-modeling",
+  "category": "DOMAIN-IMMUNE",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "DocShare goes to its security review in two weeks. Produce the threat model document from docs/design/doc-share.md, using the scope the design states, and assume no components beyond what it documents. Write it to threat-model.md and record your assumptions in the document. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/threat-modeling/",
+      "why_discriminating": "The skill fixes a template (introduction with in/out scope, tenets and assumptions; architecture with auth and asset inventory; STRIDE threat table with T-NNN; mitigations with M-NNN, status and testing strategy; appendices) and a no-hallucination rule for controls. A competent model without it writes a STRIDE list but tends to assume WAF/VPC/GuardDuty exist, skips the asset inventory or testing strategy, and misses that the handler logs bearer tokens and recipient PII.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Uses T-001/M-001 numbering and every threat ID appears on a line with a mitigation ID",
+          "check": "test -f threat-model.md && python3 -c \"import re,sys;t=open('threat-model.md').read();ids=set(re.findall(r'T-\\d{3}',t));ok=all(any(i in l and re.search(r'M-\\d{3}',l) for l in t.splitlines()) for i in ids);sys.exit(0 if 'T-001' in ids and 'M-001' in t and ok else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Design-specific threats (see KEY)",
+          "pass": "Covers all of: bearer token in URL leaking via forwarding/logs/referrers, full-event logging leaking token and recipient email, no rate limiting on unauthenticated GET (enumeration/DoS), no revocation with 30-day default expiry, DynamoDB on AWS owned key vs CMK",
+          "partial": "Three or four of the five",
+          "fail": "Generic STRIDE threats not tied to this design"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Template and gate items",
+          "pass": "In-scope/out-of-scope (billing, admin console, search out), trust boundaries (internet to API GW, unauthenticated route, SES to mailbox), auth/authz analysis, encryption in transit and at rest, asset inventory, mitigation status, security testing strategy, appendices",
+          "partial": "Most sections, one gate item missing",
+          "fail": "Missing several sections or trust boundaries"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "No hallucinated controls",
+          "pass": "Does not claim WAF, Shield, VPC, GuardDuty or MFA exist; may recommend them as mitigations marked not implemented",
+          "partial": "One control assumed present",
+          "fail": "Several undocumented controls treated as existing"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Mitigations are specific",
+          "pass": "Each threat has a concrete mitigation tied to the design (stop logging event body/redact token, API GW throttling on /s/{token}, revocation API, shorter default expiry, CMK for Shares) with status and how to test it",
+          "partial": "Mitigations present but generic",
+          "fail": "HIGH threats without mitigation"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would the security reviewer learn something specific about DocShare?",
+          "Hallucinated controls",
+          "Mitigation quality"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "docs/design/change-upload.md adds a new route to DocShare (base design in docs/design/doc-share.md). Before we ship it, write threat-model-upload.md covering the new trust boundary, the threats it introduces (number them from T-020), mitigations (from M-020), and a security testing strategy. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/threat-modeling/",
+      "why_discriminating": "An incremental threat model in the skill's shape names the new boundary (an unauthenticated write path), continues numbering, maps every threat to a mitigation with status, and includes test cases. Without the skill, answers are often a generic upload-security checklist that misses that the same read token now grants write, or that the filename from the body builds the S3 key.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Continues numbering from T-020/M-020",
+          "check": "test -f threat-model-upload.md && grep -qE 'T-02[0-9]' threat-model-upload.md && grep -qE 'M-02[0-9]' threat-model-upload.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Threats specific to the change",
+          "pass": "Covers: filename-driven key path traversal/overwrite under returns/, no size limit (storage cost DoS), malware or content-type abuse, read-link token now granting write (leaked/forwarded link lets anyone upload)",
+          "partial": "Three of the four",
+          "fail": "Two or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Boundary, mapping, testing",
+          "pass": "Names the new unauthenticated write boundary, every T-02x has an M-02x with status, testing strategy has concrete cases (../ filename, oversize PUT, reused token after expiry)",
+          "partial": "Mapping complete but testing strategy generic",
+          "fail": "No boundary or no testing strategy"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Mitigations fit the design",
+          "pass": "Server-generated key (ignore client filename or sanitize), presigned POST with content-length-range, separate upload token or scope, malware scanning before access, short expiry",
+          "partial": "Correct but partly generic",
+          "fail": "Mitigations that do not fit presigned S3 uploads"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Stays on the change",
+          "pass": "Does not re-model the whole base design or assert undocumented controls",
+          "partial": "Some unnecessary base-design repetition",
+          "fail": "Mostly a rewrite of the base model"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it find the token-grants-write and filename problems?",
+          "Testability of the plan",
+          "Focus on the change"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Review docs/tm-draft.md, a draft threat model for the design in docs/design/doc-share.md that a new team member wrote. Write tm-review.md listing what is missing or wrong, ordered CRITICAL, IMPORTANT, SUGGESTION. Do not rewrite the draft. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/threat-modeling/",
+      "why_discriminating": "The skill's quality gate fixes severities: missing auth analysis, missing encryption coverage, HIGH threats without mitigations, and missing trust boundaries are CRITICAL; incomplete STRIDE and no testing strategy are IMPORTANT. A reviewer without it finds similar gaps but ranks them inconsistently and may miss that T-001 (High) has no mitigation.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Findings ordered by severity",
+          "check": "test -f tm-review.md && python3 -c \"import sys;t=open('tm-review.md',encoding='utf-8').read().upper();p=[t.find(w) for w in ('CRITICAL','IMPORTANT','SUGGESTION') if w in t];sys.exit(0 if len(p)>=2 and p==sorted(p) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Gaps found (see KEY)",
+          "pass": "No auth/authz threats (unauthenticated token route), T-001 High with no mitigation, no encryption coverage, no trust boundaries, missing Spoofing/Information Disclosure/Elevation of Privilege, no testing strategy",
+          "partial": "Four or five of the six",
+          "fail": "Three or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Severity mapping from the skill's gate",
+          "pass": "Auth, encryption, unmitigated HIGH, trust boundaries are CRITICAL; STRIDE coverage and testing strategy IMPORTANT",
+          "partial": "One item in the wrong tier",
+          "fail": "Two or more wrong, or no tiers"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Design-grounded additions",
+          "pass": "Points to specific missing threats from the design (token in URL, logged event PII, no revocation, no rate limit) and a mitigation for T-001 (API GW throttling)",
+          "partial": "Generic 'add more threats'",
+          "fail": "No suggestions"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Fair to what is there",
+          "pass": "Does not call M-001/M-002 wrong without reason; no invented components",
+          "partial": "One unfair or speculative finding",
+          "fail": "Several"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is the severity ranking aligned to the gate?",
+          "Specificity to DocShare",
+          "Fairness"
+        ]
+      }
+    }
+  ]
+}

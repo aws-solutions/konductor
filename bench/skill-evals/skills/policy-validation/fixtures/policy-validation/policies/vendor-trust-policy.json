@@ -1,0 +1,11 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "VendorReportsReader",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::444455556666:root" },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}

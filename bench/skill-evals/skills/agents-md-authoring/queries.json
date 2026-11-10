@@ -1,0 +1,22 @@
+[
+{"query": "this repo has no instructions for AI agents at all. can you look at the Makefile, pyproject and CI config and write the root file coding agents read for project context?", "should_trigger": true},
+{"query": "set up AGENTS.md for our TypeScript monorepo (pnpm, turbo, vitest) so Codex and Claude Code both pick up our conventions", "should_trigger": true},
+{"query": "Claude Code isn't picking up our AGENTS.md. how do I wire it so it gets loaded, and make the Kiro agent read it too?", "should_trigger": true},
+{"query": "We moved from jest to vitest and from npm to pnpm. Update the agent instructions file at the repo root to match, don't rewrite the whole thing", "should_trigger": true},
+{"query": "onboard this repo for AI coding agents: overview, structure, build/test commands, PR conventions, and have them load .kiro/steering and our memory files at session start", "should_trigger": true},
+{"query": "I keep telling the agent the same things every session (run make lint before commit, never touch generated/). put that into the permanent project guidance file agents read", "should_trigger": true},
+{"query": "write an AGENTS.md for this Go service. we already have .kiro/steering/style.md, don't duplicate it", "should_trigger": true},
+{"query": "should I put @imports in AGENTS.md to pull in our steering docs? it doesn't seem to work in kiro. fix our setup", "should_trigger": true},
+{"query": "create the agent context bootstrap for this repo: AGENTS.md plus whatever CLAUDE.md glue is needed", "should_trigger": true},
+{"query": "we want one source of truth for agent instructions instead of separate CLAUDE.md and .cursorrules files. set that up", "should_trigger": true},
+{"query": "Write a README.md for this library with install steps, usage examples and badges", "should_trigger": false},
+{"query": "Create a custom Claude Code subagent in .claude/agents/reviewer.md that reviews PRs", "should_trigger": false},
+{"query": "add a SKILL.md for our deploy procedure under .claude/skills/deploy", "should_trigger": false},
+{"query": "configure Claude Code permissions so it can run npm test without prompting", "should_trigger": false},
+{"query": "write CONTRIBUTING.md describing our PR process for human contributors", "should_trigger": false},
+{"query": "remember that I prefer concise answers", "should_trigger": false},
+{"query": "Write an agent-spec.json for a new reviewer agent with its tools and resources", "should_trigger": false},
+{"query": "set up a pre-commit hook that runs prettier and eslint on staged files", "should_trigger": false},
+{"query": "summarize what the AGENTS.md in this repo tells agents to do", "should_trigger": false},
+{"query": "Build a LangChain agent in Python that answers questions about our docs folder", "should_trigger": false}
+]

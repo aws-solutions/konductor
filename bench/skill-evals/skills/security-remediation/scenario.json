@@ -1,0 +1,183 @@
+{
+  "skill": "security-remediation",
+  "category": "WATCH",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "FINDING.md is a ticket from our application security review of doc-share-api. Analyze it, write the remediation plan to remediation-plan.md, then apply the fix in the code and add tests that prove it works. `npm test` must pass. This repo is open source and the fix will be public, so keep that in mind. Do not ask me questions; make reasonable assumptions, list them in the plan, and finish the work.",
+      "fixture": "fixtures/security-remediation/",
+      "why_discriminating": "The skill's data-privacy rules require code and tests that read as if the vulnerability never existed (no ticket ID, reporter alias, review name or 'security fix' narration), and its plan structure (Finding Summary, Technical Analysis, Remediation Plan, Security Best Practices) plus verification and rollback. A competent fix without it often names APPSEC-4821 in a test or comment and uses a naive startsWith check.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "npm test passes",
+          "check": "npm test >/dev/null 2>&1"
+        },
+        {
+          "id": "f2",
+          "text": "Traversal is blocked on both write and read paths",
+          "check": "node -e 'const u=require(\"./src/upload\");let n=0;for(const f of [()=>u.saveUpload(\"../evil.txt\",\"x\"),()=>u.readUpload(\"../package.json\")]){try{f()}catch(e){n++}}require(\"fs\").rmSync(\"evil.txt\",{force:true});process.exit(n===2?0:1)'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Fix is correct and complete (KEY)",
+          "pass": "Both saveUpload and readUpload resolve the target and require it to stay under UPLOAD_DIR + path.sep (or equivalent basename check); handles absolute paths and the sibling-prefix case (uploads-evil); tests cover ../ on both paths",
+          "partial": "Both paths fixed but the check is prefix-only without path.sep, or only one path tested",
+          "fail": "Only one path fixed, or the fix is a string replace of '../'"
+        },
+        {
+          "id": "r2",
+          "dimension": "restraint",
+          "criterion": "Skill's data-privacy rule in public code",
+          "pass": "src/ and test/ contain no APPSEC-4821, jdoe-sec, review name, or comments narrating the security review; test names describe behavior",
+          "partial": "No ticket ID but a comment like 'fix for security finding'",
+          "fail": "Ticket ID, alias or review name in code, tests or comments"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Plan follows the skill's structure and gate",
+          "pass": "Finding Summary (severity High, category), Technical Analysis (upload.js lines 12 and 19, root cause), Remediation Plan with before/after code, Security Best Practices, a verification command, and a rollback note",
+          "partial": "Most sections but verification or rollback missing",
+          "fail": "Unstructured notes"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Attacker impact and defense in depth",
+          "pass": "States concrete impact (read /etc/passwd or app secrets, overwrite src/server.js for code execution) and adds sensible extra measures (reject path separators/NUL, run with least-privilege FS access) without scope creep",
+          "partial": "Impact stated generically",
+          "fail": "No impact analysis"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "fix correct on both paths including edge cases",
+          "no internal references in public code",
+          "structured plan with verification and rollback"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Plan only, no code changes yet; the team lead wants to schedule the work. Read FINDING.md and the code, then write remediation-plan.md with the severity, what an attacker can actually do, step-by-step fix with before/after code, effort estimate, how to verify, and a rollback plan. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "fixture": "fixtures/security-remediation/",
+      "why_discriminating": "The skill's output format, its quality gate (specific fix steps, verification, risk context, rollback) and its required exact closing line 'Fix these issues? [y/n]' shape a plan that is ready to hand off. Without it, a plan is often correct but omits rollback or the line-level pointers, or edits code despite the plan-only instruction.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Code untouched",
+          "check": "[ \"$(md5sum src/upload.js | cut -d\" \" -f1)\" = 8446b570226c90bcbec3d86f537c8169 ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Pinpoints the vulnerable code",
+          "pass": "Names src/upload.js path.join at line 12 (saveUpload) and line 19 (readUpload), and the server.js routes that pass the raw name",
+          "partial": "Names upload.js but not both functions",
+          "fail": "Wrong location or vague"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Risk context",
+          "pass": "Concrete attacker actions (read /etc/passwd or config, overwrite src/server.js leading to code execution on restart) and why High is right",
+          "partial": "Generic 'access files' impact",
+          "fail": "No impact"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Fix steps are specific and verifiable",
+          "pass": "Before/after code for both functions with resolve + containment check, effort estimate, a verification test command (npm test with ../ cases), and a rollback plan (revert commit, behavior change for names with subdirectories)",
+          "partial": "Missing one of effort, verification or rollback",
+          "fail": "Vague 'sanitize input' advice"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Skill-specific constraints",
+          "pass": "Code untouched; plan code contains no ticket/alias references; response or plan ends with exactly 'Fix these issues? [y/n]'",
+          "partial": "One of the three missed",
+          "fail": "Code modified, or two missed"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "exact vulnerable lines",
+          "concrete risk",
+          "verification and rollback",
+          "respects plan-only"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "SECURITYHUB-FINDING.md says a public S3 bucket exists in our production account and the on-call wants to delete it right away. Our infrastructure code is in infra/. Assess the finding, including whether it might be a false positive, and write sh-assessment.md with verification steps and what to do either way. Don't run any AWS commands. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "fixture": "fixtures/security-remediation/",
+      "why_discriminating": "The skill has an explicit false-positive assessment for AWS configuration findings: check whether the resource exists in IaC, look at naming/test indicators, consider out-of-band creation, and give both a false-positive documentation path and a remediation path. Without it a model tends to jump to 'block public access and delete' and treat the IaC as irrelevant.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Notes the bucket is not defined in the IaC (only doc-share-uploads-prod is) and calls out a possible false positive / out-of-band resource",
+          "check": "grep -qiE 'false positive' sh-assessment.md && grep -qE 'doc-share-uploads-prod|infra/stack\\.ts' sh-assessment.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "reasoning",
+          "criterion": "False-positive analysis per the skill",
+          "pass": "Notes doc-share-test-tmp-2024 is not in infra/stack.ts (only doc-share-uploads-prod, which blocks public access), cites naming (test, tmp, 2024) and missing tags as out-of-band/test indicators, and clarifies that 'not in IaC' means unmanaged, not harmless",
+          "partial": "Notes IaC mismatch but not the indicators, or treats it as safe to ignore",
+          "fail": "No false-positive assessment"
+        },
+        {
+          "id": "r2",
+          "dimension": "recommendation",
+          "criterion": "Verification steps are concrete",
+          "pass": "CloudTrail CreateBucket lookup for creator and date, get-bucket-policy, get-public-access-block, get-bucket-tagging, list objects/access logs to see what is exposed",
+          "partial": "Two or three of these",
+          "fail": "No concrete steps"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Containment before destruction",
+          "pass": "Recommends immediately blocking public access (reversible) and confirming ownership and contents before any deletion; counters the on-call's delete-now instinct with reasons",
+          "partial": "Blocks access but suggests deleting before ownership is confirmed",
+          "fail": "Recommends deletion first"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Both outcome paths documented",
+          "pass": "If false positive or sanctioned: document and suppress with justification; if real: remediate, bring under IaC or remove, rotate anything exposed; findings ordered by severity",
+          "partial": "Only one path",
+          "fail": "Neither"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "IaC cross-check and test indicators",
+          "safe containment before delete",
+          "both outcome paths"
+        ]
+      }
+    }
+  ]
+}

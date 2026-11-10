@@ -1,0 +1,22 @@
+[
+{"query": "i just cloned this repo, what is konductor exactly and how do I get it running in kiro cli", "should_trigger": true},
+{"query": "How do I install the konductor agents for Claude Code instead of Kiro? Do I need some harness flag?", "should_trigger": true},
+{"query": "what's the difference between an agent, a skill and a SOP in this framework? when would I use each", "should_trigger": true},
+{"query": "I installed konductor but the orchestrator doesn't seem to have the threat modeling stuff. how do I check what's actually installed and fix it?", "should_trigger": true},
+{"query": "New to this. After `make build` what are the next commands to get to a working orchestrator session?", "should_trigger": true},
+{"query": "what kinds of things can I ask the konductor orchestrator to do? give me some example prompts", "should_trigger": true},
+{"query": "do I have to pick which specialist agent to talk to or does konductor route it for me?", "should_trigger": true},
+{"query": "what does `konductor update` do vs reinstalling, and will it overwrite my hand-edited agent file?", "should_trigger": true},
+{"query": "where do konductor SOPs end up after install on claude code and how do i invoke one", "should_trigger": true},
+{"query": "konductor doctor says something about registration - what does that mean and what's synth vs install?", "should_trigger": true},
+{"query": "Write a new skill for this repo that teaches agents how to paginate DynamoDB queries", "should_trigger": false},
+{"query": "Fix the Rust compile error in cli/konductor-rs/src/cli/install/registry.rs", "should_trigger": false},
+{"query": "author an AGENTS.md for this repo with build/test commands and context loading", "should_trigger": false},
+{"query": "Add a new agent spec for a data-engineering specialist with these 5 skills", "should_trigger": false},
+{"query": "which SDLC phase am I in and what should I do next given I have approved user stories but no design?", "should_trigger": false},
+{"query": "Design and implement a service that ingests IoT sensor events and alerts on anomalies", "should_trigger": false},
+{"query": "how do I install claude code itself on linux and log in", "should_trigger": false},
+{"query": "write the CHANGELOG entry and bump VERSION for the konductor release with the new doctor checks", "should_trigger": false},
+{"query": "set up a hook in claude code settings.json so it runs prettier after every edit", "should_trigger": false},
+{"query": "Run the ablation sweep to see which konductor skills actually change model behavior", "should_trigger": false}
+]

@@ -1,0 +1,192 @@
+{
+  "skill": "playwright-test-implementation",
+  "category": "WATCH",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Using discovery/pages.json, set up authenticated Playwright tests. Fix e2e/global-setup.ts and playwright.config.ts so sign-in happens once and the session is reused, then write e2e/create-distribution.spec.ts for the create wizard: choose 'Create new S3 bucket', enter a name, pick price class 'All edge locations', and submit. Do not install anything. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/playwright-test-implementation/",
+      "why_discriminating": "The skill covers the traps here: env credentials, :visible on hosted-UI forms, waiting on a real post-login signal instead of '**' + networkidle, creating and gitignoring fixtures/auth, explicit baseURL, and Cloudscape tiles and select patterns. Without it, a competent spec usually uses getByRole('radio') on tiles and keeps a weak redirect wait.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "No hardcoded password; setup reads TEST_PASSWORD",
+          "check": "! grep -rq 'Hunter2-e2e' e2e playwright.config.ts && grep -q 'process.env.TEST_PASSWORD' e2e/global-setup.ts"
+        },
+        {
+          "id": "f2",
+          "text": "Did not install Playwright",
+          "check": "test ! -d node_modules"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Global setup fixed properly",
+          "pass": "Credentials from env, username/password/submit scoped with :visible, waits on /distributions or the user-menu marker from pages.json, uses baseURL rather than a hardcoded host, and ensures fixtures/auth exists before storageState",
+          "partial": "Most fixed but keeps '**'/networkidle or omits :visible",
+          "fail": "Credentials still hardcoded or wait unchanged"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Config and repo hygiene",
+          "pass": "playwright.config.ts sets globalSetup, use.storageState and baseURL from process.env.PLAYWRIGHT_BASE_URL; .gitignore includes fixtures/auth",
+          "partial": "Config right but gitignore missing (or vice versa)",
+          "fail": "Session not wired"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Spec uses the Cloudscape patterns",
+          "pass": "Tiles via label filter hasText then input radio click force; name via getByPlaceholder; select opened by its button then option picked inside the listbox; Create button by role and name",
+          "partial": "Two or three of those right",
+          "fail": "Standard ARIA locators throughout, or unexplained .first()"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No installation and no false verification claims",
+          "pass": "No install commands run, package.json unchanged, and it says the spec was not run (or only --list via --no-install) rather than claiming it passes",
+          "partial": "No install but implies tests pass",
+          "fail": "Ran an installer or claims passing tests"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Will sign-in reliably happen once and be reused?",
+          "Will the wizard selectors work on Cloudscape?",
+          "No secrets, no installs"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Write e2e/login.spec.ts that tests the login page itself: a wrong password shows an error. The project config sets a global storageState. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/playwright-test-implementation/",
+      "why_discriminating": "The skill says a login-flow spec must opt out of the global session with an explicit empty storageState (undefined falls through), assert it is really on the login page, and scope hosted-UI inputs with :visible. Without it, the spec often starts signed in and never reaches the page under test.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Opts out with an explicit empty storageState",
+          "check": "grep -qE 'storageState: *\\{ *cookies: *\\[\\], *origins: *\\[\\] *\\}' e2e/login.spec.ts"
+        },
+        {
+          "id": "f2",
+          "text": "Does not use storageState: undefined",
+          "check": "test -s e2e/login.spec.ts && ! grep -q 'storageState: undefined' e2e/login.spec.ts"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Session opt-out is correct",
+          "pass": "Empty storageState object at the top of the file (or a separate unauthenticated project), with a short reason",
+          "partial": "Opt-out present but in the wrong scope",
+          "fail": "No opt-out, or undefined"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Proves it is on the login page before acting",
+          "pass": "Asserts a login-page element (username input or sign-in heading) is visible before filling",
+          "partial": "Navigates to /login but asserts nothing first",
+          "fail": "No login-page check"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Selectors and credentials handled",
+          "pass": "Inputs scoped with :visible for the hidden duplicate form; username from env; a deliberately wrong password that is not a real secret",
+          "partial": "One of these missing",
+          "fail": "Hardcoded real credentials or unscoped selectors that will match twice"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Asserts a real error outcome",
+          "pass": "Checks a specific error message or that the URL stays on the login page",
+          "partial": "Asserts only that something is visible",
+          "fail": "No assertion on the error"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Will this test actually see the login page?",
+          "Is the assertion meaningful?",
+          "No credential leakage"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Review e2e/existing.spec.ts for fragile selectors and Cloudscape problems. Write review.md with each issue's line and a concrete fix. Do not change the spec. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/playwright-test-implementation/",
+      "why_discriminating": "The skill lists the exact Cloudscape deviations (tiles, select listbox scope, table row radio with force, modal footer scoping) and treats unexplained .first() as a smell. Without it, a reviewer usually suggests adding data-testids everywhere or misses why getByRole('radio') never matches.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Spec unchanged",
+          "check": "echo \"36476b4725af933fa9ab97f92b00fa71  e2e/existing.spec.ts\" | md5sum -c --quiet"
+        },
+        {
+          "id": "f2",
+          "text": "Flags the tiles selector at line 5",
+          "check": "python3 -I -c 'import re,sys;t=open(\"review.md\").read();sys.exit(0 if any(abs(int(m.group(1))-5)<=1 for m in re.finditer(\"(?:\"+re.escape(\"existing.spec.ts\")+r\"\\D{0,40}?|\\b[Ll]ines?\\s+)(\\d+)\",t)) else 1)'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Finds the Cloudscape-specific problems",
+          "pass": "L5 tiles radio, L7 option not scoped to an opened listbox, L14 row.click instead of the row radio with force, L17 Cancel not scoped to the dialog footer",
+          "partial": "Two or three of these",
+          "fail": "One or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Finds the generic fragility",
+          "pass": "L6 and L8 unexplained .first() on raw CSS, with replacements (getByPlaceholder for the name, getByRole('button', { name: 'Create' }))",
+          "partial": "One of the two",
+          "fail": "Neither"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Fixes are concrete code",
+          "pass": "Each issue has a replacement locator using the skill's patterns, scoped to the right container",
+          "partial": "Fixes described but not written",
+          "fail": "Vague advice ('make selectors robust')"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Uses the skill's severity scale",
+          "pass": "Findings labelled CRITICAL/IMPORTANT/SUGGESTION, most severe first",
+          "partial": "Some other severity scale",
+          "fail": "No severity"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would the fixed spec pass on a real Cloudscape page?",
+          "Line-accurate findings",
+          "Copyable fixes"
+        ]
+      }
+    }
+  ]
+}

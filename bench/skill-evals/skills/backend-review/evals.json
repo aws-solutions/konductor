@@ -1,0 +1,65 @@
+{
+  "skill_name": "backend-review",
+  "evals": [
+    {
+      "id": 0,
+      "name": "layers-review-no-facade",
+      "scenario_prompt_id": "p3",
+      "prompt": "Review src/services and src/repository for data correctness and layer separation (handler -> service -> repository). Write layers-review.md, findings ordered CRITICAL first, then IMPORTANT, then SUGGESTION, each with file:line, why it matters and a concrete fix. Call out over-engineering if you see it, and do not propose abstractions the code does not need. Do not change any code and do not ask me questions; state any assumptions at the end of layers-review.md.",
+      "expected_output": "The skill tells the reviewer to check atomicity of read-modify-write, layer separation, and to call out over-engineering directly. Without it, reviewers often propose new abstractions (unit of work, strategy layers) or miss that adjustStock's get-then-save loses updates and lets stock go negative against the README rule.",
+      "files": [
+        "fixtures/backend-review/"
+      ],
+      "expectations": [
+        "The adjustStock lost update is named in inventoryService.js",
+        "No file under src was changed",
+        "Finds adjustStock's non-atomic read-modify-write (inventoryService.js:19-25) and that it can drive qty below zero, violating the README rule: Both the lost update and the negative-stock rule violation found",
+        "Finds the reorder comparison bug at inventoryService.js:31 (< vs README's 'at or below') and the string-built SQL at itemRepo.js:22: Both found with lines",
+        "Layer assessment is accurate: handler -> service -> repository is mostly respected; notes any real leak (e.g. handler doing no validation, service trusting raw input) without inventing violations: Accurate, specific layer verdict",
+        "Fixes stay minimal (conditional update or lock, bound parameter, <=); explicitly avoids new layers or patterns, and may flag the narrating comments/getQty wrapper as noise rather than adding abstractions: Minimal fixes and no speculative abstractions",
+        "Findings ordered CRITICAL, IMPORTANT, SUGGESTION with file:line, why, and fix: Ordered and complete",
+        "Layering is judged against the structure the codebase actually has (handler -> service -> repository, no facade or factory): the review does not report the missing business facade, missing service factory, or handlers requiring the service module directly as defects."
+      ],
+      "scripted_checks": [
+        {
+          "text": "The adjustStock lost update is named in inventoryService.js",
+          "check": "grep -q 'inventoryService' layers-review.md && grep -qiE 'race|lost update|concurren|atomic|read.modify.write' layers-review.md"
+        },
+        {
+          "text": "No file under src was changed",
+          "check": "[ \"$(find src -type f | sort | xargs sha256sum | sha256sum | cut -d\" \" -f1)\" = \"ab074c2bb5475655ce96eb5e3137fd9a799c5bdfd3cc6f429e2fba9f2071312b\" ]"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "security-review-whole-src",
+      "scenario_prompt_id": "p1",
+      "prompt": "Do a security-focused review of this service, covering the whole src folder. Write review.md with each finding's severity (Critical, Important or Minor), file and line, why it matters, and a concrete fix, ordered by severity. Only report real problems you can point to in the code. Do not change any code. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+      "expected_output": "Bench task reused. The skill's checklist (input validation, specific error handling without leaking internals, atomic read-modify-write, auth wiring per route) pushes the reviewer to sweep every route and layer; a generic security pass tends to stop at the SQL injection and the stack leak and miss the unguarded stock route, the lost update, and the fail-open fallback token.",
+      "files": [
+        "fixtures/backend-review/"
+      ],
+      "expectations": [
+        "The string-built SQL in itemRepo.js is named as injection",
+        "No file under src was changed",
+        "Coverage of the seeded defects: SQL injection (itemRepo.js:22), missing X-Admin-Token check on POST /items/:id/stock (items.js:25-27), unvalidated delta/createItem input (items.js:21-26, inventoryService.js:9-11), err.stack in the 500 body (server.js:50), hardcoded fallback admin token (config.js:6), adjustStock lost update (inventoryService.js:19-25), unbounded body (server.js:36-37), non-constant-time token compare (items.js:8): At least 6 seeds found with correct file:line",
+        "Impact is explained concretely per finding (e.g. anyone can change stock without the token; stack trace discloses paths; concurrent adjustments lose writes): Each finding has a specific attacker or failure scenario",
+        "Severity is proportionate and ordered: injection and the missing auth check at the top tier; timing compare and body size not above them: Ordering and tiers defensible, injection Critical",
+        "Fixes are concrete and minimal: bound parameter for the LIKE, reuse isAdmin on the stock route, validate delta as a finite integer and name/qty per README rules, generic 500 body, fail closed when ADMIN_TOKEN is unset, atomic/conditional update: Concrete fix for every finding",
+        "Reports no false positives: no path traversal, XSS, eval, or SSRF; does not change code: No invented vulnerability classes",
+        "Layering is judged against the structure the codebase actually has (handler -> service -> repository, no facade or factory): the review does not report the missing business facade, missing service factory, or handlers requiring the service module directly as defects."
+      ],
+      "scripted_checks": [
+        {
+          "text": "The string-built SQL in itemRepo.js is named as injection",
+          "check": "grep -q 'itemRepo' review.md && grep -qiE 'inject' review.md"
+        },
+        {
+          "text": "No file under src was changed",
+          "check": "[ \"$(find src -type f | sort | xargs sha256sum | sha256sum | cut -d\" \" -f1)\" = \"ab074c2bb5475655ce96eb5e3137fd9a799c5bdfd3cc6f429e2fba9f2071312b\" ]"
+        }
+      ]
+    }
+  ]
+}

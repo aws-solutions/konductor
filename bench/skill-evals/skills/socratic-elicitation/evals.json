@@ -1,0 +1,49 @@
+{
+  "skill_name": "socratic-elicitation",
+  "evals": [
+    {
+      "id": 0,
+      "name": "tradeoff-offer-audit-log",
+      "scenario_prompt_id": "ptr1",
+      "prompt": "transcript-audit-log.md is an intake elicitation session you and I are running for an audit-log feature, and it's your turn. I have to jump into a meeting, so write your next message to me into next-turn.md, exactly what you would say to me now, and stop there. Don't write the design or a requirements summary yet.",
+      "expected_output": "The user's last answer names two viable paths (same-transaction Postgres write vs SQS event + consumer) and says they have no preference. The skill calls for offering, not running, a deliberation panel (or reasoning it through together) alongside answering directly, then resuming elicitation. A generic reply picks a winner, writes a pros/cons recommendation, or ignores the tradeoff and asks the next question.",
+      "files": ["fixtures/socratic-elicitation/"],
+      "expectations": [
+        "next-turn.md exists and contains no requirements-summary headings",
+        "next-turn.md states the tradeoff as two named options: writing the audit entry in the same Postgres transaction versus publishing to the SQS queue for a consumer to write, each with what it favors",
+        "Offers the user an explicit choice of how to resolve it: decide directly, or convene a deliberation panel / work through it together; the choice is presented as the user's opt-in",
+        "Does not decide for the user: no recommendation of one option, no simulated panel debate or verdict in this turn",
+        "Stays a single conversational turn: does not batch several new elicitation questions or jump ahead to design content",
+        "Wording is neutral and faithful to the transcript (immutability, compliance export, latency, lost-message window) with nothing invented"
+      ],
+      "scripted_checks": [
+        {
+          "text": "next-turn.md exists and contains no requirements-summary headings",
+          "check": "test -s next-turn.md && ! grep -qiE 'Requirements Confirmed|Functional Requirements|Non-Functional' next-turn.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "second-tradeoff-lighter-offer",
+      "scenario_prompt_id": "ptr2",
+      "prompt": "transcript-billing-export.md is the intake elicitation session we're in the middle of for a billing export feature. Write your next message to me into next-turn.md, exactly what you'd say to me right now, and stop. I'll answer when I'm back.",
+      "expected_output": "A second significant tradeoff surfaced (12-month synchronous cap vs async job with emailed link) after the panel was already offered once and declined in favor of answering directly. The skill calls for a lighter prompt (e.g. 'another tradeoff, same treatment?') rather than repeating the full panel pitch, never auto-running the panel and never choosing for the user.",
+      "files": ["fixtures/socratic-elicitation/"],
+      "expectations": [
+        "next-turn.md exists and contains no requirements-summary headings",
+        "Names the new tradeoff as two options: a 12-month cap with synchronous generation versus an async job that emails a download link",
+        "Uses a lighter follow-up offer appropriate to a second tradeoff in the same session (e.g. asks whether to give it the same treatment or decide directly) instead of repeating the full deliberation-panel pitch with its menu and time estimate",
+        "Does not decide for the user and does not run or simulate a panel or give a recommendation",
+        "Respects earlier answers: does not re-ask on-demand vs scheduled or the role question, and carries the v1 on-demand decision forward if it mentions it",
+        "Stays a single turn: no batch of new questions, no design content"
+      ],
+      "scripted_checks": [
+        {
+          "text": "next-turn.md exists and contains no requirements-summary headings",
+          "check": "test -s next-turn.md && ! grep -qiE 'Requirements Confirmed|Functional Requirements|Non-Functional' next-turn.md"
+        }
+      ]
+    }
+  ]
+}

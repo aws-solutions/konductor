@@ -1,0 +1,97 @@
+--- a/src/schema.js
++++ b/src/schema.js
+@@ -1,11 +1,12 @@
+ 'use strict';
+ 
+-const ORDER_STATUS = ['PENDING', 'PAID', 'SHIPPED', 'CANCELLED'];
++const ORDER_STATUS = ['PENDING', 'PAID', 'DISPATCHED', 'CANCELLED'];
+ 
+ function orderInput(body) {
+   const errors = [];
+   if (typeof body.sku !== 'string') errors.push('sku must be a string');
+   if (!Number.isInteger(body.quantity) || body.quantity < 1) errors.push('quantity must be a positive integer');
++  if (typeof body.giftWrap !== 'boolean') errors.push('giftWrap must be a boolean');
+   return errors;
+ }
+ 
+@@ -15,7 +16,7 @@
+     sku: order.sku,
+     quantity: order.quantity,
+     status: order.status,
+-    total: order.total,
++    region: order.region,
+     createdAt: order.createdAt,
+   };
+ }
+--- a/src/repo/orderRepo.js
++++ b/src/repo/orderRepo.js
+@@ -6,7 +6,8 @@
+     sku: item.sku,
+     quantity: item.quantity,
+     status: item.status,
+-    total: item.total,
++    region: item.region.toUpperCase(),
++    giftWrap: item.giftWrap,
+     createdAt: item.createdAt,
+   };
+ }
+--- a/src/consumers/orderQueue.js
++++ b/src/consumers/orderQueue.js
+@@ -1,13 +1,10 @@
+ 'use strict';
+ 
+-const { orderInput } = require('../schema');
+ const { saveOrder } = require('../repo/store');
+ 
+ async function handle(message) {
+   const body = JSON.parse(message.Body);
+-  const errors = orderInput(body);
+-  if (errors.length) throw new Error(`invalid order: ${errors.join(', ')}`);
+-  return saveOrder({ sku: body.sku, quantity: body.quantity });
++  return saveOrder({ sku: body.sku, quantity: body.quantity, giftWrap: body.giftWrap, region: body.region });
+ }
+ 
+ module.exports = { handle };
+--- a/src/routes.js
++++ b/src/routes.js
+@@ -10,5 +10,6 @@
+ 
+ router.post('/v1/orders', authorize, validate(orderInput), orders.create);
+ router.get('/v1/orders/:id', authorize, orders.get);
++router.post('/v1/orders/:id/cancel', authorize, orders.cancel);
+ 
+ module.exports = { router };
+--- a/src/handlers/orders.js
++++ b/src/handlers/orders.js
+@@ -1,17 +1,27 @@
+ 'use strict';
+ 
+ const { toOrderResponse } = require('../schema');
+-const { saveOrder, loadOrder } = require('../repo/store');
++const { saveOrder, loadOrder, markCancelled } = require('../repo/store');
+ 
+ async function create(req, res) {
+-  const order = await saveOrder({ sku: req.body.sku, quantity: req.body.quantity });
++  const tenantId = req.get('x-tenant-id');
++  if (!tenantId) return res.status(400).json({ code: 'TENANT_REQUIRED' });
++  const order = await saveOrder({ tenantId, sku: req.body.sku, quantity: req.body.quantity, giftWrap: req.body.giftWrap });
+   return res.status(201).json(toOrderResponse(order));
+ }
+ 
+ async function get(req, res) {
+   const order = await loadOrder(req.params.id);
+-  if (!order) return res.status(404).json({ code: 'ORDER_NOT_FOUND' });
++  if (!order) return res.status(404).json({ code: 'NOT_FOUND' });
+   return res.json(toOrderResponse(order));
+ }
+ 
+-module.exports = { create, get };
++async function cancel(req, res) {
++  const order = await markCancelled(req.params.id);
++  if (typeof req.body.reason !== 'string' || req.body.reason.length > 200) {
++    return res.status(400).json({ code: 'INVALID_REQUEST' });
++  }
++  return res.json(toOrderResponse(order));
++}
++
++module.exports = { create, get, cancel };

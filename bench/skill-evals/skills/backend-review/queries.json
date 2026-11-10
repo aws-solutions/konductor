@@ -1,0 +1,22 @@
+[
+{"query": "just finished the lambda changes for the order cancel flow (src/handlers/cancelOrder.ts, src/services/orderService.ts, src/repos/orderRepo.ts). can you review them before i open the PR? looking for anything that breaks our handler -> facade -> service -> repo layering", "should_trigger": true},
+{"query": "Review src/services/inventoryService.ts. I'm worried adjustStock does a read then a write on two items without a transaction. Also check the tests in test/inventoryService.test.js - they build data inline everywhere.", "should_trigger": true},
+{"query": "pls look over my backend diff (git diff main) and call out any `any` types, non-null assertions without checks, and catch-all try/catch blocks. give severities", "should_trigger": true},
+{"query": "I refactored the user repository to use a single-table design. Review packages/api/src/repository/*.ts for correctness: conditional writes, whether we're re-querying after a PutItem when the return value would do, and dead exports left over.", "should_trigger": true},
+{"query": "can u do a code review of the express service in ./server - routes, services, db layer. its going to prod friday and i want to know about real bugs not style", "should_trigger": true},
+{"query": "Our reviewer said the new createInvoice handler 'has business logic in it'. Can you review src/handlers/createInvoice.ts and the service it calls and tell me if that's right and what else is wrong?", "should_trigger": true},
+{"query": "review my node api for issues before code review: src/ has handlers, services, repository. tests in test/. severity-ordered list with file:line please", "should_trigger": true},
+{"query": "Is this over-engineered? I added a strategy pattern + factory + observer for picking a discount rule in src/pricing/. There are only two rules. Review the backend code honestly.", "should_trigger": true},
+{"query": "look at the dynamo update in src/repo/sessionRepo.ts line 40ish, two concurrent requests can both pass the check. review the whole repo file plus its tests for race conditions and missing condition expressions", "should_trigger": true},
+{"query": "Do a post-implementation review of the python lambda I just wrote (lambda/ingest/handler.py, lambda/ingest/store.py) - error handling, structured logging with correlation ids, and whether the tests actually assert values", "should_trigger": true},
+{"query": "implement a new lambda handler GET /orders/{id} following our facade/service/repo pattern, with tests. src/handlers is where the others live", "should_trigger": false},
+{"query": "review the React form in src/components/CreateItemForm.tsx - is it using react hook form and zod properly, and any native html that should be cloudscape?", "should_trigger": false},
+{"query": "validate our CDK stack in infra/lib/api-stack.ts for prod: encryption, IAM wildcards, alarms, DLQs", "should_trigger": false},
+{"query": "design a dynamodb table for a multi-tenant chat app. access patterns: messages by channel newest first, unread count per user, search by thread id", "should_trigger": false},
+{"query": "write unit tests for src/services/orderService.ts, we have zero coverage there. use jest and fixture factories", "should_trigger": false},
+{"query": "simplify src/services/pricing.ts - nested ternaries everywhere, deep nesting. keep behavior identical", "should_trigger": false},
+{"query": "the security scanner flagged CVE-2024-4068 in braces via micromatch in our backend's package-lock. make a remediation plan with verification steps", "should_trigger": false},
+{"query": "we keep getting ProvisionedThroughputExceededException in prod on the sessions table at 9am. help me figure out why from cloudwatch metrics", "should_trigger": false},
+{"query": "write the PR description for my backend branch - what changed, why, how to test. diff is in git diff main...HEAD", "should_trigger": false},
+{"query": "Break the order cancellation epic into implementation tasks for 3 engineers with minimal overlap. user stories in docs/stories.md and HLD in docs/hld.md", "should_trigger": false}
+]

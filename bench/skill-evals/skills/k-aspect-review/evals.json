@@ -1,0 +1,76 @@
+{
+ "skill_name": "k-aspect-review",
+ "evals": [
+  {
+   "id": 0,
+   "name": "notification-fanout-4-aspect",
+   "scenario_prompt_id": "p1",
+   "prompt": "design.md is the notification fan-out design our team wants to build next quarter. Before it goes to the architecture review, do a 4-aspect review of it: choose the four aspects that fit this design, review each one on its own, then pull the results together. Write the review to aspect-review.md. Do not edit design.md. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+   "expected_output": "The skill makes the reviewer pick four orthogonal, design-appropriate aspects, review each in isolation with a neutral framing and a strong/adequate/needs-improvement rating, then synthesize cross-cutting themes into prioritized actions. Without it, a competent model tends to write one general critique with four headings that repeat the same issues.",
+   "files": [
+    "fixtures/k-aspect-review/"
+   ],
+   "expectations": [
+    "aspect-review.md exists and design.md is unchanged",
+    "Planted design flaws are found and their impact explained (KEY: synchronous sequential provider calls with an unbounded retry loop and 15 min timeout; PK=customerId hot partition at 4,000/s; API keys in env vars and phone numbers in the payload; no auth on POST /notify; no alarms; big-bang rollout; no dedupe key): At least 5 of the 7 KEY issues are named with a concrete impact (e.g. a provider outage still blocks producers)",
+    "Aspect selection and isolation follow the skill: exactly four orthogonal aspects suited to a design (e.g. reliability, scalability, security, operability), each section staying inside its own lens: Four distinct, non-overlapping aspects; findings under each heading belong to that aspect only",
+    "Each aspect carries a rating on the strong / adequate / needs improvement scale and the synthesis names cross-cutting themes seen in more than one aspect: Every aspect rated on the skill's three-level scale; synthesis identifies at least one theme spanning 2+ aspects (e.g. the synchronous retry loop drives both reliability and scalability problems)",
+    "Prioritized action items are concrete and actionable: Ordered actions with specific fixes (e.g. return 202 and process async via a queue, bounded retries with DLQ, move keys to Secrets Manager, add auth, phased rollout with rollback)",
+    "No invented facts about the design and no padding: Every finding traces to text in design.md; assumptions are labelled"
+   ],
+   "scripted_checks": [
+    {
+     "text": "aspect-review.md exists and design.md is unchanged",
+     "check": "test -f aspect-review.md && sha256sum design.md | grep -q c1cf56910cafdc430f9269169c006aeab66c6544af0a55a5c9ed7a8ed9080918"
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "name": "webhooks-open-decision",
+   "scenario_prompt_id": "p3",
+   "prompt": "webhooks-design.md is our partner delivery-webhooks design. Give it an aspect review before Thursday's design meeting and write it to aspect-review-webhooks.md. Pick the aspects yourself. Do not edit the design. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+   "expected_output": "The design contains an open decision with three viable options and no clear winner. The skill's Deliberation Panel Mode says to review the rest normally, then flag that decision and offer a deliberation panel (answer directly or convene one, with the time/cost note), never convening it unasked. Without the skill, a model usually just picks an option or lists pros and cons.",
+   "files": [
+    "fixtures/k-aspect-review/"
+   ],
+   "expectations": [
+    "aspect-review-webhooks.md exists and the design is unchanged",
+    "The open delivery-mechanism decision is handled per Deliberation Panel Mode: Flags A/B/C as a multi-option decision with no clear winner and offers the two choices (decide directly, or convene a deliberation panel with a time/cost note) without running the panel or declaring a final pick",
+    "Other planted issues are found under suitable aspects (KEY: partner secrets stored as plain attributes; failures only logged and support-by-email; all 40 partners at once plus polling shutdown a week later; no event id for at-least-once duplicates; no ordering guarantee): At least 4 of the 5 found with impact",
+    "Standard aspect mechanics: orthogonal aspects, per-aspect strong/adequate/needs improvement rating, cross-cutting synthesis and prioritized actions: All four mechanics present",
+    "No unverified service claims asserted as decisive facts when discussing options: Quota or feature claims about SNS/EventBridge are hedged or marked to verify, and none is used to close the decision"
+   ],
+   "scripted_checks": [
+    {
+     "text": "aspect-review-webhooks.md exists and the design is unchanged",
+     "check": "test -f aspect-review-webhooks.md && sha256sum webhooks-design.md | grep -q fe78a4fe823529faa6e7ee1c0a4dd0647e12f28f99f4fde350f66e7ace833a70"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "name": "three-lens-traceable-findings",
+   "scenario_prompt_id": "p4",
+   "prompt": "Run an aspect review of design.md through three lenses: reliability, scalability and cost. Our tech lead will turn the review into tickets, so it needs to be easy to act on. Write it to aspect-review-3.md. Do not edit design.md. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+   "expected_output": "Round-2 behaviour: with no subagents available, the review goes inline and says so without asking; each finding gets a short ID; an issue spanning lenses (the synchronous sequential provider calls with an unbounded retry loop) is written up once under its main aspect and linked from the others via cross-cutting themes; actions are tiered by priority and name the finding IDs they resolve; recalled service limits are marked verify.",
+   "files": [
+    "fixtures/k-aspect-review/"
+   ],
+   "expectations": [
+    "aspect-review-3.md exists and design.md is unchanged",
+    "Traceable findings: every finding carries a short ID (for example R1, S2, C3), and both the cross-cutting themes and the action items cite the IDs they draw on or resolve",
+    "Single filing: the synchronous sequential provider calls with the unbounded retry loop (which hurt reliability, scalability and cost) are described in full once under one aspect and only referenced from the other aspects or the themes, not re-explained in two or more sections",
+    "Each of the three aspects (reliability, scalability, cost) carries a rating on the strong / adequate / needs improvement scale, and the action items are grouped or ordered by priority tier (for example must-fix, should-fix, nice-to-have)",
+    "Inline disclosure without asking: the review file or the final message states that the aspects were reviewed inline or one at a time rather than by parallel subagents, and the run did not stop to ask the user a question",
+    "Grounded claims: findings trace to text in design.md, assumptions are labelled, and any recalled AWS quota, limit or price (Lambda, DynamoDB, API Gateway) is marked as to verify rather than stated as checked fact"
+   ],
+   "scripted_checks": [
+    {
+     "text": "aspect-review-3.md exists and design.md is unchanged",
+     "check": "test -f aspect-review-3.md && sha256sum design.md | grep -q c1cf56910cafdc430f9269169c006aeab66c6544af0a55a5c9ed7a8ed9080918"
+    }
+   ]
+  }
+ ]
+}

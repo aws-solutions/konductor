@@ -1,0 +1,69 @@
+{
+  "skill_name": "legacy-to-agentic-estimate",
+  "evals": [
+    {
+      "id": 0,
+      "name": "rebaseline-csv-with-calibration-caveat",
+      "scenario_prompt_id": "p1",
+      "prompt": "estimates.csv has our legacy all-human effort estimates (days) for next quarter. Leadership wants them re-baselined for a team working with AI coding agents before we commit headcount. Write agentic-estimates.md with a per-item table, a total compared with legacy, and a short interpretation leadership can act on. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "expected_output": "The skill's method (unbundle v, L_eff = L x C, verification tax tau, tier presets inferred from the description, banded output) and its bundled script give specific numbers (CRUD 24d -> mid 13.9, failover 60d -> mid 68.2, total mid 111.8 vs 116). A competent answer without it applies a blanket or per-item AI discount, which the skill names as the anti-pattern, and usually shows the failover and security items getting cheaper.",
+      "files": [
+        "fixtures/legacy-to-agentic-estimate/"
+      ],
+      "expectations": [
+        "Total row mid is 111.8 against a legacy total of 116",
+        "Numbers match the skill's method (KEY): Per-item mids 13.9 / 68.2 / 7 / 22.7 with low/mid/high bands; total 105.1 / 111.8 / 118.8 vs legacy 116",
+        "Tier inference surfaced: Each row shows tier, tier source (keyword vs model) and confidence; CRUD and scaffold high, failover and security low",
+        "Interpretation leadership can act on: Explains savings concentrate in CRUD/scaffold, failover and security cost more than legacy and that this is expected, so overall headcount barely moves; names capability maturity (C) as the lever",
+        "Calibration caveat: States v, L, tau and C are preset assumptions that must be recalibrated from the team's own telemetry/actuals before committing"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Total row mid is 111.8 against a legacy total of 116",
+          "check": "grep -iE 'total' agentic-estimates.md | grep -q '111\\.8'"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "maturity-override-two-items",
+      "scenario_prompt_id": "p2",
+      "prompt": "Convert two legacy estimates for an AI-agent workflow, for the billing team's planning doc: 40 days 'Add CRUD endpoints for the billing API' (our packaged codegen capability for this is immature, maturity about 0.2) and 15 days 'Write data migration scripts for the orders table'. Write estimates-c.md with the band per item, a total, and what drives the difference between the two items. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "expected_output": "The skill has a per-item C override and a worked example showing a high-tier CRUD task collapsing from -42% to -2% when C drops to 0.2, with tau held at the tier default. Without the skill a model either ignores the maturity remark or invents its own penalty.",
+      "files": [],
+      "expectations": [
+        "CRUD item with maturity 0.2 lands at mid 39.4 (about -2%)",
+        "Numbers per the skill (KEY): CRUD with C=0.2 -> 37.7/39.4/41.1 (about -2%); migration -> 6.6/8.7/10.9; total mid 48.1",
+        "Explains the driver: Attributes the gap to capability maturity (L_eff = L x C), notes both items are high tier and that tau stays at the tier default so the CRUD item nears break-even rather than going negative",
+        "Planning advice: Suggests investing in or validating the codegen capability (raising C) as the biggest lever and recalibrating from actuals"
+      ],
+      "scripted_checks": [
+        {
+          "text": "CRUD item with maturity 0.2 lands at mid 39.4 (about -2%)",
+          "check": "grep -q '39\\.4' estimates-c.md"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "escalated-tier-band-and-blank-row",
+      "scenario_prompt_id": "p3",
+      "prompt": "Re-baseline these for agentic development before tomorrow's planning: 30 days 'Revamp the onboarding flow', and 18 days with no description (the row was blank in the spreadsheet). Write onboarding-estimate.md. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "expected_output": "The skill makes a missing description a validation error that must go back to the user rather than a defaulted tier, and routes low-keyword-confidence items to model judgment with a wider band. A competent model without it tends to estimate the blank row anyway and give the onboarding item a single number. Round-2 check: the onboarding item's confidence is below 1.0, so its low/high corners must follow band = 0.15 + 0.30 x (1 - confidence) rather than the worked examples' 0.15 band, and its Tier source must read inferred-llm with a numeric confidence.",
+      "files": [],
+      "expectations": [
+        "Onboarding item is medium tier with mid 27.9",
+        "Blank row handled per the skill: does not estimate the 18-day row; states a description is required to infer the tier and what is needed from the owner",
+        "Escalated classification surfaced: onboarding item shows keyword confidence low, escalated to model judgment, medium tier with rationale, mid 27.9",
+        "Band follows the confidence rule: the onboarding low/high corners match band = 0.15 + 0.30 x (1 - confidence) for the confidence stated in the file (for example 0.7 gives 25.4 / 27.9 / 30.4, 0.6 gives 25.1 / 27.9 / 30.7), wider than the 0.15 base band",
+        "Tier source labelled with the model path and a numeric confidence (for example inferred-llm (70%)), and the file says the onboarding estimate should be reviewed because the tier was a judgment call and that presets need recalibration from telemetry"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Onboarding item is medium tier with mid 27.9",
+          "check": "grep -iE 'onboarding' onboarding-estimate.md | grep -qiE 'medium' && grep -q '27\\.9' onboarding-estimate.md"
+        }
+      ]
+    }
+  ]
+}

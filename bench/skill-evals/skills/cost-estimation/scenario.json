@@ -1,0 +1,206 @@
+{
+  "skill": "cost-estimation",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Leadership meets Monday to approve next year's AWS budget for the receipts service. Using context.md, produce the monthly cost analysis they will read, and write it to cost-estimate.md in Markdown. They will want to know what it costs today, what it could cost if we tighten things up, what the eu-west-1 DR option being discussed would add, and what happens when the enterprise launch lands. You may not have live pricing access; if so, use published us-east-1 list prices you know and say so. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "fixture": "fixtures/cost-estimation/",
+      "why_discriminating": "The skill requires baseline / optimized / high-availability scenarios, 2x/5x/10x growth modeling, internet and cross-region data transfer, unit cost per transaction or user, Savings Plans/RI analysis, cost alarm thresholds, and documented load assumptions (its quality gate makes undocumented load and missing data transfer CRITICAL). A competent answer without it usually prices the listed services once, under-weights CloudFront egress, and skips unit cost and budget alarms.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Presents three scenarios: baseline, optimized and high-availability",
+          "check": "grep -qiE 'baseline' cost-estimate.md && grep -qiE 'optimi[sz]ed' cost-estimate.md && grep -qiE 'high.availability|\\bHA\\b' cost-estimate.md"
+        },
+        {
+          "id": "f2",
+          "text": "Includes internet data transfer / egress as a line item",
+          "check": "grep -qiE 'data transfer|egress' cost-estimate.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Baseline includes all cost-bearing components in context.md, with the big hidden ones",
+          "pass": "Prices Lambda, API GW, DynamoDB, S3 (4 TB + 300 GB/mo growth), CloudFront egress (~4.5 TB/mo, ~3.5 TB billable after 1 TB free, roughly $300), Fargate (2x 1vCPU/2GB), Aurora db.r6g.large, SQS, CloudWatch Logs (~150 GB); baseline lands roughly $900-1,400/mo",
+          "partial": "Most components priced but egress under-sized or one of Aurora/Fargate/CloudWatch missing",
+          "fail": "Egress omitted or treated as free, or total under $700"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Skill's scenario and growth structure",
+          "pass": "Separate baseline, optimized (Savings Plans/RI, Graviton, S3 lifecycle for >90-day images, right-sizing) and HA scenarios, each with a total; growth at 2x, 5x and 10x with notes on what changes architecturally",
+          "partial": "Three scenarios present but growth only at one multiple, or optimized scenario lacks concrete levers",
+          "fail": "Single total with no scenarios"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "HA / DR scenario priced honestly",
+          "pass": "HA adds an Aurora reader or Multi-AZ, and the eu-west-1 DR option includes cross-region data transfer (replication) and duplicate storage, with its own total",
+          "partial": "HA priced but cross-region transfer or DR storage left out",
+          "fail": "HA is a flat multiplier or omitted"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Leadership-ready outputs: unit economics, budget guardrails, confidence",
+          "pass": "Gives cost per 1,000 requests or per MAU (40k MAU), recommends AWS Budgets / cost anomaly thresholds with numbers, states a confidence level or range and pricing source",
+          "partial": "Two of unit cost, alarm thresholds, confidence/source",
+          "fail": "None or one of them"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Assumptions stated with basis; no fabricated precision",
+          "pass": "Each load figure traced to context.md or a stated assumption; line-item math is reproducible; list-price caveat stated",
+          "partial": "Assumptions listed but some line items have unexplained numbers",
+          "fail": "Numbers appear without basis or contradict context.md (e.g. wrong request volume)"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "egress and hidden costs captured",
+          "three scenarios plus growth modeling",
+          "unit cost and budget alarms",
+          "traceable math"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "estimate-v1.csv is last year's cost estimate for the receipts service, and finance is about to reuse it for next year's budget. context.md has the current load and architecture. Review the estimate before finance sees it: list what is missing or wrong, give a corrected monthly total, and say what we could do to bring it down. Write cost-review.md. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "fixture": "fixtures/cost-estimation/",
+      "why_discriminating": "The skill's REVIEW path calls for gap analysis against commonly missed components (data transfer, monitoring/logging, backup), a side-by-side original vs corrected comparison, and a short/medium/long-term optimization roadmap. Without it a model tends to add a few missing services but miss that the CloudFront line assumes free tier while traffic is ~4.5 TB/mo, and gives a bare corrected total.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Flags the missing internet data transfer (about 4.5 TB/month through CloudFront, well past any free tier)",
+          "check": "grep -qiE 'data transfer|egress|out to (the )?internet' cost-review.md && grep -qiE 'CloudFront' cost-review.md"
+        },
+        {
+          "id": "f2",
+          "text": "Gives a corrected total that is higher than the original $402",
+          "check": "python3 -c 'import re,sys;t=open(\"cost-review.md\").read();n=[float(x.replace(\",\",\"\")) for x in re.findall(r\"\\$\\s?([0-9][0-9,]*(?:\\.[0-9]+)?)\",t)];sys.exit(0 if any(x>800 for x in n) else 1)'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Gaps from KEY found",
+          "pass": "Flags CloudFront egress (~4.5 TB vs 1 TB free tier), missing Fargate, Aurora, SQS, CloudWatch Logs, and S3 growth of 300 GB/mo",
+          "partial": "Four or five of the six",
+          "fail": "Three or fewer, or egress missed"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Review-path structure: original vs corrected side by side, with each change explained",
+          "pass": "Line-by-line table of original $ vs corrected $ with a reason per line and new lines marked as added; corrected total well above $402 (roughly $900-1,400)",
+          "partial": "Corrected total given but changes not itemized against the original",
+          "fail": "No corrected total, or total under $700"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Optimization roadmap tied to this workload",
+          "pass": "Concrete levers with estimated savings: S3 lifecycle/Intelligent-Tiering for images >90 days, Compute Savings Plan for Lambda+Fargate, Aurora RI or Graviton, CloudWatch log retention/filtering; grouped by horizon",
+          "partial": "Levers listed without savings estimates or not tied to this workload",
+          "fail": "Generic advice only"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Checks existing lines, not only additions",
+          "pass": "Validates the existing lines (e.g. Lambda $78 ~ 4.5M GB-s plus requests is about right; API GW $105 at $3.50/M is right) and notes DynamoDB storage/pricing assumptions",
+          "partial": "Comments on some existing lines",
+          "fail": "Ignores existing lines entirely or 'corrects' a right line to a wrong value"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented services or prices",
+          "pass": "Does not add services absent from context.md without labeling them as assumptions (e.g. WAF, GuardDuty as optional)",
+          "partial": "One unlabeled addition",
+          "fail": "Several unlabeled additions inflating the total"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "egress free-tier error caught",
+          "missing services itemized against original",
+          "credible corrected total",
+          "actionable savings"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "We're choosing between two options for the image-resize feature in us-east-1: (A) Lambda, 1536 MB, 800 ms average, 20M invocations a month; (B) ECS Fargate tasks with 2 vCPU / 4 GB, autoscaling between 2 and 8 tasks (average 3). Traffic is bursty: about 70% of uploads arrive between 08:00 and 12:00 UTC. Compare the monthly cost now and at 5x volume, and recommend one. Write resize-cost-comparison.md. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "fixture": null,
+      "why_discriminating": "The skill pushes unit cost per transaction, growth scenarios, Graviton and Savings Plans levers, and documented load basis. The bursty profile means a careful answer checks whether the 2-8 task range can absorb peak and 5x load before trusting the Fargate number; a competent answer without the skill often just multiplies both options by 5.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Gives a monthly figure for both options",
+          "check": "grep -qiE 'lambda' resize-cost-comparison.md && grep -qiE 'fargate' resize-cost-comparison.md && [ $(grep -oE '\\$[0-9]' resize-cost-comparison.md | wc -l) -ge 4 ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Lambda math",
+          "pass": "About 24M GB-seconds, roughly $400/mo plus ~$4 requests; ~$2,000 at 5x; notes arm64 cuts compute ~20%",
+          "partial": "Within 25% of these figures, or arm64 not considered",
+          "fail": "Off by more than 25% or GB-seconds not computed"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Fargate math and capacity check",
+          "pass": "3 tasks average about $210-220/mo; checks peak throughput (70% in 4 hours) and 5x load against the 8-task cap, and resizes the 5x Fargate estimate if the cap is too low",
+          "partial": "Fargate cost right but 5x simply multiplies or ignores the cap",
+          "fail": "Fargate cost wrong by >25%, or assumes always 8 tasks without reason"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Skill's comparison outputs",
+          "pass": "Cost per image or per 1M invocations for both options, now and at 5x; Savings Plan / Graviton levers for both; assumptions with basis",
+          "partial": "Unit cost for one option only, or levers missing",
+          "fail": "No unit cost and no levers"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Recommendation follows from numbers and states what would flip it",
+          "pass": "Picks an option with cost, ops and latency reasoning, and names the break-even or condition (e.g. traffic gets spikier, idle floor of 2 tasks) that would change the choice",
+          "partial": "Clear pick but no flip condition",
+          "fail": "No pick, or pick contradicts its own numbers"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "math correct for both options",
+          "bursty load and task cap considered",
+          "unit cost and levers",
+          "clear recommendation with flip condition"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+[
+  {
+    "query": "before I write the ADR on replacing our cron jobs with step functions, dig up what we have today in the repo, any prior ADRs, and real alternatives with evidence",
+    "should_trigger": true
+  },
+  {
+    "query": "gather an evidence base for choosing between Aurora Serverless v2, DynamoDB and plain RDS for the new reporting service. sources, constraints, and what data we're missing",
+    "should_trigger": true
+  },
+  {
+    "query": "here's a slack thread export (thread.txt) where 5 people argued monorepo vs polyrepo. pull out each person's position and reasoning so I can base a decision record on it",
+    "should_trigger": true
+  },
+  {
+    "query": "fact check our design doc. it claims 'there is no retry utility in the codebase' and 'SQS FIFO has unlimited throughput'. verify against the code and docs",
+    "should_trigger": true
+  },
+  {
+    "query": "about to decide on feature flags (LaunchDarkly vs AppConfig vs homegrown). research it properly, don't just go with the first thing you think of",
+    "should_trigger": true
+  },
+  {
+    "query": "has this team decided on an auth approach before? search docs/adr and the code for prior decisions before I propose cognito",
+    "should_trigger": true
+  },
+  {
+    "query": "build the research section for a decision doc on GraphQL federation: current state, alternatives, trade-off evidence, constraints, gaps, sources",
+    "should_trigger": true
+  },
+  {
+    "query": "my doc passed the rubric check. now verify its factual claims and find any prior art or missing context the author didn't know about",
+    "should_trigger": true
+  },
+  {
+    "query": "collect benchmarks and adoption data on bun vs node for our lambda runtime decision, and flag what's measured vs estimated",
+    "should_trigger": true
+  },
+  {
+    "query": "what constraints (technical, org, operational) should frame moving logging from ELK to CloudWatch? look at our infra code first",
+    "should_trigger": true
+  },
+  {
+    "query": "write the ADR for choosing EventBridge. research is already done, notes are in research.md",
+    "should_trigger": false
+  },
+  {
+    "query": "just pick for me: Redis or DynamoDB for the session store, one line answer",
+    "should_trigger": false
+  },
+  {
+    "query": "research the OWASP top 10 and summarize each item in a sentence",
+    "should_trigger": false
+  },
+  {
+    "query": "summarize this slack thread into 3 bullets for my manager",
+    "should_trigger": false
+  },
+  {
+    "query": "score this design doc for slop, hedging and passive voice",
+    "should_trigger": false
+  },
+  {
+    "query": "convene a deliberation panel on monorepo vs polyrepo and give me the scorecard",
+    "should_trigger": false
+  },
+  {
+    "query": "explain how DynamoDB adaptive capacity works",
+    "should_trigger": false
+  },
+  {
+    "query": "search the codebase for every caller of retryWithBackoff and list them",
+    "should_trigger": false
+  },
+  {
+    "query": "write a 6-page narrative for the reporting service launch",
+    "should_trigger": false
+  },
+  {
+    "query": "put the three caching options into a weighted trade-off matrix and pick one",
+    "should_trigger": false
+  }
+]

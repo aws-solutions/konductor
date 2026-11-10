@@ -1,0 +1,203 @@
+{
+  "skill": "iam-policy-design",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "We are taking DocIntake to production for a SOC 2 customer next month. Using docs/system-design.md and docs/threat-model.md, design the IAM and resource policies. Write complete policy documents to policies/ingest-role.json, policies/ingest-trust.json, policies/processor-role.json, policies/processor-trust.json, policies/uploads-bucket-policy.json and policies/kms-key-policy.json, and write security-design.md explaining them for our security reviewer. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/iam-policy-design/",
+      "why_discriminating": "The skill's integrated mode maps every threat to controls with status and validation method, requires Sids, trust policies, a stated production readiness tier, admin/user separation in key policies, and TLS plus SSE-KMS denies on the bucket. A competent answer gets the role policies roughly right but often gives SecurityAdmin kms:* (breaking T-004), omits the threat mapping or tier, or grants ListBucket.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "All six policy files parse and every permission-policy statement has a Sid",
+          "check": "python3 -c \"import json,sys;S=(lambda d:d['Statement'] if isinstance(d['Statement'],list) else [d['Statement']]);[json.load(open('policies/%s.json'%f)) for f in ['ingest-trust','processor-trust']];fs=['ingest-role','processor-role','uploads-bucket-policy','kms-key-policy'];sys.exit(0 if all(all(s.get('Sid') for s in S(json.load(open('policies/%s.json'%f)))) for f in fs) else 1)\""
+        },
+        {
+          "id": "f2",
+          "text": "Ingest role cannot read or list the bucket (T-001)",
+          "check": "test -f policies/ingest-role.json && ! grep -qE 's3:(GetObject|ListBucket|\\*)' policies/ingest-role.json"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Least privilege matches the access-pattern table",
+          "pass": "Ingest: PutObject on incoming/*, PutItem, GenerateDataKey; processor: GetObject incoming/*, PutObject processed/*, UpdateItem only, Decrypt + GenerateDataKey; exact ARNs, no wildcard actions",
+          "partial": "One permission broader than the table (for example DeleteObject or whole-bucket resource)",
+          "fail": "Wildcard actions or several extra permissions"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Resource policies close T-002, T-003, T-004",
+          "pass": "Bucket denies aws:SecureTransport=false and PutObject without aws:kms; key policy gives SecurityAdmin management actions with no Decrypt/Encrypt/GenerateDataKey/ReEncrypt",
+          "partial": "Two of the three threats closed",
+          "fail": "SecurityAdmin can decrypt, or neither bucket deny present"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Per-customer isolation is placed where it can work",
+          "pass": "Notes that the Lambda role cannot use the end user's cognito sub as an IAM variable, so per-customer prefix isolation (T-001) is enforced by the ingest code choosing incoming/<sub>/ and by the presigned URL's fixed key, with prefix-scoped role resources as defense in depth",
+          "partial": "Mentions per-user prefixes but implies IAM alone enforces them",
+          "fail": "Ignores per-customer isolation"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Skill's required design sections",
+          "pass": "Threat table for T-001..T-004 with control, mitigation status and validation method; production readiness tier stated (Standard for SOC 2/PII); trust policies for lambda.amazonaws.com; SOC 2 notes; out-of-scope items justified",
+          "partial": "Threat mapping present but tier or validation method missing",
+          "fail": "No threat mapping"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No false defects or invented infrastructure",
+          "pass": "Treats 'Resource': '*' in the key policy as 'this key'; does not claim VPCs, WAF or endpoints exist in the design (may recommend them)",
+          "partial": "One overstated claim",
+          "fail": "Asserts components the design does not have as existing controls"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would these policies pass a SOC 2 security review?",
+          "Is T-004 (admin decrypt) actually blocked?",
+          "Threat-to-control traceability"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Partner account 444455556666 needs read-only access to objects under processed/ in docintake-uploads-111122223333 (see docs/system-design.md). The partner's engineers will run a batch job in their account. Write cross-account.md describing every policy needed on our side and on the partner's side, and save each policy as its own JSON file under partner-access/. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/iam-policy-design/",
+      "why_discriminating": "The skill's quality gate makes cross-account access without condition keys CRITICAL and requires resource-based policies with explicit trust. Because the objects are SSE-KMS with a customer-managed key, the grant also needs a key-policy change; models without the skill often write a bucket policy alone, trust the partner account root with no condition, and forget KMS.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Policy files exist and parse",
+          "check": "ls partner-access/*.json >/dev/null 2>&1 && python3 -c \"import json,glob;[json.load(open(f)) for f in glob.glob('partner-access/*.json')]\""
+        },
+        {
+          "id": "f2",
+          "text": "Every Allow statement naming the partner account carries a Condition",
+          "check": "python3 -c \"import json,glob,sys;S=(lambda d:d['Statement'] if isinstance(d['Statement'],list) else [d['Statement']]);hits=[s for f in glob.glob('partner-access/*.json') for s in S(json.load(open(f))) if s.get('Effect')=='Allow' and '444455556666' in json.dumps(s)];sys.exit(0 if hits and all(s.get('Condition') for s in hits) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Both access layers covered",
+          "pass": "Bucket (or access point) grant scoped to processed/* plus a key-policy grant of kms:Decrypt to the partner principal, and the partner-side identity policy for their job role",
+          "partial": "S3 and partner side covered but KMS missing, or KMS only mentioned in prose",
+          "fail": "Only one side of the trust"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Principal and conditions are tight",
+          "pass": "Grants a named partner role (or a role in our account they assume with sts:ExternalId); conditions such as aws:PrincipalArn/aws:SecureTransport; kms:ViaService s3 on the decrypt grant; explains confused-deputy if a role trust is used",
+          "partial": "Conditions present but principal is the whole partner account root without justification",
+          "fail": "No conditions"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Read-only, prefix-scoped",
+          "pass": "Only GetObject (and ListBucket limited by s3:prefix processed/ if listing is needed); no Put/Delete/wildcards",
+          "partial": "ListBucket granted without a prefix condition",
+          "fail": "Write or wildcard actions granted"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Operable instructions",
+          "pass": "Says which party applies which file, how to test (aws s3 cp from the partner role, expected AccessDenied on incoming/), and how to revoke",
+          "partial": "Policies clear but no test or revoke path",
+          "fail": "Unclear who applies what"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would the partner's job actually be able to read SSE-KMS objects?",
+          "Tightness of the cross-account trust",
+          "Clarity of who applies which policy"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "A teammate drafted DocIntake's policies in drafts/ (design and threat model are in docs/). Review them before they go to the security team. Write policy-review.md with findings ordered by severity, each with the file, the statement Sid, why it matters, and the corrected statement. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/iam-policy-design-p3/",
+      "why_discriminating": "The skill's gate makes wildcard actions on S3/KMS and cross-account grants without condition keys CRITICAL, and missing aws:SecureTransport IMPORTANT. A reviewer with it also knows that 'Resource': '*' and root delegation in a key policy are normal, and that key admins must not hold use actions. Without it, reviewers either miss the SecurityAdmin kms:* (T-004) and the missing partner KMS grant, or flag the key-policy root statement as a wildcard defect.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "policy-review.md exists and names the processor s3:* statement",
+          "check": "test -f policy-review.md && grep -q 'ProcessorS3' policy-review.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "CRITICAL defects (see iam-policy-design-p3.KEY.md)",
+          "pass": "Flags all three: ProcessorS3 s3:* on the bucket, KeyAdministration giving SecurityAdmin kms:* (T-004), PartnerReadProcessed with no Condition on the partner root",
+          "partial": "Flags two",
+          "fail": "Flags one or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "IMPORTANT defects",
+          "pass": "Flags at least three of: no aws:SecureTransport deny (T-002), ingest dynamodb:Scan beyond PutItem, ingest holding kms:Decrypt it does not need, partner lacking kms:Decrypt so the grant cannot work, missing trust policies",
+          "partial": "Flags one or two",
+          "fail": "Flags none"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Severity mapping and ordering follow the skill",
+          "pass": "CRITICAL, IMPORTANT, SUGGESTION order; wildcard and condition-less cross-account items are CRITICAL; SecureTransport is IMPORTANT; each finding names file and Sid",
+          "partial": "Ordered but one gate item placed in the wrong tier",
+          "fail": "No severity or no Sid references"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Corrected statements are right",
+          "pass": "Replacement JSON for each defect is valid and least-privilege (processor Get incoming/* + Put processed/*, admin management-only action list, partner grant with conditions plus KMS)",
+          "partial": "Fixes described but JSON missing or partly wrong",
+          "fail": "No corrected statements"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No false positives",
+          "pass": "Does not call key-policy 'Resource': '*' or the AccountRoot kms:* statement a defect; does not flag ingest PutObject incoming/* or processor UpdateItem",
+          "partial": "One false positive, or flags AccountRoot but with the right caveat",
+          "fail": "Several false positives"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it find the admin-can-decrypt and partner-without-condition problems?",
+          "False positives on standard key-policy patterns",
+          "Are the corrected statements usable as-is?"
+        ]
+      }
+    }
+  ]
+}

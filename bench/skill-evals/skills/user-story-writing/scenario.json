@@ -1,0 +1,177 @@
+{
+ "skill": "user-story-writing",
+ "category": "MODEL-CAPABILITY",
+ "source": "konductor",
+ "kind": "doc",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "Returns portal BRD (summary): Customers of an online furniture store can start a return within 30 days of delivery from their order page, pick items and a reason, choose pickup or drop-off, and get a prepaid label by email. Items over 40 kg need scheduled pickup. Refunds go to the original payment method within 5 business days of the warehouse scan. Customer service agents can override the 30-day window with a reason code. Warehouse staff scan returned items and mark condition (resellable, damaged, missing parts). Damaged-on-arrival claims need a photo upload. Turn this into epics and user stories with acceptance criteria, MVP scope only, and write them to stories.md. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": null,
+   "why_discriminating": "The skill sets MVP at 10-15 stories, epics with a 5-10 word title, 2-4 sentence description and 3-5 key objectives, specific personas instead of 'user/admin', 3-8 testable criteria per story that include error and edge cases, and no implementation detail; an unguided answer often over-produces stories, uses generic personas, or covers only the happy path.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "MVP scope: 10-15 stories in As a / I want / so that form",
+     "check": "python3 -c 'import re,sys;n=len(re.findall(r\"As an? [^,\\n]+?,? I want .+? so that\",open(\"stories.md\").read(),re.I|re.S));sys.exit(0 if 10<=n<=15 else 1)'"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Epic structure per the skill: title, 2-4 sentence business objective, 3-5 key objectives, list of stories; stories have a 3-8 word title, As a/I want/so that, and 3-8 criteria",
+     "pass": "Every epic and story follows the structure",
+     "partial": "Minor gaps (an epic without key objectives, a story with 2 or 9 criteria)",
+     "fail": "Structure largely absent"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "Edge and error cases from the BRD are in criteria: return attempted after 30 days, >40 kg forces scheduled pickup, damaged claim blocked without photo, agent override requires a reason code, refund timing from warehouse scan",
+     "pass": "All five covered",
+     "partial": "Three or four",
+     "fail": "Two or fewer"
+    },
+    {
+     "id": "r3",
+     "dimension": "reasoning",
+     "criterion": "Personas are specific (customer, customer service agent, warehouse associate), stories are independent and sprint-sized, and the BRD is fully traced (no requirement dropped, label email and condition marking included)",
+     "pass": "Specific personas, independent stories, full coverage",
+     "partial": "One generic persona or one dropped requirement",
+     "fail": "Generic personas or several dropped requirements"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Criteria describe observable behavior, not implementation (no databases, queues, frameworks, endpoints) and no invented business rules beyond the source; assumptions are listed",
+     "pass": "No implementation detail and assumptions labeled",
+     "partial": "One or two implementation-flavored criteria",
+     "fail": "Criteria read like a technical design or invent rules"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is it the right size for an MVP backlog?",
+     "Do the criteria cover the error and edge cases a tester would hit?",
+     "Could a team pull these stories into a sprint without rework?"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "This story is too big for one sprint: \"As a store manager, I want reporting so that I can run the business.\" It covers daily sales totals, returns rate by product, low-stock alerts, and CSV export of all of these. Split it into sprint-sized stories with acceptance criteria in split.md. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": null,
+   "why_discriminating": "The skill's INVEST rules (Independent, Small at 1-5 days) and its guidance to separate distinct capabilities push toward splits with no blocking order; a naive split creates a 'CSV export' story that cannot start until the three reports exist, and leaves criteria vague ('fast', 'accurate').",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "At least 4 stories in As a / I want / so that form",
+     "check": "python3 -c 'import re,sys;n=len(re.findall(r\"As an? .+? I want .+? so that\",open(\"split.md\").read(),re.I|re.S));sys.exit(0 if n>=4 else 1)'"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "reasoning",
+     "criterion": "Stories are independent: export is sliced per report (or each report story owns its own export) instead of one export story blocked on the other three",
+     "pass": "No story depends on another to start",
+     "partial": "Dependency acknowledged with a mitigation but still present",
+     "fail": "Export story blocked on the others with no mitigation"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Each concern (sales totals, returns rate by product, low-stock alerts, CSV export) is covered by small stories with 3-8 testable criteria and an estimate or size within 1-5 days",
+     "pass": "All concerns, criteria in range, sized",
+     "partial": "All concerns but sizes missing or criteria counts off",
+     "fail": "A concern missing or stories still epic-sized"
+    },
+    {
+     "id": "r3",
+     "dimension": "issue",
+     "criterion": "Criteria include edge cases and measurable terms: no-sales day, product with zero sales (returns rate divide-by-zero), alert threshold definition and timing, time zone/day boundary, empty export",
+     "pass": "At least three such cases with measurable terms",
+     "partial": "One or two",
+     "fail": "Happy path only, or vague terms like \"fast\""
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Criteria describe observable behavior, not implementation (no databases, queues, frameworks, endpoints) and no invented business rules beyond the source; assumptions are listed",
+     "pass": "No implementation detail and assumptions labeled",
+     "partial": "One or two implementation-flavored criteria",
+     "fail": "Criteria read like a technical design or invent rules"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Can the four slices really be built in any order?",
+     "Are the criteria testable, with edge cases?",
+     "Is each story small enough for a sprint?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "Write acceptance criteria for these existing stories and save them to ac.md: (1) As a tenant admin, I want to invite teammates by email so that they can join our workspace. (2) As a tenant admin, I want to remove a teammate so that former staff lose access. (3) As a compliance officer, I want to export the audit log for a date range so that I can answer auditors. (4) As a teammate, I want to reset my password so that I can get back in. (5) As a tenant admin, I want to require SSO so that nobody signs in with a password. (6) As a compliance officer, I want audit entries kept for 7 years so that we meet retention rules. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": null,
+   "why_discriminating": "The skill's gate treats missing error conditions and vague terms as failures and wants 3-8 observable criteria per story; it should also notice story 4 conflicts with story 5 once SSO is required. An unguided answer tends to list happy-path checks and miss lockout and last-admin cases.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "All six stories present",
+     "check": "python3 -c 'import re,sys;t=open(\"ac.md\").read();P=[\"invite\", \"remove\", \"export\", \"reset\", \"SSO\", \"7 years|seven years|retention\"];sys.exit(0 if sum(bool(re.search(p,t,re.I)) for p in P)>=6 else 1)'"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Error and edge conditions: expired or reused invite, inviting an existing member, removing the last admin, removed user sessions/tokens revoked, invalid or too-large date range, SSO enforcement locking out admins without a recovery path, deleting or editing entries before 7 years",
+     "pass": "At least five of these",
+     "partial": "Three or four",
+     "fail": "Two or fewer"
+    },
+    {
+     "id": "r2",
+     "dimension": "reasoning",
+     "criterion": "Notices the conflict between story 4 (password reset) and story 5 (require SSO) and states the expected behavior when SSO is enforced",
+     "pass": "Conflict identified with a concrete criterion",
+     "partial": "Hinted at but no criterion",
+     "fail": "Not noticed"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Each story has 3-8 criteria, phrased as observable outcomes with measurable terms (time limits, counts, explicit messages)",
+     "pass": "All six stories in range and measurable",
+     "partial": "Counts off for one or two stories, or some vague terms",
+     "fail": "Mostly vague or out of range"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Criteria describe observable behavior, not implementation (no databases, queues, frameworks, endpoints) and no invented business rules beyond the source; assumptions are listed",
+     "pass": "No implementation detail and assumptions labeled",
+     "partial": "One or two implementation-flavored criteria",
+     "fail": "Criteria read like a technical design or invent rules"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Would QA find these criteria testable as written?",
+     "Are the risky edge cases (last admin, SSO lockout, retention tampering) covered?",
+     "Did it notice the reset-vs-SSO conflict?"
+    ]
+   }
+  }
+ ]
+}

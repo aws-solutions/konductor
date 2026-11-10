@@ -1,0 +1,185 @@
+{
+  "skill": "k-aspect-review",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "design.md is the notification fan-out design our team wants to build next quarter. Before it goes to the architecture review, do a 4-aspect review of it: choose the four aspects that fit this design, review each one on its own, then pull the results together. Write the review to aspect-review.md. Do not edit design.md. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/k-aspect-review/",
+      "why_discriminating": "The skill makes the reviewer pick four orthogonal, design-appropriate aspects, review each in isolation with a neutral framing and a strong/adequate/needs-improvement rating, then synthesize cross-cutting themes into prioritized actions. Without it, a competent model tends to write one general critique with four headings that repeat the same issues.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "aspect-review.md exists and design.md is unchanged",
+          "check": "test -f aspect-review.md && sha256sum design.md | grep -q c1cf56910cafdc430f9269169c006aeab66c6544af0a55a5c9ed7a8ed9080918"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Planted design flaws are found and their impact explained (KEY: synchronous sequential provider calls with an unbounded retry loop and 15 min timeout; PK=customerId hot partition at 4,000/s; API keys in env vars and phone numbers in the payload; no auth on POST /notify; no alarms; big-bang rollout; no dedupe key)",
+          "pass": "At least 5 of the 7 KEY issues are named with a concrete impact (e.g. a provider outage still blocks producers)",
+          "partial": "3-4 KEY issues found, or impacts stated only generically",
+          "fail": "2 or fewer KEY issues, or the review misses that the synchronous chain recreates the outage coupling it was meant to remove"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Aspect selection and isolation follow the skill: exactly four orthogonal aspects suited to a design (e.g. reliability, scalability, security, operability), each section staying inside its own lens",
+          "pass": "Four distinct, non-overlapping aspects; findings under each heading belong to that aspect only",
+          "partial": "Four aspects but two overlap (e.g. 'robustness' and 'reliability') or several findings are repeated across sections",
+          "fail": "Not four aspects, or the sections are one general list split under headings"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Each aspect carries a rating on the strong / adequate / needs improvement scale and the synthesis names cross-cutting themes seen in more than one aspect",
+          "pass": "Every aspect rated on the skill's three-level scale; synthesis identifies at least one theme spanning 2+ aspects (e.g. the synchronous retry loop drives both reliability and scalability problems)",
+          "partial": "Ratings present but on a different scale, or synthesis only restates per-aspect findings",
+          "fail": "No per-aspect ratings and no cross-aspect synthesis"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Prioritized action items are concrete and actionable",
+          "pass": "Ordered actions with specific fixes (e.g. return 202 and process async via a queue, bounded retries with DLQ, move keys to Secrets Manager, add auth, phased rollout with rollback)",
+          "partial": "Actions present but unordered or vague ('improve reliability')",
+          "fail": "No action items"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented facts about the design and no padding",
+          "pass": "Every finding traces to text in design.md; assumptions are labelled",
+          "partial": "One or two speculative findings presented as fact",
+          "fail": "Several findings about things the design does not say, or long generic best-practice filler"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "whether the four aspects are distinct and actually reviewed separately",
+          "depth on the synchronous fan-out and retry-loop problem",
+          "quality of the cross-cutting synthesis and action ordering"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "We are about to put scripts/cleanup.sh in cron on every build host (it runs nightly as root with DAYS passed by the cron line). Review it from multiple angles and write the result to review-cleanup.md. Do not change the script. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/k-aspect-review/",
+      "why_discriminating": "The skill's aspect table steers script reviews toward correctness, idempotency, error handling, portability, logging and edge cases, each reviewed separately and rated. A strong answer finds the destructive edge cases (empty DAYS, unchecked cd running rm in the wrong directory) under the right aspects instead of a single bullet list of shell tips.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "review-cleanup.md exists and the script is unchanged",
+          "check": "test -f review-cleanup.md && sha256sum scripts/cleanup.sh | grep -q c6958ab3e1f1aba87a10f394fdf63cce64a9f2139e83d506ee59b9b0e41607c8"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "The dangerous failure modes are found and their blast radius explained (KEY: unchecked cd so rm runs in the current directory as root; DAYS unvalidated so empty input changes the find; $(find .) word-splitting and includes '.'; mv fails on the second run; no set -e; nothing logged about what was deleted)",
+          "pass": "Names the unchecked cd + rm -rf combination as the top risk with its root-in-wrong-directory impact, plus at least 3 other KEY issues",
+          "partial": "Finds several KEY issues but does not connect cd failure to deleting the wrong tree, or misses DAYS validation",
+          "fail": "Treats the script as basically fine or only offers style nits"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Aspects are tailored to a script per the skill (e.g. correctness, idempotency, error handling, logging) and each carries a strong/adequate/needs improvement rating",
+          "pass": "Script-appropriate aspects including idempotency, each rated on the skill's scale, findings kept inside each aspect",
+          "partial": "Aspects present but generic (e.g. 'security, performance') or ratings missing for some",
+          "fail": "No aspect structure"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Fixes are concrete and safe",
+          "pass": "Gives a corrected approach: validate DAYS as an integer, cd ... || exit, find -mindepth 1 -mtime +N -delete (or -print0 | xargs -0), guard the mv, set -euo pipefail, log deletions",
+          "partial": "Some concrete fixes but at least one of them is still unsafe or incomplete",
+          "fail": "Only general advice such as 'add error handling'"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Synthesis explains how the issues combine under cron (unattended, root, nightly repetition)",
+          "pass": "Cross-cutting theme ties the missing validation and error handling to the unattended cron context",
+          "partial": "Mentions cron but not how it raises severity",
+          "fail": "No synthesis"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "whether the wrong-directory rm -rf risk is ranked first",
+          "script-specific aspects (idempotency, error handling) vs generic ones",
+          "safety of the proposed fixes"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "webhooks-design.md is our partner delivery-webhooks design. Give it an aspect review before Thursday's design meeting and write it to aspect-review-webhooks.md. Pick the aspects yourself. Do not edit the design. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/k-aspect-review/",
+      "why_discriminating": "The design contains an open decision with three viable options and no clear winner. The skill's Deliberation Panel Mode says to review the rest normally, then flag that decision and offer a deliberation panel (answer directly or convene one, with the time/cost note), never convening it unasked. Without the skill, a model usually just picks an option or lists pros and cons.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "aspect-review-webhooks.md exists and the design is unchanged",
+          "check": "test -f aspect-review-webhooks.md && sha256sum webhooks-design.md | grep -q fe78a4fe823529faa6e7ee1c0a4dd0647e12f28f99f4fde350f66e7ace833a70"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "The open delivery-mechanism decision is handled per Deliberation Panel Mode",
+          "pass": "Flags A/B/C as a multi-option decision with no clear winner and offers the two choices (decide directly, or convene a deliberation panel with a time/cost note) without running the panel or declaring a final pick",
+          "partial": "Flags the decision as open and suggests a structured comparison, but does not frame it as a user-confirmed offer, or leans to an option while still leaving it open",
+          "fail": "Silently picks an option as the answer, or simulates a full panel the user never asked for"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Other planted issues are found under suitable aspects (KEY: partner secrets stored as plain attributes; failures only logged and support-by-email; all 40 partners at once plus polling shutdown a week later; no event id for at-least-once duplicates; no ordering guarantee)",
+          "pass": "At least 4 of the 5 found with impact",
+          "partial": "2-3 found",
+          "fail": "1 or none"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Standard aspect mechanics: orthogonal aspects, per-aspect strong/adequate/needs improvement rating, cross-cutting synthesis and prioritized actions",
+          "pass": "All four mechanics present",
+          "partial": "Two or three present",
+          "fail": "Unstructured review"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No unverified service claims asserted as decisive facts when discussing options",
+          "pass": "Quota or feature claims about SNS/EventBridge are hedged or marked to verify, and none is used to close the decision",
+          "partial": "One claim stated as settled fact",
+          "fail": "Decision effectively made on unverified claims"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "handling of the open A/B/C decision (offer vs decide)",
+          "coverage of the security, operability and rollout issues",
+          "structure: aspects, ratings, synthesis"
+        ]
+      }
+    }
+  ]
+}

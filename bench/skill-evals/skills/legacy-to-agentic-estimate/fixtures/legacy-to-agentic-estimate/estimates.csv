@@ -1,0 +1,5 @@
+legacy_days,description
+24,Add CRUD endpoints and DTOs for the settings API
+60,Design multi-region failover architecture for the datastore
+12,Scaffold new notification microservice with boilerplate
+20,Security review and redesign of token authentication

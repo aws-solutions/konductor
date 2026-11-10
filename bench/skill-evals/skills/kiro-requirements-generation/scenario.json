@@ -1,0 +1,200 @@
+{
+  "skill": "kiro-requirements-generation",
+  "category": "RUNTIME-FEATURE",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "These user stories for our 'Alert Rule Management' feature are approved and need to become the Kiro IDE spec requirements document so design can start. Story A: As an SRE, I want to create an alert rule with a metric, threshold and duration, so that I get paged when a service degrades. Criteria: Given I am an authenticated SRE, When I submit a valid rule, Then the rule is saved and I see its ID. Given the threshold is not a number, Then the form shows an error. Story B: As an SRE, I want to disable a rule temporarily, so that planned maintenance doesn't page anyone. Criteria: Given a rule is enabled, When I disable it, Then it stops firing. Then disabled rules are shown greyed out. Story C: As an on-call lead, I want rule changes audited, so that I can see who muted what. Criteria: When a rule is created, changed or disabled, Then an audit entry is recorded. Write the requirements document in the default Kiro spec location for this feature. Don't ask questions.",
+      "fixture": null,
+      "why_discriminating": "The skill fixes the default path (.kiro/specs/<kebab-case>/requirements.md), the document structure, and a BDD-to-EARS mapping (Given+When+Then -> Complex, error Given+Then -> Unwanted, Then-only -> Ubiquitous), and asks that responses become more specific and edge cases be added. Without it, models produce generic 'shall' statements or keep Given/When/Then.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Written at the default kebab-case path",
+          "check": "test -f .kiro/specs/alert-rule-management/requirements.md"
+        },
+        {
+          "id": "f2",
+          "text": "Every numbered acceptance criterion contains SHALL",
+          "check": "python3 -c \"import re,sys;t=open('.kiro/specs/alert-rule-management/requirements.md').read();c=re.findall(r'(?m)^\\s*\\d+\\.\\s+(.*)$',t.split('## Requirements',1)[-1]);sys.exit(0 if c and all('SHALL' in x for x in c) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "BDD criteria map to the right EARS patterns",
+          "pass": "Authenticated+submit -> 'WHILE ..., WHEN ..., THE ... SHALL'; non-numeric threshold -> 'IF ..., THEN THE ... SHALL'; enabled+disable -> Complex; 'disabled rules greyed out' -> Ubiquitous; audit -> Event-driven",
+          "partial": "Most mapped correctly, one or two wrong patterns",
+          "fail": "Patterns ignored or BDD kept"
+        },
+        {
+          "id": "r2",
+          "dimension": "recommendation",
+          "criterion": "Responses are more specific than the source",
+          "pass": "Concrete values added (rule ID returned, validation message or HTTP 400, rule stops firing within a stated time, audit fields who/what/when)",
+          "partial": "Some specificity",
+          "fail": "Restates the stories"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Useful edge cases added",
+          "pass": "Two or more relevant ones, e.g. unauthorized user, disabling an already-disabled rule, duration out of range, audit write failure",
+          "partial": "One",
+          "fail": "None"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Criteria describe observable behavior, not implementation, and stay within the stories",
+          "pass": "No database/table/framework details, no new features beyond the three stories",
+          "partial": "One implementation detail or scope addition",
+          "fail": "Several"
+        },
+        {
+          "id": "r5",
+          "dimension": "process",
+          "criterion": "Exact document structure and limits",
+          "pass": "'# Requirements Document', '## Introduction', '## Requirements', one '### Requirement N' per story with **User Story:** and '#### Acceptance Criteria', 3-8 numbered criteria each",
+          "partial": "Structure mostly right with one deviation (e.g. a requirement with 2 criteria)",
+          "fail": "Different structure"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Could design start from this without re-asking product?",
+          "Are the criteria testable?",
+          "Does it follow EARS correctly?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "The PM handoff for sprint 14 is docs/handoff/sprint-14-stories.md. Our SDLC workflow keeps all spec artifacts under out/specs/, not .kiro/. Generate the Kiro requirements.md for the billing-alerts feature with spec_dir set to out/specs/billing-alerts/. Don't ask questions and don't write anywhere else.",
+      "fixture": "fixtures/kiro-requirements-generation/",
+      "why_discriminating": "The skill writes exactly one requirements.md per invocation for the feature named by spec_dir and filters the handoff to that feature's stories; it also maps a failure Given+Then to the Unwanted pattern with a concrete policy. Without it, models tend to fold the adjacent Budget Management epic into the same document or write several files.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "requirements.md written under the caller's spec_dir",
+          "check": "test -f out/specs/billing-alerts/requirements.md"
+        },
+        {
+          "id": "f2",
+          "text": "Nothing under .kiro/specs and only one requirements.md written",
+          "check": "! test -e .kiro/specs && [ $(find . -name requirements.md | wc -l) -eq 1 ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Filters to the in-scope feature",
+          "pass": "Only BA-1 and BA-2 become requirements; Budget Management stories excluded (mentioning them as out of scope is fine)",
+          "partial": "Budget stories partly folded in as extra criteria",
+          "fail": "Budget Management written as requirements"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Pattern mapping",
+          "pass": "Provider-down retry as 'IF ..., THEN THE ... SHALL' with a concrete retry policy (count and backoff); 'at most once per threshold per month' and 'configurable per account' as 'THE ... SHALL'; spend-exceeds as Complex",
+          "partial": "Mostly right",
+          "fail": "Patterns wrong or missing"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Specific and testable",
+          "pass": "Concrete values (thresholds 80/100%, delivery within a stated time, retry schedule, dedup window) and edge cases such as no admins configured or currency/month boundary",
+          "partial": "Some",
+          "fail": "Vague"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Exact document structure and limits",
+          "pass": "'# Requirements Document', '## Introduction', '## Requirements', one '### Requirement N' per story with **User Story:** and '#### Acceptance Criteria', 3-8 numbered criteria each",
+          "partial": "Structure mostly right with one deviation (e.g. a requirement with 2 criteria)",
+          "fail": "Different structure"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it stay within the billing-alerts feature?",
+          "Are failure cases written as testable requirements?",
+          "Did it write only where asked?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "docs/stories/csv-export.md has the approved stories for our CSV export feature, but the acceptance criteria are vague ('quickly', 'many rows', 'it is blocked'). Turn them into the Kiro spec requirements document in the default spec location, with testable criteria. Don't ask questions; make reasonable concrete assumptions and note them in the Introduction.",
+      "fixture": "fixtures/kiro-requirements-generation/",
+      "why_discriminating": "The skill's validation step bans vague terms without measurable values and requires Unwanted (IF/THEN) coverage of failures; its conversion rules decide each pattern. Generic output keeps soft wording or invents numbers without saying they are assumptions.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Written at the default kebab-case path",
+          "check": "test -f .kiro/specs/csv-export/requirements.md"
+        },
+        {
+          "id": "f2",
+          "text": "No bare 'quickly'/'fast'/'many' left in numbered criteria",
+          "check": "test -f .kiro/specs/csv-export/requirements.md && ! grep -E '^\\s*[0-9]+\\.' .kiro/specs/csv-export/requirements.md | grep -qiwE 'quickly|fast|many'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "recommendation",
+          "criterion": "Vague terms replaced with measurable values",
+          "pass": "Time limits, a row threshold for background export, a notification channel/time, and a concrete blocked outcome (e.g. 403 and no file generated)",
+          "partial": "Some replaced",
+          "fail": "Still vague"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Pattern mapping",
+          "pass": "Export-job failure (Given+Then failure) as 'IF ..., THEN THE ... SHALL'; filtered and large exports as Complex; 'includes all visible columns' as Ubiquitous; permission case Complex or Unwanted with a concrete response",
+          "partial": "One or two wrong",
+          "fail": "Patterns ignored"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Assumptions are visible",
+          "pass": "Every invented number is listed as an assumption in the Introduction",
+          "partial": "Some listed",
+          "fail": "Numbers presented as given facts"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Exact document structure and limits",
+          "pass": "'# Requirements Document', '## Introduction', '## Requirements', one '### Requirement N' per story with **User Story:** and '#### Acceptance Criteria', 3-8 numbered criteria each",
+          "partial": "Structure mostly right with one deviation (e.g. a requirement with 2 criteria)",
+          "fail": "Different structure"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Could QA write tests from these criteria?",
+          "Are the assumptions explicit?",
+          "Is EARS applied correctly?"
+        ]
+      }
+    }
+  ]
+}

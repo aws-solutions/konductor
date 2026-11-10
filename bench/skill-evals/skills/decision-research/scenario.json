@@ -1,0 +1,177 @@
+{
+  "skill": "decision-research",
+  "category": "WATCH",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "I'm going to write an ADR about replacing how this service runs its scheduled jobs. Before I draft it, build the research base: what exists today, prior decisions, the real options with evidence, constraints, and what we don't know. Write research.md. There is no internet here; use the repo and what you know, and mark anything unverified. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/decision-research/",
+      "why_discriminating": "The skill's research template (Current State, Prior Decisions, Alternatives with evidence for/against, Constraints, Gaps, Sources) and its anti-pattern guards (at least 3 alternatives before evaluating, measured vs estimated) push a strong answer to find ADR-0005's revisit trigger and the single EC2 SPOF. Without it, models tend to jump to recommending EventBridge.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "research.md cites both prior ADRs",
+          "check": "test -f research.md && grep -q '0003' research.md && grep -q '0005' research.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Current state and prior decisions found",
+          "pass": "node-cron in src/jobs/cron.js on a single t3.small EC2 (infra/stack.ts) as a SPOF; ADR-0005 with its revisit trigger (>5 jobs or an outage) and whether it has fired; ADR-0003 relevance",
+          "partial": "Finds the cron setup and one ADR",
+          "fail": "Misses the prior decisions"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Template sections and at least 3 alternatives with evidence for and against",
+          "pass": "All template sections; 3+ options (e.g. EventBridge Scheduler + Lambda, ECS scheduled tasks, Step Functions, HA cron with leader election) each with for/against",
+          "partial": "Sections present but alternatives thin or one-sided",
+          "fail": "Free-form notes"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Avoids anchoring and separates measured from assumed",
+          "pass": "Does not pick a winner; labels repo-derived facts vs general knowledge vs unverified; constraints sourced",
+          "partial": "Mostly neutral but some unlabeled claims",
+          "fail": "Recommends one option without balanced evidence"
+        },
+        {
+          "id": "r4",
+          "dimension": "issue",
+          "criterion": "Gaps are concrete",
+          "pass": "Lists specific unknowns (job durations, failure history, cost, team ops capacity) that would change the decision",
+          "partial": "Generic gaps",
+          "fail": "No gaps"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "useful as an ADR base",
+          "finds the prior decision trigger",
+          "neutral, sourced"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "docs/design/notifications-v2.md already passed our template checklist. Now verify its factual claims against the repo and what you know, and point out prior art or context the author missed. Write verification.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/decision-research/",
+      "why_discriminating": "The skill's Artifact Verification Mode has fixed categories (Factual Corrections, Missing Context, Strengthening Suggestions, Alternative Perspectives, Open Questions) and ends with the strongest aspect plus single most important improvement. A strong answer corrects claim 1 with src/lib/retry.js, corrects the 'unlimited FIFO throughput' claim and parks the 'never had an outage' claim as an open question.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "verification.md exists and cites retry.js or withRetry",
+          "check": "test -f verification.md && grep -qE 'retry\\.js|withRetry' verification.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Each claim correctly classified",
+          "pass": "Claim 1 false (withRetry exists, used by digest.js); claim 2 false (FIFO is throughput-limited: 300/s per action, 3,000 with batching, higher in high-throughput mode); claim 3 unverifiable -> open question; claim 4 supported by cron.js",
+          "partial": "Three of four right",
+          "fail": "Two or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Uses the verification categories and closing",
+          "pass": "Findings under the named categories (empty ones skipped) and ends with strongest aspect + single most important improvement",
+          "partial": "Categories used but closing missing",
+          "fail": "Ad hoc structure"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Missing context surfaced",
+          "pass": "Mentions ADR-0003/0005 or existing retry utility as prior art the author missed",
+          "partial": "Some context",
+          "fail": "None"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Does not overclaim",
+          "pass": "Unverifiable items stay open; limits stated as general knowledge, not repo facts",
+          "partial": "One overconfident claim",
+          "fail": "Invents incidents or metrics"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "accurate corrections",
+          "honest about unknowns",
+          "author knows what to fix first"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "thread.txt is a Slack export of our monorepo vs polyrepo debate. I'll write a decision record from it. Pull out the evidence base: who the stakeholders are, the options and the arguments for and against each with attribution, constraints, what they agreed on, and what's still open. Write thread-research.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/decision-research/",
+      "why_discriminating": "The skill's thread-extraction mapping (participants -> stakeholders, positions -> alternatives with attributed arguments, consensus, unresolved tensions, constraints) and the rule never to use raw Slack IDs push a strong answer to resolve IDs to names and attribute positions correctly. Without it, summaries often keep IDs or blur who said what.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "No raw Slack user IDs in the output",
+          "check": "test -f thread-research.md && ! grep -qE 'U0[1-5][A-Z]{3}' thread-research.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Positions attributed correctly",
+          "pass": "Priya pro-monorepo; Marcus against unless CI caching; Elena versioned shared package middle ground; Tom PCI constraint; Sana independent deploys",
+          "partial": "One misattribution",
+          "fail": "Several wrong or unattributed"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Maps thread content to research structure",
+          "pass": "Stakeholders, alternatives with for/against, constraints (PCI scope, independent deploys), consensus (payments stays separate), open items (Nx CI time unmeasured, 3-repo trial, Oct 15 date)",
+          "partial": "Most sections, one missing",
+          "fail": "Chronological summary only"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Names resolved and nothing invented",
+          "pass": "IDs resolved to names from the export; no positions added that are not in the thread",
+          "partial": "Minor embellishment",
+          "fail": "Raw IDs or invented quotes"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Separates agreed from contested",
+          "pass": "Clear about what is settled versus still debated and what data would settle it",
+          "partial": "Partly",
+          "fail": "Treats opinions as consensus"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "faithful attribution",
+          "decision-ready structure",
+          "open questions clear"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,201 @@
+{
+  "skill": "sprint-planning",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Plan my next sprint from backlog.md. I'm a solo developer. Write sprint-plan.md with an estimate for every backlog item, what goes into the sprint and what doesn't, and why. Use your usual defaults for capacity and sprint length. This runs unattended: do not ask questions; state assumptions at the top of the file.",
+      "fixture": "fixtures/sprint-planning/",
+      "why_discriminating": "The skill supplies concrete defaults (10 points, 2 weeks, 1 point = 1 day), a 1/2/3/5/8 scale with anchors, an 8-point 'flag for splitting' rule, an 80% warning, and a running capacity line after each addition. Without it, a model invents its own capacity, uses arbitrary points, and schedules the three-service integration whole or overfills the sprint.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "sprint-plan.md exists",
+          "check": "test -s sprint-plan.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "States the skill's defaults (10-point capacity, 2-week sprint, 1 point = 1 work day) as assumptions and plans to them",
+          "pass": "All three defaults stated and used",
+          "partial": "Capacity stated but other defaults missing or a different capacity used",
+          "fail": "Arbitrary or no capacity"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Tracks capacity as items are added with a running line in the form 'Sprint: X/Y pts (Z remaining)', warns at >= 80%, and ends at or under 10",
+          "pass": "Running total after each item, 80% warning, final <= 10",
+          "partial": "Total given only at the end, or no 80% warning",
+          "fail": "No capacity tracking or over 10"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Sizes on the skill's scale with sensible anchors: runbook and SDK bump 1, Retry-After 1-2, render.ts tests 2, flaky test or duplicate-push investigation 3, digest feature (API+UI+sender) 5, three-service integration 8",
+          "pass": "All items on the 1/2/3/5/8 scale and close to these anchors",
+          "partial": "Scale used but two or more items far off",
+          "fail": "Off-scale values or no estimates"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Flags item 5 (billing/identity/audit integration with new auth) as 8 and too large, proposes how to split it, and keeps it out of the sprint whole",
+          "pass": "Flagged, split proposed, not scheduled whole",
+          "partial": "Flagged but no split",
+          "fail": "Scheduled whole"
+        },
+        {
+          "id": "r5",
+          "dimension": "reasoning",
+          "criterion": "Inclusion choices are justified (customer-facing duplicate pushes and CI flakiness prioritized, or a stated rationale) and deferred items are listed",
+          "pass": "Clear priority rationale and deferred list",
+          "partial": "Choices listed without rationale",
+          "fail": "Unexplained selection"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is the sprint realistically sized and visibly tracked?",
+          "Are estimates consistent and on a known scale?",
+          "Is the oversized item handled sensibly?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Turn notifications-design.md into a work hierarchy for our tracker. Write hierarchy.json: a JSON array of nodes, each {\"id\", \"title\", \"type\", \"parent\" (id or null), \"points\" (number or null), \"sprint\" (\"sprint-1\" or null)}. Then put the first sprint's worth of work into sprint-1. Write a short sprint-1.md explaining what went in and why. Do not ask questions; state assumptions in sprint-1.md.",
+      "fixture": "fixtures/sprint-planning/",
+      "why_discriminating": "The skill defines the hierarchy Goal > Initiative > Epic > Story > Task > Subtask, says only Tasks and Subtasks are sprint-assigned (never multi-sprint Epics or Stories), forbids untyped nodes, caps tasks at 5 points, and defaults capacity to 10. A generic breakdown tends to sprint-assign Stories or Epics, leave types inconsistent, or carry one 8-point migration task.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "hierarchy.json is a JSON array whose parent ids all resolve",
+          "check": "python3 -c \"import json,sys;d=json.load(open('hierarchy.json'));ids={n['id'] for n in d};sys.exit(0 if isinstance(d,list) and d and all(n.get('parent') in ids or n.get('parent') is None for n in d) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Hierarchy uses the skill's levels correctly: one Goal at the top, Epics/Stories for the five scope areas, Tasks/Subtasks beneath; every node has an explicit type",
+          "pass": "Correct levels, all typed, sensible nesting",
+          "partial": "Typed but levels muddled (e.g. Tasks directly under Goal everywhere)",
+          "fail": "Untyped or flat list"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Only Task or Subtask nodes carry a sprint; Goal/Epic/Story nodes have sprint null; sprint-1 points total <= 10",
+          "pass": "Both hold",
+          "partial": "Sprint total ok but a Story or Epic is sprint-assigned",
+          "fail": "Over capacity or parents sprint-assigned"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "No Task over 5 points; the 1.2M-user migration and the delivery-pipeline change are split into right-sized tasks with points on the 1/2/3/5 scale",
+          "pass": "All tasks <= 5, sensible splits",
+          "partial": "One task over 5 or odd splits",
+          "fail": "Several oversized or unestimated"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Sprint-1 picks a coherent first slice (e.g. Preferences API before UI and sender changes) and sprint-1.md explains the ordering and dependencies",
+          "pass": "Coherent slice with dependency reasoning",
+          "partial": "Fits capacity but arbitrary",
+          "fail": "Incoherent or missing explanation"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Covers all five scope items without inventing extra scope (no new features the design does not mention)",
+          "pass": "All five, no invented scope",
+          "partial": "One missing or small invented addition",
+          "fail": "Several missing or invented"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would this import cleanly and make sense in a tracker?",
+          "Is the first sprint a sensible, right-sized slice?",
+          "Are sizes and types consistent?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Plan sprint 14 from carryover.md. I'm out two days, so capacity is 8 points this time. Roll over the unfinished work first, then add new candidates if they fit. Write sprint14.md showing the plan as you build it, and what got pushed out. Do not ask questions; state assumptions at the top.",
+      "fixture": "fixtures/sprint-planning/",
+      "why_discriminating": "Carry-over alone (5+3+1 = 9) exceeds the 8-point capacity. The skill's capacity tracking (running total, warn at 80%, alert when exceeding) makes the overflow explicit before anything is added. Without it, a model often rolls everything over and squeezes in new items, or cuts silently without saying which dependent pair (sender + UI) it split.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "sprint14.md exists",
+          "check": "test -s sprint14.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Alerts explicitly that the carry-over alone (9 points) exceeds the 8-point capacity before adding anything new",
+          "pass": "Overflow called out with the numbers",
+          "partial": "Overflow implied by the final plan but not called out",
+          "fail": "Plans over 8 or never notices"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Shows the build-up with a running 'Sprint: X/Y pts (Z remaining)' line against 8, warns at >= 80% (6.4, so at 7 or more), ends at or under 8",
+          "pass": "Running lines, warning, final <= 8",
+          "partial": "Final total only or no warning",
+          "fail": "No tracking or over 8"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Deferral choice is reasoned: e.g. keep the 5-point sender, defer or split the 3-point UI toggle (or vice versa) with the dependency between them explained; runbook (1) fits",
+          "pass": "Choice and dependency trade-off explained",
+          "partial": "Defers something without reasoning",
+          "fail": "Arbitrary or contradictory"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Lists what is deferred to sprint 15 (remaining carry-over and new candidates) and suggests re-sizing or splitting where the 5-point sender failed to finish",
+          "pass": "Deferred list plus a note on why it slipped or how to split",
+          "partial": "Deferred list only",
+          "fail": "Nothing about deferred work"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Does not invent extra capacity, change the user's capacity, or re-estimate the carry-over silently",
+          "pass": "Respects 8 and the given points",
+          "partial": "Re-estimates with a stated reason",
+          "fail": "Changes capacity or points silently"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it notice the overflow before planning?",
+          "Is the cut sensible given dependencies?",
+          "Is the capacity math visible and right?"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,193 @@
+{
+ "skill": "requirements-extraction",
+ "category": "MODEL-CAPABILITY",
+ "source": "konductor",
+ "kind": "doc",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "We are moving from requirements to architecture. Using requirements-planning/outputs/requirements-final.md and requirements-planning/outputs/user-stories.md, prepare the inputs the architect needs for the system design interview. Write them as markdown files in handoff/. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+   "fixture": "fixtures/requirements-extraction/",
+   "why_discriminating": "The skill defines three specific files with required sections (business context, requirements summary, architecturally significant stories with architecture implications), and requires keeping every quantified metric and the demo vs production split. Without it, a model usually writes one summary file, rounds off numbers, or invents content for sections the source does not cover.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Writes all three handoff files",
+     "check": "test -s handoff/business-context.md && test -s handoff/requirements-summary.md && test -s handoff/user-stories-extract.md"
+    },
+    {
+     "id": "f2",
+     "text": "Strips the press release and testimonial",
+     "check": "! grep -rqiE 'Dana Whitfield|thrilled|world-class|revolutionary' handoff/"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Quantified requirements preserved",
+     "pass": "All of: 11 min to under 3 min, 14% capacity loss, 10% recovery, 90% self-serve, p95 < 500 ms, 99.9% clinic hours, 10 min offline, 6-year audit, eu-central-1, TLS 1.2 + KMS CMK, 2027-03-01",
+     "partial": "Most kept, one to three dropped or made vague",
+     "fail": "Several dropped or replaced with 'fast', 'secure', 'scalable'"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Uses the skill's three-file structure and sections",
+     "pass": "business-context has deployment model and timeline; requirements-summary has functional, NFR (performance, scale, availability), security, constraints and integration sections; user-stories-extract has an Architecture Implications section covering data model, API, security and performance",
+     "partial": "Three files but several required sections missing",
+     "fail": "Fewer than three files, or one undifferentiated dump"
+    },
+    {
+     "id": "r3",
+     "dimension": "reasoning",
+     "criterion": "Scale and scope are clear for the architect",
+     "pass": "Pilot (3 clinics, 200 concurrent, 2,000/day) and production (400, 5,000, 250,000/day) kept separate; phase-1 exclusions (eligibility, payments) recorded as architecture simplifications",
+     "partial": "Scale present but merged, or exclusions missing",
+     "fail": "No scale or exclusions"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "No invented facts",
+     "pass": "Sections the source does not cover (e.g. competitive differentiation, monitoring requirements, uptime outside clinic hours) are marked not specified or turned into questions, not filled with made-up content",
+     "partial": "One invented detail",
+     "fail": "Several invented requirements or differentiators"
+    },
+    {
+     "id": "r5",
+     "dimension": "recommendation",
+     "criterion": "Flags ambiguities for the architect",
+     "pass": "Raises at least two real ones, e.g. 10-min offline drafts vs 'no PHI cached after submit', region choice for audit/SMS under EU residency, stories 1.6/1.7/2.2 lacking acceptance criteria",
+     "partial": "One ambiguity raised",
+     "fail": "None"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Could an architect run a design interview from these files alone?",
+     "Numbers kept exactly",
+     "Nothing invented",
+     "Useful open questions"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "From requirements-planning/outputs/user-stories.md, write handoff/user-stories-extract.md with only the stories that drive architecture decisions, grouped by epic, each with its technical implications. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+   "fixture": "fixtures/requirements-extraction/",
+   "why_discriminating": "The skill says to keep 3-5 architecturally significant stories per epic with their technical acceptance criteria and to close with an Architecture Implications section split into data model, API, security, and performance. Without it, a model tends to keep every story or drop the implications summary.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "File exists",
+     "check": "test -s handoff/user-stories-extract.md"
+    },
+    {
+     "id": "f2",
+     "text": "Drops the cosmetic stories",
+     "check": "! grep -qiE 'dark mode|queue colou?rs' handoff/user-stories-extract.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "reasoning",
+     "criterion": "Selects the right stories",
+     "pass": "3-5 per epic, including offline draft (1.4), consent PDF to FHIR (1.5), live queue (2.1), EHR push (2.3), SAML (2.4), PHI audit (2.5); cosmetic 2.6 and 2.7 dropped",
+     "partial": "Right stories mostly, but count outside 3-5 per epic or one key story missing",
+     "fail": "Keeps nearly all stories or drops key ones"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "Technical implications are concrete",
+     "pass": "Each kept story lists concrete implications, e.g. real-time push for 40 screens per clinic, idempotent sync for offline drafts, immutable 6-year audit store with query by patient/staff",
+     "partial": "Implications generic for some stories",
+     "fail": "Restates the story with no implications"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Architecture Implications section in the skill's four parts",
+     "pass": "Separate data model, API, security, and performance subsections synthesized across stories",
+     "partial": "Present but missing parts",
+     "fail": "Absent"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "No invented acceptance criteria",
+     "pass": "Stories without AC are noted as such rather than given made-up numbers",
+     "partial": "One invented number",
+     "fail": "Several invented criteria"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Story selection judgment",
+     "Concreteness of implications",
+     "Nothing invented"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "Write handoff/business-context.md for the architect from requirements-planning/outputs/requirements-final.md: the business context behind the system, nothing about implementation. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+   "fixture": "fixtures/requirements-extraction/",
+   "why_discriminating": "The skill's business-context template asks for target users with scale, quantified objectives, success metrics, deployment model, differentiation, and timeline, with marketing removed. Without it, a model often summarizes the press release tone, omits the deployment model (a business constraint here), or invents differentiators.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "File exists with the launch date",
+     "check": "test -s handoff/business-context.md && grep -q '2027-03-01' handoff/business-context.md"
+    },
+    {
+     "id": "f2",
+     "text": "No press-release language or testimonial",
+     "check": "! grep -qiE 'thrilled|world-class|Dana Whitfield|transform healthcare' handoff/business-context.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Quantified objectives and metrics kept",
+     "pass": "11 min to under 3 min, 14% capacity lost, 10% recovered within 6 months, 90% self-serve, plus pilot vs production scale",
+     "partial": "Most kept",
+     "fail": "Vague restatement"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Covers the template's sections",
+     "pass": "Product overview, problem, target users (buyer, staff, patients) with scale, objectives, success metrics, deployment model (customer's own AWS account via CDK, no servers to manage), and timeline",
+     "partial": "Missing one or two sections",
+     "fail": "Missing most"
+    },
+    {
+     "id": "r3",
+     "dimension": "restraint",
+     "criterion": "Business only, nothing invented",
+     "pass": "No implementation design; competitive differentiation marked not stated in the source (or limited to what the source supports) rather than invented",
+     "partial": "Some implementation detail or one invented claim",
+     "fail": "Invented differentiators or architecture choices"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Faithful to the source",
+     "Useful to an architect",
+     "No marketing or invention"
+    ]
+   }
+  }
+ ]
+}

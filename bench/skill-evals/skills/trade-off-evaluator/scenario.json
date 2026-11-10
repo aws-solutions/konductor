@@ -1,0 +1,169 @@
+{
+  "skill": "trade-off-evaluator",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "We need to fan out order-placed events to 6 consumer services (about 300 events/s at peak, each consumer must retry independently, payloads under 10 KB). Options: SNS topic with an SQS queue per consumer, an EventBridge custom bus with one rule per consumer, or Kinesis Data Streams with enhanced fan-out. The team runs Lambda + DynamoDB today. Evaluate the options and write the result where our design docs go (docs/design/). Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": null,
+      "why_discriminating": "The skill defines a 1-5 rubric per dimension with one-line justifications, totals, a recommendation that cites dimension scores, specific per-option risks, and a rule to flag AWS characteristics not checked against a validator. Without it, answers are prose comparisons or unjustified scores stated as fact.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "A *-tradeoffs.md report exists with three scored rows whose totals add up",
+          "check": "python3 -c \"import glob,re,sys;f=sorted(glob.glob('docs/design/*-tradeoffs.md'));t=open(f[0]).read() if f else '';rows=[list(map(int,re.findall(r'\\|\\s*\\**\\s*(\\d+)\\s*\\**\\s*(?=\\|)',l))) for l in t.splitlines() if re.match(r'^\\|[^|]*[A-Za-z][^|]*\\|(\\s*\\**\\s*\\d+\\s*\\**\\s*\\|){6}\\s*$',l)];sys.exit(0 if len(rows)>=3 and all(sum(r[:5])==r[5] for r in rows) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Scores follow the skill's rubric with justifications",
+          "pass": "Every option x dimension scored 1-5 against the rubric anchors with a one-line reason; totals correct",
+          "partial": "Scores present but several unjustified or off-rubric",
+          "fail": "No per-dimension scores"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "The independent-retry requirement is reasoned through",
+          "pass": "Explains that Kinesis shard ordering means a failing record blocks that consumer's shard (poison pill), while SQS per consumer and EventBridge targets isolate retries; Kinesis scores reflect this",
+          "partial": "Mentions retries without connecting them to the options' behaviour",
+          "fail": "Ignores the requirement"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Recommendation names an option and cites at least two dimension scores; risks are specific",
+          "pass": "E.g. SNS+SQS or EventBridge with cited scores; risks such as DLQ redrive ownership or rule quota growth, with numbers or concrete scenarios",
+          "partial": "Recommendation present but risks generic ('may be slower')",
+          "fail": "No clear recommendation"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "AWS characteristics are flagged as assumptions when not validated",
+          "pass": "Quotas, prices and latencies are marked as assumptions to verify (per the skill) and none is invented with false precision",
+          "partial": "Some flagged, some stated as fact",
+          "fail": "Numbers asserted from memory without any flag"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "justified scores vs bare numbers",
+          "retry isolation reasoning",
+          "honesty about unverified AWS facts"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Payments ledger stream: 2,000 writes/s, events for the same account MUST be processed in order, consumers are a balance projector and a fraud scorer. Compare SNS standard topic, SQS standard queue, SQS FIFO with MessageGroupId=accountId, and Kinesis Data Streams partitioned by accountId. Score them and recommend one. Put the analysis in docs/design/ as a trade-offs doc. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": null,
+      "why_discriminating": "The skill's pitfall 'do not recommend the highest total if a hard constraint overrides it' applies: per-account ordering disqualifies the standard options regardless of score. A strong answer also notices that a single FIFO queue serves only one consumer group, so two consumers need fan-out, and that 2,000 msg/s needs high-throughput FIFO.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "A *-tradeoffs.md report exists with four scored rows whose totals add up",
+          "check": "python3 -c \"import glob,re,sys;f=sorted(glob.glob('docs/design/*-tradeoffs.md'));t=open(f[0]).read() if f else '';rows=[list(map(int,re.findall(r'\\|\\s*\\**\\s*(\\d+)\\s*\\**\\s*(?=\\|)',l))) for l in t.splitlines() if re.match(r'^\\|[^|]*[A-Za-z][^|]*\\|(\\s*\\**\\s*\\d+\\s*\\**\\s*\\|){6}\\s*$',l)];sys.exit(0 if len(rows)>=4 and all(sum(r[:5])==r[5] for r in rows) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Ordering is applied as a hard constraint",
+          "pass": "SNS standard and SQS standard explicitly disqualified for ordering, independent of their totals",
+          "partial": "Ordering mentioned but the unordered options still compete on score",
+          "fail": "An unordered option is recommended"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Two-consumer and throughput implications are handled",
+          "pass": "Notes one FIFO queue is consumed competitively, so the two consumers need two queues (SNS FIFO fan-out or dual publish), and 2,000 msg/s needs high-throughput FIFO; notes Kinesis supports multiple independent consumers per stream",
+          "partial": "One of the two points made",
+          "fail": "Neither"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Recommendation is FIFO-based or Kinesis, with cited scores and specific risks",
+          "pass": "Recommendation names FIFO (with fan-out) or Kinesis, explains any gap with the top total, and lists risks like hot accounts on a shard or message-group throughput",
+          "partial": "Correct pick with generic risks",
+          "fail": "Unordered option or no recommendation"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "AWS limits are flagged as assumptions to validate",
+          "pass": "FIFO/Kinesis throughput figures labelled as to-verify",
+          "partial": "Partly flagged",
+          "fail": "Asserted from memory"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "hard-constraint handling",
+          "two-consumer reasoning",
+          "specific risks"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "We have 9 services in 9 repos and keep fighting version drift on shared libraries (last quarter 3 incidents came from services pinned to different versions of our auth client). Evaluate monorepo vs polyrepo vs polyrepo with a shared-libs repo and Renovate. Runtime request latency is not affected by this choice. Write it to docs/design/repo-layout-tradeoffs.md. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": null,
+      "why_discriminating": "The skill requires stating why a dimension is omitted rather than scoring or dropping it, and concrete risks per option. A strong answer excludes latency with a reason, re-scopes nothing else silently, and ties the recommendation to the drift incidents.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "The report exists at the requested path",
+          "check": "test -f docs/design/repo-layout-tradeoffs.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Latency is excluded with a stated reason; the other four dimensions are scored with justifications",
+          "pass": "Latency marked not applicable with the reason; Cost, Complexity, Scalability, Operability scored 1-5 with one-line reasons",
+          "partial": "Latency scored anyway or silently dropped, but the rest is fine",
+          "fail": "Dimensions inconsistent or unscored"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Analysis addresses the actual drift problem",
+          "pass": "Explains how each option would have prevented or not prevented the 3 auth-client incidents (atomic upgrades in a monorepo vs Renovate PRs that teams may leave unmerged)",
+          "partial": "Generic monorepo pros and cons",
+          "fail": "Ignores drift"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Recommendation cites scores and risks are concrete",
+          "pass": "Risks like CI time growth without affected-target builds, Renovate PR volume across 9 repos, CODEOWNERS/ownership blur",
+          "partial": "Risks generic",
+          "fail": "No recommendation"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "handling of the inapplicable dimension",
+          "tie to the drift incidents",
+          "concrete risks"
+        ]
+      }
+    }
+  ]
+}

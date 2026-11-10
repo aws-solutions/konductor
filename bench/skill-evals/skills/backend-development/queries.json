@@ -1,0 +1,82 @@
+[
+ {
+  "query": "code review on my PR flagged that src/handlers/createOrder.ts calls DynamoDBDocumentClient directly instead of going through the repository. fix just that and keep behavior identical",
+  "should_trigger": true
+ },
+ {
+  "query": "remove the three `any` types in src/services/userService.ts (lines 14, 40, 88) and add proper null checks. reviewer asked for exactly that, nothing else",
+  "should_trigger": true
+ },
+ {
+  "query": "add a new lambda handler for GET /projects/{id}/members following the existing pattern in src/handlers: handler -> facade -> service from the factory -> repository",
+  "should_trigger": true
+ },
+ {
+  "query": "updateTaskStatus does a GetItem then a PutItem, so two users updating at once clobber each other. make it a conditional update and add a test for the conflict case",
+  "should_trigger": true
+ },
+ {
+  "query": "after saving an item in src/repositories/taskRepo.ts we immediately query it again just to return it. reviewer says use ReturnValues instead of the extra read, can you fix",
+  "should_trigger": true
+ },
+ {
+  "query": "every catch block in the payment service is `catch (e) { throw new Error('failed') }`. switch to specific error types and log with the correlation id. typescript project",
+  "should_trigger": true
+ },
+ {
+  "query": "assigning a task needs to update the task item and bump the user's openTasks counter. right now those are two separate UpdateItem calls. make it atomic",
+  "should_trigger": true
+ },
+ {
+  "query": "the orderService tests build giant inline objects in every test. create a shared fixture factory, refactor the tests to use it, and add edge cases for empty line items",
+  "should_trigger": true
+ },
+ {
+  "query": "implement archiveProject in the project service: set status=ARCHIVED only if currently ACTIVE and return the updated item. ts, dynamodb single table with PK=PROJECT#<id>",
+  "should_trigger": true
+ },
+ {
+  "query": "pr comment says `const user = users.find(u => u.id === id)!` will blow up when not found. fix that pattern across src/services/*.ts with real handling, minimal diff pls",
+  "should_trigger": true
+ },
+ {
+  "query": "review my backend PR for pattern compliance and list what's wrong. don't change any code",
+  "should_trigger": false
+ },
+ {
+  "query": "build the create-project form in React with zod validation and cloudscape components",
+  "should_trigger": false
+ },
+ {
+  "query": "design the dynamodb single-table model for a multi-tenant task app, access patterns are in docs/patterns.md",
+  "should_trigger": false
+ },
+ {
+  "query": "validate our CDK stack before prod deploy, it's CDK TypeScript under infra/",
+  "should_trigger": false
+ },
+ {
+  "query": "break the notifications feature into independent tracks for 3 engineers",
+  "should_trigger": false
+ },
+ {
+  "query": "write the Smithy model for the orders service API",
+  "should_trigger": false
+ },
+ {
+  "query": "our lambda times out after 30s in prod since tuesday. dig through the cloudwatch logs and find out why",
+  "should_trigger": false
+ },
+ {
+  "query": "write an ADR on choosing Lambda vs Fargate for the ingestion service",
+  "should_trigger": false
+ },
+ {
+  "query": "set up a github actions pipeline that runs tests and deploys the lambda on merge",
+  "should_trigger": false
+ },
+ {
+  "query": "explain when the facade pattern is overkill in a small serverless app",
+  "should_trigger": false
+ }
+]

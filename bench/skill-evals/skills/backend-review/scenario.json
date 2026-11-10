@@ -1,0 +1,216 @@
+{
+  "skill": "backend-review",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": "feat/bench-pilot-nk:bench/tasks/review-inventory-security.json",
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Do a security-focused review of this service, covering the whole src folder. Write review.md with each finding's severity (Critical, Important or Minor), file and line, why it matters, and a concrete fix, ordered by severity. Only report real problems you can point to in the code. Do not change any code. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+      "fixture": "fixtures/backend-review/",
+      "why_discriminating": "Bench task reused. The skill's checklist (input validation, specific error handling without leaking internals, atomic read-modify-write, auth wiring per route) pushes the reviewer to sweep every route and layer; a generic security pass tends to stop at the SQL injection and the stack leak and miss the unguarded stock route, the lost update, and the fail-open fallback token.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "The string-built SQL in itemRepo.js is named as injection",
+          "check": "grep -q 'itemRepo' review.md && grep -qiE 'inject' review.md"
+        },
+        {
+          "id": "f2",
+          "text": "No file under src was changed",
+          "check": "[ \"$(find src -type f | sort | xargs sha256sum | sha256sum | cut -d\" \" -f1)\" = \"ab074c2bb5475655ce96eb5e3137fd9a799c5bdfd3cc6f429e2fba9f2071312b\" ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Coverage of the seeded defects: SQL injection (itemRepo.js:22), missing X-Admin-Token check on POST /items/:id/stock (items.js:25-27), unvalidated delta/createItem input (items.js:21-26, inventoryService.js:9-11), err.stack in the 500 body (server.js:50), hardcoded fallback admin token (config.js:6), adjustStock lost update (inventoryService.js:19-25), unbounded body (server.js:36-37), non-constant-time token compare (items.js:8)",
+          "pass": "At least 6 seeds found with correct file:line",
+          "partial": "4-5 seeds found, or lines mostly wrong",
+          "fail": "3 or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Impact is explained concretely per finding (e.g. anyone can change stock without the token; stack trace discloses paths; concurrent adjustments lose writes)",
+          "pass": "Each finding has a specific attacker or failure scenario",
+          "partial": "Impact stated generically ('security risk') for several",
+          "fail": "No impact reasoning"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Severity is proportionate and ordered: injection and the missing auth check at the top tier; timing compare and body size not above them",
+          "pass": "Ordering and tiers defensible, injection Critical",
+          "partial": "Mostly right with one clear misrating",
+          "fail": "Injection not Critical, or no ordering"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Fixes are concrete and minimal: bound parameter for the LIKE, reuse isAdmin on the stock route, validate delta as a finite integer and name/qty per README rules, generic 500 body, fail closed when ADMIN_TOKEN is unset, atomic/conditional update",
+          "pass": "Concrete fix for every finding",
+          "partial": "Fixes vague for several findings",
+          "fail": "Mostly no fixes"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Reports no false positives: no path traversal, XSS, eval, or SSRF; does not change code",
+          "pass": "No invented vulnerability classes",
+          "partial": "One speculative finding",
+          "fail": "Several false positives or code edited"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "How many real defects were found with correct locations?",
+          "Are severities right so a reader fixes the worst first?",
+          "Are the fixes ones you could apply directly?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Review only the tests in test/ (against the code in src/) for test quality before this goes to code review. Write test-review.md with findings grouped by severity (CRITICAL, IMPORTANT, SUGGESTION), each with file:line and a concrete fix. Do not change any files. Do not ask me questions; make reasonable assumptions and list them at the end of test-review.md.",
+      "fixture": "fixtures/backend-review/",
+      "why_discriminating": "The skill's testing checklist is specific: shared fixture factories over inline data, order-independent assertions, edge cases (null, empty, boundaries), and it rates 'test passes only due to test order dependency' as CRITICAL. A generic test review comments on coverage in general and rarely spots that adjustStock mutates item '1' that a later test relies on, or that no test covers qty == reorderLevel, which hides the < vs <= bug.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "test-review.md exists",
+          "check": "test -s test-review.md"
+        },
+        {
+          "id": "f2",
+          "text": "No file under src or test was changed",
+          "check": "[ \"$(find src -type f | sort | xargs sha256sum | sha256sum | cut -d\" \" -f1)\" = \"ab074c2bb5475655ce96eb5e3137fd9a799c5bdfd3cc6f429e2fba9f2071312b\" ] && [ \"$(find test -type f | sort | xargs sha256sum | sha256sum | cut -d\" \" -f1)\" = \"92f24aa546301779781116d59134f8ade4332fe0ff1a63e6525525af527df3e3\" ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Finds the shared module state: tests mutate the seeded in-memory rows (adjustStock on '1', save of '99', nextId) so results depend on order, and rates it at the top tier",
+          "pass": "Order dependence identified with the specific tests and rated CRITICAL",
+          "partial": "Mentions shared state or isolation without the concrete dependency, or rates it low",
+          "fail": "Not found"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Finds the missing boundary case: no test for qty equal to reorderLevel (item '2', qty 5), which would expose inventoryService.js:31 using < instead of <=",
+          "pass": "Boundary gap named and linked to the real bug",
+          "partial": "Generic 'add edge cases' without the reorder boundary",
+          "fail": "Not found"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Recommends a shared fixture factory with per-test reset, value assertions instead of assert.ok(item.id) / includes, and missing edge-case tests (NaN, negative, null delta)",
+          "pass": "All three, concrete to these files",
+          "partial": "One or two",
+          "fail": "None"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Uses CRITICAL / IMPORTANT / SUGGESTION with file:line on each finding and lists assumptions at the end",
+          "pass": "Format followed throughout",
+          "partial": "Partial labels or missing lines",
+          "fail": "No severity structure"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Stays on test quality as asked; does not turn into a full security review of src or propose rewriting the test framework",
+          "pass": "Scoped to tests, src defects mentioned only where a test should catch them",
+          "partial": "Some drift into unrelated src review",
+          "fail": "Mostly not about the tests"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it find the order dependence and the hidden boundary bug?",
+          "Are the fixes concrete test changes?",
+          "Did it stay on the requested scope?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Review src/services and src/repository for data correctness and layer separation (handler -> service -> repository). Write layers-review.md, findings ordered CRITICAL first, then IMPORTANT, then SUGGESTION, each with file:line, why it matters and a concrete fix. Call out over-engineering if you see it, and do not propose abstractions the code does not need. Do not change any code and do not ask me questions; state any assumptions at the end of layers-review.md.",
+      "fixture": "fixtures/backend-review/",
+      "why_discriminating": "The skill tells the reviewer to check atomicity of read-modify-write, layer separation, and to call out over-engineering directly. Without it, reviewers often propose new abstractions (unit of work, strategy layers) or miss that adjustStock's get-then-save loses updates and lets stock go negative against the README rule.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "The adjustStock lost update is named in inventoryService.js",
+          "check": "grep -q 'inventoryService' layers-review.md && grep -qiE 'race|lost update|concurren|atomic|read.modify.write' layers-review.md"
+        },
+        {
+          "id": "f2",
+          "text": "No file under src was changed",
+          "check": "[ \"$(find src -type f | sort | xargs sha256sum | sha256sum | cut -d\" \" -f1)\" = \"ab074c2bb5475655ce96eb5e3137fd9a799c5bdfd3cc6f429e2fba9f2071312b\" ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Finds adjustStock's non-atomic read-modify-write (inventoryService.js:19-25) and that it can drive qty below zero, violating the README rule",
+          "pass": "Both the lost update and the negative-stock rule violation found",
+          "partial": "Only one of the two",
+          "fail": "Neither"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Finds the reorder comparison bug at inventoryService.js:31 (< vs README's 'at or below') and the string-built SQL at itemRepo.js:22",
+          "pass": "Both found with lines",
+          "partial": "One found",
+          "fail": "Neither"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Layer assessment is accurate: handler -> service -> repository is mostly respected; notes any real leak (e.g. handler doing no validation, service trusting raw input) without inventing violations",
+          "pass": "Accurate, specific layer verdict",
+          "partial": "Generic layer comments",
+          "fail": "Claims layer violations that are not there"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Fixes stay minimal (conditional update or lock, bound parameter, <=); explicitly avoids new layers or patterns, and may flag the narrating comments/getQty wrapper as noise rather than adding abstractions",
+          "pass": "Minimal fixes and no speculative abstractions",
+          "partial": "One unnecessary abstraction proposed",
+          "fail": "Proposes new layers or patterns as fixes"
+        },
+        {
+          "id": "r5",
+          "dimension": "process",
+          "criterion": "Findings ordered CRITICAL, IMPORTANT, SUGGESTION with file:line, why, and fix",
+          "pass": "Ordered and complete",
+          "partial": "Ordered but some entries lack line or fix",
+          "fail": "No ordering or severity"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Correctness bugs found with lines?",
+          "Are the fixes the smallest that work?",
+          "Is the layer verdict accurate rather than generic?"
+        ]
+      }
+    }
+  ]
+}

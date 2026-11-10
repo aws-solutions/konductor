@@ -1,0 +1,85 @@
+{
+ "skill_name": "task-decomposition",
+ "evals": [
+  {
+   "id": 0,
+   "name": "expense-app-4-engineer-feature-split",
+   "scenario_prompt_id": "p1",
+   "prompt": "hld.md (approved) and stories.md describe the expense reporting app. I have 4 engineers: Dana (has built Step Functions workflows before), Eli, Farah and Gus. Split the work into independent features so each engineer can work in parallel without waiting on the others, and tell me what has to be agreed up front. Write feature-split.md. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+   "expected_output": "feature-split.md in the skill's Feature Split format: domain/data-ownership features for 4 engineers, all 9 stories mapped, Shared Interfaces (Report/LineItem schema, report-submitted event, policy evaluation contract), no blocking dependencies, Dana on the Step Functions approval track.",
+   "files": [
+    "fixtures/task-decomposition/"
+   ],
+   "expectations": [
+    "Uses the Feature Split format: '# Feature Split:' title and at least three '## Feature N:' sections",
+    "Every user story US-1..US-9 is mapped to a feature",
+    "Each feature lists Scope, User Stories, Key Components, Dependencies and Engineer, and there is a '## Shared Interfaces' section stating what to define first",
+    "Features follow domain / data ownership (expense API+client, receipt/OCR, approval workflow + notifications + escalation, policy engine, reimbursement export, merged sensibly for 4 engineers) rather than layers or screens, and Report status is written by one feature or governed by a named shared interface",
+    "Names the Report/LineItem schema and the report-submitted event as shared interfaces, saying which features use each",
+    "No feature must wait for another to finish before starting (contracts or stubs used), no circular dependencies, and Dana is assigned the Step Functions approval workflow track",
+    "Stays within the HLD: no new components or stories presented as part of the design; assumptions are listed"
+   ],
+   "scripted_checks": [
+    {
+     "text": "Uses the Feature Split format: '# Feature Split:' title and at least three '## Feature N:' sections",
+     "check": "grep -qE '^# Feature Split' feature-split.md && [ $(grep -cE '^## Feature [0-9]+' feature-split.md) -ge 3 ]"
+    },
+    {
+     "text": "Every user story US-1..US-9 is mapped to a feature",
+     "check": "for i in 1 2 3 4 5 6 7 8 9; do grep -qE \"US-$i\\b\" feature-split.md || exit 1; done"
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "name": "expense-app-implementation-tasks-breakdown",
+   "scenario_prompt_id": "p2",
+   "prompt": "break down the expense reporting app (hld.md, stories.md) into implementation tasks for the team so we can start planning sprint 1. write it to breakdown.md. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+   "expected_output": "breakdown.md shaped as an engineer-sized Feature Split rather than a layered task checklist (the new version states the skill produces engineer-sized features, not a task checklist, and points tasks.md requests to kiro-task-generation), with shared interfaces, a sprint-1 order and rough effort.",
+   "files": [
+    "fixtures/task-decomposition/"
+   ],
+   "expectations": [
+    "Top-level sections are not technical layers (Data Model / Backend / API / Frontend / Cross-cutting)",
+    "Maps all nine stories US-1..US-9",
+    "Produces engineer-scoped features with story mapping and a Shared Interfaces section; any task lists sit inside features rather than a layered breakdown driving the plan",
+    "Explains how features can start in parallel through agreed schema/event contracts or stubs, without features blocking each other",
+    "Suggests what to do first (shared interfaces / foundation) and an order, with rough effort per feature",
+    "No generic padding unrelated to the HLD (e.g. 'set up Kubernetes', 'write documentation') presented as features"
+   ],
+   "scripted_checks": [
+    {
+     "text": "Top-level sections are not technical layers (Data Model / Backend / API / Frontend / Cross-cutting)",
+     "check": "test -s breakdown.md && ! grep -qiE '^##? *(phase [0-9]+:? *)?(data model|backend|api( contract)?|frontend|cross[- ]cutting)\\s*$' breakdown.md"
+    },
+    {
+     "text": "Maps all nine stories US-1..US-9",
+     "check": "[ $(grep -oE 'US-[0-9]' breakdown.md | sort -u | wc -l) -ge 9 ]"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "name": "receipt-feature-tasks-md-checklist",
+   "scenario_prompt_id": "p4",
+   "prompt": "Farah owns the Receipt service feature of the expense reporting app (hld.md, stories.md: presigned S3 upload, Textract OCR, attach the extracted total to a line item). Write tasks.md for it: the implementation checklist she will work through one coding task at a time. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+   "expected_output": "tasks.md as a numbered coding-task checklist for the Receipt service feature (the shape kiro-task-generation produces), with tests inside tasks and story references, not a Feature Split.",
+   "files": [
+    "fixtures/task-decomposition/"
+   ],
+   "expectations": [
+    "tasks.md (in the workspace root or a spec directory such as .kiro/specs/<feature>/) is a numbered checkbox task list ('- [ ] 1.' style, at least three top-level tasks) and is not a Feature Split document",
+    "Tasks are scoped to the Receipt service feature (presigned upload, Textract OCR, attaching the total to a line item, US-2) rather than re-splitting the whole app into features",
+    "Each task is a coding task with its tests in the same task; no deployment, documentation or user-testing tasks",
+    "Tasks reference the story or requirement they implement (US-2 or a numbered requirement)",
+    "Stays within the HLD: no new components presented as part of the design; assumptions are listed"
+   ],
+   "scripted_checks": [
+    {
+     "text": "tasks.md (in the workspace root or a spec directory such as .kiro/specs/<feature>/) is a numbered checkbox task list ('- [ ] 1.' style, at least three top-level tasks) and is not a Feature Split document",
+     "check": "f=$(find . -name tasks.md -not -path './SCRATCH_CLAUDE_CONFIG/*' | head -1); test -n \"$f\" && test -s \"$f\" && [ $(grep -cE '^- \\[ \\] [0-9]+\\.' \"$f\") -ge 3 ] && ! grep -qE '^# Feature Split|^## Feature [0-9]+' \"$f\""
+    }
+   ]
+  }
+ ]
+}

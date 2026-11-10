@@ -1,0 +1,82 @@
+[
+ {
+  "query": "requirements.md and design.md for bulk-import are approved in .kiro/specs/bulk-import/. generate the tasks.md",
+  "should_trigger": true
+ },
+ {
+  "query": "next step in the spec workflow: write the implementation plan for .kiro/specs/notification-prefs as checkbox tasks with requirement refs",
+  "should_trigger": true
+ },
+ {
+  "query": "turn our design.md into a numbered coding task list a coding agent can do one at a time, each linked to requirement IDs",
+  "should_trigger": true
+ },
+ {
+  "query": "create tasks.md for the spec in docs/specs/auth-refresh/ (not the default kiro path) from the requirements and design there",
+  "should_trigger": true
+ },
+ {
+  "query": "reqs and design for the rate limiter are done. write the ordered implementation plan as tasks.md, foundation first then core then error handling",
+  "should_trigger": true
+ },
+ {
+  "query": "kiro needs a tasks file for the payments-retry spec. requirements go 1.1 through 4.3. produce it",
+  "should_trigger": true
+ },
+ {
+  "query": "regenerate tasks.md. the old one had deployment and documentation tasks in it which the IDE agent can't do",
+  "should_trigger": true
+ },
+ {
+  "query": "implementation plan with subtasks (max 2 levels) for the search spec, each task referencing _Requirements: x.y_",
+  "should_trigger": true
+ },
+ {
+  "query": "design is approved for the CSV export feature. need the coding task breakdown for spec-driven dev",
+  "should_trigger": true
+ },
+ {
+  "query": "write tasks.md for .kiro/specs/user-avatars from the requirements.md and design.md in that folder",
+  "should_trigger": true
+ },
+ {
+  "query": "write requirements.md for the bulk import feature in kiro spec format",
+  "should_trigger": false
+ },
+ {
+  "query": "write design.md for the rate limiter spec",
+  "should_trigger": false
+ },
+ {
+  "query": "split the HLD into feature tracks for 5 engineers with minimal overlap",
+  "should_trigger": false
+ },
+ {
+  "query": "check progress on our tasks.md files: how many done, what's blocked",
+  "should_trigger": false
+ },
+ {
+  "query": "execute task 2.1 from .kiro/specs/bulk-import/tasks.md",
+  "should_trigger": false
+ },
+ {
+  "query": "create jira tickets for next sprint from the backlog",
+  "should_trigger": false
+ },
+ {
+  "query": "write user stories for the CSV export feature",
+  "should_trigger": false
+ },
+ {
+  "query": "make me a todo list for today from these notes",
+  "should_trigger": false
+ },
+ {
+  "query": "plan sprint capacity for 4 engineers at 8 points each",
+  "should_trigger": false
+ },
+ {
+  "query": "convert tasks.md into GitHub issues with labels and milestones",
+  "should_trigger": false
+ }
+]

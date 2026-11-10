@@ -1,0 +1,169 @@
+{
+  "skill": "find-aws-skills",
+  "category": "DOMAIN-IMMUNE",
+  "source": "konductor",
+  "kind": "process",
+  "limited": true,
+  "limited_reason": "Depends on the AWS MCP server (aws___search_documentation, aws___retrieve_skill), which the scratch environment does not have; only the search-phrase translation and failure-handling path can be exercised.",
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "I need to roll out AWS IoT Greengrass v2 to about 200 Raspberry Pis with a custom component that ships sensor data to IoT Core. None of my usual skills cover Greengrass. Find specialized AWS guidance for this and follow it. Write everything you'd tell me (what you searched for, what you found or didn't, and what happens next) to answer.md instead of chatting. Don't ask questions in chat.",
+      "fixture": null,
+      "why_discriminating": "The skill says to translate intent into a verbose, context-preserving search phrase for the agent_skills topic, never guess skill names, and on failure give a friendly explanation with three specific options rather than silently falling back to direct API calls. In this environment the AWS skill tools are unavailable, so the failure path is what gets exercised.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "answer.md exists",
+          "check": "test -s answer.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Search phrase is a verbose translation of the intent",
+          "pass": "Records a phrase like 'deploy Greengrass v2 custom component to Raspberry Pi fleet sending telemetry to IoT Core', not just 'Greengrass'",
+          "partial": "Short keyword phrase",
+          "fail": "No search attempted or recorded"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Failure path offers the skill's three options and waits",
+          "pass": "Explains what happened and offers: retry with a different search phrase, proceed with direct AWS API calls via the sandboxed script runner, or let the user guide; does nothing further until the user picks",
+          "partial": "Offers some options, or offers all three but then proceeds anyway",
+          "fail": "Silently falls back to API calls or a manual walkthrough, or just reports an error"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "No invented results",
+          "pass": "Does not claim a skill was found or loaded, does not invent a skill name, does not claim AWS resources were created",
+          "partial": "Hedged mention of a likely skill name",
+          "fail": "Fabricates a skill or its contents"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Message is useful to the user",
+          "pass": "Friendly and plain about the tooling gap, and the next step is clear",
+          "partial": "Accurate but terse or jargon-heavy",
+          "fail": "Error dump"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Does the user understand what happened and what their options are?",
+          "Did it avoid acting without permission?",
+          "Did it avoid inventing results?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Dry run, no tools needed: a user says 'Lock down my S3 buckets, auditors flagged public access'. Write to plan.md the exact sequence of AWS skill-discovery tool calls you'd make, with every parameter value, and what you'd do with the results (how you pick a result, how you load files the skill references, and what you'd do if nothing relevant came back). Don't ask questions.",
+      "fixture": null,
+      "why_discriminating": "The skill specifies aws___search_documentation with topics=['agent_skills'] and limit=3, picking by rank order, loading with aws___retrieve_skill using the exact opaque skill_name, and a file parameter for referenced files. Without it, a model has to guess tool names and parameters.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Uses the search tool with the agent_skills topic",
+          "check": "grep -q 'search_documentation' plan.md && grep -q 'agent_skills' plan.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Search call parameters match the skill",
+          "pass": "aws___search_documentation with a verbose phrase (e.g. 'secure S3 bucket access policy hardening public access'), topics ['agent_skills'], limit 3",
+          "partial": "Right tool, a parameter off",
+          "fail": "Wrong or invented tool"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Selection and loading follow the skill",
+          "pass": "Picks the top-ranked relevant result, loads it with aws___retrieve_skill using the exact skill_name, and retrieves referenced files with the same skill_name plus the file parameter",
+          "partial": "Partly",
+          "fail": "Guesses names or skips loading"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "No-result path",
+          "pass": "Treats irrelevant results as none and offers the three options (retry phrase, direct API via script runner, user guidance) without auto-fallback",
+          "partial": "Partial",
+          "fail": "Falls back silently"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "States that skill names are opaque and must not be guessed or fabricated",
+          "pass": "Explicit",
+          "partial": "Implied",
+          "fail": "Fabricates a plausible skill name as if real"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is the call sequence correct enough to execute?",
+          "Does it handle the no-result case properly?",
+          "Does it avoid guessing names?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "I asked for an AWS skill on Amazon Connect contact flows with a Lex after-hours bot. The skill search came back with only these three results: 'creating-vpc-endpoints', 'debugging-lambda-timeouts', 'aws-cdk'. Decide what to do next and write your reply to me in reply.md. Don't ask anything outside that file.",
+      "fixture": null,
+      "why_discriminating": "The skill says irrelevant results count as no result: do not load any of them, explain, and offer the three options. A model without it often loads the closest-looking result (aws-cdk) or launches into a manual Connect walkthrough.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "reply.md exists",
+          "check": "test -s reply.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "restraint",
+          "criterion": "Treats the results as no relevant match and loads none",
+          "pass": "States none fit Connect/Lex and loads none",
+          "partial": "Loads one 'just in case'",
+          "fail": "Follows an unrelated skill"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Failure path offers the skill's three options and waits",
+          "pass": "Explains what happened and offers: retry with a different search phrase, proceed with direct AWS API calls via the sandboxed script runner, or let the user guide; does nothing further until the user picks",
+          "partial": "Offers some options, or offers all three but then proceeds anyway",
+          "fail": "Silently falls back to API calls or a manual walkthrough, or just reports an error"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Retry suggestion is concrete",
+          "pass": "Proposes a better phrase, e.g. 'Amazon Connect contact flow Lex bot after-hours routing'",
+          "partial": "Says 'retry' without a phrase",
+          "fail": "No retry path"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it avoid using irrelevant guidance?",
+          "Are the user's options clear?",
+          "Is the retry phrase better than the original?"
+        ]
+      }
+    }
+  ]
+}

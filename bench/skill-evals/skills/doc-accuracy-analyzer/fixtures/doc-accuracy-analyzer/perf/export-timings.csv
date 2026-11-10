@@ -1,0 +1,4 @@
+customer_tier,exports,file_mb_p50,file_mb_max,duration_s_p50,duration_s_p95,duration_s_max
+small,4120,2,35,6,14,31
+medium,910,48,310,38,95,240
+large,62,410,1230,212,610,1480

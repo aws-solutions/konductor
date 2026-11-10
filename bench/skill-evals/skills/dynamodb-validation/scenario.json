@@ -1,0 +1,190 @@
+{
+ "skill": "dynamodb-validation",
+ "category": "WATCH",
+ "source": "konductor",
+ "kind": "doc",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "We're about to build the Orders table for our marketplace order-tracking service. The design is in data-model.md and the CloudFormation is infra/table.yaml. Validate the design before we start implementation and write ddb-validation.md. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/dynamodb-validation/",
+   "why_discriminating": "The skill's 13 categories and pitfall list cover exactly the planted problems (low-cardinality status PK at 2,000 writes/sec, GSI WCU below base causing a throttling cascade, Scans for hot patterns, items near 400 KB, GSI read right after write, projection ALL copying receipts) and its report template scores each category and gives evidence plus remediation per finding; an unguided review usually catches the hot PK and Scans but misses the GSI back-pressure, the consistency trap, or the projection cost.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "ddb-validation.md exists",
+     "check": "test -s ddb-validation.md"
+    },
+    {
+     "id": "f2",
+     "text": "Flags the 400 KB item limit",
+     "check": "grep -qiE '400 ?KB' ddb-validation.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Critical design defects: PK=status (5 values at 2,000 writes/sec) hot partitions, AP1 get-by-orderId as a Scan at 5,000/sec, AP5 list-all Scan at 20/sec, AP4 has no index, encryption unspecified, no backups/PITR",
+     "pass": "All six",
+     "partial": "Four or five",
+     "fail": "Three or fewer"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "Subtler pitfalls: GSI1 200 WCU vs base 2,500 WCU throttles base-table writes, checkout queries GSI1 immediately after PutItem (eventually consistent), receiptPdf 250-380 KB plus up to 200 lineItems can exceed 400 KB, projection ALL copies receipts into the index, sessionToken has no TTL, no throttling alarms",
+     "pass": "At least five of six",
+     "partial": "Three or four",
+     "fail": "Two or fewer"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Uses the skill's report shape: executive summary, findings by CRITICAL/HIGH/MEDIUM/LOW with evidence, impact and remediation, per-category scores out of 100, and a production readiness gate assessment",
+     "pass": "All elements present",
+     "partial": "Findings by priority but scores or gates missing",
+     "fail": "Unstructured list"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Remediations are concrete and consistent: PK=orderId, GSIs for customer, seller-by-day and a sparse status index for the sweeper, receipts to S3 with a key on the item, GSI capacity >= base or on-demand, SSE, PITR, TTL, alarms",
+     "pass": "Concrete fixes that together serve AP1-AP5",
+     "partial": "Fixes present but one pattern left unserved",
+     "fail": "Generic advice"
+    },
+    {
+     "id": "r5",
+     "dimension": "restraint",
+     "criterion": "Does not flag non-issues (createdAt as an ISO string sort key, AP3 query in v1 is fine) and does not invent traffic or cost numbers without saying they are estimates",
+     "pass": "No false positives, estimates labeled",
+     "partial": "One minor false positive",
+     "fail": "Several false positives or invented numbers stated as fact"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Are the hot-partition, Scan and GSI-throttling problems all found with evidence?",
+     "Do the fixes together cover every access pattern?",
+     "Is the report scored and prioritized so the team knows what blocks the build?"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "My lead only wants to know one thing: is the DynamoDB design in data-model.md and infra/table.yaml production ready for the holiday peak? Write readiness.md with a clear answer first, then what blocks it, kept short enough to read in two minutes. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/dynamodb-validation/",
+   "why_discriminating": "The skill defines staged production readiness gates and a quality gate (hot partition, unsupported access pattern, no encryption, no backups are CRITICAL; throttling alarms and projection cost are IMPORTANT); a short answer with the skill should still be gate-driven and include the operational blockers (PITR, encryption, alarms incl. GSI throttling) that a design-focused answer often leaves out.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Clear not-ready answer near the top",
+     "check": "head -15 readiness.md | grep -qiE 'not (production )?ready|no.go|fail|block'"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Blockers named: hot status PK, Scans for AP1/AP5, AP4 unsupported, GSI1 under-provisioned versus base, no encryption, no PITR/backups",
+     "pass": "At least five of six",
+     "partial": "Three or four",
+     "fail": "Two or fewer"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Applies readiness gates or staged criteria (design review, implementation, load test, production) and separates blockers from should-fix items (TTL, projection, alarms incl. GSI throttling, consistency after PutItem)",
+     "pass": "Gate-based answer with blocker/should-fix split",
+     "partial": "Split present but no gate framing, or gate framing without a split",
+     "fail": "Flat list"
+    },
+    {
+     "id": "r3",
+     "dimension": "recommendation",
+     "criterion": "Each blocker has a one-line fix a lead can assign",
+     "pass": "Every blocker has a concrete fix",
+     "partial": "Most do",
+     "fail": "Few or none"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Short and decision-first as asked; no full 13-category dump, no invented facts",
+     "pass": "Fits the two-minute brief",
+     "partial": "Somewhat long but decision-first",
+     "fail": "Long report or answer buried"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is the answer clear and justified in the first lines?",
+     "Are operational blockers (encryption, PITR, alarms) included alongside design ones?",
+     "Is it short enough for the lead?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "Second iteration of the Orders table. v1 is data-model.md. v2 changes: PK is now orderId (no SK); GSI1 is customerId/createdAt with KEYS_ONLY projection and 2,500 WCU; receipts moved to S3 (the item stores receiptKey); PITR on; SSE with a KMS key; TTL on sessionToken. Still unchanged: AP4 (seller by day) not designed, AP5 admin list-all is still a Scan at 20/sec, no alarms. Re-validate v2, compare with v1, and write ddb-validation-v2.md. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/dynamodb-validation/",
+   "why_discriminating": "The skill's iteration tracking asks for score changes, resolved issues, remaining issues and new issues; moving the PK to orderId silently breaks AP3 (the PENDING sweeper relied on PK=status) and KEYS_ONLY forces a fetch per item for AP2 at 2,000/sec. A without-skill re-review typically just ticks off the listed changes and repeats the user's 'still unchanged' list.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "ddb-validation-v2.md exists and still flags AP4 and AP5",
+     "check": "grep -qE 'AP4' ddb-validation-v2.md && grep -qE 'AP5' ddb-validation-v2.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Finds the regressions v2 introduced: AP3 (PENDING older than 1 hour) no longer has a supporting key or index, and KEYS_ONLY GSI1 forces per-item reads for AP2",
+     "pass": "Both regressions with impact and fix (sparse status GSI, INCLUDE projection)",
+     "partial": "One of the two",
+     "fail": "Neither"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Iteration format: v1 vs v2 score deltas per category, a resolved list, a remaining list (AP4, AP5, alarms incl. GSI throttling, read-after-write on GSI1) and a new-issues list",
+     "pass": "All four parts",
+     "partial": "Two or three parts",
+     "fail": "No comparison structure"
+    },
+    {
+     "id": "r3",
+     "dimension": "reasoning",
+     "criterion": "Credits the real fixes correctly (hot PK, 400 KB items, GSI WCU, PITR, SSE-KMS, TTL) and explains why each is resolved",
+     "pass": "All credited with a reason",
+     "partial": "Credited without reasons",
+     "fail": "Re-raises fixed issues as open"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Does not re-raise v1 issues that v2 fixed and does not invent v2 details beyond the prompt",
+     "pass": "None re-raised, nothing invented",
+     "partial": "One re-raised by mistake",
+     "fail": "Several re-raised or invented details"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Did it spot what v2 broke, not just what it fixed?",
+     "Is the v1-to-v2 comparison clear and scored?",
+     "Is the remaining-work list accurate?"
+    ]
+   }
+  }
+ ]
+}

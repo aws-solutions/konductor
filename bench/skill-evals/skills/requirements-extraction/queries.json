@@ -1,0 +1,22 @@
+[
+{"query": "PM just handed over requirements-planning/outputs/requirements-final.md and user-stories.md. We're starting architecture next week. Can you pull out what the architects actually need into separate business context, requirements summary and key stories files?", "should_trigger": true},
+{"query": "the PRD in docs/prd.md is 30 pages of marketing fluff with real requirements buried in it. strip it down to the technical stuff (perf numbers, security, scale, integrations) so i can start the system design", "should_trigger": true},
+{"query": "Prepare the design-phase inputs from docs/requirements.md and docs/stories.md. I need the architecturally significant stories per epic with their data model and API implications.", "should_trigger": true},
+{"query": "we're moving from planning to design. turn the user stories in planning/stories.md into a requirements summary with functional, non functional, security and constraints sections. keep every number", "should_trigger": true},
+{"query": "Make a handoff package for the architect from the requirements doc and user stories in ./reqs/. Remove the press-release stuff, keep demo vs production scale targets.", "should_trigger": true},
+{"query": "can you extract business context (problem, users, success metrics, deployment model, timeline) from requirements-final.md into its own file for the design interview", "should_trigger": true},
+{"query": "I have 6 epics and ~45 stories in user-stories.md. Pick the 3-5 per epic that drive architecture and note what each implies for data, APIs, security and performance.", "should_trigger": true},
+{"query": "condense our requirements and stories docs into inputs for system design; the architect complained last time that the latency targets and compliance reqs got lost", "should_trigger": true},
+{"query": "Before the HLD kickoff, summarize docs/requirements.md + docs/user-stories.md into design-ready files. Don't drop the HIPAA and data residency requirements.", "should_trigger": true},
+{"query": "turn these PM docs into something an architect can use: requirements doc at specs/req.md, stories at specs/stories.md. three files please", "should_trigger": true},
+{"query": "Write user stories with acceptance criteria for a self-service password reset flow", "should_trigger": false},
+{"query": "Generate a Kiro requirements.md in EARS format for the bulk export feature", "should_trigger": false},
+{"query": "Interview me to build a system design doc for the new ingestion service", "should_trigger": false},
+{"query": "write the non-functional requirements (availability, latency, scalability, security etc) for our checkout API", "should_trigger": false},
+{"query": "Split this HLD and the user stories into independent features that 3 engineers can work on in parallel", "should_trigger": false},
+{"query": "Extract all the TODO comments from the codebase into a markdown checklist", "should_trigger": false},
+{"query": "Draft a PRFAQ for the new analytics dashboard feature", "should_trigger": false},
+{"query": "turn the requirements doc into a pdf with our company template", "should_trigger": false},
+{"query": "Check that every acceptance criterion in requirements.md has a matching task in tasks.md and report coverage gaps", "should_trigger": false},
+{"query": "ask me questions to find out what's missing from my requirements before I write anything", "should_trigger": false}
+]

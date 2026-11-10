@@ -1,0 +1,231 @@
+{
+ "skill": "verification",
+ "category": "MODEL-CAPABILITY",
+ "source": "konductor",
+ "kind": "code",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "Customers report that slugify('Rock & Roll') returns 'rock--roll' and slugify('  Hello   World ') returns 'hello---world'. Fix it in src/slugify.js. Write EVIDENCE.md showing what you ran and what you observed so I can trust it's fixed and nothing else broke. This runs unattended: do not ask questions; state assumptions in EVIDENCE.md.",
+   "fixture": "fixtures/verification/",
+   "why_discriminating": "The skill requires RED before GREEN (a failing regression test shown first), then the full suite, with pasted commands, exit codes and output. A competent fix without it usually edits the regex, maybe adds a test after the fact, and writes 'tests pass' with no failing run or exit codes.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Both reported inputs are fixed",
+     "check": "node -e \"const {slugify}=require('./src/slugify');const a=require('assert');a.strictEqual(slugify('Rock & Roll'),'rock-roll');a.strictEqual(slugify('  Hello   World '),'hello-world')\" "
+    },
+    {
+     "id": "f2",
+     "text": "The full test suite passes",
+     "check": "node --test >/dev/null 2>&1"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Shows RED: a regression test for both reported inputs run and failing against the original code, with the failing output pasted",
+     "pass": "Failing output pasted before the fix",
+     "partial": "Test added but only shown passing",
+     "fail": "No new test"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Shows GREEN and VERIFY: the targeted test passing after the fix and then the full suite (`node --test` / `npm test`), each with command, exit code and output",
+     "pass": "Both runs with commands, exit codes and output",
+     "partial": "Output shown but no exit codes or only one run",
+     "fail": "Claims without output"
+    },
+    {
+     "id": "r3",
+     "dimension": "issue",
+     "criterion": "Fix addresses the cause (runs of whitespace left after stripping characters) with \\s+ and/or dash collapsing, not special-casing the two inputs",
+     "pass": "General fix covering both inputs and similar cases",
+     "partial": "Works for the inputs but brittle",
+     "fail": "Special-cased or incomplete"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Evidence contains only things that were actually run; no 'should pass' or 'looks correct' claims; existing tests untouched",
+     "pass": "Every claim backed by pasted output",
+     "partial": "One unbacked claim",
+     "fail": "Mostly assertions without runs, or tests deleted/weakened"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Can you trust the fix from EVIDENCE.md alone?",
+     "Was a failing test shown before the fix?",
+     "Is the fix general?"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "Implement parseDuration in src/duration.js as its doc comment describes. Work test-first and write EVIDENCE.md with the evidence for each step. Do not ask questions; state assumptions in EVIDENCE.md.",
+   "fixture": "fixtures/verification/",
+   "why_discriminating": "The skill defines the phases SPEC (success criteria first), RED, GREEN, REFACTOR, VERIFY, EVIDENCE, each with shown output. Asked for test-first, a model without it often writes tests and code together and reports one green run; the doc comment's rules (order h, m, s; each at most once; RangeError) also need explicit criteria to be tested, which SPEC forces.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Valid inputs parse correctly",
+     "check": "node -e \"const {parseDuration:p}=require('./src/duration');const a=require('assert');a.strictEqual(p('1h30m'),5400);a.strictEqual(p('45s'),45);a.strictEqual(p('2h'),7200);a.strictEqual(p('90m'),5400);a.strictEqual(p('1h2m3s'),3723)\" "
+    },
+    {
+     "id": "f2",
+     "text": "Invalid inputs throw RangeError",
+     "check": "node -e \"const {parseDuration:p}=require('./src/duration');for (const x of ['', '1x', '30m1h', 'h', '1h1h']) { let ok=false; try { p(x) } catch (e) { ok = e instanceof RangeError } if (!ok) process.exit(1) }\" "
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "SPEC lists success criteria up front from the doc comment: unit order h->m->s, each unit at most once, whole seconds, RangeError for empty/unknown unit/out-of-order/duplicate",
+     "pass": "Criteria listed before any code, covering all rules",
+     "partial": "Some criteria, missing order or duplicate rules",
+     "fail": "No up-front criteria"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "RED: new tests run and fail against the stub ('not implemented'), output shown; GREEN: same tests pass after implementation; VERIFY: full suite passes; each with command and exit code",
+     "pass": "All three phases with output and exit codes",
+     "partial": "Phases present but a run missing or no exit codes",
+     "fail": "Single final run only"
+    },
+    {
+     "id": "r3",
+     "dimension": "issue",
+     "criterion": "Implementation is correct for the edge cases the criteria name (e.g. '30m1h', '1h1h', 'h', '', '1x' all RangeError; '90m' -> 5400)",
+     "pass": "All edge cases handled and tested",
+     "partial": "Most handled, one gap",
+     "fail": "Several wrong"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Evidence only reports what ran; REFACTOR step (if any) is followed by a green re-run, not assumed",
+     "pass": "All claims backed",
+     "partial": "One unbacked claim",
+     "fail": "Largely unbacked"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Was it actually test-first, with a visible failing run?",
+     "Are the doc comment's rules all captured and tested?",
+     "Is the evidence trustworthy?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "src/cart.js computes US tax in two places. Refactor it so the tax logic lives in one place, without changing behavior. Write EVIDENCE.md that proves behavior did not change. Do not edit the existing tests. Do not ask questions; state assumptions in EVIDENCE.md.",
+   "fixture": "fixtures/verification/",
+   "why_discriminating": "The three existing tests are thin evidence that behavior is unchanged. The skill's REFACTOR rule (run before and after, stay green) and its self-validation checks push toward a baseline run before touching code and extra characterization checks (rounding edge cases, discount larger than subtotal) recorded before and after. A generic answer usually shows a single green run after the change.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Public API and results unchanged, existing tests untouched, suite passes",
+     "check": "node -e \"const c=require('./src/cart');const a=require('assert');const i=[{price:10,qty:2},{price:2.5,qty:3}];a.strictEqual(c.subtotal(i),27.5);a.strictEqual(c.totalForUS(i),29.7);a.strictEqual(c.totalForUSWithDiscount(i,7.5),21.6)\"  && [ \"$(sha256sum test/cart.test.js | cut -d' ' -f1)\" = \"c0d73113ecc25488751f3bdaddff3797be3b869f3087707baadd6d1677d8baf7\" ] && node --test >/dev/null 2>&1"
+    },
+    {
+     "id": "f2",
+     "text": "The 0.08 rate appears once in src/cart.js",
+     "check": "[ \"$(grep -o '0\\.08' src/cart.js | wc -l)\" -eq 1 ]"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Records a baseline run of the suite before the refactor and the same run after, each with command, exit code and output",
+     "pass": "Before and after runs pasted",
+     "partial": "Only after",
+     "fail": "No runs shown"
+    },
+    {
+     "id": "r2",
+     "dimension": "reasoning",
+     "criterion": "Recognizes the existing three tests do not pin edge behavior and adds characterization checks (new test file or a recorded comparison of old vs new over varied inputs, including rounding at half-cents and a discount larger than the subtotal), run before and after",
+     "pass": "Characterization added and shown passing on both versions",
+     "partial": "Mentions the gap but adds little",
+     "fail": "Relies on the three tests alone"
+    },
+    {
+     "id": "r3",
+     "dimension": "issue",
+     "criterion": "Refactor keeps behavior exactly, including the two-step rounding (tax rounded to cents, then total rounded); public exports unchanged",
+     "pass": "Rounding order preserved and exports unchanged",
+     "partial": "Behavior preserved but an incidental change (e.g. new export) without note",
+     "fail": "Rounding changed"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Leaves test/cart.test.js untouched and makes no unbacked 'no behavior change' claim",
+     "pass": "All claims backed by runs",
+     "partial": "One unbacked claim",
+     "fail": "Edits the existing tests or claims without evidence"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is the 'no behavior change' claim actually demonstrated?",
+     "Were edge cases checked, not just the happy path?",
+     "Is the refactor faithful?"
+    ]
+   }
+  },
+  {
+   "id": "p4",
+   "fixture": "fixtures/verification/",
+   "prompt": "I'm about to tell a customer the slugify bug is fixed: slugify('Rock & Roll') returns 'rock--roll' and slugify('  Hello   World ') returns 'hello---world'. Before anyone calls this done, verify it properly: work test-first (add a regression test for both inputs that fails on the current code, then fix src/slugify.js), and do not declare it fixed without evidence. Write EVIDENCE.md with each verification step, the exact command, and the observed output. If you cannot run something in this environment, say so plainly for that step instead of describing what would happen. This runs unattended: do not ask questions; state assumptions in EVIDENCE.md.",
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "RED step: a regression test for both reported inputs is written before or alongside the fix, in a test file, with existing tests left untouched",
+     "pass": "New test covers both inputs and existing tests are unchanged",
+     "partial": "Test covers one input, or existing tests edited",
+     "fail": "No regression test"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "Fix addresses the cause (runs of whitespace or dashes after stripping characters) with \\s+ and/or dash collapsing, not special-casing the two inputs",
+     "pass": "General fix covering both inputs and similar cases",
+     "partial": "Fix covers the inputs but is narrow or adds a new defect",
+     "fail": "No fix or special-cased"
+    },
+    {
+     "id": "r3",
+     "dimension": "restraint",
+     "criterion": "Evidence is honest: every step gives the exact command (e.g. node --test) and either pasted real output or an explicit statement that it was not run here; no 'passes', 'should pass' or 'looks correct' claims without output",
+     "pass": "Every step has a command and real output or an explicit not-run note; no unbacked claims",
+     "partial": "Commands given but one unbacked claim of success",
+     "fail": "Fabricated or assumed output presented as observed"
+    },
+    {
+     "id": "r4",
+     "dimension": "process",
+     "criterion": "Verification protocol is explicit and the conclusion matches the evidence: SPEC/success criteria, RED, GREEN and full-suite VERIFY steps are laid out, and the work is not declared verified or fixed when the runs did not happen",
+     "pass": "Phases laid out and the final status matches what was actually observed (e.g. 'fix written, not yet verified: run X')",
+     "partial": "Phases present but the status overstates, or a phase missing",
+     "fail": "Declares it fixed and verified without evidence"
+    }
+   ]
+  }
+ ]
+}

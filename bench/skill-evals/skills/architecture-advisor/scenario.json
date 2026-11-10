@@ -1,0 +1,193 @@
+{
+  "skill": "architecture-advisor",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "We run a small order system on AWS: API Gateway, 3 Lambdas, DynamoDB, about 5,000 orders a day, a team of 4. When an order is created we notify billing and an email service, and next quarter there may be a third consumer (analytics). Should we use SQS, SNS, or EventBridge for the fan-out? I want your recommendation, not a design document. Write it to recommendation.md. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": null,
+      "why_discriminating": "The skill forces one committed recommendation (no 'it depends'), an effort bucket, a numbered action plan, and escalation triggers for an architecture decision. A competent answer without it often lists all three options evenly or writes a mini design doc.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "recommendation.md exists and is non-empty",
+          "check": "test -s recommendation.md"
+        },
+        {
+          "id": "f2",
+          "text": "Gives an effort estimate using a Quick/Short/Medium/Large bucket",
+          "check": "grep -qiE 'effort[^\\n]{0,80}(quick|short|medium|large)' recommendation.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "recommendation",
+          "criterion": "Commits to one primary fan-out option that fits 5,000 orders/day, a team of 4, and a likely third consumer",
+          "pass": "Names one option (SNS to per-consumer SQS queues, or EventBridge with one rule per consumer) as the answer and ties it to the stated scale, team size and third consumer",
+          "partial": "Picks an option but hedges ('either is fine') or gives a reason not tied to the stated context",
+          "fail": "Says 'it depends' with no primary choice, or recommends a single SQS queue shared by all consumers"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Rejected alternatives are named with concrete reasons",
+          "pass": "Each of the two rejected options gets a specific reason (e.g. plain SQS makes the producer write to every queue; EventBridge vs SNS trade-off on filtering, schema, cost or latency)",
+          "partial": "Mentions the alternatives but with generic reasons ('more complex')",
+          "fail": "No trade-offs discussed"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Follows the advisor response structure for an architecture decision",
+          "pass": "Has a 2-3 sentence bottom line, a numbered action plan, an effort bucket, and escalation triggers or 'when to reconsider'",
+          "partial": "Missing one of those four",
+          "fail": "Missing two or more, or no effort estimate at all"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Watch-outs are specific to the chosen fan-out",
+          "pass": "Names at least two concrete risks with a mitigation, e.g. at-least-once delivery needs idempotent consumers, a DLQ per consumer queue, alarms on queue age",
+          "partial": "One concrete risk, or risks with no mitigation",
+          "fail": "No risks, or only generic ones ('monitor it')"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Stays a recommendation, proportionate to the question",
+          "pass": "Fits on roughly one page, states any assumptions, no invented requirements or SLAs",
+          "partial": "Somewhat padded (long background, repeated points) but still a recommendation",
+          "fail": "Turns into a full design document or invents constraints the user did not give"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is there one clear answer a team lead could act on today?",
+          "Are the rejected options dismissed for real reasons?",
+          "Effort estimate and when to revisit",
+          "Length and focus"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "My team lead wants to migrate our internal admin tool from REST to GraphQL. It has 7 REST endpoints, one React frontend, and 3 developers. We cannot add any new AWS managed services this quarter because of a budget freeze. Give me a recommendation I can paste into Slack, written to answer.md. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": null,
+      "why_discriminating": "The skill biases toward the least complex option, forbids recommendations that contradict stated constraints (a CRITICAL gate item), and asks for escalation triggers. Without it, answers tend to present a balanced GraphQL pros/cons list or suggest AppSync despite the freeze.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "answer.md exists and is non-empty",
+          "check": "test -s answer.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "recommendation",
+          "criterion": "Gives a clear, constraint-respecting answer",
+          "pass": "Recommends not migrating now (or a clearly bounded alternative) and does not propose AppSync or any other new managed service as the path forward",
+          "partial": "Clear answer but suggests a new managed service as an option to consider",
+          "fail": "Hedges with no primary answer, or recommends AppSync / another new managed service"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Reasoning fits 7 endpoints, one client, 3 developers",
+          "pass": "Explains why GraphQL's benefits (many clients, interconnected data, over-fetching) do not apply here and names its real costs (resolvers, caching, auth, N+1, learning curve)",
+          "partial": "Generic GraphQL pros and cons not tied to this tool",
+          "fail": "No reasoning, or reasoning that contradicts the stated facts"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Advisor structure: bottom line, action plan, effort, and triggers to revisit",
+          "pass": "Has a short bottom line, numbered next steps (e.g. list the team lead's pain points, try a BFF or endpoint tweak), an effort bucket or N/A with reason, and concrete conditions to revisit GraphQL",
+          "partial": "Has the bottom line and some of the rest",
+          "fail": "No effort estimate and no revisit conditions"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Short enough to paste into Slack and respectful of the team lead",
+          "pass": "Reads as a Slack message (a few short paragraphs or bullets), no condescension, no full design doc",
+          "partial": "Usable but long or partly lecture-like",
+          "fail": "Long document or dismissive of the team lead's idea with no path forward"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Does it respect the budget freeze?",
+          "Would the team lead find the reasoning fair?",
+          "Clear next steps and revisit conditions",
+          "Slack-sized"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Sanity check before sprint planning. Our app is a single Express monolith on one EC2 instance with RDS Postgres (db.t4g.medium, about 30% CPU at peak), about 30,000 daily active users. Product wants a 'recently viewed items' strip: the last 20 items per user, shown on the home page. One engineer proposes a new microservice with DynamoDB plus ElastiCache for this. We need to ship it this sprint. Is that the right call? Write your answer to answer.md. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": null,
+      "why_discriminating": "The skill's decision framework says bias toward simplicity and favor modifying what exists, and to give escalation triggers for when the simple path stops working. A competent answer may agree with the new service or list options without committing, and rarely gives an effort bucket plus concrete thresholds for revisiting.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "answer.md exists and is non-empty",
+          "check": "test -s answer.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "recommendation",
+          "criterion": "Recommends extending the existing Postgres/monolith rather than a new service",
+          "pass": "Says no to the new microservice and proposes a concrete simple design in the existing stack (e.g. a recently_viewed table keyed by user with a cap of 20, or an array column) that ships this sprint",
+          "partial": "Leans toward the simple option but leaves the decision open",
+          "fail": "Endorses the DynamoDB + ElastiCache microservice, or gives no recommendation"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Uses the given numbers to justify the call",
+          "pass": "Uses the stated scale (30k DAU, 20 items, RDS at 30% CPU) to show the load is small for Postgres, and names the operational cost of two new data stores for this team",
+          "partial": "Says it is small without using the numbers",
+          "fail": "No load reasoning, or reasoning that misreads the numbers"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Bottom line, numbered action plan, effort bucket, and escalation triggers",
+          "pass": "All four present; triggers are measurable (e.g. RDS CPU sustained above a stated %, query latency on the home page above a stated ms, DAU growth by a stated factor)",
+          "partial": "Three of four, or triggers that are vague ('if it gets slow')",
+          "fail": "Two or fewer"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No overreach",
+          "pass": "Does not redesign the whole app or add unrelated recommendations; assumptions are stated",
+          "partial": "Some unrelated advice mixed in",
+          "fail": "Mostly unrelated advice, or invents constraints"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Does it push back on unnecessary new infrastructure?",
+          "Would the engineer accept the reasoning?",
+          "Measurable conditions for revisiting",
+          "Fits the one-sprint deadline"
+        ]
+      }
+    }
+  ]
+}

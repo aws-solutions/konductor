@@ -1,0 +1,246 @@
+{
+ "skill": "system-design-patterns",
+ "category": "MODEL-CAPABILITY",
+ "source": "konductor",
+ "kind": "doc",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "We are building a new AWS solution that customers deploy into their own accounts with CDK. It ingests telemetry from about 20,000 industrial sensors (one message every 10 seconds each), detects anomalies, and alerts operators within 30 seconds at p99. Customers need SOC 2 controls. The team knows TypeScript and prefers serverless. Produce the design deliverables as markdown files in design/. Do not ask me questions; make reasonable assumptions and record anything unresolved.",
+   "fixture": null,
+   "why_discriminating": "The skill produces four linked artifacts (system design document, threat model input, architecture diagram description, design review handoff) and its interviewer stance challenges assumptions and demands customer-account IAM, failure modes, and cost per unit. Without it, a model usually writes one design doc with adjective NFRs and no threat model input or handoff.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "At least three separate design artifacts",
+     "check": "[ $(ls design/*.md 2>/dev/null | wc -l) -ge 3 ]"
+    },
+    {
+     "id": "f2",
+     "text": "Threat model input names trust boundaries",
+     "check": "grep -rqi 'trust boundar' design/"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Delivers the skill's four artifacts with their key sections",
+     "pass": "System design (components each with purpose, scaling, cost factors, failure modes; open questions; next steps), threat model input (trust boundaries, assets, threats with mitigations, IAM review points), diagram description (layout, numbered data flow), and design review handoff (agenda, key decisions, risks)",
+     "partial": "Three of the four, or all four but thin",
+     "fail": "One or two artifacts"
+    },
+    {
+     "id": "r2",
+     "dimension": "reasoning",
+     "criterion": "Works from the numbers and challenges the serverless default",
+     "pass": "Derives about 2,000 messages/s (~173M/day), picks an ingestion path that fits (e.g. IoT Core or Kinesis rather than API Gateway per message), and budgets the 30 s p99 across ingest, detection and alerting",
+     "partial": "Uses some numbers but no end-to-end latency budget or no ingestion trade-off",
+     "fail": "No sizing; picks services by habit"
+    },
+    {
+     "id": "r3",
+     "dimension": "issue",
+     "criterion": "Customer-deployed and SOC 2 concerns are concrete",
+     "pass": "Lists the IAM permissions the CDK app needs in the customer account with least privilege, encryption and audit logging (CloudTrail, log retention) tied to SOC 2, and an update/rollback strategy for customer deployments",
+     "partial": "Mentions these generically",
+     "fail": "Missing"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "NFRs and cost are specific",
+     "pass": "NFRs as numbers (throughput, p99, availability, retention) plus a cost driver list and an estimate per month or per sensor, ideally at 10x",
+     "partial": "Some numbers, no cost estimate",
+     "fail": "Adjectives only"
+    },
+    {
+     "id": "r5",
+     "dimension": "restraint",
+     "criterion": "Assumptions are labelled",
+     "pass": "Assumptions (message size, retention, alert channels) stated as assumptions or open questions, not presented as requirements",
+     "partial": "Some invented facts unlabelled",
+     "fail": "Many invented requirements presented as given"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is this ready for a design review?",
+     "Does it reason from the stated load and latency?",
+     "Customer-account IAM and SOC 2 handled",
+     "Clear open questions"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "Design a customer-deployed scanner that finds PII in S3 buckets. Pilot: 3 AWS accounts and 10 TB. GA target in a year: 200 accounts and 5 PB. Findings go to Security Hub. Write the system design document to design.md. Do not ask me questions; make reasonable assumptions and record anything unresolved.",
+   "fixture": null,
+   "why_discriminating": "The skill asks 'have you estimated cost at 10x', 'have you considered [AWS service]', separates demo from production scale, and requires IAM, DR, and testing sections. Without it, a design often scans everything with Lambda, never prices 5 PB, and skips the cross-account permission model.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "design.md exists and separates pilot from GA scale",
+     "check": "test -s design.md && grep -qiE 'pilot|demo' design.md && grep -qE '5 ?PB' design.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "reasoning",
+     "criterion": "Confronts the cost and scale jump",
+     "pass": "Estimates cost per TB or per account, shows a full scan of 5 PB is the main cost driver, and proposes sampling, incremental (new or changed objects) scanning, or object-type filtering; weighs Amazon Macie against building",
+     "partial": "Mentions cost but no estimate or no strategy to reduce scanned bytes",
+     "fail": "Treats 5 PB like 10 TB"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "Cross-account access model is correct and least-privilege",
+     "pass": "Per-account role deployed via StackSets or similar, scoped s3:GetObject/ListBucket and kms:Decrypt for SSE-KMS buckets, Security Hub finding import (ASFF), and a central-account trust boundary",
+     "partial": "Cross-account mentioned without specific permissions",
+     "fail": "No access model"
+    },
+    {
+     "id": "r3",
+     "dimension": "issue",
+     "criterion": "Protects the PII it finds",
+     "pass": "Findings carry object location and type, not raw PII values (or redacted samples); scanner does not persist object content; encryption of results",
+     "partial": "Mentions data protection generically",
+     "fail": "Findings include raw matched values with no comment"
+    },
+    {
+     "id": "r4",
+     "dimension": "process",
+     "criterion": "Covers the skill's design-document sections",
+     "pass": "Components with failure modes and scaling, error handling with DLQ/retry, RTO/RPO or explicitly open, deployment and rollback, testing strategy including IAM validation, open questions",
+     "partial": "Most sections present",
+     "fail": "Several missing"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is the 5 PB cost faced honestly?",
+     "Will cross-account access work and stay least-privilege?",
+     "Does it avoid creating a new PII store?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "I want to design a document-approval workflow service on AWS but I have not decided much yet. Before you design anything, write questions.md with what you need to know from me, and outline.md with a first rough architecture outline I can react to.",
+   "fixture": null,
+   "why_discriminating": "The skill opens by offering a comprehensive or focused interview, moves from system overview to architecture preferences to components to cross-cutting concerns, challenges each choice, and presents the outline back for confirmation. Without it, a model tends to write a flat list of generic requirement questions.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Both files exist",
+     "check": "test -s questions.md && test -s outline.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Offers interview scope",
+     "pass": "Asks whether the user wants a comprehensive (20+ questions) or focused (5-10) interview, or states which default it chose and why",
+     "partial": "Implies a scope without offering the choice",
+     "fail": "No scope handling"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Questions progress through the interview phases",
+     "pass": "Covers purpose, scale, deployment model, compliance first; then compute, eventing, storage, state and API preferences; then auth, observability, error handling/DR, cost, deployment",
+     "partial": "Covers most areas but unordered",
+     "fail": "Narrow or generic list"
+    },
+    {
+     "id": "r3",
+     "dimension": "reasoning",
+     "criterion": "Questions challenge assumptions specific to approvals",
+     "pass": "Includes probes like what happens if an approver never responds (timeouts, escalation), long-running human steps (e.g. Step Functions callbacks), audit of who approved what, and load at 10x",
+     "partial": "One or two such probes",
+     "fail": "Only fact-collection questions"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Outline is useful and invites correction",
+     "pass": "outline.md names major components and data flow, marks what depends on unanswered questions, and asks whether it captures the user's intent",
+     "partial": "Outline present but presented as final",
+     "fail": "Outline missing or a full design"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Would these questions surface the decisions that matter?",
+     "Does it challenge rather than just collect?",
+     "Outline is a starting point, not a final design"
+    ]
+   }
+  },
+  {
+   "id": "p3x",
+   "prompt": "Use the system-design-patterns skill for this task. I want to design a document-approval workflow service on AWS but I have not decided much yet. Before you design anything, write questions.md with what you need to know from me, and outline.md with a first rough architecture outline I can react to.",
+   "fixture": null,
+   "why_discriminating": "The skill opens by offering a comprehensive or focused interview, moves from system overview to architecture preferences to components to cross-cutting concerns, challenges each choice, and presents the outline back for confirmation. Without it, a model tends to write a flat list of generic requirement questions.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Both files exist",
+     "check": "test -s questions.md && test -s outline.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Offers interview scope",
+     "pass": "Asks whether the user wants a comprehensive (20+ questions) or focused (5-10) interview, or states which default it chose and why",
+     "partial": "Implies a scope without offering the choice",
+     "fail": "No scope handling"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Questions progress through the interview phases",
+     "pass": "Covers purpose, scale, deployment model, compliance first; then compute, eventing, storage, state and API preferences; then auth, observability, error handling/DR, cost, deployment",
+     "partial": "Covers most areas but unordered",
+     "fail": "Narrow or generic list"
+    },
+    {
+     "id": "r3",
+     "dimension": "reasoning",
+     "criterion": "Questions challenge assumptions specific to approvals",
+     "pass": "Includes probes like what happens if an approver never responds (timeouts, escalation), long-running human steps (e.g. Step Functions callbacks), audit of who approved what, and load at 10x",
+     "partial": "One or two such probes",
+     "fail": "Only fact-collection questions"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Outline is useful and invites correction",
+     "pass": "outline.md names major components and data flow, marks what depends on unanswered questions, and asks whether it captures the user's intent",
+     "partial": "Outline present but presented as final",
+     "fail": "Outline missing or a full design"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Would these questions surface the decisions that matter?",
+     "Does it challenge rather than just collect?",
+     "Outline is a starting point, not a final design"
+    ]
+   }
+  }
+ ]
+}

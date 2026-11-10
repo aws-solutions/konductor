@@ -1,0 +1,177 @@
+{
+  "skill": "smithy-modeling",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Write a Smithy 2.0 model for a Todo service the frontend team will generate a TypeScript client and an OpenAPI spec from: create, get, update (full replace), delete and list todos. A todo has a title (1-200 chars), optional notes, a priority (low/medium/high), a due date and a completed flag. Put the model under model/ and add a smithy-build.json at the root. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": null,
+      "why_discriminating": "The skill's checklist and quality gate (reverse-DNS namespace, @http on every operation, @readonly/@idempotent, specific @error shapes with @httpError, @paginated list, @required/@length/enum constraints, documentation on public shapes) produce a codegen-ready model. Without it, models often skip pagination, errors, idempotency traits or docs.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Model files use IDL v2 with a reverse-DNS namespace and a smithy-build.json exists",
+          "check": "grep -rqE '^\\$version: *\"2(\\.0)?\"' model && grep -rqE '^namespace [a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+' model && python3 -c \"import json;json.load(open('smithy-build.json'))\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Operations carry correct HTTP and behaviour traits",
+          "pass": "Every operation has @http; Get/List @readonly; Update (PUT) and Delete @idempotent; Create uses POST with an idempotency token or a note",
+          "partial": "One trait missing or wrong",
+          "fail": "Several operations lack @http or behaviour traits"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Errors and pagination are designed",
+          "pass": "Specific client errors (404 not found, 400 validation, optionally 409/429) with @error and @httpError, attached per operation; List is @paginated with inputToken/outputToken/pageSize and a max page size",
+          "partial": "Errors or pagination present but generic (one catch-all error) or not wired to operations",
+          "fail": "No errors or no pagination"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Shapes are constrained and documented",
+          "pass": "title @required @length(min:1,max:200); priority is an enum; due date a timestamp; @httpLabel ids @required; /// docs on public shapes",
+          "partial": "Most constraints present, docs sparse",
+          "fail": "Strings everywhere, no constraints or docs"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Model is plausibly valid Smithy and the build file is sensible",
+          "pass": "No invalid syntax or nonexistent traits; smithy-build.json lists the model source and an openapi/typescript projection or plugin with the assumption noted",
+          "partial": "Minor syntax slips",
+          "fail": "Invented traits or clearly invalid IDL"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "codegen readiness (traits, errors, pagination)",
+          "constraints and documentation",
+          "validity of the IDL"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Turn api.txt into a Smithy model under model/ so we can generate a client and an OpenAPI spec. Write DESIGN-NOTES.md with any decisions you made. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/smithy-modeling/",
+      "why_discriminating": "api.txt has constraints and error cases that the skill says to encode (pattern, range, max page size, @sensitive for PII, enum status, specific errors with correct operations attached). A strong model attaches the 409 only to cancel and notes the newest-first ordering, rather than spraying every error on every operation.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Namespace is com.acme.logistics and recipientPhone is present",
+          "check": "grep -rqE '^namespace com\\.acme\\.logistics' model && grep -rq 'recipientPhone' model"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "api.txt constraints are encoded",
+          "pass": "@pattern 5-digit zips, @range(min:1,max:70000) weightGrams, pageSize max 50, status enum, recipientPhone @sensitive",
+          "partial": "Three or four of the five",
+          "fail": "Two or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Errors are mapped to the right operations",
+          "pass": "404 on get/status/delete, 400 on inputs, 409 only on the cancel/delete operation, 429 on all (or service-level)",
+          "partial": "All errors present but attached indiscriminately",
+          "fail": "Errors missing"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Behaviour traits and docs follow the skill",
+          "pass": "PUT status and DELETE @idempotent, GET @readonly, list @paginated; docs on public shapes; newest-first sort documented",
+          "partial": "Traits right but docs or sort order missing",
+          "fail": "Traits wrong or missing"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Decisions are noted, nothing invented",
+          "pass": "DESIGN-NOTES.md states assumptions (e.g. shipmentId format, timestamps) without inventing endpoints",
+          "partial": "Notes thin",
+          "fail": "Adds operations or fields not in api.txt as if specified"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "faithful encoding of api.txt",
+          "error placement",
+          "notes on assumptions"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "A teammate wrote model-draft/inventory.smithy. No clients have been generated from it yet. Review it against Smithy best practices and fix it in place so it is ready for client codegen. List what you changed, most severe first, in model-draft/CHANGES.md. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/smithy-modeling/",
+      "why_discriminating": "The skill's quality gate orders the fixes (CRITICAL: namespace, missing @http, no error shapes, @httpLabel members not @required; IMPORTANT: docs, pagination, constraints) and its anti-pattern list covers snake_case and missing @sensitive. A strong answer also reasons about whether renaming members is a wire-breaking change.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "CHANGES.md exists and the draft has no snake_case members left",
+          "check": "test -f model-draft/CHANGES.md && ! grep -qE '^\\s+[a-z]+_[a-z_]+\\s*:' model-draft/inventory.smithy"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "All planted defects are fixed (KEY: namespace, snake_case, PutItem no @http, GetItem not @readonly, DeleteItem not @idempotent, ListItems not @paginated, no errors, @httpLabel not @required, no docs, supplier key not @sensitive, qty no @range)",
+          "pass": "At least 10 of 11 fixed",
+          "partial": "7-9 fixed",
+          "fail": "6 or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "CHANGES.md is ordered by the skill's severity tiers",
+          "pass": "CRITICAL items (namespace, @http, errors, required labels) listed before IMPORTANT (docs, pagination, constraints) and SUGGESTION",
+          "partial": "Severities labelled but not ordered, or tiers differ from the gate",
+          "fail": "Flat unordered list"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Wire-compatibility of renames is considered",
+          "pass": "Notes that camelCase renames change restJson wire names and are safe only because no clients exist (or uses @jsonName)",
+          "partial": "Renames without comment",
+          "fail": "Claims renames are always harmless when clients exist"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Fixes stay within the draft's intent",
+          "pass": "No new operations beyond what the draft implies; PutItem given a sensible URI with an explained choice",
+          "partial": "One unexplained addition",
+          "fail": "Rewrites the service with invented scope"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "completeness of the fixes",
+          "severity ordering in CHANGES.md",
+          "attention to breaking renames"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+[
+{"query": "help me plan next sprint. backlog is in backlog.md (11 items). i'm solo, 2 week sprint. size them and tell me what fits", "should_trigger": true},
+{"query": "Turn the design doc docs/design/notifications.md into an epic with stories and tasks, put story points on each, and fill a sprint with what fits in 10 points.", "should_trigger": true},
+{"query": "I've got these tickets from the retro: fix flaky login test, add rate limit header, migrate cron to eventbridge, rewrite onboarding docs, multi-service auth integration. estimate each in points and tell me which ones need splitting", "should_trigger": true},
+{"query": "we didn't finish 3 tasks last sprint (5, 3 and 2 points). roll them into the next one and add new work until we hit capacity, warn me when we get close", "should_trigger": true},
+{"query": "Plan sprint 14 for me. Capacity this time is 8 points because I'm out 2 days. Here's the candidate work: <list in sprint14-candidates.txt>. Keep a running total as you add.", "should_trigger": true},
+{"query": "how should i structure goal/initiative/epic/story/task for the 'self-serve billing' work so only the right level gets put into sprints? then size the tasks", "should_trigger": true},
+{"query": "estimate these 8 jira tickets in story points with a short reason each, then pick a sprint's worth. 1 pt = 1 day for us", "should_trigger": true},
+{"query": "Our sprint is overloaded at 14 points against 10 capacity. Help me decide what to cut and re-plan it, showing used/remaining after each change.", "should_trigger": true},
+{"query": "breakdown the 'export to csv' feature into tasks and subtasks i can drop into this sprint, with points. it's API + UI + tests", "should_trigger": true},
+{"query": "Kicking off planning for a two-person team, 2-week sprints, 10 pts each. Inputs: docs/roadmap-q1.md. Produce the task hierarchy and the sprint 1 plan.", "should_trigger": true},
+{"query": "build a 6-month program plan with milestones, cross-team dependencies and a critical path for the platform migration", "should_trigger": false},
+{"query": "write a weekly status update for stakeholders from these sprint notes, with RAG status per workstream", "should_trigger": false},
+{"query": "make a burndown chart png from burndown.csv using matplotlib", "should_trigger": false},
+{"query": "write user stories with acceptance criteria for the self-serve billing feature from this PRD", "should_trigger": false},
+{"query": "generate a kiro tasks.md implementation plan from .kiro/specs/export/design.md with requirement refs", "should_trigger": false},
+{"query": "split this HLD into independent feature tracks for 3 engineers so they don't step on each other", "should_trigger": false},
+{"query": "Convert these story-point estimates into AI-assisted effort bands - we're moving to agentic development and want new numbers", "should_trigger": false},
+{"query": "facilitate a sprint retrospective: give me a format and questions for what went well / what didn't / actions", "should_trigger": false},
+{"query": "set up a github projects board with columns todo/in progress/review/done and automation when PRs merge", "should_trigger": false},
+{"query": "validate the progress of our feature specs - how many tasks done vs remaining across .kiro/specs and what's blocked", "should_trigger": false}
+]

@@ -1,0 +1,57 @@
+{
+  "skill_name": "find-aws-skills",
+  "note": "No find-aws-skills evals were staged in sc-post, sc-improve or sc-full, and the sc-redund evals need a live AWS MCP server. These three are built from the staged harness3 scenario (harness3/scenarios/find-aws-skills.json), whose prompts run without the AWS MCP server: p1 exercises the failure path when the search tool is absent, p2 is a dry-run plan, p3 is an irrelevant-results reply. The round-2 change is description-only, so its effect is measured by run_eval on harness3/queries/find-aws-skills.json, not by an extra execution eval.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "greengrass-tool-unavailable-failure-path",
+      "scenario_prompt_id": "p1",
+      "prompt": "I need to roll out AWS IoT Greengrass v2 to about 200 Raspberry Pis with a custom component that ships sensor data to IoT Core. None of my usual skills cover Greengrass. Find specialized AWS guidance for this and follow it. Write everything you'd tell me (what you searched for, what you found or didn't, and what happens next) to answer.md instead of chatting. Don't ask questions in chat.",
+      "expected_output": "With no AWS MCP server present the skill search cannot run, so the skill's failure path applies: record a verbose context-preserving search phrase, explain the tooling gap plainly, offer the three options (retry with a different phrase, direct API calls via the sandboxed aws___run_script, user guidance) and wait; no invented skill, no silent fallback to a manual walkthrough.",
+      "files": [],
+      "scripted_checks": [{"text": "answer.md exists and is non-empty", "check": "test -s answer.md"}],
+      "expectations": [
+        "answer.md exists and is non-empty",
+        "answer.md records a verbose search phrase that keeps context (Greengrass v2 plus Raspberry Pi fleet and/or custom component and/or IoT Core telemetry), not just a one- or two-word keyword",
+        "answer.md explains plainly that the AWS skill search tooling was unavailable or failed, without an error dump",
+        "answer.md offers all three options: retry with a different search phrase, proceed with direct AWS API calls via the sandboxed script runner (aws___run_script), or let the user guide",
+        "The response stops and waits for the user's choice instead of proceeding with a manual Greengrass walkthrough or API calls",
+        "No skill name, skill content or created AWS resource is fabricated or claimed"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "s3-lockdown-dry-run-plan",
+      "scenario_prompt_id": "p2",
+      "prompt": "Dry run, no tools needed: a user says 'Lock down my S3 buckets, auditors flagged public access'. Write to plan.md the exact sequence of AWS skill-discovery tool calls you'd make, with every parameter value, and what you'd do with the results (how you pick a result, how you load files the skill references, and what you'd do if nothing relevant came back). Don't ask questions.",
+      "expected_output": "plan.md names aws___search_documentation with a verbose phrase, topics=[\"agent_skills\"], limit=3; picks the top-ranked relevant result; loads it with aws___retrieve_skill using the exact skill_name; fetches referenced files with the same skill_name plus the file parameter; on no relevant result offers the three options without auto-fallback; states skill names must not be guessed.",
+      "files": [],
+      "scripted_checks": [{"text": "plan.md uses the search_documentation tool with the agent_skills topic", "check": "grep -q 'search_documentation' plan.md && grep -q 'agent_skills' plan.md"}],
+      "expectations": [
+        "plan.md uses the search_documentation tool with the agent_skills topic",
+        "plan.md gives limit 3 for the search call",
+        "plan.md uses a verbose search phrase (for example covering S3 bucket access policy hardening and public access), not a one- or two-word keyword",
+        "plan.md picks the top-ranked relevant result and loads it with aws___retrieve_skill using the exact skill_name from the results",
+        "plan.md loads referenced files by calling aws___retrieve_skill again with the same skill_name and the file parameter",
+        "plan.md treats irrelevant results as no results and offers the three options (retry phrase, direct API via aws___run_script, user guidance) without falling back automatically",
+        "plan.md states that skill names are opaque and must not be guessed or fabricated"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "connect-lex-irrelevant-results",
+      "scenario_prompt_id": "p3",
+      "prompt": "I asked for an AWS skill on Amazon Connect contact flows with a Lex after-hours bot. The skill search came back with only these three results: 'creating-vpc-endpoints', 'debugging-lambda-timeouts', 'aws-cdk'. Decide what to do next and write your reply to me in reply.md. Don't ask anything outside that file.",
+      "expected_output": "Treats the three results as no relevant match and loads none; explains that plainly; offers the three options (retry with a concrete better phrase, direct API via the sandboxed script runner, user guidance) and waits.",
+      "files": [],
+      "scripted_checks": [{"text": "reply.md exists and is non-empty", "check": "test -s reply.md"}],
+      "expectations": [
+        "reply.md exists and is non-empty",
+        "reply.md states that none of the three results fit Amazon Connect or Lex and does not load or follow any of them",
+        "reply.md offers all three options: retry with a different search phrase, proceed with direct AWS API calls via the sandboxed script runner (aws___run_script), or let the user guide",
+        "The retry option proposes a concrete better phrase (for example 'Amazon Connect contact flow Lex bot after-hours routing')",
+        "The reply waits for the user's choice instead of proceeding with a manual Connect/Lex walkthrough or API calls"
+      ]
+    }
+  ]
+}

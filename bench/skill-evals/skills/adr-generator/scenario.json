@@ -1,0 +1,177 @@
+{
+  "skill": "adr-generator",
+  "category": "DUPLICATION",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Add an ADR to docs/design/payments.md recording the decision to use DynamoDB rather than Aurora Postgres for the ledger. Everything you need is already in the doc. The team has agreed on it. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/adr-generator/",
+      "why_discriminating": "The skill fixes placement and numbering (a '## Architecture Decision Records' section after the Implementation Plan, ADR-1, '_(See ADR-1)_' where the decision is first mentioned), Status Accepted for an agreed decision, a why-not-chosen table, and Good/Bad/Neutral consequences with the doc's numbers. Without it, the ADR lands in an ad-hoc spot with prose alternatives.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "An Architecture Decision Records section follows the Implementation Plan and contains ADR-1",
+          "check": "python3 -c \"import sys;t=open('docs/design/payments.md').read();a=t.find('## Architecture Decision Records');p=t.find('## Implementation Plan');sys.exit(0 if a>p>=0 and 'ADR-1' in t[a:] else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Placement, numbering, status and cross-reference per the skill",
+          "pass": "ADR-1 under '## Architecture Decision Records' after the plan, Status Accepted, and '(See ADR-1)' added in Solution Overview or Trade-offs",
+          "partial": "Two of the three placement items right, or Status Proposed despite agreement",
+          "fail": "ADR placed elsewhere with no cross-reference"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Decision and why-not-chosen cells are crisp and technical",
+          "pass": "Decision: 'We will use DynamoDB ... because' it sustained 8,000 writes/s at p99 7 ms vs Aurora's 4,200 at 18 ms against the 6,000 writes/s projection; Aurora row rejected on that ceiling in 1-3 sentences; staying on MySQL optional third row",
+          "partial": "Numbers present but rationale wordy or vague",
+          "fail": "Rationale like 'DynamoDB scales better'"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Consequences are specific and complete",
+          "pass": "Good: headroom over projection; Bad: 4 of 7 lack DynamoDB production experience, SQL-join reports move to export + Athena; Neutral: dual-write/reconcile phase, runbook/dashboard updates",
+          "partial": "Missing Neutral or the Athena reporting cost",
+          "fail": "Vague consequences"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Uses only facts in the doc",
+          "pass": "No new benchmarks, prices or links; the trade-off table is referenced, not re-scored",
+          "partial": "One unsourced claim",
+          "fail": "Invented data"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "placement and cross-referencing",
+          "use of the load-test numbers",
+          "completeness of consequences"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "ADR-2 in docs/design/search.md is incomplete and a reviewer flagged it. Complete it. Leave ADR-1 alone. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/adr-generator/",
+      "why_discriminating": "The skill's completion path for an incomplete ADR adds a fair alternatives table and Good/Bad/Neutral consequences and tightens the decision to 'because <technical reason>'. The doc's data (1,200 updates/s, 300-900 ms enrichment, 40-minute backfills) points to Lambda's 15-minute limit as the concrete rejection reason.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "ADR-1 is byte-for-byte unchanged and ADR-2 has an Alternatives Considered section",
+          "check": "python3 -c \"import re,sys,hashlib;t=open('docs/design/search.md').read();m=re.search(r'### ADR-1:.*?(?=### ADR-2)',t,re.S);s=t[t.find('### ADR-2'):];sys.exit(0 if m and hashlib.sha256(m.group(0).encode()).hexdigest()=='e092c8f2523fe30bfe70adf0f9e82de6664c6b294c8e99987c055e7855ee1ba8' and 'Alternatives Considered' in s else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "reasoning",
+          "criterion": "Alternatives are viable and rejected with concrete limits",
+          "pass": "Lambda rejected on the 15-minute maximum vs 40-minute backfills (could note splitting backfills as a trade-off); another real option (EC2/ECS on EC2, Step Functions + Lambda) treated fairly",
+          "partial": "Lambda listed but rejection reason vague",
+          "fail": "No alternatives or straw men"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Decision rewritten in the skill's form",
+          "pass": "'We will run the indexer on ECS Fargate because ...' citing the long-running backfill and sustained 1,200 updates/s",
+          "partial": "Decision still just names Fargate",
+          "fail": "Decision changed to a different choice"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Consequences split Good/Bad/Neutral and specific",
+          "pass": "E.g. Good: no duration cap; Bad: always-on task cost and autoscaling to own; Neutral: container image pipeline, task-level alarms",
+          "partial": "Split present but generic",
+          "fail": "Missing"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No fabricated pricing or limits beyond well-known service limits",
+          "pass": "Any cost figure is marked as an estimate or omitted; only the Lambda 15-minute limit is stated as fact",
+          "partial": "One unmarked invented number",
+          "fail": "Several invented figures"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "concrete rejection reasons",
+          "decision sentence quality",
+          "ADR-1 untouched"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "An engineer proposes serving search queries from an OpenSearch Serverless collection instead of the provisioned domain to stop paying for idle capacity overnight (traffic drops 90% from 01:00 to 06:00). They have not signed off on it yet. Record it as an ADR in docs/design/search.md. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/adr-generator/",
+      "why_discriminating": "The skill requires sequential numbering (ADR-3), Status Proposed for an unconfirmed choice, placement plus cross-reference, and fact-checked AWS claims. OpenSearch Serverless billing has minimums that may erase the overnight saving; a strong ADR flags that as unverified rather than asserting the saving.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "ADR-3 exists once and ADR-1/ADR-2 numbers are not reused",
+          "check": "grep -qE '^### ADR-3\\b' docs/design/search.md && [ $(grep -cE '^### ADR-1\\b' docs/design/search.md) -eq 1 ] && [ $(grep -cE '^### ADR-2\\b' docs/design/search.md) -eq 1 ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Numbering, status and placement",
+          "pass": "ADR-3 under Architecture Decision Records, Status Proposed, '(See ADR-3)' added where search serving is described",
+          "partial": "Two of three",
+          "fail": "Wrong number or Accepted status"
+        },
+        {
+          "id": "r2",
+          "dimension": "restraint",
+          "criterion": "Service claims are verified or flagged",
+          "pass": "Minimum OCU billing that does not scale to zero and feature differences from provisioned domains are stated as items to verify, and the saving is conditional on them",
+          "partial": "Mentions uncertainty but still asserts a saving figure",
+          "fail": "Asserts scale-to-zero or invented prices as fact"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Alternatives are genuine",
+          "pass": "Keep provisioned domain, scheduled scale-down of the provisioned domain overnight, and Serverless each with real pros/cons",
+          "partial": "Only two options, or the scheduled scale-down option missing",
+          "fail": "Straw-man alternatives"
+        },
+        {
+          "id": "r4",
+          "dimension": "issue",
+          "criterion": "Consequences tie to the 90% overnight drop",
+          "pass": "Good/Bad/Neutral reference the 01:00-06:00 pattern, migration/reindex work, and monitoring changes",
+          "partial": "Generic consequences",
+          "fail": "Missing"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Proposed status and numbering",
+          "handling of unverified billing claims",
+          "considering the scheduled scale-down alternative"
+        ]
+      }
+    }
+  ]
+}

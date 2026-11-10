@@ -1,0 +1,169 @@
+{
+  "skill": "delegation-protocol",
+  "category": "DOMAIN-IMMUNE",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "You are the orchestrator. Plan the delegation for this work, but do not spawn anything: (a) threat model for docs/design/ledger.md, (b) cost estimate for the same design, (c) a Smithy API spec for it, then (d) a developer implements the API handlers from the spec in (c). Write every dispatch prompt you would send, in full, to delegation-plan.md, and say what runs in parallel and what waits. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": null,
+      "why_discriminating": "The skill mandates the 8-field format with an explicit registry agent, handoff files under .konductor/handoff/, waiting for the upstream handoff file before spawning a dependent task, a named worktree for any write agent, and a post-implementation review. A competent plan without it usually has free-form prompts and misses the target-agent and write-target rules.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Four dispatch prompts carry all 8 fields with non-blank target agents",
+          "check": "python3 -c \"import re,sys;t=open('delegation-plan.md').read();n=4;ok=all(len(re.findall(r'^\\W*'+re.escape(k)+r'\\W*:',t,re.M))>=n for k in ('TARGET AGE4T','TASK','EXPECTED OUTCOME','REQUIRED SKILLS','REQUIRED TOOLS','MUST DO','MUST 4OT DO','CO4TEXT'));ta=[l.split(':',1)[1].strip(' *\\x60') for l in t.splitlines() if re.match(r'^\\W*TARGET AGE4T\\W*:',l)];bad=[a for a in ta if not a or a.lower() in ('n/a','general-purpose','none','tbd')];sys.exit(0 if ok and not bad else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Dispatch prompts follow the 8-field format with registry agents",
+          "pass": "Each prompt has TARGET AGENT through CONTEXT; agents come from the registry (k-architect for threat model and Smithy spec, k-developer for handlers); MUST NOT DO includes no silent scope reduction",
+          "partial": "Format complete but one agent is a poor fit or a section is thin",
+          "fail": "Fields missing or generic agents"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Sequencing and handoffs",
+          "pass": "(a)-(c) in parallel (3 <= 4); (d) spawned only after the (c) handoff file exists under .konductor/handoff/<agent>-<task>.md and reads it as CONTEXT",
+          "partial": "Order right but handoff condition implicit",
+          "fail": "(d) runs in parallel with (c)"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Write-agent safety and review",
+          "pass": "(d) names an explicit worktree/tree target; a maker-checker review (e.g. k-developer with backend-review) follows (d)",
+          "partial": "One of the two",
+          "fail": "Neither"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Tasks are atomic and the plan does not over-reach",
+          "pass": "One verb/one outcome per task; no extra agents or invented requirements; assumptions (ledger.md contents) stated",
+          "partial": "One task bundles two outcomes",
+          "fail": "Padded with unrelated steps"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "8-field completeness and agent choice",
+          "handoff-gated sequencing",
+          "write-target and review"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Plan a parallel dispatch for these six tasks and write it to dispatch-plan.md (no spawning, just the plan with the dispatch prompts): 1) add /v2/orders handler, 2) add /v2/refunds handler, 3) register both new routes in src/router/index.ts, 4) write the OpenAPI doc, 5) research rate-limit defaults for our gateway, 6) update the React orders page. Tasks 1, 2, 3 and 6 write code. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": null,
+      "why_discriminating": "The skill's parallel rules are specific: at most 4 concurrent subagents, disjoint file ownership for parallel write agents (the shared router file goes to one agent or is sequenced), an explicitly named worktree per write agent, and research routed to the research agent.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Six dispatch prompts carry all 8 fields with non-blank target agents",
+          "check": "python3 -c \"import re,sys;t=open('dispatch-plan.md').read();n=6;ok=all(len(re.findall(r'^\\W*'+re.escape(k)+r'\\W*:',t,re.M))>=n for k in ('TARGET AGE6T','TASK','EXPECTED OUTCOME','REQUIRED SKILLS','REQUIRED TOOLS','MUST DO','MUST 6OT DO','CO6TEXT'));ta=[l.split(':',1)[1].strip(' *\\x60') for l in t.splitlines() if re.match(r'^\\W*TARGET AGE6T\\W*:',l)];bad=[a for a in ta if not a or a.lower() in ('n/a','general-purpose','none','tbd')];sys.exit(0 if ok and not bad else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Shared-file conflict is resolved",
+          "pass": "src/router/index.ts owned by one agent (task 3, or folded into 1 or 2) and sequenced after the handlers, with file lists per write agent",
+          "partial": "Conflict noticed but ownership left ambiguous",
+          "fail": "Two parallel agents edit the router"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Concurrency and waves",
+          "pass": "No wave exceeds 4 concurrent subagents and the waves are explicit",
+          "partial": "Cap stated but a wave exceeds it",
+          "fail": "All six at once"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Write targets and routing",
+          "pass": "Each of tasks 1, 2, 3, 6 names its own worktree (or a deliberate shared tree for a sequential step); task 5 -> k-researcher; task 4 to an architect/developer with reason",
+          "partial": "Most named, one write agent without a target",
+          "fail": "No write targets"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Post-implementation review planned",
+          "pass": "A review step over the combined diff before reporting done",
+          "partial": "Review mentioned vaguely",
+          "fail": "None"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "router file ownership",
+          "4-concurrency waves",
+          "named worktrees and routing"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Fix .claude/workflows/review.js so its agent() calls follow our delegation rules for target agents. Edit the file in place and keep its behavior. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/delegation-protocol/",
+      "why_discriminating": "The skill's rule is not 'add agentType everywhere': calls needing tools must set agentType, while a pure-synthesis call over inlined data may omit it only with an inline comment directly above explaining why. It also says to resolve the name form from the session's agent list, which is unavailable here, so a strong answer states its assumption.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "File still parses and the two tool-using calls set agentType",
+          "check": "node --check .claude/workflows/review.js && python3 -c \"import sys;s=open('.claude/workflows/review.js').read();i=s.find('List every markdown');j=s.find('Read \\${f}');k=s.find('Here are the reviews');sys.exit(0 if 0<=i<j<k and 'agentType' in s[i:j] and 'agentType' in s[j:k] else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Each call is classified correctly",
+          "pass": "Listing (runs git) and per-file review (reads files) get explicit agentType; synthesis call either gets one or has a comment directly above explaining it is pure reasoning over inlined data",
+          "partial": "Correct but the synthesis exception lacks the comment or the comment is not adjacent",
+          "fail": "A tool-using call left without agentType"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Agent choice and naming",
+          "pass": "Plausible specialists (e.g. k-developer or k-researcher for git/file reads) in the Claude Code naming form, with the assumed form (plugin-namespaced vs bare) stated",
+          "partial": "Reasonable agents, no naming assumption",
+          "fail": "'general-purpose' or invented agent names"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Behaviour preserved",
+          "pass": "Prompts, loop and return value unchanged apart from the options/comments; no unrequested refactor (parallelising may be suggested, not applied)",
+          "partial": "Small unrequested change",
+          "fail": "Behaviour changed"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "correct per-call classification",
+          "naming assumption",
+          "behaviour preserved"
+        ]
+      }
+    }
+  ]
+}

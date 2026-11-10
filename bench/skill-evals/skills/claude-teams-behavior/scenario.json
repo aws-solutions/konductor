@@ -1,0 +1,177 @@
+{
+  "skill": "claude-teams-behavior",
+  "category": "RUNTIME-FEATURE",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "I'm the orchestrator running as konductor:konductor in Claude Code, and SendMessage is in my tool list (see session-notes.md for this session). I need k-researcher to find out why p99 latency regressed on /orders and k-developer to implement the cache fix at the same time; the researcher's findings may change what the developer should do. git-worktree-list.txt is the current worktree state. Write the exact tool calls you would make, in order, with full prompts, to dispatch-plan.md. Do not execute anything. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/claude-teams-behavior/",
+      "why_discriminating": "The skill prescribes background Agent() spawns with full plugin-prefixed names, a named write target for the developer (new wt-<id>) and none for the read-only researcher, hub-only SendMessage to relay findings, and waiting for notifications rather than polling. A model without it may use short names, fire-and-wait, or have the researcher message the developer.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Uses full plugin-prefixed names for both agents",
+          "check": "grep -q 'konductor:k-researcher' dispatch-plan.md && grep -q 'konductor:k-developer' dispatch-plan.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Parallel background spawn with correct names",
+          "pass": "Two Agent() calls with run_in_background: true in one step, subagent_type konductor:k-researcher and konductor:k-developer",
+          "partial": "Parallel but fire-and-wait, or one short name",
+          "fail": "Sequential, or short names throughout"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Worktree scoping in prompts",
+          "pass": "Developer prompt names a new worktree wt-<id> to create before touching files (orchestrator does not run git worktree add itself); researcher prompt names no write target",
+          "partial": "Developer told to use a worktree but not named, or researcher given one",
+          "fail": "No target named for the developer"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Hub-and-spoke relay",
+          "pass": "Orchestrator relays researcher findings to the developer with SendMessage(to: <developer id>) after the researcher's completion notification; no specialist-to-specialist messaging; no polling",
+          "partial": "Relay via SendMessage but also polling, or unclear who sends",
+          "fail": "Researcher told to message developer, or developer respawned with findings"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No invented tools or parameters",
+          "pass": "Only Agent(), SendMessage and read-only checks; no cwd parameter on Agent()",
+          "partial": "One invented parameter",
+          "fail": "Invents tools or mechanisms"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "correct concurrency pattern",
+          "safe write isolation",
+          "orchestrator stays the hub"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Orchestrator in Claude Code (konductor:konductor, SendMessage available). session-notes.md has this session's agents. The developer just returned ORD-88 but it looks like it missed an acceptance criterion. Separately, a new unrelated task came in: update docs/runbooks/dlq-replay.md for the new replay script. .wt-ledger.json and git-worktree-list.txt show worktree state. Write the exact calls you'd make for each to next-steps.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/claude-teams-behavior/",
+      "why_discriminating": "The skill says same-task follow-up goes to the existing agent via SendMessage (retains context) while independent work gets a fresh Agent() in parallel, and that git worktree list is ground truth over a stale ledger. A strong answer notices the missing null/missing-zip ZIP_REQUIRED case, messages a-7f3c, and does not reuse wt-27 (gone) for the runbook.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Follow-up uses SendMessage to the existing developer",
+          "check": "grep -q 'SendMessage' next-steps.md && grep -q 'a-7f3c' next-steps.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Identifies the actual gap",
+          "pass": "Names the missing null/missing zip -> 400 ZIP_REQUIRED test from the AC in session-notes.md",
+          "partial": "Says something was missed without naming it",
+          "fail": "Does not identify the gap"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Resume over respawn for ORD-88",
+          "pass": "SendMessage(to: 'a-7f3c', ...) with the specific missing case, continuing in wt-31",
+          "partial": "SendMessage but vague message",
+          "fail": "New Agent() for ORD-88"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "New independent task handled correctly",
+          "pass": "Fresh Agent() with konductor: prefix, not serialized behind ORD-88, prompt names a new worktree (not wt-27) or the shared tree on a named branch",
+          "partial": "New agent but target unnamed",
+          "fail": "Queued behind ORD-88 or sent to a-7f3c"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Ledger vs ground truth",
+          "pass": "States wt-27 is in the ledger but absent from git worktree list, so it is not reused",
+          "partial": "Checks worktree list but does not mention the ledger discrepancy",
+          "fail": "Reuses wt-27 from the ledger"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "spots the missed AC",
+          "right primitive per task",
+          "worktree state read correctly"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "As orchestrator I'm about to run a maker/checker pair on ORD-88: k-developer finishes the work in its worktree and k-reviewer reviews it. The developer suggested it SendMessage the reviewer directly when done, and that the reviewer work inside the same worktree so it can fix nits in place. Is that OK? Check git-worktree-list.txt and session-notes.md, then write your answer and the dispatch prompts you'd actually use to answer.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/claude-teams-behavior/",
+      "why_discriminating": "The skill forbids specialist-to-specialist messaging and forbids a maker/checker pair sharing a target: the checker gets its own separate read-only checkout. A strong answer rejects both suggestions with reasons and writes prompts naming the existing wt-31 at /work/worktrees/wt-31 for the developer.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Developer prompt names the existing worktree",
+          "check": "grep -q 'wt-31' answer.md && grep -q '/work/worktrees/wt-31' answer.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Rejects peer messaging",
+          "pass": "All coordination through the orchestrator; SendMessage only to agents the orchestrator spawned",
+          "partial": "Rejects it without reason",
+          "fail": "Accepts it"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Rejects sharing the worktree",
+          "pass": "Reviewer gets its own separate read-only checkout; never edits wt-31; nits come back through the orchestrator",
+          "partial": "Reviewer read-only but still in wt-31",
+          "fail": "Reviewer edits in wt-31"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Dispatch prompts are usable",
+          "pass": "Developer: 'Worktree wt-31 already exists at /work/worktrees/wt-31, cd in, do not create a new one' and re-check git worktree list; reviewer: read-only scope and what to review; sequencing via orchestrator",
+          "partial": "Prompts present but miss the existing-worktree wording or sequencing",
+          "fail": "No prompts"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Explains why",
+          "pass": "Gives the collision/portability rationale briefly",
+          "partial": "Rationale thin",
+          "fail": "No rationale"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "correct rejection",
+          "usable prompts",
+          "brief rationale"
+        ]
+      }
+    }
+  ]
+}

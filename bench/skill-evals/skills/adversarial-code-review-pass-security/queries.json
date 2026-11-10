@@ -1,0 +1,22 @@
+[
+{"query": "here's a diff for the new password reset endpoint (reset.patch). look at it only from a security angle: does it leak internal ids or stack traces, log tokens, use input before validating it?", "should_trigger": true},
+{"query": "Security pass on changes.diff please. Name file:line, the concrete attack, and a fix for each issue. Don't worry about style or data consistency, another reviewer covers those.", "should_trigger": true},
+{"query": "this PR adds pagination to /admin/users. the nextToken gets base64-decoded and dropped into the query. tell me what an attacker can do with that and anything else security-relevant in the diff", "should_trigger": true},
+{"query": "we're running a three-way parallel review (security, integrity, schema) on feature.patch. you're the security lane. produce candidate findings with severities; don't dedupe against the others", "should_trigger": true},
+{"query": "Check git diff main...HEAD for secrets, widened IAM grants, and new routes that skip our auth middleware in src/middleware/auth.ts", "should_trigger": true},
+{"query": "does anything in this diff log request bodies or Authorization headers at info/debug? also look for error handlers that send raw exception messages back. diff: api-logging.patch", "should_trigger": true},
+{"query": "Review the security of the changes in pr-981.diff. Test fixtures have fake account ids in them, those are fine - but flag real issues even if they're in test files.", "should_trigger": true},
+{"query": "I'm adding a new /export route in src/routes/export.ts plus an IAM policy change in infra/policy.json. Security-only review of the diff before I request approval.", "should_trigger": true},
+{"query": "look at the diff in webhook.patch strictly through a security lens: injection, authz, disclosure, credentials. candidate findings only, a validator will filter them later", "should_trigger": true},
+{"query": "Is there anything in this patch that surfaces table names, partition keys or internal error codes to the API caller? Also hardcoded keys. File: billing-api.patch", "should_trigger": true},
+{"query": "review changes.diff for data integrity: multi-item writes without a transaction, unconditional puts on contested rows", "should_trigger": false},
+{"query": "check the schema changes in api.patch for backward compatibility - removed fields, new required params, enum changes", "should_trigger": false},
+{"query": "validate these 14 candidate review findings against the diff and keep only ones whose flagged code actually appears in it", "should_trigger": false},
+{"query": "write a threat model for the password reset feature design with STRIDE categories", "should_trigger": false},
+{"query": "our scanner reported CVE-2023-26136 in tough-cookie. make a remediation plan with verification steps and rollback", "should_trigger": false},
+{"query": "generate security test cases for the /export endpoint: authz bypass, injection, oversized payloads", "should_trigger": false},
+{"query": "write a least-privilege IAM policy for a lambda that reads one dynamodb table and writes to one s3 prefix", "should_trigger": false},
+{"query": "do a full general code review of my PR - correctness, readability, tests, the works", "should_trigger": false},
+{"query": "set up gitleaks in our CI so commits with secrets get blocked", "should_trigger": false},
+{"query": "review my CDK stack in infra/ for prod security: public buckets, encryption, open security groups", "should_trigger": false}
+]

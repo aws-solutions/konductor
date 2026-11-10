@@ -1,0 +1,22 @@
+[
+{"query": "what's the current max message size for SQS and is there an official way to go past it? need sources I can paste into the design doc, with links", "should_trigger": true},
+{"query": "We're on pydantic 1.10 and thinking of moving to v2. Dig up what actually breaks (validators, Config class, orm_mode) from the official migration guide and github issues, and cite everything with URLs", "should_trigger": true},
+{"query": "Is there a known issue with aws-sdk-js-v3 @aws-sdk/client-s3 3.4xx leaking sockets under high concurrency? I keep seeing EMFILE. search the github issues and docs and tell me what versions are affected", "should_trigger": true},
+{"query": "research best practices for idempotency keys in payment APIs - look at what Stripe, Adyen and the IETF draft say, and flag where they disagree", "should_trigger": true},
+{"query": "can you find out whether Lambda SnapStart supports Python 3.12 now, and since when? I read a medium post saying yes but I don't trust it", "should_trigger": true},
+{"query": "compare Temporal vs AWS Step Functions vs Inngest for long-running workflows using their official docs. need pricing model, max execution duration, and versioning story, with links and dates for each claim", "should_trigger": true},
+{"query": "look up the OpenTelemetry semantic conventions for HTTP spans, are http.method and http.status_code still the right attribute names or were they renamed? which spec version", "should_trigger": true},
+{"query": "Before we adopt it, research the htmx project: maintenance status, release cadence, open security advisories, and whether 2.x broke anything from 1.x. Primary sources preferred.", "should_trigger": true},
+{"query": "what are the DynamoDB transaction limits right now (items per txn, total size)? I remember 25 items but someone said it's 100. find the authoritative answer", "should_trigger": true},
+{"query": "gather current guidance on running Postgres 16 logical replication across major versions, from the postgres docs and any well-voted SO answers, note which versions each source applies to", "should_trigger": true},
+{"query": "search our internal wiki and Slack for how the payments team handled the SQS 256KB limit last year", "should_trigger": false},
+{"query": "grep through this repo and find every place we call the S3 client without a timeout configured", "should_trigger": false},
+{"query": "implement an idempotency-key middleware for our Express app in src/middleware/idempotency.ts, store keys in Redis with a 24h TTL", "should_trigger": false},
+{"query": "summarize the PDF at docs/vendor/temporal-security-whitepaper.pdf into a one-page brief", "should_trigger": false},
+{"query": "pull the latest from our private GitHub Enterprise repo acme/platform-core and tell me what changed in the last week", "should_trigger": false},
+{"query": "Explain how a B-tree index works in Postgres in simple terms, I'm prepping a lunch and learn", "should_trigger": false},
+{"query": "upgrade this project from pydantic 1.10 to 2.x and fix whatever breaks in models/*.py, run the tests after", "should_trigger": false},
+{"query": "my Lambda keeps timing out after 3 seconds when calling RDS, here are the CloudWatch logs. what's wrong?", "should_trigger": false},
+{"query": "write a blog post for our engineering blog about why we chose Temporal, about 1200 words, friendly tone", "should_trigger": false},
+{"query": "check my AWS account and list which Lambda functions are still on python3.8", "should_trigger": false}
+]

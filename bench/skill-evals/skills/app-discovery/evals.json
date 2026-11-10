@@ -1,0 +1,64 @@
+{
+  "skill_name": "app-discovery",
+  "evals": [
+    {
+      "id": 0,
+      "name": "discover-orders-portal",
+      "scenario_prompt_id": "p1",
+      "prompt": "The static build of our Orders Portal is in ./site and QA test credentials are in ./creds.json. Serve it locally (for example `python3 -m http.server 8765 --directory site`) and discover the whole app starting at http://localhost:8765/index.html. The report is the input for automated test generation next sprint, so it needs every page, every interactive element, and every form's validation rules. Use browser automation if it is available; otherwise inspect the pages with curl and the HTML source. Write the result to discovery-report.md and stop the server when you are done. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "A discovery report in the skill's template: header with URL, Pages discovered: 3, UI framework: cloudscape, Limit reached; per-page element tables with selector, label, type, initial state, interaction pattern, duplicate DOM; forms inspected; failed paths lists reports.html; no password.",
+      "files": [
+        "fixtures/app-discovery/"
+      ],
+      "expectations": [
+        "Report exists and never contains the creds.json password",
+        "UI framework recorded as Cloudscape",
+        "Crawl results: the broken and off-domain links: reports.html listed under failed paths as missing/404, and example.org/help noted as off-domain and not crawled",
+        "Element capture on orders.html, including the shared Delete selector: Both Delete buttons captured and flagged as duplicate DOM (same aria-label selector), with exact text and click pattern",
+        "Form validation captured from the DOM, per the KEY: order-id required + pattern [A-Z]{3}-[0-9]{4} + maxlength 8 + exact error text on submit; qty 1-500; notify-email shown only when notify-toggle is checked and validated on blur",
+        "Follows the skill's report structure and login flow: Header has URL, pages discovered (3), UI framework, limit reached; per-page element tables carry selector, label, type, initial state (settings-save disabled), interaction pattern, duplicate DOM; in-page login handled without waiting on a redirect",
+        "No secrets or invented content: No password anywhere, no pages/elements/rules that the HTML does not contain, assumptions stated"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Report exists and never contains the creds.json password",
+          "check": "test -f discovery-report.md && ! grep -q 'Tr0ub4dor-Fixture-77' discovery-report.md"
+        },
+        {
+          "text": "UI framework recorded as Cloudscape",
+          "check": "grep -iE 'ui[ _-]?framework' discovery-report.md | grep -qi cloudscape"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "review-draft-report-severity",
+      "scenario_prompt_id": "p3",
+      "prompt": "A teammate ran discovery against our Orders Portal last night and wrote drafts/discovery-report.md; the site it was run against is in ./site. Before we feed the report into test generation, check it against the actual site. Write review.md listing what is wrong or missing, most severe first, and write a corrected report to discovery-report.md at the project root. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "The skill's quality gate ranks a printed password, an unset ui_framework and an uninspected form as CRITICAL and duplicate_dom/cutoff gaps as IMPORTANT. Without it, a reviewer has no house severity tiers and tends to miss the ordering.",
+      "files": [
+        "fixtures/app-discovery-p3/"
+      ],
+      "expectations": [
+        "Both outputs exist",
+        "Corrected report does not contain the password",
+        "Catches the gate-level defects (see app-discovery-p3.KEY.md): Flags all of: password printed, UI framework unknown (is Cloudscape), new-order form not inspected, example.org/help crawled off-domain",
+        "Catches the second-tier defects: Flags at least three of: Delete duplicate DOM should be yes, reports.html missing from failed paths, settings form conditional notify-email + blur validation missed, waitForURL wrong for the in-page login",
+        "Severity ordering matches the skill's gate: Password, missing framework, and uninspected form appear as the top severity; duplicate DOM below them",
+        "Corrected report is usable: 3 pages, Cloudscape, Delete duplicate flagged, order-form rules with exact error text, failed paths lists reports.html, no off-domain page, no password",
+        "No false positives and no secret echo: Does not flag the correct items (settings-save disabled, two-step timezone, Limit reached: no) and does not repeat the password value in review.md",
+        "Uses the skill's severity tiers: review.md labels the password leak, unknown UI framework and uninspected new-order form as CRITICAL (or the top tier) and the unflagged duplicate Delete selector as IMPORTANT (a lower tier than those three)"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Both outputs exist",
+          "check": "test -f review.md && test -f discovery-report.md"
+        },
+        {
+          "text": "Corrected report does not contain the password",
+          "check": "test -f discovery-report.md && ! grep -q 'Tr0ub4dor-Fixture-77' discovery-report.md"
+        }
+      ]
+    }
+  ]
+}

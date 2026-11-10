@@ -1,0 +1,200 @@
+{
+  "skill": "dynamodb-design",
+  "category": "WATCH",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Design the DynamoDB data model for a new multi-tenant task tracker. Access patterns: get task by taskId; list tasks in a project sorted by due date; list a user's assigned tasks filtered by status; and an admin 'list all tasks' screen in the UI, newest first, paginated. Traffic: about 500 writes/s, 5,000 reads/s, items about 2 KB, about 50M tasks after year one, tenants range from 5 to 5,000 users. Write the full design to dynamodb-design.md, including table schema, index strategy, access pattern mapping, capacity and cost estimates, monitoring, and CDK TypeScript for the table. I've given you everything I know; don't ask questions, state assumptions instead.",
+      "fixture": null,
+      "why_discriminating": "The skill has a specific 'list all items' playbook (GSI with constant or type key below about 1,000 writes/s, per-status iteration above), treats Scan in user-facing paths and low-cardinality status keys as red flags, and requires GSI throttling alarms and labeled estimates. Without it, models often Scan the admin screen or key a GSI on status alone.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Design names keys and at least one GSI",
+          "check": "grep -qE '\\bPK\\b|[Pp]artition [Kk]ey' dynamodb-design.md && grep -qE 'GSI' dynamodb-design.md"
+        },
+        {
+          "id": "f2",
+          "text": "Has an access-pattern table mapping to Query/GetItem",
+          "check": "grep -qiE 'access pattern' dynamodb-design.md && grep -qE '^\\|.*(Query|GetItem)' dynamodb-design.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Admin list-all is served without Scan, using the skill's trade-off",
+          "pass": "Query on a GSI (constant/type key justified at ~500 writes/s, or sharded) with pagination and newest-first sort key; hot-partition threshold discussed",
+          "partial": "GSI used but no write-rate reasoning",
+          "fail": "Scan for the UI screen"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Keys respect cardinality and tenancy",
+          "pass": "Tenant in the key path for isolation, assignee+status served by a composite key (e.g. assigneeId with STATUS#dueDate sort key), status never a standalone partition key",
+          "partial": "Mostly sound but one low-cardinality key or tenancy ignored",
+          "fail": "Status or date as a partition key"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Capacity math and CDK are correct",
+          "pass": "2 KB writes = 2 WCU each (about 1,000 WCU base plus GSI write amplification), reads costed at 4 KB RCU units, numbers labeled estimates; CDK sets billing mode, PITR, encryption, GSIs",
+          "partial": "Small math slip or a missing CDK setting",
+          "fail": "Wrong unit math or no usable CDK"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Covers the skill's required sections including monitoring",
+          "pass": "Schema, index strategy with projections, access-pattern mapping, design decisions, capacity, and alarms that include per-GSI throttling",
+          "partial": "Most sections; no GSI alarms",
+          "fail": "Large gaps"
+        },
+        {
+          "id": "r5",
+          "dimension": "process",
+          "criterion": "Proceeds from the given facts instead of stalling on the skill's interview",
+          "pass": "Produces the full design, records assumptions explicitly, asks nothing",
+          "partial": "Produces a design but leaves major sections as 'TBD pending answers'",
+          "fail": "Mostly questions, little design"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would this design survive production traffic?",
+          "Is the admin list handled without Scan?",
+          "Are the numbers and CDK usable?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "IoT telemetry store on DynamoDB: 20,000 devices each write a reading every 10 seconds; readings are about 400 bytes. Queries: last 24 hours of readings for one device; all devices at a site currently in alert state; raw readings older than 30 days are no longer needed. A teammate proposed partition key = reading timestamp (ISO date-hour) so we can query by time. Evaluate that proposal and produce the design in iot-design.md with keys, indexes, TTL, capacity estimate, and a CloudFormation YAML snippet. Don't ask questions.",
+      "fixture": null,
+      "why_discriminating": "The skill's design smells list timestamp partition keys and its quality gate makes hot partitions and missing TTL CRITICAL. The strong answer quantifies why the proposal fails and models current alert state separately from readings so a sparse index works; a generic answer often just says 'use deviceId'.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Mentions hot partitions",
+          "check": "grep -qiE 'hot partition' iot-design.md"
+        },
+        {
+          "id": "f2",
+          "text": "CloudFormation table declared",
+          "check": "grep -q 'AWS::DynamoDB::Table' iot-design.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Rejects the timestamp key with a quantitative reason",
+          "pass": "About 2,000 writes/s all landing on the current hour's partition, above the ~1,000 WCU per-partition limit",
+          "partial": "Rejects it qualitatively",
+          "fail": "Accepts it"
+        },
+        {
+          "id": "r2",
+          "dimension": "recommendation",
+          "criterion": "Sound key design and TTL",
+          "pass": "deviceId partition key, timestamp sort key, TTL attribute in epoch seconds for 30 days, noting TTL deletion is not immediate",
+          "partial": "Keys right, TTL detail missing",
+          "fail": "Wrong keys or no TTL"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Alert query modeled correctly",
+          "pass": "A per-device current-state item (or alert record) with a sparse GSI keyed by site, populated only while in alert, not a Scan or a GSI over every reading",
+          "partial": "Sparse GSI over readings",
+          "fail": "Scan or FilterExpression"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Capacity and template are correct and labeled",
+          "pass": "About 2,000 WCU (400 B = 1 WCU) labeled an estimate; YAML has KeySchema, AttributeDefinitions, TTL, SSE, PITR, GSI",
+          "partial": "Minor gaps",
+          "fail": "Wrong math or broken YAML"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Does it explain why the teammate's idea fails?",
+          "Can the alert query be served cheaply?",
+          "Is the template deployable?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "docs/access-patterns.md has the approved data requirements for our booking service. Produce the DynamoDB design straight from that document (no interview, I won't answer questions) and write it to booking-design.md: table schema, index strategy with projections, access-pattern mapping for all six patterns, TTL/backup choices, capacity estimates, and a monitoring/alarms list.",
+      "fixture": "fixtures/dynamodb-design/",
+      "why_discriminating": "The document's peaks (1,200 writes/s) cross the skill's ~1,000 writes/s threshold for a constant list-all key, the sweeper needs a sparse index rather than Scan, and the skill requires projection choices and GSI throttling alarms. Generic designs usually use a single constant key or a status GSI and skip projections.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "All six access patterns appear in a mapping table",
+          "check": "python3 -c \"import re,sys;t=open('booking-design.md').read();sys.exit(0 if all(re.search(r'(?m)^\\|\\s*\\**(AP)?%d\\b'%i,t) for i in range(1,7)) else 1)\""
+        },
+        {
+          "id": "f2",
+          "text": "Neither the sweeper nor admin list-all rows use Scan",
+          "check": "python3 -c \"import re,sys;rows=[l for l in open('booking-design.md') if l.startswith('|') and re.search(r'(?i)pending|sweep|list all|admin',l)];sys.exit(0 if rows and not any(re.search(r'\\bScan\\b',r) and not re.search(r'(?i)not|avoid|instead',r) for r in rows) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "AP5 key accounts for the 1,200 writes/s peak",
+          "pass": "Sharded list key or per-status iteration, with the skill's ~1,000 writes/s reasoning",
+          "partial": "Constant key with the risk acknowledged but unmitigated",
+          "fail": "Constant key with no discussion, or Scan"
+        },
+        {
+          "id": "r2",
+          "dimension": "recommendation",
+          "criterion": "AP4 sweeper served by a sparse or composite index",
+          "pass": "Sparse GSI holding only PENDING_PAYMENT items keyed by createdAt (or status+time with sharding), and TTL for 24-hour expiry as the backstop",
+          "partial": "Works but not sparse",
+          "fail": "Scan or status-only GSI with no thought"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Constraints handled",
+          "pass": "TTL for unpaid pending bookings, PITR for accidental deletes, status not a high-traffic partition key, 1.5 KB = 2 WCU",
+          "partial": "One constraint missed",
+          "fail": "Two or more missed"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Skill-required detail present",
+          "pass": "GSI projection types with reasons, estimates labeled, alarms including per-GSI throttling",
+          "partial": "Projections or alarms missing",
+          "fail": "Both missing"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Does the design handle ticket-drop peaks?",
+          "Are the sweeper and admin list efficient?",
+          "Is it production-ready (TTL, PITR, alarms)?"
+        ]
+      }
+    }
+  ]
+}

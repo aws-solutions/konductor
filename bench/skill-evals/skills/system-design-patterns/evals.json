@@ -1,0 +1,60 @@
+{
+ "skill_name": "system-design-patterns",
+ "evals": [
+  {
+   "id": 0,
+   "name": "iot-telemetry-no-questions-deliverables",
+   "scenario_prompt_id": "p1",
+   "prompt": "We are building a new AWS solution that customers deploy into their own accounts with CDK. It ingests telemetry from about 20,000 industrial sensors (one message every 10 seconds each), detects anomalies, and alerts operators within 30 seconds at p99. Customers need SOC 2 controls. The team knows TypeScript and prefers serverless. Produce the design deliverables as markdown files in design/. Do not ask me questions; make reasonable assumptions and record anything unresolved.",
+   "expected_output": "The skill produces four linked artifacts (system design document, threat model input, architecture diagram description, design review handoff) and its interviewer stance challenges assumptions and demands customer-account IAM, failure modes, and cost per unit. Without it, a model usually writes one design doc with adjective NFRs and no threat model input or handoff.",
+   "files": [],
+   "expectations": [
+    "At least three separate design artifacts",
+    "Threat model input names trust boundaries",
+    "Delivers the skill's four artifacts with their key sections: System design (components each with purpose, scaling, cost factors, failure modes; open questions; next steps), threat model input (trust boundaries, assets, threats with mitigations, IAM review points), diagram description (layout, numbered data flow), and design review handoff (agenda, key decisions, risks)",
+    "Works from the numbers and challenges the serverless default: Derives about 2,000 messages/s (~173M/day), picks an ingestion path that fits (e.g. IoT Core or Kinesis rather than API Gateway per message), and budgets the 30 s p99 across ingest, detection and alerting",
+    "Customer-deployed and SOC 2 concerns are concrete: Lists the IAM permissions the CDK app needs in the customer account with least privilege, encryption and audit logging (CloudTrail, log retention) tied to SOC 2, and an update/rollback strategy for customer deployments",
+    "NFRs and cost are specific: NFRs as numbers (throughput, p99, availability, retention) plus a cost driver list and an estimate per month or per sensor, ideally at 10x",
+    "Assumptions are labelled: Assumptions (message size, retention, alert channels) stated as assumptions or open questions, not presented as requirements",
+    "Skips the interview as asked and works from the given requirements: states each assumption it makes and lists what the requirements leave undecided under an Open Questions section, without asking the user anything."
+   ],
+   "scripted_checks": [
+    {
+     "text": "At least three separate design artifacts",
+     "check": "[ $(ls design/*.md 2>/dev/null | wc -l) -ge 3 ]"
+    },
+    {
+     "text": "Threat model input names trust boundaries",
+     "check": "grep -rqi 'trust boundar' design/"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "name": "order-enrichment-ops-targets-no-questions",
+   "scenario_prompt_id": "p3o",
+   "prompt": "Design a CDK solution that customers deploy into their own AWS accounts. It reads order events from the customer's existing EventBridge bus (50 events/s on average, 500/s at peak), enriches each event with a lookup in a DynamoDB product table, and writes a daily Parquet report to S3. The customer's operations team has asked for clear monitoring and recovery targets. Write the system design document to design.md. Do not ask me questions; make reasonable assumptions and record anything unresolved.",
+   "expected_output": "The round-2 template adds observability targets (metrics, log retention, trace sampling) to the NFR section and keeps RTO/RPO in one place under Availability, with Disaster Recovery covering backup and restore. A run without it tends to give adjective NFRs or state RTO/RPO twice with different values.",
+   "files": [],
+   "expectations": [
+    "design.md has a Non-Functional Requirements section",
+    "design.md names a trace sampling rate and a log retention period",
+    "The Non-Functional Requirements state observability targets as numbers: named metrics or alarms with thresholds, a log retention period, and a trace sampling rate",
+    "RTO and RPO are given as numbers in one place (the availability requirements), and the disaster recovery section describes backup and restore without restating different RTO/RPO values",
+    "Availability is a percentage target, and performance gives latency or throughput figures tied to the 50 events/s average and 500 events/s peak",
+    "Components list failure modes, and each stateful component (the DynamoDB product table, any report or checkpoint state) says where its state lives and what happens when it is lost",
+    "Deployer permissions for the customer account are listed separately from each component's runtime role, scoped to resources"
+   ],
+   "scripted_checks": [
+    {
+     "text": "design.md has a Non-Functional Requirements section",
+     "check": "test -s design.md && grep -qiE '^#+ .*non-functional' design.md"
+    },
+    {
+     "text": "design.md names a trace sampling rate and a log retention period",
+     "check": "grep -qiE 'sampl' design.md && grep -qiE 'retention' design.md"
+    }
+   ]
+  }
+ ]
+}

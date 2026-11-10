@@ -1,0 +1,190 @@
+{
+  "skill": "policy-validation",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "These IAM, KMS, bucket and CloudTrail configs in policies/ go to production Friday for the orders service. Validate them and write security-validation-report.md for the security lead. Do not modify anything in policies/. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/policy-validation/",
+      "why_discriminating": "The skill fixes the severity calls (its quality gate makes missing ExternalId, kms:* to a non-admin principal and public bucket access CRITICAL), validates only concrete documents, distinguishes standard patterns from gaps, and scores IAM, encryption, audit logging and compliance into a weighted posture score. Without it, models mis-rank or flag the standard AccountRoot key statement.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Report exists and policies/ is unchanged",
+          "check": "test -f security-validation-report.md && cat policies/cloudtrail.json policies/kms-key-config.json policies/kms-key-policy.json policies/lambda-role-policy.json policies/reports-bucket-policy.json policies/vendor-trust-policy.json | sha256sum | grep -q c5e6f9596db497edc40b7b4219e6572fbda7983d810d0c4192c9f7e1ecf15b94"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "All planted defects found with impact (KEY: s3:* on *; vendor trust without sts:ExternalId; kms:* to orders-app; public read on reports bucket and no aws:SecureTransport; CloudTrail single-region, no global events, no log file validation, no KMS, 30-day retention; key rotation off)",
+          "pass": "All six policy files have their defects named with a concrete attack or audit impact",
+          "partial": "Four or five files covered",
+          "fail": "Three or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Severities follow the skill's quality gate",
+          "pass": "s3:* on *, missing ExternalId, kms:* to orders-app and the public bucket are all CRITICAL; rotation and trail gaps High/Medium",
+          "partial": "One of the four gate items under-rated",
+          "fail": "Two or more gate items rated below CRITICAL, or everything CRITICAL"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "The AccountRoot key statement is not flagged as a vulnerability",
+          "pass": "Recognised as the standard key-admin delegation to IAM (may suggest a separate admin role as an improvement)",
+          "partial": "Flagged as a medium/low concern without explanation",
+          "fail": "Flagged CRITICAL alongside AppRoleUse"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Scoring per the skill",
+          "pass": "IAM, encryption, audit logging and compliance scores out of 100 with the deductions visible, and an overall posture score using the 0.30/0.25/0.25/0.20 weights",
+          "partial": "Scores present but no visible derivation or different weights",
+          "fail": "No scores"
+        },
+        {
+          "id": "r5",
+          "dimension": "recommendation",
+          "criterion": "Remediation is concrete",
+          "pass": "Each CRITICAL shows current vs corrected policy JSON (e.g. s3:PutObject/GetObject on arn:aws:s3:::acme-orders-uploads/*, sts:ExternalId condition, kms:Encrypt/Decrypt/GenerateDataKey* for orders-app, Deny without aws:SecureTransport)",
+          "partial": "Fixes described in prose without JSON or with one wrong fix",
+          "fail": "No actionable fixes"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "severity calibration against the gate",
+          "false positive on AccountRoot",
+          "concrete corrected JSON"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Fix the problems in policies/. Write corrected copies with the same file names to policies-fixed/ and keep policies/ as is. Keep the functionality each policy grants: the Lambda uploads to and reads from s3://acme-orders-uploads, the vendor in account 444455556666 reads reports, the app encrypts and decrypts with the key. Add FIXES.md explaining each change. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/policy-validation/",
+      "why_discriminating": "The skill's least-privilege rules and quality gate tell the fixer exactly what must change, but the prompt also requires keeping access. Strong fixes tighten without breaking: scoped S3 actions, ExternalId, a non-admin KMS action list while keeping the root statement, TLS-only bucket access for the vendor rather than deleting access.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Lambda policy has no wildcard action/resource and vendor trust requires sts:ExternalId",
+          "check": "python3 -c \"import json,sys;d=json.load(open('policies-fixed/lambda-role-policy.json'));L=lambda v:v if isinstance(v,list) else [v];bad=[s for s in d['Statement'] if s.get('Effect')=='Allow' and (any(a=='*' or a.endswith(':*') for a in L(s.get('Action',[]))) or '*' in L(s.get('Resource',[])))];t=json.dumps(json.load(open('policies-fixed/vendor-trust-policy.json')));sys.exit(1 if bad or 'sts:ExternalId' not in t else 0)\""
+        },
+        {
+          "id": "f2",
+          "text": "policies/ is unchanged",
+          "check": "cat policies/cloudtrail.json policies/kms-key-config.json policies/kms-key-policy.json policies/lambda-role-policy.json policies/reports-bucket-policy.json policies/vendor-trust-policy.json | sha256sum | grep -q c5e6f9596db497edc40b7b4219e6572fbda7983d810d0c4192c9f7e1ecf15b94"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "reasoning",
+          "criterion": "Functionality is preserved",
+          "pass": "Lambda keeps s3:PutObject and s3:GetObject on acme-orders-uploads/* and its DynamoDB read; vendor can still assume the role; orders-app keeps encrypt/decrypt/data-key actions; AccountRoot kept so the key stays manageable",
+          "partial": "One required grant dropped or over-narrowed (e.g. missing GetObject)",
+          "fail": "Key left unmanageable (root statement removed) or the vendor/app loses access"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Every gate item and config gap is fixed",
+          "pass": "Public Allow removed and replaced with a scoped vendor-role principal, SecureTransport Deny added, CloudTrail multi-region + global events + log file validation + KMS + >= 90-day retention, rotation enabled",
+          "partial": "Most fixed, one or two config gaps left",
+          "fail": "Several left as is"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "No new over-permissive or invented elements",
+          "pass": "No new wildcards; placeholders such as the ExternalId value or vendor role ARN are labelled as assumptions in FIXES.md",
+          "partial": "One unexplained new grant or an assumed ARN presented as fact",
+          "fail": "Introduces new wildcards or broad principals"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "FIXES.md maps each change to a finding and severity",
+          "pass": "One entry per change with before/after and the CRITICAL/High label",
+          "partial": "Changes listed without severity or rationale",
+          "fail": "No FIXES.md or one-line summary"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "least privilege without breaking access",
+          "completeness of the trail and bucket fixes",
+          "clear, labelled assumptions"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Last week's review is reports/security-v1.md. Nobody has changed policies/ since. Re-validate and write security-validation-v2.md for the security lead, showing how things moved since v1. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/policy-validation/",
+      "why_discriminating": "The skill's iteration tracking (resolved / remaining / new, posture trend vs the prior score) plus its quality gate means v1's High-rated ExternalId finding should be upgraded to CRITICAL, v1's missed issues reported as new, and the permission-boundary item treated carefully because there is no concrete document behind it.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "The v2 report exists and references v1's 41/100",
+          "check": "test -f security-validation-v2.md && grep -q '41' security-validation-v2.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Iteration structure per the skill",
+          "pass": "Resolved, remaining and new sections, plus previous 41/100 vs current score and a trend line",
+          "partial": "Two of the three groupings or no trend",
+          "fail": "A fresh report with no comparison to v1"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Remaining vs new are classified correctly",
+          "pass": "C1, C2, C3 and H1 remain (nothing changed); new: kms:* to orders-app, rotation off, no SecureTransport, single-region trail, no global events, no KMS on trail, 30-day retention",
+          "partial": "Mostly right but one v1 issue marked resolved or two new items missing",
+          "fail": "Claims progress that did not happen"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Severity recalibration and v1's H2 are reasoned",
+          "pass": "H1 upgraded to CRITICAL with the quality-gate reason; H2 (permission boundary) marked not applicable or withdrawn because no concrete boundary requirement or delegated admin exists",
+          "partial": "One of the two handled",
+          "fail": "Both copied from v1 unchanged without comment"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Does not repeat v1 wholesale or pad",
+          "pass": "Text is new analysis; score change explained by the new findings, not a different scale",
+          "partial": "Some copied passages",
+          "fail": "Mostly v1 restated"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "accuracy of resolved/remaining/new",
+          "recalibrated severities",
+          "honest trend"
+        ]
+      }
+    }
+  ]
+}

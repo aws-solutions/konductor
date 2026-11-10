@@ -1,0 +1,177 @@
+{
+  "skill": "decision-writing",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Reviewers bounced docs/adr/0007-auth.md (Cognito replacing our home-grown auth). Rewrite it in place so it survives the next review, using the real numbers in notes.md. The decision itself (Cognito) stays. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/decision-writing/",
+      "why_discriminating": "The skill's specific bar (one-sentence active decision with a reason, steelmanned alternatives, Good/Bad/Neutral consequences with baselines, Status, no vague quantifiers, AWS claims sourced or flagged) turns the notes into a record that holds up. Without it, models tend to keep a straw-man tone toward Auth0 and drop Neutral consequences and baselines.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "The ADR still exists, names Cognito, and has a Status line",
+          "check": "test -f docs/adr/0007-auth.md && grep -qi cognito docs/adr/0007-auth.md && grep -qiE 'status' docs/adr/0007-auth.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Straw-man alternatives are replaced with fair ones from notes.md",
+          "pass": "Auth0 gets its real strengths (rules engine, hosted login, SOC 2 Type II) and is rejected on cost ($12,600 vs ~$8,250/month); home-grown gets zero license cost and team familiarity (4 of 6) and is rejected on SLA misses and incidents",
+          "partial": "Strengths listed for one alternative but not the other, or rejection reasons not evidence-based",
+          "fail": "Auth0 still framed as insecure or home-grown as a 'terrible idea'"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Decision and consequences follow the skill's format",
+          "pass": "One active-voice sentence 'We will use Cognito because ...' citing p99 310 ms vs 1,450 ms against the 500 ms SLA; consequences split Good/Bad/Neutral with specifics (2 of 6 know Cognito, ~3 week dual-write, runbook/dashboard changes)",
+          "partial": "Decision sentence present but without a concrete reason, or Neutral consequences missing",
+          "fail": "Decision still passive or buried; consequences still 'will significantly improve performance'"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Context states the problem with data and why now",
+          "pass": "Context cites 1,450 ms p99 over 30 days vs 500 ms SLA, 3 Q2 2025 incidents and 12 dependent teams, with no judgement about the winner",
+          "partial": "Some data, but vague words remain ('often slow') or context argues for Cognito",
+          "fail": "Context is still 'recently many teams have concerns'"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No invented numbers or links; AWS claims are sourced to notes.md or flagged for validation",
+          "pass": "Every number appears in notes.md; Cognito cost/performance claims are attributed to the staging test/notes or marked to verify; no fabricated URLs",
+          "partial": "One unsourced number or a placeholder link presented as real",
+          "fail": "Several invented figures, benchmarks or links"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "fairness to Auth0 and the home-grown option",
+          "whether the decision sentence carries a measured reason",
+          "absence of invented facts"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Write the decision record for using gRPC instead of REST for internal service-to-service calls and save it as docs/decisions/0002-internal-rpc.md. Facts: 9 internal services; p99 latency for the order->inventory call dropped from 38 ms (REST/JSON) to 12 ms (gRPC) in a 7-day staging trial (dashboard 'rpc-latency'); 4 of 9 teams already use protobuf; browser clients still need REST through the existing API gateway; we also considered Thrift and keeping REST with HTTP/2 + keep-alive (that got p99 to 27 ms). Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": null,
+      "why_discriminating": "The skill demands fair alternatives (REST+HTTP/2 is a genuine contender at 27 ms), baselines with measurement windows, Neutral consequences, and no invented evidence. Thrift has no data in the prompt, so a strong record describes it fairly without fabricating numbers; a weaker one invents a benchmark or dismisses it.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "The record exists and states the decision with 'We will'",
+          "check": "test -f docs/decisions/0002-internal-rpc.md && grep -qiE 'we will' docs/decisions/0002-internal-rpc.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "reasoning",
+          "criterion": "REST with HTTP/2 is treated as a real alternative",
+          "pass": "States its real strengths (no new IDL/tooling, 27 ms is already a 29% cut from 38 ms, browser path unchanged) and rejects it on the measured 27 ms vs 12 ms gap",
+          "partial": "Mentioned with the 27 ms number but no strengths",
+          "fail": "Dismissed as obviously inferior or omitted"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Format per the skill: Status, one-sentence decision with reason, alternatives table with a why-not-chosen column, Good/Bad/Neutral consequences",
+          "pass": "All present; consequences specific (5 of 9 teams adopt protobuf; gateway keeps REST for browsers; CI codegen step as Neutral)",
+          "partial": "Most present but consequences generic or Neutral missing",
+          "fail": "Free-form essay without the structure"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "No fabricated evidence",
+          "pass": "Thrift described without invented benchmarks (or marked untested); 'rpc-latency' cited by name, no made-up URL; baseline and 7-day window stated",
+          "partial": "One invented figure or URL",
+          "fail": "Multiple invented numbers, studies or links"
+        },
+        {
+          "id": "r4",
+          "dimension": "issue",
+          "criterion": "The browser/REST coexistence constraint is carried into consequences",
+          "pass": "Explains that the API gateway keeps REST for browsers, so two protocols are supported and someone owns the translation layer",
+          "partial": "Mentions browsers need REST without consequences",
+          "fail": "Ignores the constraint"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "fair treatment of REST+HTTP/2 and Thrift",
+          "no invented data",
+          "specific, measurable consequences"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "We're replacing the hamburger menu in our iOS/Android app with a bottom tab bar (Home, Orders, Search, Account). Write the UX decision record to docs/decisions/ux-0003-nav.md. Usability study: 14 participants; 11 found 'order history' faster with the tab bar (median 6 s vs 14 s). Designs are in the Figma file 'Nav v3'. Our PM wants it to say the change will 'significantly boost engagement'. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": null,
+      "why_discriminating": "The UXDR guidance asks for research cited with participant counts, mockup references, accessibility (WCAG) and cross-platform implications, and the plain-writing rules reject unsupported vague quantifiers. A strong answer converts the PM's claim into a measurable target or marks it unmeasured instead of repeating it.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "The record exists and cites the study size",
+          "check": "test -f docs/decisions/ux-0003-nav.md && grep -q 14 docs/decisions/ux-0003-nav.md && grep -q 11 docs/decisions/ux-0003-nav.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "restraint",
+          "criterion": "The PM's 'significantly boost engagement' claim is handled honestly",
+          "pass": "Replaced with a measurable target and baseline to track (e.g. weekly Orders-tab visits) or explicitly marked as not yet measured",
+          "partial": "Softened but still an unsupported claim",
+          "fail": "Repeated as stated, or backed with invented numbers"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "UXDR-specific content per the skill",
+          "pass": "Cites 11 of 14 and the 6 s vs 14 s medians, references 'Nav v3', addresses accessibility with a WCAG reference (labels, touch target size, contrast) and iOS vs Android/tablet/landscape behaviour",
+          "partial": "Two or three of these present",
+          "fail": "Generic ADR with no accessibility or platform discussion"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Alternatives are viable and consequences specific",
+          "pass": "At least one real alternative (keep hamburger, hybrid) with strengths; consequences cover the 4-tab limit and where other menu items go, analytics event changes, Android back-navigation norms",
+          "partial": "Alternatives present but thin, or consequences generic ('better UX')",
+          "fail": "No alternatives or only straw men"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "One-sentence active decision and a Status",
+          "pass": "'We will replace ... with a bottom tab bar because ...' plus Status",
+          "partial": "Decision present but without a reason or Status",
+          "fail": "Decision not stated in one sentence"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "handling of the unsupported engagement claim",
+          "accessibility and cross-platform coverage",
+          "specificity of consequences"
+        ]
+      }
+    }
+  ]
+}

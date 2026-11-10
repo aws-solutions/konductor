@@ -1,0 +1,7 @@
+service,configuration,monthly_usd
+AWS Lambda,30M invocations/mo at 512MB 300ms avg,78.00
+Amazon API Gateway (REST),30M requests/mo,105.00
+Amazon DynamoDB (on-demand),60M writes 120M reads 200GB storage,125.00
+Amazon S3 Standard,4 TB stored,94.00
+Amazon CloudFront,first 1 TB free tier,0.00
+TOTAL,,402.00

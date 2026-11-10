@@ -1,0 +1,54 @@
+{
+ "skill_name": "progress-tracking",
+ "evals": [
+  {
+   "id": 0,
+   "name": "final-mode-alerts-traceability",
+   "scenario_prompt_id": "p3",
+   "prompt": "The alerts feature is marked done in every tasks file. QA wants to start Thursday. Before handoff, verify the code under src/ against .kiro/specs/alerts/design.md and requirements.md and build a requirement-to-code traceability matrix. Write final-alerts.md with a clear go/no-go. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+   "expected_output": "final-alerts.md with a per-acceptance-criterion traceability matrix (requirement -> design -> task -> code), the missing notifier.py flagged as a critical implementation gap despite task 3 being [x], requirement 2.3 flagged as both a planning and implementation gap, and a no-go for QA. The new version moves final-mode Stages 6-8 into references/final-mode.md and cues it at the Stage 5 decision.",
+   "files": [
+    "fixtures/progress-tracking/"
+   ],
+   "expectations": [
+    "Report names the missing notifier.py",
+    "States src/alerts/notifier.py does not exist although the Notifier task is checked [x], and that AlertService only calls an injected notifier, so requirement 2.2 (email the owner) is not implemented",
+    "Flags requirement 2.3 (duplicate suppression) as both a planning gap (no task covers it) and an implementation gap (no code in service.py)",
+    "Has a traceability matrix with one row per acceptance criterion (1.1, 1.2, 2.1, 2.2, 2.3), each with design component, task, code file:element and a Complete/Partial/Missing status",
+    "Gives a clear no-go for QA and names the two specific fixes needed: implement the Notifier, and add a task plus code for 2.3",
+    "Classifies a completed task with no code as a CRITICAL implementation gap (severity stated), rather than trusting the checkboxes"
+   ],
+   "scripted_checks": [
+    {
+     "text": "Report names the missing notifier.py",
+     "check": "test -f final-alerts.md && grep -q 'notifier.py' final-alerts.md"
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "name": "progress-mode-sprint-history",
+   "scenario_prompt_id": "p2",
+   "prompt": "Sprint check-in for the leads: how far along are we? Track implementation progress across all features in .kiro/specs/ (the plan is .kiro/specs/feature-implementation/tasks.md), call out anything blocked and who needs to act, and estimate what is left. Write progress.md, and keep a saved history so we can compare next week. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+   "expected_output": "progress.md with per-feature checkbox percentages (alerts 100%, exports 0%, search 50% with [X] flagged), the Exports/Search mutual dependency as a critical blocker, a remaining-effort range with confidence, no invented owners or trend, and a history JSON saved under .kiro/specs/validation-history/.",
+   "files": [
+    "fixtures/progress-tracking/"
+   ],
+   "expectations": [
+    "History saved as JSON under .kiro/specs/validation-history/",
+    "Per-feature numbers are right: Alerts 4/4 (100%), Exports 0/3 (0%), Search 2/4 (50%) with the `- [X]` task called out as an invalid checkbox (75% acceptable only if it explains counting it)",
+    "Exports and Search are shown as blocked by their mutual (circular) dependency, flagged critical, with a recommendation to break the cycle",
+    "Notes that alerts is 100% of tasks yet requirement 2.3 has no task covering it",
+    "Uses [\u2588\u2588\u2588\u2588\u2591\u2591]-style progress bars, keeps spec status separate from implementation status, and gives the remaining effort as a range with a confidence level",
+    "The saved history JSON includes a timestamp, overall percentage, per-feature summary and a blocker count",
+    "Does not invent owners, dates or a velocity trend; states that no owners exist in the specs and says what is needed"
+   ],
+   "scripted_checks": [
+    {
+     "text": "History saved as JSON under .kiro/specs/validation-history/",
+     "check": "ls .kiro/specs/validation-history/*.json >/dev/null 2>&1 && python3 -c \"import json,glob;[json.load(open(f)) for f in glob.glob('.kiro/specs/validation-history/*.json')]\""
+    }
+   ]
+  }
+ ]
+}

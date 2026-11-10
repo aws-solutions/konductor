@@ -1,0 +1,216 @@
+{
+ "skill": "backend-development",
+ "category": "MODEL-CAPABILITY",
+ "source": "konductor",
+ "kind": "code",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "Code review comment on src/handlers/updateTaskStatus.js: \"This handler talks to db directly and skips the facade/service/repository layers.\" Fix that. Existing clients depend on the current 200 and 404 responses. Run npm test before you finish and summarize the change for the reviewer in your final message. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/backend-development/",
+   "why_discriminating": "The skill enforces handler -> facade -> factory-built service -> repository, surgical edits that match existing patterns (getTask.js), and an output that lists what else is affected; routing through the service newly enforces transition rules, so InvalidTransitionError must map to a 4xx instead of falling into a 500, which an unguided fix often misses.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "npm test passes",
+     "check": "npm test >/dev/null 2>&1"
+    },
+    {
+     "id": "f2",
+     "text": "Unrelated files (db.js, getTask.js, errors.js, log.js) are byte-identical",
+     "check": "printf '%s\\n' '13205eed85faa366d9804fe6fa01dd96  src/db.js' 'a9fc976ec5054666976494b3f9b7d0e0  src/handlers/getTask.js' '496af8ce0185a9dc20a1c281615e79d3  src/errors.js' '8f6e1526ec8102a4324178adc7146535  src/log.js' | md5sum -c --quiet"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Handler stops requiring ../db and calls taskFacade.changeStatus; no business logic left in the handler",
+     "pass": "Handler uses only the facade, mirroring getTask.js",
+     "partial": "Uses the facade but keeps a direct db call or duplicated transition logic",
+     "fail": "Still talks to db, or goes straight to the repo/service"
+    },
+    {
+     "id": "r2",
+     "dimension": "reasoning",
+     "criterion": "Handles the behavior change: NotFoundError -> 404 kept; InvalidTransitionError (now enforced by the service) mapped to a specific 4xx (400/409/422), not a 500 or catch-all",
+     "pass": "Both errors caught specifically and mapped; unknown errors rethrown",
+     "partial": "NotFound handled but invalid transition falls to 500 or a catch-all",
+     "fail": "Catch-all that maps every error to one status, or 404 broken"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Surgical: only the handler (and tests) change; existing correlationId structured logging is kept; tests added or updated for the new invalid-transition path",
+     "pass": "Change confined to handler plus tests, logging kept, new path tested",
+     "partial": "Confined change but no test for the new path, or logging dropped",
+     "fail": "Unrelated files refactored or tests deleted"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "No unrequested refactors, new abstractions, or `any`-style escape hatches",
+     "pass": "Nothing beyond the requested fix",
+     "partial": "One small unrequested tweak",
+     "fail": "New layers, renamed modules, or broad rewrites"
+    },
+    {
+     "id": "r5",
+     "dimension": "process",
+     "criterion": "Final message follows the skill's output format: file path, issue with line numbers, the exact change, how to verify, and what else might be affected",
+     "pass": "All five parts present and accurate",
+     "partial": "Three or four parts",
+     "fail": "Two or fewer, or a claim that does not match the diff"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is the layering fixed the way the codebase already does it?",
+     "Is the new invalid-transition behavior handled and tested?",
+     "Is the change surgical and is the reviewer summary complete?"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "Bug report: two people moved the same task at the same moment (one to DONE, one to OPEN) and both requests returned 200; the task ended up OPEN with no error. Look at TaskService.changeStatus and the repository, fix the race, make sure callers can tell a lost race apart from other failures, and add a test. npm test must pass. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/backend-development/",
+   "why_discriminating": "The skill calls for conditional writes against the read state, specific error types rather than generic Error, catching the specific condition failure instead of a catch-all, and shared fixture factories in tests; a competent fix without it often uses a generic Error, a broad try/catch, or a retry loop, and writes inline test data.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "npm test passes",
+     "check": "npm test >/dev/null 2>&1"
+    },
+    {
+     "id": "f2",
+     "text": "Unrelated files unchanged",
+     "check": "printf '%s\\n' '13205eed85faa366d9804fe6fa01dd96  src/db.js' 'a9fc976ec5054666976494b3f9b7d0e0  src/handlers/getTask.js' '496af8ce0185a9dc20a1c281615e79d3  src/errors.js' '8f6e1526ec8102a4324178adc7146535  src/log.js' | md5sum -c --quiet"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Write is conditional on the status that was read (db condition { attr: \"status\", equals: <read status> }) through the repository",
+     "pass": "Repository save takes the expected status and passes the db condition",
+     "partial": "Condition added but on the wrong attribute, or done outside the repository",
+     "fail": "No conditional write (locks, retries, or read-again checks only)"
+    },
+    {
+     "id": "r2",
+     "dimension": "reasoning",
+     "criterion": "ConditionalCheckFailedError is caught specifically and translated to a dedicated conflict error class; other errors propagate unchanged",
+     "pass": "Specific catch and a named conflict error (e.g. ConcurrentUpdateError)",
+     "partial": "Specific error but generic class (plain Error with message)",
+     "fail": "Catch-all that swallows or rewraps every error"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Test reproduces the lost race (stale read then write) and asserts the conflict error type, using makeTask from test/fixtures.js",
+     "pass": "Race test with error-type assertion using the fixture factory",
+     "partial": "Race test present but inline task data or weak assertion",
+     "fail": "No test for the conflict path"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Minimal change: no retry framework, versioning scheme, or handler rewrites beyond what is needed",
+     "pass": "Only service, repository, errors and tests touched",
+     "partial": "One extra optional change (e.g. handler 409 mapping) clearly explained",
+     "fail": "Broad redesign or unrelated edits"
+    },
+    {
+     "id": "r5",
+     "dimension": "process",
+     "criterion": "Final message follows the skill's output format: file path, issue with line numbers, the exact change, how to verify, and what else might be affected",
+     "pass": "All five parts present and accurate",
+     "partial": "Three or four parts",
+     "fail": "Two or fewer, or a claim that does not match the diff"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Does it use a conditional write on the read status rather than a workaround?",
+     "Can callers distinguish the conflict via a specific error type?",
+     "Is the race actually tested with the shared fixtures?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "Our p99 latency for task creation doubled after last month's repository refactor and the db bill went up. Look at the create path (handler down to repository), fix what is causing the extra cost, and add a test that would catch this regression next time. Keep npm test green. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/backend-development/",
+   "why_discriminating": "The skill says to use the return value of write operations instead of re-reading and to assert behavior with shared fixtures; the prompt does not name the cause, so the with-skill answer should go straight to taskRepo.create's put-then-get and assert a single db call via db.calls, while an unguided answer may add caching or broader changes.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "npm test passes",
+     "check": "npm test >/dev/null 2>&1"
+    },
+    {
+     "id": "f2",
+     "text": "create() no longer calls db.get",
+     "check": "python3 -c 'import re,sys;t=open(\"src/repositories/taskRepo.js\").read();m=re.search(r\"async create\\(.*?\\n  \\},\",t,re.S);sys.exit(0 if m and \"db.get\" not in m.group(0) else 1)'"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Identifies the root cause: taskRepo.create does db.put then a redundant db.get although put returns the written item",
+     "pass": "Names the put-then-get in taskRepo.create as the cause",
+     "partial": "Finds it but also blames unrelated code without evidence",
+     "fail": "Misses it or fixes something else"
+    },
+    {
+     "id": "r2",
+     "dimension": "recommendation",
+     "criterion": "Fix returns the db.put result and keeps the { exists: false } condition",
+     "pass": "Returns put result and condition intact",
+     "partial": "Returns put result but drops or changes the condition",
+     "fail": "Adds caching or other workaround instead"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Regression test asserts exactly one db call (db.calls) for create, built with makeTask",
+     "pass": "db.calls-based single-call assertion using makeTask",
+     "partial": "Call-count test with inline data, or asserts only return value",
+     "fail": "No regression test"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "No caching layer, batching, or unrelated refactors; claims about latency are not invented",
+     "pass": "Only taskRepo.js and tests change; no made-up numbers",
+     "partial": "Small unrelated tweak",
+     "fail": "Adds new infrastructure or invents measurements"
+    },
+    {
+     "id": "r5",
+     "dimension": "process",
+     "criterion": "Final message follows the skill's output format: file path, issue with line numbers, the exact change, how to verify, and what else might be affected",
+     "pass": "All five parts present and accurate",
+     "partial": "Three or four parts",
+     "fail": "Two or fewer, or a claim that does not match the diff"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Did it find the redundant read from the symptom alone?",
+     "Is the regression test a real guard (call count) built with the shared fixtures?",
+     "Did it avoid over-engineering the fix?"
+    ]
+   }
+  }
+ ]
+}

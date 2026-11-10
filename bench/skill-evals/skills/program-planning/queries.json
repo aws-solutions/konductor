@@ -1,0 +1,22 @@
+[
+{"query": "we're kicking off the data platform migration in january - 4 teams, target GA by end of june. build me a program plan: milestones with exit criteria, dependencies between teams, and the critical path", "should_trigger": true},
+{"query": "Our launch slipped 3 weeks because the identity team is late. Replan the program from docs/program/checkout-v2.md: new milestone dates, what's on the critical path now, and where we have float.", "should_trigger": true},
+{"query": "i'm the TPM for the mobile app rewrite. workstreams: api (L), ios (XL), android (XL), design system (M), QA (M). turn that into a timeline with buffers and a gantt-ish view", "should_trigger": true},
+{"query": "Can you map dependencies for the EU region expansion? Networking, IAM, data residency review (external legal vendor), and the three service teams. I need finish-to-start vs start-to-start, lag, and risk if each slips.", "should_trigger": true},
+{"query": "leadership wants to know if Sept 30 is realistic for the billing re-platform. here are the work items and sizes in plan/items.csv. figure out minimum duration via critical path and tell me if the date holds", "should_trigger": true},
+{"query": "Draft the program plan for the SOC2 readiness effort: summary, milestone table with owners, resource allocation by team with utilization, top schedule risks.", "should_trigger": true},
+{"query": "need milestones for the search relevance program that are actually measurable. current ones are like 'improve ranking' lol. 3 quarters, 2 teams", "should_trigger": true},
+{"query": "Help me sequence the warehouse management system rollout across 5 sites. Site 1 is the pilot, others depend on pilot sign-off. Account for the December freeze and on-call weeks.", "should_trigger": true},
+{"query": "I have a list of 14 deliverables with t-shirt sizes and who owns them. Convert to calendar estimates with appropriate buffer for the novel stuff and lay out a program timeline.", "should_trigger": true},
+{"query": "two engineers are each on three workstreams in our q3 plan and i think they're overbooked. rebuild the plan with resource allocation that stays under 100% and show what moves", "should_trigger": true},
+{"query": "plan our next two-week sprint: 6 tickets in backlog.md, team capacity 10 points each, size each ticket with story points", "should_trigger": false},
+{"query": "write this week's status report for the checkout v2 program: green/yellow/red per workstream, key accomplishments, blockers, asks", "should_trigger": false},
+{"query": "build a RAID log for the EU expansion program - risks, assumptions, issues, dependencies with owners and mitigations", "should_trigger": false},
+{"query": "split the billing re-platform HLD and user stories into independent feature tracks for 4 engineers with minimal overlap", "should_trigger": false},
+{"query": "write a decision doc for leadership: should we delay the mobile rewrite launch by a month or cut the offline mode feature? include options and recommendation", "should_trigger": false},
+{"query": "estimate the monthly AWS cost of the data platform after migration: 20TB S3, Glue jobs nightly, Redshift serverless", "should_trigger": false},
+{"query": "how much faster could my team deliver this 40-story-point backlog if we used AI coding agents? give an adjusted estimate", "should_trigger": false},
+{"query": "generate tasks.md for the export feature from .kiro/specs/export/requirements.md and design.md", "should_trigger": false},
+{"query": "make a burndown chart in python from sprint_data.csv (day, remaining_points)", "should_trigger": false},
+{"query": "check progress on the feature implementation: which tasks in .kiro/specs/*/tasks.md are done, in progress, or blocked", "should_trigger": false}
+]

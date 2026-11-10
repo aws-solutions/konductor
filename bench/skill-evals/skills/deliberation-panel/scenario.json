@@ -1,0 +1,260 @@
+{
+ "skill": "deliberation-panel",
+ "category": "MODEL-CAPABILITY",
+ "source": "konductor",
+ "kind": "process",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "We have to pick the datastore for our new ledger service: Aurora PostgreSQL, DynamoDB, or keeping our self-managed Cassandra cluster. The ledger records money movements between customer accounts, auditors need point-in-time balance reports, and the choice will stick for 5+ years with a team of 6 engineers (two of whom run the Cassandra cluster today). Set up a structured multi-perspective deliberation on this decision. I have NOT yet agreed to spend extra time or subagent calls on it. Write whatever you produce to deliberation.md. Do not ask me questions in chat; put anything you need from me at the end of the file.",
+   "fixture": null,
+   "why_discriminating": "The skill's consent gate says to run only Phase 0 (axis derivation) and stop with a cost estimate until consent is given. A competent model without the skill usually runs the whole analysis and recommends a datastore, or uses a generic security/cost/performance roster instead of axes derived from this decision.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "deliberation.md exists",
+     "check": "test -s deliberation.md"
+    },
+    {
+     "id": "f2",
+     "text": "No confidence-rated final recommendation yet",
+     "check": "test -f deliberation.md && ! grep -qiE 'confidence[*: ]*\\**(high|medium|low)\\b' deliberation.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Stops at the consent gate after axis derivation",
+     "pass": "Derives axes, gives the cost estimate, and explicitly waits for consent; no per-axis advocacy, cross-examination, or recommendation",
+     "partial": "Stops before a recommendation but already drafts per-axis arguments or option scoring",
+     "fail": "Runs the full deliberation or recommends a datastore"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "Axes are specific to this ledger decision, 3 to 6 of them, each with a one-sentence definition",
+     "pass": "3-6 axes clearly derived from the facts given (e.g. transactional/double-entry correctness, audit point-in-time reporting, operational burden on a 6-person team running Cassandra, 5-year lock-in/migration cost)",
+     "partial": "Right count but half are generic (cost, performance, security) or lack definitions",
+     "fail": "Fewer than 3 or more than 6, or a fixed generic roster"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Cost disclosure is concrete and tied to the derived axis count",
+     "pass": "States roughly 2-3 minutes and several subagent calls scaling with the N axes derived, and how to opt in",
+     "partial": "Mentions cost vaguely without time or call counts",
+     "fail": "No cost disclosure"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Does not leak a lean or verdict while waiting for consent",
+     "pass": "Neutral: no 'Aurora is likely best' style hints",
+     "partial": "One soft lean in passing",
+     "fail": "States or argues a preferred option"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Did it respect that consent was not given?",
+     "Are the axes about this decision rather than a generic checklist?",
+     "Is the cost of going further stated clearly?"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "Decision for checkout (about 1,200 orders/minute at peak, payments plus inventory reservation, team of 9 SREs, current RTO target 1 hour): go single-region active-passive, multi-region active-active, or a cell-based single-region design? I explicitly consent to the full deliberation (time and subagent calls are fine, consent_confirmed=true). Run it end to end. Put the working (derived axes, per-axis arguments, cross-examination) in panel-notes.md and the final result in scorecard.md. Don't ask questions.",
+   "fixture": null,
+   "why_discriminating": "The skill fixes a specific structure: decision-derived axes, independent per-axis advocacy, anonymized cross-examination with one weakness and one corroboration per argument, and an arbiter scorecard whose confidence is a proportion of axes converging. Without it, a model writes a pros/cons essay with an unanchored confidence claim.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "scorecard.md has a per-axis table with a Recommends column",
+     "check": "grep -qiE '^\\|.*axis.*\\|.*recommend' scorecard.md"
+    },
+    {
+     "id": "f2",
+     "text": "Confidence is given as HIGH/MEDIUM/LOW with an axes-converged count",
+     "check": "grep -qE 'Confidence[^A-Za-z]*(HIGH|MEDIUM|LOW)' scorecard.md && grep -qiE '[0-9]+ (of|/) ?[0-9]+ axes' scorecard.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "All phases are visible and follow the skill's shape",
+     "pass": "panel-notes.md shows 3-6 derived axes, one argument per axis (recommended option, strongest reason, what would change it), and cross-examination of anonymized 'Argument A/B...' each with one weakness and one corroboration",
+     "partial": "Phases present but cross-examination is not anonymized or lacks the weakness/corroboration pair",
+     "fail": "No real per-axis or cross-examination work; a single combined analysis"
+    },
+    {
+     "id": "r2",
+     "dimension": "reasoning",
+     "criterion": "Confidence level matches the proportional rule and the rebuttals",
+     "pass": "Level matches the share of axes converging (>=75% HIGH, 50-74% MEDIUM, <50% LOW) and is downgraded if an unresolved rebuttal stands",
+     "partial": "Level roughly right but the share or rebuttal handling is not shown",
+     "fail": "Level contradicts the table or is a headcount/gut call"
+    },
+    {
+     "id": "r3",
+     "dimension": "issue",
+     "criterion": "Axes come from this checkout decision",
+     "pass": "Axes reflect given facts, e.g. blast radius, RTO/RPO versus the 1-hour target, payment/inventory consistency across regions, operational load on 9 SREs, cost",
+     "partial": "Mix of specific and generic axes",
+     "fail": "Generic roster unrelated to the facts"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Scorecard closes with unresolved rebuttals and a concrete 'what would change this recommendation' fact",
+     "pass": "Both present, and the deciding fact is specific (e.g. a stricter RTO/RPO requirement or a cross-region consistency need)",
+     "partial": "Present but generic",
+     "fail": "Missing"
+    },
+    {
+     "id": "r5",
+     "dimension": "restraint",
+     "criterion": "The arbiter only aggregates what the axes and cross-examination produced",
+     "pass": "No new arguments appear first in the scorecard",
+     "partial": "One new point introduced at synthesis",
+     "fail": "Scorecard rests on reasoning that never appeared in the per-axis work"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is the recommendation traceable to independent per-axis arguments?",
+     "Is the confidence level earned by the convergence shown?",
+     "Would the user know what fact would flip the decision?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "I'm leaning hard toward adopting Kafka (MSK) as our event backbone instead of our current SNS+SQS fan-out (about 40 producer services, 3,000 events/s peak, a 4-person platform team, and consumers that mostly need at-least-once delivery). Before I commit, stress-test that leading option: run the deliberation in adversarial stance, where each dimension argues why Kafka fails on it. I consent to the cost, go ahead. Write everything (axes, per-axis arguments, cross-examination, final scorecard) to kafka-panel.md. No questions.",
+   "fixture": null,
+   "why_discriminating": "Adversarial stance in this skill means every axis-advocate argues the leading option's failure on its axis without balancing, then anonymized cross-examination and a proportional confidence score. Without the skill, models drift into a balanced pros/cons review that ends up endorsing Kafka.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Stance recorded as adversarial",
+     "check": "grep -qiE 'stance[^a-z]*adversarial' kafka-panel.md"
+    },
+    {
+     "id": "f2",
+     "text": "Cross-examination uses anonymized argument labels",
+     "check": "grep -qE 'Argument [A-F]' kafka-panel.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Each axis argues against Kafka on that axis, without softening",
+     "pass": "Every per-axis argument makes the strongest case that Kafka fails on its axis (e.g. ops burden on 4 people, partition/consumer-group complexity, cost at 3,000 events/s, at-least-once already met by SQS)",
+     "partial": "Most axes argue against Kafka but some hedge into balance",
+     "fail": "Balanced or pro-Kafka analysis"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "Axes are derived from this migration, 3 to 6",
+     "pass": "Axes tie to given facts (team size, throughput, delivery semantics, producer migration effort)",
+     "partial": "Partly generic",
+     "fail": "Generic roster or wrong count"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Cross-examination and scorecard follow the skill",
+     "pass": "Anonymized arguments, one weakness and one corroboration each, then a scorecard with per-axis table, proportional confidence, unresolved rebuttals, and what-would-change",
+     "partial": "Scorecard present but cross-examination thin or not anonymized",
+     "fail": "No cross-examination or no scorecard"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Outcome is useful to someone about to commit",
+     "pass": "Clear verdict on whether Kafka survives the stress test, with the specific condition under which it would",
+     "partial": "Verdict but vague condition",
+     "fail": "No usable verdict"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Did the panel genuinely attack the leading option?",
+     "Is the structure (anonymized cross-exam, proportional confidence) followed?",
+     "Does the user learn what would make Kafka the right call?"
+    ]
+   }
+  },
+  {
+   "id": "p1x",
+   "prompt": "Use the deliberation-panel skill for this task. We have to pick the datastore for our new ledger service: Aurora PostgreSQL, DynamoDB, or keeping our self-managed Cassandra cluster. The ledger records money movements between customer accounts, auditors need point-in-time balance reports, and the choice will stick for 5+ years with a team of 6 engineers (two of whom run the Cassandra cluster today). Set up a structured multi-perspective deliberation on this decision. I have NOT yet agreed to spend extra time or subagent calls on it. Write whatever you produce to deliberation.md. Do not ask me questions in chat; put anything you need from me at the end of the file.",
+   "fixture": null,
+   "why_discriminating": "The skill's consent gate says to run only Phase 0 (axis derivation) and stop with a cost estimate until consent is given. A competent model without the skill usually runs the whole analysis and recommends a datastore, or uses a generic security/cost/performance roster instead of axes derived from this decision.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "deliberation.md exists",
+     "check": "test -s deliberation.md"
+    },
+    {
+     "id": "f2",
+     "text": "No confidence-rated final recommendation yet",
+     "check": "test -f deliberation.md && ! grep -qiE 'confidence[*: ]*\\**(high|medium|low)\\b' deliberation.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Stops at the consent gate after axis derivation",
+     "pass": "Derives axes, gives the cost estimate, and explicitly waits for consent; no per-axis advocacy, cross-examination, or recommendation",
+     "partial": "Stops before a recommendation but already drafts per-axis arguments or option scoring",
+     "fail": "Runs the full deliberation or recommends a datastore"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "Axes are specific to this ledger decision, 3 to 6 of them, each with a one-sentence definition",
+     "pass": "3-6 axes clearly derived from the facts given (e.g. transactional/double-entry correctness, audit point-in-time reporting, operational burden on a 6-person team running Cassandra, 5-year lock-in/migration cost)",
+     "partial": "Right count but half are generic (cost, performance, security) or lack definitions",
+     "fail": "Fewer than 3 or more than 6, or a fixed generic roster"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Cost disclosure is concrete and tied to the derived axis count",
+     "pass": "States roughly 2-3 minutes and several subagent calls scaling with the N axes derived, and how to opt in",
+     "partial": "Mentions cost vaguely without time or call counts",
+     "fail": "No cost disclosure"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Does not leak a lean or verdict while waiting for consent",
+     "pass": "Neutral: no 'Aurora is likely best' style hints",
+     "partial": "One soft lean in passing",
+     "fail": "States or argues a preferred option"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Did it respect that consent was not given?",
+     "Are the axes about this decision rather than a generic checklist?",
+     "Is the cost of going further stated clearly?"
+    ]
+   }
+  }
+ ]
+}

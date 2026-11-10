@@ -1,0 +1,74 @@
+{
+  "skill_name": "claude-teams-behavior",
+  "evals": [
+    {
+      "id": 0,
+      "name": "parallel-research-dev-dispatch",
+      "scenario_prompt_id": "p1",
+      "prompt": "I'm the orchestrator running as konductor:konductor in Claude Code, and SendMessage is in my tool list (see session-notes.md for this session). I need k-researcher to find out why p99 latency regressed on /orders and k-developer to implement the cache fix at the same time; the researcher's findings may change what the developer should do. git-worktree-list.txt is the current worktree state. Write the exact tool calls you would make, in order, with full prompts, to dispatch-plan.md. Do not execute anything. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "The skill prescribes background Agent() spawns with full plugin-prefixed names, a named write target for the developer (new wt-<id>) and none for the read-only researcher, hub-only SendMessage to relay findings, and waiting for notifications rather than polling. A model without it may use short names, fire-and-wait, or have the researcher message the developer.",
+      "files": [
+        "fixtures/claude-teams-behavior/"
+      ],
+      "expectations": [
+        "Uses full plugin-prefixed names for both agents",
+        "Parallel background spawn with correct names: Two Agent() calls with run_in_background: true in one step, subagent_type konductor:k-researcher and konductor:k-developer",
+        "Worktree scoping in prompts: Developer prompt names a new worktree wt-<id> to create before touching files (orchestrator does not run git worktree add itself); researcher prompt names no write target",
+        "Hub-and-spoke relay: Orchestrator relays researcher findings to the developer with SendMessage(to: <developer id>) after the researcher's completion notification; no specialist-to-specialist messaging; no polling",
+        "No invented tools or parameters: Only Agent(), SendMessage and read-only checks; no cwd parameter on Agent()"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Uses full plugin-prefixed names for both agents",
+          "check": "grep -q 'konductor:k-researcher' dispatch-plan.md && grep -q 'konductor:k-developer' dispatch-plan.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "maker-checker-peer-msg-shared-tree",
+      "scenario_prompt_id": "p3",
+      "prompt": "As orchestrator I'm about to run a maker/checker pair on ORD-88: k-developer finishes the work in its worktree and k-reviewer reviews it. The developer suggested it SendMessage the reviewer directly when done, and that the reviewer work inside the same worktree so it can fix nits in place. Is that OK? Check git-worktree-list.txt and session-notes.md, then write your answer and the dispatch prompts you'd actually use to answer.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "The skill forbids specialist-to-specialist messaging and forbids a maker/checker pair sharing a target: the checker gets its own separate read-only checkout. A strong answer rejects both suggestions with reasons and writes prompts naming the existing wt-31 at /work/worktrees/wt-31 for the developer.",
+      "files": [
+        "fixtures/claude-teams-behavior/"
+      ],
+      "expectations": [
+        "Developer prompt names the existing worktree",
+        "Rejects peer messaging: All coordination through the orchestrator; SendMessage only to agents the orchestrator spawned",
+        "Rejects sharing the worktree: Reviewer gets its own separate read-only checkout; never edits wt-31; nits come back through the orchestrator",
+        "Dispatch prompts are usable: Developer: 'Worktree wt-31 already exists at /work/worktrees/wt-31, cd in, do not create a new one' and re-check git worktree list; reviewer: read-only scope and what to review; sequencing via orchestrator",
+        "Explains why: Gives the collision/portability rationale briefly"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Developer prompt names the existing worktree",
+          "check": "grep -q 'wt-31' answer.md && grep -q '/work/worktrees/wt-31' answer.md"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "direct-work-mode-own-edit-plus-dispatch",
+      "scenario_prompt_id": "p4",
+      "prompt": "I'm the orchestrator running as konductor:konductor in Claude Code. session-notes.md has this session's orchestration mode and the user's request; git-worktree-list.txt and .wt-ledger.json are the current worktree state. Write plan.md with what you will do yourself (exact commands) and the exact Agent() call, with its full prompt, that you would make for k-developer. Do not execute anything. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "The round-2 skill says that under k-direct-work.md konductor reads, writes and runs commands itself and commits when asked, while a write handed to an agent still gets a named target the agent creates. A strong plan fixes and commits the typo directly, reads the ledger and git worktree list, treats the stale wt-40 entry as stale, and spawns konductor:k-developer in the background with a new wt-<id> to create. The old skill restricts the orchestrator to read-only Bash, which pushes toward dispatching the typo fix too.",
+      "files": [
+        "fixtures/claude-teams-behavior-p4/"
+      ],
+      "expectations": [
+        "Uses the full plugin-prefixed developer name",
+        "Own work under k-direct-work.md: The orchestrator fixes the 'recieve' typo in docs/orders.md and commits it itself, with exact commands, instead of dispatching an agent for it",
+        "Named write target for the developer: The k-developer prompt names a new dedicated worktree wt-<id> on branch wt-<id> for the agent to create, not the primary checkout /work/shop-api; the orchestrator does not run git worktree add for that work itself",
+        "Ground truth over the ledger: The plan checks .wt-ledger.json and git worktree list before dispatch, treats wt-40 as stale because git worktree list does not show it, and does not hand wt-40 to the developer",
+        "Background spawn without invented parameters: Agent() uses subagent_type konductor:k-developer with run_in_background: true, no cwd parameter, and the plan waits for the completion notification rather than polling"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Uses the full plugin-prefixed developer name",
+          "check": "grep -q 'konductor:k-developer' plan.md"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{ "name": "taskboard-web", "private": true, "scripts": { "dev": "vite" }, "dependencies": { "react": "^18.3.1" } }

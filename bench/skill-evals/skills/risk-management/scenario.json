@@ -1,0 +1,195 @@
+{
+  "skill": "risk-management",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "program-notes.md has the kickoff notes for our data center exit program. Build the initial RAID log in raid-log.md, ready for the first program review on Monday. The program lead will use it to decide what to escalate and how often to review each item. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "fixture": "fixtures/risk-management/",
+      "why_discriminating": "The skill defines the RAID types, a probability (>70/30-70/<30%) by impact (>2w/1-2w/<1w slip) scale with a fixed score mapping, the four mitigation strategies with owner and trigger, contingencies for dependencies, a heat map, Top 5, cadence by score and the TPM -> Program Lead -> Director -> VP escalation path. Without it, a model often logs the blocked perf environment as a risk, lists assumptions without a validation plan, and scores ad hoc.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "RAID table has ID, Type, Probability, Impact, Score, Mitigation, Owner, Due Date and Status columns",
+          "check": "for c in ID Type Probability Impact Score Mitigation Owner Due Status; do grep -iE '^\\|' raid-log.md | head -3 | grep -qi \"$c\" || exit 1; done"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Correct RAID typing of the notes (KEY)",
+          "pass": "Perf test environment logged as an Issue with owner and due date; contractors and legacy batch API as Assumptions; SAML vendor and egress proxy as Dependencies (with risk scoring); index rebuild window as a Risk",
+          "partial": "One item mistyped",
+          "fail": "Perf environment logged as a risk, or two or more items mistyped"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Scoring follows the skill's scale and mapping",
+          "pass": "Every R and D has probability and impact using the skill's definitions, and Score matches the mapping (HxH Critical, HxM/MxH High, HxL/LxH/MxM Medium, else Low); SAML vendor (slipped twice, no lease extension) scored Critical or High with stated reasoning",
+          "partial": "Scores present but one mapping error",
+          "fail": "Missing scores or several mapping errors"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Mitigations and contingencies are actionable",
+          "pass": "Each High/Critical item uses Avoid/Mitigate/Transfer/Accept with an owner and a trigger; each dependency has a contingency (e.g. SAML fallback such as cutting Payments last or interim IdP path; egress proxy fallback); each assumption has a dated validation step",
+          "partial": "Strategies present but triggers or contingencies missing for some",
+          "fail": "Mitigations like 'monitor' with no owner or trigger"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Skill's companion outputs",
+          "pass": "3x3 heat map with IDs plotted, Top 5 summary with status, review cadence by score (Critical weekly ... Low quarterly), escalation criteria and path",
+          "partial": "Two or three of the four",
+          "fail": "One or none"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Grounded in the notes",
+          "pass": "No invented teams, dates or facts beyond labeled assumptions; owners drawn from Priya/Marco/Lin",
+          "partial": "A few unlabeled invented details",
+          "fail": "Invented risks presented as facts from the notes"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "issue vs risk vs assumption typing",
+          "consistent scoring",
+          "owners, triggers, contingencies",
+          "heat map, top 5 and cadence"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Update from today: the identity vendor moved the SAML fix to 2027-02-20, which leaves Payments about 5 weeks before the 2027-03-31 lease end. Using program-notes.md for context, write raid-update.md for the program lead: the re-scored entry, what changed, the mitigation and contingency, and whether and how to escalate. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "fixture": "fixtures/risk-management/",
+      "why_discriminating": "The skill's escalation criteria (score rises to Critical, dependency at risk of not being met) and its fixed path TPM -> Program Lead -> Director -> VP determine both whether and to whom to escalate, and the scoring scale makes the re-score explicit. Without it a model often gives a sensible narrative but no explicit re-score, skips the path, or jumps straight to VP.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "SAML vendor risk is re-scored to Critical (or High x High)",
+          "check": "grep -iE 'saml|vendor|identity' raid-update.md | grep -qiE 'critical|H *[x\u00d7] *H|high *[x\u00d7] *high'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "reasoning",
+          "criterion": "Re-score is justified on the skill's scale",
+          "pass": "Probability High (vendor slipped twice; new date already a slip) and Impact High (a further >2w slip threatens the fixed lease end) -> Critical, with before/after shown",
+          "partial": "Re-scored to Critical without reasoning, or to High with reasoning",
+          "fail": "No re-score or scored lower than before"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Escalation per the skill",
+          "pass": "Escalates now because score reached Critical; path TPM (Priya) -> Program Lead -> Director, with VP only if Director cannot resolve; escalation log entry with date and requested decision",
+          "partial": "Escalates but path incomplete or no requested decision",
+          "fail": "No escalation, or skips straight to VP"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Mitigation and contingency",
+          "pass": "Named strategy with owner, trigger and due date (e.g. weekly vendor checkpoint, trigger if no build by 2027-02-06); concrete contingency if the vendor slips again (resequence Payments last, prepare interim auth path, compress Payments cutover plan)",
+          "partial": "Mitigation present but no trigger, or contingency vague",
+          "fail": "'Monitor the vendor' only"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Knock-on effects noticed",
+          "pass": "Notes interaction with the egress proxy dependency (2027-02-01) and the Payments test window, and updates review cadence to weekly",
+          "partial": "One of these",
+          "fail": "Treats the SAML item in isolation"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "explicit re-score",
+          "escalation decision and path",
+          "trigger and contingency"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Sam drafted raid-log-draft.md for the DC exit program (context in program-notes.md). Before it goes to the program lead, review it and write raid-review.md: findings ordered CRITICAL, IMPORTANT, SUGGESTION, each naming the RAID ID and the fix. Then write the corrected log to raid-log-corrected.md. Don't edit Sam's draft. Do not ask me questions; make reasonable assumptions, list them in the review, and finish the work.",
+      "fixture": "fixtures/risk-management/",
+      "why_discriminating": "The skill's quality gate classifies exactly these defects: a risk without a score, a High/Critical risk with no mitigation strategy, an issue without owner or due date, and a dependency without contingency are CRITICAL; an assumption without validation plan and a missing review cadence are IMPORTANT. Its score mapping also exposes R-01 (HxH marked Medium) and R-04 (MxM marked High). Without the skill a reviewer may catch the obvious blanks but miss mapping errors and grade loosely.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Review exists, is ordered CRITICAL before IMPORTANT, and the draft is unchanged",
+          "check": "python3 -c 'import sys;t=open(\"raid-review.md\").read().upper();c=t.find(\"CRITICAL\");i=t.find(\"IMPORTANT\");sys.exit(0 if 0<=c<i else 1)' && grep -q 'Monitor vendor updates' raid-log-draft.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "CRITICAL defects from KEY found",
+          "pass": "R-02 unscored, R-01 mis-scored and mitigated by 'monitor', I-01 no owner/due date, D-01 no contingency: all four under CRITICAL",
+          "partial": "Three of four found, or all found but one graded below CRITICAL",
+          "fail": "Two or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Typing and mapping errors",
+          "pass": "Flags R-03 as an Issue not a Risk, R-04 MxM should be Medium, R-01 HxH should be Critical",
+          "partial": "Two of three",
+          "fail": "None or one"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "IMPORTANT tier per the skill",
+          "pass": "A-01 missing validation plan, missing review cadence, and missing escalation criteria for Critical items listed under IMPORTANT",
+          "partial": "Two of three",
+          "fail": "None, or graded inconsistently with the skill"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Corrected log is usable",
+          "pass": "raid-log-corrected.md fixes every finding (scores, I-01 owner and date, D-01 contingency, A-01 validation plan, cadence section) without inventing new program facts",
+          "partial": "Most fixes applied",
+          "fail": "Corrected log missing or leaves CRITICAL defects"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Leaves sound entries alone (KEY traps)",
+          "pass": "Does not flag A-02, D-02 or D-01's MxH=High score as defects",
+          "partial": "One sound entry flagged",
+          "fail": "Two or more false findings"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "all CRITICAL gaps found",
+          "scoring and typing errors caught",
+          "no false findings",
+          "corrected log quality"
+        ]
+      }
+    }
+  ]
+}

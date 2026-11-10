@@ -1,0 +1,82 @@
+[
+  {
+    "query": "spin up the developer agent in a split pane next to me and have it implement the /health endpoint",
+    "should_trigger": true
+  },
+  {
+    "query": "delegate the DynamoDB design review to the architect agent in a new cmux tab, and close the tab when it's done",
+    "should_trigger": true
+  },
+  {
+    "query": "run the QA agent in its own cmux workspace to run the full test suite, I want to watch it go",
+    "should_trigger": true
+  },
+  {
+    "query": "have k-developer and k-quality-assurance work in parallel in separate surfaces, dev on wt-88 and QA on the test plan",
+    "should_trigger": true
+  },
+  {
+    "query": "how do I know when the agent I launched in the other pane is finished? I keep checking manually",
+    "should_trigger": true
+  },
+  {
+    "query": "dispatch k-architect interactively in a split below so I can answer its spec questions",
+    "should_trigger": true
+  },
+  {
+    "query": "delegate the bugfix to a dev agent in a pane, it should work in a fresh worktree and not my checkout",
+    "should_trigger": true
+  },
+  {
+    "query": "pane dispatch errored with 'matches multiple installed agents' when I passed --agent orchestrator. what did I do wrong",
+    "should_trigger": true
+  },
+  {
+    "query": "spawn k-researcher in a right split to investigate why the build is slow and have it write findings somewhere I can read after",
+    "should_trigger": true
+  },
+  {
+    "query": "my orchestrator running inside cmux keeps using hidden subagents. I want delegated work visible in panes instead",
+    "should_trigger": true
+  },
+  {
+    "query": "spawn a background subagent with Agent() and SendMessage it later",
+    "should_trigger": false
+  },
+  {
+    "query": "set up tmux with a split for tailing logs",
+    "should_trigger": false
+  },
+  {
+    "query": "configure iTerm2 to open split panes with a profile per project",
+    "should_trigger": false
+  },
+  {
+    "query": "run the tests in parallel with pytest-xdist",
+    "should_trigger": false
+  },
+  {
+    "query": "write a bash script that runs 4 jobs in the background and waits for all of them",
+    "should_trigger": false
+  },
+  {
+    "query": "create a git worktree and branch named wt-88",
+    "should_trigger": false
+  },
+  {
+    "query": "assign this task to my coworker in our tracker",
+    "should_trigger": false
+  },
+  {
+    "query": "how does gorilla mux handle path params like /users/{id}",
+    "should_trigger": false
+  },
+  {
+    "query": "docker compose: run the api and worker in separate containers with shared env",
+    "should_trigger": false
+  },
+  {
+    "query": "what's the keyboard shortcut to close a tab in my terminal emulator",
+    "should_trigger": false
+  }
+]

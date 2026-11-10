@@ -1,0 +1,22 @@
+[
+{"query": "We have to pick between Aurora Postgres, DynamoDB, and keeping our self-managed Cassandra for the ledger service rewrite. This decision will stick for 5+ years. I want multiple independent perspectives argued out and a scored recommendation, not just a pros/cons list. I'm ok with it taking a few minutes.", "should_trigger": true},
+{"query": "Leadership wants a recommendation by friday: build our own feature-flag service, buy LaunchDarkly, or adopt OpenFeature + flagd. Can you have different viewpoints argue each side, cross-check each other, and give me a confidence level on the final call?", "should_trigger": true},
+{"query": "we're torn between a monorepo with nx vs polyrepo w/ shared packages for 14 teams. high stakes, hard to undo. run a proper structured debate on it with a scored outcome please, yes go ahead even if it costs a few subagent calls", "should_trigger": true},
+{"query": "I'm leaning toward Kafka for the event backbone but my staff eng says SQS/SNS fanout is enough. Stress test my leading option: have each relevant dimension argue why Kafka fails on it, then score it.", "should_trigger": true},
+{"query": "Three viable research directions for our anomaly detection: isolation forest baseline, LSTM autoencoder, or buying Datadog Watchdog. Which one should the team invest Q3 in? I want an axis-by-axis argued recommendation with how confident you are.", "should_trigger": true},
+{"query": "Is it even viable for our 4-person team to build an offline-first sync engine ourselves vs using PowerSync vs ElectricSQL? Big bet. Convene some kind of panel to argue it and tell me what would change the recommendation.", "should_trigger": true},
+{"query": "Decision on the table: single-region active-passive vs multi-region active-active for checkout. Huge cost and complexity difference. I'd like a deliberation with separate advocates per concern, anonymous rebuttals, and a final scorecard. consent given, go.", "should_trigger": true},
+{"query": "cell-based architecture or just bigger shards for our tenancy model? we keep going in circles in meetings. give me independent arguments for each key dimension and an overall pick with a confidence rating", "should_trigger": true},
+{"query": "We need to choose an auth provider (Cognito, Auth0, Keycloak self-hosted). This affects every product line. I want the tradeoff decomposed into the dimensions that actually matter for us, each argued separately, then synthesized into a recommendation", "should_trigger": true},
+{"query": "Rewrite in Rust vs optimize the existing Python ingestion pipeline vs move it to Flink. Expensive decision. Please run a multi-perspective deliberation and give me a scorecard; I approve the extra time.", "should_trigger": true},
+{"query": "quick q, whats the difference between SQS standard and FIFO queues? just need a short table", "should_trigger": false},
+{"query": "Before you start on the ledger service design, ask me questions one at a time about what I'm missing. I don't think I've nailed the requirements yet.", "should_trigger": false},
+{"query": "Review docs/design/checkout-multi-region.md from multiple angles: security, cost, operability, and scalability. Give me findings per aspect.", "should_trigger": false},
+{"query": "poke holes in my plan to move everything to Kafka before I even write it up. just ask me the hard questions", "should_trigger": false},
+{"query": "Write an ADR for our decision to use DynamoDB for the ledger service. We already decided, I just need the doc in docs/adr/0007-ledger-datastore.md", "should_trigger": false},
+{"query": "give me a quick pros and cons of nx vs turborepo, nothing fancy, bullet points is fine", "should_trigger": false},
+{"query": "Estimate the monthly AWS cost of running Aurora Postgres serverless v2 vs DynamoDB on-demand for 2k writes/sec and 10k reads/sec", "should_trigger": false},
+{"query": "do an adversarial review of the design doc at docs/design/auth-provider.md, challenge every decision and classify findings CRITICAL/IMPORTANT/MINOR", "should_trigger": false},
+{"query": "We picked Auth0. Now help me write the migration plan from our homegrown session auth, with phases and rollback steps", "should_trigger": false},
+{"query": "Summarize the meeting notes in notes/2026-10-30-arch-sync.md into decisions made and open action items", "should_trigger": false}
+]

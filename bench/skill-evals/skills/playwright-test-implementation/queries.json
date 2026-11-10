@@ -1,0 +1,22 @@
+[
+{"query": "write playwright specs for the create-distribution wizard in our cloudscape console app. the pages + selectors we discovered are in discovery/pages.json. login is via cognito hosted ui", "should_trigger": true},
+{"query": "Our Playwright suite logs in at the start of every test and it's slow. Set it up to sign in once and reuse the session across specs.", "should_trigger": true},
+{"query": "the global setup saves storage state but tests still land on the login page sometimes. we use page.waitForURL('**') after clicking sign in. whats wrong", "should_trigger": true},
+{"query": "getByRole('radio', { name: 'Create new VPC' }) never matches on our Cloudscape tiles component in e2e/vpc.spec.ts. how do I select it?", "should_trigger": true},
+{"query": "Review e2e/specs/*.spec.ts for flaky selectors. There are a bunch of .first() calls and raw css selectors and I don't trust them.", "should_trigger": true},
+{"query": "add a playwright test for the login page itself - the problem is our config has storageState set globally so it starts already logged in", "should_trigger": true},
+{"query": "context.storageState() throws ENOENT in global-setup.ts on CI. why?", "should_trigger": true},
+{"query": "Write e2e tests (playwright, typescript) for selecting a row in a Cloudscape table, opening the Actions dropdown, and confirming the delete modal", "should_trigger": true},
+{"query": "my playwright tests time out on okta login with 'strict mode violation: locator resolved to 2 elements'. the username field is duplicated hidden. fix?", "should_trigger": true},
+{"query": "wire up playwright.config.ts so baseURL comes from PLAYWRIGHT_BASE_URL and auth state is reused; creds must come from env vars", "should_trigger": true},
+{"query": "Write Cypress e2e tests for the checkout flow with cy.session for login", "should_trigger": false},
+{"query": "Plan which end-to-end tests we should write for the admin console - critical paths, priorities, coverage", "should_trigger": false},
+{"query": "scaffold a brand new playwright project in this empty repo with CI github action", "should_trigger": false},
+{"query": "write jest + react testing library unit tests for the SettingsForm component", "should_trigger": false},
+{"query": "Use a headless browser to take a screenshot of localhost:3000/dashboard and tell me if the chart renders", "should_trigger": false},
+{"query": "scrape product prices from this website with puppeteer and save to csv", "should_trigger": false},
+{"query": "Inspect the DOM of the settings page and list stable data-testid attributes we could use for tests", "should_trigger": false},
+{"query": "analyze our test coverage report and tell me which modules are under-tested", "should_trigger": false},
+{"query": "Generate security tests (authz bypass, IDOR) for the /api/orders endpoints", "should_trigger": false},
+{"query": "Review the React components in src/pages/ for Cloudscape compliance (no native html, no inline styles)", "should_trigger": false}
+]

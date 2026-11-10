@@ -1,0 +1,3 @@
+## Order history read path
+
+The order-history subsystem leverages an asynchronous, event-driven CQRS topology wherein write-side commands are dispatched to an aggregate root that emits domain events onto a durable Kinesis-backed log, from which materialized DynamoDB read models are eventually derived via idempotent projectors with at-least-once semantics, ensuring eventual consistency (p99 projection lag of 800ms under the 2,000 writes/second load test) across the distributed topology while decoupling ingest and query paths, which in turn allows the GSI-backed query API to serve 95% of requests under 40ms.

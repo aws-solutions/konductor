@@ -1,0 +1,82 @@
+[
+  {
+    "query": "my teammate's design doc says 'every major company uses kafka so we should too' and 'if we don't migrate now we'll never be able to scale'. can you pick apart the reasoning in section 4 of docs/streaming-proposal.md and tell me which arguments are actually weak",
+    "should_trigger": true
+  },
+  {
+    "query": "Score the argument in this ADR paragraph for how well-supported it is. I want claim, evidence and warrant broken out and a number I can compare across the three options in docs/adr/0009-queue.md",
+    "should_trigger": true
+  },
+  {
+    "query": "reviewing an RFC where the author keeps saying 'obviously serverless is cheaper' with zero numbers. what fallacy is this exactly, and how do i word the review comment so it lands",
+    "should_trigger": true
+  },
+  {
+    "query": "I'm coaching a junior eng on writing tech proposals. Their draft argument for moving to GraphQL is in drafts/graphql-why.md. rate it and tell them the one thing to fix next",
+    "should_trigger": true
+  },
+  {
+    "query": "Is 'we tried microservices once in 2019 and it failed so microservices dont work for us' a valid argument? need to explain why not in tomorrow's design review",
+    "should_trigger": true
+  },
+  {
+    "query": "break this argument into parts: what's the claim, the evidence, the unstated assumption linking them, and when would it fail? 'Postgres handled 10k TPS in our load test, so it will handle Black Friday.'",
+    "should_trigger": true
+  },
+  {
+    "query": "the doc's only rationale for dropping DynamoDB is 'the senior principal said it's a bad fit'. is that enough? i want to push back in the adversarial review but stay fair",
+    "should_trigger": true
+  },
+  {
+    "query": "compare how well options A and B in /docs/adr/0012-cache.md are *argued*. not which is technically better, which one makes the stronger case",
+    "should_trigger": true
+  },
+  {
+    "query": "he says either we rewrite the whole billing service in rust or we accept outages forever. feels like a bad argument but I cant name why. help",
+    "should_trigger": true
+  },
+  {
+    "query": "give me a rubric-based score out of 15 for each of the 4 justification paragraphs in proposal.md so the review board can see which ones need rework",
+    "should_trigger": true
+  },
+  {
+    "query": "Write me a persuasive design doc section arguing for Kafka over SQS for our order events pipeline, around 400 words",
+    "should_trigger": false
+  },
+  {
+    "query": "Run an adversarial review of my diff for data integrity issues, focus on the DynamoDB writes in src/orders/repo.ts",
+    "should_trigger": false
+  },
+  {
+    "query": "help me pick between Redis and Memcached for session caching. pros/cons and a recommendation please",
+    "should_trigger": false
+  },
+  {
+    "query": "my python script throws `error: the following arguments are required: --input`. how do I make that argparse argument optional with a default",
+    "should_trigger": false
+  },
+  {
+    "query": "proofread this design doc for passive voice, filler words and AI-sounding phrasing before I send it to the PE",
+    "should_trigger": false
+  },
+  {
+    "query": "Can you check the factual claims in our launch FAQ are accurate? e.g. 'Lambda supports 15 minute timeouts', 'S3 is 11 nines durable'",
+    "should_trigger": false
+  },
+  {
+    "query": "set up a debate-style panel of subagents to decide whether we should adopt a monorepo, with a scored recommendation",
+    "should_trigger": false
+  },
+  {
+    "query": "Write unit tests for the parseArgs function in cli/args.ts, cover missing flags and duplicate flags",
+    "should_trigger": false
+  },
+  {
+    "query": "our retro got heated. summarize the main disagreements from these meeting notes into action items with owners",
+    "should_trigger": false
+  },
+  {
+    "query": "convert the 'Alternatives Considered' section of my doc into a weighted decision matrix for cost, latency and ops burden",
+    "should_trigger": false
+  }
+]

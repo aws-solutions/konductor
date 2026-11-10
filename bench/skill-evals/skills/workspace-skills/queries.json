@@ -1,0 +1,22 @@
+[
+{"query": "That took forever - three tries before the localstack + DynamoDB stream setup worked. Save the working procedure so next time in this repo you just follow it.", "should_trigger": true},
+{"query": "turn what we just did (rotate the dev db password, update the k8s secret, restart pods, verify) into a reusable how-to for this project that you'll pick up automatically later", "should_trigger": true},
+{"query": "We keep redoing the same release dance: bump version, regenerate the openapi client, tag, push. Capture it as a project-local procedure with pitfalls and a verification step.", "should_trigger": true},
+{"query": "You already have a saved procedure for running the integration tests here, but it's missing the step where you start the mock auth server. Update that one instead of making a new one.", "should_trigger": true},
+{"query": "after the debugging session on the flaky snapshot tests, can you record the fix-up steps as something reusable for this workspace? include the gotcha about TZ env var", "should_trigger": true},
+{"query": "I wrote a procedure in .claude/skills/ws-deploy-preview/SKILL.md myself. It's out of date. Can you improve it with what we learned today?", "should_trigger": true},
+{"query": "The way you finally got the monorepo build cache working (clear turbo cache, rebuild shared pkg first, then apps) should be saved so future sessions in this repo do it right the first time.", "should_trigger": true},
+{"query": "make a workspace-level playbook from this session for seeding the local postgres from the anonymized dump. numbered commands please", "should_trigger": true},
+{"query": "We figured out the exact sequence to regenerate protobuf stubs on M1 macs after a lot of trial and error. Persist it as a local procedure for this project.", "should_trigger": true},
+{"query": "Is the CDK bootstrap procedure we just ran worth keeping as a saved how-to in this repo? If so, capture it.", "should_trigger": true},
+{"query": "Remember that this project uses pnpm, not npm, and that I prefer short answers.", "should_trigger": false},
+{"query": "Create a new skill for the public plugin marketplace that helps people write Terraform modules, with evals and a benchmark.", "should_trigger": false},
+{"query": "Write an AGENTS.md for this repo with build commands, structure, and conventions.", "should_trigger": false},
+{"query": "Write a runbook in docs/runbooks/db-failover.md for the on-call team.", "should_trigger": false},
+{"query": "Turn our deploy steps into a GitHub Actions workflow.", "should_trigger": false},
+{"query": "Write a Makefile target that runs lint, test, and build in order.", "should_trigger": false},
+{"query": "List all the skills you have available and what each does.", "should_trigger": false},
+{"query": "Configure Claude Code so it runs prettier after every file edit.", "should_trigger": false},
+{"query": "Add a note to CLAUDE.md that tests live under spec/ not test/.", "should_trigger": false},
+{"query": "Delete the stale entries in .konductor/memory/MEMORY.md older than 90 days.", "should_trigger": false}
+]

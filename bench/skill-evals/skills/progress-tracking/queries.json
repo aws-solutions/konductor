@@ -1,0 +1,22 @@
+[
+{"query": "We have .kiro/specs/feature-implementation/tasks.md plus specs for 4 features. Before anyone starts coding, check the plan: are all specs present, do the tasks cover every requirement, any circular deps?", "should_trigger": true},
+{"query": "how far along are we on the checkout revamp? the tasks.md files under .kiro/specs/ have checkboxes, some are [-]. give me percentages per feature and anything blocked", "should_trigger": true},
+{"query": "Implementation for the notifications feature is supposedly done. Verify the code actually matches design.md and that every requirement in requirements.md traces to a task and to real code before we hand off to QA.", "should_trigger": true},
+{"query": "Sprint is half over. Read the task lists in .kiro/specs/*/tasks.md, tell me which tasks are blocked by unfinished dependencies and estimate remaining effort.", "should_trigger": true},
+{"query": "I've got requirements, design and tasks for the billing-export feature. Check that every acceptance criterion has a task referencing it (_Requirements: x.y_) and flag orphaned tasks.", "should_trigger": true},
+{"query": "do a final traceability pass for the search feature: requirement -> design component -> task -> code file. show gaps where a task is checked off but there's no code", "should_trigger": true},
+{"query": "One of our features shows as 'complete' in the standup doc because all three spec files exist, but I don't think anything was implemented. Give me the real status from the task checkboxes.", "should_trigger": true},
+{"query": "Validate the feature plan at planning/feature-implementation/tasks.md. Task IDs look inconsistent and some checkboxes are written as [X] or * [ ]. Report format problems and coverage.", "should_trigger": true},
+{"query": "Status check on our 6-feature spec set: spec completion vs implementation completion, overall % done, and save the history so we can compare velocity next week.", "should_trigger": true},
+{"query": "we're about to start building. pre-implementation check on the auth-revamp specs please - structure, coverage %, dependency ordering", "should_trigger": true},
+{"query": "Split this HLD (docs/hld.md) and the user stories in docs/stories.md into independent feature tracks for 4 engineers.", "should_trigger": false},
+{"query": "Generate tasks.md for the notifications feature from its requirements.md and design.md.", "should_trigger": false},
+{"query": "Write the weekly exec status update for the platform migration program: overall RAG, top 3 accomplishments, blockers, asks.", "should_trigger": false},
+{"query": "Plan next sprint: we have 40 story points of capacity and this backlog in backlog.csv. Pick what fits by priority.", "should_trigger": false},
+{"query": "Create a RAID log for the data center exit program with risks, owners and mitigations.", "should_trigger": false},
+{"query": "Write requirements.md in EARS format for a password reset feature.", "should_trigger": false},
+{"query": "show me which GitHub issues in milestone v2.4 are still open and who they're assigned to", "should_trigger": false},
+{"query": "Run the test suite and tell me the coverage percentage for src/billing.", "should_trigger": false},
+{"query": "Review my implementation plan in plan.md before I start - is the approach sound, any risky steps?", "should_trigger": false},
+{"query": "Make a burndown chart png from sprint.csv (date, points_remaining).", "should_trigger": false}
+]

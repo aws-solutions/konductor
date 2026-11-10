@@ -1,0 +1,200 @@
+{
+  "skill": "git-workflow",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "First run `bash setup.sh` in this directory; it creates a local git repo with some history and uncommitted work. setup.sh is scaffolding: leave it untracked. I've got three unrelated changes sitting in src/ and I want them committed properly so they're easy to review and to revert individually: on a new branch off main, with good commit messages. Do not push anywhere. This runs unattended: do not ask questions; when done, list the branch, the commits, and any assumptions in your final message.",
+      "fixture": "fixtures/git-workflow/",
+      "why_discriminating": "The skill requires one logical change per commit, never mixing formatting with logic, `<type>/<short-description>` branch names, and conventional subjects with the right type. Without it a model often makes one or two commits, types the util.js reformat as a fix or refactor alongside logic, or names the branch arbitrarily.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Three or more commits beyond main and nothing in src left uncommitted",
+          "check": "[ \"$(git rev-list --count main..HEAD)\" -ge 3 ] && [ -z \"$(git status --porcelain -- src)\" ]"
+        },
+        {
+          "id": "f2",
+          "text": "Atomic: no commit touches more than one of paginate.js, export.js, util.js",
+          "check": "for c in $(git rev-list main..HEAD); do n=$(git show --name-only --format= $c | grep -cE 'src/(paginate|export|util)\\.js'); [ \"$n\" -le 1 ] || exit 1; done"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Atomic commits: paginate fix, export feature, and util.js formatting each in its own commit; formatting not mixed with logic",
+          "pass": "Three separate commits, one change each",
+          "partial": "Two commits, or formatting folded into a logic commit",
+          "fail": "One commit"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Conventional messages with correct types and scope: fix for the paginate off-by-one, feat for toCsv, style (or chore) for the util.js reformat; imperative mood, subject under 72 chars",
+          "pass": "All three typed correctly, imperative, under 72",
+          "partial": "One type wrong or one past-tense/long subject",
+          "fail": "Non-conventional messages"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Branch named `<type>/<short-description>` off main; main unchanged; setup.sh left untracked",
+          "pass": "Branch name matches the pattern, main untouched, setup.sh untracked",
+          "partial": "Branch off main but name off-pattern",
+          "fail": "Committed on main or committed setup.sh"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Commit bodies or the final message explain what each change does (e.g. paginate dropped the last item of each page)",
+          "pass": "Each logic commit says what and why",
+          "partial": "Subjects only, but accurate",
+          "fail": "Messages inaccurate about the change"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Could a reviewer revert any one change cleanly?",
+          "Do the messages describe the changes accurately and in the expected format?",
+          "Was main left alone?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "First run `bash setup.sh` in this directory; it creates a local git repo with some history and uncommitted work. setup.sh is scaffolding: leave it untracked. Someone removed the call to validateTenant from the auth middleware at some point and tenant checks silently stopped. Find the commit that removed it, then put the call back as a proper commit ready for review. Leave my other uncommitted work in src/ exactly as it is (still uncommitted) and leave main as it is. Write answer.md with the offending commit's SHA and subject, the git commands you used, and the branch and commit you created. Do not push. Do not ask questions; state assumptions in answer.md.",
+      "fixture": "fixtures/git-workflow/",
+      "why_discriminating": "Finding the commit with `git log -S` is generic. The skill adds the parts a model under task focus tends to skip: new work on a `fix/<desc>` branch off main, a single-purpose `fix(auth): ...` commit, and not sweeping the three unrelated dirty files into it (`git commit -a` / `git add -A` would).",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "answer.md names the removing commit",
+          "check": "s=$(git log --format=%h -S'validateTenant(req);' -- src/auth.js | head -1); [ -n \"$s\" ] && grep -q \"$s\" answer.md"
+        },
+        {
+          "id": "f2",
+          "text": "main unchanged and the unrelated src work is still uncommitted",
+          "check": "[ \"$(git rev-list --count main)\" = 8 ] && [ \"$(git status --porcelain -- src/paginate.js src/util.js src/export.js | grep -c .)\" = 3 ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Identifies 'refactor(auth): simplify tenant middleware' as the commit that replaced the call with a comment, found with a pickaxe search (git log -S/-G) rather than reading every diff",
+          "pass": "Right commit, pickaxe command shown",
+          "partial": "Right commit by manual reading",
+          "fail": "Wrong commit"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "The restore lands as one commit touching only src/auth.js, typed fix with an auth scope, imperative subject under 72 chars, on a `fix/<desc>` branch off main",
+          "pass": "All of these hold",
+          "partial": "Commit is clean but branch name or type off",
+          "fail": "Commit includes unrelated files or lands on main"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Leaves paginate.js, util.js, export.js uncommitted and unchanged, and does not rewrite history (no revert of the whole refactor commit if it carried other changes, no reset on main)",
+          "pass": "Unrelated work untouched, history intact",
+          "partial": "Work preserved via stash but left stashed, or minor collateral",
+          "fail": "Unrelated work committed, lost, or history rewritten"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "answer.md explains the impact briefly (tenant checks bypassed since that commit, i.e. since after v1.0) and how the fix was verified (e.g. git show of the commit, or a quick require/run)",
+          "pass": "Impact and verification stated",
+          "partial": "One of the two",
+          "fail": "Neither"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is the offending commit right and found efficiently?",
+          "Is the fix commit atomic and on its own branch?",
+          "Was the user's other work left exactly as it was?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "First run `bash setup-review.sh` in this directory; it creates a local git repo and checks out my branch johns-changes. setup-review.sh is scaffolding. I'm about to open a PR from johns-changes into main. Before I do, review the branch's history the way a reviewer would and write history-review.md: what's wrong with the commits and the branch, and a concrete clean-up plan with the exact git commands and the commit messages you'd use. Do not change the repo yourself; this is plan only. Tests run with `node test/cart.test.js` and `node test/coupon.test.js`. Do not ask questions; state assumptions in history-review.md.",
+      "fixture": "fixtures/git-workflow/",
+      "why_discriminating": "The skill's standards (atomic commits, no formatting mixed with logic, every commit compiles and passes tests, conventional imperative subjects under 72 chars, `<type>/<desc>` branch names, rebase on main before a PR) give a checklist a generic reviewer only partly applies. The key catch is that commits 2 and 3 fail the tests, which a reader finds only by checking each commit, and that 'fix: make tests pass' belongs folded into the coupon commit.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "history-review.md exists",
+          "check": "test -s history-review.md"
+        },
+        {
+          "id": "f2",
+          "text": "Repo unchanged: branch still has its 4 commits and original tip",
+          "check": "[ \"$(git rev-list --count main..johns-changes)\" = 4 ] && [ \"$(git log -1 --format=%s johns-changes)\" = 'fix: make tests pass' ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Finds the per-commit problems: 'Updated stuff' mixes tax.js reformatting with a cart.js bulk-discount logic change; the coupon commit mixes a feat with a tax-rounding fix and its subject is over 72 chars; 'added tests' is past tense and non-conventional",
+          "pass": "All three commits' problems named specifically",
+          "partial": "Two of the three",
+          "fail": "Generic 'messages could be better'"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Finds that the coupon commit drops `total` from exports (cart.test.js fails) and that tests fail at commits 2 and 3, so the series is not bisectable; 'fix: make tests pass' is a fixup",
+          "pass": "Broken intermediate commits identified, ideally by running tests per commit",
+          "partial": "Notes the fixup commit without showing intermediate commits break",
+          "fail": "Not found"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Notes branch naming (johns-changes vs `<type>/<desc>`) and that main has moved (editorconfig commit) so the branch needs rebasing before the PR",
+          "pass": "Both noted",
+          "partial": "One noted",
+          "fail": "Neither"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Plan is concrete and runnable: new well-named branch from main (or rebase), splits into atomic conventional commits (style, feat discount, fix tax rounding, feat coupon with its tests and folded fix), runs tests at each commit, and avoids force-pushing a shared branch without asking",
+          "pass": "Exact commands and messages, each commit green",
+          "partial": "Plan right in outline but commands vague or a commit still mixed",
+          "fail": "No actionable plan or plan rewrites history destructively"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Does not change the repo and does not invent problems (e.g. no claims about code style rules that are not in the repo)",
+          "pass": "Repo untouched, findings all real",
+          "partial": "One invented issue",
+          "fail": "Repo modified"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it find the broken intermediate commits?",
+          "Is the clean-up plan specific enough to follow?",
+          "Is the critique tied to concrete commits rather than generic advice?"
+        ]
+      }
+    }
+  ]
+}

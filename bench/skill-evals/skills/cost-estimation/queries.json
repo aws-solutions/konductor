@@ -1,0 +1,22 @@
+[
+{"query": "We're about to build the claims-processing service: API GW, ~40 Lambdas, DynamoDB on-demand, S3 for docs (~2TB growing 200GB/mo), us-east-1, about 3M requests/day. What's it going to cost per month? Leadership wants baseline vs optimized vs multi-region HA.", "should_trigger": true},
+{"query": "how much would it cost to run 6 m7i.xlarge behind an ALB plus an Aurora Postgres r6g.large writer + 1 reader in us-west-2, 24/7? and what do we save with a 1yr compute savings plan", "should_trigger": true},
+{"query": "finance asked me to justify the AWS budget for the new analytics platform (Kinesis 10 shards, Firehose, S3, nightly Glue jobs ~2 DPU-hrs, Athena ~5TB scanned/mo). Need a monthly breakdown with assumptions spelled out", "should_trigger": true},
+{"query": "here's last year's pricing spreadsheet for the platform (costs/estimate-v2.csv). can you sanity-check it against current AWS prices and tell me what's missing? I think they forgot data transfer", "should_trigger": true},
+{"query": "Comparing two options for the image resize feature: Lambda (1.5GB, ~800ms, 20M invocations/mo) vs ECS Fargate (2 vCPU/4GB tasks, autoscaling 2-8). Which is cheaper and by how much, now and at 5x load?", "should_trigger": true},
+{"query": "Our CDK app in infra/ defines everything. can you work out which services it uses and give me a rough monthly AWS bill at 500 req/s peak, 50 avg?", "should_trigger": true},
+{"query": "quick ballpark: 50TB in S3 standard, 30% accessed monthly, 5TB egress to internet per month, CloudFront in front. what's that per month and what lifecycle/tiering would cut it", "should_trigger": true},
+{"query": "We need AWS spend per tenant for the SaaS: each tenant ~200k API calls/day, 5GB DynamoDB storage, 10GB S3. Model 50, 200 and 1000 tenants.", "should_trigger": true},
+{"query": "pre-sales: customer wants a quote for a 3-AZ EKS cluster, 12 m6i.2xlarge nodes, NAT gateways, 2 NLBs, 100GB gp3 per node, eu-central-1. Give me a priced analysis I can put in front of them.", "should_trigger": true},
+{"query": "the design doc is approved, now I need the money section: what does the notification system (EventBridge, SQS, Lambda, SNS SMS ~100k/mo, SES 2M emails/mo) cost monthly, including growth to 10x", "should_trigger": true},
+{"query": "Our AWS bill jumped 40% last month. How do I find which resources caused it using Cost Explorer and the CUR?", "should_trigger": false},
+{"query": "How many engineer-weeks will it take to build the claims-processing service? here's the task list", "should_trigger": false},
+{"query": "set up AWS Budgets alerts at 80% and 100% of $12k/mo with SNS email to the team, terraform please", "should_trigger": false},
+{"query": "Convert these legacy LOE numbers to account for engineers using AI coding agents: 24d CRUD API, 40d failover redesign", "should_trigger": false},
+{"query": "write a python function that computes the monthly price of a provisioned DynamoDB table from RCUs and WCUs, with unit tests", "should_trigger": false},
+{"query": "tag all our EC2 instances with CostCenter and Owner based on tags.csv using boto3", "should_trigger": false},
+{"query": "conceptually, what's the difference between Compute Savings Plans and EC2 Instance Savings Plans?", "should_trigger": false},
+{"query": "Review this CloudFormation template for over-provisioned Lambda memory and missing log retention before the prod deploy", "should_trigger": false},
+{"query": "Write the business case part of our PRFAQ explaining why customers would pay $49/mo for the product", "should_trigger": false},
+{"query": "our batch job runtime grows quadratically with input size, help me profile jobs/merge.py and fix it", "should_trigger": false}
+]

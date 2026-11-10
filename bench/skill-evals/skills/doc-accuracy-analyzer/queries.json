@@ -1,0 +1,22 @@
+[
+{"query": "before I send docs/design/ingest-pipeline.md to the review group, can you check every factual claim in it? it says things like 'kinesis supports 10k records/sec per shard' and 'auth is already implemented' and I'm not sure all of it is true", "should_trigger": true},
+{"query": "A reviewer left a comment that some numbers in my design doc are wrong (Lambda max memory, SQS message size). Go through docs/hld.md and verify each claim against AWS docs and our code.", "should_trigger": true},
+{"query": "fact-check this design doc for me: design/caching.md. especially the 'requires only configuration' bits, i suspect those are wishful thinking", "should_trigger": true},
+{"query": "I just did a big rewrite of the auth design doc (docs/auth-v2.md). Verify the claims about what's already built in src/auth/ actually match the code and flag anything overstated.", "should_trigger": true},
+{"query": "pls audit the claims in proposal.md - 'DynamoDB global tables available in all regions', '99.999% SLA', 'step functions express supports 100k/sec'. which are accurate, which are overstated", "should_trigger": true},
+{"query": "My doc says our service already handles 5,000 RPS and that the retry logic is 'built on top of the existing SDK middleware'. Can you confirm those against the repo and load test results in perf/ before my design review Thursday?", "should_trigger": true},
+{"query": "Produce an accuracy report for docs/design/search-v2.md: count of claims, which are verified, inaccurate, unverifiable, with corrections and sources", "should_trigger": true},
+{"query": "my manager thinks our design doc oversells what bedrock can do out of the box. can you go claim by claim and tell me where we're stretching the truth", "should_trigger": true},
+{"query": "verify the infrastructure claims in rfc-012.md (regional availability, service limits, pricing) are still current", "should_trigger": true},
+{"query": "Is the statement 'S3 is strongly consistent for all operations, already used by our upload service' in section 4 of docs/storage.md actually right? Please check the rest of the doc's claims too while you're at it.", "should_trigger": true},
+{"query": "Score docs/design/ingest.md for writing quality: filler phrases, hedge words, passive voice, structure. Is it ready to circulate?", "should_trigger": false},
+{"query": "rewrite my design doc so it sounds less like AI, cut the em dashes and buzzwords", "should_trigger": false},
+{"query": "Play devil's advocate against the architecture decisions in docs/hld.md. Challenge the trade-offs, I want CRITICAL/IMPORTANT/MINOR findings.", "should_trigger": false},
+{"query": "write a design doc for a rate limiter service following our team template", "should_trigger": false},
+{"query": "Fix the broken links and markdown lint errors in docs/ so the CI markdownlint step passes", "should_trigger": false},
+{"query": "check that the README install instructions still work - run them in a clean container and tell me which step fails", "should_trigger": false},
+{"query": "Evaluate this full design package (system design, threat model, API spec, data model) for production readiness before handoff", "should_trigger": false},
+{"query": "summarize the key decisions in docs/design/search-v2.md into 5 bullets for a status update", "should_trigger": false},
+{"query": "Our API docs in openapi.yaml don't match the actual handlers anymore. Regenerate the spec from the code.", "should_trigger": false},
+{"query": "review this PR's code changes for correctness and security, the design doc is fine already", "should_trigger": false}
+]

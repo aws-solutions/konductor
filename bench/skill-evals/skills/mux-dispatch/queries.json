@@ -1,0 +1,82 @@
+[
+ {
+  "query": "spin up k-developer in a tmux pane to implement the auth endpoint while I keep working here",
+  "should_trigger": true
+ },
+ {
+  "query": "delegate the dynamodb design review to the architect agent in a separate zellij pane",
+  "should_trigger": true
+ },
+ {
+  "query": "run three agents in parallel panes: one writing tests, one updating docs, one doing the refactor",
+  "should_trigger": true
+ },
+ {
+  "query": "I'm in tmux. kick off the k-qa agent in a split below to write integration tests for the orders service",
+  "should_trigger": true
+ },
+ {
+  "query": "send this task to another agent in a new tmux window, in the background, and close the pane when it's done",
+  "should_trigger": true
+ },
+ {
+  "query": "dispatch two write agents for separate features without them stepping on each other's working tree",
+  "should_trigger": true
+ },
+ {
+  "query": "open a pane with the security reviewer agent and keep it interactive so I can steer it mid task",
+  "should_trigger": true
+ },
+ {
+  "query": "how do I tell if the agent I dispatched to the side pane finished, and get its full result instead of the truncated summary?",
+  "should_trigger": true
+ },
+ {
+  "query": "zellij stacked pane with k-developer doing the db migration please",
+  "should_trigger": true
+ },
+ {
+  "query": "farm out the auth refactor to a developer agent in a side pane. it should work in its own worktree wt-refactor-auth",
+  "should_trigger": true
+ },
+ {
+  "query": "how do I split a tmux pane vertically and resize it with the keyboard",
+  "should_trigger": false
+ },
+ {
+  "query": "write me a tmux.conf with vim-style pane navigation",
+  "should_trigger": false
+ },
+ {
+  "query": "I'm on macOS with cmux, dispatch the developer agent there",
+  "should_trigger": false
+ },
+ {
+  "query": "run the full test suite in the background and ping me when it's done",
+  "should_trigger": false
+ },
+ {
+  "query": "create a git worktree for my feature branch feat/search",
+  "should_trigger": false
+ },
+ {
+  "query": "write a bash script that runs 4 jobs in parallel with xargs and collects exit codes",
+  "should_trigger": false
+ },
+ {
+  "query": "write a zellij layout file for a 3-column setup",
+  "should_trigger": false
+ },
+ {
+  "query": "set up a kanban board to track what my agents are working on",
+  "should_trigger": false
+ },
+ {
+  "query": "configure a claude code hook that sends a desktop notification when a session ends",
+  "should_trigger": false
+ },
+ {
+  "query": "kill all my stale tmux sessions except the current one",
+  "should_trigger": false
+ }
+]

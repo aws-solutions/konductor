@@ -1,0 +1,81 @@
+{
+  "skill_name": "design-doc-guidelines",
+  "evals": [
+    {
+      "id": 0,
+      "name": "review-rate-limiter-doc",
+      "scenario_prompt_id": "p1",
+      "prompt": "Our PM and EM have to approve docs/design/rate-limiter.md next week and the PM says she gave up after the first page. Review it and write what needs to change to review.md. Do not edit the doc itself. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "expected_output": "The skill's checklist targets exactly this doc's failures: problem not in the first 10 lines, Decision Requested as a feature list, implementation detail (config table, regex, deploy script) in design sections, ASCII diagram after prose, unexpanded acronyms, AI slop, and a diagram whose arrows do not match runtime flow. A generic review catches some, rarely all.",
+      "files": [
+        "fixtures/design-doc-guidelines/"
+      ],
+      "expectations": [
+        "review.md exists and the doc is unchanged",
+        "Structural failures are identified: Problem buried at the bottom (should lead), no Solution Overview, Decision Requested lists features not outcomes, Plan is 'Build it.' with no phased table",
+        "Design/implementation layering and diagrams: Config table, regex and deploy script flagged as implementation detail to move into a confined section; ASCII diagram -> Mermaid placed before prose; bottom connector (Client straight to Redis) flagged as not matching the runtime flow",
+        "Writing problems for a mixed audience: Unexpanded WAL, LRU, TTL, API GW flagged; slop ('fast-paced world', 'it's important to note', stacked Moreover/Furthermore/Additionally, 'robust, scalable, and maintainable', 'leverages', 'seamlessly') called out with plain rewrites",
+        "Recommendations are actionable for this doc: Gives a target outline in outside-in order and a rewritten Decision Requested as a user outcome (e.g. tenants are throttled only above their contract limit, as with acme's 18% 429s under 500 rps)",
+        "Review stays on what the doc says: No invented technical claims about the limiter; uncertain points phrased as questions"
+      ],
+      "scripted_checks": [
+        {
+          "text": "review.md exists and the doc is unchanged",
+          "check": "test -f review.md && sha256sum docs/design/rate-limiter.md | grep -q c1068267c191d214e9e67ca9728cc81495fe6ab75cefd9379577dd4850642d0b"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "notes-to-feature-flags-doc",
+      "scenario_prompt_id": "p3",
+      "prompt": "Turn notes-feature-flags.md into a design doc at docs/design/feature-flags.md. Readers are product managers, the engineering manager and the engineers who will build it. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "expected_output": "Beyond outside-in structure, the skill's Technical Accuracy rule matters here: the notes' 60 s SDK cache plus 30 s poll contradicts the '< 30 s' goal. A strong doc catches and resolves or flags it; its Threat Model Completeness rule also asks for entries on boundary-crossing flows (admin UI writes, SDK polls, audit to S3).",
+      "files": [
+        "fixtures/design-doc-guidelines/"
+      ],
+      "expectations": [
+        "The doc exists, leads with the Problem and uses the 35-minute incident",
+        "The cache/poll vs < 30 s contradiction is caught: Explicitly identifies that a 60 s cache plus 30 s poll cannot meet < 30 s and proposes a resolution (e.g. 10-15 s TTL) or an open question",
+        "Outside-in structure with outcome-framed Decision Requested: Problem, Solution Overview with full-system Mermaid diagram, Decision Requested as the two approver outcomes (turn flags off without a deploy; retire the 4 config files by end of Q1), How It Works, confined Implementation Details, phased plan table matching the 3 phases",
+        "Threats for boundary-crossing flows: Entries for admin UI -> API (who can flip prod flags; Cognito authz), SDK poll path, and audit event -> S3 integrity, each with mitigation and residual risk",
+        "Jargon budget: SDK, TTL, ETag, PK and EventBridge introduced in plain terms in the early sections; detail allowed in Implementation Details"
+      ],
+      "scripted_checks": [
+        {
+          "text": "The doc exists, leads with the Problem and uses the 35-minute incident",
+          "check": "python3 -c \"import sys;l=open('docs/design/feature-flags.md').read().splitlines()[:10];sys.exit(0 if any(x.lower().startswith('## ') and 'problem' in x.lower() for x in l) else 1)\" && grep -qE '35[ -]?min' docs/design/feature-flags.md"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "companion-doc-sync-after-parent-rename",
+      "scenario_prompt_id": "p4",
+      "prompt": "I just finished revising docs/design/report-export.md, the parent design doc. It is final, so do not edit it. Update its companion doc docs/design/report-export-impl.md in place so the two docs agree, then write changes.md listing what you changed and anything else in the repo that still needs follow-up. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in changes.md.",
+      "expected_output": "Round 2 moved the companion-doc, rename-propagation and multi-feature rules into references/multi-doc-designs.md. A run that loads them checks stale anchors, config examples missing new fields, contradicting defaults, duplicated content, and greps the repo for the old field name.",
+      "files": [
+        "fixtures/design-doc-guidelines-multidoc/"
+      ],
+      "expectations": [
+        "changes.md exists and the parent doc is unchanged",
+        "Renamed field and section propagated into the companion: no bare max_rows config reference remains, export.row_limit is used, and the Retry Policy link points to #failure-handling",
+        "Contradicting default fixed: the companion no longer says the row limit defaults to 10,000; prose and the YAML example both use 50000 (or defer to the parent)",
+        "Config example missing a new field fixed: the companion's YAML example adds export.job_timeout_minutes (or the example is replaced by a reference to the parent's Configuration table)",
+        "Duplicate content handled: the companion's Background section, which only repeats the parent's Problem, is removed or replaced with a cross-reference, or rewritten to add detail the parent lacks",
+        "Rename propagated beyond the companion: changes.md names docs/guides/export-runbook.md and scripts/check-export-config.sh as still using max_rows (fixed or flagged for follow-up)",
+        "Stays faithful to the parent: no behavior, defaults or fields invented that the parent does not state; the per-account override column (export_max_rows) is either kept or its rename flagged as a schema change rather than silently treated as done"
+      ],
+      "scripted_checks": [
+        {
+          "text": "changes.md exists and the parent doc is unchanged",
+          "check": "test -f changes.md && sha256sum docs/design/report-export.md | grep -q 374fc8f6c509fd3d323309eeaf06bb22150d652bddd6a6c73e11b1a3f951ac92"
+        },
+        {
+          "text": "Renamed field and section propagated into the companion: no bare max_rows config reference remains, export.row_limit is used, and the Retry Policy link points to #failure-handling",
+          "check": "f=docs/design/report-export-impl.md; ! grep -qE '(^|[^_])max_rows' $f && grep -q 'row_limit' $f && grep -q 'report-export.md#failure-handling' $f && ! grep -q '#retry-policy' $f"
+        }
+      ]
+    }
+  ]
+}

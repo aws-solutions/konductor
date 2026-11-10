@@ -1,0 +1,22 @@
+[
+{"query": "i've got docs/design/order-service.md describing API Gateway -> Lambda -> DynamoDB plus an SQS DLQ and a CloudFront+S3 frontend. can you turn that into a draw.io file I can import, with the account/region/VPC boxes and labeled arrows?", "should_trigger": true},
+{"query": "Need a .drawio XML for our multi-account setup: prod account (ALB, ECS Fargate in private subnets, RDS Postgres multi-AZ), shared services account with Transit Gateway and Route 53 resolver, and a log archive account receiving CloudTrail. Security review wants trust boundaries marked.", "should_trigger": true},
+{"query": "our design inspector import keeps rejecting the diagram my teammate hand-made. can you regenerate it as mxGraphModel XML from this: users hit CloudFront, WAF in front, origin is an ALB in a VPC, EC2 ASG behind it, ElastiCache and Aurora", "should_trigger": true},
+{"query": "Make me a visual for the threat model review. Cognito user pool, API GW REST, 4 Lambdas, Step Functions, EventBridge bus, S3 bucket for uploads. Output as drawio xml with the official aws4 icons pls", "should_trigger": true},
+{"query": "The PE review needs a picture of the ingestion pipeline (Kinesis Data Streams -> Lambda -> Firehose -> S3 -> Glue -> Athena). Write it to diagrams/ingest.drawio and show return paths dashed", "should_trigger": true},
+{"query": "convert section 3 of system-design.md into a diagram file draw.io can open. it's two regions, us-east-1 primary and eu-west-1 DR, DynamoDB global tables, Route 53 failover", "should_trigger": true},
+{"query": "VPC layout: public subnets with NAT GW and ALB, private app subnets with ECS, isolated db subnets with RDS. Produce the drawio XML so I can edit it in diagrams.net, and put S3 and IAM where they actually belong, not inside the VPC.", "should_trigger": true},
+{"query": "Generate a draw.io diagram for a serverless webapp: Route53, CloudFront, S3 static site, API Gateway HTTP API, Lambda, DynamoDB. Color the arrows by flow type and label the protocols.", "should_trigger": true},
+{"query": "can u draw the account boundary + region + vpc for our batch system (EventBridge scheduler -> AWS Batch on EC2 in a private subnet -> S3 results, SNS alerts) in mxgraph xml? it's going into the design doc appendix", "should_trigger": true},
+{"query": "We're prepping a Well-Architected review and need one prod-environment diagram plus a separate one for the CI/CD account (CodePipeline, CodeBuild, cross-account deploy role). XML for drawio, two files.", "should_trigger": true},
+{"query": "Write a mermaid sequenceDiagram showing the OAuth authorization code flow between the browser, our SPA, Cognito and the API.", "should_trigger": false},
+{"query": "Review my CDK stack in lib/api-stack.ts for security problems before we deploy to prod: wildcard IAM, missing encryption, public buckets.", "should_trigger": false},
+{"query": "draw.io keeps freezing when I open a 4MB .drawio file on my mac, any idea how to fix it or split the file into pages?", "should_trigger": false},
+{"query": "Which is better for our order pipeline, SQS + Lambda or Kinesis + Lambda? we do ~2k msgs/sec bursts and need ordering per customer", "should_trigger": false},
+{"query": "Draw an ERD for users, orders, order_items and products with cardinalities, in mermaid erDiagram syntax", "should_trigger": false},
+{"query": "Make a matplotlib stacked bar chart of our monthly AWS bill by service from billing.csv", "should_trigger": false},
+{"query": "Parse exported/diagram.drawio and give me a CSV listing every AWS service shape in it with counts per type", "should_trigger": false},
+{"query": "write the system design doc for a URL shortener on AWS: components, data model, API, scaling. markdown only, no diagrams needed", "should_trigger": false},
+{"query": "Generate a STRIDE threat model for our API Gateway + Lambda + DynamoDB app with mitigations per threat", "should_trigger": false},
+{"query": "convert our Visio .vsdx network diagram to PNG for a slide deck, command line preferred", "should_trigger": false}
+]

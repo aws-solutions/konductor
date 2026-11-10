@@ -1,0 +1,31 @@
+<!doctype html>
+<html><head><title>Settings</title></head>
+<body>
+<main class="awsui-app-layout">
+  <h1>Settings</h1>
+  <form id="settings" data-testid="settings-form">
+    <label><input type="checkbox" data-testid="notify-toggle" id="notify" onchange="toggleEmail()"> Email me when an order ships</label>
+    <div id="email-wrap" hidden>
+      <label for="notify-email">Notification email</label>
+      <input id="notify-email" data-testid="notify-email" type="email" onblur="checkEmail()">
+      <span data-testid="notify-email-error" hidden>Enter a valid email address</span>
+    </div>
+    <select data-testid="timezone" aria-label="Time zone">
+      <option>UTC</option><option>US/Pacific</option><option>Europe/Berlin</option>
+    </select>
+    <button class="awsui-button" data-testid="settings-save" type="submit" disabled>Save changes</button>
+  </form>
+  <a href="index.html">Home</a>
+</main>
+<script>
+function toggleEmail() {
+  var on = document.getElementById('notify').checked;
+  document.getElementById('email-wrap').hidden = !on;
+  document.querySelector('[data-testid=settings-save]').disabled = false;
+}
+function checkEmail() {
+  var v = document.getElementById('notify-email').value;
+  document.querySelector('[data-testid=notify-email-error]').hidden = /^[^@\s]+@[^@\s]+$/.test(v);
+}
+</script>
+</body></html>

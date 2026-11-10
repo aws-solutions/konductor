@@ -1,0 +1,22 @@
+[
+{"query": "We're starting a new AWS service that ingests IoT telemetry from ~20k devices and alerts on anomalies. I need a system design document. Interview me first, then write it.", "should_trigger": true},
+{"query": "help me design the architecture for a customer-deployed CDK solution that scans S3 buckets for PII. need components, NFRs, threat model inputs and a diagram description", "should_trigger": true},
+{"query": "i have a vague idea for a document approval workflow service (lambda, step functions probably). can you walk me through the design questions and produce an HLD", "should_trigger": true},
+{"query": "Produce a system design doc for our multi-tenant reporting backend. Ask me about scale, compliance (we need SOC2), data stores, observability, then generate the doc plus a design review handoff.", "should_trigger": true},
+{"query": "new greenfield project: video transcoding pipeline on AWS. let's do the full design - business context, components, cross cutting concerns, failure modes. focused interview is fine", "should_trigger": true},
+{"query": "Can you run me through a structured design session for replacing our cron-based billing job with an event-driven system? End result should be a design doc the team can review.", "should_trigger": true},
+{"query": "I need an architecture doc for a chat assistant backend using bedrock, api gateway websockets and dynamodb. challenge my assumptions as we go", "should_trigger": true},
+{"query": "write up the high level design for the notification service (email, sms, push) with the threat model input section and architecture diagram description, I'll answer questions", "should_trigger": true},
+{"query": "Kick off design for a packaged solution customers will deploy in their own accounts that syncs Okta groups to IAM Identity Center. What do you need to know?", "should_trigger": true},
+{"query": "design doc time for our search service rewrite. cover APIs, data design access patterns, deployment and rollback strategy, testing strategy", "should_trigger": true},
+{"query": "Quick question: Kafka (MSK) or Kinesis for 2MB/s of clickstream? Just give me your pick and effort estimate.", "should_trigger": false},
+{"query": "Write the full STRIDE threat model document for docs/hld.md with mitigations per threat", "should_trigger": false},
+{"query": "turn this architecture description into a mermaid diagram", "should_trigger": false},
+{"query": "Review the existing design doc docs/design/billing.md and score it for production readiness across all dimensions", "should_trigger": false},
+{"query": "design the dynamodb table and GSIs for these access patterns, output CDK code", "should_trigger": false},
+{"query": "Explain the saga pattern vs two-phase commit for a blog post I'm writing", "should_trigger": false},
+{"query": "prep for my system design interview at a FAANG company next week - quiz me on designing a URL shortener", "should_trigger": false},
+{"query": "Break the approved HLD into implementation tasks for two engineers", "should_trigger": false},
+{"query": "Write the Smithy IDL for the order service API described in the design doc", "should_trigger": false},
+{"query": "extract business context and a requirements summary from the PM's requirements doc for the architect", "should_trigger": false}
+]

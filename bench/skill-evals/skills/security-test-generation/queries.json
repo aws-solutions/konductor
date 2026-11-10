@@ -1,0 +1,82 @@
+[
+  {
+    "query": "we're prepping for an appsec review of our express API (src/routes). generate a security test plan covering auth, injection, authz, the works",
+    "should_trigger": true
+  },
+  {
+    "query": "from threat-model.md and openapi.yaml, produce security test cases organized by domain and by frontend/backend/infra layer",
+    "should_trigger": true
+  },
+  {
+    "query": "what security tests should we write for our serverless app: lambda handlers in lambda/, cognito auth, dynamo tables, s3 uploads",
+    "should_trigger": true
+  },
+  {
+    "query": "need negative tests for IDOR on GET /users/:id and privilege escalation on the admin endpoints, plus whatever OWASP top 10 says we're missing",
+    "should_trigger": true
+  },
+  {
+    "query": "kiro project. create the security testing task list so we can hit 'start task' on each security domain",
+    "should_trigger": true
+  },
+  {
+    "query": "generate security test plans for our React + FastAPI app: session handling, XSS, CSRF, error message leakage, security groups",
+    "should_trigger": true
+  },
+  {
+    "query": "turn our STRIDE threat model into concrete security test scenarios with positive, negative and edge cases",
+    "should_trigger": true
+  },
+  {
+    "query": "write up security test plans per category for the payments service so QA can implement them next sprint, include AWS and OWASP references",
+    "should_trigger": true
+  },
+  {
+    "query": "our pen test is in 3 weeks. plan the security testing we should do ourselves first, ordered by priority",
+    "should_trigger": true
+  },
+  {
+    "query": "create a security test plan for the file upload endpoint and the search endpoint that builds SQL with string concat",
+    "should_trigger": true
+  },
+  {
+    "query": "fix the SQL injection in src/routes/search.js that the scanner flagged",
+    "should_trigger": false
+  },
+  {
+    "query": "build a STRIDE threat model for our new payments API",
+    "should_trigger": false
+  },
+  {
+    "query": "review this IAM policy for least privilege, it has s3:* on *",
+    "should_trigger": false
+  },
+  {
+    "query": "run npm audit and upgrade the vulnerable packages without breaking the build",
+    "should_trigger": false
+  },
+  {
+    "query": "do an adversarial security review of my diff before I submit it",
+    "should_trigger": false
+  },
+  {
+    "query": "write jest unit tests for the calculateTax function in src/tax.ts",
+    "should_trigger": false
+  },
+  {
+    "query": "load test our API to 5k rps with k6 and tell me where it falls over",
+    "should_trigger": false
+  },
+  {
+    "query": "validate our CDK stack for public S3 buckets and missing encryption",
+    "should_trigger": false
+  },
+  {
+    "query": "how do I rotate the JWT signing key without logging everyone out",
+    "should_trigger": false
+  },
+  {
+    "query": "analyze test coverage gaps against the acceptance criteria before release",
+    "should_trigger": false
+  }
+]

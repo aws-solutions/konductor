@@ -1,0 +1,208 @@
+{
+  "skill": "pre-planning-analysis",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Our VP sent a one-liner: 'Clean up the billing service and also add usage-based pricing, ideally before Q1.' Nobody knows what 'clean up' means, and the billing service has thin test coverage. Before anyone starts, analyze this request and write the analysis to analysis.md: what kind of work it is, what's ambiguous, what's in and out of scope, and which specialist agents should handle it in what order. Do not ask me questions directly; put any questions you'd need answered in the file.",
+      "fixture": null,
+      "why_discriminating": "The skill classifies intent into six types, checks for anti-patterns, and says never combine refactoring with feature work; Scope Creep also triggers intake questioning. Without it, a model tends to produce a single combined plan for 'clean up + pricing' and start sketching the pricing design.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "analysis.md exists",
+          "check": "test -s analysis.md"
+        },
+        {
+          "id": "f2",
+          "text": "Scope boundaries distinguish in scope from out of scope",
+          "check": "grep -qi 'IN SCOPE' analysis.md && grep -qi 'OUT OF SCOPE' analysis.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Flags the bundled refactor + new feature as a problem and splits them",
+          "pass": "Names Scope Creep (and/or the do-not-combine-refactoring-with-features rule) and proposes separate tracks with the refactor gated on safety checks",
+          "partial": "Notes the bundling but still plans them as one stream",
+          "fail": "Treats it as one task"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Classification follows the skill",
+          "pass": "One of the six intent types per track (e.g. Refactoring for clean-up, Build from Scratch or Architecture for pricing) with a confidence level and rationale; confidence is not High given the ambiguity",
+          "partial": "Type given but no confidence or rationale",
+          "fail": "No classification"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Intake questions are concrete and placed in the file",
+          "pass": "Specific questions on what 'clean up' means, the Q1 deadline's firmness, usage metrics to bill on, and pricing ownership, feeding Key Ambiguities",
+          "partial": "Questions present but generic",
+          "fail": "No questions"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Recommended agent chain uses the framework's real specialist agents in a sensible order",
+          "pass": "Ordered chain of existing k-* agents (k-product-manager, k-architect, k-developer, k-researcher) each with a purpose",
+          "partial": "Sensible chain but invented or generic role names",
+          "fail": "No chain"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Stays at pre-planning level",
+          "pass": "No pricing design, no invented facts about the billing service; IN/OUT/DEFERRED lists are explicit",
+          "partial": "Some premature design detail",
+          "fail": "Mostly a solution design"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would a team lead know how to split and staff this?",
+          "Are the ambiguities turned into answerable questions?",
+          "Does it avoid designing before scoping?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Request from the platform team: 'The data pipeline is slow, look into why and maybe redesign it.' It's a nightly Spark job feeding the finance warehouse. No numbers, no deadline. Do an upfront analysis before we commit anyone, and save it to analysis.md. No questions to me in chat; put them in the file.",
+      "fixture": null,
+      "why_discriminating": "Under the skill this is Research: define exit criteria, set a time bound, and route to k-researcher before any architect, while flagging Analysis Paralysis/Premature Optimization. Without it, models jump to a redesign proposal or an open-ended investigation plan.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "analysis.md exists",
+          "check": "test -s analysis.md"
+        },
+        {
+          "id": "f2",
+          "text": "Scope boundaries distinguish in scope from out of scope",
+          "check": "grep -qi 'IN SCOPE' analysis.md && grep -qi 'OUT OF SCOPE' analysis.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Classified as Research (with Architecture only after findings), with rationale and confidence",
+          "pass": "Research, rationale cites unknown root cause; redesign conditional on findings",
+          "partial": "Architecture first, or Research without rationale",
+          "fail": "Treated as a build/redesign task"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Investigation is bounded",
+          "pass": "Explicit exit criteria ('done when we know the top bottleneck stage and its share of runtime'), a time box, and an output format",
+          "partial": "One of the three",
+          "fail": "None"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Anti-pattern risks named and handled",
+          "pass": "Flags Premature Optimization ('maybe redesign' before measuring) and/or Analysis Paralysis, with the mitigation",
+          "partial": "Mentioned without mitigation",
+          "fail": "Not mentioned"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Routing and questions",
+          "pass": "k-researcher first, k-architect only if findings warrant; concrete questions (current runtime vs SLA, data volume trend, cost budget)",
+          "partial": "Right routing, generic questions",
+          "fail": "Wrong routing"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No speculative diagnosis presented as fact",
+          "pass": "Hypotheses labeled as hypotheses",
+          "partial": "Some guesses stated as likely causes without labels",
+          "fail": "Asserts a root cause"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is the investigation bounded so it can finish?",
+          "Is the redesign deferred until there is evidence?",
+          "Are the questions ones the team can answer?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Ticket text: 'Restructure the order module into smaller services-style packages. Do not change behavior.' It's a Python monolith, about 40k lines, with decent test coverage and a nightly integration suite. Write a pre-implementation analysis to analysis.md covering intent, risks, scope, and who should do it. Don't ask questions.",
+      "fixture": null,
+      "why_discriminating": "The skill's Refactoring branch carries specific safety directives (pre-refactor verification, verify after each change, documented preserved behavior, rollback, hidden dependencies) and routes to k-developer; it should not escalate to interactive elicitation for a clear, High-confidence refactor. Generic answers either miss the safety directives or over-ask.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "analysis.md exists",
+          "check": "test -s analysis.md"
+        },
+        {
+          "id": "f2",
+          "text": "Classified as Refactoring",
+          "check": "grep -qiE 'Type[^A-Za-z]*Refactoring' analysis.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Safety directives present",
+          "pass": "Pre-refactor baseline (tests green, behavior inventory), verify after each change, documented preserved behavior, and a rollback strategy",
+          "partial": "Two or three of these",
+          "fail": "One or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Refactor-specific risks are concrete",
+          "pass": "Hidden dependencies (circular imports, shared module state, DB session/transaction coupling, monkeypatched tests), propagation scope, import-path breakage for callers",
+          "partial": "Some generic risks",
+          "fail": "No real risk analysis"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Routes to k-developer with incremental slicing",
+          "pass": "k-developer, one package extracted at a time behind compatibility re-exports",
+          "partial": "k-developer but big-bang plan",
+          "fail": "Wrong agent or no chain"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Proportionate confidence and scope",
+          "pass": "High (or Medium with reason) confidence, no unnecessary elicitation, explicitly excludes feature changes and lists DEFERRED work",
+          "partial": "Asks questions already answered by the ticket",
+          "fail": "Adds features or redesign to the scope"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would this keep the refactor from breaking production?",
+          "Are the risks specific to splitting a Python monolith?",
+          "Is the analysis proportionate to a clear ticket?"
+        ]
+      }
+    }
+  ]
+}

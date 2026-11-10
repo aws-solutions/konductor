@@ -1,0 +1,51 @@
+{
+  "skill_name": "cmux-dispatch",
+  "evals": [
+    {
+      "id": 0,
+      "name": "dispatch-developer-new-worktree",
+      "scenario_prompt_id": "p1",
+      "prompt": "I'm the orchestrator running inside cmux. Delegate implementing GET /health in the repo at /work/shop-api (my primary checkout) to the k-developer agent in a split to the right. No worktree exists for this task yet. cmux isn't available in this sandbox, so write the exact command(s) you would run to dispatch.sh without running them. Write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "The skill requires locating cmux-dispatch.sh via its discovery snippet, --cwd at the shared primary tree even for write agents, naming a new wt-<id> in the task for the agent to create, and asking the child to write its deliverable to /tmp/konductor-cmux/. Without it, a model guesses a script path, sets --cwd to a worktree, or relies on the .done summary.",
+      "files": [],
+      "expectations": [
+        "Uses the dispatch script with --agent k-developer",
+        "Script located, not hardcoded: Includes the discovery logic (CLAUDE_SKILL_DIR / SKILLS_HOME / project / checkout) and stops if not found",
+        "--cwd and worktree naming: --cwd /work/shop-api; task says no worktree exists, create wt-<id> (flat hyphenated name) before touching files",
+        "Deliverable handoff: Task tells the child to write the full result to /tmp/konductor-cmux/result-<slug>.md; --split right",
+        "No invented flags: Only flags documented by the skill",
+        "Unattended-approval risk is addressed: the output notes that the dispatched pane runs non-interactively without stopping for tool permission prompts (or equivalent), or otherwise states which actions the child may take unattended"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Uses the dispatch script with --agent k-developer",
+          "check": "grep -q 'cmux-dispatch.sh' dispatch.sh && grep -qE -- '--agent[ =]k-developer' dispatch.sh"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "maker-checker-existing-worktree",
+      "scenario_prompt_id": "p3",
+      "prompt": "I'm the orchestrator in cmux; my primary checkout is /work/shop-api. Have k-developer finish ORD-88 in the worktree it already has for that ticket, and then have k-reviewer review the change. .wt-ledger.json and git-worktree-list.txt are copies of the current worktree state. cmux isn't available here, so write the exact dispatch commands and the order you'd run them in to dispatch-pair.sh, without running them. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "The skill says git worktree list is ground truth over the ledger, --cwd is always the primary tree, an existing worktree is named with its path for the agent to cd into, and a maker/checker pair never shares a target. A strong answer uses /work/worktrees/wt-31 (not the stale ledger path) and keeps the reviewer out of wt-31.",
+      "files": [
+        "fixtures/cmux-dispatch/"
+      ],
+      "expectations": [
+        "Two dispatches, every --cwd is the primary tree",
+        "Ledger vs git ground truth: Developer task names wt-31 at /work/worktrees/wt-31 (from git worktree list), notes the ledger path is stale, and tells the agent to re-run git worktree list and cd in, not create",
+        "Reviewer isolation: Reviewer is read-only, does not work in or edit wt-31; reviews the branch from the primary tree or its own read-only checkout",
+        "Sequencing through the orchestrator: Reviewer dispatched after the developer's .done/result file is read; findings relayed by the orchestrator; agents not told to message each other",
+        "Script and result conventions: Discovered CMUX_DISPATCH_DIR, exact agent names, result files under /tmp/konductor-cmux/",
+        "Unattended-approval risk is addressed: the output notes that the dispatched pane runs non-interactively without stopping for tool permission prompts (or equivalent), or otherwise states which actions the child may take unattended"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Two dispatches, every --cwd is the primary tree",
+          "check": "python3 -I ${SKILL_EVAL_DIR}/checks/check_cwd.py"
+        }
+      ]
+    }
+  ]
+}

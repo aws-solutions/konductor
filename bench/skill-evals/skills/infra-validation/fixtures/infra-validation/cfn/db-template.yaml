@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Billing database and nightly job
+Parameters:
+  DBUser:
+    Type: String
+    Default: admin
+Resources:
+  BillingDb:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: postgres
+      DBInstanceClass: db.r6g.4xlarge
+      AllocatedStorage: '500'
+      MasterUsername: !Ref DBUser
+      MasterUserPassword: 'ChangeMe123!'
+      StorageEncrypted: false
+      PubliclyAccessible: true
+      MultiAZ: false
+      BackupRetentionPeriod: 0
+      DeletionProtection: false
+  NightlyJobRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: job
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 's3:*'
+                Resource: '*'
+  NightlyJob:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt NightlyJobRole.Arn
+      Code: { ZipFile: "exports.handler = async () => {}" }
+      Timeout: 900
+  NightlyJobLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/nightly-job

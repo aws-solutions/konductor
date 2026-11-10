@@ -1,0 +1,22 @@
+[
+{"query": "add an ADR to docs/design/payments.md for choosing DynamoDB over Aurora for the ledger. we already compared them in the trade-offs section. put it in the right section and cross-ref it", "should_trigger": true},
+{"query": "Document this as an architecture decision record: we're using Step Functions instead of a custom SQS-driven state machine for the onboarding workflow. Status Accepted.", "should_trigger": true},
+{"query": "ADR-2 in our design doc is missing the alternatives table and has no consequences section. complete it please. file is docs/design/search-v2.md", "should_trigger": true},
+{"query": "create an ADR for choosing Fargate over Lambda for the video transcoder (15+ min jobs). number it after the existing ones in the doc", "should_trigger": true},
+{"query": "We picked EventBridge Pipes over a Lambda poller for the DDB stream -> SQS hop. Can you write that up in Context/Decision/Status/Alternatives/Consequences form inside docs/design/streams.md", "should_trigger": true},
+{"query": "Turn the decision in section 3 of the design doc (single-table vs multi-table DynamoDB) into a formal decision record with good/bad/neutral consequences and a why-not-chosen column", "should_trigger": true},
+{"query": "my design doc has 3 big decisions buried in prose (auth via Cognito, Postgres for billing, CloudFront signed cookies). generate ADRs for each and embed them", "should_trigger": true},
+{"query": "write ADR-4 for the decision to keep the monolith and extract only the notification service. proposed status, engineer hasn't signed off yet", "should_trigger": true},
+{"query": "record the architecture decision for adopting OpenTelemetry instead of X-Ray SDK directly, with at least two real alternatives and measurable consequences", "should_trigger": true},
+{"query": "there's no 'Architecture Decision Records' section in docs/design/cache.md yet. add one with an ADR for Redis cluster mode vs DAX and link it from the solution overview", "should_trigger": true},
+{"query": "Write a product decision record for moving to usage-based pricing, lead with customer impact", "should_trigger": false},
+{"query": "write a UX decision record for the new bottom tab navigation with the usability study results", "should_trigger": false},
+{"query": "Score Fargate vs Lambda vs EC2 for the transcoder on cost, latency, complexity, scalability and operability", "should_trigger": false},
+{"query": "review the tone and language of my existing decision docs for passive voice and vague quantifiers, no structural changes", "should_trigger": false},
+{"query": "install adr-tools and set up a docs/adr folder with the nygard template for the repo", "should_trigger": false},
+{"query": "Write the whole design doc for the payments ledger: problem, solution overview, how it works, plan", "should_trigger": false},
+{"query": "challenge the decisions in the payments design doc, devil's advocate, classify findings critical/important/minor", "should_trigger": false},
+{"query": "write the decision doc for leadership choosing between 3 vendors for the support tool, with a recommendation and cost", "should_trigger": false},
+{"query": "write release notes explaining that we migrated from Aurora to DynamoDB", "should_trigger": false},
+{"query": "check if DynamoDB transactions support 100 items per transaction and cite the docs", "should_trigger": false}
+]

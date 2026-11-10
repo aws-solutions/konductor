@@ -1,0 +1,200 @@
+{
+  "skill": "code-review",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Review the change in changes.diff before it merges (the new file is also at src/wallet.js; src/db.js is existing code it uses). This handler moves real money, so be thorough. Write review.md with each finding's severity (CRITICAL, IMPORTANT or SUGGESTION), file:line, the problem, and a concrete fix, ordered by severity. Do not modify any code. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/code-review/",
+      "why_discriminating": "The skill's checklist makes atomicity (read-modify-write without conditions) and missing error handling on external calls CRITICAL, and expects reuse of existing helpers. A strong answer ranks the unconditional db.put race and the unchecked fetch at the top and points at the existing db.putIf; a generic review often rates the fetch issue as a nit and suggests a new locking scheme instead of the helper already in db.js.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "review.md cites the balance read-modify-write lines in wallet.js",
+          "check": "test -f review.md && grep -qE 'wallet\\.js[^0-9]{0,12}(1[6-9]|2[0-2])' review.md"
+        },
+        {
+          "id": "f2",
+          "text": "No code was modified",
+          "check": "tail -n +6 changes.diff | sed 's/^+//' | diff -q - src/wallet.js >/dev/null"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Lost-update race on the balance (wallet.js 18-20)",
+          "pass": "Rated CRITICAL; explains that concurrent withdrawals both read the old balance and one debit is lost",
+          "partial": "Found but rated below CRITICAL, or impact not explained",
+          "fail": "Missed"
+        },
+        {
+          "id": "r2",
+          "dimension": "recommendation",
+          "criterion": "Fix for the race uses what the codebase already has",
+          "pass": "Recommends db.putIf(walletId, wallet, oldBalance) with retry on ConditionalCheckFailed (or an equivalent conditional update), not a new lock",
+          "partial": "Recommends a conditional write but ignores putIf or proposes an in-process mutex alongside it",
+          "fail": "Recommends an in-memory lock/mutex only, or no fix"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "External rate call and input handling",
+          "pass": "Flags fetch with no res.ok/timeout/try-catch (rated high, per the skill's CRITICAL bucket) and unvalidated amount (negative credits the wallet) or unencoded currency in the URL",
+          "partial": "Flags one of these two groups",
+          "fail": "Flags neither"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Review format the skill asks for",
+          "pass": "Every finding has severity, file:line, problem, fix; ordered CRITICAL, IMPORTANT, SUGGESTION; also catches the DEBUG console.log of the request body and missing null check on wallet",
+          "partial": "Format followed but one of the secondary findings missing or misordered",
+          "fail": "Unordered prose, no line references, or no fixes"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented issues",
+          "pass": "Every finding is real in the diff; no claims about SQL injection, auth, or code not shown",
+          "partial": "One speculative finding clearly labeled as such",
+          "fail": "Several invented or out-of-diff findings"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Are the two money-losing bugs at the top?",
+          "Does the fix reuse db.putIf?",
+          "Signal-to-noise of the findings"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Write the pull request description for this branch into pr-body.md, using notes.md (my scratch notes from the branch) and changes.diff as the source. A reviewer who has not seen the branch will read it. Do not create the PR. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/code-review/",
+      "why_discriminating": "The skill requires PR text that describes the final state only: no 'previously', no 'found during review round 2', no 'updated per feedback', no em dashes, plus what/why/how to test. notes.md is full of history narration; without the skill, models usually carry some of it forward.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "No history or review-process narration",
+          "check": "test -f pr-body.md && ! grep -qiE 'previously|found during|review round|round [0-9]|per feedback|updated per|was fixed|fixed it|renamed' pr-body.md"
+        },
+        {
+          "id": "f2",
+          "text": "No em or en dashes",
+          "check": "test -f pr-body.md && python3 -c \"import sys;t=open('pr-body.md',encoding='utf-8').read();sys.exit(1 if (chr(8212) in t or chr(8211) in t) else 0)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "What, why, how to test",
+          "pass": "States the two endpoints and FX conversion, why (non-USD wallets), and how to test with npm test and the curl from notes.md",
+          "partial": "Two of the three present",
+          "fail": "Missing how to test, or only a title"
+        },
+        {
+          "id": "r2",
+          "dimension": "restraint",
+          "criterion": "Final state only",
+          "pass": "No trace of history: no USD-only past, no double-call fix, no Priya rename, no 'now'",
+          "partial": "One residual 'now supports' or similar contrast",
+          "fail": "Carries review-round or rename narration"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Reads like a person wrote it",
+          "pass": "Short, plain, no promotional words or filler, no padded bullet lists",
+          "partial": "Mostly plain with one or two AI tells",
+          "fail": "Boilerplate sections, buzzwords, or long generated prose"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would a reviewer know what changed and how to test it?",
+          "Absence of history narration",
+          "Length and tone"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "We have no network access here, so do not run gh or git against a remote. Write commands.sh with the exact commands you would run, with a comment line above each step, to: (1) open the PR for this branch against main using pr-body.md as the body; (2) get someone else's PR #57 in acme/wallet onto disk so you can read every changed file (this directory is my main checkout and has uncommitted work); (3) post review findings from review.md on #57 so I can check them before anyone else sees them, and submit them later; (4) reply to the two open review comments on my PR #41. Do not execute anything. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/code-review/",
+      "why_discriminating": "The skill prescribes draft PRs, checking the current checkout and git worktree list before creating a separate absolute-path checkout (never gh pr checkout in the primary checkout), a pending review created through the reviews API with the id captured and submission as a separate authorized step, and one user confirmation per comment reply. A generic answer typically runs gh pr checkout in place, uses gh pr review (which submits immediately), and batches replies.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "commands.sh is valid shell",
+          "check": "test -f commands.sh && bash -n commands.sh"
+        },
+        {
+          "id": "f2",
+          "text": "Does not use gh pr review, which submits immediately",
+          "check": "test -f commands.sh && ! grep -qE '^\\s*gh pr review' commands.sh"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "PR opened as a draft",
+          "pass": "gh pr create --draft --base main --body-file pr-body.md (or equivalent)",
+          "partial": "Draft but body passed inline in a way that breaks on quotes",
+          "fail": "Not a draft"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Safe checkout of #57",
+          "pass": "Checks git branch/worktree list first, then git worktree add (or a clone under pr-reviews/57) at an absolute path and runs gh pr checkout only inside it",
+          "partial": "Uses a separate directory but a relative path or skips the existing-checkout check",
+          "fail": "gh pr checkout 57 in the current main checkout with uncommitted work"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Pending review, then separate submit",
+          "pass": "POST to repos/acme/wallet/pulls/57/reviews with body and no event, captures the review id, and a later separate events call with event=COMMENT (or similar) gated on my approval; mentions recovering the pending review via list if create fails",
+          "partial": "Pending review created but the id is not captured or submit is chained right after",
+          "fail": "Review submitted immediately"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Comment replies on #41",
+          "pass": "Each reply is its own command with a note that it posts immediately and needs my confirmation per reply",
+          "partial": "Replies included but batched under one confirmation",
+          "fail": "Replies posted with no confirmation gate, or step missing"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No made-up flags or endpoints",
+          "pass": "Every gh/git flag and API path is real; nothing is executed",
+          "partial": "One questionable flag",
+          "fail": "Several invented flags or commands that would fail"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would any step publish something before I approved it?",
+          "Safety of the checkout step given uncommitted work",
+          "Correctness of the gh/API commands"
+        ]
+      }
+    }
+  ]
+}

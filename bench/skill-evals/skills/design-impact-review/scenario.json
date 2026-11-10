@@ -1,0 +1,200 @@
+{
+  "skill": "design-impact-review",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "I'm about to change the Member data model: replace `fullName` with `givenName` and `familyName`, and add an optional `phoneNumber`. Before I touch anything, work out what else this change affects across the docs, API spec, UI code and tests in this repo. Write impact.md with a per-artifact assessment and a recommendation on whether I can go ahead. Do not edit any existing file. This runs unattended: do not ask questions, state assumptions in impact.md.",
+      "fixture": "fixtures/design-impact-review/",
+      "why_discriminating": "The skill makes the reviewer name the origin layer, walk the dependency map (data model -> API, threat model, tests, then UX and requirements), classify each artifact BREAKING/STALE/UNAFFECTED, and stop on BREAKING. A generic answer usually lists the code that reads fullName but misses that phoneNumber is new, unclassified PII in the threat model and that AC-3.2 still says 'full name'.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "impact.md exists",
+          "check": "test -s impact.md"
+        },
+        {
+          "id": "f2",
+          "text": "No existing file was edited",
+          "check": "[ \"$(sha256sum api/openapi.yaml docs/data-model.md docs/hld.md docs/nfr.md docs/requirements.md docs/test-strategy.md docs/threat-model.md tests/contract/member.contract.test.js tests/contract/member.sample.json web/src/ProfileCard.tsx | sha256sum | cut -d' ' -f1)\" = \"edb730f41b8adfdf1e1aeaaf6241b93d097aa8ed753fa39c8c46ba33716a78cd\" ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Finds the breaking consumers: openapi.yaml Member requires fullName, ProfileCard.tsx reads u.fullName, contract test pins ['email','fullName','id']",
+          "pass": "All three named with the reason each breaks",
+          "partial": "Two of three",
+          "fail": "One or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Finds the non-code ripple: threat model must classify phoneNumber (new PII) and fullName's classification no longer maps; requirements AC-3.2 says 'full name'; test strategy needs updating",
+          "pass": "Threat model PII gap and AC-3.2 both found",
+          "partial": "One of them",
+          "fail": "Neither"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Follows the skill's procedure: states the origin layer (data model), uses the BREAKING/STALE/UNAFFECTED scale per artifact including UNAFFECTED ones (NFRs), and ends with the matching recommendation type",
+          "pass": "Origin layer, full per-artifact table with all three statuses, recommendation tied to the BREAKING count",
+          "partial": "Table present but missing origin layer or UNAFFECTED rows, or recommendation not tied to statuses",
+          "fail": "No per-artifact classification"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Recommendation surfaces the BREAKING impacts before proceeding and says who/what must be updated first (API contract and consumers, threat model data classification), rather than 'go ahead and update as you go'",
+          "pass": "Stops on BREAKING, concrete order of updates",
+          "partial": "Mentions the breaks but still says proceed",
+          "fail": "Says proceed without caveat"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Does not overstate: NFRs and HLD not marked BREAKING without a reason; no invented artifacts",
+          "pass": "Statuses defensible for every row",
+          "partial": "One overstatement",
+          "fail": "Several"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it find the non-obvious artifacts (threat model, requirements) as well as the code?",
+          "Would the user know whether to stop and what to update first?",
+          "Are the statuses defensible?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Product just changed US-3: member profiles should be viewable by anyone with the link, without signing in. Trace what this does to the existing design artifacts in this repo and write impact-public.md with the per-artifact assessment and what should happen next. Do not edit any existing file. Do not ask questions; state assumptions instead.",
+      "fixture": "fixtures/design-impact-review/",
+      "why_discriminating": "A requirement-layer change re-opens every artifact under the skill's map. Without it, answers tend to focus on removing the Cognito authorizer and miss that threat T1's mitigation and the trust boundary are invalidated, that email (PII) would become public, and that the product owner and architect must weigh in before code changes.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "impact-public.md exists",
+          "check": "test -s impact-public.md"
+        },
+        {
+          "id": "f2",
+          "text": "No existing file was edited",
+          "check": "[ \"$(sha256sum api/openapi.yaml docs/data-model.md docs/hld.md docs/nfr.md docs/requirements.md docs/test-strategy.md docs/threat-model.md tests/contract/member.contract.test.js tests/contract/member.sample.json web/src/ProfileCard.tsx | sha256sum | cut -d' ' -f1)\" = \"edb730f41b8adfdf1e1aeaaf6241b93d097aa8ed753fa39c8c46ba33716a78cd\" ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Identifies the security consequence: T1 (read another member's email) mitigation via owner check and the 'Cognito JWT required' trust boundary no longer hold; email PII would be exposed publicly",
+          "pass": "Threat model BREAKING with T1, the trust boundary, and email exposure explained",
+          "partial": "Threat model flagged but without the email exposure or T1 specifics",
+          "fail": "Threat model not flagged"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Identifies the conflicts in other artifacts: AC-3.1 contradicts the new US-3; HLD owner check and authorizer; API 403 semantics; authorization tests expecting 403",
+          "pass": "All four found",
+          "partial": "Two or three",
+          "fail": "One or none"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Separates what the requirement actually needs (public view of some fields) from the risky literal reading, e.g. proposes a public projection without email rather than dropping auth wholesale",
+          "pass": "Offers a scoped option with the trade-off",
+          "partial": "Notes the risk but no scoped alternative",
+          "fail": "Treats it as just removing auth"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "States origin layer = requirement, classifies each artifact BREAKING/STALE/UNAFFECTED, and the recommendation escalates to product owner (AC-3.1 conflict) and architect/security (design and threat model) before proceeding",
+          "pass": "Origin, classification, and both escalations present",
+          "partial": "Classification present but escalation vague or one-sided",
+          "fail": "No classification or says proceed"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it catch the PII exposure and the invalidated threat mitigation?",
+          "Does it say who must decide before work starts?",
+          "Does it offer a safer reading of the requirement?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "To cut DynamoDB reads I'm going to add a 5-minute in-memory cache inside the Profile Lambda for GET /members/{id}, keyed by id. It's purely an implementation detail: no API, schema or UI change. Check whether that's true against the design artifacts in this repo before I start, and write impact-cache.md with your assessment and a go/no-go recommendation. Do not edit any existing file. Do not ask questions; state assumptions instead.",
+      "fixture": "fixtures/design-impact-review/",
+      "why_discriminating": "This looks contained, and a generic answer usually says go. The skill's anti-patterns ('refactoring without checking threat-model boundaries') and its implementation-layer row (re-assess API, data model, tests) lead a reviewer to the two real conditions: the cache must not be consulted before the owner check (T1), and PATCH (US-4 edits) must invalidate it or users see stale names for 5 minutes; tests and HLD go STALE. It is not BREAKING if those hold.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "impact-cache.md exists",
+          "check": "test -s impact-cache.md"
+        },
+        {
+          "id": "f2",
+          "text": "No existing file was edited",
+          "check": "[ \"$(sha256sum api/openapi.yaml docs/data-model.md docs/hld.md docs/nfr.md docs/requirements.md docs/test-strategy.md docs/threat-model.md tests/contract/member.contract.test.js tests/contract/member.sample.json web/src/ProfileCard.tsx | sha256sum | cut -d' ' -f1)\" = \"edb730f41b8adfdf1e1aeaaf6241b93d097aa8ed753fa39c8c46ba33716a78cd\" ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Finds the authorization ordering risk: a cache keyed only by id, if read before the owner check, returns another member's email, defeating T1",
+          "pass": "Risk named with the T1 link and the condition (check ownership before serving from cache)",
+          "partial": "Mentions security vaguely",
+          "fail": "Not found"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Finds the staleness problem: PATCH /members/{id} (US-4 edit display name) leaves a stale cached profile for up to 5 minutes unless invalidated",
+          "pass": "Found with the PATCH/US-4 link and a fix (invalidate on write or skip cache for owner after write)",
+          "partial": "Mentions staleness generically",
+          "fail": "Not found"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Classifies artifacts on the skill's scale with origin layer = implementation: API, data model, UX UNAFFECTED; threat model, HLD and test strategy STALE; recommendation of the STALE-only or CONTAINED type with conditions",
+          "pass": "Origin layer and per-artifact statuses match this pattern with reasons",
+          "partial": "Statuses present but several unjustified",
+          "fail": "No classification"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Proportionate: does not call the change BREAKING or block it outright; gives a conditional go",
+          "pass": "Conditional go with the two conditions and follow-up doc/test updates",
+          "partial": "Overly cautious (no-go) or unconditional go with a passing mention",
+          "fail": "Unconditional go or BREAKING everywhere"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it find the hidden auth and staleness conditions?",
+          "Is the go/no-go proportionate?",
+          "Are the follow-up updates specific?"
+        ]
+      }
+    }
+  ]
+}

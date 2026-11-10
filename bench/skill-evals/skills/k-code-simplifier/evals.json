@@ -1,0 +1,64 @@
+{
+  "skill_name": "k-code-simplifier",
+  "evals": [
+    {
+      "id": 0,
+      "name": "pricing-readability-preserve-behavior",
+      "scenario_prompt_id": "p1",
+      "prompt": "pricing.py in this checkout service came out of a rushed hotfix week, and reviewers keep bouncing changes to it because it is hard to read. Clean it up for readability and maintainability. Behavior must stay exactly the same for every input (the tests in tests/ do not cover everything), and the public function names and signatures must not change. Edit pricing.py in place, run the tests in tests/, and write a short summary of the significant changes to CHANGES.md. Do not ask me questions; state any assumptions in CHANGES.md.",
+      "expected_output": "The skill pushes explicit if/else over nested ternaries, warns against trading one clever one-liner for another, and requires preserving every behavior. Without it, a model often 'simplifies' apply_discount to `discount or 0.1` (breaks an explicit 0, which the tests do not cover) or swaps the ternary for another dense expression, and writes a long change log.",
+      "files": [
+        "fixtures/k-code-simplifier/"
+      ],
+      "expectations": [
+        "Existing unit tests still pass",
+        "Behavior identical on a shipping grid across the 5/20 boundaries, apply_discount with discount=0 and a clamped negative result, and both formatters including negatives",
+        "Finds and fixes the three readability problems: the one-line nested ternary in shipping_fee, the dead `else: result = result` in apply_discount, and the copy-pasted digit-grouping loop in format_usd/format_eur: All three fixed",
+        "Clarity over brevity: the replacements are explicit and readable, not a new compact trick: shipping_fee is a readable if/elif chain or small explicit table, and no new dense one-liner, lambda map, or nested comprehension appears anywhere",
+        "Preserves the non-obvious behavior: `discount is None` semantics (explicit 0 means no discount), the negative clamp to 0, rounding, and the '-' handling in grouping: All preserved, and CHANGES.md or a short comment notes that an explicit 0 discount must stay valid or that behavior beyond the tests was checked",
+        "The format_usd/format_eur duplication is consolidated with the right amount of abstraction: One small shared helper (or a standard format spec) used by both, outputs identical, no extra parameters or classes beyond need",
+        "CHANGES.md documents only the significant changes: A few concise bullets covering the real changes and any assumption; no line-by-line narration",
+        "Test evidence is honest: the run either shows the test command and its result before and after the change, or plainly states it could not run the tests in this environment; it never claims tests passed without having run them"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Existing unit tests still pass",
+          "check": "python3 -m unittest discover -s tests"
+        },
+        {
+          "text": "Behavior identical on a shipping grid across the 5/20 boundaries, apply_discount with discount=0 and a clamped negative result, and both formatters including negatives",
+          "check": "python3 -c \"import sys;sys.path.insert(0,'.');import pricing as p;ref=lambda w,e,m: 0 if m and w<5 else ((15 if e else 5) if w<5 else ((25 if e else 10) if w<20 else (40 if e else 20)));ok=all(p.shipping_fee(w,e,m)==ref(w,e,m) for w in (0,1,4.99,5,5.01,19.99,20,50) for e in (False,True) for m in (False,True));ok=ok and p.apply_discount(100,0)==100 and p.apply_discount(10,2)==0 and p.apply_discount(100,0.25)==75 and p.apply_discount(100)==90;ok=ok and p.format_usd(-1234.5)=='\\$-1,234.50' and p.format_usd(-123)=='\\$-123.00' and p.format_eur(0)=='EUR 0.00' and p.format_usd(999)=='\\$999.00';sys.exit(0 if ok else 1)\""
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "report-flatten-nesting-preserve-edge-cases",
+      "scenario_prompt_id": "p2",
+      "prompt": "report.py builds our nightly order summary, and summarize() has eight levels of nesting that reviewers keep flagging. Refactor it so it is easy to follow. The return value must stay identical for every input, including the odd data the nightly job really sees (None entries, missing keys, empty or None order lists, refunds with odd amounts). Edit report.py in place, run the tests in tests/, and put a short note of the significant changes in CHANGES.md. Do not ask questions.",
+      "expected_output": "The skill's balance rule (flatten nesting, but do not over-simplify into dense comprehensions or remove helpful structure) and its insistence on unchanged behavior separate a careful refactor from a common shortcut: hoisting an `amount > 0` guard above the status check, which silently drops zero or negative refunds.",
+      "files": [
+        "fixtures/k-code-simplifier/"
+      ],
+      "expectations": [
+        "Control-flow nesting depth inside summarize() is 3 or less",
+        "Identical results on edge cases: None/empty input, None and empty entries, missing status or amount, amount exactly 10000, negative refund, large non-US order with no country key",
+        "Readable structure rather than compression: Guard clauses (`continue`) or one or two well-named helpers that read top to bottom; no single dense comprehension or sum() chain doing all the work",
+        "Keeps the subtle semantics: refunds are summed regardless of amount sign, only paid amounts > 0 count, the >10000 threshold is strict, and a missing country is flagged (None != 'US'): All four kept, and the non-obvious ones (refund sign, missing country) are called out in CHANGES.md or a brief comment",
+        "Naming and abstraction fit the size of the function: Clear names (e.g. order, amount) replace `o`; no new classes, strategy objects, or config tables for a 15-line function",
+        "CHANGES.md is short and limited to significant changes: Brief, accurate, mentions the restructuring and any preserved edge case",
+        "Test evidence is honest: the run either shows the test command and its result before and after the change, or plainly states it could not run the tests in this environment; it never claims tests passed without having run them"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Control-flow nesting depth inside summarize() is 3 or less",
+          "check": "python3 -c \"exec('''import ast,sys\\ndef d(n,k=0):\\n B=(ast.If,ast.For,ast.While,ast.With,ast.Try)\\n return max([d(c,k+isinstance(c,B)) for c in ast.iter_child_nodes(n)]+[k])\\nf=[x for x in ast.walk(ast.parse(open('report.py').read())) if isinstance(x,ast.FunctionDef) and x.name=='summarize'][0]\\nsys.exit(0 if d(f)<=3 else 1)''')\""
+        },
+        {
+          "text": "Identical results on edge cases: None/empty input, None and empty entries, missing status or amount, amount exactly 10000, negative refund, large non-US order with no country key",
+          "check": "python3 -c \"import sys;sys.path.insert(0,'.');import report as r;E={'paid':0,'refunded':0,'flagged':[]};cases=[(None,E),([],E),([None,{'id':'x'},{}],E),([{'id':'n','status':'paid','amount':-5},{'id':'z','status':'paid'}],E),([{'id':'big','status':'paid','amount':10001},{'id':'r','status':'refunded'}],{'paid':10001,'refunded':0,'flagged':['big']}),([{'id':'e','status':'paid','amount':10000,'country':'DE'},{'id':'rn','status':'refunded','amount':-3}],{'paid':10000,'refunded':-3,'flagged':[]}),([{'id':'u','status':'paid','amount':10001,'country':'US'},{'id':'q','status':'pending','amount':9}],{'paid':10001,'refunded':0,'flagged':[]})];sys.exit(0 if all(r.summarize(i)==o for i,o in cases) else 1)\""
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+[
+{"query": "new service: multi-tenant task tracker. access patterns: get task by id, list tasks by project sorted by due date, list tasks assigned to a user by status, list all tasks for admin export. ~500 writes/s, 5k reads/s. design the dynamodb table(s) and indexes", "should_trigger": true},
+{"query": "I need a DynamoDB data model for an e-commerce order system: customers, orders, order items, shipments. Single table or multiple? Show PK/SK, GSIs, and how each query maps.", "should_trigger": true},
+{"query": "how should I key a dynamo table for IoT sensor readings? 20k devices, each writes every 10s, queries are 'last 24h for device' and 'all devices in a site with alerts'. worried about hot partitions", "should_trigger": true},
+{"query": "We're designing the chat messages store. Need conversations by user ordered by last activity, messages in a conversation paginated newest first, unread counts. Propose a DynamoDB schema with capacity estimates and CDK code.", "should_trigger": true},
+{"query": "our product owner wants 'list all bookings' and 'search bookings by status' in the UI. how do I model that in dynamodb without scans? give me the table + gsi design", "should_trigger": true},
+{"query": "Help me design the data model for a leaderboard: top 100 per game per week, a player's rank, and history per player. DynamoDB, on-demand probably. Include TTL for old weeks.", "should_trigger": true},
+{"query": "Given the access patterns in docs/requirements/access-patterns.md, produce a DynamoDB table design with GSI strategy, projections, cost estimate and a CloudFormation snippet", "should_trigger": true},
+{"query": "GSI vs LSI for 'orders by customer sorted by amount' when I also need strongly consistent reads? and what partition key would you pick for the base table? context: ~2M customers", "should_trigger": true},
+{"query": "designing an audit log on dynamo for a fintech app, 7 year retention, queries by account+time range and by actor. what keys, indexes, and backup/PITR setup do you recommend?", "should_trigger": true},
+{"query": "We have to add 3 new access patterns to our existing Users table (by email, by org, by signup date). redesign the indexes so we don't end up with 8 GSIs", "should_trigger": true},
+{"query": "review lib/stacks/data-stack.ts, our CDK DynamoDB table, for encryption, PITR, deletion protection and alarms before prod deploy", "should_trigger": false},
+{"query": "getting ConditionalCheckFailedException on every second PutItem in src/repo/orderRepo.ts, here's the code. why?", "should_trigger": false},
+{"query": "design a normalized Postgres schema for the e-commerce order system with foreign keys and indexes", "should_trigger": false},
+{"query": "write a script to backfill a new attribute 'tenantId' onto 40M existing items in our DynamoDB table without throttling", "should_trigger": false},
+{"query": "Estimate the total monthly AWS bill for our whole architecture: API Gateway, 6 Lambdas, DynamoDB, S3, CloudFront", "should_trigger": false},
+{"query": "write the TypeScript repository class with QueryCommand pagination for the existing tasks table, using the SDK v3 DocumentClient", "should_trigger": false},
+{"query": "how do I set up DynamoDB Local in docker-compose for integration tests?", "should_trigger": false},
+{"query": "review this diff for race conditions: two UpdateItem calls on the inventory table that aren't in a transaction", "should_trigger": false},
+{"query": "write an IAM policy that lets our Lambda read and write only the Orders table and its GSIs", "should_trigger": false},
+{"query": "design a Redis caching layer in front of our product catalog API with cache invalidation on writes", "should_trigger": false}
+]

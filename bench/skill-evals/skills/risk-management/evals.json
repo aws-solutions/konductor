@@ -1,0 +1,52 @@
+{
+  "skill_name": "risk-management",
+  "evals": [
+    {
+      "id": 0,
+      "name": "dc-exit-initial-raid-log",
+      "scenario_prompt_id": "p1",
+      "prompt": "program-notes.md has the kickoff notes for our data center exit program. Build the initial RAID log in raid-log.md, ready for the first program review on Monday. The program lead will use it to decide what to escalate and how often to review each item. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "expected_output": "The skill defines the RAID types, a probability (>70/30-70/<30%) by impact (>2w/1-2w/<1w slip) scale with a fixed score mapping, the four mitigation strategies with owner and trigger, contingencies for dependencies, a heat map, Top 5, cadence by score and the TPM -> Program Lead -> Director -> VP escalation path. Without it, a model often logs the blocked perf environment as a risk, lists assumptions without a validation plan, and scores ad hoc.",
+      "files": [
+        "fixtures/risk-management/"
+      ],
+      "expectations": [
+        "RAID table has ID, Type, Probability, Impact, Score, Mitigation, Owner, Due Date and Status columns",
+        "Correct RAID typing of the notes (KEY): Perf test environment logged as an Issue with owner and due date; contractors and legacy batch API as Assumptions; SAML vendor and egress proxy as Dependencies (with risk scoring); index rebuild window as a Risk",
+        "Scoring follows the skill's scale and mapping: Every R and D has probability and impact using the skill's definitions, and Score matches the mapping (HxH Critical, HxM/MxH High, HxL/LxH/MxM Medium, else Low); SAML vendor (slipped twice, no lease extension) scored Critical or High with stated reasoning",
+        "Mitigations and contingencies are actionable: Each High/Critical item uses Avoid/Mitigate/Transfer/Accept with an owner and a trigger; each dependency has a contingency (e.g. SAML fallback such as cutting Payments last or interim IdP path; egress proxy fallback); each assumption has a dated validation step",
+        "Skill's companion outputs: 3x3 heat map with IDs plotted, Top 5 summary with status, review cadence by score (Critical weekly ... Low quarterly), escalation criteria and path",
+        "Grounded in the notes: No invented teams, dates or facts beyond labeled assumptions; owners drawn from Priya/Marco/Lin"
+      ],
+      "scripted_checks": [
+        {
+          "text": "RAID table has ID, Type, Probability, Impact, Score, Mitigation, Owner, Due Date and Status columns",
+          "check": "for c in ID Type Probability Impact Score Mitigation Owner Due Status; do grep -iE '^\\|' raid-log.md | head -3 | grep -qi \"$c\" || exit 1; done"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "saml-slip-rescore-escalation",
+      "scenario_prompt_id": "p2",
+      "prompt": "Update from today: the identity vendor moved the SAML fix to 2027-02-20, which leaves Payments about 5 weeks before the 2027-03-31 lease end. Using program-notes.md for context, write raid-update.md for the program lead: the re-scored entry, what changed, the mitigation and contingency, and whether and how to escalate. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "expected_output": "The skill's escalation criteria (score rises to Critical, dependency at risk of not being met) and its fixed path TPM -> Program Lead -> Director -> VP determine both whether and to whom to escalate, and the scoring scale makes the re-score explicit. Without it a model often gives a sensible narrative but no explicit re-score, skips the path, or jumps straight to VP.",
+      "files": [
+        "fixtures/risk-management/"
+      ],
+      "expectations": [
+        "SAML vendor risk is re-scored to Critical (or High x High)",
+        "Re-score is justified on the skill's scale: Probability High (vendor slipped twice; new date already a slip) and Impact High (a further >2w slip threatens the fixed lease end) -> Critical, with before/after shown",
+        "Escalation per the skill: Escalates now because score reached Critical; path TPM (Priya) -> Program Lead -> Director, with VP only if Director cannot resolve; escalation log entry with date and requested decision",
+        "Mitigation and contingency: Named strategy with owner, trigger and due date (e.g. weekly vendor checkpoint, trigger if no build by 2027-02-06); concrete contingency if the vendor slips again (resequence Payments last, prepare interim auth path, compress Payments cutover plan)",
+        "Knock-on effects noticed: Notes interaction with the egress proxy dependency (2027-02-01) and the Payments test window, and updates review cadence to weekly"
+      ],
+      "scripted_checks": [
+        {
+          "text": "SAML vendor risk is re-scored to Critical (or High x High)",
+          "check": "grep -iE 'saml|vendor|identity' raid-update.md | grep -qiE 'critical|H *[x\u00d7] *H|high *[x\u00d7] *high'"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,217 @@
+{
+  "skill": "architecture-diagram-generation",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Our threat-modeling reviewers need an AWS architecture diagram of the receipts service before Thursday's security review. Turn system-design.md into a draw.io diagram they can import into draw.io and our Design Inspector tool. Write it as uncompressed mxGraphModel XML to diagrams/receipts.drawio, and include every service the doc mentions, including the operations pieces. Reviewers will use it to reason about trust boundaries and data flows, so make those readable. Do not ask me questions; make reasonable assumptions, list them in a text note inside the diagram, and finish the work.",
+      "fixture": "fixtures/architecture-diagram-generation/",
+      "why_discriminating": "The skill prescribes scope placement (global services like S3/CloudFront/WAF inside the account but outside the VPC, regional services outside the VPC, ECS/Aurora inside), an account boundary even for one account, a title on top, protocol labels, a flow color code (blue request, green internal, red error, orange monitoring), and dashed return traffic. A competent diagram without it often drops the account box, colors flows arbitrarily, or leaves the logging/DLQ flows out.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "diagrams/receipts.drawio parses as XML with an mxGraphModel root, at least 10 cells, all ids unique",
+          "check": "python3 -c 'import xml.etree.ElementTree as E,sys,collections;r=E.parse(\"diagrams/receipts.drawio\").getroot();r=r if r.tag==\"mxGraphModel\" else r.find(\".//mxGraphModel\");ids=[c.get(\"id\") for c in r.iter(\"mxCell\")];sys.exit(0 if r is not None and len(ids)==len(set(ids)) and len(ids)>=10 else 1)'"
+        },
+        {
+          "id": "f2",
+          "text": "Service scope placement: CloudFront and S3 icons are outside the VPC box; Fargate/ECS and Aurora/RDS icons are inside it",
+          "check": "python3 -c 'import xml.etree.ElementTree as E,re,sys\nr=E.parse(\"diagrams/receipts.drawio\").getroot()\nr=r if r.tag==\"mxGraphModel\" else r.find(\".//mxGraphModel\")\ncs={c.get(\"id\"):c for c in r.iter(\"mxCell\")}\ndef g(c):\n  m=c.find(\"mxGeometry\");x=float(m.get(\"x\",0));y=float(m.get(\"y\",0));w=float(m.get(\"width\",0));h=float(m.get(\"height\",0));p=cs.get(c.get(\"parent\"))\n  while p is not None and p.get(\"vertex\")==\"1\":\n    pm=p.find(\"mxGeometry\");x+=float(pm.get(\"x\",0));y+=float(pm.get(\"y\",0));p=cs.get(p.get(\"parent\"))\n  return x,y,w,h\nV=[c for c in cs.values() if c.get(\"vertex\")==\"1\" and c.find(\"mxGeometry\") is not None]\nvp=[c for c in V if (\"vpc\" in (c.get(\"value\") or \"\").lower() or \"group_vpc\" in (c.get(\"style\") or \"\")) and \"resIcon\" not in (c.get(\"style\") or \"\")]\nvb=max((g(c) for c in vp),key=lambda b:b[2]*b[3])\ndef ins(c):\n  x,y,w,h=g(c);cx,cy=x+w/2,y+h/2;return vb[0]<=cx<=vb[0]+vb[2] and vb[1]<=cy<=vb[1]+vb[3]\ndef ic(pat): return [c for c in V if re.search(r\"mxgraph\\.aws4\\.(\"+pat+r\")\\b\",c.get(\"style\") or \"\")]\nout=ic(\"cloudfront|s3|simple_storage_service\");inn=ic(\"fargate|ecs|elastic_container_service|aurora|rds\")\nsys.exit(0 if out and inn and not any(ins(c) for c in out) and all(ins(c) for c in inn) else 1)'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Service coverage and scope placement against system-design.md (CloudFront, WAF, S3 x2, API Gateway, Cognito, Lambda, DynamoDB, SQS + DLQ, Fargate, Aurora, VPC gateway endpoint, CloudWatch, SNS)",
+          "pass": "All listed services present; S3/CloudFront/WAF inside account but outside VPC; Lambda/DynamoDB/SQS/API GW outside VPC; Fargate in private and Aurora in isolated subnet inside VPC; gateway endpoint drawn on the VPC",
+          "partial": "Placement correct but 1-3 services missing (typically DLQ, endpoint, CloudWatch/SNS) or subnets not distinguished",
+          "fail": "A VPC-scoped/global placement error (e.g. Lambda or S3 inside the VPC) or 4+ services missing"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Follows the skill's diagram conventions: title cell on top, labeled AWS account boundary and region boundary, VPC boundary, official mxgraph.aws4 icons",
+          "pass": "Title above all containers naming the system and purpose, account (receipts-prod / 111122223333) and us-east-1 region containers, aws4 icons on every service",
+          "partial": "One of title / account / region boundary missing, or a few services drawn as plain boxes",
+          "fail": "Two or more of title, account boundary, region boundary missing, or mostly non-AWS shapes"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Data flow edges: directional, labeled with protocol or data type, colored by flow type, dashed for return/intermittent traffic",
+          "pass": "Every edge has an arrowhead and a label (HTTPS, SQS poll, PostgreSQL/5432, etc.); request, internal, monitoring and DLQ/alert flows use distinct colors; responses or polling shown dashed",
+          "partial": "Edges directional and labeled but color coding absent or inconsistent, or no dashed return/intermittent edge",
+          "fail": "Unlabeled or non-directional edges, or major flows (Lambda->SQS->Fargate->Aurora) missing"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Security review usefulness: trust boundaries and auth points visible",
+          "pass": "Internet/edge boundary distinguishable from the account interior; WAF shown on CloudFront and Cognito authorizing API Gateway; assumptions note lists the judgment calls made",
+          "partial": "Boundaries present but auth points (WAF, Cognito) not tied to the flows they protect, or no assumptions note",
+          "fail": "No way to tell where untrusted traffic enters, and no assumptions listed"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented components or facts",
+          "pass": "No services, accounts, regions or ports the doc does not support beyond what the assumptions note declares",
+          "partial": "One undeclared invented component (e.g. NAT gateway, second region) that does not distort the design",
+          "fail": "Several invented components or a contradiction with the doc (e.g. Lambda in the VPC, multi-account)"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "correct global/regional/VPC scope placement",
+          "account, region and title present",
+          "flow labels, direction, color and dashed return traffic",
+          "ops flows (logs, alarms, DLQ) included"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Security review wants a draw.io diagram of our multi-account layout to mark trust boundaries. Production account 111122223333: ALB in public subnets, ECS Fargate service in private subnets, RDS PostgreSQL Multi-AZ in isolated subnets, all in one VPC in us-east-1. Shared services account 444455556666: Transit Gateway and Route 53 Resolver; the production VPC attaches to the Transit Gateway and forwards DNS to the Resolver. Log archive account 777788889999: an S3 bucket receiving CloudTrail and VPC Flow Logs from production. Write uncompressed XML to diagrams/multi-account.drawio. Do not ask me questions; make reasonable assumptions, list them in a text note in the diagram, and finish the work.",
+      "fixture": null,
+      "why_discriminating": "The skill's multi-account template, title-on-top rule, flow color code (orange for logging, blue for user requests) and its emphasis on trust boundaries and AZ separation push toward a diagram where cross-account flows are visually distinct. Without it, a model tends to draw three boxes with uniformly styled, sometimes unlabeled arrows and no AZ split for Multi-AZ RDS.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "File parses, ids unique, at least 10 cells",
+          "check": "python3 -c 'import xml.etree.ElementTree as E,sys,collections;r=E.parse(\"diagrams/multi-account.drawio\").getroot();r=r if r.tag==\"mxGraphModel\" else r.find(\".//mxGraphModel\");ids=[c.get(\"id\") for c in r.iter(\"mxCell\")];sys.exit(0 if r is not None and len(ids)==len(set(ids)) and len(ids)>=10 else 1)'"
+        },
+        {
+          "id": "f2",
+          "text": "All three accounts appear as labeled containers",
+          "check": "for a in 111122223333 444455556666 777788889999; do grep -q $a diagrams/multi-account.drawio || exit 1; done"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Correct containment: each account a labeled container; one VPC in us-east-1 in production with public/private/isolated subnet tiers; ALB in public, Fargate in private, RDS in isolated; S3 log bucket in the log-archive account outside any VPC",
+          "pass": "All containment correct, subnet tiers labeled, RDS primary/standby shown across two AZs",
+          "partial": "Containment correct but subnet tiers or AZ split missing",
+          "fail": "A service in the wrong account or scope (e.g. S3 bucket inside the prod VPC, TGW in production)"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Cross-account flows follow the skill's flow conventions",
+          "pass": "CloudTrail and Flow Logs edges to the log bucket labeled and colored as logging (orange), TGW attachment and DNS forwarding edges labeled, user request path blue, all directional",
+          "partial": "Flows present and labeled but not visually distinguished by type, or one cross-account flow missing",
+          "fail": "Cross-account flows missing or unlabeled"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Diagram framing: title above all containers stating system and purpose; region boundary shown",
+          "pass": "Title on top mentions the multi-account / trust-boundary purpose; us-east-1 region boundary present",
+          "partial": "Title present but generic or not on top, or region boundary missing",
+          "fail": "No title and no region boundary"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Trust boundaries are legible for a security reviewer",
+          "pass": "Internet ingress to the ALB, each account boundary, and the isolated data tier are visually marked as distinct trust zones; assumptions note explains choices (e.g. CloudTrail as org trail, Flow Logs delivered direct to S3)",
+          "partial": "Account boundaries clear but internet ingress or data tier not marked, or no assumptions",
+          "fail": "No trust-zone distinction beyond plain boxes"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented scope",
+          "pass": "Adds nothing beyond what the request implies, or declares additions (e.g. NAT, IGW) as assumptions",
+          "partial": "One undeclared addition",
+          "fail": "Adds extra accounts, regions or services that change the picture"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "account/VPC/subnet containment correct",
+          "cross-account log and network flows distinct and labeled",
+          "trust zones legible for security review"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "diagrams/legacy.drawio was drawn by hand and Design Inspector rejects it for threat modeling. Review it against AWS architecture diagram conventions and write the findings to diagram-review.md, ordered by severity CRITICAL, IMPORTANT, SUGGESTION, each with the cell id it concerns and the fix. Then write a corrected version to diagrams/legacy-fixed.drawio that keeps the same three services. Use system-design.md for context. Do not ask me questions; state assumptions in the review file and finish the work.",
+      "fixture": "fixtures/architecture-diagram-generation/",
+      "why_discriminating": "The skill's quality gate makes wrong scope placement and missing flow direction CRITICAL, and missing boundaries and missing labels IMPORTANT. Without it a reviewer typically finds the same problems but grades them ad hoc (often treating non-directional edges as cosmetic) and may not notice that the S3 cell is only geometrically, not structurally, inside the VPC.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Review flags the S3 bucket placed inside the VPC as a scope error, under CRITICAL",
+          "check": "python3 -c 'import re,sys;t=open(\"diagram-review.md\").read();c=t.upper().find(\"CRITICAL\");i=t.upper().find(\"IMPORTANT\");s=t[c:i if i>c else None];sys.exit(0 if c>=0 and re.search(\"s3|receipts-images\",s,re.I) and re.search(\"vpc|scope\",s,re.I) else 1)'"
+        },
+        {
+          "id": "f2",
+          "text": "Fixed diagram moves S3 outside the VPC and keeps Fargate and Aurora inside",
+          "check": "python3 -c 'import xml.etree.ElementTree as E,re,sys\nr=E.parse(\"diagrams/legacy-fixed.drawio\").getroot()\nr=r if r.tag==\"mxGraphModel\" else r.find(\".//mxGraphModel\")\ncs={c.get(\"id\"):c for c in r.iter(\"mxCell\")}\ndef g(c):\n  m=c.find(\"mxGeometry\");x=float(m.get(\"x\",0));y=float(m.get(\"y\",0));w=float(m.get(\"width\",0));h=float(m.get(\"height\",0));p=cs.get(c.get(\"parent\"))\n  while p is not None and p.get(\"vertex\")==\"1\":\n    pm=p.find(\"mxGeometry\");x+=float(pm.get(\"x\",0));y+=float(pm.get(\"y\",0));p=cs.get(p.get(\"parent\"))\n  return x,y,w,h\nV=[c for c in cs.values() if c.get(\"vertex\")==\"1\" and c.find(\"mxGeometry\") is not None]\nvp=[c for c in V if (\"vpc\" in (c.get(\"value\") or \"\").lower() or \"group_vpc\" in (c.get(\"style\") or \"\")) and \"resIcon\" not in (c.get(\"style\") or \"\")]\nvb=max((g(c) for c in vp),key=lambda b:b[2]*b[3])\ndef ins(c):\n  x,y,w,h=g(c);cx,cy=x+w/2,y+h/2;return vb[0]<=cx<=vb[0]+vb[2] and vb[1]<=cy<=vb[1]+vb[3]\ndef ic(pat): return [c for c in V if re.search(r\"mxgraph\\.aws4\\.(\"+pat+r\")\\b\",c.get(\"style\") or \"\")]\nout=ic(\"s3|simple_storage_service\");inn=ic(\"fargate|ecs|aurora|rds\")\nsys.exit(0 if out and inn and not any(ins(c) for c in out) and all(ins(c) for c in inn) else 1)'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Finds the planted problems (KEY): S3 inside VPC box, no account/region boundary, edges unlabeled with endArrow=none, no title",
+          "pass": "All four found and tied to cell ids (s3, vpc, e1/e2)",
+          "partial": "Three of four found",
+          "fail": "Two or fewer, or the S3 scope error missed"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Severity matches the skill's quality gate",
+          "pass": "S3 scope error and non-directional edges under CRITICAL; missing account/region boundaries and missing edge labels under IMPORTANT; title or AZ/protocol detail under SUGGESTION",
+          "partial": "S3 scope CRITICAL but direction or boundaries graded one level off",
+          "fail": "S3 scope not CRITICAL, or no severity ordering"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Corrected diagram actually fixes each finding",
+          "pass": "legacy-fixed.drawio has title, account and region containers, S3 outside the VPC (with a gateway endpoint or labeled path), labeled directional edges, and still only the same three services plus boundaries",
+          "partial": "Most fixes applied but one finding left unfixed in the XML",
+          "fail": "Fixed file still has the scope error or non-directional edges"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Explains why each issue matters for threat modeling",
+          "pass": "Each finding says what a reviewer or Design Inspector would get wrong (e.g. S3 inside VPC implies network isolation it does not have)",
+          "partial": "Impact given for some findings only",
+          "fail": "Findings listed with no impact"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No false findings",
+          "pass": "Does not flag the existing aws4 resourceIcon shapes as non-official or invent missing services as defects",
+          "partial": "One questionable finding",
+          "fail": "Several false or padded findings"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "all planted defects found with cell ids",
+          "severity grading sensible",
+          "fixed XML actually correct"
+        ]
+      }
+    }
+  ]
+}

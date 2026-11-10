@@ -1,0 +1,193 @@
+{
+  "skill": "sdlc-navigator",
+  "category": "DOMAIN-IMMUNE",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "I'm using the konductor agent set in Kiro CLI. The product manager agent just gave me business-context.md, requirements-summary.md and user-stories-extract.md for a usage-reporting feature (CSV exports and a monthly dashboard). A colleague says I should go straight to writing code with the developer agent. What do I actually do next? Write next-steps.md naming the agent to use next, what it should take in and produce, the exact command to switch to it, and what happens after that. This runs unattended: do not ask questions; state assumptions.",
+      "fixture": null,
+      "why_discriminating": "The skill fixes the phase flow and handoffs: the three requirements-extraction files are the Architect's inputs, the Architect produces HLD, APIs, data models, threat model, security policies and diagrams, and only then does k-developer split features. Without it, a model guesses agent names and commands, or agrees with jumping to code.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Names k-architect as the next agent",
+          "check": "grep -q 'k-architect' next-steps.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "recommendation",
+          "criterion": "Routes to k-architect next (not the developer) and explains why skipping design is a mistake here",
+          "pass": "k-architect, with a reason tied to the handoff",
+          "partial": "k-architect without addressing the colleague's suggestion",
+          "fail": "Developer or an invented agent"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Lists the Architect's outputs from the framework: system design/HLD, APIs, data models, threat model, security policies, diagrams; names the three PM files as inputs",
+          "pass": "Inputs and at least five outputs correct",
+          "partial": "Inputs or outputs partial",
+          "fail": "Generic design advice"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Gives the exact switch command `kiro-cli chat --agent k-architect` (and may mention @k-architect in Kiro IDE or spawning a subagent)",
+          "pass": "Exact command",
+          "partial": "Approximate command",
+          "fail": "No or invented command"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Describes what follows: k-developer uses task-decomposition on stories + HLD, then per-feature Kiro specs, implementation, then k-quality-assurance",
+          "pass": "Correct downstream sequence",
+          "partial": "Partial sequence",
+          "fail": "Wrong or missing"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented agents, skills, or commands outside the framework",
+          "pass": "None invented",
+          "partial": "One invented name",
+          "fail": "Several"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is the next step right for this framework?",
+          "Could the user run the command as written?",
+          "Does it set up the following phases correctly?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "In this agent framework we have an approved HLD and user stories for the usage-reporting feature. Three engineers will build it in parallel and I want them to step on each other as little as possible. Explain how we get from here to work each engineer can execute, and then to implementation. Write workflow.md with the steps in order, which agent and which skill or SOP does each, what each step's inputs are, and where artifacts are written. Do not ask questions; state assumptions.",
+      "fixture": null,
+      "why_discriminating": "The skill specifies feature splitting with task-decomposition by k-developer (minimize overlap between engineers), then one kiro-spec-workflow run per feature producing requirements.md (EARS), design.md and tasks.md under {spec_dir} (default .kiro/specs/{feature-name}/), then implementation with HLD, stories and the spec files in context. A generic answer goes straight to one big task list.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Names task-decomposition and the per-feature spec files",
+          "check": "grep -q 'task-decomposition' workflow.md && grep -q 'requirements.md' workflow.md && grep -q 'tasks.md' workflow.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Feature splitting first: k-developer runs task-decomposition on user stories + HLD to produce independent features, one per engineer, minimizing overlap",
+          "pass": "Agent, skill, inputs and purpose all correct",
+          "partial": "Splitting step present but agent/skill or purpose off",
+          "fail": "No splitting step"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Per-feature spec step: kiro-spec-workflow SOP per feature producing requirements.md (EARS), design.md, tasks.md in .kiro/specs/{feature-name}/ (spec_dir), in that order, scoped to one feature and one engineer",
+          "pass": "All elements present and ordered",
+          "partial": "Files right but SOP, EARS, path or scoping missing",
+          "fail": "Wrong files or order"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Implementation step: k-developer executes tasks.md with HLD, user stories, requirements.md and design.md in context (steering files in Kiro IDE)",
+          "pass": "Context list complete",
+          "partial": "Partial context",
+          "fail": "Missing"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Addresses the three-engineer constraint concretely (shared interfaces defined first, features with clear boundaries) and ends with QA handoff",
+          "pass": "Concrete coordination advice and QA handoff",
+          "partial": "One of the two",
+          "fail": "Neither"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented agents, SOPs or paths",
+          "pass": "None invented",
+          "partial": "One",
+          "fail": "Several"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would three engineers know what to do and in what order?",
+          "Are the artifacts and locations right?",
+          "Is anything invented?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Using this agent framework. Implementation of the usage-reporting feature is done and merged to a branch. Four things are on my plate: (a) test gap analysis, an E2E test strategy and security tests for the feature; (b) someone sent a PDF architecture diagram from the data team that I need interpreted; (c) I need the current AWS documentation on Athena query limits; (d) I need screenshots of our internal status page each morning. Which agent handles each, in what order for (a), and how do I switch or hand off? Write routing.md. Do not ask questions; state assumptions.",
+      "fixture": null,
+      "why_discriminating": "Routing depends on the framework's agent table: k-quality-assurance for (a) in the order gap analysis, E2E strategy, security tests; k-media-analyzer for the PDF; k-researcher for AWS docs; k-browser for screenshots. A model without the skill invents names or sends everything to one generalist.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Names k-quality-assurance and k-media-analyzer",
+          "check": "grep -q 'k-quality-assurance' routing.md && grep -q 'k-media-analyzer' routing.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "recommendation",
+          "criterion": "Correct agent for each item: (a) k-quality-assurance, (b) k-media-analyzer, (c) k-researcher, (d) k-browser",
+          "pass": "All four correct",
+          "partial": "Three correct",
+          "fail": "Two or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Orders (a) as test gap analysis, then E2E strategy, then security tests, and says QA's input is the developer's working code",
+          "pass": "Order and input right",
+          "partial": "Order right, input missing",
+          "fail": "Order wrong"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Explains switching: `kiro-cli chat --agent <name>`, @<name> in Kiro IDE, or asking the current agent to spawn a subagent",
+          "pass": "Commands correct",
+          "partial": "Approximate",
+          "fail": "Missing or invented"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Does not invent agents or claim capabilities the table does not list (e.g. a scheduler for daily runs); states that scheduling is outside the framework if it comes up",
+          "pass": "No invention, limits stated",
+          "partial": "Minor overreach",
+          "fail": "Invented agents or features"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is each item routed correctly?",
+          "Are the switching instructions usable?",
+          "Is anything overstated?"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "shop-api",
+  "version": "2.3.0-rc.1",
+  "private": true,
+  "scripts": { "test": "jest", "test:int": "jest tests/integration" },
+  "dependencies": { "express": "^4.19.2", "stripe": "^14.0.0", "@sendgrid/mail": "^8.1.0", "bcryptjs": "^2.4.3" },
+  "devDependencies": { "jest": "^29.7.0", "supertest": "^7.0.0" }
+}

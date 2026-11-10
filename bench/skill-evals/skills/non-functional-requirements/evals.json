@@ -1,0 +1,83 @@
+{
+  "skill_name": "non-functional-requirements",
+  "evals": [
+    {
+      "id": 0,
+      "name": "ledger-nfrs-read-write-split",
+      "scenario_prompt_id": "p1",
+      "prompt": "design.md is our approved payments ledger design. QA starts building the load, failover and security test plan from its non-functional requirements next sprint, so every NFR needs a number they can test against. Extract them into nfr.md. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "expected_output": "The skill requires latency split by operation type with percentiles, availability as a percentage with RTO and RPO, scale-out and scale-in thresholds, compliance mapped to a named standard, trace sampling rate, and a cost-per-transaction target, and it suggests cold start and degraded-mode NFRs for Lambda. Without it, a model usually turns the adjectives into a single latency number and a 99.9% figure, and misses RTO/RPO against the us-west-2 standby and the sampling rate.",
+      "files": [
+        "fixtures/non-functional-requirements/"
+      ],
+      "expectations": [
+        "Separate latency targets for reads and writes, each with a p99",
+        "Availability as a percentage plus RTO and RPO",
+        "Coverage of the skill's six categories with measurable targets: Performance, availability, security, scalability, observability and cost each have at least one numeric, testable NFR; no 'fast/secure/reasonable' left unquantified",
+        "Operation-specific performance and failover targets grounded in the design: Separate p50/p99 for POST /entries vs balance/entries reads, throughput tied to 400 w/s and 2,500 r/s with the 3x December spike; availability % plus RTO and RPO consistent with the us-west-2 warm standby",
+        "PCI scope drives concrete security and retention NFRs: Names PCI DSS and derives concrete NFRs from it (encryption standard e.g. TLS 1.2+ and KMS, access control, audit log retention >= 12 months with 3 months readily available)",
+        "Scalability and observability are testable: Scale-out and scale-in triggers stated (e.g. Lambda concurrency headroom, DynamoDB/OpenSearch thresholds); trace sampling %, required metrics and alarms; cold start target for Lambda; cost per 1,000 transactions from the $9,000 budget",
+        "Assumptions are labeled, not presented as design facts: Every number not in design.md is marked as an assumption or proposed target with a short rationale"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Separate latency targets for reads and writes, each with a p99",
+          "check": "grep -iE 'p99' nfr.md | grep -qiE 'write|POST|entries' && grep -iE 'p99' nfr.md | grep -qiE 'read|GET|balance'"
+        },
+        {
+          "text": "Availability as a percentage plus RTO and RPO",
+          "check": "grep -qE '99\\.[0-9]+ ?%' nfr.md && grep -q 'RTO' nfr.md && grep -q 'RPO' nfr.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "statements-nfr-table-per-workload",
+      "scenario_prompt_id": "p2",
+      "prompt": "statements-design.md is a draft design for the statements service that sits next to the ledger. Before architecture review, I need its non-functional requirements written as a table in statements-nfr.md with columns Category | Requirement | Target | How measured. Product and Security wrote things like \"feel instant\", \"ready in the morning\" and \"short-lived\"; turn those into numbers. Do not ask me questions; make reasonable assumptions, list them under the table, and finish the work.",
+      "expected_output": "The skill's CRITICAL rule that performance targets be separated by operation type matters more here because the design mixes an interactive search, an on-demand export, and a month-end batch. A competent answer without the skill tends to give one latency target for 'the API' and leave the batch as 'completes overnight'.",
+      "files": [
+        "fixtures/non-functional-requirements/"
+      ],
+      "expectations": [
+        "Markdown table with the four requested columns",
+        "Separate performance targets per workload type (KEY): Search has p50/p99 ms at ~300 req/s; export has a time-to-email target (e.g. p95 minutes for a 24-month range); month-end batch has a completion deadline and throughput for 2.1M accounts with 4%/mo growth",
+        "Vague phrases quantified: 'feel instant', 'ready in the morning' and 'short-lived' each become a number (ms, clock time with timezone, URL expiry minutes) with a How measured entry",
+        "Skill's category and gate coverage: Availability % with RTO/RPO, PCI DSS mapping, scale-out/in thresholds (e.g. OpenSearch CPU/JVM, batch concurrency), trace sampling rate, cost target and per-statement cost from $3,500, Lambda cold start",
+        "Targets are mutually consistent and testable: Batch throughput math makes the deadline feasible, cost target is plausible for the volume, How measured names a concrete metric or test"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Markdown table with the four requested columns",
+          "check": "grep -qiE '^\\|.*category.*\\|.*requirement.*\\|.*target.*\\|.*measur' statements-nfr.md"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "ledger-nfr-draft-review",
+      "scenario_prompt_id": "p3",
+      "prompt": "nfr-draft.md is a teammate's NFR list for the ledger described in design.md, and it goes to the PCI assessor's pre-read on Friday. Review it for measurability and completeness and write nfr-findings.md with findings grouped CRITICAL, IMPORTANT, SUGGESTION, each with a proposed replacement NFR. Don't edit the draft. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "expected_output": "The skill's quality gate fixes the severity of each gap: vague targets, no read/write split, and availability without RTO/RPO are CRITICAL; missing scale thresholds, unmapped compliance and missing sampling rate are IMPORTANT; cold start and degraded mode are SUGGESTION. Without it a reviewer finds most gaps but grades them by feel, and may not catch that 30-day log retention conflicts with PCI DSS.",
+      "files": [
+        "fixtures/non-functional-requirements/"
+      ],
+      "expectations": [
+        "Findings grouped in CRITICAL, IMPORTANT, SUGGESTION order",
+        "Planted gaps found (KEY): All five: no read/write split or percentile; 99.9% without RTO/RPO; 'industry compliance standards' not mapped to PCI DSS; no trace sampling; autoscaling with no thresholds (and Lambda autoscaling is implicit)",
+        "Severity follows the skill's gate: Latency split and RTO/RPO under CRITICAL; scale thresholds, compliance mapping and sampling under IMPORTANT; cold start / degraded mode under SUGGESTION",
+        "Catches the log retention conflict with PCI (KEY v2): Flags 30-day retention as below PCI DSS audit log retention (12 months, 3 months readily available) and grades it CRITICAL or IMPORTANT",
+        "Replacement NFRs are measurable and grounded: Each finding has a numeric replacement tied to design.md (400 w/s, 2,500 r/s, us-west-2 standby, $9,000)",
+        "No padding or false findings: Does not flag sound items as defects (e.g. encryption at rest and in transit is fine to keep, just needs a standard named)",
+        "The draft is left as written: nfr-draft.md is not modified (no edited copy of it among the outputs), and findings go only to nfr-findings.md"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Findings grouped in CRITICAL, IMPORTANT, SUGGESTION order",
+          "check": "python3 -c 'import sys;t=open(\"nfr-findings.md\").read().upper();c=t.find(\"CRITICAL\");i=t.find(\"IMPORTANT\");s=t.find(\"SUGGESTION\");sys.exit(0 if 0<=c<i<s else 1)'"
+        }
+      ]
+    }
+  ],
+  "note": "Evals 0 and 1 are the staged sc-improve evals, unchanged. Eval 2 is added from harness3 scenario p3 because the change adds a review path ('writing or reviewing' in the description, and 'if the user said not to ask questions, fix the findings') that evals 0 and 1 never reach. The description change is measured by run_eval on harness3/queries/non-functional-requirements.json."
+}

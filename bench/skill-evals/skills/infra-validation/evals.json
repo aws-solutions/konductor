@@ -1,0 +1,61 @@
+{
+  "skill_name": "infra-validation",
+  "evals": [
+    {
+      "id": 0,
+      "name": "cdk-prod-review-report",
+      "scenario_prompt_id": "p1",
+      "prompt": "Review the CDK TypeScript stack in lib/data-stack.ts before we deploy it to production. Write the findings to infra-review.md with severity, resource and line, why it matters, and a fix. Do not modify the code. No compliance framework applies beyond our general security baseline. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "The obvious secrets and wildcards are easy for any reviewer; the skill's systematic per-resource checklist also catches the production-only issues (low-cardinality partition key, DESTROY removal policy, no PITR, missing DLQ/alarms, oversized Lambda) and requires a resource inventory and an explicit statement of what was not checked.",
+      "files": [
+        "fixtures/infra-validation/"
+      ],
+      "expectations": [
+        "Code untouched",
+        "Flags the wildcard IAM statement at data-stack.ts line 45",
+        "All four critical security issues found with lines: Public bucket (publicReadAccess with only BLOCK_ACLS, L15-16), SSH 22 from 0.0.0.0/0 (L28), hardcoded DB_PASSWORD (L39), actions and resources '*' (L45-46), each rated critical",
+        "Production-readiness issues beyond the obvious: At least three of: 'status' partition key gives a hot partition, RemovalPolicy.DESTROY on a production table, no point-in-time recovery, no DLQ/alarms/tracing/log retention on the Lambda, 3,008 MB and 15 min with no justification",
+        "Fixes are concrete CDK changes: Shows code-level fixes such as BlockPublicAccess.BLOCK_ALL plus enforceSSL, Secrets Manager reference, table.grantReadWriteData / bucket.grantRead instead of '*', SSM Session Manager or a known CIDR instead of 0.0.0.0/0, pointInTimeRecovery and RETAIN",
+        "Follows the skill's report shape: Findings grouped by severity most severe first, a resource inventory by type, and a note on limits of the review (e.g. Lambda code and synthesized template not inspected)",
+        "No invented problems: Every finding maps to a real line or a real missing property; S3 encryption described accurately (not 'stored in plaintext', since S3 applies SSE-S3 by default)"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Code untouched",
+          "check": "echo \"301b89b37c532359d7804347fd181303  lib/data-stack.ts\" | md5sum -c --quiet"
+        },
+        {
+          "text": "Flags the wildcard IAM statement at data-stack.ts line 45",
+          "check": "python3 -I -c 'import re,sys;t=open(\"infra-review.md\").read();sys.exit(0 if any(abs(int(m.group(1))-45)<=1 for m in re.finditer(\"(?:\"+re.escape(\"data-stack.ts\")+r\"\\D{0,40}?|\\b[Ll]ines?\\s+)(\\d+)\",t)) else 1)'"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "vague-request-asks-scope-first",
+      "scenario_prompt_id": "p3",
+      "prompt": "Can you check the infrastructure code in this repo for problems? If you are missing information you need to do this well, write your questions to questions.md and stop instead of guessing.",
+      "expected_output": "The skill makes infrastructure type, path, and environment mandatory before any analysis and says not to assume what the user wants validated. Without it, a model usually reviews everything as if it were production, since the files are right there.",
+      "files": [
+        "fixtures/infra-validation/"
+      ],
+      "expectations": [
+        "questions.md exists",
+        "Stops instead of producing a full review",
+        "Asks for the environment before reviewing: Asks which environment the code targets and offers the choices (development, staging, production), explaining that severity depends on it",
+        "Uses what is discoverable and asks only what is not: Notes it found a CDK TypeScript stack in lib/ and a CloudFormation template in cfn/ and asks which to validate, plus optional compliance and focus",
+        "Stops instead of guessing: No review findings written; questions are short and numbered"
+      ],
+      "scripted_checks": [
+        {
+          "text": "questions.md exists",
+          "check": "test -s questions.md"
+        },
+        {
+          "text": "Stops instead of producing a full review",
+          "check": "! ls *review*.md >/dev/null 2>&1"
+        }
+      ]
+    }
+  ]
+}

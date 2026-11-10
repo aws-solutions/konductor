@@ -1,0 +1,22 @@
+[
+{"query": "PM approved the user stories in .konductor/handoff/product-manager-user-stories.md for the alert rule management feature. turn them into the kiro spec requirements file so we can start design", "should_trigger": true},
+{"query": "Convert these Given/When/Then acceptance criteria into EARS format and write .kiro/specs/vpc-flow-log-analyzer/requirements.md. Stories: (1) As a netops engineer I want to upload flow logs... ", "should_trigger": true},
+{"query": "i'm starting a new feature in kiro, 'user authentication & SSO'. here are 4 approved stories. generate the requirements.md with WHEN/WHILE/IF THEN SHALL criteria, kebab-case dir please", "should_trigger": true},
+{"query": "Our BDD criteria are too vague for Kiro ('Then it works fast'). Rewrite the stories in docs/stories/export.md as a spec requirements document with measurable SHALL statements and error cases", "should_trigger": true},
+{"query": "write the requirements.md for spec dir out/specs/billing-alerts/ from the stories below. each story = one requirement with 3-8 EARS acceptance criteria", "should_trigger": true},
+{"query": "We use Kiro's spec-driven workflow. Stories for 'network monitoring dashboard' are signed off. Produce the requirements doc (intro + numbered requirements with user story and acceptance criteria) so the architect can do design.md next.", "should_trigger": true},
+{"query": "take the user stories from my last message and give me EARS acceptance criteria: ubiquitous, event-driven, state-driven, unwanted behavior etc. save under .kiro/specs/offline-sync/", "should_trigger": true},
+{"query": "Given the user is an admin / When they disable a rule / Then the rule stops firing. I have 12 of these for the alerting epic. convert them all into a kiro requirements.md and add the missing failure-case criteria", "should_trigger": true},
+{"query": "handoff time: stories are approved, NFRs extracted in docs/nfrs.md. generate the spec requirements for the 'rate limiter' feature in EARS, cross-referencing the NFRs", "should_trigger": true},
+{"query": "need a requirements.md for kiro ide for the csv-export feature. stories are in jira-export.txt. make sure every criterion has SHALL and there are IF/THEN cases for failures", "should_trigger": true},
+{"query": "Write user stories with INVEST and Given/When/Then for an alert rule management feature for SREs", "should_trigger": false},
+{"query": "Generate design.md for .kiro/specs/alert-rule-management/ from the approved requirements.md", "should_trigger": false},
+{"query": "create tasks.md for the vpc-flow-log-analyzer spec, numbered checkbox tasks with requirement refs", "should_trigger": false},
+{"query": "extract functional and non-functional requirements from this meeting transcript (notes/kickoff.txt) into a structured list", "should_trigger": false},
+{"query": "convert our Given/When/Then stories into Cucumber .feature files and step definitions in TypeScript", "should_trigger": false},
+{"query": "split the approved HLD into independent feature tracks for 3 engineers", "should_trigger": false},
+{"query": "write the PRD for the rate limiter feature: problem, goals, non-goals, success metrics", "should_trigger": false},
+{"query": "validate whether .kiro/specs/feature-implementation/tasks.md covers all requirements before we start implementation", "should_trigger": false},
+{"query": "list the non-functional requirements we should consider for a multi-region payments API: latency, availability, durability targets", "should_trigger": false},
+{"query": "write a software requirements specification in IEEE 830 format for the whole billing system, for the auditors", "should_trigger": false}
+]

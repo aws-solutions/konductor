@@ -1,0 +1,66 @@
+{
+  "skill_name": "program-decision-docs",
+  "evals": [
+    {
+      "id": 0,
+      "name": "feature-flag-build-vs-buy",
+      "scenario_prompt_id": "p1",
+      "prompt": "Leadership decides on Friday whether we build our own feature-flag service, buy LaunchDarkly (quoted $84,000/year), or extend our existing config service. Constraints: the platform team is 4 engineers, flags are needed for the Q1 mobile launch, and we have a SOC 2 audit in March. Write decision.md for that meeting. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+      "expected_output": "The skill fixes the document shape: status line, context with the default outcome if no decision is made, DACI stakeholders, an options table with a do-nothing baseline plus T-shirt effort and H/M/L risk, a weighted matrix summing to 100% whose winner matches the recommendation, and revisit conditions; a competent memo without it usually omits the baseline, the default outcome, or DACI, and its weights are often implicit.",
+      "files": [],
+      "expectations": [
+        "decision.md exists",
+        "Evaluation matrix weights sum to 100%",
+        "Has all seven sections in order: title + status line, context (trigger, constraints, and the default outcome if no decision is made), DACI stakeholders, options table, evaluation matrix, recommendation, decision record placeholder",
+        "Options include a do-nothing/status-quo baseline, and every option row has description, pros, cons, T-shirt effort and High/Medium/Low risk",
+        "Matrix criteria reflect the stated constraints (Q1 timeline, 4-engineer team, SOC 2 audit in March, $84k/year cost), each option is scored 1-5, and every weighted total is arithmetically correct",
+        "The recommendation names the top weighted-score option (or explicitly states why it overrides the matrix) in 2-3 sentences, and revisit conditions are concrete (e.g. flag volume, price change, audit finding)",
+        "Non-given numbers and vendor facts (build effort, LaunchDarkly SOC 2 report, etc.) are labeled as assumptions; no invented quotes or vendor data presented as given"
+      ],
+      "scripted_checks": [
+        {
+          "text": "decision.md exists",
+          "check": "test -s decision.md"
+        },
+        {
+          "text": "Evaluation matrix weights sum to 100%",
+          "check": "python3 -c 'import re,sys;t=open(\"decision.md\").read();v=[int(m.group(1)) for l in t.splitlines() if l.strip().startswith(\"|\") and \"total\" not in l.lower() for m in [re.match(r\"\\s*\\|[^|]+\\|\\s*\\**(\\d{1,3})\\s*%\",l)] if m];sys.exit(0 if v and sum(v)==100 else 1)'"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "observability-draft-review",
+      "scenario_prompt_id": "p3",
+      "prompt": "decision-draft.md is the platform team's draft for choosing an observability vendor. It goes to the program review on Thursday. Review it before it goes out and write decision-review.md with what must change and why. Do not edit the draft itself. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+      "expected_output": "The skill's quality gate names exactly these failures as CRITICAL (no do-nothing baseline, weights not summing to 100%, recommendation contradicting the matrix without rationale, decision record without maker or date) and orders findings CRITICAL then IMPORTANT then SUGGESTION; an unguided reviewer often notices the vague recommendation but misses the 110% weights or the missing baseline and lists everything at one level.",
+      "files": [
+        "fixtures/program-decision-docs/"
+      ],
+      "expectations": [
+        "decision-review.md exists",
+        "Flags the weights not summing to 100% (they total 110%)",
+        "Draft unchanged",
+        "Finds all four gate CRITICALs: no do-nothing baseline (keep CloudWatch), weights total 110%, Datadog recommended over the higher-scoring Grafana Cloud (4.40 vs 4.15) without real rationale, decision record lacks decision maker and date",
+        "Finds at least three IMPORTANT gaps among: option C has no pros/cons, no revisit conditions or expiry date, stakeholders not in DACI form, missing status line, missing default outcome",
+        "Findings are ordered CRITICAL, then IMPORTANT, then SUGGESTION, and each finding has a concrete fix (e.g. rebalance weights, add baseline row, recommend B or state the override reason)",
+        "Checks the arithmetic: recomputes or reasons explicitly that normalizing the weights does not change the ranking (Grafana Cloud still ahead), so the recommendation conflict stands",
+        "Restraint: does not flag things that are fine (the T-shirt effort and H/M/L risk columns, the 38-minute incident metric) as problems"
+      ],
+      "scripted_checks": [
+        {
+          "text": "decision-review.md exists",
+          "check": "test -s decision-review.md"
+        },
+        {
+          "text": "Flags the weights not summing to 100% (they total 110%)",
+          "check": "grep -qE '110' decision-review.md"
+        },
+        {
+          "text": "Draft unchanged",
+          "check": "echo 'edcfc19168b5b6a1189dfb29c7e0e10f  decision-draft.md' | md5sum -c --quiet"
+        }
+      ]
+    }
+  ]
+}

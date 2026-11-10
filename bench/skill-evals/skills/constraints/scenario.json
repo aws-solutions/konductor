@@ -1,0 +1,193 @@
+{
+  "skill": "constraints",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "This repo has a failing test. Make the whole suite pass (run it with `node --test`). When done, write NOTES.md describing what you changed and how you verified it. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/constraints/",
+      "why_discriminating": "The skill's core rules forbid editing tests to make a build pass and stripping comments or logging, and require verification evidence plus a statement of what was verified versus inferred. Without it, a model may tweak the test expectation or rewrite the function and drop the JSDoc rationale or log line, and NOTES.md often just says 'tests pass'.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Full suite passes",
+          "check": "node --test >/dev/null 2>&1"
+        },
+        {
+          "id": "f2",
+          "text": "Test file is untouched (fix the code, not the test)",
+          "check": "echo \"dbf4304f03244a253ba144692b182d45  test/discount.test.js\" | md5sum -c --quiet"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Correct root cause fixed in src/discount.js",
+          "pass": "Replaces Math.floor with round-half-up (Math.round or equivalent) in src and the JSDoc 'rounded half up' contract now holds",
+          "partial": "Tests pass but via a fragile hack (epsilon, special-casing values)",
+          "fail": "Changes or skips tests, or the suite still fails"
+        },
+        {
+          "id": "r2",
+          "dimension": "restraint",
+          "criterion": "Minimal change that preserves existing documentation and logging",
+          "pass": "Diff is the rounding line only (plus at most a short comment); JSDoc rationale about finance's 50% cap and the console.log line are intact",
+          "partial": "Small unrelated edits (reformatting, renames) but JSDoc and log intact",
+          "fail": "JSDoc or log line removed, or the function rewritten"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "NOTES.md gives verification evidence",
+          "pass": "Shows the command run and the result (4/4 tests passing, or pasted output)",
+          "partial": "Says tests pass but shows no command or counts",
+          "fail": "No verification described"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "NOTES.md separates verified facts from assumptions",
+          "pass": "Labels what was confirmed by running (suite result) versus inferred (e.g. that finance wants half-up for all values)",
+          "partial": "Mentions an assumption but does not distinguish it from verified facts",
+          "fail": "No assumptions or verification status stated"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Was the code fixed rather than the test?",
+          "Is the diff minimal with docs and logging kept?",
+          "Does NOTES.md prove it works?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Review src/discount.js for anything that should block a merge: correctness, edge cases, logging. Do not change any code. Write the findings to REVIEW.md. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/constraints/",
+      "why_discriminating": "The skill requires findings ordered CRITICAL, IMPORTANT, SUGGESTION and treats structured logging with correlation IDs as an ALWAYS rule. Without it, reviews often use ad-hoc severity, miss the logging rule, or bury the rounding bug among style notes.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Source unchanged",
+          "check": "echo \"8f195c0634bc6bcd75f5cfe1743f538e  src/discount.js\" | md5sum -c --quiet"
+        },
+        {
+          "id": "f2",
+          "text": "Names the rounding problem",
+          "check": "grep -qiE 'floor|round' REVIEW.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Rounding bug identified as the top, merge-blocking finding",
+          "pass": "Math.floor contradicts the JSDoc 'rounded half up' (e.g. 999 at 50% gives 499, not 500), marked the most severe finding",
+          "partial": "Rounding bug found but rated low or not first",
+          "fail": "Rounding bug missed"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Edge cases and logging gaps found",
+          "pass": "Flags at least two of: negative percent raises the price, no input validation (NaN/non-integer), and the log line has no correlation/request ID",
+          "partial": "Flags one of them",
+          "fail": "Flags none"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Uses the CRITICAL / IMPORTANT / SUGGESTION scale, most severe first",
+          "pass": "Every finding carries one of the three labels and they appear in that order",
+          "partial": "Severity given but with a different scale or out of order",
+          "fail": "No severity"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No false positives and no code edits",
+          "pass": "Does not flag the 50% cap or the JSDoc as bugs, makes no code change, findings point to real lines",
+          "partial": "One questionable finding",
+          "fail": "Several invented issues, or code was edited"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is the blocking bug clearly first?",
+          "Are edge cases real and specific?",
+          "Severity scale and ordering",
+          "No noise"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Context: I already tried two fixes for the failing rounding test. First I changed Math.floor to Math.trunc, then I added 0.0001 before flooring. Both still failed. Figure out what to do next. Write your analysis and proposed fix to ANALYSIS.md before changing code, then apply the fix. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/constraints/",
+      "why_discriminating": "The skill's 2-strike circuit breaker says that after two failed fixes you stop, research the root cause, and explain the chain from root cause to symptom before proposing a third fix, while stating whether you work from documented knowledge or inference. Without it, a model usually just tries a third patch.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Suite passes after the fix with the test file untouched",
+          "check": "node --test >/dev/null 2>&1 && echo \"dbf4304f03244a253ba144692b182d45  test/discount.test.js\" | md5sum -c --quiet"
+        },
+        {
+          "id": "f2",
+          "text": "ANALYSIS.md exists",
+          "check": "test -s ANALYSIS.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "reasoning",
+          "criterion": "Explains why both earlier attempts failed",
+          "pass": "Shows Math.trunc equals floor for positive values and 499.5 + 0.0001 still floors to 499, so both kept truncation semantics",
+          "partial": "Explains one attempt, or says 'they still floor' without the arithmetic",
+          "fail": "Does not address the earlier attempts"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Root cause stated before the fix, with a cause chain",
+          "pass": "ANALYSIS.md names the root cause (truncation instead of round-half-up) and traces root cause to intermediate effect to failing assertion, before describing the fix",
+          "partial": "Root cause named but no chain, or analysis written after the fix",
+          "fail": "No root cause analysis"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Discloses the basis of each claim",
+          "pass": "Says which claims were verified by running code or tests and which are inference",
+          "partial": "Mentions verification for some claims only",
+          "fail": "No uncertainty or verification disclosure"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Fix is correct and minimal",
+          "pass": "Uses Math.round (or an equivalent half-up) in src, tests untouched, JSDoc and log kept",
+          "partial": "Correct but with unrelated edits",
+          "fail": "Third patch in the same style (epsilon, trunc variants) or test edits"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it stop and diagnose instead of patching again?",
+          "Is the explanation of the failed attempts correct?",
+          "Is the final fix right and minimal?"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,192 @@
+{
+  "skill": "external-research",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "process",
+  "limited": true,
+  "limited_reason": "Needs public web access (WebSearch/WebFetch), which the scratch environment does not guarantee; with no network the run can only show citation and caveat discipline.",
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Someone on my team says DynamoDB transactions are capped at 25 items, someone else says 100. We're sizing a batch-settlement job on this. Find the authoritative answer, plus the aggregate size limit for a transaction, and write the findings to research.md. If you cannot reach the web, say so explicitly in the file rather than guessing. Don't ask me questions.",
+      "fixture": null,
+      "why_discriminating": "The skill requires a per-finding Source URL, Version/date, and Confidence, ranks official docs above blogs and forums, and says to present conflicts with tiers. A competent answer without it often states '100 items' from memory with no citation discipline or resolution of why 25 was ever true.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "research.md exists and cites a full https URL",
+          "check": "grep -qE 'https://[^ )]+' research.md"
+        },
+        {
+          "id": "f2",
+          "text": "Both claimed limits are addressed",
+          "check": "grep -q '25' research.md && grep -q '100' research.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Gets the answer right and resolves the conflict",
+          "pass": "100 actions per transaction and 4 MB aggregate size, explaining 25 was the limit before AWS raised it (2022), so older sources say 25",
+          "partial": "Correct numbers but no explanation of where 25 came from",
+          "fail": "Wrong number, or leaves the conflict open"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Each finding uses the skill's citation format",
+          "pass": "Every finding has a full Source URL, a version/date line, and a confidence rating, with official AWS docs as the primary source",
+          "partial": "Citations present but date or confidence missing on some",
+          "fail": "Uncited claims"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Conflicting sources are presented with reliability tiers",
+          "pass": "Names the older/secondary sources saying 25 and why the official doc wins (tier 1 vs tier 3/4, recency)",
+          "partial": "Notes a conflict without tiering",
+          "fail": "No conflict handling"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Honest about access: if the web was not reachable, the file says so up front and marks findings as unverified/from memory",
+          "pass": "Either fetched sources are cited as fetched, or access failure is stated plainly and every unverified finding is labeled as such with lowered confidence",
+          "partial": "Mentions access trouble but still presents some memory-based findings as verified (e.g. 'verified 2026')",
+          "fail": "Presents memory as verified research, invents fetch dates, or fabricates URLs/quotes"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would the team trust and act on this?",
+          "Is each claim traceable to a dated, ranked source?",
+          "Is it honest about what was actually verified?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "We're on pydantic 1.10 across about 30 FastAPI services and planning the move to v2. Research what breaks for us: validators, the Config class, orm_mode, and .dict()/.json(). Use the official migration guide and GitHub issues where you can, rank sources by reliability, flag anything older than 12 months, and write pydantic-v2.md with a URL on every finding. If you cannot reach the web, say so in the file. Don't ask questions.",
+      "fixture": null,
+      "why_discriminating": "The skill asks for tiered sources, version applicability, and staleness flags for fast-moving libraries. Without it, answers tend to be a correct-looking cheat sheet with no source ranking, no v2.x minor-version caveats, and no staleness signal.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "pydantic-v2.md exists with at least one https URL",
+          "check": "grep -qE 'https://[^ )]+' pydantic-v2.md"
+        },
+        {
+          "id": "f2",
+          "text": "Names the orm_mode replacement",
+          "check": "grep -q 'from_attributes' pydantic-v2.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Covers the named breaking areas with correct v2 equivalents",
+          "pass": "@validator -> @field_validator (and @root_validator -> @model_validator), class Config -> model_config = ConfigDict(...), orm_mode -> from_attributes, .dict()/.json() -> model_dump()/model_dump_json()",
+          "partial": "Three of the four areas correct",
+          "fail": "Two or fewer, or an incorrect mapping"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Sources are ranked by tier and staleness is flagged",
+          "pass": "Official docs and GitHub issues/changelog marked as top tier, blogs/forums lower; items older than 12 months flagged",
+          "partial": "Tiers or staleness, not both",
+          "fail": "Neither"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Applicability caveats useful for a 30-service migration",
+          "pass": "Notes the pydantic.v1 compatibility namespace or bump-pydantic tooling, FastAPI version requirements, and which 2.x minor a finding applies to",
+          "partial": "One caveat",
+          "fail": "No applicability guidance"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Honest about access: if the web was not reachable, the file says so up front and marks findings as unverified/from memory",
+          "pass": "Either fetched sources are cited as fetched, or access failure is stated plainly and every unverified finding is labeled as such with lowered confidence",
+          "partial": "Mentions access trouble but still presents some memory-based findings as verified (e.g. 'verified 2026')",
+          "fail": "Presents memory as verified research, invents fetch dates, or fabricates URLs/quotes"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Could an engineer start the migration from this?",
+          "Are sources ranked and dated?",
+          "Is unverified material marked?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Compare AWS Step Functions and Temporal for our long-running order workflows (some wait up to 90 days for a customer action): maximum execution duration, pricing model, and workflow versioning. Use official docs as primary sources; blogs only as supplements. Write comparison.md with a table plus a findings list where each claim has a URL and date, and call out any place where sources disagree or where a claim depends on configuration. If you cannot reach the web, say so in the file. Don't ask me anything.",
+      "fixture": null,
+      "why_discriminating": "The skill's 'state applicability' and 'flag conflicts' rules matter here because the answers depend on mode (Standard vs Express, Temporal Cloud vs self-hosted). A generic comparison usually gives one number per tool and misses the 90-day requirement interaction.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "comparison.md has a markdown table naming both tools",
+          "check": "grep -q '^|' comparison.md && grep -q 'Temporal' comparison.md && grep -q 'Step Functions' comparison.md"
+        },
+        {
+          "id": "f2",
+          "text": "At least 3 distinct URLs cited",
+          "check": "[ $(grep -oE 'https?://[^ )>]+' comparison.md | sort -u | wc -l) -ge 3 ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Duration facts are correct and tied to the 90-day need",
+          "pass": "Standard workflows up to 1 year, Express 5 minutes (so Express is out); Temporal has no fixed max duration but needs Continue-As-New for long histories; both fit 90 days with caveats",
+          "partial": "Mostly correct but misses Express or the Temporal history limit",
+          "fail": "Wrong limits"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Applicability and conflicts are called out",
+          "pass": "Separates Standard vs Express pricing (per state transition vs per request/duration) and Temporal Cloud (per action) vs self-hosted (infra cost); notes any source disagreement",
+          "partial": "Some mode distinctions",
+          "fail": "Single undifferentiated answer per tool"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Every claim carries a URL and date, official docs primary",
+          "pass": "All findings cited with date/version, official docs first, blogs marked as supplementary",
+          "partial": "Most cited",
+          "fail": "Largely uncited"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Honest about access: if the web was not reachable, the file says so up front and marks findings as unverified/from memory",
+          "pass": "Either fetched sources are cited as fetched, or access failure is stated plainly and every unverified finding is labeled as such with lowered confidence",
+          "partial": "Mentions access trouble but still presents some memory-based findings as verified (e.g. 'verified 2026')",
+          "fail": "Presents memory as verified research, invents fetch dates, or fabricates URLs/quotes"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Does the comparison answer the 90-day question?",
+          "Are mode-dependent claims separated?",
+          "Is each claim cited and honestly labeled?"
+        ]
+      }
+    }
+  ]
+}

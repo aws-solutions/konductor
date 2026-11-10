@@ -1,0 +1,22 @@
+[
+{"query": "I just finished the CreateProjectWizard in src/pages/projects/create/. Can you review it before I open the PR? it's react + cloudscape + react-hook-form", "should_trigger": true},
+{"query": "review src/components/SettingsForm.tsx - I used useState for the fields because RHF felt heavy. is that going to get flagged?", "should_trigger": true},
+{"query": "Look over my frontend diff (git diff main -- src/ui) for type safety issues, any `any`s, unmemoized handlers, and missing tests. Severity-ordered please.", "should_trigger": true},
+{"query": "teammate's PR adds a bunch of <div style={{marginTop: 8}}> to our cloudscape app. can you do a proper review of src/pages/billing/*.tsx and tell me everything that should change", "should_trigger": true},
+{"query": "Check whether the form sub-components in src/forms/address/ follow our pattern (useFormContext, zod schema, FormProvider at the wizard level) or are prop-drilling", "should_trigger": true},
+{"query": "code review the new dashboard page please: src/pages/Dashboard.tsx and Dashboard.test.tsx. I'm especially unsure about the ColumnLayout and whether the tests actually assert anything", "should_trigger": true},
+{"query": "Pre-CR review of my React changes: I replaced the old table with Cloudscape Table and added a filter form. Files under src/features/inventory/", "should_trigger": true},
+{"query": "do the tests in src/components/__tests__/UserForm.test.tsx actually test anything useful? also review the component itself", "should_trigger": true},
+{"query": "review this tsx for me (pasting below). uses useForm() without a type and hardcodes 'Name is required' messages", "should_trigger": true},
+{"query": "Before I push, give the frontend part of my branch a critical review - Cloudscape compliance, hook-form + zod, typescript", "should_trigger": true},
+{"query": "Build a new Cloudscape settings page with a React Hook Form + Zod form for notification preferences", "should_trigger": false},
+{"query": "fix the `any` types in src/api/client.ts and src/hooks/useOrders.ts", "should_trigger": false},
+{"query": "Review the Lambda handlers in src/handlers for layer separation and DynamoDB atomicity", "should_trigger": false},
+{"query": "validate the UI text in our console pages against the AWS style guide (sentence case, no 'please')", "should_trigger": false},
+{"query": "Generate a clickable HTML mock of the project creation wizard using Cloudscape so PMs can review it", "should_trigger": false},
+{"query": "Write Playwright tests for the create project wizard", "should_trigger": false},
+{"query": "our next.js app has a hydration mismatch error on /dashboard in prod only. debug it", "should_trigger": false},
+{"query": "Do a security review of the frontend: XSS via dangerouslySetInnerHTML, tokens in localStorage, CSP", "should_trigger": false},
+{"query": "simplify src/components/FilterBar.tsx, it's got nested ternaries everywhere, keep behavior identical", "should_trigger": false},
+{"query": "review the CDK stack that deploys our frontend to S3 + CloudFront", "should_trigger": false}
+]

@@ -1,0 +1,22 @@
+[
+{"query": "We're building an image-processing pipeline: API Gateway -> Lambda -> S3 (uploads bucket) -> second Lambda -> DynamoDB. Design least-privilege IAM roles for both Lambdas plus the bucket policy. Data includes customer PII.", "should_trigger": true},
+{"query": "need IAM policies for our ECS service that reads secrets from secrets manager, writes to an SQS queue and decrypts with a customer managed KMS key. no wildcards please, and give me trust policies too", "should_trigger": true},
+{"query": "Design the access controls for a new multi-tenant SaaS on AWS where each tenant should only touch their own DynamoDB items. I've heard of LeadingKeys conditions but don't know how to set it up.", "should_trigger": true},
+{"query": "Our HIPAA workload stores PHI in S3 and RDS. Write the KMS key policy (separate admins from users), the S3 bucket policy enforcing TLS and SSE-KMS, and map each control to the threat model in docs/threat-model.md.", "should_trigger": true},
+{"query": "I need a permission boundary for our dev team's role so they can create Lambda execution roles without escalating to admin. Also what SCP should we put on the dev OU?", "should_trigger": true},
+{"query": "Partner account 444455556666 needs to read objects from our reports bucket. Write the cross-account setup properly with conditions, both sides.", "should_trigger": true},
+{"query": "from docs/system-design.md (step functions orchestrating 4 lambdas, eventbridge, dynamodb, s3) generate all the IAM roles and resource policies we'd need, as CDK typescript", "should_trigger": true},
+{"query": "Security asked us to lock down our data lake account: region restriction to eu-west-1/eu-central-1, deny disabling CloudTrail/GuardDuty, enforce encrypted S3 uploads. Draft the policies.", "should_trigger": true},
+{"query": "Design IAM for our GitHub Actions deploy pipeline using OIDC federation: the role should only be assumable from the main branch of acme/infra and only deploy CloudFormation stacks prefixed app-.", "should_trigger": true},
+{"query": "We're launching a new SOC 2 scoped service. Give me the IAM roles, encryption config and audit logging design, plus a compliance checklist showing which control covers which SOC 2 criterion.", "should_trigger": true},
+{"query": "Run IAM Access Analyzer style validation on policies/lambda-role.json and tell me if any statement is invalid or overly broad.", "should_trigger": false},
+{"query": "I'm getting AccessDenied on s3:PutObject from my Lambda even though the role allows it. Here's the CloudTrail event. What's blocking it?", "should_trigger": false},
+{"query": "Review lib/stacks/api-stack.ts (CDK) before we deploy to prod: encryption, alarms, DLQs, removal policies, everything.", "should_trigger": false},
+{"query": "Build a STRIDE threat model for our payments API with threats T-001..T-015 and mitigations.", "should_trigger": false},
+{"query": "list all IAM users in our account that haven't used their access keys in 90 days", "should_trigger": false},
+{"query": "Our pentest report found an IDOR on GET /orders/{id}. Write the remediation plan and code fix for the Express handler.", "should_trigger": false},
+{"query": "Explain the difference between IAM roles and IAM Identity Center permission sets in plain English for our new hires.", "should_trigger": false},
+{"query": "Write a Cognito user pool config with MFA required and a strong password policy in CloudFormation YAML.", "should_trigger": false},
+{"query": "Rotate the access keys for the ci-deployer user and update the GitHub secret.", "should_trigger": false},
+{"query": "Add role-based access control to our Django app: admins can delete projects, editors can edit, viewers read-only.", "should_trigger": false}
+]

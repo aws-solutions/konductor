@@ -1,0 +1,10 @@
+{
+  "name": "inventory-api",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Tiny in-memory inventory service used as a review fixture",
+  "main": "src/server.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

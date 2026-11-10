@@ -1,0 +1,22 @@
+[
+{"query": "here's our design doc for the new notification fanout service (docs/design/notif-fanout.md). before it goes to the principal engineer next week i want someone to tear apart the architecture choices - every decision, every tradeoff. assume it's wrong and make me defend it", "should_trigger": true},
+{"query": "Play devil's advocate on docs/design/payments-ledger-v2.md. We picked Aurora over DynamoDB and SQS over Kinesis and I'm not sure the justifications hold up. Classify whatever you find by how bad it is.", "should_trigger": true},
+{"query": "can you poke holes in the decisions section of my HLD? file is design/hld-search-indexer.md, especially the 'Why a single region' part. i suspect the reasoning is circular but cant put my finger on it", "should_trigger": true},
+{"query": "I wrote an ADR choosing EventBridge for inter-service events (adr/0007-eventbridge.md). Argue against it as hard as you can - missing alternatives, weak warrants, any false dichotomy - and tell me what I'd need to rebut before the review.", "should_trigger": true},
+{"query": "our team lead says the design for the image-resize pipeline (design/image-resize.md) is 'fine'. i dont trust that. stress test it against the NFRs it states (p99 < 200ms at 5k rps) and flag single points of failure", "should_trigger": true},
+{"query": "Review the decisions and trade-off tables in docs/design/tenant-isolation.md adversarially. Severity buckets please, and tell me whether it's ready to go to the PE review or not.", "should_trigger": true},
+{"query": "need a hostile reviewer for my architecture doc before the bar raiser sees it. docs/arch/order-routing.md. focus on whether the chosen option is actually justified against the requirements or just preference", "should_trigger": true},
+{"query": "Pretend you're the most skeptical principal engineer in the org. Read design/feature-flags-service.md and go after each architectural choice: sync vs async, the cache layer, the multi-AZ claim. What breaks at 10x load?", "should_trigger": true},
+{"query": "the trade-off section in my design (design/cdc-pipeline.md section 4) lists only cost and latency. challenge it - what dimensions are missing and are any of the claims about Kinesis shard limits actually wrong?", "should_trigger": true},
+{"query": "Before I circulate docs/design/rate-limiter.md, attack the design decisions. I want CRITICAL / IMPORTANT / MINOR findings, with what rebuttal each one needs.", "should_trigger": true},
+{"query": "do an adversarial review of the diff on my branch feat/rate-limiter - look for info disclosure in error responses and non-atomic dynamo writes in src/limiter/*.ts", "should_trigger": false},
+{"query": "check docs/design/rate-limiter.md for filler language, hedge words and passive voice before i send it out. just writing quality, not the architecture", "should_trigger": false},
+{"query": "write me a design doc for a url shortener service: requirements, HLD, API, data model. save to docs/design/shortener.md", "should_trigger": false},
+{"query": "Generate an ADR for our decision to move from REST polling to websockets for the dashboard. Template: context, decision, consequences. Put it in adr/0012-websockets.md", "should_trigger": false},
+{"query": "build a STRIDE threat model for the architecture in docs/design/tenant-isolation.md, with trust boundaries and mitigations per component", "should_trigger": false},
+{"query": "fact-check the claims in design/cdc-pipeline.md against AWS docs - service limits, pricing numbers, feature availability. give me a list of which claims are accurate vs wrong", "should_trigger": false},
+{"query": "We can't decide between Step Functions and a plain SQS worker for the export job. Can you lay out the options and recommend one? There's no doc yet, just this question.", "should_trigger": false},
+{"query": "review PR #482 in our repo, it's the implementation of the notification fanout design. check correctness and test coverage of the lambda handlers", "should_trigger": false},
+{"query": "score docs/design/payments-ledger-v2.md for production readiness across the usual dimensions - we have the threat model, api spec and data model in the same folder", "should_trigger": false},
+{"query": "turn the architecture section of design/order-routing.md into a mermaid sequence diagram showing the request flow between API gateway, router lambda and the three backends", "should_trigger": false}
+]

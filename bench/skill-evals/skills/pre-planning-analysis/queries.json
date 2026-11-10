@@ -1,0 +1,22 @@
+[
+{"query": "we need to 'modernize the notifications thing' before re:Invent. I honestly don't know if that means rewriting it, adding SMS, or just fixing the flaky retries. figure out what this actually is and who should work on it before anyone starts coding", "should_trigger": true},
+{"query": "My manager said 'make onboarding better' for our SaaS. Could be product, could be eng, could be docs. Help me pin down what kind of work this is, what's in and out of scope, and which specialist should pick it up first.", "should_trigger": true},
+{"query": "not sure where to even start: we want to 'add AI' to our support portal. is this a research spike, an architecture question, or a feature build? break down the ambiguity and recommend a sequence of who does what", "should_trigger": true},
+{"query": "Request from the VP: 'clean up the billing service and also add usage-based pricing'. That feels like two different things mashed together. Classify it, flag the risks, and bound the scope before we route it", "should_trigger": true},
+{"query": "i have a vague ask: 'look into why the data pipeline is slow and maybe redesign it'. before we burn a week, can you scope it, set exit criteria, and say which agents/roles should be involved in what order", "should_trigger": true},
+{"query": "The ticket just says 'Improve multi-tenant isolation'. Could be a refactor, an architecture change, or a security review. Do an upfront analysis: intent, key ambiguities, explicit in/out of scope, and recommended chain of specialists.", "should_trigger": true},
+{"query": "hey so the request is 'help us plan the migration off heroku', no other details. what type of work is this, what do we need to ask the requester, and how should we split it across PM, architect and dev?", "should_trigger": true},
+{"query": "Product dumped a one-liner on us: 'Customers want offline mode'. Before assigning, analyze it: is it greenfield, collaborative, architecture? what assumptions are we making? what's deferred?", "should_trigger": true},
+{"query": "I'm the orchestrator on this project and I genuinely can't tell which role should own 'make search smarter'. Classify the intent with a confidence level and propose the agent chain", "should_trigger": true},
+{"query": "big fuzzy request: 'restructure the monolith and also speed up deploys and maybe kubernetes?'. I smell scope creep. analyze it and draw hard scope boundaries before anything else", "should_trigger": true},
+{"query": "Write a PRD for adding SMS notifications to the notifications service. Target users are field technicians.", "should_trigger": false},
+{"query": "Our HLD for the billing rewrite is approved (docs/design/billing-hld.md). Split it into independent feature tracks for 4 engineers with minimal overlap.", "should_trigger": false},
+{"query": "ask me questions one at a time to gather requirements for offline mode before you draft anything", "should_trigger": false},
+{"query": "plan next sprint: we have 6 engineers, 42 points of capacity, here's the backlog in backlog.csv, prioritize and assign", "should_trigger": false},
+{"query": "rename the getUserById function to findUserById across the repo and update the tests", "should_trigger": false},
+{"query": "Design the API for the multi-tenant isolation service, REST, with tenant scoping on every endpoint. Output an OpenAPI spec.", "should_trigger": false},
+{"query": "generate tasks.md for the offline-mode feature from .kiro/specs/offline-mode/requirements.md and design.md", "should_trigger": false},
+{"query": "write a status update for leadership on the heroku migration, we're 60% done and blocked on DNS cutover", "should_trigger": false},
+{"query": "track progress on the billing rewrite: which tasks in .kiro/specs/feature-implementation/tasks.md are blocked?", "should_trigger": false},
+{"query": "create a risk register for the monolith restructuring project with likelihood/impact scores and owners", "should_trigger": false}
+]

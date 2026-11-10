@@ -1,0 +1,193 @@
+{
+ "skill": "adversarial-code-review-pass-schema",
+ "category": "DUPLICATION",
+ "source": "konductor",
+ "kind": "code",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "We split our adversarial review of PRs into three parallel passes: security, data integrity, and schema/contract. You are the schema/contract pass for change.diff (repo checked out here; README.md describes our clients). Write schema-pass.md with your findings for the coordinator. Do not change code. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/adversarial-code-review-pass-schema/",
+   "why_discriminating": "The skill scopes the pass to contract stability (breaking fields, enum and error-code renames consumers switch on, read-path defaults for old records, validation completeness, validate-before-act, unwired routes), requires naming which client or record breaks, uses its own severity guidance and output header, and tells the pass not to dedupe or drift into security/integrity; an unguided reviewer tends to find the obvious renames but miss old-record reads, the consumer path, or the side-effect-before-validation ordering.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "schema-pass.md cites at least 5 planted contract defects by file:line",
+     "check": "python3 -c 'import re,sys;t=open(\"schema-pass.md\").read();refs=[(m.group(1),int(m.group(2)),int(m.group(3) or m.group(2))) for m in re.finditer(r\"([\\w./-]+\\.(?:js))[`*)\\]]*(?::|#L|,? lines? )(\\d+)(?:\\s*[-\\u2013]\\s*L?(\\d+))?\",t)];S=[[\"schema.js\", 3, 3], [\"schema.js\", 9, 9], [\"schema.js\", 17, 20], [\"orderRepo.js\", 9, 9], [\"orderQueue.js\", 4, 8], [\"orders.js\", 7, 8], [\"orders.js\", 15, 15], [\"orders.js\", 20, 22], [\"routes.js\", 13, 13]];h=sum(any(f.endswith(s) and (a<=hi+2 and b>=lo-2) for f,a,b in refs) for s,lo,hi in S);sys.exit(0 if h>=5 else 1)'"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Breaking contract changes with the client named: SHIPPED -> DISPATCHED (schema.js:3, mobile switches on status), giftWrap newly required (schema.js:9, v1 clients never send it), total removed from the response (schema.js:18-19), x-tenant-id required (orders.js:7-8), ORDER_NOT_FOUND -> NOT_FOUND (orders.js:15)",
+     "pass": "All five with the affected client for each",
+     "partial": "Three or four",
+     "fail": "Two or fewer"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "Data and validation gaps: item.region.toUpperCase() throws on existing records without region (orderRepo.js:9); SQS consumer lost orderInput validation (orderQueue.js:5-7); cancel runs markCancelled before validating reason (orders.js:20-21); new cancel route has no validate() middleware (routes.js:13)",
+     "pass": "All four",
+     "partial": "Two or three",
+     "fail": "One or none"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Uses the pass's output format `[SEVERITY] Schema/Contract - file:line` with Problem and Fix, and the pass's severity guidance (breaking change without migration or unparseable existing records = CRITICAL; ordering and wiring gaps = IMPORTANT)",
+     "pass": "Format and severities match the guidance",
+     "partial": "Format used but severities inconsistent",
+     "fail": "Free-form findings"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Fixes are migration-aware and reuse existing helpers: default giftWrap to false, keep total or add it back, accept both enum values or version to /v2, default region on read, validate(orderInput) in the consumer and validate(cancelInput) on the route, validate before markCancelled",
+     "pass": "Specific, compatible fixes using validate()/orderInput",
+     "partial": "Fixes present but some break clients or reinvent validation",
+     "fail": "Generic or missing fixes"
+    },
+    {
+     "id": "r5",
+     "dimension": "restraint",
+     "criterion": "Stays in lane: no security or data-integrity findings, no dedup notes about other passes, no invented lines",
+     "pass": "Only contract findings",
+     "partial": "One out-of-lane item",
+     "fail": "Several security/integrity findings or invented code"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Does it find what breaks shipped clients and old records, not just renames?",
+     "Are fixes compatible and do they reuse validate()/orderInput?",
+     "Does it stay in the schema/contract lane with the pass format?"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "Release planning question for change.diff: the backend ships this Friday, but mobile app versions in the wild (iOS 4.x, Android 6.x) stay in use for about six months and the partner integration sends orders through SQS. Is this change backward compatible for them? Write compat.md listing every client-visible or partner-visible break and exactly how to ship each one compatibly. Do not change code. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/adversarial-code-review-pass-schema/",
+   "why_discriminating": "The skill's lens includes record-level breakage (existing items without the new field) and enum/error-code values consumers pattern-match on, not just request/response shape; with a six-month tail of old clients, a strong answer proposes additive or versioned paths per break, while an unguided answer tends to stop at the obvious field renames or recommend a flag-day update.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "compat.md names the status and error-code renames",
+     "check": "grep -q 'DISPATCHED' compat.md && grep -q 'ORDER_NOT_FOUND' compat.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Lists the client/partner breaks: status rename, error-code rename, total removed, giftWrap required, x-tenant-id required; plus GET failing for old records lacking region (500 for every pre-change order)",
+     "pass": "All six",
+     "partial": "Four or five",
+     "fail": "Three or fewer"
+    },
+    {
+     "id": "r2",
+     "dimension": "reasoning",
+     "criterion": "Explains who breaks and how: mobile switch statements fall through on DISPATCHED/NOT_FOUND, old apps get 400 on create, partner SQS messages pass unvalidated and may lack region/tenant",
+     "pass": "Concrete failure per audience",
+     "partial": "Some failures concrete",
+     "fail": "Generic \"may break clients\""
+    },
+    {
+     "id": "r3",
+     "dimension": "recommendation",
+     "criterion": "Compatible shipping plan per break: optional giftWrap with default, keep total (deprecate later), emit SHIPPED for v1 or map per API version, keep ORDER_NOT_FOUND on v1, derive or default tenant for v1 callers, read-time default for region; or move breaks to /v2 with v1 kept for six months",
+     "pass": "Every break has a compatible path that survives the six-month tail",
+     "partial": "Most do, or plan relies on clients updating",
+     "fail": "Recommends shipping as-is or a flag day"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "No invented breaks (e.g. claiming authorize was removed) and no security/integrity digressions",
+     "pass": "Accurate",
+     "partial": "One minor overstatement",
+     "fail": "Invented breaks"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Would old mobile clients and the partner keep working under the plan?",
+     "Does it catch the old-record region crash, not only API shape?",
+     "Is each break paired with a concrete compatible path?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "Review change.diff only for validation completeness and validate-before-act ordering: every entry point that accepts order data or acts on an order. Write validation.md with each gap, where it is, what bad input does at runtime, and the fix. Do not change code. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/adversarial-code-review-pass-schema/",
+   "why_discriminating": "The skill asks for validation on every entry point, validation before any side effect, guards before nested/optional access, and wiring new routes into the existing middleware, flagging bypass of existing helpers; the consumer path and the cancel ordering are easy to miss without that checklist.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Names the cancel ordering problem at orders.js:19-22",
+     "check": "python3 -c 'import re,sys;t=open(\"validation.md\").read();refs=[(m.group(1),int(m.group(2)),int(m.group(3) or m.group(2))) for m in re.finditer(r\"([\\w./-]+\\.(?:js))[`*)\\]]*(?::|#L|,? lines? )(\\d+)(?:\\s*[-\\u2013]\\s*L?(\\d+))?\",t)];S=[[\"orders.js\", 19, 22]];h=sum(any(f.endswith(s) and (a<=hi+2 and b>=lo-2) for f,a,b in refs) for s,lo,hi in S);sys.exit(0 if h>=1 else 1)'"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "cancel() calls markCancelled before checking reason, so an invalid request still cancels the order and then returns 400 (orders.js:20-21)",
+     "pass": "Found with the runtime consequence",
+     "partial": "Found without the consequence",
+     "fail": "Missed"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "SQS consumer (orderQueue.js:5-7) saves orders with no orderInput validation; the new cancel route (routes.js:13) has no validate() middleware",
+     "pass": "Both found",
+     "partial": "One found",
+     "fail": "Neither"
+    },
+    {
+     "id": "r3",
+     "dimension": "issue",
+     "criterion": "Unguarded read: item.region.toUpperCase() on records without region (orderRepo.js:9) throws on read",
+     "pass": "Found with a default/guard fix",
+     "partial": "Found, fix vague",
+     "fail": "Missed"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Fixes reuse existing helpers: validate(orderInput) in the consumer, a cancel schema through validate() on the route, validation moved before markCancelled, optional chaining or default for region",
+     "pass": "All fixes reuse validate()/orderInput",
+     "partial": "Mix of helper reuse and ad hoc checks",
+     "fail": "Ad hoc checks everywhere or no fixes"
+    },
+    {
+     "id": "r5",
+     "dimension": "restraint",
+     "criterion": "Stays on validation and ordering as asked; no unrelated contract or security findings padded in",
+     "pass": "On scope",
+     "partial": "One off-scope item",
+     "fail": "Mostly off-scope"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Does it find every entry point that skips validation, including SQS?",
+     "Does it explain the cancel-before-validate consequence?",
+     "Do fixes reuse validate()/orderInput?"
+    ]
+   }
+  }
+ ]
+}

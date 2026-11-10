@@ -1,0 +1,22 @@
+[
+{"query": "here are the strings for our new bucket creation wizard (src/i18n/en/create-bucket.json). review the copy before launch: button labels, error messages, help panel text. we follow cloudscape", "should_trigger": true},
+{"query": "Can you audit the UI text in our console page? Things like 'Please click here to Create New Resource!' are all over and I know that's wrong but I need a full list with fixes.", "should_trigger": true},
+{"query": "review the error/warning/success alert messages in web/src/components/alerts/messages.ts, are they actionable, right severity, consistent voice?", "should_trigger": true},
+{"query": "ux writer is out this sprint. go through the labels, descriptions and constraint hints in the CreateCluster form and flag capitalization, passive voice, jargon, and anything that won't localize well", "should_trigger": true},
+{"query": "We're shipping a new AWS-console-style settings page. Check all user-facing text against sentence case, no 'e.g./etc.', device-independent wording ('choose' not 'click'), and tell me what's critical vs nice to have", "should_trigger": true},
+{"query": "pls review the help panel content in docs/help-panels/*.md for our dashboard. does it just repeat the UI or actually add info? are there learn more links?", "should_trigger": true},
+{"query": "Our empty states and validation messages in the onboarding flow feel off. Evaluate the microcopy and write a report with before/after rewrites to ui-reviews/onboarding-text.md", "should_trigger": true},
+{"query": "check the button text across src/pages/**/*.tsx. I want every button 1-3 words, verb-first, sentence case, no punctuation. list violations with corrected text", "should_trigger": true},
+{"query": "Is the copy on this delete-confirmation modal OK? 'Are you sure you want to delete? This can't be undone...' plus a 'Submit' button. Review it like a content designer would.", "should_trigger": true},
+{"query": "do a content quality pass on all the user facing strings in the cloudscape app before l10n handoff, focus on global english, idioms, and 30% text expansion", "should_trigger": true},
+{"query": "Build a Cloudscape form for CreateCluster with React Hook Form + Zod validation, fields name, region, node count", "should_trigger": false},
+{"query": "set up i18next in our React app and extract all hardcoded strings into en.json", "should_trigger": false},
+{"query": "translate src/i18n/en/create-bucket.json into Japanese and German", "should_trigger": false},
+{"query": "check our dashboard for WCAG color contrast problems and missing aria-labels using axe", "should_trigger": false},
+{"query": "rewrite our README so it doesn't sound AI-generated, it's full of 'seamless' and 'robust'", "should_trigger": false},
+{"query": "write landing page marketing copy for our new S3 analytics product, punchy and exciting", "should_trigger": false},
+{"query": "our API returns stack traces in 500 responses. change the error handler so clients get a generic message and the details only go to the logs", "should_trigger": false},
+{"query": "review the React components in src/pages/settings for Cloudscape compliance, native divs, inline styles, and any types", "should_trigger": false},
+{"query": "write user docs for the bucket creation wizard for docs.example.com, step by step with screenshots placeholders", "should_trigger": false},
+{"query": "generate a mock UI of the settings page with Cloudscape components so PMs can click through it", "should_trigger": false}
+]

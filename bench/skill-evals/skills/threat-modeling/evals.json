@@ -1,0 +1,51 @@
+{
+  "skill_name": "threat-modeling",
+  "evals": [
+    {
+      "id": 0,
+      "name": "full-threat-model-docshare",
+      "scenario_prompt_id": "p1",
+      "prompt": "DocShare goes to its security review in two weeks. Produce the threat model document from docs/design/doc-share.md, using the scope the design states, and assume no components beyond what it documents. Write it to threat-model.md and record your assumptions in the document. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "The skill fixes a template (introduction with in/out scope, tenets and assumptions; architecture with auth and asset inventory; STRIDE threat table with T-NNN; mitigations with M-NNN, status and testing strategy; appendices) and a no-hallucination rule for controls. A competent model without it writes a STRIDE list but tends to assume WAF/VPC/GuardDuty exist, skips the asset inventory or testing strategy, and misses that the handler logs bearer tokens and recipient PII.",
+      "files": [
+        "fixtures/threat-modeling/"
+      ],
+      "expectations": [
+        "Uses T-001/M-001 numbering and every threat ID appears on a line with a mitigation ID",
+        "Design-specific threats (see KEY): Covers all of: bearer token in URL leaking via forwarding/logs/referrers, full-event logging leaking token and recipient email, no rate limiting on unauthenticated GET (enumeration/DoS), no revocation with 30-day default expiry, DynamoDB on AWS owned key vs CMK",
+        "Template and gate items: In-scope/out-of-scope (billing, admin console, search out), trust boundaries (internet to API GW, unauthenticated route, SES to mailbox), auth/authz analysis, encryption in transit and at rest, asset inventory, mitigation status, security testing strategy, appendices",
+        "No hallucinated controls: Does not claim WAF, Shield, VPC, GuardDuty or MFA exist; may recommend them as mitigations marked not implemented",
+        "Mitigations are specific: Each threat has a concrete mitigation tied to the design (stop logging event body/redact token, API GW throttling on /s/{token}, revocation API, shorter default expiry, CMK for Shares) with status and how to test it"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Uses T-001/M-001 numbering and every threat ID appears on a line with a mitigation ID",
+          "check": "test -f threat-model.md && python3 -c \"import re,sys;t=open('threat-model.md').read();ids=set(re.findall(r'T-\\d{3}',t));ok=all(any(i in l and re.search(r'M-\\d{3}',l) for l in t.splitlines()) for i in ids);sys.exit(0 if 'T-001' in ids and 'M-001' in t and ok else 1)\""
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "incremental-upload-route-threat-model",
+      "scenario_prompt_id": "p2",
+      "prompt": "docs/design/change-upload.md adds a new route to DocShare (base design in docs/design/doc-share.md). Before we ship it, write threat-model-upload.md covering the new trust boundary, the threats it introduces (number them from T-020), mitigations (from M-020), and a security testing strategy. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "An incremental threat model in the skill's shape names the new boundary (an unauthenticated write path), continues numbering, maps every threat to a mitigation with status, and includes test cases. Without the skill, answers are often a generic upload-security checklist that misses that the same read token now grants write, or that the filename from the body builds the S3 key.",
+      "files": [
+        "fixtures/threat-modeling/"
+      ],
+      "expectations": [
+        "Continues numbering from T-020/M-020",
+        "Threats specific to the change: Covers: filename-driven key path traversal/overwrite under returns/, no size limit (storage cost DoS), malware or content-type abuse, read-link token now granting write (leaked/forwarded link lets anyone upload)",
+        "Boundary, mapping, testing: Names the new unauthenticated write boundary, every T-02x has an M-02x with status, testing strategy has concrete cases (../ filename, oversize PUT, reused token after expiry)",
+        "Mitigations fit the design: Server-generated key (ignore client filename or sanitize), presigned POST with content-length-range, separate upload token or scope, malware scanning before access, short expiry",
+        "Stays on the change: Does not re-model the whole base design or assert undocumented controls"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Continues numbering from T-020/M-020",
+          "check": "test -f threat-model-upload.md && grep -qE 'T-02[0-9]' threat-model-upload.md && grep -qE 'M-02[0-9]' threat-model-upload.md"
+        }
+      ]
+    }
+  ]
+}

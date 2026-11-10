@@ -1,0 +1,67 @@
+{
+  "skill_name": "sop-state-management",
+  "evals": [
+    {
+      "id": 0,
+      "name": "rewrite-session-state-safe",
+      "scenario_prompt_id": "p1",
+      "prompt": "tools/session_state.py is what sops/release-train.sop.md uses to resume after crashes, and it has corrupted state twice this month. Rewrite it in place so it is safe: keep the public functions the SOP calls (signature, mint, discover, set_phase, bump_counter), and add STATE_FORMAT.md describing the file format. Parallel test workers share the session file. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "tools/session_state.py rewritten in place with safe loader, temp-file-and-rename in a skipped subdirectory, locked read-modify-write with stale-lock handling, normalized identity with fingerprint or sentinel, digit-anchored discovery, schema_version, status rules, and STATE_FORMAT.md matching the code. The new version moves these operation algorithms to references/operations.md and cues it at the step that needs it.",
+      "files": [
+        "fixtures/sop-state-management/"
+      ],
+      "expectations": [
+        "Module uses a safe loader and an atomic rename",
+        "STATE_FORMAT.md exists",
+        "Writes go to a temp file inside a subdirectory that discovery does not list (for example sessions/.tmp/) and are then renamed over the real file with os.replace, cleaning up the temp file on failure",
+        "Every read-modify-write (bump_counter and set_phase at least) is serialized by an exclusive lock held across the whole cycle, with the lock file in a subdirectory discovery skips (for example sessions/.locks/) and stale-lock recovery (age threshold such as 30 s, re-checked before breaking the lock)",
+        "signature() normalizes the description (trim, collapse internal whitespace, lowercase), canonicalizes the path with realpath, and appends a git root-commit fingerprint or a no-git-identity sentinel",
+        "discover() requires a digit right after '<prefix>-', skips malformed or unparsable files instead of raising, rejects files with a missing or wrong schema_version, and never adopts a no-git-identity match on signature alone",
+        "set_phase() validates status against the enum, requires a summary for COMPLETED and a skip_reason for SKIPPED, and clears the stale field when status changes",
+        "mint() writes run.schema_version, a random filename suffix, run.data, and pre-populated phases with skip_reason and summary set to null",
+        "Keeps the five public function names with call shapes compatible with sops/release-train.sop.md, and STATE_FORMAT.md describes the same format the code writes",
+        "Uses only the standard library plus PyYAML; no database, daemon or new framework"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Module uses a safe loader and an atomic rename",
+          "check": "grep -qE 'safe_load|SafeLoader' tools/session_state.py && grep -qE 'os\\.replace|os\\.rename' tools/session_state.py && ! grep -qE 'Loader=yaml\\.(Unsafe)?Loader\\b' tools/session_state.py"
+        },
+        {
+          "text": "STATE_FORMAT.md exists",
+          "check": "test -f STATE_FORMAT.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "mint-non-git-session",
+      "scenario_prompt_id": "p3",
+      "prompt": "Start a new tracked run of our release-train SOP for the project described as '  Release train for   payments-api ' rooted at this directory (it is not a git repo). Phases in order: build, test, docs, deploy; docs is skipped because this release has no doc changes. Create the initial session state file under .sop-state/ so a crashed run can resume later. You may use or bypass tools/session_state.py, but the file must be correct. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "One correct session file under .sop-state/sessions/ per the Mint Session operation: schema_version, random suffix, normalized signature with realpath and no-git-identity sentinel, docs SKIPPED with skip_reason, others PENDING, .gitignore updated, and the resume caveat explained. The new version's mint rules live in references/operations.md.",
+      "files": [
+        "fixtures/sop-state-management/"
+      ],
+      "expectations": [
+        "Exactly one session file with the timestamped prefix",
+        "schema_version present",
+        "The session file has run.schema_version, run_status in_progress, counters {} and data {}, and features {}",
+        "Phases build, test and deploy are PENDING with skip_reason and summary null; docs is SKIPPED with a non-empty skip_reason",
+        "project_signature is 'release train for payments-api::<realpath of the working directory>::no-git-identity' (normalized description, canonical path, no-git-identity sentinel)",
+        "Filename is release-train-<ISO timestamp>-<random suffix>.yml, .gitignore covers the sessions directory, and no temp or lock files are left in sessions/",
+        "The final message notes that a no-git-identity signature will not auto-resume on a match alone and needs explicit confirmation or a named file",
+        "Does not just call the existing buggy mint() unchanged; the answer recognizes its gaps (no schema_version, no suffix, no skip_reason, no normalization)"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Exactly one session file with the timestamped prefix",
+          "check": "python3 -I -c \"import os,re,sys;d='.sop-state/sessions';f=[x for x in os.listdir(d) if re.match(r'^release-train-\\d.*\\.ya?ml$',x)];sys.exit(0 if len(f)==1 else 1)\""
+        },
+        {
+          "text": "schema_version present",
+          "check": "grep -rq 'schema_version' .sop-state/sessions"
+        }
+      ]
+    }
+  ]
+}

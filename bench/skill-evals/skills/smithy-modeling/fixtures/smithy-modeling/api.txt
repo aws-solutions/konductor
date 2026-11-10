@@ -1,0 +1,10 @@
+Shipment tracking API (namespace should be com.acme.logistics)
+
+POST   /shipments                 create a shipment. body: originZip (5 digits), destinationZip (5 digits), weightGrams (1..70000), recipientPhone
+GET    /shipments/{shipmentId}    get one shipment
+GET    /shipments                 list shipments, newest first. clients want pages of up to 50
+PUT    /shipments/{shipmentId}/status   set status: CREATED | IN_TRANSIT | DELIVERED | RETURNED
+DELETE /shipments/{shipmentId}    cancel (only if status is CREATED, otherwise conflict)
+
+errors we know about: shipment not found, bad input, cancel not allowed in current status, too many requests
+recipientPhone is PII.

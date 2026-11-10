@@ -1,0 +1,82 @@
+[
+ {
+  "query": "leadership needs to decide by friday whether we build our own feature flag service, buy LaunchDarkly, or extend the config service. write up the decision doc with options, tradeoffs and a recommendation",
+  "should_trigger": true
+ },
+ {
+  "query": "we're choosing between slipping the Q3 launch 4 weeks or shipping with reduced scope. I need a formal decision write-up for program review with a scoring matrix",
+  "should_trigger": true
+ },
+ {
+  "query": "document the decision we made yesterday to merge the 3 regional on-call rotations into one: who decided, rationale, dissent, and when we revisit it",
+  "should_trigger": true
+ },
+ {
+  "query": "options analysis for moving 40 services off the legacy CI: big bang, phased by team, or stay put. TPM audience, need effort and risk per option",
+  "should_trigger": true
+ },
+ {
+  "query": "draft a decision document on whether the data platform program adopts iceberg tables. constraints: $200k budget, 2 quarters, SOC2",
+  "should_trigger": true
+ },
+ {
+  "query": "vendor A vs vendor B vs keep it in-house for observability. need a doc with weighted criteria so the directors can pick",
+  "should_trigger": true
+ },
+ {
+  "query": "program is 5 weeks behind. deciding whether to add 2 contractors, cut the reporting module, or move the date. write up the options and recommend one",
+  "should_trigger": true
+ },
+ {
+  "query": "turn these meeting notes into a proper decision record: decision maker Priya, chose option B (regional rollout), Sam disagreed citing support load",
+  "should_trigger": true
+ },
+ {
+  "query": "prepare a doc for the steering committee on whether to sunset the v1 API in 2027. include what happens if we do nothing",
+  "should_trigger": true
+ },
+ {
+  "query": "write the program trade-off doc: centralize the ML platform team vs embed ML engineers in product teams, with stakeholders and a recommendation",
+  "should_trigger": true
+ },
+ {
+  "query": "write an ADR for picking Postgres over DynamoDB in the orders service",
+  "should_trigger": false
+ },
+ {
+  "query": "build a risk register for the migration program with likelihood, impact and owners",
+  "should_trigger": false
+ },
+ {
+  "query": "write this week's program status report from these team updates",
+  "should_trigger": false
+ },
+ {
+  "query": "plan the next 2 sprints from the backlog for a team of 5",
+  "should_trigger": false
+ },
+ {
+  "query": "write a PRFAQ for the new feature flag service",
+  "should_trigger": false
+ },
+ {
+  "query": "create a program plan with milestones and cross-team dependencies for the CI migration",
+  "should_trigger": false
+ },
+ {
+  "query": "technical deep dive: redis vs memcached for our session cache, latency and memory tradeoffs",
+  "should_trigger": false
+ },
+ {
+  "query": "help me write a 6-pager narrative on what the team shipped this year",
+  "should_trigger": false
+ },
+ {
+  "query": "turn the reporting module scope into user stories with acceptance criteria",
+  "should_trigger": false
+ },
+ {
+  "query": "write the COE for last week's outage of the billing service",
+  "should_trigger": false
+ }
+]

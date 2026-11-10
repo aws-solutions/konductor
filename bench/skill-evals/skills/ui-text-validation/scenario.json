@@ -1,0 +1,195 @@
+{
+  "skill": "ui-text-validation",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "src/i18n/en/create-cluster.json holds every user-facing string for our new console-style Create cluster wizard (built with Cloudscape). Audit the UI text before launch and save the evaluation report to ui-reviews/create-cluster-audit.md. Use that path; don't ask me for one or any other questions. Don't edit the strings file.",
+      "fixture": "fixtures/ui-text-validation/",
+      "why_discriminating": "The skill applies a specific style list (no Please/e.g./etc./ellipsis/&/exclamation points, sentence case, device-independent and non-directional wording, no internal code names) and a fixed report (progress tracker, severity sections, Definition of Done X/13, tracking IDs). Its gate makes ambiguous action labels and stack traces in errors CRITICAL. A generic copy review catches the obvious ones and misgrades the rest.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Report written at the requested path",
+          "check": "test -s ui-reviews/create-cluster-audit.md"
+        },
+        {
+          "id": "f2",
+          "text": "Strings file left unchanged",
+          "check": "echo 'd984afdb030f6317ee1b497ee113888e3d64ed418b85f47805af7dca61d2d022  src/i18n/en/create-cluster.json' | sha256sum -c --quiet -"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "The two gate-level CRITICALs are found and graded CRITICAL",
+          "pass": "'Submit' flagged as an ambiguous action label (fix: 'Create cluster') and the Java stack trace in alert.error.generic flagged as exposing internals, both CRITICAL",
+          "partial": "Both found but one graded lower",
+          "fail": "Either missed"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Breadth of style-guide findings with before/after text",
+          "pass": "At least 8 distinct correct findings among: title case title/header, header colon, e.g./etc., You'll, passive voice, 'below'/'above', click/clicking, Please + ellipsis, '&', 'Cancel.', 'Click here', exclamation points, 'Sorry' and non-actionable error, empty state with no next step, 'Delete Cluster?' / ellipsis / 'OK' in the modal, 'Project Falcon' code name, 'The name.'",
+          "partial": "4 to 7",
+          "fail": "3 or fewer"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Uses the skill's report structure",
+          "pass": "Progress tracker, executive summary with counts, CRITICAL/WARNING/SUGGESTION sections, Definition of Done with an X/13 status, implementation tracking table with C1/W1/S1-style IDs",
+          "partial": "About half of these",
+          "fail": "Free-form notes"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Rewrites are concrete and themselves compliant",
+          "pass": "Every proposed string is sentence case, free of prohibited terms, and actionable (e.g. an error that says what failed and what to do next)",
+          "partial": "Most rewrites compliant",
+          "fail": "Rewrites repeat the same violations or are vague"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented strings or false positives",
+          "pass": "Every quoted string exists in the file; nothing correct is flagged",
+          "partial": "One misquote or dubious finding",
+          "fail": "Several"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would this report catch what blocks launch?",
+          "Are the rewrites ready to paste?",
+          "Is it organized so a team can track fixes?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Review the help panel content in help-panels/create-cluster.md against Cloudscape help-system guidance and fix the copy. The form it supports has a cluster name, node count (1 to 50), and an encryption checkbox. Write the corrected panel to help-panels/create-cluster.fixed.md and a short findings list to help-panel-review.md. Don't ask questions.",
+      "fixture": "fixtures/ui-text-validation/",
+      "why_discriminating": "The skill requires help panels to add information beyond the UI, include 1 to 3 'Learn more' links, and use device-independent, second-person, active voice. The current panel only restates the form; a generic edit tends to polish the wording without adding substance.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Corrected panel exists",
+          "check": "test -s help-panels/create-cluster.fixed.md"
+        },
+        {
+          "id": "f2",
+          "text": "Corrected panel avoids 'click'",
+          "check": "test -f help-panels/create-cluster.fixed.md && ! grep -qi 'click' help-panels/create-cluster.fixed.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Diagnoses the real problem",
+          "pass": "Findings say the panel only repeats the UI and lacks Learn more links, plus the 'Click Submit' wording",
+          "partial": "Wording issues only",
+          "fail": "No meaningful findings"
+        },
+        {
+          "id": "r2",
+          "dimension": "recommendation",
+          "criterion": "Corrected panel adds what the form does not say",
+          "pass": "Explains concepts such as how node count affects capacity/cost and what enabling encryption changes (and whether it can be changed later), in second person and active voice",
+          "partial": "Some added substance",
+          "fail": "Same content reworded"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Follows help-panel structure",
+          "pass": "Short sections plus a 'Learn more' section with 1 to 3 links",
+          "partial": "Learn more present but 0 or more than 3 links",
+          "fail": "No Learn more"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Does not invent product facts as authoritative",
+          "pass": "Specific claims are generic or marked as placeholders to confirm; link targets are plausible or clearly placeholder",
+          "partial": "One unhedged specific claim",
+          "fail": "Invented limits/pricing stated as fact"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Does the new panel help a user decide, not just restate the form?",
+          "Does it follow help-panel conventions?",
+          "Is it free of invented facts?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Quick content review of a delete confirmation modal in our cluster console. Title: 'Delete Cluster?'. Body: 'Are you sure? This can't be undone...'. Buttons: 'OK' and 'Cancel.'. Write a report to modal-review.md with findings grouped by severity and a corrected version of all four strings. Don't ask for a file path or anything else.",
+      "fixture": null,
+      "why_discriminating": "The skill's gate makes an ambiguous confirm label CRITICAL and its style rules cover title case, end punctuation on buttons and titles, and ellipsis. A generic review often fixes 'OK' but leaves the vague body, the period on 'Cancel.', or the title casing.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "modal-review.md exists",
+          "check": "test -s modal-review.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Ambiguous 'OK' is graded CRITICAL and replaced by a specific verb",
+          "pass": "CRITICAL with 'Delete' or 'Delete cluster'",
+          "partial": "Fixed but graded lower",
+          "fail": "Missed"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Remaining violations found",
+          "pass": "All of: title case and '?' in the title, ellipsis, vague 'Are you sure?', trailing period on 'Cancel.'",
+          "partial": "Two or three",
+          "fail": "One or none"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Grouped CRITICAL -> WARNING -> SUGGESTION",
+          "pass": "Correct order and sensible grading",
+          "partial": "Grouped but order or grades off",
+          "fail": "Ungrouped"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Corrected strings are compliant and specific",
+          "pass": "Title 'Delete cluster' (or with the cluster name), body names what is deleted and that it cannot be undone without ellipsis, buttons 'Delete' and 'Cancel'",
+          "partial": "Mostly compliant",
+          "fail": "Corrections still violate the rules"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Are the corrected strings ready to ship?",
+          "Is the confirm action unambiguous?",
+          "Is the severity grouping right?"
+        ]
+      }
+    }
+  ]
+}

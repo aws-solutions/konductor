@@ -1,0 +1,65 @@
+{
+  "skill_name": "design-impact-review",
+  "source": "harness3/scenarios/design-impact-review.json p1,p3 via sc-redund/design-impact-review/evals/evals.json (no evals in sc-post, sc-improve or sc-full)",
+  "evals": [
+    {
+      "id": 0,
+      "name": "data-model-split-origin-layer-severity-table",
+      "scenario_prompt_id": "p1",
+      "prompt": "I'm about to change the Member data model: replace `fullName` with `givenName` and `familyName`, and add an optional `phoneNumber`. Before I touch anything, work out what else this change affects across the docs, API spec, UI code and tests in this repo. Write impact.md with a per-artifact assessment and a recommendation on whether I can go ahead. Do not edit any existing file. This runs unattended: do not ask questions, state assumptions in impact.md.",
+      "files": [
+        "fixtures/design-impact-review/"
+      ],
+      "skill_specific": true,
+      "expected_output": "All three named with the reason each breaks; Threat model PII gap and AC-3.2 both found; Origin layer, full per-artifact table with all three statuses, recommendation tied to the BREAKING count; Stops on BREAKING, concrete order of updates; Statuses defensible for every row",
+      "expectations": [
+        "[r1] Finds the breaking consumers: openapi.yaml Member requires fullName, ProfileCard.tsx reads u.fullName, contract test pins ['email','fullName','id']: All three named with the reason each breaks",
+        "[r2] Finds the non-code ripple: threat model must classify phoneNumber (new PII) and fullName's classification no longer maps; requirements AC-3.2 says 'full name'; test strategy needs updating: Threat model PII gap and AC-3.2 both found",
+        "[r3] Follows the skill's procedure: states the origin layer (data model), uses the BREAKING/STALE/UNAFFECTED scale per artifact including UNAFFECTED ones (NFRs), and ends with the matching recommendation type: Origin layer, full per-artifact table with all three statuses, recommendation tied to the BREAKING count",
+        "[r4] Recommendation surfaces the BREAKING impacts before proceeding and says who/what must be updated first (API contract and consumers, threat model data classification), rather than 'go ahead and update as you go': Stops on BREAKING, concrete order of updates",
+        "[r5] Does not overstate: NFRs and HLD not marked BREAKING without a reason; no invented artifacts: Statuses defensible for every row",
+        "[floor f1] impact.md exists",
+        "[floor f2] No existing file was edited"
+      ],
+      "scripted_checks": [
+        {
+          "text": "[floor f1] impact.md exists",
+          "check": "test -s impact.md"
+        },
+        {
+          "text": "[floor f2] No existing file was edited",
+          "check": "[ \"$(sha256sum api/openapi.yaml docs/data-model.md docs/hld.md docs/nfr.md docs/requirements.md docs/test-strategy.md docs/threat-model.md tests/contract/member.contract.test.js tests/contract/member.sample.json web/src/ProfileCard.tsx | sha256sum | cut -d' ' -f1)\" = \"edb730f41b8adfdf1e1aeaaf6241b93d097aa8ed753fa39c8c46ba33716a78cd\" ]"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "lambda-cache-conditional-go-stale-only",
+      "scenario_prompt_id": "p3",
+      "prompt": "To cut DynamoDB reads I'm going to add a 5-minute in-memory cache inside the Profile Lambda for GET /members/{id}, keyed by id. It's purely an implementation detail: no API, schema or UI change. Check whether that's true against the design artifacts in this repo before I start, and write impact-cache.md with your assessment and a go/no-go recommendation. Do not edit any existing file. Do not ask questions; state assumptions instead.",
+      "files": [
+        "fixtures/design-impact-review/"
+      ],
+      "skill_specific": true,
+      "expected_output": "Risk named with the T1 link and the condition (check ownership before serving from cache); Found with the PATCH/US-4 link and a fix (invalidate on write or skip cache for owner after write); Origin layer and per-artifact statuses match this pattern with reasons; Conditional go with the two conditions and follow-up doc/test updates",
+      "expectations": [
+        "[r1] Finds the authorization ordering risk: a cache keyed only by id, if read before the owner check, returns another member's email, defeating T1: Risk named with the T1 link and the condition (check ownership before serving from cache)",
+        "[r2] Finds the staleness problem: PATCH /members/{id} (US-4 edit display name) leaves a stale cached profile for up to 5 minutes unless invalidated: Found with the PATCH/US-4 link and a fix (invalidate on write or skip cache for owner after write)",
+        "[r3] Classifies artifacts on the skill's scale with origin layer = implementation: API, data model, UX UNAFFECTED; threat model, HLD and test strategy STALE; recommendation of the STALE-only or CONTAINED type with conditions: Origin layer and per-artifact statuses match this pattern with reasons",
+        "[r4] Proportionate: does not call the change BREAKING or block it outright; gives a conditional go: Conditional go with the two conditions and follow-up doc/test updates",
+        "[floor f1] impact-cache.md exists",
+        "[floor f2] No existing file was edited"
+      ],
+      "scripted_checks": [
+        {
+          "text": "[floor f1] impact-cache.md exists",
+          "check": "test -s impact-cache.md"
+        },
+        {
+          "text": "[floor f2] No existing file was edited",
+          "check": "[ \"$(sha256sum api/openapi.yaml docs/data-model.md docs/hld.md docs/nfr.md docs/requirements.md docs/test-strategy.md docs/threat-model.md tests/contract/member.contract.test.js tests/contract/member.sample.json web/src/ProfileCard.tsx | sha256sum | cut -d' ' -f1)\" = \"edb730f41b8adfdf1e1aeaaf6241b93d097aa8ed753fa39c8c46ba33716a78cd\" ]"
+        }
+      ]
+    }
+  ]
+}

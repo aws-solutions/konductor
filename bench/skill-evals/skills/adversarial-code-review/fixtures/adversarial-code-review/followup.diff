@@ -1,0 +1,68 @@
+--- a/src/handlers/transfers.js
++++ b/src/handlers/transfers.js
+@@ -1,29 +1,39 @@
+ 'use strict';
+ 
+-const { UpdateCommand, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
++const { PutCommand, QueryCommand, TransactWriteCommand } = require('@aws-sdk/lib-dynamodb');
+ const { doc } = require('../lib/ddb');
++const { toHttpError } = require('../lib/errors');
+ 
+ async function create(req, res) {
+   const { fromAccountId, toAccountId, amount } = req.body;
+-  console.info('transfer request', JSON.stringify(req.body));
++  console.debug('transfer request', JSON.stringify(req.body));
++  if (typeof amount !== 'number') {
++    return res.status(400).json({ message: 'amount must be a number' });
++  }
+   try {
+-    await doc.send(new UpdateCommand({
+-      TableName: 'accounts',
+-      Key: { accountId: fromAccountId },
+-      UpdateExpression: 'SET balance = balance - :amt',
+-      ExpressionAttributeValues: { ':amt': amount },
+-    }));
+-    await doc.send(new UpdateCommand({
+-      TableName: 'accounts',
+-      Key: { accountId: toAccountId },
+-      UpdateExpression: 'SET balance = balance + :amt',
+-      ExpressionAttributeValues: { ':amt': amount },
++    await doc.send(new TransactWriteCommand({
++      TransactItems: [
++        { Update: {
++          TableName: 'accounts',
++          Key: { accountId: fromAccountId },
++          UpdateExpression: 'SET balance = balance - :amt',
++          ConditionExpression: 'attribute_exists(accountId)',
++          ExpressionAttributeValues: { ':amt': amount },
++        } },
++        { Update: {
++          TableName: 'accounts',
++          Key: { accountId: toAccountId },
++          UpdateExpression: 'SET balance = balance + :amt',
++          ExpressionAttributeValues: { ':amt': amount },
++        } },
++      ],
+     }));
+-    const transfer = { accountId: fromAccountId, createdAt: Date.now(), toAccountId, amount, memo: req.body.details.memo };
++    const transfer = { accountId: fromAccountId, createdAt: Date.now(), toAccountId, amount, memo: req.body.details?.memo };
+     await doc.send(new PutCommand({ TableName: 'transfers', Item: transfer }));
+     return res.status(201).json(transfer);
+   } catch (err) {
+-    return res.status(500).json({ message: err.message, stack: err.stack });
++    const { status, body } = toHttpError(err);
++    return res.status(status).json(body);
+   }
+ }
+ 
+--- a/src/routes.js
++++ b/src/routes.js
+@@ -9,7 +9,7 @@
+ 
+ router.get('/accounts/:accountId', authorize, accounts.get);
+ router.post('/accounts', authorize, accounts.create);
+-router.post('/transfers', transfers.create);
++router.post('/transfers', authorize, transfers.create);
+ router.get('/accounts/:accountId/transfers', authorize, transfers.list);
+ 
+ module.exports = { router };

@@ -1,0 +1,22 @@
+[
+{"query": "our review bot keeps re-posting the same findings on every revision of a PR and reviewers have started ignoring it. here's prior-threads.json (thread id, file, line, text, resolved, replies) and new-findings.json from rev 5. filter the new ones so we don't repost stuff that was already decided", "should_trigger": true},
+{"query": "I have the comment threads from revisions 1-3 of a code review exported to threads/. Before posting the rev 4 automated findings, suppress anything a reviewer marked won't-fix or rejected, but keep things that were fixed and came back.", "should_trigger": true},
+{"query": "Write the logic for matching a new review finding to an old comment thread when the file got renamed and lines shifted by ~15. Category plus the defect phrase should count. Then apply it to findings.json vs history.json.", "should_trigger": true},
+{"query": "one of our old threads was resolved after the author replied 'won't fix, this is fine' and nobody else answered. the same finding showed up again in the new revision. should our adversarial-review pipeline suppress it? apply whatever rule is right to the data in review-state.json", "should_trigger": true},
+{"query": "The adversarial review pass produced 23 candidate findings for revision 6. Load the earlier revisions' comment state from cr-history.json and tell me which to post, which to tag as carried over, which are regressions, and log every suppression with its reason.", "should_trigger": true},
+{"query": "a finding matches two old threads - one rejected, one still unresolved. what should the filter do with it? implement the precedence in filter.py and run it on fixtures/multi-match.json", "should_trigger": true},
+{"query": "build the load step for our review-dedupe stage: from the platform's comments export produce fingerprints with file, line, category, defect phrase, resolution, thread id, revision and a blocking flag", "should_trigger": true},
+{"query": "Something I fixed in rev 2 (unconditional overwrite in repo/userRepo.ts) is back in rev 5 because someone reverted it. Our filter suppressed it as 'already fixed'. Fix the filter in review/dedupe.py so that can't happen and tag it properly.", "should_trigger": true},
+{"query": "classify each prior thread in threads.json as fixed / rejected / wontfix / unresolved based on its replies, then use that to filter tonight's automated review findings for the same pull request", "should_trigger": true},
+{"query": "For our multi-revision review bot: some threads have no revision number. When we carry a finding over, what wording do we use? Update the tagging in tag_findings.py and run it on the sample.", "should_trigger": true},
+{"query": "do an adversarial security review of the diff in changes.patch - info disclosure, injection, secrets", "should_trigger": false},
+{"query": "summarize all the comments on PR #212 into a list of action items for me, grouped by file", "should_trigger": false},
+{"query": "address the review feedback on my PR: fix the critical comments and draft replies to the rest", "should_trigger": false},
+{"query": "dedupe the findings from our three parallel review passes (security, integrity, schema) for this one diff - several flag the same line", "should_trigger": false},
+{"query": "write a script that dedupes rows in issues.csv where title and component are the same, keeping the newest", "should_trigger": false},
+{"query": "our sonarqube project has 400 old issues. help me bulk-mark the false positives and set up a quality gate on new code only", "should_trigger": false},
+{"query": "build a known-errors registry for our on-call: past incidents, symptoms, fixes, so responders can search it", "should_trigger": false},
+{"query": "triage the open github issues in this repo: label them bug/feature/question and close duplicates", "should_trigger": false},
+{"query": "write a CHANGELOG entry describing the fixes between rev 3 and rev 5 of this PR", "should_trigger": false},
+{"query": "review the code in src/ for data integrity issues: non-atomic multi-item writes, missing condition expressions", "should_trigger": false}
+]

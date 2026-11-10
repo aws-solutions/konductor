@@ -1,0 +1,20 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyUnencryptedUploads",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::docintake-uploads-111122223333/*",
+      "Condition": {"StringNotEquals": {"s3:x-amz-server-side-encryption": "aws:kms"}}
+    },
+    {
+      "Sid": "PartnerReadProcessed",
+      "Effect": "Allow",
+      "Principal": {"AWS": "arn:aws:iam::444455556666:root"},
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::docintake-uploads-111122223333/processed/*"
+    }
+  ]
+}

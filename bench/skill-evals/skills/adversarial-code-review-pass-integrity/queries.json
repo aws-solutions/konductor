@@ -1,0 +1,22 @@
+[
+{"query": "look at the diff on feature/transfer-funds: debitAccount and creditAccount are two separate UpdateItem calls. tell me every way this can corrupt balances (partial writes, lost updates, retries) with file:line and fixes", "should_trigger": true},
+{"query": "Review this PR purely for data integrity failure modes: atomicity, missing condition expressions, non-idempotent retries, ordering races. Ignore style and security.", "should_trigger": true},
+{"query": "our SQS consumer in src/workers/applyCredit.ts retries on failure. is there any way the same credit gets applied twice? go through the write paths in the diff", "should_trigger": true},
+{"query": "second pass on git diff main...HEAD - I only care about whether any write can be lost or half-applied. concurrent requests hit updateInventory a lot", "should_trigger": true},
+{"query": "can you check if the error path in services/order.py deletes the reservation without rolling back the payment hold? also any put that should be a conditional update", "should_trigger": true},
+{"query": "Reviewing changes to the ledger repo layer. Find unconditional overwrites on contested items, missing optimistic locking (we have a version attribute), and write paths with no test coverage.", "should_trigger": true},
+{"query": "this diff adds a webhook handler that creates an order then updates the cart then publishes an event. what happens if it crashes halfway or the webhook is delivered twice? flag it with severity", "should_trigger": true},
+{"query": "integrity pass on PR 381 please: multi-item mutations w/o transactions, retries without idempotency keys, re-reading items after a write instead of using ReturnValues", "should_trigger": true},
+{"query": "do the data-consistency lens of the adversarial review on the diff in /tmp/pr-2210.diff - output [SEVERITY] file:line Problem/Fix", "should_trigger": true},
+{"query": "two async events (OrderPaid, OrderCancelled) both update order status in the new handlers. review the diff for ordering races and lost updates", "should_trigger": true},
+{"query": "review the diff on feature/transfer-funds for security: anything logging account numbers, unvalidated pagination tokens, stack traces returned to callers", "should_trigger": false},
+{"query": "Does this PR break existing API clients? It renames customer_id to customerId and adds a required header.", "should_trigger": false},
+{"query": "write a TransactWriteItems implementation for transferring funds between two accounts with condition checks on balance", "should_trigger": false},
+{"query": "general code review of my PR please, readability, naming, test quality, whatever you see", "should_trigger": false},
+{"query": "design a DynamoDB schema for a ledger with accounts and transactions, with access patterns by account and date", "should_trigger": false},
+{"query": "our postgres deadlocks every night during the batch job. here's the pg log. what's causing it?", "should_trigger": false},
+{"query": "add an idempotency-key middleware to our express routes, store keys in DynamoDB with TTL", "should_trigger": false},
+{"query": "run the full adversarial review on this PR, all three passes (security, integrity, schema), dedupe and validate the findings before posting", "should_trigger": false},
+{"query": "write integration tests that prove updateInventory is safe under concurrent requests", "should_trigger": false},
+{"query": "check our CDK stack: does the DynamoDB table have PITR and deletion protection turned on?", "should_trigger": false}
+]

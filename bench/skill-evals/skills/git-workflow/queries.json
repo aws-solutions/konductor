@@ -1,0 +1,21 @@
+[
+{"query": "i have a messy working tree: a bug fix in src/auth/session.ts, a new feature in src/export/, and prettier reformatting all over. help me commit this properly as separate commits with good messages", "should_trigger": true},
+{"query": "What's the right branch name and commit message format for adding retry with backoff to the S3 uploader? I'm starting the work from main now.", "should_trigger": true},
+{"query": "someone removed the `validateTenant` call at some point and now tenant checks are gone. how do i find which commit dropped that string from the repo history?", "should_trigger": true},
+{"query": "tests passed on v2.3.0 and fail on HEAD, about 140 commits apart. walk me through finding the commit that broke it efficiently", "should_trigger": true},
+{"query": "Before I open my PR, I want to clean up: rebase onto main, make sure each commit compiles, and fix commit subjects that are like 'wip' and 'fix stuff'. What's the procedure?", "should_trigger": true},
+{"query": "who wrote the weird timeout logic in lib/http/client.js lines 80-95 and in what commit? i need context before i change it", "should_trigger": true},
+{"query": "commit my staged changes - it's a refactor of the config loader into its own module plus I fixed an off-by-one in the paginator while I was there. conventional commits please", "should_trigger": true},
+{"query": "my feature branch feat/billing-export is 3 weeks old and way behind main. what should i do with it and how should the history look before review?", "should_trigger": true},
+{"query": "Show me what commits jdoe made to the payments package in the last month, and summarize what changed.", "should_trigger": true},
+{"query": "I accidentally have a .env with a real API key in my last local commit (not pushed). How do I fix the commit and keep the rest of the change?", "should_trigger": true},
+{"query": "merge feat/billing-export into main, there will be conflicts in package-lock.json and src/billing/index.ts", "should_trigger": false},
+{"query": "create a draft PR on github for my branch with a description of what changed and how to test", "should_trigger": false},
+{"query": "review the diff on my branch for security bugs before i push it: git diff main...HEAD", "should_trigger": false},
+{"query": "set up a github actions workflow that runs npm test and eslint on every pull request", "should_trigger": false},
+{"query": "configure husky and lint-staged so prettier runs on staged files before every commit", "should_trigger": false},
+{"query": "write release notes for v2.4.0 from the CHANGELOG entries since v2.3.0, customer-facing tone", "should_trigger": false},
+{"query": "our monorepo clone takes 20 minutes. how do i set up sparse checkout and partial clone for just the services/payments folder?", "should_trigger": false},
+{"query": "address the review comments on PR #311 - there are 6 of them, fix the critical ones and reply to each", "should_trigger": false},
+{"query": "write a script that counts lines of code changed per author per week from git log output and makes a csv", "should_trigger": false}
+]

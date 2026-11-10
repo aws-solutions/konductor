@@ -1,0 +1,82 @@
+[
+ {
+  "query": "convert the BRD for the returns portal (pasted below) into epics and user stories with acceptance criteria, MVP scope",
+  "should_trigger": true
+ },
+ {
+  "query": "break this feature into sprint-ready stories: users can save searches, get email alerts when new listings match, and manage alert frequency",
+  "should_trigger": true
+ },
+ {
+  "query": "need user stories for the admin audit log. personas are compliance officer and tenant admin. testable AC please",
+  "should_trigger": true
+ },
+ {
+  "query": "PM gave me a one paragraph spec for bulk CSV import. turn it into an epic with 5-8 INVEST stories",
+  "should_trigger": true
+ },
+ {
+  "query": "write acceptance criteria for these 6 existing stories, they're way too vague right now",
+  "should_trigger": true
+ },
+ {
+  "query": "we have the PRD for mobile check-in. produce a production-scope backlog, 20-30 stories grouped into epics",
+  "should_trigger": true
+ },
+ {
+  "query": "as a... I want... so that... can you do that for everything in requirements.md? needs to be jira ready",
+  "should_trigger": true
+ },
+ {
+  "query": "backlog.csv has 40 line items from customer feedback. group them into epics and write stories for them",
+  "should_trigger": true
+ },
+ {
+  "query": "the story 'build reporting' is way too big for one sprint. split it into smaller stories with AC",
+  "should_trigger": true
+ },
+ {
+  "query": "full scope stories for the clinic scheduling system, including edge cases like double booking and late cancellations",
+  "should_trigger": true
+ },
+ {
+  "query": "write the kiro requirements.md in EARS notation for the mobile check-in feature",
+  "should_trigger": false
+ },
+ {
+  "query": "split the HLD into independent feature tracks for 4 engineers",
+  "should_trigger": false
+ },
+ {
+  "query": "estimate story points for these 12 stories and plan the sprint",
+  "should_trigger": false
+ },
+ {
+  "query": "write a PRFAQ for the returns portal",
+  "should_trigger": false
+ },
+ {
+  "query": "create the tasks.md implementation plan from requirements.md and design.md",
+  "should_trigger": false
+ },
+ {
+  "query": "pull the non-functional requirements out of this BRD into a table",
+  "should_trigger": false
+ },
+ {
+  "query": "write cypress e2e tests for the save-search flow",
+  "should_trigger": false
+ },
+ {
+  "query": "write an end-user guide explaining how to set up email alerts",
+  "should_trigger": false
+ },
+ {
+  "query": "check the button labels and error messages in this UI for consistency and tone",
+  "should_trigger": false
+ },
+ {
+  "query": "write given/when/then API test cases for POST /login",
+  "should_trigger": false
+ }
+]

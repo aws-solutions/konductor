@@ -1,0 +1,18 @@
+{
+  "project": { "gid": "1209900000000001", "name": "Payments Platform" },
+  "sections": [
+    { "gid": "1209900000000101", "name": "Backlog" },
+    { "gid": "1209900000000113", "name": "Sprint 13" },
+    { "gid": "1209900000000114", "name": "Sprint 14" }
+  ],
+  "custom_fields": [
+    { "name": "Priority", "type": "enum", "enum_options": ["P0", "P1", "P2"] },
+    { "name": "Component", "type": "text" }
+  ],
+  "members": [
+    { "name": "Priya Raman", "gid": "1209900000000501" },
+    { "name": "Marco Silva", "gid": "1209900000000502" },
+    { "name": "Lena Fischer", "gid": "1209900000000503" }
+  ],
+  "sprint_14": { "start": "2026-11-09", "end": "2026-11-20" }
+}

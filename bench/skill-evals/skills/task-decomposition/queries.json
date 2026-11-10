@@ -1,0 +1,22 @@
+[
+{"query": "The HLD for the expense-reporting app is approved (docs/hld.md) and we have 11 user stories in docs/stories.md. I have 4 engineers. Break it down so each can work in parallel without stepping on each other.", "should_trigger": true},
+{"query": "break down the notifications feature into tasks for the team. email, SMS, push, the preferences UI and the template service are all in the design", "should_trigger": true},
+{"query": "how should I split this project across three devs so they don't block each other? stories US-1..US-9 are attached, design has an API layer, a DynamoDB model and a React admin", "should_trigger": true},
+{"query": "decompose the multi-tenant onboarding epic into independent feature tracks that map back to user stories, and tell me which shared interfaces have to be defined first", "should_trigger": true},
+{"query": "we're about to start writing specs for each piece. first I need the work split into features owned by one engineer each. design + stories are in planning/", "should_trigger": true},
+{"query": "Split the customer portal v2 design into chunks that can be built and tested in isolation. Point out anything with circular deps.", "should_trigger": true},
+{"query": "pls break this into implementation tasks: search service rewrite (indexer, query API, relevance tuning UI, backfill job). 2 engineers, ~6 weeks", "should_trigger": true},
+{"query": "Given these user stories and the system design below, carve out feature boundaries by data ownership so no two engineers write to the same table", "should_trigger": true},
+{"query": "I need a feature breakdown for staffing the billing revamp: what the independent pieces are, which stories each covers, and the dependencies between them", "should_trigger": true},
+{"query": "Turn the approved architecture for the IoT telemetry pipeline into per-engineer workstreams with scope and key components, minimizing overlap", "should_trigger": true},
+{"query": "generate tasks.md for the bulk-export feature from requirements.md and design.md in .kiro/specs/bulk-export", "should_trigger": false},
+{"query": "Write requirements.md for the expense-reporting app in EARS format", "should_trigger": false},
+{"query": "Plan sprint 14: 42 points of capacity, backlog ordered by priority is attached", "should_trigger": false},
+{"query": "this 900-line process_order() in orders.py is a mess. decompose it into smaller functions without changing behavior", "should_trigger": false},
+{"query": "Check progress on our feature plan: which tasks in tasks.md are done and which are blocked?", "should_trigger": false},
+{"query": "write user stories with acceptance criteria for the notifications feature", "should_trigger": false},
+{"query": "Break down last quarter's AWS bill by service and team tag", "should_trigger": false},
+{"query": "convert these legacy estimates (24d, 40d) into agent-era estimates", "should_trigger": false},
+{"query": "split this monorepo into separate packages for api, web, and shared using npm workspaces", "should_trigger": false},
+{"query": "Create a program plan with milestones and a RACI for the billing revamp across 3 teams", "should_trigger": false}
+]

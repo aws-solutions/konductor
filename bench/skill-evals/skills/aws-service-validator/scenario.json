@@ -1,0 +1,191 @@
+{
+  "skill": "aws-service-validator",
+  "category": "WATCH",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": true,
+  "limited_reason": "Procedure depends on aws-mcp documentation and regional-availability tools, which are not available headless; offline runs can only show classification and report format.",
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Before Thursday's design review, fact-check every AWS service claim in docs/design/ingest.md against primary AWS sources. Produce the validation report wherever our fact-check gate expects it, and annotate the design doc in place so reviewers can see the problems next to the text. Do not ask me questions; make reasonable assumptions, list them in the report, and finish the work.",
+      "fixture": "fixtures/aws-service-validator/",
+      "why_discriminating": "The skill fixes the report path (docs/design/<name>-aws-validation.md), the CONFIRMED/UNVERIFIED/INCORRECT table with evidence and correction columns, the 'N claims checked' summary, and the inline `> \u26a0\ufe0f INCORRECT:` / `> \u26a0\ufe0f UNVERIFIED:` callouts, and it forbids confirming from the document's own text. Without it a model fact-checks well from memory but writes a free-form review elsewhere and does not mark the doc in the gate's format.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Report written to the skill's conventional path docs/design/ingest-aws-validation.md",
+          "check": "test -s docs/design/ingest-aws-validation.md"
+        },
+        {
+          "id": "f2",
+          "text": "Design doc annotated with INCORRECT callouts (blockquote)",
+          "check": "grep -qE '^> .*INCORRECT' docs/design/ingest.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Correct verdicts on the planted claims (KEY)",
+          "pass": "Lambda 60 min INCORRECT (15 min) and DynamoDB 4 MB INCORRECT (400 KB), with corrections; claims 1,3,5,6,7 not marked INCORRECT; claim 8 handled as CONFIRMED with evidence or UNVERIFIED",
+          "partial": "Both errors caught but a correct claim marked INCORRECT, or claim 8 confirmed from memory",
+          "fail": "One of the two errors missed"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Skill's report and gate format",
+          "pass": "Report at docs/design/ingest-aws-validation.md with a row per claim (8), Status/Evidence/Correction columns and the 'N claims checked - N CONFIRMED, N UNVERIFIED, N INCORRECT' summary; ingest.md carries `> \u26a0\ufe0f INCORRECT:` callouts at claims 2 and 4 and UNVERIFIED callouts where applicable",
+          "partial": "Report and callouts present but path, summary line or callout format differs",
+          "fail": "No inline callouts, or report missing rows"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Corrections are actionable for the design",
+          "pass": "Corrections say what to change in the design (e.g. store raw event in S3 with a pointer in DynamoDB; split long batches or use Step Functions)",
+          "partial": "Corrections state the right limit but not the design consequence",
+          "fail": "No corrections"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Evidence honesty (offline-limited skill)",
+          "pass": "Every CONFIRMED/INCORRECT row cites a primary AWS doc URL that was actually consulted, or the report states plainly that doc tools were unavailable and which verdicts rest on prior knowledge; no fabricated deep links presented as read",
+          "partial": "States tool limits once but still presents memory-based verdicts as source-confirmed in some rows",
+          "fail": "Claims to have checked sources it did not, or invents specific doc URLs/quotes"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "both planted errors caught with corrections",
+          "gate path, table and callouts",
+          "honest evidence"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Our expansion proposal says Amazon Bedrock and EventBridge Pipes are both available in ap-south-2 and eu-west-3, and finance is committing budget on that basis. Verify those regional availability claims and write region-check.md with a status and evidence per claim. If you can't reach a primary source for a claim, say exactly what you searched or would query instead of guessing. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "fixture": null,
+      "why_discriminating": "The skill says regional availability must come from the regional-availability tool (resource_type product, exact catalog names in filters, follow next_token when listing names) and never from memory, and that UNVERIFIED rows record what was searched. A competent model without it tends to answer from memory with confident CONFIRMED/INCORRECT rows.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "One row per service x region (4 claims) with a status",
+          "check": "[ $(grep -cE '^\\|.*(CONFIRMED|UNVERIFIED|INCORRECT)' region-check.md) -ge 4 ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "restraint",
+          "criterion": "No regional verdicts from memory (KEY)",
+          "pass": "Each of the 4 service x region claims is CONFIRMED/INCORRECT only with a consulted primary source; otherwise UNVERIFIED",
+          "partial": "Mostly UNVERIFIED but one memory-based CONFIRMED/INCORRECT",
+          "fail": "Two or more memory-based verdicts"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Method matches the skill",
+          "pass": "Describes or performs the regional-availability lookup with resource_type product, exact catalog names (e.g. 'Amazon Bedrock', 'Amazon EventBridge Pipes'), multi-region filters, and pagination for name discovery; or names the AWS Regional Services List / service endpoints page as the source to check",
+          "partial": "Names a source to check but not how",
+          "fail": "No method"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Useful for the budget decision",
+          "pass": "Says finance should not commit until the UNVERIFIED rows are checked, and gives the exact next step and who/what can confirm",
+          "partial": "Flags uncertainty but no next step",
+          "fail": "Gives a go/no-go based on unverified claims"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Evidence honesty (offline-limited skill)",
+          "pass": "Every CONFIRMED/INCORRECT row cites a primary AWS doc URL that was actually consulted, or the report states plainly that doc tools were unavailable and which verdicts rest on prior knowledge; no fabricated deep links presented as read",
+          "partial": "States tool limits once but still presents memory-based verdicts as source-confirmed in some rows",
+          "fail": "Claims to have checked sources it did not, or invents specific doc URLs/quotes"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "no guessed availability",
+          "clear verification method",
+          "decision-safe recommendation"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "docs/design/notify.md is up for sign-off tomorrow and our process says it can't merge until it passes the AWS fact-check gate. Run the fact-check on it, write the report where the gate expects it, annotate the doc, and tell me at the bottom of the report whether the doc passes the gate and what the author must do if not. Do not ask me questions; make reasonable assumptions, list them in the report, and finish the work.",
+      "fixture": "fixtures/aws-service-validator/",
+      "why_discriminating": "The doc mixes feature-name drift (stream 'filter patterns' that are really Lambda event filtering), an SNS FIFO email subscription, a vague scaling claim, a pricing claim the skill forbids validating from memory, and a regional claim the skill routes to the regional tool. The skill's gate definition (0 unaddressed INCORRECT, callouts for INCORRECT and UNVERIFIED) decides pass/fail; a competent model without it critiques the design but rarely gives a gate verdict in those terms.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Report exists at the gate path and ends with a pass/fail statement",
+          "check": "f=docs/design/notify-aws-validation.md; test -s $f && grep -qiE 'pass|fail' $f"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Claim verdicts (KEY)",
+          "pass": "Claim 1 INCORRECT (filtering is Lambda event source mapping filter criteria, stream emits all records), claim 3 INCORRECT (FIFO topics deliver only to SQS), claim 5 INCORRECT or UNVERIFIED-as-vague with the scaling-rate/account-limit correction; claim 4 not marked INCORRECT",
+          "partial": "Two of claims 1, 3, 5 handled correctly",
+          "fail": "One or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Pricing and regional claims routed per the skill",
+          "pass": "SES pricing (claim 6) checked against the pricing page or left UNVERIFIED with a 'likely wrong, inbound is charged' note; EventBridge Scheduler region (claim 7) CONFIRMED only with regional-tool/doc evidence else UNVERIFIED",
+          "partial": "One of the two routed correctly",
+          "fail": "Both decided from memory and presented as confirmed"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Gate verdict in the skill's terms",
+          "pass": "States the doc FAILS the gate until INCORRECT claims are corrected or carry `> \u26a0\ufe0f INCORRECT:` callouts and UNVERIFIED ones carry `> \u26a0\ufe0f UNVERIFIED:` callouts; report at docs/design/notify-aws-validation.md with summary counts; callouts added to notify.md",
+          "partial": "Verdict given but not tied to the gate conditions, or callouts missing",
+          "fail": "No verdict, or says it passes"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Author actions",
+          "pass": "Concrete fixes: use a standard SNS topic for email (or SQS -> Lambda -> SES), ESM filter criteria for INSERT, plan concurrency for peaks",
+          "partial": "Fixes for some INCORRECT claims only",
+          "fail": "No fixes"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Evidence honesty (offline-limited skill)",
+          "pass": "Every CONFIRMED/INCORRECT row cites a primary AWS doc URL that was actually consulted, or the report states plainly that doc tools were unavailable and which verdicts rest on prior knowledge; no fabricated deep links presented as read",
+          "partial": "States tool limits once but still presents memory-based verdicts as source-confirmed in some rows",
+          "fail": "Claims to have checked sources it did not, or invents specific doc URLs/quotes"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "drifted and wrong claims caught",
+          "pricing/regional claims not settled from memory",
+          "clear gate verdict",
+          "actionable fixes"
+        ]
+      }
+    }
+  ]
+}

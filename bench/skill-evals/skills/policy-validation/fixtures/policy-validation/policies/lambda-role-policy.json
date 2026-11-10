@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadOrders",
+      "Effect": "Allow",
+      "Action": ["dynamodb:GetItem", "dynamodb:Query"],
+      "Resource": "arn:aws:dynamodb:us-east-1:111122223333:table/orders"
+    },
+    {
+      "Sid": "Uploads",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": "*"
+    }
+  ]
+}

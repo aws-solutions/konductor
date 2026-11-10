@@ -1,0 +1,21 @@
+[
+{"query": "ok the PM agent gave me business-context.md, requirements-summary.md and user-stories-extract.md. what do i do next and which agent picks these up?", "should_trigger": true},
+{"query": "I'm new to this agent setup. Which agent should I use to design the API and data model for a feature, and which one writes the code afterwards?", "should_trigger": true},
+{"query": "we have an approved HLD and user stories for the reporting feature. how do we get from there to per-feature specs that individual engineers can execute?", "should_trigger": true},
+{"query": "how do the phases connect end to end here? requirements -> design -> ... -> testing. what artifact does each hand to the next?", "should_trigger": true},
+{"query": "which agent handles e2e test strategy and security tests once implementation is done? and what does it need from the dev agent", "should_trigger": true},
+{"query": "I have a tasks.md under .kiro/specs/export/. What's the next step, and what context should be loaded when executing those tasks?", "should_trigger": true},
+{"query": "Is there an agent for reading a PDF architecture diagram someone sent me, or should the architect agent do that? Also how do I switch agents in kiro cli?", "should_trigger": true},
+{"query": "what should I do next? I just finished the threat model and diagrams for the notifications service", "should_trigger": true},
+{"query": "who does feature splitting in this workflow, the architect or the developer? and is it before or after the kiro specs", "should_trigger": true},
+{"query": "Give me the map of agents available in this framework and what each is for, so I can pick the right one for planning a sprint versus planning a whole program.", "should_trigger": true},
+{"query": "write the user stories for the reporting feature from this product brief", "should_trigger": false},
+{"query": "split the reporting HLD into independent features for 3 engineers", "should_trigger": false},
+{"query": "generate requirements.md in EARS format for the export feature", "should_trigger": false},
+{"query": "explain the difference between waterfall, scrum and kanban SDLC models for my team's onboarding doc", "should_trigger": false},
+{"query": "set up a CI/CD pipeline with build, test, staging deploy and manual prod approval in github actions", "should_trigger": false},
+{"query": "create a new custom agent spec for a 'data engineer' role with its own skills and system prompt", "should_trigger": false},
+{"query": "track progress across our feature specs: what's done, in progress, blocked", "should_trigger": false},
+{"query": "spawn the architect and the QA agent in parallel to work on the design and test plan at the same time in tmux panes", "should_trigger": false},
+{"query": "design the system for the notifications service: components, APIs, data model", "should_trigger": false}
+]

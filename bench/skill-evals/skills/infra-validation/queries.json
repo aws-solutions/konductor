@@ -1,0 +1,22 @@
+[
+{"query": "about to deploy lib/stacks/data-stack.ts (CDK typescript) to production. can you review it for security and ops problems first - encryption, IAM, backups, alarms", "should_trigger": true},
+{"query": "Here's our CloudFormation template at infra/template.yaml for the staging env. Check it against Well-Architected best practices and tell me what to fix before it goes to prod.", "should_trigger": true},
+{"query": "security scan flagged something about our s3 buckets but i want a full review of cdk.out/AppStack.template.json - wildcard iam, public access, missing logging, all of it", "should_trigger": true},
+{"query": "Review the CDK python app in infra/ (dev environment) for cost waste. I think we're over-provisioning Lambda memory and NAT gateways.", "should_trigger": true},
+{"query": "we need SOC 2 for a customer deal. can you validate our cloudformation json templates under cfn/ for compliance gaps? environment is production", "should_trigger": true},
+{"query": "does this CDK stack look production-ready? lib/api-stack.ts - api gateway, 4 lambdas, a dynamodb table. I'm worried about missing DLQs and alarms", "should_trigger": true},
+{"query": "Check our infra code for removal policies and deletion protection on stateful resources, DynamoDB PITR, RDS multi-AZ. Path is packages/infra/lib, CDK TS, prod.", "should_trigger": true},
+{"query": "pls do an infra review on the template I'm pasting below (cfn yaml, staging). focus on security", "should_trigger": true},
+{"query": "Our CDK nag suppressions in lib/ have no justifications and I think some hide real problems. Review the stack and suppressions.", "should_trigger": true},
+{"query": "Before we cut over, I want someone to check every Lambda in the synthesized template for DLQ, tracing, reserved concurrency, and log retention. cdk.out/ServiceStack.template.json", "should_trigger": true},
+{"query": "Write a new CDK stack in TypeScript that creates an encrypted S3 bucket, a DynamoDB table, and a Lambda that reads from both", "should_trigger": false},
+{"query": "cdk deploy is failing with 'Resource handler returned message: Invalid request provided: ... already exists'. how do I get past this", "should_trigger": false},
+{"query": "Design a least-privilege IAM policy for a Lambda that reads from one S3 prefix and writes to one DynamoDB table", "should_trigger": false},
+{"query": "Review the React components in src/pages/settings for Cloudscape compliance and hook form patterns", "should_trigger": false},
+{"query": "my running prod account has an S3 bucket that's public, check the live account config with the AWS API and tell me which buckets are exposed", "should_trigger": false},
+{"query": "estimate monthly cost of this architecture: 2 ECS fargate services, an ALB, aurora serverless v2, 1TB S3", "should_trigger": false},
+{"query": "Review this DynamoDB table design for hot partitions and GSI overloading - table schema is in docs/data-model.md", "should_trigger": false},
+{"query": "convert our cloudformation yaml templates to CDK typescript constructs", "should_trigger": false},
+{"query": "Review the backend handler code in src/handlers/ for race conditions in the DynamoDB writes", "should_trigger": false},
+{"query": "Explain the difference between RemovalPolicy.RETAIN and RemovalPolicy.SNAPSHOT in CDK", "should_trigger": false}
+]

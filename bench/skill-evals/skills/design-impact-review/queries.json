@@ -1,0 +1,22 @@
+[
+{"query": "I need to add a `deletedAt` column to the `orders` table for soft delete. Before I write the migration, what else does this ripple into? We have docs/api/openapi.yaml, the admin UI, and a threat model in docs/threat-model.md.", "should_trigger": true},
+{"query": "product wants to change the acceptance criteria on US-14 so guests can checkout without an account. figure out which of our design artifacts (HLD, api spec, data model, ux flows, tests) that breaks and which just go stale", "should_trigger": true},
+{"query": "we're renaming `customer_id` to `account_id` in the GET /invoices response. what downstream stuff do i need to update? frontend consumes it in web/src/invoices/. dont make the change yet just tell me the impact", "should_trigger": true},
+{"query": "The design doc says the export job is synchronous but I'd like to implement it as async with a callback. That's a deviation from docs/design/export.md. Walk through what that affects before I start coding.", "should_trigger": true},
+{"query": "Switching the auth model for the partner API from API keys to OAuth client credentials. Map out every artifact this touches and classify each as breaking vs just out of date.", "should_trigger": true},
+{"query": "i'm about to split the `address` string field into street/city/postcode in the user model. does that break anything in the api contract or the signup screen? there are tests in tests/contract/", "should_trigger": true},
+{"query": "Our HLD has one shared Postgres for all tenants. We're moving to database-per-tenant. Before anyone touches code, give me a table of impacted artifacts (threat model, NFRs, API, data model, UX, tests) with status and action.", "should_trigger": true},
+{"query": "adding a new field `priority` (enum LOW/MED/HIGH) to the Task entity. it would be exposed in the API and shown in the board UI. what's the blast radius across our docs and code?", "should_trigger": true},
+{"query": "PM changed scope: reports now need to be shareable via public link. what does that do to our existing design, threat model and API? classify each artifact", "should_trigger": true},
+{"query": "I want to change the pagination on /search from offset to cursor-based. Trace the impact through the spec in api/search.yaml, the web client, and the test strategy before I do it.", "should_trigger": true},
+{"query": "write the migration that adds a deletedAt column to orders and update the repository queries to filter soft-deleted rows. postgres + knex", "should_trigger": false},
+{"query": "rename the variable `tmp` to `pendingOrders` across src/services/orderService.ts, it's just a readability thing", "should_trigger": false},
+{"query": "review my design doc docs/design/export.md adversarially - challenge every architecture decision and its justification", "should_trigger": false},
+{"query": "generate an OpenAPI 3.1 spec for the invoices service from the handlers in src/handlers/invoices/*.ts", "should_trigger": false},
+{"query": "we need a threat model for the new partner API with OAuth client credentials. STRIDE per component please", "should_trigger": false},
+{"query": "the GET /invoices endpoint returns 500 when customer_id is null. fix the bug so it returns 404 like the spec says", "should_trigger": false},
+{"query": "compare offset vs cursor pagination for a search API with 50M documents and give me a recommendation with trade-offs", "should_trigger": false},
+{"query": "Design the data model for tasks with priority, assignee, labels and due dates in DynamoDB. Access patterns: by board, by assignee, overdue.", "should_trigger": false},
+{"query": "update the CHANGELOG and bump the version for the soft-delete feature that already merged", "should_trigger": false},
+{"query": "check whether the code in src/ still matches the design in .kiro/specs/export/design.md and requirements.md - which tasks are done, which requirements have no code", "should_trigger": false}
+]

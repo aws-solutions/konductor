@@ -1,0 +1,206 @@
+{
+  "skill": "program-planning",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "I'm the TPM for the data platform migration. Using items.csv and brief.md, write program-plan.md: the program plan leadership will review next week. Tell me plainly whether the GA date in the brief holds, and if not, what date we can commit to. This runs unattended: do not ask questions, state assumptions in the plan.",
+      "fixture": "fixtures/program-planning/",
+      "why_discriminating": "The skill fixes the method: T-shirt sizes to calendar ranges (M 1-2w, L 3-4w, XL 5-8w), a 20% floor buffer and 40% for novel work, zero-float critical path, dependency typing, utilization per person, and an 8-section plan. A generic plan usually notices the date is tight but applies ad-hoc estimates and buffers, misses Priya's overlap across W2/W8 and W7, and skips the freeze/on-call weeks.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Plan has a milestones table with an Exit Criteria column",
+          "check": "grep -qiE '^\\|.*exit criteria.*\\|' program-plan.md"
+        },
+        {
+          "id": "f2",
+          "text": "Says the 2027-03-26 GA date does not hold",
+          "check": "grep -qiE 'not (feasible|achievable|realistic|possible|hold)|infeasible|unachievable|cannot (be met|meet|hit)|will not (meet|make|hold)|does not hold|miss(es)? the' program-plan.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "reasoning",
+          "criterion": "Critical path is W1 -> W2 -> W3 -> W5 -> W7 with 13-20 weeks unbuffered, so a 12-week window to 2027-03-26 fails even before buffers; float identified for W4, W6, W8",
+          "pass": "Correct path, duration math shown, float called out",
+          "partial": "Correct path but no duration math or float",
+          "fail": "Wrong path or says the date holds"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Uses the skill's estimation rules: size-to-range conversion, 20% buffer on all work, 40% on novel W2 and W8; accounts for the 2027-02-15 freeze and Priya's on-call week",
+          "pass": "All rules applied and visible in the dates",
+          "partial": "Buffers applied but not per the 20/40 rule, or calendar constraints missed",
+          "fail": "No buffers"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Flags resourcing: Priya owns W1, W2, W7 and W8, with W2 and W8 overlapping, so she is over 100%; proposes a fix (re-sequence or reassign W8)",
+          "pass": "Over-allocation quantified and a fix proposed",
+          "partial": "Mentioned without a fix",
+          "fail": "Not noticed"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Plan has the skill's sections: summary, milestones with measurable exit criteria and owners, Gantt-style ASCII timeline, critical path, dependency map typed (FS/SS) with lag and risk, W6 classed external, resource allocation, top schedule risks, tracker-ready task breakdown",
+          "pass": "All sections present and filled with plan-specific content",
+          "partial": "Most sections, some thin or generic",
+          "fail": "Missing several sections"
+        },
+        {
+          "id": "r5",
+          "dimension": "recommendation",
+          "criterion": "Gives leadership a committable date or range with confidence and what would bring it in (e.g. defer W8, start W4 in parallel), rather than only 'at risk'",
+          "pass": "Concrete date range with levers",
+          "partial": "Says it slips without a usable date",
+          "fail": "No recommendation"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is the date verdict right and backed by the math?",
+          "Could leadership act on the recommended date?",
+          "Are the people and calendar constraints handled?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Review plan-draft.md (payments re-platform) before I send it to the steering group. Write plan-review.md with the problems ordered by severity, each naming the milestone IDs involved and the fix. Do not edit plan-draft.md. Do not ask questions; state assumptions in plan-review.md.",
+      "fixture": "fixtures/program-planning/",
+      "why_discriminating": "The skill's quality gate sets severities: circular dependencies, unmeasurable exit criteria, and an end date earlier than the critical path are CRITICAL; missing buffer, unassessed dependency risk, and >100% utilization are IMPORTANT. Generic reviews find the cycle but tend to under-rate 'Better performance' and miss that GA (03-30) is dated before M4 and M5 finish.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Finds the M3 <-> M5 circular dependency",
+          "check": "grep -qiE 'circular|cycle' plan-review.md && grep -q M3 plan-review.md && grep -q M5 plan-review.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Finds the three blocking defects: M3 <-> M5 cycle, M3 exit criteria 'Better performance' not measurable, M6 GA 2027-03-30 before its dependencies M4 (04-02) and M5 (04-09)",
+          "pass": "All three found with IDs and dates",
+          "partial": "Two found",
+          "fail": "One or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Finds the plan-hygiene defects: no buffer applied, Dana at 150% in March (60+50+40), dependencies carry no type or risk level",
+          "pass": "All three",
+          "partial": "Two",
+          "fail": "One or none"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Severities follow the skill's gate: the three blocking defects CRITICAL; buffer, allocation and dependency risk IMPORTANT; anything else SUGGESTION; presented in that order",
+          "pass": "Tiers match and ordered",
+          "partial": "One misrated item",
+          "fail": "Generic or missing severities"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Fixes are concrete: break the cycle (M3 should follow M5 as a tuning milestone, or merge), measurable M3 criterion tied to M5's 3,000 TPS / p99 target, a re-derived GA date after M4/M5 plus buffer, a utilization fix for Dana",
+          "pass": "Concrete fix for every finding",
+          "partial": "Fixes vague for some",
+          "fail": "Findings without fixes"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented problems (e.g. does not dispute the M1/M2 dates without evidence)",
+          "pass": "All findings grounded in the draft",
+          "partial": "One speculative finding",
+          "fail": "Several"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it find all blocking problems and rate them correctly?",
+          "Are the fixes specific enough to edit the plan?",
+          "Any noise?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "It's Monday 2027-02-08. status-2027-02-08.md has this week's status for the data platform migration (plan of record: items.csv and brief.md) and an email from our sponsor. Write replan.md: the replan she asked for, including whether her contractor idea saves 3/26, which slips actually move GA, and the date I should commit to. Do not ask questions; state assumptions in replan.md.",
+      "fixture": "fixtures/program-planning/",
+      "why_discriminating": "Replanning with the skill means recomputing the critical path and float before reacting. The sponsor is alarmed about W6, but W6 has float and nothing depends on it, while the quieter W2 slip moves GA week for week. Without that discipline, answers tend to chase the loudest slip, accept 'cut W3 in half', or quote a single date with no buffer.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "replan.md exists",
+          "check": "test -s replan.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "reasoning",
+          "criterion": "Recomputes the critical path: the W2 slip to 2027-03-05 moves GA directly; the W6 slip does not, since nothing depends on W6 (float), and says so to the sponsor",
+          "pass": "Both points made explicitly with the dependency reasoning",
+          "partial": "Gets W2 right but treats W6 as a GA risk without justification",
+          "fail": "Treats W6 as the main problem or ignores W2"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Assesses the contractor proposal: adding people to an XL migration on a new framework does not halve it (onboarding, ramp-up), and it cannot restore 3/26 because W3 cannot start before 03-08",
+          "pass": "Rejects the halving with reasons and quantifies a realistic gain",
+          "partial": "Doubts it without reasoning",
+          "fail": "Accepts it and keeps 3/26"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Gives a committable GA date or range (roughly late May at the earliest, realistically June to early July) derived from remaining ranges plus the skill's buffers, with a confidence level",
+          "pass": "Date range derived step by step with buffers and confidence",
+          "partial": "A date without derivation or buffers",
+          "fail": "Keeps 3/26 or gives no date"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Updates the plan artifacts the skill expects for a replan: revised milestones/timeline, critical path with float, updated dependency risks, Priya's load (deferring W8 frees her for W7) and top schedule risks",
+          "pass": "Revised plan sections present and consistent with the new date",
+          "partial": "Narrative only, partial tables",
+          "fail": "No revised plan"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Respectful but direct with the sponsor; no invented facts about the vendor or team beyond the status file",
+          "pass": "Clear, grounded, no invented facts",
+          "partial": "Some hedging or one unsupported claim",
+          "fail": "Misleading or invented"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it identify which slip actually matters?",
+          "Is the new date credible and explained?",
+          "Would the sponsor know what to approve or stop worrying about?"
+        ]
+      }
+    }
+  ]
+}

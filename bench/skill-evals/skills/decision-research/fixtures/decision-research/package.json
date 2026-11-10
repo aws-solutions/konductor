@@ -1,0 +1,1 @@
+{ "name": "notify-service", "private": true, "dependencies": { "node-cron": "^3.0.3", "@aws-sdk/client-sns": "^3.600.0", "aws-cdk-lib": "^2.150.0" } }

@@ -1,0 +1,23 @@
+{
+  "page.title": "Create New Cluster",
+  "page.description": "Use this wizard to create a cluster. Clusters can be configured with many options, e.g. node type, storage, networking etc. You'll be able to change most settings later. Fill in the form below and click Submit.",
+  "section.basics.header": "Cluster Basics:",
+  "field.name.label": "Cluster Name",
+  "field.name.description": "The name.",
+  "field.name.constraint": "Please enter a name...",
+  "field.nodeCount.label": "number of nodes",
+  "field.nodeCount.constraint": "Between 1 & 50 nodes.",
+  "field.encryption.label": "Encryption",
+  "field.encryption.description": "Encryption can be enabled by clicking the checkbox above.",
+  "button.primary": "Submit",
+  "button.cancel": "Cancel.",
+  "button.advanced": "Click here to show advanced settings",
+  "alert.success": "Success! Your cluster was created!",
+  "alert.error.generic": "Error: java.lang.NullPointerException at com.acme.cluster.ClusterService.create(ClusterService.java:212)",
+  "alert.error.quota": "Sorry, something went wrong.",
+  "empty.clusters": "No clusters.",
+  "modal.delete.title": "Delete Cluster?",
+  "modal.delete.body": "Are you sure? This can't be undone...",
+  "modal.delete.confirm": "OK",
+  "help.link": "Learn more about Project Falcon clusters"
+}

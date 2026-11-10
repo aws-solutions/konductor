@@ -1,0 +1,182 @@
+{
+  "skill": "status-reporting",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Turn my raw notes in notes/week-44.md into the one-page executive summary I send to our VP on Friday. She reads it on her phone between meetings and needs to know what to decide. Write it to exec-summary.md. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/status-reporting/",
+      "why_discriminating": "The skill's executive format is fixed: period, single overall RAG with justification, 3-5 outcome-focused accomplishments, dated milestones with owners, blockers with owner and mitigation, and an explicit Ask. The notes bury the real ask (a VP request for an earlier AppSec slot) and a slipping launch; a generic summary often lists activities, omits the Ask section, or gives RAG without a reason.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Summary exists and is one page",
+          "check": "test -f exec-summary.md && [ $(wc -w < exec-summary.md) -le 450 ]"
+        },
+        {
+          "id": "f2",
+          "text": "Overall RAG stated",
+          "check": "grep -iE 'overall' exec-summary.md | grep -qiE 'green|amber|red'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "The decision the VP must make",
+          "pass": "Ask/Escalation section asks the VP to request an earlier AppSec slot because the Nov 18 slot misses the Nov 15 SDK launch",
+          "partial": "AppSec issue mentioned but not framed as a specific ask",
+          "fail": "No ask, or ask is 'None'"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "RAG with justification",
+          "pass": "Overall Amber or Red with a one-line reason; Mobile SDK Red (launch date at risk); backfill Amber/Red with the replica dependency and the Nov 6 / Nov 20 vs December consequence",
+          "partial": "RAG given with vague reasons",
+          "fail": "RAG without reasons, or overall Green"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Executive format from the skill",
+          "pass": "Period (Oct 26-30, 2026), overall RAG, 3-5 accomplishments stated as outcomes (14/20 endpoints at 0.02% error rate), milestones with dates and owners (payouts Nov 13 dana), blockers with owner and mitigation, Ask",
+          "partial": "One section missing or accomplishments read as activities",
+          "fail": "Two or more sections missing"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No invented facts",
+          "pass": "Uses only facts in the notes; any inferred number (for example backfill %) is labeled as an estimate",
+          "partial": "One unlabeled inference",
+          "fail": "Invented dates, owners, or metrics"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Could the VP act on it in 30 seconds?",
+          "Is the escalation explicit?",
+          "Accuracy against the notes"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "From notes/week-44.md, write the detailed program report for the program team to detailed-report.md. The team uses it to run Monday's planning, so action items need to be trackable. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/status-reporting/",
+      "why_discriminating": "The detailed format in the skill requires a workstream table (Workstream, RAG, % Complete, Key Update, Next Milestone, Blocker), metrics including velocity and scope changes, and an action-items table with owner and due date. Generic reports usually drop % complete, omit the unestimated Apple Pay scope add, or give action items without dates.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Workstream table with RAG and % complete columns",
+          "check": "test -f detailed-report.md && grep -qiE '\\|\\s*Workstream\\s*\\|\\s*RAG\\s*\\|\\s*% ?Complete' detailed-report.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Required tables",
+          "pass": "Workstream table with all six skill columns and an Action, Owner, Due Date, Status, Notes table with dana Nov 4 and raj Nov 2",
+          "partial": "Tables present but a column (often Due Date or Blocker) missing",
+          "fail": "No tables"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Metrics and scope",
+          "pass": "Velocity 34 vs 31, API migration 70% (14/20), Apple Pay scope add flagged as unestimated with a follow-up",
+          "partial": "Two of the three",
+          "fail": "None"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Amber/Red workstreams justified",
+          "pass": "Each Amber/Red row has the specific cause and a mitigation or escalation with date (replica escalation by Nov 2; AppSec ask)",
+          "partial": "Causes given but no mitigation",
+          "fail": "RAG without causes"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Handles missing data honestly",
+          "pass": "Marks unknown % for backfill and SDK as estimates or 'n/a' and does not invent a burn-down; no links invented",
+          "partial": "One unlabeled estimate",
+          "fail": "Invented metrics or artifact links"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Could Monday's planning run from this?",
+          "Completeness of the action-items table",
+          "Honest handling of missing numbers"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Review status/oct-14.md, last week's stakeholder update that my predecessor sent, against what such an update must contain. Write review.md with findings ordered CRITICAL, IMPORTANT, SUGGESTION. Do not rewrite the update. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/status-reporting/",
+      "why_discriminating": "The skill's quality gate fixes the severity of each gap: missing period, unjustified RAG, and owner-less blockers are CRITICAL; missing due dates, missing metrics, and activity-style accomplishments are IMPORTANT. Without it, a reviewer finds similar gaps but ranks them by taste.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Findings ordered by severity",
+          "check": "test -f review.md && python3 -c \"import sys;t=open('review.md',encoding='utf-8').read().upper();p=[t.find(w) for w in ('CRITICAL','IMPORTANT','SUGGESTION') if w in t];sys.exit(0 if len(p)>=2 and p==sorted(p) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "All planted defects found (see KEY)",
+          "pass": "Missing date/period, RAG without justification, blockers without owner/mitigation, action items without owner/date, no metrics, activities not outcomes, no Ask section",
+          "partial": "Five or six of the seven",
+          "fail": "Four or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Severity matches the skill's gate",
+          "pass": "Date, RAG justification, and blocker owner/mitigation are CRITICAL; due dates, metrics, and activity-vs-outcome are IMPORTANT",
+          "partial": "One item in the wrong tier",
+          "fail": "Two or more in the wrong tier, or no tiers"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Actionable fixes",
+          "pass": "Each finding says exactly what to add (for example 'Data backfill: Red because replica not provisioned; owner raj; escalation to DBA manager')",
+          "partial": "Generic fixes",
+          "fail": "No fixes"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Stays a review",
+          "pass": "Does not rewrite the update and does not invent facts about the program",
+          "partial": "Includes a partial rewrite",
+          "fail": "Rewrites the update"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is the severity ranking defensible?",
+          "Coverage of the gaps",
+          "Usefulness of the fixes"
+        ]
+      }
+    }
+  ]
+}

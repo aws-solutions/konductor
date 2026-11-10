@@ -1,0 +1,50 @@
+diff --git a/src/routes/export.js b/src/routes/export.js
+--- /dev/null
++++ b/src/routes/export.js
+@@ -0,0 +1,14 @@
++'use strict';
++
++const express = require('express');
++const db = require('../db');
++
++const router = express.Router();
++
++router.get('/admin/export', async (req, res) => {
++  const { offset } = JSON.parse(Buffer.from(String(req.query.next || 'eyJvZmZzZXQiOjB9'), 'base64').toString());
++  const rows = await db.query(`SELECT id, email, plan FROM users ORDER BY id LIMIT 500 OFFSET ${offset}`);
++  res.json({ rows, next: Buffer.from(JSON.stringify({ offset: offset + 500 })).toString('base64') });
++});
++
++module.exports = router;
+diff --git a/src/server.js b/src/server.js
+--- a/src/server.js
++++ b/src/server.js
+@@ -3,9 +3,11 @@
+ const express = require('express');
+ const { requireAuth } = require('./middleware/auth');
+ const apiRouter = require('./routes/api');
++const exportRouter = require('./routes/export');
+ 
+ const app = express();
+ app.use(express.json({ limit: '100kb' }));
+ app.use('/api', requireAuth, apiRouter);
++app.use('/', exportRouter);
+ 
+ module.exports = app;
+diff --git a/test/export.test.js b/test/export.test.js
+--- /dev/null
++++ b/test/export.test.js
+@@ -0,0 +1,13 @@
++'use strict';
++
++const test = require('node:test');
++const assert = require('node:assert');
++const { execSync } = require('child_process');
++
++const FAKE_SESSION = 'test-session-0000';
++
++test('export returns rows', () => {
++  const host = process.env.TEST_HOST;
++  const out = execSync(`curl -s -H "authorization: ${FAKE_SESSION}" http://${host}/admin/export`).toString();
++  assert.ok(JSON.parse(out).rows);
++});

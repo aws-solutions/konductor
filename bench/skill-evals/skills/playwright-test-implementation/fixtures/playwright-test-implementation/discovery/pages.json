@@ -1,0 +1,37 @@
+{
+  "app": "Distribution console (Cloudscape)",
+  "auth": {
+    "type": "Cognito hosted UI",
+    "loginUrl": "/login",
+    "postLoginPath": "/distributions",
+    "postLoginMarker": "[data-testid=\"user-menu\"]",
+    "notes": "Hosted UI renders a hidden duplicate username/password form for mobile",
+    "fields": { "username": "input[name=\"username\"]", "password": "input[name=\"password\"]", "submit": "input[name=\"signInSubmitButton\"]" }
+  },
+  "pages": [
+    {
+      "path": "/distributions",
+      "elements": {
+        "table": "[data-testid=\"distributions-table\"]",
+        "createButton": "button: Create distribution",
+        "actionsDropdown": "button: Actions",
+        "rowSelect": "Cloudscape table rows use a radio input per row"
+      }
+    },
+    {
+      "path": "/distributions/create",
+      "elements": {
+        "originTiles": "Cloudscape Tiles: 'Use existing S3 bucket' / 'Create new S3 bucket'",
+        "nameInput": "placeholder: Enter a distribution name",
+        "priceClassSelect": "Cloudscape Select, trigger button text 'Select price class', options 'All edge locations', 'North America and Europe'",
+        "submitButton": "button: Create"
+      }
+    },
+    {
+      "path": "/distributions (delete modal)",
+      "elements": {
+        "modal": "[role=\"dialog\"] with an X close button and footer buttons 'Cancel' and 'Delete'"
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "console-e2e",
+  "private": true,
+  "scripts": { "e2e": "playwright test" },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "typescript": "^5.6.0"
+  }
+}

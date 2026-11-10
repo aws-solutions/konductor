@@ -1,0 +1,28 @@
+openapi: 3.0.3
+info:
+  title: Profile API
+  version: 1.0.0
+paths:
+  /members/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: The member profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Member' }
+        '403': { description: Not the owner }
+components:
+  schemas:
+    Member:
+      type: object
+      required: [id, fullName, email]
+      properties:
+        id: { type: string }
+        fullName: { type: string }
+        email: { type: string, format: email }

@@ -1,0 +1,185 @@
+{
+  "skill": "test-coverage-analysis",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Before we cut v2.3, compare our test suite against the acceptance criteria and NFRs in docs/requirements.md and tell me where the gaps are and what to add first. Write test-coverage-report.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/test-coverage-analysis/backend-api/",
+      "why_discriminating": "The skill first picks a testing model by architecture (pyramid for this backend), maps each AC to tests, routes non-automatable criteria (AC-2.3 email rendering in Gmail/Outlook) to manual testing with steps, checks integration points (Stripe, SendGrid) and NFRs, and ranks gaps with its CRITICAL gate (error paths and core journeys untested). Without it, models list missing tests without a model, manual routing or severity.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Report exists and mentions the uncovered ACs",
+          "check": "test -f test-coverage-report.md && for a in AC-1.3 AC-1.4 AC-2.2; do grep -q \"$a\" test-coverage-report.md || exit 1; done"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Coverage mapped correctly per AC",
+          "pass": "AC-1.1 and AC-1.2 covered; AC-1.3, AC-1.4, AC-2.1, AC-2.2 uncovered; NFR-1 no performance test; NFR-2 bcrypt not verified",
+          "partial": "Most right, one misclassified",
+          "fail": "Several wrong, or claims coverage that does not exist"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Applies the skill's method",
+          "pass": "Classifies as backend and uses the testing pyramid, includes coverage-by-test-type (unit/integration/E2E) with counts of test cases not files, routes AC-2.3 to Manual Testing Required with steps",
+          "partial": "Two of these three",
+          "fail": "None"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Integration points and error paths",
+          "pass": "Calls out missing integration tests for Stripe and SendGrid and the untested EXPIRED_TOKEN 410 and StripeCardError 402 paths as CRITICAL",
+          "partial": "Mentions integrations or error paths but not both",
+          "fail": "Misses them"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Prioritised, specific next tests",
+          "pass": "Ordered list naming the test to write, level and file/function under test (e.g. integration test for payment decline in services/payment.js)",
+          "partial": "Generic 'add more tests'",
+          "fail": "No recommendations"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No fabricated coverage numbers",
+          "pass": "Does not invent line-coverage percentages it could not measure",
+          "partial": "Rough estimates labelled as such",
+          "fail": "Invented precise coverage figures"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "what to write first before v2.3",
+          "accurate AC mapping",
+          "manual vs automated split"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Our frontend has 6 tests and the dashboard says 'good unit coverage'. Are we testing the right things against docs/requirements.md? Write frontend-coverage-report.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/test-coverage-analysis/frontend-app/",
+      "why_discriminating": "For a React app the skill applies the testing trophy (integration-heavy) rather than the pyramid, so a strong answer says shallow leaf-component snapshot tests do not cover AC-3.1..3.4 and recommends ProductPage/CartPage integration tests, noting AC-3.4's checkout form does not exist in code. A model without it may accept unit coverage as adequate or just ask for more unit tests.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Report exists and covers AC-3.1..AC-3.4",
+          "check": "test -f frontend-coverage-report.md && for i in 1 2 3 4; do grep -q \"AC-3.$i\" frontend-coverage-report.md || exit 1; done"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Testing model chosen for the architecture",
+          "pass": "Identifies a frontend app and applies the testing trophy, explaining why integration tests matter most here",
+          "partial": "Mentions integration emphasis without the model",
+          "fail": "Applies pyramid logic or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Diagnoses the existing tests correctly",
+          "pass": "6 test cases across 3 files, all shallow render/snapshot tests of Button/CartBadge/PriceTag; none exercise ProductPage/CartPage flows; AC-3.1..3.4 uncovered",
+          "partial": "Notes they are shallow but miscounts or misses some ACs",
+          "fail": "Calls coverage adequate"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Notices the requirement with no implementation",
+          "pass": "Flags AC-3.4 checkout form is not implemented, so it is a product gap, not just a test gap",
+          "partial": "Treats AC-3.4 as only missing a test",
+          "fail": "Misses it"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Specific integration tests to add",
+          "pass": "Names flows (add to cart from ProductPage updates CartBadge, CartPage quantity/total) with tooling (e.g. React Testing Library)",
+          "partial": "Generic advice",
+          "fail": "Recommends more snapshots"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "challenges the dashboard's claim",
+          "right testing model",
+          "concrete next tests"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "QA asks: is v2.3 ready to ship to production? Assess release readiness from the code, tests and docs/requirements.md and write release-readiness-report.md. The release manager will read only the first screen. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/test-coverage-analysis/backend-api/",
+      "why_discriminating": "The skill's readiness mode produces quality gates, blocking issues with impact and effort, a risk assessment (probability x impact) and a release checklist, and its CRITICAL gate blocks release on untested error paths and core journeys. A model without it may give a narrative with a soft recommendation.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Report exists with a go/no-go statement",
+          "check": "test -f release-readiness-report.md && grep -qiE 'not ready|no-go|no go|do not ship|blocked|ready' release-readiness-report.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "recommendation",
+          "criterion": "Correct, upfront release decision",
+          "pass": "Not ready / no-go stated in the first lines with the reason (payment flow, decline path and reset paths untested)",
+          "partial": "Correct decision but buried or hedged",
+          "fail": "Says ready to ship"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Readiness structure from the skill",
+          "pass": "Quality gates table, blocking issues with impact and effort, risk assessment, release checklist with status",
+          "partial": "Two or three of these sections",
+          "fail": "Unstructured narrative"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Risks tied to real untested paths",
+          "pass": "Risk entries for Stripe charge/decline (AC-2.1/2.2), reset expiry (AC-1.4), reset email (AC-1.3), latency NFR-1 and manual receipt check AC-2.3, with mitigation",
+          "partial": "Some risks tied to code",
+          "fail": "Generic risks"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No invented test runs or pass rates",
+          "pass": "States tests were not executed or were inferred from files",
+          "partial": "Implied results",
+          "fail": "Fabricated pass/fail counts"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "release manager can decide from the top",
+          "risks grounded in the repo",
+          "clear unblock path"
+        ]
+      }
+    }
+  ]
+}

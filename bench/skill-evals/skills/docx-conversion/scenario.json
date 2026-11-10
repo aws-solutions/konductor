@@ -1,0 +1,182 @@
+{
+  "skill": "docx-conversion",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "My PM sent requirements.docx and asked me to add one acceptance criterion before it goes to the customer: \"AC-5: Exports include a header row with column names.\" Put it after AC-4 in the Acceptance Criteria section and give me back a Word file I can forward. Also write conversion-notes.md saying how you handled the file and anything the customer might notice is different. Do not ask me questions; make reasonable assumptions, list them in conversion-notes.md, and finish the work.",
+      "fixture": "fixtures/docx-conversion/",
+      "why_discriminating": "The skill's CRITICAL rules are to never modify the original .docx without confirmation and to verify pandoc is available (with the brew/yum install hint when it is not), and its IMPORTANT rules are to preserve headings and tables and warn about lost figures. A competent model without it often overwrites requirements.docx in place, or rebuilds it from text and silently turns the milestone table or heading styles into plain paragraphs.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "A .docx other than the original contains AC-5, or the original does",
+          "check": "python3 -c 'import zipfile,glob,sys;sys.exit(0 if any(\"AC-5\" in zipfile.ZipFile(f).read(\"word/document.xml\").decode() for f in glob.glob(\"*.docx\")) else 1)'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "restraint",
+          "criterion": "Original document handling (skill CRITICAL rule)",
+          "pass": "requirements.docx left byte-identical (md5 in KEY) and the edit delivered as a new file such as requirements-v2.docx, with the choice explained",
+          "partial": "Original modified but a backup copy kept and the overwrite disclosed",
+          "fail": "Original overwritten with no backup or disclosure"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Structure preserved in the delivered file",
+          "pass": "Delivered docx keeps Title/Heading1 styles, the milestone table as a real w:tbl with Kim and Ade rows, AC-1..AC-4 verbatim, and AC-5 placed after AC-4",
+          "partial": "Text all present but the table or heading styles degraded",
+          "fail": "Table flattened and headings lost, or AC-5 in the wrong section or missing"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Tooling check per the skill",
+          "pass": "Checks for pandoc before converting; since it is absent, says so, gives the install command (brew install pandoc / sudo yum install pandoc) and names the fallback used (e.g. direct XML edit)",
+          "partial": "Uses a fallback without noting that pandoc was missing, or notes it without an install hint",
+          "fail": "Claims to have used pandoc when it is not installed, or never says how the file was produced"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Notes what the customer might notice",
+          "pass": "conversion-notes.md flags that Figure 1 is referenced but not embedded in this copy, and any formatting the edit could have changed",
+          "partial": "Generic 'formatting may differ' warning only",
+          "fail": "No warnings"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "original .docx preserved",
+          "table and heading styles intact",
+          "honest account of tooling and losses"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Legal can't open Markdown and they insist on their house style. Convert release-notes.md into release-notes.docx using their template, template.docx, so the headings and body text match. Keep the headings, the Fixed table and the numbered list as real Word structures. Don't change release-notes.md or template.docx. Write a short conversion-notes.md about how you did it and what formatting might not survive. Do not ask me questions; make reasonable assumptions, list them in the notes, and finish the work.",
+      "fixture": "fixtures/docx-conversion/",
+      "why_discriminating": "The skill names the --reference-doc pattern for applying a template's styles and requires a pandoc availability check with an install hint. With pandoc missing, a model following the skill reports that and carries template.docx's styles.xml into the output; a competent model without it tends to emit a default-styled docx and never mention the template's styles were not applied.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "release-notes.docx is a valid package whose Fixed table has both issue rows",
+          "check": "python3 -c 'import zipfile,sys;d=zipfile.ZipFile(\"release-notes.docx\").read(\"word/document.xml\").decode();sys.exit(0 if \"<w:tbl\" in d and \"1412\" in d and \"1420\" in d else 1)'"
+        },
+        {
+          "id": "f2",
+          "text": "Source files unchanged",
+          "check": "grep -q '| Issue | Summary |' release-notes.md && [ \"$(md5sum template.docx | cut -d' ' -f1)\" = 71965f92b6c4d1db6c1a34ca5cfc1d9f ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "House style actually applied",
+          "pass": "Output styles.xml carries the template's Georgia fonts and 1F4E79 heading color (via --reference-doc or by copying styles.xml), and headings use Heading1/Heading2 style ids that exist in it",
+          "partial": "Template referenced in notes but only some styles carried, or heading style ids do not match the template",
+          "fail": "Default or no styles; template ignored"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Structure fidelity",
+          "pass": "Headings are real heading styles, the Fixed table is a w:tbl with header and two rows, the Known limitations list is a numbered list (numPr or explicit numbering preserved), bullet list items under New preserved",
+          "partial": "One of headings / table / numbered list degraded to plain paragraphs",
+          "fail": "Two or more degraded"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Tooling transparency per the skill",
+          "pass": "States pandoc was checked and is absent, gives the install command, names the fallback, and gives the pandoc --reference-doc command legal's team can rerun",
+          "partial": "Mentions pandoc but not the reference-doc command, or omits the install hint",
+          "fail": "Claims pandoc ran, or no tooling account"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Notes are accurate and brief",
+          "pass": "Notes list only real risks (e.g. table borders, list numbering restart) and match what the file contains",
+          "partial": "Some generic padding",
+          "fail": "Claims features that the file does not have"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "template styles applied",
+          "table and lists preserved as Word structures",
+          "truthful tooling notes"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "We're moving our policies into git. Convert retention-policy.docx (Legal's latest copy) to retention-policy.md. Preserve headings, the retention table and all text, and keep the original .docx untouched. Anything that couldn't be converted cleanly goes in conversion-notes.md so Legal can check it. Do not ask me questions; make reasonable assumptions, list them in the notes, and finish the work.",
+      "fixture": "fixtures/docx-conversion/",
+      "why_discriminating": "The skill's quality gate requires preserving structure and warning when complex formatting will be lost. The fixture hides three hazards (a tracked change 30->90, a merged table cell, an embedded image). A competent hand-rolled converter without the skill's warning rule tends to silently drop the image and the deleted text, and report a clean conversion.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "retention-policy.md exists with the table row text and the original is unchanged",
+          "check": "grep -q 'Audit logs' retention-policy.md && [ \"$(md5sum retention-policy.docx | cut -d' ' -f1)\" = ed468a1b25b76d55a273bf0f84d3a0ce ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Tracked change handled (KEY hazard 1)",
+          "pass": "Markdown says 90 days and the notes report the tracked change by Priya (Legal), 30 replaced by 90, and that the accepted version was used",
+          "partial": "Correct 90 but tracked change not mentioned, or both values shown without explanation",
+          "fail": "Says 30, or drops the number"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Embedded image and merged cell (KEY hazards 2-3)",
+          "pass": "Image extracted (e.g. retention-flow.png linked) or explicitly reported as dropped with its location; merged Session data cell text kept and the flattening noted",
+          "partial": "One of the two handled",
+          "fail": "Neither mentioned"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Skill workflow followed",
+          "pass": "Checks pandoc first, reports it missing with the install command, names the fallback; headings map to Markdown heading levels (Title, Heading1)",
+          "partial": "Fallback used without the pandoc check or install hint",
+          "fail": "Claims pandoc conversion that did not happen"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Faithful text",
+          "pass": "All paragraphs present verbatim (Scope, Approvals date 2026-10-30); nothing added or reworded",
+          "partial": "Minor rewording",
+          "fail": "Missing sections or invented content"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "tracked change surfaced",
+          "image and merged cell reported",
+          "faithful text and original untouched"
+        ]
+      }
+    }
+  ]
+}

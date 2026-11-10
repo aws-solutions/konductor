@@ -1,0 +1,3 @@
+$ git -C /work/shop-api worktree list
+/work/shop-api          4be91c0 [mainline]
+/work/worktrees/wt-31   a1d07f3 [wt-31]

@@ -1,0 +1,210 @@
+{
+  "skill": "doc-accuracy-analyzer",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Before I send docs/order-service-design.md to review, fact-check it. Check its claims against the code in src/ and the load-test data in perf/. Write an accuracy report to accuracy-report.md. Do not edit the design doc. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/doc-accuracy-analyzer/",
+      "why_discriminating": "The skill makes the reviewer extract every verifiable claim, refuse the document's own word as evidence, classify each claim with a fixed taxonomy and severity, and pair each wrong claim with a correction and source. Without it, reviews tend to spot-check the obvious claims, accept 'AWS recommends' and 'well known' assertions, and skip verified claims or corrections.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Design doc unchanged",
+          "check": "echo \"921a05cc8758457353cd4c6675ea7170  docs/order-service-design.md\" | md5sum -c --quiet"
+        },
+        {
+          "id": "f2",
+          "text": "Refutes the 10,000 RPS claim with the measured ceiling from perf/results.csv",
+          "check": "grep -qE '2,?3[01]0|2,?275|2,?290' accuracy-report.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Contradicted implementation and data claims are caught with file evidence",
+          "pass": "All four are marked Inaccurate with the file that contradicts them: 10k RPS (perf/results.csv peaks near 2,310), retry (src/retry.js is a single try), auth (src/auth.js decodes without signature check), parameterized SQL (orderRepo.search concatenates input)",
+          "partial": "Two or three of the four",
+          "fail": "One or none, or claims accepted on the doc's word"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Catches the less obvious evidence",
+          "pass": "Notes at least one of: notifyBilling in src/client.js bypasses withRetry (so 'every outbound call' is false even if retry existed), or the 10,000 target run had a 48% error rate and 9.1 s p99",
+          "partial": "Mentions it vaguely",
+          "fail": "Neither"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Approach and authority claims are not taken on trust",
+          "pass": "The 'AWS recommends / well known exactly-once' claim is Unverifiable or Inaccurate (outbox plus stream is at-least-once) and needs a docs citation; the one-sprint rollout is Overstated because the 'already built' parts are not built",
+          "partial": "One of the two handled correctly",
+          "fail": "Both accepted as stated"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "True claims stay verified",
+          "pass": "400 KB DynamoDB item limit and 15-minute Lambda limit are classified Verified, not listed as problems",
+          "partial": "Listed with hedging or as low-severity issues",
+          "fail": "Marked Inaccurate or Overstated"
+        },
+        {
+          "id": "r5",
+          "dimension": "process",
+          "criterion": "Report follows the skill's structure",
+          "pass": "Summary with total and per-class counts using Verified/Inaccurate/Overstated/Unverifiable/Missing Context, findings grouped High/Medium/Low, and original text + corrected text + source for each Inaccurate or Overstated claim",
+          "partial": "Most of that structure but missing counts or corrections",
+          "fail": "Free-form notes with no classification or corrections"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Coverage of every checkable claim",
+          "Evidence cited from the repo, not assertion",
+          "Verified claims left alone",
+          "Corrections a writer could paste in"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Our design review is Thursday. Check whether docs/export-design.md will actually work as written, using the code in src/ and the timings in perf/. Write your findings to export-accuracy.md. Do not edit the design doc. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/doc-accuracy-analyzer/",
+      "why_discriminating": "Step 4 of the skill traces the execution path end to end and flags any step that assumes an unconfirmed capability; its guidelines say service limits must be checked against current documentation. Without it, a reviewer tends to check the individual sentences and miss that a synchronous API Gateway plus Lambda request cannot return a 1.2 GB file or run for minutes.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "export-accuracy.md exists",
+          "check": "test -s export-accuracy.md"
+        },
+        {
+          "id": "f2",
+          "text": "Design doc unchanged",
+          "check": "echo \"3e41cb46758d8981cc1fd7b894373917  docs/export-design.md\" | md5sum -c --quiet"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Finds the end-to-end feasibility break",
+          "pass": "States that the synchronous request path cannot carry a 1.2 GB response or a multi-minute run, citing the relevant limits (API Gateway REST 29 s integration timeout and 10 MB payload, Lambda 6 MB sync response) or explicitly marking them to verify in current AWS docs",
+          "partial": "Says large exports may time out but without tying it to the request path or any limit",
+          "fail": "Does not question the synchronous design"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "The 'already streams to S3' claim is refuted from the code",
+          "pass": "Marks it Inaccurate citing src/exporter.js: builds the whole CSV in memory and writes to /tmp, no S3 or multipart call",
+          "partial": "Notes exporter.js differs but not how",
+          "fail": "Accepts the claim"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Sizing and timing claims are checked against perf/export-timings.csv",
+          "pass": "Shows 40 s is only the medium-tier median (large tier p50 212 s, p95 610 s, max 1,480 s) and that /tmp defaults to 512 MB unless configured, so both claims are Overstated or Missing Context",
+          "partial": "Handles one of the two",
+          "fail": "Accepts both"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No false positives on the true or unknowable claims",
+          "pass": "Scheduler retry is acknowledged as real (3 attempts in src/scheduler.js) with the caveat that the on-demand path never calls it; rate limiting is Unverifiable rather than Inaccurate; limits not found in the repo are not stated as certain facts without a source or hedge",
+          "partial": "One of these misclassified",
+          "fail": "Calls the retry code nonexistent, or invents evidence"
+        },
+        {
+          "id": "r5",
+          "dimension": "recommendation",
+          "criterion": "Gives a usable correction and alternative",
+          "pass": "Proposes corrected text and a workable path (e.g. async job writing to S3 with a presigned download URL, Lambda ephemeral storage or streaming upload), and corrects the 'no new infrastructure, one week' plan",
+          "partial": "Recommendation present but vague",
+          "fail": "No recommendation"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it trace the whole request path?",
+          "Code and data cited for each verdict",
+          "Correct handling of true-but-misleading claims",
+          "A fix the team could adopt"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "A reviewer left one comment on docs/order-service-design.md: 'I don't buy the auth section.' I need to reply to them and decide whether the doc needs more work before re-review. Check it against src/ and perf/ and write reply.md with your reply and recommendation. Do not edit the design doc. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/doc-accuracy-analyzer/",
+      "why_discriminating": "The skill applies the full claim-extraction workflow when a reviewer flags a factual concern, so the reviewer's single comment becomes a check of every claim. Without it, an answer usually confirms the auth problem and stops, sending the doc back for re-review with the throughput, retry and SQL-injection claims still wrong.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "reply.md exists and addresses auth.js",
+          "check": "test -s reply.md && grep -q 'auth.js' reply.md"
+        },
+        {
+          "id": "f2",
+          "text": "Design doc unchanged",
+          "check": "echo \"921a05cc8758457353cd4c6675ea7170  docs/order-service-design.md\" | md5sum -c --quiet"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Confirms the reviewer's concern with evidence",
+          "pass": "Shows src/auth.js decodes the JWT payload without verifying the signature, so 'requires only configuration' is Inaccurate and the work is not just setting an issuer URL",
+          "partial": "Agrees with the reviewer but without the code evidence",
+          "fail": "Disagrees with the reviewer or does not check auth.js"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Checks the rest of the document, not only the flagged section",
+          "pass": "Also reports the other contradicted claims (throughput, retry, parameterized SQL) and classifies them",
+          "partial": "Mentions one other problem",
+          "fail": "Only the auth section is checked"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Clear recommendation on re-review readiness",
+          "pass": "Says the doc is not ready, lists the corrections needed (with corrected wording or what must be built), and notes the rollout estimate depends on them",
+          "partial": "Says it needs work without specifics",
+          "fail": "Says it is ready after an auth tweak"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Reply is proportionate and accurate",
+          "pass": "Short, factual reply to the reviewer; does not flag the 400 KB or 15-minute limits as wrong",
+          "partial": "Accurate but long or partly off-topic",
+          "fail": "Contains incorrect claims or flags true statements as false"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Does it confirm the reviewer with evidence?",
+          "Does it stop the doc going back with other false claims?",
+          "Is the recommendation actionable?"
+        ]
+      }
+    }
+  ]
+}

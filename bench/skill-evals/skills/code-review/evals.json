@@ -1,0 +1,93 @@
+{
+  "skill_name": "code-review",
+  "evals": [
+    {
+      "id": 0,
+      "name": "review-source-tree-no-git",
+      "scenario_prompt_id": "ptree",
+      "prompt": "Review the code under src/ for bugs and error handling before we ship it. It was unpacked from a tarball, so there is no git history, no diff and no PR. The withdraw handler moves real money, so be thorough. Write review.md with each finding's severity (CRITICAL, IMPORTANT or SUGGESTION), file:line, the problem, and a concrete fix, ordered by severity. Do not modify any code. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "The new skill adds a 'Review a Source Tree' path for folders with no git history or PR, and its description names that case; the old one only covers diffs and PRs.",
+      "files": [
+        "fixtures/code-review-tree/"
+      ],
+      "expectations": [
+        "review.md cites the balance read-modify-write lines in wallet.js",
+        "No code was modified",
+        "Lost-update race on the balance (wallet.js 18-20): Rated CRITICAL; explains that concurrent withdrawals both read the old balance and one debit is lost",
+        "Fix for the race uses what the codebase already has: Recommends db.putIf(walletId, wallet, oldBalance) with retry on ConditionalCheckFailed (or an equivalent conditional update), not a new lock",
+        "External rate call and input handling: Flags fetch with no res.ok/timeout/try-catch (rated high, per the skill's CRITICAL bucket) and unvalidated amount (negative credits the wallet) or unencoded currency in the URL",
+        "Review format the skill asks for: Every finding has severity, file:line, problem, fix; ordered CRITICAL, IMPORTANT, SUGGESTION; also catches the DEBUG console.log of the request body and missing null check on wallet",
+        "No invented issues: Every finding is real in the diff; no claims about SQL injection, auth, or code not shown",
+        "Works directly from the source files: reads both src/wallet.js and src/db.js, and does not stall on or try to fetch a diff, branch or PR that does not exist (no attempt to post or stage a PR review)."
+      ],
+      "scripted_checks": [
+        {
+          "text": "review.md cites the balance read-modify-write lines in wallet.js",
+          "check": "test -f review.md && grep -qE 'wallet\\.js[^0-9]{0,12}(1[6-9]|2[0-2])' review.md"
+        },
+        {
+          "text": "No code was modified",
+          "check": "echo '0f0c943163f141901b8c9e6d298148b0914d6d6c075af3c763baccf9834dbad6  src/wallet.js' | sha256sum -c --quiet - && echo 'dc4f1e455e128b54acf02e485492800ac9330f76c5d22a1359a627da16fc265e  src/db.js' | sha256sum -c --quiet -"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "review-wallet-diff",
+      "scenario_prompt_id": "p1",
+      "prompt": "Review the change in changes.diff before it merges (the new file is also at src/wallet.js; src/db.js is existing code it uses). This handler moves real money, so be thorough. Write review.md with each finding's severity (CRITICAL, IMPORTANT or SUGGESTION), file:line, the problem, and a concrete fix, ordered by severity. Do not modify any code. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "The skill's checklist makes atomicity (read-modify-write without conditions) and missing error handling on external calls CRITICAL, and expects reuse of existing helpers. A strong answer ranks the unconditional db.put race and the unchecked fetch at the top and points at the existing db.putIf; a generic review often rates the fetch issue as a nit and suggests a new locking scheme instead of the helper already in db.js.",
+      "files": [
+        "fixtures/code-review/"
+      ],
+      "expectations": [
+        "review.md cites the balance read-modify-write lines in wallet.js",
+        "No code was modified",
+        "Lost-update race on the balance (wallet.js 18-20): Rated CRITICAL; explains that concurrent withdrawals both read the old balance and one debit is lost",
+        "Fix for the race uses what the codebase already has: Recommends db.putIf(walletId, wallet, oldBalance) with retry on ConditionalCheckFailed (or an equivalent conditional update), not a new lock",
+        "External rate call and input handling: Flags fetch with no res.ok/timeout/try-catch (rated high, per the skill's CRITICAL bucket) and unvalidated amount (negative credits the wallet) or unencoded currency in the URL",
+        "Review format the skill asks for: Every finding has severity, file:line, problem, fix; ordered CRITICAL, IMPORTANT, SUGGESTION; also catches the DEBUG console.log of the request body and missing null check on wallet",
+        "No invented issues: Every finding is real in the diff; no claims about SQL injection, auth, or code not shown"
+      ],
+      "scripted_checks": [
+        {
+          "text": "review.md cites the balance read-modify-write lines in wallet.js",
+          "check": "test -f review.md && grep -qE 'wallet\\.js[^0-9]{0,12}(1[6-9]|2[0-2])' review.md"
+        },
+        {
+          "text": "No code was modified",
+          "check": "tail -n +6 changes.diff | sed 's/^+//' | diff -q - src/wallet.js >/dev/null"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "post-implementation-self-review",
+      "scenario_prompt_id": "pself",
+      "prompt": "I just finished the coupon feature on this branch. changes.diff is the output of `git diff main...HEAD`: it adds src/coupon.js. src/pricing.js and src/coupons.json are existing code on main that I did not touch. There is no shell here, so you cannot run git or the tests; say which commands you would run. Before I push, run your post-implementation self-review on my change: review it, fix what your review says should be fixed by editing the files directly, check the result, and write self-review.md listing every finding with its severity (CRITICAL, IMPORTANT or SUGGESTION), file:line, the problem, and whether you fixed it or left it for me. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "The new skill's post-implementation cycle fixes every CRITICAL and IMPORTANT finding in the author's own change in one pass, re-reviews once, and lists a defect in untouched code as pre-existing instead of fixing it. The old skill fixes CRITICALs only and allows two fix cycles, with no rule about pre-existing code.",
+      "files": [
+        "fixtures/code-review-selfreview/"
+      ],
+      "expectations": [
+        "self-review.md exists and src/coupon.js was edited",
+        "src/pricing.js and src/coupons.json were not modified",
+        "Fixes the negative-total defect in src/coupon.js: a fixed coupon larger than the subtotal (FIVEOFF on an order under 500 cents) now clamps the total at 0 or rejects the coupon",
+        "Fixes the unknown-code defect in src/coupon.js, not just lists it: COUPONS[code] being undefined no longer throws a TypeError on coupon.type (explicit error or no-discount path)",
+        "Reports the off-by-one in src/pricing.js subtotal (loop starts at i = 1, so the first item is never charged) as a pre-existing issue in code the change did not touch, left unfixed for the user rather than edited",
+        "Re-reviews after fixing: self-review.md or the final message shows a check of the fixed code and what depends on it, and names the test commands to run (for example npm test) since none could be run",
+        "self-review.md gives each finding a severity, file:line, the problem and a fixed/left status; no invented issues about code not shown (auth, database, HTTP layer)"
+      ],
+      "scripted_checks": [
+        {
+          "text": "self-review.md exists and src/coupon.js was edited",
+          "check": "test -s self-review.md && ! echo '6747aa8da414fc8129ab607596622a0d8d9cef74415a5ec266d5882582be09af  src/coupon.js' | sha256sum -c --quiet - 2>/dev/null"
+        },
+        {
+          "text": "src/pricing.js and src/coupons.json were not modified",
+          "check": "echo 'da7028b832d3e7c7bf167a7558cceffa072113c7fe47dcfc54252d265d8d7373  src/pricing.js' | sha256sum -c --quiet - && echo 'fa8c2d2559bfea42352968b700f5947c4db494c76b2db40db24f7f4f19ab72f0  src/coupons.json' | sha256sum -c --quiet -"
+        }
+      ]
+    }
+  ]
+}

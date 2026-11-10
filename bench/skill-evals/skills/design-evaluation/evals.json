@@ -1,0 +1,85 @@
+{
+ "skill_name": "design-evaluation",
+ "evals": [
+  {
+   "id": 0,
+   "name": "final-review-no-diagrams",
+   "scenario_prompt_id": "p1",
+   "prompt": "design/ holds the full design package for our Report Export Service (system design, threat model, API, data model, IAM). It is about to be handed to the implementation team. Do the final design review and write design-review.md. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "expected_output": "The skill's quality gate defines exactly what blocks handoff (unmitigated HIGH threat, unhandled external dependency, access patterns without index support, breaking API change without versioning) and its scope rule says a 2-engineer, 5-req/min project should get simplicity-first feedback; an unguided review tends to list many issues at equal weight and may praise or ignore the 3-region active-active plus self-managed Kafka.",
+   "files": [
+    "fixtures/design-evaluation/"
+   ],
+   "expectations": [
+    "design-review.md exists",
+    "Findings ordered CRITICAL before IMPORTANT before SUGGESTION",
+    "Names the four quality-gate blockers as CRITICAL: T1 HIGH and unmitigated (GET /exports/{id} has no tenant check), MailRelay has no timeout/retry/fallback, data model cannot serve AP2/AP3 (no GSI), downloadUrl -> downloadUrls breaking change with no versioning: All four, each tied to the file where it appears",
+    "Tailors to the small scope: calls 3-region active-active with global tables and EC2 Kafka over-engineering for ~300 requests/day and recommends removing or deferring them, with cost/operational reasoning: Explicitly flags both as over-engineering for this load and says what to do instead",
+    "Follows the skill's review structure: covers the ten areas (template adherence through actionable recommendations, including testability/CI-CD) and lists observability TBD, no runbook and unvalidated cost as IMPORTANT: Ten areas addressed (briefly where not relevant) and the three IMPORTANT items present",
+    "Actionable fixes: tenant ownership check on GET /exports/{id}, MailRelay timeout + retry + DLQ/fallback, a GSI for tenant listing and stuck QUEUED jobs, /v2 or additive field for downloadUrls, scoped IAM instead of dynamodb:* on *, injectable clients for testing: Concrete fixes for all blockers plus IAM and testability",
+    "No false positives: does not call T2, T3 or T4 unmitigated (they have mitigations), does not invent services, numbers or requirements not in design/: No false positives or invented facts",
+    "Proceeds to a full review without stopping to ask; the missing architecture diagrams are noted as not provided (or as an assumption) rather than blocking the review or being silently ignored."
+   ],
+   "scripted_checks": [
+    {
+     "text": "design-review.md exists",
+     "check": "test -s design-review.md"
+    },
+    {
+     "text": "Findings ordered CRITICAL before IMPORTANT before SUGGESTION",
+     "check": "python3 -c 'import re,sys;t=open(\"design-review.md\").read();p=[m.start() for w in (\"CRITICAL\",\"IMPORTANT\",\"SUGGESTION\") for m in [re.search(w,t,re.I)] if m];sys.exit(0 if len(p)>=2 and p==sorted(p) else 1)'"
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "name": "sprint1-go-no-go-readiness",
+   "scenario_prompt_id": "p2",
+   "prompt": "Sprint 1 on the Report Export Service starts Monday. My manager wants one page: can we lock the design in design/ as-is, and if not, what exactly must change before Monday versus what can wait until later sprints? Write readiness.md with a go/no-go at the top. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "expected_output": "The skill's gate splits CRITICAL (blocks implementation) from IMPORTANT (address before implementation) and SUGGESTION, which maps directly onto must-change-before-Monday versus later; without it, the split tends to be driven by gut feel, e.g. treating Kafka removal or observability as blockers while missing the access-pattern or versioning gap.",
+   "files": [
+    "fixtures/design-evaluation/"
+   ],
+   "expectations": [
+    "Top of readiness.md gives a no-go",
+    "Names the four quality-gate blockers as CRITICAL: T1 HIGH and unmitigated (GET /exports/{id} has no tenant check), MailRelay has no timeout/retry/fallback, data model cannot serve AP2/AP3 (no GSI), downloadUrl -> downloadUrls breaking change with no versioning: All four, each tied to the file where it appears",
+    "Before-Monday list is the gate CRITICAL set (plus the dynamodb:* on * IAM fix); observability, runbook, cost validation and testability seams are placed after the blockers, clearly labeled: Two clearly separated tiers that match the gate",
+    "Explains in one or two lines per blocker why it cannot wait (e.g. cross-tenant data exposure, breaking mobile/web clients, no way to query stuck jobs): Each blocker has a concrete consequence",
+    "Fits a manager audience: short, decision first, each must-change item is a concrete action with a rough owner or size: Readable on one page with actionable items",
+    "No false positives: does not call T2, T3 or T4 unmitigated (they have mitigations), does not invent services, numbers or requirements not in design/: No false positives or invented facts"
+   ],
+   "scripted_checks": [
+    {
+     "text": "Top of readiness.md gives a no-go",
+     "check": "head -8 readiness.md | grep -qiE \"no.go|not ready|block\""
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "name": "sop-scoring-missing-threat-model",
+   "scenario_prompt_id": "p4",
+   "prompt": "The design SOP for our Report Export Service is at its scoring step. Run the design evaluation on the package in design/ (scope_confirmed is true) and write evaluation.md with the per-dimension scores, the findings, and the overall confidence score (the average of the design-evaluation scores). Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "expected_output": "Round-2 change: the new skill scores 8 of 10 dimensions, keeps missing artifacts in a not-provided list outside the finding gates, caps a dimension at 3 when its artifact is missing, and does not ask when invoked from a SOP or with scope_confirmed. The old skill scores all ten dimensions and has no rule for missing artifacts.",
+   "files": [
+    "fixtures/design-evaluation-no-threat-model/"
+   ],
+   "expectations": [
+    "evaluation.md exists",
+    "Scores exactly eight dimensions on a 1 to 5 scale (template adherence, scalability, performance, security, maintainability, failure handling, code quality, testability); high-level assessment and actionable recommendations are written but carry no score",
+    "The missing threat model (and missing architecture diagrams) are listed in a separate not-provided section and are not raised as CRITICAL, IMPORTANT or SUGGESTION findings",
+    "The security score is 3 or lower and the evaluation ties that cap or limit to the missing threat model",
+    "The confidence score is the arithmetic average of the eight scored dimensions only, and the stated number matches the listed scores",
+    "Names as CRITICAL the gate blockers visible in the present artifacts: MailRelay has no timeout/retry/fallback, the data model cannot serve AP2/AP3 (no GSI), and downloadUrl -> downloadUrls is a breaking change with no versioning",
+    "Does not stop to ask whether to score or wait for the missing artifacts, and does not end by asking 'Fix these issues?'; it reports and leaves fixing to the caller",
+    "No false positives: does not invent a threat model, threats, services, numbers or requirements that are not in design/"
+   ],
+   "scripted_checks": [
+    {
+     "text": "evaluation.md exists",
+     "check": "test -s evaluation.md"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,81 @@
+{
+ "skill_name": "ui-text-validation",
+ "evals": [
+  {
+   "id": 0,
+   "name": "create-cluster-wizard-audit",
+   "scenario_prompt_id": "p1",
+   "prompt": "src/i18n/en/create-cluster.json holds every user-facing string for our new console-style Create cluster wizard (built with Cloudscape). Audit the UI text before launch and save the evaluation report to ui-reviews/create-cluster-audit.md. Use that path; don't ask me for one or any other questions. Don't edit the strings file.",
+   "expected_output": "A report file at ui-reviews/create-cluster-audit.md that grades 'Submit' and the Java stack trace in alert.error.generic CRITICAL, lists at least 8 style findings with before/after text (including title case on the page title and section header), follows the skill's report structure (progress tracker, summary counts, severity sections, Definition of Done X/13, tracking IDs), and leaves the strings file unchanged. The new version makes sentence case apply to headings too and keeps the tracker/DoD/tracking tables only for file reports.",
+   "files": [
+    "fixtures/ui-text-validation/"
+   ],
+   "expectations": [
+    "Report written at the requested path ui-reviews/create-cluster-audit.md",
+    "Strings file src/i18n/en/create-cluster.json left unchanged",
+    "'Submit' is flagged as an ambiguous action label (fix such as 'Create cluster') and graded CRITICAL",
+    "The Java stack trace / internal class name in alert.error.generic is flagged as exposing internals and graded CRITICAL",
+    "Flags title case as a violation for both the page title 'Create New Cluster' and the section header, recommending sentence case",
+    "At least 8 distinct correct style findings with before/after text among: title case title/header, header colon/end punctuation, e.g./etc., You'll, passive voice, 'below'/'above', click/clicking, Please + ellipsis, '&', 'Cancel.', 'Click here', exclamation points, 'Sorry' and non-actionable quota error, empty state with no next step, 'Delete Cluster?' / ellipsis / 'OK' in the modal, 'Project Falcon' code name, 'The name.'",
+    "Report uses the skill's structure: progress tracker, executive summary with counts, CRITICAL/WARNING/SUGGESTION sections, Definition of Done with an X/13 status, and an implementation tracking table with C1/W1/S1-style IDs",
+    "Every proposed rewrite is itself compliant: sentence case, free of prohibited terms (Please, e.g., etc., ellipsis, &, exclamation points, click), and actionable",
+    "No invented strings or false positives: every quoted original string exists in the file and nothing correct is flagged"
+   ],
+   "scripted_checks": [
+    {
+     "text": "Report written at the requested path ui-reviews/create-cluster-audit.md",
+     "check": "test -s ui-reviews/create-cluster-audit.md"
+    },
+    {
+     "text": "Strings file src/i18n/en/create-cluster.json left unchanged",
+     "check": "echo 'd984afdb030f6317ee1b497ee113888e3d64ed418b85f47805af7dca61d2d022  src/i18n/en/create-cluster.json' | sha256sum -c --quiet -"
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "name": "delete-modal-review",
+   "scenario_prompt_id": "p3",
+   "prompt": "Quick content review of a delete confirmation modal in our cluster console. Title: 'Delete Cluster?'. Body: 'Are you sure? This can't be undone...'. Buttons: 'OK' and 'Cancel.'. Write a report to modal-review.md with findings grouped by severity and a corrected version of all four strings. Don't ask for a file path or anything else.",
+   "expected_output": "modal-review.md grouping findings CRITICAL -> WARNING -> SUGGESTION, with 'OK' graded CRITICAL and replaced by 'Delete', plus title case and '?' in the title, ellipsis, vague 'Are you sure?', and the period on 'Cancel.', and corrected strings 'Delete cluster' / specific body / 'Delete' / 'Cancel'.",
+   "files": [],
+   "expectations": [
+    "modal-review.md exists",
+    "Ambiguous 'OK' is graded CRITICAL and replaced by a specific verb such as 'Delete' or 'Delete cluster'",
+    "Flags title case in the title 'Delete Cluster?' and recommends sentence case",
+    "Flags the '?' end punctuation in the title, the ellipsis in the body, the vague 'Are you sure?', and the trailing period on 'Cancel.'",
+    "Findings are grouped in the order CRITICAL, then WARNING, then SUGGESTION with sensible grading",
+    "Corrected strings are compliant and specific: title 'Delete cluster' (or with the cluster name, sentence case, no '?'), body names what is deleted and that it cannot be undone without ellipsis, buttons 'Delete' (or 'Delete cluster') and 'Cancel'"
+   ],
+   "scripted_checks": [
+    {
+     "text": "modal-review.md exists",
+     "check": "test -s modal-review.md"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "name": "inline-three-string-review",
+   "scenario_prompt_id": "p4",
+   "prompt": "Can you review these three strings from our Launch instance page against Cloudscape guidance? Page heading: 'Launch New Instance'. Primary button: 'Submit'. Name field hint: 'Please enter a name, e.g. web-server-01...'. Tell me what's wrong and what each one should say. Don't ask me anything.",
+   "expected_output": "An inline answer in the final message, with no report file and no question back. 'Submit' graded CRITICAL with a specific fix such as 'Launch instance'; the heading flagged for title case with 'Launch new instance'; the hint flagged for Please, e.g. and the ellipsis with a compliant rewrite. Findings by severity with before/after, and no progress tracker, Definition of Done or implementation tracking table.",
+   "files": [],
+   "expectations": [
+    "No report file written",
+    "Delivers the findings in the final response without asking the user a question or asking where to save a report",
+    "'Submit' is graded CRITICAL as an ambiguous action label and replaced with a specific verb such as 'Launch instance'",
+    "Heading 'Launch New Instance' is flagged for title case and rewritten in sentence case, such as 'Launch new instance', with no suggestion that headings should use title case",
+    "The hint is flagged for 'Please', 'e.g.' and the ellipsis, and its rewrite contains none of them",
+    "Findings are grouped by severity with before/after text for each string",
+    "The inline answer leaves out the file-report scaffolding: no progress tracker, no Definition of Done checklist, and no implementation tracking table"
+   ],
+   "scripted_checks": [
+    {
+     "text": "No report file written",
+     "check": "test -z \"$(find . -type f -name '*.md' -not -path './SCRATCH_CLAUDE_CONFIG/*' -not -path './.claude/*')\""
+    }
+   ]
+  }
+ ]
+}

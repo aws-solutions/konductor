@@ -1,0 +1,89 @@
+{
+  "skill_name": "smithy-validation",
+  "evals": [
+    {
+      "id": 0,
+      "name": "orders-production-readiness-review",
+      "scenario_prompt_id": "p1",
+      "prompt": "model/orders.smithy is our Smithy model for the OrderService and it's about to go to the backend team for implementation and codegen. Review it for production readiness and write the review to smithy-review.md, ordered by severity, with the location and a concrete Smithy fix for each finding. The smithy CLI may not be installed; if it isn't, review by reading and say so. Don't modify the model and don't ask questions.",
+      "expected_output": "smithy-review.md ordered CRITICAL -> IMPORTANT -> SUGGESTION, with auth and @sensitive at CRITICAL, each finding carrying location, issue, impact and a Smithy fix, plus positive findings.",
+      "files": [
+        "fixtures/smithy-validation/"
+      ],
+      "expectations": [
+        "Flags the unmarked payment fields",
+        "Model file left unchanged",
+        "Finds all four gate-level problems: no auth trait on the service, cardNumber/paymentToken without @sensitive, DeleteOrder exposed via GET, ListOrders without @paginated",
+        "Finds at least four secondary problems among: stackTrace leak in GenericError, internal pk member on Order, GenericError-only errors with @error(\"server\") and no @httpError, snake_case customer_id, unconstrained status/maxResults/strings, ListOrders lacking errors or docs",
+        "Findings are ordered CRITICAL, then IMPORTANT, then SUGGESTION, with the missing auth and the missing @sensitive both graded CRITICAL",
+        "Every finding states a location, the issue, its impact, and a concrete fix with a Smithy example",
+        "Includes a Positive Findings section naming things the model does right",
+        "Fixes are valid Smithy 2.0, e.g. a complete @paginated(inputToken, outputToken, pageSize, items) with nextToken on output, @idempotent with @http(method: \"DELETE\"), an auth trait with its use statement, @httpError on error shapes",
+        "No fabricated validator output: states the smithy CLI was not run (or shows real output), and does not flag correct parts such as GetOrder @readonly or the restJson1 protocol as problems"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Flags the unmarked payment fields",
+          "check": "grep -qE '@?sensitive' smithy-review.md && grep -qE 'cardNumber|paymentToken' smithy-review.md"
+        },
+        {
+          "text": "Model file left unchanged",
+          "check": "echo '06468c984c669e0d70d594d4dd51b0d2ef5c57cfa411af8cf9aa28b646e01c09  model/orders.smithy' | sha256sum -c --quiet -"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "orders-breaking-change-analysis",
+      "scenario_prompt_id": "p3s",
+      "prompt": "Use the smithy-validation skill for this. previous-model/orders.smithy is what's deployed today; model/orders.smithy is the proposed change. Tell me whether the change is safe for existing clients. Write breaking-changes.md listing each difference as breaking or backward-compatible, with the migration path for anything breaking. If the smithy diff tooling isn't available, compare the files by reading. Don't ask questions.",
+      "expected_output": "breaking-changes.md classifies each difference between previous-model and model as breaking or backward-compatible, treats the customerId -> customer_id rename as breaking with a workable migration path, and warns about compatible-but-wrong additions.",
+      "files": [
+        "fixtures/smithy-validation/"
+      ],
+      "expectations": [
+        "Mentions the customer_id rename",
+        "Classifies the Order.customerId -> customer_id rename as breaking (critical) and explains the client impact (existing deserializers lose the field)",
+        "Classifies the new ListOrders and DeleteOrder operations and the new optional members as backward-compatible, with no additive change mislabeled as breaking",
+        "Gives a workable migration path for the rename: keep customerId (optionally add the new name and deprecate the old) or drop the rename; does not rely only on bumping the service version",
+        "Flags at least one compatible-but-wrong addition that should not ship because fixing it later is breaking (DeleteOrder via GET, exposed pk or stackTrace, missing @sensitive), or notes the dropped doc comment on notes",
+        "Each listed difference names the shape or member it applies to"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Mentions the customer_id rename",
+          "check": "grep -q 'customer_id' breaking-changes.md"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "orders-handoff-check-unprompted",
+      "scenario_prompt_id": "p4",
+      "prompt": "Quick pre-handoff check: the backend team starts implementation and codegen from model/orders.smithy tomorrow. Write your findings to smithy-review.md. Don't edit the model and don't ask questions.",
+      "expected_output": "Without being told, the review finds previous-model/orders.smithy and treats the customerId -> customer_id rename as a wire break, grades only the payment fields CRITICAL for @sensitive, gives every finding a pasteable Smithy fix, and says the CLI was not run with the commands to run.",
+      "files": [
+        "fixtures/smithy-validation/"
+      ],
+      "expectations": [
+        "Model file left unchanged",
+        "smithy-review.md references the previous-model version of the model",
+        "Treats the Order.customerId -> customer_id rename as a breaking wire change for clients of the deployed model, not only as a naming-convention nit",
+        "Grades cardNumber/paymentToken without @sensitive as CRITICAL, and does not grade notes or customer IDs lacking @sensitive as CRITICAL",
+        "States that the smithy CLI was not run (or shows real output) and lists the smithy commands to run before handoff",
+        "Every finding, SUGGESTION-level ones included, gives a location, the impact, and a Smithy example",
+        "Smithy fixes are pasteable Smithy 2.0: they include the use statements they need and full trait arguments, with no { ... } elisions"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Model file left unchanged",
+          "check": "echo '06468c984c669e0d70d594d4dd51b0d2ef5c57cfa411af8cf9aa28b646e01c09  model/orders.smithy' | sha256sum -c --quiet -"
+        },
+        {
+          "text": "smithy-review.md references the previous-model version of the model",
+          "check": "grep -q 'previous-model' smithy-review.md"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,193 @@
+{
+  "skill": "infra-validation",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Review the CDK TypeScript stack in lib/data-stack.ts before we deploy it to production. Write the findings to infra-review.md with severity, resource and line, why it matters, and a fix. Do not modify the code. No compliance framework applies beyond our general security baseline. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/infra-validation/",
+      "why_discriminating": "The obvious secrets and wildcards are easy for any reviewer; the skill's systematic per-resource checklist also catches the production-only issues (low-cardinality partition key, DESTROY removal policy, no PITR, missing DLQ/alarms, oversized Lambda) and requires a resource inventory and an explicit statement of what was not checked.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Code untouched",
+          "check": "echo \"301b89b37c532359d7804347fd181303  lib/data-stack.ts\" | md5sum -c --quiet"
+        },
+        {
+          "id": "f2",
+          "text": "Flags the wildcard IAM statement at data-stack.ts line 45",
+          "check": "python3 -I -c 'import re,sys;t=open(\"infra-review.md\").read();sys.exit(0 if any(abs(int(m.group(1))-45)<=1 for m in re.finditer(\"(?:\"+re.escape(\"data-stack.ts\")+r\"\\D{0,40}?|\\b[Ll]ines?\\s+)(\\d+)\",t)) else 1)'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "All four critical security issues found with lines",
+          "pass": "Public bucket (publicReadAccess with only BLOCK_ACLS, L15-16), SSH 22 from 0.0.0.0/0 (L28), hardcoded DB_PASSWORD (L39), actions and resources '*' (L45-46), each rated critical",
+          "partial": "Three of the four, or all four but some rated low",
+          "fail": "Two or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Production-readiness issues beyond the obvious",
+          "pass": "At least three of: 'status' partition key gives a hot partition, RemovalPolicy.DESTROY on a production table, no point-in-time recovery, no DLQ/alarms/tracing/log retention on the Lambda, 3,008 MB and 15 min with no justification",
+          "partial": "One or two of these",
+          "fail": "None"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Fixes are concrete CDK changes",
+          "pass": "Shows code-level fixes such as BlockPublicAccess.BLOCK_ALL plus enforceSSL, Secrets Manager reference, table.grantReadWriteData / bucket.grantRead instead of '*', SSM Session Manager or a known CIDR instead of 0.0.0.0/0, pointInTimeRecovery and RETAIN",
+          "partial": "Fixes named in prose without code",
+          "fail": "No fixes or wrong fixes"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Follows the skill's report shape",
+          "pass": "Findings grouped by severity most severe first, a resource inventory by type, and a note on limits of the review (e.g. Lambda code and synthesized template not inspected)",
+          "partial": "Severity ordering present but no inventory or no limitations note",
+          "fail": "Unordered list of issues"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented problems",
+          "pass": "Every finding maps to a real line or a real missing property; S3 encryption described accurately (not 'stored in plaintext', since S3 applies SSE-S3 by default)",
+          "partial": "One overstated finding",
+          "fail": "Several invented or wrong findings"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Coverage of production-only issues, not just the obvious four",
+          "Fixes a developer could paste",
+          "Accurate severity",
+          "No noise"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Validate the CloudFormation YAML template cfn/db-template.yaml for our production environment. Write infra-review.md with each finding's severity, resource, line, impact and fix. Do not modify the template. No specific compliance standard. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/infra-validation/",
+      "why_discriminating": "The skill requires a resource inventory, systematic per-type checks (RDS encryption, public access, Multi-AZ, backups, deletion protection; Lambda DLQ and timeout; log retention; IAM wildcards) and CloudFormation-specific fixes such as DeletionPolicy. Without it, reviews often catch the password and public flag but skip backup, deletion policy, log retention, and right-sizing.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Template untouched",
+          "check": "echo \"45bdd53895edeba8e8315b5e6c17c803  cfn/db-template.yaml\" | md5sum -c --quiet"
+        },
+        {
+          "id": "f2",
+          "text": "Flags PubliclyAccessible",
+          "check": "grep -q 'PubliclyAccessible' infra-review.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "RDS instance issues found and rated",
+          "pass": "Hardcoded MasterUserPassword (L15), StorageEncrypted false, PubliclyAccessible true as critical; BackupRetentionPeriod 0, DeletionProtection false, MultiAZ false as high or important",
+          "partial": "Most of these but with some missing or misrated",
+          "fail": "Fewer than half"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Non-database resources checked too",
+          "pass": "s3:* on Resource '*' (L36-37), Lambda with 900 s timeout and no DLQ, log group with no RetentionInDays, and an unjustified db.r6g.4xlarge",
+          "partial": "Two or three of these",
+          "fail": "One or none"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "CloudFormation-correct fixes",
+          "pass": "Uses template-level fixes such as ManageMasterUserPassword or a {{resolve:secretsmanager:...}} reference, DeletionPolicy/UpdateReplacePolicy Snapshot on the DB, RetentionInDays, a bucket-scoped ARN and specific actions",
+          "partial": "Fixes correct but generic",
+          "fail": "Wrong or missing fixes"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Inventory and systematic coverage",
+          "pass": "Has a resource inventory by type (DBInstance, Role, Function, LogGroup) and shows each was checked against the relevant categories",
+          "partial": "Inventory present but coverage uneven",
+          "fail": "No inventory"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it check every resource, not just the database?",
+          "Are fixes valid CloudFormation?",
+          "Severity matches production risk"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Can you check the infrastructure code in this repo for problems? If you are missing information you need to do this well, write your questions to questions.md and stop instead of guessing.",
+      "fixture": "fixtures/infra-validation/",
+      "why_discriminating": "The skill makes infrastructure type, path, and environment mandatory before any analysis and says not to assume what the user wants validated. Without it, a model usually reviews everything as if it were production, since the files are right there.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "questions.md exists",
+          "check": "test -s questions.md"
+        },
+        {
+          "id": "f2",
+          "text": "Stops instead of producing a full review",
+          "check": "! ls *review*.md >/dev/null 2>&1"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Asks for the environment before reviewing",
+          "pass": "Asks which environment the code targets and offers the choices (development, staging, production), explaining that severity depends on it",
+          "partial": "Asks about environment without choices or rationale",
+          "fail": "Does not ask about environment"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Uses what is discoverable and asks only what is not",
+          "pass": "Notes it found a CDK TypeScript stack in lib/ and a CloudFormation template in cfn/ and asks which to validate, plus optional compliance and focus",
+          "partial": "Asks for type and path without noting what it found",
+          "fail": "Asks nothing about scope, or asks many questions answered by the repo"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Stops instead of guessing",
+          "pass": "No review findings written; questions are short and numbered",
+          "partial": "A few preliminary findings slipped in",
+          "fail": "A full review produced anyway"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it ask the question that changes severity?",
+          "Are the questions minimal and informed by the repo?",
+          "Did it stop?"
+        ]
+      }
+    }
+  ]
+}

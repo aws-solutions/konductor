@@ -1,0 +1,200 @@
+{
+  "skill": "non-functional-requirements",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "design.md is our approved payments ledger design. QA starts building the load, failover and security test plan from its non-functional requirements next sprint, so every NFR needs a number they can test against. Extract them into nfr.md. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "fixture": "fixtures/non-functional-requirements/",
+      "why_discriminating": "The skill requires latency split by operation type with percentiles, availability as a percentage with RTO and RPO, scale-out and scale-in thresholds, compliance mapped to a named standard, trace sampling rate, and a cost-per-transaction target, and it suggests cold start and degraded-mode NFRs for Lambda. Without it, a model usually turns the adjectives into a single latency number and a 99.9% figure, and misses RTO/RPO against the us-west-2 standby and the sampling rate.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Separate latency targets for reads and writes, each with a p99",
+          "check": "grep -iE 'p99' nfr.md | grep -qiE 'write|POST|entries' && grep -iE 'p99' nfr.md | grep -qiE 'read|GET|balance'"
+        },
+        {
+          "id": "f2",
+          "text": "Availability as a percentage plus RTO and RPO",
+          "check": "grep -qE '99\\.[0-9]+ ?%' nfr.md && grep -q 'RTO' nfr.md && grep -q 'RPO' nfr.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Coverage of the skill's six categories with measurable targets",
+          "pass": "Performance, availability, security, scalability, observability and cost each have at least one numeric, testable NFR; no 'fast/secure/reasonable' left unquantified",
+          "partial": "One category missing or one vague term left",
+          "fail": "Two or more categories missing or several vague targets"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Operation-specific performance and failover targets grounded in the design",
+          "pass": "Separate p50/p99 for POST /entries vs balance/entries reads, throughput tied to 400 w/s and 2,500 r/s with the 3x December spike; availability % plus RTO and RPO consistent with the us-west-2 warm standby",
+          "partial": "Split by operation but throughput or December spike ignored, or RTO/RPO not tied to the standby",
+          "fail": "Single latency target or no RTO/RPO"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "PCI scope drives concrete security and retention NFRs",
+          "pass": "Names PCI DSS and derives concrete NFRs from it (encryption standard e.g. TLS 1.2+ and KMS, access control, audit log retention >= 12 months with 3 months readily available per KEY)",
+          "partial": "Names PCI DSS but retention set below 12 months or controls left generic",
+          "fail": "No named standard"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Scalability and observability are testable",
+          "pass": "Scale-out and scale-in triggers stated (e.g. Lambda concurrency headroom, DynamoDB/OpenSearch thresholds); trace sampling %, required metrics and alarms; cold start target for Lambda; cost per 1,000 transactions from the $9,000 budget",
+          "partial": "Two of: scale thresholds, sampling rate, cold start, per-transaction cost",
+          "fail": "One or none"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Assumptions are labeled, not presented as design facts",
+          "pass": "Every number not in design.md is marked as an assumption or proposed target with a short rationale",
+          "partial": "Assumptions listed but some invented numbers presented as given",
+          "fail": "Invented numbers presented as requirements from the design"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "read/write split with percentiles",
+          "RTO/RPO and December spike",
+          "PCI-driven retention and controls",
+          "labels assumptions"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "statements-design.md is a draft design for the statements service that sits next to the ledger. Before architecture review, I need its non-functional requirements written as a table in statements-nfr.md with columns Category | Requirement | Target | How measured. Product and Security wrote things like \"feel instant\", \"ready in the morning\" and \"short-lived\"; turn those into numbers. Do not ask me questions; make reasonable assumptions, list them under the table, and finish the work.",
+      "fixture": "fixtures/non-functional-requirements/",
+      "why_discriminating": "The skill's CRITICAL rule that performance targets be separated by operation type matters more here because the design mixes an interactive search, an on-demand export, and a month-end batch. A competent answer without the skill tends to give one latency target for 'the API' and leave the batch as 'completes overnight'.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Markdown table with the four requested columns",
+          "check": "grep -qiE '^\\|.*category.*\\|.*requirement.*\\|.*target.*\\|.*measur' statements-nfr.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Separate performance targets per workload type (KEY)",
+          "pass": "Search has p50/p99 ms at ~300 req/s; export has a time-to-email target (e.g. p95 minutes for a 24-month range); month-end batch has a completion deadline and throughput for 2.1M accounts with 4%/mo growth",
+          "partial": "Two of the three workloads get their own targets",
+          "fail": "One shared latency target"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Vague phrases quantified",
+          "pass": "'feel instant', 'ready in the morning' and 'short-lived' each become a number (ms, clock time with timezone, URL expiry minutes) with a How measured entry",
+          "partial": "Two of three quantified",
+          "fail": "One or none"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Skill's category and gate coverage",
+          "pass": "Availability % with RTO/RPO, PCI DSS mapping, scale-out/in thresholds (e.g. OpenSearch CPU/JVM, batch concurrency), trace sampling rate, cost target and per-statement cost from $3,500, Lambda cold start",
+          "partial": "Most present but RTO/RPO, sampling or scale thresholds missing",
+          "fail": "Several categories missing"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Targets are mutually consistent and testable",
+          "pass": "Batch throughput math makes the deadline feasible, cost target is plausible for the volume, How measured names a concrete metric or test",
+          "partial": "Targets plausible but How measured column generic ('monitoring')",
+          "fail": "Targets contradict each other or the design"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "per-workload performance targets",
+          "vague phrases turned into numbers",
+          "measurability of each row"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "nfr-draft.md is a teammate's NFR list for the ledger described in design.md, and it goes to the PCI assessor's pre-read on Friday. Review it for measurability and completeness and write nfr-findings.md with findings grouped CRITICAL, IMPORTANT, SUGGESTION, each with a proposed replacement NFR. Don't edit the draft. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "fixture": "fixtures/non-functional-requirements/",
+      "why_discriminating": "The skill's quality gate fixes the severity of each gap: vague targets, no read/write split, and availability without RTO/RPO are CRITICAL; missing scale thresholds, unmapped compliance and missing sampling rate are IMPORTANT; cold start and degraded mode are SUGGESTION. Without it a reviewer finds most gaps but grades them by feel, and may not catch that 30-day log retention conflicts with PCI DSS.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Findings grouped in CRITICAL, IMPORTANT, SUGGESTION order",
+          "check": "python3 -c 'import sys;t=open(\"nfr-findings.md\").read().upper();c=t.find(\"CRITICAL\");i=t.find(\"IMPORTANT\");s=t.find(\"SUGGESTION\");sys.exit(0 if 0<=c<i<s else 1)'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Planted gaps found (KEY)",
+          "pass": "All five: no read/write split or percentile; 99.9% without RTO/RPO; 'industry compliance standards' not mapped to PCI DSS; no trace sampling; autoscaling with no thresholds (and Lambda autoscaling is implicit)",
+          "partial": "Four of five",
+          "fail": "Three or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Severity follows the skill's gate",
+          "pass": "Latency split and RTO/RPO under CRITICAL; scale thresholds, compliance mapping and sampling under IMPORTANT; cold start / degraded mode under SUGGESTION",
+          "partial": "One or two findings one level off",
+          "fail": "Three or more misgraded, or no grouping"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Catches the log retention conflict with PCI (KEY v2)",
+          "pass": "Flags 30-day retention as below PCI DSS audit log retention (12 months, 3 months readily available) and grades it CRITICAL or IMPORTANT",
+          "partial": "Questions 30 days without tying it to PCI",
+          "fail": "Accepts 30 days"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Replacement NFRs are measurable and grounded",
+          "pass": "Each finding has a numeric replacement tied to design.md (400 w/s, 2,500 r/s, us-west-2 standby, $9,000)",
+          "partial": "Replacements given for most findings but some vague",
+          "fail": "Findings without replacements"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No padding or false findings",
+          "pass": "Does not flag sound items as defects (e.g. encryption at rest and in transit is fine to keep, just needs a standard named)",
+          "partial": "One padded finding",
+          "fail": "Several invented issues"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "all planted gaps",
+          "severity grading",
+          "PCI log retention",
+          "measurable replacements"
+        ]
+      }
+    }
+  ]
+}

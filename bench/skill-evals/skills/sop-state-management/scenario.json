@@ -1,0 +1,203 @@
+{
+  "skill": "sop-state-management",
+  "category": "WATCH",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "tools/session_state.py is what sops/release-train.sop.md uses to resume after crashes, and it has corrupted state twice this month. Rewrite it in place so it is safe: keep the public functions the SOP calls (signature, mint, discover, set_phase, bump_counter), and add STATE_FORMAT.md describing the file format. Parallel test workers share the session file. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/sop-state-management/",
+      "why_discriminating": "The skill specifies the full algorithm: normalized description + realpath + git root-commit fingerprint (or no-git-identity sentinel that never proves identity), schema_version, random filename suffix, temp-file-and-rename with temp and lock files in subdirectories the listing skips, a safe loader that skips malformed files, digit-anchored prefix filter, status-dependent summary/skip_reason rules, and an exclusive lock with 30 s stale-lock TOCTOU handling. A competent model fixes the obvious bugs but rarely all of these.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Module uses a safe loader and an atomic rename",
+          "check": "grep -qE 'safe_load|SafeLoader' tools/session_state.py && grep -qE 'os\\.replace|os\\.rename' tools/session_state.py && ! grep -qE 'Loader=yaml\\.(Unsafe)?Loader\\b' tools/session_state.py"
+        },
+        {
+          "id": "f2",
+          "text": "STATE_FORMAT.md exists",
+          "check": "test -f STATE_FORMAT.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Write safety and concurrency",
+          "pass": "Temp file in a non-listed subdirectory then rename with error handling; every write serialized by an exclusive lock (flock, O_EXCL or mkdir) under a .locks/-style subdirectory with stale-lock handling",
+          "partial": "Atomic rename and a lock, but lock/temp placed directly in sessions/ or no stale-lock handling",
+          "fail": "No lock or non-atomic writes"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Identity and discovery",
+          "pass": "Normalized description (trim, collapse whitespace, lowercase), realpath, root-commit fingerprint or no-git-identity sentinel that is never adopted on match alone; digit-anchored prefix filter; malformed files skipped; schema_version and enum values checked",
+          "partial": "Most of these, one or two missing",
+          "fail": "Only the yaml.load fix"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Phase write rules and schema",
+          "pass": "COMPLETED requires summary, SKIPPED requires skip_reason, other fields cleared on change; mint writes schema_version, random suffix, run.data, pre-populated phases with skip_reason/summary null",
+          "partial": "Partially",
+          "fail": "Not addressed"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Backward compatibility with the SOP",
+          "pass": "Same function names and compatible call shapes; STATE_FORMAT.md matches the code",
+          "partial": "Minor signature change noted",
+          "fail": "Breaks the SOP's calls"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No unneeded machinery",
+          "pass": "Standard library plus PyYAML; no new services or frameworks",
+          "partial": "Some extra abstraction",
+          "fail": "Over-engineered (database, daemon)"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "would it survive a crash and parallel workers?",
+          "resume correctness",
+          "drop-in for the SOP"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Review tools/session_state.py, which sops/release-train.sop.md relies on to resume after crashes. List every defect with file:line, severity, and a concrete fix. Write state-review.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/sop-state-management/",
+      "why_discriminating": "The skill's quality gate defines what is CRITICAL for session state (non-atomic writes, unsafe loader, missing schema_version, unlocked concurrent writes, COMPLETED without summary / SKIPPED without skip_reason). A strong review maps the code to those rules, including subtle ones like the startswith(prefix) filter and stale fields not cleared.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Review cites the unsafe loader and the counter race",
+          "check": "grep -q 'yaml.load' state-review.md && grep -q 'bump_counter' state-review.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Critical defects with correct lines",
+          "pass": "yaml.load with yaml.Loader (line 39) and no try/except; in-place write (lines 27-29); unlocked read-modify-write in bump_counter (57-62) with parallel workers per the SOP",
+          "partial": "Two of the three",
+          "fail": "One or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Identity and discovery defects",
+          "pass": "startswith(prefix) at line 36 matching other prefixes; signature() without whitespace normalization, realpath or fingerprint (line 10); no schema_version; filename collision without a suffix (line 17)",
+          "partial": "Two or three of these",
+          "fail": "None"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Phase status rules",
+          "pass": "set_phase allows COMPLETED without summary, SKIPPED without skip_reason, keeps stale fields and does not validate status",
+          "partial": "Partly",
+          "fail": "Missed"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Severity and fixes",
+          "pass": "CRITICAL first, each with file:line and a concrete fix (e.g. temp in .tmp/ + os.replace; safe_load + skip on error)",
+          "partial": "Severity present, fixes vague",
+          "fail": "Unordered list without fixes"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No false positives",
+          "pass": "Every finding is real in the shown code",
+          "partial": "One dubious finding",
+          "fail": "Several invented defects"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "complete critical list",
+          "precise locations",
+          "fixes an engineer can apply"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Start a new tracked run of our release-train SOP for the project described as '  Release train for   payments-api ' rooted at this directory (it is not a git repo). Phases in order: build, test, docs, deploy; docs is skipped because this release has no doc changes. Create the initial session state file under .sop-state/ so a crashed run can resume later. You may use or bypass tools/session_state.py, but the file must be correct. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/sop-state-management/",
+      "why_discriminating": "Calling the existing mint() produces a file with no schema_version, no random suffix, no skip_reason and an un-normalized signature. The skill's mint operation requires all of these plus the no-git-identity sentinel and a .gitignore entry, so a strong answer writes the file per spec.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Exactly one session file with the timestamped prefix",
+          "check": "python3 -I -c \"import os,re,sys;d='.sop-state/sessions';f=[x for x in os.listdir(d) if re.match(r'^release-train-\\d.*\\.ya?ml$',x)];sys.exit(0 if len(f)==1 else 1)\""
+        },
+        {
+          "id": "f2",
+          "text": "schema_version present",
+          "check": "grep -rq 'schema_version' .sop-state/sessions"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "File content matches the skill's mint operation",
+          "pass": "run.schema_version, run_status in_progress, counters {} and data {}; phases build/test/deploy PENDING with skip_reason/summary null; docs SKIPPED with a skip_reason; features {}",
+          "partial": "Mostly right, one element missing",
+          "fail": "Output of the old mint() unchanged"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Identity signature",
+          "pass": "'release train for payments-api::<realpath of cwd>::no-git-identity'",
+          "partial": "Normalized description but missing realpath or sentinel",
+          "fail": "Raw description or path only"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Filename and hygiene",
+          "pass": "release-train-<ISO timestamp>-<random suffix>.yml; .gitignore covers the sessions dir; no temp or lock files left in sessions/",
+          "partial": "One of these missing",
+          "fail": "Several missing"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Explains the resume caveat",
+          "pass": "Notes that a no-git-identity match will not auto-resume and needs explicit confirmation or a named file",
+          "partial": "Mentions sentinel without the consequence",
+          "fail": "No mention"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "state file correct by spec",
+          "resume behaviour understood",
+          "did not blindly trust the buggy module"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+[
+ {
+  "query": "we finished the design package for the Ledger service: docs/design/system-design.md, threat-model.md, api/openapi.yaml, data-model.md and iam/. before handing it to the dev team, give it a senior production readiness review",
+  "should_trigger": true
+ },
+ {
+  "query": "small project, 2 lambdas and one table. evaluate the tech design in design.md on scalability, security, resilience etc and tell me what's over-engineered for our size",
+  "should_trigger": true
+ },
+ {
+  "query": "architecture review is thursday. I want a pre-read critique of our design for a 14-service order platform, especially failure handling, testability and CI/CD readiness",
+  "should_trigger": true
+ },
+ {
+  "query": "is this design ready to lock? docs/notification-hld.md plus sequence diagrams in docs/diagrams. compare against templates/tech-design.md but don't be pedantic about sections that don't apply",
+  "should_trigger": true
+ },
+ {
+  "query": "final gate review of the payments redesign docs before implementation starts. flag blockers like unmitigated threats or access patterns the data model can't serve",
+  "should_trigger": true
+ },
+ {
+  "query": "rate our design on scalability, performance, security, maintainability and resilience. medium project, around 6 services. need actionable recommendations",
+  "should_trigger": true
+ },
+ {
+  "query": "PM wants sprint 1 to start monday. do a holistic review of everything in /design (HLD, threat model, api specs, ddb model, iam policies) and say what blocks implementation",
+  "should_trigger": true
+ },
+ {
+  "query": "pretend you're the principal engineer at the design review. here's the full design for the search indexing pipeline. what would you push back on and why",
+  "should_trigger": true
+ },
+ {
+  "query": "evaluate this tech design for a large multi-region event platform with a focus on distributed system reliability and failure resilience",
+  "should_trigger": true
+ },
+ {
+  "query": "need a production readiness assessment of the design artifacts for the billing export feature, prioritized critical / important / suggestion",
+  "should_trigger": true
+ },
+ {
+  "query": "check my design doc for filler words, hedging and passive voice before I send it out",
+  "should_trigger": false
+ },
+ {
+  "query": "write the system design for a url shortener with an HLD and sequence diagrams",
+  "should_trigger": false
+ },
+ {
+  "query": "some numbers in this design doc look wrong. check its factual claims against the actual code in src/",
+  "should_trigger": false
+ },
+ {
+  "query": "challenge only the decision in section 4 to use DynamoDB over Postgres. devil's advocate, nothing else",
+  "should_trigger": false
+ },
+ {
+  "query": "validate our DynamoDB table design for hot partitions and GSI problems",
+  "should_trigger": false
+ },
+ {
+  "query": "create a threat model for the payments redesign",
+  "should_trigger": false
+ },
+ {
+  "query": "review this PR diff for the payments service before I merge",
+  "should_trigger": false
+ },
+ {
+  "query": "draw an architecture diagram from this paragraph describing our pipeline",
+  "should_trigger": false
+ },
+ {
+  "query": "compare kafka vs kinesis for our ingestion layer and recommend one",
+  "should_trigger": false
+ },
+ {
+  "query": "estimate monthly AWS cost for this architecture at 5M requests/day",
+  "should_trigger": false
+ }
+]

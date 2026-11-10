@@ -1,0 +1,78 @@
+{
+  "skill_name": "design-quality-check",
+  "evals": [
+    {
+      "id": 0,
+      "name": "notify-not-ready-score-1",
+      "scenario_prompt_id": "p1",
+      "prompt": "We want to send docs/design/notify.md to design review on Thursday. Is it ready? Run the quality gate on it and write the result to quality-notify.md. Do not edit the design doc. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "The skill defines a 1-5 score with fixed rules (3+ IMPORTANT plus a missing section scores 1), typed issues (missing_section, unsupported_claims, circular_reasoning, yagni_violation), and a pitfall that accurate ranges like '100-500ms' are not hedges. Without it, a reviewer gives a soft 'needs work' verdict, may miss that the missing ADR section is structural, and often flags the cold-start range.",
+      "files": [
+        "fixtures/design-quality-check/"
+      ],
+      "expectations": [
+        "Score line present and equals 1/5",
+        "The IMPORTANT issues in the KEY: Finds all of: no ADR section despite Kafka/SPI/rules-engine decisions, YAGNI (transport SPI for SMS/push/fax, rules engine + DSL), circular Kafka justification, unsupported 20ms/45% claims",
+        "Skill scoring and output format: Score 1/5 with the rule applied (3+ IMPORTANT and a missing section), 'Issues: N IMPORTANT, N <low-severity>' count line (label MINOR or SUGGESTION), each issue with section, type, and suggestion; states it does not meet the >=3 gate",
+        "Respects the skill's pitfalls: Does not flag 'Lambda cold starts typically add 100-500ms' as a hedge; no invented issues",
+        "Suggestions for IMPORTANT issues: Each IMPORTANT issue has a concrete fix (add ADR for Kafka vs existing stream, cut SPI/DSL to email-only, cite a measurement or remove the 20ms/45% figures)"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Score line present and equals 1/5",
+          "check": "test -f quality-notify.md && grep -qiE 'quality score[^0-9]{0,8}1 ?/ ?5' quality-notify.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "minor-filler-score-3-advances",
+      "scenario_prompt_id": "p3",
+      "prompt": "Check docs/design/minor.md for filler language and anything else that should hold it back from design review. Write a scored result to quality-minor.md. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "Under the skill's rubric, more than three MINOR issues and no IMPORTANT issues scores 3/5, which still clears the >=3 gate. The doc has five filler/hedge phrases and a measured 41-second claim. Without the skill, reviewers tend to call the measured claim unsupported, or to block the doc over style issues.",
+      "files": [
+        "fixtures/design-quality-check/"
+      ],
+      "expectations": [
+        "Score is 3/5",
+        "Filler and hedge phrases: Quotes at least four of: Needless to say, It should be noted that, As mentioned above, In order to, somewhat; typed filler_phrases/hedge_words at the low severity (MINOR or SUGGESTION), not IMPORTANT",
+        "Measured claim treated correctly: The 41-second figure (measured on the March 2026 table) is not flagged as unsupported_claims; no IMPORTANT issues invented",
+        "Gate decision: States the doc can advance (score 3 meets the >=3 gate) with revision notes",
+        "Fixes are concrete: Each filler phrase has a rewrite or 'delete'"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Score is 3/5",
+          "check": "test -f quality-minor.md && grep -qiE 'quality score[^0-9]{0,8}3 ?/ ?5' quality-minor.md"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "clean-doc-missing-figure-unscored",
+      "scenario_prompt_id": "p2",
+      "prompt": "Give docs/design/clean.md an objective review-readiness score and write it to quality-clean.md. The author is junior and anxious about it, so be fair and do not pad the list. Do not rewrite the doc. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "Added for the round-2 change: issue types outside step 3 do not count toward the score, and something like a referenced diagram that cannot be found goes in an unscored note. clean.md is short and complete, its $310 claim is sourced, and Figure 1 (docs/diagrams/reset-limit.png) does not exist in the repo. The skill should score it 4 or 5 and keep the absent figure out of the score.",
+      "files": [
+        "fixtures/design-quality-check/"
+      ],
+      "expectations": [
+        "Score is 4 or 5",
+        "No missing_section reported",
+        "Missing figure kept out of the score: the absent Figure 1 (docs/diagrams/reset-limit.png) is either not mentioned or reported as an unscored note; it is not counted as a scored issue (not typed missing_section, not IMPORTANT, not part of the issue counts) and does not lower the score",
+        "No manufactured issues: zero or at most a couple of low-severity items, each real; the $310 claim is recognized as sourced (billing report, March 2026) and brevity is not penalized",
+        "Uses the skill's score and format: a 'Quality Score: N/5' line, an issue-count line in the skill's format, and a review-ready gate statement"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Score is 4 or 5",
+          "check": "test -f quality-clean.md && grep -qiE 'quality score[^0-9]{0,8}[45] ?/ ?5' quality-clean.md"
+        },
+        {
+          "text": "No missing_section reported",
+          "check": "test -f quality-clean.md && ! grep -q 'missing_section' quality-clean.md"
+        }
+      ]
+    }
+  ]
+}

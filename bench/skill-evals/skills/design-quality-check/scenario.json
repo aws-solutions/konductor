@@ -1,0 +1,174 @@
+{
+  "skill": "design-quality-check",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "We want to send docs/design/notify.md to design review on Thursday. Is it ready? Run the quality gate on it and write the result to quality-notify.md. Do not edit the design doc. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/design-quality-check/",
+      "why_discriminating": "The skill defines a 1-5 score with fixed rules (3+ IMPORTANT plus a missing section scores 1), typed issues (missing_section, unsupported_claims, circular_reasoning, yagni_violation), and a pitfall that accurate ranges like '100-500ms' are not hedges. Without it, a reviewer gives a soft 'needs work' verdict, may miss that the missing ADR section is structural, and often flags the cold-start range.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Score line present and equals 1/5",
+          "check": "test -f quality-notify.md && grep -qiE 'quality score[^0-9]{0,8}1 ?/ ?5' quality-notify.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "The IMPORTANT issues in the KEY",
+          "pass": "Finds all of: no ADR section despite Kafka/SPI/rules-engine decisions, YAGNI (transport SPI for SMS/push/fax, rules engine + DSL), circular Kafka justification, unsupported 20ms/45% claims",
+          "partial": "Finds three of the four",
+          "fail": "Finds two or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Skill scoring and output format",
+          "pass": "Score 1/5 with the rule applied (3+ IMPORTANT and a missing section), 'Issues: N IMPORTANT, N MINOR' line, each issue with section, type, and suggestion; states it does not meet the >=3 gate",
+          "partial": "Right score but format or gate statement missing",
+          "fail": "Wrong score or no score"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Respects the skill's pitfalls",
+          "pass": "Does not flag 'Lambda cold starts typically add 100-500ms' as a hedge; no invented issues",
+          "partial": "Mentions the range neutrally but lists it as a minor issue",
+          "fail": "Flags the range as a hedge or unsupported claim, or invents issues"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Suggestions for IMPORTANT issues",
+          "pass": "Each IMPORTANT issue has a concrete fix (add ADR for Kafka vs existing stream, cut SPI/DSL to email-only, cite a measurement or remove the 20ms/45% figures)",
+          "partial": "Suggestions present but generic",
+          "fail": "No suggestions"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is the ready/not-ready verdict right and justified?",
+          "Did it catch the YAGNI and missing ADR?",
+          "False positives on the accurate range"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Give docs/design/clean.md an objective review-readiness score and write it to quality-clean.md. The author is junior and anxious about it, so be fair and do not pad the list. Do not rewrite the doc. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/design-quality-check/",
+      "why_discriminating": "The skill says not to penalize brevity, that qualitative rationale needs no evidence URL, and that a sourced claim is not unsupported. A competent reviewer without those rules tends to manufacture findings (asks for more sections, more detail, citations for qualitative choices) and lands at 3/5.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Score is 4 or 5",
+          "check": "test -f quality-clean.md && grep -qiE 'quality score[^0-9]{0,8}[45] ?/ ?5' quality-clean.md"
+        },
+        {
+          "id": "f2",
+          "text": "No missing_section reported",
+          "check": "test -f quality-clean.md && ! grep -q 'missing_section' quality-clean.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "restraint",
+          "criterion": "No manufactured issues",
+          "pass": "Zero or at most a couple of MINOR items, each real; the $310 claim recognized as sourced (billing report, March 2026)",
+          "partial": "One debatable IMPORTANT item, or the sourced claim questioned",
+          "fail": "Several invented issues or brevity penalized"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Uses the skill's score and format",
+          "pass": "Score line, issue-count line in the skill's format, review-ready gate stated",
+          "partial": "Score present but format or gate missing",
+          "fail": "No numeric score"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Explains why it scores well",
+          "pass": "Notes all required sections present, ADR with a quantified trade-off, simplest option chosen for stated requirements",
+          "partial": "Brief justification only",
+          "fail": "No justification"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Fairness to a good, short doc",
+          "Accuracy of the score",
+          "Absence of padding"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Check docs/design/minor.md for filler language and anything else that should hold it back from design review. Write a scored result to quality-minor.md. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/design-quality-check/",
+      "why_discriminating": "Under the skill's rubric, more than three MINOR issues and no IMPORTANT issues scores 3/5, which still clears the >=3 gate. The doc has five filler/hedge phrases and a measured 41-second claim. Without the skill, reviewers tend to call the measured claim unsupported, or to block the doc over style issues.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Score is 3/5",
+          "check": "test -f quality-minor.md && grep -qiE 'quality score[^0-9]{0,8}3 ?/ ?5' quality-minor.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Filler and hedge phrases",
+          "pass": "Quotes at least four of: Needless to say, It should be noted that, As mentioned above, In order to, somewhat; typed filler_phrases/hedge_words as MINOR",
+          "partial": "Two or three found",
+          "fail": "One or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "restraint",
+          "criterion": "Measured claim treated correctly",
+          "pass": "The 41-second figure (measured on the March 2026 table) is not flagged as unsupported_claims; no IMPORTANT issues invented",
+          "partial": "Mentions it as a possible concern but does not count it",
+          "fail": "Flags it as unsupported or invents an IMPORTANT issue"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Gate decision",
+          "pass": "States the doc can advance (score 3 meets the >=3 gate) with revision notes",
+          "partial": "Score right but the gate consequence unstated",
+          "fail": "Says the doc is blocked"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Fixes are concrete",
+          "pass": "Each filler phrase has a rewrite or 'delete'",
+          "partial": "Generic 'tighten the wording'",
+          "fail": "No fixes"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is the doc correctly allowed to advance?",
+          "Treatment of the measured 41-second claim",
+          "Concreteness of the edits"
+        ]
+      }
+    }
+  ]
+}

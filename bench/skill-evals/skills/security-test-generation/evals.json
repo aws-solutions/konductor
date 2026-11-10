@@ -1,0 +1,51 @@
+{
+ "skill_name": "security-test-generation",
+ "evals": [
+  {
+   "id": 0,
+   "name": "non-kiro-notes-api-plans",
+   "scenario_prompt_id": "p1",
+   "prompt": "We have an AppSec review of this notes API in three weeks. Generate the security test plans our QA team will implement, organized so each security area can be picked up by a different engineer, and save them to disk. We use Q CLI, not Kiro. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+   "expected_output": "A security-test-plans/ directory with one [domain]-[layer].md file per category, security-test-overview.md (execution order Auth first, Infrastructure last) and best-practices-reference.md, each category ordering cases positive -> negative -> edge with concrete expected responses, grounded in the planted code issues and threat IDs T1-T6. The new version moves the non-Kiro output templates into references/output-generic.md and cues it at the output step.",
+   "files": ["fixtures/security-test-generation/express-api/"],
+   "expectations": [
+    "Non-Kiro layout: security-test-plans/security-test-overview.md and security-test-plans/best-practices-reference.md both exist",
+    "At least 4 per-category plan files exist in security-test-plans/ besides the overview and reference files",
+    "Plans target at least five of the six real weaknesses: IDOR on GET /users/:id (no ownership check), SQL injection in /search string concatenation, vertical escalation via client x-role header in admin.js, err.stack returned by the error handler, default 'dev-secret' JWT secret enabling forgery, upload originalname stored under public/",
+    "Per-category files follow a [domain]-[layer].md naming pattern and the overview gives an execution order with Authentication/Authorization first and Infrastructure last",
+    "best-practices-reference.md cites OWASP (e.g. ASVS, Testing Guide, API Security Top 10) and/or AWS security guidance as sources",
+    "Within the category plans, test cases are ordered positive, then negative, then edge, and negative cases state concrete expected responses (e.g. 401/403/400) with concrete inputs",
+    "Tests trace to threat model IDs (T1-T6) and to specific files or endpoints, and the plans flag at least one code-level risk absent from the threat model, such as the plaintext password comparison in login.js",
+    "No fabricated infrastructure or results: does not invent AWS resources or IaC that the fixture lacks (infrastructure tests are marked N/A, assumed, or scoped to what exists) and does not claim tests were executed"
+   ],
+   "scripted_checks": [
+    {"text": "Non-Kiro layout: security-test-plans/security-test-overview.md and security-test-plans/best-practices-reference.md both exist",
+     "check": "test -f security-test-plans/security-test-overview.md && test -f security-test-plans/best-practices-reference.md"},
+    {"text": "At least 4 per-category plan files exist in security-test-plans/ besides the overview and reference files",
+     "check": "python3 -I -c \"import os,sys;f=[x for x in os.listdir('security-test-plans') if x.endswith('.md') and x not in ('security-test-overview.md','best-practices-reference.md')];sys.exit(0 if len(f)>=4 else 1)\""}
+   ]
+  },
+  {
+   "id": 1,
+   "name": "kiro-notes-api-task-list",
+   "scenario_prompt_id": "p2",
+   "prompt": "This is a Kiro project. Set up the security testing work for this API so we can work through it one security area at a time in Kiro, and save it to disk. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+   "expected_output": "A single task list at .kiro/specs/security-testing/tasks.md with a header (testing approach, framework, discovered artifacts), Task 1 as the foundation review, then category tasks in the skill's order, each with spec-generation sub-bullets, citing concrete code and T1-T6, without pre-generating per-category specs or a security-test-plans/ directory. The new version moves the Kiro template into references/output-kiro.md and cues it at the output step.",
+   "files": ["fixtures/security-test-generation/kiro-express-api/"],
+   "expectations": [
+    "The Kiro task list exists at .kiro/specs/security-testing/tasks.md",
+    "Did not also produce the non-Kiro security-test-plans/ directory",
+    "tasks.md has a header naming the testing approach, framework and discovered artifacts, Task 1 is a foundation review (OWASP, AWS, framework, threat model, OpenAPI paths), and each category task carries sub-bullets for generating that category's own spec (requirements/design/tasks)",
+    "Category tasks appear in the order Authentication & Authorization, Input Validation, API Security, Data Protection, Session Management, Error Handling, Infrastructure (at most one swap)",
+    "Tasks cite the relevant endpoints or files and threat IDs T1-T6, e.g. the auth task cites the auth.js default 'dev-secret' and admin.js x-role header",
+    "Does not pre-generate the per-category requirements/design/tasks specs: no more than one extra category spec file beyond tasks.md under .kiro/specs/"
+   ],
+   "scripted_checks": [
+    {"text": "The Kiro task list exists at .kiro/specs/security-testing/tasks.md",
+     "check": "test -f .kiro/specs/security-testing/tasks.md"},
+    {"text": "Did not also produce the non-Kiro security-test-plans/ directory",
+     "check": "test -f .kiro/specs/security-testing/tasks.md && test ! -d security-test-plans"}
+   ]
+  }
+ ]
+}

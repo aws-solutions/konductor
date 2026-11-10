@@ -1,0 +1,22 @@
+[
+{"query": "AppSec review flagged our upload endpoint for path traversal (filename goes straight into fs.writeFile in src/upload.js). Severity high. Need a fix plan with the actual code change and how to verify it.", "should_trigger": true},
+{"query": "got a pentest report with 6 findings (2 high: SSRF + IDOR, 3 medium, 1 low missing headers). prioritize them and give me fix steps with effort estimates", "should_trigger": true},
+{"query": "Security Hub says our S3 bucket test-artifacts-old is public. It's not in our CDK code anywhere. false positive, or what do I do?", "should_trigger": true},
+{"query": "snyk found lodash 4.17.15 prototype pollution and jsonwebtoken 8.5.1 issues in package.json. plan the upgrade with risk context and a rollback if it breaks", "should_trigger": true},
+{"query": "security ticket: 'SQL injection in /reports?sort= parameter'. code is in api/reports.py. help me fix it and write a test that proves it's fixed", "should_trigger": true},
+{"query": "The security review found hardcoded AWS keys in config/settings.py. What's the plan: rotate, purge from history, move to Secrets Manager? in what order?", "should_trigger": true},
+{"query": "Inspector flagged CVE-2023-44487 (HTTP/2 rapid reset) on our ALB-fronted nginx containers. what should we actually do and in what order", "should_trigger": true},
+{"query": "the review came back with 'IAM role has s3:* on *' for our ingest lambda. propose the least-privilege fix with before/after and how to verify", "should_trigger": true},
+{"query": "triaging 14 dependabot alerts across 3 repos, can you group related ones and give me a prioritized order with what an attacker could do with each", "should_trigger": true},
+{"query": "fix the XSS finding from the scan: user display name rendered with dangerouslySetInnerHTML in components/Profile.tsx. need the fix and a regression check", "should_trigger": true},
+{"query": "Write a threat model for the new payments service before we build it", "should_trigger": false},
+{"query": "Generate OWASP top 10 security test cases for the login API", "should_trigger": false},
+{"query": "Review this PR diff for security issues before I merge it", "should_trigger": false},
+{"query": "set up GuardDuty and Security Hub across all accounts in the org with terraform", "should_trigger": false},
+{"query": "Explain what the CVSS 3.1 vector AV:N/AC:L/PR:N/UI:N means", "should_trigger": false},
+{"query": "write an IAM policy for a Lambda that reads one DynamoDB table and writes to one S3 prefix", "should_trigger": false},
+{"query": "our TLS cert on api.example.com expires in 3 days, how do I renew it with ACM", "should_trigger": false},
+{"query": "Write a COE for the incident where a leaked key led to crypto mining in our account", "should_trigger": false},
+{"query": "add eslint-plugin-security to the repo and wire it into CI", "should_trigger": false},
+{"query": "what's a good password policy for our Cognito user pool?", "should_trigger": false}
+]

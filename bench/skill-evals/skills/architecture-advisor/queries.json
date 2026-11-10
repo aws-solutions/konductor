@@ -1,0 +1,22 @@
+[
+{"query": "quick gut check: we have a 3-lambda backend behind api gateway and one guy wants to move it all to ECS fargate 'for consistency'. traffic is ~200 req/min. should we? just want an opinion not a doc", "should_trigger": true},
+{"query": "Should I use SQS or EventBridge to fan out order-created events to 2 consumers (billing + email)? We're on AWS, small team, maybe 5k orders/day. Give me a recommendation and how long it'd take to wire up.", "should_trigger": true},
+{"query": "postgres on RDS vs dynamodb for a new feature that stores user preferences (key-value, ~50k users, read heavy). what would you pick and why", "should_trigger": true},
+{"query": "Sanity check my plan: I'm going to add Redis (ElastiCache) in front of our product catalog API because p99 is 900ms. The catalog changes maybe twice a day. Is this overkill?", "should_trigger": true},
+{"query": "we're debating monorepo vs separate repos for our 4 services (all typescript, same team of 6). whats your take, and what would switching cost us roughly", "should_trigger": true},
+{"query": "is step functions worth it for a 4-step image processing pipeline or should i just chain lambdas with SQS? failures need retries. opinion pls", "should_trigger": true},
+{"query": "My lead asked whether we should migrate our internal admin tool from REST to GraphQL. It has 7 endpoints and 1 frontend. I need a short recommendation with trade-offs I can paste into Slack.", "should_trigger": true},
+{"query": "Cognito vs rolling our own JWT auth with a users table for a B2B app with ~40 customer orgs. Which one and what are the gotchas?", "should_trigger": true},
+{"query": "thinking about splitting our django monolith into microservices bc deploys take 25 min. is that the right fix or is there something simpler? would love a clear yes/no", "should_trigger": true},
+{"query": "For a multi-tenant SaaS on AWS, should tenant isolation be a separate DynamoDB table per tenant or a shared table with tenant id in the PK? We expect 300 tenants. Recommend one.", "should_trigger": true},
+{"query": "Write the full system design document for our new notification service: components, NFRs, threat model inputs, architecture diagram description. Interview me as needed.", "should_trigger": false},
+{"query": "Design the DynamoDB single-table schema for an order management system with these 9 access patterns (listed below), including GSIs and CDK code.", "should_trigger": false},
+{"query": "Create a STRIDE threat model for the payments API described in docs/payments-hld.md and write it to docs/threat-model.md", "should_trigger": false},
+{"query": "Write a Smithy model for the ListInvoices and GetInvoice operations with pagination and error shapes", "should_trigger": false},
+{"query": "review lib/stacks/api-stack.ts for security issues before we deploy to prod - IAM wildcards, encryption, logging", "should_trigger": false},
+{"query": "Generate an architecture diagram (draw.io) for the event pipeline: Kinesis -> Lambda -> S3 -> Athena", "should_trigger": false},
+{"query": "estimate the monthly AWS cost for 3 lambdas at 2M invocations/month, 1 dynamodb table on-demand with 50GB, and an API gateway REST api", "should_trigger": false},
+{"query": "write an ADR documenting that we chose EventBridge over SNS last week, include context, decision, consequences", "should_trigger": false},
+{"query": "Convene a full deliberation panel on whether to go multi-region active-active; I want the axes scored and cross-examined, I already agreed to the cost", "should_trigger": false},
+{"query": "refactor src/services/orderService.ts to use the repository pattern instead of calling the dynamodb client directly, keep the tests passing", "should_trigger": false}
+]

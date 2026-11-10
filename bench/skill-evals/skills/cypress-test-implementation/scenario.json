@@ -1,0 +1,195 @@
+{
+  "skill": "cypress-test-implementation",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "We want to automate the journeys in our E2E strategy (testing-quality-assurance/outputs/e2e-test-strategy.md) with Cypress. Cypress is not installed yet and the React app is in frontend/. Produce the implementation plan our two QA engineers will pick tasks from: a task breakdown with dependencies and effort, and a phased roadmap. Write it to cypress-implementation-plan.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/cypress-test-implementation/planning-clean/",
+      "why_discriminating": "The skill prescribes typed CYPRESS-NNN tasks (Setup/PageObject/CustomCommand/TestData/TestImplementation/Verification) with acceptance criteria, a Foundation -> P0 -> P1 -> P2 roadmap, data-cy selectors, and code only in an appendix. A model without it usually writes one task per journey and misses page objects, fixtures and the missing-UI dependencies.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Plan exists and links every journey E2E-001..E2E-004",
+          "check": "test -f cypress-implementation-plan.md && for i in 1 2 3 4; do grep -q \"E2E-00$i\" cypress-implementation-plan.md || exit 1; done"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Task structure follows the skill: CYPRESS-NNN IDs, a Type from the skill's set, Related Test, Dependencies, Estimated Effort, Acceptance Criteria",
+          "pass": "At least 8 typed tasks covering Setup, PageObject, CustomCommand, TestData, TestImplementation and Verification, each with dependencies, effort and acceptance criteria",
+          "partial": "Tasks present but missing types or acceptance criteria, or PageObject/CustomCommand/TestData tasks absent",
+          "fail": "One coarse task per journey with no structure"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Roadmap is phased Foundation first, then P0 (E2E-001, E2E-002), P1 (E2E-003), P2 (E2E-004)",
+          "pass": "Phases in that order with tasks assigned to them and the critical path visible",
+          "partial": "Phased but priorities mixed or Foundation not first",
+          "fail": "No phasing"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Grounded in the actual app and strategy",
+          "pass": "Calls for data-cy attributes on LoginPage/BoardPage (they only have ids/classes) and flags that edit/complete/search/filter/bulk-select UI and test credentials/cleanup endpoint are missing as dependencies or risks",
+          "partial": "Recommends data-cy but does not notice the missing UI or data gaps",
+          "fail": "Generic plan that could apply to any app"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Task breakdown is free of code; examples, if any, are in an appendix; no invented endpoints",
+          "pass": "No code in tasks; any code in an Appendix; unknowns stated as assumptions",
+          "partial": "A little code inline in tasks",
+          "fail": "Plan is mostly code, or invents APIs/selectors as fact"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "could two engineers start tomorrow from this?",
+          "dependencies and missing UI surfaced",
+          "follows the phased structure"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Release is Friday. Verify our Cypress suite against the E2E strategy and Cypress good practice: which journeys are implemented, what is missing, what is wrong in the specs, and whether this blocks release. Include a journey-to-spec traceability matrix. Write cypress-verification-report.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/cypress-test-implementation/implemented/",
+      "why_discriminating": "The skill's quality gate makes P0 not implemented, hard-coded cy.wait and shared state between tests CRITICAL, and asks for findings ordered CRITICAL -> IMPORTANT -> SUGGESTION with a traceability matrix. A model without it tends to list issues flatly and may not call the release blocked, or may trust the plan's [x] checkboxes over the code.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Report flags the hard-coded waits by file",
+          "check": "grep -q 'cy.wait' cypress-verification-report.md && grep -q 'login-create-task' cypress-verification-report.md"
+        },
+        {
+          "id": "f2",
+          "text": "Report names the missing P0 journey",
+          "check": "grep -q 'E2E-002' cypress-verification-report.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Planted spec defects found with location and impact",
+          "pass": "cy.wait(5000)/cy.wait(3000) at login-create-task.cy.js lines 9/18, shared createdTitle and test 2 depending on test 1's login (no isolation), conditional modal test (lines 22-27), plus fragile selectors and should('exist') assertions",
+          "partial": "Waits and one of isolation/conditional found, others missed",
+          "fail": "Misses the hard waits or the isolation problem"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Coverage gaps and traceability",
+          "pass": "Matrix covers E2E-001..004: E2E-002 (P0) and E2E-004 have no spec; E2E-003 partial (repeated login, no page objects/commands/fixtures); notes the plan marks CYPRESS-006/008 done while the specs fail best practice",
+          "partial": "Matrix present but misses that E2E-004 is missing or that E2E-003 is weak",
+          "fail": "No matrix, or says all P0 journeys are covered"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Severity follows the skill's gate and ordering",
+          "pass": "P0 gap, hard waits and shared state are CRITICAL; missing page objects/custom commands IMPORTANT; ordered CRITICAL -> IMPORTANT -> SUGGESTION",
+          "partial": "Severity labels used but some misassigned",
+          "fail": "No severity or unordered list"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Clear release call with what must change",
+          "pass": "States release is blocked and lists the specific fixes to unblock (E2E-002 spec, replace waits with assertions/intercepts, isolate tests with beforeEach or cy.session)",
+          "partial": "Hedged release call or fixes not tied to findings",
+          "fail": "Says ready to release"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented test results",
+          "pass": "Does not claim the tests were run or that they pass/fail at runtime",
+          "partial": "Implies execution results loosely",
+          "fail": "Fabricates run output or pass rates"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "correct release call",
+          "the real CRITICAL defects with line numbers",
+          "traceability a release manager can read"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Set up the Cypress foundation for this repo and implement the E2E-001 journey from the strategy: config, shared support code, test data, and the spec. Change the React components in frontend/src if needed for testability. Don't install packages or run Cypress; just write the files. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/cypress-test-implementation/planning-clean/",
+      "why_discriminating": "The skill's patterns (data-cy selectors added to components, a cy.login custom command, page objects, fixture JSON test data, no hard-coded waits, isolated tests with cleanup) shape the code. Without it, a competent model often writes a single spec with id/class selectors, inline credentials and a cy.wait.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "A spec exists and no numeric cy.wait is used",
+          "check": "ls cypress/e2e/*.cy.* >/dev/null 2>&1 && ! grep -rqE 'cy\\.wait\\( *[0-9]' cypress"
+        },
+        {
+          "id": "f2",
+          "text": "data-cy attributes added to components and used by the spec",
+          "check": "grep -rq 'data-cy' frontend/src && grep -rq 'data-cy' cypress/e2e"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Foundation follows the skill's structure",
+          "pass": "cypress.config.js with baseUrl, a cy.login custom command (cy.session acceptable), at least one page object, test data in cypress/fixtures/*.json",
+          "partial": "Two or three of these present",
+          "fail": "Just a spec file"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "E2E-001 spec is correct and isolated",
+          "pass": "Setup in beforeEach or cy.session, creates a task and asserts the exact title appears in the To do column, cleans up the created task (via API, with the endpoint stated as an assumption)",
+          "partial": "Works but no cleanup or asserts only existence",
+          "fail": "Depends on test order, uses hard waits, or does not assert the title"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Component changes are minimal and testability-focused",
+          "pass": "Adds data-cy to LoginPage/BoardPage inputs, buttons, columns and cards without changing behaviour",
+          "partial": "Adds data-cy but also unrelated refactors",
+          "fail": "Leaves selectors as ids/classes"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No fabricated infrastructure",
+          "pass": "Unknowns (credentials source, delete endpoint) are env/fixture-driven and stated as assumptions",
+          "partial": "One hard-coded guess without a note",
+          "fail": "Hard-coded secrets or invented APIs presented as real"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "would the spec be stable in CI?",
+          "reusable support code",
+          "minimal, purposeful component edits"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,198 @@
+{
+ "skill": "adversarial-code-review",
+ "category": "MODEL-CAPABILITY",
+ "source": "konductor",
+ "kind": "code",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "PR #57 adds money transfers to our ledger API (see change.diff; the repo is checked out here and README.md lists our conventions). It already passed standard review, notes in standard-review.md. Before I approve, do a second-pass review whose job is to argue against approval. Write review.md with each finding's severity, file:line, the problem and the concrete failure it causes, and a specific fix. Do not change any code. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/adversarial-code-review/",
+   "why_discriminating": "The skill confines the pass to three gap categories (disclosure, data integrity, schema/validation), requires checking for existing utilities (toHttpError, decodeCursor, authorize) and flagging their bypass, and exempts synthetic test values; a generic reviewer tends to mix in style and performance notes, miss the bypass framing, or flag the fake AKIA key.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "review.md exists",
+     "check": "test -s review.md"
+    },
+    {
+     "id": "f2",
+     "text": "At least 4 planted defects cited by file:line",
+     "check": "python3 -c 'import re,sys;t=open(\"review.md\").read();refs=[(m.group(1),int(m.group(2)),int(m.group(3) or m.group(2))) for m in re.finditer(r\"([\\w./-]+\\.(?:js))[`*)\\]]*(?::|#L|,? lines? )(\\d+)(?:\\s*[-\\u2013]\\s*L?(\\d+))?\",t)];S=[[\"transfers.js\", 26, 26], [\"transfers.js\", 10, 21], [\"routes.js\", 12, 12], [\"transfers.js\", 31, 33], [\"transfers.js\", 8, 8], [\"transfers.js\", 22, 22], [\"transfers.js\", 7, 7]];h=sum(any(f.endswith(s) and (a<=hi+2 and b>=lo-2) for f,a,b in refs) for s,lo,hi in S);sys.exit(0 if h>=4 else 1)'"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Finds the blocking defects and explains the concrete failure: stack/message leak (:26), non-atomic debit/credit/put (:10-23), unauthenticated POST /transfers (routes.js:12), unvalidated amount (:7, negative reverses the transfer)",
+     "pass": "All four named with a concrete failure scenario each",
+     "partial": "Two or three of the four, or all four but without failure scenarios",
+     "fail": "One or none of the four"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "Finds the secondary defects: inline cursor decode (:31-33), payload logged at info (:8), unguarded details.memo (:22), no ConditionExpression on the debit, no test on any write path",
+     "pass": "At least four of the five",
+     "partial": "Two or three",
+     "fail": "One or none"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Applies codebase awareness and the skill severity scale: frames cursor, error and auth issues as bypassing decodeCursor / toHttpError / authorize, and orders CRITICAL then IMPORTANT then SUGGESTION",
+     "pass": "Names at least two of the existing utilities as bypassed and findings are severity-ordered",
+     "partial": "Mentions one utility, or findings are not clearly ordered",
+     "fail": "Recommends writing new helpers that already exist and no severity ordering"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Fixes are specific and correct: a single TransactWriteCommand covering both updates and the transfer Put, a balance condition, authorize on the route, decodeCursor with 400 on ValidationError, toHttpError with server-side logging",
+     "pass": "Fixes are code-level and correct for every blocking finding",
+     "partial": "Fixes are directionally right but vague for some (\"add validation\")",
+     "fail": "Fixes are wrong (e.g. retry the second update) or missing"
+    },
+    {
+     "id": "r5",
+     "dimension": "restraint",
+     "criterion": "No false positives or padding: does not flag the synthetic AKIA key in test/transfers.test.js, does not re-raise naming/formatting from standard review, invents no lines or functions",
+     "pass": "No false positives and no style or naming findings",
+     "partial": "One minor padding item (style or perf) but no false positives",
+     "fail": "Flags the synthetic key as a leaked secret or cites code that is not in the diff"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Are the blocking money-movement and auth defects found with real failure scenarios?",
+     "Does it point to the existing helpers instead of inventing new ones?",
+     "Is it free of style padding and false positives (the fake key)?"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "You are the checker in our maker-checker review. A maker pass produced proposed-findings.md (10 candidate findings) for change.diff. Nothing gets posted to the PR until it is filtered. Write verdicts.md with exactly one line per finding: `F<n>: KEEP` or `F<n>: REJECT - <one-line reason>`. Do not change code and do not add findings of your own. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/adversarial-code-review/",
+   "why_discriminating": "The skill's Validator Mode rejects findings whose cited code is not in the diff, vague ones, duplicates (keeping the higher severity), style nits and praise, and forbids new findings; an unguided checker tends to keep plausible-sounding invented findings (F3) or the duplicate (F5), or to 'improve' the list.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "verdicts.md has exactly the 10 verdict lines F1..F10",
+     "check": "python3 -c 'import re,sys;t=open(\"verdicts.md\").read();v=re.findall(r\"^\\W*F(\\d+)\\W*:?\\W*(KEEP|REJECT)\",t,re.M|re.I);sys.exit(0 if sorted(int(a) for a,b in v)==list(range(1,11)) else 1)'"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Keeps the four real in-diff findings F1, F2, F6, F9",
+     "pass": "All four KEEP",
+     "partial": "Three of four KEEP",
+     "fail": "Two or fewer KEEP"
+    },
+    {
+     "id": "r2",
+     "dimension": "reasoning",
+     "criterion": "Rejects F3 because transfers.js has no line 52 and no validateAmount (invented), and F5 as a duplicate of F1 (same line and root cause, lower severity)",
+     "pass": "Both rejected with those specific reasons",
+     "partial": "Both rejected but a reason is generic or wrong",
+     "fail": "Either one kept"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Rejects F4 (vague), F7 (style), F8 (praise, and accounts.js is outside the diff), F10 (src/lib/ddb.js outside the diff) with reasons that match the validator categories",
+     "pass": "All four rejected with category-matching reasons",
+     "partial": "All four rejected but one or two reasons are off",
+     "fail": "Any of the four kept"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Stays a filter: no new findings, no rewritten findings, no offer to fix anything",
+     "pass": "Output is only the ten verdict lines (plus optional assumptions)",
+     "partial": "Adds commentary or edits a finding but proposes nothing new",
+     "fail": "Proposes new findings or offers to fix code"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Did it keep exactly the real findings and drop the invented, duplicate, vague, style and out-of-diff ones?",
+     "Are the rejection reasons specific and checkable?",
+     "Did it stay a filter rather than a reviewer?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "Follow-up on PR #57. The author pushed followup.diff on top of change.diff and says it addresses every blocker from the earlier second-pass review. Re-review only the follow-up against the original problems: what is actually fixed, what is still open, and anything the fix-up itself introduced. Write rereview.md ending with `Verdict: BLOCK` or `Verdict: APPROVE`. Do not change code. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/adversarial-code-review/",
+   "why_discriminating": "The skill's checklist (multi-item mutations in one transaction, conditional writes on contested resources, info AND debug payload logging, validate before act, write paths need tests, condition weaker than warranted) is what exposes a partial fix: the transfer Put still outside the transaction, a condition that does not stop overdraft, a typeof-only amount check, and a payload log merely moved to debug. A generic re-review tends to accept the visible fixes and approve.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "rereview.md exists and ends in a verdict line",
+     "check": "test -s rereview.md && grep -qiE \"verdict: *(block|approve)\" rereview.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Finds what is still open: transfer PutCommand (:32) outside the transaction, amount check allows negative/zero (:10-12), cursor still decoded inline (:41-43), no write-path test",
+     "pass": "At least three of the four, with the concrete failure for each",
+     "partial": "Two of the four",
+     "fail": "One or none, or verdict APPROVE"
+    },
+    {
+     "id": "r2",
+     "dimension": "reasoning",
+     "criterion": "Recognizes the fix-up weaknesses: attribute_exists only on the debit does not prevent overdraft and the credit side has no condition; console.debug still logs the full payload; optional bonus: TransactionCanceledException is not mapped to 409 by toHttpError",
+     "pass": "Explains the weak condition and the debug log, with or without the bonus",
+     "partial": "Catches one of the two",
+     "fail": "Treats the condition and the debug log as resolved"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Separates fixed from open from new, credits the real fixes (toHttpError, authorize, details?.memo, debit/credit transaction), and orders open items by severity",
+     "pass": "Clear fixed/open/new split with severity ordering",
+     "partial": "Split present but fixes not credited or no ordering",
+     "fail": "Re-lists all original findings without checking the follow-up"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Gives specific next fixes: move the Put into TransactItems, add `balance >= :amt` and a positive-amount check, use decodeCursor, drop or redact the payload log, add tests for the transfer write",
+     "pass": "Specific code-level fixes for every open blocker",
+     "partial": "Fixes for some blockers only, or vague",
+     "fail": "No actionable fixes"
+    },
+    {
+     "id": "r5",
+     "dimension": "restraint",
+     "criterion": "Does not re-raise items the follow-up really fixed and does not invent new problems outside the follow-up",
+     "pass": "Nothing fixed is re-raised; no out-of-diff speculation",
+     "partial": "One fixed item re-raised by mistake",
+     "fail": "Several fixed items re-raised or invented issues"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Does it catch that the fix-up is partial (Put outside the transaction, weak condition, negative amount)?",
+     "Does it credit what was really fixed instead of repeating the old list?",
+     "Is the verdict justified by the open findings?"
+    ]
+   }
+  }
+ ]
+}

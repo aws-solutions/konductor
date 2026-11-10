@@ -1,0 +1,22 @@
+[
+{"query": "The CreateProject wizard (src/pages/CreateProject/) manages every field with useState and hand-written validation. Move it to react-hook-form with a zod schema and FormProvider, keep behavior the same.", "should_trigger": true},
+{"query": "fix the type errors in src/components/ResourceTable.tsx, there are like 6 `any`s in there and useForm isn't typed", "should_trigger": true},
+{"query": "Our Cloudscape app has raw <div style={{marginTop: 8}}> and <button> elements sprinkled in src/views/Settings.tsx. Replace them with the proper Cloudscape components.", "should_trigger": true},
+{"query": "Add a 'start date must be before end date' rule to the booking form in src/forms/BookingForm.tsx. It uses zod already.", "should_trigger": true},
+{"query": "Extract the repeated label+input+error block in src/pages/Profile.tsx into a reusable component wired to useFormContext, no prop drilling.", "should_trigger": true},
+{"query": "Implement the 'Edit tags' modal for the Instances page: Cloudscape Modal, a FormField per tag, validation messages from our constraints file. Add component tests.", "should_trigger": true},
+{"query": "the details panel in src/components/DetailsPanel.tsx renders a bunch of label: value divs. make it use KeyValuePairs and a fixed ColumnLayout, it jumps around when columns change", "should_trigger": true},
+{"query": "Write unit tests for src/utils/formatQuota.ts and component tests for the QuotaForm, covering error states. Assertions should check actual messages.", "should_trigger": true},
+{"query": "In src/pages/Dashboard.tsx the handlers passed to the table are recreated every render and it's sluggish. Fix that surgically, don't refactor everything else.", "should_trigger": true},
+{"query": "Build the second step of our onboarding wizard in React + Cloudscape: account name (required, 3-64 chars), region select, terms checkbox. Use the same form stack as step 1.", "should_trigger": true},
+{"query": "Review the frontend changes in my branch for Cloudscape compliance and any/typing problems. Don't change code, just report findings by severity.", "should_trigger": false},
+{"query": "Add a new Lambda handler POST /projects that validates input and writes to DynamoDB through the repository layer.", "should_trigger": false},
+{"query": "Write Playwright e2e tests for the CreateProject wizard flow against the staging URL.", "should_trigger": false},
+{"query": "Migrate our app from Create React App to Vite and fix the env variable references.", "should_trigger": false},
+{"query": "Design the visual mockups for the new billing page; I want 3 layout options in Figma-like ASCII.", "should_trigger": false},
+{"query": "Our Vue 2 app needs upgrading to Vue 3 composition API. Start with src/components/Header.vue.", "should_trigger": false},
+{"query": "Check the UI copy on the onboarding screens for tone and consistency.", "should_trigger": false},
+{"query": "Set up eslint and prettier for the frontend package with a pre-commit hook.", "should_trigger": false},
+{"query": "Why is our webpack bundle 4MB? Analyze it and suggest code-splitting points.", "should_trigger": false},
+{"query": "Write the CloudFront + S3 CDK stack to host the built frontend with OAC.", "should_trigger": false}
+]

@@ -1,0 +1,22 @@
+[
+{"query": "ok so feature/invoice-pdf has been sitting for 3 weeks and mainline moved a lot. I need to get it merged into mainline today, there will be conflicts in src/billing/render.ts for sure. walk me through doing it without wrecking anything", "should_trigger": true},
+{"query": "We're cutting release 4.2 - I need to merge the dev branch into mainline, then tag it. dev has 47 commits ahead. What's the safe sequence?", "should_trigger": true},
+{"query": "git merge origin/mainline into my branch blew up with conflicts in package-lock.json and CHANGELOG.md. how do i resolve these properly and finish the merge", "should_trigger": true},
+{"query": "Can you merge my branch nk/retry-backoff into main for me? Tests pass locally. Repo is at ~/code/payments-svc", "should_trigger": true},
+{"query": "I have two long-lived branches, release/2026-q4 and hotfix/null-currency. The hotfix needs to land in both the release branch and mainline. how should I do the merges so nothing gets lost", "should_trigger": true},
+{"query": "merge dev -> mainline pls, but I want a merge commit not a fast forward, and I want to check nothing in config/prod.yaml changes unexpectedly", "should_trigger": true},
+{"query": "My teammate force-merged into mainline yesterday and now my feature branch has diverged. I want to bring mainline into my branch and resolve the conflicts in the handlers folder. Help?", "should_trigger": true},
+{"query": "Before I merge feature/search-v2 into mainline I want a pre-merge check: what files conflict, which commits come in, and whether the build still passes after. Then do the merge.", "should_trigger": true},
+{"query": "release merge time. mainline needs everything from the staging branch except the experimental flags commit (a3f91c2). how do i do that merge cleanly?", "should_trigger": true},
+{"query": "im halfway through a merge of feature/auth-rewrite into mainline, resolved 3 of 5 conflicts, but I'm not sure the resolution in middleware/session.ts is right. can you check and finish it", "should_trigger": true},
+{"query": "How do I squash my last 6 commits on feature/csv-export into one before I open the PR?", "should_trigger": false},
+{"query": "Write a function that merges two sorted arrays of transaction records by timestamp in TypeScript, keeping it O(n).", "should_trigger": false},
+{"query": "I want to merge these two pandas dataframes, orders.csv and customers.csv, on customer_id and keep customers with no orders", "should_trigger": false},
+{"query": "Can you review the diff of PR #482 on our repo before someone merges it? Focus on the DynamoDB write paths.", "should_trigger": false},
+{"query": "What's the difference between git rebase and git merge in terms of history? Explaining to a junior dev, no repo involved.", "should_trigger": false},
+{"query": "write me a commit message for the staged changes in my repo, they add retry logic to the S3 uploader", "should_trigger": false},
+{"query": "how do I set up branch protection on GitHub so nobody can push directly to main and merges need 2 approvals?", "should_trigger": false},
+{"query": "Merge the settings from config/base.json and config/prod.json into one config object in our Node loader, prod values win", "should_trigger": false},
+{"query": "I accidentally committed a .env file 3 commits ago on my branch. How do I remove it from history before anything gets pushed?", "should_trigger": false},
+{"query": "create a new branch off mainline called feat/rate-limit and push it to origin with upstream tracking", "should_trigger": false}
+]

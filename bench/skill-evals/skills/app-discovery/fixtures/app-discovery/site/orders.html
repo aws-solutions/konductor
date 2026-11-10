@@ -1,0 +1,30 @@
+<!doctype html>
+<html><head><title>Orders</title></head>
+<body>
+<main class="awsui-app-layout">
+  <h1>Orders</h1>
+  <table class="awsui-table">
+    <tr><td>ABC-1001</td><td><button class="awsui-button" aria-label="Delete">Delete</button></td></tr>
+    <tr><td>ABC-1002</td><td><button class="awsui-button" aria-label="Delete">Delete</button></td></tr>
+  </table>
+  <form id="new-order" data-testid="new-order-form" novalidate onsubmit="event.preventDefault(); validateOrder();">
+    <label for="order-id">Order ID</label>
+    <input id="order-id" data-testid="order-id" required pattern="[A-Z]{3}-[0-9]{4}" maxlength="8">
+    <span data-testid="order-id-error" class="awsui-form-field-error" hidden>Order ID must look like ABC-1234</span>
+    <label for="qty">Quantity</label>
+    <input id="qty" data-testid="order-qty" type="number" min="1" max="500" required>
+    <span data-testid="order-qty-error" class="awsui-form-field-error" hidden>Quantity must be between 1 and 500</span>
+    <button class="awsui-button awsui-button-variant-primary" data-testid="order-submit" type="submit">Create order</button>
+  </form>
+  <a href="index.html">Home</a>
+</main>
+<script>
+function validateOrder() {
+  var id = document.getElementById('order-id');
+  var q = document.getElementById('qty');
+  document.querySelector('[data-testid=order-id-error]').hidden = /^[A-Z]{3}-[0-9]{4}$/.test(id.value);
+  var n = Number(q.value);
+  document.querySelector('[data-testid=order-qty-error]').hidden = (n >= 1 && n <= 500);
+}
+</script>
+</body></html>

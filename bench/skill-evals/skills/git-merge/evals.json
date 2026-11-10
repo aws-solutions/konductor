@@ -1,0 +1,108 @@
+{
+ "skill_name": "git-merge",
+ "evals": [
+  {
+   "id": 0,
+   "name": "novice-hotfix-runbook",
+   "scenario_prompt_id": "p3",
+   "prompt": "Don't run anything. A teammate who rarely uses git has to merge hotfix/null-currency into mainline next week while I'm out, and other people will be pushing to mainline at the same time. Write merge-runbook.md with the exact git commands in order and what to check before each commit and push, including what to do if the push is rejected.",
+   "expected_output": "The skill gives a concrete four-phase sequence with --no-ff --no-commit, pull-first, mainline-into-branch-first and a never-force-push rule; a generic runbook often merges the hotfix directly, uses plain `git merge`, or answers a rejected push with --force or a rebase of a shared branch.",
+   "files": [],
+   "expectations": [
+    "Uses --no-ff and --no-commit",
+    "No force push anywhere",
+    "Sequence matches the skill: pull mainline, merge mainline into hotfix/null-currency (--no-ff --no-commit), verify, commit, push; then pull mainline, merge hotfix (--no-ff --no-commit), verify, commit, push: Both phases in that order with exact commands",
+    "Concrete checks before each commit: git status/diff --cached, resolve conflicts, run build and tests: Checks named per commit with commands",
+    "Rejected push handling: pull (merge) mainline again, re-verify, commit, push; explicitly never --force or rebase mainline: Correct recovery and explicit prohibition",
+    "Readable for a novice: short steps, real branch names, no unnecessary advanced commands: Copy-pasteable and short"
+   ],
+   "scripted_checks": [
+    {
+     "text": "Uses --no-ff and --no-commit",
+     "check": "grep -q -- '--no-ff' merge-runbook.md && grep -q -- '--no-commit' merge-runbook.md"
+    },
+    {
+     "text": "No force push anywhere",
+     "check": "test -s merge-runbook.md && ! grep -qE 'push +(-f|--force)' merge-runbook.md"
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "name": "protected-main-pr-plan",
+   "scenario_prompt_id": "ppr",
+   "prompt": "Don't run anything, just write the plan. Our repo's default branch is `main` (not mainline) and main is protected on GitHub: nothing lands on it except through a reviewed PR. My branch feature/csv-export is ~40 commits behind main and I already know package-lock.json and src/export/csv.ts will conflict. Write merge-plan.md with the exact git commands, in order, to get feature/csv-export merged, plus how to resolve the lockfile conflict and what to check before each commit and push.",
+   "expected_output": "A plan that uses main (not mainline), merges main into the feature branch with --no-ff --no-commit, resolves the lockfile by regeneration, and lands through a PR rather than a local merge into main; never force-pushes.",
+   "files": [],
+   "expectations": [
+    "merge-plan.md uses the real default branch name main and never says mainline",
+    "No force push anywhere in merge-plan.md",
+    "Updates the feature branch first: fetch/pull main, then merge main into feature/csv-export using --no-ff --no-commit, inspect (git status / git diff --cached), commit, push the feature branch",
+    "Lands the change through a pull request into main (open/update a PR, wait for review and checks) and does NOT tell the user to merge feature/csv-export into main locally or push to main directly",
+    "Lockfile conflict handled by regenerating it (take one side, e.g. main's package-lock.json, then rerun npm install / npm ci and stage the regenerated file) rather than hand-editing conflict markers in package-lock.json",
+    "Concrete checks before each commit and push: no remaining conflict markers, git diff --cached review of src/export/csv.ts, build and tests run",
+    "If the push or PR shows the branch is behind again, repeats the main-into-branch merge rather than force-pushing or rebasing a shared branch"
+   ],
+   "scripted_checks": [
+    {
+     "text": "merge-plan.md uses the real default branch name main and never says mainline",
+     "check": "test -s merge-plan.md && grep -q 'main' merge-plan.md && ! grep -qi 'mainline' merge-plan.md"
+    },
+    {
+     "text": "No force push anywhere in merge-plan.md",
+     "check": "test -s merge-plan.md && ! grep -qE 'push +(-f|--force)' merge-plan.md"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "name": "half-done-merge-recovery",
+   "scenario_prompt_id": "phalf",
+   "prompt": "Don't run anything, just write the steps. Yesterday I ran `git merge feature/rate-limit` while on mainline, got conflicts in Cargo.lock and src/limiter.rs, and walked away; `git status` still says 'You have unmerged paths'. Our team merges locally into mainline (no PRs) and others push to mainline all day. Write recover-merge.md with the exact git commands, in order, to get out of this half-done merge and land feature/rate-limit on mainline properly, including how to handle the Cargo.lock conflict and what to check before each commit and push.",
+   "expected_output": "Backs out with git merge --abort (or finishes deliberately), then redoes it the skill's way: pull mainline, merge mainline into feature/rate-limit with --no-ff --no-commit, resolve, check, commit, push; then merge the feature into mainline with --no-ff --no-commit, review, push. Cargo.lock is regenerated, not hand-edited; no force push.",
+   "files": [],
+   "expectations": [
+    "recover-merge.md uses git merge --abort to back out of the half-done merge",
+    "No force push anywhere in recover-merge.md",
+    "Redoes the merge with --no-ff --no-commit and merges mainline into feature/rate-limit first (after pulling mainline), committing and pushing the feature branch before merging it into mainline",
+    "Cargo.lock conflict is resolved by taking one side and regenerating it with cargo (e.g. cargo generate-lockfile, cargo update -w, or cargo build), then staging it, rather than hand-editing conflict markers",
+    "Concrete checks before each commit: git status shows no unmerged paths, git diff --cached --check or a conflict-marker search, reading the diff of src/limiter.rs, and cargo build plus cargo test",
+    "Before pushing to mainline, reviews what will be pushed (e.g. git log --oneline and git diff --stat origin/mainline..HEAD) and pulls/merges origin/mainline again if the push is rejected, never rebasing or force-pushing",
+    "Stays focused on the merge: does not add release tagging or branch deletion steps the user did not ask for"
+   ],
+   "scripted_checks": [
+    {
+     "text": "recover-merge.md uses git merge --abort to back out of the half-done merge",
+     "check": "test -s recover-merge.md && grep -q 'merge --abort' recover-merge.md"
+    },
+    {
+     "text": "No force push anywhere in recover-merge.md",
+     "check": "test -s recover-merge.md && ! grep -qE 'push +(-f|--force)' recover-merge.md"
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "name": "shared-branch-rejected-push",
+   "scenario_prompt_id": "prej",
+   "prompt": "Don't run anything, just write the steps. My coworker and I both push to feature/billing-retry. I merged mainline into it with --no-ff --no-commit, committed, and then `git push origin feature/billing-retry` was rejected as non-fast-forward because my coworker pushed two commits to feature/billing-retry an hour ago. Our team merges locally into mainline (no PRs) and I'll run your steps myself. Write next-steps.md with the exact git commands, in order, to get my push through and then land feature/billing-retry on mainline, and what to check before each commit and push.",
+   "expected_output": "Recovers the rejected feature-branch push by fetching and merging origin/feature/billing-retry (the coworker's commits), re-checking and pushing, never rebasing or force-pushing the shared branch; then pulls mainline, merges the feature with --no-ff --no-commit, checks, commits, reviews log and diff stat, and asks for explicit confirmation before pushing mainline.",
+   "files": [],
+   "expectations": [
+    "No force push anywhere in next-steps.md",
+    "Recovers the rejected push by integrating the coworker's commits on the same branch: fetch then merge origin/feature/billing-retry (or git pull origin feature/billing-retry without --rebase), rather than only merging origin/mainline again",
+    "Does not rebase or reset feature/billing-retry (no git rebase, git pull --rebase, or git reset --hard on the shared branch) and says why: the coworker already has that history",
+    "After the recovery merge, runs the pre-commit checks before committing and pushing: git status shows no unmerged paths, git diff --cached (or --check) is reviewed, and build plus tests run",
+    "Lands on mainline the skill's way: switch to mainline and pull, git merge --no-ff --no-commit feature/billing-retry, checks, commit with a message naming the branch",
+    "Before git push to mainline, shows what will be pushed (git log --oneline and/or git diff --stat origin/mainline..HEAD) and tells the user to stop and explicitly confirm before pushing mainline",
+    "Stays focused on the merge: does not add release tagging or branch deletion steps the user did not ask for"
+   ],
+   "scripted_checks": [
+    {
+     "text": "No force push anywhere in next-steps.md",
+     "check": "test -s next-steps.md && ! grep -qE 'push +(-f|--force)' next-steps.md"
+    }
+   ]
+  }
+ ]
+}

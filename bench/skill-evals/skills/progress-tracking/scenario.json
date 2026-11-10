@@ -1,0 +1,177 @@
+{
+  "skill": "progress-tracking",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "We kick off implementation on Monday. Validate the feature plan at .kiro/specs/feature-implementation/tasks.md and the feature specs under .kiro/specs/ before anyone starts coding. Summary detail is fine, and do not save history. Write the report to plan-validation.md and do not modify the specs. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/progress-tracking/",
+      "why_discriminating": "Initial mode in the skill runs structure, coverage and dependency stages with fixed rules: invalid checkbox formats like [X], requirement refs that do not exist, uncovered acceptance criteria, cycles via DFS, and spec status kept separate from implementation status. A generic review summarizes the plan and tends to miss the Exports/Search cycle, the invalid ref 1.3, or reports alerts as complete despite uncovered 2.3.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Report exists and mentions a circular dependency",
+          "check": "test -f plan-validation.md && grep -qiE 'circular|cycle' plan-validation.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Blocking defects (see KEY)",
+          "pass": "Finds all of: Exports(2) <-> Search(3) cycle, alerts requirement 2.3 with no task, search task 4 referencing nonexistent 1.3, search missing design.md",
+          "partial": "Finds three of the four",
+          "fail": "Finds two or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Format defects",
+          "pass": "Flags `- [X]` as an invalid checkbox (valid forms are [ ], [-], [x]) and does not count it as done",
+          "partial": "Mentions [X] but treats it as completed without comment",
+          "fail": "Misses it"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Initial-mode report structure and status rules",
+          "pass": "Uses the skill's report template (current date, mode, high-level progress table, summary, recommendations, next steps) and gives each feature 'Specs: X | Implementation: Y' with exports 'Specs complete | Not started'",
+          "partial": "Template partly followed, or status columns merged",
+          "fail": "Calls exports or alerts 'complete' based on file presence"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Decision and fixes",
+          "pass": "Overall FAIL/blocked because of the cycle, with a suggested break point (which dependency to drop) and concrete fixes for 2.3, 1.3, [X], design.md",
+          "partial": "Fixes listed but no overall decision",
+          "fail": "No decision and no fixes"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would the team know what to fix before Monday?",
+          "Did it find the cycle and the bad references?",
+          "Spec vs implementation status honesty"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Sprint check-in for the leads: how far along are we? Track implementation progress across all features in .kiro/specs/ (the plan is .kiro/specs/feature-implementation/tasks.md), call out anything blocked and who needs to act, and estimate what is left. Write progress.md, and keep a saved history so we can compare next week. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/progress-tracking/",
+      "why_discriminating": "Progress mode in the skill computes per-feature percentages from checkbox states, treats explicit cross-feature dependencies as critical blockers, gives a remaining-effort range, and saves history to .kiro/specs/validation-history/. Without it, answers tend to report a single overall number, miss that Exports and Search block each other, and skip the history file or its location.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "History saved as JSON under .kiro/specs/validation-history/",
+          "check": "ls .kiro/specs/validation-history/*.json >/dev/null 2>&1 && python3 -c \"import json,glob;[json.load(open(f)) for f in glob.glob('.kiro/specs/validation-history/*.json')]\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Per-feature numbers",
+          "pass": "Alerts 4/4 (100%), Exports 0/3 (0%), Search 2/4 (50%) with the [X] task called out as invalid (or 75% only if it explains counting it)",
+          "partial": "Two of three features right",
+          "fail": "Numbers wrong or only an overall percentage"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Blockers",
+          "pass": "Exports and Search shown as blocked by their mutual dependency, flagged critical, with a recommendation to break the cycle; notes alerts is 100% of tasks yet has uncovered requirement 2.3",
+          "partial": "Cycle noted but not framed as blocking, or 2.3 missed",
+          "fail": "No blockers reported"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Progress-mode report shape",
+          "pass": "Progress bars in the skill's [████░░] style, spec status separate from implementation status, effort estimate given as a range with confidence, history JSON with timestamp, overall %, per-feature summary and blocker count",
+          "partial": "Most elements but no range or a bare history file",
+          "fail": "No history or no per-feature breakdown"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No invented velocity or owners",
+          "pass": "States no owners or dates exist in the specs and says what is needed (does not invent names or a velocity trend from no prior history)",
+          "partial": "One assumed value clearly labeled",
+          "fail": "Invents owners, dates, or a historical trend"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Are the percentages right?",
+          "Is the cycle surfaced as the real blocker?",
+          "Will next week's comparison work from the saved history?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "The alerts feature is marked done in every tasks file. QA wants to start Thursday. Before handoff, verify the code under src/ against .kiro/specs/alerts/design.md and requirements.md and build a requirement-to-code traceability matrix. Write final-alerts.md with a clear go/no-go. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/progress-tracking/",
+      "why_discriminating": "Final mode in the skill treats completed tasks with no code as a CRITICAL implementation gap and builds requirement -> design -> task -> code chains. Checked boxes make the feature look done; the notifier.py named in the design does not exist and requirement 2.3 has neither task nor code. Without the skill, a reviewer may trust the checkboxes or only skim service.py.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Report names the missing notifier.py",
+          "check": "test -f final-alerts.md && grep -q 'notifier.py' final-alerts.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Implementation gap",
+          "pass": "States src/alerts/notifier.py does not exist although task 3 is [x], and that AlertService only calls an injected notifier, so 2.2 (email the owner) is not implemented",
+          "partial": "Notes notifier.py missing but not the impact on 2.2",
+          "fail": "Accepts the checked task"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Requirement 2.3",
+          "pass": "Flags duplicate suppression as a planning gap (no task) and an implementation gap (no code in service.py)",
+          "partial": "Flags only one of the two gaps",
+          "fail": "Misses 2.3"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Traceability matrix",
+          "pass": "One row per acceptance criterion (1.1, 1.2, 2.1, 2.2, 2.3) with design component, task, code file:element, status Complete/Partial/Missing",
+          "partial": "Matrix at requirement level only or missing a column",
+          "fail": "No matrix"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Go/no-go",
+          "pass": "No-go for QA, with the two specific fixes needed (implement Notifier, add task + code for 2.3)",
+          "partial": "Conditional go without naming what blocks",
+          "fail": "Go"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would QA have been handed a broken feature?",
+          "Accuracy of the traceability matrix",
+          "Clarity of the go/no-go"
+        ]
+      }
+    }
+  ]
+}

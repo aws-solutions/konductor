@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ProcessorS3",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": "arn:aws:s3:::docintake-uploads-111122223333/*"
+    },
+    {
+      "Sid": "ProcessorJobs",
+      "Effect": "Allow",
+      "Action": ["dynamodb:UpdateItem"],
+      "Resource": "arn:aws:dynamodb:us-east-1:111122223333:table/DocIntakeJobs"
+    },
+    {
+      "Sid": "ProcessorKms",
+      "Effect": "Allow",
+      "Action": ["kms:Decrypt", "kms:GenerateDataKey"],
+      "Resource": "arn:aws:kms:us-east-1:111122223333:key/0b1c2d3e-4f50-6172-8394-a5b6c7d8e9f0"
+    }
+  ]
+}

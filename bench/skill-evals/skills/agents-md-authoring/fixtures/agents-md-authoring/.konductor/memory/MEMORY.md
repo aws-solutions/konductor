@@ -1,0 +1,1 @@
+- [2026-10-01] [origin:agent] Tide station IDs are 7-digit NOAA IDs.

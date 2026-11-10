@@ -1,0 +1,49 @@
+{
+  "skill_name": "mux-dispatch",
+  "evals": [
+    {
+      "id": 0,
+      "name": "parallel-dispatch-plan",
+      "scenario_prompt_id": "p1",
+      "prompt": "I'm in tmux in my repo at /home/me/src/api. I want two developer agents (k-developer) working in parallel panes, one adding rate limiting and one adding an audit log, plus a read-only k-architect review of docs/design.md. Your shell can't reach my tmux server, so don't run anything: write dispatch-plan.md with the exact commands you would run, in order, the task text each agent gets, and how you'd know each is done and collect its output. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+      "expected_output": "The skill requires going through dispatch.sh (never raw tmux split-window), --cwd at the shared primary tree for every dispatch, an explicitly named flat wt-<id> worktree per concurrent write agent passed in the task text, no worktree for the read-only reviewer, result files under /tmp/konductor-mux, and glob-free `find` polling for .done markers; without it a plan typically uses raw tmux commands, points --cwd at not-yet-existing worktrees, or lets both developers share one tree.",
+      "files": [],
+      "expectations": [
+        "Dispatches through dispatch.sh and never raw tmux split-window/new-window",
+        "Isolation for concurrent writers: each k-developer task names its own flat worktree (e.g. wt-rate-limit, wt-audit-log, no slashes), says whether to create it, and --cwd is /home/me/src/api for all three dispatches: Two distinct named worktrees in the task text and --cwd always the primary tree",
+        "Read-only k-architect gets no worktree target and shares the primary tree; the plan checks .wt-ledger.json and git worktree list read-only before dispatch: Both",
+        "Completion and results: tasks tell each agent to write /tmp/konductor-mux/result-<slug>.md; polling uses `find /tmp/konductor-mux -maxdepth 1 -name \"*.done\"`; the .done summary is not treated as the deliverable: All three",
+        "Does not pre-check the multiplexer itself before calling the script, does not invent flags, and does not substitute an in-process subagent: Clean",
+        "Unattended-approval risk is addressed: the output notes that the dispatched pane runs non-interactively without stopping for tool permission prompts (or equivalent), or otherwise states which actions the child may take unattended"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Dispatches through dispatch.sh and never raw tmux split-window/new-window",
+          "check": "grep -q 'dispatch.sh' dispatch-plan.md && ! grep -qE 'tmux +(split-window|new-window)' dispatch-plan.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "collision-postmortem",
+      "scenario_prompt_id": "p3",
+      "prompt": "Postmortem, no running anything. Yesterday in tmux I asked the orchestrator to dispatch two k-developer agents for two separate features. It ran dispatch.sh twice with --cwd /home/me/src/api and task text that only described the features. Both agents edited files in /home/me/src/api and one commit ended up with the other agent's half-finished changes. Separately, `dispatch.sh --agent orchestrator ...` failed with an error listing two candidate agents. Write postmortem.md: root cause of each problem and the exact corrected dispatch commands. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+      "expected_output": "The skill says the collision mechanism is a write task that does not name its target, so the fix is in the task text (a named flat wt-<id> per agent, create-if-missing) while --cwd stays the primary tree, and that --agent must be fully qualified because a partial name matching several installed agents is refused; an unguided answer usually blames --cwd and points it at worktree paths, or guesses an agent name.",
+      "files": [],
+      "expectations": [
+        "postmortem.md exists and names dispatch.sh",
+        "Root cause 1: neither task named a write target, so both agents defaulted to the shared tree; --cwd at the primary tree was correct and is not the cause: States this precisely and keeps --cwd at the primary tree",
+        "Corrected commands: each k-developer task names its own flat wt-<id> worktree on branch wt-<id> with create-if-missing and \"before touching any file\", --cwd /home/me/src/api; agent re-checks git worktree list first: Both corrected commands with these elements",
+        "Root cause 2: --agent orchestrator is a partial name matching two installed agents (e.g. konductor-mux-orchestrator and konductor-cmux-orchestrator); fix is passing the fully-qualified name: Correct cause and fix",
+        "Does not propose raw tmux commands, cleanup of the broken commit by force-push, or worktree removal without user confirmation: None proposed",
+        "Unattended-approval risk is addressed: the output notes that the dispatched pane runs non-interactively without stopping for tool permission prompts (or equivalent), or otherwise states which actions the child may take unattended"
+      ],
+      "scripted_checks": [
+        {
+          "text": "postmortem.md exists and names dispatch.sh",
+          "check": "test -s postmortem.md && grep -q 'dispatch.sh' postmortem.md"
+        }
+      ]
+    }
+  ]
+}

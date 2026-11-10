@@ -1,0 +1,90 @@
+{
+  "skill_name": "cost-estimation",
+  "evals": [
+    {
+      "id": 0,
+      "name": "budget-cost-analysis",
+      "scenario_prompt_id": "p1",
+      "prompt": "Leadership meets Monday to approve next year's AWS budget for the receipts service. Using context.md, produce the monthly cost analysis they will read, and write it to cost-estimate.md in Markdown. They will want to know what it costs today, what it could cost if we tighten things up, what the eu-west-1 DR option being discussed would add, and what happens when the enterprise launch lands. You may not have live pricing access; if so, use published us-east-1 list prices you know and say so. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "expected_output": "The skill requires baseline / optimized / high-availability scenarios, 2x/5x/10x growth modeling, internet and cross-region data transfer, unit cost per transaction or user, Savings Plans/RI analysis, cost alarm thresholds, and documented load assumptions (its quality gate makes undocumented load and missing data transfer CRITICAL). A competent answer without it usually prices the listed services once, under-weights CloudFront egress, and skips unit cost and budget alarms.",
+      "files": [
+        "fixtures/cost-estimation/"
+      ],
+      "expectations": [
+        "Presents three scenarios: baseline, optimized and high-availability",
+        "Includes internet data transfer / egress as a line item",
+        "Baseline includes all cost-bearing components in context.md, with the big hidden ones: Prices Lambda, API GW, DynamoDB, S3 (4 TB + 300 GB/mo growth), CloudFront egress (~4.5 TB/mo, ~3.5 TB billable after 1 TB free, roughly $300), Fargate (2x 1vCPU/2GB), Aurora db.r6g.large, SQS, CloudWatch Logs (~150 GB); baseline lands roughly $900-1,400/mo",
+        "Skill's scenario and growth structure: Separate baseline, optimized (Savings Plans/RI, Graviton, S3 lifecycle for >90-day images, right-sizing) and HA scenarios, each with a total; growth at 2x, 5x and 10x with notes on what changes architecturally",
+        "HA / DR scenario priced honestly: HA adds an Aurora reader or Multi-AZ, and the eu-west-1 DR option includes cross-region data transfer (replication) and duplicate storage, with its own total",
+        "Leadership-ready outputs: unit economics, budget guardrails, confidence: Gives cost per 1,000 requests or per MAU (40k MAU), recommends AWS Budgets / cost anomaly thresholds with numbers, states a confidence level or range and pricing source",
+        "Assumptions stated with basis; no fabricated precision: Each load figure traced to context.md or a stated assumption; line-item math is reproducible; list-price caveat stated"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Presents three scenarios: baseline, optimized and high-availability",
+          "check": "grep -qiE 'baseline' cost-estimate.md && grep -qiE 'optimi[sz]ed' cost-estimate.md && grep -qiE 'high.availability|\\bHA\\b' cost-estimate.md"
+        },
+        {
+          "text": "Includes internet data transfer / egress as a line item",
+          "check": "grep -qiE 'data transfer|egress' cost-estimate.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "review-last-year-estimate",
+      "scenario_prompt_id": "p2",
+      "prompt": "estimate-v1.csv is last year's cost estimate for the receipts service, and finance is about to reuse it for next year's budget. context.md has the current load and architecture. Review the estimate before finance sees it: list what is missing or wrong, give a corrected monthly total, and say what we could do to bring it down. Write cost-review.md. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "expected_output": "The skill's REVIEW path calls for gap analysis against commonly missed components (data transfer, monitoring/logging, backup), a side-by-side original vs corrected comparison, and a short/medium/long-term optimization roadmap. Without it a model tends to add a few missing services but miss that the CloudFront line assumes free tier while traffic is ~4.5 TB/mo, and gives a bare corrected total.",
+      "files": [
+        "fixtures/cost-estimation/"
+      ],
+      "expectations": [
+        "Flags the missing internet data transfer (about 4.5 TB/month through CloudFront, well past any free tier)",
+        "Gives a corrected total that is higher than the original $402",
+        "Gaps from KEY found: Flags CloudFront egress (~4.5 TB vs 1 TB free tier), missing Fargate, Aurora, SQS, CloudWatch Logs, and S3 growth of 300 GB/mo",
+        "Review-path structure: original vs corrected side by side, with each change explained: Line-by-line table of original $ vs corrected $ with a reason per line and new lines marked as added; corrected total well above $402 (roughly $900-1,400)",
+        "Optimization roadmap tied to this workload: Concrete levers with estimated savings: S3 lifecycle/Intelligent-Tiering for images >90 days, Compute Savings Plan for Lambda+Fargate, Aurora RI or Graviton, CloudWatch log retention/filtering; grouped by horizon",
+        "Checks existing lines, not only additions: Validates the existing lines (e.g. Lambda $78 ~ 4.5M GB-s plus requests is about right; API GW $105 at $3.50/M is right) and notes DynamoDB storage/pricing assumptions",
+        "No invented services or prices: Does not add services absent from context.md without labeling them as assumptions (e.g. WAF, GuardDuty as optional)"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Flags the missing internet data transfer (about 4.5 TB/month through CloudFront, well past any free tier)",
+          "check": "grep -qiE 'data transfer|egress|out to (the )?internet' cost-review.md && grep -qiE 'CloudFront' cost-review.md"
+        },
+        {
+          "text": "Gives a corrected total that is higher than the original $402",
+          "check": "python3 -c 'import re,sys;t=open(\"cost-review.md\").read();n=[float(x.replace(\",\",\"\")) for x in re.findall(r\"\\$\\s?([0-9][0-9,]*(?:\\.[0-9]+)?)\",t)];sys.exit(0 if any(x>800 for x in n) else 1)'"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "pricing-tool-setup-and-rough-estimate",
+      "scenario_prompt_id": "p4",
+      "prompt": "Finance wants a rough monthly AWS cost for a small internal tool in us-east-1: an Application Load Balancer, two t4g.medium EC2 instances running 24/7 with a 100 GB gp3 volume each, and an RDS for PostgreSQL db.t4g.medium Single-AZ instance with 50 GB of storage. Live pricing is not connected in this session. Write pricing-setup.md with two sections: first, exactly what I need to set up so your future estimates use live AWS pricing (the command or config entry to add), and second, a rough monthly estimate from list prices you know, marked as such. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "expected_output": "Round 2 added a setup instruction naming the AWS Pricing MCP server with a pinned version for when the pricing tools are missing. The old skill has no setup line. Without it a model often points at an unpinned or @latest install, or gives no concrete server name.",
+      "files": [],
+      "expectations": [
+        "Names the AWS Pricing MCP server package (awslabs.aws-pricing-mcp-server) in the setup section",
+        "Pins the pricing server install to a specific version rather than @latest or an unpinned install",
+        "Rough estimate covers the ALB, both t4g.medium instances, the gp3 volumes and the RDS instance, labels the prices as recalled list prices, and gives a monthly total in roughly the $100-220 range"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Names the AWS Pricing MCP server package (awslabs.aws-pricing-mcp-server) in the setup section",
+          "check": "grep -qi 'aws-pricing-mcp-server' pricing-setup.md"
+        },
+        {
+          "text": "Pins the pricing server install to a specific version rather than @latest or an unpinned install",
+          "check": "grep -qE 'aws-pricing-mcp-server(==|@)[0-9]' pricing-setup.md"
+        },
+        {
+          "text": "Rough estimate covers the ALB, both t4g.medium instances, the gp3 volumes and the RDS instance, labels the prices as recalled list prices, and gives a monthly total in roughly the $100-220 range",
+          "check": "python3 -c 'import re,sys;t=open(\"pricing-setup.md\").read();l=t.lower();ok=all(re.search(p,l) for p in (r\"load balancer|\\balb\\b\",r\"t4g\",r\"gp3|ebs\",r\"rds|postgres\",r\"list price|not live|unverified|recalled\"));n=[float(x.replace(\",\",\"\")) for x in re.findall(r\"\\$\\s?([0-9][0-9,]*(?:\\.[0-9]+)?)\",t)];sys.exit(0 if ok and any(100<=x<=220 for x in n) else 1)'"
+        }
+      ]
+    }
+  ]
+}

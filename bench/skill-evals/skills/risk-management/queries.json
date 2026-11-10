@@ -1,0 +1,22 @@
+[
+{"query": "kicking off the data-center migration program next week (14 services, 3 teams, hard deadline Mar 31). Need an initial RAID log with scoring and owners", "should_trigger": true},
+{"query": "Our identity provider vendor just told us their SAML fix slips 3 weeks. How do I log this formally and what mitigation and escalation should I propose?", "should_trigger": true},
+{"query": "update raid.md after today's sprint review: perf test env still not ready (was a risk, now it's blocking us), and the payments team can't support us until Q2", "should_trigger": true},
+{"query": "leadership wants the top 5 program risks with mitigation status for Friday's exec review. here's our tracker export, risks.csv", "should_trigger": true},
+{"query": "We're assuming the legacy API stays up until cutover and that 2 contractors start Jan 6. Write these up properly with validation plans and what we do if they turn out wrong", "should_trigger": true},
+{"query": "make a probability x impact heat map for these 9 items and tell me which are critical and how often we should review each", "should_trigger": true},
+{"query": "as TPM for the mobile relaunch I need to figure out what could derail us (app store review delays, SDK deprecation, backend readiness) and plan mitigations with owners and triggers", "should_trigger": true},
+{"query": "the dependency on the platform team's new auth service is looking shaky. how do we track it and at what point do we escalate to the director?", "should_trigger": true},
+{"query": "Build a risk register for the GDPR compliance project: legal sign-off pending, data mapping incomplete, 2 vendors haven't returned DPAs", "should_trigger": true},
+{"query": "milestone gate tomorrow. go through our open risks (attached), re-score them, mark which got mitigated or became issues, and log any escalations", "should_trigger": true},
+{"query": "Run a threat model for our login service and list the STRIDE threats with mitigations", "should_trigger": false},
+{"query": "calculate the Value at Risk for this 5-stock portfolio using historical simulation in python", "should_trigger": false},
+{"query": "Write the weekly status report for the migration program: done, next, blockers", "should_trigger": false},
+{"query": "Plan the next 2-week sprint from the backlog with capacity 34 points", "should_trigger": false},
+{"query": "Review this IAM policy for overly permissive access before we attach it to the prod role", "should_trigger": false},
+{"query": "Write a COE for last night's deploy that took down checkout for 40 minutes", "should_trigger": false},
+{"query": "Help me choose between Postgres and DynamoDB for the orders service, list the tradeoffs", "should_trigger": false},
+{"query": "our fraud model flags too many false positives, how do I tune the risk score threshold?", "should_trigger": false},
+{"query": "create a gantt chart in mermaid for the migration's 4 phases", "should_trigger": false},
+{"query": "run npm audit on this repo and fix the high severity vulnerabilities", "should_trigger": false}
+]

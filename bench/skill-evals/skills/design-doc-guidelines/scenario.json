@@ -1,0 +1,185 @@
+{
+  "skill": "design-doc-guidelines",
+  "category": "WATCH",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Our PM and EM have to approve docs/design/rate-limiter.md next week and the PM says she gave up after the first page. Review it and write what needs to change to review.md. Do not edit the doc itself. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/design-doc-guidelines/",
+      "why_discriminating": "The skill's checklist targets exactly this doc's failures: problem not in the first 10 lines, Decision Requested as a feature list, implementation detail (config table, regex, deploy script) in design sections, ASCII diagram after prose, unexpanded acronyms, AI slop, and a diagram whose arrows do not match runtime flow. A generic review catches some, rarely all.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "review.md exists and the doc is unchanged",
+          "check": "test -f review.md && sha256sum docs/design/rate-limiter.md | grep -q c1068267c191d214e9e67ca9728cc81495fe6ab75cefd9379577dd4850642d0b"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Structural failures are identified",
+          "pass": "Problem buried at the bottom (should lead), no Solution Overview, Decision Requested lists features not outcomes, Plan is 'Build it.' with no phased table",
+          "partial": "Two or three of these",
+          "fail": "One or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Design/implementation layering and diagrams",
+          "pass": "Config table, regex and deploy script flagged as implementation detail to move into a confined section; ASCII diagram -> Mermaid placed before prose; bottom connector (Client straight to Redis) flagged as not matching the runtime flow",
+          "partial": "Layering flagged but the diagram accuracy issue missed",
+          "fail": "Neither"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Writing problems for a mixed audience",
+          "pass": "Unexpanded WAL, LRU, TTL, API GW flagged; slop ('fast-paced world', 'it's important to note', stacked Moreover/Furthermore/Additionally, 'robust, scalable, and maintainable', 'leverages', 'seamlessly') called out with plain rewrites",
+          "partial": "Some flagged without rewrites",
+          "fail": "Not addressed"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Recommendations are actionable for this doc",
+          "pass": "Gives a target outline in outside-in order and a rewritten Decision Requested as a user outcome (e.g. tenants are throttled only above their contract limit, as with acme's 18% 429s under 500 rps)",
+          "partial": "Advice correct but generic",
+          "fail": "No concrete changes"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Review stays on what the doc says",
+          "pass": "No invented technical claims about the limiter; uncertain points phrased as questions",
+          "partial": "One speculative technical claim",
+          "fail": "Rewrites the design itself or invents facts"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "coverage of structure, layering and diagram accuracy",
+          "concrete rewrites for a PM audience",
+          "staying grounded in the doc"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Restructure docs/design/rate-limiter.md in place so the PM, the EM and the engineers can all use it. Keep every fact that is in it now. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/design-doc-guidelines/",
+      "why_discriminating": "The skill's outside-in flow (Problem, Solution Overview, Decision Requested, How It Works with diagram first, confined Implementation Details, phased Implementation Plan), jargon budget and slop rules define the target. A strong rewrite keeps every fact (18%, 500 rps, 40 hours, config keys, regex, script) while moving detail into the right layer.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Problem section leads within the first 10 lines and the key facts survive",
+          "check": "python3 -c \"import sys;l=open('docs/design/rate-limiter.md').read().splitlines()[:10];sys.exit(0 if any(x.lower().startswith('## ') and 'problem' in x.lower() for x in l) else 1)\" && grep -q '18%' docs/design/rate-limiter.md && grep -q 'RL_TENANT_OVERRIDES' docs/design/rate-limiter.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Outside-in order and layering",
+          "pass": "Sections in the skill's order; regex, script and config table live only in Implementation Details; How It Works opens with a Mermaid diagram",
+          "partial": "Order mostly right but some implementation detail remains in design sections",
+          "fail": "Original order or no confinement"
+        },
+        {
+          "id": "r2",
+          "dimension": "restraint",
+          "criterion": "Every original fact is kept and nothing is invented",
+          "pass": "All six config keys, the regex, the deploy loop, acme 18% / 500 rps / 40 hours and the Lambda authorizer integration remain; new content (phases, outcome framing) is labelled as proposed/assumed",
+          "partial": "One fact dropped or one invented number",
+          "fail": "Several facts lost or new claims presented as fact"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Writing fixes",
+          "pass": "Slop removed, acronyms expanded on first use, Decision Requested framed as a user outcome, diagram reflects the real flow (no Client->Redis shortcut)",
+          "partial": "Most fixed, one problem remains",
+          "fail": "Slop or acronyms largely remain"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Implementation Plan is a phased task table",
+          "pass": "Phased table with concrete work items (e.g. shadow mode first using RL_SHADOW_MODE, then per-tenant enforcement)",
+          "partial": "A list without phases",
+          "fail": "Still 'Build it.'"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "outside-in structure with confined detail",
+          "fact preservation",
+          "clarity for the PM"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Turn notes-feature-flags.md into a design doc at docs/design/feature-flags.md. Readers are product managers, the engineering manager and the engineers who will build it. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/design-doc-guidelines/",
+      "why_discriminating": "Beyond outside-in structure, the skill's Technical Accuracy rule matters here: the notes' 60 s SDK cache plus 30 s poll contradicts the '< 30 s' goal. A strong doc catches and resolves or flags it; its Threat Model Completeness rule also asks for entries on boundary-crossing flows (admin UI writes, SDK polls, audit to S3).",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "The doc exists, leads with the Problem and uses the 35-minute incident",
+          "check": "python3 -c \"import sys;l=open('docs/design/feature-flags.md').read().splitlines()[:10];sys.exit(0 if any(x.lower().startswith('## ') and 'problem' in x.lower() for x in l) else 1)\" && grep -qE '35[ -]?min' docs/design/feature-flags.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "The cache/poll vs < 30 s contradiction is caught",
+          "pass": "Explicitly identifies that a 60 s cache plus 30 s poll cannot meet < 30 s and proposes a resolution (e.g. 10-15 s TTL) or an open question",
+          "partial": "Hints at propagation delay without naming the contradiction",
+          "fail": "Repeats both numbers as if consistent"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Outside-in structure with outcome-framed Decision Requested",
+          "pass": "Problem, Solution Overview with full-system Mermaid diagram, Decision Requested as the two approver outcomes (turn flags off without a deploy; retire the 4 config files by end of Q1), How It Works, confined Implementation Details, phased plan table matching the 3 phases",
+          "partial": "Structure present but Decision Requested lists features or the plan is not phased",
+          "fail": "Unstructured"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Threats for boundary-crossing flows",
+          "pass": "Entries for admin UI -> API (who can flip prod flags; Cognito authz), SDK poll path, and audit event -> S3 integrity, each with mitigation and residual risk",
+          "partial": "Security mentioned generically",
+          "fail": "No threat discussion"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Jargon budget",
+          "pass": "SDK, TTL, ETag, PK and EventBridge introduced in plain terms in the early sections; detail allowed in Implementation Details",
+          "partial": "Some acronyms unexplained in early sections",
+          "fail": "Jargon-heavy summary"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "catching the latency contradiction",
+          "outcome-framed decision",
+          "threat coverage and readability"
+        ]
+      }
+    }
+  ]
+}

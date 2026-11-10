@@ -1,0 +1,190 @@
+{
+  "skill": "historical-issues-registry",
+  "category": "WATCH",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "We're about to post automated review findings on revision 5 of review PR-2231. history.json holds every comment thread from earlier revisions (replies marked by 'author' or 'reviewer'), and new-findings.json holds this revision's candidate findings. Filter the new findings against the history so we don't re-post noise but don't hide anything a reviewer needs to see. Write filtered.json: an array of the findings to post, each {\"id\": ..., \"tag\": <string or null>}. Write suppression-log.json: an array of {\"finding_id\", \"matched_thread_ids\" (array), \"reason\"} for every suppressed finding. This runs unattended: do not ask questions; put any assumptions in a short notes.md.",
+      "fixture": "fixtures/historical-issues-registry/",
+      "why_discriminating": "The skill's filter rules are specific: suppress only on rejected/wontfix matches, surface fixed matches as regressions, require unanimity across distinct threads to suppress, never invent a revision, and require path + line (+/-20) + semantic match with a 3-word floor on substring matches. A careful generic answer dedupes by similarity and will typically suppress F2 as 'already fixed', suppress F4 on the author's own 'won't fix', and match F9 and F10 loosely.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Both output files parse as JSON arrays",
+          "check": "python3 -c \"import json,sys;a=json.load(open('filtered.json'));b=json.load(open('suppression-log.json'));sys.exit(0 if isinstance(a,list) and isinstance(b,list) else 1)\""
+        },
+        {
+          "id": "f2",
+          "text": "F2 (fixed then reappeared) is posted, not suppressed",
+          "check": "python3 -c \"import json,sys;sys.exit(0 if 'F2' in {x['id'] for x in json.load(open('filtered.json'))} else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Suppression set is exactly F1 (T1 rejected) and F6 (T7 wontfix, file renamed handler.ts -> request-handler.ts, +15 lines), each with matched thread and reason in the log",
+          "pass": "Exactly F1 and F6, logged with thread ids and reasons",
+          "partial": "One extra or one missing suppression",
+          "fail": "Two or more wrong, or suppressions unlogged"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Surfaced findings carry the skill's tags: F2 'regressed since a fix on/after revision 2'; F3 and F5 carried over from revision 3 (F5: rejected T5 + unresolved T6 is not unanimous, highest revision 3); F4 carried over from revision 2",
+          "pass": "All four tags correct in substance",
+          "partial": "Two or three correct",
+          "fail": "One or none"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "F8 (thread T9 has revision null) gets the unqualified 'carried over from a prior revision' with no invented number",
+          "pass": "Unqualified wording, no digits",
+          "partial": "Tagged carried over but with a guessed revision",
+          "fail": "Suppressed or untagged"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "F7 (category differs from T8), F9 ('missing guard' is under 3 significant words, so no substring match to T10) and F10 (line 140 is outside +/-20 of T1's line 40) pass through as new, untagged",
+          "pass": "All three pass through untagged",
+          "partial": "Two of three",
+          "fail": "One or none"
+        },
+        {
+          "id": "r5",
+          "dimension": "reasoning",
+          "criterion": "notes.md or the log explains the non-obvious calls (author-only won't fix is unresolved; multi-match needs unanimity) briefly and correctly",
+          "pass": "Both calls explained correctly",
+          "partial": "One explained",
+          "fail": "No explanation or wrong explanation"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it hide anything a reviewer needs to see?",
+          "Did it suppress the real noise?",
+          "Are the tags honest about what is known?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "For review PR-2231, classify how each prior comment thread in history.json was resolved, so a later step can decide which findings to stop re-posting. Write classification.json mapping thread_id to exactly one of fixed, rejected, wontfix, unresolved. Leave out threads that are not findings. Also write classification-notes.md with one line per thread explaining the call. Do not ask questions; state assumptions in the notes.",
+      "fixture": "fixtures/historical-issues-registry/",
+      "why_discriminating": "Without the skill, 'resolved' plus a 'won't fix' reply reads as wontfix. The skill requires a non-author reviewer's affirmative reply for rejected or wontfix, defaults ambiguous cases to unresolved, and ignores threads with no file anchor; T4 (author-only won't fix on a stack-trace leak) is the trap.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "classification.json is an object using only the four allowed values",
+          "check": "python3 -c \"import json,sys;d=json.load(open('classification.json'));sys.exit(0 if isinstance(d,dict) and d and set(d.values())<={'fixed','rejected','wontfix','unresolved'} else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "T4 (resolved, only the author's 'Won't fix, internal only', no reviewer) is unresolved, with the reason that the author cannot veto a security finding alone",
+          "pass": "unresolved with that reason",
+          "partial": "unresolved without the reason",
+          "fail": "wontfix or rejected"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "All ten anchored threads match the KEY: T1 rejected, T2 fixed, T3 unresolved, T4 unresolved, T5 rejected, T6 unresolved, T7 wontfix, T8 unresolved, T9 unresolved, T10 rejected",
+          "pass": "All ten correct",
+          "partial": "8-9 correct",
+          "fail": "7 or fewer"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "T11 (no file anchor, meta request to split the review) is left out, and no fifth value such as 'blocking' is invented for T3",
+          "pass": "Both hold",
+          "partial": "One violated",
+          "fail": "Both violated"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Notes justify each call from reply authorship and resolved state, e.g. T7 wontfix because a reviewer said 'keeping as-is', T2 fixed because the author named a commit",
+          "pass": "Every line cites the deciding reply/state",
+          "partial": "Some lines generic",
+          "fail": "No usable notes"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it catch the author-only won't fix?",
+          "Are the calls justified by who replied?",
+          "Did it keep the value set clean?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Build the load-phase state for our review dedupe step from history.json: one fingerprint per prior finding thread, so new findings can be matched later even when files move and lines drift. Write fingerprints.json as an array of objects. The next step will match findings even when files are renamed and lines drift, so make the fingerprint carry what that matching needs. Do not ask questions; state assumptions in fingerprint-notes.md.",
+      "fixture": "fixtures/historical-issues-registry/",
+      "why_discriminating": "The skill defines the fingerprint: {file, line, category, defect_phrase, resolution, thread_id, revision, blocking}, with blocking kept separate from resolution, null for an unknown revision, the defect noun phrase stripped of severity and boilerplate, and unanchored threads dropped. Without it, a model invents a schema (often hashing text or folding blocking into status) that the filter rules cannot use.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "fingerprints.json parses and excludes T11",
+          "check": "python3 -c \"import json,sys;d=json.load(open('fingerprints.json'));sys.exit(0 if isinstance(d,list) and d and 'T11' not in [x.get('thread_id') for x in d] else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "One fingerprint per anchored thread (10) with the skill's fields: file, line, category, defect_phrase, resolution, thread_id, revision, blocking",
+          "pass": "All ten with all eight fields",
+          "partial": "Ten fingerprints but fields missing or renamed",
+          "fail": "Wrong count or ad-hoc schema"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "blocking is a separate boolean (true only for T3) and resolution uses only fixed/rejected/wontfix/unresolved, classified as in the KEY (T4 unresolved)",
+          "pass": "Both hold",
+          "partial": "Separate blocking but a resolution error",
+          "fail": "Blocking folded into resolution or invented values"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "defect_phrase is the lowercase defect noun phrase without severity or boilerplate (e.g. 'unconditional overwrite of user record', 'unvalidated pagination token decoded into query'); category is Security / Data Integrity / Schema/Contract",
+          "pass": "Phrases and categories clean for all",
+          "partial": "Mostly clean, some include severity or extra clause",
+          "fail": "Raw text or hashes"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "T9's revision is null, not guessed; line kept as the anchor (range preserved for ranges) rather than invented",
+          "pass": "Null for T9 and ranges preserved",
+          "partial": "Null for T9 but ranges collapsed without note",
+          "fail": "Guessed revision"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Could the filter step actually use these fingerprints?",
+          "Is unknown information left unknown?",
+          "Is the schema clean and consistent?"
+        ]
+      }
+    }
+  ]
+}

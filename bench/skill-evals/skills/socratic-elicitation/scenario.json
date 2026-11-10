@@ -1,0 +1,182 @@
+{
+ "skill": "socratic-elicitation",
+ "category": "MODEL-CAPABILITY",
+ "source": "konductor",
+ "kind": "process",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "I want to add outbound webhooks to our multi-tenant SaaS API so customers get notified when invoices, payments and subscriptions change. Before anyone designs anything, run a quick intake round with me (elicitation_depth=quick). I can't answer live today, so write questions.md with the questions you would ask me, in the order you would ask them, and stop there. Do not write a design or requirements.",
+   "fixture": null,
+   "why_discriminating": "The skill caps quick depth at 5 questions, at most 3 per branch, asks one question at a time drawn from the PM/SDE/TPM/Security/Ops dimensions with stakeholder tags, and forbids questions already answered by the context; an unguided model typically produces a long questionnaire, covers mostly technical delivery details, or asks about things the prompt already states.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "questions.md has between 3 and 5 questions",
+     "check": "python3 -c 'import sys;n=sum(1 for l in open(\"questions.md\") if \"?\" in l);sys.exit(0 if 3<=n<=5 else 1)'"
+    },
+    {
+     "id": "f2",
+     "text": "No design or requirements document written",
+     "check": "test -s questions.md && ! ls | grep -viE '^questions\\.md$' | grep -qiE 'design|requirement|spec'"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Respects the quick-depth cap and cadence: 5 or fewer questions, ordered so each could be asked alone, no more than 3 on one branch",
+     "pass": "At most 5, single-topic each, no branch over 3",
+     "partial": "At most 5 but some questions bundle several asks",
+     "fail": "More than 5, or a batched questionnaire"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Covers several stakeholder dimensions with tags ([PM] success metric, [Security] signing/tenant isolation, [Ops] delivery failure/retries, [SDE] or [TPM])",
+     "pass": "Three or more distinct dimensions, tagged",
+     "partial": "Two dimensions, or untagged but varied",
+     "fail": "Single dimension"
+    },
+    {
+     "id": "r3",
+     "dimension": "reasoning",
+     "criterion": "Questions are high-leverage: each answer would change the design (e.g. delivery guarantees, who consumes the events, payload sensitivity), none answerable from the prompt (it already says multi-tenant and names the event types)",
+     "pass": "Every question is design-changing and not already answered",
+     "partial": "One weak or already-answered question",
+     "fail": "Several generic or redundant questions"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Neutral wording, no leading questions or embedded recommendations, and no design or requirements content",
+     "pass": "Neutral and question-only",
+     "partial": "One leading question",
+     "fail": "Includes proposed design or answers its own questions"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Would these few questions surface what matters most before design?",
+     "Are they neutral, non-redundant and within the quick budget?",
+     "Did it stop at questions?"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "transcript-intake.md is an intake elicitation session for a refund tool for support agents. Pick it up exactly where it stands and write what comes next into summary.md. The design work starts from this file.",
+   "fixture": "fixtures/socratic-elicitation/",
+   "why_discriminating": "The user gave an early-exit signal ('enough, proceed'), and the skill says to honor it immediately: no further questions and no confirmation question, produce the Mode A Requirements Summary (Functional, Constraints, Non-Functional, Open Items) carrying every answer, with the unanswered Ops question as an Open Item; an unguided model often asks the Ops question again, asks 'does this look right?', or drops a detail such as partial refunds or the $500 approval.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Uses the Requirements Confirmed sections",
+     "check": "grep -qi 'Functional Requirements' summary.md && grep -qi 'Constraints' summary.md && grep -qi 'Non-Functional' summary.md && grep -qi 'Open Items' summary.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Carries every user answer: same-day refund goal (from 2 days, currently a finance ticket), Tier 2 only with Tier 1 view-only, >$500 needs team lead approval, payments POST /refunds idempotent on a key and supports partial refunds",
+     "pass": "All five facts present and correctly placed",
+     "partial": "Three or four",
+     "fail": "Two or fewer, or a fact distorted"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Honors the early exit: no further questions anywhere and no confirmation question; the unanswered failure-monitoring question appears under Open Items",
+     "pass": "No questions asked and monitoring listed as an open item",
+     "partial": "Monitoring listed but a confirmation question is asked, or vice versa",
+     "fail": "Re-asks the Ops question or continues the interview"
+    },
+    {
+     "id": "r3",
+     "dimension": "reasoning",
+     "criterion": "Classifies items sensibly (approval threshold and role limits as constraints, same-day as a non-functional or success target)",
+     "pass": "Sensible placement throughout",
+     "partial": "One or two odd placements",
+     "fail": "Items dumped without structure"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "No invented requirements (no new SLAs, UI details or fraud rules the user never stated); any inference is labeled",
+     "pass": "Nothing invented",
+     "partial": "One unlabeled inference",
+     "fail": "Several invented requirements"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Did it respect \"enough, proceed\" without another question?",
+     "Is every answer the user gave preserved?",
+     "Is the unanswered monitoring gap flagged rather than filled in?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "transcript-challenge.md is a session where I asked you to stress-test my plan to rewrite our billing service in Rust. Close it out and write the result to challenge-summary.md so I can take it to my manager.",
+   "fixture": "fixtures/socratic-elicitation/",
+   "why_discriminating": "This is Mode B with an early exit ('I'm satisfied'), so the skill calls for the challenge-shaped summary (Challenged Assumptions, Surfaced Risks, Unresolved Tradeoffs, Open Items), not the Mode A requirements shape, with the unanswered slip question as an Open Item and no new questions; an unguided model tends to write a recommendation memo, answer the plan's merits itself, or keep probing.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Uses the Mode B challenge headings and not the Mode A shape",
+     "check": "grep -qi 'Challenged Assumptions' challenge-summary.md && grep -qi 'Surfaced Risks' challenge-summary.md && grep -qi 'Unresolved Tradeoffs' challenge-summary.md && grep -qi 'Open Items' challenge-summary.md && ! grep -qi 'Requirements Confirmed' challenge-summary.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Captures the unverified assumptions: cost assumed to be CPU/JVM but never profiled, 12 always-on month-end instances as an alternative cost source, P99 900ms possibly database-bound",
+     "pass": "All three",
+     "partial": "Two",
+     "fail": "One or none"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "Captures risks and the tradeoff: no one on the team has shipped Rust to production (on-call concern), and the Q2 tax-rules work competes for the same 4 people",
+     "pass": "Both risk and tradeoff present under the right headings",
+     "partial": "Both present but misfiled",
+     "fail": "One missing"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Honors the early exit: Q5 (what happens to the tax deadline if the rewrite slips) is an Open Item and no new questions or confirmation prompts appear",
+     "pass": "Q5 as open item and no questions",
+     "partial": "Q5 present but a follow-up question is asked",
+     "fail": "Q5 missing and questioning continues"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Does not decide for the user: no verdict that the rewrite is good or bad and no invented data (e.g. made-up cost numbers)",
+     "pass": "Neutral summary of what surfaced",
+     "partial": "A mild opinion stated as such",
+     "fail": "A verdict or invented facts"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is it the right shape for a stress test, not a requirements summary?",
+     "Are the unprofiled-cost assumption and the staffing tradeoff front and center?",
+     "Does it stop questioning and stay neutral?"
+    ]
+   }
+  }
+ ]
+}

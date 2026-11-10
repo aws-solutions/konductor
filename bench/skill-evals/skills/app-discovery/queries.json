@@ -1,0 +1,22 @@
+[
+{"query": "our staging app is up at https://staging.orders-portal.example.com, creds are in ./creds/staging.json. before we write any e2e tests i want a full inventory of every page, every button and input, and the form validation rules. crawl it and give me a structured report", "should_trigger": true},
+{"query": "Can you walk through the deployed admin console at http://localhost:4173 and catalog every screen and interactive element? I need selectors (prefer data-testid), the exact button labels, and whether each control starts disabled. This feeds a test-generation step later.", "should_trigger": true},
+{"query": "We inherited a React app with zero docs and no tests. It's deployed at https://inventory-beta.internal-demo.net. I want to know what pages exist, what forms are on them, and which fields are required before I plan a QA pass.", "should_trigger": true},
+{"query": "map out the UI of https://hr-tools.example.org for me - login is cognito hosted ui, credentials in .secrets/qa-user.json. need to know which ui framework it uses too since our spec generator injects different selector patterns for cloudscape vs mui", "should_trigger": true},
+{"query": "Before generating functional test specs for the billing dashboard (https://billing.dev.acme.io), produce a discovery report: pages found, per-element initial state and interaction pattern, duplicate DOM matches, and any failed navigation paths.", "should_trigger": true},
+{"query": "the vendor gave us a hosted SPA at https://partner.vendor-sandbox.com and we need a light UI smoke test plan. first step: crawl the app (it logs in via an ajax form, no redirect) and capture everything clickable plus form error messages", "should_trigger": true},
+{"query": "I need a page-by-page breakdown of our deployed Angular app at http://10.0.4.12:8080 with screenshots of each page, stopping if it goes past 50 pages. Note which fields have pattern/minlength validation and what error text appears.", "should_trigger": true},
+{"query": "crawl our customer portal on staging and tell me every form, what triggers validation (blur vs submit), and which fields only show up conditionally. creds in creds.json, do not print the password anywhere", "should_trigger": true},
+{"query": "We're about to automate regression tests for the support-ticket web app at https://tickets.qa.example.com. Discover all routes and interactive elements first so the test author has a reliable selector inventory to work from.", "should_trigger": true},
+{"query": "Explore https://demo.shopfront.example.com and give me a structured list of all pages and controls, flagging any element whose selector matches multiple nodes. Output as markdown tables per page.", "should_trigger": true},
+{"query": "Write Playwright tests for the checkout form in src/components/Checkout.tsx: required email, card number must be 16 digits, submit disabled until valid.", "should_trigger": false},
+{"query": "my playwright test at tests/login.spec.ts times out on waitForURL after clicking sign in. the app is an SPA that logs in without a redirect. how do I fix the wait?", "should_trigger": false},
+{"query": "Inspect just the signup form at https://app.example.com/signup and extract its HTML5 validation attributes and error message selectors into JSON. Only that one form, no crawling.", "should_trigger": false},
+{"query": "Draft an e2e test strategy for our microservices platform: which flows get e2e coverage vs contract tests vs unit tests, environments, data seeding, and flake budget.", "should_trigger": false},
+{"query": "Take a screenshot of https://pipelines.example.com/my-pipeline and tell me which stage is blocked.", "should_trigger": false},
+{"query": "Generate a sitemap.xml for our Next.js marketing site from the files under app/ so search engines can index every route.", "should_trigger": false},
+{"query": "Review src/pages/Settings.tsx for accessibility problems: missing aria-labels, bad focus order, color contrast in the inline styles.", "should_trigger": false},
+{"query": "scrape the product titles and prices from https://books.toscrape.com into a csv, all 50 pages", "should_trigger": false},
+{"query": "Our Cloudscape app throws a console error 'Cannot read properties of undefined (reading map)' on the Orders page after login. Find the bug in src/pages/Orders.tsx.", "should_trigger": false},
+{"query": "Set up a GitHub Actions job that runs our existing Cypress suite against the preview deployment for each PR and uploads screenshots on failure.", "should_trigger": false}
+]

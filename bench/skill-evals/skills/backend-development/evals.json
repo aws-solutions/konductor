@@ -1,0 +1,63 @@
+{
+  "skill_name": "backend-development",
+  "evals": [
+    {
+      "id": 0,
+      "name": "layering-fix-keep-contract",
+      "scenario_prompt_id": "p1",
+      "prompt": "Code review comment on src/handlers/updateTaskStatus.js: \"This handler talks to db directly and skips the facade/service/repository layers.\" Fix that. Existing clients depend on the current 200 and 404 responses. Run npm test before you finish and summarize the change for the reviewer in your final message. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+      "expected_output": "The skill enforces handler -> facade -> factory-built service -> repository, surgical edits that match existing patterns (getTask.js), and an output that lists what else is affected; routing through the service newly enforces transition rules, so InvalidTransitionError must map to a 4xx instead of falling into a 500, which an unguided fix often misses.",
+      "files": [
+        "fixtures/backend-development/"
+      ],
+      "expectations": [
+        "npm test passes",
+        "Unrelated files (db.js, getTask.js, errors.js, log.js) are byte-identical",
+        "Handler stops requiring ../db and calls taskFacade.changeStatus; no business logic left in the handler: Handler uses only the facade, mirroring getTask.js",
+        "Handles the behavior change: NotFoundError -> 404 kept; InvalidTransitionError (now enforced by the service) mapped to a specific 4xx (400/409/422), not a 500 or catch-all: Both errors caught specifically and mapped; unknown errors rethrown",
+        "Surgical: only the handler (and tests) change; existing correlationId structured logging is kept; tests added or updated for the new invalid-transition path: Change confined to handler plus tests, logging kept, new path tested",
+        "No unrequested refactors, new abstractions, or `any`-style escape hatches: Nothing beyond the requested fix",
+        "Final message follows the skill's output format: file path, issue with line numbers, the exact change, how to verify, and what else might be affected: All five parts present and accurate"
+      ],
+      "scripted_checks": [
+        {
+          "text": "npm test passes",
+          "check": "npm test >/dev/null 2>&1"
+        },
+        {
+          "text": "Unrelated files (db.js, getTask.js, errors.js, log.js) are byte-identical",
+          "check": "printf '%s\\n' '13205eed85faa366d9804fe6fa01dd96  src/db.js' 'a9fc976ec5054666976494b3f9b7d0e0  src/handlers/getTask.js' '496af8ce0185a9dc20a1c281615e79d3  src/errors.js' '8f6e1526ec8102a4324178adc7146535  src/log.js' | md5sum -c --quiet"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "lost-update-race-conditional-write",
+      "scenario_prompt_id": "p2",
+      "prompt": "Bug report: two people moved the same task at the same moment (one to DONE, one to OPEN) and both requests returned 200; the task ended up OPEN with no error. Look at TaskService.changeStatus and the repository, fix the race, make sure callers can tell a lost race apart from other failures, and add a test. npm test must pass. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+      "expected_output": "The skill calls for conditional writes against the read state, specific error types rather than generic Error, catching the specific condition failure instead of a catch-all, and shared fixture factories in tests; a competent fix without it often uses a generic Error, a broad try/catch, or a retry loop, and writes inline test data.",
+      "files": [
+        "fixtures/backend-development/"
+      ],
+      "expectations": [
+        "npm test passes",
+        "Unrelated files (db.js, getTask.js, log.js) are byte-identical",
+        "Write is conditional on the status that was read (db condition { attr: \"status\", equals: <read status> }) through the repository: Repository save takes the expected status and passes the db condition",
+        "ConditionalCheckFailedError is caught specifically and translated to a dedicated conflict error class; other errors propagate unchanged: Specific catch and a named conflict error (e.g. ConcurrentUpdateError)",
+        "Test reproduces the lost race (stale read then write) and asserts the conflict error type, using makeTask from test/fixtures.js: Race test with error-type assertion using the fixture factory",
+        "Minimal change: no retry framework, versioning scheme, or handler rewrites beyond what is needed: Only service, repository, errors and tests touched",
+        "Final message follows the skill's output format: file path, issue with line numbers, the exact change, how to verify, and what else might be affected: All five parts present and accurate"
+      ],
+      "scripted_checks": [
+        {
+          "text": "npm test passes",
+          "check": "npm test >/dev/null 2>&1"
+        },
+        {
+          "text": "Unrelated files (db.js, getTask.js, log.js) are byte-identical",
+          "check": "printf '%s\\n' '13205eed85faa366d9804fe6fa01dd96  src/db.js' 'a9fc976ec5054666976494b3f9b7d0e0  src/handlers/getTask.js' '8f6e1526ec8102a4324178adc7146535  src/log.js' | md5sum -c --quiet"
+        }
+      ]
+    }
+  ]
+}

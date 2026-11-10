@@ -1,0 +1,195 @@
+{
+  "skill": "smithy-validation",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "model/orders.smithy is our Smithy model for the OrderService and it's about to go to the backend team for implementation and codegen. Review it for production readiness and write the review to smithy-review.md, ordered by severity, with the location and a concrete Smithy fix for each finding. The smithy CLI may not be installed; if it isn't, review by reading and say so. Don't modify the model and don't ask questions.",
+      "fixture": "fixtures/smithy-validation/",
+      "why_discriminating": "The skill's quality gate makes missing auth and unmarked sensitive data CRITICAL, requires Issue/Impact/Fix/Example per finding plus Positive Findings, and lists anti-patterns like GET for mutations, lists without @paginated, generic errors, and exposed internals. A generic review finds some of these but usually misgrades them or misses the internal-detail leaks.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Flags the unmarked payment fields",
+          "check": "grep -qE '@?sensitive' smithy-review.md && grep -qE 'cardNumber|paymentToken' smithy-review.md"
+        },
+        {
+          "id": "f2",
+          "text": "Model file left unchanged",
+          "check": "echo '06468c984c669e0d70d594d4dd51b0d2ef5c57cfa411af8cf9aa28b646e01c09  model/orders.smithy' | sha256sum -c --quiet -"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Finds the gate-level problems",
+          "pass": "No auth trait on the service, cardNumber/paymentToken without @sensitive, DeleteOrder via GET, ListOrders without @paginated: all four",
+          "partial": "Two or three of the four",
+          "fail": "One or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Finds the secondary problems",
+          "pass": "At least four of: stackTrace leak in GenericError, internal `pk` in Order, GenericError-only errors with @error(\"server\") and no @httpError, snake_case customer_id, unconstrained status/maxResults/strings, ListOrders lacking errors/docs",
+          "partial": "Two or three",
+          "fail": "One or none"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Follows the skill's severity and output format",
+          "pass": "CRITICAL -> IMPORTANT/Warnings -> SUGGESTION order with auth and @sensitive at CRITICAL; each finding has location, issue, impact, fix with example; includes positive findings",
+          "partial": "Ordered but some severities misgraded or format partial",
+          "fail": "Unordered list or no fixes"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Fixes are valid Smithy 2.0",
+          "pass": "e.g. @paginated(inputToken: \"nextToken\", outputToken: \"nextToken\", pageSize: \"maxResults\", items: \"orders\") with nextToken on output, @idempotent @http(method: \"DELETE\", uri: \"/orders/{orderId}\"), an auth trait plus its `use`, @httpError on client/server error shapes",
+          "partial": "Mostly valid with a minor syntax slip",
+          "fail": "Invalid or hand-wavy fixes"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented tool output or false positives",
+          "pass": "States the CLI was not run if it was not; does not flag correct parts (GetOrder @readonly, restJson1 usage) as problems",
+          "partial": "One dubious finding",
+          "fail": "Fabricated validator output or several false positives"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would the backend team be safe to start codegen after fixing these?",
+          "Are the most dangerous issues graded most severe?",
+          "Are the fixes copy-pasteable Smithy?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Security-focused pass only: go through model/orders.smithy and list everything about the API model that would leak sensitive data or internal details, or let unauthenticated or unvalidated input through. Write findings to security-findings.md, each with the shape/member, why it matters, and the corrected Smithy snippet. Don't change the model. No questions.",
+      "fixture": "fixtures/smithy-validation/",
+      "why_discriminating": "The skill's security checklist covers @sensitive, auth traits, input constraints, and error-context leakage. The internal `pk` member and the stackTrace on the error shape are easy to miss in a quick pass.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Names the stackTrace member",
+          "check": "grep -q 'stackTrace' security-findings.md"
+        },
+        {
+          "id": "f2",
+          "text": "Model file left unchanged",
+          "check": "echo '06468c984c669e0d70d594d4dd51b0d2ef5c57cfa411af8cf9aa28b646e01c09  model/orders.smithy' | sha256sum -c --quiet -"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Covers the leak and access surface",
+          "pass": "All of: stackTrace in GenericError, `pk` partition key on Order, cardNumber/paymentToken without @sensitive, no auth on the service",
+          "partial": "Two or three",
+          "fail": "One or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Impact is concrete",
+          "pass": "Explains e.g. that unmarked members appear in generated toString/logs (PCI exposure), stack traces reveal class and line info, pk leaks storage layout, no auth means anyone can delete orders",
+          "partial": "Generic 'security risk' wording",
+          "fail": "No impact"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Corrected snippets are valid and complete",
+          "pass": "@sensitive applied, stackTrace and pk removed (not just marked), auth trait added, @range on maxResults and @length/@pattern on ids/notes, status as an enum",
+          "partial": "Valid but partial",
+          "fail": "Invalid or missing snippets"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Stays on security",
+          "pass": "No naming or style nits presented as security; may note raw card numbers should not be accepted at all",
+          "partial": "One off-topic item",
+          "fail": "Mostly non-security findings"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Does it find the non-obvious leaks (pk, stackTrace)?",
+          "Are the fixes real Smithy?",
+          "Does it stay on scope?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "previous-model/orders.smithy is what's deployed today; model/orders.smithy is the proposed change. Tell me whether the change is safe for existing clients. Write breaking-changes.md listing each difference as breaking or backward-compatible, with the migration path for anything breaking. If the smithy diff tooling isn't available, compare the files by reading. Don't ask questions.",
+      "fixture": "fixtures/smithy-validation/",
+      "why_discriminating": "The skill treats breaking changes as CRITICAL and asks for a migration path, while additive changes are compatible. A strong answer also notes that compatible additions which are wrong (DeleteOrder via GET, exposed pk and stackTrace) must be fixed before shipping because fixing them later becomes a breaking change.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Mentions the customer_id rename",
+          "check": "grep -q 'customer_id' breaking-changes.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Identifies Order.customerId -> customer_id as breaking",
+          "pass": "Classified breaking (CRITICAL) with the client impact (deserializers lose the field)",
+          "partial": "Flagged but severity unclear",
+          "fail": "Missed or called compatible"
+        },
+        {
+          "id": "r2",
+          "dimension": "restraint",
+          "criterion": "Does not mislabel additive changes",
+          "pass": "New ListOrders/DeleteOrder operations, new optional CreateOrderInput members, new optional fields all classified backward-compatible",
+          "partial": "One misclassification",
+          "fail": "Several additive changes called breaking"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Migration path for the rename is workable",
+          "pass": "Keep customerId (optionally add the new name and deprecate the old), or don't rename; explains that a service version string alone does not protect restJson1 clients",
+          "partial": "Says 'bump version' only",
+          "fail": "No migration path"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Looks past compatibility to what should not ship",
+          "pass": "Notes at least one compatible-but-wrong addition (GET for DeleteOrder, pk/stackTrace exposure, missing @sensitive) that will be breaking to fix later, or the dropped doc comment on notes",
+          "partial": "Mentions one in passing",
+          "fail": "Treats compatible as safe to ship"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would existing clients break?",
+          "Is the migration advice something the team can do?",
+          "Does it warn about what will be expensive to fix later?"
+        ]
+      }
+    }
+  ]
+}

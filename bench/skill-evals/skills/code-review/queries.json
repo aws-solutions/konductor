@@ -1,0 +1,22 @@
+[
+{"query": "I'm done with the feature on branch feat/csv-export. Open a PR against main for it with a decent description: what changed, why, how to test. Don't make it public to reviewers yet.", "should_trigger": true},
+{"query": "can you review PR #482 in our repo? it touches the payments retry logic. read every changed file, classify findings by severity, and leave the review as pending so i can look before it goes out", "should_trigger": true},
+{"query": "Got 14 comments on my PR #91 from two reviewers. Go through them, fix what's blocking, and draft replies for each one. Check with me before posting anything.", "should_trigger": true},
+{"query": "Finished implementing the rate limiter in src/middleware/rateLimit.ts. Do a self-review of my diff against main before I push and fix anything critical you find.", "should_trigger": true},
+{"query": "write the PR description for this branch. last time my description was full of 'updated per feedback' and 'previously we did X' and the lead hated it", "should_trigger": true},
+{"query": "Review the diff for PR 1207 (github.com/acme/ledger). Focus on correctness, error handling on external calls, and anything that's a read-modify-write without conditions. Submit the review as REQUEST_CHANGES if there's a blocker.", "should_trigger": true},
+{"query": "my pending review on PR #33 got lost, I think I created it and then the session died. now gh says I already have a pending review when I try again. how do I get back to it and submit it?", "should_trigger": true},
+{"query": "Someone else's PR #210 needs review but I have uncommitted work in my checkout. Check it out somewhere safe and review it, don't clobber my changes.", "should_trigger": true},
+{"query": "create a pr for the migration work, title 'add orders.status index'. make sure there's no leftover debug logging or unrelated files in the diff first", "should_trigger": true},
+{"query": "Address the review on PR #58 - the reviewer flagged a missing null check in parser.go as blocking and two style nits. Fix them, push, and re-request review.", "should_trigger": true},
+{"query": "Squash my last 6 commits into one with a conventional commit message and rebase onto main.", "should_trigger": false},
+{"query": "Do a security-focused adversarial pass on src/auth/: info disclosure in errors, unconditional DynamoDB overwrites, missing map guards. Second-pass only, standard review already happened.", "should_trigger": false},
+{"query": "Refactor src/utils/dates.js to remove the nested ternaries and simplify it without changing behavior.", "should_trigger": false},
+{"query": "Merge feat/onboarding into main, resolving the conflict in package-lock.json.", "should_trigger": false},
+{"query": "Review this Lambda handler in handlers/createOrder.ts for layer separation: does it go through the facade and repository, any `any` types, and are DynamoDB multi-item writes transactional?", "should_trigger": false},
+{"query": "Set up branch protection on main so PRs need 2 approvals and passing CI before merge.", "should_trigger": false},
+{"query": "find which commit introduced the regression in calculateTax, tests passed at v2.3.0 and fail at HEAD", "should_trigger": false},
+{"query": "Review our design doc docs/design/event-bus.md and challenge the decision to use EventBridge over SNS.", "should_trigger": false},
+{"query": "Write unit tests for src/cart/applyCoupon.ts covering expired coupons, stacking, and the 50% cap.", "should_trigger": false},
+{"query": "Add a CODEOWNERS file so anything under infra/ needs review from the platform team.", "should_trigger": false}
+]

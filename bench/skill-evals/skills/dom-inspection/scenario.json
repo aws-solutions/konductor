@@ -1,0 +1,187 @@
+{
+  "skill": "dom-inspection",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "signup.html is a saved copy of our live signup page. Before we generate functional tests, extract the per-field metadata for every form on it: validation constraints, error message element and exact error text, conditional fields, cross-field rules, and when validation fires. Write it as dom-inspection-report.json. There is no browser here, so work from the file. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/dom-inspection/",
+      "why_discriminating": "The skill's safety rule says that when submission has side effects and safety is not confirmed, validation_trigger must be 'unknown', not 'submit'; it also takes error selectors from aria-describedby and records conditional visibility and cross-field rules in a fixed schema. A model without it will usually report 'submit' because the script validates on submit.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Report parses as JSON with a forms array",
+          "check": "python3 -I -c \"import json,sys;r=json.load(open('dom-inspection-report.json'));sys.exit(0 if r.get('forms') else 1)\""
+        },
+        {
+          "id": "f2",
+          "text": "validation_trigger is unknown",
+          "check": "python3 -I -c \"import json,sys;r=json.load(open('dom-inspection-report.json'));sys.exit(0 if r['forms'][0].get('validation_trigger')=='unknown' else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Submission-safety rule applied",
+          "pass": "validation_trigger is 'unknown' with a note that submit POSTs to /api/signup (creates an account, sends email) and safety was not confirmed",
+          "partial": "Says 'unknown' without the reason, or explains the risk but still records 'submit'",
+          "fail": "Records 'submit' or 'blur' with no safety consideration"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Field metadata is complete and exact",
+          "pass": "All fields including hidden companyName have required, constraints, error selector from aria-describedby (e.g. #email-error) and the exact MESSAGES strings",
+          "partial": "Most fields right but error text paraphrased or a field missing",
+          "fail": "Several fields missing or error selectors guessed"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Conditional and cross-field rules captured",
+          "pass": "companyName initially_hidden with trigger accountType=business (and required then); trialEnd after trialStart recorded with its message",
+          "partial": "One of the two captured",
+          "fail": "Neither captured"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No invented constraints or attempted execution",
+          "pass": "Everything traceable to signup.html; does not claim to have submitted the form",
+          "partial": "One unsupported attribute",
+          "fail": "Invents validations or claims runtime observation"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "safe handling of a side-effecting form",
+          "exact oracles a test generator can use",
+          "hidden and cross-field behaviour"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "profile-report.json is a field inspection report for our /profile form. Turn it into concrete functional test cases (inputs, action, expected result) that our test generator can implement. Write profile-test-cases.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/dom-inspection/",
+      "why_discriminating": "The skill's oracle derivation calls for boundary values on both sides of each constraint and, because validation_trigger is unknown, flagging any submit-based case as potentially unsafe and requiring explicit confirmation. Without the skill, models write reasonable cases but usually ignore the trigger safety flag.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Cases include age boundaries on both sides",
+          "check": "python3 -I -c \"import re,sys;t=open('profile-test-cases.md').read();sys.exit(0 if all(re.search(r'\\\\b%d\\\\b'%n,t) for n in (12,13,120,121)) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Unknown trigger handled per the skill",
+          "pass": "Every case that triggers validation via submit is flagged as potentially unsafe and gated on explicit user confirmation",
+          "partial": "Mentions the unknown trigger once but does not flag affected cases",
+          "fail": "Ignores validation_trigger"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Boundary coverage derived from the report",
+          "pass": "displayName length boundaries (just below/at min and at/just above max), age 12/13/120/121, website pattern match and mismatch, required-empty cases",
+          "partial": "Most boundaries but one side missing",
+          "fail": "Happy-path only"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Conditional field tested correctly",
+          "pass": "parentEmail visible/required below 16 and hidden at or above 16, with the boundary at 15/16",
+          "partial": "Conditional case present without the boundary",
+          "fail": "Conditional field ignored"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Expected results use the report's error selectors and texts, not invented ones",
+          "pass": "Expected messages and selectors quoted from the report",
+          "partial": "Some paraphrased messages",
+          "fail": "Invented messages or selectors"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "safety flagging",
+          "boundary rigour",
+          "cases implementable without guessing"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "cloudscape-settings.html is a saved Cloudscape settings form. Extract each field's validation constraints and the selector and exact text of its error message so we can build test oracles. Write cloudscape-report.json in the same per-field JSON shape as a DOM inspection report (page_url, ui_framework, forms[].fields[]). Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/dom-inspection/",
+      "why_discriminating": "The skill's Cloudscape notes say constraints live on the inner input (not the awsui wrapper) and errors render in [class*=\"error-text\"] / [data-testid*=\"error\"], not via aria-describedby. A model without it often reads the wrapper or assumes aria-describedby.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Report parses and ui_framework is cloudscape",
+          "check": "python3 -I -c \"import json,sys;r=json.load(open('cloudscape-report.json'));sys.exit(0 if r.get('ui_framework')=='cloudscape' else 1)\""
+        },
+        {
+          "id": "f2",
+          "text": "No selector targets the awsui-input wrapper tag",
+          "check": "test -f cloudscape-report.json && ! grep -q 'awsui-input' cloudscape-report.json"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Constraints read from the inner input",
+          "pass": "All three fields with correct required/min/max/minlength/maxlength (retention 1..3653, name 3..40)",
+          "partial": "Constraints mostly right, one wrong or missing",
+          "fail": "Constraints read from the wrapper or missing"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Error selectors follow Cloudscape rendering",
+          "pass": "Each error selector targets the error-text class or data-testid error element with the exact text",
+          "partial": "Right element type but text paraphrased",
+          "fail": "Uses aria-describedby or guesses"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Schema matches a DOM inspection report including validation_trigger",
+          "pass": "page_url, ui_framework, forms[].fields[] with required for every field and a validation_trigger value (unknown if not determinable)",
+          "partial": "Shape mostly right but validation_trigger missing",
+          "fail": "Different ad hoc shape"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No fabricated fields or rules",
+          "pass": "Exactly the fields in the file",
+          "partial": "One extra or merged field",
+          "fail": "Invented fields"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Cloudscape-specific correctness",
+          "exact error oracles",
+          "schema compatibility"
+        ]
+      }
+    }
+  ]
+}

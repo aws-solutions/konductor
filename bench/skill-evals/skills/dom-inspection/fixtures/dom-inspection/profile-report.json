@@ -1,0 +1,16 @@
+{
+  "page_url": "http://localhost:3000/profile",
+  "ui_framework": "plain-html",
+  "forms": [
+    {
+      "form_selector": "#profile-form",
+      "validation_trigger": "unknown",
+      "fields": [
+        {"selector": "displayName", "label": "Display name", "type": "text", "required": true, "pattern": null, "min": null, "max": null, "minlength": 3, "maxlength": 30, "error_message_selector": "#displayName-error", "error_message_text": "Display name must be 3-30 characters.", "initially_hidden": false, "conditional_visibility": {"trigger_field_selector": null, "trigger_value": null}, "cross_field_rules": []},
+        {"selector": "age", "label": "Age", "type": "number", "required": false, "pattern": null, "min": "13", "max": "120", "minlength": null, "maxlength": null, "error_message_selector": "#age-error", "error_message_text": "Age must be between 13 and 120.", "initially_hidden": false, "conditional_visibility": {"trigger_field_selector": null, "trigger_value": null}, "cross_field_rules": []},
+        {"selector": "website", "label": "Website", "type": "text", "required": false, "pattern": "https://.+", "min": null, "max": null, "minlength": null, "maxlength": null, "error_message_selector": "#website-error", "error_message_text": "Website must start with https://", "initially_hidden": false, "conditional_visibility": {"trigger_field_selector": null, "trigger_value": null}, "cross_field_rules": []},
+        {"selector": "parentEmail", "label": "Parent email", "type": "email", "required": true, "pattern": null, "min": null, "max": null, "minlength": null, "maxlength": null, "error_message_selector": "#parentEmail-error", "error_message_text": "A parent email is required for users under 16.", "initially_hidden": true, "conditional_visibility": {"trigger_field_selector": "age", "trigger_value": "<16"}, "cross_field_rules": ["Required only when age is below 16"]}
+      ]
+    }
+  ]
+}

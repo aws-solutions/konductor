@@ -1,0 +1,51 @@
+{
+  "skill_name": "docx-conversion",
+  "evals": [
+    {
+      "id": 0,
+      "name": "requirements-docx-add-ac5",
+      "scenario_prompt_id": "p1",
+      "prompt": "My PM sent requirements.docx and asked me to add one acceptance criterion before it goes to the customer: \"AC-5: Exports include a header row with column names.\" Put it after AC-4 in the Acceptance Criteria section and give me back a Word file I can forward. Also write conversion-notes.md saying how you handled the file and anything the customer might notice is different. Do not ask me questions; make reasonable assumptions, list them in conversion-notes.md, and finish the work.",
+      "expected_output": "The skill's CRITICAL rules are to never modify the original .docx without confirmation and to verify pandoc is available (with the brew/yum install hint when it is not), and its IMPORTANT rules are to preserve headings and tables and warn about lost figures. A competent model without it often overwrites requirements.docx in place, or rebuilds it from text and silently turns the milestone table or heading styles into plain paragraphs.",
+      "files": [
+        "fixtures/docx-conversion/"
+      ],
+      "expectations": [
+        "A .docx other than the original contains AC-5, or the original does",
+        "Original document handling (skill CRITICAL rule): requirements.docx left byte-identical (md5 in KEY) and the edit delivered as a new file such as requirements-v2.docx, with the choice explained",
+        "Structure preserved in the delivered file: Delivered docx keeps Title/Heading1 styles, the milestone table as a real w:tbl with Kim and Ade rows, AC-1..AC-4 verbatim, and AC-5 placed after AC-4",
+        "Tooling check per the skill: Checks for pandoc before converting; since it is absent, says so, gives the install command (brew install pandoc / sudo yum install pandoc) and names the fallback used (e.g. direct XML edit)",
+        "Notes what the customer might notice: conversion-notes.md flags that Figure 1 is referenced but not embedded in this copy, and any formatting the edit could have changed"
+      ],
+      "scripted_checks": [
+        {
+          "text": "A .docx other than the original contains AC-5, or the original does",
+          "check": "python3 -c 'import zipfile,glob,sys;sys.exit(0 if any(\"AC-5\" in zipfile.ZipFile(f).read(\"word/document.xml\").decode() for f in glob.glob(\"*.docx\")) else 1)'"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "retention-policy-docx-to-md-hazards",
+      "scenario_prompt_id": "p3",
+      "prompt": "We're moving our policies into git. Convert retention-policy.docx (Legal's latest copy) to retention-policy.md. Preserve headings, the retention table and all text, and keep the original .docx untouched. Anything that couldn't be converted cleanly goes in conversion-notes.md so Legal can check it. Do not ask me questions; make reasonable assumptions, list them in the notes, and finish the work.",
+      "expected_output": "The skill's quality gate requires preserving structure and warning when complex formatting will be lost. The fixture hides three hazards (a tracked change 30->90, a merged table cell, an embedded image). A competent hand-rolled converter without the skill's warning rule tends to silently drop the image and the deleted text, and report a clean conversion.",
+      "files": [
+        "fixtures/docx-conversion/"
+      ],
+      "expectations": [
+        "retention-policy.md exists with the table row text and the original is unchanged",
+        "Tracked change handled (KEY hazard 1): Markdown says 90 days and the notes report the tracked change by Priya (Legal), 30 replaced by 90, and that the accepted version was used",
+        "Embedded image and merged cell (KEY hazards 2-3): Image extracted (e.g. retention-flow.png linked) or explicitly reported as dropped with its location; merged Session data cell text kept and the flattening noted",
+        "Skill workflow followed: Checks pandoc first, reports it missing with the install command, names the fallback; headings map to Markdown heading levels (Title, Heading1)",
+        "Faithful text: All paragraphs present verbatim (Scope, Approvals date 2026-10-30); nothing added or reworded"
+      ],
+      "scripted_checks": [
+        {
+          "text": "retention-policy.md exists with the table row text and the original is unchanged",
+          "check": "grep -q 'Audit logs' retention-policy.md && [ \"$(md5sum retention-policy.docx | cut -d' ' -f1)\" = ed468a1b25b76d55a273bf0f84d3a0ce ]"
+        }
+      ]
+    }
+  ]
+}

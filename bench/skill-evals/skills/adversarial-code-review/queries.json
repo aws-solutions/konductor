@@ -1,0 +1,82 @@
+[
+ {
+  "query": "standard review already passed on PR #412 (adds DELETE /orgs/:orgId/members/:userId plus a bulk role update). before I approve, do a hostile second pass on /tmp/pr412.diff for the stuff normal review misses: error leaks, partial writes, validation gaps",
+  "should_trigger": true
+ },
+ {
+  "query": "play devil's advocate against merging this. src/handlers/transfer.ts moves credits between two accounts with two separate UpdateItem calls and returns err.message to the client. give me every reason it shouldn't ship",
+  "should_trigger": true
+ },
+ {
+  "query": "my reviewer approved but im nervous. the change touches our auth middleware and the pagination cursor decoding in lib/paginate.js (it base64-decodes the token straight into ExclusiveStartKey). tear it apart",
+  "should_trigger": true
+ },
+ {
+  "query": "I'm the checker in a maker-checker loop. here's the diff and 9 proposed review findings from the maker. throw out anything not backed by a line actually in the diff, any vague 'consider improving' stuff, and dupes. keep only the real ones",
+  "should_trigger": true
+ },
+ {
+  "query": "git diff main...HEAD touches writes to the orders table and adds a /refunds route. look specifically for missing condition expressions, non-atomic multi-item writes, and whether the route is actually wired through the authorizer",
+  "should_trigger": true
+ },
+ {
+  "query": "can you red-team this lambda before i push? it catches errors and returns {error: e.message, stack: e.stack}, logs event.body at info, and adds an optional `discountCode` field to the order schema",
+  "should_trigger": true
+ },
+ {
+  "query": "second opinion on the inventory service change. first reviewer only commented on naming. I care about data corruption under concurrent writes and whether the new fields get defaulted for old records",
+  "should_trigger": true
+ },
+ {
+  "query": "argue against approving PR 88 in payments-api. the diff adds a `metadata` map to Invoice and reads metadata.taxRegion everywhere with no checks. what else in there would block it",
+  "should_trigger": true
+ },
+ {
+  "query": "pre-submit gate on a change that adds an external webhook endpoint and writes 3 DynamoDB items per call. only want gaps around info disclosure, atomicity and schema validation, not style",
+  "should_trigger": true
+ },
+ {
+  "query": "an AI review bot dumped 23 comments on my PR and half look made up, referencing functions that aren't in the diff. filter them down to the ones that point at real changed lines and name a concrete fix",
+  "should_trigger": true
+ },
+ {
+  "query": "eslint is screaming about naming in src/utils. review the formatting and naming there and make everything consistent camelCase",
+  "should_trigger": false
+ },
+ {
+  "query": "write unit tests for src/handlers/transfer.ts covering the happy path, insufficient balance, and same-account transfer",
+  "should_trigger": false
+ },
+ {
+  "query": "our design doc picks SQS over EventBridge for order events. poke holes in that architecture decision before thursday's design review",
+  "should_trigger": false
+ },
+ {
+  "query": "fix the race in adjustStock: implement a conditional update with a version attribute and update the tests so they pass",
+  "should_trigger": false
+ },
+ {
+  "query": "run a STRIDE threat model for the new file upload feature with trust boundaries and a data flow diagram",
+  "should_trigger": false
+ },
+ {
+  "query": "npm audit shows 14 vulns including a critical in lodash 4.17.15. give me a remediation plan with exact versions and verification steps",
+  "should_trigger": false
+ },
+ {
+  "query": "explain how DynamoDB TransactWriteItems differs from BatchWriteItem and how each one fails partially",
+  "should_trigger": false
+ },
+ {
+  "query": "this 200 line function in report.py has 6 levels of nested ifs. simplify it without changing behavior",
+  "should_trigger": false
+ },
+ {
+  "query": "open a PR for my branch feat/refunds with a decent description and a how-to-test section",
+  "should_trigger": false
+ },
+ {
+  "query": "review infra/lib/api-stack.ts (CDK TypeScript, prod) for wildcard IAM and missing encryption before we deploy",
+  "should_trigger": false
+ }
+]

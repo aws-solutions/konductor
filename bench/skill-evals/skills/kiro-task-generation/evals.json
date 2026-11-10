@@ -1,0 +1,61 @@
+{
+  "skill_name": "kiro-task-generation",
+  "evals": [
+    {
+      "id": 0,
+      "name": "csv-export-default-spec-dir",
+      "scenario_prompt_id": "p1",
+      "prompt": "requirements.md and design.md for the csv-export feature are approved in .kiro/specs/csv-export/. Generate the implementation plan for the Kiro IDE agent to execute task by task. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+      "expected_output": "The skill defines tasks.md exactly: numbered checkboxes, two levels, 2-space indents, `_Requirements: X.Y_` on every task, coding tasks only, foundation -> core -> polish, each small enough for one LLM pass, written to the spec dir; an unguided plan usually includes testing/deploy/doc steps, mixes formats, or leaves criteria unreferenced.",
+      "files": [
+        "fixtures/kiro-task-generation/"
+      ],
+      "expectations": [
+        "tasks.md written in the spec dir",
+        "Numbered checkboxes, max 2 levels, every leaf has _Requirements:_, all 9 criteria referenced",
+        "Kiro format: `- [ ] N.` top-level and `- [ ] N.M` sub-tasks indented 2 spaces, max two levels, each task with detail bullets and an italic `_Requirements: X.Y_` line: Every task follows the format",
+        "Traceability: all nine criteria (1.1-4.2) map to at least one task and references are accurate to what the task implements: All nine mapped accurately",
+        "Ordering and size: foundation (structure, interfaces) then core then polish (errors, edge cases); each task is one coherent code change with its tests: Clear incremental order and LLM-sized tasks",
+        "Only coding tasks: no deploy, Terraform/infra rollout, documentation, UAT or pilot steps; no invented requirements or IDs: None present"
+      ],
+      "scripted_checks": [
+        {
+          "text": "tasks.md written in the spec dir",
+          "check": "test -s .kiro/specs/csv-export/tasks.md"
+        },
+        {
+          "text": "Numbered checkboxes, max 2 levels, every leaf has _Requirements:_, all 9 criteria referenced",
+          "check": "python3 -c 'import re,sys;L=open(\".kiro/specs/csv-export/tasks.md\").read().splitlines();T=[(i,len(l)-len(l.lstrip()),m.group(1)) for i,l in enumerate(L) for m in [re.match(r\"\\s*- \\[[ x-]\\] (\\d+(?:\\.\\d+)*)\\.?\\s\",l)] if m];ok=len(T)>=3 and all(t[2].count(\".\")<=1 for t in T);nxt=[T[k+1][0] if k+1<len(T) else len(L) for k in range(len(T))];leaf=[k for k in range(len(T)) if k+1==len(T) or T[k+1][1]<=T[k][1]];ok=ok and all(any(\"_Requirements:\" in x for x in L[T[k][0]:nxt[k]]) for k in leaf);txt=chr(10).join(x for x in L if \"_Requirements\" in x);ok=ok and all(re.search(r\"(?<![0-9.])\"+re.escape(r)+r\"(?![0-9])\",txt) for r in [\"1.1\", \"1.2\", \"1.3\", \"2.1\", \"2.2\", \"3.1\", \"3.2\", \"4.1\", \"4.2\"]);sys.exit(0 if ok else 1)'"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "auth-refresh-custom-spec-dir",
+      "scenario_prompt_id": "p2",
+      "prompt": "Our specs do not live in the default location: requirements and design for auth-refresh are in docs/specs/auth-refresh/. Write the tasks file for it, next to the other two. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+      "expected_output": "The skill takes a caller-supplied spec_dir and makes writing tasks.md anywhere else a CRITICAL failure; it also requires every criterion to be referenced, including the race criterion 2.3 that the design solves with a conditional UPDATE ... RETURNING. Without the skill, outputs land under .kiro/specs/ by habit or fold the race into a generic task.",
+      "files": [
+        "fixtures/kiro-task-generation/"
+      ],
+      "expectations": [
+        "tasks.md in docs/specs/auth-refresh/ and nothing under .kiro/specs/auth-refresh",
+        "Leaf tasks reference requirements; all 6 criteria covered; max 2 levels",
+        "Kiro format: `- [ ] N.` top-level and `- [ ] N.M` sub-tasks indented 2 spaces, max two levels, each task with detail bullets and an italic `_Requirements: X.Y_` line: Every task follows the format",
+        "A dedicated task implements the refresh-token race (2.3) with the design's conditional `UPDATE ... WHERE revoked_at IS NULL RETURNING id` and a concurrency test; reuse detection revokes the whole family (2.2): Both as explicit tasks with tests",
+        "Client-side criteria (1.1-1.3: refresh at <60s, single retry, clear session on 401) and server criteria are ordered sensibly (server rotation before client retry logic): Sensible order with both sides covered",
+        "Only coding tasks: no deploy, Terraform/infra rollout, documentation, UAT or pilot steps; no invented requirements or IDs: None present"
+      ],
+      "scripted_checks": [
+        {
+          "text": "tasks.md in docs/specs/auth-refresh/ and nothing under .kiro/specs/auth-refresh",
+          "check": "test -s docs/specs/auth-refresh/tasks.md && ! test -e .kiro/specs/auth-refresh"
+        },
+        {
+          "text": "Leaf tasks reference requirements; all 6 criteria covered; max 2 levels",
+          "check": "python3 -c 'import re,sys;L=open(\"docs/specs/auth-refresh/tasks.md\").read().splitlines();T=[(i,len(l)-len(l.lstrip()),m.group(1)) for i,l in enumerate(L) for m in [re.match(r\"\\s*- \\[[ x-]\\] (\\d+(?:\\.\\d+)*)\\.?\\s\",l)] if m];ok=len(T)>=3 and all(t[2].count(\".\")<=1 for t in T);nxt=[T[k+1][0] if k+1<len(T) else len(L) for k in range(len(T))];leaf=[k for k in range(len(T)) if k+1==len(T) or T[k+1][1]<=T[k][1]];ok=ok and all(any(\"_Requirements:\" in x for x in L[T[k][0]:nxt[k]]) for k in leaf);txt=chr(10).join(x for x in L if \"_Requirements\" in x);ok=ok and all(re.search(r\"(?<![0-9.])\"+re.escape(r)+r\"(?![0-9])\",txt) for r in [\"1.1\", \"1.2\", \"1.3\", \"2.1\", \"2.2\", \"2.3\"]);sys.exit(0 if ok else 1)'"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+diff --git a/src/services/refund.js b/src/services/refund.js
+new file mode 100644
+--- /dev/null
++++ b/src/services/refund.js
+@@ -0,0 +1,31 @@
++const { transactWrite } = require('../../../src/lib/tx');
++
++const ACCOUNTS = process.env.ACCOUNTS_TABLE;
++const REFUNDS = process.env.REFUNDS_TABLE;
++
++// Moves money back to the customer and records the refund in one transaction.
++async function refund(refundId, accountId, amount) {
++  return transactWrite(
++    [
++      {
++        Put: {
++          TableName: REFUNDS,
++          Item: { refundId, accountId, amount },
++          ConditionExpression: 'attribute_not_exists(refundId)',
++        },
++      },
++      {
++        Update: {
++          TableName: ACCOUNTS,
++          Key: { accountId },
++          UpdateExpression: 'SET balance = balance + :amt',
++          ConditionExpression: 'attribute_exists(accountId)',
++          ExpressionAttributeValues: { ':amt': amount },
++        },
++      },
++    ],
++    refundId,
++  );
++}
++
++module.exports = { refund };
+diff --git a/src/services/preferences.js b/src/services/preferences.js
+new file mode 100644
+--- /dev/null
++++ b/src/services/preferences.js
+@@ -0,0 +1,16 @@
++const { PutCommand } = require('@aws-sdk/lib-dynamodb');
++const { docClient } = require('../../../src/lib/ddb');
++
++// Each user owns exactly one preferences item and only that user writes it.
++async function savePreferences(userId, prefs) {
++  const { Attributes } = await docClient.send(
++    new PutCommand({
++      TableName: process.env.PREFS_TABLE,
++      Item: { userId, ...prefs, updatedAt: Date.now() },
++      ReturnValues: 'ALL_OLD',
++    }),
++  );
++  return { previous: Attributes ?? null };
++}
++
++module.exports = { savePreferences };
+diff --git a/test/teardown.js b/test/teardown.js
+new file mode 100644
+--- /dev/null
++++ b/test/teardown.js
+@@ -0,0 +1,15 @@
++const { BatchWriteCommand } = require('@aws-sdk/lib-dynamodb');
++const { docClient } = require('../../src/lib/ddb');
++
++// Removes fixture rows after the integration suite.
++async function clearRefunds(ids) {
++  await docClient.send(
++    new BatchWriteCommand({
++      RequestItems: {
++        [process.env.REFUNDS_TABLE]: ids.map((refundId) => ({ DeleteRequest: { Key: { refundId } } })),
++      },
++    }),
++  );
++}
++
++module.exports = { clearRefunds };

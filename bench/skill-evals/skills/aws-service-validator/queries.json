@@ -1,0 +1,22 @@
+[
+{"query": "My design doc docs/design/ingest.md says 'Lambda supports up to 10GB ephemeral storage' and 'SQS FIFO does 3000 msgs/sec with batching'. Before review, can you check every AWS claim in it against the official docs?", "should_trigger": true},
+{"query": "is EventBridge Pipes actually available in ap-south-2? the doc claims it and I'm not sure. also check Bedrock in eu-west-3", "should_trigger": true},
+{"query": "our HLD states DynamoDB Streams filter patterns support OR logic and that max item size is 400KB. which of those is actually true?", "should_trigger": true},
+{"query": "go through the architecture section and flag any AWS feature assertions that are wrong or hallucinated. my teammate drafted it with an LLM", "should_trigger": true},
+{"query": "the doc says 'API Gateway HTTP APIs support usage plans and API keys'. verify that and all the other API GW claims in section 4", "should_trigger": true},
+{"query": "verify regional availability for every service we list in the deployment section (us-east-1, eu-central-1, ap-southeast-2)", "should_trigger": true},
+{"query": "do Step Functions Express workflows really max out at 5 minutes, and is Distributed Map GA? our design says so, check it", "should_trigger": true},
+{"query": "Need a report on the AWS quota and pricing-model claims in proposal.md, each marked confirmed/unverified/incorrect with evidence links", "should_trigger": true},
+{"query": "Reviewer said some of our AWS statements look off (Aurora Serverless v2 scaling to zero, S3 strong read-after-write consistency). verify against primary sources and correct them in the doc", "should_trigger": true},
+{"query": "before PE review, do a fact-check pass on the AWS assertions in the design: quotas, GA vs preview status, regions", "should_trigger": true},
+{"query": "Run cfn-lint on template.yaml and fix the errors it reports", "should_trigger": false},
+{"query": "Check my IAM policy JSON for syntax errors and least-privilege problems", "should_trigger": false},
+{"query": "Is my design doc well written? check it for filler, hedging and passive voice", "should_trigger": false},
+{"query": "My Lambda times out after 3 seconds calling DynamoDB, debug it from the CloudWatch logs", "should_trigger": false},
+{"query": "List all S3 buckets in our account that don't have default encryption enabled", "should_trigger": false},
+{"query": "fact-check the claims about our competitor's pricing in the PRFAQ", "should_trigger": false},
+{"query": "Which AWS region gives the lowest latency for users in India?", "should_trigger": false},
+{"query": "Validate that our API's JSON responses match the schema in openapi.yaml", "should_trigger": false},
+{"query": "check that the file paths and function names referenced in the design doc still exist in the repo", "should_trigger": false},
+{"query": "Explain how DynamoDB Streams work and when to use them instead of Kinesis", "should_trigger": false}
+]

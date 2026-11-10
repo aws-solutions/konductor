@@ -1,0 +1,22 @@
+[
+{"query": "Our backlog estimates all assume humans write every line. Can you re-baseline them for a team using coding agents? 24d 'CRUD endpoints for settings API', 40d 'multi-region failover design', 10d 'webhook integration with Stripe'", "should_trigger": true},
+{"query": "leadership asks: if devs use AI agents, what's our new LOE for the Q3 plan? table is in estimates.csv (columns legacy_days, description)", "should_trigger": true},
+{"query": "convert a 30-day legacy estimate for 'revamp the onboarding flow' into an AI-assisted range, low/mid/high", "should_trigger": true},
+{"query": "we want agentic SDLC versions of these LOEs, but our internal codegen capability for API work is immature so don't assume full leverage. items: 40d API endpoints, 15d migration scripts", "should_trigger": true},
+{"query": "How much faster will 'scaffold new microservice + boilerplate' (12 days) and 'security review of auth redesign' (20 days) be with AI tooling? Give bands, not one number", "should_trigger": true},
+{"query": "re-estimate our 8 roadmap items for AI-assisted development and give me a roll-up vs the old total. pasted below", "should_trigger": true},
+{"query": "PM wants to apply a flat 30% AI discount to all our estimates. I think that's wrong for the security and architecture items. Can you redo them properly? list attached", "should_trigger": true},
+{"query": "legacy value 60 days, task 'design new event sourcing architecture for ledger'. what's that under an agentic workflow?", "should_trigger": true},
+{"query": "batch convert [{E_legacy: 5, description: 'rename config keys'}, {E_legacy: 18, description: 'integrate with Salesforce API'}] into agent-era estimates", "should_trigger": true},
+{"query": "our old human-only story estimates need updating now that the team uses Claude Code daily. show which ones actually shrink and which might grow", "should_trigger": true},
+{"query": "Estimate the monthly AWS cost of running the onboarding service", "should_trigger": false},
+{"query": "Break the onboarding revamp into feature tracks for 3 engineers", "should_trigger": false},
+{"query": "estimate story points for these 6 user stories from scratch using planning poker heuristics", "should_trigger": false},
+{"query": "Measure our team's cycle time from the Jira export and plot it per sprint", "should_trigger": false},
+{"query": "how many tokens and dollars will it cost to run Claude over our 2M-document summarization job?", "should_trigger": false},
+{"query": "write a python function that converts days to hours given an 8h workday and a holidays list", "should_trigger": false},
+{"query": "Plan sprint 9 with 30 points of capacity from this backlog", "should_trigger": false},
+{"query": "Build a Monte Carlo forecast of when we finish the backlog based on historical throughput", "should_trigger": false},
+{"query": "Compare GitHub Copilot and Claude Code for our team: features and pricing", "should_trigger": false},
+{"query": "create the program plan and milestones for rolling out AI coding agents across 5 teams", "should_trigger": false}
+]

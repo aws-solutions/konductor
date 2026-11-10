@@ -1,0 +1,78 @@
+{
+  "skill_name": "verification",
+  "evals": [
+    {
+      "id": 0,
+      "name": "slugify-fix-with-evidence",
+      "scenario_prompt_id": "p1",
+      "prompt": "Customers report that slugify('Rock & Roll') returns 'rock--roll' and slugify('  Hello   World ') returns 'hello---world'. Fix it in src/slugify.js. Write EVIDENCE.md showing what you ran and what you observed so I can trust it's fixed and nothing else broke. This runs unattended: do not ask questions; state assumptions in EVIDENCE.md.",
+      "expected_output": "The skill requires RED before GREEN (a failing regression test shown first), then the full suite, with pasted commands, exit codes and output. A competent fix without it usually edits the regex, maybe adds a test after the fact, and writes 'tests pass' with no failing run or exit codes.",
+      "files": [
+        "fixtures/verification/"
+      ],
+      "expectations": [
+        "Both reported inputs are fixed",
+        "The full test suite passes",
+        "RED: a regression test for both reported inputs is written against the original code, and EVIDENCE.md pastes its failing output or states plainly it could not be run here. The executor in this harness has no shell tool, so a step counts if EVIDENCE.md either pastes real output or states plainly that the command could not be run here; describing an imagined result fails.",
+        "GREEN and VERIFY: EVIDENCE.md gives the exact commands for the targeted test and the full suite (node --test / npm test), each with real output and exit code or an explicit not-run statement. The executor in this harness has no shell tool, so a step counts if EVIDENCE.md either pastes real output or states plainly that the command could not be run here; describing an imagined result fails.",
+        "Fix addresses the cause (runs of whitespace left after stripping characters) with \\s+ and/or dash collapsing, not special-casing the two inputs: General fix covering both inputs and similar cases",
+        "Evidence contains only things that were actually run; no 'should pass' or 'looks correct' claims; existing tests untouched: Every claim backed by pasted output"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Both reported inputs are fixed",
+          "check": "node -e \"const {slugify}=require('./src/slugify');const a=require('assert');a.strictEqual(slugify('Rock & Roll'),'rock-roll');a.strictEqual(slugify('  Hello   World '),'hello-world')\" "
+        },
+        {
+          "text": "The full test suite passes",
+          "check": "node --test >/dev/null 2>&1"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "slugify-test-first-honest-evidence",
+      "scenario_prompt_id": "p4",
+      "prompt": "I'm about to tell a customer the slugify bug is fixed: slugify('Rock & Roll') returns 'rock--roll' and slugify('  Hello   World ') returns 'hello---world'. Before anyone calls this done, verify it properly: work test-first (add a regression test for both inputs that fails on the current code, then fix src/slugify.js), and do not declare it fixed without evidence. Write EVIDENCE.md with each verification step, the exact command, and the observed output. If you cannot run something in this environment, say so plainly for that step instead of describing what would happen. This runs unattended: do not ask questions; state assumptions in EVIDENCE.md.",
+      "expected_output": "",
+      "files": [
+        "fixtures/verification/"
+      ],
+      "expectations": [
+        "RED step: a regression test for both reported inputs is written before or alongside the fix, in a test file, with existing tests left untouched: New test covers both inputs and existing tests are unchanged",
+        "Fix addresses the cause (runs of whitespace or dashes after stripping characters) with \\s+ and/or dash collapsing, not special-casing the two inputs: General fix covering both inputs and similar cases",
+        "Evidence is honest: every step gives the exact command (e.g. node --test) and either pasted real output or an explicit statement that it was not run here; no 'passes', 'should pass' or 'looks correct' claims without output: Every step has a command and real output or an explicit not-run note; no unbacked claims",
+        "Verification protocol is explicit and the conclusion matches the evidence: SPEC/success criteria, RED, GREEN and full-suite VERIFY steps are laid out, and the work is not declared verified or fixed when the runs did not happen: Phases laid out and the final status matches what was actually observed (e.g. 'fix written, not yet verified: run X')"
+      ],
+      "scripted_checks": []
+    },
+    {
+      "id": 2,
+      "name": "config-doc-fix-runs-covering-tests",
+      "scenario_prompt_id": "p5",
+      "prompt": "We bumped the default request timeout in src/config.js from 30 to 60 seconds last release, but docs/CONFIG.md still says 30. Update the docs so they are correct; this is a docs-only change, do not change the code. Write EVIDENCE.md showing what you checked and what you observed, so I can trust the docs are right and nothing else broke. If you cannot run something in this environment, say so plainly for that step instead of describing what would happen. This runs unattended: do not ask questions; state assumptions in EVIDENCE.md.",
+      "expected_output": "Doc updated to 60 in the table and the example; EVIDENCE.md has SPEC criteria, cites DEFAULTS, names test/docs.test.js and node --test as VERIFY with real output or a plain not-run note.",
+      "files": [
+        "fixtures/verification-docs/"
+      ],
+      "expectations": [
+        "docs/CONFIG.md now documents timeoutSeconds default 60 and no longer says 30",
+        "Code and existing tests are untouched and the full suite passes",
+        "SPEC: EVIDENCE.md states success criteria for the doc change up front (the table default and the example comment both say 60, and every documented default matches src/config.js DEFAULTS)",
+        "VERIFY with covering tests: EVIDENCE.md identifies test/docs.test.js as the existing test that checks CONFIG.md against DEFAULTS and gives the exact command to run it and the full suite (node --test / npm test), with real output and exit code or a plain statement that it could not be run here. The executor in this harness has no shell tool, so a step counts if EVIDENCE.md either pastes real output or states plainly that the command could not be run here; describing an imagined result fails.",
+        "Validation of the change itself: EVIDENCE.md shows the change was checked against the source of truth (quotes or cites the DEFAULTS values in src/config.js next to the updated doc rows), not just asserted",
+        "Honest conclusion: no 'tests pass' or 'should pass' claim without output, and the final status matches what was actually observed (e.g. docs updated, suite not run here: run node --test)"
+      ],
+      "scripted_checks": [
+        {
+          "text": "docs/CONFIG.md now documents timeoutSeconds default 60 and no longer says 30",
+          "check": "grep -q '| `timeoutSeconds` | `60` |' docs/CONFIG.md && ! grep -qw '30' docs/CONFIG.md"
+        },
+        {
+          "text": "Code and existing tests are untouched and the full suite passes",
+          "check": "[ \"$(sha256sum src/config.js test/config.test.js test/docs.test.js | cut -d' ' -f1 | tr '\\n' ' ')\" = 'cc79989d8f0ecc5ae532f038387af206f86e2e6468406867b21fe7fe5beb1644 0834f4d4d98711f0ade8e50f1ff48466953f67c1f86cf6e8de37fc8abfd2807f ecd156278826ce50103db97971652673e479bd6291bad446c876d821759fad7f ' ] && node --test >/dev/null 2>&1"
+        }
+      ]
+    }
+  ]
+}

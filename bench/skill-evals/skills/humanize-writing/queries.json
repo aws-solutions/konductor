@@ -1,0 +1,22 @@
+[
+{"query": "This README intro reads like ChatGPT wrote it: 'a robust, seamless, cutting-edge solution that empowers developers'. Rewrite README.md's first three sections so it sounds like a person wrote it, same info.", "should_trigger": true},
+{"query": "can you de-slop my PR description? it's in pr-body.md. full of em dashes and 'this pivotal change underscores our commitment to quality' lol", "should_trigger": true},
+{"query": "Edit docs/user-guide.md so it reads naturally. Reviewers said it has that generated feel: every sentence the same length, lots of 'Additionally', bold headers on every bullet.", "should_trigger": true},
+{"query": "I wrote this blog post draft (drafts/kafka-lessons.md) with help from an LLM and now it sounds like a press release. Make it sound like me - here's an older post of mine for voice: posts/2022-retro.md", "should_trigger": true},
+{"query": "Our business case doc ends with 'The future looks bright as we continue this exciting journey.' and the whole thing is like that. Clean up docs/business-case.md so leadership doesn't roll their eyes.", "should_trigger": true},
+{"query": "rewrite these user stories in stories.md, they're stuffed with 'seamlessly', 'leverage', 'holistic'. keep every acceptance criterion", "should_trigger": true},
+{"query": "The docstrings in src/scheduler.py are weirdly flowery ('This function serves as a testament to...'). Make them plain without touching the code.", "should_trigger": true},
+{"query": "Take the technical design section in docs/design/cqrs.md and make it readable for both our PMs and backend engineers without dropping any of the technical facts.", "should_trigger": true},
+{"query": "My commit message body for the last commit is three paragraphs of 'Not only does this X, it also Y' fluff. Draft a replacement message (don't amend, just give me text).", "should_trigger": true},
+{"query": "Go over release-announcement.md and strip the AI tells: rule of three everywhere, 'Let's dive in', emojis in headings, curly quotes.", "should_trigger": true},
+{"query": "Remove comments in src/cache.ts that narrate history like 'previously used a Map' or 'fixed in review round 2'.", "should_trigger": false},
+{"query": "Score docs/design/search.md 1-5 for review readiness: missing sections, unsupported latency claims, YAGNI violations.", "should_trigger": false},
+{"query": "Check the button labels and error messages in src/i18n/en.json for consistency with our UI text style guide (sentence case, no exclamation marks).", "should_trigger": false},
+{"query": "Is this essay AI-generated? Give me a probability and evidence. essay.txt", "should_trigger": false},
+{"query": "Translate docs/user-guide.md into Spanish, keeping the markdown structure.", "should_trigger": false},
+{"query": "Fix grammar and spelling in CONTRIBUTING.md only, don't change wording otherwise.", "should_trigger": false},
+{"query": "Summarize this 40-page RFC (rfc.pdf) into a one-paragraph abstract.", "should_trigger": false},
+{"query": "Write a design doc for our new rate limiter from scratch.", "should_trigger": false},
+{"query": "Convert docs/*.md to a Docusaurus site with a sidebar.", "should_trigger": false},
+{"query": "Write the PR for my branch feat/export and open it as a draft on GitHub.", "should_trigger": false}
+]

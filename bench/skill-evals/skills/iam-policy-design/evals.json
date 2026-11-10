@@ -1,0 +1,36 @@
+{
+  "skill_name": "iam-policy-design",
+  "evals": [
+    {
+      "id": 1,
+      "name": "hipaa-phi-gap-design",
+      "scenario_prompt_id": "p4",
+      "prompt": "DocIntake (see docs/system-design.md and docs/threat-model.md) just signed a hospital customer, so the uploaded documents will now include protected health information and the system must meet HIPAA on top of SOC 2. Write hipaa-security-design.md for our compliance officer: map the HIPAA requirements to concrete AWS controls for this design, say which controls exist in the design today and which are gaps, and give the IAM and resource policy changes needed. Save every new or changed policy as JSON under policies/. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "hipaa-security-design.md maps HIPAA requirements to AWS controls with Security Rule citations, separates existing controls from gaps (BAA, HIPAA-eligible services, 6-year audit log retention, no PHI in CloudWatch Logs, backups, breach notification, MFA), keeps admin no-decrypt, and saves parseable changed policies. The new version's references/compliance-checklists.md carries the HIPAA checklist plus the Security Rule citations the old version lacked.",
+      "files": [
+        "fixtures/iam-policy-design/"
+      ],
+      "expectations": [
+        "hipaa-security-design.md exists",
+        "At least one policy JSON file under policies/ exists and every one parses",
+        "Cites specific HIPAA Security Rule sections for the controls, for example 45 CFR 164.312(a)(2)(iv) for encryption, 164.312(b) for audit controls, or 164.308(a)(1)(ii)(D) for activity review; at least two distinct section numbers",
+        "States that a Business Associate Addendum (BAA) with AWS is required and that only HIPAA-eligible services may store or process PHI, and checks or flags the design's services against that",
+        "Audit logging requirements are concrete: CloudTrail (including S3 data events or equivalent object-level logging) with log file validation, encrypted logs, and a 6-year retention period",
+        "Flags that PHI must not be written to CloudWatch Logs (for example the processor Lambda logging extracted fields) and gives a control for it",
+        "Covers backup and breach handling: encrypted backups or point-in-time recovery for DynamoDB and S3 versioning or replication with a retention rule, and breach detection (GuardDuty or Security Hub) with a notification procedure (60-day HIPAA timeline)",
+        "Keeps T-004 closed for PHI: SecurityAdmin still cannot decrypt, PHI stays under the customer managed KMS key, and the doc does not widen any Lambda role beyond the access-pattern table",
+        "Clearly separates controls that exist in the design today from gaps, and does not claim that CloudTrail, GuardDuty, backups, MFA or a BAA already exist when the design does not mention them"
+      ],
+      "scripted_checks": [
+        {
+          "text": "hipaa-security-design.md exists",
+          "check": "test -s hipaa-security-design.md"
+        },
+        {
+          "text": "At least one policy JSON file under policies/ exists and every one parses",
+          "check": "ls policies/*.json >/dev/null 2>&1 && python3 -c \"import json,glob;[json.load(open(f)) for f in glob.glob('policies/*.json')]\""
+        }
+      ]
+    }
+  ]
+}

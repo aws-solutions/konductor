@@ -1,0 +1,58 @@
+{
+  "skill_name": "cypress-test-implementation",
+  "source": "harness3 scenarios p2,p1 (no evals in sc-post, sc-improve or sc-full)",
+  "evals": [
+    {
+      "id": 0,
+      "name": "verify-suite-release-gate",
+      "scenario_prompt_id": "p2",
+      "prompt": "Release is Friday. Verify our Cypress suite against the E2E strategy and Cypress good practice: which journeys are implemented, what is missing, what is wrong in the specs, and whether this blocks release. Include a journey-to-spec traceability matrix. Write cypress-verification-report.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "Skill-specific: the skill's final-mode quality gate makes an unimplemented P0 journey, hard-coded cy.wait and shared state between tests CRITICAL, and orders findings CRITICAL -> IMPORTANT -> SUGGESTION with a journey-to-spec traceability matrix. Without it a model tends to list issues flatly, trust the plan's [x] checkboxes, or hedge the release call.",
+      "files": [
+        "fixtures/cypress-test-implementation/implemented/"
+      ],
+      "expectations": [
+        "Report flags the hard-coded waits by file",
+        "Report names the missing P0 journey",
+        "Planted spec defects found with location and impact: cy.wait(5000)/cy.wait(3000) at login-create-task.cy.js lines 9/18, shared createdTitle and test 2 depending on test 1's login (no isolation), conditional modal test (lines 22-27), plus fragile selectors and should('exist') assertions",
+        "Coverage gaps and traceability: Matrix covers E2E-001..004: E2E-002 (P0) and E2E-004 have no spec; E2E-003 partial (repeated login, no page objects/commands/fixtures); notes the plan marks CYPRESS-006/008 done while the specs fail best practice",
+        "Severity follows the skill's gate and ordering: P0 gap, hard waits and shared state are CRITICAL; missing page objects/custom commands IMPORTANT; ordered CRITICAL -> IMPORTANT -> SUGGESTION",
+        "Clear release call with what must change: States release is blocked and lists the specific fixes to unblock (E2E-002 spec, replace waits with assertions/intercepts, isolate tests with beforeEach or cy.session)",
+        "No invented test results: Does not claim the tests were run or that they pass/fail at runtime"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Report flags the hard-coded waits by file",
+          "check": "grep -q 'cy.wait' cypress-verification-report.md && grep -q 'login-create-task' cypress-verification-report.md"
+        },
+        {
+          "text": "Report names the missing P0 journey",
+          "check": "grep -q 'E2E-002' cypress-verification-report.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "initial-plan-typed-tasks",
+      "scenario_prompt_id": "p1",
+      "prompt": "We want to automate the journeys in our E2E strategy (testing-quality-assurance/outputs/e2e-test-strategy.md) with Cypress. Cypress is not installed yet and the React app is in frontend/. Produce the implementation plan our two QA engineers will pick tasks from: a task breakdown with dependencies and effort, and a phased roadmap. Write it to cypress-implementation-plan.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "Skill-specific: the skill prescribes CYPRESS-NNN tasks typed Setup/PageObject/CustomCommand/TestData/TestImplementation/Verification with Related Test, Dependencies, Effort and Acceptance Criteria, a Foundation -> P0 -> P1 -> P2 roadmap, data-cy selectors, and code only in an appendix. Without it a model usually writes one task per journey and misses page objects, fixtures and the missing-UI dependencies.",
+      "files": [
+        "fixtures/cypress-test-implementation/planning-clean/"
+      ],
+      "expectations": [
+        "Plan exists and links every journey E2E-001..E2E-004",
+        "Task structure follows the skill: CYPRESS-NNN IDs, a Type from the skill's set, Related Test, Dependencies, Estimated Effort, Acceptance Criteria: At least 8 typed tasks covering Setup, PageObject, CustomCommand, TestData, TestImplementation and Verification, each with dependencies, effort and acceptance criteria",
+        "Roadmap is phased Foundation first, then P0 (E2E-001, E2E-002), P1 (E2E-003), P2 (E2E-004): Phases in that order with tasks assigned to them and the critical path visible",
+        "Grounded in the actual app and strategy: Calls for data-cy attributes on LoginPage/BoardPage (they only have ids/classes) and flags that edit/complete/search/filter/bulk-select UI and test credentials/cleanup endpoint are missing as dependencies or risks",
+        "Task breakdown is free of code; examples, if any, are in an appendix; no invented endpoints: No code in tasks; any code in an Appendix; unknowns stated as assumptions"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Plan exists and links every journey E2E-001..E2E-004",
+          "check": "test -f cypress-implementation-plan.md && for i in 1 2 3 4; do grep -q \"E2E-00$i\" cypress-implementation-plan.md || exit 1; done"
+        }
+      ]
+    }
+  ]
+}

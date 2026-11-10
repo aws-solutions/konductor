@@ -1,0 +1,9 @@
+{
+  "TrailName": "orders-trail",
+  "S3BucketName": "acme-orders-audit",
+  "IsMultiRegionTrail": false,
+  "IncludeGlobalServiceEvents": false,
+  "EnableLogFileValidation": false,
+  "KmsKeyId": null,
+  "CloudWatchLogsRetentionInDays": 30
+}

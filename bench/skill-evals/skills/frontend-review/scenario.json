@@ -1,0 +1,196 @@
+{
+  "skill": "frontend-review",
+  "category": "DUPLICATION",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Review the React components in src/components/ (Cloudscape, react-hook-form, zod) before I open a PR. Write review.md with severity, file:line, why it matters and a fix, most severe first. Do not change any code. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/frontend-review/",
+      "why_discriminating": "The skill treats native HTML, inline styles, useState form state and any as blocking, and dynamic ColumnLayout columns, untyped useForm and unmemoized handlers as should-fix. Without it, a reviewer may rate the native div and button as style nits and miss the ColumnLayout and useForm typing points.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "No source files changed",
+          "check": "find src -type f | sort | xargs md5sum | md5sum | grep -q 04bac283722969331071c31c96d3fa7b"
+        },
+        {
+          "id": "f2",
+          "text": "Flags the native div with inline style at SettingsForm.tsx line 19",
+          "check": "python3 -I -c 'import re,sys;t=open(\"review.md\").read();sys.exit(0 if any(abs(int(m.group(1))-19)<=1 for m in re.finditer(re.escape(\"SettingsForm.tsx\")+r\"\\D{0,40}?(\\d+)\",t)) else 1)'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "SettingsForm blocking issues found",
+          "pass": "props: any (L5), form state in useState with manual validation instead of react-hook-form + zod (L6-14), native div with inline style (L19), native button (L27), each rated blocking",
+          "partial": "Most found but some rated minor",
+          "fail": "Two or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "AddressForm issues found",
+          "pass": "useForm without <AddressFormValues> (L17), handleCancel not memoized (L19), ColumnLayout columns={extras.length} (L31), hardcoded validation messages (L9-10)",
+          "partial": "Two or three",
+          "fail": "One or none"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Catches the functional bug",
+          "pass": "Schema requires city (L11) but AddressFields renders no city input, so the form can never submit",
+          "partial": "Notes city has no message but not the missing field",
+          "fail": "Missed"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Skill severity scale and order",
+          "pass": "CRITICAL/IMPORTANT/SUGGESTION used and ordered, with native HTML, inline style, useState form state and any under CRITICAL",
+          "partial": "Ordered but with a different mapping",
+          "fail": "No severity or unordered"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No false positives",
+          "pass": "AddressFields.tsx treated as compliant (at most a minor note on the as-string casts)",
+          "partial": "One questionable finding",
+          "fail": "Invented native-HTML or styling issues in compliant files"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Are the blocking problems clearly first?",
+          "Did it catch the bug that breaks submit?",
+          "File:line accuracy",
+          "No noise"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Look at src/components/__tests__/AddressForm.test.tsx. Do the tests verify real behavior? Write test-review.md with specific problems and better assertions. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/frontend-review/",
+      "why_discriminating": "The skill demands assertions on actual values and coverage of error states. Without it, a reviewer may only say 'add more tests' rather than showing that the one test asserts nothing and would pass even though submit can never succeed.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Flags the existence-only assertion at line 9",
+          "check": "python3 -I -c 'import re,sys;t=open(\"test-review.md\").read();sys.exit(0 if any(abs(int(m.group(1))-9)<=1 for m in re.finditer(\"(?:\"+re.escape(\"AddressForm.test.tsx\")+r\"\\D{0,40}?|\\b[Ll]ines?\\s+)(\\d+)\",t)) else 1)'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Explains why the test proves nothing",
+          "pass": "L9 asserts the Save button exists after clicking it; onSave is never checked; the test would pass even though submit can never succeed (city has no input)",
+          "partial": "Flags the weak assertion but not what it hides",
+          "fail": "Says the test is fine"
+        },
+        {
+          "id": "r2",
+          "dimension": "recommendation",
+          "criterion": "Better assertions with real values",
+          "pass": "Shows code that fills fields and asserts onSave toHaveBeenCalledWith the values (async, via findBy or waitFor), plus a test that empty fields show the zod error messages",
+          "partial": "Suggests the right ideas without code or values",
+          "fail": "Generic 'add tests'"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Notices setup problems",
+          "pass": "vi used without import (unless vitest globals are configured), and fireEvent on a Cloudscape button by text may need a role-based query",
+          "partial": "One noted",
+          "fail": "None"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Stays on the test file",
+          "pass": "Mentions component bugs only as they affect what the tests should catch",
+          "partial": "Drifts into a full component review",
+          "fail": "Mostly about other files"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Does it show the test is hollow?",
+          "Would the proposed tests catch the city bug?",
+          "Concrete code"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Review only src/components/AddressForm.tsx and src/components/AddressFields.tsx. Write review.md, most severe first. Do not change code. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": "fixtures/frontend-review/",
+      "why_discriminating": "These two files already use Cloudscape and react-hook-form, so the skill's value is in the subtler checklist items (untyped useForm, dynamic ColumnLayout columns, constraint constants, useCallback) and in not inventing the blocking issues that apply to the other file.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "No source files changed",
+          "check": "find src -type f | sort | xargs md5sum | md5sum | grep -q 04bac283722969331071c31c96d3fa7b"
+        },
+        {
+          "id": "f2",
+          "text": "review.md exists",
+          "check": "test -s review.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Finds the real issues in AddressForm",
+          "pass": "Untyped useForm, dynamic ColumnLayout columns, unmemoized handleCancel, hardcoded messages instead of constants, and the missing city field",
+          "partial": "Three of five",
+          "fail": "Two or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "recommendation",
+          "criterion": "Fixes match the stack",
+          "pass": "useForm<AddressFormValues>, a fixed column count, useCallback, a messages constant module, and adding a city Controller (or removing it from the schema)",
+          "partial": "Fixes generic",
+          "fail": "Wrong fixes"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Severity order",
+          "pass": "Uses CRITICAL/IMPORTANT/SUGGESTION, with the city bug or any blocking item first",
+          "partial": "Ordered but unclear scale",
+          "fail": "Unordered"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No invented blocking findings",
+          "pass": "No native-HTML, inline-style, useState or any findings for these files; AddressFields called compliant apart from minor casts",
+          "partial": "One stretched finding",
+          "fail": "Invents blocking issues"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Accuracy on files that are mostly compliant",
+          "Catches the city bug",
+          "No invented problems"
+        ]
+      }
+    }
+  ]
+}

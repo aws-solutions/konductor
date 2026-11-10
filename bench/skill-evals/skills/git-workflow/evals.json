@@ -1,0 +1,74 @@
+{
+  "skill_name": "git-workflow",
+  "evals": [
+    {
+      "id": 0,
+      "name": "commit-split-trunk-pr-update",
+      "scenario_prompt_id": "w0",
+      "prompt": "Don't run anything, just write the plan. Our repo's default branch is `trunk`. I'm on trunk with three unrelated uncommitted changes: (1) src/paginate.js: fixed an off-by-one that dropped the last item of every page; (2) src/export.js: added a new toCsv() export; (3) src/util.js: ran prettier, whitespace only. Write commit-plan.md with the exact git commands to put this work on a new branch, the branch name, and the full commit messages. I'll push the branch right away so a teammate can follow along, and trunk will have moved on by the time I open the PR, so also give the exact commands to bring the branch up to date right before opening the PR. Do not ask questions; state assumptions in the file.",
+      "expected_output": "Three atomic conventional commits on a <type>/<desc> branch off trunk, files staged individually, then a merge (not rebase) of trunk into the pushed branch before the PR, no force-push, no main/master.",
+      "files": [],
+      "expectations": [
+        "commit-plan.md uses trunk as the base and never names main or master as a branch",
+        "No force push anywhere in commit-plan.md",
+        "No rebase command in commit-plan.md (the branch is already pushed and shared)",
+        "Three separate commits, one per change, with the util.js prettier reformat in its own commit and not mixed with logic",
+        "Each file is staged explicitly (e.g. git add src/paginate.js) rather than git add -A / git add . / git commit -a",
+        "Conventional commit subjects with correct types: fix for paginate, feat for toCsv, style (or chore) for util.js; imperative mood and under 72 characters",
+        "Branch name follows <type>/<short-description> (e.g. feat/csv-export or fix/paginate-off-by-one) and is created from trunk",
+        "Pre-PR update merges trunk into the branch (git fetch then git merge origin/trunk, or git pull origin trunk without --rebase) rather than rebasing, and explains that this keeps pushed commit SHAs and avoids a force-push"
+      ],
+      "scripted_checks": [
+        {
+          "text": "commit-plan.md uses trunk as the base and never names main or master as a branch",
+          "check": "test -s commit-plan.md && grep -q trunk commit-plan.md && ! grep -qE '(origin/|checkout +|switch +|merge +|from +)(main|master)\\b' commit-plan.md"
+        },
+        {
+          "text": "No force push anywhere in commit-plan.md",
+          "check": "test -s commit-plan.md && ! sed 's/[[:space:]]#.*//' commit-plan.md | grep -qE '^[[:space:]]*(\\$ )?git +push.*(-f( |$)|--force)'"
+        },
+        {
+          "text": "No rebase command in commit-plan.md (the branch is already pushed and shared)",
+          "check": "test -s commit-plan.md && ! sed 's/[[:space:]]#.*//' commit-plan.md | grep -qE '^[[:space:]]*(\\$ )?git +(rebase|pull +(--rebase|-r( |$)))'"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "pickaxe-restore-mainline",
+      "scenario_prompt_id": "w1",
+      "prompt": "Don't run anything, just write the plan. Our default branch is `mainline`. Tenant checks silently stopped working: somebody removed the `validateTenant(req);` call from src/auth.js somewhere in the last ~200 commits. I also have unrelated uncommitted edits in src/paginate.js and src/util.js that must stay uncommitted. Write investigation.md with: the exact git commands to find the commit that removed the call and confirm it; the exact commands to restore the call as a reviewable fix on its own branch, with the branch name and full commit message; and how to keep that pushed branch current with mainline while the PR waits for review. Do not ask questions; state assumptions in the file.",
+      "expected_output": "git log -S finds the removing commit, git show confirms, a single fix(auth) commit on a fix/<desc> branch off mainline with only src/auth.js, other edits left uncommitted, branch kept current by merging mainline, no force-push or rebase.",
+      "files": [],
+      "expectations": [
+        "investigation.md uses mainline and never names main or master as a branch",
+        "No force push anywhere in investigation.md",
+        "Uses a pickaxe search (git log -S or -G) for validateTenant",
+        "No rebase command in investigation.md (keeping a pushed branch current)",
+        "Confirms the found commit with git show (or equivalent) before acting on it",
+        "Fix goes on a fix/<short-description> branch created from mainline",
+        "Fix commit touches only src/auth.js: stages it explicitly and leaves src/paginate.js and src/util.js uncommitted (no git add -A / commit -a; a stash that is popped afterward is fine)",
+        "Commit subject is conventional with type fix and an auth scope (fix(auth): ...), imperative, under 72 characters",
+        "Keeps the pushed branch current by merging mainline into it (fetch + merge origin/mainline), not by rebasing, so pushed SHAs are preserved and no force-push is needed"
+      ],
+      "scripted_checks": [
+        {
+          "text": "investigation.md uses mainline and never names main or master as a branch",
+          "check": "test -s investigation.md && grep -q mainline investigation.md && ! grep -qE '(origin/|checkout +|switch +|merge +|from +)(main|master)\\b' investigation.md"
+        },
+        {
+          "text": "No force push anywhere in investigation.md",
+          "check": "test -s investigation.md && ! sed 's/[[:space:]]#.*//' investigation.md | grep -qE '^[[:space:]]*(\\$ )?git +push.*(-f( |$)|--force)'"
+        },
+        {
+          "text": "Uses a pickaxe search (git log -S or -G) for validateTenant",
+          "check": "test -s investigation.md && grep -qE -- \"(-S|-G) *['\\\"]?validateTenant\" investigation.md"
+        },
+        {
+          "text": "No rebase command in investigation.md (keeping a pushed branch current)",
+          "check": "test -s investigation.md && ! sed 's/[[:space:]]#.*//' investigation.md | grep -qE '^[[:space:]]*(\\$ )?git +(rebase|pull +(--rebase|-r( |$)))'"
+        }
+      ]
+    }
+  ]
+}

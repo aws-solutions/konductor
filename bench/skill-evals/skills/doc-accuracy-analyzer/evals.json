@@ -1,0 +1,68 @@
+{
+  "skill_name": "doc-accuracy-analyzer",
+  "evals": [
+    {
+      "id": 0,
+      "name": "order-service-fact-check",
+      "scenario_prompt_id": "p1",
+      "prompt": "Before I send docs/order-service-design.md to review, fact-check it. Check its claims against the code in src/ and the load-test data in perf/. Write an accuracy report to accuracy-report.md. Do not edit the design doc. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "The skill makes the reviewer extract every verifiable claim, refuse the document's own word as evidence, classify each claim with a fixed taxonomy and severity, and pair each wrong claim with a correction and source. Without it, reviews tend to spot-check the obvious claims, accept 'AWS recommends' and 'well known' assertions, and skip verified claims or corrections.",
+      "files": [
+        "fixtures/doc-accuracy-analyzer/"
+      ],
+      "expectations": [
+        "Design doc unchanged",
+        "Refutes the 10,000 RPS claim with the measured ceiling from perf/results.csv",
+        "Contradicted implementation and data claims are caught with file evidence: all four are classified as wrong (Inaccurate or INCORRECT) with the file that contradicts them: 10k RPS (perf/results.csv peaks near 2,310), retry (src/retry.js is a single try), auth (src/auth.js decodes without signature check), parameterized SQL (orderRepo.search concatenates input)",
+        "Catches the less obvious evidence: Notes at least one of: notifyBilling in src/client.js bypasses withRetry (so 'every outbound call' is false even if retry existed), or the 10,000 target run had a 48% error rate and 9.1 s p99",
+        "Approach and authority claims are not taken on trust: the 'AWS recommends / well known exactly-once' claim is classified unverified or wrong (outbox plus stream is at-least-once) and needs a docs citation; the one-sprint rollout is Overstated because the 'already built' parts are not built",
+        "True claims stay verified: 400 KB DynamoDB item limit and 15-minute Lambda limit are classified Verified/CONFIRMED, not listed as problems",
+        "Report follows the skill's structure: Summary with total and per-class counts using a fixed five-class taxonomy, findings grouped by severity, and original text + corrected text + source for each wrong or overstated claim. Either the Verified/Inaccurate/Overstated/Unverifiable/Missing Context names or the CONFIRMED/INCORRECT/OVERSTATED/UNVERIFIED/MISSING CONTEXT names count.",
+        "Report gives an explicit overall verdict on whether the doc is ready for review (for example PASS/FAIL or ready/not ready) that follows from the blocking findings",
+        "AWS limit claims (400 KB DynamoDB item, 15-minute Lambda timeout) cite a named AWS primary source (a docs.aws.amazon.com page or the AWS service quotas/limits documentation), or the report states plainly that they were checked from memory without live AWS docs"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Design doc unchanged",
+          "check": "echo \"921a05cc8758457353cd4c6675ea7170  docs/order-service-design.md\" | md5sum -c --quiet"
+        },
+        {
+          "text": "Refutes the 10,000 RPS claim with the measured ceiling from perf/results.csv",
+          "check": "grep -qE '2,?3[01]0|2,?275|2,?290' accuracy-report.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "export-feasibility",
+      "scenario_prompt_id": "p2",
+      "prompt": "Our design review is Thursday. Check whether docs/export-design.md will actually work as written, using the code in src/ and the timings in perf/. Write your findings to export-accuracy.md. Do not edit the design doc. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "Step 4 of the skill traces the execution path end to end and flags any step that assumes an unconfirmed capability; its guidelines say service limits must be checked against current documentation. Without it, a reviewer tends to check the individual sentences and miss that a synchronous API Gateway plus Lambda request cannot return a 1.2 GB file or run for minutes.",
+      "files": [
+        "fixtures/doc-accuracy-analyzer/"
+      ],
+      "expectations": [
+        "export-accuracy.md exists",
+        "Design doc unchanged",
+        "Finds the end-to-end feasibility break: States that the synchronous request path cannot carry a 1.2 GB response or a multi-minute run, citing the relevant limits (API Gateway REST 29 s integration timeout and 10 MB payload, Lambda 6 MB sync response) or explicitly marking them to verify in current AWS docs",
+        "The 'already streams to S3' claim is refuted from the code: marked wrong (Inaccurate or INCORRECT) citing src/exporter.js: builds the whole CSV in memory and writes to /tmp, no S3 or multipart call",
+        "Sizing and timing claims are checked against perf/export-timings.csv: Shows 40 s is only the medium-tier median (large tier p50 212 s, p95 610 s, max 1,480 s) and that /tmp defaults to 512 MB unless configured, so both claims are Overstated or Missing Context",
+        "No false positives on the true or unknowable claims: scheduler retry is acknowledged as real (3 attempts in src/scheduler.js) with the caveat that the on-demand path never calls it; rate limiting is unverifiable (Unverifiable/UNVERIFIED) rather than wrong; limits not found in the repo are not stated as certain facts without a source or hedge",
+        "Gives a usable correction and alternative: Proposes corrected text and a workable path (e.g. async job writing to S3 with a presigned download URL, Lambda ephemeral storage or streaming upload), and corrects the 'no new infrastructure, one week' plan",
+        "Each AWS service-limit claim used in the report (API Gateway timeout and payload, Lambda response size, Lambda /tmp size) names its primary source (a docs.aws.amazon.com page) or is explicitly marked as unverified against current AWS docs, and the report says how AWS claims were checked",
+        "Report states an overall PASS/FAIL or ready/not-ready result that follows from the blocking (wrong or overstated) findings, and treats the unverifiable rate-limiting claim as a non-blocking item that needs a note or callout saying what was searched, rather than as a blocker or a confirmed fact"
+      ],
+      "scripted_checks": [
+        {
+          "text": "export-accuracy.md exists",
+          "check": "test -s export-accuracy.md"
+        },
+        {
+          "text": "Design doc unchanged",
+          "check": "echo \"3e41cb46758d8981cc1fd7b894373917  docs/export-design.md\" | md5sum -c --quiet"
+        }
+      ]
+    }
+  ],
+  "round2_note": "Added the last eval-1 assertion for the round-2 pass-condition change (UNVERIFIED callout is non-blocking). A third eval would push this skill past the $5 cap."
+}

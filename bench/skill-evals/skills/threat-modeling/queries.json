@@ -1,0 +1,22 @@
+[
+{"query": "System design for our document-sharing service is done (docs/design/doc-share.md: API Gateway, Lambda, S3 presigned URLs, DynamoDB, Cognito). Do the STRIDE analysis: threat actors, threats numbered, mitigations mapped to each.", "should_trigger": true},
+{"query": "AppSec review is in 3 weeks for the payments-ledger service. I need the security risk analysis doc they expect: scope, architecture, assets, threats by STRIDE category, mitigations, testing strategy.", "should_trigger": true},
+{"query": "what could go wrong security-wise with this architecture? webhooks come in from stripe to an ALB, then an ECS service writes to RDS and pushes to SQS. go component by component, spoofing tampering etc", "should_trigger": true},
+{"query": "Identify the security threats for the new multi-tenant admin portal described in arch/admin-portal.md and document controls for each, with T-xxx and M-xxx numbering.", "should_trigger": true},
+{"query": "We need to document trust boundaries, threat actors and baseline security controls for our compliance audit. The design is in docs/hld.md. Only the ingestion path is in scope.", "should_trigger": true},
+{"query": "Run a STRIDE pass on our IoT telemetry pipeline (IoT Core -> Kinesis -> Lambda -> Timestream). Don't invent components that aren't in docs/iot-design.md.", "should_trigger": true},
+{"query": "security analysis for the 'export my data' feature: who could abuse it, how, and what mitigations we have or need. design notes in features/export.md", "should_trigger": true},
+{"query": "Our CISO wants to see that every HIGH risk in the new SSO integration has a mitigation. Produce the full threat/mitigation document with an asset inventory.", "should_trigger": true},
+{"query": "Before launch, analyze the GraphQL gateway design for spoofing, repudiation, info disclosure, DoS and privilege escalation risks, and write it up in the standard template format.", "should_trigger": true},
+{"query": "We added a public file-upload endpoint to the design. Update our risk analysis: new trust boundary, new threats, mitigations, and how we'd test them.", "should_trigger": true},
+{"query": "Our scanner flagged CVE-2024-4068 in braces via micromatch. Write the remediation steps and verify the fix.", "should_trigger": false},
+{"query": "Write least-privilege IAM policies for the Lambdas in docs/design/doc-share.md.", "should_trigger": false},
+{"query": "Generate security test cases (OWASP top 10) for our REST API as pytest tests.", "should_trigger": false},
+{"query": "Review src/auth/session.ts for security bugs: token handling, cookie flags, timing attacks.", "should_trigger": false},
+{"query": "Check lib/stack.ts CDK for unencrypted buckets and wildcard IAM before we deploy.", "should_trigger": false},
+{"query": "Write a risk register for the project schedule: vendor delays, staffing, budget.", "should_trigger": false},
+{"query": "Set up GuardDuty and Security Hub across all regions with Terraform.", "should_trigger": false},
+{"query": "Explain what STRIDE stands for with one example each, for a lunch-and-learn slide.", "should_trigger": false},
+{"query": "Do a pentest of https://staging.example.com and report what you find.", "should_trigger": false},
+{"query": "Write the non-functional requirements (availability, latency, RPO/RTO) for the payments-ledger service.", "should_trigger": false}
+]

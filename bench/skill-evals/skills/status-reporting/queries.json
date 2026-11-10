@@ -1,0 +1,22 @@
+[
+{"query": "Write this week's status update for the Payments Modernization program. Workstreams: API migration (on track), data backfill (slipping 1 week, waiting on DBA), mobile SDK (blocked on security review). Leadership reads it Monday.", "should_trigger": true},
+{"query": "need a 1 page exec summary for the SVP review on friday covering the warehouse-routing program. notes are in notes/week-41.md. keep it to decisions and asks", "should_trigger": true},
+{"query": "Turn my raw notes (status/raw.txt) into a detailed program report: per-workstream RAG, % complete, metrics, action items with owners and due dates, next period plan.", "should_trigger": true},
+{"query": "We just hit the beta milestone for Project Atlas. Draft the milestone review report for stakeholders - what shipped, what's next, risks.", "should_trigger": true},
+{"query": "consolidate the status from these 5 team updates (updates/*.md) into one program-level report for the steering committee", "should_trigger": true},
+{"query": "My manager says my weekly updates list activities instead of outcomes and my amber items never say why. Rewrite status/oct-14.md properly.", "should_trigger": true},
+{"query": "Monthly update for the infra cost reduction program: we're at 62% of the savings target, two workstreams red. Leadership needs to know what we need from them.", "should_trigger": true},
+{"query": "Create the bi-weekly stakeholder update for the CRM migration. Include a workstream table with RAG and next milestone, plus blockers with owners.", "should_trigger": true},
+{"query": "can you draft a status email to execs about the q4 launch? we're amber overall because the vendor API is late. include what we're asking them to do", "should_trigger": true},
+{"query": "Phase gate review next week for the identity platform program. Produce the update document we present at the gate.", "should_trigger": true},
+{"query": "Check task completion across .kiro/specs/*/tasks.md and tell me which tasks are blocked.", "should_trigger": false},
+{"query": "Build a risk register for the CRM migration: likelihood, impact, owner, mitigation for each risk.", "should_trigger": false},
+{"query": "Write release notes for v3.2.0 from the merged PRs since v3.1.0.", "should_trigger": false},
+{"query": "Plan the next two sprints for the mobile team given velocity of 30 points.", "should_trigger": false},
+{"query": "Add a /status health endpoint to our Express app that returns uptime and db connectivity.", "should_trigger": false},
+{"query": "Write a postmortem for last Tuesday's outage: timeline, root cause, action items.", "should_trigger": false},
+{"query": "Build a Grafana dashboard JSON showing p99 latency and error rate per service.", "should_trigger": false},
+{"query": "Draft a one-page proposal to leadership asking for 2 more engineers for the platform team, with the business case.", "should_trigger": false},
+{"query": "write my self-review for the performance cycle, highlighting the payments migration work", "should_trigger": false},
+{"query": "Create a program plan with milestones, dependencies, and a Gantt-style timeline for the data center exit.", "should_trigger": false}
+]

@@ -1,0 +1,193 @@
+{
+  "skill": "argumentation-reference",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "The architecture review board meets Thursday to decide on docs/proposal.md (SQS to Kafka migration). They want to know how well-argued each justification paragraph (J1-J4) is, scored on a scale they can compare across paragraphs, with the breakdown behind each score, any logical fallacies named, and what the author should fix before the meeting. Write it to argument-scores.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/argumentation-reference/",
+      "why_discriminating": "The skill supplies a fixed 5-criterion 0-3 rubric (max 15) with named tiers and score-banded coaching; a strong answer applies it consistently so J3's explicit data/warrant/qualifier/rebuttal scores clearly highest and fix advice matches each band. Without it, a model tends to give ad hoc 1-10 ratings and generic advice.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "argument-scores.md exists and mentions all four paragraphs",
+          "check": "test -f argument-scores.md && for j in J1 J2 J3 J4; do grep -q \"$j\" argument-scores.md || exit 1; done"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Fallacies correctly identified per paragraph",
+          "pass": "J1 appeal to popularity (hasty generalization acceptable), J2 false dichotomy, J4 appeal to authority/anecdote; none invented for J3",
+          "partial": "Two of the three fallacies named correctly, or one mislabeled",
+          "fail": "Fallacies missing, mostly wrong, or J3 accused of a fallacy it does not commit"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Uses the skill's scoring scheme: 5 criteria (claim clarity, evidence quality, warrant validity, rebuttal acknowledgment, internal consistency) scored 0-3, totals out of 15 mapped to Beginner/Intermediate/Advanced/Competitive",
+          "pass": "All four paragraphs scored on all five criteria with /15 totals and correct tier for each total",
+          "partial": "Rubric used but a criterion missing, a total miscomputed, or tiers missing",
+          "fail": "Ad hoc scale (e.g. 1-10 or letter grades) or no per-criterion breakdown"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Scores are justified by the text and ordered sensibly",
+          "pass": "J3 scores clearly highest (Advanced band, about 10-12) citing LT-17 data, growth-rate warrant, 12-month qualifier and replication-factor rebuttal; J1/J2/J4 in Beginner or low Intermediate",
+          "partial": "Ordering right but individual criterion scores poorly justified, or J3 under-credited for its rebuttal",
+          "fail": "J3 not highest, or scores contradict the cited evidence"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Fix advice is specific and matched to each paragraph's band",
+          "pass": "Low scorers told to rebuild the claim and supply evidence (e.g. replace the company list with own data); J3 told to address the rebuttal (rerun LT-17 at replication factor 3) or strengthen backing",
+          "partial": "Advice relevant but generic or the same for every paragraph",
+          "fail": "No fixes, or fixes that would not raise the score"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented facts about the proposal or the test",
+          "pass": "Every claim about the paragraphs is traceable to proposal.md",
+          "partial": "Minor embellishment that does not change a score",
+          "fail": "Fabricates data, sources or quotes"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "J3 recognised as the only well-built argument",
+          "consistent, comparable scoring",
+          "fix advice an author could act on before Thursday"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "docs/black-friday-readiness.md is going to Thursday's capacity review and its conclusion is being used to cancel further capacity work on the orders database. Break the conclusion's argument into its structural parts, rate how strong it is, say under what conditions it fails using the document's own numbers, and tell the owner what to add or change. Write the analysis to analysis.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/argumentation-reference/",
+      "why_discriminating": "The skill's Toulmin model makes the unstated warrant (staging load test is representative of Black Friday), the missing backing and qualifier, and the absent rebuttal explicit; a strong answer then uses the doc's background (55% writes vs 20% tested, 3 h vs 15 min, +35% volume reaching the tested 10k ceiling) as rebuttal conditions. Without the model, answers tend to list generic load-test caveats.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "analysis.md exists and names the warrant and the rebuttal",
+          "check": "test -f analysis.md && grep -qi 'warrant' analysis.md && grep -qi 'rebuttal' analysis.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Identifies the unstated warrant and why it is weak",
+          "pass": "States the warrant as 'the load test is representative of Black Friday traffic' and shows the doc's own data contradicts it (write mix 20% vs ~55%, 15 min vs ~3 h)",
+          "partial": "Names the warrant but does not tie it to the doc's numbers",
+          "fail": "Misses the warrant or treats the argument as sound"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Uses the document's numbers to derive failure conditions",
+          "pass": "Computes or notes that 7,400 TPS x 1.35 is about 10,000 TPS, the tested ceiling, so there is no headroom; plus write-heavy mix and duration",
+          "partial": "Mentions one or two of these conditions without quantifying",
+          "fail": "Only generic caveats (e.g. 'traffic could be higher') with no reference to the doc"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Full Toulmin breakdown with the skill's components",
+          "pass": "Claim, data, warrant, backing, qualifier, rebuttal each addressed, with backing and qualifier flagged as missing and the overreach in 'no further capacity work' noted",
+          "partial": "Most components covered but backing or qualifier not discussed",
+          "fail": "No structured breakdown"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Concrete changes the owner can make",
+          "pass": "Rerun at the Black Friday write mix and duration at or above projected peak, and scope the claim with a qualifier; optionally a score/tier from the rubric",
+          "partial": "Recommends more testing without saying what to test",
+          "fail": "No recommendation, or recommends shipping as is"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No invented figures",
+          "pass": "All numbers come from the document or are clearly labelled estimates",
+          "partial": "One unlabelled assumption",
+          "fail": "Fabricated benchmarks or Postgres limits presented as fact"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "finds the hidden warrant",
+          "uses the doc's own data against the conclusion",
+          "actionable next test"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "I mentor the author of docs/junior-draft.md. Rate the argument so they can see where they stand, then give them the single next thing to work on, phrased as one question addressed to them. Keep it short; they are new and a long list will overwhelm them. Write it to coaching.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/argumentation-reference/",
+      "why_discriminating": "The skill ties coaching to score bands: under 6 means 'rebuild from claim' with the question 'What exactly are you claiming and what evidence supports it?'. A strong answer scores the draft in the Beginner band and asks one claim/evidence question; a model without it often asks about rebuttals or lists many fixes.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "coaching.md exists and contains a question",
+          "check": "test -f coaching.md && grep -q '?' coaching.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Rating uses the 0-15 rubric and lands in the right band",
+          "pass": "Score under 6 (Beginner) with a brief per-criterion basis",
+          "partial": "Rubric-style rating but borderline (6-7) or no breakdown",
+          "fail": "No score, or a mid/high score"
+        },
+        {
+          "id": "r2",
+          "dimension": "recommendation",
+          "criterion": "The single question targets rebuilding the claim and its evidence",
+          "pass": "One question asking what exactly is claimed (e.g. that GraphQL will fix the slow mobile app) and what evidence supports it",
+          "partial": "One question that is relevant but aimed at warrant or rebuttal",
+          "fail": "Several questions, or a question about polish/style"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Names the concrete weaknesses briefly",
+          "pass": "Notes appeal to novelty/popularity and the unsupported causal claim that GraphQL makes the app faster",
+          "partial": "Mentions one of these",
+          "fail": "Misreads the draft"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Respects the mentor's 'keep it short' constraint",
+          "pass": "Short, encouraging, one next step",
+          "partial": "Some extra material but one clear next step",
+          "fail": "Long list of fixes that buries the next step"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "right band and right question",
+          "brevity suited to a new author",
+          "accurate diagnosis"
+        ]
+      }
+    }
+  ]
+}

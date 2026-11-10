@@ -1,0 +1,61 @@
+{
+  "skill_name": "playwright-test-implementation",
+  "evals": [
+    {
+      "id": 0,
+      "name": "auth-setup-and-wizard-spec",
+      "scenario_prompt_id": "p1",
+      "prompt": "Using discovery/pages.json, set up authenticated Playwright tests. Fix e2e/global-setup.ts and playwright.config.ts so sign-in happens once and the session is reused, then write e2e/create-distribution.spec.ts for the create wizard: choose 'Create new S3 bucket', enter a name, pick price class 'All edge locations', and submit. Do not install anything. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "The skill covers the traps here: env credentials, :visible on hosted-UI forms, waiting on a real post-login signal instead of '**' + networkidle, creating and gitignoring fixtures/auth, explicit baseURL, and Cloudscape tiles and select patterns. Without it, a competent spec usually uses getByRole('radio') on tiles and keeps a weak redirect wait.",
+      "files": [
+        "fixtures/playwright-test-implementation/"
+      ],
+      "expectations": [
+        "No hardcoded password; setup reads TEST_PASSWORD",
+        "Did not install Playwright",
+        "Global setup fixed properly: Credentials from env, username/password/submit scoped with :visible, waits on /distributions or the user-menu marker from pages.json, uses baseURL rather than a hardcoded host, and ensures fixtures/auth exists before storageState",
+        "Config and repo hygiene: playwright.config.ts sets globalSetup, use.storageState and baseURL from process.env.PLAYWRIGHT_BASE_URL; .gitignore includes fixtures/auth",
+        "Spec uses the Cloudscape patterns: Tiles via label filter hasText then input radio click force; name via getByPlaceholder; select opened by its button then option picked inside the listbox; Create button by role and name",
+        "No installation and no false verification claims: No install commands run, package.json unchanged, and it says the spec was not run (or only --list via --no-install) rather than claiming it passes"
+      ],
+      "scripted_checks": [
+        {
+          "text": "No hardcoded password; setup reads TEST_PASSWORD",
+          "check": "! grep -rq 'Hunter2-e2e' e2e playwright.config.ts && grep -q 'TEST_PASSWORD' e2e/global-setup.ts && grep -q 'process.env' e2e/global-setup.ts"
+        },
+        {
+          "text": "Did not install Playwright",
+          "check": "test ! -d node_modules"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "login-spec-playwright-missing",
+      "scenario_prompt_id": "p4",
+      "prompt": "Write e2e/login.spec.ts that tests the login page itself: a wrong password shows an error. The project config sets a global storageState. Use discovery/pages.json for selectors. Do not install anything. Before you finish, check whether this project can actually run the spec and tell me what I need to do if it can't. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "package.json has no @playwright/test. The changed Prerequisites section says to tell the user how to add Playwright (npm install -D @playwright/test plus npx playwright install) rather than install it; the old wording said 'customer'. The login spec also exercises Step 5 (explicit empty storageState).",
+      "files": [
+        "fixtures/playwright-test-implementation-nopw/"
+      ],
+      "expectations": [
+        "e2e/login.spec.ts opts out with an explicit empty storageState",
+        "package.json unchanged and nothing installed",
+        "Detects Playwright is missing: The final message states that @playwright/test is not in package.json (so the spec cannot run yet)",
+        "Directs the user to install, both steps: Tells the user to run npm install -D @playwright/test AND npx playwright install (browser binaries), as the user's own step",
+        "Login spec reaches and checks the login page: Asserts a login-page element is visible before filling; inputs scoped with :visible; username from process.env.TEST_USERNAME; deliberately wrong password not a real secret",
+        "No false verification claims: Says the spec was not run (or could not be) rather than claiming it passes"
+      ],
+      "scripted_checks": [
+        {
+          "text": "e2e/login.spec.ts opts out with an explicit empty storageState",
+          "check": "grep -qE 'storageState: *\\{ *cookies: *\\[\\], *origins: *\\[\\] *\\}' e2e/login.spec.ts"
+        },
+        {
+          "text": "package.json unchanged and nothing installed",
+          "check": "echo 'e96eff857932222c330c4b6c356918d4  package.json' | md5sum -c --quiet && test ! -d node_modules"
+        }
+      ]
+    }
+  ]
+}

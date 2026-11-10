@@ -1,0 +1,82 @@
+[
+  {
+    "query": "we have testing-quality-assurance/outputs/e2e-test-strategy.md with 12 prioritized journeys. turn it into a cypress implementation plan with tasks, effort and dependencies. we haven't installed cypress yet",
+    "should_trigger": true
+  },
+  {
+    "query": "how far along are we on the cypress suite? tasks are tracked in cypress-implementation-plan.md, tell me what's blocking the P0 tests",
+    "should_trigger": true
+  },
+  {
+    "query": "Before release, verify our cypress/e2e specs actually cover what the E2E strategy said and follow good patterns. I need a traceability matrix from E2E-001..E2E-010 to spec files",
+    "should_trigger": true
+  },
+  {
+    "query": "break down the login + checkout journeys into cypress work items: page objects, custom commands, fixtures, the specs themselves. React app lives in frontend/src",
+    "should_trigger": true
+  },
+  {
+    "query": "our cypress tests are full of cy.wait(5000) and the its share state. audit cypress/e2e/*.cy.ts against the strategy doc and best practice and tell me what blocks release",
+    "should_trigger": true
+  },
+  {
+    "query": "need a phased roadmap for automating our critical-path journeys in cypress, foundation stuff first. 2 QA engineers, about 3 weeks",
+    "should_trigger": true
+  },
+  {
+    "query": "status update on cypress test implementation for standup: which CYPRESS-0xx tasks got done this week, whats the velocity, any blockers",
+    "should_trigger": true
+  },
+  {
+    "query": "we picked cypress over playwright. given the journeys in e2e-test-strategy.md which page objects and custom commands should we build first so P0 specs can be written in parallel",
+    "should_trigger": true
+  },
+  {
+    "query": "final check on the cypress work: are all P0 journeys from the strategy implemented, which specs are flaky, what's missing",
+    "should_trigger": true
+  },
+  {
+    "query": "plan cypress coverage for the task app: E2E-001 login+create task, E2E-002 edit task, E2E-003 search/filter. give me task ids and acceptance criteria per task",
+    "should_trigger": true
+  },
+  {
+    "query": "write playwright tests for the login page in tests/login.spec.ts using the page object pattern",
+    "should_trigger": false
+  },
+  {
+    "query": "come up with an E2E test strategy for our checkout flow: which user journeys to cover and how to prioritize them",
+    "should_trigger": false
+  },
+  {
+    "query": "jest unit tests for the useCart hook keep failing with 'not wrapped in act(...)' warnings, can you fix them",
+    "should_trigger": false
+  },
+  {
+    "query": "cypress run fails in github actions with 'Cypress failed to verify that your server is running', we use start-server-and-test",
+    "should_trigger": false
+  },
+  {
+    "query": "analyze our overall test coverage across unit, integration and e2e and tell me which acceptance criteria are untested",
+    "should_trigger": false
+  },
+  {
+    "query": "inspect the signup form DOM and extract all validation rules and error message selectors as json",
+    "should_trigger": false
+  },
+  {
+    "query": "set up cypress component testing for our React Button component with vite",
+    "should_trigger": false
+  },
+  {
+    "query": "convert our selenium webdriver java tests to webdriverio",
+    "should_trigger": false
+  },
+  {
+    "query": "track sprint progress for the payments feature, tasks are in .kiro/specs/payments/tasks.md",
+    "should_trigger": false
+  },
+  {
+    "query": "what's the difference between cy.intercept and cy.request and when should I stub vs hit the real api",
+    "should_trigger": false
+  }
+]

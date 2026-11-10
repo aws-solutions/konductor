@@ -1,0 +1,82 @@
+[
+ {
+  "query": "here's our table design: PK=status, SK=createdAt, one GSI on customerId projecting ALL. we expect 2k writes/sec. sanity check it before we build",
+  "should_trigger": true
+ },
+ {
+  "query": "validate the dynamodb data model in docs/data-model.md against the access patterns listed there. hot partitions, missing indexes, cost",
+  "should_trigger": true
+ },
+ {
+  "query": "is our single table design production ready? cfn template in infra/table.yaml, 7 GSIs, provisioned 5 WCU on the GSIs vs 50 on the base table",
+  "should_trigger": true
+ },
+ {
+  "query": "we list all orders with a Scan on the admin page and the table has 30M items. reviewer says that's bad. review the whole table design and score it",
+  "should_trigger": true
+ },
+ {
+  "query": "design review for our ddb tables: are we missing PITR, encryption, TTL, alarms? give me a report with critical/high/medium findings",
+  "should_trigger": true
+ },
+ {
+  "query": "date as the partition key (PK=2026-11-04) for our event log table. good or bad? full assessment please",
+  "should_trigger": true
+ },
+ {
+  "query": "check this CDK Table definition for dynamo anti-patterns and security gaps before implementation starts",
+  "should_trigger": true
+ },
+ {
+  "query": "LSI on userId sorted by timestamp, and a few users have 50GB of data each... validate the design and point out the pitfalls",
+  "should_trigger": true
+ },
+ {
+  "query": "the app writes to the table then immediately queries the GSI and sometimes gets nothing back. review the design for consistency problems and anything else that's off",
+  "should_trigger": true
+ },
+ {
+  "query": "second iteration of the ddb design after last week's review. compare to v1 and re-score, here's v2",
+  "should_trigger": true
+ },
+ {
+  "query": "design a dynamodb table for a chat app from these 6 access patterns",
+  "should_trigger": false
+ },
+ {
+  "query": "write the boto3 code to paginate a Query with LastEvaluatedKey",
+  "should_trigger": false
+ },
+ {
+  "query": "our table is throttling in prod right now, pull the cloudwatch metrics and tell me what's happening",
+  "should_trigger": false
+ },
+ {
+  "query": "write a migration script to move 2M rows from postgres into dynamodb",
+  "should_trigger": false
+ },
+ {
+  "query": "validate the whole CDK stack for IAM wildcards and public S3 buckets, prod, CDK TypeScript, infra/",
+  "should_trigger": false
+ },
+ {
+  "query": "compare DynamoDB and Aurora Serverless v2 for our read-heavy reporting workload",
+  "should_trigger": false
+ },
+ {
+  "query": "fix the ConditionalCheckFailedException being thrown in updateTask",
+  "should_trigger": false
+ },
+ {
+  "query": "write unit tests that mock the DynamoDB DocumentClient for the repo layer",
+  "should_trigger": false
+ },
+ {
+  "query": "explain how GSI eventual consistency works under the hood",
+  "should_trigger": false
+ },
+ {
+  "query": "write an IAM policy that lets the lambda read and write only the Orders table and its indexes",
+  "should_trigger": false
+ }
+]

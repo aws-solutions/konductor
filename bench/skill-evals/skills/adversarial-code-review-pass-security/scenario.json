@@ -1,0 +1,200 @@
+{
+  "skill": "adversarial-code-review-pass-security",
+  "category": "DUPLICATION",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "You are the security lane of a three-pass review (other reviewers cover data integrity and API contracts). Review changes.diff through the security lens only; the unchanged code it touches is under src/ and infra/. Write findings.md with each finding's severity, file:line, the concrete failure scenario and a specific fix. Do not modify any file and do not ask questions; state assumptions at the end of findings.md.",
+      "fixture": "fixtures/adversarial-code-review-pass-security/",
+      "why_discriminating": "The pass's checklist (internal details to callers, payloads/auth headers in logs, unvalidated input in queries, hardcoded secrets, widened IAM) and its out-of-scope rule for synthetic fixture values shape both coverage and restraint. A generic security review tends to flag the AWS example key in test/fixtures as a leaked secret, drift into the non-transactional UPDATE+INSERT, or miss the logged authorization header and the IAM widening.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "findings.md pins the SQL injection in reset.js",
+          "check": "grep -qE 'reset\\.js:1[456]' findings.md && grep -qiE 'inject' findings.md"
+        },
+        {
+          "id": "f2",
+          "text": "No finding targets the synthetic test fixture",
+          "check": "test -s findings.md && ! grep -qE '^\\[(CRITICAL|IMPORTANT|SUGGESTION)\\].*accounts\\.json' findings.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Covers the security seeds: hardcoded mailer key (reset.js:10), headers/body logged at info (:13), SQL injection (:15), err.stack to caller (:24), IAM widened to s3:* on Resource * (policy.json), plus the 404 email echo / account enumeration (:16)",
+          "pass": "At least 5 of 6 with correct file:line",
+          "partial": "3-4",
+          "fail": "2 or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Uses the pass's output format '[SEVERITY] Security - file:line' with Problem and Fix, and its severity guidance (injection, stack to caller, hardcoded credential, IAM widening CRITICAL; payload logging IMPORTANT; enumeration lower)",
+          "pass": "Format and severities match the pass",
+          "partial": "Format right but two or more severities off",
+          "fail": "Different format and severities"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Each finding gives a concrete attacker or caller scenario (e.g. `' OR '1'='1` email dumps users; Authorization header lands in log storage; s3:* lets the role delete any bucket)",
+          "pass": "Concrete scenario for every finding",
+          "partial": "Generic risk statements for several",
+          "fail": "None"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Stays in lane and avoids false positives: no Security finding for the synthetic account id / AKIAIOSFODNN7EXAMPLE, no Data Integrity finding for UPDATE+INSERT, and does not demand requireAuth on a password-reset route that must be public",
+          "pass": "All three avoided",
+          "partial": "One slip",
+          "fail": "Two or more"
+        },
+        {
+          "id": "r5",
+          "dimension": "recommendation",
+          "criterion": "Fixes are specific: bound parameter, key from secrets manager/env, redact or drop headers/body from logs, generic 500 body, generic 404/200 response, Action/Resource scoped back to s3:GetObject on the templates bucket",
+          "pass": "Specific fix per finding",
+          "partial": "Several vague fixes",
+          "fail": "Fixes missing"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Real findings with lines, or noise?",
+          "Did it respect the lane and the synthetic-fixture rule?",
+          "Can a developer apply each fix directly?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Security-only review of changes.diff for a coordinator that will validate and dedupe your output later. Write findings.json: an array of {\"severity\": CRITICAL|IMPORTANT|SUGGESTION, \"file\": path as in the diff, \"line\": new-file line number, \"problem\": ..., \"fix\": ...}. Only report things you can point to on a changed line. Do not modify any file and do not ask questions.",
+      "fixture": "fixtures/adversarial-code-review-pass-security/",
+      "why_discriminating": "As one lane feeding a validating coordinator, the pass must report only on changed lines, keep its honest severity rather than softening for the checker, and leave dedupe to the coordinator. A generic reviewer merges related issues, cites unchanged context lines, or rates the stack-trace leak and the injection below CRITICAL.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Every finding points (within 2 lines) at an added line of the diff",
+          "check": "python3 -c \"\nimport json,re,sys\nadded={}\ncur=None\nfor l in open('changes.diff'):\n    if l.startswith('+++ b/'): cur=l[6:].strip(); n=0; continue\n    m=re.match(r'@@ -\\d+(?:,\\d+)? \\+(\\d+)',l)\n    if m: n=int(m.group(1))-1; continue\n    if cur is None or l.startswith('---') or l.startswith('diff '): continue\n    if l.startswith('-'): continue\n    n+=1\n    if l.startswith('+'): added.setdefault(cur,set()).add(n)\nd=json.load(open('findings.json'))\nok=bool(d) and all(any(abs(int(f['line'])-x)<=2 for x in added.get(f['file'].lstrip('./').replace('b/',''),())) for f in d)\nsys.exit(0 if ok else 1)\n\""
+        },
+        {
+          "id": "f2",
+          "text": "No finding targets the synthetic test fixture file",
+          "check": "python3 -c \"import json,sys;sys.exit(0 if not any('accounts.json' in f['file'] for f in json.load(open('findings.json'))) else 1)\" "
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Severities follow the pass's guidance: SQL injection (reset.js:15), err.stack (:24), hardcoded key (:10), IAM s3:* (policy.json) CRITICAL; header/body logging IMPORTANT; 404 email echo lower",
+          "pass": "All match",
+          "partial": "One off",
+          "fail": "Two or more off"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Separate entries for distinct problems on nearby lines (e.g. logging at :13 and injection at :15 not merged; IAM Action and Resource can be one entry) and none deduplicated away",
+          "pass": "Distinct issues kept separate",
+          "partial": "One merge that loses a problem",
+          "fail": "Several merged or dropped"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Only changed-line findings; no speculation about code outside the diff; no 'consider reviewing' vagueness that a validator would reject",
+          "pass": "All entries concrete and on changed lines",
+          "partial": "One vague or off-diff entry",
+          "fail": "Several"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "problem and fix fields are specific enough for a validator to KEEP them (named defect, named fix)",
+          "pass": "Every entry specific",
+          "partial": "Some generic",
+          "fail": "Mostly generic"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would a validator keep these findings?",
+          "Are severities honest and consistent?",
+          "Anything merged or dropped that should not be?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Security review of export.diff, a new admin export route. Use the existing code in src/ as context. Write findings-export.md with severity, file:line, failure scenario and fix for each finding. Do not modify any file and do not ask questions; state assumptions at the end.",
+      "fixture": "fixtures/adversarial-code-review-pass-security/",
+      "why_discriminating": "The pass says to flag bypassing existing utilities (decodeCursor with HMAC and integer checks, requireAuth middleware) rather than their absence, and that test files are in scope for real unsafe code while synthetic values are not. Generic reviews say 'validate the cursor' without pointing at src/util/cursor.js, and either skip the test file entirely or flag FAKE_SESSION as a secret.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Flags the admin route mounted without requireAuth",
+          "check": "grep -q 'requireAuth' findings-export.md"
+        },
+        {
+          "id": "f2",
+          "text": "Does not report FAKE_SESSION as a hardcoded secret",
+          "check": "test -s findings-export.md && ! grep -qiE '^\\[(CRITICAL|IMPORTANT|SUGGESTION)\\][^\\n]*(FAKE_SESSION|hardcoded (secret|credential|token|session))' findings-export.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Finds the four seeds: admin export mounted at '/' without requireAuth (server.js), offset interpolated into SQL (export.js:10), cursor decoded inline bypassing decodeCursor (export.js:9), TEST_HOST interpolated into execSync (test/export.test.js:11)",
+          "pass": "All four with lines",
+          "partial": "Three",
+          "fail": "Two or fewer"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Frames the cursor and auth findings as bypassing the existing utilities (names src/util/cursor.js decodeCursor and src/middleware/auth.js requireAuth) and fixes by reusing them",
+          "pass": "Both framed as bypass with the utility named",
+          "partial": "One named",
+          "fail": "Generic 'add validation/auth'"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Severity and scenario are concrete: unauthenticated caller pages through every user's email and plan; forged cursor `{\"offset\":\"0; DROP...\"}` reaches SQL; TEST_HOST with shell metacharacters runs commands in CI",
+          "pass": "Concrete scenario per finding with sensible severities (auth and injection CRITICAL)",
+          "partial": "Scenarios generic or severities muddled",
+          "fail": "None"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Does not flag FAKE_SESSION or the default cursor literal as secrets, and does not invent issues in unchanged files",
+          "pass": "No false positives",
+          "partial": "One",
+          "fail": "Several"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it point at the existing utilities that should have been used?",
+          "Did it handle the test file correctly in both directions?",
+          "Are severities right for an unauthenticated PII export?"
+        ]
+      }
+    }
+  ]
+}

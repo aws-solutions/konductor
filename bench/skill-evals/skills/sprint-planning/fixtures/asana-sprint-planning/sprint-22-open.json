@@ -1,0 +1,13 @@
+{
+  "project": "Payments Platform",
+  "from_section": "Sprint 22",
+  "to_section": "Sprint 23",
+  "to_section_exists": false,
+  "sprint_duration_days": 14,
+  "incomplete_tasks": [
+    { "gid": "1209900000007001", "name": "PAY-212 Chargeback evidence upload", "assignee": "Marco Silva", "due_on": "2026-11-18", "story_points": 3, "subtasks": 2, "comments": 6, "attachments": 1 },
+    { "gid": "1209900000007002", "name": "PAY-215 Multi-currency rounding fix", "assignee": "Priya Raman", "due_on": null, "story_points": 2, "subtasks": 0, "comments": 1, "attachments": 0 },
+    { "gid": "1209900000007003", "name": "PAY-219 Fraud rules UI", "assignee": "Lena Fischer", "due_on": "2026-11-20", "story_points": 5, "subtasks": 3, "comments": 11, "attachments": 4 }
+  ],
+  "note": "Story points are tracked in a numeric custom field named 'Story Points' on this project."
+}

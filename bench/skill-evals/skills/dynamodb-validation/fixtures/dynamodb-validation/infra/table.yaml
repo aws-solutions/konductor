@@ -1,0 +1,25 @@
+Resources:
+  OrdersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Orders
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 9000
+        WriteCapacityUnits: 2500
+      AttributeDefinitions:
+        - { AttributeName: status, AttributeType: S }
+        - { AttributeName: createdAt, AttributeType: S }
+        - { AttributeName: customerId, AttributeType: S }
+      KeySchema:
+        - { AttributeName: status, KeyType: HASH }
+        - { AttributeName: createdAt, KeyType: RANGE }
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - { AttributeName: customerId, KeyType: HASH }
+            - { AttributeName: createdAt, KeyType: RANGE }
+          Projection: { ProjectionType: ALL }
+          ProvisionedThroughput:
+            ReadCapacityUnits: 500
+            WriteCapacityUnits: 200

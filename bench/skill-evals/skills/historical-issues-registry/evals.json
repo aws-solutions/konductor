@@ -1,0 +1,90 @@
+{
+  "skill_name": "historical-issues-registry",
+  "evals": [
+    {
+      "id": 0,
+      "name": "filter-rev5-findings-multi-match",
+      "scenario_prompt_id": "p1",
+      "prompt": "We're about to post automated review findings on revision 5 of review PR-2231. history.json holds every comment thread from earlier revisions (replies marked by 'author' or 'reviewer'), and new-findings.json holds this revision's candidate findings. Filter the new findings against the history so we don't re-post noise but don't hide anything a reviewer needs to see. Write filtered.json: an array of the findings to post, each {\"id\": ..., \"tag\": <string or null>}. Write suppression-log.json: an array of {\"finding_id\", \"matched_thread_ids\" (array), \"reason\"} for every suppressed finding. This runs unattended: do not ask questions; put any assumptions in a short notes.md.",
+      "expected_output": "The skill's filter rules are specific: suppress only on rejected/wontfix matches, surface fixed matches as regressions, require unanimity across distinct threads to suppress, never invent a revision, and require path + line (+/-20) + semantic match with a 3-word floor on substring matches. A careful generic answer dedupes by similarity and will typically suppress F2 as 'already fixed', suppress F4 on the author's own 'won't fix', and match F9 and F10 loosely.",
+      "files": [
+        "fixtures/historical-issues-registry/"
+      ],
+      "expectations": [
+        "Both output files parse as JSON arrays",
+        "F2 (fixed then reappeared) is posted, not suppressed",
+        "Suppression set is exactly F1 (T1 rejected) and F6 (T7 wontfix, file renamed handler.ts -> request-handler.ts, +15 lines), each with matched thread and reason in the log: Exactly F1 and F6, logged with thread ids and reasons",
+        "Surfaced findings carry the skill's tags: F2 'regressed since a fix on/after revision 2'; F3 and F5 carried over from revision 3 (F5: rejected T5 + unresolved T6 is not unanimous, highest revision 3); F4 carried over from revision 2: All four tags correct in substance",
+        "F8 (thread T9 has revision null) gets the unqualified 'carried over from a prior revision' with no invented number: Unqualified wording, no digits",
+        "F7 (category differs from T8), F9 ('missing guard' is under 3 significant words, so no substring match to T10) and F10 (line 140 is outside +/-20 of T1's line 40) pass through as new, untagged: All three pass through untagged",
+        "notes.md or the log explains the non-obvious calls (author-only won't fix is unresolved; multi-match needs unanimity) briefly and correctly: Both calls explained correctly"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Both output files parse as JSON arrays",
+          "check": "python3 -c \"import json,sys;a=json.load(open('filtered.json'));b=json.load(open('suppression-log.json'));sys.exit(0 if isinstance(a,list) and isinstance(b,list) else 1)\""
+        },
+        {
+          "text": "F2 (fixed then reappeared) is posted, not suppressed",
+          "check": "python3 -c \"import json,sys;sys.exit(0 if 'F2' in {x['id'] for x in json.load(open('filtered.json'))} else 1)\""
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "build-load-phase-fingerprints",
+      "scenario_prompt_id": "p3",
+      "prompt": "Build the load-phase state for our review dedupe step from history.json: one fingerprint per prior finding thread, so new findings can be matched later even when files move and lines drift. Write fingerprints.json as an array of objects. The next step will match findings even when files are renamed and lines drift, so make the fingerprint carry what that matching needs. Do not ask questions; state assumptions in fingerprint-notes.md.",
+      "expected_output": "The skill defines the fingerprint: {file, line, category, defect_phrase, resolution, thread_id, revision, blocking}, with blocking kept separate from resolution, null for an unknown revision, the defect noun phrase stripped of severity and boilerplate, and unanchored threads dropped. Without it, a model invents a schema (often hashing text or folding blocking into status) that the filter rules cannot use.",
+      "files": [
+        "fixtures/historical-issues-registry/"
+      ],
+      "expectations": [
+        "fingerprints.json parses and excludes T11",
+        "One fingerprint per anchored thread (10) with the skill's fields: file, line, category, defect_phrase, resolution, thread_id, revision, blocking: All ten with all eight fields",
+        "blocking is a separate boolean (true only for T3) and resolution uses only fixed/rejected/wontfix/unresolved, classified as in the KEY (T4 unresolved): Both hold",
+        "defect_phrase is the lowercase defect noun phrase without severity or boilerplate (e.g. 'unconditional overwrite of user record', 'unvalidated pagination token decoded into query'); category is Security / Data Integrity / Schema/Contract: Phrases and categories clean for all",
+        "T9's revision is null, not guessed; line kept as the anchor (range preserved for ranges) rather than invented: Null for T9 and ranges preserved"
+      ],
+      "scripted_checks": [
+        {
+          "text": "fingerprints.json parses and excludes T11",
+          "check": "python3 -c \"import json,sys;d=json.load(open('fingerprints.json'));sys.exit(0 if isinstance(d,list) and d and 'T11' not in [x.get('thread_id') for x in d] else 1)\""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "filter-refetched-threads-dedup",
+      "scenario_prompt_id": "p4",
+      "prompt": "We're about to post automated review findings on revision 6 of review PR-3107. history.json holds the comment threads as fetched from each earlier revision (replies marked by 'author' or 'reviewer'), and new-findings.json holds this revision's candidate findings. Filter the new findings against the history so we don't re-post noise but don't hide anything a reviewer needs to see. Write filtered.json: an array of the findings to post, each {\"id\": ..., \"tag\": <string or null>}. Write suppression-log.json: an array of {\"finding_id\", \"matched_thread_ids\" (array), \"reason\"} for every suppressed finding. This runs unattended: do not ask questions; put any assumptions in a short notes.md.",
+      "expected_output": "Collapse re-fetched threads by thread_id to the latest fetch, then apply unanimity and regression precedence. Suppress F21 and F23; post F22 (carried over from revision 1), F25 (regressed since a fix on/after revision 4) and F27 untagged.",
+      "files": [
+        "fixtures/historical-issues-registry-refetch/"
+      ],
+      "expectations": [
+        "Both output files parse as JSON arrays",
+        "Posted set is exactly F22, F25 and F27 (F21 and F23 suppressed)",
+        "F23's suppression entry lists T23 and T24 each exactly once",
+        "F21 is suppressed on T21 as rejected: the two T21 entries are re-fetches of one thread, the latest (revision 5 fetch) wins, and the stale unresolved snapshot is not treated as a disagreeing second match",
+        "F22 is posted with a 'carried over from revision 1' tag, because T22's latest fetch shows the reviewer reopened it; the earlier wontfix snapshot does not suppress it",
+        "F25 is posted with the regression tag 'regressed since a fix on/after revision 4' (T26 fixed and T25 unresolved disagree, regression wording is preferred, revision taken from T26), and F27 is posted untagged",
+        "notes.md or the log briefly and correctly explains the two non-obvious calls: duplicate thread_id entries are collapsed to the latest fetch, and F23 is suppressed only because both distinct threads are rejected or wontfix"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Both output files parse as JSON arrays",
+          "check": "python3 -c \"import json,sys;a=json.load(open('filtered.json'));b=json.load(open('suppression-log.json'));sys.exit(0 if isinstance(a,list) and isinstance(b,list) else 1)\""
+        },
+        {
+          "text": "Posted set is exactly F22, F25 and F27 (F21 and F23 suppressed)",
+          "check": "python3 -c \"import json,sys;sys.exit(0 if {x['id'] for x in json.load(open('filtered.json'))}=={'F22','F25','F27'} else 1)\""
+        },
+        {
+          "text": "F23's suppression entry lists T23 and T24 each exactly once",
+          "check": "python3 -c \"import json,sys;e=[x for x in json.load(open('suppression-log.json')) if x.get('finding_id')=='F23'];t=e[0].get('matched_thread_ids') if e else [];sys.exit(0 if sorted(t)==['T23','T24'] else 1)\""
+        }
+      ]
+    }
+  ]
+}

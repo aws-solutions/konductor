@@ -1,0 +1,89 @@
+{
+  "skill_name": "humanize-writing",
+  "evals": [
+    {
+      "id": 0,
+      "name": "launch-post-dashes-and-facts",
+      "scenario_prompt_id": "p1",
+      "prompt": "Our launch post for Relay 2.4 (docs/launch-post.md) reads like a chatbot wrote it and marketing wants it to sound like our engineers. Rewrite it so it reads like a person wrote it, keeping every fact. Write the result to launch-post.md at the project root and leave the original alone. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "The skill treats em/en dashes as a hard zero, bans curly quotes, chat sign-offs and generic upbeat endings, and requires the rewrite to keep the original's coverage (five paragraphs, every fact). Models without it routinely keep or reintroduce em dashes, compress five paragraphs into three, or swap one buzzword set for another.",
+      "files": [
+        "fixtures/humanize-writing/"
+      ],
+      "expectations": [
+        "No em or en dashes",
+        "Facts preserved",
+        "AI tells removed: No seamless/robust/pivotal/testament/delve/landscape/boasts/underscores/interplay/unlock/fostering/game-changer, no rule-of-three padding, no 'Let us know... hope this helps', no 'future looks bright', heading in sentence case",
+        "Coverage and facts kept: Still covers cache speedup (37% on 1,800 services), cache persisting across runners, 12 regions incl. Sydney and Sao Paulo, signed manifests traceable to commit, SOC 2; roughly five paragraphs",
+        "Reads like a person: Varied sentence length, plain verbs (is/has), specific claims, an ending that states something concrete rather than cheerleading",
+        "Mechanical rules: Straight quotes only, no em/en dashes, original file untouched"
+      ],
+      "scripted_checks": [
+        {
+          "text": "No em or en dashes",
+          "check": "test -f launch-post.md && python3 -c \"import sys;t=open('launch-post.md',encoding='utf-8').read();sys.exit(1 if (chr(8212) in t or chr(8211) in t) else 0)\""
+        },
+        {
+          "text": "Facts preserved",
+          "check": "for f in '2.4' '37%' '1,800' '12' 'SOC 2' 'Sydney'; do grep -qF \"$f\" launch-post.md || exit 1; done"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "human-draft-minimal-edits",
+      "scenario_prompt_id": "p3",
+      "prompt": "A reviewer said my incident write-up docs/oncall-notes.md 'sounds AI-written' and asked me to fix it before it goes to the team. samples/my-voice.md is a sample of how I write. Fix whatever actually needs fixing and write the result to oncall-notes.md at the project root, then tell me in your final message what you changed and why. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "The skill's detection guidance says to look for clusters of tells, to preserve specific human detail, and not to rewrite watched words inside quotations or proper names. This draft is human-written: the only hard-rule hit is one em dash. Without the skill, models tend to rewrite it wholesale, 'fix' the quoted vendor claim, or treat 'Pivotal Tracker' and the three real action items as AI tells.",
+      "files": [
+        "fixtures/humanize-writing/"
+      ],
+      "expectations": [
+        "No em or en dashes",
+        "Quotation and proper name kept verbatim",
+        "Minimal, justified edits: Changes only the em dash and at most a couple of small things (for example the lone 'Additionally'); says the draft already reads human and why",
+        "Protected text untouched: Vendor quote, 'Pivotal Tracker', and the three-item 'What I'd change' list stay as written",
+        "Voice and facts preserved: Still first person, short sentences, self-criticism (snoozed the ticket); keeps 02:14, 02:31, 5 retries, 40 GB, 03:02, 30 and 7 days",
+        "Explains the call: Final message lists each change and names what it left alone on purpose (quote, proper name, real list)"
+      ],
+      "scripted_checks": [
+        {
+          "text": "No em or en dashes",
+          "check": "test -f oncall-notes.md && python3 -c \"import sys;t=open('oncall-notes.md',encoding='utf-8').read();sys.exit(1 if (chr(8212) in t or chr(8211) in t) else 0)\""
+        },
+        {
+          "text": "Quotation and proper name kept verbatim",
+          "check": "grep -qF 'seamless and robust under all conditions, no action needed' oncall-notes.md && grep -qF 'Pivotal Tracker' oncall-notes.md"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "retro-save-in-place",
+      "scenario_prompt_id": "p4",
+      "prompt": "docs/retro-draft.md is the sprint retro summary for our queue migration, and it reads like marketing copy. Rewrite it so it sounds like the team wrote it, and save the result back over docs/retro-draft.md. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "expected_output": "Round 2 replaced the harness-specific file_read/file_write tool names with plain 'read the file' and 'write the final rewrite back to the file, only after confirming'. Evals 0 and 1 write to a new file, so neither exercises the save-back step; this one asks for an in-place save with the request itself as confirmation.",
+      "files": [
+        "fixtures/humanize-writing/"
+      ],
+      "expectations": [
+        "docs/retro-draft.md was rewritten in place",
+        "No em or en dashes",
+        "AI tells removed: no pivotal/milestone/journey/operational excellence/navigated/intricate complexities/robust/resilient/speak for themselves/valuable insights/serves as a reminder/ongoing endeavor",
+        "Coverage kept: still says the team moved to the new queue over two weeks, retry semantics were the hard part, latency went down, on-call pages went down, and the configuration format is still a pain",
+        "No invented facts: adds no specific numbers, names or outcomes the original does not contain (vague claims stay vague or are flagged as needing data)",
+        "Final message says the file was saved over the original and states any assumptions"
+      ],
+      "scripted_checks": [
+        {
+          "text": "docs/retro-draft.md was rewritten in place",
+          "check": "test -s docs/retro-draft.md && ! grep -qF 'pivotal milestone' docs/retro-draft.md"
+        },
+        {
+          "text": "No em or en dashes",
+          "check": "python3 -c \"import sys;t=open('docs/retro-draft.md',encoding='utf-8').read();sys.exit(1 if (chr(8212) in t or chr(8211) in t) else 0)\""
+        }
+      ]
+    }
+  ]
+}

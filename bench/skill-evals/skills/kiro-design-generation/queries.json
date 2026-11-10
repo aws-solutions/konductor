@@ -1,0 +1,22 @@
+[
+{"query": "requirements.md for network-monitoring is approved (.kiro/specs/network-monitoring/requirements.md). now write the design.md next to it using the system design in .konductor/handoff/architect-system-design.md", "should_trigger": true},
+{"query": "Produce the Kiro spec design file for the vpc-analyzer feature. It needs Overview, Architecture, Components and Interfaces, Data Models, Error Handling, Testing Strategy.", "should_trigger": true},
+{"query": "we have one big HLD for the whole platform and EARS requirements per feature. break the HLD down into a per-feature low-level design for alert-management that kiro can generate tasks from", "should_trigger": true},
+{"query": "write .kiro/specs/billing-export/design.md from the requirements, threat model and dynamodb design we already have. typed TS interfaces for every component pls, and mermaid sequence diagrams", "should_trigger": true},
+{"query": "Kiro spec-driven dev: requirements done for 'user-invites'. Do the design phase. Make sure every requirement maps to a component, and keep it under 300 lines.", "should_trigger": true},
+{"query": "convert our existing architecture doc (docs/arch/monitoring.md) into the Kiro IDE design format for the monitor-crud feature, referencing shared auth middleware instead of copying it", "should_trigger": true},
+{"query": "next step after requirements in the kiro workflow for feature 'audit-log' - write the design file. spec dir is specs/audit-log/ not the default", "should_trigger": true},
+{"query": "Write the low-level design for the notification-preferences feature in Kiro's format. Cover 400/401/403/404/409/429/502 error handling and unit/integration/e2e testing.", "should_trigger": true},
+{"query": "I have requirements.md for 'report-scheduler' and a smithy API spec. produce the kiro design doc with components+interfaces, data models with field types, and a traceability note listing which reqs are covered", "should_trigger": true},
+{"query": "decompose the system design for feature 'tag-sync' into a kiro design.md; it depends on the Tag entity from the tag-management feature so reference that spec rather than redefining it", "should_trigger": true},
+{"query": "Write the Kiro requirements.md in EARS format for the network-monitoring feature", "should_trigger": false},
+{"query": "generate tasks.md for network-monitoring from the approved requirements and design", "should_trigger": false},
+{"query": "Design the high-level system architecture for the monitoring platform: components, data flow, AWS services", "should_trigger": false},
+{"query": "write a design doc for leadership approval on the monitoring platform, problem first, decision requested", "should_trigger": false},
+{"query": "split the platform HLD into independent feature tracks so each engineer can own one", "should_trigger": false},
+{"query": "Validate that the code in src/ matches .kiro/specs/network-monitoring/design.md and the tasks are done", "should_trigger": false},
+{"query": "Design the DynamoDB table and GSIs for the monitor access patterns", "should_trigger": false},
+{"query": "write the smithy model for the monitor CRUD API", "should_trigger": false},
+{"query": "set up Kiro steering files for this repo so the agent knows our conventions", "should_trigger": false},
+{"query": "implement the MonitorService.createMonitor method from the design with tests", "should_trigger": false}
+]

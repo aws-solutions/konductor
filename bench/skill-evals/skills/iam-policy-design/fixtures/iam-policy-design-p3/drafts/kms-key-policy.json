@@ -1,0 +1,29 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AccountRoot",
+      "Effect": "Allow",
+      "Principal": {"AWS": "arn:aws:iam::111122223333:root"},
+      "Action": "kms:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "KeyAdministration",
+      "Effect": "Allow",
+      "Principal": {"AWS": "arn:aws:iam::111122223333:role/SecurityAdmin"},
+      "Action": "kms:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "LambdaUse",
+      "Effect": "Allow",
+      "Principal": {"AWS": [
+        "arn:aws:iam::111122223333:role/docintake-ingest",
+        "arn:aws:iam::111122223333:role/docintake-processor"
+      ]},
+      "Action": ["kms:Decrypt", "kms:GenerateDataKey"],
+      "Resource": "*"
+    }
+  ]
+}

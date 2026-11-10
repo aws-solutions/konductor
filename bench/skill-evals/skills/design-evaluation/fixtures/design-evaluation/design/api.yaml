@@ -1,0 +1,39 @@
+openapi: 3.0.3
+info:
+  title: Report Export API
+  version: "1"
+# Note: the response shape for GET /exports/{id} will change next quarter when we
+# add multi-file exports (downloadUrl becomes downloadUrls: []). No versioning yet.
+paths:
+  /exports:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [month]
+              properties:
+                month: { type: string, example: "2026-10" }
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exportId: { type: string }
+  /exports/{id}:
+    get:
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [QUEUED, READY, FAILED] }
+                  downloadUrl: { type: string }

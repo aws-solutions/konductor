@@ -1,0 +1,177 @@
+{
+  "skill": "kiro-design-generation",
+  "category": "RUNTIME-FEATURE",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "requirements.md for network-monitoring is approved. Write its design next so we can generate tasks. The platform system design is in the handoff folder. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/kiro-design-generation/",
+      "why_discriminating": "The skill fixes the output location (alongside requirements.md), the exact six Kiro sections, requirement traceability, typed interfaces, referencing shared components (AuthMiddleware) instead of redesigning them, and a full error list. Requirements 3 and 4 hide design work (consecutive-failure state, disabling the per-monitor schedule) that a shallow design skips.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "design.md is next to requirements.md and has the six sections in order",
+          "check": "test -f .kiro/specs/network-monitoring/design.md && python3 -c \"import re,sys;t=open('.kiro/specs/network-monitoring/design.md').read();hs=[h.strip().lower() for h in re.findall(r'^##\\s+(?:\\d+\\.\\s*)?(.*)$',t,re.M)];want=['overview','architecture','components and interfaces','data models','error handling','testing strategy'];idx=[next((i for i,h in enumerate(hs) if h.startswith(w)),-1) for w in want];sys.exit(0 if -1 not in idx and idx==sorted(idx) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Kiro format per the skill",
+          "pass": "Exactly the six sections, each requirement 1-4 traced in Overview, at least one Mermaid diagram, typed TypeScript interfaces, <= 300 lines",
+          "partial": "Six sections plus extras, or traceability partial",
+          "fail": "Sections missing or untyped component descriptions"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Hidden design work in Requirements 3 and 4",
+          "pass": "Consecutive-failure state is persisted (counter or last-3 RESULT# query) and pause disables the EventBridge Scheduler schedule; 10 s probe timeout designed",
+          "partial": "One of the two handled",
+          "fail": "Neither"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Reuses the platform design",
+          "pass": "Uses the given keys (ACCOUNT#/MONITOR#, GSI1 name uniqueness for the 409, RESULT# with 7-day TTL); AuthMiddleware referenced briefly; ownership check -> 403",
+          "partial": "Some keys reinvented or AuthMiddleware partially redesigned",
+          "fail": "Ignores the system design"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Error handling and testing breadth",
+          "pass": "400, 401/403, 404, 409, 429, 502/503 each with trigger/response/recovery; unit, integration and E2E with concrete cases",
+          "partial": "Most errors or two test levels",
+          "fail": "Generic error list, one test level"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "coverage of Req 3/4 design work",
+          "fidelity to the system design",
+          "Kiro structure"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Requirements for the audit-log feature are approved; our spec dir for this one is specs/audit-log/, not the default location. Write the feature's design so we can move to task generation. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/kiro-design-generation/",
+      "why_discriminating": "The skill says a caller-supplied spec_dir MUST be used for reads and writes. Beyond placement, the requirements carry design-shaping numbers (5 s write, 400-day retention, newest-first 100 per page, AuditReader role) and a reference to a 'resumed' action that network-monitoring never defines, which the skill says to flag.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "design.md is in the caller's spec_dir, not the default",
+          "check": "test -f specs/audit-log/design.md && ! test -e .kiro/specs/audit-log/design.md && python3 -c \"import re,sys;t=open('specs/audit-log/design.md').read();hs=[h.strip().lower() for h in re.findall(r'^##\\s+(?:\\d+\\.\\s*)?(.*)$',t,re.M)];want=['overview','architecture','components and interfaces','data models','error handling','testing strategy'];idx=[next((i for i,h in enumerate(hs) if h.startswith(w)),-1) for w in want];sys.exit(0 if -1 not in idx and idx==sorted(idx) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Requirements turn into concrete design",
+          "pass": "Capture path meeting 5 s (e.g. DynamoDB Streams on `platform` -> Lambda), 400-day retention (TTL or S3 lifecycle), key design for by-monitor + time range newest-first with Limit 100 and a token",
+          "partial": "Two of the three",
+          "fail": "Restates requirements without mechanisms"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Gaps are flagged",
+          "pass": "Notes that 'resumed' has no defined operation in network-monitoring, and that no threat model/DynamoDB handoff exists, stating assumptions",
+          "partial": "One gap flagged",
+          "fail": "None"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Kiro format and traceability",
+          "pass": "Six sections, Requirement 1 and 2 ACs traced, typed interfaces and data models with field types, AuditReader -> 403",
+          "partial": "Minor omissions",
+          "fail": "Missing sections or untyped"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Scope stays on audit-log",
+          "pass": "MonitorService and AuthMiddleware referenced, not redesigned; no unrequested features (e.g. export, alerting)",
+          "partial": "One unrequested addition",
+          "fail": "Redesigns shared components"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "correct spec_dir",
+          "mechanisms for the numeric requirements",
+          "flagging gaps"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Write the design for the tag-sync feature (requirements are approved). Use the platform system design in the handoff folder. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/kiro-design-generation/",
+      "why_discriminating": "The skill's decomposition rules say to reference cross-feature entities (Tag from tag-management/design.md) rather than redefine them and to flag requirements the design cannot meet. CloudWatch metric dimensions are part of metric identity, so past datapoints cannot be re-dimensioned and the backfill-for-old-dashboards requirement cannot be met as written.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "design.md is next to tag-sync's requirements.md with six sections and references tag-management",
+          "check": "test -f .kiro/specs/tag-sync/design.md && grep -q 'tag-management/design.md' .kiro/specs/tag-sync/design.md && python3 -c \"import re,sys;t=open('.kiro/specs/tag-sync/design.md').read();hs=[h.strip().lower() for h in re.findall(r'^##\\s+(?:\\d+\\.\\s*)?(.*)$',t,re.M)];want=['overview','architecture','components and interfaces','data models','error handling','testing strategy'];idx=[next((i for i,h in enumerate(hs) if h.startswith(w)),-1) for w in want];sys.exit(0 if -1 not in idx and idx==sorted(idx) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "CloudWatch dimension feasibility is flagged",
+          "pass": "States that dimensions cannot be changed on existing datapoints, so sync means publishing under new dimensions going forward and Req 2 backfill cannot make old dashboards work as written; proposes an alternative or open question",
+          "partial": "Hints at the limitation without flagging the requirement",
+          "fail": "Designs an 'update dimensions' call as if it exists"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Cross-feature reference instead of redefinition",
+          "pass": "Tag entity and TagService referenced from tag-management; no `interface Tag {` redefinition",
+          "partial": "Referenced but partially copied",
+          "fail": "Redefined"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Event source and retry design",
+          "pass": "Identifies how tag changes are detected (TagService events or Streams) given TagService is owned elsewhere; throttling retry with backoff up to 5 attempts and a DLQ; backfill with progress reporting",
+          "partial": "Retry present but trigger path vague",
+          "fail": "Neither"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Kiro format",
+          "pass": "Six sections, Mermaid diagram, typed interfaces, both requirements traced",
+          "partial": "Minor gaps",
+          "fail": "Missing sections"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "feasibility flag on dimensions",
+          "reference vs redefine",
+          "trigger and retry design"
+        ]
+      }
+    }
+  ]
+}

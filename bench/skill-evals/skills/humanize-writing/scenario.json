@@ -1,0 +1,192 @@
+{
+  "skill": "humanize-writing",
+  "category": "WATCH",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Our launch post for Relay 2.4 (docs/launch-post.md) reads like a chatbot wrote it and marketing wants it to sound like our engineers. Rewrite it so it reads like a person wrote it, keeping every fact. Write the result to launch-post.md at the project root and leave the original alone. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/humanize-writing/",
+      "why_discriminating": "The skill treats em/en dashes as a hard zero, bans curly quotes, chat sign-offs and generic upbeat endings, and requires the rewrite to keep the original's coverage (five paragraphs, every fact). Models without it routinely keep or reintroduce em dashes, compress five paragraphs into three, or swap one buzzword set for another.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "No em or en dashes",
+          "check": "test -f launch-post.md && python3 -c \"import sys;t=open('launch-post.md',encoding='utf-8').read();sys.exit(1 if (chr(8212) in t or chr(8211) in t) else 0)\""
+        },
+        {
+          "id": "f2",
+          "text": "Facts preserved",
+          "check": "for f in '2.4' '37%' '1,800' '12' 'SOC 2' 'Sydney'; do grep -qF \"$f\" launch-post.md || exit 1; done"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "AI tells removed",
+          "pass": "No seamless/robust/pivotal/testament/delve/landscape/boasts/underscores/interplay/unlock/fostering/game-changer, no rule-of-three padding, no 'Let us know... hope this helps', no 'future looks bright', heading in sentence case",
+          "partial": "One or two tells left",
+          "fail": "Several tells left or new ones introduced"
+        },
+        {
+          "id": "r2",
+          "dimension": "restraint",
+          "criterion": "Coverage and facts kept",
+          "pass": "Still covers cache speedup (37% on 1,800 services), cache persisting across runners, 12 regions incl. Sydney and Sao Paulo, signed manifests traceable to commit, SOC 2; roughly five paragraphs",
+          "partial": "One fact dropped or merged away",
+          "fail": "Rewrite is a short summary that drops several facts"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Reads like a person",
+          "pass": "Varied sentence length, plain verbs (is/has), specific claims, an ending that states something concrete rather than cheerleading",
+          "partial": "Clean but flat and uniform",
+          "fail": "Still reads generated"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Mechanical rules",
+          "pass": "Straight quotes only, no em/en dashes, original file untouched",
+          "partial": "One curly quote or the original edited",
+          "fail": "Dashes remain"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Which sounds like an engineer wrote it?",
+          "Fact coverage",
+          "Remaining tells"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "The section in docs/design-cqrs.md is unreadable for our PMs, who need to sign off on the eventual-consistency trade-off, but backend engineers also use it as reference. Make it understandable for both without dropping any technical facts. Write the result to design-cqrs.md at the project root. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/humanize-writing/",
+      "why_discriminating": "The skill's section on simplifying technical design says: lead with what and why, expand acronyms on first use, one idea per sentence, anchor abstractions, and keep the exact claim (numbers, failure modes). Without it, rewrites either stay dense or simplify away the numbers and at-least-once/idempotency detail engineers need.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Numbers preserved",
+          "check": "for f in '800' '2,000' '95%' '40'; do grep -qF \"$f\" design-cqrs.md || exit 1; done"
+        },
+        {
+          "id": "f2",
+          "text": "CQRS expanded on first use",
+          "check": "grep -qi 'Command Query Responsibility Segregation' design-cqrs.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "reasoning",
+          "criterion": "Plain lead for the PM",
+          "pass": "Opens with what the read path does and why it is split, and states the trade-off (readers may briefly see stale data, p99 800ms at 2,000 writes/s) in words a PM can sign off on",
+          "partial": "Trade-off present but buried after mechanism",
+          "fail": "No plain-language summary"
+        },
+        {
+          "id": "r2",
+          "dimension": "restraint",
+          "criterion": "Technical facts intact",
+          "pass": "Keeps Kinesis log, DynamoDB read models, idempotent projectors, at-least-once delivery, GSI-backed query API, 95% under 40ms",
+          "partial": "One technical fact dropped",
+          "fail": "Several dropped or numbers changed"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Skill's simplification moves",
+          "pass": "Acronyms expanded, sentences short (no 40+ word sentence), jargon glossed in a clause, no em dashes",
+          "partial": "Most moves applied, one long sentence remains",
+          "fail": "Still one or two dense sentences"
+        },
+        {
+          "id": "r4",
+          "dimension": "issue",
+          "criterion": "No new AI tells",
+          "pass": "No 'leverage', 'seamless', 'robust', no promotional framing",
+          "partial": "One tell",
+          "fail": "Several"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Could a PM sign off on the trade-off from this?",
+          "Did any technical fact get lost?",
+          "Readability for an engineer"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "A reviewer said my incident write-up docs/oncall-notes.md 'sounds AI-written' and asked me to fix it before it goes to the team. samples/my-voice.md is a sample of how I write. Fix whatever actually needs fixing and write the result to oncall-notes.md at the project root, then tell me in your final message what you changed and why. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/humanize-writing/",
+      "why_discriminating": "The skill's detection guidance says to look for clusters of tells, to preserve specific human detail, and not to rewrite watched words inside quotations or proper names. This draft is human-written: the only hard-rule hit is one em dash. Without the skill, models tend to rewrite it wholesale, 'fix' the quoted vendor claim, or treat 'Pivotal Tracker' and the three real action items as AI tells.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "No em or en dashes",
+          "check": "test -f oncall-notes.md && python3 -c \"import sys;t=open('oncall-notes.md',encoding='utf-8').read();sys.exit(1 if (chr(8212) in t or chr(8211) in t) else 0)\""
+        },
+        {
+          "id": "f2",
+          "text": "Quotation and proper name kept verbatim",
+          "check": "grep -qF 'seamless and robust under all conditions, no action needed' oncall-notes.md && grep -qF 'Pivotal Tracker' oncall-notes.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "restraint",
+          "criterion": "Minimal, justified edits",
+          "pass": "Changes only the em dash and at most a couple of small things (for example the lone 'Additionally'); says the draft already reads human and why",
+          "partial": "Light rewrite of several sentences that did not need it",
+          "fail": "Rewritten wholesale or restructured"
+        },
+        {
+          "id": "r2",
+          "dimension": "restraint",
+          "criterion": "Protected text untouched",
+          "pass": "Vendor quote, 'Pivotal Tracker', and the three-item 'What I'd change' list stay as written",
+          "partial": "One of them altered",
+          "fail": "Two or more altered"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Voice and facts preserved",
+          "pass": "Still first person, short sentences, self-criticism (snoozed the ticket); keeps 02:14, 02:31, 5 retries, 40 GB, 03:02, 30 and 7 days",
+          "partial": "Voice kept but a fact changed, or facts kept but voice flattened",
+          "fail": "Voice lost and facts changed"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Explains the call",
+          "pass": "Final message lists each change and names what it left alone on purpose (quote, proper name, real list)",
+          "partial": "Lists changes only",
+          "fail": "No explanation"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it respect a human draft instead of over-editing?",
+          "Were the quote and proper name preserved?",
+          "Voice match"
+        ]
+      }
+    }
+  ]
+}

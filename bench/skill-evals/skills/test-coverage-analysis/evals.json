@@ -1,0 +1,64 @@
+{
+  "skill_name": "test-coverage-analysis",
+  "evals": [
+    {
+      "id": 0,
+      "name": "backend-coverage-report",
+      "prompt": "Analyze test coverage for the Express service in backend-api/ against docs/requirements.md and write the report to coverage-report.md. Treat scope as confirmed. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "Skill-specific: detects backend and recommends the Testing Pyramid with target distribution, emits the Progress Tracker and Coverage Report template (coverage-by-type and by-feature tables, Covered/Missing/Manual sections with file::test citations and example tests), maps each AC, and orders findings CRITICAL -> IMPORTANT -> SUGGESTION without a fix prompt since scope is confirmed.",
+      "files": [
+        "fixtures/test-coverage-analysis/"
+      ],
+      "expectations": [
+        "coverage-report.md exists",
+        "Names the Testing Pyramid (backend) as the recommended model and compares the actual unit/integration/E2E distribution against its target ranges",
+        "Includes a Progress Tracker checklist and an Executive Summary with a coverage-by-test-type table (Unit/Integration/E2E with Total/Covered/Missing/Coverage) and a coverage-by-feature table",
+        "Marks AC-1.1 and AC-1.2 covered citing the specific test files, and AC-1.3, AC-1.4, AC-2.1, AC-2.2 as missing",
+        "Puts AC-2.3 (email rendering in Gmail/Outlook) under Manual Testing Required with numbered manual steps",
+        "Flags missing integration tests for Stripe and SendGrid and missing performance test for NFR-1 p99 latency",
+        "Findings are grouped and ordered CRITICAL then IMPORTANT then SUGGESTION, with untested error paths (EXPIRED_TOKEN 410, StripeCardError 402) at CRITICAL",
+        "Does not end by asking 'Fix these issues? [y/n]' (scope confirmed)"
+      ],
+      "scripted_checks": [
+        {
+          "text": "coverage-report.md exists",
+          "check": "test -s coverage-report.md"
+        },
+        {
+          "text": "mentions pyramid",
+          "check": "grep -qi 'pyramid' coverage-report.md"
+        }
+      ],
+      "scenario_prompt_id": "e0"
+    },
+    {
+      "id": 1,
+      "name": "frontend-readiness-assessment",
+      "prompt": "We want to ship frontend-app/ next week. Run a release readiness assessment against frontend-app/docs/requirements.md and write it to readiness.md. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "Skill-specific: readiness mode with Testing Trophy for React, Quality Gates table, status from the Ready/At Risk/Not Ready scale with Risk Level, Blocking Issues, Risk Assessment with probability/impact/score, Release Checklist; flags AC-3.4 checkout form absent from code; ends with CRITICAL->IMPORTANT->SUGGESTION and the fix prompt.",
+      "files": [
+        "fixtures/test-coverage-analysis/"
+      ],
+      "expectations": [
+        "readiness.md exists",
+        "Names the Testing Trophy (frontend/React) model and notes the suite is unit/snapshot-heavy with no integration tests of ProductPage/CartPage",
+        "Gives a status using the skill's scale (Ready / At Risk / Not Ready), concludes Not Ready, and states a Risk Level",
+        "Has a Quality Gates table with per-gate status and a Release Checklist of checkbox items",
+        "Has a Risk Assessment with High/Medium risks each carrying probability, impact, a risk score and mitigation",
+        "Reports AC-3.1..AC-3.4 uncovered and notes the AC-3.4 checkout form does not exist in the code",
+        "Findings presented CRITICAL then IMPORTANT then SUGGESTION and ends asking 'Fix these issues? [y/n]'"
+      ],
+      "scripted_checks": [
+        {
+          "text": "readiness.md exists",
+          "check": "test -s readiness.md"
+        },
+        {
+          "text": "mentions trophy",
+          "check": "grep -qi 'trophy' readiness.md"
+        }
+      ],
+      "scenario_prompt_id": "e1"
+    }
+  ]
+}

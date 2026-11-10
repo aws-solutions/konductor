@@ -1,0 +1,12 @@
+[
+  {"id": "F1", "file": "src/api/users.ts", "line": 44, "text": "[SUGGESTION] Security: request payload logged at debug level. The body is logged before redaction."},
+  {"id": "F2", "file": "src/repo/userRepo.ts", "line": 61, "text": "[CRITICAL] Data Integrity: unconditional overwrite of user record. The version condition is gone."},
+  {"id": "F3", "file": "src/handlers/export.ts", "line": 21, "text": "[IMPORTANT] Schema/Contract: missing validation on export format parameter."},
+  {"id": "F4", "file": "src/api/orders.ts", "line": 70, "text": "[CRITICAL] Security: stack trace returned to caller. err.stack is in the JSON body."},
+  {"id": "F5", "file": "src/util/cursor.ts", "line": 16, "text": "[IMPORTANT] Security: unvalidated pagination token decoded into query."},
+  {"id": "F6", "file": "src/request-handler.ts", "line": 45, "text": "[SUGGESTION] Schema/Contract: enum value renamed that consumers pattern-match on."},
+  {"id": "F7", "file": "src/repo/orderRepo.ts", "line": 88, "text": "[IMPORTANT] Security: internal order id exposed in error message."},
+  {"id": "F8", "file": "src/api/search.ts", "line": 12, "text": "[CRITICAL] Security: search term interpolated into SQL query string."},
+  {"id": "F9", "file": "src/config/load.ts", "line": 7, "text": "[SUGGESTION] Schema/Contract: missing guard."},
+  {"id": "F10", "file": "src/api/users.ts", "line": 140, "text": "[IMPORTANT] Security: request payload logged at debug level."}
+]

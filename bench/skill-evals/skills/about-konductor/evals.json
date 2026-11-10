@@ -1,0 +1,77 @@
+{
+  "skill_name": "about-konductor",
+  "evals": [
+    {
+      "id": 0,
+      "name": "model-md-agents-skills-sops",
+      "scenario_prompt_id": "p2",
+      "prompt": "Write MODEL.md explaining the difference between agents, skills and SOPs in konductor, and how a user lists and invokes SOPs on Kiro CLI and on Claude Code. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "The invocation forms (/prompts and /agent-sop:<name> on Kiro CLI; /help and /sop-<name> on Claude Code) and the per-agent registration rule are project facts only the skill carries. Without it, a model guesses generic slash commands.",
+      "files": [],
+      "expectations": [
+        "Gives the Kiro CLI SOP invocation form",
+        "Gives the Claude Code SOP form",
+        "Accurate definitions: Agent = persona with prompt, model and tool grants; skill = capability loaded on demand by description match or name; SOP = named, parameterized multi-step procedure run deliberately",
+        "Correct listing and invocation per runtime: Kiro CLI: /prompts to list, /agent-sop:<name> to run; Claude Code: /help to list, /sop-<name> to run (installed as skills under .claude/skills/sop-<name>/)",
+        "Explains registration and why not to memorize the fleet: Names are registered per agent (skillNames / agentSopNames) with no inheritance, and the installed set changes so users should check their install rather than recite a list",
+        "No invented specifics: Does not list specific agent names as if authoritative or invent commands"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Gives the Kiro CLI SOP invocation form",
+          "check": "grep -q '/agent-sop:' MODEL.md"
+        },
+        {
+          "text": "Gives the Claude Code SOP form",
+          "check": "grep -q '/sop-' MODEL.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "update-overwrites-hand-edit",
+      "scenario_prompt_id": "p3",
+      "prompt": "A teammate hand-edited an installed konductor agent file and now wants to run `konductor update`. Write ANSWER.md: what will happen and what they should do. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "The skill states update re-runs the install copy and unconditionally overwrites every tracked file with no diffing and no --force flag. Without it, a model typically assumes a merge, a prompt, or a --force or --dry-run option.",
+      "files": [],
+      "expectations": [
+        "Says update overwrites tracked files",
+        "Correct behavior stated: The hand edit will be overwritten: update copies every tracked file unconditionally, no diff, no prompt, no --force protection",
+        "Practical way to keep the change: Back up the file first and/or move the change into the source checkout and re-synth/install, then reapply or verify after update",
+        "No invented flags: Does not invent --dry-run, --force or merge options; points to konductor update --help as the source of truth"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Says update overwrites tracked files",
+          "check": "grep -qi 'overwrit' ANSWER.md"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "onboarding-claude-harness-doctor",
+      "scenario_prompt_id": "p1",
+      "prompt": "Write ONBOARDING.md for a teammate explaining how to go from a fresh clone of the konductor repository to a working orchestrator session in Claude Code. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "Round 2 reworded the required --harness note (install never guesses from .kiro/.claude) and added a cue at the install step to open references/cli-and-model.md when doctor reports a problem. This eval exercises that install path on Claude Code.",
+      "files": [],
+      "expectations": [
+        "Builds the CLI from the checkout",
+        "Passes the Claude harness explicitly",
+        "Correct end-to-end sequence: clone, make build, make link, verify with konductor --version, konductor synth --from ., konductor install --from . --harness claude, konductor doctor, then start the orchestrator via the claude CLI's --agent flag",
+        "Explains how to use it once running: Tells the teammate to describe outcomes to the orchestrator rather than pick agents, and to use /help to see what the install has",
+        "No invented commands or flags: Every command and flag appears in the real CLI surface; points to konductor --help and cli/README.md for details",
+        "States that --harness is required and is not auto-detected from the target directory"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Builds the CLI from the checkout",
+          "check": "grep -q 'make build' ONBOARDING.md"
+        },
+        {
+          "text": "Passes the Claude harness explicitly",
+          "check": "grep -qE -- '--harness[ =]claude' ONBOARDING.md"
+        }
+      ]
+    }
+  ]
+}

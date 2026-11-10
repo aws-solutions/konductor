@@ -1,0 +1,182 @@
+{
+  "skill": "plan-review",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Before I hand docs/plans/coupon-plan.md to an engineer, review it. I need a verdict on whether it is ready to execute and what must change. Write the review to coupon-plan-review.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/plan-review/",
+      "why_discriminating": "The skill requires verifying referenced files and functions exist, scoring four named criteria Pass/Partial/Fail, mapping that to a star rating and BLOCKED/OKAY/SHIP IT verdict, and writing each blocker as What's wrong / What's needed. Without it, models give a prose critique and may not check the repo.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Review has a VERDICT line with a star rating",
+          "check": "python3 -I -c \"import sys;l=[x for x in open('coupon-plan-review.md') if 'VERDICT' in x.upper()];sys.exit(0 if l and '\\u2b50' in l[0] else 1)\""
+        },
+        {
+          "id": "f2",
+          "text": "Review names the missing file and function",
+          "check": "grep -q 'discounts.js' coupon-plan-review.md && grep -q 'applyCoupon' coupon-plan-review.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "File verification catches the broken references",
+          "pass": "States src/billing/discounts.js does not exist and applyCoupon is not in src/billing/invoice.js, from checking the repo",
+          "partial": "Questions the references without confirming",
+          "fail": "Accepts the references"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Four criteria scored and verdict consistent with the formula",
+          "pass": "Clarity, Verification, Context Completeness, Big Picture each scored; verdict BLOCKED with 1-2 stars matching the scores",
+          "partial": "Criteria discussed but not all scored, or stars inconsistent",
+          "fail": "No verdict/stars, or not BLOCKED"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Blocking issues are specific and fixable",
+          "pass": "Each blocker names the vague task ('Update the config', 'Handle edge cases appropriately', 'Make sure it works') with what is needed (which file, which cases, which test command)",
+          "partial": "Blockers listed but fixes generic",
+          "fail": "No actionable fixes"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Reviews the plan, not the feature design",
+          "pass": "Does not redesign coupons or propose a different approach",
+          "partial": "Some design opinions mixed in",
+          "fail": "Mostly redesign"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "checked against the repo",
+          "clear verdict",
+          "fix list an author can follow"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Review docs/plans/tax-region-plan.md and tell me if we can start this sprint. Write tax-region-plan-review.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/plan-review/",
+      "why_discriminating": "This plan is good. The skill's formula (4 Pass = 5 stars SHIP IT) and file verification push a strong answer to confirm the references and approve; a model without it tends to manufacture concerns and land on a hedged 'mostly ready'.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Review has a VERDICT line with a star rating",
+          "check": "python3 -I -c \"import sys;l=[x for x in open('tax-region-plan-review.md') if 'VERDICT' in x.upper()];sys.exit(0 if l and '\\u2b50' in l[0] else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Verdict follows from criteria scores",
+          "pass": "SHIP IT 5 stars, or OKAY 4 stars with one minor Partial named, matching the formula",
+          "partial": "Approves but stars and criteria disagree",
+          "fail": "BLOCKED or 3 stars without a real gap"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "References verified",
+          "pass": "Confirms RATES at tax.js line 1 and computeTotal/rounding in invoice.js and that the test command exists in package.json/tests",
+          "partial": "Verifies some references",
+          "fail": "No verification"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "No manufactured blockers",
+          "pass": "Concerns, if any, are clearly non-blocking and grounded in the files",
+          "partial": "One speculative concern presented as important",
+          "fail": "Invents gaps or demands redesign"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Explains why it is ready",
+          "pass": "Cites concrete strengths (file refs, commands, ordering) tied to criteria",
+          "partial": "Generic praise",
+          "fail": "No rationale"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "confidence to start",
+          "verification rather than vibes",
+          "no invented problems"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Review docs/plans/cache-sidecar-plan.md before execution. The Redis sidecar decision is already made and approved by the principal engineer. Write cache-sidecar-plan-review.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/plan-review/",
+      "why_discriminating": "The skill's core principle is 'you are a reviewer, not a designer': the direction is not negotiable, and the review must find documentation gaps (missing verification on tasks 2-4, vague 'Add monitoring', no tool reference for deploy, async Redis call vs synchronous taxFor/computeTotal). Models without it often argue about Redis or caching strategy.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Review has a VERDICT line with a star rating",
+          "check": "python3 -I -c \"import sys;l=[x for x in open('cache-sidecar-plan-review.md') if 'VERDICT' in x.upper()];sys.exit(0 if l and '\\u2b50' in l[0] else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "restraint",
+          "criterion": "Respects the fixed direction",
+          "pass": "No argument against Redis or alternative architectures",
+          "partial": "Brief aside questioning Redis but review focuses on the plan",
+          "fail": "Argues for a different design"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Finds the execution gaps",
+          "pass": "Tasks 2-4 lack verification criteria, 'Add monitoring' is vague, deploy step has no file/tool reference",
+          "partial": "Finds one or two",
+          "fail": "Finds none"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Context gap: async cache vs synchronous callers",
+          "pass": "Points out taxFor/computeTotal are synchronous while a Redis read is async, and the plan does not say how callers change",
+          "partial": "Mentions side effects generally",
+          "fail": "Misses it"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Scored criteria and consistent verdict",
+          "pass": "All four criteria scored; OKAY 3 stars or BLOCKED 2 stars consistent with the scores",
+          "partial": "Verdict given but criteria incomplete",
+          "fail": "No verdict or inconsistent"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "stays in reviewer role",
+          "finds the async gap",
+          "consistent verdict"
+        ]
+      }
+    }
+  ]
+}

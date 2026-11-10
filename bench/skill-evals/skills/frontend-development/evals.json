@@ -1,0 +1,65 @@
+{
+  "skill_name": "frontend-development",
+  "source": "harness3/scenarios/frontend-development.json p1,p2 (no frontend-development evals in sc-post, sc-improve or sc-full; the sc-redund evals use a different fixture the harness3 runner cannot stage)",
+  "note": "The round-2 change (ed3a5968 -> 896ce953) is description-only, so it is measured by run_eval on harness3/queries/frontend-development.json; the execution evals check that the body still behaves the same.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "create-project-form-rhf-zod-cloudscape-refactor",
+      "scenario_prompt_id": "p1",
+      "prompt": "Refactor src/CreateProjectForm.tsx to our form stack (react-hook-form with a zod schema) and our component rules (Cloudscape only). Keep the same fields and the same onSubmit payload. Dependencies are listed in package.json but not installed and there is no network, so you cannot compile; be careful. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "files": [
+        "fixtures/frontend-development/"
+      ],
+      "skill_specific": true,
+      "expected_output": "Schema built with zod using PROJECT_NAME_MIN/MAX and VALIDATION_MESSAGES; Controller (or useFormContext) per field; FormField wraps each input with errorText from formState; submit via handleSubmit; Same three fields, payload { name, region: <value string>, terms }, region option typed (not any), terms must be true, hint text kept via Box; Calls out that switching to VALIDATION_MESSAGES changes user-visible strings ('Name is required' becomes 'Project name is required.') as an assumption; Imports match usage, no invented Cloudscape props, onChange handlers adapted to Cloudscape detail events; no unrelated changes",
+      "expectations": [
+        "[r1] Form stack per the skill: Schema built with zod using PROJECT_NAME_MIN/MAX and VALIDATION_MESSAGES; Controller (or useFormContext) per field; FormField wraps each input with errorText from formState; submit via handleSubmit",
+        "[r2] Behavior preserved: Same three fields, payload { name, region: <value string>, terms }, region option typed (not any), terms must be true, hint text kept via Box",
+        "[r3] Notices the message-text change: Calls out that switching to VALIDATION_MESSAGES changes user-visible strings ('Name is required' becomes 'Project name is required.') as an assumption",
+        "[r4] Careful without a compiler: Imports match usage, no invented Cloudscape props, onChange handlers adapted to Cloudscape detail events; no unrelated changes",
+        "[floor f1] Typed useForm with zod resolver and no useState",
+        "[floor f2] No native HTML, inline styles, or any"
+      ],
+      "scripted_checks": [
+        {
+          "text": "[floor f1] Typed useForm with zod resolver and no useState",
+          "check": "grep -qE 'useForm<[A-Za-z]+' src/CreateProjectForm.tsx && grep -q zodResolver src/CreateProjectForm.tsx && ! grep -q 'useState' src/CreateProjectForm.tsx"
+        },
+        {
+          "text": "[floor f2] No native HTML, inline styles, or any",
+          "check": "test -f src/CreateProjectForm.tsx && ! grep -qE '<(div|span|button|input|a)[ >]' src/CreateProjectForm.tsx && ! grep -q 'style={{' src/CreateProjectForm.tsx && ! grep -qE ':\\s*any\\b|<any>|as any' src/CreateProjectForm.tsx"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "booking-form-cross-field-refine-and-test",
+      "scenario_prompt_id": "p2",
+      "prompt": "Add a rule to src/BookingForm.tsx: the end date must be after the start date, with the error shown on the end date field. Export the schema and add a unit test file for it next to the component. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "files": [
+        "fixtures/frontend-development/"
+      ],
+      "skill_specific": true,
+      "expected_output": ".refine with path ['endDate'], message VALIDATION_MESSAGES.endBeforeStart, no .transform; schema exported and BookingFormValues still inferred from it; Compares Cloudscape DatePicker 'YYYY-MM-DD' strings correctly (Date parse or lexical compare of ISO format) and decides equal dates explicitly (strictly after = equal fails); Tests safeParse for after/equal/before and asserts the actual message and path endDate; No unrelated changes to the component",
+      "expectations": [
+        "[r1] Validation pattern: .refine with path ['endDate'], message VALIDATION_MESSAGES.endBeforeStart, no .transform; schema exported and BookingFormValues still inferred from it",
+        "[r2] Date comparison is sound: Compares Cloudscape DatePicker 'YYYY-MM-DD' strings correctly (Date parse or lexical compare of ISO format) and decides equal dates explicitly (strictly after = equal fails)",
+        "[r3] Test quality: Tests safeParse for after/equal/before and asserts the actual message and path endDate",
+        "[r4] Scope: No unrelated changes to the component",
+        "[floor f1] Cross-field rule via refine/superRefine on endDate, message from constants",
+        "[floor f2] A test file exists next to the component"
+      ],
+      "scripted_checks": [
+        {
+          "text": "[floor f1] Cross-field rule via refine/superRefine on endDate, message from constants",
+          "check": "grep -qE '\\.(super)?[Rr]efine\\(' src/BookingForm.tsx && grep -q 'VALIDATION_MESSAGES.endBeforeStart' src/BookingForm.tsx && grep -qE \"path:\\s*\\[\\s*['\\\"]endDate\" src/BookingForm.tsx"
+        },
+        {
+          "text": "[floor f2] A test file exists next to the component",
+          "check": "ls src/*.test.ts* src/__tests__/* 2>/dev/null | grep -q ."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "skill_name": "security-remediation",
+  "evals": [
+    {
+      "id": 0,
+      "name": "fix-path-traversal-public-repo",
+      "scenario_prompt_id": "p1",
+      "prompt": "FINDING.md is a ticket from our application security review of doc-share-api. Analyze it, write the remediation plan to remediation-plan.md, then apply the fix in the code and add tests that prove it works. `npm test` must pass. This repo is open source and the fix will be public, so keep that in mind. Do not ask me questions; make reasonable assumptions, list them in the plan, and finish the work.",
+      "expected_output": "The skill's data-privacy rules require code and tests that read as if the vulnerability never existed (no ticket ID, reporter alias, review name or 'security fix' narration), and its plan structure (Finding Summary, Technical Analysis, Remediation Plan, Security Best Practices) plus verification and rollback. A competent fix without it often names APPSEC-4821 in a test or comment and uses a naive startsWith check.",
+      "files": [
+        "fixtures/security-remediation/"
+      ],
+      "expectations": [
+        "npm test passes",
+        "Traversal is blocked on both write and read paths",
+        "No ticket ID, reporter alias or review name in src/ or test/",
+        "Fix is correct and complete: both saveUpload and readUpload resolve the target and require it to stay under UPLOAD_DIR + path.sep (or an equivalent basename check), handling absolute paths and the sibling-prefix case (uploads-evil); tests cover ../ on both paths",
+        "No narration of the security review in code or test comments (e.g. 'fix for security finding'); test names describe behavior",
+        "remediation-plan.md has Finding Summary (severity High, category), Technical Analysis (upload.js lines 12 and 19, root cause), Remediation Plan with before/after code, Security Best Practices, a verification command, and a rollback note",
+        "States concrete attacker impact (read /etc/passwd or app secrets, overwrite src/server.js for code execution) and adds sensible defense-in-depth measures without scope creep",
+        "Plan includes an effort estimate for the fix"
+      ],
+      "scripted_checks": [
+        {
+          "text": "npm test passes",
+          "check": "npm test >/dev/null 2>&1"
+        },
+        {
+          "text": "Traversal is blocked on both write and read paths",
+          "check": "node -e 'const u=require(\"./src/upload\");let n=0;for(const f of [()=>u.saveUpload(\"../evil.txt\",\"x\"),()=>u.readUpload(\"../package.json\")]){try{f()}catch(e){n++}}require(\"fs\").rmSync(\"evil.txt\",{force:true});process.exit(n===2?0:1)'"
+        },
+        {
+          "text": "No ticket ID, reporter alias or review name in src/ or test/",
+          "check": "! grep -rniE 'APPSEC-4821|jdoe-sec|AppSec Review' src test"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "plan-only-schedulable-remediation",
+      "scenario_prompt_id": "p2",
+      "prompt": "Plan only, no code changes yet; the team lead wants to schedule the work. Read FINDING.md and the code, then write remediation-plan.md with the severity, what an attacker can actually do, step-by-step fix with before/after code, effort estimate, how to verify, and a rollback plan. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "expected_output": "The skill's output format, its quality gate (specific fix steps, verification, risk context, rollback) and its required exact closing line 'Fix these issues? [y/n]' shape a plan that is ready to hand off. Without it, a plan is often correct but omits rollback or the line-level pointers, or edits code despite the plan-only instruction.",
+      "files": [
+        "fixtures/security-remediation/"
+      ],
+      "expectations": [
+        "Code untouched (src/upload.js unchanged)",
+        "remediation-plan.md exists",
+        "Pinpoints src/upload.js path.join at line 12 (saveUpload) and line 19 (readUpload), and the server.js routes that pass the raw name",
+        "Concrete attacker actions (read /etc/passwd or config, overwrite src/server.js leading to code execution on restart) and why High is right",
+        "Before/after code for both functions with resolve plus a containment check",
+        "Includes an effort estimate, a verification command or test (e.g. npm test with ../ cases), and a rollback plan (revert, note behavior change for names with subdirectories)",
+        "Plan and its code contain no ticket ID or reporter alias (APPSEC-4821, jdoe-sec)",
+        "The final response (final_message.md) or the plan ends with exactly 'Fix these issues? [y/n]'"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Code untouched (src/upload.js unchanged)",
+          "check": "[ \"$(md5sum src/upload.js | cut -d\" \" -f1)\" = 8446b570226c90bcbec3d86f537c8169 ]"
+        },
+        {
+          "text": "remediation-plan.md exists",
+          "check": "test -s remediation-plan.md"
+        }
+      ]
+    }
+  ]
+}

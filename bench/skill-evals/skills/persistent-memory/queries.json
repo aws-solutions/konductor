@@ -1,0 +1,22 @@
+[
+{"query": "no, this project uses pnpm, not npm. you've tried npm install twice now. remember that for next time", "should_trigger": true},
+{"query": "FYI the integration tests here only work against localstack on port 4566, and the docs are wrong about 4567. keep that in mind across sessions so we don't rediscover it", "should_trigger": true},
+{"query": "after that 20-minute fight with the build: the fix was setting NODE_OPTIONS=--max-old-space-size=4096 for tsc. make sure future sessions know that", "should_trigger": true},
+{"query": "I prefer short answers with the command first and the explanation after. Please remember that about me.", "should_trigger": true},
+{"query": "we just decided the team will use eventbridge for service-to-service events instead of sns. note the decision somewhere persistent for this workspace", "should_trigger": true},
+{"query": "you keep forgetting between sessions that our default region is eu-west-1 and that staging lives in a separate account. fix that so it sticks", "should_trigger": true},
+{"query": "Update what you've saved about the test command - it's now `make test-unit`, not `make test`. And drop the old note about the python 3.9 venv, we're on 3.12.", "should_trigger": true},
+{"query": "the memory file for this project is getting long and some entries are from march. clean it up within the size limit, keep the user-written ones untouched", "should_trigger": true},
+{"query": "turns out migrations must be run with --lock-timeout 5s here or they block prod writes. that's a non-obvious convention, save it", "should_trigger": true},
+{"query": "start of session: load whatever you've remembered about this workspace and me before we work on the billing bug", "should_trigger": true},
+{"query": "add a redis cache in front of the user profile lookups with a 5 minute TTL", "should_trigger": false},
+{"query": "write a reusable skill for how we cut a release here: bump version, changelog, tag, publish - with the exact commands", "should_trigger": false},
+{"query": "update CLAUDE.md with the build and test commands for this repo", "should_trigger": false},
+{"query": "my node service leaks memory under load. help me find the leak with heap snapshots", "should_trigger": false},
+{"query": "write an AGENTS.md for this repo with project overview, structure and setup commands", "should_trigger": false},
+{"query": "implement session persistence for our chatbot so conversation history survives restarts - store in dynamodb", "should_trigger": false},
+{"query": "add a .gitignore for a python project with venvs, pycache and .env", "should_trigger": false},
+{"query": "how does the browser's localStorage differ from sessionStorage and IndexedDB for persisting app state?", "should_trigger": false},
+{"query": "document the architectural decision to use eventbridge as an ADR in docs/adr/", "should_trigger": false},
+{"query": "build a settings page where users can save their notification preferences", "should_trigger": false}
+]

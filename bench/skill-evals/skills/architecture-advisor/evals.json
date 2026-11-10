@@ -1,0 +1,53 @@
+{
+  "skill_name": "architecture-advisor",
+  "evals": [
+    {
+      "id": 0,
+      "name": "fanout-sqs-sns-eventbridge",
+      "scenario_prompt_id": "p1",
+      "prompt": "We run a small order system on AWS: API Gateway, 3 Lambdas, DynamoDB, about 5,000 orders a day, a team of 4. When an order is created we notify billing and an email service, and next quarter there may be a third consumer (analytics). Should we use SQS, SNS, or EventBridge for the fan-out? I want your recommendation, not a design document. Write it to recommendation.md. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "The skill forces one committed recommendation (no 'it depends'), an effort bucket, a numbered action plan, and escalation triggers for an architecture decision. A competent answer without it often lists all three options evenly or writes a mini design doc.",
+      "files": [],
+      "expectations": [
+        "recommendation.md exists and is non-empty",
+        "Gives an effort estimate using a Quick/Short/Medium/Large bucket",
+        "Commits to one primary fan-out option that fits 5,000 orders/day, a team of 4, and a likely third consumer: Names one option (SNS to per-consumer SQS queues, or EventBridge with one rule per consumer) as the answer and ties it to the stated scale, team size and third consumer",
+        "Rejected alternatives are named with concrete reasons: Each of the two rejected options gets a specific reason (e.g. plain SQS makes the producer write to every queue; EventBridge vs SNS trade-off on filtering, schema, cost or latency)",
+        "Follows the advisor response structure for an architecture decision: Has a 2-3 sentence bottom line, a numbered action plan, an effort bucket, and escalation triggers or 'when to reconsider'",
+        "Watch-outs are specific to the chosen fan-out: Names at least two concrete risks with a mitigation, e.g. at-least-once delivery needs idempotent consumers, a DLQ per consumer queue, alarms on queue age",
+        "Stays a recommendation, proportionate to the question: Fits on roughly one page, states any assumptions, no invented requirements or SLAs"
+      ],
+      "scripted_checks": [
+        {
+          "text": "recommendation.md exists and is non-empty",
+          "check": "test -s recommendation.md"
+        },
+        {
+          "text": "Gives an effort estimate using a Quick/Short/Medium/Large bucket",
+          "check": "grep -qiE 'effort[^\\n]{0,80}(quick|short|medium|large)' recommendation.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "rest-to-graphql-budget-freeze",
+      "scenario_prompt_id": "p2",
+      "prompt": "My team lead wants to migrate our internal admin tool from REST to GraphQL. It has 7 REST endpoints, one React frontend, and 3 developers. We cannot add any new AWS managed services this quarter because of a budget freeze. Give me a recommendation I can paste into Slack, written to answer.md. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "The skill biases toward the least complex option, forbids recommendations that contradict stated constraints (a CRITICAL gate item), and asks for escalation triggers. Without it, answers tend to present a balanced GraphQL pros/cons list or suggest AppSync despite the freeze.",
+      "files": [],
+      "expectations": [
+        "answer.md exists and is non-empty",
+        "Gives a clear, constraint-respecting answer: Recommends not migrating now (or a clearly bounded alternative) and does not propose AppSync or any other new managed service as the path forward",
+        "Reasoning fits 7 endpoints, one client, 3 developers: Explains why GraphQL's benefits (many clients, interconnected data, over-fetching) do not apply here and names its real costs (resolvers, caching, auth, N+1, learning curve)",
+        "Advisor structure: bottom line, action plan, effort, and triggers to revisit: Has a short bottom line, numbered next steps (e.g. list the team lead's pain points, try a BFF or endpoint tweak), an effort bucket or N/A with reason, and concrete conditions to revisit GraphQL",
+        "Short enough to paste into Slack and respectful of the team lead: Reads as a Slack message (a few short paragraphs or bullets), no condescension, no full design doc"
+      ],
+      "scripted_checks": [
+        {
+          "text": "answer.md exists and is non-empty",
+          "check": "test -s answer.md"
+        }
+      ]
+    }
+  ]
+}

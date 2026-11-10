@@ -1,0 +1,22 @@
+[
+{"query": "src/billing/invoice.ts got really gnarly after the last 3 PRs, there's a 4-level nested ternary in computeDiscount and two near-identical helpers. clean it up so it's readable but DO NOT change behavior, the snapshot tests have to stay green", "should_trigger": true},
+{"query": "can you go over the stuff I changed today in lib/sync/worker.py and tidy it? its working but its ugly, deep nesting, weird variable names like tmp2 and x_lst", "should_trigger": true},
+{"query": "Refactor handlers/orderHandler.js for readability. Flatten the early-return mess and consolidate the duplicated validation blocks. Keep every output and error message identical.", "should_trigger": true},
+{"query": "My teammate left a review comment that parse_config() is 'too clever'. It's a 1-line dict comprehension with three nested conditionals. Rewrite it in a way a new hire can follow, same results.", "should_trigger": true},
+{"query": "this Go file pkg/retry/backoff.go has grown to 400 lines with copy-pasted switch blocks. simplify it without altering what it does, keep the exported API the same", "should_trigger": true},
+{"query": "Before I open the PR, pass over the diff in feature/csv-export and make the new code consistent with the rest of the repo (naming, guard clauses, no nested ternaries). Functionality must stay exactly the same.", "should_trigger": true},
+{"query": "the reducer in web/src/store/cartReducer.ts is a wall of if/else inside if/else. make it easier to read, but dont touch the state shape or action types", "should_trigger": true},
+{"query": "Is there a way to reduce the complexity of ReportBuilder.java without changing behavior? Sonar says cognitive complexity 48 on buildSummary(). I want it under 15 and all existing JUnit tests passing.", "should_trigger": true},
+{"query": "i inherited scripts/deploy_helpers.sh, it works but nobody can read it. clean up the functions, better names, fewer nested ifs, but the script must do exactly the same thing", "should_trigger": true},
+{"query": "polish the code I just wrote in api/routes/users.py, remove redundant abstractions I added that aren't pulling their weight, keep the endpoints behaving identically", "should_trigger": true},
+{"query": "computeDiscount in src/billing/invoice.ts returns the wrong total when two coupons stack. find the bug and fix it, add a regression test", "should_trigger": false},
+{"query": "Our /search endpoint p99 is 2.3s. Profile services/search.py and optimize the hot loop, I don't care if the code gets uglier as long as it's faster", "should_trigger": false},
+{"query": "Turn this 30-line validation function into the shortest possible one-liner for a code golf thing my team is doing on friday", "should_trigger": false},
+{"query": "review the auth middleware in src/middleware/auth.ts for security holes, specifically token validation and anything that leaks internal errors to the client", "should_trigger": false},
+{"query": "add pagination support to the listOrders handler in handlers/orders.js, cursor based, with a nextToken in the response", "should_trigger": false},
+{"query": "Set up eslint + prettier for this TypeScript monorepo with a shared config package and a pre-commit hook", "should_trigger": false},
+{"query": "write unit tests for lib/sync/worker.py, aim for 90% branch coverage, mock the S3 client", "should_trigger": false},
+{"query": "migrate this class-based React component (UserProfile.jsx) to hooks and TypeScript, we're dropping class components across the app", "should_trigger": false},
+{"query": "explain what pkg/retry/backoff.go does line by line, I need to present it to the team tomorrow and don't want to change anything", "should_trigger": false},
+{"query": "split the 3000 line utils.py into separate modules by domain and update all the imports across the repo", "should_trigger": false}
+]

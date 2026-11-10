@@ -1,0 +1,195 @@
+{
+ "skill": "adversarial-design-review",
+ "category": "MODEL-CAPABILITY",
+ "source": "konductor",
+ "kind": "doc",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "I'm the author of design.md (an image moderation pipeline). Before I circulate it, I want someone to argue against it as hard as they honestly can: every major decision, trade-off and architecture choice, assuming it is wrong until the doc defends it. Write review.md with each finding classified by severity, the challenge, and what rebuttal I need to add to the doc, then a summary with counts per severity. This runs unattended: do not ask questions or wait for confirmation, state any assumptions in review.md, and do the review yourself in one pass (no multi-agent panel). Do not edit design.md.",
+   "fixture": "fixtures/adversarial-design-review/",
+   "why_discriminating": "The skill splits CRITICAL into architectural vs factual, names fallacies (false dichotomy in 3.1, circular reasoning in 3.2) as IMPORTANT, and stress-tests the design against each stated NFR. A competent generic review finds some problems but tends to give a flat severity list, miss the 60-minute Lambda claim as a factual error, and not tie the single worker or the sync webhook to R1/R2/R4.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "review.md exists and is non-trivial",
+     "check": "test \"$(cat review.md 2>/dev/null | wc -w)\" -ge 200"
+    },
+    {
+     "id": "f2",
+     "text": "The 60-minute Lambda claim is corrected to the 15-minute limit",
+     "check": "grep -qiE '15[ -]?min|900 ?s' review.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Finds the four CRITICAL problems in the KEY: 60-minute Lambda claim, single EC2 worker vs R2/R4, synchronous webhook vs async R1, PII with no encryption/access boundary",
+     "pass": "All four found, each with its impact against the stated requirement",
+     "partial": "Two or three found, or found without tying to R1-R4",
+     "fail": "One or none found"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Uses the skill's severity scale: CRITICAL (architectural) and CRITICAL (factual) kept separate, then IMPORTANT, then the lowest tier, named MINOR or SUGGESTION (either name is correct; the newer skill text calls it SUGGESTION), presented in that order with a per-severity count summary",
+     "pass": "Four tiers used as defined, ordered, counts match the findings",
+     "partial": "Tiers present but merged, misordered, or counts inconsistent",
+     "fail": "Generic High/Medium/Low or no classification"
+    },
+    {
+     "id": "r3",
+     "dimension": "reasoning",
+     "criterion": "Names the logical fallacies in decision justifications: 3.1 false dichotomy, 3.2 circular reasoning, and flags the one-dimension (cost-only) trade-off table as incomplete",
+     "pass": "Both fallacies named and located, trade-off table flagged for <3 dimensions",
+     "partial": "One fallacy named, or problems described without naming the fallacy",
+     "fail": "Neither fallacy identified"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Each finding states a concrete rebuttal the author must add (what evidence, alternative, or design change would answer the challenge)",
+     "pass": "Every finding has a specific rebuttal-needed line",
+     "partial": "Rebuttals present for some findings or generic ('justify this')",
+     "fail": "No rebuttals"
+    },
+    {
+     "id": "r5",
+     "dimension": "restraint",
+     "criterion": "Stays within the document: no invented requirements, services, or numbers; does not pad with generic checklists",
+     "pass": "Every finding traces to text in design.md",
+     "partial": "One or two speculative findings",
+     "fail": "Several invented or boilerplate findings"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Did it catch the factual Lambda error and the NFR-breaking choices?",
+     "Is the severity split usable to decide what blocks circulation?",
+     "Would the author know exactly what to add for each finding?"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "design-v2.md is my revision of the moderation pipeline design after last round's feedback (design.md is the old version, for context only). Our principal engineer review is next week and the rule on our team is that a doc only goes to that review once the adversarial pass is clean. Do an adversarial pass over design-v2.md and write gate.md: findings by severity, the counts, and a final line that is exactly 'VERDICT: READY' or 'VERDICT: NOT READY' followed by the reason. Do not ask questions; state assumptions instead. Review it yourself, no panel. Do not edit either design file.",
+   "fixture": "fixtures/adversarial-design-review/",
+   "why_discriminating": "design-v2 fixes every CRITICAL, so a generic reviewer tends to call it ready with suggestions. The skill's exit condition is 0 CRITICAL + 0 IMPORTANT + fewer than 3 MINOR, and its checklist demands sourced load assumptions, failure modes per external dependency, and trade-offs across 3+ dimensions, which leaves two IMPORTANT findings and a NOT READY verdict.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "gate.md ends with a verdict line",
+     "check": "grep -qE '^VERDICT: (NOT )?READY' gate.md"
+    },
+    {
+     "id": "f2",
+     "text": "Verdict is NOT READY",
+     "check": "grep -q '^VERDICT: NOT READY' gate.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Flags 3.4's unstated, unsourced assumption that the hosted model endpoint 'will scale with our traffic', with no quota or failure mode, as a load-bearing gap for R2",
+     "pass": "Found, classified IMPORTANT, impact on the 5k rps NFR explained",
+     "partial": "Mentioned only as a minor note or without its NFR impact",
+     "fail": "Not found"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "Flags the trade-off table as covering only two dimensions (cost, latency) with operability/complexity missing",
+     "pass": "Found and classified IMPORTANT per the 3-dimension rule",
+     "partial": "Mentioned as MINOR or as a vague 'could expand'",
+     "fail": "Not found"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Verdict follows the skill's exit rule: NOT READY because IMPORTANT findings remain, even with zero CRITICAL",
+     "pass": "NOT READY, reason cites remaining IMPORTANT findings against the 0 CRITICAL + 0 IMPORTANT + <3 MINOR rule",
+     "partial": "NOT READY but reason is a general impression",
+     "fail": "READY, or READY with conditions"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Does not manufacture CRITICAL findings against v2 (the old CRITICALs are fixed: multi-AZ Fargate, queued webhook, KMS + key policy)",
+     "pass": "No CRITICAL raised, or a CRITICAL only with a clear, document-grounded warrant",
+     "partial": "One weakly argued CRITICAL",
+     "fail": "Re-raises fixed design.md issues or invents CRITICALs"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is the verdict right and is the reason the actual gate rule?",
+     "Did it find the real remaining gaps rather than re-litigating fixed ones?",
+     "Would a PE agree with the severity of each finding?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "A teammate wrote adr-0007.md (EventBridge for inter-service events) and asked me to challenge it before we merge it into the decision log. Push on it hard: weak or missing justification, missing alternatives, incomplete trade-offs, logical fallacies. Write adr-review.md with each finding classified, the fallacy name where one applies, and the rebuttal needed. Only report real problems; if the ADR is mostly sound, say so. Do not ask questions; state assumptions. Review it yourself, no panel. Do not edit the ADR.",
+   "fixture": "fixtures/adversarial-design-review/",
+   "why_discriminating": "The ADR is mostly sound; its one real flaw is that the Decision rests on 'the principal engineer said so', an appeal to authority that the skill classifies IMPORTANT. A generic reviewer under 'push hard' tends to inflate (CRITICALs against a three-option, four-dimension ADR) or lose the fallacy in a list of nitpicks.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "adr-review.md exists",
+     "check": "test -s adr-review.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Identifies the appeal to authority in the Decision section and that the trade-off table, not the PE's opinion, should carry the warrant",
+     "pass": "Fallacy named, located, and the fix (tie decision to the table rows) given",
+     "partial": "Notes the justification is weak but does not name the fallacy",
+     "fail": "Missed"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Classifies the fallacy IMPORTANT and uses the skill's tiers (MINOR, not SUGGESTION/low) for anything smaller, with a severity count summary",
+     "pass": "IMPORTANT for the fallacy, skill tiers throughout, counts given",
+     "partial": "Right tier for the fallacy but other tiers off-scale",
+     "fail": "Fallacy rated CRITICAL or MINOR, or no classification"
+    },
+    {
+     "id": "r3",
+     "dimension": "restraint",
+     "criterion": "Does not inflate: no CRITICAL against a decision with three options, measured context, and a four-dimension trade-off table; says the ADR is otherwise sound",
+     "pass": "No CRITICAL, explicit acknowledgement of what is sound, at most a couple of MINOR items",
+     "partial": "One unwarranted escalation or a long nitpick list",
+     "fail": "CRITICAL findings or a pile of manufactured issues"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Rebuttals are specific and small: e.g. state that EventBridge wins on content filtering at low operational effort vs SNS+SQS, given the measured 400 ms coupling",
+     "pass": "Concrete rewrite guidance per finding",
+     "partial": "Generic 'add justification'",
+     "fail": "None"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Did it find the one real flaw without inventing others?",
+     "Is the severity proportionate?",
+     "Is the suggested fix specific to this ADR?"
+    ]
+   }
+  }
+ ]
+}

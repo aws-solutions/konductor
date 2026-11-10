@@ -1,0 +1,58 @@
+{
+  "skill_name": "requirements-extraction",
+  "evals": [
+    {
+      "id": 0,
+      "name": "full-design-handoff",
+      "scenario_prompt_id": "p1",
+      "prompt": "We are moving from requirements to architecture. Using requirements-planning/outputs/requirements-final.md and requirements-planning/outputs/user-stories.md, prepare the inputs the architect needs for the system design interview. Write them as markdown files in handoff/. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "The skill defines three specific files with required sections (business context, requirements summary, architecturally significant stories with architecture implications), and requires keeping every quantified metric and the demo vs production split. Without it, a model usually writes one summary file, rounds off numbers, or invents content for sections the source does not cover.",
+      "files": [
+        "fixtures/requirements-extraction/"
+      ],
+      "expectations": [
+        "Writes all three handoff files",
+        "Strips the press release and testimonial",
+        "Quantified requirements preserved: All of: 11 min to under 3 min, 14% capacity loss, 10% recovery, 90% self-serve, p95 < 500 ms, 99.9% clinic hours, 10 min offline, 6-year audit, eu-central-1, TLS 1.2 + KMS CMK, 2027-03-01",
+        "Uses the skill's three-file structure and sections: business-context has deployment model and timeline; requirements-summary has functional, NFR (performance, scale, availability), security, constraints and integration sections; user-stories-extract has an Architecture Implications section covering data model, API, security and performance",
+        "Scale and scope are clear for the architect: Pilot (3 clinics, 200 concurrent, 2,000/day) and production (400, 5,000, 250,000/day) kept separate; phase-1 exclusions (eligibility, payments) recorded as architecture simplifications",
+        "No invented facts: Sections the source does not cover (e.g. competitive differentiation, monitoring requirements, uptime outside clinic hours) are marked not specified or turned into questions, not filled with made-up content",
+        "Flags ambiguities for the architect: Raises at least two real ones, e.g. 10-min offline drafts vs 'no PHI cached after submit', region choice for audit/SMS under EU residency, stories 1.6/1.7/2.2 lacking acceptance criteria"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Writes all three handoff files",
+          "check": "test -s handoff/business-context.md && test -s handoff/requirements-summary.md && test -s handoff/user-stories-extract.md"
+        },
+        {
+          "text": "Strips the press release and testimonial",
+          "check": "! grep -rqiE 'Dana Whitfield|thrilled|world-class|revolutionary' handoff/"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "stories-extract-only",
+      "scenario_prompt_id": "p2",
+      "prompt": "From requirements-planning/outputs/user-stories.md, write handoff/user-stories-extract.md with only the stories that drive architecture decisions, grouped by epic, each with its technical implications. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "The skill says to keep 3-5 architecturally significant stories per epic with their technical acceptance criteria and to close with an Architecture Implications section split into data model, API, security, and performance. Without it, a model tends to keep every story or drop the implications summary.",
+      "files": [
+        "fixtures/requirements-extraction/"
+      ],
+      "expectations": [
+        "File exists",
+        "Drops the cosmetic stories: dark mode (2.6) and custom queue colors (2.7) are not kept as architecturally significant stories; naming them in an exclusions note is fine",
+        "Selects the right stories: 3-5 per epic, including offline draft (1.4), consent PDF to FHIR (1.5), live queue (2.1), EHR push (2.3), SAML (2.4), PHI audit (2.5); cosmetic 2.6 and 2.7 dropped",
+        "Technical implications are concrete: Each kept story lists concrete implications, e.g. real-time push for 40 screens per clinic, idempotent sync for offline drafts, immutable 6-year audit store with query by patient/staff",
+        "Architecture Implications section in the skill's four parts: Separate data model, API, security, and performance subsections synthesized across stories",
+        "No invented acceptance criteria: Stories without AC are noted as such rather than given made-up numbers"
+      ],
+      "scripted_checks": [
+        {
+          "text": "File exists",
+          "check": "test -s handoff/user-stories-extract.md"
+        }
+      ]
+    }
+  ]
+}

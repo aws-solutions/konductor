@@ -1,0 +1,9 @@
+id,workstream,deliverable,size,owner,depends_on,novel
+W1,Platform,Provision new data lake accounts and networking,M,Priya,,no
+W2,Platform,Build ingestion framework on new stack,L,Priya,W1,yes
+W3,Data,Migrate 40 batch pipelines to ingestion framework,XL,Tomas,W2,no
+W4,Data,Backfill 3 years of history,L,Tomas,W2,no
+W5,Analytics,Rebuild 25 dashboards on new warehouse,L,Mei,W3,no
+W6,Security,Data residency review by external legal vendor,M,Legal vendor (Kessler LLP),W1,no
+W7,Platform,Decommission legacy Hadoop cluster,M,Priya,W3;W5,no
+W8,Analytics,Self-serve query portal,M,Priya,W2,yes

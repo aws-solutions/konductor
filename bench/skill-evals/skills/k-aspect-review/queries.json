@@ -1,0 +1,22 @@
+[
+{"query": "can you tear apart docs/design/notification-fanout.md from like 5 different angles in parallel? security, cost, ops readiness, failure modes, whatever you think matters. one reviewer per angle pls, then merge it into one summary", "should_trigger": true},
+{"query": "I want a really thorough review of specs/billing-v2/tasks.md before I hand it to the team. Split it up so each dimension (completeness, testability, scope, dependencies) gets its own focused pass instead of one big muddled review.", "should_trigger": true},
+{"query": "Run an 8-angle review on scripts/rotate_keys.sh - idempotency, error handling, portability, logging, edge cases etc. Spin up separate reviewers so they don't bias each other and give me the combined verdict with priorities", "should_trigger": true},
+{"query": "my manager wants 'a review from multiple angles' on our RFC for moving the search cluster to OpenSearch Serverless (rfc/0042-search.md). Each angle should be rated strong/adequate/needs improvement. can you do that", "should_trigger": true},
+{"query": "Before I share the PRD in docs/prd-offline-mode.md, review it along independent dimensions like clarity, audience fit, actionability, data support. Keep each reviewer blind to the others and then pull out cross-cutting themes.", "should_trigger": true},
+{"query": "do a 4 dimension review of src/ingest/pipeline.py - correctness, perf, error handling, test coverage. separate passes, then synthesize w/ prioritized action items", "should_trigger": true},
+{"query": "Review this system spec (spec/ledger-service.md) through consistency, observability, failure modes and integration points. I've had single-pass reviews anchor on the first issue they find, so please isolate each lens.", "should_trigger": true},
+{"query": "give me a detailed, multi-perspective critique of the architecture in design/realtime-chat.md. I don't care which perspectives, pick ones that'll surface real problems, and fan them out to parallel reviewers", "should_trigger": true},
+{"query": "We generated a migration runbook (runbooks/pg15-upgrade.md) with an LLM. I don't trust it. Have independent reviewers each look at one thing: correctness, rollback safety, sequencing, and missing steps, then roll it up.", "should_trigger": true},
+{"query": "thorough review please of the user story set in stories/checkout-epic.md - break the review into separate aspects (acceptance criteria quality, dependency identification, scope accuracy) and have each done independently", "should_trigger": true},
+{"query": "I'm torn between Kafka and Kinesis for the clickstream ingest. Convene some kind of panel to argue each axis and give me a scored recommendation.", "should_trigger": false},
+{"query": "Score SQS vs EventBridge vs SNS for our order events on cost, latency, complexity, scalability and operability and give me the matrix", "should_trigger": false},
+{"query": "before I write the design doc for the new quota service, ask me questions one at a time about what I'm missing", "should_trigger": false},
+{"query": "Play devil's advocate against the decisions in docs/design/cache-layer.md. Argue against each trade-off and classify as critical/important/minor.", "should_trigger": false},
+{"query": "do a security-focused second pass review on my PR diff for info disclosure, partial writes, and missing validation", "should_trigger": false},
+{"query": "check docs/design/sync.md for filler language, hedge words and passive voice and give it a quality score", "should_trigger": false},
+{"query": "Review the CDK stack in lib/api-stack.ts for encryption, IAM wildcards, alarms and DLQs before we deploy to prod", "should_trigger": false},
+{"query": "rewrite the intro of docs/onboarding.md so it doesnt sound like chatgpt wrote it", "should_trigger": false},
+{"query": "Fact-check every claim in docs/design/edge-cache.md against the code and AWS docs and give me an accuracy report", "should_trigger": false},
+{"query": "simplify src/utils/date_helpers.ts, it's got nested ternaries everywhere. keep behavior identical", "should_trigger": false}
+]

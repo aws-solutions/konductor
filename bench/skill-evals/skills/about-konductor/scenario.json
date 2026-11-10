@@ -1,0 +1,171 @@
+{
+  "skill": "about-konductor",
+  "category": "DOMAIN-IMMUNE",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Write ONBOARDING.md for a teammate explaining how to go from a fresh clone of the konductor repository to a working orchestrator session in Claude Code. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": null,
+      "why_discriminating": "The setup commands are specific to this project (make build/link, synth --from, install --from with a required --harness, doctor, then the orchestrator). Without the skill a model has to guess and usually invents npm or pip install steps or a 'konductor start' command.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Builds the CLI from the checkout",
+          "check": "grep -q 'make build' ONBOARDING.md"
+        },
+        {
+          "id": "f2",
+          "text": "Passes the Claude harness explicitly",
+          "check": "grep -qE -- '--harness[ =]claude' ONBOARDING.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Correct end-to-end sequence",
+          "pass": "clone, make build, make link, verify with konductor --version, konductor synth --from ., konductor install --from . --harness claude, konductor doctor, then start the orchestrator via the claude CLI's --agent flag",
+          "partial": "Mostly right with one step missing or out of order",
+          "fail": "Wrong or invented install path"
+        },
+        {
+          "id": "r2",
+          "dimension": "recommendation",
+          "criterion": "Explains how to use it once running",
+          "pass": "Tells the teammate to describe outcomes to the orchestrator rather than pick agents, and to use /help to see what the install has",
+          "partial": "Mentions the orchestrator but suggests naming agents directly",
+          "fail": "No usage guidance"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "No invented commands or flags",
+          "pass": "Every command and flag appears in the real CLI surface; points to konductor --help and cli/README.md for details",
+          "partial": "One questionable flag",
+          "fail": "Invented commands (e.g. konductor start, npm install -g)"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would the teammate end up with a working session?",
+          "Any invented commands?",
+          "Clear next step after install"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Write MODEL.md explaining the difference between agents, skills and SOPs in konductor, and how a user lists and invokes SOPs on Kiro CLI and on Claude Code. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": null,
+      "why_discriminating": "The invocation forms (/prompts and /agent-sop:<name> on Kiro CLI; /help and /sop-<name> on Claude Code) and the per-agent registration rule are project facts only the skill carries. Without it, a model guesses generic slash commands.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Gives the Kiro CLI SOP invocation form",
+          "check": "grep -q '/agent-sop:' MODEL.md"
+        },
+        {
+          "id": "f2",
+          "text": "Gives the Claude Code SOP form",
+          "check": "grep -q '/sop-' MODEL.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Accurate definitions",
+          "pass": "Agent = persona with prompt, model and tool grants; skill = capability loaded on demand by description match or name; SOP = named, parameterized multi-step procedure run deliberately",
+          "partial": "Roughly right but blurs skill and SOP",
+          "fail": "Wrong definitions"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Correct listing and invocation per runtime",
+          "pass": "Kiro CLI: /prompts to list, /agent-sop:<name> to run; Claude Code: /help to list, /sop-<name> to run (installed as skills under .claude/skills/sop-<name>/)",
+          "partial": "One runtime right",
+          "fail": "Both wrong"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Explains registration and why not to memorize the fleet",
+          "pass": "Names are registered per agent (skillNames / agentSopNames) with no inheritance, and the installed set changes so users should check their install rather than recite a list",
+          "partial": "One of these points",
+          "fail": "Neither"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No invented specifics",
+          "pass": "Does not list specific agent names as if authoritative or invent commands",
+          "partial": "Some recited names with a caveat",
+          "fail": "Fabricated agent lists or commands"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Correct invocation forms",
+          "Clear mental model",
+          "No fabrication"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "A teammate hand-edited an installed konductor agent file and now wants to run `konductor update`. Write ANSWER.md: what will happen and what they should do. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "fixture": null,
+      "why_discriminating": "The skill states update re-runs the install copy and unconditionally overwrites every tracked file with no diffing and no --force flag. Without it, a model typically assumes a merge, a prompt, or a --force or --dry-run option.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Says update overwrites tracked files",
+          "check": "grep -qi 'overwrit' ANSWER.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Correct behavior stated",
+          "pass": "The hand edit will be overwritten: update copies every tracked file unconditionally, no diff, no prompt, no --force protection",
+          "partial": "Says it may be overwritten without certainty",
+          "fail": "Says update merges or preserves edits"
+        },
+        {
+          "id": "r2",
+          "dimension": "recommendation",
+          "criterion": "Practical way to keep the change",
+          "pass": "Back up the file first and/or move the change into the source checkout and re-synth/install, then reapply or verify after update",
+          "partial": "Only 'back it up'",
+          "fail": "No advice, or advice that loses the edit"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "No invented flags",
+          "pass": "Does not invent --dry-run, --force or merge options; points to konductor update --help as the source of truth",
+          "partial": "Mentions a flag as 'maybe' without checking",
+          "fail": "Asserts nonexistent flags"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Will the teammate keep their edit?",
+          "Accurate about update's behavior",
+          "No made-up options"
+        ]
+      }
+    }
+  ]
+}

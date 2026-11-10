@@ -1,0 +1,4 @@
+- [2026-09-02] [origin:user] Always deploy to eu-west-1 before any other region
+- [2026-08-20] Project uses a Python 3.9 virtualenv at .venv
+- [2026-10-01] [origin:agent] Test command is make test
+- [2026-10-12] [origin:agent] Integration tests need localstack on port 4566

@@ -1,0 +1,88 @@
+{
+  "skill_name": "deliberation-panel",
+  "evals": [
+    {
+      "id": 0,
+      "name": "ledger-datastore-no-consent",
+      "scenario_prompt_id": "p1x",
+      "prompt": "Use the deliberation-panel skill for this task. We have to pick the datastore for our new ledger service: Aurora PostgreSQL, DynamoDB, or keeping our self-managed Cassandra cluster. The ledger records money movements between customer accounts, auditors need point-in-time balance reports, and the choice will stick for 5+ years with a team of 6 engineers (two of whom run the Cassandra cluster today). Set up a structured multi-perspective deliberation on this decision. I have NOT yet agreed to spend extra time or subagent calls on it. Write whatever you produce to deliberation.md. Do not ask me questions in chat; put anything you need from me at the end of the file.",
+      "expected_output": "The skill's consent gate says to run only Phase 0 (axis derivation) and stop with a cost estimate until consent is given. A competent model without the skill usually runs the whole analysis and recommends a datastore, or uses a generic security/cost/performance roster instead of axes derived from this decision.",
+      "files": [],
+      "expectations": [
+        "deliberation.md exists",
+        "No confidence-rated final recommendation yet",
+        "Stops at the consent gate after axis derivation: Derives axes, gives the cost estimate, and explicitly waits for consent; no per-axis advocacy, cross-examination, or recommendation",
+        "Axes are specific to this ledger decision, 3 to 6 of them, each with a one-sentence definition: 3-6 axes clearly derived from the facts given (e.g. transactional/double-entry correctness, audit point-in-time reporting, operational burden on a 6-person team running Cassandra, 5-year lock-in/migration cost)",
+        "Cost disclosure is concrete and tied to the derived axis count: States roughly 2-3 minutes and several subagent calls scaling with the N axes derived, and how to opt in",
+        "Does not leak a lean or verdict while waiting for consent: Neutral: no 'Aurora is likely best' style hints"
+      ],
+      "scripted_checks": [
+        {
+          "text": "deliberation.md exists",
+          "check": "test -s deliberation.md"
+        },
+        {
+          "text": "No confidence-rated final recommendation yet",
+          "check": "test -f deliberation.md && ! grep -qiE 'confidence[*: ]*\\**(high|medium|low)\\b' deliberation.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "host-offer-notifications-tradeoff",
+      "scenario_prompt_id": "p4x",
+      "prompt": "Use the deliberation-panel skill for this task. We're partway through scoping requirements for in-app notifications in our mobile banking app (about 2M monthly users, a team of 5 engineers). One open question I can't settle: deliver notifications through push (APNs/FCM), through an in-app inbox the app polls, or both. Push favors latency; the inbox favors delivery guarantees and simpler infra; doing both roughly doubles the work. There's no clear winner and I haven't agreed to spend extra time or subagent calls on it. Handle this decision point the way you would when it comes up during requirements work, and write your reply to me in reply.md. Do not ask me questions in chat.",
+      "expected_output": "The new skill version adds an 'Offering the Panel from a Host Skill' section: present the options with the dimension each favors, then offer a numbered choice between answering directly and convening a ~2-3 minute panel, and never run the panel without opt-in. The old version only has the generic consent gate.",
+      "files": [],
+      "expectations": [
+        "reply.md exists",
+        "reply.md states the panel's time cost of about 2-3 minutes",
+        "No confidence-rated scorecard or final recommendation in reply.md",
+        "Offers an explicit choice between answering directly and convening a deliberation panel: Gives the user two clear paths (e.g. numbered): tell me your preference and we continue, or convene the panel",
+        "Lists each option with the dimension it favors: Push, inbox and both are each presented with what they favor (latency, delivery guarantees/simplicity, coverage vs. effort)",
+        "Does not run the panel or argue per-axis without opt-in: No per-axis advocacy, cross-examination, scoring, or recommendation; the panel is only offered",
+        "Stays neutral and keeps the requirements work moving: No lean toward an option, and it says how the requirements work resumes after the user picks"
+      ],
+      "scripted_checks": [
+        {
+          "text": "reply.md exists",
+          "check": "test -s reply.md"
+        },
+        {
+          "text": "reply.md states the panel's time cost of about 2-3 minutes",
+          "check": "grep -qiE '2 ?(-|\u2013|to) ?3 ?min' reply.md"
+        },
+        {
+          "text": "No confidence-rated scorecard or final recommendation in reply.md",
+          "check": "test -f reply.md && ! grep -qiE 'confidence[*: ]*\\**(high|medium|low)\\b' reply.md"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "host-offer-user-options-only",
+      "scenario_prompt_id": "p5x",
+      "prompt": "Use the deliberation-panel skill for this task. We're scoping requirements for audit logging in our internal HR app (a team of 4 engineers). One open question I can't settle: store the audit events in our existing Postgres database, which keeps us on one system, or write them to an append-only S3 bucket with Object Lock, which gives tamper evidence but adds infrastructure. Those are the two options on the table and there's no clear winner. I haven't agreed to spend extra time or subagent calls on it. Handle this decision point the way you would when it comes up during requirements work, and write your reply to me in reply.md. Do not ask me questions in chat.",
+      "expected_output": "Round 2 tells a host to state only the options and trade-offs the user raised, in their terms, and add none of its own. Without that line a model often adds a hybrid or a third service (dual-write, a SIEM, CloudTrail Lake, QLDB) or leans toward the tamper-evident option.",
+      "files": [],
+      "expectations": [
+        "reply.md exists",
+        "No confidence-rated scorecard or final recommendation in reply.md",
+        "Presents only the two options the user raised: Postgres and append-only S3 with Object Lock appear as the options; no third option, hybrid, or dual-write is added as a choice",
+        "Describes each option's trade-off in the user's terms: Postgres favors one system/simplicity and S3 Object Lock favors tamper evidence at the cost of more infrastructure",
+        "Offers an explicit choice between answering directly and convening a deliberation panel of about 2-3 minutes",
+        "Does not run the panel and stays neutral: no per-axis advocacy, scoring, recommendation, or lean toward either option"
+      ],
+      "scripted_checks": [
+        {
+          "text": "reply.md exists",
+          "check": "test -s reply.md"
+        },
+        {
+          "text": "No confidence-rated scorecard or final recommendation in reply.md",
+          "check": "test -f reply.md && ! grep -qiE 'confidence[*: ]*\\**(high|medium|low)\\b' reply.md"
+        }
+      ]
+    }
+  ]
+}

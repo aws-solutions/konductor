@@ -1,0 +1,195 @@
+{
+  "skill": "security-test-generation",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "We have an AppSec review of this notes API in three weeks. Generate the security test plans our QA team will implement, organized so each security area can be picked up by a different engineer, and save them to disk. We use Q CLI, not Kiro. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/security-test-generation/express-api/",
+      "why_discriminating": "The skill's non-Kiro branch writes security-test-plans/ with one [domain]-[layer].md per category plus security-test-overview.md and best-practices-reference.md, orders categories Auth -> Input Validation -> ... -> Infrastructure, and orders cases positive -> negative -> edge, grounded in the threat model and code. Without it, models write one big document or generic OWASP lists.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Non-Kiro layout with overview and reference files",
+          "check": "test -f security-test-plans/security-test-overview.md && test -f security-test-plans/best-practices-reference.md"
+        },
+        {
+          "id": "f2",
+          "text": "At least 4 per-category plan files",
+          "check": "python3 -I -c \"import os,sys;f=[x for x in os.listdir('security-test-plans') if x.endswith('.md') and x not in ('security-test-overview.md','best-practices-reference.md')];sys.exit(0 if len(f)>=4 else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Plans target the real weaknesses in this code",
+          "pass": "Covers IDOR on GET /users/:id (no ownership check), SQL injection in /search string concatenation, vertical escalation via client x-role header, err.stack in the error handler, default 'dev-secret' JWT (forgery), upload originalname under public/",
+          "partial": "Four or five of the six",
+          "fail": "Three or fewer, or mostly generic OWASP items"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Structure follows the skill's non-Kiro branch",
+          "pass": "Per-category [domain]-[layer].md files, overview with execution order Auth first and Infrastructure last, best-practices reference citing OWASP/AWS",
+          "partial": "Right files but ordering or reference file weak",
+          "fail": "Single file or ad hoc layout"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Test cases ordered positive -> negative -> edge with concrete expectations",
+          "pass": "Each category lists positive, then negative (expecting 401/403/400 as appropriate), then edge cases, with inputs and expected responses",
+          "partial": "Ordering present but expectations vague",
+          "fail": "Unordered or no expected results"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Ties tests to threat model IDs and code locations",
+          "pass": "References T1-T6 and the specific files/endpoints, and notes items the threat model misses (plaintext password comparison in login.js)",
+          "partial": "References some artifacts",
+          "fail": "No traceability"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No fabricated infrastructure or results",
+          "pass": "Only tests for components that exist; infrastructure tests marked N/A or assumed if no IaC",
+          "partial": "One invented component",
+          "fail": "Invents AWS resources or claims tests were run"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "would AppSec accept this coverage?",
+          "each area pickable independently",
+          "grounded in the code"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "This is a Kiro project. Set up the security testing work for this API so we can work through it one security area at a time in Kiro, and save it to disk. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/security-test-generation/kiro-express-api/",
+      "why_discriminating": "The skill auto-detects .kiro and then generates only a single task list at .kiro/specs/security-testing/tasks.md with Task 1 as the foundation review and categories in a fixed dependency order, each task spawning its own spec. Without it, a model typically writes many plan files or a full spec set.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Kiro task list exists",
+          "check": "test -f .kiro/specs/security-testing/tasks.md"
+        },
+        {
+          "id": "f2",
+          "text": "Did not also produce the non-Kiro plan set",
+          "check": "test -f .kiro/specs/security-testing/tasks.md && test ! -d security-test-plans"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Kiro branch output shape",
+          "pass": "Single tasks.md with header (testing approach, framework, discovered artifacts), Task 1 foundation review (OWASP, AWS, framework, threat model, OpenAPI paths), then category tasks with the spec-generation sub-bullets",
+          "partial": "tasks.md present but missing Task 1 or the per-task spec bullets",
+          "fail": "Different layout"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Category order follows the skill",
+          "pass": "Authentication & Authorization, Input Validation, API Security, Data Protection, Session Management, Error Handling, Infrastructure in that order",
+          "partial": "Mostly ordered with one swap",
+          "fail": "Unordered"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Tasks reference concrete code and threat IDs",
+          "pass": "Each task cites the relevant endpoints/files and T1-T6 (e.g. Auth task cites auth.js default secret and admin.js x-role)",
+          "partial": "Some references",
+          "fail": "Generic tasks"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Does not pre-generate the per-category specs",
+          "pass": "Leaves requirements/design/tasks per category to each task",
+          "partial": "Generates one category spec unasked",
+          "fail": "Generates everything up front"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "fits the Kiro workflow",
+          "right ordering",
+          "specific references"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Generate security test plans for this API and put them in docs/security-tests/ so they sit next to our other docs. The threat model is six months old, so make sure the plans reflect the code as it is today. We do not use Kiro. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/security-test-generation/express-api/",
+      "why_discriminating": "The skill supports a caller-chosen output_dir and a hybrid approach (artifacts as foundation, code analysis to supplement); a strong answer writes the non-Kiro layout under docs/security-tests/ and adds code-only findings such as the plaintext password comparison. A model without it tends to mirror the threat model only and pick its own layout.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Overview written in the requested directory",
+          "check": "test -f docs/security-tests/security-test-overview.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Honours output_dir with the skill's file naming",
+          "pass": "docs/security-tests/ contains [domain]-[layer].md files, security-test-overview.md and best-practices-reference.md",
+          "partial": "Right directory, different naming",
+          "fail": "Wrong directory"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Reconciles threat model with current code",
+          "pass": "Notes code-only risks absent from the threat model (plaintext password check in login.js, no rate limiting on /login, upload filename used unsanitised) and says which threats are confirmed in code",
+          "partial": "Mentions code analysis but adds nothing beyond T1-T6",
+          "fail": "Copies the threat model"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Negative tests assert the right status codes and attacks",
+          "pass": "401 for missing/forged/unsigned tokens (including alg none and dev-secret), 403 for non-owner and x-role spoofing, injection payloads for /search",
+          "partial": "Some status expectations",
+          "fail": "No concrete negative tests"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No invented results or resources",
+          "pass": "Assumptions stated",
+          "partial": "Minor unflagged assumption",
+          "fail": "Fabricated findings"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "reflects today's code",
+          "requested location",
+          "concrete negative tests"
+        ]
+      }
+    }
+  ]
+}

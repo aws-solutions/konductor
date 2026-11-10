@@ -1,0 +1,22 @@
+[
+{"query": "I need to set up AWS IoT Greengrass v2 on a fleet of Raspberry Pis with a custom component. is there a guided workflow for this I can follow?", "should_trigger": true},
+{"query": "help me configure Amazon Connect contact flows with a Lex bot for after-hours routing. none of the usual serverless stuff covers this", "should_trigger": true},
+{"query": "We're moving to Aurora DSQL from regular Aurora Postgres. Find whatever AWS guidance exists for the migration and follow it", "should_trigger": true},
+{"query": "how do I set up AWS Control Tower with account factory for terraform for a new org? want the official step by step", "should_trigger": true},
+{"query": "need to stand up an Amazon MSK Serverless cluster with IAM auth and a Lambda consumer. is there an AWS-provided skill/workflow for MSK?", "should_trigger": true},
+{"query": "set up AWS Clean Rooms collaboration with a partner account for overlap analysis. what's the procedure", "should_trigger": true},
+{"query": "migrate our on-prem SQL Server to RDS using DMS with ongoing replication, I want an AWS guided procedure not just random blog steps", "should_trigger": true},
+{"query": "configure Amazon Bedrock Guardrails with contextual grounding checks for our RAG app, look for an AWS skill that covers this", "should_trigger": true},
+{"query": "build a medallion data lake on S3 with Lake Formation permissions and Glue crawlers, find the AWS workflow for it", "should_trigger": true},
+{"query": "Our team wants to try AWS Resilience Hub assessments on the checkout app. Search for any specialized AWS guidance and walk me through it.", "should_trigger": true},
+{"query": "write a Lambda function in python that resizes images uploaded to S3, with the API Gateway trigger", "should_trigger": false},
+{"query": "set up a GKE autopilot cluster with workload identity on Google Cloud", "should_trigger": false},
+{"query": "my CDK deploy fails with 'Resource handler returned message: Invalid request provided'. here's the stack trace", "should_trigger": false},
+{"query": "write an IAM policy that only lets our CI role push to one ECR repo", "should_trigger": false},
+{"query": "configure Azure Front Door with WAF rules for our app", "should_trigger": false},
+{"query": "explain the difference between SQS and SNS like I'm new to AWS", "should_trigger": false},
+{"query": "review lib/stack.ts CDK code for security issues before prod", "should_trigger": false},
+{"query": "set up a local Kafka with docker-compose for development", "should_trigger": false},
+{"query": "my Lambda is timing out after 30s when calling DynamoDB, here are the logs", "should_trigger": false},
+{"query": "estimate the monthly cost of running 3 m7g.large EC2 instances and an ALB in us-east-1", "should_trigger": false}
+]

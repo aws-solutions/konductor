@@ -1,0 +1,22 @@
+[
+{"query": "here's our weather service smithy model in model/weather.smithy, can you review it before we hand it to the backend team? looking for missing constraints, errors, anything that'll bite us in codegen", "should_trigger": true},
+{"query": "Review model/main.smithy for production readiness. In particular I'm worried we forgot @sensitive on some fields and that a couple of list operations don't paginate.", "should_trigger": true},
+{"query": "can u check the .smithy files under api-model/ for naming convention problems? i think someone used snake_case members and GET for a mutation", "should_trigger": true},
+{"query": "We changed CreateOrderInput (added a required field, renamed customer_id) in smithy/orders.smithy. Is that a breaking change for existing clients, and what else in the model is off?", "should_trigger": true},
+{"query": "Audit our Smithy IDL for the InventoryService: are the error shapes right (client vs server, httpError codes), is @auth applied, are strings constrained with @length/@pattern?", "should_trigger": true},
+{"query": "the model file is 900 lines now (model/service.smithy). does the file organization make sense or should we split it? also give me any other quality findings, prioritized", "should_trigger": true},
+{"query": "Our TypeScript SSDK generated from model/ has weird types everywhere (Document, string for everything). check the smithy model itself for type safety issues and missing traits", "should_trigger": true},
+{"query": "pr #212 touches model/payments.smithy. do an API design review of the smithy changes with critical/important/suggestion buckets and concrete fixes", "should_trigger": true},
+{"query": "Validate this Smithy 2.0 model I pasted below for @readonly/@idempotent usage, docs coverage, and @range on numeric members. namespace com.acme.ledger ...", "should_trigger": true},
+{"query": "i think our smithy model leaks internal stuff - partition keys in output shapes, generic InternalError for everything. go through model/ and tell me everything that should block launch", "should_trigger": true},
+{"query": "Write a new Smithy model for a TodoService with CRUD operations, pagination on ListTodos, and proper error shapes. Put it in model/todo.smithy.", "should_trigger": false},
+{"query": "review our OpenAPI 3.1 spec at api/openapi.yaml for missing error responses and inconsistent naming", "should_trigger": false},
+{"query": "smithy-build is failing with 'Unable to find plugin typescript-client-codegen'. how do I fix my smithy-build.json and gradle setup?", "should_trigger": false},
+{"query": "Review the protobuf definitions in proto/orders/v1/*.proto for backward compatibility before we bump to v2", "should_trigger": false},
+{"query": "Our GraphQL schema in schema.graphql has grown messy. Review it for nullable fields, naming, and pagination patterns.", "should_trigger": false},
+{"query": "implement the Lambda handler for the CreateOrder operation from our smithy model, using the generated TS server SDK", "should_trigger": false},
+{"query": "convert our existing OpenAPI spec into a Smithy model so we can start generating SDKs", "should_trigger": false},
+{"query": "review the TypeScript client code generated in build/smithy/ts-client for type safety problems and any anys", "should_trigger": false},
+{"query": "write JSON Schema for the order event payloads we publish on EventBridge", "should_trigger": false},
+{"query": "design the REST API for an inventory service: resources, endpoints, status codes. no particular IDL yet", "should_trigger": false}
+]

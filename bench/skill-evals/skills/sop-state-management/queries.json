@@ -1,0 +1,82 @@
+[
+  {
+    "query": "I'm writing a long multi-phase SOP that runs for hours and keeps dying halfway. I need it to resume where it left off after a restart. design the state file and resume logic",
+    "should_trigger": true
+  },
+  {
+    "query": "our agent workflow writes progress to a yaml file but when two parallel workers bump the fix-cycle counter we lose increments. how should the read-modify-write work",
+    "should_trigger": true
+  },
+  {
+    "query": "how should a resumable workflow tell whether a leftover session file belongs to the same project or a different one that happens to share the description",
+    "should_trigger": true
+  },
+  {
+    "query": "review sops/release-sop.md, it has its own hand-rolled state file and resume check. should it move onto a shared session-state mechanism, and what's wrong with the current one",
+    "should_trigger": true
+  },
+  {
+    "query": "write the python that mints a session yaml per run, lists sessions newest first, skips corrupted ones, and resumes the newest matching in-progress one",
+    "should_trigger": true
+  },
+  {
+    "query": "phase tracking for my SOP: phases can be pending, skipped (with reason), in progress, completed (with summary), blocked. what's the right schema and update rules",
+    "should_trigger": true
+  },
+  {
+    "query": "the session file got truncated when the process was killed mid write. how do I make the writes crash safe",
+    "should_trigger": true
+  },
+  {
+    "query": "a lockfile left by a crashed worker is blocking every future write to our state file. how do I recover stale locks without racing",
+    "should_trigger": true
+  },
+  {
+    "query": "greenfield dirs with no git yet: how do I fingerprint project identity for resume without false matches",
+    "should_trigger": true
+  },
+  {
+    "query": "design per-feature counters (fix_cycles_used) and opaque data (e2e_project_dir) that survive restarts in a multi-feature workflow",
+    "should_trigger": true
+  },
+  {
+    "query": "persist user preferences across sessions in .konductor/memory/USER.md",
+    "should_trigger": false
+  },
+  {
+    "query": "redux state is lost on page refresh, add redux-persist to the store",
+    "should_trigger": false
+  },
+  {
+    "query": "terraform state lock is stuck in dynamodb, how do I force-unlock safely",
+    "should_trigger": false
+  },
+  {
+    "query": "design a step functions state machine with retries for order processing",
+    "should_trigger": false
+  },
+  {
+    "query": "my React useState isn't updating after setState inside a loop",
+    "should_trigger": false
+  },
+  {
+    "query": "track sprint progress across the tasks.md files for the payments feature",
+    "should_trigger": false
+  },
+  {
+    "query": "write an SOP for our oncall incident handling",
+    "should_trigger": false
+  },
+  {
+    "query": "kubernetes statefulset vs deployment for running postgres",
+    "should_trigger": false
+  },
+  {
+    "query": "where should I store session tokens in the browser, localStorage or cookies",
+    "should_trigger": false
+  },
+  {
+    "query": "parse this YAML config in python and validate it against a pydantic schema",
+    "should_trigger": false
+  }
+]

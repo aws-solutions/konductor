@@ -1,0 +1,88 @@
+{
+  "skill_name": "sprint-planning",
+  "evals": [
+    {
+      "id": 0,
+      "name": "sprint14-asana-batch-plan",
+      "scenario_prompt_id": "p1",
+      "prompt": "The Asana connection will be set up tomorrow, so nothing can be written today. Using backlog.md and project-export.json, plan Sprint 14 for the Payments Platform project and write create-plan.md: the exact batch of Asana writes you will make once it is connected, for my approval. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "The skill fixes capacity defaults (10 points per person, 1 point = 1 day), caps leaf tasks at 5 points, puts points only on leaves, maps epics to sections or parent tasks since sections cannot nest, checks for a Story Points custom field, and asks for batch approval. Without it, plans tend to commit the whole backlog, keep 8- and 13-point items whole, and assume a story-points field exists.",
+      "files": [
+        "fixtures/asana-sprint-planning/"
+      ],
+      "expectations": [
+        "create-plan.md exists",
+        "Addresses the 13-point PAY-131 settlement report",
+        "Capacity is computed and respected: Uses 10 points per person and adjusts for Lena's 3 PTO days (27 points) or states the 30-point assumption; committed total fits; shows a running used/capacity tally and the 80% warning",
+        "Hierarchy and sizing follow the skill: Items over 5 points (PAY-118, PAY-130, PAY-131) are split into leaf tasks of 5 or fewer or deferred; only leaves carry points; epics map to parent tasks or sections without nesting sections",
+        "Notices the missing Story Points field: Points out that project-export.json has no Story Points custom field, says points will be tracked locally (or asks the user to add the field), and does not invent a field GID",
+        "Plan matches priorities and is executable: Refunds and the PAY-130 ledger export (finance deadline) are in, settlement report deferred; each write names the Sprint 14 section GID, assignee GID from members, a due date within 2026-11-09..20, and the PAY ticket ID in the notes",
+        "Honest about the missing connection: Presents the batch for approval and claims nothing was created; no invented task GIDs"
+      ],
+      "scripted_checks": [
+        {
+          "text": "create-plan.md exists",
+          "check": "test -s create-plan.md"
+        },
+        {
+          "text": "Addresses the 13-point PAY-131 settlement report",
+          "check": "grep -q 'PAY-131' create-plan.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "sprint22-asana-rollover-plan",
+      "scenario_prompt_id": "p2",
+      "prompt": "Write rollover-plan.md for moving the incomplete tasks from the 'Sprint 22' section to 'Sprint 23' in our Payments Platform Asana project, using sprint-22-open.json. I will run it myself with the Asana MCP tools later. Do not ask me questions; if something is unclear, make a reasonable assumption, state it, and finish the work.",
+      "expected_output": "The skill's rollover procedure recreates tasks because the MCP has no move-between-sections call, warns about exactly what is lost, needs explicit confirmation and a tag GID from the user, and orders per-task steps so the original is always closed once the copy exists. Without it, a plan usually says 'move the tasks' and loses subtasks and comments silently.",
+      "files": [
+        "fixtures/asana-sprint-planning/"
+      ],
+      "expectations": [
+        "rollover-plan.md exists",
+        "Requires confirmation before executing",
+        "Specific data-loss warning and confirmation gate: Warns that recreated tasks lose history, comments, attachments, subtasks, followers, tags and other custom fields, names what that means for these tasks (e.g. PAY-219: 3 subtasks, 11 comments, 4 attachments), and requires explicit confirmation",
+        "Per-task step order and failure handling: Create copy, tag original, comment with link, mark original completed; skip the rest if the create fails; always close the original once the copy exists even if tag/comment failed; report both GIDs if closing fails; continue with the next task",
+        "Handles the project's actual state: Creates the missing Sprint 23 section first, asks the user for the 'Rolled Over' tag GID (or skips tagging), copies Story Points via the existing custom field",
+        "Dates and capacity carried correctly: Due dates shifted 14 days (PAY-212 to 2026-12-02, PAY-219 to 2026-12-04, PAY-215 left blank) and Sprint 23 capacity recalculated with 10 carried points",
+        "No assumed capabilities: Does not rely on a move-section call without noting the MCP may not expose it"
+      ],
+      "scripted_checks": [
+        {
+          "text": "rollover-plan.md exists",
+          "check": "test -s rollover-plan.md"
+        },
+        {
+          "text": "Requires confirmation before executing",
+          "check": "grep -qi 'confirm' rollover-plan.md"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "solo-backlog-generic-plan",
+      "scenario_prompt_id": "g1",
+      "prompt": "Plan my next sprint from backlog.md. I'm a solo developer. Write sprint-plan.md with an estimate for every backlog item, what goes into the sprint and what doesn't, and why. Use your usual defaults for capacity and sprint length. This runs unattended: do not ask questions; state assumptions at the top of the file.",
+      "expected_output": "Round-2 changed the tracker-neutral rules: split an item over 5 points only if it goes into the sprint, keep deferred items whole, stop around 80 to 90% with stretch items, and mark the 80% point in a written tally. The two Asana evals do not exercise the no-tracker path.",
+      "files": [
+        "fixtures/sprint-planning/"
+      ],
+      "expectations": [
+        "sprint-plan.md exists",
+        "Defaults stated and used: states 10-point capacity, 2-week sprint and 1 point = 1 work day as assumptions and plans to them",
+        "Running capacity tally: shows 'Sprint: X/Y pts (Z remaining)' after each item added, marks where usage first reaches 80%, and the committed total is at or under 10",
+        "Sizes on the 1/2/3/5/8 scale with sensible anchors: runbook and SDK bump 1, Retry-After 1-2, render.ts tests 2, flaky test or duplicate-push investigation 3, digest feature 5, three-service integration 8",
+        "Oversized item handled: item 5 (billing/identity/audit integration) is sized 8 and not scheduled whole; if any part goes in, it is split into proposed leaf tasks of 5 or fewer, otherwise it is deferred whole",
+        "Inclusion choices are justified (customer-facing duplicate pushes and CI flakiness prioritized, or a stated rationale) and every deferred item is listed",
+        "Leaves slack and names stretch work: does not pack the sprint to exactly 100% without saying why, and lists the next items to pull in if time allows"
+      ],
+      "scripted_checks": [
+        {
+          "text": "sprint-plan.md exists",
+          "check": "test -s sprint-plan.md"
+        }
+      ]
+    }
+  ]
+}

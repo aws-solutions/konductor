@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Create account</title></head>
+<body>
+<main>
+  <h1>Create your account</h1>
+  <form id="signup-form" data-testid="signup-form" novalidate>
+    <label for="email">Work email</label>
+    <input id="email" name="email" type="email" required aria-describedby="email-error">
+    <span id="email-error" class="field-error" role="alert"></span>
+
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required minlength="12" maxlength="64"
+           pattern="(?=.*\d)(?=.*[A-Z]).*" aria-describedby="password-error">
+    <span id="password-error" class="field-error" role="alert"></span>
+
+    <label for="age">Age</label>
+    <input id="age" name="age" type="number" min="18" max="120" aria-describedby="age-error">
+    <span id="age-error" class="field-error" role="alert"></span>
+
+    <label for="accountType">Account type</label>
+    <select id="accountType" name="accountType" required aria-describedby="accountType-error">
+      <option value="">Choose one</option>
+      <option value="personal">Personal</option>
+      <option value="business">Business</option>
+    </select>
+    <span id="accountType-error" class="field-error" role="alert"></span>
+
+    <div id="company-wrapper" style="display:none">
+      <label for="companyName">Company name</label>
+      <input id="companyName" name="companyName" type="text" maxlength="80" aria-describedby="companyName-error">
+      <span id="companyName-error" class="field-error" role="alert"></span>
+    </div>
+
+    <label for="trialStart">Trial start</label>
+    <input id="trialStart" name="trialStart" type="date" aria-describedby="trialStart-error">
+    <span id="trialStart-error" class="field-error" role="alert"></span>
+
+    <label for="trialEnd">Trial end</label>
+    <input id="trialEnd" name="trialEnd" type="date" aria-describedby="trialEnd-error">
+    <span id="trialEnd-error" class="field-error" role="alert"></span>
+
+    <button type="submit">Create account</button>
+  </form>
+</main>
+<script>
+  const MESSAGES = {
+    email: 'Enter a valid work email address.',
+    password: 'Password must be 12-64 characters with a number and a capital letter.',
+    age: 'You must be between 18 and 120.',
+    accountType: 'Choose an account type.',
+    companyName: 'Company name is required for business accounts.',
+    trialEnd: 'Trial end must be after trial start.'
+  };
+  const form = document.getElementById('signup-form');
+  const accountType = document.getElementById('accountType');
+  const companyWrapper = document.getElementById('company-wrapper');
+  const companyName = document.getElementById('companyName');
+
+  accountType.addEventListener('change', () => {
+    const isBusiness = accountType.value === 'business';
+    companyWrapper.style.display = isBusiness ? 'block' : 'none';
+    companyName.required = isBusiness;
+  });
+
+  function showError(name, show) {
+    document.getElementById(name + '-error').textContent = show ? MESSAGES[name] : '';
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    let ok = true;
+    for (const name of ['email', 'password', 'age', 'accountType', 'companyName']) {
+      const el = form.elements[name];
+      const bad = !el.checkValidity();
+      showError(name, bad);
+      if (bad) ok = false;
+    }
+    const start = form.elements.trialStart.value;
+    const end = form.elements.trialEnd.value;
+    const badRange = start && end && end <= start;
+    showError('trialEnd', badRange);
+    if (badRange) ok = false;
+    if (!ok) return;
+    // Creates the account and sends the welcome email.
+    await fetch('/api/signup', { method: 'POST', body: new FormData(form) });
+    window.location.assign('/welcome');
+  });
+</script>
+</body>
+</html>

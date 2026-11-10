@@ -1,0 +1,169 @@
+{
+  "skill": "e2e-test-strategy",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Plan the end-to-end tests for TaskFlow release 2.4.1. Inputs: docs/test-gap-analysis.md, docs/user-stories.md, docs/system-design.md, docs/feature-plan.md. Change type: security. Release type: patch. Write the plan to testing/e2e-test-strategy.md for the QA lead and the release manager. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/e2e-test-strategy/",
+      "why_discriminating": "The skill's scoring is specific: change impact = type x 0.6 + release x 0.4 (7.2, High here), priority = BI x 0.4 + TR x 0.3 + CTW x 0.3 with P0-P3 thresholds, exclusion of UI-only/simple CRUD flows before scoring, and required execution, environment, test-data and framework sections. Without it, plans prioritize by intuition and keep the theme switch or detail view in E2E.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "The plan exists and uses P0-P3 groupings",
+          "check": "f=testing/e2e-test-strategy.md; test -f $f && for p in P0 P1 P2 P3; do grep -q $p $f || exit 1; done"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Change impact and per-test priority use the skill's weighted formulas",
+          "pass": "Change impact shown as 10 x 0.6 + 3 x 0.4 = 7.2 (High); each candidate has BI/TR/CTW and a computed score mapped to the skill's thresholds (password reset 10.0 -> P0)",
+          "partial": "Scores given but formula or thresholds differ, or arithmetic errors in a few rows",
+          "fail": "No change impact score or priorities assigned by judgement only"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "The security fix's actual risk is targeted",
+          "pass": "Password reset E2E covers both fixed defects: a used link cannot be reused (AC-3.2.2) and expiry at 30 min measured in UTC (AC-3.2.1), noting the existing unit test mocks the clock; login incl. lockout is P0",
+          "partial": "Reset journey is P0 but only one of the two defects is exercised",
+          "fail": "Reset journey not P0, or tests are generic smoke tests"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Exclusion criteria are applied before scoring",
+          "pass": "Theme switch (UI-only) and task detail view (simple read) are excluded from E2E with the reason, or at most P3",
+          "partial": "One of them is ranked P2 or higher",
+          "fail": "Both included at P2 or above"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Execution, environment, test data and framework are specified",
+          "pass": "Execution order/parallelism, the preview vs staging stack choice, SES/Cognito test data seeding and cleanup, and Playwright justified by 3 of 5 engineers' experience",
+          "partial": "Two or three of these present",
+          "fail": "None or only one"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "correct use of the weighted scoring and thresholds",
+          "whether tests target token reuse and UTC expiry",
+          "keeping UI-only flows out of E2E"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Ignore docs/feature-plan.md, it is for a different release. Using the other docs in docs/, give me an end-to-end test plan for the next minor release (enhancement: task sharing improvements), prioritized, with a score breakdown per test. Write it to testing/e2e-minor.md. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/e2e-test-strategy/",
+      "why_discriminating": "A minor enhancement release changes the weights (release 6, enhancement 4 or 7) and the skill's guidance (new journeys plus targeted regression). A strong plan recomputes the impact for this context, keeps the async SES invite journey in E2E because its outcome is user-visible, and still excludes UI-only flows.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "The plan exists and mentions task sharing",
+          "check": "test -f testing/e2e-minor.md && grep -qiE 'shar' testing/e2e-minor.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Weights are recomputed for an enhancement/minor release",
+          "pass": "Change impact 4.8 (Medium) or 6.6 (High) with the chosen enhancement weight stated; per-test CTW uses enhancement values, not security's 10",
+          "partial": "Formula used but security weights copied over, or impact not computed",
+          "fail": "No weighting"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Task sharing is planned end to end, including its async path",
+          "pass": "Covers share -> EventBridge -> Lambda -> SES invite within 60 s (AC-2.1.1) and the invitee 403-until-accept rule (AC-2.1.2), scored ~P1",
+          "partial": "Sharing covered but the async email or the 403 rule is missing",
+          "fail": "Sharing absent or treated as UI-only"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Targeted regression scope fits a minor release",
+          "pass": "Keeps critical existing journeys (login, create task) as regression while explaining why the rest is out",
+          "partial": "Regression scope present but unjustified or the full suite",
+          "fail": "No regression thinking"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Test data and environment are concrete for sharing",
+          "pass": "Two seeded users, a test inbox or SES sandbox capture for invite links, cleanup of tasks/shares, preview vs staging stack",
+          "partial": "Generic seed/cleanup statement",
+          "fail": "No test data strategy"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "recomputing weights for the new context",
+          "coverage of the async invite and access control",
+          "concrete test data for email"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "QA only has time to automate 4 end-to-end tests this sprint. Based on docs/ (this is the 2.4.1 security patch in feature-plan.md), which 4 and why? Write a ranked table with the score breakdown to testing/top4.md, plus a short note on what you left out. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "fixture": "fixtures/e2e-test-strategy/",
+      "why_discriminating": "With a hard cap, the skill's scoring and exclusion rules decide the cut. A strong answer ranks reset and login first with explicit BI/TR/CTW math and explains exclusions using the skill's criteria, rather than picking a balanced-looking coverage mix.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "A ranked table exists naming reset and login",
+          "check": "test -f testing/top4.md && [ $(grep -c '^|' testing/top4.md) -ge 5 ] && grep -qiE 'reset' testing/top4.md && grep -qiE 'login|log in|sign.in' testing/top4.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Each pick has the BI x 0.4 + TR x 0.3 + CTW x 0.3 breakdown and a P-level",
+          "pass": "All four rows show the three inputs and a correct score",
+          "partial": "Scores shown but inputs missing or arithmetic wrong in one row",
+          "fail": "No breakdown"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Picks tie to the security change",
+          "pass": "Reset test exercises token reuse and UTC expiry; login (with lockout) justified by the shared Cognito/auth path; remaining two justified by business impact (create task, sharing)",
+          "partial": "Picks right but rationale generic",
+          "fail": "Reset or login missing from the four"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Left-out note uses the exclusion criteria",
+          "pass": "Theme switch and detail view left out as component-test territory; CSV export deferred with its integration-test gap noted",
+          "partial": "Left-out list present without reasons",
+          "fail": "Theme switch or detail view in the four"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "ranking driven by the security change",
+          "explicit score math",
+          "reasons for what was cut"
+        ]
+      }
+    }
+  ]
+}

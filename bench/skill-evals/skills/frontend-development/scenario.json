@@ -1,0 +1,179 @@
+{
+  "skill": "frontend-development",
+  "category": "DUPLICATION",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Refactor src/CreateProjectForm.tsx to our form stack (react-hook-form with a zod schema) and our component rules (Cloudscape only). Keep the same fields and the same onSubmit payload. Dependencies are listed in package.json but not installed and there is no network, so you cannot compile; be careful. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/frontend-development/",
+      "why_discriminating": "The skill's standards are specific: typed useForm<T>() with zodResolver, no useState for form state, messages from constraint constants rather than hardcoded strings, Box/SpaceBetween instead of native div/span/button, no inline styles, no any, memoized handlers. A competent refactor without it often keeps the hardcoded messages, leaves a <span> hint or style prop, or types the payload loosely.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Typed useForm with zod resolver and no useState",
+          "check": "grep -qE 'useForm<[A-Za-z]+' src/CreateProjectForm.tsx && grep -q zodResolver src/CreateProjectForm.tsx && ! grep -q 'useState' src/CreateProjectForm.tsx"
+        },
+        {
+          "id": "f2",
+          "text": "No native HTML, inline styles, or any",
+          "check": "test -f src/CreateProjectForm.tsx && ! grep -qE '<(div|span|button|input|a)[ >]' src/CreateProjectForm.tsx && ! grep -q 'style={{' src/CreateProjectForm.tsx && ! grep -qE ':\\s*any\\b|<any>|as any' src/CreateProjectForm.tsx"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Form stack per the skill",
+          "pass": "Schema built with zod using PROJECT_NAME_MIN/MAX and VALIDATION_MESSAGES; Controller (or useFormContext) per field; FormField wraps each input with errorText from formState; submit via handleSubmit",
+          "partial": "RHF + zod used but messages still hardcoded or one field bypasses RHF",
+          "fail": "Manual validation remains"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Behavior preserved",
+          "pass": "Same three fields, payload { name, region: <value string>, terms }, region option typed (not any), terms must be true, hint text kept via Box",
+          "partial": "Payload shape or hint changed slightly",
+          "fail": "Payload changed or field dropped"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Notices the message-text change",
+          "pass": "Calls out that switching to VALIDATION_MESSAGES changes user-visible strings ('Name is required' becomes 'Project name is required.') as an assumption",
+          "partial": "Uses constants silently",
+          "fail": "Keeps hardcoded strings"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Careful without a compiler",
+          "pass": "Imports match usage, no invented Cloudscape props, onChange handlers adapted to Cloudscape detail events; no unrelated changes",
+          "partial": "One likely type error",
+          "fail": "Several invented APIs or obvious compile errors"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would this compile and behave the same?",
+          "Adherence to the RHF/zod/Cloudscape rules",
+          "Handling of validation messages"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Add a rule to src/BookingForm.tsx: the end date must be after the start date, with the error shown on the end date field. Export the schema and add a unit test file for it next to the component. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/frontend-development/",
+      "why_discriminating": "The skill says cross-field validation uses .refine (not .transform), messages come from constraint constants, and tests assert actual messages rather than existence. Without it, models often hardcode the message, attach the error at the form root, or write tests that only check success === false.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Cross-field rule via refine/superRefine on endDate, message from constants",
+          "check": "grep -qE '\\.(super)?[Rr]efine\\(' src/BookingForm.tsx && grep -q 'VALIDATION_MESSAGES.endBeforeStart' src/BookingForm.tsx && grep -qE \"path:\\s*\\[\\s*['\\\"]endDate\" src/BookingForm.tsx"
+        },
+        {
+          "id": "f2",
+          "text": "A test file exists next to the component",
+          "check": "ls src/*.test.ts* src/__tests__/* 2>/dev/null | grep -q ."
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Validation pattern",
+          "pass": ".refine with path ['endDate'], message VALIDATION_MESSAGES.endBeforeStart, no .transform; schema exported and BookingFormValues still inferred from it",
+          "partial": "Correct rule but message hardcoded or path missing",
+          "fail": "Rule in a component effect or onSubmit"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Date comparison is sound",
+          "pass": "Compares Cloudscape DatePicker 'YYYY-MM-DD' strings correctly (Date parse or lexical compare of ISO format) and decides equal dates explicitly (strictly after = equal fails)",
+          "partial": "Works but equal-date case unaddressed",
+          "fail": "Comparison wrong for the string format"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Test quality",
+          "pass": "Tests safeParse for after/equal/before and asserts the actual message and path endDate",
+          "partial": "Asserts failure only",
+          "fail": "No meaningful assertions"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Scope",
+          "pass": "No unrelated changes to the component",
+          "partial": "Minor unrelated tidy-up",
+          "fail": "Rewrites the form"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is the error on the right field with the right message?",
+          "Edge case: equal dates",
+          "Do the tests check real values?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "The details panel in src/DetailsPanel.tsx jumps around when the fields prop changes and renders label/value pairs by hand. Fix it the Cloudscape way, changing only what is needed. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/frontend-development/",
+      "why_discriminating": "The skill names both causes: dynamic ColumnLayout column counts cause layout shift and label/value pairs should use KeyValuePairs instead of native divs. A generic fix may only memoize or fix one of the two, or rewrite the panel beyond the request.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Uses KeyValuePairs, no native divs, fixed numeric columns",
+          "check": "test -f src/DetailsPanel.tsx && grep -q 'KeyValuePairs' src/DetailsPanel.tsx && ! grep -q '<div' src/DetailsPanel.tsx && ! grep -q 'fields.length' src/DetailsPanel.tsx"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Root cause of the jump",
+          "pass": "Explains columns={fields.length} changes the grid when fields changes and replaces it with a fixed count",
+          "partial": "Fixes it without explaining",
+          "fail": "Leaves dynamic columns"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Cloudscape-native rendering",
+          "pass": "KeyValuePairs with items for Instance ID, Type, State, Launched (columns fixed, e.g. 2 or 4); unused ColumnLayout import removed",
+          "partial": "KeyValuePairs used but unused import left",
+          "fail": "Native divs remain"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Minimal change and API stability",
+          "pass": "Same four values; keeps the fields prop in the signature (or explains removing it) so callers do not break; no other refactor",
+          "partial": "Removes the prop without comment",
+          "fail": "Broad unrelated rewrite"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is the layout shift actually fixed?",
+          "Cloudscape idioms",
+          "Minimal, caller-safe change"
+        ]
+      }
+    }
+  ]
+}

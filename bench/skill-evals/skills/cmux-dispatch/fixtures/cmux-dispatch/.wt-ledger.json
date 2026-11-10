@@ -1,0 +1,6 @@
+{
+  "worktrees": [
+    {"id": "wt-31", "branch": "wt-31", "path": "/work/shop-api/worktrees/wt-31", "task": "ORD-88 address validation", "status": "active"},
+    {"id": "wt-19", "branch": "wt-19", "path": "/work/worktrees/wt-19", "task": "cart TTL", "status": "active"}
+  ]
+}

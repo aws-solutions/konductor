@@ -1,0 +1,177 @@
+{
+ "skill": "mux-dispatch",
+ "category": "DOMAIN-IMMUNE",
+ "source": "konductor",
+ "kind": "process",
+ "limited": true,
+ "limited_reason": "Needs a live tmux/zellij session and installed agents; offline runs exercise only the documented procedure and the no-multiplexer error path.",
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "I'm in tmux in my repo at /home/me/src/api. I want two developer agents (k-developer) working in parallel panes, one adding rate limiting and one adding an audit log, plus a read-only k-architect review of docs/design.md. Your shell can't reach my tmux server, so don't run anything: write dispatch-plan.md with the exact commands you would run, in order, the task text each agent gets, and how you'd know each is done and collect its output. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": null,
+   "why_discriminating": "The skill requires going through dispatch.sh (never raw tmux split-window), --cwd at the shared primary tree for every dispatch, an explicitly named flat wt-<id> worktree per concurrent write agent passed in the task text, no worktree for the read-only reviewer, result files under /tmp/konductor-mux, and glob-free `find` polling for .done markers; without it a plan typically uses raw tmux commands, points --cwd at not-yet-existing worktrees, or lets both developers share one tree.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Dispatches through dispatch.sh and never raw tmux split-window/new-window",
+     "check": "grep -q 'dispatch.sh' dispatch-plan.md && ! grep -qE 'tmux +(split-window|new-window)' dispatch-plan.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Isolation for concurrent writers: each k-developer task names its own flat worktree (e.g. wt-rate-limit, wt-audit-log, no slashes), says whether to create it, and --cwd is /home/me/src/api for all three dispatches",
+     "pass": "Two distinct named worktrees in the task text and --cwd always the primary tree",
+     "partial": "Worktrees named but --cwd points into them, or names contain slashes",
+     "fail": "Both developers share the tree or no target named"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Read-only k-architect gets no worktree target and shares the primary tree; the plan checks .wt-ledger.json and git worktree list read-only before dispatch",
+     "pass": "Both",
+     "partial": "One of the two",
+     "fail": "Neither (reviewer given a worktree, or no pre-dispatch check)"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Completion and results: tasks tell each agent to write /tmp/konductor-mux/result-<slug>.md; polling uses `find /tmp/konductor-mux -maxdepth 1 -name \"*.done\"`; the .done summary is not treated as the deliverable",
+     "pass": "All three",
+     "partial": "Two of three",
+     "fail": "One or none (e.g. relies on .done summary or a raw *.done glob)"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Does not pre-check the multiplexer itself before calling the script, does not invent flags, and does not substitute an in-process subagent",
+     "pass": "Clean",
+     "partial": "One invented flag or unnecessary env check",
+     "fail": "Substitutes subagents or invents a different dispatch mechanism"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Would the two developers be isolated from each other?",
+     "Is the dispatch done through the supported script with correct --cwd?",
+     "Is result collection reliable rather than based on the .done summary?"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "I dispatched two agents into zellij panes and I have two zellij sessions open (\"work\" and \"scratch\"). Write mux-notes.md for my teammate explaining how to tell when each agent finished and how to get its full output, with exact commands, and what to do if an agent's pane exited without writing anything. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": null,
+   "why_discriminating": "The skill documents the .done marker path and payload, that the summary can be truncated or literally 'shell fallback', that results should come from result files, and the zellij-specific dump-screen form that needs both --session (pane IDs repeat across sessions, recorded in dispatched.json) and --path; an unguided answer usually invents a zellij command or omits the session.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Uses the .done markers under /tmp/konductor-mux",
+     "check": "grep -q '/tmp/konductor-mux' mux-notes.md && grep -q '.done' mux-notes.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Completion: poll with find on /tmp/konductor-mux for *.done; reads the JSON fields (workspace_id, status); explains the summary is short, may be truncated or \"shell fallback\"",
+     "pass": "All parts",
+     "partial": "Poll and fields but no caveat",
+     "fail": "Wrong mechanism"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Full output: read /tmp/konductor-mux/result-<slug>.md first; fall back to `zellij --session <name> action dump-screen --pane-id <id> -f --path <file>` then cat the file",
+     "pass": "Result file first and correct dump-screen form with --session and --path",
+     "partial": "Dump-screen present but missing --session or --path",
+     "fail": "No pane dump or invented commands"
+    },
+    {
+     "id": "r3",
+     "dimension": "reasoning",
+     "criterion": "Explains why --session matters (pane IDs not unique across the two sessions) and where to find session + pane_id (dispatched.json registry)",
+     "pass": "Both",
+     "partial": "One",
+     "fail": "Neither"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "No invented zellij subcommands or flags; no claim that zellij can equalize panes",
+     "pass": "Accurate",
+     "partial": "One questionable flag",
+     "fail": "Several invented commands"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Could a teammate get the full output from the right pane in the right session?",
+     "Are the commands real?",
+     "Does it explain the .done summary limits?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "Postmortem, no running anything. Yesterday in tmux I asked the orchestrator to dispatch two k-developer agents for two separate features. It ran dispatch.sh twice with --cwd /home/me/src/api and task text that only described the features. Both agents edited files in /home/me/src/api and one commit ended up with the other agent's half-finished changes. Separately, `dispatch.sh --agent orchestrator ...` failed with an error listing two candidate agents. Write postmortem.md: root cause of each problem and the exact corrected dispatch commands. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": null,
+   "why_discriminating": "The skill says the collision mechanism is a write task that does not name its target, so the fix is in the task text (a named flat wt-<id> per agent, create-if-missing) while --cwd stays the primary tree, and that --agent must be fully qualified because a partial name matching several installed agents is refused; an unguided answer usually blames --cwd and points it at worktree paths, or guesses an agent name.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "postmortem.md exists and names dispatch.sh",
+     "check": "test -s postmortem.md && grep -q 'dispatch.sh' postmortem.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Root cause 1: neither task named a write target, so both agents defaulted to the shared tree; --cwd at the primary tree was correct and is not the cause",
+     "pass": "States this precisely and keeps --cwd at the primary tree",
+     "partial": "Identifies missing isolation but moves --cwd into worktrees",
+     "fail": "Blames something else (tmux, git hooks)"
+    },
+    {
+     "id": "r2",
+     "dimension": "recommendation",
+     "criterion": "Corrected commands: each k-developer task names its own flat wt-<id> worktree on branch wt-<id> with create-if-missing and \"before touching any file\", --cwd /home/me/src/api; agent re-checks git worktree list first",
+     "pass": "Both corrected commands with these elements",
+     "partial": "Named worktrees but missing create/first-action wording or flat naming",
+     "fail": "No corrected commands"
+    },
+    {
+     "id": "r3",
+     "dimension": "issue",
+     "criterion": "Root cause 2: --agent orchestrator is a partial name matching two installed agents (e.g. konductor-mux-orchestrator and konductor-cmux-orchestrator); fix is passing the fully-qualified name",
+     "pass": "Correct cause and fix",
+     "partial": "Correct fix without the reason",
+     "fail": "Wrong cause"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Does not propose raw tmux commands, cleanup of the broken commit by force-push, or worktree removal without user confirmation",
+     "pass": "None proposed",
+     "partial": "Mentions history cleanup with a confirmation step",
+     "fail": "Recommends force-push or deleting worktrees unprompted"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is the root cause the missing named target, not --cwd?",
+     "Are the corrected commands safe to rerun as-is?",
+     "Is the agent-name failure explained correctly?"
+    ]
+   }
+  }
+ ]
+}

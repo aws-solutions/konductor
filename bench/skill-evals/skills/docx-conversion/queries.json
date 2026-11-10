@@ -1,0 +1,22 @@
+[
+{"query": "my PM sent me requirements.docx (it's in ~/Downloads). can you read it and pull the acceptance criteria into a markdown checklist?", "should_trigger": true},
+{"query": "I wrote the design doc in docs/design.md but the reviewers want a Word file. Convert it, keep headings and tables, and style it with our corp-template.docx", "should_trigger": true},
+{"query": "Here's a file from SharePoint, Q3-roadmap.docx. Summarize the sections and tell me which deadlines slipped compared to Q2-roadmap.docx", "should_trigger": true},
+{"query": "can you replace every 'Vendor' with 'Supplier' in contract-draft.docx and hand me back a docx? don't overwrite the original", "should_trigger": true},
+{"query": "export RELEASE_NOTES.md to word for the legal team, they can't open markdown", "should_trigger": true},
+{"query": "Diff spec_v1.docx and spec_v2.docx and give me a changelog of what changed in the requirements", "should_trigger": true},
+{"query": "There's a OneDrive download, interview-notes.docx, full of tables. extract the tables into markdown so I can analyze them", "should_trigger": true},
+{"query": "turn the COE markdown we just generated into a .docx I can attach to the email. it has a timeline table and nested bullets that need to survive", "should_trigger": true},
+{"query": "Read onboarding.docx and rewrite it as a README.md for the repo", "should_trigger": true},
+{"query": "I have 12 Word meeting-notes files in notes/. batch convert them all to markdown so I can grep them", "should_trigger": true},
+{"query": "Generate a PDF invoice from invoice.json using reportlab with our logo in the header", "should_trigger": false},
+{"query": "read budget.xlsx and sum column D per department with pandas", "should_trigger": false},
+{"query": "Write a Python function using python-docx that stamps a DRAFT watermark into every page header", "should_trigger": false},
+{"query": "Turn my markdown docs folder into a static HTML site with sidebar nav, mkdocs or similar", "should_trigger": false},
+{"query": "pandoc PDF build fails with 'unicode character not set up for use with LaTeX', how do I fix it", "should_trigger": false},
+{"query": "Add a comment on section 3 of the Google Doc for the design review", "should_trigger": false},
+{"query": "Pull the speaker notes out of slides.pptx into a text file", "should_trigger": false},
+{"query": "lint all the markdown files in docs/ with markdownlint and fix line-length issues", "should_trigger": false},
+{"query": "Write a Google Apps Script that emails me whenever our team Google Doc is edited", "should_trigger": false},
+{"query": "convert users.csv into a JSON array keyed by email", "should_trigger": false}
+]

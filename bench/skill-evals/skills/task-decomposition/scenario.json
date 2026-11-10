@@ -1,0 +1,196 @@
+{
+  "skill": "task-decomposition",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "hld.md (approved) and stories.md describe the expense reporting app. I have 4 engineers: Dana (has built Step Functions workflows before), Eli, Farah and Gus. Split the work into independent features so each engineer can work in parallel without waiting on the others, and tell me what has to be agreed up front. Write feature-split.md. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "fixture": "fixtures/task-decomposition/",
+      "why_discriminating": "The skill prescribes a specific Feature Split format (Scope, User Stories, Key Components, Dependencies, Engineer per feature, plus a Shared Interfaces section to define first) and splitting by data ownership so no two features write the same entity without a shared interface. A competent plan without it often splits by layer or by screen, leaves the Report status written by several features, and never names the report-submitted event as the contract.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Uses the Feature Split format: '# Feature Split:' title and '## Feature N:' sections",
+          "check": "grep -qE '^# Feature Split' feature-split.md && [ $(grep -cE '^## Feature [0-9]+' feature-split.md) -ge 3 ]"
+        },
+        {
+          "id": "f2",
+          "text": "Every user story US-1..US-9 is mapped",
+          "check": "for i in 1 2 3 4 5 6 7 8 9; do grep -qE \"US-$i\\b\" feature-split.md || exit 1; done"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Skill's Feature Split format",
+          "pass": "'# Feature Split:' title, '## Feature N:' sections each with Scope, User Stories, Key Components, Dependencies, Engineer, and a '## Shared Interfaces' section stating what to define first",
+          "partial": "Format mostly followed but one field missing in several features, or Shared Interfaces missing",
+          "fail": "Different structure (layers, phases, task list)"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Boundaries by domain / data ownership (KEY tracks)",
+          "pass": "Features align to expense API+client, receipt/OCR, approval workflow + notifications + escalation, policy engine, reimbursement export (merging small ones sensibly for 4 people); each entity has one writing feature or a named shared interface",
+          "partial": "Reasonable features but one entity (usually Report status) written by two features with no shared contract",
+          "fail": "Split by layer or by screen, or heavy overlap"
+        },
+        {
+          "id": "r3",
+          "dimension": "issue",
+          "criterion": "Shared interfaces identified",
+          "pass": "Names the Report/LineItem schema and the report-submitted event (and the policy evaluation contract) as shared, with which features use each",
+          "partial": "Names the schema but not the event, or vice versa",
+          "fail": "No shared interfaces, or generic 'agree on APIs'"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Quality gate checks applied",
+          "pass": "No circular dependencies, no feature requires another to be finished to start (stubs/contracts used), all US-1..US-9 mapped, Dana assigned the Step Functions track, sizes plausible for one engineer",
+          "partial": "One gate item violated (e.g. export blocked until approval is finished)",
+          "fail": "Circular or blocking dependencies, or stories missing"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "Stays within the HLD",
+          "pass": "No new components or stories invented; assumptions listed",
+          "partial": "Minor additions labeled as assumptions",
+          "fail": "New scope presented as part of the design"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "features independently buildable",
+          "shared interfaces named",
+          "all stories mapped",
+          "format usable by the team"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "break down the expense reporting app (hld.md, stories.md) into implementation tasks for the team so we can start planning sprint 1. write it to breakdown.md. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "fixture": "fixtures/task-decomposition/",
+      "why_discriminating": "The skill states that 'break down X into implementation tasks' means its Feature Split, not a layer-by-layer technical breakdown (Data Model -> Backend -> API -> Frontend -> Cross-cutting). A competent model without the skill almost always produces the layered list, which creates hand-offs between people instead of independent tracks.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Top-level sections are not technical layers (Data Model / Backend / API / Frontend)",
+          "check": "test -s breakdown.md && ! grep -qiE '^##? *(phase [0-9]+:? *)?(data model|backend|api( contract)?|frontend|cross[- ]cutting)\\s*$' breakdown.md"
+        },
+        {
+          "id": "f2",
+          "text": "Maps stories to features",
+          "check": "[ $(grep -oE 'US-[0-9]' breakdown.md | sort -u | wc -l) -ge 9 ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Chooses the feature-split shape over a layered breakdown",
+          "pass": "Engineer-scoped features with story mapping and a Shared Interfaces section; any task lists sit inside features",
+          "partial": "Features present but a parallel layered section drives the plan",
+          "fail": "Layered Data Model/Backend/API/Frontend breakdown"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Independence and coupling handled",
+          "pass": "Explains how features can start in parallel (agreed schema/event contracts, stubs) and avoids features that block each other",
+          "partial": "Some features blocked on others without a contract",
+          "fail": "Sequential dependency chain"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Sprint-1 usefulness",
+          "pass": "Suggests what to do first (shared interfaces / foundation) and an order, with rough effort per feature",
+          "partial": "Order or effort, not both",
+          "fail": "Neither"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No padding",
+          "pass": "No generic tasks unrelated to the HLD (e.g. 'set up Kubernetes', 'write documentation') presented as features",
+          "partial": "A couple of generic items",
+          "fail": "Large generic boilerplate sections"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "feature tracks vs layers",
+          "parallel starts via contracts",
+          "clear first steps"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Plans changed: only 2 engineers and 6 weeks for the expense reporting app (hld.md, stories.md). Split it into features, give each an effort estimate, flag anything too big or too small for one engineer, and propose an implementation order. Write split-2eng.md. Do not ask me questions; make reasonable assumptions, list them in the file, and finish the work.",
+      "fixture": "fixtures/task-decomposition/",
+      "why_discriminating": "The skill's quality gate sets size bounds (over 2 weeks: split; under 2 days: merge), asks for a foundation feature that defines shared interfaces, and forbids blocking dependencies. With two engineers a strong answer regroups the five tracks into right-sized features and checks the total against 12 engineer-weeks; a competent answer without the skill tends to list features with estimates but no size flags and no capacity check.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "All 9 stories still mapped",
+          "check": "[ $(grep -oE 'US-[0-9]' split-2eng.md | sort -u | wc -l) -ge 9 ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Size bounds applied",
+          "pass": "Each feature estimated; any >2 weeks is split and any <2 days merged (e.g. export or notifications merged into a neighbor), with the reason stated",
+          "partial": "Estimates present but size flags missing or inconsistent with the bounds",
+          "fail": "No estimates"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Capacity and order",
+          "pass": "Total effort compared to 2 engineers x 6 weeks; order starts with a foundation/shared-interfaces feature and keeps both engineers busy in parallel; names what to cut or defer if over capacity",
+          "partial": "Order given but no capacity check, or capacity check but no parallel plan",
+          "fail": "Neither"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Feature Split structure retained",
+          "pass": "Features keep Scope, User Stories, Key Components, Dependencies, Engineer; Shared Interfaces section; all US-1..US-9 mapped",
+          "partial": "Some fields dropped",
+          "fail": "Structure abandoned or stories missing"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Estimates are labeled and reasonable",
+          "pass": "Estimates stated as assumptions with basis; no false precision",
+          "partial": "Unexplained estimates",
+          "fail": "Implausible estimates (e.g. whole app in 1 week)"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "right-sized features",
+          "capacity vs 12 engineer-weeks",
+          "foundation-first parallel order"
+        ]
+      }
+    }
+  ]
+}

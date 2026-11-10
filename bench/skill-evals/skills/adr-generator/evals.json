@@ -1,0 +1,98 @@
+{
+  "skill_name": "adr-generator",
+  "evals": [
+    {
+      "id": 0,
+      "name": "payments-new-adr-house-template",
+      "scenario_prompt_id": "p1",
+      "prompt": "Add an ADR to docs/design/payments.md recording the decision to use DynamoDB rather than Aurora Postgres for the ledger. Everything you need is already in the doc. The team has agreed on it. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "expected_output": "Skill-specific: a new '## Architecture Decision Records' section after '## Implementation Plan', ADR-1 in the skill's template (### ADR-1 heading, **Status:** Accepted, #### Context/Decision/Alternatives Considered/Consequences, a table with a Why Not Chosen column, Good/Bad/Neutral consequences) and a '_(See ADR-1)_' cross-reference in the body. The doc has no ADR to copy from, so the house conventions come only from the skill.",
+      "files": [
+        "fixtures/adr-generator/"
+      ],
+      "scripted_checks": [
+        {
+          "text": "An '## Architecture Decision Records' section follows '## Implementation Plan' and contains ADR-1",
+          "check": "python3 -c \"import sys;t=open('docs/design/payments.md').read();a=t.find('## Architecture Decision Records');p=t.find('## Implementation Plan');sys.exit(0 if a>p>=0 and 'ADR-1' in t[a:] else 1)\""
+        },
+        {
+          "text": "ADR uses the skill's template headings: '### ADR-1:' plus '#### Context', '#### Decision', '#### Alternatives Considered', '#### Consequences'",
+          "check": "python3 -c \"import re,sys;t=open('docs/design/payments.md').read();a=t.find('## Architecture Decision Records');s=t[a:] if a>=0 else '';sys.exit(0 if re.search(r'^### ADR-1:',s,re.M) and all(re.search(r'^#### '+h+r'\\\\s*$',s,re.M) for h in ['Context','Decision','Alternatives Considered','Consequences']) else 1)\""
+        },
+        {
+          "text": "Status line is exactly '**Status:** Accepted' (team agreed)",
+          "check": "python3 -c \"import re,sys;t=open('docs/design/payments.md').read();a=t.find('## Architecture Decision Records');s=t[a:] if a>=0 else '';sys.exit(0 if re.search(r'^\\\\*\\\\*Status:\\\\*\\\\*\\\\s*Accepted\\\\s*$',s,re.M) else 1)\""
+        },
+        {
+          "text": "Consequences are split into '**Good:**', '**Bad:**' and '**Neutral:**' groups",
+          "check": "python3 -c \"import re,sys;t=open('docs/design/payments.md').read();a=t.find('## Architecture Decision Records');s=t[a:] if a>=0 else '';sys.exit(0 if all(x in s for x in ['**Good:**','**Bad:**','**Neutral:**']) else 1)\""
+        },
+        {
+          "text": "Alternatives table has a 'Why Not Chosen' column and at least 2 option rows",
+          "check": "python3 -c \"import re,sys;t=open('docs/design/payments.md').read();a=t.find('## Architecture Decision Records');s=t[a:] if a>=0 else '';rows=[l for l in s.splitlines() if l.strip().startswith('|') and not re.match(r'^\\\\|[\\\\s:|-]+\\\\|$',l.strip())];h=[l for l in rows if 'Why Not Chosen' in l];sys.exit(0 if h and len(rows)-len(h)>=2 else 1)\""
+        },
+        {
+          "text": "A '(See ADR-1)' cross-reference is added outside the ADR section",
+          "check": "python3 -c \"import sys;t=open('docs/design/payments.md').read();a=t.find('## Architecture Decision Records');b=t[:a] if a>=0 else t;sys.exit(0 if '(See ADR-1)' in b else 1)\""
+        }
+      ],
+      "llm_expectations": [
+        "The Decision is a single active-voice sentence of the form 'We will use DynamoDB ... because ...' that cites the load-test numbers (8,000 writes/s at p99 7 ms) against the 6,000 writes/s projection",
+        "The Aurora Postgres row's rejection reason cites its measured ceiling (4,200 writes/s / p99 18 ms) being below the 6,000 writes/s projection, in 1-3 sentences",
+        "The Bad consequences name the team's limited DynamoDB production experience (3 of 7) and the move of SQL-join reports to an export + Athena path",
+        "No new facts are introduced that are not in the doc (no invented benchmarks, prices, or links)"
+      ],
+      "expectations": [
+        "An '## Architecture Decision Records' section follows '## Implementation Plan' and contains ADR-1",
+        "ADR uses the skill's template headings: '### ADR-1:' plus '#### Context', '#### Decision', '#### Alternatives Considered', '#### Consequences'",
+        "Status line is exactly '**Status:** Accepted' (team agreed)",
+        "Consequences are split into '**Good:**', '**Bad:**' and '**Neutral:**' groups",
+        "Alternatives table has a 'Why Not Chosen' column and at least 2 option rows",
+        "A '(See ADR-1)' cross-reference is added outside the ADR section",
+        "The Decision is a single active-voice sentence of the form 'We will use DynamoDB ... because ...' that cites the load-test numbers (8,000 writes/s at p99 7 ms) against the 6,000 writes/s projection",
+        "The Aurora Postgres row's rejection reason cites its measured ceiling (4,200 writes/s / p99 18 ms) being below the 6,000 writes/s projection, in 1-3 sentences",
+        "The Bad consequences name the team's limited DynamoDB production experience (3 of 7) and the move of SQL-join reports to an export + Athena path",
+        "No new facts are introduced that are not in the doc (no invented benchmarks, prices, or links)"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "search-complete-incomplete-adr2",
+      "scenario_prompt_id": "p2",
+      "prompt": "ADR-2 in docs/design/search.md is incomplete and a reviewer flagged it. Complete it. Leave ADR-1 alone. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "expected_output": "ADR-2 completed per the skill's completion path: Alternatives Considered table with Why Not Chosen, Good/Bad/Neutral consequences, decision tightened to 'because <technical reason>'; Lambda rejected on its 15-minute limit vs 40-minute backfills. ADR-1 untouched.",
+      "files": [
+        "fixtures/adr-generator/"
+      ],
+      "scripted_checks": [
+        {
+          "text": "ADR-1 is byte-for-byte unchanged and ADR-2 has an Alternatives Considered section",
+          "check": "python3 -c \"import re,sys,hashlib;t=open('docs/design/search.md').read();m=re.search(r'### ADR-1:.*?(?=### ADR-2)',t,re.S);s=t[t.find('### ADR-2'):];sys.exit(0 if m and hashlib.sha256(m.group(0).encode()).hexdigest()=='e092c8f2523fe30bfe70adf0f9e82de6664c6b294c8e99987c055e7855ee1ba8' and 'Alternatives Considered' in s else 1)\""
+        },
+        {
+          "text": "ADR-2 has an alternatives table with a 'Why Not Chosen' column and at least 2 option rows",
+          "check": "python3 -c \"import re,sys;t=open('docs/design/search.md').read();s=t[t.find('### ADR-2'):] if '### ADR-2' in t else '';rows=[l for l in s.splitlines() if l.strip().startswith('|') and not re.match(r'^\\\\|[\\\\s:|-]+\\\\|$',l.strip())];h=[l for l in rows if 'Why Not Chosen' in l];sys.exit(0 if h and len(rows)-len(h)>=2 else 1)\""
+        },
+        {
+          "text": "ADR-2 has a '#### Consequences' section split into '**Good:**', '**Bad:**' and '**Neutral:**'",
+          "check": "python3 -c \"import re,sys;t=open('docs/design/search.md').read();s=t[t.find('### ADR-2'):] if '### ADR-2' in t else '';sys.exit(0 if re.search(r'^#### Consequences',s,re.M) and all(x in s for x in ['**Good:**','**Bad:**','**Neutral:**']) else 1)\""
+        }
+      ],
+      "llm_expectations": [
+        "Lambda (or Lambda-based processing) is listed as an alternative and rejected on its 15-minute maximum execution time versus the 40-minute backfill jobs",
+        "The ADR-2 Decision is rewritten as 'We will run the indexer on ECS Fargate because ...' citing the long-running backfills and/or the sustained 1,200 updates/s with 300-900 ms enrichment",
+        "At least one other genuine alternative besides Lambda (e.g. ECS on EC2, Step Functions + Lambda, EC2 workers) is given real pros and cons",
+        "No fabricated pricing or service limits are asserted as fact beyond the well-known Lambda 15-minute limit; any cost figure is marked as an estimate or omitted"
+      ],
+      "expectations": [
+        "ADR-1 is byte-for-byte unchanged and ADR-2 has an Alternatives Considered section",
+        "ADR-2 has an alternatives table with a 'Why Not Chosen' column and at least 2 option rows",
+        "ADR-2 has a '#### Consequences' section split into '**Good:**', '**Bad:**' and '**Neutral:**'",
+        "Lambda (or Lambda-based processing) is listed as an alternative and rejected on its 15-minute maximum execution time versus the 40-minute backfill jobs",
+        "The ADR-2 Decision is rewritten as 'We will run the indexer on ECS Fargate because ...' citing the long-running backfills and/or the sustained 1,200 updates/s with 300-900 ms enrichment",
+        "At least one other genuine alternative besides Lambda (e.g. ECS on EC2, Step Functions + Lambda, EC2 workers) is given real pros and cons",
+        "No fabricated pricing or service limits are asserted as fact beyond the well-known Lambda 15-minute limit; any cost figure is marked as an estimate or omitted"
+      ]
+    }
+  ]
+}

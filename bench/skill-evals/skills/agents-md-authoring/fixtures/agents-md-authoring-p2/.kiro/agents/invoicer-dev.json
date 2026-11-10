@@ -1,0 +1,8 @@
+{
+  "name": "invoicer-dev",
+  "description": "Day-to-day development agent for the invoicer repo",
+  "prompt": "You help engineers work on the invoicer web app. Follow the repo's conventions.",
+  "tools": ["fs_read", "fs_write", "execute_bash"],
+  "allowedTools": ["fs_read"],
+  "resources": ["file://.kiro/steering/**/*.md"]
+}

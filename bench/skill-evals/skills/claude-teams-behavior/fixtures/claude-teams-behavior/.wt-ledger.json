@@ -1,0 +1,6 @@
+{
+  "worktrees": [
+    {"id": "wt-27", "branch": "wt-27", "path": "/work/worktrees/wt-27", "task": "docs: runbook refresh (DLQ, paging)", "status": "active"},
+    {"id": "wt-31", "branch": "wt-31", "path": "/work/worktrees/wt-31", "task": "ORD-88 address validation", "status": "active"}
+  ]
+}

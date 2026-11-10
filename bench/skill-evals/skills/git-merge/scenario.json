@@ -1,0 +1,192 @@
+{
+ "skill": "git-merge",
+ "category": "MODEL-CAPABILITY",
+ "source": "konductor",
+ "kind": "process",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "Run `bash setup.sh --teammate-push` here first; it creates origin.git (our remote) and work/ (my clone, currently on feature/invoice-pdf). Teammates push to mainline all day. In work/, get feature/invoice-pdf merged into mainline and pushed to origin the safe way. Do not delete any branches. Write merge-log.md listing the commands you ran and what you checked before each commit. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/git-merge/",
+   "why_discriminating": "The skill requires pulling mainline first, merging mainline into the feature branch before merging back (Phase 1), and using --no-ff --no-commit so the result is inspected before committing, never force-pushing; here origin/mainline has a teammate commit the clone lacks, so skipping the pull leads to a rejected push and tempts a force push, and a plain `git merge` skips Phase 1 and inspection.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "origin mainline tip is a merge commit whose first parent is the teammate commit (pulled, not lost)",
+     "check": "test $(git -C origin.git rev-list --parents -n1 mainline | wc -w) -eq 3 && git -C origin.git log --first-parent --format=%s mainline | sed -n 2p | grep -q \"fix rounding\""
+    },
+    {
+     "id": "f2",
+     "text": "The teammate commit survives on origin mainline (no force push)",
+     "check": "git -C origin.git log --format=%s mainline | grep -q \"fix rounding in render\""
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Phase 1 done: mainline (after pull) merged into feature/invoice-pdf with --no-ff --no-commit, committed and pushed before the mainline merge",
+     "pass": "Phase 1 present in the log and visible on origin/feature/invoice-pdf as a merge commit",
+     "partial": "Feature updated by rebase or plain merge, or not pushed",
+     "fail": "No Phase 1"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Phase 2 done: pull mainline, `git merge --no-ff --no-commit feature/invoice-pdf`, inspect (diff/status/tests or build check), commit with a message naming the branch, push",
+     "pass": "All steps present in order with an inspection step",
+     "partial": "Merge commit created but --no-commit or inspection missing",
+     "fail": "Fast-forward or merge without pulling"
+    },
+    {
+     "id": "r3",
+     "dimension": "restraint",
+     "criterion": "No force push, no branch deletion, no history rewrite on mainline",
+     "pass": "None of these occur",
+     "partial": "A force push or reset was considered and explicitly rejected in the log",
+     "fail": "Any force push, deleted branch, or reset of mainline"
+    },
+    {
+     "id": "r4",
+     "dimension": "reasoning",
+     "criterion": "merge-log.md is accurate: commands match the resulting history and it notes the teammate commit was pulled in",
+     "pass": "Log matches origin history",
+     "partial": "Log mostly matches but omits a step",
+     "fail": "Log claims steps that did not happen"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Was mainline pulled and merged into the feature branch first?",
+     "Was the merge inspected before commit, with no fast-forward?",
+     "Is the teammate work intact with no force push?"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "Run `bash setup.sh` here first; it creates origin.git and work/. We're cutting release 4.2: in work/, merge dev into mainline, tag the result v4.2.0, and push branch and tag to origin. Write release-log.md with the commands you ran. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/git-merge/",
+   "why_discriminating": "dev is one commit ahead of mainline, so a plain `git merge dev` fast-forwards and leaves no release merge commit; the skill's --no-ff rule, Phase 1 (bring mainline into dev first) and Phase 3 tag-after-merge order are what produce a tagged merge commit.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "mainline tip on origin is a merge commit even though dev was fast-forwardable",
+     "check": "test $(git -C origin.git rev-list --parents -n1 mainline | wc -w) -eq 3"
+    },
+    {
+     "id": "f2",
+     "text": "Tag v4.2.0 on origin points at the mainline merge",
+     "check": "git -C origin.git rev-parse -q --verify \"v4.2.0^{commit}\" >/dev/null && test \"$(git -C origin.git rev-parse \"v4.2.0^{commit}\")\" = \"$(git -C origin.git rev-parse mainline)\""
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Uses --no-ff (and --no-commit with an inspection step) for the dev -> mainline merge",
+     "pass": "Both flags with an inspection step",
+     "partial": "--no-ff without --no-commit or inspection",
+     "fail": "Fast-forward merge"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Follows phase order: pull mainline, bring mainline into dev (no-op is acceptable if stated), merge into mainline, then tag, then push branch and tag",
+     "pass": "Order correct and stated",
+     "partial": "Order mostly right but Phase 1 skipped without comment",
+     "fail": "Tag before merge or pushed tag points elsewhere"
+    },
+    {
+     "id": "r3",
+     "dimension": "restraint",
+     "criterion": "No force push, no branch deletion, tag is lightweight or annotated but not moved after push",
+     "pass": "Clean",
+     "partial": "Unnecessary but harmless extra steps",
+     "fail": "Force push or deleted dev"
+    },
+    {
+     "id": "r4",
+     "dimension": "reasoning",
+     "criterion": "release-log.md matches what happened and notes that dev was fast-forwardable and why --no-ff was used",
+     "pass": "Accurate and explains the --no-ff choice",
+     "partial": "Accurate but no explanation",
+     "fail": "Inaccurate log"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is there a real release merge commit rather than a fast-forward?",
+     "Does the tag land on the merge commit?",
+     "Is the process the safe, inspectable one?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "Don't run anything. A teammate who rarely uses git has to merge hotfix/null-currency into mainline next week while I'm out, and other people will be pushing to mainline at the same time. Write merge-runbook.md with the exact git commands in order and what to check before each commit and push, including what to do if the push is rejected.",
+   "fixture": null,
+   "why_discriminating": "The skill gives a concrete four-phase sequence with --no-ff --no-commit, pull-first, mainline-into-branch-first and a never-force-push rule; a generic runbook often merges the hotfix directly, uses plain `git merge`, or answers a rejected push with --force or a rebase of a shared branch.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Uses --no-ff and --no-commit",
+     "check": "grep -q -- '--no-ff' merge-runbook.md && grep -q -- '--no-commit' merge-runbook.md"
+    },
+    {
+     "id": "f2",
+     "text": "No force push anywhere",
+     "check": "test -s merge-runbook.md && ! grep -qE 'push +(-f|--force)' merge-runbook.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Sequence matches the skill: pull mainline, merge mainline into hotfix/null-currency (--no-ff --no-commit), verify, commit, push; then pull mainline, merge hotfix (--no-ff --no-commit), verify, commit, push",
+     "pass": "Both phases in that order with exact commands",
+     "partial": "One phase missing a flag or the pull",
+     "fail": "Hotfix merged straight into mainline, or a fast-forward"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Concrete checks before each commit: git status/diff --cached, resolve conflicts, run build and tests",
+     "pass": "Checks named per commit with commands",
+     "partial": "Generic \"check it works\"",
+     "fail": "No checks"
+    },
+    {
+     "id": "r3",
+     "dimension": "recommendation",
+     "criterion": "Rejected push handling: pull (merge) mainline again, re-verify, commit, push; explicitly never --force or rebase mainline",
+     "pass": "Correct recovery and explicit prohibition",
+     "partial": "Recovery present but vague",
+     "fail": "Suggests --force, reset or rebasing mainline"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Readable for a novice: short steps, real branch names, no unnecessary advanced commands",
+     "pass": "Copy-pasteable and short",
+     "partial": "Correct but dense",
+     "fail": "Placeholder-heavy or confusing"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Could a novice follow it safely while others push to mainline?",
+     "Does it bring mainline into the hotfix first and use --no-ff --no-commit?",
+     "Does it handle a rejected push without force?"
+    ]
+   }
+  }
+ ]
+}

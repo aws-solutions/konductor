@@ -1,0 +1,10 @@
+{
+  "name": "doc-share-api",
+  "version": "1.4.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {}
+}

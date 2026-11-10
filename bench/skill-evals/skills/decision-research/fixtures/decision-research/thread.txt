@@ -1,0 +1,12 @@
+# Slack export: #platform-arch, thread started 2026-09-30
+# users: U01ABC=Priya Raman, U02DEF=Marcus Lee, U03GHI=Elena Petrova, U04JKL=Tom Okafor, U05MNO=Sana Qureshi
+
+[09:02] U01ABC: Proposal: move all 9 service repos into one monorepo. Cross-repo changes (shared types) take us 3-4 PRs today and drift constantly.
+[09:10] U02DEF: Strongly against. Our CI is per-repo and takes 6 min. A monorepo without build caching would make every PR run everything. We don't have Bazel/Nx expertise.
+[09:14] U03GHI: Middle ground: keep polyrepo but publish shared types as a versioned package with renovate bumps. Fixes drift without a CI rewrite.
+[09:21] U01ABC: @U03GHI we tried that in 2024, version skew got worse because nobody merged the renovate PRs.
+[09:30] U04JKL: Security angle: monorepo means one CODEOWNERS file and one permission boundary. Payments code is PCI scoped and must stay restricted. That's a hard constraint for me.
+[09:41] U05MNO: From the release side, we deploy services independently and that must stay true. Monorepo is fine only if deploys stay per service.
+[09:50] U02DEF: If we do it, Nx with remote cache, and payments stays out. I'd accept that.
+[10:05] U01ABC: Agreed payments stays separate. Can we decide by Oct 15?
+[10:07] U03GHI: Fine with a trial on 3 repos first. Nobody has measured CI time with Nx yet, that's the open question.

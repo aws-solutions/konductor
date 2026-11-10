@@ -1,0 +1,192 @@
+{
+  "skill": "adversarial-code-review-pass-integrity",
+  "category": "DUPLICATION",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "pr.diff is an incoming PR for our payments service (Node.js, DynamoDB via lib-dynamodb). Review it through the lens of data integrity and failure modes only: atomicity, lost updates, idempotency, ordering. Ignore style and security. You can read the rest of the repo for context. Write the findings to integrity-findings.md, one per finding, each starting with a line like `[SEVERITY] Data Integrity - file:line`, followed by Problem and Fix lines. Don't ask questions.",
+      "fixture": "fixtures/adversarial-code-review-pass-integrity/",
+      "why_discriminating": "The skill scopes the pass tightly: flag multi-item mutations without a transaction, unconditional writes on contested items, non-idempotent retries, and untested write paths; check the codebase for existing helpers (src/lib/tx.js); and explicitly do not flag single-item writes as needing transactions or test setup seeding. A generic reviewer tends to miss the helper and pad with out-of-scope findings.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "transfer.js is flagged at CRITICAL",
+          "check": "grep -E '^\\[?(CRITICAL|IMPORTANT|SUGGESTION)\\]?' integrity-findings.md | grep 'transfer.js' | grep -q 'CRITICAL'"
+        },
+        {
+          "id": "f2",
+          "text": "No finding raised against test/setup.js seeding",
+          "check": "test -f integrity-findings.md && ! grep -E '^\\[?(CRITICAL|IMPORTANT|SUGGESTION)\\]?' integrity-findings.md | grep -q 'setup.js'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Finds the three core defects with concrete failure scenarios",
+          "pass": "transfer.js debit/credit not atomic (debit succeeds, credit fails = money vanishes), orderRepo.js:13 unconditional put = lost update, applyCredit.js ADD under SQS redelivery = double credit",
+          "partial": "Two of three, or all three without failure scenarios",
+          "fail": "One or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Codebase awareness and format",
+          "pass": "Points transfer.js at the existing transactWrite helper in src/lib/tx.js (bypass, not a missing utility), and every finding uses the `[SEVERITY] Data Integrity - file:line` + Problem + Fix format",
+          "partial": "One of the two",
+          "fail": "Neither"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Respects the skill's out-of-scope rules",
+          "pass": "No transaction demanded for the single-item appendAudit put, no finding on setup.js seeding, no security or style findings",
+          "partial": "One out-of-scope finding",
+          "fail": "Several"
+        },
+        {
+          "id": "r4",
+          "dimension": "issue",
+          "criterion": "Secondary integrity gaps",
+          "pass": "Notes at least one of: no tests exercising these write paths, partial batch failure re-applying earlier records, credit update lacking attribute_exists, redundant re-read after write",
+          "partial": "Mentions one vaguely",
+          "fail": "None"
+        },
+        {
+          "id": "r5",
+          "dimension": "recommendation",
+          "criterion": "Fixes are specific and correct",
+          "pass": "TransactWrite with balance >= :amt on debit and attribute_exists on credit (with ClientRequestToken), ConditionExpression on version, idempotency record keyed by messageId inside the same transaction",
+          "partial": "Directionally right but vague",
+          "fail": "Wrong or missing fixes"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would this review stop money from being lost or double-counted?",
+          "Does it use what the repo already has?",
+          "Is it free of out-of-scope noise?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Focus only on src/repo/orderRepo.js from pr.diff. Concurrent requests update the same order a lot (status changes from the warehouse and from customer service at the same time). Give me every data-integrity concern in that file with file:line, the concrete failure scenario (what interleaving breaks it), and a specific fix, in orderRepo-integrity.md using `[SEVERITY] Data Integrity - file:line` headers. Don't ask questions.",
+      "fixture": "fixtures/adversarial-code-review-pass-integrity/",
+      "why_discriminating": "The skill asks for the concrete interleaving and a condition-expression fix, grades a redundant re-read as SUGGESTION, and says a single-item conditional put (appendAudit) must not be flagged as needing a transaction.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Fix uses a ConditionExpression on version",
+          "check": "grep -qE 'ConditionExpression' orderRepo-integrity.md && grep -qiE 'version' orderRepo-integrity.md"
+        },
+        {
+          "id": "f2",
+          "text": "Findings cite orderRepo.js line numbers in the read/put/re-read range",
+          "check": "grep -qE 'orderRepo\\.js:(9|1[0-7])' orderRepo-integrity.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Lost-update interleaving is concrete",
+          "pass": "Two writers read version N, both put version N+1, one status silently overwritten; graded CRITICAL",
+          "partial": "Lost update named without interleaving",
+          "fail": "Missed"
+        },
+        {
+          "id": "r2",
+          "dimension": "recommendation",
+          "criterion": "Fix is a correct optimistic lock",
+          "pass": "PutCommand or UpdateCommand with ConditionExpression 'version = :expected' (and attribute_exists), handling ConditionalCheckFailedException by retry or 409",
+          "partial": "Condition named but incomplete",
+          "fail": "Transaction or lock table proposed instead, or no fix"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Severity grading follows the skill",
+          "pass": "Redundant re-read after write as SUGGESTION (use the written item or ReturnValues: 'ALL_NEW')",
+          "partial": "Found but misgraded",
+          "fail": "Missed"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No false positives",
+          "pass": "appendAudit not flagged for a transaction; the undefined-order crash, if mentioned, is framed as out of focus",
+          "partial": "One dubious item",
+          "fail": "Several"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Does it show exactly how concurrent updates lose data?",
+          "Is the fix the standard optimistic-lock pattern?",
+          "Is the grading proportionate?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "clean/clean.diff is another PR (paths in it are relative to clean/). Run the data-integrity review pass on it and write findings to clean-findings.md using `[SEVERITY] Data Integrity - file:line` headers. If you find nothing that genuinely threatens data integrity, say so plainly instead of padding. Don't ask questions.",
+      "fixture": "fixtures/adversarial-code-review-pass-integrity/",
+      "why_discriminating": "This diff already uses a transaction with ClientRequestToken and conditions, a single-owner put, and test teardown bulk deletes, all of which the skill says not to flag. The discriminator is restraint: a model without the skill tends to invent findings to look thorough.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "No CRITICAL findings",
+          "check": "test -f clean-findings.md && ! grep -qE '^\\[?CRITICAL\\]?' clean-findings.md"
+        },
+        {
+          "id": "f2",
+          "text": "teardown.js bulk deletes are not flagged",
+          "check": "test -f clean-findings.md && ! grep -E '^\\[?(CRITICAL|IMPORTANT|SUGGESTION)\\]?' clean-findings.md | grep -q 'teardown.js'"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "restraint",
+          "criterion": "Reports no blocking issues and says so plainly",
+          "pass": "Clear 'no integrity defects found' statement with at most minor, correctly-graded suggestions",
+          "partial": "Says clean but lists several weak IMPORTANT items",
+          "fail": "Raises CRITICAL/IMPORTANT findings that are not real"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Shows why the code is safe",
+          "pass": "Briefly notes the transaction, the ClientRequestToken idempotency, the attribute_not_exists/attribute_exists conditions, and single-owner preference writes",
+          "partial": "Generic 'looks fine'",
+          "fail": "No reasoning"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Respects explicit exemptions",
+          "pass": "No transaction demanded for the single-item preferences put; teardown seeding/deletes not flagged",
+          "partial": "One exemption violated",
+          "fail": "Both violated"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Does it avoid crying wolf on clean code?",
+          "Does it explain why the code is safe?",
+          "Would a reviewer trust the next report from this pass?"
+        ]
+      }
+    }
+  ]
+}

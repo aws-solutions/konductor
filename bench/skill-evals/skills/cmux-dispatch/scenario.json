@@ -1,0 +1,177 @@
+{
+  "skill": "cmux-dispatch",
+  "category": "DOMAIN-IMMUNE",
+  "source": "konductor",
+  "kind": "process",
+  "limited": true,
+  "limited_reason": "cmux and the dispatch script are not installed in the headless sandbox; prompts test the dispatch commands and procedure written to files, not execution.",
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "I'm the orchestrator running inside cmux. Delegate implementing GET /health in the repo at /work/shop-api (my primary checkout) to the k-developer agent in a split to the right. No worktree exists for this task yet. cmux isn't available in this sandbox, so write the exact command(s) you would run to dispatch.sh without running them. Write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": null,
+      "why_discriminating": "The skill requires locating cmux-dispatch.sh via its discovery snippet, --cwd at the shared primary tree even for write agents, naming a new wt-<id> in the task for the agent to create, and asking the child to write its deliverable to /tmp/konductor-cmux/. Without it, a model guesses a script path, sets --cwd to a worktree, or relies on the .done summary.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Uses the dispatch script with --agent k-developer",
+          "check": "grep -q 'cmux-dispatch.sh' dispatch.sh && grep -qE -- '--agent[ =]k-developer' dispatch.sh"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Script located, not hardcoded",
+          "pass": "Includes the discovery logic (CLAUDE_SKILL_DIR / SKILLS_HOME / project / checkout) and stops if not found",
+          "partial": "Uses a variable but no discovery",
+          "fail": "Hardcoded unverified path"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "--cwd and worktree naming",
+          "pass": "--cwd /work/shop-api; task says no worktree exists, create wt-<id> (flat hyphenated name) before touching files",
+          "partial": "One of the two right",
+          "fail": "--cwd points at a worktree path or no target named"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Deliverable handoff",
+          "pass": "Task tells the child to write the full result to /tmp/konductor-cmux/result-<slug>.md; --split right",
+          "partial": "Result file but split missing or vice versa",
+          "fail": "Neither"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No invented flags",
+          "pass": "Only flags documented by the skill",
+          "partial": "One extra harmless flag",
+          "fail": "Invented flags or commands"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "would the dispatch work as written?",
+          "write isolation",
+          "result retrieval"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "I dispatched three agents to cmux panes. How do I, the orchestrator, detect when each finishes and get its result, in zsh? Write the exact commands and steps to completion.md. Write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": null,
+      "why_discriminating": "The skill gives a glob-free find poll because an unmatched *.done glob aborts zsh, the .done JSON fields, the warning that summary is not the deliverable (may literally be 'shell fallback'), and that polling is orchestrator direct work. A model without it typically writes ls /tmp/.../*.done and trusts the summary.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Polls with a glob-free find",
+          "check": "grep -qE \"find /tmp/konductor-cmux.*-name ['\\\"]\\*\\.done\" completion.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "zsh-safe polling",
+          "pass": "find /tmp/konductor-cmux -maxdepth 1 -name '*.done' with the reason (unmatched glob is an error in zsh)",
+          "partial": "find used without explanation",
+          "fail": "ls or bare glob"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Interprets the marker correctly",
+          "pass": ".done JSON has workspace_id/status/summary; filename keyed by the surface-derived DONE_KEY; status error handled",
+          "partial": "Fields named but status handling missing",
+          "fail": "Wrong format"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Result retrieval",
+          "pass": "Reads the result file the task asked for; summary is a short status (can be 'shell fallback' / 'claude exit'); cmux read-screen only as fallback",
+          "partial": "Reads result but trusts summary too",
+          "fail": "Uses summary as the deliverable"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Orchestrator does it itself",
+          "pass": "Polling and reading are not dispatched to another surface",
+          "partial": "Ambiguous",
+          "fail": "Dispatches a poller agent"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "works in zsh",
+          "gets the real deliverable",
+          "no extra agents"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "I'm the orchestrator in cmux; my primary checkout is /work/shop-api. Have k-developer finish ORD-88 in the worktree it already has for that ticket, and then have k-reviewer review the change. .wt-ledger.json and git-worktree-list.txt are copies of the current worktree state. cmux isn't available here, so write the exact dispatch commands and the order you'd run them in to dispatch-pair.sh, without running them. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "fixture": "fixtures/cmux-dispatch/",
+      "why_discriminating": "The skill says git worktree list is ground truth over the ledger, --cwd is always the primary tree, an existing worktree is named with its path for the agent to cd into, and a maker/checker pair never shares a target. A strong answer uses /work/worktrees/wt-31 (not the stale ledger path) and keeps the reviewer out of wt-31.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Two dispatches, every --cwd is the primary tree",
+          "check": "python3 -I -c \"import re,sys;v=re.findall(r'--cwd[ =][\\x27\\x22]?([^ \\x27\\x22\\n]+)',open('dispatch-pair.sh').read());sys.exit(0 if len(v)>=2 and all(x.rstrip('/')=='/work/shop-api' for x in v) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "reasoning",
+          "criterion": "Ledger vs git ground truth",
+          "pass": "Developer task names wt-31 at /work/worktrees/wt-31 (from git worktree list), notes the ledger path is stale, and tells the agent to re-run git worktree list and cd in, not create",
+          "partial": "Correct path but no ledger note, or no re-check instruction",
+          "fail": "Uses /work/shop-api/worktrees/wt-31 or creates a new worktree"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Reviewer isolation",
+          "pass": "Reviewer is read-only, does not work in or edit wt-31; reviews the branch from the primary tree or its own read-only checkout",
+          "partial": "Read-only but pointed at wt-31",
+          "fail": "Reviewer edits wt-31"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Sequencing through the orchestrator",
+          "pass": "Reviewer dispatched after the developer's .done/result file is read; findings relayed by the orchestrator; agents not told to message each other",
+          "partial": "Parallel dispatch with a note to wait",
+          "fail": "Developer told to notify reviewer directly"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Script and result conventions",
+          "pass": "Discovered CMUX_DISPATCH_DIR, exact agent names, result files under /tmp/konductor-cmux/",
+          "partial": "Minor gaps",
+          "fail": "Hardcoded script path and no result files"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "right worktree path",
+          "checker isolation",
+          "orchestrator-driven sequence"
+        ]
+      }
+    }
+  ]
+}

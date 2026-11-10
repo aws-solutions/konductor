@@ -1,0 +1,22 @@
+[
+{"query": "We just got the test gap analysis back (qa/test-gap-analysis.md) and we have the user stories in reqs/stories.md. Which end-to-end flows should we automate first for the 2.0 release? Need a prioritized plan, not test code.", "should_trigger": true},
+{"query": "plan our e2e coverage for the checkout redesign. it's a minor release, enhancement. rank the user journeys P0-P3 and tell me what can run in parallel in CI", "should_trigger": true},
+{"query": "Security fix release (patch) for the password reset token bug. What E2E tests do we need to add or re-run, and in what priority? Our system design is in design/auth.md.", "should_trigger": true},
+{"query": "I'm the QA lead and need a doc that maps our critical user journeys to E2E tests with a priority score, effort estimate, test data strategy and which framework to use (we're a React + Lambda shop). Inputs are in docs/qa/", "should_trigger": true},
+{"query": "coverage report says we have 0 end-to-end tests on the onboarding and payment flows. help me decide what to automate end to end vs leave at integration level", "should_trigger": true},
+{"query": "Write up an end-to-end testing plan for the task-manager app: prioritization matrix, execution order, environment needs, rollout over 3 weeks. Major release, lots of breaking API changes.", "should_trigger": true},
+{"query": "which user flows deserve full browser-level tests for our booking app? I don't want to E2E every CRUD screen. give me a ranked list with rationale", "should_trigger": true},
+{"query": "Turn the gap analysis + architecture doc into a test matrix for end-to-end testing grouped by must-have-before-release vs defer. Save it to testing/e2e-strategy.md", "should_trigger": true},
+{"query": "we keep arguing about cypress vs playwright and which journeys to cover first. can you produce a strategy doc that picks a framework and orders the e2e work by business impact and risk", "should_trigger": true},
+{"query": "For the multi-tenant admin portal, figure out which cross-service flows (UI -> API -> Cognito -> DynamoDB -> SES) need end to end validation and prioritize them for a minor release", "should_trigger": true},
+{"query": "Write the Playwright test for logging in and creating a task in tests/e2e/login.spec.ts", "should_trigger": false},
+{"query": "Analyze our jest coverage report and tell me which modules are under-tested", "should_trigger": false},
+{"query": "Implement Cypress tests for the checkout flow using data-testid selectors", "should_trigger": false},
+{"query": "my cypress e2e test for the signup page is flaky on CI, it times out waiting for the confirmation toast. fix it", "should_trigger": false},
+{"query": "generate security tests (authz bypass, IDOR, injection) for the /orders API", "should_trigger": false},
+{"query": "inspect the DOM of the settings page and give me stable selectors I can use in tests", "should_trigger": false},
+{"query": "Write unit tests for src/services/pricing.ts with jest, cover the discount edge cases", "should_trigger": false},
+{"query": "Set up a GitHub Actions workflow that runs our existing e2e suite in 4 parallel shards", "should_trigger": false},
+{"query": "write the non-functional requirements for the booking service: latency, availability, RPO/RTO", "should_trigger": false},
+{"query": "break the checkout redesign into tasks.md for Kiro with requirement refs", "should_trigger": false}
+]

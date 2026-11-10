@@ -1,0 +1,22 @@
+[
+{"query": "SQS or EventBridge for fanning out order events to 6 consumers? Score both on cost, latency, complexity, scalability and operability and tell me which one.", "should_trigger": true},
+{"query": "we're picking between Aurora Postgres, DynamoDB and DocumentDB for the catalog service. can you give me a scored comparison matrix with totals and a recommendation + risks per option", "should_trigger": true},
+{"query": "Compare these three caching options for the pricing API: ElastiCache Redis, DAX, in-process LRU. 1-5 scores per dimension with a one-line justification each.", "should_trigger": true},
+{"query": "evaluate the trade-offs of Step Functions vs a hand-rolled SQS state machine vs Temporal for the onboarding workflow. team knows Lambda well, nobody knows Temporal", "should_trigger": true},
+{"query": "Which is better for our websocket notifications: API Gateway WebSockets, AppSync subscriptions, or IoT Core? Need a structured comparison I can paste into the design doc, written to docs/design/notifications-tradeoffs.md", "should_trigger": true},
+{"query": "score these options for log shipping: Firehose to S3, OpenSearch ingestion, CloudWatch subscription to Lambda. hard constraint: must be under $2k/mo at 5TB/day", "should_trigger": true},
+{"query": "I need numbers behind the alternatives table in ADR-3 (Fargate vs Lambda vs EC2 ASG for the transcoder). Give me a matrix with per-dimension scores and a total.", "should_trigger": true},
+{"query": "help me weigh monorepo vs polyrepo for our 9 services on cost, complexity, scalability, operability. latency probably doesn't apply, say why if you drop it", "should_trigger": true},
+{"query": "Rank Kinesis Data Streams vs MSK vs SQS FIFO for the payments ledger stream. Ordering per account is required. Give the matrix and call out where the hard constraint overrides the scores.", "should_trigger": true},
+{"query": "gRPC vs REST vs GraphQL for internal service-to-service calls - compare on the usual dimensions with scores and recommend one, list concrete risks for each", "should_trigger": true},
+{"query": "Write the ADR for choosing SQS over EventBridge with context, decision, alternatives and good/bad/neutral consequences", "should_trigger": false},
+{"query": "I can't decide between Kafka and Kinesis, convene a deliberation panel with independent advocates and cross-examination", "should_trigger": false},
+{"query": "estimate the monthly AWS cost of running the catalog service on Aurora Serverless v2 with 2 ACUs average", "should_trigger": false},
+{"query": "Verify whether EventBridge supports FIFO ordering and what its PutEvents TPS quota is in us-east-1", "should_trigger": false},
+{"query": "Design the overall system architecture for the notifications platform with component diagram", "should_trigger": false},
+{"query": "review my design doc for scalability, security, cost and ops readiness with separate reviewers per aspect", "should_trigger": false},
+{"query": "compare the performance of these two python functions with timeit and tell me which is faster", "should_trigger": false},
+{"query": "Make a pros/cons list for me accepting the job offer at the startup vs staying", "should_trigger": false},
+{"query": "write the risk register for migrating from MSK to Kinesis", "should_trigger": false},
+{"query": "research what other companies use for event sourcing at scale and summarize with sources", "should_trigger": false}
+]

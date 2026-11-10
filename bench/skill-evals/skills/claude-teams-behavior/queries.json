@@ -1,0 +1,82 @@
+[
+  {
+    "query": "as the orchestrator I need a researcher and a developer running at the same time, and I want to feed the researcher's findings to the dev mid run. how do I spawn them",
+    "should_trigger": true
+  },
+  {
+    "query": "the developer subagent finished but needs one more tweak on the same task. spawn a new Agent() or message the existing one?",
+    "should_trigger": true
+  },
+  {
+    "query": "can my k-developer subagent just SendMessage the k-reviewer directly when it's done instead of going through me?",
+    "should_trigger": true
+  },
+  {
+    "query": "Agent(subagent_type: 'k-developer') says agent not found, but I'm running as konductor:konductor. what name should I use",
+    "should_trigger": true
+  },
+  {
+    "query": "two write agents both ended up editing the main checkout and clobbered each other. how should I word dispatch prompts so this never happens again",
+    "should_trigger": true
+  },
+  {
+    "query": "should I fire these 3 short independent lookups as parallel Agent calls or as background agents?",
+    "should_trigger": true
+  },
+  {
+    "query": "Task B needs Task A's output. is it fine to run both with run_in_background:true and SendMessage A's result over to B",
+    "should_trigger": true
+  },
+  {
+    "query": "write the dispatch prompts for a maker/checker pair where the dev writes in a worktree and the checker reviews. which tree does each one get",
+    "should_trigger": true
+  },
+  {
+    "query": "orchestrating in claude code with SendMessage available. lay out the pattern for 2 parallel specialists plus aggregation, without polling",
+    "should_trigger": true
+  },
+  {
+    "query": "Agent() has no cwd param, so how do I get a spawned subagent to work in wt-142 instead of my directory",
+    "should_trigger": true
+  },
+  {
+    "query": "dispatch the dev task into a new cmux pane split to the right",
+    "should_trigger": false
+  },
+  {
+    "query": "set up a tmux session with 3 panes for my dev servers",
+    "should_trigger": false
+  },
+  {
+    "query": "configure claude code hooks to run prettier after every edit",
+    "should_trigger": false
+  },
+  {
+    "query": "how do I create a git worktree for my feature branch",
+    "should_trigger": false
+  },
+  {
+    "query": "write a CrewAI multi-agent pipeline in python",
+    "should_trigger": false
+  },
+  {
+    "query": "use the Anthropic SDK to build an agent with tool use and streaming",
+    "should_trigger": false
+  },
+  {
+    "query": "allow npm test to run without permission prompts in settings.json",
+    "should_trigger": false
+  },
+  {
+    "query": "set up a kiro cli custom agent with two mcp servers",
+    "should_trigger": false
+  },
+  {
+    "query": "draft a slack message delegating this research to my teammate",
+    "should_trigger": false
+  },
+  {
+    "query": "write the agent-spec.json for a new reviewer agent",
+    "should_trigger": false
+  }
+]

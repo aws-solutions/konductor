@@ -1,0 +1,22 @@
+[
+{"query": "I want you to orchestrate this: research the rate-limit options, then have an architect write the design, then two developers implement backend and frontend in parallel. Spin up the subagents properly.", "should_trigger": true},
+{"query": "my subagent spawns keep failing with \"Agent type 'general-purpose' not found\". how should the spawn prompts be written so this stops happening?", "should_trigger": true},
+{"query": "Write the dispatch prompts for 3 parallel agents: one does the threat model, one does cost estimation, one writes the API spec, all from docs/design/ledger.md. Include task, expected outcome, tools, must do / must not do, context.", "should_trigger": true},
+{"query": "which specialist agent should handle generating E2E test strategy vs implementing cypress tests vs web research? and how do they pass outputs to each other", "should_trigger": true},
+{"query": "we're running 6 subagents at once and two of them both edited src/router/index.ts and one change got lost. how should I be splitting work between parallel write agents?", "should_trigger": true},
+{"query": "Delegate the refactor of the billing module to a developer agent. it should work in its own worktree, not the shared tree. write the full handoff prompt", "should_trigger": true},
+{"query": "how big should the handoff files between agents be and where do they go? the architect agent dumped a 900 line design into the chat and the next agent choked", "should_trigger": true},
+{"query": "a subagent timed out halfway through writing the system design. what's the recovery - retry, check partial output, escalate?", "should_trigger": true},
+{"query": "In my .claude/workflows/review.js some agent() calls have no agentType. Is that ok? Some just classify inlined data, others read files.", "should_trigger": true},
+{"query": "coordinate a code change end to end: hand the implementation to one agent, then get a different agent to review the diff, fix criticals, re-review. set up the delegation", "should_trigger": true},
+{"query": "Write a new agent-spec.json for a k-reviewer agent that includes k-developer and adds two skills", "should_trigger": false},
+{"query": "split the HLD into independent features with user story mapping so each engineer can work alone", "should_trigger": false},
+{"query": "open three tmux panes and run a claude agent in each one with a different task", "should_trigger": false},
+{"query": "Configure settings.json so subagents can run npm test without permission prompts", "should_trigger": false},
+{"query": "write a python script that runs 4 worker processes in parallel from a job queue", "should_trigger": false},
+{"query": "plan the sprint: assign these 12 tickets to the 4 engineers based on capacity", "should_trigger": false},
+{"query": "review my PR for info disclosure and missing conditional writes", "should_trigger": false},
+{"query": "Explain how Celery task routing works across multiple queues", "should_trigger": false},
+{"query": "which SDLC phase am I in and what should I do next for this feature?", "should_trigger": false},
+{"query": "create a RACI matrix for the migration project across platform, security and app teams", "should_trigger": false}
+]

@@ -1,0 +1,8 @@
+{
+  "name": "notes-api",
+  "version": "0.3.0",
+  "private": true,
+  "scripts": { "start": "node src/app.js", "test": "jest" },
+  "dependencies": { "express": "^4.19.2", "jsonwebtoken": "^9.0.2", "pg": "^8.11.3", "multer": "^1.4.5-lts.1" },
+  "devDependencies": { "jest": "^29.7.0", "supertest": "^7.0.0" }
+}

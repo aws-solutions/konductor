@@ -1,0 +1,52 @@
+{
+  "skill_name": "argumentation-reference",
+  "evals": [
+    {
+      "id": 0,
+      "name": "score-kafka-justifications-comparable",
+      "scenario_prompt_id": "p1",
+      "prompt": "The architecture review board meets Thursday to decide on docs/proposal.md (SQS to Kafka migration). They want to know how well-argued each justification paragraph (J1-J4) is, scored on a scale they can compare across paragraphs, with the breakdown behind each score, any logical fallacies named, and what the author should fix before the meeting. Write it to argument-scores.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "The skill supplies a fixed 5-criterion 0-3 rubric (max 15) with named tiers and score-banded coaching; a strong answer applies it consistently so J3's explicit data/warrant/qualifier/rebuttal scores clearly highest and fix advice matches each band. Without it, a model tends to give ad hoc 1-10 ratings and generic advice.",
+      "files": [
+        "fixtures/argumentation-reference/"
+      ],
+      "expectations": [
+        "argument-scores.md exists and mentions all four paragraphs",
+        "Fallacies correctly identified per paragraph: J1 appeal to popularity (hasty generalization acceptable), J2 false dichotomy, J4 appeal to authority/anecdote; none invented for J3",
+        "Uses a consistent per-criterion rubric: 5 criteria (claim clarity, evidence quality, warrant validity, rebuttal acknowledgment, internal consistency) scored 0-3 with totals out of 15, and each total is given an interpretive band or label the board can compare (e.g. weak/moderate/strong or Beginner..Competitive) that matches the number",
+        "Scores are justified by the text and ordered sensibly: J3 scores clearly highest (Advanced band, about 10-12) citing LT-17 data, growth-rate warrant, 12-month qualifier and replication-factor rebuttal; J1/J2/J4 in Beginner or low Intermediate",
+        "Fix advice is specific and matched to each paragraph's band: Low scorers told to rebuild the claim and supply evidence (e.g. replace the company list with own data); J3 told to address the rebuttal (rerun LT-17 at replication factor 3) or strengthen backing",
+        "No invented facts about the proposal or the test: Every claim about the paragraphs is traceable to proposal.md"
+      ],
+      "scripted_checks": [
+        {
+          "text": "argument-scores.md exists and mentions all four paragraphs",
+          "check": "test -f argument-scores.md && for j in J1 J2 J3 J4; do grep -q \"$j\" argument-scores.md || exit 1; done"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "coach-junior-draft-one-question",
+      "scenario_prompt_id": "p3",
+      "prompt": "I mentor the author of docs/junior-draft.md. Rate the argument so they can see where they stand, then give them the single next thing to work on, phrased as one question addressed to them. Keep it short; they are new and a long list will overwhelm them. Write it to coaching.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "The skill ties coaching to score bands: under 6 means 'rebuild from claim' with the question 'What exactly are you claiming and what evidence supports it?'. A strong answer scores the draft in the Beginner band and asks one claim/evidence question; a model without it often asks about rebuttals or lists many fixes.",
+      "files": [
+        "fixtures/argumentation-reference/"
+      ],
+      "expectations": [
+        "coaching.md exists and contains a question",
+        "Rating uses the 0-15 rubric and lands in the lowest band: score under 6 of 15 with a brief per-criterion basis, and the rating tells the author where that score sits (a band or label)",
+        "The single question targets rebuilding the claim and its evidence: One question asking what exactly is claimed (e.g. that GraphQL will fix the slow mobile app) and what evidence supports it",
+        "Names the concrete weaknesses briefly: Notes appeal to novelty/popularity and the unsupported causal claim that GraphQL makes the app faster",
+        "Respects the mentor's 'keep it short' constraint: Short, encouraging, one next step"
+      ],
+      "scripted_checks": [
+        {
+          "text": "coaching.md exists and contains a question",
+          "check": "test -f coaching.md && grep -q '?' coaching.md"
+        }
+      ]
+    }
+  ]
+}

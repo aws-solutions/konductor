@@ -1,0 +1,22 @@
+[
+{"query": "ive tried fixing this jest 'Cannot find module @/utils/date' error twice now (changed tsconfig paths, then moduleNameMapper) and it still fails. what should we do next", "should_trigger": true},
+{"query": "Implement the retry wrapper in src/http/client.ts and make sure it compiles and the tests pass before you tell me it's done", "should_trigger": true},
+{"query": "fix the null deref in handlers/getUser.ts. and dont delete or skip the failing test in getUser.test.ts to make it green, fix the actual code", "should_trigger": true},
+{"query": "Add a feature flag check to the checkout service. Keep backward compat with existing clients that don't send the X-Flags header, and run a review of your own change before you show it to me.", "should_trigger": true},
+{"query": "The build broke again after your third attempt at fixing the webpack config. Stop patching and figure out what's actually going on.", "should_trigger": true},
+{"query": "add structured logging with a correlation id to the order processing lambda in src/lambdas/processOrder.ts, i want to trace a request end to end", "should_trigger": true},
+{"query": "I need you to update the payment validation logic but I'm paranoid about you leaving the repo half broken. Walk through how you'll verify each step.", "should_trigger": true},
+{"query": "Refactor config loading in src/config.ts. Don't strip any of the existing JSDoc or log lines, and tell me which parts you actually verified vs which you're assuming.", "should_trigger": true},
+{"query": "review my PR changes in src/billing/ and list problems ordered by severity, most serious first", "should_trigger": true},
+{"query": "we keep getting a flaky CI failure in the integration suite. dont just guess a fix, I want the cause chain from root cause to symptom first", "should_trigger": true},
+{"query": "What's the difference between a skill and a SOP in this agent framework, and how do I see which ones are installed?", "should_trigger": false},
+{"query": "Write a git commit message for the changes in my staging area using conventional commits", "should_trigger": false},
+{"query": "rewrite this README section so it doesn't sound like chatgpt wrote it, remove the em dashes", "should_trigger": false},
+{"query": "Add a ESLint rule to the repo that bans `as any` and `@ts-ignore` in src/ but allows them in test files", "should_trigger": false},
+{"query": "Set up a pre-commit hook with husky that runs prettier and the unit tests", "should_trigger": false},
+{"query": "scan the repo for hardcoded AWS access keys and secrets and give me a list of files", "should_trigger": false},
+{"query": "Can you configure Claude Code so it always asks before running rm or git push?", "should_trigger": false},
+{"query": "explain what the maker checker pattern is in general software engineering terms, like for a blog post", "should_trigger": false},
+{"query": "Generate unit tests for src/utils/money.ts covering rounding edge cases", "should_trigger": false},
+{"query": "turn on deletion protection for our prod RDS instance via CDK in lib/db-stack.ts", "should_trigger": false}
+]

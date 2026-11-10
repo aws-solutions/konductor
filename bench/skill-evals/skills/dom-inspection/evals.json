@@ -1,0 +1,61 @@
+{
+  "skill_name": "dom-inspection",
+  "evals": [
+    {
+      "id": 0,
+      "name": "signup-side-effecting-form-report",
+      "scenario_prompt_id": "p1",
+      "prompt": "signup.html is a saved copy of our live signup page. Before we generate functional tests, extract the per-field metadata for every form on it: validation constraints, error message element and exact error text, conditional fields, cross-field rules, and when validation fires. Write it as dom-inspection-report.json. There is no browser here, so work from the file. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "The skill's safety rule says that when submission has side effects and safety is not confirmed, validation_trigger must be 'unknown', not 'submit'; it also takes error selectors from aria-describedby and records conditional visibility and cross-field rules in a fixed schema. A model without it will usually report 'submit' because the script validates on submit.",
+      "files": [
+        "fixtures/dom-inspection/"
+      ],
+      "expectations": [
+        "Report parses as JSON with a forms array",
+        "validation_trigger is unknown",
+        "Submission-safety rule applied: validation_trigger is 'unknown' with a note that submit POSTs to /api/signup (creates an account, sends email) and safety was not confirmed",
+        "Field metadata is complete and exact: All fields including hidden companyName have required, constraints, error selector from aria-describedby (e.g. #email-error) and the exact MESSAGES strings",
+        "Conditional and cross-field rules captured: companyName initially_hidden with trigger accountType=business (and required then); trialEnd after trialStart recorded with its message",
+        "No invented constraints or attempted execution: Everything traceable to signup.html; does not claim to have submitted the form"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Report parses as JSON with a forms array",
+          "check": "python3 -I -c \"import json,sys;r=json.load(open('dom-inspection-report.json'));sys.exit(0 if r.get('forms') else 1)\""
+        },
+        {
+          "text": "validation_trigger is unknown",
+          "check": "python3 -I -c \"import json,sys;r=json.load(open('dom-inspection-report.json'));sys.exit(0 if r['forms'][0].get('validation_trigger')=='unknown' else 1)\""
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "cloudscape-settings-oracles",
+      "scenario_prompt_id": "p3",
+      "prompt": "cloudscape-settings.html is a saved Cloudscape settings form. Extract each field's validation constraints and the selector and exact text of its error message so we can build test oracles. Write cloudscape-report.json in the same per-field JSON shape as a DOM inspection report (page_url, ui_framework, forms[].fields[]). Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "expected_output": "The skill's Cloudscape notes say constraints live on the inner input (not the awsui wrapper) and errors render in [class*=\"error-text\"] / [data-testid*=\"error\"], not via aria-describedby. A model without it often reads the wrapper or assumes aria-describedby.",
+      "files": [
+        "fixtures/dom-inspection/"
+      ],
+      "expectations": [
+        "Report parses and ui_framework is cloudscape",
+        "No selector field targets the awsui-input wrapper tag",
+        "Constraints read from the inner input: All three fields with correct required/min/max/minlength/maxlength (retention 1..3653, name 3..40)",
+        "Error selectors follow Cloudscape rendering: Each error selector targets the error-text class or data-testid error element with the exact text",
+        "Schema matches a DOM inspection report including validation_trigger: page_url, ui_framework, forms[].fields[] with required for every field and a validation_trigger value (unknown if not determinable)",
+        "No fabricated fields or rules: Exactly the fields in the file"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Report parses and ui_framework is cloudscape",
+          "check": "python3 -I -c \"import json,sys;r=json.load(open('cloudscape-report.json'));sys.exit(0 if r.get('ui_framework')=='cloudscape' else 1)\""
+        },
+        {
+          "text": "No selector field targets the awsui-input wrapper tag",
+          "check": "python3 -I -c \"import json,sys\nr=json.load(open('cloudscape-report.json'))\nbad=[]\ndef w(o,k=''):\n  if isinstance(o,dict): [w(v,kk) for kk,v in o.items()]\n  elif isinstance(o,list): [w(v,k) for v in o]\n  elif isinstance(o,str) and 'selector' in k.lower() and 'awsui-input' in o: bad.append(o)\nw(r)\nsys.exit(1 if bad else 0)\""
+        }
+      ]
+    }
+  ]
+}

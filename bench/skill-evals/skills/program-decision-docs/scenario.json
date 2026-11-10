@@ -1,0 +1,203 @@
+{
+ "skill": "program-decision-docs",
+ "category": "MODEL-CAPABILITY",
+ "source": "konductor",
+ "kind": "doc",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "Leadership decides on Friday whether we build our own feature-flag service, buy LaunchDarkly (quoted $84,000/year), or extend our existing config service. Constraints: the platform team is 4 engineers, flags are needed for the Q1 mobile launch, and we have a SOC 2 audit in March. Write decision.md for that meeting. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": null,
+   "why_discriminating": "The skill fixes the document shape: status line, context with the default outcome if no decision is made, DACI stakeholders, an options table with a do-nothing baseline plus T-shirt effort and H/M/L risk, a weighted matrix summing to 100% whose winner matches the recommendation, and revisit conditions; a competent memo without it usually omits the baseline, the default outcome, or DACI, and its weights are often implicit.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "decision.md exists",
+     "check": "test -s decision.md"
+    },
+    {
+     "id": "f2",
+     "text": "Evaluation matrix weights sum to 100%",
+     "check": "python3 -c 'import re,sys;t=open(\"decision.md\").read();v=[int(m.group(1)) for l in t.splitlines() if l.strip().startswith(\"|\") for m in [re.match(r\"\\s*\\|[^|]+\\|\\s*\\**(\\d{1,3})\\s*%\",l)] if m];sys.exit(0 if v and sum(v)==100 else 1)'"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Has the skill's seven sections in order: title + status, context (trigger, constraints, default outcome), DACI stakeholders, options table, evaluation matrix, recommendation, decision record placeholder",
+     "pass": "All seven present",
+     "partial": "Five or six present",
+     "fail": "Four or fewer"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Options include a do-nothing/status-quo baseline; each option has description, pros, cons, T-shirt effort and High/Medium/Low risk",
+     "pass": "Baseline present and every option fully filled",
+     "partial": "Baseline present but some cells missing, or no baseline but otherwise complete",
+     "fail": "No baseline and incomplete rows"
+    },
+    {
+     "id": "r3",
+     "dimension": "reasoning",
+     "criterion": "Matrix criteria reflect the stated constraints (Q1 timeline, 4-person team, SOC 2 audit, $84k cost); scores 1-5 are justified and the arithmetic of weighted totals is correct",
+     "pass": "Constraint-driven criteria and correct totals",
+     "partial": "Generic criteria or one arithmetic slip",
+     "fail": "Criteria ignore constraints or totals are wrong"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Recommendation matches the top weighted score (or states why it overrides it) in 2-3 sentences, and revisit conditions are concrete (e.g. flag volume, price change, audit finding)",
+     "pass": "Consistent and concrete",
+     "partial": "Consistent but revisit conditions vague",
+     "fail": "Contradicts the matrix without rationale, or no recommendation"
+    },
+    {
+     "id": "r5",
+     "dimension": "restraint",
+     "criterion": "Assumptions (e.g. build effort, LaunchDarkly SOC 2 report) are labeled as assumptions rather than stated as facts; no invented quotes or vendor data beyond the prompt",
+     "pass": "All non-given numbers labeled as assumptions",
+     "partial": "Some unlabeled estimates",
+     "fail": "Invented facts presented as given"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is it ready to put in front of leadership on Friday?",
+     "Does the matrix actually drive the recommendation?",
+     "Is there a do-nothing baseline and a clear default outcome?"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "Turn these notes into decision.md as a proper decision record. Notes: Nov 3 2026 steering sync. Decision maker: Priya Raman (Director). Options were (A) global rollout of the new pricing page, (B) regional rollout starting with EU, (C) wait for Q2. Chose B. Sam Ortiz (Support lead) disagreed, worried about support load from mixed pricing. Eng estimate: A=L, B=M, C=S. We'll look again if EU conversion drops more than 5%. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": null,
+   "why_discriminating": "The skill's decision record requires date, decision maker, selected option, rationale versus alternatives, dissent, revisit conditions and an expiry date regardless of triggers, with the wait option treated as the do-nothing baseline; minutes-style write-ups usually drop the expiry date and the rationale against alternatives, or omit the dissent.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Names Priya and the date",
+     "check": "grep -q 'Priya' decision.md && grep -qE '2026-11-03|Nov(ember)? 3' decision.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "process",
+     "criterion": "Decision record has all fields: date, decision maker, option selected, rationale versus A and C, dissent (Sam Ortiz, support load), revisit condition (EU conversion drop >5%), and an expiry/review-by date",
+     "pass": "All seven fields",
+     "partial": "Five or six",
+     "fail": "Four or fewer"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Status is Decided and option C (wait for Q2) is presented as the do-nothing baseline in the options table with pros, cons, effort (S) and risk",
+     "pass": "Both",
+     "partial": "One of the two",
+     "fail": "Neither"
+    },
+    {
+     "id": "r3",
+     "dimension": "reasoning",
+     "criterion": "Rationale for B is plausible from the notes and the dissent is recorded fairly, ideally with a mitigation for support load",
+     "pass": "Fair rationale and dissent, mitigation noted",
+     "partial": "Rationale present, dissent thin",
+     "fail": "Dissent missing or rationale contradicts notes"
+    },
+    {
+     "id": "r4",
+     "dimension": "restraint",
+     "criterion": "Does not invent facts beyond the notes: anything added (risk levels, weights, attendees, an expiry date) is marked as assumed or a placeholder",
+     "pass": "All additions marked",
+     "partial": "Some unmarked additions",
+     "fail": "Invented metrics or attendees presented as fact"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is every decision-record field there, including dissent and an expiry date?",
+     "Is the wait option treated as the baseline?",
+     "Does it stay faithful to the notes?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "decision-draft.md is the platform team's draft for choosing an observability vendor. It goes to the program review on Thursday. Review it before it goes out and write decision-review.md with what must change and why. Do not edit the draft itself. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/program-decision-docs/",
+   "why_discriminating": "The skill's quality gate names exactly these failures as CRITICAL (no do-nothing baseline, weights not summing to 100%, recommendation contradicting the matrix without rationale, decision record without maker or date) and orders findings CRITICAL then IMPORTANT then SUGGESTION; an unguided reviewer often notices the vague recommendation but misses the 110% weights or the missing baseline and lists everything at one level.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "decision-review.md exists",
+     "check": "test -s decision-review.md"
+    },
+    {
+     "id": "f2",
+     "text": "Flags the weights not summing to 100%",
+     "check": "grep -qE '110' decision-review.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Finds the four gate CRITICALs: no do-nothing baseline (keep CloudWatch), weights total 110%, Datadog recommended over the higher-scoring Grafana Cloud (4.40 vs 4.15) with no real rationale, decision record lacks decision maker and date",
+     "pass": "All four",
+     "partial": "Two or three",
+     "fail": "One or none"
+    },
+    {
+     "id": "r2",
+     "dimension": "issue",
+     "criterion": "Finds the IMPORTANT gaps: option C has no pros/cons, no revisit conditions or expiry, stakeholders not in DACI form; also missing status line or default outcome",
+     "pass": "At least three of these",
+     "partial": "One or two",
+     "fail": "None"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Findings use the skill severity order CRITICAL, IMPORTANT, SUGGESTION, each with a concrete fix (e.g. rebalance weights, add baseline row, either recommend B or state the override reason)",
+     "pass": "Ordered and each has a fix",
+     "partial": "Ordered but fixes vague, or fixes present but unordered",
+     "fail": "Flat list with no severity or fixes"
+    },
+    {
+     "id": "r4",
+     "dimension": "reasoning",
+     "criterion": "Checks the arithmetic: notes that normalizing the weights does not change the ranking (B still ahead), so the recommendation conflict stands",
+     "pass": "Recomputes or reasons explicitly about the normalized ranking",
+     "partial": "Says the totals are invalid without checking whether the ranking changes",
+     "fail": "Accepts the totals as given"
+    },
+    {
+     "id": "r5",
+     "dimension": "restraint",
+     "criterion": "Does not flag things that are fine (T-shirt effort and H/M/L risk columns, the 38-minute incident metric) and does not rewrite the doc",
+     "pass": "No false positives and draft untouched",
+     "partial": "One minor false positive",
+     "fail": "Several false positives or the draft was edited"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Does it catch the 110% weights and the missing baseline, not just the weak recommendation?",
+     "Is the review prioritized and actionable for Thursday?",
+     "Does it avoid flagging parts that are fine?"
+    ]
+   }
+  }
+ ]
+}

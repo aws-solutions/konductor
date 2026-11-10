@@ -1,0 +1,42 @@
+{
+  "skill_name": "trade-off-evaluator",
+  "evals": [
+    {
+      "id": 0,
+      "name": "ordered-ledger-hard-constraint",
+      "scenario_prompt_id": "p2",
+      "prompt": "Payments ledger stream: 2,000 writes/s, events for the same account MUST be processed in order, consumers are a balance projector and a fraud scorer. Compare SNS standard topic, SQS standard queue, SQS FIFO with MessageGroupId=accountId, and Kinesis Data Streams partitioned by accountId. Score them and recommend one. Put the analysis in docs/design/ as a trade-offs doc. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "expected_output": "The skill's pitfall 'do not recommend the highest total if a hard constraint overrides it' applies: per-account ordering disqualifies the standard options regardless of score. A strong answer also notices that a single FIFO queue serves only one consumer group, so two consumers need fan-out, and that 2,000 msg/s needs high-throughput FIFO.",
+      "files": [],
+      "expectations": [
+        "A *-tradeoffs.md report exists with four scored rows whose totals add up",
+        "Ordering is applied as a hard constraint: SNS standard and SQS standard explicitly disqualified for ordering, independent of their totals",
+        "Two-consumer and throughput implications are handled: Notes one FIFO queue is consumed competitively, so the two consumers need two queues (SNS FIFO fan-out or dual publish), and 2,000 msg/s needs high-throughput FIFO; notes Kinesis supports multiple independent consumers per stream",
+        "Recommendation is FIFO-based or Kinesis, with cited scores and specific risks: Recommendation names FIFO (with fan-out) or Kinesis, explains any gap with the top total, and lists risks like hot accounts on a shard or message-group throughput",
+        "AWS limits are flagged as assumptions to validate: FIFO/Kinesis throughput figures labelled as to-verify"
+      ],
+      "scripted_checks": [
+        {
+          "text": "A *-tradeoffs.md report exists with four scored rows whose totals add up",
+          "check": "python3 -I ${SKILL_EVAL_DIR}/checks/check_table.py 4"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "standalone-datastore-inline",
+      "scenario_prompt_id": "p4",
+      "prompt": "Our team of 4 needs a primary datastore for a new multi-tenant feature-flag service: about 50 reads/s on average with spikes to 5,000 reads/s during deploys, writes are rare (about 1/s), lookups are by tenant + flag key, and an internal admin UI needs ad-hoc filtering of flags by tag and owner. Options: DynamoDB on-demand, Aurora Serverless v2 PostgreSQL, or ElastiCache Redis in front of RDS PostgreSQL. Evaluate the trade-offs and tell me which to pick. Do not ask me questions; if something is unclear, make a reasonable assumption and state it.",
+      "expected_output": "The new skill says a standalone invocation reports inline and writes a file only when asked; the old one always writes docs/design/<name>-tradeoffs.md. The user asked for an answer, not a file.",
+      "files": [],
+      "expectations": [
+        "Scored matrix delivered in the reply: The final reply itself contains every option x dimension scored 1-5 with a one-line reason and correct totals, not only a pointer to a file",
+        "Workload specifics reasoned through: Addresses the 5,000 reads/s deploy spikes and the ad-hoc tag/owner filtering (DynamoDB needs GSIs or scans for ad-hoc filters; relational handles it) and the operability load on a 4-person team",
+        "Recommendation cites scores and risks are concrete: Names one option, cites at least two dimension scores, and lists specific risks (e.g. hot partition per tenant, Aurora ACU scale-up lag during spikes, cache invalidation on flag change)",
+        "AWS characteristics flagged as assumptions: Quotas, prices and latencies are marked as assumptions to verify, none stated with false precision",
+        "No unrequested file: Does not write a docs/design/*-tradeoffs.md (or other report) file, since the user asked for an answer in the conversation and did not ask for a file"
+      ],
+      "scripted_checks": []
+    }
+  ]
+}

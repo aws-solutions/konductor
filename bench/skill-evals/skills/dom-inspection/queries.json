@@ -1,0 +1,82 @@
+[
+  {
+    "query": "here's the signup page at http://localhost:3000/signup. pull every form field's validation rules (required, pattern, min/max length) and the element that shows each field's error, as JSON I can feed into test generation",
+    "should_trigger": true
+  },
+  {
+    "query": "before generating functional tests for our checkout form I need to know which fields appear conditionally (company name only shows for business accounts) and what triggers them",
+    "should_trigger": true
+  },
+  {
+    "query": "look at templates/register.html and for each input list: required?, regex pattern, minlength/maxlength, which span shows its error (aria-describedby). output dom-inspection-report.json",
+    "should_trigger": true
+  },
+  {
+    "query": "our Cloudscape settings form: the validation attrs don't show up when I query awsui-input. how do I pull the real constraints and error text selectors for test oracles",
+    "should_trigger": true
+  },
+  {
+    "query": "the booking form has 'end date must be after start' and the city dropdown filters by country. capture these cross-field rules from the live page so QA can write tests",
+    "should_trigger": true
+  },
+  {
+    "query": "figure out whether the contact form validates on blur, on change, or only on submit. careful, submitting creates a real support ticket in prod",
+    "should_trigger": true
+  },
+  {
+    "query": "extract test oracles from the address form: the exact error string for each invalid input, so the generated tests assert the right messages",
+    "should_trigger": true
+  },
+  {
+    "query": "write a playwright evaluate() snippet that dumps all forms on the page with each field's constraint validation attributes and label, handling aria-labelledby and wrapping labels",
+    "should_trigger": true
+  },
+  {
+    "query": "I have a dom inspection json for /profile. turn each field's constraints into concrete test cases (boundary values for min/max, pattern match and mismatch)",
+    "should_trigger": true
+  },
+  {
+    "query": "reverse-engineer the validation rules on our legacy jsp payment form (saved as payment.html) so we can write regression tests before the rewrite",
+    "should_trigger": true
+  },
+  {
+    "query": "run an accessibility audit on the signup form: color contrast, focus order, screen reader labels, WCAG 2.1 AA",
+    "should_trigger": false
+  },
+  {
+    "query": "my react-hook-form + zod form isn't showing the error for the email field, here's the component",
+    "should_trigger": false
+  },
+  {
+    "query": "scrape the product prices from this html table into a csv",
+    "should_trigger": false
+  },
+  {
+    "query": "write cypress tests for the signup form based on our E2E strategy doc",
+    "should_trigger": false
+  },
+  {
+    "query": "why does document.querySelector return null inside my useEffect on first render",
+    "should_trigger": false
+  },
+  {
+    "query": "add html5 validation (required, zip code pattern) to the checkout form in src/Checkout.tsx",
+    "should_trigger": false
+  },
+  {
+    "query": "take a screenshot of the internal dashboard page after my CSS change to verify it renders",
+    "should_trigger": false
+  },
+  {
+    "query": "the submit button stays disabled even when every field is filled. debug the onChange logic in Form.jsx",
+    "should_trigger": false
+  },
+  {
+    "query": "generate a JSON schema from our TypeScript User interface for API request validation",
+    "should_trigger": false
+  },
+  {
+    "query": "make a mock UI of a settings form in cloudscape for the PM review on thursday",
+    "should_trigger": false
+  }
+]

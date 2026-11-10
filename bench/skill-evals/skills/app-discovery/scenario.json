@@ -1,0 +1,211 @@
+{
+  "skill": "app-discovery",
+  "category": "MODEL-CAPABILITY",
+  "source": "konductor",
+  "kind": "code",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "The static build of our Orders Portal is in ./site and QA test credentials are in ./creds.json. Serve it locally (for example `python3 -m http.server 8765 --directory site`) and discover the whole app starting at http://localhost:8765/index.html. The report is the input for automated test generation next sprint, so it needs every page, every interactive element, and every form's validation rules. Use browser automation if it is available; otherwise inspect the pages with curl and the HTML source. Write the result to discovery-report.md and stop the server when you are done. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/app-discovery/",
+      "why_discriminating": "The skill fixes a report schema (UI framework detected from awsui- prefixes, per-element selector priority, initial state, interaction pattern, duplicate_dom flag, failed paths) and hard rules (never print the password, never crawl off-domain, run dom-inspection on every form). A competent answer without it tends to produce a loose page inventory that skips duplicate-selector flags, the 404 under failed paths, and validation triggers.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Report exists and never contains the creds.json password",
+          "check": "test -f discovery-report.md && ! grep -q 'Tr0ub4dor-Fixture-77' discovery-report.md"
+        },
+        {
+          "id": "f2",
+          "text": "UI framework recorded as Cloudscape",
+          "check": "grep -iE 'ui[ _-]?framework' discovery-report.md | grep -qi cloudscape"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Crawl results: the broken and off-domain links",
+          "pass": "reports.html listed under failed paths as missing/404, and example.org/help noted as off-domain and not crawled",
+          "partial": "One of the two handled correctly, or both mentioned but reports.html not under failed paths",
+          "fail": "reports.html omitted or listed as a working page, or example.org/help crawled as an app page"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Element capture on orders.html, including the shared Delete selector",
+          "pass": "Both Delete buttons captured and flagged as duplicate DOM (same aria-label selector), with exact text and click pattern",
+          "partial": "Delete buttons listed but the duplicate-selector problem not flagged",
+          "fail": "Delete buttons missing, or treated as one element with no ambiguity noted"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Form validation captured from the DOM, per the KEY",
+          "pass": "order-id required + pattern [A-Z]{3}-[0-9]{4} + maxlength 8 + exact error text on submit; qty 1-500; notify-email shown only when notify-toggle is checked and validated on blur",
+          "partial": "Most attributes captured but the trigger (submit vs blur) or the conditional visibility is missing",
+          "fail": "Validation rules summarized vaguely or invented (rules not in the HTML)"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Follows the skill's report structure and login flow",
+          "pass": "Header has URL, pages discovered (3), UI framework, limit reached; per-page element tables carry selector, label, type, initial state (settings-save disabled), interaction pattern, duplicate DOM; in-page login handled without waiting on a redirect",
+          "partial": "Structure mostly present but one header field or table column is missing",
+          "fail": "Free-form notes with no per-element fields, or no initial-state/interaction-pattern data"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No secrets or invented content",
+          "pass": "No password anywhere, no pages/elements/rules that the HTML does not contain, assumptions stated",
+          "partial": "One minor invented detail (for example a guessed screenshot path presented as real)",
+          "fail": "Password printed, or invented pages, fields, or error messages"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would test generation work from this report without re-reading the HTML?",
+          "Duplicate selector and 404 handling",
+          "Accuracy of validation rules and triggers",
+          "No password leak"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Write a Playwright (Node.js) script discover.js that we can point at any of our deployed web apps to produce the discovery input for test generation. It reads LOGIN_URL and CREDS_FILE (JSON with username and password) from the environment. Our sign-in is an in-page AJAX form: it does not redirect, and after sign-in an element with data-testid=\"app-nav\" appears. After login it should crawl the app and write discovery.json with, per page, every interactive element's selector, exact text, initial state, interaction pattern and a duplicate-selector flag, plus the detected UI framework. You can try it against ./site served locally, but do not point it at the internet. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/app-discovery/",
+      "why_discriminating": "The skill's Flow B says a no-redirect login must wait on a post-auth selector, not waitForURL (which hangs), and it fixes crawl limits (visited set, 50 pages or 30 minutes, same domain), selector priority (data-testid, aria-label, role, placeholder, CSS), framework detection, and closing the browser. Without it, scripts commonly use waitForURL or networkidle, crawl unbounded, or log credentials.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "discover.js exists and parses",
+          "check": "test -f discover.js && node --check discover.js"
+        },
+        {
+          "id": "f2",
+          "text": "Login waits on app-nav and does not use a wildcard waitForURL",
+          "check": "grep -q 'app-nav' discover.js && ! grep -qE \"waitForURL\\(\\s*['\\\"]\\*\\*\" discover.js"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Correct post-login wait for an in-page sign-in",
+          "pass": "Waits for [data-testid=app-nav] (with a timeout) after submit, and reuses the session for all pages",
+          "partial": "Waits for the selector but also adds a redirect wait that could hang, or re-authenticates per page",
+          "fail": "Relies on waitForURL/navigation or a fixed sleep as the main signal"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Crawl bounds the skill requires",
+          "pass": "Tracks visited URLs, stops at 50 pages and at a ~30-minute budget, stays on the app's origin, and records the cutoff and failed paths",
+          "partial": "Has a visited set and same-origin check but no page or time cap (or vice versa)",
+          "fail": "Unbounded crawl or follows off-domain links"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Element capture quality",
+          "pass": "Selector chosen in data-testid, aria-label, role, placeholder, CSS order; duplicate flag set by counting matches of the chosen selector; initial state covers enabled/disabled/hidden/checked; awsui-/Mui detection for ui_framework",
+          "partial": "Captures most fields but selector priority or duplicate detection is ad hoc",
+          "fail": "Only tag names or innerText; no duplicate detection or initial state"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Credential safety and cleanup",
+          "pass": "Password is never logged or written to discovery.json; browser closed in a finally block or equivalent",
+          "partial": "Password not logged but the browser is not closed on error paths",
+          "fail": "Password logged/written, or browser left running"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would the script hang or mis-crawl on our no-redirect login?",
+          "Crawl bounds and same-origin handling",
+          "Quality of selectors and duplicate flags",
+          "Password safety"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "A teammate ran discovery against our Orders Portal last night and wrote drafts/discovery-report.md; the site it was run against is in ./site. Before we feed the report into test generation, check it against the actual site. Write review.md listing what is wrong or missing, most severe first, and write a corrected report to discovery-report.md at the project root. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/app-discovery-p3/",
+      "why_discriminating": "The skill's quality gate makes a printed password, a missing ui_framework, and an uninspected form CRITICAL, and its constraints forbid off-domain crawling. A reviewer with the skill ranks those first and also catches the wrong login flow (waitForURL on an in-page login) and the unflagged duplicate selector; without it, reviewers tend to list cosmetic gaps and miss the severity ordering.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Both outputs exist",
+          "check": "test -f review.md && test -f discovery-report.md"
+        },
+        {
+          "id": "f2",
+          "text": "Corrected report does not contain the password",
+          "check": "test -f discovery-report.md && ! grep -q 'Tr0ub4dor-Fixture-77' discovery-report.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Catches the gate-level defects (see app-discovery-p3.KEY.md)",
+          "pass": "Flags all of: password printed, UI framework unknown (is Cloudscape), new-order form not inspected, example.org/help crawled off-domain",
+          "partial": "Flags two or three of the four",
+          "fail": "Flags one or none"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Catches the second-tier defects",
+          "pass": "Flags at least three of: Delete duplicate DOM should be yes, reports.html missing from failed paths, settings form conditional notify-email + blur validation missed, waitForURL wrong for the in-page login",
+          "partial": "Flags one or two",
+          "fail": "Flags none"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Severity ordering matches the skill's gate",
+          "pass": "Password, missing framework, and uninspected form appear as the top severity; duplicate DOM below them",
+          "partial": "Ordered by severity but one gate-CRITICAL item ranked low",
+          "fail": "No severity, or cosmetic items ranked above the password leak"
+        },
+        {
+          "id": "r4",
+          "dimension": "recommendation",
+          "criterion": "Corrected report is usable",
+          "pass": "3 pages, Cloudscape, Delete duplicate flagged, order-form rules with exact error text, failed paths lists reports.html, no off-domain page, no password",
+          "partial": "Corrected report fixes most items but keeps one planted defect",
+          "fail": "No corrected report, or it keeps several planted defects"
+        },
+        {
+          "id": "r5",
+          "dimension": "restraint",
+          "criterion": "No false positives and no secret echo",
+          "pass": "Does not flag the correct items (settings-save disabled, two-step timezone, Limit reached: no) and does not repeat the password value in review.md",
+          "partial": "Repeats the password in review.md while flagging it, or one false positive",
+          "fail": "Several false positives"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did the review rank the password leak and missing form inspection first?",
+          "Coverage of the planted defects",
+          "Is the corrected report ready for test generation?",
+          "No echo of the secret"
+        ]
+      }
+    }
+  ]
+}

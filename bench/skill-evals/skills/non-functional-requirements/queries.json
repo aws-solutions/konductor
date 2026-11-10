@@ -1,0 +1,22 @@
+[
+{"query": "The HLD for the payments ledger is in docs/hld-ledger.md. I need the NFRs out of it (latency, availability, RTO/RPO, scaling, observability) with actual numbers, because QA builds their test plan from it.", "should_trigger": true},
+{"query": "our design doc just says the service should be 'fast and highly available'. help me turn that into measurable targets for reads and writes separately, plus uptime and recovery objectives", "should_trigger": true},
+{"query": "extract measurable quality attributes from system-design.md: p50/p99 per endpoint, rps, encryption, compliance (we're PCI), log retention, trace sampling", "should_trigger": true},
+{"query": "perf team wants concrete targets before load testing the search API. design is serverless (API GW + Lambda + OpenSearch). what should the non functional targets be, written so they're testable?", "should_trigger": true},
+{"query": "Before arch review I need the NFR section of the doc: availability %, RTO, RPO, scale-out/in thresholds, cost per transaction. Base it on design-notes.md.", "should_trigger": true},
+{"query": "write the quality requirements table for our inventory service design: performance by operation type, availability, security standards, scalability limits, observability", "should_trigger": true},
+{"query": "reviewer comment on my design: 'NFRs are vague, nothing is measurable'. Here's the section, rewrite it so every item has a number and a unit", "should_trigger": true},
+{"query": "Given the architecture in design/notification-svc.md (SQS, Lambda, SES), derive the nonfunctional reqs incl cold start latency and what degraded mode looks like", "should_trigger": true},
+{"query": "need SLO-style requirements pulled from the HLD for the tenant-provisioning workflow. HIPAA applies. include the metrics we must emit and log retention", "should_trigger": true},
+{"query": "Our test strategy is blocked until someone writes down the perf/availability/security/scalability requirements from the approved design in docs/design/approved.md. can you do it?", "should_trigger": true},
+{"query": "Write user stories with acceptance criteria for checkout: guest checkout, saved cards, promo codes", "should_trigger": false},
+{"query": "Run a k6 load test against staging /search with 200 VUs and tell me the p99", "should_trigger": false},
+{"query": "set up CloudWatch alarms for p99 latency > 500ms on our API Gateway stage via CDK", "should_trigger": false},
+{"query": "Extract the functional requirements from this customer interview transcript into a requirements doc", "should_trigger": false},
+{"query": "Write the SLA contract language for enterprise customers, including service credits when we miss 99.9%", "should_trigger": false},
+{"query": "Our p99 went from 120ms to 900ms after the last deploy, help me find why from these X-Ray traces", "should_trigger": false},
+{"query": "Generate a STRIDE threat model for the payments ledger design", "should_trigger": false},
+{"query": "Write requirements.md in EARS format for the bulk-export feature", "should_trigger": false},
+{"query": "Review my design doc for filler language and hedging before I send it out", "should_trigger": false},
+{"query": "estimate the monthly AWS cost of the design in docs/hld-ledger.md", "should_trigger": false}
+]

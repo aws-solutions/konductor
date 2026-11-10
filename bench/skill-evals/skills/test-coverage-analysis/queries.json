@@ -1,0 +1,82 @@
+[
+  {
+    "query": "before release, compare our tests in tests/unit and tests/integration against the acceptance criteria in docs/requirements.md and tell me which ACs have no tests",
+    "should_trigger": true
+  },
+  {
+    "query": "is our test distribution sane? it's a backend express API and we have 140 e2e tests and 12 unit tests",
+    "should_trigger": true
+  },
+  {
+    "query": "release readiness check for v2.3: test gaps, NFR coverage (perf, security), risks, and a go/no-go checklist",
+    "should_trigger": true
+  },
+  {
+    "query": "which error handling paths in src/services/payment.ts have zero tests covering them",
+    "should_trigger": true
+  },
+  {
+    "query": "map each user story AC to the tests that cover it, flag anything that can only be verified manually and write the manual steps",
+    "should_trigger": true
+  },
+  {
+    "query": "React frontend: are we over-investing in unit tests of components vs integration tests of user flows? analyze the suite",
+    "should_trigger": true
+  },
+  {
+    "query": "find missing test scenarios for auth: login, lockout after 5 tries, password reset. code in src/auth, tests in test/",
+    "should_trigger": true
+  },
+  {
+    "query": "do we have integration tests for every external dependency (stripe, sendgrid, s3)? list integration points without coverage",
+    "should_trigger": true
+  },
+  {
+    "query": "generate a test gap report for the 3 features in this sprint with severity and effort estimates",
+    "should_trigger": true
+  },
+  {
+    "query": "QA wants to know if we're ready to ship to prod. check the tests against requirements and operational readiness",
+    "should_trigger": true
+  },
+  {
+    "query": "set up nyc/istanbul so CI reports line coverage and fails under 80%",
+    "should_trigger": false
+  },
+  {
+    "query": "write the missing unit tests for src/auth/lockout.ts",
+    "should_trigger": false
+  },
+  {
+    "query": "create an e2e test strategy for the checkout journeys",
+    "should_trigger": false
+  },
+  {
+    "query": "plan the cypress test implementation tasks from our E2E strategy",
+    "should_trigger": false
+  },
+  {
+    "query": "generate security test plans for our API before the pen test",
+    "should_trigger": false
+  },
+  {
+    "query": "my pytest run is flaky with 'database is locked', fix it",
+    "should_trigger": false
+  },
+  {
+    "query": "track implementation progress against .kiro/specs/auth/tasks.md",
+    "should_trigger": false
+  },
+  {
+    "query": "review src/payments for type safety and error handling",
+    "should_trigger": false
+  },
+  {
+    "query": "what's the difference between branch coverage and line coverage",
+    "should_trigger": false
+  },
+  {
+    "query": "jacoco report shows 0% even though the tests run, gradle config issue?",
+    "should_trigger": false
+  }
+]

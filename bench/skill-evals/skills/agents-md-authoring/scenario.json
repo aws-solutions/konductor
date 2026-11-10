@@ -1,0 +1,187 @@
+{
+  "skill": "agents-md-authoring",
+  "category": "DOMAIN-IMMUNE",
+  "source": "konductor",
+  "kind": "doc",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "This repo has no instructions for AI coding agents, and half the team uses Claude Code while the other half uses Kiro. Write the project's AGENTS.md and whatever else is needed so both tools pick it up. Infer what you can from the repo. Write the files directly; no need to show me first. Do not ask me questions; make reasonable assumptions, mark inferred content as inferred, and finish the work.",
+      "fixture": "fixtures/agents-md-authoring/",
+      "why_discriminating": "The skill encodes runtime facts a competent model often gets wrong: Kiro does not expand @ or #[[file:]] imports in AGENTS.md, Claude Code reads only CLAUDE.md (so CLAUDE.md must contain @AGENTS.md), and context is loaded through a MUST-read Context Loading block. It also says to reference steering instead of copying it and not to dump memory into AGENTS.md. Without it, models typically write a good AGENTS.md with @ imports or copied style rules and no CLAUDE.md.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "CLAUDE.md exists and imports AGENTS.md",
+          "check": "grep -q '@AGENTS.md' CLAUDE.md"
+        },
+        {
+          "id": "f2",
+          "text": "AGENTS.md uses no import directives (Kiro does not expand them)",
+          "check": "test -s AGENTS.md && ! grep -qE '^@|#\\[\\[file:' AGENTS.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Loading mechanics for both runtimes",
+          "pass": "AGENTS.md has a '## Context Loading (MUST follow at session start)' block telling the agent to read .kiro/steering/**/*.md and .konductor/memory/*.md if present and skip missing paths; no import directives in AGENTS.md; CLAUDE.md contains @AGENTS.md; notes that Kiro agent specs must list file://AGENTS.md as a resource",
+          "partial": "Context block and CLAUDE.md present but the Kiro resource requirement is not mentioned, or memory path missing",
+          "fail": "Relies on @ imports in AGENTS.md, or no CLAUDE.md"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Content inferred from the repo",
+          "pass": "Overview (NOAA tide predictions library), structure (src/tidewatch, tests), commands from Makefile (make install with uv, make lint, make typecheck, make test) in CI order, Python >=3.11, ruff line length 100",
+          "partial": "Commands right but structure or toolchain details missing",
+          "fail": "Invented commands (e.g. npm, tox) or missing test command"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Reference, don't duplicate; no memory dump",
+          "pass": "Points to .kiro/steering/style.md rather than copying its rules; does not paste the timestamped MEMORY.md entry into AGENTS.md",
+          "partial": "Copies one or two style rules or summarizes the memory fact",
+          "fail": "Copies the style file wholesale or pastes memory entries"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Required sections and inferred-content labeling",
+          "pass": "Has Overview, Structure, Setup & Commands, Code Style, Testing, Workflow; workflow/PR conventions not visible in the repo are labeled inferred or left as a placeholder",
+          "partial": "Sections present but inferred items stated as fact",
+          "fail": "Several sections missing"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "works in both Claude Code and Kiro",
+          "accurate commands from Makefile/CI",
+          "no duplication of steering or memory"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "We moved from npm + jest to pnpm + vitest. Update the agent guidance for this repo. Also a teammate asked me to add 'always run pnpm lint before committing' to CLAUDE.md, so please handle that too. Do not ask me questions; make reasonable assumptions, list them in a short note at the end of your changes, and finish the work.",
+      "fixture": "fixtures/agents-md-authoring-p2/",
+      "why_discriminating": "The skill says that a request to edit CLAUDE.md should become an edit to AGENTS.md (CLAUDE.md stays just @AGENTS.md), that existing AGENTS.md is patched rather than replaced, and that @ imports in AGENTS.md do not work in Kiro. A competent model without it appends the rule to CLAUDE.md as asked and leaves the @ lines.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "AGENTS.md now uses pnpm and vitest and no longer mentions jest",
+          "check": "grep -q pnpm AGENTS.md && grep -q vitest AGENTS.md && ! grep -qwi jest AGENTS.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "CLAUDE.md request routed per the skill",
+          "pass": "Lint rule added to AGENTS.md; CLAUDE.md still only @AGENTS.md; the redirect is explained to the user",
+          "partial": "Rule in AGENTS.md but also duplicated into CLAUDE.md",
+          "fail": "Rule only in CLAUDE.md"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Commands updated correctly from package.json",
+          "pass": "pnpm install, pnpm test (vitest run), pnpm lint, pnpm build; no jest/npm left",
+          "partial": "Mostly updated but one stale command",
+          "fail": "jest or npm commands remain"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Patch, not rewrite",
+          "pass": "Keeps the credit-notes domain fact and existing structure; changes only what the move requires plus the import fix",
+          "partial": "Content kept but heavily reorganized",
+          "fail": "Domain fact lost"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Import lines handled",
+          "pass": "Replaces the @ lines with a Context Loading MUST-read block (steering and memory, skip if missing)",
+          "partial": "Removes @ lines without adding a loading block",
+          "fail": "@ lines left in AGENTS.md"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "CLAUDE.md stays a pointer",
+          "commands match pnpm/vitest",
+          "existing content preserved"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Our AGENTS.md pulls steering and memory in with @ imports, but the Kiro agent (.kiro/agents/invoicer-dev.json) never seems to follow any of it, while Claude Code does. Fix things so both Kiro and Claude Code load the same context, and write a short explanation of the root cause and the fix to agents-fix-notes.md. Do not ask me questions; make reasonable assumptions, list them in the notes, and finish the work.",
+      "fixture": "fixtures/agents-md-authoring-p2/",
+      "why_discriminating": "The skill's loading table explains two separate causes: Kiro does not expand imports in AGENTS.md, and Kiro does not auto-read AGENTS.md unless the agent lists file://AGENTS.md as a resource. The fixture's agent spec only lists steering. A competent model without the skill usually fixes one cause (often just the imports) and the Kiro agent stays blind to AGENTS.md.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "No @ import lines remain in AGENTS.md",
+          "check": "test -s AGENTS.md && ! grep -qE '^@' AGENTS.md"
+        },
+        {
+          "id": "f2",
+          "text": "CLAUDE.md still imports AGENTS.md",
+          "check": "grep -q '@AGENTS.md' CLAUDE.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "issue",
+          "criterion": "Both root causes found (KEY)",
+          "pass": "Notes state (1) Kiro does not expand @ imports in AGENTS.md and (2) invoicer-dev.json resources omit file://AGENTS.md, so Kiro never reads it",
+          "partial": "Only one cause identified",
+          "fail": "Misdiagnosis (e.g. syntax of the @ lines, file permissions)"
+        },
+        {
+          "id": "r2",
+          "dimension": "recommendation",
+          "criterion": "Fix applied in the right files",
+          "pass": "AGENTS.md gets a Context Loading block (steering + .konductor/memory, skip missing); invoicer-dev.json resources gain file://AGENTS.md and remain valid JSON; CLAUDE.md unchanged",
+          "partial": "One of the two file changes made",
+          "fail": "Neither, or JSON broken"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Explains why Claude Code worked",
+          "pass": "Notes Claude Code reads CLAUDE.md, which imports AGENTS.md and expands @ there, so imports nested via CLAUDE.md work for Claude only",
+          "partial": "Mentions Claude reads CLAUDE.md without the import detail",
+          "fail": "No explanation"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Minimal, correct change",
+          "pass": "Keeps existing AGENTS.md content; does not add unrelated agent settings or tools",
+          "partial": "Small unrelated edits",
+          "fail": "Rewrites the agent spec or AGENTS.md wholesale"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "both Kiro causes fixed",
+          "correct file changes",
+          "clear root-cause note"
+        ]
+      }
+    }
+  ]
+}

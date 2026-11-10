@@ -1,0 +1,59 @@
+{
+  "skill_name": "plan-review",
+  "source": "reused from sc-post/plan-review/evals/evals.json; scripted_checks are the scenario floor_checks verbatim",
+  "evals": [
+    {
+      "id": 0,
+      "name": "coupon-plan-blocked-file-verification",
+      "scenario_prompt_id": "p1",
+      "prompt": "Before I hand docs/plans/coupon-plan.md to an engineer, review it. I need a verdict on whether it is ready to execute and what must change. Write the review to coupon-plan-review.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "files": [
+        "fixtures/plan-review/"
+      ],
+      "skill_specific": true,
+      "expected_output": "coupon-plan-review.md with a '## VERDICT: BLOCKED' line carrying 1-2 stars; Clarity, Verification, Context Completeness and Big Picture each scored Pass/Partial/Fail with stars matching the Pass-count formula; states src/billing/discounts.js does not exist and applyCoupon is not in src/billing/invoice.js after checking; each blocker tagged [CRITICAL] with What's wrong / What's needed naming the vague task and the concrete fix; no coupon redesign.",
+      "expectations": [
+        "[f1] The VERDICT line includes a star rating (scripted: first VERDICT line contains a star emoji)",
+        "[f2] The review names discounts.js and applyCoupon (scripted grep)",
+        "[r1] States src/billing/discounts.js does not exist and applyCoupon is not in src/billing/invoice.js, based on checking the repo",
+        "[r2] All four criteria (Clarity, Verification, Context Completeness, Big Picture) are each scored Pass/Partial/Fail, and the verdict is BLOCKED with 1-2 stars consistent with the Pass-count formula",
+        "[r3] Each blocker names the vague task ('Update the config', 'Handle edge cases appropriately', 'Make sure it works') and states what is needed (which file, which cases, which test command), in What's wrong / What's needed form",
+        "[r4] Does not redesign coupons or propose a different approach"
+      ],
+      "scripted_checks": [
+        {
+          "text": "[f1] The VERDICT line includes a star rating (scripted: first VERDICT line contains a star emoji)",
+          "check": "python3 -I -c \"import sys;l=[x for x in open('coupon-plan-review.md') if 'VERDICT' in x.upper()];sys.exit(0 if l and '\\u2b50' in l[0] else 1)\""
+        },
+        {
+          "text": "[f2] The review names discounts.js and applyCoupon (scripted grep)",
+          "check": "grep -q 'discounts.js' coupon-plan-review.md && grep -q 'applyCoupon' coupon-plan-review.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "cache-sidecar-reviewer-not-designer",
+      "scenario_prompt_id": "p3",
+      "prompt": "Review docs/plans/cache-sidecar-plan.md before execution. The Redis sidecar decision is already made and approved by the principal engineer. Write cache-sidecar-plan-review.md. Work only from the files here, write the output file(s) named above, do not ask me any questions, and state any assumptions in the output.",
+      "files": [
+        "fixtures/plan-review/"
+      ],
+      "skill_specific": true,
+      "expected_output": "cache-sidecar-plan-review.md with a VERDICT line (OKAY 3 stars or BLOCKED 2 stars) consistent with four scored criteria; no argument against Redis; finds tasks 2-4 lack verification, 'Add monitoring' is vague, deploy step has no file/tool reference; flags that taxFor/computeTotal are synchronous while a Redis read is async and the plan does not say how callers change.",
+      "expectations": [
+        "[f1] The VERDICT line includes a star rating (scripted: first VERDICT line contains a star emoji)",
+        "[r1] Makes no argument against Redis or for alternative architectures (respects the fixed direction)",
+        "[r2] Finds that tasks 2-4 lack verification criteria, 'Add monitoring' is vague, and the deploy step has no file/tool reference",
+        "[r3] Points out taxFor/computeTotal are synchronous while a Redis read is async, and the plan does not say how callers change",
+        "[r4] All four criteria scored; verdict is OKAY 3 stars or BLOCKED 2 stars, consistent with the scores"
+      ],
+      "scripted_checks": [
+        {
+          "text": "[f1] The VERDICT line includes a star rating (scripted: first VERDICT line contains a star emoji)",
+          "check": "python3 -I -c \"import sys;l=[x for x in open('cache-sidecar-plan-review.md') if 'VERDICT' in x.upper()];sys.exit(0 if l and '\\u2b50' in l[0] else 1)\""
+        }
+      ]
+    }
+  ]
+}

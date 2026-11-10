@@ -1,0 +1,184 @@
+{
+  "skill": "workspace-skills",
+  "category": "RUNTIME-FEATURE",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "This is a Claude Code project. session-log.md records how we finally got the stream consumer tests running after several failed tries yesterday. Save the working procedure so future sessions in this workspace follow it instead of repeating those mistakes. You have my approval to write it; do not wait for confirmation. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/workspace-skills/",
+      "why_discriminating": "The skill defines where workspace skills live (.claude/skills/ws-<name>/SKILL.md for Claude Code), the frontmatter (ws- prefix, origin: agent-created, version, last_used, related), and the four required parts: trigger conditions, numbered steps with exact commands, pitfalls, verification. Without it, a model may write a README or CLAUDE.md note, omit provenance, or keep the narrative of failed attempts instead of distilling pitfalls.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "A new ws- skill with matching name, origin agent-created, version 1",
+          "check": "python3 -c \"import glob,re,sys;fs=[f for f in glob.glob('.claude/skills/ws-*/SKILL.md') if 'ws-integration-tests' not in f];ok=False\nfor f in fs:\n  t=open(f).read();d=f.split('/')[2]\n  ok=ok or (re.search(r'^name:\\s*'+re.escape(d)+r'\\s*$',t,re.M) and re.search(r'^origin:\\s*agent-created',t,re.M) and re.search(r'^version:\\s*1\\s*$',t,re.M))\nsys.exit(0 if ok else 1)\""
+        },
+        {
+          "id": "f2",
+          "text": "The existing user-authored skill is untouched",
+          "check": "echo '20bfc130a925b79e4acd81848f20fad1fd5b6889c5b7f2ac62ba9339fdaed024  .claude/skills/ws-integration-tests/SKILL.md' | sha256sum -c --quiet -"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Skill anatomy",
+          "pass": "Has When to use (triggers), numbered steps with exact commands (LocalStack run, exports, create-table with streams, npm run test:stream), Pitfalls, Verification; frontmatter includes description, last_used and related",
+          "partial": "All four parts but one is thin (for example steps without exact commands)",
+          "fail": "Missing pitfalls or verification, or not a SKILL.md under .claude/skills/ws-*"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "Pitfalls distilled from the failures",
+          "pass": "Names all three: AWS_ENDPOINT_URL unset hits real AWS, table not auto-created and needs streams enabled, AWS_REGION must be us-east-1 or ExpiredIteratorException; plus dummy credentials",
+          "partial": "Two of the three",
+          "fail": "One or none, or the log pasted as narrative"
+        },
+        {
+          "id": "r3",
+          "dimension": "recommendation",
+          "criterion": "Verification is checkable",
+          "pass": "9/9 tests pass and dynamodbstreams list-streams --region us-east-1 shows one stream for orders-local",
+          "partial": "Only 'tests pass'",
+          "fail": "No verification"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Respects existing content and scope",
+          "pass": "Does not touch ws-integration-tests (or relates to it only via related:), tells me where the skill was written",
+          "partial": "Notifies vaguely",
+          "fail": "Edits the user-authored skill"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Would a future session get the tests running first try?",
+          "Quality of pitfalls",
+          "Correct location and provenance"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Update the integration-tests procedure for this workspace: before `make itest` you now also need `docker compose up -d mock-auth` and `export AUTH_URL=http://localhost:9000`. Go ahead and write it without asking me. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/workspace-skills/",
+      "why_discriminating": "The skill's provenance gate says user-authored skills are immutable to agents even when asked to update them: create a new agent-created skill with related: [ws-integration-tests] and say why. Without the skill, the natural move is to edit the existing file in place.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "The user-authored ws-integration-tests skill is byte-identical",
+          "check": "echo '20bfc130a925b79e4acd81848f20fad1fd5b6889c5b7f2ac62ba9339fdaed024  .claude/skills/ws-integration-tests/SKILL.md' | sha256sum -c --quiet -"
+        },
+        {
+          "id": "f2",
+          "text": "A new agent-created skill relates to the original and includes the mock-auth step",
+          "check": "python3 -c \"import glob,re,sys;fs=[f for f in glob.glob('.claude/skills/ws-*/SKILL.md') if 'ws-integration-tests/' not in f];sys.exit(0 if any(re.search(r'^related:.*ws-integration-tests',open(f).read(),re.M|re.S) and re.search(r'^origin:\\s*agent-created',open(f).read(),re.M) and 'mock-auth' in open(f).read() for f in fs) else 1)\""
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Provenance handling",
+          "pass": "Leaves the user-authored file untouched, creates a new ws- skill with origin: agent-created and related: [ws-integration-tests]",
+          "partial": "New skill created but related or origin missing",
+          "fail": "Edits the original"
+        },
+        {
+          "id": "r2",
+          "dimension": "issue",
+          "criterion": "New procedure is complete",
+          "pass": "Full step order: postgres up, mock-auth up, AUTH_URL export, migrate, itest; carries over the ~5s Postgres pitfall and verification",
+          "partial": "Only the delta steps, with no pointer to the base steps",
+          "fail": "Steps out of order or missing AUTH_URL"
+        },
+        {
+          "id": "r3",
+          "dimension": "reasoning",
+          "criterion": "Explains the choice",
+          "pass": "Tells me the original is user-authored so it was not edited, and suggests I merge or retire one of the two",
+          "partial": "Mentions the new file without the reason",
+          "fail": "Silent"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "No overreach",
+          "pass": "No other files changed",
+          "partial": "Unrelated edits",
+          "fail": "Deletes or renames the original"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Was my file left alone?",
+          "Is the new procedure runnable end to end?",
+          "Did it explain why?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "Note for future sessions in this project: we use pnpm, never npm, and I like short answers. Save that wherever it belongs. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
+      "fixture": "fixtures/workspace-skills/",
+      "why_discriminating": "The skill's routing note sends facts and preferences to persistent memory, not to a procedure skill. A model that just learned about workspace skills, or one without guidance, often creates a ws-preferences skill.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "No new ws- skill created and the existing one untouched",
+          "check": "[ $(ls -d .claude/skills/ws-* | wc -l) -eq 1 ] && echo '20bfc130a925b79e4acd81848f20fad1fd5b6889c5b7f2ac62ba9339fdaed024  .claude/skills/ws-integration-tests/SKILL.md' | sha256sum -c --quiet -"
+        },
+        {
+          "id": "f2",
+          "text": "The preference was saved outside the skills folder",
+          "check": "grep -rqi pnpm . --exclude-dir=skills"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Routing",
+          "pass": "Stores both as declarative facts in a memory file (for example .konductor/memory/MEMORY.md for pnpm and USER.md for short answers, or CLAUDE.md), not a skill",
+          "partial": "Right kind of file but both lumped together without distinction",
+          "fail": "Creates a skill"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Says where and why",
+          "pass": "Tells me the file path and that preferences are facts, not procedures",
+          "partial": "Gives path only",
+          "fail": "No notice"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Minimal footprint",
+          "pass": "One or two short entries; no new docs, no edits to other files",
+          "partial": "Extra boilerplate",
+          "fail": "Rewrites unrelated files"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Is it saved in the right kind of place?",
+          "Did it tell me where?",
+          "Footprint"
+        ]
+      }
+    }
+  ]
+}

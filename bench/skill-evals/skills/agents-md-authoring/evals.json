@@ -1,0 +1,104 @@
+{
+  "skill_name": "agents-md-authoring",
+  "evals": [
+    {
+      "id": 0,
+      "name": "claude-md-request-routed-to-agents-md",
+      "scenario_prompt_id": "p2",
+      "prompt": "We moved from npm + jest to pnpm + vitest. Update the agent guidance for this repo. Also a teammate asked me to add 'always run pnpm lint before committing' to CLAUDE.md, so please handle that too. Do not ask me questions; make reasonable assumptions, list them in a short note at the end of your changes, and finish the work.",
+      "expected_output": "The skill says that a request to edit CLAUDE.md should become an edit to AGENTS.md (CLAUDE.md stays just @AGENTS.md), that existing AGENTS.md is patched rather than replaced, and that @ imports in AGENTS.md do not work in Kiro. A competent model without it appends the rule to CLAUDE.md as asked and leaves the @ lines.",
+      "files": [
+        "fixtures/agents-md-authoring-p2/"
+      ],
+      "expectations": [
+        "AGENTS.md now uses pnpm and vitest and no longer mentions jest",
+        "CLAUDE.md is still only the @AGENTS.md pointer (the lint rule was not added to CLAUDE.md)",
+        "No @ import lines remain in AGENTS.md",
+        "CLAUDE.md request routed per the skill: Lint rule added to AGENTS.md; CLAUDE.md still only @AGENTS.md; the redirect is explained to the user",
+        "Commands updated correctly from package.json: pnpm install, pnpm test (vitest run), pnpm lint, pnpm build; no jest/npm left",
+        "Patch, not rewrite: Keeps the credit-notes domain fact and existing structure; changes only what the move requires plus the import fix",
+        "Import lines handled: Replaces the @ lines with a Context Loading MUST-read block (steering and memory, skip if missing)"
+      ],
+      "scripted_checks": [
+        {
+          "text": "AGENTS.md now uses pnpm and vitest and no longer mentions jest",
+          "check": "grep -q pnpm AGENTS.md && grep -q vitest AGENTS.md && ! grep -qwi jest AGENTS.md"
+        },
+        {
+          "text": "CLAUDE.md is still only the @AGENTS.md pointer (the lint rule was not added to CLAUDE.md)",
+          "check": "grep -q '@AGENTS.md' CLAUDE.md && ! grep -qi lint CLAUDE.md"
+        },
+        {
+          "text": "No @ import lines remain in AGENTS.md",
+          "check": "test -s AGENTS.md && ! grep -qE '^@' AGENTS.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "kiro-blind-to-agents-md-two-causes",
+      "scenario_prompt_id": "p3",
+      "prompt": "Our AGENTS.md pulls steering and memory in with @ imports, but the Kiro agent (.kiro/agents/invoicer-dev.json) never seems to follow any of it, while Claude Code does. Fix things so both Kiro and Claude Code load the same context, and write a short explanation of the root cause and the fix to agents-fix-notes.md. Do not ask me questions; make reasonable assumptions, list them in the notes, and finish the work.",
+      "expected_output": "The skill's loading table explains two separate causes: Kiro does not expand imports in AGENTS.md, and Kiro does not auto-read AGENTS.md unless the agent lists file://AGENTS.md as a resource. The fixture's agent spec only lists steering. A competent model without the skill usually fixes one cause (often just the imports) and the Kiro agent stays blind to AGENTS.md.",
+      "files": [
+        "fixtures/agents-md-authoring-p2/"
+      ],
+      "expectations": [
+        "No @ import lines remain in AGENTS.md",
+        "CLAUDE.md still imports AGENTS.md",
+        "invoicer-dev.json is valid JSON and lists file://AGENTS.md as a resource",
+        "Both root causes found (KEY): Notes state (1) Kiro does not expand @ imports in AGENTS.md and (2) invoicer-dev.json resources omit file://AGENTS.md, so Kiro never reads it",
+        "Fix applied in the right files: AGENTS.md gets a Context Loading block (steering + .konductor/memory, skip missing); invoicer-dev.json resources gain file://AGENTS.md and remain valid JSON; CLAUDE.md unchanged",
+        "Explains why Claude Code worked: Notes Claude Code reads CLAUDE.md, which imports AGENTS.md and expands @ there, so imports nested via CLAUDE.md work for Claude only",
+        "Minimal, correct change: Keeps existing AGENTS.md content; does not add unrelated agent settings or tools"
+      ],
+      "scripted_checks": [
+        {
+          "text": "No @ import lines remain in AGENTS.md",
+          "check": "test -s AGENTS.md && ! grep -qE '^@' AGENTS.md"
+        },
+        {
+          "text": "CLAUDE.md still imports AGENTS.md",
+          "check": "grep -q '@AGENTS.md' CLAUDE.md"
+        },
+        {
+          "text": "invoicer-dev.json is valid JSON and lists file://AGENTS.md as a resource",
+          "check": "/usr/bin/python3 -I -c \"import json,sys;d=json.load(open('.kiro/agents/invoicer-dev.json'));sys.exit(0 if 'file://AGENTS.md' in json.dumps(d) else 1)\""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "fresh-repo-memory-loading",
+      "scenario_prompt_id": "p1",
+      "prompt": "This repo has no instructions for AI coding agents, and half the team uses Claude Code while the other half uses Kiro. Write the project's AGENTS.md and whatever else is needed so both tools pick it up. Infer what you can from the repo. Write the files directly; no need to show me first. Do not ask me questions; make reasonable assumptions, mark inferred content as inferred, and finish the work.",
+      "expected_output": "Added for the round-2 change, which reroutes memory loading. A fresh repo with .konductor/memory/MEMORY.md and .kiro/steering/style.md. The new skill says the Context Loading block loads .konductor/memory/MEMORY.md and USER.md only through the persistent-memory skill, never with a glob or an import, and that CLAUDE.md must not import .konductor/memory files. The old skill told the agent to read .konductor/memory/*.md and suggested chaining @.konductor/memory/MEMORY.md in CLAUDE.md.",
+      "files": [
+        "fixtures/agents-md-authoring/"
+      ],
+      "expectations": [
+        "CLAUDE.md imports AGENTS.md and imports no .konductor/memory file",
+        "AGENTS.md uses no import directives",
+        "The timestamped memory entry is not pasted into AGENTS.md",
+        "Memory loading per the round-2 rule: the Context Loading block names .konductor/memory/MEMORY.md (USER.md optional) and loads it through the persistent-memory skill, with no glob read such as .konductor/memory/*.md and no @ import of memory",
+        "Steering referenced, not copied: AGENTS.md points to .kiro/steering/style.md and the Context Loading block reads .kiro/steering/**/*.md, rather than pasting the style rules",
+        "Commands inferred from the repo: install with uv, then make lint, make typecheck, make test, matching the Makefile and CI; no invented npm or tox commands",
+        "Kiro wiring covered: the answer says (or sets up) that a Kiro agent spec must list file://AGENTS.md as a resource"
+      ],
+      "scripted_checks": [
+        {
+          "text": "CLAUDE.md imports AGENTS.md and imports no .konductor/memory file",
+          "check": "grep -q '@AGENTS.md' CLAUDE.md && ! grep -qE '@\\.?/?\\.konductor/memory' CLAUDE.md"
+        },
+        {
+          "text": "AGENTS.md uses no import directives",
+          "check": "test -s AGENTS.md && ! grep -qE '^@|#\\[\\[file:' AGENTS.md"
+        },
+        {
+          "text": "The timestamped memory entry is not pasted into AGENTS.md",
+          "check": "! grep -q '2026-10-01' AGENTS.md"
+        }
+      ]
+    }
+  ]
+}

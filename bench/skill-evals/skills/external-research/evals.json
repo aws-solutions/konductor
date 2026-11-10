@@ -1,0 +1,57 @@
+{
+  "skill_name": "external-research",
+  "evals": [
+    {
+      "id": 0,
+      "name": "s3-fifo-notification-target",
+      "scenario_prompt_id": "p4",
+      "prompt": "We want S3 object-created events in our uploads bucket to land in an SQS FIFO queue so a consumer processes each customer's uploads in order. Can we point the S3 event notification straight at the .fifo queue? If not, what's the supported path? Research it and write the findings to s3-fifo.md with a source URL on every finding. If you cannot reach the web, say so explicitly in the file rather than guessing. Don't ask me questions.",
+      "expected_output": "The old SKILL.md's worked example asserts S3 Event Notifications support SQS FIFO queues (since Nov 2023); the new one says they cannot and must route through EventBridge. Without web access the model may lean on the example in its loaded skill.",
+      "files": [],
+      "expectations": [
+        "s3-fifo.md exists and cites a full https URL",
+        "s3-fifo.md names EventBridge as a route",
+        "Gets the answer right: States that S3 event notifications cannot use an SQS FIFO queue as a direct destination, and gives the supported path (enable EventBridge on the bucket and use an EventBridge rule targeting the FIFO queue with a message group ID, or a standard queue / Lambda relay)",
+        "Each finding uses the skill's citation format: Every finding has a full Source URL, a version/date line, and a confidence rating, with official AWS docs as the primary source",
+        "Ordering caveat for the per-customer requirement: Explains how per-customer ordering is achieved on the FIFO target (message group ID per customer) and notes any ordering or duplicate caveats of the event source",
+        "Honest about access: if the web was not reachable, the file says so up front and marks findings as unverified/from memory: Either fetched sources are cited as fetched, or access failure is stated plainly and every unverified finding is labeled as such with lowered confidence"
+      ],
+      "scripted_checks": [
+        {
+          "text": "s3-fifo.md exists and cites a full https URL",
+          "check": "grep -qE 'https://[^ )]+' s3-fifo.md"
+        },
+        {
+          "text": "s3-fifo.md names EventBridge as a route",
+          "check": "grep -qi 'eventbridge' s3-fifo.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "dynamodb-transaction-limits",
+      "scenario_prompt_id": "p1",
+      "prompt": "Someone on my team says DynamoDB transactions are capped at 25 items, someone else says 100. We're sizing a batch-settlement job on this. Find the authoritative answer, plus the aggregate size limit for a transaction, and write the findings to research.md. If you cannot reach the web, say so explicitly in the file rather than guessing. Don't ask me questions.",
+      "expected_output": "The skill requires a per-finding Source URL, Version/date, and Confidence, ranks official docs above blogs and forums, and says to present conflicts with tiers. A competent answer without it often states '100 items' from memory with no citation discipline or resolution of why 25 was ever true.",
+      "files": [],
+      "expectations": [
+        "research.md exists and cites a full https URL",
+        "Both claimed limits are addressed",
+        "Gets the answer right and resolves the conflict: 100 actions per transaction and 4 MB aggregate size, explaining 25 was the limit before AWS raised it (2022), so older sources say 25",
+        "Each finding uses the skill's citation format: Every finding has a full Source URL, a version/date line, and a confidence rating, with official AWS docs as the primary source",
+        "Conflicting sources are presented with reliability tiers: Names the older/secondary sources saying 25 and why the official doc wins (tier 1 vs tier 3/4, recency)",
+        "Honest about access: if the web was not reachable, the file says so up front and marks findings as unverified/from memory: Either fetched sources are cited as fetched, or access failure is stated plainly and every unverified finding is labeled as such with lowered confidence"
+      ],
+      "scripted_checks": [
+        {
+          "text": "research.md exists and cites a full https URL",
+          "check": "grep -qE 'https://[^ )]+' research.md"
+        },
+        {
+          "text": "Both claimed limits are addressed",
+          "check": "grep -q '25' research.md && grep -q '100' research.md"
+        }
+      ]
+    }
+  ]
+}

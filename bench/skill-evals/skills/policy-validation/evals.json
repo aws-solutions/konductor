@@ -1,0 +1,54 @@
+{
+ "skill_name": "policy-validation",
+ "evals": [
+  {
+   "id": 0,
+   "name": "validate-prod-policies-report",
+   "scenario_prompt_id": "p1",
+   "prompt": "These IAM, KMS, bucket and CloudTrail configs in policies/ go to production Friday for the orders service. Validate them and write security-validation-report.md for the security lead. Do not modify anything in policies/. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+   "expected_output": "The skill fixes the severity calls (its quality gate makes missing ExternalId, kms:* to a non-admin principal and public bucket access CRITICAL), validates only concrete documents, distinguishes standard patterns from gaps, and scores IAM, encryption, audit logging and compliance into a weighted posture score. Without it, models mis-rank or flag the standard AccountRoot key statement.",
+   "files": [
+    "fixtures/policy-validation/"
+   ],
+   "expectations": [
+    "Report exists and policies/ is unchanged",
+    "All planted defects found with impact (KEY: s3:* on *; vendor trust without sts:ExternalId; kms:* to orders-app; public read on reports bucket and no aws:SecureTransport; CloudTrail single-region, no global events, no log file validation, no KMS, 30-day retention; key rotation off): All six policy files have their defects named with a concrete attack or audit impact",
+    "Severities follow the skill's quality gate: s3:* on *, missing ExternalId, kms:* to orders-app and the public bucket are all CRITICAL; rotation and trail gaps High/Medium",
+    "The AccountRoot key statement is not flagged as a vulnerability: Recognised as the standard key-admin delegation to IAM (may suggest a separate admin role as an improvement)",
+    "Scoring per the skill: IAM, encryption, audit logging and compliance scores out of 100 with the deductions visible, and an overall posture score using the 0.30/0.25/0.25/0.20 weights",
+    "Remediation is concrete: Each CRITICAL shows current vs corrected policy JSON (e.g. s3:PutObject/GetObject on arn:aws:s3:::acme-orders-uploads/*, sts:ExternalId condition, kms:Encrypt/Decrypt/GenerateDataKey* for orders-app, Deny without aws:SecureTransport)"
+   ],
+   "scripted_checks": [
+    {
+     "text": "Report exists and policies/ is unchanged",
+     "check": "test -f security-validation-report.md && cat policies/cloudtrail.json policies/kms-key-config.json policies/kms-key-policy.json policies/lambda-role-policy.json policies/reports-bucket-policy.json policies/vendor-trust-policy.json | sha256sum | grep -q c5e6f9596db497edc40b7b4219e6572fbda7983d810d0c4192c9f7e1ecf15b94"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "name": "hipaa-phi-default-keys-report",
+   "scenario_prompt_id": "p4",
+   "prompt": "Our patient intake service (DESIGN.md and infra/template.yaml) has to be HIPAA compliant before launch. Validate its IAM policies and security configuration and write security-validation-report.md. Do not modify DESIGN.md or anything in infra/. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+   "expected_output": "With HIPAA named, the skill opens the shared compliance checklist and cites its controls. PHI in the scans bucket (SSE-S3) and the intake table (no SSESpecification) is on default keys and is CRITICAL. The public assets bucket with no BucketEncryption is not a finding, since S3 encrypts by default. The extra dynamodb:Scan, missing log file validation and 30-day log retention are IMPORTANT, not CRITICAL.",
+   "files": [
+    "fixtures/policy-validation-hipaa/"
+   ],
+   "expectations": [
+    "Report exists and DESIGN.md and infra/ are unchanged",
+    "HIPAA controls are cited: the report cites HIPAA Security Rule 164.312(a)(2)(iv) for PHI encryption and 164.312(b) for audit controls",
+    "PHI on default keys is CRITICAL: acme-intake-scans (SSE-S3/AES256) and intake-records (no SSESpecification, AWS owned key) are each rated CRITICAL with a fix to SSE-KMS using PhiKey or another customer managed key",
+    "Default encryption on non-PHI buckets is not a finding: the missing BucketEncryption on acme-clinic-assets (and acme-intake-audit-logs) is not reported as a finding above SUGGESTION, or is explicitly noted as covered by S3 default SSE-S3",
+    "CRITICAL is not inflated: the unneeded dynamodb:Scan, EnableLogFileValidation false and the 30-day log retention are each reported, and none of them is rated CRITICAL",
+    "Audit coverage gaps tied to HIPAA: missing log file validation and the absence of data events (or other logging) for PHI access to the table or scans bucket are identified as audit-control gaps"
+   ],
+   "scripted_checks": [
+    {
+     "text": "Report exists and DESIGN.md and infra/ are unchanged",
+     "check": "test -f security-validation-report.md && cat DESIGN.md infra/template.yaml | sha256sum | grep -q 7f98dfe676dbc74e0a652ac9a155394f857b4de2651297f79c1742d6665c9376"
+    }
+   ]
+  }
+ ],
+ "_note": "Subset of sc-final evals.json (ids 0 and 2) to keep the run under the 4 USD per-skill cap."
+}

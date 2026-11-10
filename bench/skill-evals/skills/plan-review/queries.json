@@ -1,0 +1,82 @@
+[
+  {
+    "query": "can you review docs/plans/auth-migration-plan.md before we hand it to the devs? want to know if it's actually executable or full of hand-wavy tasks",
+    "should_trigger": true
+  },
+  {
+    "query": "here's the implementation plan for the rate limiter in plan.md. rate it and tell me whether it's blocked or good to go",
+    "should_trigger": true
+  },
+  {
+    "query": "is this task breakdown clear enough that someone could implement it without asking me 20 questions? tasks reference files under src/billing",
+    "should_trigger": true
+  },
+  {
+    "query": "gate check on the work breakdown for sprint 14: do the tasks have measurable acceptance criteria and real verification commands?",
+    "should_trigger": true
+  },
+  {
+    "query": "the agent produced a 9 step plan to add pagination to the list endpoints. sanity check it, do the files and functions it references even exist?",
+    "should_trigger": true
+  },
+  {
+    "query": "I wrote this plan in 5 min: 'implement the feature, update the config, handle edge cases, make sure it works'. be honest, is it usable by someone else",
+    "should_trigger": true
+  },
+  {
+    "query": "review the db migration plan for completeness: dependencies, side effects, critical path, what can run in parallel",
+    "should_trigger": true
+  },
+  {
+    "query": "my lead wants a star rating on every feature plan before we start. here's features/search/plan.md",
+    "should_trigger": true
+  },
+  {
+    "query": "critique this work plan for clarity and verifiability before execution. don't redesign the approach, we've already committed to a sidecar",
+    "should_trigger": true
+  },
+  {
+    "query": "does this refactoring plan give a new hire enough context? e.g. does task 3 say which module and function to change, and how to know it's done",
+    "should_trigger": true
+  },
+  {
+    "query": "review the system design doc for our notification service: scalability, failure modes, security",
+    "should_trigger": false
+  },
+  {
+    "query": "review my PR diff in src/billing for bugs and type safety issues",
+    "should_trigger": false
+  },
+  {
+    "query": "break the search feature down into independent tracks for 3 engineers",
+    "should_trigger": false
+  },
+  {
+    "query": "write an implementation plan for adding OAuth login to our express app",
+    "should_trigger": false
+  },
+  {
+    "query": "is our test strategy adequate, do we have enough integration tests for the payments service",
+    "should_trigger": false
+  },
+  {
+    "query": "track progress on the auth migration tasks in tasks.md, what's done and what's blocked",
+    "should_trigger": false
+  },
+  {
+    "query": "review our EC2 savings plan purchase recommendation, is a 3 year commitment too risky",
+    "should_trigger": false
+  },
+  {
+    "query": "help me plan my week, I have 3 design reviews and an oncall shift starting wednesday",
+    "should_trigger": false
+  },
+  {
+    "query": "review this terraform plan output before I apply, anything destructive in there?",
+    "should_trigger": false
+  },
+  {
+    "query": "evaluate whether moving orders to event sourcing is the right architectural direction",
+    "should_trigger": false
+  }
+]

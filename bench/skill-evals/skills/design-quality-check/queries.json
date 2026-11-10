@@ -1,0 +1,22 @@
+[
+{"query": "Here's my design doc at docs/design/notification-service.md. Before I send it for design review, is it ready? Score it and list whatever needs fixing.", "should_trigger": true},
+{"query": "can you check docs/rfc/0042-cache-layer.md for filler language and hand-wavy claims? my last doc got bounced because reviewers said it was padded and had latency numbers with no source", "should_trigger": true},
+{"query": "Run a quality gate on design/search-reindex.md: structural completeness (problem, requirements, solution overview, how it works, implementation plan, ADRs), plus KISS/YAGNI. Give a 1-5 score.", "should_trigger": true},
+{"query": "I think my design doc over-engineers things, there's a plugin system nobody asked for. Check docs/payments-v2-design.md for unjustified complexity and anything else that'd block review.", "should_trigger": true},
+{"query": "Score this doc's writing quality: hedge words, passive voice, circular reasoning like 'we chose X because X is best'. file is architecture/ingest-pipeline.md", "should_trigger": true},
+{"query": "quick sanity pass on my HLD draft (docs/hld-tenant-isolation.md) - is anything structurally missing? does it have enough to go to adversarial review or should I revise first", "should_trigger": true},
+{"query": "Our team requires a doc quality score of at least 3 before design review. Grade docs/design/audit-log.md against that and tell me what's dragging it down, with a suggestion per issue.", "should_trigger": true},
+{"query": "Review the writing in proposals/queue-migration.md. It claims 'reduces cost by 40%' and 'p99 under 50ms' without numbers to back it. Flag stuff like that plus any missing sections.", "should_trigger": true},
+{"query": "is docs/design/feature-flags.md review-ready? I want an objective score, not a rewrite.", "should_trigger": true},
+{"query": "Check the slop level in this design doc before I share it with the principal engineers: docs/design/multi-region-failover.md", "should_trigger": true},
+{"query": "Rewrite the intro of docs/design/notification-service.md so it doesn't sound AI-generated. Keep the same content.", "should_trigger": false},
+{"query": "Play devil's advocate on the decisions in docs/design/cache-layer.md - argue against using Redis over DynamoDB DAX and poke holes in the failover plan.", "should_trigger": false},
+{"query": "Verify the factual claims in docs/design/s3-ingest.md against the code: does the handler really batch 25 items, is the retry count really 3?", "should_trigger": false},
+{"query": "Write a design doc for a URL shortener service: problem, requirements, solution, diagrams, ADRs.", "should_trigger": false},
+{"query": "Evaluate our full design package (system design, threat model, API spec, data model, IAM policies) for production readiness across all dimensions before handoff to implementation.", "should_trigger": false},
+{"query": "Fix the markdownlint errors in docs/design/*.md - line length and heading levels.", "should_trigger": false},
+{"query": "check the error messages and button labels in src/ui/strings.json for consistent tone and capitalization", "should_trigger": false},
+{"query": "Turn the decision section of docs/design/queue-migration.md into a proper ADR file under docs/adr/.", "should_trigger": false},
+{"query": "Generate an architecture diagram in mermaid for the components described in docs/design/ingest-pipeline.md.", "should_trigger": false},
+{"query": "Score the README.md for our CLI on how easy it is for a new user to get started; suggest a better quickstart section.", "should_trigger": false}
+]

@@ -1,0 +1,32 @@
+{
+  "skill_name": "architecture-diagram-generation",
+  "evals": [
+    {
+      "id": 1,
+      "name": "multi-account-trust-boundaries",
+      "scenario_prompt_id": "p2",
+      "prompt": "Security review wants a draw.io diagram of our multi-account layout to mark trust boundaries. Production account 111122223333: ALB in public subnets, ECS Fargate service in private subnets, RDS PostgreSQL Multi-AZ in isolated subnets, all in one VPC in us-east-1. Shared services account 444455556666: Transit Gateway and Route 53 Resolver; the production VPC attaches to the Transit Gateway and forwards DNS to the Resolver. Log archive account 777788889999: an S3 bucket receiving CloudTrail and VPC Flow Logs from production. Write uncompressed XML to diagrams/multi-account.drawio. Do not ask me questions; make reasonable assumptions, list them in a text note in the diagram, and finish the work.",
+      "expected_output": "The skill's multi-account template, title-on-top rule, flow color code (orange for logging, blue for user requests) and its emphasis on trust boundaries and AZ separation push toward a diagram where cross-account flows are visually distinct. Without it, a model tends to draw three boxes with uniformly styled, sometimes unlabeled arrows and no AZ split for Multi-AZ RDS.",
+      "files": [],
+      "expectations": [
+        "File parses, ids unique, at least 10 cells",
+        "All three accounts appear as labeled containers",
+        "Correct containment: each account a labeled container; one VPC in us-east-1 in production with public/private/isolated subnet tiers; ALB in public, Fargate in private, RDS in isolated; S3 log bucket in the log-archive account outside any VPC: All containment correct, subnet tiers labeled, RDS primary/standby shown across two AZs",
+        "Cross-account flows follow the skill's flow conventions: CloudTrail and Flow Logs edges to the log bucket labeled and colored as logging (orange), TGW attachment and DNS forwarding edges labeled, user request path blue, all directional",
+        "Diagram framing: title above all containers stating system and purpose; region boundary shown: Title on top mentions the multi-account / trust-boundary purpose; us-east-1 region boundary present",
+        "Trust boundaries are legible for a security reviewer: Internet ingress to the ALB, each account boundary, and the isolated data tier are visually marked as distinct trust zones; assumptions note explains choices (e.g. CloudTrail as org trail, Flow Logs delivered direct to S3)",
+        "No invented scope: Adds nothing beyond what the request implies, or declares additions (e.g. NAT, IGW) as assumptions"
+      ],
+      "scripted_checks": [
+        {
+          "text": "File parses, ids unique, at least 10 cells",
+          "check": "python3 -c 'import xml.etree.ElementTree as E,sys,collections;r=E.parse(\"diagrams/multi-account.drawio\").getroot();r=r if r.tag==\"mxGraphModel\" else r.find(\".//mxGraphModel\");ids=[c.get(\"id\") for c in r.iter(\"mxCell\")];sys.exit(0 if r is not None and len(ids)==len(set(ids)) and len(ids)>=10 else 1)'"
+        },
+        {
+          "text": "All three accounts appear as labeled containers",
+          "check": "for a in 111122223333 444455556666 777788889999; do grep -q $a diagrams/multi-account.drawio || exit 1; done"
+        }
+      ]
+    }
+  ]
+}

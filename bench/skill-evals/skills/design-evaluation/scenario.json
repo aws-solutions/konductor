@@ -1,0 +1,206 @@
+{
+ "skill": "design-evaluation",
+ "category": "MODEL-CAPABILITY",
+ "source": "konductor",
+ "kind": "doc",
+ "limited": false,
+ "limited_reason": null,
+ "bench_reuse": null,
+ "schema": 2,
+ "prompts": [
+  {
+   "id": "p1",
+   "prompt": "design/ holds the full design package for our Report Export Service (system design, threat model, API, data model, IAM). It is about to be handed to the implementation team. Do the final design review and write design-review.md. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/design-evaluation/",
+   "why_discriminating": "The skill's quality gate defines exactly what blocks handoff (unmitigated HIGH threat, unhandled external dependency, access patterns without index support, breaking API change without versioning) and its scope rule says a 2-engineer, 5-req/min project should get simplicity-first feedback; an unguided review tends to list many issues at equal weight and may praise or ignore the 3-region active-active plus self-managed Kafka.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "design-review.md exists",
+     "check": "test -s design-review.md"
+    },
+    {
+     "id": "f2",
+     "text": "Findings ordered CRITICAL before IMPORTANT before SUGGESTION",
+     "check": "python3 -c 'import re,sys;t=open(\"design-review.md\").read();p=[m.start() for w in (\"CRITICAL\",\"IMPORTANT\",\"SUGGESTION\") for m in [re.search(w,t,re.I)] if m];sys.exit(0 if len(p)>=2 and p==sorted(p) else 1)'"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Names the four quality-gate blockers as CRITICAL: T1 HIGH and unmitigated (GET /exports/{id} has no tenant check), MailRelay has no timeout/retry/fallback, data model cannot serve AP2/AP3 (no GSI), downloadUrl -> downloadUrls breaking change with no versioning",
+     "pass": "All four, each tied to the file where it appears",
+     "partial": "Two or three of the four",
+     "fail": "One or none, or blockers mixed in with minor items at the same severity"
+    },
+    {
+     "id": "r2",
+     "dimension": "reasoning",
+     "criterion": "Tailors to the small scope: calls 3-region active-active with global tables and EC2 Kafka over-engineering for ~300 requests/day and recommends removing or deferring them, with cost/operational reasoning",
+     "pass": "Explicitly flags both as over-engineering for this load and says what to do instead",
+     "partial": "Mentions one of them or hedges",
+     "fail": "Accepts or recommends more scale features"
+    },
+    {
+     "id": "r3",
+     "dimension": "process",
+     "criterion": "Follows the skill's review structure: covers the ten areas (template adherence through actionable recommendations, including testability/CI-CD) and lists observability TBD, no runbook and unvalidated cost as IMPORTANT",
+     "pass": "Ten areas addressed (briefly where not relevant) and the three IMPORTANT items present",
+     "partial": "Most areas covered or IMPORTANT items partly present",
+     "fail": "Unstructured list with no area coverage"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Actionable fixes: tenant ownership check on GET /exports/{id}, MailRelay timeout + retry + DLQ/fallback, a GSI for tenant listing and stuck QUEUED jobs, /v2 or additive field for downloadUrls, scoped IAM instead of dynamodb:* on *, injectable clients for testing",
+     "pass": "Concrete fixes for all blockers plus IAM and testability",
+     "partial": "Fixes for blockers only, or generic",
+     "fail": "No concrete fixes"
+    },
+    {
+     "id": "r5",
+     "dimension": "restraint",
+     "criterion": "No false positives: does not call T2, T3 or T4 unmitigated (they have mitigations), does not invent services, numbers or requirements not in design/",
+     "pass": "No false positives or invented facts",
+     "partial": "One minor misread",
+     "fail": "Flags a mitigated threat as a blocker or invents facts"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Are the true blockers separated from lesser issues?",
+     "Is the feedback right-sized for a 2-person, 5 req/min service?",
+     "Are the fixes concrete enough to act on before handoff?"
+    ]
+   }
+  },
+  {
+   "id": "p2",
+   "prompt": "Sprint 1 on the Report Export Service starts Monday. My manager wants one page: can we lock the design in design/ as-is, and if not, what exactly must change before Monday versus what can wait until later sprints? Write readiness.md with a go/no-go at the top. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/design-evaluation/",
+   "why_discriminating": "The skill's gate splits CRITICAL (blocks implementation) from IMPORTANT (address before implementation) and SUGGESTION, which maps directly onto must-change-before-Monday versus later; without it, the split tends to be driven by gut feel, e.g. treating Kafka removal or observability as blockers while missing the access-pattern or versioning gap.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "Top of readiness.md gives a no-go",
+     "check": "head -8 readiness.md | grep -qiE \"no.go|not ready|block\""
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Names the four quality-gate blockers as CRITICAL: T1 HIGH and unmitigated (GET /exports/{id} has no tenant check), MailRelay has no timeout/retry/fallback, data model cannot serve AP2/AP3 (no GSI), downloadUrl -> downloadUrls breaking change with no versioning",
+     "pass": "All four, each tied to the file where it appears",
+     "partial": "Two or three of the four",
+     "fail": "One or none, or blockers mixed in with minor items at the same severity"
+    },
+    {
+     "id": "r2",
+     "dimension": "process",
+     "criterion": "Before-Monday list is the gate CRITICAL set (plus the dynamodb:* on * IAM fix); observability, runbook, cost validation and testability seams are placed after the blockers, clearly labeled",
+     "pass": "Two clearly separated tiers that match the gate",
+     "partial": "Tiers present but one blocker misplaced",
+     "fail": "No tiering, or tiers contradict the gate"
+    },
+    {
+     "id": "r3",
+     "dimension": "reasoning",
+     "criterion": "Explains in one or two lines per blocker why it cannot wait (e.g. cross-tenant data exposure, breaking mobile/web clients, no way to query stuck jobs)",
+     "pass": "Each blocker has a concrete consequence",
+     "partial": "Some consequences missing",
+     "fail": "Bare list with no rationale"
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Fits a manager audience: short, decision first, each must-change item is a concrete action with a rough owner or size",
+     "pass": "Readable on one page with actionable items",
+     "partial": "Actionable but long or jargon-heavy",
+     "fail": "Long review dump with no clear actions"
+    },
+    {
+     "id": "r5",
+     "dimension": "restraint",
+     "criterion": "No false positives: does not call T2, T3 or T4 unmitigated (they have mitigations), does not invent services, numbers or requirements not in design/",
+     "pass": "No false positives or invented facts",
+     "partial": "One minor misread",
+     "fail": "Flags a mitigated threat as a blocker or invents facts"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Is the go/no-go justified by real blockers?",
+     "Is the now-versus-later split defensible?",
+     "Could a manager act on it in five minutes?"
+    ]
+   }
+  },
+  {
+   "id": "p3",
+   "prompt": "Context change for the Report Export Service in design/: sales signed 40 enterprise tenants, so plan for about 2,000 export requests per minute at peak and a 99.95% availability target. The design docs are unchanged. Re-evaluate the design for this scope and write review-v2.md. Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
+   "fixture": "fixtures/design-evaluation/",
+   "why_discriminating": "The skill tailors feedback by project scope (small: avoid over-engineering; large: distributed reliability and failure resilience); a with-skill answer should change its stance on multi-region and decoupling while keeping the gate blockers, and look for scale bottlenecks (Lambda/stream concurrency, MailRelay throttling with no SLA, hot keys), whereas an unguided answer often repeats the small-scope review or rubber-stamps the existing multi-region plan.",
+   "floor_checks": [
+    {
+     "id": "f1",
+     "text": "review-v2.md exists",
+     "check": "test -s review-v2.md"
+    }
+   ],
+   "rubric": [
+    {
+     "id": "r1",
+     "dimension": "issue",
+     "criterion": "Names the four quality-gate blockers as CRITICAL: T1 HIGH and unmitigated (GET /exports/{id} has no tenant check), MailRelay has no timeout/retry/fallback, data model cannot serve AP2/AP3 (no GSI), downloadUrl -> downloadUrls breaking change with no versioning",
+     "pass": "All four, each tied to the file where it appears",
+     "partial": "Two or three of the four",
+     "fail": "One or none, or blockers mixed in with minor items at the same severity"
+    },
+    {
+     "id": "r2",
+     "dimension": "reasoning",
+     "criterion": "Re-scopes: multi-region and a queue/stream are now justified or partly justified, with reasoning about what they buy at 99.95%; self-managed EC2 Kafka still questioned versus a managed option",
+     "pass": "Explicitly revisits the earlier over-engineering stance with reasons",
+     "partial": "Mentions scale but does not revisit multi-region/Kafka",
+     "fail": "Still calls multi-region over-engineering, or accepts everything uncritically"
+    },
+    {
+     "id": "r3",
+     "dimension": "issue",
+     "criterion": "Identifies scale bottlenecks: MailRelay throughput/throttling with no SLA, stream/Lambda concurrency, per-tenant hot keys or large Usage scans, the 10 req/min per-tenant usage plan versus 2,000/min",
+     "pass": "At least three concrete bottlenecks with numbers from the prompt or design",
+     "partial": "One or two",
+     "fail": "None, or generic \"add caching\""
+    },
+    {
+     "id": "r4",
+     "dimension": "recommendation",
+     "criterion": "Gives resilience measures matched to 99.95%: retries with backoff and DLQ, circuit breaker or queueing for MailRelay, alarms/SLOs, load and failure testing",
+     "pass": "Specific measures tied to the availability target",
+     "partial": "Generic resilience advice",
+     "fail": "None"
+    },
+    {
+     "id": "r5",
+     "dimension": "restraint",
+     "criterion": "No false positives: does not call T2, T3 or T4 unmitigated (they have mitigations), does not invent services, numbers or requirements not in design/",
+     "pass": "No false positives or invented facts",
+     "partial": "One minor misread",
+     "fail": "Flags a mitigated threat as a blocker or invents facts"
+    }
+   ],
+   "pairwise": {
+    "question": "Which output better accomplishes this task for a real user, and why?",
+    "focus": [
+     "Does the review actually change with the new scope?",
+     "Are the bottlenecks concrete and grounded in the design?",
+     "Are the original blockers still enforced?"
+    ]
+   }
+  }
+ ]
+}

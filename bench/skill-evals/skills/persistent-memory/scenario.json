@@ -1,0 +1,192 @@
+{
+  "skill": "persistent-memory",
+  "category": "RUNTIME-FEATURE",
+  "source": "konductor",
+  "kind": "process",
+  "limited": false,
+  "limited_reason": null,
+  "bench_reuse": null,
+  "schema": 2,
+  "prompts": [
+    {
+      "id": "p1",
+      "prompt": "Wrapping up this session. Three things happened today: (1) you ran `npm install` twice and I corrected you: \"No, this project uses pnpm, not npm. Remember that for next time.\" (2) The build broke once because of a typo on line 42 of src/app.ts, which I fixed. (3) I walked you through our release steps: bump the version in package.json, run `pnpm build`, create a git tag, push the tag. Save whatever should persist for future agent sessions in this workspace, using this workspace's agent memory conventions, and skip what shouldn't. This runs unattended: do not ask questions; in your final message say what you saved, where, and what you skipped and why.",
+      "fixture": null,
+      "why_discriminating": "The skill routes facts to .konductor/memory/MEMORY.md (project) vs USER.md (person) as dated, provenance-tagged bullets, adds the memory dir to .gitignore on first write, suppresses one-time observations, and sends multi-step procedures to workspace skills instead of memory. Without it, a model typically writes the pnpm rule into CLAUDE.md or a notes file and saves all three items, including the typo.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "pnpm fact saved in MEMORY.md as a dated, tagged bullet",
+          "check": "grep -qE '^- \\[20[0-9]{2}-[0-9]{2}-[0-9]{2}\\] \\[origin:(agent|user)\\] .*pnpm' .konductor/memory/MEMORY.md"
+        },
+        {
+          "id": "f2",
+          "text": "The one-off typo is not saved",
+          "check": "test -f .konductor/memory/MEMORY.md && ! grep -qiE 'typo|line 42' .konductor/memory/MEMORY.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Writes to .konductor/memory/MEMORY.md with the skill's entry format '- [YYYY-MM-DD] [origin:...] fact', creates the directory on first write and adds .konductor/memory/ to .gitignore",
+          "pass": "Right file, format, and .gitignore entry",
+          "partial": "Right file and format but no .gitignore entry",
+          "fail": "Different location or format"
+        },
+        {
+          "id": "r2",
+          "dimension": "reasoning",
+          "criterion": "Routing: pnpm rule saved; the typo on line 42 discarded as a one-time observation; the release steps treated as a procedure (offered as a workspace skill or left out of memory), not stuffed into MEMORY.md as a multi-step entry",
+          "pass": "All three routed this way with reasons",
+          "partial": "Two routed correctly",
+          "fail": "Everything saved to memory"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Provenance tag is defensible: [origin:user] because the user dictated it in their own words this conversation, or [origin:agent] with a note; never untagged",
+          "pass": "Tag present and justified",
+          "partial": "Tag present, no justification",
+          "fail": "Untagged"
+        },
+        {
+          "id": "r4",
+          "dimension": "process",
+          "criterion": "Final message notifies the save ('Saved: ...' or 'Captured: ...') with location and lists what was skipped, without asking permission first",
+          "pass": "Notification plus skipped list",
+          "partial": "Notification only",
+          "fail": "No notification or asks permission"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did it save the right things in the right place?",
+          "Did it avoid saving noise?",
+          "Would a future session actually pick this up?"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prompt": "Update what you've remembered about this workspace: the test command is now `make test-unit`, not `make test`, and we moved from Python 3.9 to 3.12. Use the existing memory conventions here. Do not ask questions; in your final message say exactly which entries you changed or added and why.",
+      "fixture": "fixtures/persistent-memory/",
+      "why_discriminating": "The skill's provenance gate allows patching only [origin:agent] entries; [origin:user] and untagged legacy entries are immutable, so the Python change must be a new entry beside the old one. A generic model edits the 3.9 line in place (the natural 'update') and may tidy or reorder the user entry.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "The user-authored and untagged entries are untouched",
+          "check": "grep -qxF -- '- [2026-09-02] [origin:user] Always deploy to eu-west-1 before any other region' .konductor/memory/MEMORY.md && grep -qxF -- '- [2026-08-20] Project uses a Python 3.9 virtualenv at .venv' .konductor/memory/MEMORY.md"
+        },
+        {
+          "id": "f2",
+          "text": "The agent test-command entry now says make test-unit",
+          "check": "grep -qE '^- \\[20[0-9-]+\\] \\[origin:agent\\] .*make test-unit' .konductor/memory/MEMORY.md && ! grep -qE 'Test command is make test$' .konductor/memory/MEMORY.md"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Patches the [origin:agent] 'Test command is make test' line in place (no duplicate test-command entry)",
+          "pass": "Patched in place, one entry",
+          "partial": "Patched but old line kept as well",
+          "fail": "Not updated"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Leaves the untagged 'Python 3.9 virtualenv' line verbatim and adds a new dated [origin:agent] entry for 3.12 that references the change",
+          "pass": "Legacy line verbatim plus new tagged entry",
+          "partial": "New entry added but legacy line edited",
+          "fail": "Legacy line edited or deleted"
+        },
+        {
+          "id": "r3",
+          "dimension": "restraint",
+          "criterion": "Leaves the [origin:user] eu-west-1 entry and the localstack entry exactly as they were; no reformatting of other lines",
+          "pass": "Byte-identical other lines",
+          "partial": "Whitespace or order changes",
+          "fail": "User entry modified or removed"
+        },
+        {
+          "id": "r4",
+          "dimension": "reasoning",
+          "criterion": "Final message explains why the Python line was not edited (untagged entries are treated as user-authored) and notifies the save",
+          "pass": "Reason and notification given",
+          "partial": "Notification only",
+          "fail": "Neither"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Were user-owned entries respected?",
+          "Is memory left non-duplicated and current?",
+          "Is the explanation clear?"
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prompt": "I prefer short answers: give me the command first and the explanation after. Please remember that about me for future sessions here. Do not ask questions; tell me what you saved and where.",
+      "fixture": "fixtures/persistent-memory/",
+      "why_discriminating": "The skill's semantic rule sends how-the-user-works preferences to .konductor/memory/USER.md, separate from project facts in MEMORY.md, with its own 1,375-char limit. A generic model sees the existing MEMORY.md and appends there.",
+      "floor_checks": [
+        {
+          "id": "f1",
+          "text": "Preference saved in USER.md as a dated, tagged bullet",
+          "check": "grep -qiE '^- \\[20[0-9]{2}-[0-9]{2}-[0-9]{2}\\] \\[origin:(user|agent)\\] .*(command first|short)' .konductor/memory/USER.md"
+        },
+        {
+          "id": "f2",
+          "text": "MEMORY.md (project facts) is unchanged",
+          "check": "[ \"$(sha256sum .konductor/memory/MEMORY.md | cut -d' ' -f1)\" = \"5110731c981c218758221f56aa8c2ffb1a2de99d2cffee4ebe55df8f8e221d76\" ]"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "r1",
+          "dimension": "process",
+          "criterion": "Routes the preference to .konductor/memory/USER.md (creating it), not MEMORY.md or CLAUDE.md",
+          "pass": "USER.md only",
+          "partial": "USER.md plus a duplicate elsewhere",
+          "fail": "Elsewhere only"
+        },
+        {
+          "id": "r2",
+          "dimension": "process",
+          "criterion": "Entry format '- [YYYY-MM-DD] [origin:user] ...' (user dictated it in their own words), concise and in the user's terms",
+          "pass": "Dated, [origin:user], faithful wording",
+          "partial": "Dated but [origin:agent] or paraphrased loosely",
+          "fail": "No date or tag"
+        },
+        {
+          "id": "r3",
+          "dimension": "process",
+          "criterion": "Final message notifies 'Saved: ...' with the path and does not ask for confirmation",
+          "pass": "Notification with path",
+          "partial": "Vague notification",
+          "fail": "None"
+        },
+        {
+          "id": "r4",
+          "dimension": "restraint",
+          "criterion": "Does not touch MEMORY.md or .gitignore beyond what is needed (the memory dir is not yet ignored here, so adding it is acceptable); no extra invented preferences",
+          "pass": "Only the needed changes",
+          "partial": "One unnecessary change",
+          "fail": "Several or invented preferences"
+        }
+      ],
+      "pairwise": {
+        "question": "Which output better accomplishes this task for a real user, and why?",
+        "focus": [
+          "Did the preference go where a future session looks for it?",
+          "Is the entry faithful to what the user said?",
+          "Was anything else disturbed?"
+        ]
+      }
+    }
+  ]
+}

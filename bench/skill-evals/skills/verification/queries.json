@@ -1,0 +1,22 @@
+[
+{"query": "I think the slugify fix in src/utils/slug.ts is done. Before you tell me it's finished, prove it: add a test that would have caught the bug, show it failing first, then passing, then run the whole suite.", "should_trigger": true},
+{"query": "fix the off by one in paginate() in lib/paginate.py and dont say its done unless you've actually run pytest and shown me the output", "should_trigger": true},
+{"query": "Implement the parseDuration function in src/duration.js ('1h30m' -> 5400). Do it test-first: write failing tests, then the code, then refactor. I want evidence at each step.", "should_trigger": true},
+{"query": "last time an agent told me 'the tests should pass' and they didn't. add input validation to the createUser handler and this time actually build and run tests and paste the results", "should_trigger": true},
+{"query": "Add a --dry-run flag to scripts/cleanup.sh. When you're done, show me exactly what you ran and what you observed, exit codes included.", "should_trigger": true},
+{"query": "the rust crate in ./ledger has a bug where negative balances are allowed. fix it with TDD and confirm cargo build and cargo test are green at the end", "should_trigger": true},
+{"query": "Refactor src/cart/total.ts to remove the duplicated tax logic. Behavior must not change - run the tests before and after and show both outputs.", "should_trigger": true},
+{"query": "hey can you finish the retry wrapper in net/retry.go and confirm it works? i don't want 'looks correct', i want go test output", "should_trigger": true},
+{"query": "Add a unit-tested `isLeapYear` to lib/dates.ts. Spec first: list the success criteria, then red/green/refactor, then full suite.", "should_trigger": true},
+{"query": "You said you fixed the CSV export earlier. Before closing the ticket, verify it end to end: build, run tests, and generate a sample export so we can see the output.", "should_trigger": true},
+{"query": "write an e2e test strategy for the checkout flow: which journeys, which tools, environments, and data setup", "should_trigger": false},
+{"query": "analyze test coverage in this repo and tell me which modules have the biggest gaps and what tests to add first", "should_trigger": false},
+{"query": "review the tests in test/ for quality: are assertions checking real values, are fixtures shared, any order dependence", "should_trigger": false},
+{"query": "set up jest with ts-jest and coverage thresholds of 80% in this typescript project", "should_trigger": false},
+{"query": "our CI is flaky - test/api.test.js passes locally but fails ~30% on github actions. help debug why", "should_trigger": false},
+{"query": "write playwright tests for the login page: valid login, wrong password, locked account", "should_trigger": false},
+{"query": "verify that this IAM policy JSON only grants read access to the reports bucket and nothing else", "should_trigger": false},
+{"query": "explain the difference between TDD and BDD and when each one is worth it for a small team", "should_trigger": false},
+{"query": "generate security test cases for the file upload endpoint: path traversal, oversized files, wrong mime types", "should_trigger": false},
+{"query": "check that the feature implementation matches the design: trace each requirement in requirements.md to code and tests", "should_trigger": false}
+]

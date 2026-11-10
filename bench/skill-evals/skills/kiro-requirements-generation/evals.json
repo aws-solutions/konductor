@@ -1,0 +1,63 @@
+{
+  "skill_name": "kiro-requirements-generation",
+  "evals": [
+    {
+      "id": 0,
+      "name": "approved-stories-alert-rules",
+      "scenario_prompt_id": "p1",
+      "prompt": "These user stories for our 'Alert Rule Management' feature are approved and need to become the Kiro IDE spec requirements document so design can start. Story A: As an SRE, I want to create an alert rule with a metric, threshold and duration, so that I get paged when a service degrades. Criteria: Given I am an authenticated SRE, When I submit a valid rule, Then the rule is saved and I see its ID. Given the threshold is not a number, Then the form shows an error. Story B: As an SRE, I want to disable a rule temporarily, so that planned maintenance doesn't page anyone. Criteria: Given a rule is enabled, When I disable it, Then it stops firing. Then disabled rules are shown greyed out. Story C: As an on-call lead, I want rule changes audited, so that I can see who muted what. Criteria: When a rule is created, changed or disabled, Then an audit entry is recorded. Write the requirements document in the default Kiro spec location for this feature. Don't ask questions.",
+      "expected_output": "The skill fixes the default path (.kiro/specs/<kebab-case>/requirements.md), the document structure, and a BDD-to-EARS mapping (Given+When+Then -> Complex, error Given+Then -> Unwanted, Then-only -> Ubiquitous), and asks that responses become more specific and edge cases be added. Without it, models produce generic 'shall' statements or keep Given/When/Then.",
+      "files": [],
+      "expectations": [
+        "Written at the default kebab-case path",
+        "Every numbered acceptance criterion contains SHALL",
+        "BDD criteria map to the right EARS patterns: Authenticated+submit -> 'WHILE ..., WHEN ..., THE ... SHALL'; non-numeric threshold -> 'IF ..., THEN THE ... SHALL'; enabled+disable -> Complex; 'disabled rules greyed out' -> Ubiquitous; audit -> Event-driven",
+        "Responses are more specific than the source: Concrete values added (rule ID returned, validation message or HTTP 400, rule stops firing within a stated time, audit fields who/what/when)",
+        "Useful edge cases added: Two or more relevant ones, e.g. unauthorized user, disabling an already-disabled rule, duration out of range, audit write failure",
+        "Criteria describe observable behavior, not implementation, and stay within the stories: No database/table/framework details, no new features beyond the three stories",
+        "Exact document structure and limits: '# Requirements Document', '## Introduction', '## Requirements', one '### Requirement N' per story with **User Story:** and '#### Acceptance Criteria', 3-8 numbered criteria each",
+        "Honors 'Don't ask questions': the run finishes without asking 'Fix these issues? [y/n]' or any other question, and any CRITICAL or IMPORTANT self-review finding it reports is fixed in the written document rather than only listed for the user"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Written at the default kebab-case path",
+          "check": "test -f .kiro/specs/alert-rule-management/requirements.md"
+        },
+        {
+          "text": "Every numbered acceptance criterion contains SHALL",
+          "check": "python3 -c \"import re,sys;t=open('.kiro/specs/alert-rule-management/requirements.md').read();c=re.findall(r'(?m)^\\s*\\d+\\.\\s+(.*)$',t.split('## Requirements',1)[-1]);sys.exit(0 if c and all('SHALL' in x for x in c) else 1)\""
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "bare-feature-request-webhook-retries",
+      "scenario_prompt_id": "pbare",
+      "prompt": "New feature for our payments platform: webhook retries. When a merchant's webhook endpoint is down or returns errors, we should retry the delivery automatically, and merchants should be able to see failed deliveries in the dashboard and replay them by hand. Nothing is written yet; this is the very start. Start the Kiro spec for it: write the requirements document in the default Kiro spec location so the architect can begin design. Don't ask questions; state any assumptions you make in the document and in your final message, and finish.",
+      "expected_output": "The new description says that for a bare feature request the user stories are written first. A good run drafts explicit user stories for retry, failed-delivery view and replay, flags them as needing product approval, then writes .kiro/specs/<kebab>/requirements.md in EARS with concrete, labeled assumptions.",
+      "files": [],
+      "expectations": [
+        "requirements.md written under .kiro/specs/ in a kebab-case feature dir",
+        "Every numbered acceptance criterion contains SHALL",
+        "User stories first: because the request has no stories, the run explicitly drafts user stories (As a <role>, I want <capability>, so that <benefit>) for the feature before or while writing EARS criteria, covering at least automatic retry, viewing failed deliveries, and manual replay, instead of jumping straight to generic SHALL statements",
+        "Derived stories are flagged as not yet approved: the document or the final message says the stories were drafted from a bare request and should be reviewed or approved by product before design, rather than presenting them as approved input",
+        "Pattern mapping: delivery failure / endpoint down written as 'IF ..., THEN THE ... SHALL' with a concrete retry policy (attempt count and backoff schedule); the replay action as event-driven 'WHEN ..., THE ... SHALL'; at least one ubiquitous 'THE ... SHALL'",
+        "Specific and testable with visible assumptions: concrete values (retry count, backoff intervals, retention window for failed deliveries, what counts as a failure e.g. non-2xx or timeout) and at least two relevant edge cases (e.g. replay of an already-succeeded delivery, endpoint recovers mid-schedule, retries exhausted); invented numbers are labeled as assumptions",
+        "Exact document structure and limits: '# Requirements Document', '## Introduction', '## Requirements', '### Requirement N' each with **User Story:** and '#### Acceptance Criteria', 3-8 numbered criteria each",
+        "Restraint: criteria describe observable behavior, not implementation (no queue/database/framework choices), and do not add features beyond retry, failed-delivery visibility and replay",
+        "Honors 'Don't ask questions': the run finishes without asking 'Fix these issues? [y/n]' or any other question, and any CRITICAL or IMPORTANT self-review finding it reports is fixed in the written document rather than only listed for the user"
+      ],
+      "scripted_checks": [
+        {
+          "text": "requirements.md written under .kiro/specs/ in a kebab-case feature dir",
+          "check": "ls .kiro/specs/*/requirements.md >/dev/null 2>&1 && ls -d .kiro/specs/*/ | grep -qE '^\\.kiro/specs/[a-z0-9]+(-[a-z0-9]+)*/$'"
+        },
+        {
+          "text": "Every numbered acceptance criterion contains SHALL",
+          "check": "f=$(ls .kiro/specs/*/requirements.md | head -1); python3 -c \"import re,sys;t=open(sys.argv[1]).read();c=re.findall(r'(?m)^\\s*\\d+\\.\\s+(.*)$',t.split('## Requirements',1)[-1]);sys.exit(0 if c and all('SHALL' in x for x in c) else 1)\" \"$f\""
+        }
+      ]
+    }
+  ],
+  "note": "Round-2 change (no-questions handling of the self-review prompt) is exercised by both prompts, which say not to ask questions; one expectation added to each eval for it."
+}

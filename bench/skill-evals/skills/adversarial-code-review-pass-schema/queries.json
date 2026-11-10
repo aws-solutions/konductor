@@ -1,0 +1,82 @@
+[
+ {
+  "query": "only look at this diff through the contract lens: did we break the API for existing clients? we removed `total` from OrderResponse and renamed a couple of status values",
+  "should_trigger": true
+ },
+ {
+  "query": "is this PR backward compatible? new required header X-Tenant-Id, and price changed from string to number in the response",
+  "should_trigger": true
+ },
+ {
+  "query": "schema review of the migration diff: we added `region` to the User record on the write path. do the read paths handle old records that don't have it?",
+  "should_trigger": true
+ },
+ {
+  "query": "does anything in git diff main...HEAD change enum values or error codes our mobile clients pattern match on?",
+  "should_trigger": true
+ },
+ {
+  "query": "contract pass on PR 301: new route POST /v2/exports. is it registered with the authorizer and validation middleware, and does validation run before the side effect?",
+  "should_trigger": true
+ },
+ {
+  "query": "review this diff only for validation completeness. new field `quantity` is checked in the REST handler but what about the SQS consumer path",
+  "should_trigger": true
+ },
+ {
+  "query": "we're running the three-pass adversarial review on diff.patch. you take the schema/contract pass",
+  "should_trigger": true
+ },
+ {
+  "query": "will this json payload change break existing consumers? one field removed, another renamed, one made required",
+  "should_trigger": true
+ },
+ {
+  "query": "new handler reads req.body.shipping.address.zip with no guard. any other contract or validation problems in this diff?",
+  "should_trigger": true
+ },
+ {
+  "query": "backward compat audit of our openapi.yaml diff before the 3.0 release",
+  "should_trigger": true
+ },
+ {
+  "query": "do the security pass on this diff: leaked stack traces, secrets, logged payloads",
+  "should_trigger": false
+ },
+ {
+  "query": "data integrity pass only: non-atomic multi-item writes and missing condition expressions",
+  "should_trigger": false
+ },
+ {
+  "query": "full adversarial review of PR 301 across every category",
+  "should_trigger": false
+ },
+ {
+  "query": "design the API schema in Smithy for the orders service",
+  "should_trigger": false
+ },
+ {
+  "query": "write a JSON schema for our config.yaml",
+  "should_trigger": false
+ },
+ {
+  "query": "generate a DB migration that adds the region column with a default",
+  "should_trigger": false
+ },
+ {
+  "query": "validate that my smithy model builds and passes linters",
+  "should_trigger": false
+ },
+ {
+  "query": "write the changelog entry announcing the breaking change to OrderResponse",
+  "should_trigger": false
+ },
+ {
+  "query": "find every `any` in src/types.ts and replace with proper types",
+  "should_trigger": false
+ },
+ {
+  "query": "should we version our REST API by URL path (/v1) or by header? pros and cons",
+  "should_trigger": false
+ }
+]

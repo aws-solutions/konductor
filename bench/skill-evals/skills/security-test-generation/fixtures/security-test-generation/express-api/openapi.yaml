@@ -1,0 +1,28 @@
+openapi: 3.0.3
+info: { title: Notes API, version: 0.3.0 }
+paths:
+  /login:
+    post:
+      requestBody: { content: { application/json: { schema: { type: object, properties: { email: { type: string }, password: { type: string } } } } } }
+      responses: { '200': { description: token }, '401': { description: invalid credentials } }
+  /users/{id}:
+    get:
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: user profile } }
+  /search:
+    get:
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: q, in: query, schema: { type: string } }]
+      responses: { '200': { description: matching notes } }
+  /admin/users/{id}:
+    delete:
+      security: [{ bearerAuth: [] }]
+      responses: { '204': { description: deleted }, '403': { description: forbidden } }
+  /uploads:
+    post:
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: uploaded } }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }

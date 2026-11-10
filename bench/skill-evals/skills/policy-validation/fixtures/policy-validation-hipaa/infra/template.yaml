@@ -1,0 +1,143 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Patient intake service
+
+Resources:
+  PhiKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: CMK for PHI
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: EnableIAMPolicies
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+          - Sid: CloudTrailEncrypt
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action:
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: "*"
+
+  IntakeTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: intake-records
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: patientId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: patientId
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  ScansBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: acme-intake-scans
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  ScansBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ScansBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !Sub ${ScansBucket.Arn}
+              - !Sub ${ScansBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  AssetsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: acme-clinic-assets
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  AuditLogBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: acme-intake-audit-logs
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  AuditTrail:
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      TrailName: intake-audit
+      S3BucketName: !Ref AuditLogBucket
+      IsLogging: true
+      IsMultiRegionTrail: true
+      IncludeGlobalServiceEvents: true
+      EnableLogFileValidation: false
+      KMSKeyId: !Ref PhiKey
+
+  IntakeFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/intake-function
+      RetentionInDays: 30
+
+  IntakeFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: intake-access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:Scan
+                Resource: !GetAtt IntakeTable.Arn
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub ${ScansBucket.Arn}/*
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt IntakeFunctionLogGroup.Arn

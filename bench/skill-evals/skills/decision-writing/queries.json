@@ -1,0 +1,22 @@
+[
+{"query": "Help me write up why we're picking Postgres over DynamoDB for the order service. Needs context, the options we looked at, and consequences. It'll live in docs/decisions/ forever so future people get why.", "should_trigger": true},
+{"query": "my architecture decision record in docs/adr/0007-auth.md reads like a sales pitch and the alternatives are obviously strawmen. can you fix the tone and make the alternatives fair", "should_trigger": true},
+{"query": "Draft a product decision record for moving the Pro tier from per-seat to usage-based pricing. Lead with customer impact, include success metrics and the competitive landscape.", "should_trigger": true},
+{"query": "We decided to switch the mobile nav from a hamburger to a bottom tab bar. Write the UX decision record; we had 14 participants in the usability study and 11 found the tab bar faster.", "should_trigger": true},
+{"query": "review docs/decisions/queue-choice.md - reviewers say the consequences are vague ('will improve performance') and there's no baseline data. tighten it", "should_trigger": true},
+{"query": "Can you rewrite this decision doc so the actual decision is stated in one sentence? Right now it's 3 paragraphs of 'after careful consideration'. File: decisions/2025-q3-cdn.md", "should_trigger": true},
+{"query": "write the record explaining why we chose gRPC over REST for internal service calls. we measured p99 drop from 38ms to 12ms in staging. include good/bad/neutral consequences", "should_trigger": true},
+{"query": "I need to document our decision to deprecate the v1 webhooks. Status should be Proposed for now, and I want the alternatives section to not straw-man the 'keep both versions' option.", "should_trigger": true},
+{"query": "Our team lead says my ADR uses passive voice and vague quantifiers like 'many teams' and 'significant'. Fix the language in adr/012-feature-flags.md without changing the decision.", "should_trigger": true},
+{"query": "turn these slack notes about why we're moving from Jenkins to GitHub Actions into a proper decision record (Context / Decision / Alternatives / Consequences)", "should_trigger": true},
+{"query": "Score Redis, Memcached and DAX across cost, latency, complexity, scalability and operability in a table and tell me which wins", "should_trigger": false},
+{"query": "write a status report for leadership on the payments migration: what's done, what's at risk, next milestones", "should_trigger": false},
+{"query": "Write the release notes / CHANGELOG entry for v3.2 which removes the legacy webhooks", "should_trigger": false},
+{"query": "research whether Aurora Serverless v2 supports scale-to-zero and logical replication and cite AWS docs", "should_trigger": false},
+{"query": "Create an incident postmortem for the outage on Tuesday where the cache stampede took down checkout for 40 min", "should_trigger": false},
+{"query": "write user stories with acceptance criteria for the new bulk export feature", "should_trigger": false},
+{"query": "Review the whole design doc in docs/design/search.md for outside-in structure and whether the diagrams come before the prose", "should_trigger": false},
+{"query": "write a git commit message for the change that swaps our ORM from Sequelize to Prisma", "should_trigger": false},
+{"query": "Draft a one-page proposal to leadership asking for 2 more headcount for the platform team", "should_trigger": false},
+{"query": "Give me a risk register for the data center exit project with likelihood, impact and owners", "should_trigger": false}
+]

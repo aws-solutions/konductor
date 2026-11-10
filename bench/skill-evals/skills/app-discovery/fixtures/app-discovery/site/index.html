@@ -1,0 +1,38 @@
+<!doctype html>
+<html><head><title>Orders Portal - Sign in</title></head>
+<body>
+<main class="awsui-app-layout">
+  <h1>Orders Portal</h1>
+  <form id="login-form" onsubmit="event.preventDefault(); doLogin();">
+    <label for="email">Email</label>
+    <input id="email" data-testid="login-email" type="email" required placeholder="you@example.com">
+    <label for="pw">Password</label>
+    <input id="pw" data-testid="login-password" type="password" required minlength="8">
+    <button class="awsui-button awsui-button-variant-primary" data-testid="login-submit" type="submit">Sign in</button>
+    <span id="login-error" data-testid="login-error" hidden>Incorrect email or password</span>
+  </form>
+  <nav id="app-nav" data-testid="app-nav" hidden>
+    <a href="orders.html">Orders</a>
+    <a href="settings.html">Settings</a>
+    <a href="reports.html">Reports</a>
+    <a href="https://example.org/help">Help center</a>
+  </nav>
+</main>
+<script>
+function doLogin() {
+  var e = document.getElementById('email').value;
+  var p = document.getElementById('pw').value;
+  if (e && p.length >= 8) {
+    localStorage.setItem('session', 'ok');
+    document.getElementById('login-form').hidden = true;
+    document.getElementById('app-nav').hidden = false;
+  } else {
+    document.getElementById('login-error').hidden = false;
+  }
+}
+if (localStorage.getItem('session') === 'ok') {
+  document.getElementById('login-form').hidden = true;
+  document.getElementById('app-nav').hidden = false;
+}
+</script>
+</body></html>

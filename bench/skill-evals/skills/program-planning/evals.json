@@ -1,0 +1,60 @@
+{
+  "skill_name": "program-planning",
+  "evals": [
+    {
+      "id": 0,
+      "name": "migration-plan-ga-feasibility",
+      "scenario_prompt_id": "p1",
+      "prompt": "I'm the TPM for the data platform migration. Using items.csv and brief.md, write program-plan.md: the program plan leadership will review next week. Tell me plainly whether the GA date in the brief holds, and if not, what date we can commit to. This runs unattended: do not ask questions, state assumptions in the plan.",
+      "expected_output": "The skill fixes the method: T-shirt sizes to calendar ranges (M 1-2w, L 3-4w, XL 5-8w), a 20% floor buffer and 40% for novel work, zero-float critical path, dependency typing, utilization per person, and an 8-section plan. A generic plan usually notices the date is tight but applies ad-hoc estimates and buffers, misses Priya's overlap across W2/W8 and W7, and skips the freeze/on-call weeks.",
+      "files": [
+        "fixtures/program-planning/"
+      ],
+      "expectations": [
+        "Plan has a milestones table with an Exit Criteria column",
+        "Says the 2027-03-26 GA date does not hold",
+        "Critical path is W1 -> W2 -> W3 -> W5 -> W7 with 13-20 weeks unbuffered, so a 12-week window to 2027-03-26 fails even before buffers; float identified for W4, W6, W8: Correct path, duration math shown, float called out",
+        "Uses the skill's estimation rules: size-to-range conversion, 20% buffer on all work, 40% on novel W2 and W8; accounts for the 2027-02-15 freeze and Priya's on-call week: All rules applied and visible in the dates",
+        "Flags resourcing: Priya owns W1, W2, W7 and W8, with W2 and W8 overlapping, so she is over 100%; proposes a fix (re-sequence or reassign W8): Over-allocation quantified and a fix proposed",
+        "Plan has the skill's sections: summary, milestones with measurable exit criteria and owners, Gantt-style ASCII timeline, critical path, dependency map typed (FS/SS) with lag and risk, W6 classed external, resource allocation, top schedule risks, tracker-ready task breakdown: All sections present and filled with plan-specific content",
+        "Gives leadership a committable date or range with confidence and what would bring it in (e.g. defer W8, start W4 in parallel), rather than only 'at risk': Concrete date range with levers",
+        "References are resolvable: the output does not cite or defer to any SOP, step number, or document that was not provided in the workspace (e.g. 'the plan SOP's Step 5'); buffer rules are stated directly"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Plan has a milestones table with an Exit Criteria column",
+          "check": "grep -qiE '^\\|.*exit criteria.*\\|' program-plan.md"
+        },
+        {
+          "text": "Says the 2027-03-26 GA date does not hold",
+          "check": "grep -qiE 'not (feasible|achievable|realistic|possible|hold)|infeasible|unachievable|cannot (be met|meet|hit)|will not (meet|make|hold)|does not hold|miss(es)? the' program-plan.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "payments-plan-draft-review",
+      "scenario_prompt_id": "p2",
+      "prompt": "Review plan-draft.md (payments re-platform) before I send it to the steering group. Write plan-review.md with the problems ordered by severity, each naming the milestone IDs involved and the fix. Do not edit plan-draft.md. Do not ask questions; state assumptions in plan-review.md.",
+      "expected_output": "The skill's quality gate sets severities: circular dependencies, unmeasurable exit criteria, and an end date earlier than the critical path are CRITICAL; missing buffer, unassessed dependency risk, and >100% utilization are IMPORTANT. Generic reviews find the cycle but tend to under-rate 'Better performance' and miss that GA (03-30) is dated before M4 and M5 finish.",
+      "files": [
+        "fixtures/program-planning/"
+      ],
+      "expectations": [
+        "Finds the M3 <-> M5 circular dependency",
+        "Finds the three blocking defects: M3 <-> M5 cycle, M3 exit criteria 'Better performance' not measurable, M6 GA 2027-03-30 before its dependencies M4 (04-02) and M5 (04-09): All three found with IDs and dates",
+        "Finds the plan-hygiene defects: no buffer applied, Dana at 150% in March (60+50+40), dependencies carry no type or risk level: All three",
+        "Severities follow the skill's gate: the three blocking defects CRITICAL; buffer, allocation and dependency risk IMPORTANT; anything else SUGGESTION; presented in that order: Tiers match and ordered",
+        "Fixes are concrete: break the cycle (M3 should follow M5 as a tuning milestone, or merge), measurable M3 criterion tied to M5's 3,000 TPS / p99 target, a re-derived GA date after M4/M5 plus buffer, a utilization fix for Dana: Concrete fix for every finding",
+        "No invented problems (e.g. does not dispute the M1/M2 dates without evidence): All findings grounded in the draft",
+        "References are resolvable: the output does not cite or defer to any SOP, step number, or document that was not provided in the workspace (e.g. 'the plan SOP's Step 5'); buffer rules are stated directly"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Finds the M3 <-> M5 circular dependency",
+          "check": "grep -qiE 'circular|cycle' plan-review.md && grep -q M3 plan-review.md && grep -q M5 plan-review.md"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "skill_name": "aws-service-validator",
+  "evals": [
+    {
+      "id": 0,
+      "name": "ingest-factcheck-annotate",
+      "scenario_prompt_id": "p1",
+      "prompt": "Before Thursday's design review, fact-check every AWS service claim in docs/design/ingest.md against primary AWS sources. Produce the validation report wherever our fact-check gate expects it, and annotate the design doc in place so reviewers can see the problems next to the text. Do not ask me questions; make reasonable assumptions, list them in the report, and finish the work.",
+      "expected_output": "The skill fixes the report path (docs/design/<name>-aws-validation.md), the CONFIRMED/UNVERIFIED/INCORRECT table with evidence and correction columns, the 'N claims checked' summary, and the inline `> \u26a0\ufe0f INCORRECT:` / `> \u26a0\ufe0f UNVERIFIED:` callouts, and it forbids confirming from the document's own text. Without it a model fact-checks well from memory but writes a free-form review elsewhere and does not mark the doc in the gate's format.",
+      "files": [
+        "fixtures/aws-service-validator/"
+      ],
+      "expectations": [
+        "Report written to the skill's conventional path docs/design/ingest-aws-validation.md",
+        "Design doc annotated in place with INCORRECT callouts (blockquote lines)",
+        "Claim 2 (Lambda 60-minute timeout) is marked INCORRECT with the correction that the maximum is 15 minutes",
+        "Claim 4 (DynamoDB 4 MB items) is marked INCORRECT with the correction that the maximum item size is 400 KB",
+        "None of the correct claims 1, 3, 5, 6, 7 is marked INCORRECT, and claim 8 is CONFIRMED with evidence or UNVERIFIED",
+        "The report has one row per claim (8 rows) with Status, Evidence and Correction columns, and an 'N claims checked' summary line with CONFIRMED/UNVERIFIED/INCORRECT counts",
+        "Corrections say what to change in the design (for example store the raw event in S3 with a pointer in DynamoDB; split long batches or use Step Functions), not just the right limit",
+        "Evidence honesty: the report states plainly that AWS doc tools were not available (or cites only pages actually read) and does not present memory-based verdicts as source-confirmed or invent deep-link URLs as consulted"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Report written to the skill's conventional path docs/design/ingest-aws-validation.md",
+          "check": "test -s docs/design/ingest-aws-validation.md"
+        },
+        {
+          "text": "Design doc annotated in place with INCORRECT callouts (blockquote lines)",
+          "check": "grep -qE '^[[:space:]]*> .*INCORRECT' docs/design/ingest.md"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "notify-gate-verdict",
+      "scenario_prompt_id": "p3",
+      "prompt": "docs/design/notify.md is up for sign-off tomorrow and our process says it can't merge until it passes the AWS fact-check gate. Run the fact-check on it, write the report where the gate expects it, annotate the doc, and tell me at the bottom of the report whether the doc passes the gate and what the author must do if not. Do not ask me questions; make reasonable assumptions, list them in the report, and finish the work.",
+      "expected_output": "The doc mixes feature-name drift (stream 'filter patterns' that are really Lambda event filtering), an SNS FIFO email subscription, a vague scaling claim, a pricing claim the skill forbids validating from memory, and a regional claim the skill routes to the regional tool. The skill's gate definition (0 unaddressed INCORRECT, callouts for INCORRECT and UNVERIFIED) decides pass/fail; a competent model without it critiques the design but rarely gives a gate verdict in those terms. Changed in new version: a callout marks a fix still owed, not a pass.",
+      "files": [
+        "fixtures/aws-service-validator/"
+      ],
+      "expectations": [
+        "Report exists at docs/design/notify-aws-validation.md and contains a pass/fail statement",
+        "notify.md is annotated in place with INCORRECT callouts (blockquote lines)",
+        "Claim 1 is marked INCORRECT: DynamoDB Streams has no filter; filtering is Lambda event source mapping filter criteria and the stream still emits all records",
+        "Claim 3 is marked INCORRECT: SNS FIFO topics deliver only to SQS queues, so email subscriptions need a standard topic",
+        "Claim 5 (Lambda scales instantly to any load) is marked INCORRECT or UNVERIFIED-as-vague with the scaling-rate / account concurrency limit correction, and claim 4 (SQS FIFO throughput) is not marked INCORRECT",
+        "The SES pricing claim (6) and the EventBridge Scheduler regional claim (7) are not presented as confirmed from memory: each is UNVERIFIED or cites a primary source actually consulted",
+        "The report states the doc FAILS the gate as submitted",
+        "The report says passing the gate requires the INCORRECT claims to be corrected in the design text, and does not say that adding INCORRECT callouts alone makes the doc pass",
+        "Author actions are concrete: e.g. use a standard SNS topic for email (or SQS -> Lambda -> SES), ESM filter criteria for INSERT events, plan Lambda concurrency for peaks",
+        "Evidence honesty: the report states plainly that AWS doc tools were not available (or cites only pages actually read) and does not present memory-based verdicts as source-confirmed or invent deep-link URLs as consulted"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Report exists at docs/design/notify-aws-validation.md and contains a pass/fail statement",
+          "check": "f=docs/design/notify-aws-validation.md; test -s $f && grep -qiE 'pass|fail' $f"
+        },
+        {
+          "text": "notify.md is annotated in place with INCORRECT callouts (blockquote lines)",
+          "check": "grep -qE '^[[:space:]]*> .*INCORRECT' docs/design/notify.md"
+        }
+      ]
+    }
+  ]
+}

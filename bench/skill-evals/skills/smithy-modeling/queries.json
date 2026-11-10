@@ -1,0 +1,22 @@
+[
+{"query": "Write the Smithy IDL model for a todo service: create/get/update/delete/list todos, with pagination, validation and proper error shapes. Put it under model/", "should_trigger": true},
+{"query": "we need an API contract for the new Bookings service before anyone writes code. smithy v2 please, so we can generate a TypeScript client and OpenAPI from it", "should_trigger": true},
+{"query": "Turn the user stories in docs/stories/inventory.md into a service model with operations, input/output structures, @http traits and errors. We'll codegen TS server stubs from it.", "should_trigger": true},
+{"query": "model the user profile API in .smithy files - email needs a pattern, password must be sensitive, list endpoints paginated with nextToken/maxResults", "should_trigger": true},
+{"query": "Our Payments API has 14 operations, can you lay out the smithy model across multiple files (service, operations, types, errors) in a sane structure with smithy-build.json", "should_trigger": true},
+{"query": "design the interface definition for a webhook subscription service: CreateSubscription, ListSubscriptions, DeleteSubscription. idempotent deletes, 404/409/400 errors, doc comments on every shape", "should_trigger": true},
+{"query": "I have a rough REST endpoint list in api.txt. Convert it into a type-safe API model in Smithy with constraints (@length, @range) and specific error types instead of a generic Error.", "should_trigger": true},
+{"query": "need a Smithy definition for a ShipmentTracking service w/ namespace com.acme.logistics, GetShipment (readonly), ListShipments (paginated), and a ShipmentNotFound 404", "should_trigger": true},
+{"query": "Write a .smithy model for a feature-flag service so the frontend team can generate a typed client. Include enums for flag state and mark the api key field sensitive.", "should_trigger": true},
+{"query": "build out the API shapes for a document upload service in smithy idl: presigned upload op, list docs paginated, get doc, errors for too-large and unsupported type", "should_trigger": true},
+{"query": "Validate model/main.smithy for missing docs, missing pagination and naming convention violations and score it", "should_trigger": false},
+{"query": "Write an OpenAPI 3.1 yaml for our existing Express routes in src/routes", "should_trigger": false},
+{"query": "write a GraphQL schema for the bookings service with queries and mutations", "should_trigger": false},
+{"query": "Design the DynamoDB single-table schema for the todo service access patterns", "should_trigger": false},
+{"query": "define protobuf messages and a gRPC service for the inventory service", "should_trigger": false},
+{"query": "Implement the Lambda handler for CreateTodo in TypeScript using the repository pattern", "should_trigger": false},
+{"query": "write a JSON Schema for validating the order webhook payload", "should_trigger": false},
+{"query": "smithy build is failing with 'Unable to resolve trait aws.protocols#restJson1' - fix my smithy-build.json maven deps", "should_trigger": false},
+{"query": "generate the typescript zod schemas for the signup form validation", "should_trigger": false},
+{"query": "Review my API Gateway + Lambda CDK for throttling and auth config", "should_trigger": false}
+]

@@ -1,0 +1,22 @@
+[
+{"query": "Before we deploy, check the IAM policies in iam/*.json for anything too permissive. I'm pretty sure someone put s3:* on Resource * in the lambda role.", "should_trigger": true},
+{"query": "review this cross-account trust policy, the vendor's account assumes our role to read reports. does it need an ExternalId or other conditions?", "should_trigger": true},
+{"query": "Our security design doc (docs/security-design.md) has policy JSON, KMS key policies and CloudTrail config. Validate it and give me scores for IAM, encryption, audit logging and compliance with an overall posture score.", "should_trigger": true},
+{"query": "the KMS key policy in kms/app-key.json gives kms:* to the app role. is that bad? also is rotation on? give me fixes", "should_trigger": true},
+{"query": "least-privilege audit of the role policies under policies/ please. flag wildcards, missing condition keys, missing permission boundaries on the delegated admin role", "should_trigger": true},
+{"query": "We're going for SOC 2. Validate our bucket policies and CloudTrail setup: TLS enforcement (aws:SecureTransport), multi-region trail, log file validation, retention. Prioritize findings.", "should_trigger": true},
+{"query": "Can you check whether this resource policy on our S3 bucket accidentally allows public access? It's in infra/bucket-policy.json", "should_trigger": true},
+{"query": "re-check the policies in the updated security-design.md and compare with last week's report (reports/security-v1.md) - what got resolved, what's new", "should_trigger": true},
+{"query": "Is our CI deploy role over-privileged? It has PowerUserAccess attached plus an inline policy with iam:PassRole on *. Tell me what to tighten and the effort.", "should_trigger": true},
+{"query": "go through the role and key policies in this HIPAA workload and tell me which statements violate least privilege, with recommended JSON for each", "should_trigger": true},
+{"query": "Write me a least-privilege IAM policy for a Lambda that reads from one DynamoDB table and writes to an SQS queue", "should_trigger": false},
+{"query": "Review lib/storage-stack.ts CDK code for missing alarms, DLQs, removal policies and cost issues", "should_trigger": false},
+{"query": "my lambda is getting AccessDenied on s3:GetObject even though the policy allows it, help debug", "should_trigger": false},
+{"query": "Do a STRIDE threat model for the payments API including trust boundaries", "should_trigger": false},
+{"query": "Generate penetration-style security tests for our login endpoint", "should_trigger": false},
+{"query": "We got a pen test finding about an open S3 bucket - make a remediation plan with verification steps", "should_trigger": false},
+{"query": "Check our DynamoDB table design for hot partitions and GSI over-projection", "should_trigger": false},
+{"query": "Explain the difference between identity-based and resource-based policies with examples", "should_trigger": false},
+{"query": "scan the repo for hardcoded AWS access keys and secrets", "should_trigger": false},
+{"query": "write an SCP for our org that denies everything outside us-east-1 and eu-west-1", "should_trigger": false}
+]

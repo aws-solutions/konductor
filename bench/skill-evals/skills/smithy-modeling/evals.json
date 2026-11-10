@@ -1,0 +1,84 @@
+{
+  "skill_name": "smithy-modeling",
+  "evals": [
+    {
+      "id": 0,
+      "name": "library-multifile-shared-types",
+      "scenario_prompt_id": "plib",
+      "prompt": "Write a Smithy 2.0 model for a Library service that the web team will generate a TypeScript client and an OpenAPI spec from. Books: create, get, update (full replace), delete, list (filter by author). Members: create, get, list. Loans: check out a book, return a book, list loans for a member, get a loan. A book has an ISBN (13 digits), title (1-300 chars), author, and copies available. Members have an email (PII). A Reservations service the team is building next quarter must reuse the Book and Member types and the common error shapes without copying them. Put the model under model/ and add a smithy-build.json at the root. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "expected_output": "Fourteen operations and types shared with a second service: the new skill moves file-organization guidance into references/file-organization.md and cues it at the output step when there are 10+ operations or shared types. Tests whether the split, shared-type placement and smithy-build.json sources still come out right.",
+      "files": [],
+      "expectations": [
+        "Model files use IDL v2 with a reverse-DNS namespace and smithy-build.json is valid JSON",
+        "The model is split into two or more .smithy files under model/ and every one is covered by smithy-build.json sources/imports",
+        "Every operation has @http; get/list operations are @readonly; full-replace update (PUT) and delete are @idempotent; create/checkout use POST with an idempotency token or a note on retries",
+        "Specific client errors (404 not found, 400 validation, 409 conflict e.g. no copies available or already returned) with @error and @httpError are attached per operation, not all errors on every operation; list operations are @paginated with inputToken/outputToken/pageSize and a max page size",
+        "Shapes are constrained and documented: ISBN has a 13-digit @pattern, title @length(min:1,max:300), copies available has @range(min:0), member email is @sensitive, @httpLabel members are @required, and public shapes carry /// docs",
+        "Files are split by concern (for example service, per-resource operations, shared types, errors) and Book, Member and the common errors sit in a shared file or namespace the future Reservations service can import, with the split explained",
+        "The model is plausibly valid Smithy: cross-file references resolve (same namespace or `use` statements), no invented traits, and smithy-build.json lists the model sources plus an openapi (or typescript) plugin/projection"
+      ],
+      "scripted_checks": [
+        {
+          "text": "Model files use IDL v2 with a reverse-DNS namespace and smithy-build.json is valid JSON",
+          "check": "grep -rqE '^\\$version: *\"2(\\.0)?\"' model && grep -rqE '^namespace [a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+' model && python3 -c \"import json;json.load(open('smithy-build.json'))\""
+        },
+        {
+          "text": "The model is split into two or more .smithy files under model/ and every one is covered by smithy-build.json sources/imports",
+          "check": "python3 -I ${SKILL_EVAL_DIR}/checks/check_sources.py"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "fix-inventory-draft",
+      "scenario_prompt_id": "p3",
+      "prompt": "A teammate wrote model-draft/inventory.smithy. No clients have been generated from it yet. Review it against Smithy best practices and fix it in place so it is ready for client codegen. List what you changed, most severe first, in model-draft/CHANGES.md. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "expected_output": "The skill's quality gate orders the fixes (CRITICAL: namespace, missing @http, no error shapes, @httpLabel members not @required; IMPORTANT: docs, pagination, constraints) and its anti-pattern list covers snake_case and missing @sensitive. A strong answer also reasons about whether renaming members is a wire-breaking change.",
+      "files": [
+        "fixtures/smithy-modeling/"
+      ],
+      "expectations": [
+        "CHANGES.md exists and the draft has no snake_case members left",
+        "All planted defects are fixed (KEY: namespace, snake_case, PutItem no @http, GetItem not @readonly, DeleteItem not @idempotent, ListItems not @paginated, no errors, @httpLabel not @required, no docs, supplier key not @sensitive, qty no @range): At least 10 of 11 fixed",
+        "CHANGES.md is ordered by the skill's severity tiers: CRITICAL items (namespace, @http, errors, required labels) listed before IMPORTANT (docs, pagination, constraints) and SUGGESTION",
+        "Wire-compatibility of renames is considered: Notes that camelCase renames change restJson wire names and are safe only because no clients exist (or uses @jsonName)",
+        "Fixes stay within the draft's intent: No new operations beyond what the draft implies; PutItem given a sensible URI with an explained choice"
+      ],
+      "scripted_checks": [
+        {
+          "text": "CHANGES.md exists and the draft has no snake_case members left",
+          "check": "test -f model-draft/CHANGES.md && ! grep -qE '^\\s+[a-z]+_[a-z_]+\\s*:' model-draft/inventory.smithy"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "single-file-restjson-build-deps",
+      "scenario_prompt_id": "pnotes",
+      "prompt": "Write a Smithy 2.0 model in model/notes.smithy for a small Notes service that uses the AWS restJson1 protocol. Operations: create a note, get a note, list notes, and delete a note. A note has a title (1-200 chars) and a body. CI will run `smithy validate` on the model from the repository root, so whatever it needs to resolve must be in the repo. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in the file.",
+      "expected_output": "Round 2 added that a model using aws.protocols#restJson1 needs a smithy-build.json listing software.amazon.smithy:smithy-aws-traits under maven.dependencies, even when no code generation is asked for. The prompt asks only for validation, not codegen, and has four operations so the one-file path applies.",
+      "files": [],
+      "expectations": [
+        "smithy-build.json exists at the root and lists software.amazon.smithy:smithy-aws-traits under maven.dependencies, so `smithy validate` can resolve aws.protocols#restJson1",
+        "model/notes.smithy is IDL v2 and applies @restJson1 to the service, imported with `use aws.protocols#restJson1` or the absolute shape ID",
+        "Every operation has @http; get and list are @readonly; delete is @idempotent; create uses POST with an @idempotencyToken member or a note on why retries are unsafe; list is @paginated with inputToken/outputToken/pageSize",
+        "Specific errors (404 not found, 400 validation) carry @error and @httpError and are attached per operation; title has @length(min: 1, max: 200); every @httpLabel member is @required; public shapes have /// docs or @documentation",
+        "The model stays in one .smithy file (four operations need no split) and smithy-build.json sources cover it"
+      ],
+      "scripted_checks": [
+        {
+          "text": "smithy-build.json exists at the root and lists software.amazon.smithy:smithy-aws-traits under maven.dependencies, so `smithy validate` can resolve aws.protocols#restJson1",
+          "check": "python3 -c \"import json;b=json.load(open('smithy-build.json'));d=(b.get('maven') or {}).get('dependencies') or [];assert any(str(x).startswith('software.amazon.smithy:smithy-aws-traits') for x in d), d\""
+        },
+        {
+          "text": "model/notes.smithy is IDL v2 and applies @restJson1 to the service, imported with `use aws.protocols#restJson1` or the absolute shape ID",
+          "check": "f=model/notes.smithy; grep -qE '^\\$version: *\"2(\\.0)?\"' $f && grep -qE 'aws\\.protocols#restJson1' $f && grep -qE '^\\s*@(aws\\.protocols#)?restJson1\\b' $f"
+        },
+        {
+          "text": "The model stays in one .smithy file (four operations need no split) and smithy-build.json sources cover it",
+          "check": "test \"$(find . -name '*.smithy' -not -path './SCRATCH_CLAUDE_CONFIG/*' | wc -l)\" -eq 1 && python3 -c \"import json,os;b=json.load(open('smithy-build.json'));s=[os.path.normpath(x) for x in b.get('sources',[])+b.get('imports',[])];assert any(os.path.normpath('model/notes.smithy')==x or os.path.normpath('model/notes.smithy').startswith(x.rstrip('/')+'/') for x in s), s\""
+        }
+      ]
+    }
+  ]
+}
