@@ -270,6 +270,9 @@ not per individual commit.
   `plan-review` has a SHIP IT template and star rules that don't overlap, and
   `trade-off-evaluator` writes to the caller's output directory or reports inline. The
   `external-research` AWS example states a checked fact instead of a wrong one.
+  `program-decision-docs` treats fewer than 2 options, counting do nothing, as CRITICAL.
+  `non-functional-requirements` asks for targets per operation type. `design-evaluation` does
+  not prompt when a SOP runs it. `trade-off-evaluator` writes no file standalone unless asked.
 - Skill bodies no longer contradict themselves or the codebase. `backend-development` and
   `backend-review` keep a facade, factory or repository layering only when the codebase already
   uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes
