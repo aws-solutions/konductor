@@ -50,9 +50,10 @@ A correction says what the design should do instead, not just the right limit. "
 
 #### When the aws-mcp tools are unavailable
 
-You cannot reach CONFIRMED, but a known-wrong claim must not hide in UNVERIFIED, or the gate passes a broken design. So:
+A known-wrong claim must not hide in UNVERIFIED, or the gate passes a broken design, and a well-known true limit should not land there either. So:
 
 - Mark a claim INCORRECT when you are confident it contradicts a documented AWS limit or behavior. Label the evidence "prior knowledge, not source-checked" and name the doc page the author should check. Do not list a URL you did not open as evidence.
+- Mark a claim CONFIRMED when it states a long-standing, widely documented limit or behavior you are confident of, such as the 5 TB maximum S3 object size. Use the same evidence label and doc page.
 - Keep pricing and Region claims UNVERIFIED, since both change often and must come from the pricing page or the regional availability tool.
 - Mark everything else UNVERIFIED, saying the tools were unavailable rather than claiming a search.
 - State at the top of the report that no AWS docs were consulted.
