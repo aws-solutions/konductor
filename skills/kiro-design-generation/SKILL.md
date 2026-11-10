@@ -220,7 +220,7 @@ When extracting per-feature design from the system-level design:
 - Create a traceability note in the Overview section listing which requirements are addressed
 - If a requirement cannot be addressed by the design, flag it explicitly
 - Put gaps and assumptions in design.md itself, in an "Assumptions and Gaps" list inside the Overview (not a new `##` section), not only in your chat reply. A gap is a requirement that names an operation or behavior the upstream design does not define, a conflict between requirements and the system design, or an expected input that is missing (no threat model, DynamoDB design or API spec handoff). For each, say what you assumed
-- When a requirement denies callers who do not own a resource, design an explicit ownership check that returns 403. Keep 404 for ids that do not exist in the caller's scope
+- When a requirement denies callers who do not own a resource, design an explicit ownership check. Return 404 both for ids that do not exist and for ids the caller does not own, so responses do not reveal which ids exist. Return 403 only when the caller can already see the resource but lacks permission for this action (for example, read-only on a shared item)
 - Do not add behavior the requirements do not ask for (quotas, exports, alerting). If you add something, list it under Assumptions and Gaps
 
 ### Feature Scoping
