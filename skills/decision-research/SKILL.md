@@ -1,6 +1,6 @@
 ---
 name: decision-research
-description: Use before an ADR, decision record or tool or migration choice to research current state, prior decisions, alternatives, trade-offs, constraints and evidence. Also use after rubric-based quality checks (Maker-Checker Pattern) to validate an artifact's factual claims and surface prior art it missed. Slack threads and exports count as sources.
+description: Use before an ADR, decision record or tool or migration choice to research current state, prior decisions, alternatives, trade-offs, constraints and evidence. Also use after rubric-based quality checks (Maker-Checker Pattern) to surface prior art and missing context an artifact overlooks; doc-accuracy-analyzer checks the claims. Slack threads and exports count as sources.
 ---
 
 # Decision Research
