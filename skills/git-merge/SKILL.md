@@ -92,6 +92,8 @@ git commit -m "Merging origin/<ref> into <current_branch>"
 git push origin <current_branch>
 ```
 
+If `<current_branch>` is `<default-branch>`, repeat the Phase 2 confirmation first: show `git log --oneline -3` and `git diff --stat origin/<default-branch>..HEAD`, then push only after the user confirms again. A confirmation given before the rejection does not cover the new merge.
+
 Never force-push and never rebase a branch others have pulled; both rewrite history they already have. In a runbook, state that rule in words rather than as a command a reader could paste.
 
 ### Phase 3: Tag release (if applicable)
