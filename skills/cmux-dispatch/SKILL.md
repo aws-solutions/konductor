@@ -24,7 +24,7 @@ Use this skill when:
 - User says "delegate", "spawn", "run this in a new tab/pane", "have X agent investigate"
 - User wants parallel work visible in cmux rather than hidden sub-agents
 
-On Claude Code, the pane runs `claude -p` with `--dangerously-skip-permissions`: print mode can't stop for a permission prompt, so tool calls run without approval. Dispatch only tasks you would approve unattended.
+On Claude Code, the pane runs `claude -p` with `--dangerously-skip-permissions`: print mode can't stop for a permission prompt, so tool calls run without approval. Before dispatching a task that pushes, deletes, deploys, or reads untrusted input (repo files from others, issue text, web pages), ask the user in your own turn first, or tell them to run it from base konductor.
 
 **You MUST immediately run the dispatch script without pre-checking the environment.** The script handles all validation (cmux availability, CMUX_WORKSPACE_ID) and exits with a clear error if anything is missing.
 
