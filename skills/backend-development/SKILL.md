@@ -36,6 +36,8 @@ Prefer simple, minimal solutions. Only add abstractions or patterns (Strategy, O
 ### General
 
 - Read the complete file before changing it.
+- Make minimal changes, only fix the specific issue.
+- Follow established patterns in the codebase.
 - Keep changes backward compatible; a breaking change needs a migration path.
 
 ### Handler Patterns
