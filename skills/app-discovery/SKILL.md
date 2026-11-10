@@ -87,7 +87,7 @@ For every form on each page, apply the `dom-inspection` skill:
 - Capture error message selectors and exact error text
 - Identify conditional field visibility and cross-field business rules
 
-See `skills/dom-inspection/SKILL.md` for the full inspection protocol and output schema.
+See `skills/dom-inspection/SKILL.md` for the Inspection Protocol and the Report Schema.
 
 ### Phase 6: Cleanup
 
@@ -119,7 +119,7 @@ Produce a discovery report with this structure:
 | ... | ... | ... | ... | ... | ... |
 
 **Forms:**
-{dom-inspection output per form — see dom-inspection skill for schema}
+{dom-inspection output per form, using the Report Schema in dom-inspection's SKILL.md}
 
 **Failed paths:** {list of URLs or actions that failed, with reason}
 ```
