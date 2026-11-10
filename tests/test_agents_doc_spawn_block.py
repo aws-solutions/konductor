@@ -27,14 +27,16 @@ def test_specialist_row_qualifies_kiro_v2_until_the_strip():
     row = next(line for line in AGENTS_MD.splitlines() if line.startswith("| every `k-*` specialist |"))
     assert row == (
         "| every `k-*` specialist | **nothing** in Kiro CLI v3 "
-        "(v2: an empty target list, see the bullet above) | **nothing** |"
+        "(v2: nothing once #149 lands, see the bullet above) | **nothing** |"
     )
 
 
-def test_kiro_v2_bullet_names_the_empty_target_list():
-    """Until the v2 tool list drops `subagent`, the empty `toolsSettings.subagent` lists are
-    what leaves a v2 specialist nothing to spawn; the guide must not call v2 uncovered."""
+def test_kiro_v2_bullet_says_the_empty_target_list_is_not_a_block():
+    """A kiro-cli 2.36.0 v2 probe showed an empty `availableAgents` list allows every agent,
+    so v2 is covered only once #149 drops `subagent` from the specialists' tool list."""
     v2 = bullet("- Kiro CLI v2", "\nThe block covers")
-    assert "every specialist carries an empty\n  `toolsSettings.subagent` target list, so it has no agent to spawn" in v2
+    assert "target list every specialist carries does not stop a spawn" in v2
+    assert "v2 specialists lose the `subagent`\n  tool when #149 lands, and #124 merges together with #149." in v2
+    assert "no agent to spawn" not in AGENTS_MD
     assert "not covered" not in AGENTS_MD
     assert "relies on the prompt rule" not in AGENTS_MD
