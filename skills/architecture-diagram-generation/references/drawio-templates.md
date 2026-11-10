@@ -7,7 +7,7 @@ Read this when generating the XML: it holds the single-account and multi-account
 ### Single Account Architecture Template
 
 ```xml
-<mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827">
+<mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900">
   <root>
     <mxCell id="0"/>
     <mxCell id="1" parent="0"/>
@@ -16,28 +16,42 @@ Read this when generating the XML: it holds the single-account and multi-account
     <mxCell id="title" value="{SYSTEM_NAME} - {ENVIRONMENT} Architecture"
            style="text;fontSize=20;fontStyle=1;align=center;fillColor=none;"
            vertex="1" parent="1">
-      <mxGeometry x="400" y="20" width="400" height="30" as="geometry"/>
+      <mxGeometry x="500" y="20" width="400" height="30" as="geometry"/>
     </mxCell>
 
     <!-- AWS Account -->
     <mxCell id="account" value="AWS Account: {ACCOUNT_NAME} ({ACCOUNT_ID})"
-           style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontSize=14;fontStyle=1;"
+           style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;fontSize=14;fontStyle=1;verticalAlign=top;"
            vertex="1" parent="1">
-      <mxGeometry x="50" y="80" width="1100" height="700" as="geometry"/>
+      <mxGeometry x="50" y="80" width="1300" height="730" as="geometry"/>
+    </mxCell>
+
+    <!-- Global services: inside the account, outside any region -->
+    <mxCell id="global" value="Global services"
+           style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;fontSize=12;fontStyle=1;verticalAlign=top;"
+           vertex="1" parent="1">
+      <mxGeometry x="70" y="120" width="180" height="650" as="geometry"/>
     </mxCell>
 
     <!-- Region -->
     <mxCell id="region" value="Region: {REGION_NAME}"
-           style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;dashed=1;fontSize=12;fontStyle=1;"
+           style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;dashed=1;fontSize=12;fontStyle=1;verticalAlign=top;"
            vertex="1" parent="1">
-      <mxGeometry x="80" y="120" width="1040" height="620" as="geometry"/>
+      <mxGeometry x="270" y="120" width="1060" height="650" as="geometry"/>
+    </mxCell>
+
+    <!-- Regional services: inside the region, outside the VPC -->
+    <mxCell id="regional" value="Regional services"
+           style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;fontSize=12;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;"
+           vertex="1" parent="1">
+      <mxGeometry x="300" y="160" width="1000" height="120" as="geometry"/>
     </mxCell>
 
     <!-- VPC -->
     <mxCell id="vpc" value="VPC: {VPC_NAME}"
-           style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;dashed=1;fontSize=12;"
+           style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;dashed=1;fontSize=12;verticalAlign=top;"
            vertex="1" parent="1">
-      <mxGeometry x="110" y="160" width="980" height="540" as="geometry"/>
+      <mxGeometry x="300" y="300" width="1000" height="440" as="geometry"/>
     </mxCell>
   </root>
 </mxGraphModel>
@@ -85,25 +99,27 @@ Read this when generating the XML: it holds the single-account and multi-account
 ### AWS Service Icon Examples
 
 ```xml
+<!-- Coordinates assume the single-account template's regional services band (y=160..280) -->
+
 <!-- API Gateway -->
 <mxCell id="api_gateway" value="REST API"
        style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#FF4F8B;gradientDirection=north;fillColor=#BC1356;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;"
        vertex="1" parent="1">
-  <mxGeometry x="300" y="300" width="78" height="78" as="geometry"/>
+  <mxGeometry x="400" y="180" width="78" height="78" as="geometry"/>
 </mxCell>
 
-<!-- Lambda Function -->
+<!-- Lambda Function (no VPC config) -->
 <mxCell id="lambda" value="Task Service"
        style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#F78E04;gradientDirection=north;fillColor=#D05C17;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;"
        vertex="1" parent="1">
-  <mxGeometry x="500" y="300" width="78" height="78" as="geometry"/>
+  <mxGeometry x="600" y="180" width="78" height="78" as="geometry"/>
 </mxCell>
 
 <!-- DynamoDB -->
 <mxCell id="dynamodb" value="Tasks DB"
        style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#4D72F3;gradientDirection=north;fillColor=#3334B9;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.dynamodb;"
        vertex="1" parent="1">
-  <mxGeometry x="700" y="300" width="78" height="78" as="geometry"/>
+  <mxGeometry x="800" y="180" width="78" height="78" as="geometry"/>
 </mxCell>
 
 <!-- Connection Arrow -->
@@ -111,8 +127,8 @@ Read this when generating the XML: it holds the single-account and multi-account
        style="endArrow=classic;html=1;rounded=0;strokeColor=#0066CC;strokeWidth=2;"
        edge="1" parent="1" source="api_gateway" target="lambda">
   <mxGeometry width="50" height="50" relative="1" as="geometry">
-    <mxPoint x="400" y="400" as="sourcePoint"/>
-    <mxPoint x="450" y="350" as="targetPoint"/>
+    <mxPoint x="478" y="219" as="sourcePoint"/>
+    <mxPoint x="600" y="219" as="targetPoint"/>
   </mxGeometry>
 </mxCell>
 ```
@@ -122,18 +138,20 @@ Read this when generating the XML: it holds the single-account and multi-account
 ### 1. Serverless Web Application XML
 
 ```xml
+<!-- Coordinates assume the single-account template: the user sits left of the account box, CloudFront in the global services column -->
+
 <!-- User -->
 <mxCell id="user" value="User"
        style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.user;"
        vertex="1" parent="1">
-  <mxGeometry x="100" y="200" width="78" height="78" as="geometry"/>
+  <mxGeometry x="-90" y="200" width="78" height="78" as="geometry"/>
 </mxCell>
 
 <!-- CloudFront -->
 <mxCell id="cloudfront" value="CDN"
        style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#945DF2;gradientDirection=north;fillColor=#5A30B5;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudfront;"
        vertex="1" parent="1">
-  <mxGeometry x="300" y="200" width="78" height="78" as="geometry"/>
+  <mxGeometry x="130" y="200" width="78" height="78" as="geometry"/>
 </mxCell>
 
 <!-- Connection -->
@@ -141,8 +159,8 @@ Read this when generating the XML: it holds the single-account and multi-account
        style="endArrow=classic;html=1;rounded=0;strokeColor=#0066CC;strokeWidth=2;"
        edge="1" parent="1" source="user" target="cloudfront">
   <mxGeometry width="50" height="50" relative="1" as="geometry">
-    <mxPoint x="200" y="300" as="sourcePoint"/>
-    <mxPoint x="250" y="250" as="targetPoint"/>
+    <mxPoint x="-12" y="239" as="sourcePoint"/>
+    <mxPoint x="130" y="239" as="targetPoint"/>
   </mxGeometry>
 </mxCell>
 ```
