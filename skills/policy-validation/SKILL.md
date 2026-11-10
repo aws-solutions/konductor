@@ -284,10 +284,10 @@ Check for:
 - Missing compliance validation checklists
 - Insufficient compliance evidence
 
-When the user or the design under review names a compliance framework, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open the `iam-policy-design` skill's `iam-policy-design/references/compliance-checklists.md` for the GDPR, HIPAA, PCI-DSS, and SOC 2 controls, the checks to run, when to flag CRITICAL, and the citations to give. Skills install side by side, so it sits next to this skill's directory. If it is not there, use these minimums and say in the report that the full checklist was unavailable:
+When the user or the design under review names a compliance framework, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open the `iam-policy-design` skill's `iam-policy-design/references/compliance-checklists.md` for the GDPR, HIPAA, PCI-DSS, and SOC 2 controls, the checks to run, when to flag CRITICAL, and the citations to give. Skills install side by side, so it sits next to this skill's directory. If it is not there, use these minimums for each framework the design names or whose regulated data it handles, and say in the report that the full checklist was unavailable:
 
-- **GDPR**: encryption at rest and in transit (Article 32), deletion through lifecycle rules or TTL (Article 17), EU-region residency
-- **HIPAA**: PHI encrypted with customer-managed KMS keys (§164.312(a)(2)(iv)), audit controls (§164.312(b)), MFA for PHI access, no PHI in logs, a signed BAA
+- **GDPR**: encryption at rest and in transit (Article 32), deletion through lifecycle rules or TTL (Article 17), personal data kept in the regions the design permits, with any transfer outside the EU/EEA documented and covered by an adequacy decision or SCCs (Articles 44-46)
+- **HIPAA**: PHI encrypted at rest with KMS (§164.312(a)(2)(iv)); customer managed keys are a recommendation, not a CRITICAL finding, audit controls (§164.312(b)), MFA for PHI access, no PHI in logs, a signed BAA
 - **PCI-DSS**: cardholder data environment segmented (Requirement 1), cardholder data encrypted (Requirement 3), MFA for privileged access
 - **SOC 2**: least-privilege logical access (CC6.1), encryption (CC6.7), security monitoring (CC7.2)
 

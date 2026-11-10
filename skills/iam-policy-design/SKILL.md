@@ -105,7 +105,7 @@ Ask discovery questions:
 - AWS services and architecture pattern
 - Primary actors/roles and their actions
 - Data classification levels and sensitive data types
-- Compliance frameworks and deployment region (if the user names GDPR, HIPAA, PCI-DSS, or SOC 2, open `references/compliance-checklists.md` now and design STEP 3 and STEP 4 against it)
+- Compliance frameworks and deployment region (when the user or the design under review names GDPR, HIPAA, PCI-DSS, or SOC 2, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open `references/compliance-checklists.md` now and design STEP 3 and STEP 4 against it)
 - Primary security concerns and threat landscape
 - Existing security context and maturity level
 
@@ -213,7 +213,7 @@ Extract and document:
 - Access Patterns (map API endpoints to data access patterns)
 - Data Classification (extract sensitivity levels, map to encryption)
 - Threat Mitigations (map threats to security controls)
-- Compliance Requirements (extract frameworks, map to AWS controls; when an artifact or the user names GDPR, HIPAA, PCI-DSS, or SOC 2, open `references/compliance-checklists.md` for the controls to map)
+- Compliance Requirements (extract frameworks, map to AWS controls; when the user or the design under review names GDPR, HIPAA, PCI-DSS, or SOC 2, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open `references/compliance-checklists.md` for the controls to map)
 
 ### STEP 3: Integrated Design Process
 
@@ -226,7 +226,7 @@ Extract and document:
 
 Both modes end here. Map security controls to compliance requirements.
 
-When the user or an input artifact names a compliance framework (GDPR, HIPAA, PCI-DSS, SOC 2), open `references/compliance-checklists.md` (relative to this file) before writing this section. It has the full control checklist and the citations for each framework; the one-line summaries below are only a reminder of scope.
+When the user or the design under review names a compliance framework (GDPR, HIPAA, PCI-DSS, SOC 2), or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open `references/compliance-checklists.md` (relative to this file) before writing this section. It has the full control checklist and the citations for each framework; the one-line summaries below are only a reminder of scope.
 
 **GDPR:** Data encryption (at rest/in transit), access controls with audit logging, data deletion capabilities, data residency (EU regions), data portability, data processing agreements
 
