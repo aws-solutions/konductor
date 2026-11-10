@@ -131,7 +131,7 @@ Observe and record:
 
 These cannot be extracted statically — they require interaction. Trigger each observable rule and record the constraint.
 
-## Output Schema
+## Report Schema
 
 Produce a `dom-inspection-report.json` with this structure:
 
@@ -169,40 +169,13 @@ Produce a `dom-inspection-report.json` with this structure:
 }
 ```
 
-## Test Oracle Derivation
+## Test Oracles
 
-From the inspection report, derive these test cases for each field:
+Open `references/test-oracles.md` (relative to this file) when deriving test cases from a report. It holds the validation-trigger mapping and the constraint-to-test-case table.
 
-> **Safety note:** When `validation_trigger` is `unknown` (form submission safety could not be confirmed), test cases that involve submitting the form must be flagged as potentially unsafe and require explicit user confirmation before execution.
+## Cloudscape
 
-> **Trigger mapping:** "Trigger validation" in the table below means the action that matches the form's detected `validation_trigger`:
->
-> - `submit` → submit the form
-> - `blur` → tab out of the field without filling it
-> - `change` → type then clear the field
-> - `unknown` → flag as potentially unsafe; require explicit user confirmation before triggering
-
-| Constraint                | Test case                                                                                                                |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `required: true`          | Trigger validation with field empty → assert error message appears                                                       |
-| `pattern`                 | Trigger validation with non-matching value → assert error; trigger with matching value → assert no error                 |
-| `min` / `max`             | Trigger validation with value below min → assert error; above max → assert error; boundary values → assert pass          |
-| `minlength` / `maxlength` | Trigger validation with string shorter than minlength → assert error; longer than maxlength → assert truncation or error |
-| `type: email`             | Trigger validation with non-email string → assert error                                                                  |
-| `conditional_visibility`  | Set trigger field to trigger value → assert conditional field appears; set to other value → assert field hidden          |
-| `cross_field_rules`       | Violate the rule → assert error or blocked submission                                                                    |
-
-## Cloudscape-Specific Notes
-
-Cloudscape components wrap native HTML inputs — the validation attributes are on the inner `<input>` element, not the Cloudscape component wrapper. Always query the inner input:
-
-```javascript
-// Correct: query inner input inside Cloudscape wrapper
-document.querySelectorAll('[class*="awsui"] input, [class*="awsui"] select, [class*="awsui"] textarea');
-// Not: document.querySelectorAll('awsui-input')
-```
-
-Error messages in Cloudscape render in `[class*="error-text"]` or `[data-testid*="error"]` elements adjacent to the field wrapper, not via `aria-describedby` on the input itself.
+Open `references/cloudscape.md` (relative to this file) when the page uses Cloudscape (`awsui` class names). Validation attributes sit on the inner `<input>`, and error text is not linked through `aria-describedby`.
 
 ## Quality Gate
 

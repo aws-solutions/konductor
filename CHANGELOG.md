@@ -79,6 +79,10 @@ not per individual commit.
   `skills/sprint-planning/references/asana.md`, which the skill opens when the team uses Asana
   (81 skills). `sprint-planning` now also covers team-size capacity, sprint rollover, batch
   approval, and linking tasks to tickets and code reviews.
+- `historical-issues-registry`, `sop-state-management`, and `dom-inspection` moved detail that only
+  some runs need into `references/`: the multi-match precedence rule, the per-operation steps, and
+  the report schema, test-oracle table, and Cloudscape notes. Each `SKILL.md` says when to open
+  each file.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
