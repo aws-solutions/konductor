@@ -16,7 +16,7 @@ The orchestrator always dispatches via panes. The dispatch script selects the CL
 
 Spawn agent sessions in tmux or zellij panes so delegated work is visible, interactive, and course-correctable in real time. Auto-detects the active multiplexer via `$TMUX` (tmux) or `$ZELLIJ` (zellij).
 
-On Claude Code, the pane runs `claude -p` with `--dangerously-skip-permissions`: print mode can't stop for a permission prompt, so tool calls run without approval. Before dispatching a task that pushes, deletes, deploys, or reads untrusted input (repo files from others, issue text, web pages), ask the user in your own turn first, or tell them to run it from base konductor.
+On Claude Code, the pane runs `claude -p` with `--dangerously-skip-permissions`: print mode can't stop for a permission prompt, so tool calls run without approval. Before dispatching a task that pushes, deletes, deploys, or reads untrusted input (repo files from others, issue text, web pages), ask the user in your own turn first, or tell them to run it from base konductor. Say so in any plan or command list you hand the user, naming what the child may do unattended (edit, commit, push).
 
 **For cmux (macOS):** use the `cmux-dispatch` skill instead.
 
