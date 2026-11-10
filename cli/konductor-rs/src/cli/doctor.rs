@@ -6433,8 +6433,8 @@ mod tests {
         let destination = healthy_v3_target("orch-trust-dest", &exe);
         let home = home_with_mode("orch-trust-home", COORDINATOR);
 
-        let trusted = check_orchestration(&destination, &destination, Some(&home));
-        assert_eq!(trusted.status, CheckStatus::Ok, "{}", trusted.summary);
+        let at_root = check_orchestration(&destination, &destination, Some(&home));
+        assert_eq!(at_root.status, CheckStatus::Ok, "{}", at_root.summary);
 
         fs::remove_dir(destination.join(".git")).unwrap();
         let result = check_orchestration(&destination, &destination, Some(&home));
