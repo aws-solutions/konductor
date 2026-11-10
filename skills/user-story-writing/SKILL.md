@@ -196,13 +196,13 @@ Two epics in the expected structure:
 - Acceptance criteria describe implementation details instead of observable behavior
 - Stories are too large to complete in one sprint (1-5 days)
 - Missing error conditions and edge cases in acceptance criteria
-- An epic outside 3-5 key objectives, or a story outside 3-8 acceptance criteria (count them)
 
 **IMPORTANT (should fix):**
 
 - Personas are generic ("user", "admin") instead of specific ("enterprise DevOps engineer")
 - Acceptance criteria use vague terms ("fast", "easy") instead of measurable outcomes
 - Stories missing performance or scale requirements where applicable
+- An epic outside 3-5 key objectives, or a story outside 3-8 acceptance criteria (count them; split or merge the story)
 
 **SUGGESTION:**
 
