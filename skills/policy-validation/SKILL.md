@@ -36,11 +36,11 @@ Overly permissive actions (wildcards without justification), missing condition k
 
 ## Severity Mapping
 
-The per-check "Flag as" lines follow this mapping. When a check and this list disagree, this list wins.
+The per-check "Flag as" lines follow this mapping. When a check and this list disagree, this list wins. The wildcard and cross-account tiers match the IAM checks in `infra-validation`.
 
 **CRITICAL:** one of the findings below.
 
-- Wildcard action or resource without a documented justification
+- `*` action, `*` resource, or `service:*` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) without a documented justification
 - Cross-account trust without `sts:ExternalId` or another condition key
 - `kms:*` granted to a non-admin principal
 - S3 bucket open to the public, an RDS instance or EBS volume with no encryption at rest, S3 or DynamoDB data that needs SSE-KMS or a customer managed key left on default keys, or no TLS enforcement where sensitive data moves
@@ -56,6 +56,8 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 - A trail that is single-region or skips global service events
 - CloudTrail logs not encrypted or without log file validation
 - KMS key rotation off for sensitive data where nothing requires it
+- `service:*` on other services (`ec2:*`, `cloudwatch:*`) without a documented justification
+- Cross-account trust that has a condition key but whose intent is unverified
 - Named actions beyond what the role needs, with no wildcard
 - Key administrators who can also decrypt
 - No permission boundary on a role with `iam:*` or `sts:AssumeRole`

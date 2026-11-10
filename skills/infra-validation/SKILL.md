@@ -391,16 +391,17 @@ Check EVERY IAM policy statement for:
 
 2. **Wildcard Actions** - Flag as CRITICAL
    - Search for: `"Action": "*"` or `actions: ["*"]`
-   - Search for: `"Action": "service:*"` on a data or credential service, for example `"s3:*"`
-   - `service:*` on any other service is CRITICAL when it can change code or permissions (`lambda:*`, which includes `lambda:UpdateFunctionCode`, `iam:*`, `sts:*`), and IMPORTANT otherwise (for example `ec2:*` or `cloudwatch:*`)
+   - Search for: `"Action": "service:*"` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, which includes `lambda:UpdateFunctionCode`, `iam:*`, `sts:*`)
+   - `service:*` on other services (`ec2:*`, `cloudwatch:*`) is IMPORTANT
 
 3. **Overly Permissive Actions** - Flag as IMPORTANT
    - A list of named actions broader than the code needs, with no wildcard. For example, a read-only Lambda granted `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject`
    - Should specify exact actions needed
 
-4. **Cross-Account Access** - Flag as IMPORTANT
+4. **Cross-Account Access**
    - Check for `Principal` with external account IDs
-   - Verify trust relationships are intentional
+   - CRITICAL when the trust has no `sts:ExternalId` or other condition key
+   - IMPORTANT when it is conditioned but its intent is unverified
 
 **Validation Command Examples**:
 
@@ -412,7 +413,7 @@ jq '.Resources | to_entries[] | select(.value.Type == "AWS::IAM::Policy") | sele
 jq '.Resources | to_entries[] | select(.value.Type == "AWS::IAM::Policy") | select(.value.Properties.PolicyDocument.Statement[].Action == "*")' template.json
 ```
 
-This skill covers wildcards and cross-account trust. Policy-level depth (condition keys, permission boundaries, KMS key policies, a policy score) belongs to `policy-validation`, which `k-architect` loads. If your agent doesn't have it, list those checks as out of scope in the report.
+This skill covers wildcards and cross-account trust, with the same tiers as the Severity Mapping in `policy-validation`. Policy-level depth (condition keys, permission boundaries, KMS key policies, a policy score) belongs to `policy-validation`, which `k-architect` loads. If your agent doesn't have it, list those checks as out of scope in the report.
 
 #### 2.2 Encryption Validation (MANDATORY)
 
@@ -821,7 +822,7 @@ If you did not systematically check ALL resources of a type, explicitly state th
 
 Use the same CRITICAL, IMPORTANT and SUGGESTION scale as the Quality Gate:
 
-- **CRITICAL** blocks deployment. Use it only for exposure, data loss or credential risk: the Quality Gate CRITICAL list, which covers public access, missing encryption the data requires, open ingress, missing deletion protection, hardcoded secrets and wildcard IAM.
+- **CRITICAL** blocks deployment. Use it only for exposure, data loss or credential risk: the Quality Gate CRITICAL list, which covers public access, missing encryption the data requires, open ingress, missing deletion protection, hardcoded secrets and the wildcard IAM cases rated CRITICAL above.
 - **IMPORTANT** is for operational and reliability gaps such as missing alarms, backups, DLQs, tracing, reserved concurrency or a hot partition key. They stay IMPORTANT even in production.
 - **SUGGESTION** is for cost, performance and code-quality improvements.
 
@@ -1164,13 +1165,15 @@ Provide thorough, actionable feedback that improves infrastructure quality and e
 - Security groups with `0.0.0.0/0` ingress on non-HTTP ports
 - No deletion protection, or a destroy-on-delete removal policy, on stateful resources (RDS, DynamoDB) in production
 - Hardcoded passwords, keys or tokens in code or environment variables
-- IAM statements with wildcard actions (`*`, or `service:*` on a data or credential service such as `s3:*`, or on a service that can change code or permissions such as `lambda:*`, `iam:*` or `sts:*`) or wildcard resources
+- IAM statements with wildcard actions (`*`, or `service:*` on a data, credential, code or permission service: `s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) or wildcard resources
+- Cross-account trust with no `sts:ExternalId` or other condition key
 
 **IMPORTANT (should fix):**
 
 - CloudWatch alarms not defined for key metrics
 - No backup configuration for stateful resources
-- IAM `service:*` on a service that holds no data and can't change code or permissions, such as `ec2:*`
+- IAM `service:*` on other services, such as `ec2:*` or `cloudwatch:*`
+- Cross-account trust that has a condition key but whose intent is unverified
 - Lambda functions without reserved concurrency limits, DLQ or tracing
 - Low-cardinality partition keys that create hot partitions
 
