@@ -221,7 +221,7 @@ Review Smithy models for correctness, completeness, and adherence to best practi
 
 ### 11. File Organization and Structure
 
-When the model spans more than one file, open the `smithy-modeling` skill's `smithy-modeling/references/file-organization.md` for the review checks and the layouts to recommend. Skills install side by side, so it sits next to this skill's directory.
+When the model spans more than one file or may need splitting, open the `smithy-modeling` skill's `smithy-modeling/references/file-organization.md` for the review checks and the layouts to recommend. Skills install side by side, so it sits next to this skill's directory.
 
 ## Review Process
 
