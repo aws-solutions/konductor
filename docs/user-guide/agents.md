@@ -160,8 +160,10 @@ This is enforced in config, not just in the prompt:
 - Claude Code: synth drops `Agent(...)`, `Task` and `Workflow` from every specialist's `tools`
   list and denies them with `disallowedTools` as well, so a specialist with no `tools` list is
   still blocked.
-- Kiro CLI v2: the `subagent` tool stays in `@builtin`; every specialist carries an empty
-  `toolsSettings.subagent` target list, so it has no agent to spawn.
+- Kiro CLI v2: the `subagent` tool stays in `@builtin`, and the empty
+  `toolsSettings.subagent` target list every specialist carries does not stop a spawn
+  (kiro-cli 2.36.0 let an empty list reach every agent). v2 specialists lose the `subagent`
+  tool when #149 lands, and #124 merges together with #149.
 
 The block covers the runtime's agent-spawning tools only, not shell. A specialist with shell
 access could still start a new agent session by running `kiro-cli` or `claude` from the shell.
@@ -169,9 +171,8 @@ access could still start a new agent session by running `kiro-cli` or `claude` f
 every specialist except `k-researcher` is granted `Bash` in Claude Code.
 
 The edges below are the orchestrator's tool grants. Specialists hold none in Kiro CLI v3 or
-Claude Code, and in Kiro CLI v2 their `subagent` target list is empty. A specialist does its
-own part, then returns a handoff note or a proposed parallel
-split to its caller.
+Claude Code, and none in Kiro CLI v2 once #149 lands. A specialist does its own part, then
+returns a handoff note or a proposed parallel split to its caller.
 
 ```mermaid
 %%{init:{'theme':'base','themeVariables':{'fontSize':'14px','primaryColor':'#eef2f7','primaryTextColor':'#0f172a','primaryBorderColor':'#40556e','lineColor':'#7a8899','textColor':'#0f172a','edgeLabelBackground':'#ffffff','clusterBkg':'#fafbfc','clusterBorder':'#c9d2dc'}}}%%
@@ -198,7 +199,7 @@ flowchart LR
 | `konductor` | the 8 specialists (an explicit allowlist, not "anything") | the same 8, via `Agent(...)`, plus `SendMessage` |
 | `konductor-mux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
 | `konductor-cmux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
-| every `k-*` specialist | **nothing** in Kiro CLI v3 (v2: an empty target list, see the bullet above) | **nothing** |
+| every `k-*` specialist | **nothing** in Kiro CLI v3 (v2: nothing once #149 lands, see the bullet above) | **nothing** |
 
 Run directly with no orchestrator, the caller is you and the note or split comes back to you.
 The adversarial review is the exception: only the orchestrators declare
@@ -210,7 +211,7 @@ The adversarial review is the exception: only the orchestrators declare
 `k-code-review-workflow` step 6 is an adversarial pass. That SOP is declared only by
 `k-developer`, which **cannot run the adversarial review** in Kiro CLI v3 or Claude Code:
 
-- Specialists hold no spawn tool there (see above; in Kiro CLI v2 their target list is empty).
+- Specialists hold no spawn tool there (see above; in Kiro CLI v2, once #149 lands).
 - The core rules tell a specialist to do such steps itself or return them to its caller.
 
 Step 6 has `k-developer` write the report, then end with a note asking the orchestrator to run
