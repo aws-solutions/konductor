@@ -1269,8 +1269,3 @@ SOP_EDITS += [
      "A task needing implementation causes a <strong style=\"color:var(--tx);font-weight:600\">specialist to spawn</strong>, visible in your session.",
      "A task needing implementation has konductor edit files itself and spawn a <strong style=\"color:var(--tx);font-weight:600\">k-* reviewer</strong> when the phase closes, visible in your session."),
 ]
-SOP_EDITS += [
-    ("troubleshooting 9: hook fallback for a shadowed install",
-     r'''A missing hook or rules file: run konductor update.", "doctor passes but''',
-     r'''A missing hook or rules file: run konductor update.", "Orchestration: auto (fallback: the install at <path> owns the konductor session but its session-start hook is not wired ...): a nearer Konductor install owns the session and its own hook is missing for this harness. Run konductor update in the path the line names. konductor doctor under coordinator runs the same persona load as the hook, so it reports an over-budget digest as failed and an install root outside your home that is not a git checkout root as warn.", "doctor passes but'''),
-]
