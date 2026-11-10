@@ -40,19 +40,25 @@ git push
 
 ### Phase 2: Merge feature branch into `<default-branch>`
 
-Only when the repo merges locally rather than through PRs; otherwise open a PR (see `code-review`).
+Decide first whether this repo merges locally or through PRs. If it uses PRs, or you can't tell, open a PR from `<feature_branch>` (see `code-review`) and stop here: skip Phases 3 and 4.
 
 ```bash
 git switch <default-branch>
 git pull
 git merge --no-ff --no-commit <feature_branch>
 # Fix any merge conflicts, verify build
-git commit -m "Merging <feature_branch> into <default-branch>"
-git log --oneline -3
-git diff --stat origin/<default-branch>..HEAD
+git diff --cached --stat
 ```
 
-Show the user the log and diff summary and ask them to confirm the push to `<default-branch>`. Run `git push` only after they confirm. If they do not confirm, or it is unclear whether the repo merges locally, undo the local merge with `git reset --keep origin/<default-branch>`, open a PR from `<feature_branch>` (see `code-review`), and stop: skip Phases 3 and 4.
+With the merge still staged, show the user the diff summary and ask them to confirm the merge into `<default-branch>`. If they decline, run `git merge --abort`, open a PR from `<feature_branch>` (see `code-review`), and stop: skip Phases 3 and 4. If they confirm:
+
+```bash
+git commit -m "Merging <feature_branch> into <default-branch>"
+git log --oneline -3
+git push
+```
+
+When an orchestrator dispatches this skill to a pane, the orchestrator asks for this confirmation in its own turn before dispatch, because a print-mode pane cannot ask.
 
 ### Phase 3: Tag release (if applicable)
 
