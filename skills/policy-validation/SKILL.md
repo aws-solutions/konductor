@@ -31,7 +31,7 @@ Overly permissive actions (wildcards without justification), missing condition k
 - Tell a security gap from a design decision. If the design justifies a choice (for example, "AWS-managed keys sufficient for Internal/Confidential data classification"), say so in the finding and present your recommendation as an alternative. With no justification, it is a gap.
 - Report only what the design missed. If it already has a "Compliance Gaps Identified" table, a SOC 2 checklist, threat mitigation tables, or remediation steps under "Next Steps and Recommendations", reference them, check that they are accurate, and add only new gaps. Repeating them lengthens the report without telling the maker anything new.
 - Rate every finding CRITICAL, IMPORTANT, or SUGGESTION, the scale the Quality Gate uses. Severity Mapping below says which findings go where.
-- A category header sets review order, not severity. A finding takes its severity from the check's Flag-as line; a check with no Flag-as line is IMPORTANT unless it is plainly hardening, which is SUGGESTION.
+- A category header sets review order, not severity. Take each finding's severity from Severity Mapping, which wins over a check's Flag-as line. A finding the mapping does not list, such as an unflagged check in CATEGORY 6-10, takes the check's Flag-as line, or IMPORTANT if it has none.
 - When asked to fix the policies instead of reporting, keep the access each policy exists to grant: scope it down, don't delete it. Write a change log with one entry per change giving the finding, its severity, and the before and after. Mark any value you made up, such as an ExternalId or a role ARN, as an assumption.
 
 ## Severity Mapping
@@ -47,6 +47,9 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 - No CloudTrail trail at all
 - KMS key rotation off where a named compliance framework or the design requires it
 - A compliance violation the checklists in CATEGORY 5 flag CRITICAL, or a threat with no control
+- Hardcoded secrets: keys, passwords or tokens in code, templates or plain environment variables
+- Unintended public access to a resource, data or endpoint the design means to keep private
+- Root account usage: root access keys, or the root user doing routine work
 
 **IMPORTANT:** a weakness that raises risk but leaves the data protected and the trail intact.
 
