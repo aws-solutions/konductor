@@ -137,7 +137,7 @@ When a design spans multiple features, use an anchor doc + per-feature sub-docum
 - Cross-cutting concerns: auth, observability, error handling, data flow between components
 - Does NOT contain feature-specific implementation detail
 
-**Per-feature sub-document** — follows a Minor Patch template:
+**Per-feature sub-document** — follows a short change template (problem, what changes, impact):
 
 - References the anchor doc for component definitions (do not redefine)
 - States which anchor components participate and their role in this feature
