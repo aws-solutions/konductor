@@ -121,7 +121,11 @@ How would you like to proceed?
      cross-examines the arguments, and returns a scored recommendation
 ```
 
-**Once per session per topic:** a later tradeoff on the same topic gets a lighter prompt. Name the new options in a line each and ask only "I found another decision point. Same treatment, or do you want to decide directly?", without the numbered menu or the time estimate.
+**Once per session per topic.** For a later tradeoff on the same topic, don't print the block or the numbered menu again. Write only this one line:
+
+```
+Another decision point: <Option A> vs <Option B>. Convene a panel, or decide directly?
+```
 
 If the user opts in, run the panel per the `deliberation-panel` skill's "Offering the Panel from a Host Skill" section, with `decision_domain` inferred from context (default `general-tradeoff`), then resume elicitation with the user's decision in the requirements summary. If `deliberation-panel` isn't available, offer to reason through the tradeoff together or decide directly.
 
