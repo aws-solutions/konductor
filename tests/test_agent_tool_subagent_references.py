@@ -78,8 +78,8 @@ CLAUDE_SPAWN_TOOLS = _rust_str_array(SPAWN_POLICY_RS.read_text(), "CLAUDE_SPAWN_
 
 
 def _is_empty_target_list(settings):
-    """`{"availableAgents": [], "trustedAgents": []}` leaves the Kiro CLI v2 `subagent`
-    tool nothing to spawn; it is the block the specialists carry, not a grant."""
+    """`{"availableAgents": [], "trustedAgents": []}` names no agent, so the spec grants
+    none; on Kiro CLI v2 it does not remove the `subagent` tool."""
     return isinstance(settings, dict) and settings.get("availableAgents") == [] and settings.get("trustedAgents") == []
 
 
@@ -114,8 +114,8 @@ def test_specialists_hold_no_spawn_grant():
 
 
 def test_specialists_carry_an_empty_kiro_v2_subagent_target_list():
-    """Kiro CLI v2's `@builtin` includes `subagent`, and the v2 output keeps it; the empty
-    lists give the tool no agent to spawn until the v2 tool list drops it."""
+    """Kiro CLI v2's `@builtin` includes `subagent`, and the v2 output keeps it. The empty
+    lists name no agent but do not stop a v2 spawn; #149 drops the tool."""
     failures = []
     for spec_path in sorted(AGENTS_DIR.glob("*.agent-spec.json")):
         spec = json.loads(spec_path.read_text())
