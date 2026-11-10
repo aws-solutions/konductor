@@ -324,7 +324,8 @@ fn check_skill_scope_consistency(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
 /// Warns, one line per specialist (non-orchestrator) agent, when its spec grants a spawn
 /// tool that the harness transformers strip from its output, so the spec
 /// and the synthed config cannot disagree unnoticed. An empty
-/// `toolsSettings.subagent` target list is the Kiro CLI v2 block, not a grant.
+/// `toolsSettings.subagent` target list is not a grant. It is not a block on
+/// Kiro CLI v2 either; #149 removes the tool.
 fn check_specialist_spawn_grants(agents: &[parser::ParsedAgentSpec]) -> Vec<String> {
     let mut warnings = Vec::new();
     for agent in agents.iter().filter(|agent| is_specialist(&agent.name)) {
