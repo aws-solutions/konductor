@@ -474,4 +474,4 @@ If the user hasn't considered something critical:
 - Could add explicit data flow descriptions for each component
 - Could identify cost optimization opportunities in the architecture
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]". If `scope_confirmed` is true, report all the findings and leave fixing to the caller, without asking. In no-questions mode, fix them yourself as described above.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]". If `scope_confirmed` is true, report all the findings and leave fixing to the caller, without asking. In no-questions mode, fix them yourself as described above. If both apply, `scope_confirmed` wins: the caller owns the fix step, so report the findings and leave fixing to the caller. Fix the findings yourself only in no-questions mode without `scope_confirmed`.

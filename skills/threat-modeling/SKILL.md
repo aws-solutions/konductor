@@ -267,4 +267,4 @@ Default sections for the final document:
 
 - Could reference specific AWS security services for each mitigation
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]". Skip the question when `scope_confirmed` is true or the user asked for no questions: report the findings and leave fixing to the caller, or fix them yourself if you are producing the document unattended.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]". Skip the question when `scope_confirmed` is true or the user asked for no questions. If both apply, `scope_confirmed` wins: the caller owns the fix step, so report the findings and leave fixing to the caller. Fix the findings yourself only in no-questions mode without `scope_confirmed`.

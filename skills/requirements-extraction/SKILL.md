@@ -325,4 +325,4 @@ The three files are the inputs for the `system-design-patterns` interview.
 - Marketing language left in, or the files copy the requirements doc instead of summarizing it
 - No Open Questions list, or one that misses stories without acceptance criteria
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]". If `scope_confirmed` is true, report all the findings and leave fixing to the caller, without asking. If the caller said not to ask questions, fix the CRITICAL and IMPORTANT findings yourself, then report what you fixed and what assumptions remain.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]". If `scope_confirmed` is true, report all the findings and leave fixing to the caller, without asking. If the caller said not to ask questions, fix the CRITICAL and IMPORTANT findings yourself, then report what you fixed and what assumptions remain. If both apply, `scope_confirmed` wins: the caller owns the fix step, so report the findings and leave fixing to the caller. Fix the findings yourself only in no-questions mode without `scope_confirmed`.

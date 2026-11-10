@@ -45,4 +45,4 @@ Check the targets against each other before finishing. Unit cost times volume mu
 - Could add NFRs for cold start latency if Lambda is used
 - Could define degraded mode behavior when targets cannot be met
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking. If the user said not to ask questions, fix the findings and report what changed.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking. If the user said not to ask questions, fix the findings and report what changed. If both apply, `scope_confirmed` wins: the caller owns the fix step, so report the findings and leave fixing to the caller. Fix the findings yourself only in no-questions mode without `scope_confirmed`.

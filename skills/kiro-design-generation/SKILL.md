@@ -341,4 +341,4 @@ Before presenting output, verify:
 - Could add performance considerations (expected latency, throughput)
 - Could add a "Future Considerations" section for known extensions
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking. If the user said not to ask questions, fix CRITICAL and IMPORTANT findings yourself and finish without the prompt.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking. If the user said not to ask questions, fix CRITICAL and IMPORTANT findings yourself and finish without the prompt. If both apply, `scope_confirmed` wins: the caller owns the fix step, so report the findings and leave fixing to the caller. Fix the findings yourself only in no-questions mode without `scope_confirmed`.
