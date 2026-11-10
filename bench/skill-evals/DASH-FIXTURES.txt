@@ -1,0 +1,4 @@
+skills/humanize-writing/fixtures/humanize-writing/docs/launch-post.md
+skills/humanize-writing/fixtures/humanize-writing/docs/oncall-notes.md
+skills/requirements-extraction/fixtures/requirements-extraction/requirements-planning/outputs/requirements-final.md
+skills/app-discovery/fixtures/app-discovery-p3/drafts/discovery-report.md
