@@ -28,13 +28,12 @@ Do NOT use when:
    - Problem / Background
    - Requirements (if the doc has requirements)
    - Solution Overview
-   - Decision Requested
+   - Decision Requested (if the doc asks reviewers to settle an open decision)
    - How It Works (with at least one diagram reference)
-   - Implementation Details
-   - Implementation Plan
+   - Implementation Details / Plan (one section can cover both)
    - Architecture Decision Records (if the doc has decisions; at least one ADR)
 
-   The list follows `design-doc-guidelines` Structure (outside-in), plus the two conditional sections. Flag each missing required section as an issue of type `missing_section`, and a conditional one only when its condition holds.
+   The list follows `design-doc-guidelines` Structure (outside-in). Match a section by its content, not its exact heading. Flag each missing required section as an issue of type `missing_section`, and a conditional one only when its condition holds.
 
 3. **Slop detection** — Scan every paragraph for the following issue types:
 
