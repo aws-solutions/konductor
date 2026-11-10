@@ -1,6 +1,6 @@
 ---
 name: workspace-skills
-description: 'Use after trial-and-error that worked, a course correction, or a user correction, or when the user says "save this as a skill" or "remember how to do this". Also use after an unexpected outcome that needed investigation, or when the user says "make this repeatable". Captures the reusable procedure as a project-specific workspace skill, with proactive capture, dedup, and provenance protection.'
+description: 'Use after trial-and-error that worked, a course or user correction, an unexpected outcome you had to investigate, or when the user says "save this as a skill". Also use when the user says "remember how to do this" or "make this repeatable". Captures the reusable procedure as a project-specific workspace skill, with proactive capture, dedup, and provenance protection.'
 origin: agent-created
 version: 4
 last_used: 2026-07-01
