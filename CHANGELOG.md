@@ -200,11 +200,12 @@ not per individual commit.
   examples for technical accuracy and threat models.
 - `requirements-extraction`, `user-story-writing`, and `system-design-patterns` now read as one
   set of instructions each, without a pasted prompt and its separate role. Repeated rules are
-  stated once. `system-design-patterns` lists its real five interview phases and four
-  documents, adds a non-functional requirements section to the design document, and points
-  follow-up work at konductor skills instead of prompts that don't exist. Its S3
-  Intelligent-Tiering advice now targets data with unknown or changing access patterns, not
-  infrequently accessed data.
+  stated once. `requirements-extraction` folds its checklist into the Quality Gate, so a missing
+  output file is CRITICAL and missing integration points are IMPORTANT. `system-design-patterns`
+  lists its real five interview phases and four documents, adds a non-functional requirements
+  section to the design document, and points follow-up work at konductor skills instead of
+  prompts that don't exist. Its S3 Intelligent-Tiering advice now targets data with unknown or
+  changing access patterns, not infrequently accessed data.
 
 ### Fixed
 
