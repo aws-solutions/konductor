@@ -6,3 +6,302 @@
 // usage in each harness's native unit. Local only; nothing is sent.
 
 mod collect;
+
+use std::collections::{BTreeMap, HashMap};
+use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
+
+use collect::{Harness, Record};
+
+const CACHE_REL: &str = ".konductor/usage/records.jsonl";
+
+/// Recorded agent name → Konductor agent name. Covers every CLI install
+/// (each tracked target, plus `$HOME` in case the index predates it) and
+/// the Claude Code marketplace plugin, whose agents are recorded as
+/// `<plugin>:<agent>`.
+fn konductor_agent_names(home: &Path) -> BTreeMap<String, String> {
+    let mut roots: Vec<PathBuf> = super::install::index::read_index_at_home(Some(home))
+        .ok()
+        .flatten()
+        .map(|idx| {
+            idx.installs
+                .into_iter()
+                .map(|e| PathBuf::from(e.target_dir))
+                .collect()
+        })
+        .unwrap_or_default();
+    if !roots.iter().any(|r| r == home) {
+        roots.push(home.to_path_buf());
+    }
+    let mut names: BTreeMap<String, String> = roots
+        .iter()
+        .flat_map(|r| super::telemetry_hook::installed_agent_names(r))
+        .map(|n| (n.clone(), n))
+        .collect();
+    let claude_dir = env_dir("CLAUDE_CONFIG_DIR", home, ".claude");
+    for (plugin, agent) in plugin_agent_names(&claude_dir.join("plugins")) {
+        names.insert(format!("{plugin}:{agent}"), agent);
+    }
+    names
+}
+
+/// The published marketplace plugin's name (`.claude-plugin/marketplace.json`).
+const KONDUCTOR_PLUGIN: &str = "konductor";
+
+#[derive(serde::Deserialize)]
+struct InstalledPlugins {
+    #[serde(default)]
+    plugins: BTreeMap<String, Vec<InstalledPlugin>>,
+}
+
+#[derive(serde::Deserialize)]
+struct InstalledPlugin {
+    #[serde(rename = "installPath")]
+    install_path: Option<PathBuf>,
+}
+
+/// `(plugin, agent)` for each agent of an installed Konductor plugin, read
+/// from `installed_plugins.json` (keys are `<plugin>@<marketplace>`) and
+/// each install's `agents/*.md`, the same way the plugin's own telemetry
+/// hook names them.
+fn plugin_agent_names(plugins_dir: &Path) -> Vec<(String, String)> {
+    let Some(installed) = std::fs::read(plugins_dir.join("installed_plugins.json"))
+        .ok()
+        .and_then(|b| serde_json::from_slice::<InstalledPlugins>(&b).ok())
+    else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for (key, installs) in installed.plugins {
+        let plugin = key.split('@').next().unwrap_or_default();
+        if plugin != KONDUCTOR_PLUGIN {
+            continue;
+        }
+        for path in installs.into_iter().filter_map(|i| i.install_path) {
+            for file in children(&path.join("agents")) {
+                let Some(name) = file.file_name().and_then(|n| n.to_str()) else {
+                    continue;
+                };
+                if let Some(agent) = name
+                    .strip_suffix(".md")
+                    .filter(|a| !a.is_empty() && !a.starts_with('_'))
+                {
+                    out.push((plugin.to_string(), agent.to_string()));
+                }
+            }
+        }
+    }
+    out
+}
+
+struct Source {
+    harness: Harness,
+    path: PathBuf,
+}
+
+fn env_dir(var: &str, home: &Path, default_rel: &str) -> PathBuf {
+    std::env::var_os(var)
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home.join(default_rel))
+}
+
+fn children(dir: &Path) -> Vec<PathBuf> {
+    std::fs::read_dir(dir)
+        .map(|it| it.filter_map(|e| e.ok().map(|e| e.path())).collect())
+        .unwrap_or_default()
+}
+
+fn has_ext(p: &Path, ext: &str) -> bool {
+    p.extension().is_some_and(|e| e == ext)
+}
+
+/// Every candidate session file across the three harnesses. Listing is
+/// cheap; parsing is gated on mtime and the cache in `refresh`.
+fn sources(home: &Path) -> Vec<Source> {
+    let mut out = Vec::new();
+    let claude_projects = env_dir("CLAUDE_CONFIG_DIR", home, ".claude").join("projects");
+    for project in children(&claude_projects)
+        .into_iter()
+        .filter(|p| p.is_dir())
+    {
+        for entry in children(&project) {
+            if entry.is_file() && has_ext(&entry, "jsonl") {
+                out.push(Source {
+                    harness: Harness::Claude,
+                    path: entry,
+                });
+            } else if entry.is_dir() {
+                for sub in children(&entry.join("subagents")) {
+                    if has_ext(&sub, "jsonl") {
+                        out.push(Source {
+                            harness: Harness::Claude,
+                            path: sub,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    let kiro_sessions = env_dir("KIRO_HOME", home, ".kiro").join("sessions");
+    for entry in children(&kiro_sessions.join("cli")) {
+        if has_ext(&entry, "json") {
+            out.push(Source {
+                harness: Harness::KiroCliV2,
+                path: entry,
+            });
+        }
+    }
+    for ws in children(&kiro_sessions)
+        .into_iter()
+        .filter(|p| p.is_dir() && !p.ends_with("cli"))
+    {
+        for session in children(&ws) {
+            let messages = session.join("messages.jsonl");
+            if messages.is_file() {
+                out.push(Source {
+                    harness: Harness::KiroV3,
+                    path: messages,
+                });
+            }
+        }
+    }
+    out
+}
+
+struct ScanOutcome {
+    unreadable: usize,
+}
+
+/// Parses each in-window source whose (mtime, size) changed since it was
+/// cached. Records for files the harness has since deleted are kept.
+fn refresh(
+    cache: &mut HashMap<String, Record>,
+    sources: &[Source],
+    cutoff: i64,
+    agents: &BTreeMap<String, String>,
+) -> ScanOutcome {
+    // A stub cached before its agent was installed must be re-parsed.
+    cache.retain(|_, r| {
+        r.konductor_agent.is_some() || !r.agent.as_ref().is_some_and(|a| agents.contains_key(a))
+    });
+    let mut unreadable = 0;
+    for src in sources {
+        let Ok(meta) = std::fs::metadata(&src.path) else {
+            unreadable += 1;
+            continue;
+        };
+        let mtime = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+            .map_or(0, |d| d.as_secs());
+        if (mtime as i64) < cutoff {
+            continue;
+        }
+        let key = src.path.to_string_lossy().into_owned();
+        if let Some(prev) = cache.get(&key) {
+            if prev.mtime == mtime && prev.size == meta.len() {
+                continue;
+            }
+        }
+        let mut rec = match src.harness {
+            Harness::Claude => collect::collect_claude(&src.path, mtime, meta.len()),
+            Harness::KiroCliV2 => collect::collect_kiro_v2(&src.path, mtime, meta.len()),
+            Harness::KiroV3 => collect::collect_kiro_v3(&src.path, mtime, meta.len()),
+        };
+        // Attribution is fixed at parse time, so renaming or uninstalling
+        // an agent later doesn't drop its history. Usage from
+        // non-Konductor sessions is never stored.
+        rec.konductor_agent = rec.agent.as_ref().and_then(|a| agents.get(a)).cloned();
+        if rec.konductor_agent.is_none() {
+            rec.models.clear();
+        }
+        cache.insert(key, rec);
+    }
+    ScanOutcome { unreadable }
+}
+
+fn load_cache(path: &Path) -> HashMap<String, Record> {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return HashMap::new();
+    };
+    text.lines()
+        .filter_map(|l| serde_json::from_str::<Record>(l).ok())
+        .map(|r| (r.path.clone(), r))
+        .collect()
+}
+
+fn save_cache(path: &Path, cache: &HashMap<String, Record>) -> std::io::Result<()> {
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    let mut keys: Vec<&String> = cache.keys().collect();
+    keys.sort();
+    let mut out = String::new();
+    for k in keys {
+        if let Ok(line) = serde_json::to_string(&cache[k]) {
+            out.push_str(&line);
+            out.push('\n');
+        }
+    }
+    super::atomic_write::write_atomic(path, out.as_bytes())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rec(agent: &str, matched: bool) -> Record {
+        let mut r = collect::tests_support::record(agent);
+        if !matched {
+            r.konductor_agent = None;
+        }
+        r
+    }
+
+    #[test]
+    fn stub_is_reparsed_once_its_agent_becomes_konductor() {
+        let agents = BTreeMap::from([("k-dev".to_string(), "k-dev".to_string())]);
+        let mut cache = HashMap::from([
+            ("stub".to_string(), rec("k-dev", false)),
+            ("other".to_string(), rec("claude", false)),
+            ("kept".to_string(), rec("k-dev", true)),
+            ("uninstalled-since".to_string(), rec("k-old", true)),
+        ]);
+        refresh(&mut cache, &[], 0, &agents);
+        assert!(!cache.contains_key("stub"));
+        assert!(cache.contains_key("other"));
+        assert!(cache.contains_key("kept"));
+        assert!(
+            cache.contains_key("uninstalled-since"),
+            "attribution is fixed at parse time"
+        );
+    }
+
+    #[test]
+    fn plugin_agents_are_read_from_installed_plugins() {
+        let d = std::env::temp_dir().join(format!(
+            "konductor-metrics-plugins-{}",
+            crate::cli::atomic_write::unique_suffix()
+        ));
+        let install = d.join("cache/konductor/konductor/1.0.0");
+        std::fs::create_dir_all(install.join("agents")).unwrap();
+        for f in ["k-developer.md", "_shared.md", "notes.txt"] {
+            std::fs::write(install.join("agents").join(f), "").unwrap();
+        }
+        let other = d.join("cache/x/other/1");
+        std::fs::create_dir_all(other.join("agents")).unwrap();
+        std::fs::write(other.join("agents/k-developer.md"), "").unwrap();
+        let installed = serde_json::json!({ "version": 2, "plugins": {
+            "konductor@konductor": [{ "installPath": install }],
+            "other@x": [{ "installPath": other }]
+        }});
+        std::fs::write(d.join("installed_plugins.json"), installed.to_string()).unwrap();
+        assert_eq!(
+            plugin_agent_names(&d),
+            vec![("konductor".to_string(), "k-developer".to_string())]
+        );
+        std::fs::remove_dir_all(&d).ok();
+    }
+}
