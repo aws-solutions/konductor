@@ -131,9 +131,47 @@ Observe and record:
 
 These cannot be extracted statically — they require interaction. Trigger each observable rule and record the constraint.
 
-## Report and Test Oracles
+## Report Schema
 
-Open `references/report-and-test-oracles.md` (relative to this file) when writing `dom-inspection-report.json` or deriving test cases from it. It holds the report JSON schema, the validation-trigger mapping, and the constraint-to-test-case table.
+Produce a `dom-inspection-report.json` with this structure:
+
+```json
+{
+  "page_url": "<url>",
+  "ui_framework": "cloudscape | material-ui | plain-html | unknown",
+  "forms": [
+    {
+      "form_selector": "<selector>",
+      "validation_trigger": "submit | blur | change | unknown",
+      "fields": [
+        {
+          "selector": "<most reliable selector>",
+          "label": "<exact visible label text>",
+          "type": "text | email | number | date | select | checkbox | radio | textarea",
+          "required": true,
+          "pattern": "<regex string or null>",
+          "min": "<value or null>",
+          "max": "<value or null>",
+          "minlength": "<number or null>",
+          "maxlength": "<number or null>",
+          "error_message_selector": "<selector for error element or null>",
+          "error_message_text": "<exact error string rendered on violation or null>",
+          "initially_hidden": false,
+          "conditional_visibility": {
+            "trigger_field_selector": "<selector or null>",
+            "trigger_value": "<value that makes this field appear or null>"
+          },
+          "cross_field_rules": ["<human-readable description of observable constraint>"]
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Test Oracles
+
+Open `references/test-oracles.md` (relative to this file) when deriving test cases from a report. It holds the validation-trigger mapping and the constraint-to-test-case table.
 
 ## Cloudscape
 
