@@ -5,7 +5,7 @@ A bare `references/x.md` resolves against the skill's own directory. A
 `<skill>/references/x.md` resolves against skills/<skill>/, since skills
 install side by side.
 
-Run:  python3 -m pytest tests/scripts/test_skill_reference_paths.py -v
+Run:  python3 -m pytest tests/test_skill_reference_paths.py -v
 """
 
 import re
@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / "skills"
 
 REFERENCE_RE = re.compile(r"(?<![\w./-])((?:[\w.-]+/)?references/[\w./-]*\w)")
