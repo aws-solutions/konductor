@@ -109,6 +109,20 @@ test('convertCheck maps simple commands, keeps safe pipelines as cmd and rejects
   assert.match(convertCheck('python3 -c "1"').unsupported, /python3/);
   assert.match(convertCheck('sha256sum -c sums.txt').unsupported, /sha256sum/);
   assert.match(convertCheck("grep -qiE 'verdict|ready' report.md").unsupported, /verdict/);
+  assert.match(convertCheck('grep -q x a.md && [ "$(md5sum b.docx | cut -d" " -f1)" = abc ]').unsupported, /md5sum/);
+});
+
+test('a prompt that forbids edits gets a fixture_unchanged guard when the fixture has files', () => {
+  const evals = tmp();
+  makeEvals(evals);
+  const file = path.join(evals, 'alpha', 'scenario.json');
+  const scen = JSON.parse(fs.readFileSync(file, 'utf8'));
+  scen.prompts[0].prompt = 'Review docs/a.md. Do not change any source files. Write report.md.';
+  fs.writeFileSync(file, JSON.stringify(scen));
+  const plan = lib.planSkill({ skill: 'alpha', evalsDir: evals });
+  const guard = { type: 'fixture_unchanged', path: '.', allowAdditions: true };
+  assert.deepEqual(plan.tasks.find((t) => t.task.id === 'si-alpha-p1').task.checks.at(-1), guard);
+  assert.ok(!plan.tasks.find((t) => t.task.id === 'si-alpha-e1').task.checks.some((c) => c.type === 'fixture_unchanged'));
 });
 
 test('eval cases: a paired case with the same prompt folds into its scenario, an eval-only case gets its own tagged task', () => {

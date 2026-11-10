@@ -9,6 +9,8 @@ const SAFE_COMMANDS = new Set([
   'test', '[', '[[', 'grep', 'egrep', 'fgrep', 'awk', 'sed', 'sort', 'uniq', 'wc', 'head', 'tail', 'cat', 'ls', 'find', 'echo', 'printf',
   'tr', 'cut', 'basename', 'dirname', 'diff', 'cmp', 'expr', 'node', 'sh', 'true', 'false', 'exit', 'read',
 ]);
+// Same pattern as the task validator: a prompt that forbids edits needs a fixture_unchanged check.
+const FORBIDS_EDITS = /do not (change|modify|delete|edit)[^.]*\b(tests?|source|code|files?)\b|without (changing|modifying) the tests/i;
 const LEADING_KEYWORDS = new Set(['!', 'do', 'then', 'else', 'elif', 'if', 'while', 'until', 'time']);
 const SKIPPED_WORDS = new Set(['done', 'fi', 'esac']);
 const HEADER_WORDS = new Set(['for', 'case', 'select']);
@@ -68,6 +70,11 @@ function splitOutside(cmd, seps) {
 /** The command word of every segment of the line, or null when the line cannot be read. */
 function commandWords(cmd) {
   const words = [];
+  for (const body of [...cmd.matchAll(/\$\(([^()]*)\)/g)].map((m) => m[1])) {
+    const inner = commandWords(body);
+    if (!inner) return null;
+    words.push(...inner);
+  }
   for (const seg of splitOutside(cmd, '|&;()`\n{}')) {
     let w = tokenize(seg).words;
     while (w.length && (LEADING_KEYWORDS.has(w[0]) || /^[A-Za-z_][A-Za-z0-9_]*=/.test(w[0]))) w = w.slice(1);
@@ -130,4 +137,4 @@ function convertCheck(cmd) {
   return { checks: [{ type: 'cmd', cmd: text, expectExit: 0 }] };
 }
 
-module.exports = { convertCheck, commandWords, simpleCheck, tokenize, splitOutside, SAFE_COMMANDS };
+module.exports = { FORBIDS_EDITS, convertCheck, commandWords, simpleCheck, tokenize, splitOutside, SAFE_COMMANDS };

@@ -10,7 +10,7 @@ const { spawnSync } = require('node:child_process');
 const { sha256, readJson, writeJson, plain } = require('./util.js');
 const { NO_QUESTIONS, JUDGES } = require('./emit.js');
 const { PROMPT_BANNED } = require('./scenarios.js');
-const { convertCheck } = require('./import-checks.js');
+const { convertCheck, FORBIDS_EDITS } = require('./import-checks.js');
 const { queryContentProblem } = require('../../cap/draft.js');
 
 const BENCH = path.resolve(__dirname, '..', '..');
@@ -222,6 +222,7 @@ function planSkill({ skill, evalsDir = EVALS_DIR, includeLimited = false }) {
     }
   }
   const add = (task, spec, extra) => {
+    if (FORBIDS_EDITS.test(task.prompt) && spec.files.length) task.checks.push({ type: 'fixture_unchanged', path: '.', allowAdditions: true });
     const tags = [...extra.tags];
     if (limited) tags.push('limited');
     candidates.push({ task, tags, fixture: spec, scenario: extra.scenario, evals: extra.evals });
