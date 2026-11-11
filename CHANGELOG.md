@@ -299,8 +299,7 @@ not per individual commit.
     `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server.
   - `policy-validation` checks the API Gateway `SecurityPolicy` property, treats the KMS key
     rotation period as configurable, uses the Security Hub CSPM name, and can run IAM Access
-    Analyzer policy validation. `aws-service-validator` falls back to the AWS Knowledge MCP
-    server when the AWS MCP tools are unavailable.
+    Analyzer policy validation.
 
 ### Fixed
 
