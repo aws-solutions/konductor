@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Every references/ path named in a skills/*/SKILL.md must exist.
+"""Every references/ path named in a skills/*/SKILL.md or skills/*/references/*.md must exist.
 
 A bare `references/x.md` resolves against the skill's own directory. A
 `<skill>/references/x.md` resolves against skills/<skill>/, since skills
@@ -39,13 +39,18 @@ NOT_LOCAL = {
 }
 
 
+def _skill_files():
+    for path in sorted([*SKILLS_DIR.glob("*/SKILL.md"), *SKILLS_DIR.glob("*/references/*.md")]):
+        skill = path.relative_to(SKILLS_DIR).parts[0]
+        yield skill, path
+
+
 def _reference_paths():
-    for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
-        skill = skill_md.parent.name
-        text = skill_md.read_text(encoding="utf-8")
+    for skill, source in _skill_files():
+        text = source.read_text(encoding="utf-8")
         for path in sorted(set(REFERENCE_RE.findall(text))):
             if (skill, path) not in NOT_LOCAL:
-                yield skill, path
+                yield source.relative_to(SKILLS_DIR).as_posix(), skill, path
 
 
 def _resolve(skill, path):
@@ -61,9 +66,13 @@ def test_reference_paths_are_found():
     assert REFERENCES, "no references/ paths found; the pattern is probably wrong"
 
 
-@pytest.mark.parametrize("skill,path", REFERENCES, ids=[f"{s}:{p}" for s, p in REFERENCES])
-def test_reference_path_exists(skill, path):
-    assert _resolve(skill, path).is_file(), f"skills/{skill}/SKILL.md names {path}, which does not exist"
+@pytest.mark.parametrize("source,skill,path", REFERENCES, ids=[f"{s}:{p}" for s, _, p in REFERENCES])
+def test_reference_path_exists(source, skill, path):
+    assert _resolve(skill, path).is_file(), f"skills/{source} names {path}, which does not exist"
+
+
+def test_reference_files_are_scanned():
+    assert any("/references/" in source for source, _, _ in REFERENCES), "no references/*.md file was scanned"
 
 
 def test_not_local_entries_are_still_named():
