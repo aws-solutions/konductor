@@ -9,7 +9,7 @@ tags: [skill, iam, security, policy, validation, checker, aws]
 
 ## Overview
 
-Reviews IAM policies, resource policies, and security configurations for overly permissive access, missing condition keys, compliance gaps, and anti-patterns.
+Reviews IAM policies, resource policies, and security configurations for overly permissive access, missing condition keys, compliance gaps, and anti-patterns. It also checks encryption coverage, audit logging, and threat-model coverage, and gives each finding a severity and a specific fix.
 
 ## Usage
 
@@ -25,32 +25,19 @@ Use this skill when:
 
 Overly permissive actions (wildcards without justification), missing condition keys on cross-account trust, resource-based policy gaps, and anti-patterns (inline policies, hardcoded ARNs, missing `ExternalId`).
 
-## Execution
+## Rules
 
-When this skill is activated, use the following as your full instruction set for validating the policies. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# Security Policy Validator (Checker)
-
-## Role Definition
-
-You are a security policy reviewer and AWS security expert. Your role is to:
-
-- Validate IAM policies against least privilege principles
-- Identify over-permissive access and security vulnerabilities
-- Verify encryption coverage and audit logging completeness
-- Validate compliance with regulatory frameworks
-- Provide specific, actionable remediation steps
-- Prioritize findings by security impact and urgency
+- Validate only policies with a concrete policy document: JSON, or CDK code with actual statements. A role that appears only in a table or description has nothing to check, so don't flag it, not even for a missing permission boundary.
+- Tell a security gap from a design decision. If the design justifies a choice (for example, "AWS-managed keys sufficient for Internal/Confidential data classification"), say so in the finding and present your recommendation as an alternative. With no justification, it is a gap.
+- Report only what the design missed. If it already has a "Compliance Gaps Identified" table, a SOC 2 checklist, threat mitigation tables, or remediation steps under "Next Steps and Recommendations", reference them, check that they are accurate, and add only new gaps. Repeating them lengthens the report without telling the maker anything new.
+- Rate every finding CRITICAL, IMPORTANT, or SUGGESTION, the scale the Quality Gate uses.
+- A category header sets review order, not severity. A finding takes its severity from the check's Flag-as line; a check with no Flag-as line is IMPORTANT unless it is plainly hardening, which is SUGGESTION.
 
 ## Validation Framework
 
 Validate security designs across these categories:
 
-### CATEGORY 1: IAM POLICY DESIGN (Critical Priority)
-
-**CRITICAL VALIDATION RULE**: Only validate IAM policies that have CONCRETE policy documents (JSON format or CDK code with actual policy statements). Do NOT flag roles that are only mentioned in tables or descriptions without actual policy definitions.
+### CATEGORY 1: IAM POLICY DESIGN (review first)
 
 Check for:
 
@@ -89,30 +76,12 @@ Check for:
 **Permission Boundary Validation**:
 
 - Check if delegated administration roles have permission boundaries
-- Flag as HIGH if missing for roles with `iam:*` or `sts:AssumeRole` permissions
+- Flag as IMPORTANT if missing for roles with `iam:*` or `sts:AssumeRole` permissions
 - Recommend managed policy boundaries like `PowerUserAccess` or custom boundaries
 
-**Policy Security Score Calculation (0-100)**:
+Score the category with the IAM Policy Security Score in STEP 4.
 
-```
-Base Score: 100
-Deductions:
-- Wildcard action without justification: -30 points
-- Wildcard resource without justification: -30 points
-- Missing IAM conditions: -10 points per policy
-- Over-permissive managed policies: -15 points
-- Missing permission boundaries: -20 points
-- Cross-account access without restrictions: -25 points
-
-Final Score = max(0, Base Score - Total Deductions)
-```
-
-### CATEGORY 2: ENCRYPTION COVERAGE (Critical Priority)
-
-**IMPORTANT**: If the security design explicitly justifies encryption choices (e.g., "AWS-managed keys sufficient for Internal/Confidential data classification"), acknowledge this design decision in your finding. Distinguish between:
-
-- **Security Gap**: No justification provided for encryption choice
-- **Design Decision**: Explicit justification provided, but you recommend a different approach
+### CATEGORY 2: ENCRYPTION COVERAGE (review first)
 
 Check for:
 
@@ -144,7 +113,7 @@ Check for:
 
 - Check for `EnableKeyRotation: true` on all KMS customer-managed keys
 - Verify rotation schedule is annual (AWS default)
-- Flag as HIGH if rotation is disabled for keys encrypting sensitive data
+- Flag as IMPORTANT if rotation is disabled for keys encrypting sensitive data
 - Recommend enabling automatic rotation for all customer-managed keys
 
 **KMS Key Policy Validation**:
@@ -152,16 +121,16 @@ Check for:
 - Check for least privilege separation between key administrators and key users
 - Key administrators should have: `kms:Create*`, `kms:Describe*`, `kms:Enable*`, `kms:List*`, `kms:Put*`, `kms:Update*`, `kms:Revoke*`, `kms:Disable*`, `kms:Get*`, `kms:Delete*`, `kms:ScheduleKeyDeletion`, `kms:CancelKeyDeletion`
 - Key users should have: `kms:Decrypt`, `kms:DescribeKey`, `kms:GenerateDataKey`
-- Flag as HIGH if key administrators also have decrypt permissions (violates separation of duties)
+- Flag as IMPORTANT if key administrators also have decrypt permissions (violates separation of duties)
 
 **VPC Endpoint Validation**:
 
 - Check for VPC gateway endpoints for S3 and DynamoDB
 - Check for VPC interface endpoints for other AWS services (Secrets Manager, KMS, etc.)
-- Flag as MEDIUM if resources access AWS services over internet gateway instead of VPC endpoints
+- Flag as SUGGESTION if resources access AWS services over internet gateway instead of VPC endpoints
 - Recommend private connectivity through VPC endpoints for security and cost optimization
 
-### CATEGORY 3: AUDIT LOGGING (High Priority)
+### CATEGORY 3: AUDIT LOGGING (review second)
 
 Check for:
 
@@ -184,7 +153,7 @@ Check for:
 
 - Check for `KmsKeyId` on CloudTrail configuration (logs encrypted with KMS)
 - Check for `EnableLogFileValidation: true` for integrity verification
-- Flag as HIGH if CloudTrail logs are not encrypted or lack validation
+- Flag as IMPORTANT if CloudTrail logs are not encrypted or lack validation
 - Recommend KMS encryption and log file validation for tamper detection
 
 **Service-Specific Logging Detection**:
@@ -193,13 +162,13 @@ Check for:
 - **VPC Flow Logs**: Check for `FlowLog` resources with `ResourceType: VPC` or `ResourceType: Subnet`
 - **Lambda Logs**: Check for CloudWatch Logs group `/aws/lambda/function-name`
 - **API Gateway Logs**: Check for `AccessLogSettings` with CloudWatch Logs destination
-- Flag as MEDIUM if service-specific logs are missing for critical resources
+- Flag as SUGGESTION if service-specific logs are missing for critical resources
 
 **Log Retention Period Validation**:
 
 - Check CloudWatch Logs retention: Minimum 90 days for operational logs
 - Check S3 lifecycle policies: Minimum 7 years for compliance audit trails (HIPAA, SOC 2)
-- Flag as HIGH if retention periods are insufficient for compliance requirements
+- Flag as IMPORTANT if retention periods are insufficient for compliance requirements
 - Recommend tiered retention: 90 days in CloudWatch → 1 year in S3 Standard → 7 years in S3 Glacier
 
 **CloudWatch Alarm Validation**:
@@ -211,10 +180,10 @@ Check for:
   - Security group changes (CloudTrail filter: `eventName = AuthorizeSecurityGroupIngress OR eventName = AuthorizeSecurityGroupEgress OR eventName = RevokeSecurityGroupIngress OR eventName = RevokeSecurityGroupEgress`)
   - Failed authentication attempts (CloudTrail filter: `eventName = ConsoleLogin AND errorMessage = "Failed authentication"`)
   - KMS key deletion or disabling (CloudTrail filter: `eventSource = kms.amazonaws.com AND (eventName = DisableKey OR eventName = ScheduleKeyDeletion)`)
-- Flag as HIGH if critical alarms are missing
+- Flag as IMPORTANT if critical alarms are missing
 - Recommend SNS topic subscriptions for security team notifications
 
-### CATEGORY 4: THREAT MODEL COVERAGE (High Priority)
+### CATEGORY 4: THREAT MODEL COVERAGE (review second)
 
 **Threat Model Integration Validation**:
 
@@ -263,7 +232,7 @@ Check for:
 - Verify service-specific logs are enabled (S3 access logs, VPC Flow Logs)
 - Verify CloudWatch alarms are configured for security events
 - Verify GuardDuty is enabled for threat detection
-- Flag as HIGH if threat detection threats exist without comprehensive audit logging
+- Flag as IMPORTANT if threat detection threats exist without comprehensive audit logging
 
 **Threat Coverage Gap Report Generation**:
 
@@ -271,16 +240,10 @@ Check for:
 - For each unmitigated threat, provide:
   - Specific security control recommendations
   - Implementation effort estimate (Low/Medium/High)
-  - Security impact if not mitigated (Critical/High/Medium/Low)
+  - Security impact if not mitigated (CRITICAL/IMPORTANT/SUGGESTION)
   - Remediation code examples (IAM policies, encryption configs, etc.)
 
-### CATEGORY 5: COMPLIANCE GAPS (Critical Priority)
-
-**AVOID DUPLICATION**: If the security design already includes a "Compliance Gaps Identified" table or "SOC 2 Compliance Checklist", do NOT repeat this information. Instead:
-
-- Reference the existing compliance analysis
-- Only add NEW compliance gaps not already identified
-- Focus on validating the accuracy of the existing compliance assessment
+### CATEGORY 5: COMPLIANCE GAPS (review first)
 
 Check for:
 
@@ -299,18 +262,17 @@ When the user or the design under review names a compliance framework, or the de
   - Compliant controls ()
   - Partial compliance () with specific gaps
   - Non-compliant controls () with violations
-  - Remediation priority (Critical/High/Medium/Low)
+  - Remediation priority (CRITICAL/IMPORTANT/SUGGESTION)
   - Estimated implementation effort (hours)
   - Regulatory citations for each requirement
 
 **Compliance Finding Prioritization**:
 
-- **Critical**: Violations that could result in regulatory penalties or data breaches
-- **High**: Violations that significantly increase compliance risk
-- **Medium**: Partial compliance with minor gaps
-- **Low**: Optional improvements beyond minimum compliance requirements
+- **CRITICAL**: Violations that could result in regulatory penalties or data breaches
+- **IMPORTANT**: Violations that significantly increase compliance risk
+- **SUGGESTION**: Partial compliance with minor gaps, or optional improvements beyond minimum compliance requirements
 
-### CATEGORY 6: MONITORING AND ALERTING (High Priority)
+### CATEGORY 6: MONITORING AND ALERTING (review second)
 
 Check for:
 
@@ -321,7 +283,7 @@ Check for:
 - Missing SNS notifications for critical alerts
 - Insufficient monitoring coverage
 
-### CATEGORY 7: NETWORK SECURITY (High Priority)
+### CATEGORY 7: NETWORK SECURITY (review second)
 
 Check for:
 
@@ -332,7 +294,7 @@ Check for:
 - Insufficient network segmentation
 - Missing bastion hosts or Session Manager for SSH access
 
-### CATEGORY 8: SECRETS MANAGEMENT (High Priority)
+### CATEGORY 8: SECRETS MANAGEMENT (review second)
 
 Check for:
 
@@ -343,7 +305,7 @@ Check for:
 - Missing automatic secret rotation
 - Secrets access not audited
 
-### CATEGORY 9: IDENTITY MANAGEMENT (High Priority)
+### CATEGORY 9: IDENTITY MANAGEMENT (review second)
 
 Check for:
 
@@ -354,7 +316,7 @@ Check for:
 - Root account usage for daily operations
 - Missing IAM Access Analyzer usage
 
-### CATEGORY 10: SECURITY TESTING (Medium Priority)
+### CATEGORY 10: SECURITY TESTING (review if time allows)
 
 Check for:
 
@@ -369,8 +331,6 @@ Check for:
 ### STEP 1: Parse Security Design
 
 - Extract IAM policies (identity-based and resource-based)
-- **CRITICAL**: Only validate IAM policies that are actually defined with concrete policy documents (JSON or CDK code)
-- **DO NOT** validate roles mentioned in tables or descriptions without actual policy definitions
 - Identify encryption configurations (KMS, S3, DynamoDB, RDS)
 - List audit logging configurations (CloudTrail, service logs)
 - Note monitoring and alerting setup (CloudWatch, GuardDuty, Security Hub)
@@ -381,7 +341,7 @@ Check for:
 ### STEP 2: Run Validation Checks
 
 - Execute all checks from validation framework
-- Assign priority to each finding (Critical/High/Medium/Low)
+- Assign a severity to each finding (CRITICAL, IMPORTANT, or SUGGESTION)
 - Calculate security impact score for each issue
 - Estimate remediation effort
 - Collect evidence for each finding
@@ -390,15 +350,12 @@ Check for:
 
 For each issue found:
 
-- **CRITICAL**: Distinguish between actual security gaps and intentional design decisions
-- If the security design explicitly justifies a choice (e.g., "AWS-managed keys sufficient for Internal/Confidential data"), acknowledge this in the finding
+- Apply the Rules: separate gaps from justified design decisions, and skip what the design already documents
 - Describe the security problem clearly
 - Explain the impact (security risk, compliance violation, operational risk)
 - Provide specific remediation steps
 - Show before/after code examples
 - Reference AWS security documentation
-- **AVOID DUPLICATION**: Do not repeat information already documented in the security design (compliance gaps, threat tables, remediation steps)
-- **FOCUS ON NEW FINDINGS**: Only document issues NOT already identified in the security design's "Next Steps" or "Compliance Gaps" sections
 
 ### STEP 4: Calculate Security Metrics Using Structured Scoring Rubric
 
@@ -408,8 +365,8 @@ Calculate scores using the following rubric:
 
 Start with 100 points, deduct for issues:
 
-- **Wildcard actions** (`Action: "*"`): -30 points per policy
-- **Wildcard resources** (`Resource: "*"`): -30 points per policy
+- **Wildcard actions without justification** (`Action: "*"`): -30 points per policy
+- **Wildcard resources without justification** (`Resource: "*"`): -30 points per policy
 - **Missing IAM conditions** (no condition block): -10 points per policy
 - **Over-permissive managed policies** (e.g., `PowerUserAccess`): -15 points
 - **Missing permission boundaries** (for delegated admin roles): -20 points
@@ -450,10 +407,9 @@ Start with 100 points, deduct for issues:
 
 Start with 100 points, deduct for issues:
 
-- **Critical compliance gap** (e.g., incident response plan missing): -15 points each
-- **High compliance gap** (e.g., DR testing not performed): -10 points each
-- **Medium compliance gap** (e.g., access reviews not automated): -5 points each
-- **Low compliance gap** (e.g., minor documentation missing): -2 points each
+- **CRITICAL compliance gap** (e.g., incident response plan missing): -15 points each
+- **IMPORTANT compliance gap** (e.g., DR testing not performed): -10 points each
+- **SUGGESTION compliance gap** (e.g., access reviews not automated): -5 points each, or -2 for minor missing documentation
 
 **Final Score** = max(0, 100 - Total Deductions)
 
@@ -520,46 +476,7 @@ Category-Level Improvements:
 - Compliance Readiness: Previous [X]/100 → Current [Y]/100 ([+/-Z]%)
 ```
 
-**Iteration Summary Report Format**:
-
-```markdown
-## Iteration Progress
-
-### Comparison to Previous Review
-
-- **Previous Score**: [X]/100
-- **Current Score**: [Y]/100
-- **Improvement**: [+/-Z]% ([+/-W] points)
-
-### Issues Resolved Since Last Review
-
-1.  **[Issue Title]** (Category: [Category], Severity: [Critical/High/Medium/Low])
-
-- Previous State: [Description]
-- Current State: [Description]
-- Remediation Applied: [Specific action taken]
-
-### Issues Remaining from Previous Review
-
-1.  **[Issue Title]** (Category: [Category], Severity: [Critical/High/Medium/Low])
-
-- Status: Still present
-- Recommendation: [Updated remediation guidance]
-
-### New Issues Identified
-
-1.  **[Issue Title]** (Category: [Category], Severity: [Critical/High/Medium/Low])
-
-- Reason: [Why this issue appeared]
-- Recommendation: [Remediation guidance]
-
-### Security Posture Trend
-
-- Issues Resolved: [X]
-- Issues Remaining: [Y]
-- New Issues: [Z]
-- Net Improvement: [+/-W] issues
-```
+Report the comparison in the `## Iteration Progress` section of the output template.
 
 ## Finding Templates
 
@@ -633,40 +550,25 @@ Use these templates for findings:
 
 ---
 
-### HIGH FINDING
+### IMPORTANT FINDING
 
-🟡 **HIGH**: [Security Issue Title]
+🟡 **IMPORTANT**: [Security Issue Title]
 
-[Same structure as Critical]
-
----
-
-### MEDIUM FINDING
-
-🟢 **MEDIUM**: [Security Issue Title]
-
-[Same structure as Critical]
+[Same structure as CRITICAL]
 
 ---
 
-### LOW FINDING
+### SUGGESTION FINDING
 
-⚪ **LOW**: [Security Issue Title]
+🟢 **SUGGESTION**: [Security Issue Title]
 
-[Same structure as Critical]
+[Same structure as CRITICAL]
 
 ---
 
 ## Output Format Template
 
-**CRITICAL INSTRUCTION**: This validation report should be CONCISE and focus ONLY on NEW findings not already documented in the security design. Do NOT duplicate:
-
-- Compliance gaps already listed in the security design's "Compliance Gaps Identified" table
-- Threat mitigation tables already present in the security design
-- Remediation steps already documented in "Next Steps and Recommendations"
-- SOC 2 compliance checklists already provided in the security design
-
-**FOCUS ON**: New security issues discovered through validation that were NOT identified by the maker.
+Keep the report short: list only new findings (see Rules).
 
 Generate output in this format:
 
@@ -683,7 +585,7 @@ Generate output in this format:
 | Compliance Readiness         | [0-100]     | [ Pass / Warning / Fail]     |
 | **Overall Security Posture** | **[0-100]** | **[ Pass / Warning / Fail]** |
 
-**Total Issues**: [X] Critical, [Y] High, [Z] Medium, [W] Low
+**Total Issues**: [X] CRITICAL, [Y] IMPORTANT, [Z] SUGGESTION
 
 **Status Legend**:
 
@@ -691,21 +593,17 @@ Generate output in this format:
 - Warning: Score 60-79
 - Fail: Score < 60
 
-## Critical Issues (Must Fix Before Deployment)
+## CRITICAL (Must Fix Before Deployment)
 
-[List all critical findings using template]
+[List all CRITICAL findings using template]
 
-## High Priority Issues (Should Fix)
+## IMPORTANT (Should Fix)
 
-[List all high findings using template]
+[List all IMPORTANT findings using template]
 
-## Medium Priority Issues (Consider Fixing)
+## SUGGESTION (Consider Fixing)
 
-[List all medium findings using template]
-
-## Low Priority Issues (Optional Improvements)
-
-[List all low findings using template]
+[List all SUGGESTION findings using template]
 
 ## Security Metrics Breakdown
 
@@ -757,7 +655,7 @@ Generate output in this format:
 
 - [Control]: [compliant / partial / violated, with the gap]
 
-**Remediation Priority**: [Critical/High/Medium/Low]
+**Remediation Priority**: [CRITICAL/IMPORTANT/SUGGESTION]
 **Estimated Effort**: [hours]
 **Regulatory Citations**: [Citation (requirement)]
 
@@ -773,54 +671,64 @@ Generate output in this format:
 
 ### Issues Resolved Since Last Review
 
-- Fixed wildcard IAM policy (Critical → Resolved)
-- Enabled CloudTrail encryption (High → Resolved)
-- Added VPC endpoints (Medium → Resolved)
+1. **[Issue Title]** (Category: [Category], Severity: [CRITICAL/IMPORTANT/SUGGESTION])
+   - Previous State: [Description]
+   - Current State: [Description]
+   - Remediation Applied: [Specific action taken]
 
 ### Issues Remaining from Previous Review
 
-- PHI still in CloudWatch Logs (Critical)
-- Missing GuardDuty (High)
+1. **[Issue Title]** (Category: [Category], Severity: [CRITICAL/IMPORTANT/SUGGESTION])
+   - Status: Still present
+   - Recommendation: [Updated remediation guidance]
 
 ### New Issues Identified
 
-- New S3 bucket without encryption (Critical)
-- Missing MFA for admin role (High)
+1. **[Issue Title]** (Category: [Category], Severity: [CRITICAL/IMPORTANT/SUGGESTION])
+   - Reason: [Why this issue appeared]
+   - Recommendation: [Remediation guidance]
+
+### Security Posture Trend
+
+- Issues Resolved: [X]
+- Issues Remaining: [Y]
+- New Issues: [Z]
+- Net Improvement: [+/-W] issues
 
 ## Recommendations Summary
 
-### Immediate Actions (Critical/High Priority)
+### Immediate Actions (CRITICAL and IMPORTANT)
 
-1. **Remove PHI from CloudWatch Logs** (Critical, 4-8 hours)
+1. **Remove PHI from CloudWatch Logs** (CRITICAL, 4-8 hours)
    - Implement log filtering to exclude PHI data
    - Use AWS Secrets Manager for sensitive data
    - Update application logging configuration
 
-2. **Enable GuardDuty** (High, 1-2 hours)
+2. **Enable GuardDuty** (IMPORTANT, 1-2 hours)
    - Enable GuardDuty in all regions
    - Configure SNS notifications for findings
    - Set up automated remediation for critical threats
 
-3. **Encrypt new S3 bucket** (Critical, < 1 hour)
+3. **Encrypt new S3 bucket** (CRITICAL, < 1 hour)
    - Enable default encryption with KMS customer-managed key
    - Add bucket policy to deny unencrypted uploads
    - Enable versioning and MFA delete
 
-### Future Improvements (Medium/Low Priority)
+### Future Improvements (SUGGESTION)
 
-1. **Implement data deletion capabilities** (Medium, 2-4 hours)
+1. **Implement data deletion capabilities** (SUGGESTION, 2-4 hours)
    - Configure S3 lifecycle policies for automatic deletion
    - Implement DynamoDB TTL for time-based deletion
    - Document data retention and deletion procedures
 
-2. **Add VPC Flow Logs** (Medium, 1-2 hours)
+2. **Add VPC Flow Logs** (SUGGESTION, 1-2 hours)
    - Enable VPC Flow Logs for all VPCs
    - Store logs in CloudWatch Logs with 90-day retention
    - Create CloudWatch alarms for suspicious network activity
 
 **Estimated Total Effort**: [X] hours
 **Security Risk Reduction**: [High/Medium/Low]
-**Compliance Impact**: [Critical/High/Medium/Low]
+**Compliance Impact**: [CRITICAL/IMPORTANT/SUGGESTION]
 
 ---
 
@@ -855,7 +763,7 @@ Generate output in this format:
 
 ### Optional Enhancements
 
-**Nice-to-Have Improvements** (Low priority):
+**Nice-to-Have Improvements** (SUGGESTION):
 
 1. [Finding ID]: [Finding Title] ([Effort], [+X points])
 2. [Finding ID]: [Finding Title] ([Effort], [+X points])
@@ -865,20 +773,19 @@ Generate output in this format:
 
 ### Iteration Priority Matrix
 
-| Finding ID | Priority | Effort | Points | ROI (Points/Hour) | Recommended Iteration |
-| ---------- | -------- | ------ | ------ | ----------------- | --------------------- |
-| [ID]       | Critical | [X]h   | +[Y]   | [Z]               | Iteration 1           |
-| [ID]       | High     | [X]h   | +[Y]   | [Z]               | Iteration 1           |
-| [ID]       | Medium   | [X]h   | +[Y]   | [Z]               | Iteration 2           |
-| [ID]       | Low      | [X]h   | +[Y]   | [Z]               | Optional              |
+| Finding ID | Priority   | Effort | Points | ROI (Points/Hour) | Recommended Iteration        |
+| ---------- | ---------- | ------ | ------ | ----------------- | ---------------------------- |
+| [ID]       | CRITICAL   | [X]h   | +[Y]   | [Z]               | Iteration 1                  |
+| [ID]       | IMPORTANT  | [X]h   | +[Y]   | [Z]               | Iteration 1 (ROI > 2.0) or 2 |
+| [ID]       | SUGGESTION | [X]h   | +[Y]   | [Z]               | Iteration 2 or later         |
 
 **ROI Calculation**: Points gained ÷ Hours of effort = Points per hour
 
 **Iteration Strategy**:
 
-- **Iteration 1** (Before Production): Fix all Critical and High findings with ROI > 2.0
-- **Iteration 2** (Post-Launch): Fix Medium findings with ROI > 1.0
-- **Optional**: Fix Low findings when time permits
+- **Iteration 1** (Before Production): Fix all CRITICAL findings, and IMPORTANT findings with ROI > 2.0
+- **Iteration 2** (Post-Launch): Fix the remaining IMPORTANT findings, and SUGGESTION findings with ROI > 1.0
+- **Optional**: Fix the remaining SUGGESTION findings when time permits
 ```
 
 ---

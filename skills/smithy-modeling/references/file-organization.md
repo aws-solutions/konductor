@@ -72,6 +72,7 @@ namespace com.example.todo
 
 /// Todo Service provides task management capabilities
 @title("Todo Service")
+@httpBearerAuth
 service TodoService {
     version: "2024-11-14"
     operations: [CreateTodo, GetTodo, UpdateTodo, DeleteTodo, ListTodos]
