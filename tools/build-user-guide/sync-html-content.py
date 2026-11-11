@@ -58,19 +58,19 @@ EDITS = [
     # drop, and the replacement paragraph carries the count in its own markup.
     # Section 13's package-total check still covers that number in every
     # rendering, so nothing is unguarded by the removal.
-    ("skills count (sidebar)", "Browse all 75 skills", "Browse all 81 skills"),
-    ("skills count (summary)", 'skills: "All 75 skills grouped across 8 capability areas',
-     'skills: "All 81 skills grouped across 8 capability areas'),
-    ("skills count (catalog intro)", "intro: \"All 75 skills the package ships",
-     "intro: \"All 81 skills the package ships"),
-    ("skills coverage", "All 75 skills are declared by at least one agent.",
-     "All 81 skills are declared by at least one agent."),
-    ("install summary", "Registers the 11 agents, 82 skills, 19 SOPs, and the orchestrator routing rules",
-     "Registers the 11 agents, 81 skills, 19 SOPs, the core rules, and the orchestrator routing rules"),
-    ("reference count row", '{ k: "Count", v: "75 skills · 13 SOPs" }',
-     '{ k: "Count", v: "81 skills · 19 SOPs" }'),
-    ("faq: skills row", '{ k: "Skills — 75", v: "On-demand knowledge modules" }',
-     '{ k: "Skills — 81", v: "On-demand knowledge modules" }'),
+    ("skills count (sidebar)", "Browse all 81 skills", "Browse all 79 skills"),
+    ("skills count (summary)", 'skills: "All 81 skills grouped across 8 capability areas',
+     'skills: "All 79 skills grouped across 8 capability areas'),
+    ("skills count (catalog intro)", "intro: \"All 81 skills the package ships",
+     "intro: \"All 79 skills the package ships"),
+    ("skills coverage", "All 81 skills are declared by at least one agent.",
+     "All 79 skills are declared by at least one agent."),
+    ("install summary", "Registers the 11 agents, 81 skills, 19 SOPs, the core rules, and the orchestrator routing rules",
+     "Registers the 11 agents, 79 skills, 19 SOPs, the core rules, and the orchestrator routing rules"),
+    ("reference count row", '{ k: "Count", v: "81 skills · 19 SOPs" }',
+     '{ k: "Count", v: "79 skills · 19 SOPs" }'),
+    ("faq: skills row", '{ k: "Skills — 81", v: "On-demand knowledge modules" }',
+     '{ k: "Skills — 79", v: "On-demand knowledge modules" }'),
     ("concepts SOP blurb", "<div>13 SOPs that encode multi-step procedures",
      "<div>19 SOPs that encode multi-step procedures"),
     ("SOP count (concepts)",
@@ -86,8 +86,16 @@ EDITS = [
     # ---- repository layout tree ---------------------------------------------
     ("layout tree SOPs", "├── agent-sops/                   13 SOPs (*.sop.md)",
      "├── agent-sops/                   19 SOPs (*.sop.md)"),
-    ("layout tree skills", "├── skills/                       75 skills (<name>/SKILL.md",
-     "├── skills/                       81 skills (<name>/SKILL.md"),
+    ("layout tree skills", "├── skills/                       81 skills (<name>/SKILL.md",
+     "├── skills/                       79 skills (<name>/SKILL.md"),
+    # ---- dynamodb-design and dynamodb-validation removed --------------------
+    # The AWS MCP server's amazon-dynamodb skill covers DynamoDB design and review.
+    ("design-a-system: dynamodb skill list",
+     f"{_code('smithy-modeling')}, {_code('dynamodb-design')}, {_code('iam-policy-design')}, "
+     f"{_code('architecture-diagram-generation')}.",
+     f"{_code('smithy-modeling')}, {_code('iam-policy-design')}, {_code('architecture-diagram-generation')}. "
+     f"For a DynamoDB data model, {_code('k-architect')} loads the AWS MCP server's "
+     f"{_code('amazon-dynamodb')} skill through {_code('find-aws-skills')}."),
     # ---- aws-mcp launches a pinned version, not a floating @latest ----------
     ("reference MCP registry note: pinned aws-mcp",
      'note":"MCP registry entries — aws-mcp (k-architect, k-developer): command uvx, args '
@@ -256,8 +264,8 @@ EDITS = [
      "REACH FOR IT: You never invoke it. Claude Code preloads it only into subagents; otherwise it loads on demand."),
     # ---- k-architect is no longer on a different model ----------------------
     ("architect model prose",
-     "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 38 of the package's 81 skills — close to half, and by far the largest share of any agent.",
-     "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 39 of the package's 81 skills — close to half, and by far the largest share of any agent."),
+     "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 39 of the package's 81 skills — close to half, and by far the largest share of any agent.",
+     "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 37 of the package's 79 skills — close to half, and by far the largest share of any agent."),
     ("reference roster note",
      "Every agent runs claude-sonnet-5.5. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",
      "Every agent runs claude-sonnet-5.5 on Kiro CLI and claude-sonnet-5-5 on Claude Code. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",),
@@ -597,8 +605,8 @@ ROSTER = [
      '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}',
      '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 10 · —"}'),
     ("ref architect",
-     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review · 38 · aws-mcp"}',
-     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review · 39 · aws-mcp"}'),
+     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review · 39 · aws-mcp"}',
+     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review · 37 · aws-mcp"}'),
     ("ref developer",
      '{"k":"k-developer","v":"claude-sonnet-5.5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 26 · aws-mcp"}',
      '{"k":"k-developer","v":"claude-sonnet-5.5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 27 · aws-mcp"}'),
@@ -636,8 +644,8 @@ ROSTER = [
      "No SOPs. 1 skill \u2014 constraints only.",
      "No SOPs. 1 skill, constraints. It also declares humanize-writing, loaded on demand."),
     ("skills-per-agent table",
-     '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"24"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
-     '"rows":[{"k":"k-architect","v":"39"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"24"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),
+     '"rows":[{"k":"k-architect","v":"39"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"24"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
+     '"rows":[{"k":"k-architect","v":"37"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"24"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),
     # at-a-glance cards
     ("card konductor", 'Coordinator. Delegates everything, implements nothing. claude-sonnet-5.5 · 13 skills · 11 SOPs',
      'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 24 skills · 11 SOPs'),
@@ -653,8 +661,8 @@ ROSTER = [
      'Only the mux and cmux orchestrators load this file'),
     ("card pm", 'Requirements, user stories, decision research. claude-sonnet-5.5 · 15 skills · 0 SOPs',
      'Requirements, user stories, decision research. claude-sonnet-5.5 · 16 skills · 0 SOPs'),
-    ("card architect", 'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 38 skills · 3 SOPs · aws-mcp',
-     'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 39 skills · 3 SOPs · aws-mcp'),
+    ("card architect", 'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 39 skills · 3 SOPs · aws-mcp',
+     'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 37 skills · 3 SOPs · aws-mcp'),
     ("card developer", 'Implementation, code review, git, builds. claude-sonnet-5.5 · 26 skills · 4 SOPs · aws-mcp',
      'Implementation, code review, git, builds. claude-sonnet-5.5 · 27 skills · 4 SOPs · aws-mcp'),
     ("card qa", 'Test coverage, E2E strategy, security tests. claude-sonnet-5.5 · 11 skills · 2 SOPs',

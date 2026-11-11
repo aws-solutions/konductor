@@ -10,7 +10,7 @@ problem statement into a document meant to survive principal-engineer review. A 
 [`k-existing-design-review`](../sop-workflows/design.md#k-existing-design-review), evaluates design
 artifacts that already exist. A third, [`k-principal-engineer-design-review`](../sop-workflows/design.md#k-principal-engineer-design-review),
 gates a finished document before a human reviewer sees it. All three are owned by
-**`k-architect`**, which carries 38 of the package's 81 skills — the largest share of any agent.
+**`k-architect`**, which carries 37 of the package's 79 skills — the largest share of any agent.
 
 **Read this before you pick one.** `k-existing-design-review` is explicitly deprecated for authoring;
 its own header says so:
@@ -24,8 +24,8 @@ package someone already wrote.
 There is no SOP that chains the architect's individual design skills together. A `system-design.md`
 + `threat-model.md` package comes either from `k-design-doc-creation` producing the equivalent
 directly, or from running skills one at a time — `system-design-patterns`, `threat-modeling`,
-`smithy-modeling`, `dynamodb-design`, `iam-policy-design`,
-`architecture-diagram-generation`.
+`smithy-modeling`, `iam-policy-design`, `architecture-diagram-generation`. For a DynamoDB data
+model, `k-architect` loads the AWS MCP server's `amazon-dynamodb` skill through `find-aws-skills`.
 
 ---
 

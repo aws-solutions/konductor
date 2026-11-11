@@ -35,7 +35,7 @@ This skill consumes multiple upstream artifacts:
 1. **requirements.md** from `kiro-requirements-generation` — EARS-format requirements for the feature at `{spec_dir}/requirements.md`
 2. **System Design** from `system-design-patterns` — High-level architecture, component diagrams, data flow
 3. **Threat Model** from `threat-modeling` — STRIDE analysis, security controls, trust boundaries
-4. **DynamoDB Design** from `dynamodb-design` — Table schemas, PK/SK design, GSIs, access patterns
+4. **DynamoDB Design** from the AWS MCP server's `amazon-dynamodb` skill — Table schemas, PK/SK design, GSIs, access patterns
 5. **API Specs** from `smithy-modeling` — Smithy service definitions, operation signatures, input/output shapes
 
 Input can come from:

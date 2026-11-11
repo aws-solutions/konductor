@@ -4,7 +4,7 @@
 
 [← Back to guide index](README.md)
 
-All **81 skills** the package ships, grouped by what they are for. Each entry gives what the
+All **79 skills** the package ships, grouped by what they are for. Each entry gives what the
 skill does, when it makes sense to reach for it, and which agents declare it.
 
 A **skill** is a module of knowledge an agent loads on demand — see
@@ -137,10 +137,11 @@ Interface and storage design, each paired with its own validator.
 | --- | --- | --- | --- |
 | `smithy-modeling` | Generates Smithy API models — service definitions, operations, structures, validation, errors. Supports TypeScript, OpenAPI, and AWS SDK codegen. | Designing a new service API. | `k-architect` |
 | `smithy-validation` | Validates Smithy models for structure, naming, security, and codegen readiness. | Before implementing against a Smithy model. | `k-architect` |
-| `dynamodb-design` | DynamoDB table designs optimized for access patterns: partition keys, GSI strategy, capacity planning, plus CDK/CloudFormation code. | Designing a data model on DynamoDB. | `k-architect` |
-| `dynamodb-validation` | Validates a DynamoDB design against best practice across 13 categories — hot partitions, missing indexes, cost, security. | Before implementing a DynamoDB design. | `k-architect` |
 | `iam-policy-design` | Generates least-privilege IAM role policies, resource policies, and compliance configuration. | Designing access control for a new service. | `k-architect` |
 | `policy-validation` | Validates IAM policies for over-permissive grants, missing conditions, and compliance gaps. | Before deploying any IAM change. | `k-architect` |
+
+For a DynamoDB data model, `k-architect` loads the AWS MCP server's `amazon-dynamodb` skill
+through `find-aws-skills`. It designs the model and reviews a finished one.
 
 ---
 
@@ -226,7 +227,7 @@ Looking things up outside the repository.
 
 ## Coverage
 
-**All 81 skills are declared by at least one agent.** That matters because a skill no agent
+**All 79 skills are declared by at least one agent.** That matters because a skill no agent
 declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use
 it. Contributors adding a skill should see
 [Contributing → check skill coverage](appendix/contributing.md#check-skill-coverage).
@@ -247,7 +248,7 @@ Useful when deciding which agent to talk to directly.
 
 | Agent | Skills preloaded (Claude Code) |
 | --- | --- |
-| `k-architect` | 39 |
+| `k-architect` | 37 |
 | `k-developer` | 27 |
 | `konductor` | 24 |
 | `k-product-manager` | 16 |

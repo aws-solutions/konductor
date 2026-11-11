@@ -208,7 +208,7 @@ declared in the file named by the `severities_source` config key.
 
 A self-contained module of knowledge an **agent** loads on demand, at `skills/<name>/SKILL.md`
 with YAML frontmatter (`name`, `description`, often `version` and `tags`). Only names and
-descriptions load at session start. 81 ship. Contrast **SOP**.
+descriptions load at session start. 79 ship. Contrast **SOP**.
 
 ### SOP (standard operating procedure)
 

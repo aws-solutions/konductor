@@ -25,7 +25,7 @@ Do NOT use when:
 
 - User wants a full system design → use `system-design-patterns`
 - User wants API specs → use `smithy-modeling`
-- User wants a data model → use `dynamodb-design`
+- User wants a DynamoDB data model → load `amazon-dynamodb` through `find-aws-skills`
 - User wants a threat model → use `threat-modeling`
 - User wants a scored multi-option comparison → use `trade-off-evaluator`
 
