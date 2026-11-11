@@ -697,6 +697,25 @@ ROSTER = [
     ("skills catalog: design-evaluation reach",
      "The final gate before implementation. Wants all artifacts present — design, threat model, API specs, data models, diagrams, IAM.",
      "The final gate before implementation. Lists any missing artifacts (system design, threat model, API specs, data models, diagrams, IAM) and scores what is present; use single-document scope for one doc."),
+    # ---- skills catalog: dynamodb-design and dynamodb-validation removed ----
+    # The anchor keeps the neighbours, so the result is checkable once applied.
+    ("skills catalog: drop dynamodb-design and dynamodb-validation",
+     'Before implementing against a Smithy model. · DECLARED BY: architect"},'
+     '{"k":"dynamodb-design","v":"DynamoDB table designs optimized for access patterns: partition keys, '
+     'GSI strategy, capacity planning, plus CDK/CloudFormation code. — REACH FOR IT: Designing a data model '
+     'on DynamoDB. · DECLARED BY: architect"},{"k":"dynamodb-validation","v":"Validates a DynamoDB design '
+     'against best practice across 13 categories — hot partitions, missing indexes, cost, security. — REACH '
+     'FOR IT: Before implementing a DynamoDB design. · DECLARED BY: architect"},{"k":"iam-policy-design"',
+     'Before implementing against a Smithy model. · DECLARED BY: architect"},{"k":"iam-policy-design"'),
+    ("skills catalog: API and data modelling header and DynamoDB note",
+     'sec("sk-api", "API and data modelling — 6", "API and data modelling — 6", {"paras":["Interface and '
+     'storage design, each paired with its own validator."]',
+     'sec("sk-api", "API and data modelling — 4", "API and data modelling — 4", {"paras":["Interface and '
+     'storage design, each paired with its own validator. For a DynamoDB data model, k-architect loads the '
+     'AWS MCP server\'s amazon-dynamodb skill through find-aws-skills."]'),
+    ("skills catalog: find-aws-skills declared by",
+     'nothing bundled matches. · DECLARED BY: developer"}',
+     'nothing bundled matches. · DECLARED BY: architect, developer"}'),
 ]
 
 
