@@ -20,7 +20,10 @@ const SOURCE = 'skill-evals';
 const MARKER = '.skilleval-import';
 const EMPTY_FIXTURE = 'import-empty';
 const KEY_FILE = '.bench-answer-key.md';
-const TIMEOUT_SEC = 600;
+const TIMEOUT_SEC = 900;
+// Skills that write long documents need more room than the default; an explicit timeout wins over this table.
+const SKILL_TIMEOUT_SEC = { 'kiro-design-generation': 1800, 'kiro-requirements-generation': 1800, 'kiro-task-generation': 1800 };
+const timeoutFor = (skill, override) => override ?? SKILL_TIMEOUT_SEC[skill] ?? TIMEOUT_SEC;
 const ANCHOR_MAX = 240;
 const QUERY_MIN = 12;
 const QUERY_MAX = 400;
@@ -197,7 +200,7 @@ function problemsOf(task) {
  * Everything the import would write for one skill, without writing it. Each candidate is { task, tags, fixture, provenance };
  * `skipped` holds { id, reason } for candidates that are dropped, `held` the ids kept back as limited.
  */
-function planSkill({ skill, evalsDir = EVALS_DIR, includeLimited = false }) {
+function planSkill({ skill, evalsDir = EVALS_DIR, includeLimited = false, timeoutSec }) {
   const data = loadSkillData(skill, evalsDir);
   if (!data) return null;
   const limited = Boolean(data.scenario.limited);
@@ -222,6 +225,7 @@ function planSkill({ skill, evalsDir = EVALS_DIR, includeLimited = false }) {
     }
   }
   const add = (task, spec, extra) => {
+    task.timeoutSec = timeoutFor(skill, timeoutSec);
     if (FORBIDS_EDITS.test(task.prompt) && spec.files.length) task.checks.push({ type: 'fixture_unchanged', path: '.', allowAdditions: true });
     const tags = [...extra.tags];
     if (limited) tags.push('limited');
@@ -316,6 +320,6 @@ function filterQueries(skill, rows) {
 }
 
 module.exports = {
-  BENCH, REPO, EVALS_DIR, MARKER, EMPTY_FIXTURE, KEY_FILE, TIMEOUT_SEC, suiteName, skillsAtRef, resolveRef, skillBlob, listSkills, loadSkillData,
+  BENCH, REPO, EVALS_DIR, MARKER, EMPTY_FIXTURE, KEY_FILE, TIMEOUT_SEC, SKILL_TIMEOUT_SEC, timeoutFor, suiteName, skillsAtRef, resolveRef, skillBlob, listSkills, loadSkillData,
   fixtureSpec, fixtureDigest, writeFixture, itemText, planSkill, writeSkill, filterQueries,
 };

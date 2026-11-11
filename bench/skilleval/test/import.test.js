@@ -206,6 +206,39 @@ test('written tasks load through the runner task loader', () => {
   assert.deepEqual(suite.tasks, ['si-alpha-e1', 'si-alpha-p1']);
 });
 
+test('timeouts: 900 by default, 1800 for the long-document skills, and --timeout-sec wins', () => {
+  assert.equal(lib.TIMEOUT_SEC, 900);
+  for (const k of ['kiro-design-generation', 'kiro-requirements-generation', 'kiro-task-generation']) {
+    assert.equal(lib.timeoutFor(k), 1800, k);
+    assert.equal(lib.timeoutFor(k, 120), 120, k);
+  }
+  assert.equal(lib.timeoutFor('alpha'), 900);
+  const evals = tmp(); const out = tmp();
+  makeEvals(evals);
+  const read = (dir, skill, id) => JSON.parse(fs.readFileSync(path.join(dir, skill, 'tasks', `${id}.json`), 'utf8')).timeoutSec;
+  run(['tasks', '--skill', 'alpha,beta', '--ref', 'r', '--out', out, '--evals-dir', evals], git(['alpha', 'beta']));
+  assert.equal(read(out, 'alpha', 'si-alpha-p1'), 900);
+  assert.equal(read(out, 'alpha', 'si-alpha-e1'), 900);
+  const out2 = tmp();
+  run(['tasks', '--skill', 'alpha', '--ref', 'r', '--out', out2, '--evals-dir', evals, '--timeout-sec', '1200'], git(['alpha']));
+  assert.equal(read(out2, 'alpha', 'si-alpha-p1'), 1200);
+  assert.equal(read(out2, 'alpha', 'si-alpha-e1'), 1200);
+  for (const bad of ['0', 'abc', '1.5', '-3']) {
+    assert.throws(() => run(['tasks', '--skill', 'alpha', '--ref', 'r', '--out', tmp(), '--evals-dir', evals, '--timeout-sec', bad], git(['alpha'])), /timeout-sec|needs a value/, bad);
+  }
+});
+
+test('a per-skill timeout is applied to every task of that skill', () => {
+  const evals = tmp(); const out = tmp();
+  makeEvals(evals);
+  fs.cpSync(path.join(evals, 'alpha'), path.join(evals, 'kiro-design-generation'), { recursive: true });
+  run(['tasks', '--skill', 'kiro-design-generation', '--ref', 'r', '--out', out, '--evals-dir', evals], git(['kiro-design-generation']));
+  const dir = path.join(out, 'kiro-design-generation', 'tasks');
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
+  assert.ok(files.length >= 2);
+  for (const f of files) assert.equal(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')).timeoutSec, 1800, f);
+});
+
 test('the report lists counts and the skills missing from the ref', () => {
   const evals = tmp();
   makeEvals(evals);

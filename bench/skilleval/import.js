@@ -3,7 +3,7 @@
 'use strict';
 
 // Turns the committed skill eval data (bench/skill-evals) into bench tasks and trigger queries.
-//   node bench/skilleval/import.js tasks   --skill NAME[,NAME]|all --ref REF --out DIR [--include-limited] [--suites-dir DIR]
+//   node bench/skilleval/import.js tasks   --skill NAME[,NAME]|all --ref REF --out DIR [--include-limited] [--suites-dir DIR] [--timeout-sec N]
 //   node bench/skilleval/import.js queries --skill NAME --out FILE
 //   node bench/skilleval/import.js report  --ref REF [--skill NAME[,NAME]] [--include-limited]
 // The skills are read from REF; the eval data from the working tree (--evals-dir). Nothing runs a model or the runner.
@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const lib = require('./lib/import.js');
 
-const VALUE_FLAGS = ['skill', 'ref', 'out', 'suites-dir', 'evals-dir', 'repo'];
+const VALUE_FLAGS = ['skill', 'ref', 'out', 'suites-dir', 'evals-dir', 'repo', 'timeout-sec'];
 const BOOL_FLAGS = ['include-limited'];
 const COMMANDS = ['tasks', 'queries', 'report'];
 
@@ -32,6 +32,13 @@ function parseArgs(argv) {
   return { cmd, opts };
 }
 
+function timeoutOpt(opts) {
+  if (opts['timeout-sec'] === undefined) return undefined;
+  const n = Number(opts['timeout-sec']);
+  if (!/^\d+$/.test(opts['timeout-sec']) || n < 1) throw new Error('--timeout-sec must be a positive integer');
+  return n;
+}
+
 const need = (opts, name) => { if (!opts[name]) throw new Error(`--${name} is required`); return opts[name]; };
 
 function skillNames(opts, evalsDir) {
@@ -49,10 +56,11 @@ function cmdTasks(opts, log, g) {
   const outDir = path.resolve(need(opts, 'out'));
   const present = g.skillsAtRef(ref, repo);
   const resolved = g.resolveRef(ref, repo);
+  const timeoutSec = timeoutOpt(opts);
   const results = [];
   for (const skill of skillNames(opts, evalsDir)) {
     if (!present.has(skill)) { log(`${skill}: skipped: not in ${ref}`); results.push({ skill, skippedAbsent: true }); continue; }
-    const plan = lib.planSkill({ skill, evalsDir, includeLimited: Boolean(opts['include-limited']) });
+    const plan = lib.planSkill({ skill, evalsDir, includeLimited: Boolean(opts['include-limited']), timeoutSec });
     if (!plan) { log(`${skill}: skipped: no eval data`); results.push({ skill, skippedAbsent: true }); continue; }
     const w = lib.writeSkill(plan, {
       outDir, ref, resolved, blob: g.skillBlob(ref, skill, repo), suitesDir: opts['suites-dir'] ? path.resolve(opts['suites-dir']) : undefined,
