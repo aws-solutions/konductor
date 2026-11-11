@@ -1,0 +1,11 @@
+[
+  { "list": "NAME_WORDS", "rule": "skill-name-labelled", "hit": ["The e2e-test-strategy skill helps. Row 1.", "The bench:e2e-test-strategy skill helps. Row 1."], "out": "The approach helps. Row 1.", "keep": "The e2e-test-strategy-extra plugin helps. Row 1." },
+  { "list": "NAME_WORDS", "rule": "skill-name-spaced-labelled", "hit": "The E2E test strategy skill helps. Row 1.", "out": "The approach helps. Row 1.", "keep": "The E2E test strategy helps. Row 1." },
+  { "list": "NAME_WORDS", "rule": "plugin-qualified-name", "hit": "Use bench:other-thing here", "out": "Use other thing here", "keep": "Use benchmark:other here" },
+  { "list": "NAME_WORDS", "rule": "skill-name", "hit": "use e2e-test-strategy, then rank", "out": "use e2e test strategy, then rank", "keep": "use xe2e-test-strategy, then rank" },
+  { "list": "NAME_WORDS", "rule": "agent-identifier", "hit": "Ask k-quality-assurance or konductor-mux-orchestrator.", "out": "Ask quality assurance or orchestrator.", "keep": "Ask for k-means and kubectl-style names." },
+  { "list": "PATH_PATTERNS", "rule": "scratch-path", "hit": ["Open /tmp/bench-subject-q1/with/src/app.js now", "Open $TMPDIR/bench-arms-q1/with/src/app.js now", "Open /private/var/folders/ab/cd_1/T/bench-judge-q1/src/app.js now"], "out": "Open src/app.js now", "keep": "Open /tmp/e2e-report.html and /tmp/bench-report.txt now" },
+  { "list": "PATH_PATTERNS", "rule": "harness-repo-path", "hit": "See scripts/bench/lib/x.js for it", "out": "See for it", "keep": "See scripts/benchmark.js for it" },
+  { "list": "PATH_PATTERNS", "rule": "plugin-dir-path", "hit": "Edit plugins/x/.claude-plugin/plugin.json now", "out": "Edit now", "keep": "Edit plugins/x/plugin.json now" },
+  { "list": "PATH_PATTERNS", "rule": "skill-dir-path", "hit": "Edit skills/e2e-test-strategy/notes.md then", "out": "Edit then", "keep": ["Edit skills/other-skill/notes.md then", "Read skills/other-skill/SKILL.md then", "Read notes/skills-index/readme.txt then", "Edit skills/e2e-test-strategy-extra/notes.md then"] }
+]
