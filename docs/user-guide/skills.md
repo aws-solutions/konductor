@@ -178,7 +178,7 @@ Writing and reviewing code.
 | `k-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer` |
 | `git-workflow` | Atomic commits, branch management, history operations. | Committing, branching, or searching history. | `k-developer` |
 | `git-merge` | Branch merges into the default branch, release merges, merge conflicts. | Merging locally; use `code-review` when merges go through PRs. Declared only by the two multiplexer orchestrators. | `konductor-cmux-orchestrator`, `konductor-mux-orchestrator` |
-| `find-aws-skills` | Discovers additional AWS skills from the AWS MCP server for tasks the bundled skills do not cover. | Your task involves an AWS service and nothing bundled matches. | `k-architect`, `k-developer` |
+| `find-aws-skills` | Discovers additional AWS skills from the AWS MCP server for tasks the bundled skills do not cover. | Your task involves an AWS service and nothing bundled matches. | `k-architect`, `k-developer`, `konductor` |
 | `agents-md-authoring` | Creates and maintains AGENTS.md files that bootstrap agent context. Covers the agents.md standard, the context-loading block, and the CLAUDE.md bridge. | Onboarding a repo for agents, or your conventions have drifted from what agents are told. | `k-developer`, `konductor` |
 
 ---
@@ -250,7 +250,7 @@ Useful when deciding which agent to talk to directly.
 | --- | --- |
 | `k-architect` | 37 |
 | `k-developer` | 27 |
-| `konductor` | 24 |
+| `konductor` | 25 |
 | `k-product-manager` | 16 |
 | `k-tpm` | 14 |
 | `k-quality-assurance` | 12 |

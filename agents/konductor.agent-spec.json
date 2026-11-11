@@ -32,7 +32,8 @@
         "design-evaluation",
         "plan-review",
         "design-impact-review",
-        "infra-validation"
+        "infra-validation",
+        "find-aws-skills"
       ]
     },
     "mcpRegistry": {
@@ -148,7 +149,8 @@
         "design-evaluation",
         "plan-review",
         "design-impact-review",
-        "infra-validation"
+        "infra-validation",
+        "find-aws-skills"
       ]
     }
   }
