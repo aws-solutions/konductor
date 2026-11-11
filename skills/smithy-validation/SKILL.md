@@ -104,7 +104,7 @@ Use this skill when:
 
 - Operations are focused and single-purpose
 - `@http` applied to every operation, and the behavior traits `@readonly` and `@idempotent` where they fit
-- Every `@httpLabel` member is `@required`
+- For each operation, every `{label}` in the `@http` URI maps to an input member with both `@httpLabel` and `@required`. Check the members one by one; do not infer it from the rest of the model
 - Clear input/output structures defined
 - All error cases covered
 - Appropriate HTTP methods used
@@ -114,6 +114,7 @@ Use this skill when:
 
 - Operations doing multiple things
 - Missing HTTP traits
+- An `@httpLabel` member without `@required`, which `smithy validate` rejects
 - Inconsistent URI patterns
 - Wrong HTTP methods (GET for mutations)
 - Missing or incomplete error definitions
@@ -346,6 +347,7 @@ Before approving a model:
 - [ ] Validates without errors: `smithy validate`
 - [ ] All public shapes have documentation
 - [ ] Operations have defined errors
+- [ ] Every `@httpLabel` member is `@required`, checked for each operation
 - [ ] Constraints applied (@required, @range, @length, @pattern)
 - [ ] Sensitive data marked with @sensitive
 - [ ] List operations support pagination
