@@ -168,8 +168,8 @@ AWS MCP uses the `aws-mcp` server key. Use this configuration:
 
 Install `uvx` and configure AWS credentials before using AWS API tools. The
 proxy is pinned for repeatable client behavior; the managed endpoint supplies
-current AWS documentation and skills. `k-architect` and `k-developer` can use
-all AWS MCP tools. Knowledge tools are pre-approved; API tools prompt for
+current AWS documentation and skills. `konductor`, `k-architect` and `k-developer`
+can use all AWS MCP tools. Knowledge tools are pre-approved; API tools prompt for
 confirmation. Use the `aws:ViaAWSMCPService` and `aws:CalledViaAWSMCP` IAM
 condition keys to limit agent-initiated calls.
 

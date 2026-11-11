@@ -300,6 +300,9 @@ not per individual commit.
   - `policy-validation` checks the API Gateway `SecurityPolicy` property, treats the KMS key
     rotation period as configurable, uses the Security Hub CSPM name, and can run IAM Access
     Analyzer policy validation.
+  - `konductor` declares `aws-mcp`, like `k-architect` and `k-developer`, so it can run
+    `infra-validation`'s AWS checks. On Kiro CLI the three agents pre-approve only the server's
+    read-only documentation, skill and Region tools.
 
 ### Fixed
 

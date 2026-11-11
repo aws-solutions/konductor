@@ -80,7 +80,8 @@ This read-only rule applies to the mux and cmux orchestrators. `konductor` loads
 instead and edits files itself in the default `auto` mode. In `coordinator` mode it hands every change
 to a specialist, like the mux and cmux orchestrators (see
 [How do I make konductor hand every change to a specialist?](#how-do-i-make-konductor-hand-every-change-to-a-specialist)).
-On Kiro CLI it pre-approves `fs_read` alone, so each write or command asks you first; on Claude Code
+On Kiro CLI it pre-approves only reads (`fs_read` and read-only `aws-mcp` lookups), so each write
+or command asks you first; on Claude Code
 it holds `Write`, `Edit` and `Bash` with no prompt gate, and the reviewer it spawns at each phase gate
 is the check.
 
@@ -226,7 +227,7 @@ Three things to be aware of nonetheless:
 1. **Your runtime sends your prompts to a model provider.** That is Kiro CLI's or Claude Code's
    behavior, not Konductor's, and it applies whether or not Konductor is installed.
 2. **The AWS MCP integration reaches an AWS endpoint** — `https://aws-mcp.us-east-1.api.aws/mcp`,
-   declared in the `k-architect` and `k-developer` specs — when those agents look up AWS
+   declared in the `konductor`, `k-architect` and `k-developer` specs — when those agents look up AWS
    documentation. It is opt-in in the sense that it needs `uvx` and credentials present.
 3. **The project's `README.md` includes a data-collection notice** stating that the solution sends
    operational metrics to AWS about its use, subject to the

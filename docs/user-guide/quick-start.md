@@ -131,7 +131,8 @@ SOP runs each phase in a specialist subagent and reviews it before moving on.
 **Checkpoint.** Watch what happens when you ask for a single change, such as a bug fix in one
 module. You should see `konductor` edit files and run the build itself, then spawn a `k-*` reviewer
 when the phase closes. A multi-phase request like the one above gets an SOP name instead.
-In Kiro CLI `konductor` pre-approves `fs_read` alone, so each write or command stops to ask you
+In Kiro CLI `konductor` pre-approves only reads (`fs_read` and read-only `aws-mcp` lookups), so
+each write or command stops to ask you
 first; in Claude Code it holds `Write` and `Bash` outright. If you want an orchestrator that hands
 every change to a specialist, use `konductor-mux-orchestrator` or `konductor-cmux-orchestrator`. If
 one of those starts editing directly, see
