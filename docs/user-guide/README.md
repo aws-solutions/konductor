@@ -46,7 +46,7 @@ lifecycle (SDLC).
 **Reference**
 
 9. [Agents reference](agents.md) — all 11 agents, and what each one can access
-10. [Skills catalog](skills.md) — all 79 skills, grouped, with when to use each
+10. [Skills catalog](skills.md) — all 80 skills, grouped, with when to use each
 11. [CLI reference](reference.md) — command table, flags, config schema, exit codes, repository layout
 12. [Troubleshooting](troubleshooting.md) — symptom → cause → fix
 13. [FAQ](faq.md)
@@ -85,7 +85,7 @@ rather than implicit in a prompt.
 | Benefit | What it means concretely |
 | --- | --- |
 | No infrastructure | Agents are configuration files — JSON specs and Markdown. There is no server, database, or cloud resource to run. Your existing Kiro or Claude Code installation executes them. |
-| Specialists, not a generalist | 11 agents with scoped tools and 79 on-demand knowledge modules, instead of one agent that must hold everything at once. |
+| Specialists, not a generalist | 11 agents with scoped tools and 80 on-demand knowledge modules, instead of one agent that must hold everything at once. |
 | Work is checked, not just produced | Agents apply a maker-checker pass to their own output, and the orchestrator verifies handoffs before moving on. |
 | Repeatable workflows | 19 SOPs encode multi-step procedures (design review, code review, test-coverage review) as explicit numbered steps with `MUST`/`MUST NOT` constraints. |
 | Editable behaviour | Routing rules, delegation format, and quality gates are Markdown files. You can read and change them — see [Contributing and customizing](appendix/contributing.md). |
@@ -164,7 +164,7 @@ flowchart LR
 
     subgraph Content["Konductor content in this repo"]
         A["agents/ — 11 agent specs"]
-        S["skills/ — 79 knowledge modules"]
+        S["skills/ — 80 knowledge modules"]
         P["agent-sops/ — 19 workflows"]
         C["context/ — routing rules"]
     end

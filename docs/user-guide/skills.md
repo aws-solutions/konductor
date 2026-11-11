@@ -4,7 +4,7 @@
 
 [← Back to guide index](README.md)
 
-All **79 skills** the package ships, grouped by what they are for. Each entry gives what the
+All **80 skills** the package ships, grouped by what they are for. Each entry gives what the
 skill does, when it makes sense to reach for it, and which agents declare it.
 
 A **skill** is a module of knowledge an agent loads on demand — see
@@ -25,7 +25,7 @@ know exactly which lens you want applied.
 - [Program and delivery management](#program-and-delivery-management) — 7
 - [Architecture and design](#architecture-and-design) — 12
 - [Design quality gates](#design-quality-gates) — 6
-- [API and data modelling](#api-and-data-modelling) — 4
+- [API and data modelling](#api-and-data-modelling) — 5
 - [Security](#security) — 3
 - [Implementation and code review](#implementation-and-code-review) — 17
 - [Testing and browser automation](#testing-and-browser-automation) — 7
@@ -131,18 +131,19 @@ Checking a design before anyone builds it.
 
 ## API and data modelling
 
-API and access policy design, each paired with its own validator. No storage design skill ships;
-the note after the table covers DynamoDB.
+API, data and access policy design. The Smithy and IAM skills each pair with a validator;
+`dynamodb-design` carries its own review gate.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
 | `smithy-modeling` | Generates Smithy API models — service definitions, operations, structures, validation, errors. Supports TypeScript, OpenAPI, and AWS SDK codegen. | Designing a new service API. | `k-architect` |
 | `smithy-validation` | Validates Smithy models for structure, naming, security, and codegen readiness. | Before implementing against a Smithy model. | `k-architect` |
+| `dynamodb-design` | Designs DynamoDB tables and GSIs from access patterns, and reviews a design for hot partitions and unsharded low-cardinality keys. | Designing or reviewing a DynamoDB data model. | `k-architect` |
 | `iam-policy-design` | Generates least-privilege IAM role policies, resource policies, and compliance configuration. | Designing access control for a new service. | `k-architect` |
 | `policy-validation` | Validates IAM policies for over-permissive grants, missing conditions, and compliance gaps. | Before deploying any IAM change. | `k-architect` |
 
-For a DynamoDB data model, `k-architect` loads the AWS MCP server's `amazon-dynamodb` skill
-through `find-aws-skills`. It designs the model and reviews a finished one.
+For DynamoDB depth that `dynamodb-design` does not carry, such as Streams, backup and the cost
+calculator, it points to the AWS MCP server's `amazon-dynamodb` skill.
 
 ---
 
@@ -228,7 +229,7 @@ Looking things up outside the repository.
 
 ## Coverage
 
-**All 79 skills are declared by at least one agent.** That matters because a skill no agent
+**All 80 skills are declared by at least one agent.** That matters because a skill no agent
 declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use
 it. Contributors adding a skill should see
 [Contributing → check skill coverage](appendix/contributing.md#check-skill-coverage).
@@ -249,7 +250,7 @@ Useful when deciding which agent to talk to directly.
 
 | Agent | Skills preloaded (Claude Code) |
 | --- | --- |
-| `k-architect` | 37 |
+| `k-architect` | 38 |
 | `k-developer` | 27 |
 | `konductor` | 25 |
 | `k-product-manager` | 16 |

@@ -34,7 +34,7 @@ konductor update --from <repo-root>
 ```text
 Updating Konductor
   agents          11 updated
-  skills          79 updated
+  skills          80 updated
   SOPs            19 updated
   context files    2 updated
 

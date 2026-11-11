@@ -116,7 +116,7 @@ tags: [skill, behavioral, orchestration, delegation, multi-agent]
 Some skills also ship helper scripts alongside `SKILL.md` — for example
 `skills/legacy-to-agentic-estimate/` contains `scripts/` and `evals/` directories.
 
-**The package ships 79 skills** — 79 directories under `skills/`, each with a `SKILL.md`. All 79
+**The package ships 80 skills** — 80 directories under `skills/`, each with a `SKILL.md`. All 80
 are catalogued, grouped, with a when-to-use note each, in the [Skills catalog](skills.md).
 
 ## SOP (standard operating procedure)
@@ -254,7 +254,7 @@ flowchart LR
     User(["You"])
     Ctx["<b>context/</b><br/>direct-work rules<br/><i>always active</i>"]:::gate
     Orch["<b>konductor</b><br/><i>does the work, reviews at phase gates</i>"]:::focus
-    Store["<b>skills/</b> — 79 modules<br/><b>agent-sops/</b> — 19 procedures<br/><i>loaded on demand</i>"]:::muted
+    Store["<b>skills/</b> — 80 modules<br/><b>agent-sops/</b> — 19 procedures<br/><i>loaded on demand</i>"]:::muted
 
     subgraph Specialists["8 specialist agents"]
         Dev["k-developer"]
