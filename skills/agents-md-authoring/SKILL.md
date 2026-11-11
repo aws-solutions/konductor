@@ -1,6 +1,6 @@
 ---
 name: agents-md-authoring
-description: Create and maintain AGENTS.md files that bootstrap AI agent context. Use when a project lacks an AGENTS.md, when onboarding a repo for AI agents, or when updating project conventions agents should follow. Covers the agents.md standard, the context-loading instruction block, and the CLAUDE.md bridge for Claude Code.
+description: Creates and maintains AGENTS.md files that bootstrap AI agent context. Use when a project lacks an AGENTS.md, when onboarding a repo for AI agents, or when updating project conventions agents should follow. Covers the context-loading block and the CLAUDE.md bridge for Claude Code.
 tags: [skill, agents-md, onboarding, context, documentation]
 ---
 

@@ -56,6 +56,11 @@ not per individual commit.
 
 ### Changed
 
+- 44 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
+  plus built-ins fits its 30,000-character budget (about 28,500 characters, down from about
+  30,800). The trim keeps every "Use ..." trigger sentence; other commits in this PR reword the
+  triggers of code-review, git-merge, decision-research, verification and
+  kiro-requirements-generation, and restore the artifact list in design-evaluation's description.
 - `konductor` does the work itself, commits only when you ask, and spawns one fresh `k-*` reviewer per phase gate (next bullet);
   it spawns a specialist only for a tool, access, skill or SOP it lacks, for parallel work on disjoint files, or when an SOP says so;
   an SOP `konductor` does not declare is run by the specialist that declares it.
@@ -127,6 +132,12 @@ not per individual commit.
   is now `docx-conversion`, whose description names `.docx`. Custom agent specs must use the
   new names: `konductor synth` rejects a spec that still declares an old one.
 - The published HTML guide's FAQ now gives the current skill count (81) instead of 75.
+- `infra-validation` and `iam-policy-design` read as one instruction set each, without a pasted
+  second prompt and role. `infra-validation` asks for scope once, and skips the questions when
+  the caller passes the type, path and environment or `scope_confirmed`. It rates findings
+  CRITICAL, IMPORTANT or SUGGESTION, matching its quality gate, and names `policy-validation` as
+  the home for policy-level IAM checks. `iam-policy-design` ends both modes with one compliance
+  step.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
@@ -258,6 +269,20 @@ not per individual commit.
 - `policy-validation` reads as one instruction set, without a pasted second prompt and role. It
   keeps one Rules section, one IAM score rubric and one Iteration Progress template, and rates
   findings CRITICAL, IMPORTANT or SUGGESTION, matching its quality gate.
+- About 40 skills were revised after test runs showed where they went wrong. What changes when
+  you use them:
+  - Review and validation skills rate findings CRITICAL, IMPORTANT or SUGGESTION and keep
+    CRITICAL for real blockers such as exposure, data loss and credential risk. Each finding
+    cites its location and a concrete fix. Context the skill could not check is reported as an
+    assumption or an unscored note, not a rated finding.
+  - Tell a skill not to ask questions, or pass the scope up front, and it records its
+    assumptions in the output and finishes instead of stopping to ask. This covers the kiro
+    spec, requirements, user story, threat model, NFR, cost and sprint-planning skills.
+  - A request for a security-focused or adversarial second pass loads `adversarial-code-review`
+    instead of `code-review`. `verification`, `git-merge` and `decision-research` load on more
+    of the requests they cover, such as finishing a change test-first or syncing a branch.
+  - `git-merge` checks the staged merge before it commits and recovers from a rejected push
+    without force-pushing or rebasing.
 
 ### Fixed
 
@@ -283,6 +308,10 @@ not per individual commit.
   and reports each change with its reason. The full deliberation panel run is defined once, in
   `deliberation-panel`; `socratic-elicitation` keeps a short inline offer that points to it.
   Repeated paragraphs and tables are cut from several skills.
+- `infra-validation` and `policy-validation` no longer flag an S3 bucket or DynamoDB table as
+  unencrypted for lacking an encryption setting, since both encrypt at rest by default. They
+  flag them only when the data needs SSE-KMS or a customer managed key. The `infra-validation`
+  Graviton example cites the published Lambda arm64 figure.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent

@@ -9,7 +9,7 @@ tags: [skill, iam, security, policy, aws, least-privilege]
 
 ## Overview
 
-Generates IAM policies, resource-based policies, and security configurations from system design and threat model inputs. Applies least-privilege access, condition keys, and AWS security best practices.
+Generates IAM policies, resource-based policies, and security configurations from system design and threat model inputs. Applies least-privilege access, condition keys, and AWS security best practices. Beyond policies, it covers KMS encryption, audit logging (CloudTrail, service logs, VPC Flow Logs), security monitoring (CloudWatch, GuardDuty, Security Hub), threat-model and compliance checks (GDPR, HIPAA, PCI-DSS, SOC 2, ISO 27001), and CDK or CloudFormation code for the controls.
 
 ## Usage
 
@@ -28,30 +28,6 @@ Start with zero permissions and add only what each component needs. Use conditio
 ### Policy Types
 
 IAM role policies (attached to compute), resource-based policies (S3 buckets, KMS keys, SQS queues), SCPs (organizational guardrails), and permission boundaries (delegation limits).
-
-## Execution
-
-When this skill is activated, use the following as your full instruction set for generating the IAM policies. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# Security Policy Engineer (Maker)
-
-## Role Definition
-
-You are a senior AWS security engineer and IAM policy expert with deep expertise in AWS IAM policy design, security services (IAM, KMS, Secrets Manager, CloudTrail, GuardDuty, Security Hub), threat modeling, compliance frameworks (GDPR, HIPAA, PCI-DSS, SOC 2, ISO 27001), AWS Well-Architected Security Pillar, Zero Trust architecture, encryption strategies, and audit logging.
-
-## Core Capabilities
-
-1. Analyzing system architecture to identify security requirements
-2. Designing IAM policies following least privilege principle
-3. Generating identity-based and resource-based policies
-4. Recommending encryption strategies (KMS, at-rest, in-transit)
-5. Configuring audit logging (CloudTrail, service logs, VPC Flow Logs)
-6. Designing security monitoring (CloudWatch, GuardDuty, Security Hub)
-7. Validating against threat models and compliance requirements
-8. Generating CDK and CloudFormation security infrastructure code
-9. Creating compliance validation checklists
 
 ## Production Readiness Tiers
 
@@ -129,7 +105,7 @@ Ask discovery questions:
 - AWS services and architecture pattern
 - Primary actors/roles and their actions
 - Data classification levels and sensitive data types
-- Compliance frameworks and deployment region
+- Compliance frameworks and deployment region (when the user or the design under review names GDPR, HIPAA, PCI-DSS, or SOC 2, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open `references/compliance-checklists.md` now and design STEP 3 and STEP 4 against it)
 - Primary security concerns and threat landscape
 - Existing security context and maturity level
 
@@ -213,6 +189,8 @@ Ask discovery questions:
 - Encrypt all secrets with KMS customer-managed keys
 - Implement least privilege access to secrets
 
+Then go to [Final Step: Validate Compliance](#final-step-validate-compliance).
+
 ## Integrated Mode Workflow
 
 ### STEP 1: Artifact Analysis
@@ -235,17 +213,20 @@ Extract and document:
 - Access Patterns (map API endpoints to data access patterns)
 - Data Classification (extract sensitivity levels, map to encryption)
 - Threat Mitigations (map threats to security controls)
-- Compliance Requirements (extract frameworks, map to AWS controls)
+- Compliance Requirements (extract frameworks, map to AWS controls; when the user or the design under review names GDPR, HIPAA, PCI-DSS, or SOC 2, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open `references/compliance-checklists.md` for the controls to map)
 
 ### STEP 3: Integrated Design Process
 
 1. Validate extracted requirements (confirm understanding, ask clarifying questions, state assumptions)
-2. Proceed with security design (follow STEP 3 and STEP 4 from Standalone Mode)
+2. Proceed with security design (follow STEP 3 and STEP 4 from Standalone Mode). When the design has an access-pattern table, keep each role's actions and resources inside it. List a best practice that needs more, such as VPC networking or extra logs or KMS actions, as a recommendation with its reason instead of adding it to the role
 3. Reference source artifacts (indicate which requirements came from which artifacts)
+4. Go to [Final Step: Validate Compliance](#final-step-validate-compliance)
 
-### STEP 5: Validate Compliance
+## Final Step: Validate Compliance
 
-Map security controls to compliance requirements. For the full per-framework checklists, see Compliance Validation below.
+Both modes end here. Map security controls to compliance requirements.
+
+When the user or the design under review names a compliance framework (GDPR, HIPAA, PCI-DSS, SOC 2), or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open `references/compliance-checklists.md` (relative to this file) before writing this section. It has the full control checklist and the citations for each framework; the one-line summaries below are only a reminder of scope.
 
 **GDPR:** Data encryption (at rest/in transit), access controls with audit logging, data deletion capabilities, data residency (EU regions), data portability, data processing agreements
 
@@ -655,7 +636,7 @@ Ensure every threat has at least one security control, verify mitigations are sp
 
 ## Compliance Validation
 
-When the user or the design under review names a compliance framework, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open `references/compliance-checklists.md` (relative to this file). It holds the GDPR, HIPAA, PCI-DSS, and SOC 2 control checklists and the citations to use, shared with `policy-validation`.
+When the user or the design under review names a compliance framework (GDPR, HIPAA, PCI-DSS, SOC 2), or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), or the user asks for a compliance gap report, open `references/compliance-checklists.md` (relative to this file). It holds the GDPR, HIPAA, PCI-DSS, and SOC 2 control checklists and the citations to use, shared with `policy-validation`.
 
 ### Compliance Gap Workflow
 
@@ -858,6 +839,7 @@ Generate security policy designs in this structured format:
 **Remediation:** [Specific steps]
 **Effort:** [Low/Medium/High hours]
 **Priority:** [Critical/High/Medium/Low]
+**Citation:** [Article, rule section, or criterion from `references/compliance-checklists.md`]
 
 ## Implementation Code
 

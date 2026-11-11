@@ -28,17 +28,21 @@ Read this at Stage 8 when `tool_type == "kiro"`.
 
    [List of discovered artifacts with paths]
 
+   ## Findings
+
+   [Table from the Stage 4 code analysis: ID, file:line, threat ID or "not in threat model"]
+
    ## Tasks
    ```
 
    **Task List:**
    - Include Task 1 (foundation review)
    - Include all category tasks in priority order
-   - Each task includes:
+   - Each task follows the Stage 7 task format and includes:
      - Security domain and layer
-     - Sub-bullets for spec generation
-     - Best practice references
-     - Artifact references (if applicable)
+     - All three spec-generation sub-bullets (`Generate requirements.md`, `Generate design.md`, `Generate tasks.md`). Keep all three even for a small category like Session Management, since "Start task" builds the category spec from them.
+     - Test order, best practice references, and artifact references (files, endpoints, threat IDs, finding IDs)
+     - The concrete attack inputs and edge cases this category must cover, such as `alg: none` tokens or oversized bodies, so the generated spec starts from this code rather than a generic checklist
 
 **Output Message:**
 

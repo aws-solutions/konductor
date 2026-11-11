@@ -1,7 +1,7 @@
 ---
 name: system-design-patterns
-description: Guides system architecture design through a structured interview. Use when writing a system design document for a new service or feature (components, data model, API, error handling, testing). Works from existing requirements without an interview when the user asks for no questions. Produces four documents, a system design (with NFRs), threat model input, an architecture diagram description, and a design review handoff.
-version: 1.0.0
+description: Guides system architecture design through a structured interview, or from existing requirements when the user asks for no questions. Use when writing a system design document for a new service or feature (components, data model, API, error handling, testing). Produces a system design with NFRs, threat model input, a diagram description, and a review handoff.
+version: 1.1.0
 tags: [skill, system-design, architecture, interview, requirements]
 ---
 
@@ -36,7 +36,7 @@ Produces four documents: a system design document (including measurable non-func
 ### Interview Philosophy
 
 - **Start High-Level, Then Dive Deep**: Begin with system overview and architecture outline, then systematically explore each component
-- **Challenge Assumptions and Recommend Patterns**: See Interview Best Practices below
+- **Challenge Assumptions**: Question each major design choice and weigh at least one alternative (see Interview Best Practices below)
 - **Security-First**: Ensure IAM policies, authentication, and authorization follow AWS standards
 - **Cost-Conscious**: Consider cost implications throughout the design
 
@@ -53,6 +53,9 @@ from documents they already gave you (requirements, user stories, an
 existing design), skip the interview and this scope question. Answer each
 phase from those documents, state every assumption you make, and list what
 they leave undecided under Open Questions in the system design document.
+If the design cannot meet a stated target, say so and give an interim target
+and what would close the gap. Run the Quality Gate yourself: fix the CRITICAL
+and IMPORTANT findings, then report what you fixed.
 
 ## Interview Structure
 
@@ -97,7 +100,7 @@ Determine technical approach:
    - Stateless design?
    - Step Functions for orchestration?
    - DynamoDB for state persistence?
-   - _Challenge_: "How will you handle failures and retries?"
+   - _Challenge_: "How will you handle failures and retries? Where does per-key state live, and what happens to it when a consumer restarts or rebalances?"
 
 5. **API Design**:
    - REST via API Gateway?
@@ -215,6 +218,7 @@ After completing the interview, generate:
 - **Scaling**: [How it scales]
 - **Cost Factors**: [Primary cost drivers]
 - **Failure Modes**: [What happens when it fails]
+- **State**: [If stateful, where state lives and what happens when it is lost]
 
 [Repeat for each component]
 
@@ -222,11 +226,13 @@ After completing the interview, generate:
 
 ### Security & IAM
 
-- **Customer IAM Requirements**: [Permissions needed]
+- **Deployer Permissions**: [Actions the CDK or CloudFormation deploy role needs in the customer account, scoped by resource, and any permission boundary]
+- **Runtime Roles**: [Each component's role and its scoped actions]
 - **Authentication**: [How users/services authenticate]
 - **Authorization**: [Access control model]
 - **Encryption**: [At rest and in transit]
 - **Secrets Management**: [How secrets are handled]
+- **Compliance Mapping**: [If a standard such as SOC 2 or HIPAA applies, map each relevant control to the design element and the evidence it produces]
 
 ### Observability
 
@@ -246,7 +252,8 @@ After completing the interview, generate:
 
 - **Primary Cost Drivers**: [What costs the most]
 - **Cost Control Mechanisms**: [How customers control costs]
-- **Estimated Cost**: [Cost per transaction or monthly estimate]
+- **Estimated Cost**: [Monthly cost per component, cost per unit (transaction, device, TB), and the 10x figure recomputed from the same components. Mark prices as assumptions.]
+- **Cheaper Alternative**: [At least one lower-cost option considered, with its cost and why it was or was not chosen]
 
 ## Non-Functional Requirements
 
@@ -467,4 +474,4 @@ If the user hasn't considered something critical:
 - Could add explicit data flow descriptions for each component
 - Could identify cost optimization opportunities in the architecture
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]". If `scope_confirmed` is true, report all the findings and leave fixing to the caller, without asking. In no-questions mode, fix them yourself as described above. If both apply, `scope_confirmed` wins: the caller owns the fix step, so report the findings and leave fixing to the caller. Fix the findings yourself only in no-questions mode without `scope_confirmed`.

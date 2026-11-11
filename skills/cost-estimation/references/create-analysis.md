@@ -22,6 +22,8 @@ Read this when a new estimate's context is gathered and confirmed (CREATE Step 3
    USE analyze_terraform_project(project_path) # if Terraform code provided
    ```
 
+If the pricing tools aren't available and you can't ask the user to add them (they said not to ask, or nobody is there to answer), use published list prices for the estimate's region. Say so at the top of the report and mark those figures unverified. Never invent a unit price you don't know: leave that line unpriced and say what would price it.
+
 ## Step 5: Architecture Validation for Cost Estimation
 
 Analyze their solution to ensure complete and accurate cost estimation:
@@ -90,6 +92,8 @@ Model costs for different growth scenarios:
 - **5x growth** - Five times current scale
 - **10x growth** - Ten times current scale
 
+Give each growth level its own total in one table. Leaving out 2x or 10x is a gap, even when a launch only calls for one multiplier.
+
 Include scaling considerations:
 
 - Auto-scaling cost implications
@@ -124,7 +128,7 @@ Provide detailed optimization strategies:
 
 ## Step 9: Professional Report Format Selection
 
-**BEFORE generating the final report, ask for format preference:**
+**BEFORE generating the final report, ask for format preference** unless the user already named a format or a file to write; then use it and go to Step 10:
 
 "## Cost Analysis Complete - Report Generation
 

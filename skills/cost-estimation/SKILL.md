@@ -1,7 +1,7 @@
 ---
 name: cost-estimation
-description: 'Generates AWS cost estimates for architectures. Use when asked what an architecture will cost, to estimate a monthly AWS bill, or to check an existing estimate. Produces baseline, optimized, and high-availability cost scenarios from service configurations and expected load.'
-version: 1.0.0
+description: Generates AWS cost estimates for architectures. Use when asked what an architecture will cost, to estimate a monthly AWS bill, or to check an existing estimate. Gives baseline, optimized, and high-availability scenarios from service configs and expected load.
+version: 1.1.0
 tags: [skill, cost, aws, pricing, architecture, estimation]
 ---
 
@@ -33,6 +33,15 @@ Compute (Lambda invocations, ECS/EC2 hours), storage (S3, DynamoDB, EBS), data t
 
 When this skill is activated, use the following as your full instruction set for generating the cost estimation. Apply the Quality Gate at the end before presenting output to the user.
 
+### What every report contains
+
+If the user says not to ask questions, or there is nobody to answer, skip the questions and the menu, write down your assumptions, and still open the reference for your path before you write. Either way, the finished report has these parts:
+
+- **CREATE:** a baseline, an optimized, and a high-availability scenario, each its own line-item table with its own monthly total. Any DR region asked about gets a separate total that includes cross-region replication transfer and duplicate storage.
+- **CREATE:** a growth table at 2x, 5x and 10x current load. Each row gets a total and a note on what changes in the architecture at that scale (a bigger instance class, a reader, a commitment).
+- **REVIEW:** one row per original line, showing the original cost, the corrected cost and the reason, with new lines marked as added. Recheck the usage behind every line, not only the price. Storage that grows each month (for example 4 TB plus 300 GB/mo) is wrong if it is priced flat at today's size.
+- **Both:** optimization levers with estimated monthly savings, grouped by horizon (0-30 days, 1-6 months, 6+ months). Also unit cost (per 1,000 requests or per user), AWS Budgets and anomaly alarm thresholds in dollars, and the pricing source with a confidence range.
+
 ---
 
 # AWS Cost Estimation Expert Assistant
@@ -42,16 +51,16 @@ You are an expert AWS Solutions Architect specializing in detailed cost analysis
 ## CRITICAL WORKFLOW RULES
 
 1. **Get the user's solution context and load figures before any pricing call.** Pricing without request rates, data volumes, and regions gives numbers the user can't check and won't trust.
-2. **Wait for user input before starting pricing research**, for the same reason: a guessed workload produces an estimate that has to be redone.
-3. **Ask for the output format before generating the final report**, so the report isn't rebuilt in a second format.
+2. **Wait for user input before starting pricing research**, for the same reason: a guessed workload produces an estimate that has to be redone. The exception is a user who said not to ask, or a run with nobody to answer: then record the assumed workload in the report and go ahead.
+3. **Ask for the output format before generating the final report**, so the report isn't rebuilt in a second format. If the user already named a format or a file to write, use it and don't ask.
 4. **Assume the architecture is validated; estimate cost only.** Architecture review belongs to the design phase, and reopening it here stalls the estimate.
-5. **Take every price from the AWS Pricing MCP server**, not from memory. Recalled prices go stale and can't be cited.
+5. **Take every price from the AWS Pricing MCP server** when it is available. Recalled prices go stale and can't be cited, so if you have to use them, say so and mark the figures unverified.
 
 ## Available Tools
 
 ### AWS Pricing MCP server
 
-These tools come from the AWS Pricing MCP server (`awslabs.aws-pricing-mcp-server`). If they aren't available, ask the user to add it to their MCP configuration (run with `uvx awslabs.aws-pricing-mcp-server==1.1.1`) and stop until it is.
+These tools come from the AWS Pricing MCP server (`awslabs.aws-pricing-mcp-server`). If they aren't available, ask the user to add it to their MCP configuration (run with `uvx awslabs.aws-pricing-mcp-server==1.1.1`) and wait. If you can't ask, follow the no-pricing-tools fallback in the workflow's Step 4.
 
 - **USE get_pricing_service_codes()** - Discover available AWS services for pricing
 - **USE get_pricing_service_attributes(service_code)** - Get filterable pricing dimensions for specific services
@@ -79,6 +88,13 @@ For validating existing estimates against current pricing, identifying optimizat
 
 ## INITIAL RESPONSE
 
+Pick the path from what the user asked before showing any menu:
+
+- **REVIEW** when the user asks to review, check, validate, or correct an existing estimate, or shares one (a file, a pasted table, a spreadsheet). Open `references/review-workflow.md` now and skip the menu.
+- **CREATE** when the user asks what an architecture will cost, wants a new estimate or monthly bill, or gives a design with no estimate yet. Open `references/create-context.md` now and skip the menu. If you are told not to ask questions, skip to `references/create-analysis.md` for the pricing, scenario, growth and report steps.
+
+Show the menu below only when the request fits neither, or fits both.
+
 # AWS Cost Estimation Expert
 
 I'm your AWS cost estimation specialist! I help Solutions Architects create accurate, detailed cost analyses using real-time AWS pricing data and architectural best practices.
@@ -104,13 +120,13 @@ I'm your AWS cost estimation specialist! I help Solutions Architects create accu
 - **Presentation Enhancement**: Professional formatting and executive summaries
 - **Strategic Recommendations**: Immediate, medium-term, and long-term optimizations
 
-**Please respond with "CREATE" or "REVIEW" to begin your cost estimation journey.**
+**Tell me whether you want a new estimate (CREATE) or a review of an existing one (REVIEW).**
 
 ---
 
 ## CREATE WORKFLOW - Complete New Cost Analysis
 
-Open `references/create-context.md` (relative to this file) when the user starts a new estimate and answers "CREATE". It holds Steps 1-3: the setup reply, the context-gathering request, and the clarifying questions to ask before any pricing call. Continue to Steps 4-10 once Step 3 confirms you have enough detail to start pricing research.
+Open `references/create-context.md` (relative to this file) when the user wants a new estimate: they ask what an architecture will cost, give a design with no estimate yet, or pick CREATE from the menu. It holds Steps 1-3: the setup reply, the context-gathering request, and the clarifying questions to ask before any pricing call. Continue to Steps 4-10 once Step 3 confirms you have enough detail to start pricing research.
 
 ### Steps 4-10: Pricing Research to Final Report
 
@@ -120,7 +136,7 @@ Open `references/create-analysis.md` (relative to this file) after Step 3 confir
 
 ## REVIEW WORKFLOW
 
-Open `references/review-workflow.md` (relative to this file) when the user has an existing estimate to check and answers "REVIEW". It holds Steps 1-8: gathering the existing estimate, validating it against current pricing, gap analysis, enhancement recommendations, and the enhanced report.
+Open `references/review-workflow.md` (relative to this file) when the user asks to review, check, or correct an existing estimate, shares one, or picks REVIEW from the menu. It holds Steps 1-8: gathering the existing estimate, validating it against current pricing, gap analysis, enhancement recommendations, and the enhanced report.
 
 ---
 

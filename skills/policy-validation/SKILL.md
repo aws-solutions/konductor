@@ -1,7 +1,7 @@
 ---
 name: policy-validation
 description: Validates IAM policies and security controls against AWS best practices. Use before deployment to detect overly permissive permissions, missing conditions, and compliance gaps. Produces prioritized findings with specific fixes.
-version: 1.0.0
+version: 1.1.0
 tags: [skill, iam, security, policy, validation, checker, aws]
 ---
 
@@ -30,8 +30,42 @@ Overly permissive actions (wildcards without justification), missing condition k
 - Validate only policies with a concrete policy document: JSON, or CDK code with actual statements. A role that appears only in a table or description has nothing to check, so don't flag it, not even for a missing permission boundary.
 - Tell a security gap from a design decision. If the design justifies a choice (for example, "AWS-managed keys sufficient for Internal/Confidential data classification"), say so in the finding and present your recommendation as an alternative. With no justification, it is a gap.
 - Report only what the design missed. If it already has a "Compliance Gaps Identified" table, a SOC 2 checklist, threat mitigation tables, or remediation steps under "Next Steps and Recommendations", reference them, check that they are accurate, and add only new gaps. Repeating them lengthens the report without telling the maker anything new.
-- Rate every finding CRITICAL, IMPORTANT, or SUGGESTION, the scale the Quality Gate uses.
-- A category header sets review order, not severity. A finding takes its severity from the check's Flag-as line; a check with no Flag-as line is IMPORTANT unless it is plainly hardening, which is SUGGESTION.
+- Rate every finding CRITICAL, IMPORTANT, or SUGGESTION, the scale the Quality Gate uses. Severity Mapping below says which findings go where.
+- A category header sets review order, not severity. Take each finding's severity from Severity Mapping, which wins over a check's Flag-as line. A finding the mapping does not list, such as an unflagged check in CATEGORY 6-10, takes the check's Flag-as line, or IMPORTANT if it has none.
+- When asked to fix the policies instead of reporting, keep the access each policy exists to grant: scope it down, don't delete it. Write a change log with one entry per change giving the finding, its severity, and the before and after. Mark any value you made up, such as an ExternalId or a role ARN, as an assumption.
+
+## Severity Mapping
+
+The per-check "Flag as" lines follow this mapping. When a check and this list disagree, this list wins. The wildcard and cross-account tiers match the IAM checks in `infra-validation`.
+
+**CRITICAL:** one of the findings below.
+
+- `*` action, `*` resource, `ec2:*` (it covers EBS snapshots, security-group ingress and instance userData), or `service:*` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) without a documented justification
+- Cross-account trust without `sts:ExternalId` or another condition key
+- `kms:*` granted to a non-admin principal
+- S3 bucket open to the public, an RDS instance or EBS volume with no encryption at rest, S3 or DynamoDB data that needs SSE-KMS or a customer managed key left on default keys, or no TLS enforcement where sensitive data moves
+- No CloudTrail trail at all
+- KMS key rotation off where a named compliance framework or the design requires it
+- A compliance violation the checklists in CATEGORY 5 flag CRITICAL, or a threat with no control
+- Hardcoded secrets: keys, passwords or tokens in code, templates or plain environment variables
+- Unintended public access to a resource, data or endpoint the design means to keep private
+- Root account usage: root access keys, or the root user doing routine work
+
+**IMPORTANT:** a weakness that raises risk but leaves the data protected and the trail intact.
+
+- A trail that is single-region or skips global service events
+- CloudTrail logs not encrypted or without log file validation
+- KMS key rotation off for sensitive data where nothing requires it
+- `service:*` on a low-risk service (`cloudwatch:*`, `xray:*`) without a documented justification
+- Cross-account trust that has a condition key but whose intent is unverified
+- Named actions beyond what the role needs, with no wildcard
+- Key administrators who can also decrypt
+- No permission boundary on a role with `iam:*` or `sts:AssumeRole`
+- Log retention shorter than a compliance requirement, or missing security alarms
+
+**SUGGESTION:** hardening beyond the minimum, such as VPC endpoints instead of an internet gateway, service-specific logs, or tighter condition keys.
+
+Older reports on a HIGH/MEDIUM/LOW scale map to this one: HIGH becomes IMPORTANT unless the finding is on the CRITICAL list above, and MEDIUM and LOW become SUGGESTION. If the reader expects that older scale, say so once in the summary (IMPORTANT = High).
 
 ## Validation Framework
 
@@ -85,7 +119,8 @@ Score the category with the IAM Policy Security Score in STEP 4.
 
 Check for:
 
-- Data stores without encryption at rest (S3, DynamoDB, RDS, EBS)
+- RDS instances or EBS volumes without encryption at rest
+- S3 or DynamoDB data that needs SSE-KMS or a customer managed key but uses the default encryption
 - Missing TLS enforcement for data in transit
 - KMS keys without rotation enabled
 - Weak encryption algorithms (< AES-256)
@@ -95,11 +130,11 @@ Check for:
 
 **Data Store Encryption Detection**:
 
-- **S3 Buckets**: Check for `BucketEncryption` configuration with `SSEAlgorithm: aws:kms`
-- **DynamoDB Tables**: Check for `SSESpecification` with `SSEEnabled: true` and `KMSMasterKeyId`
+- **S3 Buckets**: A missing `BucketEncryption` is not a finding by itself, since S3 applies SSE-S3 to every new object. If the data needs SSE-KMS or a customer managed key, check for `SSEAlgorithm: aws:kms` and `KMSMasterKeyID`
+- **DynamoDB Tables**: A missing `SSESpecification` is not a finding by itself, since DynamoDB encrypts with an AWS owned key. If the data needs a customer managed key, check for `SSEEnabled: true` and `KMSMasterKeyId`
 - **RDS Instances**: Check for `StorageEncrypted: true` with `KmsKeyId`
 - **EBS Volumes**: Check for `Encrypted: true` with `KmsKeyId`
-- Flag as CRITICAL if any data store lacks encryption at rest
+- Flag as CRITICAL if an RDS instance or EBS volume lacks encryption at rest, or if S3 or DynamoDB data that needs SSE-KMS or a customer managed key is left on default keys
 
 **TLS Enforcement Validation**:
 
@@ -113,14 +148,14 @@ Check for:
 
 - Check for `EnableKeyRotation: true` on all KMS customer-managed keys
 - Verify rotation schedule is annual (AWS default)
-- Flag as IMPORTANT if rotation is disabled for keys encrypting sensitive data
+- Flag as CRITICAL if rotation is disabled and a named compliance framework or the design requires it; otherwise flag as IMPORTANT if rotation is disabled for keys encrypting sensitive data
 - Recommend enabling automatic rotation for all customer-managed keys
 
 **KMS Key Policy Validation**:
 
 - Check for least privilege separation between key administrators and key users
 - Key administrators should have: `kms:Create*`, `kms:Describe*`, `kms:Enable*`, `kms:List*`, `kms:Put*`, `kms:Update*`, `kms:Revoke*`, `kms:Disable*`, `kms:Get*`, `kms:Delete*`, `kms:ScheduleKeyDeletion`, `kms:CancelKeyDeletion`
-- Key users should have: `kms:Decrypt`, `kms:DescribeKey`, `kms:GenerateDataKey`
+- Key users should have: `kms:Encrypt`, `kms:Decrypt`, `kms:ReEncrypt*`, `kms:GenerateDataKey*`, `kms:DescribeKey`
 - Flag as IMPORTANT if key administrators also have decrypt permissions (violates separation of duties)
 
 **VPC Endpoint Validation**:
@@ -146,7 +181,7 @@ Check for:
 
 - Check for `IsMultiRegionTrail: true` on CloudTrail configuration
 - Check for `IncludeGlobalServiceEvents: true` to capture IAM, STS, CloudFront events
-- Flag as CRITICAL if CloudTrail is not enabled in all regions
+- Flag as CRITICAL if no trail exists; flag as IMPORTANT if the trail is single-region or misses global service events
 - Recommend single multi-region trail for centralized audit logging
 
 **CloudTrail Encryption and Log File Validation**:
@@ -254,14 +289,17 @@ Check for:
 - Missing compliance validation checklists
 - Insufficient compliance evidence
 
-When the user or the design under review names a compliance framework, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open the `iam-policy-design` skill's `iam-policy-design/references/compliance-checklists.md` for the GDPR, HIPAA, PCI-DSS, and SOC 2 controls, the checks to run, when to flag CRITICAL, and the citations to give. Skills install side by side, so it sits next to this skill's directory.
+When the user or the design under review names a compliance framework, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open the `iam-policy-design` skill's `iam-policy-design/references/compliance-checklists.md` for the GDPR, HIPAA, PCI-DSS, and SOC 2 controls, the checks to run, when to flag CRITICAL, and the citations to give. Skills install side by side, so it sits next to this skill's directory. If it is not there, use these minimums for each framework the design names or whose regulated data it handles, and say in the report that the full checklist was unavailable:
+
+- **GDPR**: encryption at rest and in transit (Article 32), deletion through lifecycle rules or TTL (Article 17), personal data kept in the regions the design permits, with any transfer outside the EU/EEA documented and covered by an adequacy decision or SCCs (Articles 44-46)
+- **HIPAA**: PHI encrypted at rest with KMS (§164.312(a)(2)(iv)); customer managed keys are a recommendation, not a CRITICAL finding, audit controls (§164.312(b)), MFA for PHI access, no PHI in logs, a signed BAA
+- **PCI-DSS**: cardholder data environment segmented (Requirement 1), cardholder data encrypted (Requirement 3), MFA for privileged access
+- **SOC 2**: least-privilege logical access (CC6.1), encryption (CC6.7), security monitoring (CC7.2)
 
 **Compliance Gap Report Generation**:
 
 - For each compliance framework, create section with:
-  - Compliant controls ()
-  - Partial compliance () with specific gaps
-  - Non-compliant controls () with violations
+  - Each control marked compliant, partial (with the specific gap), or violated, as in the example gap analysis in `compliance-checklists.md`
   - Remediation priority (CRITICAL/IMPORTANT/SUGGESTION)
   - Estimated implementation effort (hours)
   - Regulatory citations for each requirement
@@ -379,7 +417,7 @@ Start with 100 points, deduct for issues:
 
 Start with 100 points, deduct for issues:
 
-- **Unencrypted data store** (DynamoDB, RDS, S3): -40 points each
+- **Unencrypted data store** (RDS or EBS unencrypted, or S3 or DynamoDB data that needs SSE-KMS left on default keys): -40 points each
 - **AWS-managed keys** (when customer-managed recommended): -15 points per resource
 - **No TLS enforcement** (missing bucket policy or API config): -30 points
 - **No VPC endpoints** (for private AWS service access): -10 points
@@ -423,6 +461,8 @@ Overall Score = (IAM Policy Score × 0.30) +
                 (Audit Logging Score × 0.25) +
                 (Compliance Score × 0.20)
 ```
+
+Write the sum out in the report with each category score, for example `0.30×40 + 0.25×60 + 0.25×25 + 0.20×75 = 48`, and list the deductions behind each category score. Keep all four weights when the user names no compliance framework: score Compliance Readiness from the gaps this review found instead of dropping it and re-weighting the rest.
 
 **Interpretation**:
 
@@ -480,7 +520,7 @@ Report the comparison in the `## Iteration Progress` section of the output templ
 
 ## Finding Templates
 
-Use these templates for findings:
+Use these templates for findings. Every CRITICAL and IMPORTANT finding on a policy or config shows both Current State (the statement as it is in the file) and Recommended State as complete JSON, trust policies and CloudTrail or key settings included. A fix given only in prose is not enough.
 
 ### CRITICAL FINDING
 
@@ -798,16 +838,20 @@ Generate output in this format:
 - Cross-account trust without `ExternalId` or condition keys
 - KMS key policies allow `kms:*` to non-admin principals
 - S3 bucket policies allow public access
+- No CloudTrail trail at all
+- KMS key rotation off where a compliance framework or the design requires it
+- Anything else on the CRITICAL list in Severity Mapping
 
 **IMPORTANT (should fix):**
 
 - Roles have permissions not required by any documented access pattern
 - Missing `aws:RequestedRegion` conditions for region-locked services
 - No resource tagging conditions to scope access
+- CloudTrail single-region, without global service events, log file validation, or KMS encryption
 
 **SUGGESTION:**
 
 - Could add `aws:CalledVia` conditions for service-to-service calls
 - Could tighten `s3:GetObject` to specific key prefixes
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask "Fix these issues? [y/n]" unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

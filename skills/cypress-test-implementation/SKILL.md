@@ -1,6 +1,6 @@
 ---
 name: cypress-test-implementation
-description: Transforms E2E test strategy into Cypress implementation tasks. Use after E2E strategy is defined to plan and track Cypress test development. Operates in three modes — initial (planning), progress (tracking), and final (verification).
+description: 'Turns an E2E test strategy into Cypress implementation tasks. Use after E2E strategy is defined to plan and track Cypress test development. Has three modes: initial planning, progress tracking, and final verification.'
 version: 1.0.0
 tags: [skill, cypress, e2e-testing, implementation, quality-assurance]
 ---

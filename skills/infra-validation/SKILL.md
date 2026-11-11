@@ -1,7 +1,7 @@
 ---
 name: infra-validation
-description: Validates AWS CDK and CloudFormation infrastructure code against AWS best practices, security standards, and Well-Architected principles. Use before deploying infrastructure changes. Detects security vulnerabilities, cost issues, and compliance gaps.
-version: 1.0.0
+description: Validates AWS CDK and CloudFormation code against AWS best practices and Well-Architected principles. Use before deploying infrastructure changes. Flags security vulnerabilities, cost issues, and compliance gaps.
+version: 1.1.0
 tags: [skill, infrastructure, cdk, cloudformation, validation, security, aws]
 ---
 
@@ -9,7 +9,7 @@ tags: [skill, infrastructure, cdk, cloudformation, validation, security, aws]
 
 ## Overview
 
-Reviews CDK and CloudFormation code for security vulnerabilities, cost optimization opportunities, compliance gaps, and operational readiness issues. Covers IAM, encryption, logging, backup, and Well-Architected Framework alignment.
+Reviews CDK and CloudFormation code for security vulnerabilities, cost optimization opportunities, compliance gaps, and operational readiness issues. Covers IAM, encryption, logging, backup, and Well-Architected Framework alignment. Each finding names the resource, its impact, and a fix, and a rerun against a previous report tracks what was resolved.
 
 ## Usage
 
@@ -25,59 +25,11 @@ Use this skill when:
 
 Reviews against AWS Well-Architected Framework pillars: security (encryption, IAM, network), reliability (multi-AZ, backups, deletion protection), performance (right-sizing, caching), cost optimization (tagging, reserved capacity), and operational excellence (monitoring, logging, alarms).
 
-## Execution
+## Step 0: Confirm Scope
 
-When this skill is activated, use the following as your full instruction set for validating infrastructure code. Apply the Quality Gate at the end before presenting output to the user.
+Before reading any files, get three things: the infrastructure type, where the code is (a path such as `lib/`, `cdk.out/`, or `cloudformation/`, or pasted code), and the environment. The environment decides only whether missing deletion protection or a destroy-on-delete removal policy is CRITICAL; PITR and backups stay IMPORTANT everywhere. A guessed type or path validates the wrong code. If the caller passes the type, path, and environment (or `scope_confirmed`), skip the questions. When `scope_confirmed` gives no environment, assume Production and record that assumption in the report.
 
----
-
-# Infrastructure Code Validator
-
----
-
-## CRITICAL: STOP AND READ THIS FIRST
-
-**BEFORE doing ANY analysis, you MUST collect this information from the user:**
-
-### Required Information (MANDATORY - Cannot proceed without these)
-
-1. **Infrastructure Type** (REQUIRED):
-   - CDK TypeScript
-   - CDK Python
-   - CloudFormation YAML
-   - CloudFormation JSON
-
-2. **Folder Path or File Location** (REQUIRED):
-   - Path to infrastructure code (e.g., `lib/`, `cdk.out/`, `cloudformation/`)
-   - OR user will paste code directly
-
-3. **Environment** (REQUIRED):
-   - Development
-   - Staging
-   - Production
-
-### Optional Information (Helpful but not required)
-
-4. **Compliance Requirements** (OPTIONAL):
-   - SOC 2, HIPAA, PCI-DSS, GDPR, or other standards
-   - Organizational security policies
-
-5. **Validation Focus** (OPTIONAL):
-   - Security review
-   - Cost optimization
-   - Compliance check
-   - Operational readiness
-   - General review (all categories)
-
-6. **Current Issues** (OPTIONAL):
-   - Known problems or concerns
-   - Previous validation reports for iteration tracking
-
----
-
-### How to Ask for Information
-
-Use this exact format:
+Until you have them, don't read or analyze any infrastructure file, and don't assume CDK or CloudFormation. You may list the top-level directories so the questions can name what is there (for example "I see a CDK stack in `lib/` and a template in `cfn/`; which should I validate?"). Ask only what the listing can't answer, using this template:
 
 ```
 To validate your infrastructure code, I need the following information:
@@ -95,88 +47,17 @@ To validate your infrastructure code, I need the following information:
 Please provide at least items 1-3 so I can start the validation.
 ```
 
----
-
-**DO NOT PROCEED WITH VALIDATION UNTIL YOU HAVE ITEMS 1-3 ABOVE**
-
-**DO NOT SEARCH FOR CODE IN THE WORKSPACE WITHOUT ASKING FIRST**
-
-**DO NOT ASSUME WHAT THE USER WANTS TO VALIDATE**
-
----
-
----
-
-## Role Definition
-
----
-
-### MANDATORY FIRST STEP - READ THIS
-
-**YOU MUST STOP AND ASK FOR INFORMATION BEFORE DOING ANYTHING ELSE**
-
-Before you read any files, search any directories, or analyze any code, you MUST:
-
-1. **CHECK**: Has the user provided Infrastructure Type, Folder Path, and Environment?
-2. **IF NO**: Stop immediately and ask using the template from the "CRITICAL: STOP AND READ THIS FIRST" section above
-3. **IF YES**: Proceed with validation
-
-**Examples of what NOT to do:**
-
-- Searching for `*.ts` files in the workspace
-- Reading `lib/` directory without asking
-- Analyzing `cdk.out/` without confirmation
-- Assuming the user wants CDK validation
-- Assuming the user wants CloudFormation validation
-
-**If the user has NOT provided items 1–3, the ONLY acceptable first response is:**
-
-```
-To validate your infrastructure code, I need the following information:
-
-**Required:**
-1. Infrastructure Type: [CDK TypeScript / CDK Python / CloudFormation YAML / CloudFormation JSON]
-2. Folder Path: [path to your infrastructure code, or type "I'll paste it"]
-3. Environment: [Development / Staging / Production]
-
-**Optional (helps me provide better feedback):**
-4. Compliance Requirements: [any specific standards, or "None"]
-5. Validation Focus: [Security / Cost / Compliance / Operational / General]
-6. Known Issues: [any concerns you have, or "None"]
-
-Please provide at least items 1-3 so I can start the validation.
-```
-
----
-
-### Your Role (After Receiving Required Information)
-
-You are an AWS infrastructure code reviewer and optimization expert with deep expertise in:
-
-- AWS CDK and CloudFormation best practices
-- AWS Well-Architected Framework (Security, Reliability, Performance, Cost, Operational Excellence)
-- Infrastructure as Code patterns and anti-patterns
-- Security and compliance validation
-- Cost optimization and resource right-sizing
-- Disaster recovery and operational excellence
-
-Your role is to:
-
-- Validate infrastructure code against AWS best practices
-- Identify security, cost, and operational issues
-- Provide specific, actionable remediation steps
-- Prioritize findings by impact and urgency
-- Track infrastructure quality improvements across iterations
+Optional answers sharpen the review: compliance requirements (SOC 2, HIPAA, PCI-DSS, GDPR, or organizational security policies), a focus area, and known issues or a previous report to track progress against.
 
 ## Validation Framework
 
 Validate infrastructure code across these 10 categories:
 
-### CATEGORY 1: SECURITY CONFIGURATION (Critical Priority)
+### CATEGORY 1: SECURITY CONFIGURATION
 
 Check for:
 
-- **Encryption at Rest**: All data stores (S3, DynamoDB, RDS, EBS) must have encryption enabled
+- **Encryption at Rest**: RDS and EBS must set encryption explicitly. S3 (SSE-S3) and DynamoDB (AWS owned key) encrypt at rest by default, so check them only for data that requires SSE-KMS or a customer managed key
 - **Encryption in Transit**: TLS/SSL required for all network communication (API Gateway, ALB, CloudFront)
 - **IAM Permissions**: Least privilege principle, no wildcard permissions, no overly permissive policies
 - **Network Security**: VPC configuration, security groups, NACLs, no public access to sensitive resources
@@ -187,8 +68,8 @@ Check for:
 
 **Validation Checks**:
 
-1. Verify encryption enabled for all S3 buckets (AWS managed or customer managed KMS)
-2. Check DynamoDB tables have encryption enabled
+1. For S3 buckets holding data that requires SSE-KMS or a customer managed key, verify `BucketEncryption` sets it. A missing `BucketEncryption` alone is not a finding: S3 applies SSE-S3 to every new object
+2. For DynamoDB tables with the same requirement, verify a customer managed key is set. Without one, DynamoDB still encrypts with an AWS owned key
 3. Validate RDS instances use encryption at rest
 4. Verify API Gateway uses TLS 1.2 or higher
 5. Check IAM policies for wildcard permissions (Action: "_", Resource: "_")
@@ -198,7 +79,7 @@ Check for:
 9. Validate CloudTrail is enabled for audit logging
 10. Verify VPC endpoints used for AWS service access where appropriate
 
-### CATEGORY 2: COST OPTIMIZATION (Medium Priority)
+### CATEGORY 2: COST OPTIMIZATION
 
 Check for:
 
@@ -223,7 +104,7 @@ Check for:
 9. Verify CloudFront used for static content delivery to reduce data transfer costs
 10. Identify opportunities for S3 Intelligent-Tiering for unpredictable access patterns
 
-### CATEGORY 3: OPERATIONAL EXCELLENCE (High Priority)
+### CATEGORY 3: OPERATIONAL EXCELLENCE
 
 Check for:
 
@@ -249,7 +130,7 @@ Check for:
 9. Verify auto-scaling configured for DynamoDB, ECS, Lambda concurrency
 10. Check resource tagging includes Environment, Application, Owner, CostCenter
 
-### CATEGORY 4: RELIABILITY & RESILIENCE (High Priority)
+### CATEGORY 4: RELIABILITY & RESILIENCE
 
 Check for:
 
@@ -274,7 +155,7 @@ Check for:
 9. Verify SQS queues have dead letter queues configured
 10. Check for single points of failure (single NAT Gateway, single database)
 
-### CATEGORY 5: PERFORMANCE OPTIMIZATION (Medium Priority)
+### CATEGORY 5: PERFORMANCE OPTIMIZATION
 
 Check for:
 
@@ -298,7 +179,7 @@ Check for:
 9. Verify CloudFront compression enabled for text-based content
 10. Check Lambda functions use ARM64 (Graviton) for cost and performance benefits
 
-### CATEGORY 6: CDK/CLOUDFORMATION BEST PRACTICES (Medium Priority)
+### CATEGORY 6: CDK/CLOUDFORMATION BEST PRACTICES
 
 Check for:
 
@@ -324,7 +205,7 @@ Check for:
 9. Validate license headers present in all source files
 10. Verify unit tests exist for custom constructs
 
-### CATEGORY 7: COMPLIANCE & GOVERNANCE (Critical Priority)
+### CATEGORY 7: COMPLIANCE & GOVERNANCE
 
 Check for:
 
@@ -349,7 +230,7 @@ Check for:
 9. Validate backup retention meets compliance requirements
 10. Verify encryption algorithms meet organizational standards
 
-### CATEGORY 8: INFRASTRUCTURE ANTI-PATTERNS (High Priority)
+### CATEGORY 8: INFRASTRUCTURE ANTI-PATTERNS
 
 Check for:
 
@@ -375,7 +256,7 @@ Check for:
 9. Detect missing retry logic for external service calls
 10. Identify missing dead letter queues for asynchronous processing
 
-### CATEGORY 9: RESOURCE-SPECIFIC VALIDATION (High Priority)
+### CATEGORY 9: RESOURCE-SPECIFIC VALIDATION
 
 #### Lambda Functions
 
@@ -393,7 +274,7 @@ Check for:
 - **Partition Key Design**: High cardinality partition keys, no hot partitions
 - **GSI Configuration**: GSI capacity >= base table capacity
 - **Billing Mode**: Appropriate billing mode for traffic pattern
-- **Encryption**: Encryption at rest enabled
+- **Encryption**: Customer managed key set when the data requires one (default is an AWS owned key)
 - **Backup**: Point-in-time recovery enabled for production
 - **Streams**: Streams enabled only when needed (event-driven architecture)
 - **TTL**: Time-to-live configured for temporary data
@@ -402,7 +283,7 @@ Check for:
 
 - **Public Access**: Block public access enabled
 - **Versioning**: Versioning enabled for critical data
-- **Encryption**: Server-side encryption enabled
+- **Encryption**: SSE-KMS or a customer managed key set when the data requires one (default is SSE-S3)
 - **Lifecycle Policies**: Lifecycle policies for cost optimization
 - **Access Logging**: Access logging enabled for audit
 - **Object Lock**: Object lock for compliance requirements
@@ -418,7 +299,7 @@ Check for:
 - **Request Validation**: Request validation enabled
 - **WAF Integration**: WAF attached for security
 
-### CATEGORY 10: DEPLOYMENT & LIFECYCLE MANAGEMENT (Medium Priority)
+### CATEGORY 10: DEPLOYMENT & LIFECYCLE MANAGEMENT
 
 Check for:
 
@@ -446,27 +327,7 @@ Check for:
 
 ## Validation Process
 
-**⛔ STOP: You cannot proceed to Step 1 without completing Step 0 ⛔**
-
-### Step 0: Gather Requirements (MANDATORY FIRST STEP)
-
-**This step is NOT optional. You MUST complete this before any analysis.**
-
-**Before any validation work begins:**
-
-1. Verify you have received the required information:
-   - Infrastructure Type
-   - Folder Path or pasted code
-   - Environment (dev/staging/production)
-
-2. If missing, ask the user using the format from "CRITICAL: Start Here" section
-
-3. Clarify any optional details that would improve validation quality:
-   - Compliance requirements
-   - Validation focus areas
-   - Known issues or concerns
-
-**DO NOT proceed to Step 1 until you have this information.**
+Start only after [Step 0](#step-0-confirm-scope).
 
 ### Step 1: Initial Analysis and Resource Discovery
 
@@ -528,17 +389,19 @@ Check EVERY IAM policy statement for:
    - Search for: `"Resource": "arn:aws:*:*:*:*"` patterns
    - Exception: Only acceptable for service-level actions (e.g., `sts:GetCallerIdentity`)
 
-2. **Wildcard Actions** - Flag as CRITICAL
+2. **Wildcard Actions** - CRITICAL, except `service:*` on a low-risk service
    - Search for: `"Action": "*"` or `actions: ["*"]`
-   - Search for: `"Action": "service:*"` (e.g., `"s3:*"`)
+   - Search for: `"Action": "service:*"` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, which includes `lambda:UpdateFunctionCode`, `iam:*`, `sts:*`), or `ec2:*`, which covers EBS snapshots, security-group ingress and instance userData
+   - `service:*` on a low-risk service (`cloudwatch:*`, `xray:*`) is IMPORTANT
 
-3. **Overly Permissive Actions** - Flag as HIGH
-   - `dynamodb:*`, `s3:*`, `lambda:*`, `cognito-idp:*`
+3. **Overly Permissive Actions** - Flag as IMPORTANT
+   - A list of named actions broader than the code needs, with no wildcard. For example, a read-only Lambda granted `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject`
    - Should specify exact actions needed
 
-4. **Cross-Account Access** - Flag as HIGH
+4. **Cross-Account Access**
    - Check for `Principal` with external account IDs
-   - Verify trust relationships are intentional
+   - CRITICAL when the trust has no `sts:ExternalId` or other condition key
+   - IMPORTANT when it is conditioned but its intent is unverified
 
 **Validation Command Examples**:
 
@@ -550,20 +413,21 @@ jq '.Resources | to_entries[] | select(.value.Type == "AWS::IAM::Policy") | sele
 jq '.Resources | to_entries[] | select(.value.Type == "AWS::IAM::Policy") | select(.value.Properties.PolicyDocument.Statement[].Action == "*")' template.json
 ```
 
+This skill covers wildcards and cross-account trust, with the same tiers as the Severity Mapping in `policy-validation`. Policy-level depth (condition keys, permission boundaries, KMS key policies, a policy score) belongs to `policy-validation`, which `k-architect` loads. If your agent doesn't have it, list those checks as out of scope in the report.
+
 #### 2.2 Encryption Validation (MANDATORY)
 
 Check EVERY data store resource:
 
 **DynamoDB Tables** (`AWS::DynamoDB::Table`):
 
-- [ ] `SSESpecification.SSEEnabled: true` present
-- [ ] Verify encryption type (AWS_MANAGED or CUSTOMER_MANAGED)
+- [ ] If the data requires a customer managed key, `SSESpecification` sets `SSEEnabled: true`, `SSEType: KMS` and `KMSMasterKeyId`
+- [ ] Without `SSESpecification`, the table is encrypted with an AWS owned key; not a finding by itself
 
 **S3 Buckets** (`AWS::S3::Bucket`):
 
-- [ ] `BucketEncryption.ServerSideEncryptionConfiguration` present
-- [ ] `SSEAlgorithm` is `AES256` or `aws:kms`
-- [ ] If KMS, verify `KMSMasterKeyID` specified
+- [ ] If the data requires SSE-KMS, `BucketEncryption` sets `SSEAlgorithm: aws:kms` (or `aws:kms:dsse`) and `KMSMasterKeyID`
+- [ ] Without `BucketEncryption`, S3 applies SSE-S3 (AES-256) to new objects; not a finding by itself
 
 **RDS Instances** (`AWS::RDS::DBInstance`):
 
@@ -811,7 +675,7 @@ Check for alarms on:
 **For EACH S3 Bucket** (`AWS::S3::Bucket`):
 
 - [ ] `PublicAccessBlockConfiguration` with all four settings true
-- [ ] `BucketEncryption` configured
+- [ ] `BucketEncryption` sets SSE-KMS if the data requires it
 - [ ] `VersioningConfiguration.Status: Enabled` for critical data
 - [ ] `LifecycleConfiguration` for cost optimization
 - [ ] `ServerAccessLogsConfiguration` for audit trail
@@ -906,16 +770,16 @@ AWS::CloudWatch::Alarm          |   10  | ✓ Coverage Check
 
 Before finalizing report, verify you checked:
 
-**Security (CRITICAL)**:
+**Security**:
 
 - [ ] ALL IAM policies for wildcard resources (`"Resource": "*"`)
-- [ ] ALL IAM policies for wildcard actions (`"Action": "*"`)
-- [ ] ALL data stores for encryption at rest
+- [ ] ALL IAM policies for wildcard actions (`"Action": "*"` or `"service:*"`)
+- [ ] ALL RDS and EBS resources for encryption at rest, and S3 and DynamoDB for SSE-KMS where the data requires it
 - [ ] ALL S3 buckets for public access block
 - [ ] ALL network resources for TLS/SSL configuration
 - [ ] ALL resources for hardcoded secrets
 
-**Operational (HIGH)**:
+**Operational**:
 
 - [ ] ALL Lambda functions for DLQ configuration
 - [ ] ALL Lambda functions for CloudWatch alarms
@@ -925,14 +789,14 @@ Before finalizing report, verify you checked:
 - [ ] ALL S3 buckets for access logging
 - [ ] ALL CloudFront distributions for logging
 
-**Cost (MEDIUM)**:
+**Cost**:
 
 - [ ] ALL Lambda functions for memory/timeout optimization
 - [ ] ALL DynamoDB tables for GSI optimization
 - [ ] ALL S3 buckets for lifecycle policies
 - [ ] ALL resources for appropriate billing modes
 
-**Reliability (HIGH)**:
+**Reliability**:
 
 - [ ] ALL stateful resources for backup configuration
 - [ ] ALL Lambda functions for retry configuration
@@ -944,19 +808,27 @@ Provide structured feedback with:
 
 - **Resource Inventory Summary** (from Step 6.1)
 - **Verification Checklist Status** (from Step 6.2)
-- Critical issues requiring immediate attention
-- High priority issues for near-term resolution
-- Medium priority optimizations
-- Low priority improvements
+- CRITICAL findings requiring immediate attention
+- IMPORTANT findings for near-term resolution
+- SUGGESTION findings: optimizations and minor improvements
 - Iteration progress tracking
+- Limits of the review: name the inputs you did not inspect (Lambda handler code, the synthesized template in `cdk.out/`, the app entrypoint, CI) and mark findings that depend on them as unverified
 
-**IMPORTANT**: If you did not systematically check ALL resources of a type, explicitly state this limitation in the report.
+Report each root cause once, under its highest tier, and put every related setting in that finding's fix. A public bucket finding, for example, carries the block-public-access, TLS enforcement and policy changes together instead of repeating them lower down.
+
+If you did not systematically check ALL resources of a type, explicitly state this limitation in the report.
 
 ## Output Format
 
-Provide structured feedback:
+Use the same CRITICAL, IMPORTANT and SUGGESTION scale as the Quality Gate:
 
-### Critical Issues (Must Fix)
+- **CRITICAL** blocks deployment. Use it only for exposure, data loss or credential risk: the Quality Gate CRITICAL list, which covers public access, missing encryption the data requires, open ingress, missing deletion protection, hardcoded secrets and the wildcard IAM cases rated CRITICAL above.
+- **IMPORTANT** is for operational and reliability gaps such as missing alarms, backups, DLQs, tracing, reserved concurrency or a hot partition key. They stay IMPORTANT even in production.
+- **SUGGESTION** is for cost, performance and code-quality improvements.
+
+If you would hedge a rating with "arguably", use the lower tier.
+
+### CRITICAL (Must Fix)
 
 ```
 [Category] [Resource/Location]
@@ -967,7 +839,7 @@ Example:
 [Code showing fix - before and after]
 ```
 
-### High Priority Issues (Should Fix)
+### IMPORTANT (Should Fix)
 
 ```
  [Category] [Resource/Location]
@@ -978,23 +850,15 @@ Example:
 [Code showing improvement]
 ```
 
-### Medium Priority Issues (Consider Fixing)
+### SUGGESTION (Consider Fixing)
 
 ```
 [Category] [Resource/Location]
 Observation: [What could be better]
-Benefit: [Cost savings estimate, performance improvement]
+Benefit: [Cost savings estimate, performance improvement, code quality, maintainability]
 Alternative: [Optional approach]
-Example:
+Example (optional):
 [Code showing optimization]
-```
-
-### Low Priority Issues (Optional)
-
-```
-[Category] [Resource/Location]
-Suggestion: [Minor improvement]
-Benefit: [Code quality, maintainability]
 ```
 
 ### Positive Findings
@@ -1013,17 +877,16 @@ Good practice: [What's done well]
 
 **Status**: NEEDS REVISION
 **Confidence Level**: HIGH
-**Critical Issues**: 3
-**High Priority Issues**: 5
-**Medium Priority Issues**: 8
-**Low Priority Issues**: 2
+**CRITICAL**: 2
+**IMPORTANT**: 3
+**SUGGESTION**: 5
 
-### Critical Issues
+### CRITICAL
 
 **Security** - S3 Bucket (DocumentsBucket)
-Issue: S3 bucket does not have encryption at rest enabled
-Impact: Sensitive data stored unencrypted violates security best practices and compliance requirements
-Fix: Enable server-side encryption with AWS managed keys or customer managed KMS keys
+Issue: The bucket holds customer documents that the data classification says need a customer managed KMS key, but it relies on default SSE-S3
+Impact: SSE-S3 encrypts the objects, but with keys you can't control, audit per use, or revoke, so the bucket fails the classification requirement
+Fix: Set SSE-KMS with a customer managed key
 Example:
 
 ```typescript
@@ -1037,10 +900,8 @@ const bucket = new s3.Bucket(this, 'DocumentsBucket', {
 const bucket = new s3.Bucket(this, 'DocumentsBucket', {
   bucketName: 'taskflow-documents',
   versioned: true,
-  encryption: s3.BucketEncryption.S3_MANAGED,
-  // Or for customer managed keys:
-  // encryption: s3.BucketEncryption.KMS,
-  // encryptionKey: new kms.Key(this, 'BucketKey')
+  encryption: s3.BucketEncryption.KMS,
+  encryptionKey: new kms.Key(this, 'BucketKey', { enableKeyRotation: true }),
 });
 ```
 
@@ -1068,31 +929,7 @@ taskFunction.addToRolePolicy(
 );
 ```
 
-**Security** - DynamoDB Table (TasksTable)
-Issue: DynamoDB table does not have encryption at rest enabled
-Impact: Sensitive task data stored unencrypted violates compliance requirements
-Fix: Enable encryption using AWS managed keys or customer managed KMS keys
-Example:
-
-```typescript
-// Before
-const table = new dynamodb.Table(this, 'TasksTable', {
-  partitionKey: { name: 'taskId', type: dynamodb.AttributeType.STRING },
-  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-});
-
-// After
-const table = new dynamodb.Table(this, 'TasksTable', {
-  partitionKey: { name: 'taskId', type: dynamodb.AttributeType.STRING },
-  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-  encryption: dynamodb.TableEncryption.AWS_MANAGED,
-  // Or for customer managed keys:
-  // encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
-  // encryptionKey: new kms.Key(this, 'TableKey')
-});
-```
-
-### High Priority Issues
+### IMPORTANT
 
 **Operational Excellence** - Lambda Function (TaskProcessorFunction)
 Issue: No CloudWatch alarms configured for Lambda errors or throttling
@@ -1137,7 +974,6 @@ Example:
 const table = new dynamodb.Table(this, 'TasksTable', {
   partitionKey: { name: 'taskId', type: dynamodb.AttributeType.STRING },
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-  encryption: dynamodb.TableEncryption.AWS_MANAGED,
   pointInTimeRecovery: true, // Enable PITR
 });
 ```
@@ -1163,7 +999,7 @@ const taskFunction = new lambda.Function(this, 'TaskProcessorFunction', {
 });
 ```
 
-### Medium Priority Issues
+### SUGGESTION
 
 **Cost Optimization** - Lambda Function (TaskProcessorFunction)
 Observation: Lambda function using default memory (128MB) without analysis
@@ -1185,7 +1021,7 @@ const taskFunction = new lambda.Function(this, 'TaskProcessorFunction', {
 
 **Performance** - Lambda Function (TaskProcessorFunction)
 Observation: Lambda function not using ARM64 architecture (Graviton)
-Benefit: 20% better price performance with Graviton processors
+Benefit: AWS cites up to 34% better price performance on arm64 (Graviton2) than on x86, with 20% lower duration charges
 Alternative: Switch to ARM64 architecture for cost and performance benefits
 Example:
 
@@ -1208,7 +1044,6 @@ Example:
 const bucket = new s3.Bucket(this, 'DocumentsBucket', {
   bucketName: 'taskflow-documents',
   versioned: true,
-  encryption: s3.BucketEncryption.S3_MANAGED,
   lifecycleRules: [
     {
       id: 'TransitionToIntelligentTiering',
@@ -1234,14 +1069,12 @@ const bucket = new s3.Bucket(this, 'DocumentsBucket', {
 });
 ```
 
-### Low Priority Issues
-
 **Code Quality** - Stack Organization
-Suggestion: Consider extracting repeated patterns into reusable constructs
+Observation: Repeated resource patterns are not extracted into reusable constructs
 Benefit: Improved code maintainability and reusability
 
 **Documentation** - Missing inline comments
-Suggestion: Add inline comments explaining complex resource configurations
+Observation: Complex resource configurations have no inline comments
 Benefit: Improved code readability for team members
 
 ### Positive Findings
@@ -1260,7 +1093,7 @@ Good practice: CloudWatch Logs retention configured (not indefinite)
 
 ## Validation Summary
 
-**Overall Recommendation**: Address 3 critical security issues before deployment. High priority operational issues should be resolved for production readiness.
+**Overall Recommendation**: Address 2 CRITICAL security issues before deployment. IMPORTANT operational issues should be resolved for production readiness.
 
 **Key Strengths**:
 
@@ -1270,20 +1103,20 @@ Good practice: CloudWatch Logs retention configured (not indefinite)
 
 **Critical Gaps**:
 
-- Missing encryption at rest for S3 and DynamoDB
+- Document bucket lacks the customer managed key its data classification requires
 - Overly permissive IAM policies
 - Missing operational monitoring
 
 **Estimated Cost Savings**: $150-200/month from lifecycle policies and Lambda optimization
 
-**Timeline Impact**: 2-3 days to address critical and high priority issues
+**Timeline Impact**: 2-3 days to address CRITICAL and IMPORTANT issues
 ````
 
 ## Validation Checklist
 
 Before approving infrastructure code:
 
-- [ ] All data stores have encryption at rest enabled
+- [ ] RDS and EBS have encryption at rest enabled; S3 and DynamoDB use SSE-KMS where the data requires it
 - [ ] All network communication uses TLS/SSL
 - [ ] IAM policies follow least privilege principle
 - [ ] No hardcoded credentials or secrets
@@ -1312,8 +1145,8 @@ Before approving infrastructure code:
 
 Infrastructure code passes review when:
 
-- No critical security issues remain
-- High priority operational issues addressed or documented as accepted
+- No CRITICAL security issues remain
+- IMPORTANT operational issues addressed or documented as accepted
 - Compliance requirements met
 - Cost optimization opportunities identified
 - Follows AWS best practices consistently
@@ -1328,19 +1161,26 @@ Provide thorough, actionable feedback that improves infrastructure quality and e
 **CRITICAL (must fix):**
 
 - S3 buckets with public access enabled
-- Encryption at rest not configured for data stores
+- RDS or EBS without encryption at rest, or S3 and DynamoDB data that requires SSE-KMS left on the default keys
 - Security groups with `0.0.0.0/0` ingress on non-HTTP ports
-- No deletion protection on stateful resources (RDS, DynamoDB)
+- No deletion protection, or a destroy-on-delete removal policy, on stateful resources (RDS, DynamoDB) in production
+- Hardcoded passwords, keys or tokens in code or environment variables
+- IAM statements with wildcard actions (`*`, `ec2:*`, or `service:*` on a data, credential, code or permission service: `s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) or wildcard resources
+- Cross-account trust with no `sts:ExternalId` or other condition key
 
 **IMPORTANT (should fix):**
 
 - CloudWatch alarms not defined for key metrics
 - No backup configuration for stateful resources
-- Lambda functions without reserved concurrency limits
+- IAM `service:*` on a low-risk service, such as `cloudwatch:*` or `xray:*`
+- Cross-account trust that has a condition key but whose intent is unverified
+- Lambda functions without reserved concurrency limits, DLQ or tracing
+- Low-cardinality partition keys that create hot partitions
 
 **SUGGESTION:**
 
+- Over-provisioned memory, timeout or capacity with no stated reason
 - Could enable VPC Flow Logs for network visibility
 - Could add cost allocation tags to all resources
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" unless `scope_confirmed` is true. In that case, report all the findings and leave fixing to the caller without asking.

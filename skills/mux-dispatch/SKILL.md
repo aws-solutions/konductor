@@ -1,6 +1,6 @@
 ---
 name: mux-dispatch
-description: Delegate tasks to parallel agent sessions via tmux or zellij. Auto-detects the active multiplexer from environment variables. Use when tmux or zellij is running and the work should be visible in its own pane, or to delegate to a specific agent. Claude Code panes skip permission prompts.
+description: Delegates tasks to parallel agent sessions via tmux or zellij, detecting which is active. Use when tmux or zellij is running and the work should be visible in its own pane, or to delegate to a specific agent. Claude Code panes skip permission prompts.
 ---
 
 # mux Dispatch
@@ -9,14 +9,14 @@ description: Delegate tasks to parallel agent sessions via tmux or zellij. Auto-
 
 The orchestrator always dispatches via panes. The dispatch script selects the CLI automatically:
 
-- **Claude Code** (`$CLAUDECODE` is set): runs `claude --agent <PREFIX><agent-name> --dangerously-skip-permissions -p "<prompt>"` in the pane, where `<agent-name>` is the exact value passed via `--agent` (e.g. `k-developer`). The script never strips a prefix. `<PREFIX>` is the package-install prefix (e.g. `local-your-package-`), derived by searching `~/.claude/agents/` for any installed agent file ending in `-<agent-name>.md` (local- installs preferred over registry installs, checked as separate tiers). No package name is hardcoded, so this resolves correctly for any installed package. If `~/.claude/agents/` has no match and the skill ships inside a Claude Code plugin whose `agents/` has that agent, the bare name is launched and Claude resolves it to `<plugin>:<agent>`. A qualified `--agent` (`konductor:k-developer`) is launched only if the prefix is this plugin's name (from its `.claude-plugin/plugin.json`) and the plugin ships that agent; anything else is refused as not installed. **`--agent` must be a fully-qualified name.** If it matches 2+ installed agent files within the same tier (e.g. a partial name like `orchestrator` matching both `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`), the script errors and lists the candidates rather than guessing. `--agent` values are also restricted to `[a-z0-9-]+`, optionally prefixed with `<plugin>:`, before any of this runs. Completion is detected via process exit (claude -p exits on task completion); the script then `touch`es the `.done` marker file.
+- **Claude Code** (`$CLAUDECODE` is set): runs `claude --agent <PREFIX><agent-name> --dangerously-skip-permissions -p "<prompt>"` in the pane, where `<agent-name>` is the exact value passed via `--agent` (e.g. `k-developer`). The script never strips a prefix. `<PREFIX>` is the package-install prefix (e.g. `local-your-package-`), derived by searching `~/.claude/agents/` for any installed agent file ending in `-<agent-name>.md` (local- installs preferred over registry installs, checked as separate tiers). No package name is hardcoded, so this resolves correctly for any installed package. If `~/.claude/agents/` has no match and the skill ships inside a Claude Code plugin whose `agents/` has that agent, the bare name is launched and Claude resolves it to `<plugin>:<agent>`. A qualified `--agent` (`konductor:k-developer`) is launched only if the prefix is this plugin's name (from its `.claude-plugin/plugin.json`) and the plugin ships that agent; anything else is refused as not installed. **`--agent` must be a fully-qualified name.** If it matches 2+ installed agent files within the same tier (e.g. a partial name like `orchestrator` matching both `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`), the script errors and lists the candidates rather than guessing. To fix that error, pass one listed candidate verbatim (`konductor-mux-orchestrator`), never a shorter suffix such as `mux-orchestrator`. `--agent` values are also restricted to `[a-z0-9-]+`, optionally prefixed with `<plugin>:`, before any of this runs. Completion is detected via process exit (claude -p exits on task completion); the script then `touch`es the `.done` marker file.
 - **kiro-cli** (default): runs `kiro-cli chat --agent <agent-name> ...` in the pane, using the exact `--agent` value passed in — no prefix is added or stripped. Completion is detected via the kiro-cli `stop` hook writing the `.done` file.
 
 ## Overview
 
 Spawn agent sessions in tmux or zellij panes so delegated work is visible, interactive, and course-correctable in real time. Auto-detects the active multiplexer via `$TMUX` (tmux) or `$ZELLIJ` (zellij).
 
-On Claude Code, the pane runs `claude -p` with `--dangerously-skip-permissions`: print mode can't stop for a permission prompt, so tool calls run without approval. Before dispatching a task that pushes, deletes, deploys, or reads untrusted input (repo files from others, issue text, web pages), ask the user in your own turn first, or tell them to run it from base konductor.
+On Claude Code, the pane runs `claude -p` with `--dangerously-skip-permissions`: print mode can't stop for a permission prompt, so tool calls run without approval. Before dispatching a task that pushes, deletes, deploys, or reads untrusted input (repo files from others, issue text, web pages), ask the user in your own turn first, or tell them to run it from base konductor. Say so in any plan or command list you hand the user, naming what the child may do unattended (edit, commit, push).
 
 **For cmux (macOS):** use the `cmux-dispatch` skill instead.
 
@@ -206,13 +206,12 @@ target in the dispatched task instead:
 bash "<MUX_DISPATCH_DIR>/dispatch.sh" \
   --agent k-developer \
   --cwd <primary-working-tree> \
-  --task "Worktree wt-<id> already exists at <path> — cd in, do not create
-          a new one. [OR: No worktree exists for this task — create wt-<id>
-          before touching any file.]
+  --task "Before touching any file, run git worktree list. If wt-<id>
+          exists, cd into it; otherwise create wt-<id> on branch wt-<id>.
           [OR: Work directly on branch <branch> in this shared working tree
-          — no worktree for this task.]
+          - no worktree for this task.]
           Implement the feature; commit and push the branch you're on; open
-          a draft CR to mainline."
+          a draft PR to the main branch."
 ```
 
 **Read-only agents** (research, investigation, review) need no worktree
@@ -280,11 +279,11 @@ things provide harder enforcement after the fact:
 - The pre-commit hook (husky/lint-staged, or the equivalent for this
   project) runs inside the tree the agent actually committed from — edits
   made outside the named target simply will not surface in that commit.
-- The CR diff at review time shows exactly which files changed; a human
+- The PR diff at review time shows exactly which files changed; a human
   reviewer catches any file that should not have been touched before merge.
 
 Cleanup (removing the worktree and branch) happens only after the agent's
-draft CR has merged, and only with explicit user confirmation — this skill
+draft PR has merged, and only with explicit user confirmation. This skill
 does not perform cleanup itself.
 
 ## Best Practices

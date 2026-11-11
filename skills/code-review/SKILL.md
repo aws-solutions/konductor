@@ -1,7 +1,7 @@
 ---
 name: code-review
-description: Use when reviewing a folder, repo, diff or PR, creating or submitting a PR, addressing PR feedback, or reviewing your own changes after implementation. Checks correctness, security and error handling, including in a source tree with no git history. Uses standard git and GitHub CLI (`gh`) commands and classifies findings by severity (CRITICAL/IMPORTANT/SUGGESTION).
-version: 1.3.3
+description: Use when reviewing a folder, repo, diff or PR, creating or submitting a PR, addressing PR feedback, or reviewing your own changes after implementation. Checks for bugs and error handling, even with no git history; adversarial or security passes go to adversarial-code-review. Uses git and `gh`; findings are CRITICAL/IMPORTANT/SUGGESTION.
+version: 1.4.0
 tags: [skill, code-review, pr, git, workflow, humanize-writing]
 ---
 
@@ -77,6 +77,7 @@ in this turn.
       over uncommitted changes.
 2. Read every changed file completely before commenting
 3. Classify each finding by severity (CRITICAL / IMPORTANT / SUGGESTION)
+   and write it up as described in Writing Findings below
 4. Focus on: correctness, security, error handling, type safety, atomicity
 5. Create the review as a pending draft first, and submit it as a separate,
    explicit step:
@@ -112,8 +113,9 @@ steps, since there is no PR to post to.
 2. Read in priority order: entry points, then code that handles auth, input
    parsing, data writes and external calls, then the rest.
 3. Apply the Review Checklist below to each file you read.
-4. Report findings by severity with file and line. End the report with the
-   in-scope files you did not read, so the user knows what was not reviewed.
+4. Report findings as described in Writing Findings below. End the report
+   with the in-scope files you did not read, so the user knows what was not
+   reviewed.
 
 ### Address Feedback
 
@@ -178,6 +180,20 @@ state of the change, not the history of how it got there.
 - Additional test coverage opportunities
 - Documentation or comment improvements
 - Naming convention refinements
+
+## Writing Findings
+
+- Give every finding a severity, a `path:line`, the problem, and a concrete
+  fix. Use the file's own line numbers, not line offsets inside a diff.
+- A gap with no single line, such as missing tests, either attaches to the
+  function it concerns or goes in a short notes list after the findings.
+- Only report what the code you read shows. A worry about code you were not
+  given (auth middleware, callers, deploy config) is an assumption, not a
+  finding: list it once under Assumptions, unrated, because the author cannot
+  act on a defect nobody can see.
+- Rate by impact you can point to. CRITICAL means a defect visible in the
+  code, not a hardening idea, and the fix should reuse a helper the codebase
+  already has where one fits.
 
 ## Quality Gate
 

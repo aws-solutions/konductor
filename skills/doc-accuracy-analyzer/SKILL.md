@@ -1,6 +1,6 @@
 ---
 name: doc-accuracy-analyzer
-description: 'Use when asked to fact-check or verify the claims in a design doc, before review or after a reviewer questions accuracy. Extracts verifiable claims, routes AWS feature, limit, pricing and Region claims to aws-service-validator, investigates the rest against primary sources, and produces a structured accuracy report.'
+description: Use when asked to fact-check or verify the claims in a design doc, before review or after a reviewer questions accuracy. Routes AWS feature, limit, pricing and Region claims to aws-service-validator, checks the rest against primary sources, and produces an accuracy report.
 version: 1.0.0
 ---
 
@@ -32,7 +32,7 @@ Be aggressive. "Already built" and "requires only configuration" are the highest
 
 Send every AWS feature, limit or quota, pricing, Region availability, and GA/preview claim to `aws-service-validator` as a list of `{service, feature, region, assertion}`, with the report path your caller gave, if any. It checks them with the AWS documentation tools and returns CONFIRMED, UNVERIFIED, or INCORRECT for each. Carry its rows into Step 4.
 
-If `aws-service-validator` or its `aws-mcp` tools are not available, check the AWS claims yourself in Step 3 against docs.aws.amazon.com, and Region claims against the [AWS Services by Region](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) list, and say so in the report.
+If `aws-service-validator` is not available, check the AWS claims yourself in Step 3 against docs.aws.amazon.com, and Region claims against the [AWS Services by Region](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) list, and say so in the report.
 
 ### Step 3: Investigate the Remaining Claims
 
