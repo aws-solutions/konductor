@@ -335,6 +335,14 @@ An answer is also not eligible when the sanitizer removed more than a quarter of
 
 This is one layer of blinding and not a guarantee. The sanitizer cannot hide a difference in style or content that comes from the skill itself.
 
+## Scoring
+
+Each answer is scored alone. A judge sees the request, a checklist and one answer, and replies with one label per checklist item: `MET`, `PARTIAL` or `MISSING`, which count 1, 0.5 and 0. It is never told which arm wrote the answer, or that another answer exists. The score of an answer is 1 plus 4 times the share of weight met, so it runs from 1 to 5. A seat counts for a task when both of the task's answers got a valid judgment from that seat; its gap is the score of the answer made with the skill minus the score of the answer made without it. A seat with one valid answer does not count. The gap of a task is the mean of its seats' gaps, and a task counts in a reading only when at least 2 of its seats count.
+
+The two readings use the two scales. `items` is reading B: the rules checklist, where every item has a bucket and every bucket feeds the score. Guard items also feed a separate guard figure, taken from each answer's own judgment. `outcome` is reading A: the request-only checklist, which has no buckets.
+
+The reply parser is strict, because a lenient one would score a reply the prompt did not ask for. The whole reply must be one JSON object with `items` (and optionally a text `reason`), with exactly one upper-case label per checklist item, in order. Text around the JSON, two objects, a lower-case label, a missing or extra label, an unknown field and a field given twice (two `items` would let the last one win) all make the judgment invalid, with a stored reason and a `kind` (`empty`, `not_json`, `not_object`, `fields` or `labels`) that can be counted. One code fence around the whole reply (bare or tagged `json`) is accepted, because it adds no text and models add it often; the judgment then records `normalized: 'fence'`. A fence with text around it, two fences or another language tag are still invalid.
+
 ## Not built yet
 
-These are added in a later PR: the commands that run the tasks and the judges, the checklist writer for reading A, scoring, and the report.
+These are added in a later PR: the judge prompts, the commands that run the tasks and the judges, the checklist writer for reading A, the labels that sum up the scores, and the report.
