@@ -296,7 +296,9 @@ not per individual commit.
     settings from the server's skills for them. `policy-validation` checks statements against
     `aws-iam`'s edge cases and S3 buckets against `securing-s3-buckets`.
   - `cost-estimation` prices through Price List API calls on the AWS MCP server, guided by
-    `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server.
+    `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server. With a
+    shell, it prices DynamoDB with the `amazon-dynamodb` cost calculator, fetched from the
+    server and run locally.
   - `policy-validation` checks the API Gateway `SecurityPolicy` property, treats the KMS key
     rotation period as configurable, uses the Security Hub CSPM name, and can run IAM Access
     Analyzer policy validation.
