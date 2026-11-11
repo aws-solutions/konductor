@@ -30,6 +30,10 @@ NOT_LOCAL = {
     ("infra-validation", "references/aws-iam-role-management.md"),
     ("policy-validation", "references/audit-checklist.md"),
     ("policy-validation", "references/aws-iam-role-management.md"),
+    # Files inside the AWS MCP server's creating-secrets-using-best-practices and
+    # setting-up-cloudtrail-multi-region skills.
+    ("iam-policy-design", "references/create-secrets-using-best-practices.md"),
+    ("iam-policy-design", "references/cloudtrail-multi-region-setup.md"),
     # A file inside the AWS MCP server's amazon-dynamodb skill.
     ("cost-estimation", "references/cost-model-schema.md"),
 }
