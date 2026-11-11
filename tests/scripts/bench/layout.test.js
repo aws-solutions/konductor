@@ -190,14 +190,25 @@ test('every path builder refuses an unsafe name in every position that takes one
       );
 });
 
-test('the run id ledger.jsonl is refused, in any letter case, because bench/out/ledger.jsonl is the spend ledger', () => {
-  for (const runId of ['ledger.jsonl', 'Ledger.jsonl', 'LEDGER.JSONL'])
+test('the run ids ledger.jsonl and ledger.jsonl.lock are refused, in any letter case, because bench/out/ holds the spend ledger and its lock file under those names', () => {
+  for (const runId of [
+    'ledger.jsonl',
+    'Ledger.jsonl',
+    'LEDGER.JSONL',
+    'ledger.jsonl.lock',
+    'Ledger.jsonl.LOCK',
+  ])
     assert.throws(
       () => createLayout({ root: ROOT, runId }),
       (error) =>
         error instanceof LayoutError &&
         /run id .* is reserved/.test(error.message) &&
-        error.message.includes(JSON.stringify(runId)),
+        error.message.includes(JSON.stringify(runId)) &&
+        error.message.includes(
+          runId.toLowerCase().endsWith('.lock')
+            ? "bench/out/ledger.jsonl.lock is the spend ledger's lock file"
+            : 'bench/out/ledger.jsonl is the spend ledger',
+        ),
       runId,
     );
   // Near misses are ordinary run ids, and none of them is the ledger path.
@@ -205,6 +216,8 @@ test('the run id ledger.jsonl is refused, in any letter case, because bench/out/
     'ledger',
     'ledger.json',
     'ledger.jsonl.1',
+    'ledger.jsonl.locks',
+    'my-ledger.jsonl.lock',
     'my-ledger.jsonl',
   ])
     assert.notEqual(

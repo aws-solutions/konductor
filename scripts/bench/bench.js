@@ -1,22 +1,27 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Driver for the skill benchmark. It has one command so far:
+ * Driver for the skill benchmark. Its commands so far:
  *
  *   node scripts/bench/bench.js plan --skills a,b [--run <id>] [--max-usd N] [--config <file>] [--root <dir>] [--json]
+ *   node scripts/bench/bench.js cost-profile [--ledger <file>] [--out <file>] [--root <dir>]
  *
  * `plan` is offline. It makes no network, model or AWS call, spends nothing and writes no file. With
  * no --skills it prints this usage and the skills that have a baseline, and does nothing else.
  * `--all` and `--changed-since` are not implemented yet and are refused.
+ *
+ * `cost-profile` (lib/cost-profile-rebuild.js) reads the spend ledger and prints a cost profile built from the calls
+ * whose cost the CLI reported, or writes it to --out. It needs no settings file and spends nothing.
  *
  * README.md in this folder explains the terms and the file formats.
  *
  * Exit codes (the values are the sysexits.h ones where one fits):
  *
  *   0   done
- *   1   the plan is refused: an invalid baseline or agent spec, a projected cost above max_usd, or no selected
- *       skill that can be run (no baseline or no agent)
- *   64  usage error (EX_USAGE): a bad flag or value, an unknown skill, or a settings file that
- *       cannot be read or is invalid
+ *   1   the plan is refused: an invalid baseline or agent spec, a projected cost above max_usd, a plan that
+ *       would take the spend ledger past total_cap_usd, or no selected skill that can be run
+ *       (no baseline or no agent)
+ *   64  usage error (EX_USAGE): a bad flag or value, an unknown skill, a settings file that
+ *       cannot be read or is invalid, or a spend ledger that cost-profile cannot parse
  *   66  a file or folder the plan needs is missing (EX_NOINPUT)
  *   70  internal error (EX_SOFTWARE): a bug in the benchmark. One line says so; the stack trace is
  *       printed only when BENCH_DEBUG=1 is set
@@ -32,6 +37,8 @@ const path = require('path');
 const { createLayout } = require('./lib/layout');
 const { loadConfig, ConfigError } = require('./lib/config');
 const { defaultProfile, CostProfileError } = require('./lib/cost-profile');
+const { rebuildProfile } = require('./lib/cost-profile-rebuild');
+const { LedgerError } = require('./lib/ledger');
 const { JsonFileError } = require('./lib/read-file');
 const { listSkills } = require('./lib/skills');
 const { buildPlan, renderPlan } = require('./lib/plan');
@@ -41,10 +48,13 @@ const EX_NOINPUT = 66;
 const EX_SOFTWARE = 70;
 const EX_IOERR = 74;
 const USAGE = `Usage: node scripts/bench/bench.js plan --skills <a,b> [options]
+       node scripts/bench/bench.js cost-profile [--ledger <file>] [--out <file>] [--root <dir>]
 
 Commands
   plan    Show the stages a run would take for the selected skills, which are done, and what the
           rest would cost. Offline: no network, no model call, nothing spent.
+  cost-profile  Rebuild the cost profile (mean, median, p90 per call kind and model) from the
+          spend ledger. Offline: nothing spent.
 
 Options
   --skills <a,b>     Skills to plan. Without it, only this help is shown.
@@ -53,11 +63,13 @@ Options
   --config <file>    Settings file to use instead of bench/config.json.
   --root <dir>       Repository root to read (default: this checkout).
   --json             Print the plan as JSON.
+  --ledger <file>    cost-profile only: the spend ledger to read (default: bench/out/ledger.jsonl).
+  --out <file>       cost-profile only: write the profile there instead of printing it.
 
 Exit codes
   0   done
-  1   the plan is refused (an invalid baseline or agent spec, a projected cost above max_usd, or no skill to run)
-  64  usage error: a bad flag or value, an unknown skill, or an unreadable or invalid settings file
+  1   the plan is refused (an invalid baseline or agent spec, a projected cost above max_usd, a ledger past a limit, or no skill to run)
+  64  usage error: a bad flag or value, an unknown skill, an unreadable or invalid settings file, or (cost-profile) a corrupt ledger
   66  a file or folder the plan needs is missing
   70  internal error (a bug in the benchmark); set BENCH_DEBUG=1 to print the stack trace
   74  I/O error reading a file or folder, such as permission denied
@@ -70,6 +82,7 @@ class UsageError extends Error {}
 
 /** Why a read failed, by the Node error code. Codes not listed here are shown as they are. */
 const IO_REASONS = {
+  ENOENT: 'no such file or folder',
   EACCES: 'permission denied',
   EPERM: 'operation not permitted',
   EISDIR: 'it is a folder, not a file',
@@ -103,6 +116,11 @@ function describeFailure(error, { debug = false } = {}) {
   if (isSystemError(error)) {
     const kind = FOLDER_CALLS.has(error.syscall) ? 'folder' : 'file';
     const where = error.path ? ` (${error.path})` : '';
+    if (error.writing)
+      return {
+        code: EX_IOERR,
+        text: `error: cannot write ${kind}: ${IO_REASONS[error.code] || error.code}${where}\n`,
+      };
     if (error.code === 'ENOENT')
       return {
         code: EX_NOINPUT,
@@ -133,8 +151,18 @@ const VALUE_FLAGS = {
   '--max-usd': 'maxUsd',
   '--config': 'config',
   '--root': 'root',
+  '--ledger': 'ledger',
+  '--out': 'out',
 };
+/** Flags only `cost-profile` takes, and the only flags it takes besides --root. */
+const COST_PROFILE_FLAGS = ['ledger', 'out'];
+const COMMANDS = ['plan', 'cost-profile'];
 const BOOL_FLAGS = { '--json': 'json', '--help': 'help', '-h': 'help' };
+/** The command-line spelling of a parsed option name (`maxUsd` is `--max-usd`). */
+const flagOf = (name) =>
+  Object.entries({ ...VALUE_FLAGS, ...BOOL_FLAGS }).find(
+    ([, option]) => option === name,
+  )?.[0] || name;
 const UNSUPPORTED_SELECTIONS = ['--all', '--changed-since'];
 
 function parseArgs(argv) {
@@ -201,6 +229,18 @@ function listBaselineSkills(layout) {
     .sort();
 }
 
+/** True when two absolute paths name one file, following links when the files exist. */
+function samePath(first, second) {
+  const real = (file) => {
+    try {
+      return fs.realpathSync(file);
+    } catch {
+      return file;
+    }
+  };
+  return first === second || real(first) === real(second);
+}
+
 /**
  * Runs the driver. `io` is { out(text), err(text) }; `env` is where BENCH_DEBUG is read. Returns the
  * exit code and never calls process.exit or throws.
@@ -212,9 +252,17 @@ function main(argv, io, env = process.env) {
       io.out(USAGE);
       return 0;
     }
-    if (command !== 'plan')
+    if (!COMMANDS.includes(command))
       throw new UsageError(
-        `unknown command "${command}"; the only command so far is plan`,
+        `unknown command "${command}"; the commands are ${COMMANDS.join(', ')}`,
+      );
+    if (command === 'cost-profile') return runCostProfile({ options, io });
+    const costProfileOnly = COST_PROFILE_FLAGS.filter(
+      (name) => name in options,
+    );
+    if (costProfileOnly.length)
+      throw new UsageError(
+        `${costProfileOnly.map(flagOf).join(', ')} is an option of cost-profile, not of ${command}`,
       );
 
     const maxUsd =
@@ -281,6 +329,81 @@ function main(argv, io, env = process.env) {
     io.err(text);
     return code;
   }
+}
+
+/**
+ * The `cost-profile` command: rebuilds the cost profile from a spend ledger (cost-profile-rebuild.js). `--ledger`
+ * names the ledger (default: bench/out/ledger.jsonl under --root); `--out` names the file to write, and without it
+ * the profile is printed as JSON. `--out` may not name the ledger or its lock file. A ledger that cannot be parsed
+ * is a usage error (64). The current profile is the committed one. Offline; spends nothing. Exit 0.
+ */
+function runCostProfile({ options, io }) {
+  const other = Object.keys(options).filter(
+    (name) => !['ledger', 'out', 'root', 'help'].includes(name),
+  );
+  if (other.length)
+    throw new UsageError(
+      `cost-profile takes only --ledger, --out and --root, got ${other.map(flagOf).join(', ')}`,
+    );
+  let layout;
+  try {
+    layout = createLayout({ root: options.root && path.resolve(options.root) });
+  } catch (error) {
+    throw new UsageError(error.message);
+  }
+  let current;
+  try {
+    current = defaultProfile();
+  } catch (error) {
+    if (!(error instanceof CostProfileError || error instanceof JsonFileError))
+      throw error;
+    throw new UsageError(error.message);
+  }
+  const ledgerFile = options.ledger
+    ? path.resolve(options.ledger)
+    : layout.ledgerFile;
+  const outFile = options.out && path.resolve(options.out);
+  // Writing the profile over the ledger (or its lock) would destroy every spend row.
+  if (
+    outFile &&
+    [ledgerFile, `${ledgerFile}.lock`].some((file) => samePath(file, outFile))
+  )
+    throw new UsageError(
+      `--out cannot be the spend ledger or its lock file (${outFile})`,
+    );
+  let rebuilt;
+  try {
+    rebuilt = rebuildProfile({
+      ledgerFile,
+      current,
+      today: new Date().toISOString().slice(0, 10),
+    });
+  } catch (error) {
+    // A corrupt ledger is a problem with the input, not a bug in the benchmark.
+    if (!(error instanceof LedgerError)) throw error;
+    throw new UsageError(error.message);
+  }
+  const { profile } = rebuilt;
+  const text = `${JSON.stringify(profile, null, 2)}\n`;
+  if (!outFile) {
+    io.out(text);
+    return 0;
+  }
+  // Written next to the target and renamed into place, so a crash cannot leave a half-written profile.
+  const tmpFile = `${outFile}.tmp-${process.pid}`;
+  try {
+    fs.writeFileSync(tmpFile, text);
+    fs.renameSync(tmpFile, outFile);
+  } catch (error) {
+    fs.rmSync(tmpFile, { force: true });
+    // A missing folder is a write failure here (exit 74), not a missing input (66).
+    if (isSystemError(error)) error.writing = true;
+    throw error;
+  }
+  io.out(
+    `wrote ${outFile}: ${profile.entries.length} entries from ${ledgerFile}\n`,
+  );
+  return 0;
 }
 
 if (require.main === module) {

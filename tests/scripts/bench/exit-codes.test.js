@@ -628,3 +628,38 @@ test('describeFailure: the exit codes are distinct and none is 2', () => {
   assert.deepEqual(codes, [0, 1, 64, 66, 70, 74]);
   assert.equal(new Set(codes).size, codes.length);
 });
+
+// A config with no `anthropic` seat and no rubric_writer has no checklist writer for `plan` to price. That is a
+// settings error that names the field (64), not a bug in the benchmark (70).
+test('exit 64: no anthropic seat and no rubric_writer is a settings error naming models.rubric_writer; with a writer set, plan runs', () => {
+  helpers.withFixtureCopy((dir) => {
+    const configFile = path.join(dir, 'settings.json');
+    helpers.write(
+      configFile,
+      helpers.edit(
+        helpers.settingsWith(),
+        'models.judges.anthropic',
+        undefined,
+      ),
+    );
+    const child = runCli(planArgs(dir, '--config', configFile));
+    assert.equal(child.status, 64, child.stderr);
+    assert.equal(child.stdout, '');
+    assert.match(
+      child.stderr,
+      /^error: invalid benchmark settings \([^)]+\):\n {2}- models\.rubric_writer: set it, or keep an "anthropic" judge seat/,
+    );
+    assert.doesNotMatch(child.stderr, /internal error|bug in the benchmark/);
+
+    helpers.write(
+      configFile,
+      helpers.edit(
+        helpers.settingsWith({ models: { rubric_writer: 'writer-model' } }),
+        'models.judges.anthropic',
+        undefined,
+      ),
+    );
+    const withWriter = runCli(planArgs(dir, '--config', configFile));
+    assert.equal(withWriter.status, 0, withWriter.stderr);
+  });
+});

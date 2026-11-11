@@ -46,7 +46,7 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 const DEFAULT_RUN_ID = 'default';
 // Names in bench/out/ that belong to the layout, not to a run. Compared in lower case, because a file system
 // that ignores case (macOS, Windows) would make "Ledger.jsonl" the ledger file as well.
-const RESERVED_RUN_IDS = Object.freeze(['ledger.jsonl']);
+const RESERVED_RUN_IDS = Object.freeze(['ledger.jsonl', 'ledger.jsonl.lock']);
 const ARMS = Object.freeze(['with', 'without']);
 /** `items` is reading B (the rules checklist), `outcome` is reading A (the request-only checklist). */
 const SCALES = Object.freeze(['items', 'outcome']);
@@ -74,9 +74,12 @@ function requireSeat(value) {
 }
 function requireRunId(value) {
   requireSafeSegment('run id', value);
-  if (RESERVED_RUN_IDS.includes(value.toLowerCase()))
+  const reserved = RESERVED_RUN_IDS.find(
+    (name) => name === value.toLowerCase(),
+  );
+  if (reserved)
     throw new LayoutError(
-      `run id ${JSON.stringify(value)} is reserved: bench/out/${RESERVED_RUN_IDS[0]} is the spend ledger`,
+      `run id ${JSON.stringify(value)} is reserved: bench/out/${reserved} is ${reserved.endsWith('.lock') ? "the spend ledger's lock file" : 'the spend ledger'}`,
     );
   return value;
 }

@@ -1,0 +1,6 @@
+{"type":"reserve","id":"a1","ts":"2026-01-15T09:00:00.000Z","run":"r1","label":"subject task-1 with","usd":0.25,"expires":"2026-01-15T09:12:00.000Z"}
+{"type":"settle","id":"a1","ts":"2026-01-15T09:01:00.000Z","run":"r1","label":"subject task-1 with","usd":0.125,"status":"ok","model":"claude-sonnet-5-5","cost_source":"reported"}
+{"type":"reserve","id":"a2","ts":"2026-01-15T09:55:00.000Z","run":"r1","label":"judge task-1","usd":0.25,"expires":"2026-01-15T10:07:00.000Z"}
+{"type":"reserve","id":"a3","ts":"2026-01-15T09:00:00.000Z","run":"r2","label":"crashed job","usd":0.5,"expires":"2026-01-15T09:12:00.000Z"}
+{"type":"settle","id":"a4","ts":"2026-01-15T09:30:00.000Z","run":"r2","label":"judge task-2","usd":0.25,"status":"ok","cost_source":"estimate"}
+{"type":"reserve","id":"a5","ts":"2026-01-15T09:58:00.000Z","run":"r2","label":"writer task-2","usd":0.5,"expires":"2026-01-15T10:10:00.000Z"}
