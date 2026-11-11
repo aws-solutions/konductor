@@ -49,7 +49,7 @@ orchestrators route it there.
 | `source_dir` | **Yes** | — |
 | `review_type` | No | `all` — or `backend`, `frontend`, `infra` |
 | `output_file` | No | `code-review-report.md` |
-| `environment` | No | none — passed to `infra-validation`, which then assumes Production |
+| `environment` | No | none, passed to `infra-validation`, which then assumes Production |
 | `cr_url` | No | none — forwarded to the adversarial step **as that SOP's `pr_url`**. Passing it through under its own name leaves `pr_url` unset and the review degrades to diff-only |
 
 ### Flow

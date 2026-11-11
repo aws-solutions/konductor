@@ -710,7 +710,7 @@ ROSTER = [
     # ---- k-code-review-workflow passes its scope to infra-validation ----------
     ("code-review-workflow params: environment",
      'param("output_file", false, "code-review-report.md"), param("cr_url", false, "none — passed to the adversarial step when present")]',
-     'param("output_file", false, "code-review-report.md"), param("environment", false, "none — passed to infra-validation, which then assumes Production"), param("cr_url", false, "none — passed to the adversarial step when present")]'),
+     'param("output_file", false, "code-review-report.md"), param("environment", false, "none, passed to infra-validation, which then assumes Production"), param("cr_url", false, "none — passed to the adversarial step when present")]'),
     ("code-review-workflow step 03: infra-validation scope",
      'backend-review · frontend-review · infra-validation.',
      'backend-review · frontend-review · infra-validation, given scope_confirmed, the infra files and any environment, so it does not stop to ask.'),
