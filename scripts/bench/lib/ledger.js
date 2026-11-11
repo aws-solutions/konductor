@@ -32,13 +32,17 @@
  * call, so the other job's reservation is the only one that stands. What stays open is the time between that check
  * and the release, which is a few microseconds.
  *
- * The ledger keeps a status and the cost, never provider error text. Files are mode 0600, the folder 0700.
+ * The ledger keeps a status and the cost, never provider error text; a label passes through a redactor. The default is
+ * the module redactor (secret shapes only). A job that knows the exact credential values it handed out passes a run
+ * redactor with those values as `redact`, so a label that carries a bare value is cleaned too.
+ * Files are mode 0600, the folder 0700.
  */
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { redact } = require('./redact');
 const { callCost } = require('./cost-profile');
 
 const LIMITS = Object.freeze(['max_usd', 'total_cap_usd']);
@@ -388,6 +392,7 @@ async function withLock(
  * A ledger for one run. `limits` is { max_usd, total_cap_usd } (loadConfig checks their order; the two
  * checks hold in any order). A waiter
  * for the lock gives up after `lockTimeoutMs`, which is the stale age plus a margin unless a test sets it.
+ * `redact` is the function a label passes through (default: the module redactor).
  * Time and sleeping are injected so tests need no real clock.
  */
 function createLedger({
@@ -399,6 +404,7 @@ function createLedger({
   lockStaleMs = LOCK_STALE_MS,
   lockTimeoutMs = lockStaleMs + LOCK_WAIT_MARGIN_MS,
   newId = () => crypto.randomBytes(8).toString('hex'),
+  redact: redactLabel = redact,
 }) {
   for (const limitName of LIMITS)
     if (!isMoney(limits && limits[limitName]) || limits[limitName] === 0)
@@ -471,7 +477,7 @@ function createLedger({
     };
     fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
     const id = newId();
-    const shortLabel = String(label).slice(0, 120);
+    const shortLabel = redactLabel(label, { maxChars: Infinity }).slice(0, 120); // a label can carry a key by mistake
     await withLock(
       lockFile,
       {

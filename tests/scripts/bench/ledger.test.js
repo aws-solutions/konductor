@@ -21,7 +21,7 @@ const {
   SpendStopError,
 } = require('../../../scripts/bench/lib/ledger');
 const helpers = require('./helpers');
-
+const { createRedactor } = require('../../../scripts/bench/lib/redact');
 const START_MS = Date.parse('2026-01-15T10:00:00Z');
 const SAMPLE = path.join(helpers.FIXTURE_DIR, 'ledger.sample.jsonl');
 const TEST_LIMITS = { max_usd: 10, total_cap_usd: 20 };
@@ -707,6 +707,39 @@ test('several processes reserving together: exactly as many pass as the limit al
       ],
       [3, 3, false],
     );
+  });
+});
+
+test('a label is redacted before it is written or shown in a refusal', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const key = ['AK', 'IA'].join('') + 'Q'.repeat(16);
+    const ledger = makeLedger(dir, {
+      limits: { max_usd: 1, total_cap_usd: 1 },
+    });
+    (await ledger.reserve(0.5, `judge ${key}`)).cancel();
+    await assert.rejects(ledger.reserve(5, `judge ${key}`), (error) =>
+      error.message.includes('judge [REDACTED_AWS_KEY_ID] would take'),
+    );
+    assert.ok(!fs.readFileSync(ledger.file, 'utf8').includes(key));
+  });
+});
+
+test('a run redactor passed as `redact` cleans a label that holds a bare value, in the file and in a refusal', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    // No secret shape: only the exact value the run handed out gives it away.
+    const literal = 'plain-handed-out-value-1234';
+    const redactor = createRedactor({ literals: [literal] });
+    const limits = { max_usd: 1, total_cap_usd: 1 };
+    const withRun = makeLedger(dir, { limits, redact: redactor });
+    (await withRun.reserve(0.5, `judge ${literal}`)).cancel();
+    await assert.rejects(withRun.reserve(5, `judge ${literal}`), (error) =>
+      error.message.includes('judge [REDACTED] would take'),
+    );
+    assert.ok(!fs.readFileSync(withRun.file, 'utf8').includes(literal));
+    // The default redactor does not know the value, which is why the job passes its own.
+    const defaultRedactor = makeLedger(path.join(dir, 'other'), { limits });
+    (await defaultRedactor.reserve(0.5, `judge ${literal}`)).cancel();
+    assert.ok(fs.readFileSync(defaultRedactor.file, 'utf8').includes(literal));
   });
 });
 
