@@ -1,6 +1,6 @@
 ---
 name: find-aws-skills
-description: Searches the AWS MCP server for an AWS skill when no bundled skill covers the task. Use when the user asks about an AWS service or workflow and no bundled skill covers it.
+description: Searches the AWS MCP server for an AWS service skill and loads it. Use for AWS service guidance such as a DynamoDB data model, S3, IAM, CloudFormation or CDK, even when a local skill covers part of the task.
 ---
 
 # Find AWS Skills
