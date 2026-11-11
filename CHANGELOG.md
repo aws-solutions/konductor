@@ -283,6 +283,24 @@ not per individual commit.
     of the requests they cover, such as finishing a change test-first or syncing a branch.
   - `git-merge` checks the staged merge before it commits and recovers from a rejected push
     without force-pushing or rebasing.
+- AWS guidance comes from the AWS MCP server's skills instead of local copies:
+  - `dynamodb-design` and `dynamodb-validation` are removed. `k-architect` designs and reviews
+    DynamoDB data models with the server's `amazon-dynamodb` skill, loaded through
+    `find-aws-skills`, which it now declares. Custom agent specs that declare a removed skill
+    must drop it: `konductor synth` rejects a spec that names a skill that does not exist.
+  - `infra-validation` runs the server's `aws-cloudformation`, `aws-cdk` and
+    `aws-well-architected-review` checks (cfn-lint, cfn-guard, cdk-nag, a pillar review)
+    read-only and rates their findings CRITICAL, IMPORTANT or SUGGESTION. Without the server it
+    runs the local tools the project has and checks its quality gate items by reading the code.
+  - `iam-policy-design` generates policies with `aws-iam` and takes S3, secrets and CloudTrail
+    settings from the server's skills for them. `policy-validation` checks statements against
+    `aws-iam`'s edge cases and S3 buckets against `securing-s3-buckets`.
+  - `cost-estimation` prices through Price List API calls on the AWS MCP server, guided by
+    `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server.
+  - `policy-validation` checks the API Gateway `SecurityPolicy` property, treats the KMS key
+    rotation period as configurable, uses the Security Hub CSPM name, and can run IAM Access
+    Analyzer policy validation. `aws-service-validator` falls back to the AWS Knowledge MCP
+    server when the AWS MCP tools are unavailable.
 
 ### Fixed
 
