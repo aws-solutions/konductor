@@ -122,6 +122,11 @@ not per individual commit.
   rules that served one draw.io-based tool. It places S3 with the regional services, since each
   bucket lives in one region, and treats AWS WAF as global only for CloudFront-scoped web ACLs.
   A Lambda function with VPC config is drawn in its subnets.
+- Three skills are renamed and their old names are removed: `asdlc-aspect-review` is now
+  `k-aspect-review`, `asdlc-code-simplifier` is now `k-code-simplifier`, and `document-formats`
+  is now `docx-conversion`, whose description names `.docx`. Custom agent specs must use the
+  new names: `konductor synth` rejects a spec that still declares an old one.
+- The published HTML guide's FAQ now gives the current skill count (81) instead of 75.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
@@ -259,7 +264,7 @@ not per individual commit.
 - Skill bodies no longer contradict themselves or the codebase. `backend-development` and
   `backend-review` keep a facade, factory or repository layering only when the codebase already
   uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes
-  TDD's RED phase to code changes, and `asdlc-code-simplifier` runs the tests before and after
+  TDD's RED phase to code changes, and `k-code-simplifier` runs the tests before and after
   and reports each change with its reason. The full deliberation panel run is defined once, in
   `deliberation-panel`; `socratic-elicitation` keeps a short inline offer that points to it.
   Repeated paragraphs and tables are cut from several skills.

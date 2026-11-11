@@ -1,11 +1,11 @@
 ---
-name: document-formats
-description: Read and write Microsoft Office documents (.docx) using pandoc. Use when handling Word documents from SharePoint, OneDrive, or local files.
+name: docx-conversion
+description: Converts Word (.docx) files to and from Markdown with pandoc. Use when the user hands you a .docx file to read or edit, or asks for the result as a .docx file.
 version: 1.0.0
-tags: [skill, documents, docx, pandoc, office]
+tags: [skill, documents, docx, pandoc, word]
 ---
 
-# Document Formats
+# DOCX Conversion
 
 ## Reading .docx Files
 

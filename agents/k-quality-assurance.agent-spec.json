@@ -12,7 +12,7 @@
         "constraints",
         "humanize-writing",
         "sdlc-navigator",
-        "document-formats",
+        "docx-conversion",
         "workspace-skills",
         "test-coverage-analysis",
         "e2e-test-strategy",
@@ -60,7 +60,7 @@
       "skills": [
         "constraints",
         "sdlc-navigator",
-        "document-formats",
+        "docx-conversion",
         "workspace-skills",
         "test-coverage-analysis",
         "e2e-test-strategy",

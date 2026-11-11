@@ -106,11 +106,11 @@ test('buildInlinedBlock skips a skill that does not fit the budget without throw
 });
 
 test('buildInlinedBlock applies the budget check per-skill, not as a sticky one-shot cutoff', () => {
-  // Budget fits git-workflow + document-formats together but not
-  // git-workflow + code-review (much larger) + document-formats. A STICKY
+  // Budget fits git-workflow + docx-conversion together but not
+  // git-workflow + code-review (much larger) + docx-conversion. A STICKY
   // policy (stop inlining everything once one skill overflows) would skip
-  // document-formats too, once code-review overflows; a PER-SKILL policy
-  // inlines document-formats because it still fits on its own after
+  // docx-conversion too, once code-review overflows; a PER-SKILL policy
+  // inlines docx-conversion because it still fits on its own after
   // code-review is skipped. This is the distinction
   // generate-agent-files.test.js's own history describes as "budget checks
   // apply per-skill in declaration order (not all-or-nothing)" -- the
@@ -118,18 +118,18 @@ test('buildInlinedBlock applies the budget check per-skill, not as a sticky one-
   // which can't actually distinguish the two policies; this budget can.
   const blockLen = (name, content) => content.length + name.length + '## Skill: \n\n'.length;
   const gitWorkflowBlockLen = blockLen('git-workflow', gen.loadSkillContent(gen.SKILLS_ROOT, 'git-workflow'));
-  const documentFormatsBlockLen = blockLen(
-    'document-formats',
-    gen.loadSkillContent(gen.SKILLS_ROOT, 'document-formats'),
+  const docxConversionBlockLen = blockLen(
+    'docx-conversion',
+    gen.loadSkillContent(gen.SKILLS_ROOT, 'docx-conversion'),
   );
-  const budget = gitWorkflowBlockLen + documentFormatsBlockLen + 10;
+  const budget = gitWorkflowBlockLen + docxConversionBlockLen + 10;
 
   const { report } = gen.buildInlinedBlock(
     'asdlc-example',
-    ['git-workflow', 'code-review', 'document-formats'],
+    ['git-workflow', 'code-review', 'docx-conversion'],
     budget,
   );
-  assert.deepEqual(report.inlined, ['git-workflow', 'document-formats']);
+  assert.deepEqual(report.inlined, ['git-workflow', 'docx-conversion']);
   assert.deepEqual(report.skippedBudget, ['code-review']);
 });
 

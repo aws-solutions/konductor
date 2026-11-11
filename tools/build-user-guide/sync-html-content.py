@@ -69,6 +69,8 @@ EDITS = [
      "Registers the 11 agents, 81 skills, 19 SOPs, the core rules, and the orchestrator routing rules"),
     ("reference count row", '{ k: "Count", v: "75 skills · 13 SOPs" }',
      '{ k: "Count", v: "81 skills · 19 SOPs" }'),
+    ("faq: skills row", '{ k: "Skills — 75", v: "On-demand knowledge modules" }',
+     '{ k: "Skills — 81", v: "On-demand knowledge modules" }'),
     ("concepts SOP blurb", "<div>13 SOPs that encode multi-step procedures",
      "<div>19 SOPs that encode multi-step procedures"),
     ("SOP count (concepts)",
