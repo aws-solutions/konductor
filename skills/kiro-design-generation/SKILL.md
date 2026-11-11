@@ -168,6 +168,15 @@ interface Monitor {
 }
 ```
 
+When no DynamoDB design handoff exists and the feature needs a table, load the `amazon-dynamodb` skill with `aws___retrieve_skill` (or through `find-aws-skills`) before designing keys and indexes, and apply its review checks, including write sharding for low-cardinality keys and hot partitions. Start from its access-pattern list and the per-partition ceilings in its Mechanics section.
+
+If `aws___retrieve_skill` is not available, say that `amazon-dynamodb` was not consulted and apply these checks inline:
+
+- List the access patterns first, then derive every key and index from them
+- Check each partition key's cardinality; a key such as a status or a day puts every write on one partition
+- Write-shard a low-cardinality GSI key (for example `status#day#<0-9>`) and query the shards in parallel
+- Default to on-demand capacity unless traffic is steady and known
+
 ### 5. Error Handling
 
 Error scenarios and handling strategies. For each error scenario:

@@ -184,7 +184,14 @@ If the system uses DynamoDB or requires API design:
 4. **Consistency Requirements**: Strong consistency needed or eventual consistency acceptable?
 5. **Data Lifecycle**: How long is data retained? Archive strategy?
 
-**Handoff Note**: Recommend `smithy-modeling` for API design. For a DynamoDB data model, recommend the `amazon-dynamodb` skill from the AWS MCP server, loaded through `find-aws-skills`. It designs the model and, run again on the finished model, reviews it.
+**Handoff Note**: Recommend `smithy-modeling` for API design. For a DynamoDB data model, load the `amazon-dynamodb` skill with `aws___retrieve_skill` (or through `find-aws-skills`) before designing keys and indexes, and apply its review checks, including write sharding for low-cardinality keys and hot partitions. Start from its access-pattern list and the per-partition ceilings in its Mechanics section. Run it again on the finished model to review it.
+
+If `aws___retrieve_skill` is not available, say that `amazon-dynamodb` was not consulted and apply these checks inline:
+
+- List the access patterns first, then derive every key and index from them
+- Check each partition key's cardinality; a key such as a status or a day puts every write on one partition
+- Write-shard a low-cardinality GSI key (for example `status#day#<0-9>`) and query the shards in parallel
+- Default to on-demand capacity unless traffic is steady and known
 
 ## Output Deliverables
 

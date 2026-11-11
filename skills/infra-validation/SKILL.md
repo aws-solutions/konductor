@@ -68,6 +68,22 @@ If `aws___retrieve_skill` is not available, say so at the top of the report. Run
 
 ## Step 2: Rate the findings
 
+### Resource inventory
+
+Before the findings, list every resource in scope in one table, so the reader can see what you checked and spot what you skipped:
+
+```
+| Resource | Type | Environment | Key settings checked |
+| --- | --- | --- | --- |
+| OrdersTable | AWS::DynamoDB::Table | Production | Encryption, PITR, deletion protection, key design |
+| UploadsBucket | AWS::S3::Bucket | Production | Public access block, encryption, versioning, TLS policy |
+| ProcessorFn | AWS::Lambda::Function | Production | Role statements, DLQ, reserved concurrency, tracing |
+```
+
+Name each resource by its CDK construct ID or template logical ID. A resource you could not inspect still gets a row, with the reason in the last column.
+
+### Severity
+
 Policy-level IAM depth (condition keys, permission boundaries, KMS key policies, a policy score) belongs to `policy-validation`, which `k-architect` loads. If your agent doesn't have it, list those checks as out of scope in the report. Rate IAM statements with the same tiers as the Severity Mapping in `policy-validation`:
 
 1. **Wildcard Resources** - Flag as CRITICAL
@@ -109,8 +125,10 @@ If you would hedge a rating with "arguably", use the lower tier.
 Issue: [Description]
 Impact: [Why this matters - security risk, compliance violation, production outage risk]
 Fix: [Specific recommendation]
-Example:
-[Code showing fix - before and after]
+Before:
+[The current lines, in the template's language]
+After:
+[The same lines with the fix applied]
 ```
 
 ### IMPORTANT (Should Fix)
@@ -120,9 +138,13 @@ Example:
 Issue: [Description]
 Impact: [Operational risk, cost impact, reliability concern]
 Recommendation: [Suggested improvement]
-Example:
-[Code showing improvement]
+Before:
+[The current lines, in the template's language]
+After:
+[The same lines with the fix applied]
 ```
+
+Every CRITICAL and IMPORTANT finding carries a Before and After snippet. Keep each one to the few lines that change, written in the language of the code under review (CDK TypeScript or Python, or CloudFormation YAML or JSON). For a missing resource such as an alarm or a DLQ, Before is the construct that lacks it and After adds it, with real thresholds.
 
 ### SUGGESTION (Consider Fixing)
 
@@ -142,7 +164,7 @@ Example (optional):
 Good practice: [What's done well]
 ```
 
-Report each root cause once, under its highest tier, and put every related setting in that finding's fix. A public bucket finding, for example, carries the block-public-access, TLS enforcement and policy changes together instead of repeating them lower down. Name the tool or AWS skill that raised each finding.
+Report each root cause once, under its highest tier, and put every related setting in that finding's fix. A public bucket finding, for example, carries the block-public-access, TLS enforcement and policy changes together instead of repeating them lower down. Separate gaps on one resource that do not share a cause, such as a Lambda function with no alarms, no DLQ and no tracing, still get their own fix lines inside that resource's finding, each with its own Before and After. Name the tool or AWS skill that raised each finding.
 
 End the report with its limits: the inputs you did not inspect (Lambda handler code, the synthesized template in `cdk.out/`, the app entrypoint, CI), the checks that could not run, and the findings that depend on either, marked unverified. If you did not check every resource of a type, say so.
 
