@@ -22,6 +22,9 @@ REFERENCE_RE = re.compile(r"(?<![\w./-])((?:[\w.-]+/)?references/[\w./-]*\w)")
 NOT_LOCAL = {
     # An example of a file inside a remotely retrieved skill.
     ("find-aws-skills", "references/architecture.md"),
+    # Files inside the AWS MCP server's aws-cloudformation and aws-cdk skills.
+    ("infra-validation", "references/validation-tool-selection.md"),
+    ("infra-validation", "references/compliance-and-drift.md"),
 }
 
 
