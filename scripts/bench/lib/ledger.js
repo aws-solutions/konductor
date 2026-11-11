@@ -32,13 +32,15 @@
  * call, so the other job's reservation is the only one that stands. What stays open is the time between that check
  * and the release, which is a few microseconds.
  *
- * The ledger keeps a status and the cost, never provider error text. Files are mode 0600, the folder 0700.
+ * The ledger keeps a status and the cost, never provider error text; a label passes through the redactor.
+ * Files are mode 0600, the folder 0700.
  */
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { redact } = require('./redact');
 const { callCost } = require('./cost-profile');
 
 const LIMITS = Object.freeze(['max_usd', 'total_cap_usd']);
@@ -471,7 +473,7 @@ function createLedger({
     };
     fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
     const id = newId();
-    const shortLabel = String(label).slice(0, 120);
+    const shortLabel = redact(label, { maxChars: Infinity }).slice(0, 120); // a label can carry a key by mistake
     await withLock(
       lockFile,
       {
