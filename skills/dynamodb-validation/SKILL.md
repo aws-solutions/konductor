@@ -55,6 +55,8 @@ Your role is to:
 
 ## Validation Framework
 
+When available, load the `amazon-dynamodb` skill through `find-aws-skills` for AWS's current DynamoDB guidance, or run the DynamoDB MCP server's `dynamodb_data_model_validation` tool against the model. Use them to confirm service facts and limits; report findings in this skill's categories, severities, and output format.
+
 Validate designs across these 13 categories:
 
 ### CATEGORY 1: PARTITION KEY DESIGN (Critical Priority)
@@ -121,7 +123,7 @@ Check for:
 
 Check for:
 
-- **Billing mode misalignment**: On-demand for predictable traffic, provisioned for unpredictable
+- **Billing mode misalignment**: Provisioned for unpredictable or spiky traffic, or provisioned chosen without a cost case (on-demand is AWS's default and recommended mode for most workloads)
 - **Over-projected GSI attributes**: Projecting attributes never used in queries
 - **Single table design benefits not realized**: Multiple tables that could be consolidated
 - **Unused indexes**: GSIs defined but not used by any access pattern
@@ -130,7 +132,7 @@ Check for:
 
 **Validation Checks**:
 
-1. Analyze traffic patterns vs billing mode (steady = provisioned, spiky = on-demand)
+1. Analyze traffic patterns vs billing mode (on-demand by default; provisioned only for steady, forecastable traffic with a cost case)
 2. Calculate storage overhead from over-projected GSI attributes
 3. Identify consolidation opportunities for related tables
 4. Detect unused indexes (no access patterns reference them)
@@ -183,7 +185,7 @@ Check for:
 - **DynamoDB for OLAP/analytics**: Aggregation-heavy workloads should use Redshift or Athena
 - **Large binary files in DynamoDB**: Images, videos, documents should be in S3 with references
 - **Ad-hoc query requirements**: Unknown query patterns should use RDS for flexibility
-- **Strong consistency across regions**: Global tables are eventually consistent, use Aurora Global if needed
+- **Strong consistency across regions**: Default (MREC) global tables are eventually consistent; check whether MRSC (multi-Region strong consistency) fits before recommending another database. MRSC needs exactly three Regions and does not support TTL, LSIs, or transactions
 - **Frequently changing large items**: High write costs, consider normalization or alternative storage
 
 **Validation Checks**:
@@ -207,7 +209,7 @@ Check for:
 
 **Validation Checks**:
 
-1. Verify conflict resolution strategy documented (last-writer-wins implications understood)
+1. Verify consistency mode chosen (MREC or MRSC, fixed at creation) and conflict handling documented (MREC last-writer-wins; MRSC `ReplicatedWriteConflictException` retries)
 2. Calculate cross-region replication costs (storage + data transfer)
 3. Confirm application handles eventual consistency correctly
 4. Review region failover procedures and RTO/RPO targets
@@ -240,7 +242,7 @@ Check for:
 - **Inappropriate transaction usage**: Simple operations using transactions unnecessarily (2x cost)
 - **Missing error handling for conflicts**: No retry logic for TransactionCanceledException
 - **Transaction size exceeding limits**: > 100 items or > 4MB total size
-- **GSI writes in transactions**: Transactions don't support GSI writes directly
+- **GSI reads after transactions**: GSIs update after the transaction commits, so GSI reads can show part of a transaction; read the items with `TransactGetItems` when an atomic view is needed
 - **Strongly consistent reads needed**: Eventually consistent reads insufficient for use case
 
 **Validation Checks**:
@@ -274,7 +276,7 @@ Check for the 8 critical pitfalls that cause production issues:
 **Pitfall 3: GSI Backfilling Delays**
 
 - **Check**: Adding GSI to large existing table without backfill plan
-- **Detection**: New GSI on table with > 1M items, no backfill strategy documented
+- **Detection**: New GSI on table with > 1M items, no build plan documented (low-traffic window, `OnlineIndexPercentageProgress` monitoring, base table `WriteThrottleEvents` watch)
 - **Impact**: GSI unusable for hours/days, application cannot use new query pattern
 - **Severity**: HIGH - Blocks feature deployment
 - **Evidence Required**: Table size estimate, backfill time calculation, deployment plan
@@ -516,15 +518,15 @@ Check for production monitoring and operational preparedness:
 **Monitoring Configuration**:
 
 - **CloudWatch Metrics**: Base table and GSI metrics configured
-  - Required metrics: ConsumedReadCapacityUnits, ConsumedWriteCapacityUnits, UserErrors, SystemErrors, SuccessfulRequestLatency
-  - GSI metrics: OnlineIndexConsumedWriteCapacity, OnlineIndexThrottleEvents, OnlineIndexPercentageProgress
-  - Hot partition metrics: AccountMaxReads, AccountMaxWrites
+  - Required metrics: ConsumedReadCapacityUnits, ConsumedWriteCapacityUnits, ReadThrottleEvents, WriteThrottleEvents, SystemErrors, SuccessfulRequestLatency
+  - GSI metrics (with the `GlobalSecondaryIndexName` dimension): ReadThrottleEvents, WriteThrottleEvents, ConsumedWriteCapacityUnits; OnlineIndexPercentageProgress while a GSI is being built
+  - Hot partition metrics: ReadKeyRangeThroughputThrottleEvents, WriteKeyRangeThroughputThrottleEvents (AccountMaxReads/AccountMaxWrites are account limits, not partition metrics)
 - **Required Alarms**: Critical alarms configured with appropriate thresholds
-  - GSI throttling alarm (UserErrors on GSI > 0 for 2 periods) - CRITICAL
-  - Base table throttling alarm (UserErrors > 10 for 5 periods) - HIGH
+  - GSI throttling alarm (WriteThrottleEvents with `TableName` + `GlobalSecondaryIndexName` > 0 for 2 periods) - CRITICAL
+  - Base table throttling alarm (ReadThrottleEvents/WriteThrottleEvents > 10 for 5 periods) - HIGH
   - High latency alarm (SuccessfulRequestLatency p99 > 100ms for 5 periods) - HIGH
   - Capacity utilization alarm (ConsumedWriteCapacityUnits > 80% for 10 minutes) - WARNING
-  - Error rate alarm (UserErrors + SystemErrors > 1% for 5 minutes) - WARNING
+  - Error rate alarm (SystemErrors by `TableName` + `Operation`, plus account-wide UserErrors, > 1% for 5 minutes) - WARNING
 - **Dashboard**: Table health dashboard created
   - Throughput utilization graphs
   - Latency percentiles (p50, p95, p99)
@@ -536,7 +538,7 @@ Check for production monitoring and operational preparedness:
 
 - **Runbook**: Documented procedures for common operational tasks
   - Scaling capacity (when and how)
-  - Adding new GSI (backfill planning, capacity provisioning)
+  - Adding new GSI (low-traffic window, build progress and base table throttling watch)
   - Investigating throttling (GSI vs base table, hot partitions)
   - Handling hot partitions (write sharding, caching, redesign)
 - **Troubleshooting Guide**: Common issues with investigation steps and resolutions

@@ -242,7 +242,7 @@ Continue with Design Table Schema, Design Indexes, and Generate Deliverables ste
 
 ## AWS Best Practices
 
-Apply these DynamoDB best practices to all designs:
+Apply these DynamoDB best practices to all designs. When available, load the `amazon-dynamodb` skill through `find-aws-skills` for AWS's current guidance, and prefer it where it disagrees with this section.
 
 ### Partition Key Design
 
@@ -532,8 +532,8 @@ Result: ALL writes throttled because GSI can't keep up
 
 - Provision GSI capacity ≥ base table write capacity
 - Use on-demand mode for unpredictable traffic
-- Monitor `UserErrors` metric for throttling
-- Set CloudWatch alarms on GSI throttling
+- Alarm on `WriteThrottleEvents` and `ReadThrottleEvents` with both the `TableName` and `GlobalSecondaryIndexName` dimensions (the `TableName` dimension alone excludes GSIs)
+- Alarm on `WriteKeyRangeThroughputThrottleEvents` to catch hot-partition throttling on the GSI
 
 **CRITICAL PITFALL #2: Low Cardinality GSI Partition Key**
 
@@ -572,7 +572,7 @@ Result: Queries distributed across many partitions
 - Adding GSI to existing table triggers backfill
 - Backfill can take hours or days for large tables
 - GSI not usable until backfill completes
-- Backfill consumes write capacity
+- A skewed GSI partition key can throttle base table writes while the backfill runs
 
 **Scenario:**
 
@@ -587,8 +587,8 @@ Impact: Application can't use new query pattern during backfill
 - Plan indexes during initial design
 - Test index performance in development first
 - Schedule GSI creation during low-traffic periods
-- Provision extra write capacity during backfill
-- Monitor `OnlineIndexPercentageProgress` metric
+- Monitor `OnlineIndexPercentageProgress` for build progress, and the base table's `WriteThrottleEvents` for impact on live traffic
+- Do not add index write capacity to speed up the build: it does not shorten backfill time
 
 **CRITICAL PITFALL #4: Exceeding 10GB LSI Partition Limit**
 
@@ -701,12 +701,11 @@ Storage cost: 20% overhead
 
 **Prevention:**
 
-- Monitor these CloudWatch metrics:
-  - `UserErrors` (throttling)
-  - `SystemErrors` (DynamoDB issues)
-  - `OnlineIndexConsumedWriteCapacity`
-  - `OnlineIndexPercentageProgress` (backfill)
-  - `OnlineIndexThrottleEvents`
+- Monitor these CloudWatch metrics, per GSI (`TableName` + `GlobalSecondaryIndexName`):
+  - `ReadThrottleEvents` / `WriteThrottleEvents` (throttling)
+  - `ReadKeyRangeThroughputThrottleEvents` / `WriteKeyRangeThroughputThrottleEvents` (partition-level throttling)
+  - `SystemErrors` (DynamoDB issues; needs the `TableName` and `Operation` dimensions)
+  - `OnlineIndexPercentageProgress` (build progress while a new GSI is created)
 - Set alarms on GSI throttling
 - Dashboard for GSI capacity utilization
 - Regular capacity reviews
@@ -772,9 +771,9 @@ Before implementing any GSI or LSI, validate against this checklist:
 
 **Billing Modes:**
 
-- **On-Demand**: Pay per request, good for unpredictable traffic, no capacity planning
+- **On-Demand**: Pay per request, no capacity planning. AWS's default and recommended mode for most workloads
 - **Provisioned**: Reserve capacity, good for steady predictable traffic, lower cost at scale
-- Switch between modes once per 24 hours
+- Provisioned to on-demand: up to four switches in a 24-hour rolling window. On-demand to provisioned: any time
 
 **Adaptive Capacity:**
 
@@ -788,201 +787,18 @@ Before implementing any GSI or LSI, validate against this checklist:
 - Uses up to 5 minutes of unused capacity
 - Not guaranteed, don't rely on for sustained traffic
 
-### DynamoDB Streams
+### Streams, Transactions, TTL, DAX, Backup, and Global Tables
 
-**Use Cases:**
+For feature-level guidance, when available, load the `amazon-dynamodb` skill through `find-aws-skills`, or use the DynamoDB MCP server's data modeling tools (`dynamodb_data_modeling`, `dynamodb_data_model_validation`). Both are maintained by AWS and track service changes. Present the result in this skill's output format and apply its quality gate. Check the design against these constraints, which commonly change it:
 
-- Change data capture for audit logging
-- Cross-region replication (custom or global tables)
-- Triggering Lambda functions on data changes
-- Real-time analytics and aggregations
-- Maintaining materialized views
-
-**Stream View Types:**
-
-- KEYS_ONLY: Only key attributes (PK, SK)
-- NEW_IMAGE: Entire item after modification
-- OLD_IMAGE: Entire item before modification
-- NEW_AND_OLD_IMAGES: Both before and after states
-
-**Implementation Patterns:**
-
-- Enable Streams in table configuration
-- Create Lambda trigger for stream processing
-- Handle stream records in batches
-- Implement idempotency for Lambda processing
-- Use DLQ for failed processing
-
-**Considerations:**
-
-- Stream records retained for 24 hours
-- Minimal cost impact (per stream read)
-- Enables event-driven architectures
-- Ordered within partition key
-
-### Transactions (ACID Operations)
-
-**Use Cases:**
-
-- Financial transactions requiring atomicity
-- Inventory management with stock reservations
-- Multi-item updates that must succeed or fail together
-- Maintaining referential integrity across items
-
-**Transaction Types:**
-
-- **TransactWriteItems**: All-or-nothing writes (up to 100 items)
-- **TransactGetItems**: Consistent reads across multiple items
-
-**Cost Implications:**
-
-- 2× normal operation cost
-- Write transaction: 2 WCU per item
-- Read transaction: 2 RCU per item
-- Consider cost vs consistency tradeoff
-
-**Limitations:**
-
-- Maximum 100 items per transaction
-- Maximum 4MB total transaction size
-- No global secondary index writes in transactions
-- Cannot mix tables with different encryption settings
-
-**Error Handling:**
-
-- Handle TransactionCanceledException
-- Implement retry logic with exponential backoff
-- Check for ConditionalCheckFailedException
-
-### TTL (Time-To-Live)
-
-**Use Cases:**
-
-- Session data with automatic expiration
-- Temporary records (verification codes, tokens)
-- Time-series data with retention policies
-- Cache invalidation
-- Compliance-driven data deletion
-
-**Configuration:**
-
-- TTL attribute must be Number type
-- Value is Unix epoch timestamp in seconds
-- Deletions occur within 48 hours of expiration (not immediate)
-- Expired items still count toward storage until deleted
-
-**Benefits:**
-
-- Free automatic cleanup (no cost for deletions)
-- Reduces storage costs
-- Simplifies data lifecycle management
-- No manual cleanup jobs needed
-
-**Considerations:**
-
-- Not suitable for immediate deletion requirements
-- Items remain queryable until actually deleted
-- Monitor CloudWatch metrics for TTL deletions
-
-### DAX (DynamoDB Accelerator)
-
-**Use Cases:**
-
-- Read-heavy workloads requiring microsecond latency
-- Real-time bidding systems
-- Gaming leaderboards
-- Session stores with high read rates
-- High-traffic read patterns (10× faster than DynamoDB)
-
-**How It Works:**
-
-- In-memory cache cluster in front of DynamoDB
-- Write-through caching (writes go to DynamoDB first)
-- Automatic cache invalidation on updates
-- Cluster with multiple nodes for high availability
-
-**Cost Tradeoffs:**
-
-- Additional DAX cluster charges (separate from DynamoDB)
-- Typically more expensive than provisioned capacity
-- Evaluate: Cost of DAX vs cost of higher provisioned RCU
-- Consider: Latency requirements vs budget constraints
-
-**Limitations:**
-
-- Eventually consistent reads only (no strongly consistent reads)
-- Requires code changes (DAX SDK)
-- Not suitable for write-heavy workloads
-- Cache invalidation latency considerations
-
-### Backup and Disaster Recovery
-
-**Point-in-Time Recovery (PITR):**
-
-- Enable for all production tables
-- Continuous backups for 1-35 days
-- Restore to any point within retention period
-- Minimal performance impact
-- Protects against accidental deletes or updates
-
-**On-Demand Backups:**
-
-- Manual backups for long-term retention
-- Full table backups with consistent state
-- Restore to new table (not in-place)
-- No impact on table performance
-- Use for compliance and archival
-
-**Cross-Region Backup:**
-
-- Restore backups to different AWS regions
-- Disaster recovery for regional failures
-- Copy backups across regions for compliance
-- Consider data residency requirements
-
-**Backup Strategy:**
-
-- Production tables: Enable PITR + monthly on-demand backups
-- Development tables: On-demand backups only
-- Critical tables: Cross-region backup copies
-- Document retention policies and restore procedures
-
-### Global Tables (Multi-Region Replication)
-
-**Use Cases:**
-
-- Low-latency global access
-- Disaster recovery across regions
-- Active-active multi-region applications
-- Compliance with data residency requirements
-
-**How It Works:**
-
-- Automatic cross-region replication
-- Multi-region active-active writes
-- Eventually consistent across regions
-- Last-writer-wins conflict resolution
-
-**Conflict Resolution:**
-
-- Concurrent updates to same item: last write wins (by timestamp)
-- No custom conflict resolution logic
-- Design application to minimize conflicts
-- Consider using version numbers or timestamps
-
-**Cost Implications:**
-
-- Storage costs in each region
-- Replication traffic charges (cross-region data transfer)
-- Write capacity consumed in each region
-- Typically 2-3× cost of single-region table
-
-**Considerations:**
-
-- Replication lag (typically seconds)
-- Application must handle eventual consistency
-- Cannot use with DynamoDB Streams (use global table streams)
-- All regions must use same table schema
+- **Streams**: records are kept for 24 hours; make consumers idempotent and give them a DLQ.
+- **Transactions**: up to 100 actions and 4 MB per `TransactWriteItems`, one action per item, 2 WCU or RCU per item, atomic only within one Region. GSIs update after the commit, so a GSI read can show part of a transaction. On failure, read `CancellationReasons` on the `TransactionCanceledException`.
+- **TTL**: the attribute must be a Number in epoch seconds; items are typically deleted within a few days of expiry and stay readable until then, so filter them out of reads.
+- **DAX**: caches eventually consistent reads only; strongly consistent reads and `TransactGetItems` pass through uncached. Writes that bypass DAX leave the cache stale until its TTL expires, and writes never invalidate the query cache.
+- **Backup**: enable PITR (1 to 35 days) for production tables; on-demand backups restore to a new table.
+- **Global tables**: choose the consistency mode at creation; it cannot change.
+  - **MREC** (default): asynchronous replication, last-writer-wins, RPO above zero. Replicates through Streams, so Streams stay on for every replica.
+  - **MRSC**: synchronous replication, strongly consistent reads in every Region, RPO of zero, higher write latency. Exactly three Regions (three replicas, or two replicas and a witness). No TTL, LSIs, or transactions; conflicting writes fail with `ReplicatedWriteConflictException`.
 
 ### When NOT to Use DynamoDB
 
@@ -1043,7 +859,7 @@ Before implementing any GSI or LSI, validate against this checklist:
 
 **If You Must Use Scan:**
 
-- Reduce page size with Limit parameter (max 100 items per page)
+- Reduce page size with the `Limit` parameter (items evaluated per page; a page also stops at 1 MB)
 - Use parallel scans for large tables (20GB+) with low-priority background jobs
 - Isolate scans to separate table or read replica
 - Monitor and throttle scan operations to avoid starving other queries
@@ -1184,11 +1000,11 @@ Generate all table designs using this structured format:
 
 **Performance Estimate Sources:**
 
-- **GetItem latency (<10ms):** AWS DynamoDB Service Level Agreement for single-item reads
+- **GetItem latency (<10ms):** DynamoDB's documented single-digit-millisecond performance. The DynamoDB SLA covers availability (99.99% single-Region, 99.999% global tables), not latency
 - **Query latency (<50-100ms):** AWS documentation + industry benchmarks (assumes <100 items returned)
 - **Frequency estimates:** Based on provided requirements or typical application patterns
 - **Confidence levels:**
-  - High: AWS published SLA, well-documented performance characteristics
+  - High: well-documented AWS performance characteristics
   - Medium: Based on AWS documentation but varies with data volume and query complexity
   - Low: Highly variable, depends on table size, filters, and provisioned capacity
 
@@ -1573,12 +1389,14 @@ async function updateUserStatus(userId: string, newStatus: string): Promise<User
 
 **IMPORTANT:** These are theoretical cost estimates based on assumed traffic patterns. Actual costs may vary by ±50% or more. Enable AWS Cost Explorer and set up billing alarms to track actual spending.
 
+Prices vary by Region and table class and change over time. Take current rates from the [DynamoDB pricing page](https://aws.amazon.com/dynamodb/pricing/) (or the AWS Pricing MCP server, when available) for the target Region. The rates below are US East (N. Virginia), Standard table class, at time of writing.
+
 **On-Demand Mode (Estimated):**
 
-- Read requests: [X] million reads × $0.25 per million = $[Y]
+- Read requests: [X] million reads × $0.125 per million = $[Y]
   - **Assumption:** [X] reads/sec × 2,592,000 sec/month
   - **Confidence:** [High/Medium/Low] - depends on actual traffic patterns
-- Write requests: [X] million writes × $1.25 per million = $[Y]
+- Write requests: [X] million writes × $0.625 per million = $[Y]
   - **Assumption:** [X] writes/sec × 2,592,000 sec/month
   - **Confidence:** [High/Medium/Low] - depends on actual traffic patterns
 - Storage: [X] GB × $0.25 per GB = $[Y]
@@ -1650,34 +1468,35 @@ async function updateUserStatus(userId: string, newStatus: string): Promise<User
 
 - `ConsumedReadCapacityUnits` - Track read usage vs provisioned
 - `ConsumedWriteCapacityUnits` - Track write usage vs provisioned
-- `UserErrors` - Throttling events (target: 0)
-- `SystemErrors` - DynamoDB service errors (target: 0)
+- `ReadThrottleEvents` / `WriteThrottleEvents` - Throttling events (target: 0)
+- `SystemErrors` - DynamoDB service errors (target: 0; publish with the `TableName` and `Operation` dimensions)
 - `SuccessfulRequestLatency` - Query performance (target: p99 < 50ms)
 
-**GSI-Specific Metrics:**
+**GSI-Specific Metrics** (dimensions `TableName` + `GlobalSecondaryIndexName`):
 
-- `OnlineIndexConsumedWriteCapacity` - GSI write usage per index
-- `OnlineIndexThrottleEvents` - GSI throttling (CRITICAL - causes base table throttling)
-- `OnlineIndexPercentageProgress` - GSI backfill progress (when adding new GSI)
+- `ConsumedWriteCapacityUnits` - GSI write usage per index
+- `WriteThrottleEvents` / `ReadThrottleEvents` - GSI throttling (CRITICAL - GSI write throttling throttles base table writes)
+- `OnlineIndexPercentageProgress` - GSI build progress (when adding new GSI)
 
 **Hot Partition Metrics:**
 
-- `AccountMaxReads` - Partition-level read throttling
-- `AccountMaxWrites` - Partition-level write throttling
-- Monitor for uneven distribution across partitions
+- `ReadKeyRangeThroughputThrottleEvents` - Partition-level read throttling
+- `WriteKeyRangeThroughputThrottleEvents` - Partition-level write throttling
+- Monitor for uneven distribution across partitions (CloudWatch Contributor Insights shows the most-accessed keys)
+- `AccountMaxReads` / `AccountMaxWrites` are account-level provisioned capacity limits, not partition metrics
 
 ### CloudWatch Alarms (Required)
 
 **Critical Alarms:**
 
 1. **GSI Throttling Alarm**
-   - Metric: `UserErrors` on GSI
+   - Metric: `WriteThrottleEvents` with `TableName` + `GlobalSecondaryIndexName`
    - Threshold: > 0 for 2 consecutive periods
    - Action: Page on-call engineer immediately
    - Why: GSI throttling blocks all base table writes
 
 2. **Base Table Throttling Alarm**
-   - Metric: `UserErrors` on base table
+   - Metric: `WriteThrottleEvents` and `ReadThrottleEvents` on the base table
    - Threshold: > 10 for 5 consecutive periods
    - Action: Alert operations team
    - Why: Indicates capacity issues or hot partitions
@@ -1697,7 +1516,7 @@ async function updateUserStatus(userId: string, newStatus: string): Promise<User
    - Why: Approaching capacity limits
 
 2. **Error Rate Alarm**
-   - Metric: `UserErrors` + `SystemErrors`
+   - Metric: `SystemErrors` (per table and operation) and `UserErrors` (HTTP 400s other than throttling and failed conditions; account-wide per Region, not per table)
    - Threshold: > 1% of requests for 5 minutes
    - Action: Notify operations team
    - Why: Indicates issues requiring investigation
@@ -1715,7 +1534,7 @@ async function updateUserStatus(userId: string, newStatus: string): Promise<User
    - When: New access pattern identified
    - How: Create GSI during low-traffic period
    - Validation: Monitor `OnlineIndexPercentageProgress` until 100%
-   - Caution: Provision extra write capacity during backfill
+   - Caution: Watch the base table's `WriteThrottleEvents` during the build; extra index write capacity does not speed up backfill
 
 3. **Investigating Throttling**
    - Check: GSI throttling first (most common cause)
@@ -1732,7 +1551,7 @@ async function updateUserStatus(userId: string, newStatus: string): Promise<User
 
 | Symptom                 | Likely Cause              | Investigation Steps                   | Resolution                                 |
 | ----------------------- | ------------------------- | ------------------------------------- | ------------------------------------------ |
-| All writes failing      | GSI throttling            | Check GSI `UserErrors` metric         | Increase GSI write capacity                |
+| All writes failing      | GSI throttling            | Check GSI `WriteThrottleEvents`       | Increase GSI write capacity                |
 | Specific queries slow   | Hot partition             | Check partition-level metrics         | Implement write sharding or caching        |
 | Intermittent throttling | Burst capacity exhausted  | Check capacity utilization trends     | Increase provisioned capacity              |
 | New GSI not working     | Backfill in progress      | Check `OnlineIndexPercentageProgress` | Wait for backfill completion               |
@@ -1751,7 +1570,7 @@ Before declaring design production-ready, validate these metrics:
 | GetItem latency (p99) | <10ms              | Load testing + CloudWatch                | Actual p99 ≤ target     |
 | Query latency (p99)   | <50-100ms          | Load testing + CloudWatch                | Actual p99 ≤ target     |
 | Scan latency (p99)    | <500ms             | Load testing + CloudWatch                | Actual p99 ≤ target     |
-| Throttling rate       | 0%                 | CloudWatch `UserErrors`                  | < 0.1% of requests      |
+| Throttling rate       | 0%                 | CloudWatch `ThrottledRequests`           | < 0.1% of requests      |
 | Error rate            | <0.1%              | CloudWatch `UserErrors` + `SystemErrors` | < 0.1% of requests      |
 | Capacity utilization  | 60-80%             | CloudWatch consumed vs provisioned       | Within target range     |
 | Cost per 1M requests  | $[estimated]       | AWS Cost Explorer                        | Within ±30% of estimate |
