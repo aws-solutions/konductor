@@ -98,14 +98,11 @@ Check for:
 - Recommend specific ARN patterns with account ID, region, and resource identifiers
 - Example: Replace `*` with `arn:aws:s3:::bucket-name/path/${aws:userid}/*`
 
-**Missing IAM Condition Detection**:
+**Missing or Unsafe IAM Conditions**:
 
 - Check if policies lack condition blocks for fine-grained access control
-- Recommend conditions based on use case:
-  - IP restrictions: `"IpAddress": {"aws:SourceIp": ["10.0.0.0/8"]}`
-  - MFA requirements: `"Bool": {"aws:MultiFactorAuthPresent": "true"}`
-  - Resource tagging: `"StringEquals": {"s3:ExistingObjectTag/Owner": "${aws:userid}"}`
-  - Time-based access: `"DateGreaterThan": {"aws:CurrentTime": "2024-01-01T00:00:00Z"}`
+- Load the AWS MCP server's `aws-iam` skill through `find-aws-skills` and check each statement against its verified edge cases: `ForAllValues` without a `Null` check on the same key, case-sensitive `aws:TagKeys` matches in a Deny, `iam:PassRole` on `Resource: "*"`, the direct privilege-escalation actions, and resource-based policies without `aws:SourceArn`, `aws:SourceAccount` or `aws:PrincipalOrgID`. Rate what it flags with the Severity Mapping above
+- For S3 bucket policies and settings, use the audit checklist in the `securing-s3-buckets` skill and rate its FAIL and NOT CONFIGURED results the same way
 
 **Permission Boundary Validation**:
 

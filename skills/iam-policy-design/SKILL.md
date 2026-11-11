@@ -120,10 +120,7 @@ Ask discovery questions:
 
 ### STEP 3: Design IAM Policies
 
-**Optional aids, when available:**
-
-- Load the `aws-iam` skill through `find-aws-skills` for AWS's corrections on IAM edge cases (policy evaluation, trust policies, condition operators) and its workflow for generating a baseline policy from source code or a Terraform plan.
-- IAM Policy Autopilot (open-source CLI and MCP server from AWS Labs) generates identity-based policies by static analysis of Python, Go, TypeScript, JavaScript, and Java code. Treat its output as a starting point and tighten it with the steps below.
+Generate the policy documents with the AWS MCP server's `aws-iam` skill, loaded through `find-aws-skills`. Its policy-generation reference proposes an IAM Policy Autopilot command when the design comes with source code or a Terraform plan JSON, and maps each API operation to its IAM actions through the Service Authorization Reference otherwise. It also carries the condition-operator safety rules, the confused-deputy condition keys for resource-based policies, and AWS's corrections for policy-evaluation and trust-policy edge cases. Then shape its output to the design. Without the AWS MCP server, write the policies to the rules below and say in the output that `aws-iam` was not consulted.
 
 **Identity-Based Policies:**
 
@@ -148,6 +145,8 @@ Ask discovery questions:
 - Restrict regions for data residency
 
 ### STEP 4: Design Security Controls
+
+Take the S3 bucket settings from the AWS MCP server's `securing-s3-buckets` skill, the secrets settings from `creating-secrets-using-best-practices`, and the trail settings from `setting-up-cloudtrail-multi-region`. Those skills also run AWS CLI commands; in a design, use their settings and run nothing.
 
 **Encryption at Rest:**
 
@@ -245,65 +244,7 @@ When the user or the design under review names a compliance framework (GDPR, HIP
 
 ## IAM Policy Templates
 
-### Identity-Based Policy (Least Privilege)
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "DescriptiveStatementId",
-      "Effect": "Allow",
-      "Action": ["service:SpecificAction1", "service:SpecificAction2"],
-      "Resource": ["arn:aws:service:region:account-id:resource-type/resource-id"],
-      "Condition": {
-        "StringEquals": { "service:ResourceTag/Environment": "production" },
-        "IpAddress": { "aws:SourceIp": ["10.0.0.0/8"] },
-        "Bool": { "aws:MultiFactorAuthPresent": "true" }
-      }
-    }
-  ]
-}
-```
-
-**Principles:** Use specific actions/resources (avoid wildcards), add conditions for fine-grained control, use descriptive Sid values, separate read/write/admin operations
-
-### Resource-Based Policy: S3 Bucket
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "EnforceSSLOnly",
-      "Effect": "Deny",
-      "Principal": "*",
-      "Action": "s3:*",
-      "Resource": ["arn:aws:s3:::bucket-name", "arn:aws:s3:::bucket-name/*"],
-      "Condition": { "Bool": { "aws:SecureTransport": "false" } }
-    },
-    {
-      "Sid": "EnforceEncryption",
-      "Effect": "Deny",
-      "Principal": "*",
-      "Action": "s3:PutObject",
-      "Resource": "arn:aws:s3:::bucket-name/*",
-      "Condition": {
-        "StringNotEquals": { "s3:x-amz-server-side-encryption": "aws:kms" }
-      }
-    },
-    {
-      "Sid": "AllowSpecificRoleAccess",
-      "Effect": "Allow",
-      "Principal": { "AWS": "arn:aws:iam::account-id:role/RoleName" },
-      "Action": ["s3:GetObject", "s3:PutObject"],
-      "Resource": "arn:aws:s3:::bucket-name/*"
-    }
-  ]
-}
-```
-
-**Principles:** Enforce TLS/SSL, enforce encryption at rest, use explicit principal ARNs, deny takes precedence over allow
+`aws-iam` generates identity-based policies and `securing-s3-buckets` the S3 bucket policy. These templates cover the policy types those skills leave to you.
 
 ### Resource-Based Policy: KMS Key
 
@@ -364,19 +305,6 @@ When the user or the design under review names a compliance framework (GDPR, HIP
 ```
 
 **Principles:** Separate key administrators from key users, key admins manage but cannot use key, key users encrypt/decrypt but cannot manage, allow AWS services via service principals with kms:ViaService condition
-
-### IAM Condition Examples
-
-**Common Conditions:**
-
-- IP restrictions: `"IpAddress": {"aws:SourceIp": ["10.0.0.0/8"]}`
-- MFA requirement: `"Bool": {"aws:MultiFactorAuthPresent": "true"}`
-- Time-based: `"DateGreaterThan": {"aws:CurrentTime": "2024-01-01T00:00:00Z"}`
-- Tag-based (ABAC): `"StringEquals": {"aws:PrincipalTag/Department": "${aws:ResourceTag/Department}"}`
-- User-specific data: `"StringEquals": {"s3:ExistingObjectTag/Owner": "${aws:userid}"}`
-- DynamoDB leading keys: `"ForAllValues:StringEquals": {"dynamodb:LeadingKeys": ["${aws:userid}"]}`
-- VPC endpoint restriction: `"StringEquals": {"aws:SourceVpce": "vpce-1234567890abcdef0"}`
-- Encryption enforcement: `"StringEquals": {"s3:x-amz-server-side-encryption": "aws:kms"}`
 
 ### Permission Boundary for Delegated Administration
 
@@ -479,15 +407,6 @@ When the user or the design under review names a compliance framework (GDPR, HIP
 - Use kms:ViaService condition for AWS services
 - Create separate keys for different data classification levels
 
-### S3 Bucket Security
-
-- Enable default bucket encryption with KMS
-- Bucket policy denies non-SSL requests
-- Bucket policy denies unencrypted uploads
-- Enable versioning for data protection
-- Enable server access logging
-- Block public access
-
 ### Encryption at Rest (Service Configurations)
 
 - **S3:** SSEAlgorithm: aws:kms, KMSMasterKeyID, BucketKeyEnabled: true
@@ -517,34 +436,7 @@ When the user or the design under review names a compliance framework (GDPR, HIP
 
 ### CloudTrail Configuration
 
-```json
-{
-  "Name": "organization-trail",
-  "S3BucketName": "audit-logs-bucket",
-  "IncludeGlobalServiceEvents": true,
-  "IsMultiRegionTrail": true,
-  "EnableLogFileValidation": true,
-  "KmsKeyId": "arn:aws:kms:region:account-id:key/key-id",
-  "EventSelectors": [
-    {
-      "ReadWriteType": "All",
-      "IncludeManagementEvents": true,
-      "DataResources": [
-        {
-          "Type": "AWS::S3::Object",
-          "Values": ["arn:aws:s3:::sensitive-bucket/*"]
-        },
-        {
-          "Type": "AWS::Lambda::Function",
-          "Values": ["arn:aws:lambda:*:account-id:function/*"]
-        }
-      ]
-    }
-  ]
-}
-```
-
-**Principles:** Enable multi-region trail, enable global service events, enable log file validation, encrypt logs with KMS, enable data events for sensitive resources
+Take the trail settings from `setting-up-cloudtrail-multi-region`: one multi-region trail with global service events, log file validation and KMS encryption, plus data events for sensitive resources.
 
 ### Service-Specific Logging
 
