@@ -299,8 +299,10 @@ not per individual commit.
     `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server.
   - `policy-validation` checks the API Gateway `SecurityPolicy` property, treats the KMS key
     rotation period as configurable, uses the Security Hub CSPM name, and can run IAM Access
-    Analyzer policy validation. `aws-service-validator` falls back to the AWS Knowledge MCP
-    server when the AWS MCP tools are unavailable.
+    Analyzer policy validation.
+  - `konductor` declares `aws-mcp`, like `k-architect` and `k-developer`, so it can run
+    `infra-validation`'s AWS checks. On Kiro CLI the three agents pre-approve only the server's
+    read-only documentation, skill and Region tools.
 
 ### Fixed
 
@@ -328,8 +330,7 @@ not per individual commit.
   Repeated paragraphs and tables are cut from several skills.
 - `infra-validation` and `policy-validation` no longer flag an S3 bucket or DynamoDB table as
   unencrypted for lacking an encryption setting, since both encrypt at rest by default. They
-  flag them only when the data needs SSE-KMS or a customer managed key. The `infra-validation`
-  Graviton example cites the published Lambda arm64 figure.
+  flag them only when the data needs SSE-KMS or a customer managed key.
 - `smithy-modeling` and `smithy-validation` describe current Smithy rules: `enum` and `intEnum`
   shapes instead of the deprecated `@enum` trait, the full `@paginated` rules, required
   `@httpLabel` members, the DANGER severity, `smithy validate --severity` and

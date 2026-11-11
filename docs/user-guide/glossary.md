@@ -144,8 +144,8 @@ by `Fix these issues? [y/n]`.
 ### MCP (Model Context Protocol)
 
 A standard for exposing external tools to an AI agent. Konductor declares MCP servers in an agent
-spec's `dependencies.mcpRegistry`. Two are pre-declared: `aws-mcp` (on `k-architect` and
-`k-developer`) and `playwright-mcp` (on `k-browser`).
+spec's `dependencies.mcpRegistry`. Two are pre-declared: `aws-mcp` (on `konductor`, `k-architect`
+and `k-developer`) and `playwright-mcp` (on `k-browser`).
 
 ### Mermaid
 

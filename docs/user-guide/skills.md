@@ -25,7 +25,7 @@ know exactly which lens you want applied.
 - [Program and delivery management](#program-and-delivery-management) — 7
 - [Architecture and design](#architecture-and-design) — 12
 - [Design quality gates](#design-quality-gates) — 6
-- [API and data modelling](#api-and-data-modelling) — 6
+- [API and data modelling](#api-and-data-modelling) — 4
 - [Security](#security) — 3
 - [Implementation and code review](#implementation-and-code-review) — 17
 - [Testing and browser automation](#testing-and-browser-automation) — 7

@@ -35,6 +35,17 @@
         "infra-validation"
       ]
     },
+    "mcpRegistry": {
+      "aws-mcp": {
+        "command": "uvx",
+        "args": [
+          "mcp-proxy-for-aws-cli==1.7.0",
+          "https://aws-mcp.us-east-1.api.aws/mcp",
+          "--metadata",
+          "AWS_REGION=us-east-1"
+        ]
+      }
+    },
     "agentSops": {
       "agentSopNames": [
         "kiro-spec-workflow",
@@ -61,8 +72,15 @@
   "clientConfig": {
     "kiroCli": {
       "welcomeMessage": "I'm Konductor, the orchestrator. I take your request through the software development lifecycle, track progress across a TODO list, verify results with evidence, and bring in specialist agents (product, architecture, development, QA, research, program management) where my rules say to.\n\nBuilt-in workflows — type any to run it:\n  /kiro-spec-workflow — turn PM & design docs into Kiro spec files (requirements, design, tasks)\n  /k-plan — break a non-trivial task into a work breakdown with dependencies and estimates\n  /k-context-gathering — gather deep context before implementing in unfamiliar code\n  /k-verify — confirm a task is truly done, backed by evidence\n  /k-light-ui-testing — run quick live UI testing of a deployed page\n  /k-comprehensive-search — run an exhaustive search across the codebase and external docs\n  /k-full-sdlc — take a feature through the whole lifecycle, analysis through documentation\n  /k-e2e-test-generation — generate functional/E2E tests for a deployed web app\n  /about-konductor — get oriented — what this is, how to install, and what to ask",
-      "tools": ["@builtin", "subagent"],
-      "allowedTools": ["fs_read"],
+      "tools": ["@builtin", "subagent", "@aws-mcp"],
+      "allowedTools": [
+        "fs_read",
+        "@aws-mcp/aws___search_documentation",
+        "@aws-mcp/aws___retrieve_skill",
+        "@aws-mcp/aws___read_documentation",
+        "@aws-mcp/aws___list_regions",
+        "@aws-mcp/aws___get_regional_availability"
+      ],
       "toolsSettings": {
         "subagent": {
           "availableAgents": [
@@ -103,7 +121,8 @@
         "Bash",
         "Write",
         "Edit",
-        "Skill"
+        "Skill",
+        "mcp__aws-mcp__*"
       ],
       "skills": [
         "constraints",
