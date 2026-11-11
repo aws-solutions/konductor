@@ -294,7 +294,10 @@ not per individual commit.
     runs the local tools the project has and checks its quality gate items by reading the code.
   - `iam-policy-design` generates policies with `aws-iam` and takes S3, secrets and CloudTrail
     settings from the server's skills for them. `policy-validation` checks statements against
-    `aws-iam`'s edge cases and S3 buckets against `securing-s3-buckets`.
+    `aws-iam`'s edge cases and S3 buckets against `securing-s3-buckets`. It and
+    `infra-validation` rate `iam:PassRole` or an IAM escalation action on `*` CRITICAL, a scoped
+    escalation action or `ForAllValues` without a `Null` check IMPORTANT, and map the S3
+    checklist's tiers onto their own scale.
   - `cost-estimation` prices through Price List API calls on the AWS MCP server, guided by
     `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server. With a
     shell, it prices DynamoDB with the `amazon-dynamodb` cost calculator, fetched from the
