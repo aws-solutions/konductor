@@ -20,6 +20,10 @@ const {
   createLayout,
   LayoutError,
 } = require('../../../scripts/bench/lib/layout');
+const {
+  createLedger,
+  SpendStopError,
+} = require('../../../scripts/bench/lib/ledger');
 const { fileSha256 } = require('../../../scripts/bench/lib/provenance');
 const helpers = require('./helpers');
 
@@ -1266,6 +1270,250 @@ test('.gitattributes keeps every skills/*/SKILL.md at LF, so the hash in a rules
   });
 });
 
+// The spend ledger: plan reads it, never writes it, and refuses a plan that would take it past total_cap_usd.
+// The fixture plan's upper estimate (p90) is 4.7924 (see the first test), the figure checked against the limits, so a
+// ledger holding 95.2076 lands exactly on total_cap_usd 100.
+const makeSettledRow = (usd) => ({
+  type: 'settle',
+  id: `s${usd}`,
+  ts: '2026-01-15T09:00:00Z',
+  run: 'old',
+  usd,
+});
+const makeHeldRow = (usd, expires) => ({
+  type: 'reserve',
+  id: `r${usd}`,
+  ts: '2026-01-15T09:00:00Z',
+  run: 'other',
+  usd,
+  expires,
+});
+const LEDGER_CASES = [
+  // [name, rows, expected exit code, text expected in the output]
+  [
+    'no ledger file: nothing spent',
+    null,
+    0,
+    'Spend ledger: $0.00 spent in 0 calls, $0.00 reserved. With this plan: $4.79 of total_cap_usd $100.00.',
+  ],
+  [
+    'spend so far is shown and added to the plan',
+    [makeSettledRow(50)],
+    0,
+    'Spend ledger: $50.00 spent in 1 call, $0.00 reserved. With this plan: $54.79 of',
+  ],
+  [
+    'landing exactly on total_cap_usd is allowed',
+    [makeSettledRow(95.2076)],
+    0,
+    'With this plan: $100.00 of',
+  ],
+  [
+    'a fraction of a cent over total_cap_usd is refused',
+    [makeSettledRow(95.21)],
+    1,
+    'Refused\n  the ledger holds $95.21 spent and $0.00 reserved; this plan would take it to $100.002, above total_cap_usd $100.000; raise total_cap_usd in bench/config.json, or move the ledger file aside to start a new count',
+  ],
+  [
+    'a live reservation counts',
+    [makeHeldRow(98, '2999-01-01T00:00:00Z')],
+    1,
+    'holds $0.00 spent and $98.00 reserved',
+  ],
+  [
+    'a live reservation is in the figure with this plan',
+    [makeHeldRow(10, '2999-01-01T00:00:00Z')],
+    0,
+    'Spend ledger: $0.00 spent in 0 calls, $10.00 reserved. With this plan: $14.79 of total_cap_usd $100.00.',
+  ],
+  [
+    'a reservation that expired without a settle row counts as spent, not as nothing',
+    [makeHeldRow(98, '2000-01-01T00:00:00Z')],
+    1,
+    'the ledger holds $98.00 spent and $0.00 reserved; this plan would take it to $102.79, above total_cap_usd $100.00;',
+  ],
+  [
+    'the plan says how many expired reservations are in the spent figure',
+    [makeHeldRow(10, '2000-01-01T00:00:00Z')],
+    0,
+    'Spend ledger: $10.00 spent in 0 calls, $0.00 reserved. With this plan: $14.79 of total_cap_usd $100.00. The spent figure includes 1 expired reservation that never settled ($10.00), counted as spent.',
+  ],
+  [
+    'the plan says how many calls ended before a model step started and were charged nothing',
+    [
+      { ...makeSettledRow(0), cost_source: 'none', status: 'failed' },
+      { ...makeSettledRow(2), cost_source: 'reported', status: 'ok' },
+    ],
+    0,
+    'Spend ledger: $2.00 spent in 2 calls, $0.00 reserved. With this plan: $6.79 of total_cap_usd $100.00. 1 call ended before a model step started and was charged $0.00.',
+  ],
+];
+for (const [name, rows, code, expected] of LEDGER_CASES) {
+  test(`plan ledger check: ${name}`, () => {
+    helpers.withFixtureCopy((dir, layout) => {
+      if (rows) helpers.writeLedger(layout.ledgerFile, rows);
+      const result = planOn(dir);
+      assert.equal(result.code, code);
+      assert.ok(result.out.includes(expected), result.out);
+      assert.equal(planFor(dir).ok, code === 0);
+    });
+  });
+}
+
+test('plan ledger check: a corrupt ledger refuses the plan and names the problem; the ledger is never written', () => {
+  helpers.withFixtureCopy((dir, layout) => {
+    helpers.writeLedger(layout.ledgerFile, [makeSettledRow(1)]);
+    fs.appendFileSync(
+      layout.ledgerFile,
+      'not json\n' + JSON.stringify(makeSettledRow(2)) + '\n',
+    );
+    const before = fs.readFileSync(layout.ledgerFile, 'utf8');
+    const result = planOn(dir);
+    assert.equal(result.code, 1);
+    assert.match(result.out, /Refused\n {2}ledger: corrupt ledger line 2 in /);
+    assert.doesNotMatch(result.out, /Spend ledger:/);
+    assert.equal(fs.readFileSync(layout.ledgerFile, 'utf8'), before);
+    assert.equal(fs.existsSync(`${layout.ledgerFile}.lock`), false);
+  });
+  helpers.withFixtureCopy((dir, layout) => {
+    helpers.writeLedger(layout.ledgerFile, [makeSettledRow(3)]);
+    assert.deepEqual(JSON.parse(planOn(dir, '--json').out).ledger, {
+      total_usd: 3,
+      reserved_usd: 0,
+      calls: 1,
+      unstarted_calls: 0,
+      expired: { count: 0, usd: 0 },
+      projected_usd: 7.79,
+    });
+  });
+});
+
+test('plan --json: within_total_cap is false when the ledger cap refuses the plan while within_max stays true, and null when the ledger cannot be read', () => {
+  const planJson = (rows, extraText = '') =>
+    helpers.withFixtureCopy((dir, layout) => {
+      helpers.writeLedger(layout.ledgerFile, rows);
+      if (extraText) fs.appendFileSync(layout.ledgerFile, extraText);
+      return JSON.parse(planOn(dir, '--json').out);
+    });
+  const within = planJson([makeSettledRow(3)]);
+  assert.deepEqual(
+    [within.within_max, within.within_total_cap, within.ok],
+    [true, true, true],
+  );
+  const overCap = planJson([makeSettledRow(99.5)]);
+  assert.deepEqual(
+    [overCap.within_max, overCap.within_total_cap, overCap.ok],
+    [true, false, false],
+  );
+  const unreadable = planJson([makeSettledRow(1)], 'not json\n');
+  assert.deepEqual([unreadable.within_total_cap, unreadable.ok], [null, false]);
+});
+
+// max_usd counts the run's spend so far, as the ledger does. The fixture plan's upper estimate (p90) is 4.7924, the
+// amount the ledger reserves for its calls. For each ledger and max_usd, plan refuses exactly when the ledger would
+// refuse a reservation of that pending p90 cost.
+const PENDING = PROJECTED_USD;
+const makeSpentRow = (usd, run) => ({
+  type: 'settle',
+  id: `s${usd}${run}`,
+  ts: '2026-01-15T09:00:00Z',
+  run,
+  usd,
+});
+const makeReservedRow = (usd, run, expires = '2999-01-01T00:00:00Z') => ({
+  type: 'reserve',
+  id: `r${usd}${run}`,
+  ts: '2026-01-15T09:00:00Z',
+  run,
+  usd,
+  expires,
+});
+const RESUME_CASES = [
+  // [name, ledger rows, max_usd, plan refused]
+  ['no prior spend: 4.7924 is above 4.79', [], 4.79, true],
+  [
+    'prior spend 10 plus pending, max 14.7924: lands on max_usd, allowed',
+    [makeSpentRow(10, 'r1')],
+    14.7924,
+    false,
+  ],
+  [
+    'prior spend 10 plus pending, max 14.79: above max_usd, refused',
+    [makeSpentRow(10, 'r1')],
+    14.79,
+    true,
+  ],
+  [
+    'prior spend 9 plus pending is 13.79, above max 13, though pending alone is under it',
+    [makeSpentRow(9, 'r1')],
+    13,
+    true,
+  ],
+  [
+    'a live reservation of the run counts',
+    [makeSpentRow(5, 'r1'), makeReservedRow(5, 'r1')],
+    12.5,
+    true,
+  ],
+  [
+    'an expired reservation of the run that never settled counts as spent',
+    [makeSpentRow(5, 'r1'), makeReservedRow(50, 'r1', '2000-01-01T00:00:00Z')],
+    12.5,
+    true,
+  ],
+  [
+    'spend of another run does not count toward this run',
+    [makeSpentRow(20, 'other')],
+    5,
+    false,
+  ],
+];
+for (const [name, ledgerRows, maxUsd, refused] of RESUME_CASES) {
+  test(`plan max_usd counts the run so far, as the ledger does: ${name}`, async () => {
+    await helpers.withTmpAsync(async (tempDir) => {
+      const dir = path.join(tempDir, 'repo');
+      fs.cpSync(ROOT, dir, { recursive: true });
+      const layout = createLayout({ root: dir, runId: 'r1' });
+      helpers.writeLedger(layout.ledgerFile, ledgerRows);
+      const result = planOn(dir, '--run', 'r1', '--max-usd', String(maxUsd));
+      const limits = { max_usd: maxUsd, total_cap_usd: 100 };
+      const ledger = createLedger({
+        file: layout.ledgerFile,
+        limits,
+        runId: 'r1',
+      });
+      const verdict = await ledger.reserve(PENDING, 'resume').then(
+        (reservation) => (reservation.cancel(), 'allowed'),
+        (error) =>
+          error instanceof SpendStopError ? error.limit : Promise.reject(error),
+      );
+      assert.equal(result.code === 1, refused, result.out);
+      assert.equal(
+        verdict === 'max_usd',
+        refused,
+        `the ledger said ${verdict}`,
+      );
+      if (refused && ledgerRows.length)
+        assert.match(
+          result.out,
+          /this run has already spent or reserved \$\d+\.\d\d; the plan adds \$4\.79 \(upper estimate, p90\)/,
+        );
+    });
+  });
+}
+
+test('a refusal that counts the run so far writes the total and the limit with decimals that tell them apart', () => {
+  helpers.withFixtureCopy((dir, layout) => {
+    helpers.writeLedger(layout.ledgerFile, [makeSpentRow(10, 'default')]);
+    const result = planOn(dir, '--max-usd', '14.79');
+    assert.equal(result.code, 1);
+    assert.match(
+      result.out,
+      /this run has already spent or reserved \$10\.00; the plan adds \$4\.79 \(upper estimate, p90\), which takes it to \$14\.792, above max_usd \$14\.790;/,
+    );
+  });
+});
+
 test('package.json names the driver script skill-bench, and no script is called bench', () => {
   const { scripts } = helpers.readJson(
     path.join(__dirname, '..', '..', '..', 'package.json'),
@@ -1297,4 +1545,33 @@ test('plan with no bench/config.json is a usage error that names its full path a
     helpers.write(settings, helpers.settingsWith());
     assert.equal(planOn(dir, '--config', settings).code, 0);
   });
+});
+
+test('plan shows the run spend so far on the cost line, and in JSON; with none, the line is the one in the golden file', () => {
+  helpers.withFixtureCopy((dir, layout) => {
+    assert.equal(planFor(dir).run_usd, 0);
+    helpers.writeLedger(layout.ledgerFile, [
+      makeSpentRow(4, 'default'),
+      makeSpentRow(30, 'other'),
+    ]);
+    assert.equal(planFor(dir).run_usd, 4);
+    assert.match(
+      planOn(dir).out,
+      /Upper estimate \(p90\) of pending work: \$4\.79, after \$4\.00 already spent or reserved by this run, of max_usd \$30\.00: within the limit/,
+    );
+  });
+});
+
+// Calls are charged at the cost their CLI reports, so there is no price table and no price line.
+test('plan prints no price line and its JSON has no price fields', () => {
+  const result = planOn(ROOT);
+  assert.deepEqual(
+    result.out
+      .split('\n')
+      .filter((line) => /price row|model_prices/.test(line)),
+    [],
+  );
+  const planJson = JSON.parse(planOn(ROOT, '--json').out);
+  assert.equal(Object.hasOwn(planJson, 'unpriced'), false);
+  assert.equal(Object.hasOwn(planJson, 'price_warning'), false);
 });

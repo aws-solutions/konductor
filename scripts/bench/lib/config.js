@@ -44,6 +44,7 @@ const REPLACED_SETTINGS = Object.freeze({
   stop_usd: 'replaced by total_cap_usd',
   hard_cap_usd: 'replaced by total_cap_usd',
   orders_per_pair: 'removed: each answer is scored on its own',
+  model_prices: 'removed: calls are charged at the cost the CLI reports',
   agent_for: 'removed: the agent comes from the agent specs',
   needs_tools: 'removed: not in the MVP',
 });
