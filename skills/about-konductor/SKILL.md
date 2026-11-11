@@ -33,8 +33,9 @@ konductor install --from . --harness kiro-cli-v2
 
 `synth` builds the pipeline/config artifacts from the repo root you cloned;
 `install` copies them into a target (`$HOME` unless you pass `--target`).
-`--harness` is required — say `kiro-cli-v2` or `kiro-v3` for Kiro CLI, or
-`claude` for Claude Code; there is no auto-detection. Run `konductor doctor`
+`--harness` is required: say `kiro-cli-v2` or `kiro-v3` for Kiro CLI, or
+`claude` for Claude Code. Install never guesses the harness from the
+target's `.kiro` or `.claude` directory. Run `konductor doctor`
 afterward to confirm everything registered — it inspects the install and
 prints remediation guidance for anything wrong instead of a bare error.
 
@@ -47,12 +48,7 @@ and installing into a directory other than `$HOME`.
 kiro-cli chat --agent konductor
 ```
 
-`konductor install` targets both Kiro CLI and Claude Code, but `--harness`
-is required — it never auto-detects the runtime at the install target, so
-you say `kiro-cli-v2`, `kiro-v3`, or `claude` explicitly and it installs the
-matching agent/skill/SOP layout. On Claude Code, start the same orchestrator
-through the `claude` CLI's own `--agent` flag instead of `kiro-cli chat
---agent`.
+On Claude Code, run `claude --agent konductor` instead.
 
 That's the whole entry point. From here you never pick a
 specialist agent, never pick a skill, never hunt for a SOP — you describe

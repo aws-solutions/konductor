@@ -30,10 +30,11 @@ Architectural pattern compliance (layer separation), dead code detection (unused
 
 ### Architectural Patterns
 
-- [ ] Handlers delegate to business facade — no direct business logic in handlers
-- [ ] Services created via factory — no direct instantiation
-- [ ] Data access through repository interfaces — no direct database calls
-- [ ] Proper layer separation maintained
+Check only the layers the codebase uses; otherwise check the change follows the structure it has.
+
+- [ ] If there is a facade: handlers delegate to it, with no business logic in handlers
+- [ ] If there is a factory: services come from it, not direct instantiation
+- [ ] If there is a repository layer: data access goes through its interfaces, not direct database calls
 
 ### Dead Code
 
@@ -72,8 +73,8 @@ Architectural pattern compliance (layer separation), dead code detection (unused
 
 **CRITICAL (blocks approval):**
 
+- Direct database call that bypasses a repository layer the codebase already uses
 - Race condition risk (non-atomic multi-item update without transaction)
-- Direct database connection bypassing repository layer
 - Missing null check before non-null assertion that will throw at runtime
 - Test passes only due to test order dependency
 

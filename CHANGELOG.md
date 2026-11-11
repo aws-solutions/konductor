@@ -235,6 +235,13 @@ not per individual commit.
 
 ### Fixed
 
+- Skill bodies no longer contradict themselves or the codebase. `backend-development` and
+  `backend-review` keep a facade, factory or repository layering only when the codebase already
+  uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes
+  TDD's RED phase to code changes, and `asdlc-code-simplifier` runs the tests before and after
+  and reports each change with its reason. The full deliberation panel run is defined once, in
+  `deliberation-panel`; `socratic-elicitation` keeps a short inline offer that points to it.
+  Repeated paragraphs and tables are cut from several skills.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
@@ -274,6 +281,12 @@ not per individual commit.
   pricing. `program-planning` and `playwright-test-implementation` no longer point at SOP steps
   that are missing when the skill runs alone. `cmux-dispatch`, `design-doc-guidelines` and
   `external-research` drop terms that do not apply in this repo.
+- `git-merge` shows the merge log and diff and asks before pushing to the default branch, and
+  only when the repo merges locally; otherwise, or if the user declines, it opens a PR. Tagging
+  and branch cleanup wait for a successful push. `git-workflow` now merges the default branch in
+  before a PR instead of rebasing, matching `git-merge`.
+- `cmux-dispatch` and `mux-dispatch` no longer claim every task, and say that Claude Code panes
+  skip permission prompts, so dispatch only tasks you would approve unattended.
 
 ### Security
 

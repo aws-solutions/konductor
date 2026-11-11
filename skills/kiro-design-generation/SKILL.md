@@ -52,7 +52,7 @@ Not all inputs are required — use what is available. At minimum, `requirements
 {spec_dir}/design.md
 ```
 
-`spec_dir` (optional): path where spec artifacts are written. Defaults to `.kiro/specs/{feature-name}/` if not provided — the same location Kiro IDE itself writes specs to, so this skill behaves identically whether invoked standalone in any Kiro project or as part of a larger workflow. A caller that keeps its artifacts elsewhere passes its own `spec_dir`, and this skill MUST read and write there instead.
+`spec_dir` (optional): where spec artifacts live. Defaults to `.kiro/specs/{feature-name}/`; when the caller passes one, this skill MUST read and write there instead.
 
 One `design.md` per feature, placed alongside the corresponding `requirements.md` in the same `spec_dir`.
 
