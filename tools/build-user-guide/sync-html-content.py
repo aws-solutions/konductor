@@ -511,6 +511,71 @@ EDITS = [
     ("usecases: adversarial review agent card",
      "Adversarial security review</div><div style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--lav)\">k-architect</div>",
      "Adversarial security review</div><div style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--lav)\">konductor</div>"),
+    # ---- design reviews grade CRITICAL / IMPORTANT / SUGGESTION ------------
+    # agent-sops/k-design-doc-creation.sop.md,
+    # agent-sops/k-principal-engineer-design-review.sop.md and
+    # skills/adversarial-design-review/SKILL.md name SUGGESTION as the lowest tier.
+    ("design gate: adversarial review (prose)",
+     'Adversarial review: <strong style="color:var(--tx);font-weight:600">0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR</strong>',
+     'Adversarial review: <strong style="color:var(--tx);font-weight:600">0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION</strong>'),
+    ("design use case: phase 4 tiers",
+     "CRITICAL (architectural or factual) / IMPORTANT / MINOR. If a CRITICAL architectural",
+     "CRITICAL (architectural or factual) / IMPORTANT / SUGGESTION. If a CRITICAL architectural"),
+    ("design use case: phase 4 exit",
+     "0 CRITICAL, 0 IMPORTANT, and fewer than 3 MINOR findings. No finding",
+     "0 CRITICAL, 0 IMPORTANT, and fewer than 3 SUGGESTION findings. No finding"),
+    ("design-doc-creation node: path B tiers",
+     "CRITICAL (architectural) · CRITICAL (factual) · IMPORTANT · MINOR. Up to 5 rounds",
+     "CRITICAL (architectural) · CRITICAL (factual) · IMPORTANT · SUGGESTION. Up to 5 rounds"),
+    ("design-doc-creation node: circuit-breaker exit",
+     "fewer than 3 MINOR — or presents remaining issues",
+     "fewer than 3 SUGGESTION, or presents remaining issues"),
+    ("design-doc-creation gate row: adversarial review",
+     '{ k: "Adversarial review", v: "0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR" }',
+     '{ k: "Adversarial review", v: "0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION" }'),
+    # The next three rewrite text that html_sop_edits._PE_REVIEW appended. That
+    # fragment carries the same new wording, so its append stays satisfied.
+    ("pe-review output: finding order",
+     "every adversarial round, ordered CRITICAL → IMPORTANT → MINOR.",
+     "every adversarial round, ordered CRITICAL → IMPORTANT → SUGGESTION."),
+    ("pe-review know: loop exit",
+     "0 IMPORTANT and fewer than 3 MINOR findings remain.",
+     "0 IMPORTANT and fewer than 3 SUGGESTION findings remain."),
+    ("pe-review know: PE-READY threshold",
+     "0 IMPORTANT, fewer than 3 MINOR), REVISIONS NEEDED",
+     "0 IMPORTANT, fewer than 3 SUGGESTION), REVISIONS NEEDED"),
+    ("skills catalog: adversarial-design-review tiers",
+     "classifying CRITICAL / IMPORTANT / MINOR. Path B fallback",
+     "classifying CRITICAL / IMPORTANT / SUGGESTION. Path B fallback"),
+    # ---- design-evaluation: 8 scored dimensions, #2 and #10 are unscored ----
+    ("design review use case: step 04 dimensions",
+     "Scores all 10 dimensions 1 to 5: template adherence, high-level assessment, scalability "
+     "(including cost), performance, security, maintainability, resilience, code quality, testability, "
+     "and actionable recommendations. Below 3 is flagged for revision.",
+     "Scores 8 dimensions 1 to 5: template adherence, scalability (including cost), performance, "
+     "security, maintainability, resilience, code quality, and testability. Below 3 is flagged for "
+     "revision. A high-level assessment and actionable recommendations are written as unscored "
+     "report sections."),
+    ("design review row: the 10 dimensions",
+     '{ k: "The 10 dimensions", v: "Template adherence · high-level assessment · scalability (including cost) · '
+     'performance · security · maintainability and extensibility · failure handling and resilience · '
+     'code and implementation quality · testability and automation readiness · actionable recommendations" }',
+     '{ k: "The 10 dimensions", v: "Scored 1 to 5: template adherence · scalability (including cost) · '
+     'performance · security · maintainability and extensibility · failure handling and resilience · '
+     'code and implementation quality · testability and automation readiness. Unscored report '
+     'sections: high-level assessment · actionable recommendations" }'),
+    ("design review flow: step 06 scoring",
+     "Scores all 10 dimensions 1–5, flags any dimension below 3,",
+     "Scores the 8 scored dimensions 1 to 5, flags any dimension below 3,"),
+    ("design-doc-creation phase 5: confidence score",
+     "confidence score (the average of 10 dimension scores, 1–5 each; anything below 3 is flagged)",
+     "confidence score (the average of its 8 scored dimensions, 1 to 5 each; anything below 3 is flagged)"),
+    ("design-doc-creation flow: phase 5 confidence score",
+     "confidence score (the average of 10 dimensions, 1–5 each)",
+     "confidence score (the average of the 8 scored dimensions, 1 to 5 each)"),
+    ("design review row: missing threat model",
+     "but degrades rather than blocks (the security and threat coverage dimension is limited)",
+     "but degrades rather than blocks (the Security dimension is capped at 3)"),
 ]
 
 # Per-agent roster figures, verified against agents/*.agent-spec.json.
@@ -618,6 +683,12 @@ ROSTER = [
     ("skills catalog: system-design-patterns outputs",
      "Produces the system design, NFRs, threat-model inputs, and an architecture-diagram description.",
      "Produces four documents: the system design (with NFRs), threat-model input, an architecture-diagram description, and a design review handoff."),
+    ("skills catalog: design-evaluation row",
+     '"k":"design-evaluation","v":"Evaluates a complete design package for production readiness across 10 dimensions.',
+     '"k":"design-evaluation","v":"Evaluates a design package, or a single design doc, for production readiness across 10 dimensions (8 scored, 2 report sections).'),
+    ("skills catalog: design-evaluation reach",
+     "The final gate before implementation. Wants all artifacts present — design, threat model, API specs, data models, diagrams, IAM.",
+     "The final gate before implementation. Lists any missing artifacts (system design, threat model, API specs, data models, diagrams, IAM) and scores what is present; use single-document scope for one doc."),
 ]
 
 

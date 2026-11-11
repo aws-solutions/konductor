@@ -27,6 +27,7 @@ Do NOT use when:
 - User wants API specs → use `smithy-modeling`
 - User wants a data model → use `dynamodb-design`
 - User wants a threat model → use `threat-modeling`
+- User wants a scored multi-option comparison → use `trade-off-evaluator`
 
 ## Decision Framework
 

@@ -7,6 +7,14 @@ tags: [skill, tpm, decision, options-analysis, trade-offs]
 
 # Program Decision Docs
 
+## Usage
+
+Use this skill when a program-level choice (vendor, scope cut, timeline trade, build vs buy) needs a decision doc with options, a weighted scoring matrix, a recommendation and a decision record.
+
+Do NOT use when:
+
+- Comparing technical design options on cost, latency, complexity, scalability and operability → use `trade-off-evaluator`
+- Drafting or reviewing a single decision record (ADR, PDR, UXDR) for structure and tone → use `decision-writing`
 
 ## Core Concepts
 
@@ -16,7 +24,7 @@ Every decision doc starts with: what decision is needed, why now (trigger/urgenc
 
 ### Options Analysis
 
-Each option has: description, pros, cons, effort estimate (T-shirt size), risk level (High/Medium/Low), and alignment with program goals. Include a "do nothing" option as baseline. Minimum 2 options, maximum 5.
+Each option has: description, pros, cons, effort estimate (T-shirt size), risk level (High/Medium/Low), and alignment with program goals. Include a "do nothing" option as baseline. "Do nothing" counts as an option: minimum 2 options including it, maximum 5.
 
 ### Weighted Evaluation Matrix
 
@@ -41,13 +49,13 @@ After decision is made, record: decision date, decision maker(s), option selecte
 **CRITICAL (must fix):**
 
 - No "do nothing" baseline option
+- Fewer than 2 options analyzed, counting "do nothing"
 - Evaluation criteria weights don't sum to 100%
 - Decision record missing decision maker or date
 - Recommendation contradicts evaluation matrix without stated rationale
 
 **IMPORTANT (should fix):**
 
-- Fewer than 2 options analyzed
 - Pros/cons missing for any option
 - No revisit conditions defined
 - Stakeholders not identified (DACI)
