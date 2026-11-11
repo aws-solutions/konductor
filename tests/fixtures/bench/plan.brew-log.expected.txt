@@ -15,7 +15,8 @@ Stages
 Estimated cost (mean) of pending work: $2.78
 Upper estimate (p90) of pending work: $4.79 of max_usd $30.00: within the limit
 The per-call costs were measured on earlier runs and can differ on this one. Budget about $35 per skill.
-Not checked offline: AWS credentials, Bedrock model availability and the spend ledger. Stage 1 of a run checks them.
+Spend ledger: $0.00 spent in 0 calls, $0.00 reserved. With this plan: $4.79 of total_cap_usd $100.00.
+Not checked offline: AWS credentials and Bedrock model availability. Stage 1 of a run checks them.
 
 Warnings
   exclusions.json: batch b1: "brew-log-rules-9" names no task of any skill with a baseline, so it excludes nothing
