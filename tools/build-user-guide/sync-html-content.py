@@ -58,19 +58,19 @@ EDITS = [
     # drop, and the replacement paragraph carries the count in its own markup.
     # Section 13's package-total check still covers that number in every
     # rendering, so nothing is unguarded by the removal.
-    ("skills count (sidebar)", "Browse all 81 skills", "Browse all 79 skills"),
+    ("skills count (sidebar)", "Browse all 81 skills", "Browse all 80 skills"),
     ("skills count (summary)", 'skills: "All 81 skills grouped across 8 capability areas',
-     'skills: "All 79 skills grouped across 8 capability areas'),
+     'skills: "All 80 skills grouped across 8 capability areas'),
     ("skills count (catalog intro)", "intro: \"All 81 skills the package ships",
-     "intro: \"All 79 skills the package ships"),
+     "intro: \"All 80 skills the package ships"),
     ("skills coverage", "All 81 skills are declared by at least one agent.",
-     "All 79 skills are declared by at least one agent."),
+     "All 80 skills are declared by at least one agent."),
     ("install summary", "Registers the 11 agents, 81 skills, 19 SOPs, the core rules, and the orchestrator routing rules",
-     "Registers the 11 agents, 79 skills, 19 SOPs, the core rules, and the orchestrator routing rules"),
+     "Registers the 11 agents, 80 skills, 19 SOPs, the core rules, and the orchestrator routing rules"),
     ("reference count row", '{ k: "Count", v: "81 skills · 19 SOPs" }',
-     '{ k: "Count", v: "79 skills · 19 SOPs" }'),
+     '{ k: "Count", v: "80 skills · 19 SOPs" }'),
     ("faq: skills row", '{ k: "Skills — 81", v: "On-demand knowledge modules" }',
-     '{ k: "Skills — 79", v: "On-demand knowledge modules" }'),
+     '{ k: "Skills — 80", v: "On-demand knowledge modules" }'),
     ("concepts SOP blurb", "<div>13 SOPs that encode multi-step procedures",
      "<div>19 SOPs that encode multi-step procedures"),
     ("SOP count (concepts)",
@@ -87,15 +87,7 @@ EDITS = [
     ("layout tree SOPs", "├── agent-sops/                   13 SOPs (*.sop.md)",
      "├── agent-sops/                   19 SOPs (*.sop.md)"),
     ("layout tree skills", "├── skills/                       81 skills (<name>/SKILL.md",
-     "├── skills/                       79 skills (<name>/SKILL.md"),
-    # ---- dynamodb-design and dynamodb-validation removed --------------------
-    # The AWS MCP server's amazon-dynamodb skill covers DynamoDB design and review.
-    ("design-a-system: dynamodb skill list",
-     f"{_code('smithy-modeling')}, {_code('dynamodb-design')}, {_code('iam-policy-design')}, "
-     f"{_code('architecture-diagram-generation')}.",
-     f"{_code('smithy-modeling')}, {_code('iam-policy-design')}, {_code('architecture-diagram-generation')}. "
-     f"For a DynamoDB data model, {_code('k-architect')} loads the AWS MCP server's "
-     f"{_code('amazon-dynamodb')} skill through {_code('find-aws-skills')}."),
+     "├── skills/                       80 skills (<name>/SKILL.md"),
     # ---- aws-mcp launches a pinned version, not a floating @latest ----------
     ('reference MCP registry note: pinned aws-mcp',
      'note":"MCP registry entries — aws-mcp (k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1.',
@@ -255,7 +247,7 @@ EDITS = [
     # ---- k-architect is no longer on a different model ----------------------
     ("architect model prose",
      "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 39 of the package's 81 skills — close to half, and by far the largest share of any agent.",
-     "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 37 of the package's 79 skills — close to half, and by far the largest share of any agent."),
+     "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 38 of the package's 80 skills — close to half, and by far the largest share of any agent."),
     ("reference roster note",
      "Every agent runs claude-sonnet-5.5. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",
      "Every agent runs claude-sonnet-5.5 on Kiro CLI and claude-sonnet-5-5 on Claude Code. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",),
@@ -568,8 +560,8 @@ ROSTER = [
      '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}',
      '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 10 · —"}'),
     ("ref architect",
-     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review · 39 · aws-mcp"}',
-     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review · 37 · aws-mcp"}'),
+     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review · 37 · aws-mcp"}',
+     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review · 38 · aws-mcp"}'),
     ("ref developer",
      '{"k":"k-developer","v":"claude-sonnet-5.5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 26 · aws-mcp"}',
      '{"k":"k-developer","v":"claude-sonnet-5.5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 27 · aws-mcp"}'),
@@ -607,8 +599,8 @@ ROSTER = [
      "No SOPs. 1 skill \u2014 constraints only.",
      "No SOPs. 1 skill, constraints. It also declares humanize-writing, loaded on demand."),
     ("skills-per-agent table",
-     '"rows":[{"k":"k-architect","v":"37"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"24"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
-     '"rows":[{"k":"k-architect","v":"37"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"25"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),
+     '"rows":[{"k":"k-architect","v":"37"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"25"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
+     '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"25"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),
     # at-a-glance cards
     ('card konductor',
      'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 24 skills · 11 SOPs · aws-mcp',
@@ -625,8 +617,8 @@ ROSTER = [
      'Only the mux and cmux orchestrators load this file'),
     ("card pm", 'Requirements, user stories, decision research. claude-sonnet-5.5 · 15 skills · 0 SOPs',
      'Requirements, user stories, decision research. claude-sonnet-5.5 · 16 skills · 0 SOPs'),
-    ("card architect", 'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 39 skills · 3 SOPs · aws-mcp',
-     'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 37 skills · 3 SOPs · aws-mcp'),
+    ("card architect", 'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 37 skills · 3 SOPs · aws-mcp',
+     'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 38 skills · 3 SOPs · aws-mcp'),
     ("card developer", 'Implementation, code review, git, builds. claude-sonnet-5.5 · 26 skills · 4 SOPs · aws-mcp',
      'Implementation, code review, git, builds. claude-sonnet-5.5 · 27 skills · 4 SOPs · aws-mcp'),
     ("card qa", 'Test coverage, E2E strategy, security tests. claude-sonnet-5.5 · 11 skills · 2 SOPs',
@@ -661,23 +653,27 @@ ROSTER = [
     ("skills catalog: design-evaluation reach",
      "The final gate before implementation. Wants all artifacts present — design, threat model, API specs, data models, diagrams, IAM.",
      "The final gate before implementation. Lists any missing artifacts (system design, threat model, API specs, data models, diagrams, IAM) and scores what is present; use single-document scope for one doc."),
-    # ---- skills catalog: dynamodb-design and dynamodb-validation removed ----
+    # ---- skills catalog: dynamodb-design rewritten, dynamodb-validation removed
     # The anchor keeps the neighbours, so the result is checkable once applied.
-    ("skills catalog: drop dynamodb-design and dynamodb-validation",
+    ("skills catalog: slim dynamodb-design, drop dynamodb-validation",
      'Before implementing against a Smithy model. · DECLARED BY: architect"},'
      '{"k":"dynamodb-design","v":"DynamoDB table designs optimized for access patterns: partition keys, '
      'GSI strategy, capacity planning, plus CDK/CloudFormation code. — REACH FOR IT: Designing a data model '
      'on DynamoDB. · DECLARED BY: architect"},{"k":"dynamodb-validation","v":"Validates a DynamoDB design '
      'against best practice across 13 categories — hot partitions, missing indexes, cost, security. — REACH '
      'FOR IT: Before implementing a DynamoDB design. · DECLARED BY: architect"},{"k":"iam-policy-design"',
-     'Before implementing against a Smithy model. · DECLARED BY: architect"},{"k":"iam-policy-design"'),
+     'Before implementing against a Smithy model. · DECLARED BY: architect"},'
+     '{"k":"dynamodb-design","v":"Designs DynamoDB tables and GSIs from access patterns, and reviews a design '
+     'for hot partitions and unsharded low-cardinality keys. — REACH FOR IT: Designing or reviewing a DynamoDB '
+     'data model. · DECLARED BY: architect"},{"k":"iam-policy-design"'),
     ("skills catalog: API and data modelling header and DynamoDB note",
      'sec("sk-api", "API and data modelling — 4", "API and data modelling — 4", {"paras":["Interface and '
      'storage design, each paired with its own validator. For a DynamoDB data model, k-architect loads the '
      'AWS MCP server\'s amazon-dynamodb skill through find-aws-skills."]',
-     'sec("sk-api", "API and data modelling — 4", "API and data modelling — 4", {"paras":["API and access '
-     'policy design, each paired with its own validator. No storage design skill ships: for a DynamoDB data '
-     'model, k-architect loads the AWS MCP server\'s amazon-dynamodb skill through find-aws-skills."]'),
+     'sec("sk-api", "API and data modelling — 5", "API and data modelling — 5", {"paras":["API, data and access '
+     'policy design. The Smithy and IAM skills each pair with a validator; dynamodb-design carries its own review '
+     'gate. For DynamoDB depth it does not carry, such as Streams, backup and the cost calculator, it points to the '
+     'AWS MCP server\'s amazon-dynamodb skill."]'),
     ("skills catalog: find-aws-skills declared by",
      'nothing bundled matches. · DECLARED BY: architect, developer"}',
      'nothing bundled matches. · DECLARED BY: architect, developer, konductor"}'),

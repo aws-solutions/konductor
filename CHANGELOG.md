@@ -284,10 +284,14 @@ not per individual commit.
   - `git-merge` checks the staged merge before it commits and recovers from a rejected push
     without force-pushing or rebasing.
 - AWS guidance comes from the AWS MCP server's skills instead of local copies:
-  - `dynamodb-design` and `dynamodb-validation` are removed. `k-architect` designs and reviews
-    DynamoDB data models with the server's `amazon-dynamodb` skill, loaded through
-    `find-aws-skills`, which it now declares. Custom agent specs that declare a removed skill
-    must drop it: `konductor synth` rejects a spec that names a skill that does not exist.
+  - `dynamodb-design` is now a short skill: access patterns first, keys and per-partition
+    limits, GSI write sharding for low-cardinality keys with a worked example, capacity, and a
+    review gate that rates a hot partition or an unsharded low-cardinality GSI key CRITICAL. It
+    points to the server's `amazon-dynamodb` skill, loaded through `find-aws-skills`, which
+    `k-architect` now declares, for Streams, backup, security and cost depth.
+    `dynamodb-validation` is removed; `dynamodb-design`'s gate reviews a finished design. Custom
+    agent specs that declare it must drop it: `konductor synth` rejects a spec that names a skill
+    that does not exist.
   - `infra-validation` runs the server's `aws-cloudformation`, `aws-cdk` and
     `aws-well-architected-review` checks (cfn-lint, cfn-guard, cdk-nag, a pillar review)
     read-only and rates their findings CRITICAL, IMPORTANT or SUGGESTION. Without the server it
