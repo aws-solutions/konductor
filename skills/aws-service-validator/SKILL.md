@@ -50,6 +50,8 @@ A correction says what the design should do instead, not just the right limit. "
 
 #### When the aws-mcp tools are unavailable
 
+First try the AWS Knowledge MCP server (`https://knowledge-mcp.global.api.aws`), if the user has it configured. It needs no AWS credentials and offers the same documentation search, page read, and regional availability lookups (`search_documentation`, `read_documentation`, `get_regional_availability`), so run Step 1 with those tools and treat their results as primary sources. If neither server is available:
+
 A known-wrong claim must not hide in UNVERIFIED, or the gate passes a broken design, and a well-known true limit should not land there either. So:
 
 - Mark a claim INCORRECT when you are confident it contradicts a documented AWS limit or behavior. Label the evidence "prior knowledge, not source-checked" and name the doc page the author should check. Do not list a URL you did not open as evidence.

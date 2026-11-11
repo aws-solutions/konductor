@@ -373,6 +373,17 @@ Search for construct instantiations:
 - Identify critical path resources
 - Note environment (dev, staging, production)
 
+#### 1.4 Run Static Checkers (Optional, when available)
+
+If the tools are installed, run them against the template (for CDK, the synthesized template in `cdk.out/`) and fold their output into the findings:
+
+```bash
+cfn-lint template.yaml                       # schema and best-practice checks
+cfn-guard validate -r rules/ -d template.yaml  # policy-as-code rules, such as the AWS Guard Rules Registry
+```
+
+They supplement the manual checks below; they do not replace them. If neither is installed, say so in the report and continue.
+
 ### Step 2: Security Validation
 
 **CRITICAL: Use systematic approach - check EVERY resource type**
@@ -556,10 +567,10 @@ Check for alarms on:
 
 **DynamoDB Tables** - MUST have alarms for:
 
-- [ ] User errors / throttling (threshold: > 1)
+- [ ] Throttling: `ReadThrottleEvents` / `WriteThrottleEvents` (threshold: > 1)
 - [ ] System errors (threshold: > 1)
 - [ ] Consumed capacity (if provisioned)
-- [ ] **GSI throttling** (often missed - check EACH GSI)
+- [ ] **GSI throttling** (often missed - check EACH GSI with the `GlobalSecondaryIndexName` dimension)
 
 **API Gateway** - MUST have alarms for:
 
@@ -652,7 +663,7 @@ Check for alarms on:
 
 **For EACH Lambda Function** (`AWS::Lambda::Function`):
 
-- [ ] Runtime is supported (not deprecated)
+- [ ] Runtime is supported (not deprecated); check the Lambda runtimes page, for example `nodejs20.x` is deprecated, use `nodejs22.x` or later
 - [ ] `MemorySize` not default 128 MB for all functions
 - [ ] `Timeout` reasonable for operation (not 15 min for simple tasks)
 - [ ] `ReservedConcurrentExecutions` configured to prevent throttling
@@ -701,7 +712,7 @@ Check for alarms on:
 - [ ] `Logging` configured
 - [ ] `WebACLId` attached (WAF protection)
 - [ ] `DefaultCacheBehavior.Compress: true` for text content
-- [ ] Origin access identity used for S3 origins (not public bucket)
+- [ ] Origin access control (OAC) used for S3 origins (not public bucket); flag legacy origin access identity (OAI) for migration
 
 **For EACH RDS Instance** (`AWS::RDS::DBInstance`):
 
@@ -974,7 +985,7 @@ Example:
 const table = new dynamodb.Table(this, 'TasksTable', {
   partitionKey: { name: 'taskId', type: dynamodb.AttributeType.STRING },
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-  pointInTimeRecovery: true, // Enable PITR
+  pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true }, // Enable PITR
 });
 ```
 
@@ -991,7 +1002,7 @@ const dlq = new sqs.Queue(this, 'TaskProcessorDLQ', {
 });
 
 const taskFunction = new lambda.Function(this, 'TaskProcessorFunction', {
-  runtime: lambda.Runtime.NODEJS_20_X,
+  runtime: lambda.Runtime.NODEJS_22_X,
   handler: 'index.handler',
   code: lambda.Code.fromAsset('lambda'),
   deadLetterQueue: dlq,
@@ -1011,7 +1022,7 @@ Example:
 // Analyze CloudWatch metrics for actual memory usage
 // Then adjust memory allocation
 const taskFunction = new lambda.Function(this, 'TaskProcessorFunction', {
-  runtime: lambda.Runtime.NODEJS_20_X,
+  runtime: lambda.Runtime.NODEJS_22_X,
   handler: 'index.handler',
   code: lambda.Code.fromAsset('lambda'),
   memorySize: 512, // Adjust based on actual usage
@@ -1027,7 +1038,7 @@ Example:
 
 ```typescript
 const taskFunction = new lambda.Function(this, 'TaskProcessorFunction', {
-  runtime: lambda.Runtime.NODEJS_20_X,
+  runtime: lambda.Runtime.NODEJS_22_X,
   handler: 'index.handler',
   code: lambda.Code.fromAsset('lambda'),
   architecture: lambda.Architecture.ARM_64, // Use Graviton

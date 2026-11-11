@@ -120,6 +120,11 @@ Ask discovery questions:
 
 ### STEP 3: Design IAM Policies
 
+**Optional aids, when available:**
+
+- Load the `aws-iam` skill through `find-aws-skills` for AWS's corrections on IAM edge cases (policy evaluation, trust policies, condition operators) and its workflow for generating a baseline policy from source code or a Terraform plan.
+- IAM Policy Autopilot (open-source CLI and MCP server from AWS Labs) generates identity-based policies by static analysis of Python, Go, TypeScript, JavaScript, and Java code. Treat its output as a starting point and tighten it with the steps below.
+
 **Identity-Based Policies:**
 
 - Start with minimum required permissions

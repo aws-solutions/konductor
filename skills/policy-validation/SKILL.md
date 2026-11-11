@@ -139,7 +139,7 @@ Check for:
 **TLS Enforcement Validation**:
 
 - **S3 Bucket Policies**: Check for policy statement denying requests where `"aws:SecureTransport": "false"`
-- **API Gateway**: Check for `MinimumTLSVersion: TLS_1_2` or higher
+- **API Gateway**: Check custom domain names for `SecurityPolicy: TLS_1_2` or a newer `SecurityPolicy_TLS13_*` policy (not `TLS_1_0`)
 - **Application Load Balancer**: Check for HTTPS listeners with TLS 1.2+ policy
 - **CloudFront**: Check for `ViewerProtocolPolicy: https-only` and `MinimumProtocolVersion: TLSv1.2_2021`
 - Flag as CRITICAL if TLS enforcement is missing for any service handling sensitive data
@@ -147,7 +147,7 @@ Check for:
 **KMS Key Rotation Validation**:
 
 - Check for `EnableKeyRotation: true` on all KMS customer-managed keys
-- Verify rotation schedule is annual (AWS default)
+- Verify the rotation period meets the requirement: 365 days by default, configurable from 90 to 2560 days (`RotationPeriodInDays`)
 - Flag as CRITICAL if rotation is disabled and a named compliance framework or the design requires it; otherwise flag as IMPORTANT if rotation is disabled for keys encrypting sensitive data
 - Recommend enabling automatic rotation for all customer-managed keys
 
@@ -315,7 +315,7 @@ When the user or the design under review names a compliance framework, or the de
 Check for:
 
 - GuardDuty not enabled
-- Security Hub not enabled
+- AWS Security Hub CSPM not enabled
 - Missing CloudWatch alarms for security events
 - No automated remediation for security violations
 - Missing SNS notifications for critical alerts
@@ -371,7 +371,7 @@ Check for:
 - Extract IAM policies (identity-based and resource-based)
 - Identify encryption configurations (KMS, S3, DynamoDB, RDS)
 - List audit logging configurations (CloudTrail, service logs)
-- Note monitoring and alerting setup (CloudWatch, GuardDuty, Security Hub)
+- Note monitoring and alerting setup (CloudWatch, GuardDuty, Security Hub CSPM)
 - Extract compliance requirements
 - Identify threat model references (if provided)
 - **Note explicit design decisions** (e.g., "AWS-managed keys chosen for Internal/Confidential data")
@@ -383,6 +383,7 @@ Check for:
 - Calculate security impact score for each issue
 - Estimate remediation effort
 - Collect evidence for each finding
+- Optional, when AWS credentials are available: run IAM Access Analyzer policy validation on each IAM policy document (`aws accessanalyzer validate-policy --policy-type IDENTITY_POLICY --policy-document file://policy.json`, or `RESOURCE_POLICY`). It needs `access-analyzer:ValidatePolicy` permission. Map its security warnings and errors into this skill's severities; if it cannot run, say so and continue with the manual checks
 
 ### STEP 3: Generate Findings
 

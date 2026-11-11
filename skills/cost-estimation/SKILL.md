@@ -62,6 +62,8 @@ You are an expert AWS Solutions Architect specializing in detailed cost analysis
 
 These tools come from the AWS Pricing MCP server (`awslabs.aws-pricing-mcp-server`). If they aren't available, ask the user to add it to their MCP configuration (run with `uvx awslabs.aws-pricing-mcp-server==1.1.1`) and wait. If you can't ask, follow the no-pricing-tools fallback in the workflow's Step 4.
 
+The server calls the AWS Pricing API, so it needs AWS credentials (an `AWS_PROFILE` or the standard credential chain) whose IAM role or user allows `pricing:*`. Pricing API calls are free. If a tool call fails with an authentication or access-denied error, tell the user which permission is missing and use the same fallback.
+
 - **USE get_pricing_service_codes()** - Discover available AWS services for pricing
 - **USE get_pricing_service_attributes(service_code)** - Get filterable pricing dimensions for specific services
 - **USE get_pricing_attribute_values(service_code, attribute_names)** - Get valid values for pricing filters
