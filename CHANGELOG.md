@@ -330,6 +330,13 @@ not per individual commit.
   unencrypted for lacking an encryption setting, since both encrypt at rest by default. They
   flag them only when the data needs SSE-KMS or a customer managed key. The `infra-validation`
   Graviton example cites the published Lambda arm64 figure.
+- `smithy-modeling` and `smithy-validation` describe current Smithy rules: `enum` and `intEnum`
+  shapes instead of the deprecated `@enum` trait, the full `@paginated` rules, required
+  `@httpLabel` members, the DANGER severity, `smithy validate --severity` and
+  `smithy diff --mode git`, `@readonly` and `@idempotent` as behavior traits, member renames as
+  breaking even with `@jsonName`, and IDL 2.1 needing Smithy 1.75.0 or later. The example
+  review puts `@sensitive` on a target shape, since the trait cannot apply to members, and the
+  file-organization reference drops its 1.51.0 version pins.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
