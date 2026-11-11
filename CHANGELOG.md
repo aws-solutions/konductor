@@ -292,6 +292,8 @@ not per individual commit.
     `aws-well-architected-review` checks (cfn-lint, cfn-guard, cdk-nag, a pillar review)
     read-only and rates their findings CRITICAL, IMPORTANT or SUGGESTION. Without the server it
     runs the local tools the project has and checks its quality gate items by reading the code.
+    `k-code-review-workflow` passes it `scope_confirmed`, the infra files and a new optional
+    `environment` parameter, so the review does not stop to ask for scope.
   - `iam-policy-design` generates policies with `aws-iam` and takes S3, secrets and CloudTrail
     settings from the server's skills for them. `policy-validation` checks statements against
     `aws-iam`'s edge cases and S3 buckets against `securing-s3-buckets`. It and
