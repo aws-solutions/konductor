@@ -232,6 +232,10 @@ not per individual commit.
   section to the design document, and points follow-up work at konductor skills instead of
   prompts that don't exist. Its S3 Intelligent-Tiering advice now targets data with unknown or
   changing access patterns, not infrequently accessed data.
+- Fact-checking starts at `doc-accuracy-analyzer`. It routes AWS feature, limit, pricing and
+  Region claims to `aws-service-validator`, rates findings CRITICAL, IMPORTANT or SUGGESTION,
+  and states when a document passes. When checking an artifact, `decision-research` now adds only
+  prior art and missing context. `k-product-manager` gains `doc-accuracy-analyzer`.
 
 ### Fixed
 

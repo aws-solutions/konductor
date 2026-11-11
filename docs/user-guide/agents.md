@@ -31,7 +31,7 @@ and the MCP registry entries.
 | `konductor` | Single writer. Does the work, reviews at each phase gate. | `claude-sonnet-5.5` | 24 | 11 | — |
 | `konductor-mux-orchestrator` | Coordinator. Delegates every change, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 10 | — |
 | `konductor-cmux-orchestrator` | Coordinator. Delegates every change, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 10 | — |
-| `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 15 | 0 | — |
+| `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 16 | 0 | — |
 | `k-architect` | System designs, APIs, data models, threat models. | `claude-sonnet-5.5` | **38** | 3 | `aws-mcp` |
 | `k-developer` | Implementation, code review, git, builds. | `claude-sonnet-5.5` | 27 | 4 | `aws-mcp` |
 | `k-quality-assurance` | Test coverage, E2E strategy, security tests. | `claude-sonnet-5.5` | 12 | 1 | — |
@@ -339,7 +339,7 @@ lands here. It owns the only source-modifying SOP, `k-code-cleanup`.
 | | |
 | --- | --- |
 | **SOPs** | **none** — skill-driven |
-| **Skills** | 15 — `user-story-writing`, `requirements-extraction`, `decision-research`, `sprint-planning`, `task-decomposition`, `legacy-to-agentic-estimate`, `humanize-writing`, `deliberation-panel`, `kiro-requirements-generation`, and others |
+| **Skills** | 16 — `user-story-writing`, `requirements-extraction`, `decision-research`, `doc-accuracy-analyzer`, `sprint-planning`, `task-decomposition`, `legacy-to-agentic-estimate`, `humanize-writing`, `deliberation-panel`, `kiro-requirements-generation`, and others |
 | **Can mutate?** | Write pre-approved in Kiro CLI and granted in Claude Code; shell asks first in Kiro CLI and is granted in Claude Code |
 | **Can delegate to** | nothing (returns to the orchestrator) |
 

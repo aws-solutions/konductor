@@ -84,11 +84,10 @@ flowchart TD
 
     subgraph P3["Phase 3 — Quality gates (no user interaction)"]
         direction TB
-        Q1["doc-accuracy-analyzer<br/>verify claims vs codebase<br/>flag INCORRECT / UNVERIFIED inline"]
-        Q2["aws-service-validator<br/>check every AWS claim via aws-mcp<br/>CONFIRMED / UNVERIFIED / INCORRECT<br/>report → docs/design/&lt;name&gt;-aws-validation.md"]
-        Q3["trade-off-evaluator<br/>score 1–5: cost, latency, complexity,<br/>scalability, operability<br/>report → docs/design/&lt;name&gt;-tradeoffs.md"]
-        Q4["adr-generator<br/>verify Phase 2 ADRs are embedded<br/>enrich only — do not regenerate"]
-        Q1 --> Q2 --> Q3 --> Q4
+        Q1["doc-accuracy-analyzer<br/>verify claims vs primary sources<br/>route AWS claims to aws-service-validator (aws-mcp)<br/>flag INCORRECT / OVERSTATED / UNVERIFIED inline<br/>AWS report → docs/design/&lt;name&gt;-aws-validation.md"]
+        Q2["trade-off-evaluator<br/>score 1–5: cost, latency, complexity,<br/>scalability, operability<br/>report → docs/design/&lt;name&gt;-tradeoffs.md"]
+        Q3["adr-generator<br/>verify Phase 2 ADRs are embedded<br/>enrich only — do not regenerate"]
+        Q1 --> Q2 --> Q3
     end
 
     P3 --> P4Start{"Adversarial-review<br/>subagent available?"}
@@ -130,7 +129,7 @@ hold:
 | Check | Threshold |
 | --- | --- |
 | `design-doc-guidelines` maker-checker | 0 CRITICAL findings |
-| `doc-accuracy-analyzer` | 0 INCORRECT findings — UNVERIFIED is acceptable with callouts |
+| `doc-accuracy-analyzer` | 0 INCORRECT findings, each corrected in the text, and every OVERSTATED finding corrected or flagged (UNVERIFIED is acceptable with callouts) |
 | Adversarial review | 0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR |
 | `design-evaluation` confidence score | ≥ 3.0 average across all sections |
 
@@ -152,8 +151,8 @@ and a one-line note on remaining open issues.
 
 - **Phase 3 never asks you anything.** It is fully automated by design.
 - **Unverified claims do not block.** Both `doc-accuracy-analyzer` and `aws-service-validator`
-  mark UNVERIFIED claims with a `> ⚠️` callout and proceed. Only INCORRECT findings are treated
-  as blocking.
+  mark UNVERIFIED claims with a `> ⚠️` callout and proceed. INCORRECT findings block until the
+  text is corrected, and OVERSTATED findings block until they are corrected or flagged.
 - **Findings are never silently dropped.** Every Phase 4 finding must either be fixed or
   explicitly recorded as "engineer override".
 - **Diagrams come before prose.** Phase 2 requires generating the Mermaid diagram for each major

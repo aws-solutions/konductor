@@ -450,7 +450,10 @@ mod tests {
                 ],
             ),
             ("design-quality-check", vec!["IMPORTANT", "MINOR"]),
-            ("doc-accuracy-analyzer", vec!["High", "Medium", "Low"]),
+            (
+                "doc-accuracy-analyzer",
+                vec!["CRITICAL", "IMPORTANT", "SUGGESTION"],
+            ),
         ]
     }
 
