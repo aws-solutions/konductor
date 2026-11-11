@@ -1,0 +1,23 @@
+{
+  "skill": "e2e-test-strategy",
+  "cases": [
+    {
+      "name": "with arm: loading narration, skill name, handed guidance and a scratch path",
+      "arm": "with",
+      "stored": "I'll start by loading the e2e-test-strategy skill.\nSkill loaded: bench:e2e-test-strategy\n## Test matrix\nPer the e2e-test-strategy skill, rank flows by risk.\n| Flow | Priority |\n| Login | P0 |\nLogin comes first because every other flow needs a session, and a broken login hides every later failure. Checkout comes second: it touches payment, inventory and email, so one run exercises four systems. Account settings come last because a failure there blocks one user, not the whole shop. Run login and checkout on every commit, and the full matrix every night. Keep each test under two minutes so a failure points at one change, and give each test its own data so the order never matters. Record the browser, the build and the data set with every result, so a failure that only shows up in one setup can be traced.\nI followed the loaded guidance to cover login first. Working in /tmp/bench-subject-ab12/with/notes.md",
+      "sanitized": "## Test matrix\nPer the approach, rank flows by risk.\n| Flow | Priority |\n| Login | P0 |\nLogin comes first because every other flow needs a session, and a broken login hides every later failure. Checkout comes second: it touches payment, inventory and email, so one run exercises four systems. Account settings come last because a failure there blocks one user, not the whole shop. Run login and checkout on every commit, and the full matrix every night. Keep each test under two minutes so a failure points at one change, and give each test its own data so the order never matters. Record the browser, the build and the data set with every result, so a failure that only shows up in one setup can be traced.\nWorking in notes.md"
+    },
+    {
+      "name": "without arm: no such skill exists, blocked skill call, Skill tool unavailable",
+      "arm": "without",
+      "stored": "There is no such skill as e2e-test-strategy, so I will answer directly.\nSkill execution was blocked by permission rules.\n## Test matrix\nRank flows by risk.\n| Flow | Priority |\n| Login | P0 |\nLogin comes first because every other flow needs a session, and a broken login hides every later failure. Checkout comes second: it touches payment, inventory and email, so one run exercises four systems. Account settings come last because a failure there blocks one user, not the whole shop. Run login and checkout on every commit, and the full matrix every night. Keep each test under two minutes so a failure points at one change, and give each test its own data so the order never matters. Record the browser, the build and the data set with every result, so a failure that only shows up in one setup can be traced.\nThe Skill tool is not available to me.",
+      "sanitized": "## Test matrix\nRank flows by risk.\n| Flow | Priority |\n| Login | P0 |\nLogin comes first because every other flow needs a session, and a broken login hides every later failure. Checkout comes second: it touches payment, inventory and email, so one run exercises four systems. Account settings come last because a failure there blocks one user, not the whole shop. Run login and checkout on every commit, and the full matrix every night. Keep each test under two minutes so a failure points at one change, and give each test its own data so the order never matters. Record the browser, the build and the data set with every result, so a failure that only shows up in one setup can be traced."
+    },
+    {
+      "name": "either arm: ordinary prose about skills stays",
+      "arm": "both",
+      "stored": "Our team's skill level varies, so keep the plan simple.\nUse a skills matrix to assign owners.\n```\nI'll load the Skill tool in this example\n```",
+      "sanitized": "Our team's skill level varies, so keep the plan simple.\nUse a skills matrix to assign owners.\n```\nI'll load the Skill tool in this example\n```"
+    }
+  ]
+}
