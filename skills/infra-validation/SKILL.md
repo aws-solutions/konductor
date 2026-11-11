@@ -50,13 +50,15 @@ Load each skill with `aws___retrieve_skill` and follow it for the code in scope.
 | Code in scope | AWS MCP skill | What to run |
 | --- | --- | --- |
 | CloudFormation template, or the template CDK synthesizes into `cdk.out/` | `aws-cloudformation` | Its validation workflow (`references/validation-tool-selection.md`): one local validator (cfn-lint or cloudformation-validate), then cfn-guard security and compliance rules |
-| CDK app | `aws-cdk` | cdk-nag rule packs and `cdk synth --strict` (`references/compliance-and-drift.md`), plus `cdk diff` against the deployed stack when one exists |
-| Cost, reliability, performance and operations | `aws-well-architected-review` | A quick or pillar-scoped review against the IaC, matching the validation focus from Step 0 |
-| DynamoDB tables, S3 buckets, IAM statements | `amazon-dynamodb`, `securing-s3-buckets`, `aws-iam` | Their review or audit checklists for those resources |
+| CDK app | `aws-cdk` | `cdk synth --strict` (`references/compliance-and-drift.md`). Synth runs the app's own code, so treat it like running the project's build. Run cdk-nag only if the app already applies its rule packs; otherwise list cdk-nag as not run |
+| Any IaC, when the Step 0 focus includes cost, reliability or operations (a General focus does) | `aws-well-architected-review` | A quick or pillar-scoped review against the IaC for that focus. Fold its findings into this skill's tiers in Step 2; do not emit its report or its follow-up offer |
+| DynamoDB tables | `amazon-dynamodb` | Check the table and index definitions against its design axioms and best practices |
+| S3 buckets | `securing-s3-buckets` | Read `references/audit-checklist.md` as a list of controls and judge each one from the code; run none of its CLI commands |
+| IAM statements | `aws-iam` | Check the statements against its verified edge cases, and service-role trust policies against `references/aws-iam-role-management.md` |
 
 For a service none of these covers, find its skill with `find-aws-skills`.
 
-Keep the run read-only. Do not deploy, create a stack or change set, or install a tool without the user's approval; skip the account-aware pre-deployment layer of `aws-cloudformation` unless the user asks for it. Report each layer's outcome separately, as `aws-cloudformation` asks: one passing layer does not show another passed.
+Keep the run read-only. Do not deploy, create a stack or change set, or install a tool without the user's approval. Skip the account-aware layer unless the user asks for it: the pre-deployment checks of `aws-cloudformation`, and `cdk diff` against a deployed stack. Report each layer's outcome separately, as `aws-cloudformation` asks: one passing layer does not show another passed.
 
 ### Without the AWS MCP server
 

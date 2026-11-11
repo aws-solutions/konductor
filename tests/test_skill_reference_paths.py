@@ -25,6 +25,11 @@ NOT_LOCAL = {
     # Files inside the AWS MCP server's aws-cloudformation and aws-cdk skills.
     ("infra-validation", "references/validation-tool-selection.md"),
     ("infra-validation", "references/compliance-and-drift.md"),
+    # Files inside the AWS MCP server's securing-s3-buckets and aws-iam skills.
+    ("infra-validation", "references/audit-checklist.md"),
+    ("infra-validation", "references/aws-iam-role-management.md"),
+    ("policy-validation", "references/audit-checklist.md"),
+    ("policy-validation", "references/aws-iam-role-management.md"),
 }
 
 

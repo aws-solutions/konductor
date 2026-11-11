@@ -101,8 +101,10 @@ Check for:
 **Missing or Unsafe IAM Conditions**:
 
 - Check if policies lack condition blocks for fine-grained access control
-- Load the AWS MCP server's `aws-iam` skill through `find-aws-skills` and check each statement against its verified edge cases: `ForAllValues` without a `Null` check on the same key, case-sensitive `aws:TagKeys` matches in a Deny, `iam:PassRole` on `Resource: "*"`, the direct privilege-escalation actions, and resource-based policies without `aws:SourceArn`, `aws:SourceAccount` or `aws:PrincipalOrgID`. Rate what it flags with the Severity Mapping above
-- For S3 bucket policies and settings, use the audit checklist in the `securing-s3-buckets` skill and rate its FAIL and NOT CONFIGURED results the same way
+- Load the AWS MCP server's `aws-iam` skill through `find-aws-skills` and check each statement against its verified edge cases: `ForAllValues` without a `Null` check on the same key, case-sensitive `aws:TagKeys` matches in a Deny, `iam:PassRole` on `Resource: "*"`, and the direct privilege-escalation actions. Check each service role's trust policy against its `references/aws-iam-role-management.md`, which requires the confused-deputy keys `aws:SourceArn` and `aws:SourceAccount` when the assuming service supports them. Rate what it flags with the Severity Mapping above
+- This skill's own rule, not taken from `aws-iam`: a resource-based policy that grants a service or another account access needs `aws:SourceArn`, `aws:SourceAccount` or `aws:PrincipalOrgID`
+- Without the AWS MCP server, check the edge cases named above directly, and state in the report that `aws-iam` was not consulted
+- For S3 bucket policies and settings, read `references/audit-checklist.md` from the `securing-s3-buckets` skill as a list of controls and judge each one from the design or IaC. Its audit workflow runs AWS CLI commands against a live bucket; run none of them. Rate a control that fails or is not configured the same way
 
 **Permission Boundary Validation**:
 
@@ -136,7 +138,7 @@ Check for:
 **TLS Enforcement Validation**:
 
 - **S3 Bucket Policies**: Check for policy statement denying requests where `"aws:SecureTransport": "false"`
-- **API Gateway**: Check custom domain names for `SecurityPolicy: TLS_1_2` or a newer `SecurityPolicy_TLS13_*` policy (not `TLS_1_0`)
+- **API Gateway**: Check custom domain names for `SecurityPolicy: TLS_1_2` or any enhanced `SecurityPolicy_*` policy (not `TLS_1_0`). An enhanced policy also needs an endpoint access mode set; AWS recommends `STRICT`
 - **Application Load Balancer**: Check for HTTPS listeners with TLS 1.2+ policy
 - **CloudFront**: Check for `ViewerProtocolPolicy: https-only` and `MinimumProtocolVersion: TLSv1.2_2021`
 - Flag as CRITICAL if TLS enforcement is missing for any service handling sensitive data
@@ -380,7 +382,7 @@ Check for:
 - Calculate security impact score for each issue
 - Estimate remediation effort
 - Collect evidence for each finding
-- Optional, when AWS credentials are available: run IAM Access Analyzer policy validation on each IAM policy document (`aws accessanalyzer validate-policy --policy-type IDENTITY_POLICY --policy-document file://policy.json`, or `RESOURCE_POLICY`). It needs `access-analyzer:ValidatePolicy` permission. Map its security warnings and errors into this skill's severities; if it cannot run, say so and continue with the manual checks
+- Optional, when AWS credentials are available: run IAM Access Analyzer policy validation on each IAM policy document through `aws___run_script`, calling the read-only `accessanalyzer` operation `ValidatePolicy` with `policyType` `IDENTITY_POLICY` or `RESOURCE_POLICY`. Without the AWS MCP server, use the AWS CLI (`aws accessanalyzer validate-policy --policy-type IDENTITY_POLICY --policy-document file://policy.json`). It needs `access-analyzer:ValidatePolicy` permission. Map its security warnings and errors into this skill's severities; if it cannot run, say so and continue with the manual checks
 
 ### STEP 3: Generate Findings
 
@@ -749,7 +751,7 @@ Generate output in this format:
 
 3. **Encrypt new S3 bucket** (CRITICAL, < 1 hour)
    - Enable default encryption with KMS customer-managed key
-   - Add bucket policy to deny unencrypted uploads
+   - Add a bucket policy that denies non-TLS requests
    - Enable versioning and MFA delete
 
 ### Future Improvements (SUGGESTION)

@@ -328,8 +328,7 @@ not per individual commit.
   Repeated paragraphs and tables are cut from several skills.
 - `infra-validation` and `policy-validation` no longer flag an S3 bucket or DynamoDB table as
   unencrypted for lacking an encryption setting, since both encrypt at rest by default. They
-  flag them only when the data needs SSE-KMS or a customer managed key. The `infra-validation`
-  Graviton example cites the published Lambda arm64 figure.
+  flag them only when the data needs SSE-KMS or a customer managed key.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
