@@ -672,11 +672,12 @@ ROSTER = [
      'FOR IT: Before implementing a DynamoDB design. · DECLARED BY: architect"},{"k":"iam-policy-design"',
      'Before implementing against a Smithy model. · DECLARED BY: architect"},{"k":"iam-policy-design"'),
     ("skills catalog: API and data modelling header and DynamoDB note",
-     'sec("sk-api", "API and data modelling — 6", "API and data modelling — 6", {"paras":["Interface and '
-     'storage design, each paired with its own validator."]',
      'sec("sk-api", "API and data modelling — 4", "API and data modelling — 4", {"paras":["Interface and '
      'storage design, each paired with its own validator. For a DynamoDB data model, k-architect loads the '
-     'AWS MCP server\'s amazon-dynamodb skill through find-aws-skills."]'),
+     'AWS MCP server\'s amazon-dynamodb skill through find-aws-skills."]',
+     'sec("sk-api", "API and data modelling — 4", "API and data modelling — 4", {"paras":["API and access '
+     'policy design, each paired with its own validator. No storage design skill ships: for a DynamoDB data '
+     'model, k-architect loads the AWS MCP server\'s amazon-dynamodb skill through find-aws-skills."]'),
     ("skills catalog: find-aws-skills declared by",
      'nothing bundled matches. · DECLARED BY: architect, developer"}',
      'nothing bundled matches. · DECLARED BY: architect, developer, konductor"}'),

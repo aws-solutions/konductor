@@ -131,7 +131,8 @@ Checking a design before anyone builds it.
 
 ## API and data modelling
 
-Interface and storage design, each paired with its own validator.
+API and access policy design, each paired with its own validator. No storage design skill ships;
+the note after the table covers DynamoDB.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
