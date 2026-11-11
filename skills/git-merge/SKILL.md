@@ -81,7 +81,7 @@ Before pushing, `git log --oneline -3` should show the merge commit on top.
 
 - Source files: edit to keep both sides' intent, `git add <file>`, then read `git diff --cached -- <file>`.
 - Lockfiles (`package-lock.json`, `yarn.lock`, `Cargo.lock`): don't hand-edit conflict markers. Take the default branch's copy and regenerate it, for example `git checkout --theirs package-lock.json && npm install && git add package-lock.json` when merging `<default-branch>` into the feature branch.
-- To back out of a half-done merge: `git merge --abort`.
+- To back out of a merge, never use `git reset --hard` or force-push. While the merge is still staged, run `git merge --abort`. For a merge commit on `<default-branch>` that is not pushed yet, run `git reset --keep origin/<default-branch>`, which stops instead of discarding uncommitted changes.
 
 ### If the push is rejected or the PR falls behind
 
@@ -145,6 +145,7 @@ git push -d origin <feature_branch>   # delete remote
 - Merging into `<default-branch>` without pulling latest first: risks overwriting others' changes
 - Skipping Phase 1 (merging `<default-branch>` into feature branch first): conflicts should be resolved on the feature branch, not `<default-branch>`
 - Force pushing to `<default-branch>`, or rebasing a branch others have pulled
+- Recovering from a merge with `git reset --hard` or a force-push instead of `git merge --abort` or `git reset --keep`
 - Pushing to `<default-branch>` without explicit user confirmation
 - Tagging, or deleting the feature branch, before the merge is pushed to `<default-branch>`
 
