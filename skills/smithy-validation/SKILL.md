@@ -29,7 +29,8 @@ Use this skill when:
 - Proper namespace declarations
 - Correct shape definitions and references
 - Valid trait applications
-- Proper use of Smithy version ($version: "2")
+- Proper use of Smithy version (`$version: "2"`)
+- The service `version` is set; any string is valid, and a date is only a convention
 
 **Common Issues:**
 
@@ -37,6 +38,7 @@ Use this skill when:
 - Undefined shape references
 - Invalid trait syntax
 - Mismatched input/output types
+- IDL 2.1 syntax (inline list or map declarations, `#re` tagged strings, member index shorthand) in a file pinned to `"2"` or `"2.0"`. It needs `$version: "2.1"` and Smithy 1.75.0 or later
 
 ### 2. Naming Conventions
 
@@ -70,6 +72,7 @@ Use this skill when:
 **Flag:**
 
 - Missing documentation on public shapes
+- A mixin whose documentation or other traits do not suit every shape that uses it: mixin traits copy to those shapes unless listed in `localTraits`
 - Vague or unhelpful descriptions
 - Undocumented constraints
 - Missing units for measurements
@@ -83,8 +86,8 @@ Use this skill when:
 - @range applied to numeric bounds
 - @length applied to strings and collections
 - @pattern used for format validation
-- @sensitive marks passwords, tokens, PII
-- Enums used for fixed value sets
+- `@sensitive` marks passwords, tokens, PII, on the shape a member targets (the trait cannot go on a member)
+- `enum` shapes used for fixed value sets, and `intEnum` members each carry an explicit `@enumValue`
 
 **Flag:**
 
@@ -92,14 +95,16 @@ Use this skill when:
 - Unconstrained strings (no @length or @pattern)
 - Unconstrained numbers (no @range)
 - Overly generic types (Document everywhere)
-- Missing @sensitive on sensitive data
+- Missing `@sensitive` on sensitive data, or `@sensitive` placed on a member
+- The deprecated `@enum` trait instead of an `enum` shape
 
 ### 5. Operation Design
 
 **Check:**
 
 - Operations are focused and single-purpose
-- HTTP traits properly applied (@http, @readonly, @idempotent)
+- `@http` applied to every operation, and the behavior traits `@readonly` and `@idempotent` where they fit
+- Every `@httpLabel` member is `@required`
 - Clear input/output structures defined
 - All error cases covered
 - Appropriate HTTP methods used
@@ -136,15 +141,16 @@ Use this skill when:
 
 **Verify:**
 
-- List operations have @paginated trait
-- inputToken, outputToken, pageSize defined
+- List operations have the `@paginated` trait, either directly or inherited from the service's `@paginated` (operation settings override the service's)
+- `inputToken`, `outputToken`, `pageSize`, and `items` defined
+- The `inputToken` member is not `@required`
+- Only one list or map per operation is paginated
 - Appropriate default and max page sizes
-- Pagination structures properly defined
 
 **Flag:**
 
 - List operations without pagination
-- Missing pagination tokens
+- Missing pagination tokens, or no `items` naming the paged collection
 - Unreasonable page size limits
 - Inconsistent pagination patterns
 
@@ -180,7 +186,7 @@ Use this skill when:
 
 - Validation errors or warnings
 - Incompatible with target generators
-- Breaking changes in existing APIs
+- Breaking changes in existing APIs, including a renamed member: `@jsonName` keeps the old JSON property name, but generated clients still see the new member name
 - Missing version information
 
 ### 10. Performance and Scalability
@@ -208,15 +214,17 @@ When the model spans more than one file or may need splitting, open the `smithy-
 
 ### Step 1: Initial Validation
 
-Run automated checks:
+Run automated checks from the project directory, where `smithy validate` picks up `smithy-build.json` and its `sources` and Maven dependencies:
 
 ```bash
-smithy validate model/
+smithy validate
+smithy validate --severity NOTE   # also report NOTE events; the default floor is WARNING
 ```
 
 Review validation output for:
 
 - ERROR-level issues (must fix)
+- DANGER-level issues (must fix or suppress with a reason: an unsuppressed DANGER makes the model invalid)
 - WARNING-level issues (should fix)
 - NOTE-level suggestions (consider)
 
@@ -254,6 +262,8 @@ Look for an earlier version of the model before you start: other `*.smithy` file
 
 ```bash
 smithy diff --old previous-model/ --new current-model/
+smithy diff --mode git              # compare the working tree's model against HEAD
+smithy diff --mode git --old main   # or against a branch or commit
 ```
 
 Identify and document:
@@ -360,7 +370,7 @@ Before approving a model:
 
 **CRITICAL (must fix):**
 
-- Model fails `smithy validate` with ERROR-level events
+- Model fails `smithy validate` with ERROR-level or unsuppressed DANGER-level events
 - An operation that needs authentication can be called without it: no auth scheme trait on the service, or the operation is marked `@optionalAuth` or `@auth([])`
 - Credentials, payment data (card numbers, payment tokens), government IDs or passwords not marked with `@sensitive`. Free text and ordinary IDs (notes, customer IDs) are IMPORTANT unless the model says they hold PII
 - Breaking changes introduced to existing operations
