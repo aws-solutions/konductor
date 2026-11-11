@@ -320,9 +320,18 @@ Two helpers wrap a model call. `lib/retry.js` sorts a failure into a class. A cr
 
 ## What the judges see
 
-A judge must not be able to tell which answer used the skill. Before a judge sees an answer, the sanitizer (`lib/sanitize.js`) removes what would give the arm away: lists of available skills, sentences that narrate loading a skill, calling a skill tool, following a skill's guidance, or finding no skill to use, skill, plugin and agent names, harness paths, and arm labels. It works on a copy, so the stored answer is never changed. Text that only mentions a skill as an ordinary noun is left alone.
+A judge must not be able to tell which answer used the skill. Before a judge sees an answer, the sanitizer (`lib/sanitize.js`) removes what would give the arm away: lists of available skills, sentences that narrate loading a skill, calling a skill tool, following a skill's guidance, or finding no skill to use, skill, plugin and agent names (a skill name written with underscores counts too), harness paths, a bare `SKILL.md`, and arm labels. Fenced code follows CommonMark: a fence closes only with a run of the same character at least as long as the one that opened it. It works on a copy, so the stored answer is never changed. Text that only mentions a skill as an ordinary noun is left alone.
 
-Every drop is counted, with the share of the answer's non-whitespace characters that was removed, so an answer the rules emptied can be refused instead of being scored on what is left. The rules have a version number and a hash of their whole specification, so a change to the rules can mark earlier judgments stale once judgments exist (added in a later PR).
+Every drop is counted, with the share of the answer's non-whitespace characters that was removed. The rules have a version number and a hash of their whole specification, so a change to the rules can mark earlier judgments stale once judgments exist (added in a later PR).
+
+`lib/judge-input.js` is the one place that turns a stored answer into text a judge may see. It prepares one answer at a time, for a judge prompt that holds only that answer, and the caller must name the skill under test (`""` for a control), so a missing option cannot skip the name rules. The stored answer must be text (null and undefined are read as an empty answer); anything else is refused. It runs four steps in this order:
+
+1. Sanitize, as above.
+2. Redact: the redactor replaces secret-shaped values, so lookalike strings never reach a judge. The result says whether the text changed.
+3. Cap: text over 50,000 characters is cut after redaction, so a cut cannot split a secret. The result says whether it was cut.
+4. Leak scan: a second look for narration that is still there, such as "I loaded the skill". A hit means the answer is not eligible, because a judge that reads it would learn the arm. Both arms are scanned the same way.
+
+An answer is also not eligible when the sanitizer removed more than a quarter of it (a judge would score what is left), when nothing is left, when it is too long to sanitize, or when it ends inside a code fence that was never closed (the sanitizer and the scan skip fenced code, so an open fence would hide the rest of the answer). The judge job added in a later PR does not send an answer that is not eligible. The result also carries the counts of what was removed, so the report added later can show a loss that differs between the arms. One provenance hash covers everything that can change what a judge sees or whether an answer is eligible: the sanitizer's specification, the redactor patterns, the leak patterns and the limits.
 
 This is one layer of blinding and not a guarantee. The sanitizer cannot hide a difference in style or content that comes from the skill itself.
 
