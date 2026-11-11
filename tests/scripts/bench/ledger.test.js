@@ -710,6 +710,20 @@ test('several processes reserving together: exactly as many pass as the limit al
   });
 });
 
+test('a label is redacted before it is written or shown in a refusal', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const key = ['AK', 'IA'].join('') + 'Q'.repeat(16);
+    const ledger = makeLedger(dir, {
+      limits: { max_usd: 1, total_cap_usd: 1 },
+    });
+    (await ledger.reserve(0.5, `judge ${key}`)).cancel();
+    await assert.rejects(ledger.reserve(5, `judge ${key}`), (error) =>
+      error.message.includes('judge [REDACTED_AWS_KEY_ID] would take'),
+    );
+    assert.ok(!fs.readFileSync(ledger.file, 'utf8').includes(key));
+  });
+});
+
 test('createLedger and reserve validate their arguments', async () => {
   for (const limits of [
     undefined,
