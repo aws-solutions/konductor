@@ -31,8 +31,8 @@ drift checks, [`tools/build-user-guide/`](../../tools/build-user-guide/README.md
 
 ### `konductor`'s skill count is runtime-dependent
 
-`konductor` lists 13 skills in `dependencies.skills.skillNames` and 13 in
-`clientConfig.claudeCli.skills`. Twelve are shared. `claude-teams-behavior` is only in the
+`konductor` lists 25 skills in `dependencies.skills.skillNames` and 25 in
+`clientConfig.claudeCli.skills`. Twenty-four are shared. `claude-teams-behavior` is only in the
 `claudeCli` list, and `humanize-writing` is only in `skillNames`. Six more agents (the mux and
 cmux orchestrators, `k-quality-assurance`, `k-researcher`, `k-browser`, `k-media-analyzer`)
 list `humanize-writing` in `skillNames` only. The other four agents' two lists agree.

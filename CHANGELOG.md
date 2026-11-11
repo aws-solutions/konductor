@@ -292,16 +292,23 @@ not per individual commit.
     `aws-well-architected-review` checks (cfn-lint, cfn-guard, cdk-nag, a pillar review)
     read-only and rates their findings CRITICAL, IMPORTANT or SUGGESTION. Without the server it
     runs the local tools the project has and checks its quality gate items by reading the code.
+    `k-code-review-workflow` passes it `scope_confirmed`, the infra files and a new optional
+    `environment` parameter, so the review does not stop to ask for scope.
   - `iam-policy-design` generates policies with `aws-iam` and takes S3, secrets and CloudTrail
     settings from the server's skills for them. `policy-validation` checks statements against
-    `aws-iam`'s edge cases and S3 buckets against `securing-s3-buckets`.
+    `aws-iam`'s edge cases and S3 buckets against `securing-s3-buckets`. It and
+    `infra-validation` rate `iam:PassRole` or an IAM escalation action on `*` CRITICAL, a scoped
+    escalation action or `ForAllValues` without a `Null` check IMPORTANT, and map the S3
+    checklist's tiers onto their own scale.
   - `cost-estimation` prices through Price List API calls on the AWS MCP server, guided by
-    `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server.
+    `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server. With a
+    shell, it prices DynamoDB with the `amazon-dynamodb` cost calculator, fetched from the
+    server and run locally.
   - `policy-validation` checks the API Gateway `SecurityPolicy` property, treats the KMS key
     rotation period as configurable, uses the Security Hub CSPM name, and can run IAM Access
     Analyzer policy validation.
-  - `konductor` declares `aws-mcp`, like `k-architect` and `k-developer`, so it can run
-    `infra-validation`'s AWS checks. On Kiro CLI the three agents pre-approve only the server's
+  - `konductor` declares `aws-mcp` and `find-aws-skills`, like `k-architect` and `k-developer`,
+    so it can run `infra-validation`'s AWS checks. On Kiro CLI the three agents pre-approve only the server's
     read-only documentation, skill and Region tools.
 
 ### Fixed

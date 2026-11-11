@@ -56,6 +56,8 @@ Load each skill with `aws___retrieve_skill` and follow it for the code in scope.
 | S3 buckets | `securing-s3-buckets` | Read `references/audit-checklist.md` as a list of controls and judge each one from the code; run none of its CLI commands |
 | IAM statements | `aws-iam` | Check the statements against its verified edge cases, and service-role trust policies against `references/aws-iam-role-management.md` |
 
+`securing-s3-buckets` sorts its checklist into Critical, High, Medium and Low. A control on this skill's Quality Gate CRITICAL list stays CRITICAL whatever its tier; otherwise Critical and High become IMPORTANT, and Medium and Low become SUGGESTION.
+
 For a service none of these covers, find its skill with `find-aws-skills`.
 
 Keep the run read-only. Do not deploy, create a stack or change set, or install a tool without the user's approval. Skip the account-aware layer unless the user asks for it: the pre-deployment checks of `aws-cloudformation`, and `cdk diff` against a deployed stack. Report each layer's outcome separately, as `aws-cloudformation` asks: one passing layer does not show another passed.
@@ -86,6 +88,11 @@ Policy-level IAM depth (condition keys, permission boundaries, KMS key policies,
    - Check for `Principal` with external account IDs
    - CRITICAL when the trust has no `sts:ExternalId` or other condition key
    - IMPORTANT when it is conditioned but its intent is unverified
+
+5. **Privilege escalation and condition edge cases** (from `aws-iam`)
+   - `iam:PassRole` on `Resource: "*"` is CRITICAL. With a compute create or update action (`ec2:RunInstances`, `lambda:CreateFunction`, `lambda:UpdateFunctionConfiguration`, `ecs:RegisterTaskDefinition`) it lets the principal run code as any passable role; alone it is still a wildcard resource
+   - The direct escalation actions (`iam:PutRolePolicy`, `iam:PutUserPolicy`, `iam:PutGroupPolicy`, `iam:CreatePolicy`, `iam:CreatePolicyVersion`, `iam:AttachRolePolicy`, `iam:AttachUserPolicy`, `iam:AttachGroupPolicy`) are CRITICAL on `Resource: "*"` and IMPORTANT when scoped to named resources
+   - `ForAllValues` with no `Null` check on the same key, and a Deny that matches `aws:TagKeys` case-sensitively, are IMPORTANT
 
 Use the same CRITICAL, IMPORTANT and SUGGESTION scale as the Quality Gate:
 
@@ -148,7 +155,7 @@ End the report with its limits: the inputs you did not inspect (Lambda handler c
 - Security groups with `0.0.0.0/0` ingress on non-HTTP ports
 - No deletion protection, or a destroy-on-delete removal policy, on stateful resources (RDS, DynamoDB) in production
 - Hardcoded passwords, keys or tokens in code or environment variables
-- IAM statements with wildcard actions (`*`, `ec2:*`, or `service:*` on a data, credential, code or permission service: `s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) or wildcard resources
+- IAM statements with wildcard actions (`*`, `ec2:*`, or `service:*` on a data, credential, code or permission service: `s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) or wildcard resources, including `iam:PassRole` on `*`
 - Cross-account trust with no `sts:ExternalId` or other condition key
 
 **IMPORTANT (should fix):**
@@ -157,6 +164,7 @@ End the report with its limits: the inputs you did not inspect (Lambda handler c
 - No backup configuration for stateful resources
 - IAM `service:*` on a low-risk service, such as `cloudwatch:*` or `xray:*`
 - Cross-account trust that has a condition key but whose intent is unverified
+- IAM escalation actions scoped to named resources, `ForAllValues` with no `Null` check, or a Deny that matches `aws:TagKeys` case-sensitively
 - Lambda functions without reserved concurrency limits, DLQ or tracing
 - Low-cardinality partition keys that create hot partitions
 

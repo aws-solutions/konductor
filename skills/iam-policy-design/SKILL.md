@@ -146,7 +146,7 @@ Generate the policy documents with the AWS MCP server's `aws-iam` skill, loaded 
 
 ### STEP 4: Design Security Controls
 
-Take the S3 bucket settings from the AWS MCP server's `securing-s3-buckets` skill, the secrets settings from `creating-secrets-using-best-practices`, and the trail settings from `setting-up-cloudtrail-multi-region`. Those skills also run AWS CLI commands; in a design, use their settings and run nothing. Without the AWS MCP server, design these settings to the rules below and say in the output that those skills were not consulted.
+Take the S3 bucket settings from the AWS MCP server's `securing-s3-buckets` skill, the secrets settings from `creating-secrets-using-best-practices` (`references/create-secrets-using-best-practices.md`), and the trail settings from `setting-up-cloudtrail-multi-region` (`references/cloudtrail-multi-region-setup.md`). Load each skill with `aws___retrieve_skill` and fetch those files with the same tool and its `file` parameter; they are not on disk. Those skills also run AWS CLI commands; in a design, use their settings and run nothing. Without the AWS MCP server, design these settings to the rules below and say in the output that those skills were not consulted.
 
 **Encryption at Rest:**
 

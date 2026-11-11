@@ -36,12 +36,14 @@ Overly permissive actions (wildcards without justification), missing condition k
 
 ## Severity Mapping
 
-The per-check "Flag as" lines follow this mapping. When a check and this list disagree, this list wins. The wildcard and cross-account tiers match the IAM checks in `infra-validation`.
+The per-check "Flag as" lines follow this mapping. When a check and this list disagree, this list wins. The wildcard, cross-account and privilege-escalation tiers match the IAM checks in `infra-validation`.
 
 **CRITICAL:** one of the findings below.
 
 - `*` action, `*` resource, `ec2:*` (it covers EBS snapshots, security-group ingress and instance userData), or `service:*` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) without a documented justification
 - Cross-account trust without `sts:ExternalId` or another condition key
+- `iam:PassRole` on `Resource: "*"`. With a compute create or update action (`ec2:RunInstances`, `lambda:CreateFunction`, `lambda:UpdateFunctionConfiguration`, `ecs:RegisterTaskDefinition`) it lets the principal run code as any passable role; alone it is still a wildcard resource
+- A direct privilege-escalation action (`iam:PutRolePolicy`, `iam:PutUserPolicy`, `iam:PutGroupPolicy`, `iam:CreatePolicy`, `iam:CreatePolicyVersion`, `iam:AttachRolePolicy`, `iam:AttachUserPolicy`, `iam:AttachGroupPolicy`) on `Resource: "*"`
 - `kms:*` granted to a non-admin principal
 - S3 bucket open to the public, an RDS instance or EBS volume with no encryption at rest, S3 or DynamoDB data that needs SSE-KMS or a customer managed key left on default keys, or no TLS enforcement where sensitive data moves
 - No CloudTrail trail at all
@@ -59,6 +61,8 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 - `service:*` on a low-risk service (`cloudwatch:*`, `xray:*`) without a documented justification
 - Cross-account trust that has a condition key but whose intent is unverified
 - Named actions beyond what the role needs, with no wildcard
+- A direct privilege-escalation action scoped to named resources
+- `ForAllValues` with no `Null` check on the same key, or a Deny that matches `aws:TagKeys` case-sensitively
 - Key administrators who can also decrypt
 - No permission boundary on a role with `iam:*` or `sts:AssumeRole`
 - Log retention shorter than a compliance requirement, or missing security alarms
@@ -104,7 +108,7 @@ Check for:
 - Load the AWS MCP server's `aws-iam` skill through `find-aws-skills` and check each statement against its verified edge cases: `ForAllValues` without a `Null` check on the same key, case-sensitive `aws:TagKeys` matches in a Deny, `iam:PassRole` on `Resource: "*"`, and the direct privilege-escalation actions. Check each service role's trust policy against its `references/aws-iam-role-management.md`, which requires the confused-deputy keys `aws:SourceArn` and `aws:SourceAccount` when the assuming service supports them. Rate what it flags with the Severity Mapping above
 - This skill's own rule, not taken from `aws-iam`: a resource-based policy that grants a service or another account access needs `aws:SourceArn`, `aws:SourceAccount` or `aws:PrincipalOrgID`
 - Without the AWS MCP server, check the edge cases named above directly, and state in the report that `aws-iam` was not consulted
-- For S3 bucket policies and settings, read `references/audit-checklist.md` from the `securing-s3-buckets` skill as a list of controls and judge each one from the design or IaC. Its audit workflow runs AWS CLI commands against a live bucket; run none of them. Rate a control that fails or is not configured the same way
+- For S3 bucket policies and settings, read `references/audit-checklist.md` from the `securing-s3-buckets` skill as a list of controls and judge each one from the design or IaC. Its audit workflow runs AWS CLI commands against a live bucket; run none of them. Rate a control that fails or is not configured the same way. A control on the Severity Mapping CRITICAL list stays CRITICAL whatever its checklist tier; otherwise Critical and High become IMPORTANT, and Medium and Low become SUGGESTION
 
 **Permission Boundary Validation**:
 
