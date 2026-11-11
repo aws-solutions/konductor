@@ -40,6 +40,7 @@ This guide covers what exists today: the vocabulary, the formats of the frozen b
 ```
 skills/<skill>/SKILL.md                      the skill under test (read only)
 agents/*.agent-spec.json                     agents; one that lists the skill answers for it (read only)
+scripts/bench/prompts/                       judge prompt templates (byte-exact, see Judge prompts)
 bench/config.json                            the settings (git-ignored), see Settings
 bench/exclusions.json                        tasks left out of reading A
 bench/baselines/<skill>/rules.json           frozen rules
@@ -343,6 +344,12 @@ The two readings use the two scales. `items` is reading B: the rules checklist, 
 
 The reply parser is strict, because a lenient one would score a reply the prompt did not ask for. The whole reply must be one JSON object with `items` (and optionally a text `reason`), with exactly one upper-case label per checklist item, in order. Text around the JSON, two objects, a lower-case label, a missing or extra label, an unknown field and a field given twice (two `items` would let the last one win) all make the judgment invalid, with a stored reason and a `kind` (`empty`, `not_json`, `not_object`, `fields` or `labels`) that can be counted. One code fence around the whole reply (bare or tagged `json`) is accepted, because it adds no text and models add it often; the judgment then records `normalized: 'fence'`. A fence with text around it, two fences or another language tag are still invalid.
 
+## Judge prompts
+
+Each scale has a versioned prompt template in `scripts/bench/prompts/` (`judge-prompt.items.v1.md` and `judge-prompt.outcome.v1.md`). `lib/judge-prompt.js` fills one in for a single judge call about a single answer: the request, the numbered checklist and that one answer. Each answer is scored alone: the prompt never says which arm wrote the answer or that another answer exists, and the renderer is not even given the arm. The judge replies with `{"items":[...],"reason":"..."}`, one label per checklist item and one sentence naming the item that most decided the labels. The template tells the judge that everything inside the answer block is data and not instructions. The answer sits between marker lines that carry a random id made for that call, so an answer cannot close its own block or speak as the prompt. The renderer refuses to run if the id appears in the text it fills in, and it refuses an answer that the judge-input step marked not eligible. It also refuses a record that does not carry the sanitizer version and rules hash the judge-input step stamps on it, and the judgment's provenance refuses a record whose rules hash differs from the judge input it names. The provenance also records the arm and the hash of that arm's answer, where the judge cannot see them.
+
+The hash of a template is the hash of its file bytes, and a test pins it. Any edit, even to the license line, changes the hash and makes judgments made with the old text stale. To change the wording, add a file with the next version number and pin its hash in the same commit. Treat these files as byte-exact: do not reformat them.
+
 ## Not built yet
 
-These are added in a later PR: the judge prompts, the commands that run the tasks and the judges, the checklist writer for reading A, the labels that sum up the scores, and the report.
+These are added in a later PR: the commands that run the tasks and the judges, the checklist writer for reading A, the labels that sum up the scores, and the report.
