@@ -314,6 +314,10 @@ The secret sweep (`lib/sweep.js`) scans the files of a run folder in two tiers. 
 
 Both are libraries. The code that applies them while a run is going is added in a later PR.
 
+## Retries and parallel calls
+
+Two helpers wrap a model call. `lib/retry.js` sorts a failure into a class. A credential failure and a spend stop are never retried and end the run. A provider refusal is tried twice, because a retry gives the same block. A call that can never work as it is (access denied, an invalid request, a model or file that does not exist) is not retried at all and does not count toward the four-in-a-row stop. Anything else, such as a timeout or throttling, is retried up to three tries in all with a growing pause. If four calls in a row fail every try, the run stops, because that points at a credential or provider problem and not bad luck. Classes are matched on the error's message text: the provider's exception names and the phrases the CLIs print, such as `requires AWS credentials` (a credential failure) or `The provided model identifier is invalid` (a call that can never work). A message that matches none is treated as a temporary failure. `lib/pool.js` runs at most a set number of calls at once for each seat. After a fatal error it starts no more calls and rejects with that error, so a caller keeps only the work it already stored. Both are libraries, used by code added in a later PR.
+
 ## Not built yet
 
 These are added in a later PR: the commands that run the tasks and the judges, the checklist writer for reading A, scoring, and the report.
