@@ -1,0 +1,133 @@
+{
+  "comment": "Sentences for the missing-or-unused-skill narration rule. `drop` are dropped by the clause-level rule alone; `drop_shape` by a fixed shape of the post rule; `drop_named` name the skill under test (e2e-test-strategy) and are dropped before the name rules rewrite it; `keep` are ordinary prose the whole pipeline leaves alone; `keep_risky` have a negation or a lookup word near the noun and are kept on purpose; `drop_accepted` are ordinary prose the rule drops too, and the design accepts that cost. `rest` is real content that follows a dropped sentence.",
+  "skill": "e2e-test-strategy",
+  "drop": {
+    "first_review": [
+      "No skill matched the request, so I wrote it by hand.",
+      "I could not find a skill named e2e-test-strategy.",
+      "No skills are available in this session.",
+      "There is no skill for this, so I used my own steps.",
+      "I checked for a skill but none applied.",
+      "Skill not found, so I proceeded without it."
+    ],
+    "second_review": [
+      "No matching skill was found.",
+      "No relevant skill applied here.",
+      "There was no skill available.",
+      "The skill was unavailable, so I continued.",
+      "I looked for a matching skill and found none.",
+      "Skill unavailable.",
+      "The skill could not be found.",
+      "I did not find a skill for this task."
+    ],
+    "third_review": [
+      "No skill could be found.",
+      "No skill was relevant here.",
+      "I found no matching skill.",
+      "None of the skills applied.",
+      "I could not locate a skill for this.",
+      "I was unable to find a skill."
+    ],
+    "without_narrator": [
+      "No matching skill exists for this request.",
+      "Skills: none available.",
+      "None of the available skills fit this task.",
+      "No applicable skill was available, so I continued without one.",
+      "There are no skills that match this request.",
+      "The skill search returned nothing.",
+      "Skill lookup failed.",
+      "No skill applies here.",
+      "The matching skill was not installed.",
+      "Neither skill was available.",
+      "No skills were loaded.",
+      "No suitable skill is available for this request, so I will answer directly.",
+      "None of the installed skills match.",
+      "Zero skills matched.",
+      "No skill was used.",
+      "The requested skill was missing.",
+      "NO SKILL FOUND.",
+      "**No skill** was found.",
+      "Skill 'xyz' not found."
+    ],
+    "with_narrator": [
+      "I searched the available skills and none were relevant.",
+      "Checking the available skills; none matched.",
+      "I didn't see a relevant skill, so I answered directly.",
+      "I have no skill for this.",
+      "I proceeded without using any skill.",
+      "I went ahead without a skill.",
+      "I couldn\u2019t find a skill.",
+      "I was not able to load a skill.",
+      "I did not use a skill for this.",
+      "I don't think a skill is necessary here, so I answered directly.",
+      "Let me check for a relevant skill first.",
+      "Checking for available skills.",
+      "I searched for a skill that covers test strategy, but nothing matched.",
+      "Looking for a matching skill, I found nothing.",
+      "Unable to find a matching skill, I answered directly."
+    ]
+  },
+  "drop_shape": [
+    "There is no such skill here.",
+    "Based on the skill, rank flows by risk."
+  ],
+  "drop_named": [
+    "I could not find the e2e-test-strategy skill.",
+    "The e2e-test-strategy skill could not be loaded.",
+    "No e2e-test-strategy skill was found.",
+    "The e2e-test-strategy skill was unavailable, so I continued.",
+    "I looked for the e2e-test-strategy skill and found none."
+  ],
+  "keep": [
+    "A good tester needs one more skill: patience.",
+    "He called out a lack of skill.",
+    "This takes skill to find.",
+    "Verification is the last step (skill `verification`)",
+    "| Skill | Level |",
+    "She has a broad skill set and a keen eye.",
+    "Per the team plan, each hire needs one core skill.",
+    "Follow the checklist to build a skill that lasts.",
+    "Hire for attitude, then train skill based on gaps.",
+    "Tests named after the skill they exercise are easy to find.",
+    "Skills are available in the course catalog for staff.",
+    "The skill set of this team is wide, which I checked yesterday.",
+    "Skill level: senior. We use skills matrix planning. Our skills framework covers it.",
+    "Employers look for a technical skill like SQL.",
+    "Recruiters search for the skills listed in the post.",
+    "Hire a skill named in the job post.",
+    "Debugging is a skill that pays off in every project.",
+    "Teach the skill by pairing a junior with a senior.",
+    "Skills transfer better when practice is spaced out.",
+    "Each task checks one skill at a time.",
+    "Use the debug skill when stuck.",
+    "The assessment found a gap in skill coverage.",
+    "Good reviewers value skill over speed.",
+    "She earned the skill badge after the course.",
+    "Nobody on the team lacked the basic skill of reading logs.",
+    "A skillful, skill-based approach to hiring. Skillset matters.",
+    "## Required Skills"
+  ],
+  "keep_risky": [
+    "No skill is needed for this step.",
+    "You need no special skill to run this command.",
+    "There is no skill more valuable than debugging.",
+    "No other skill is as useful as debugging.",
+    "No single skill matters more than patience.",
+    "The skill could not be taught in a day.",
+    "A skill isn't required here.",
+    "No skill is needed to use this tool.",
+    "We hired two testers because no skill is more important than curiosity.",
+    "Missing skills hurt a team more than slow tools.",
+    "None of the skills in this list can be learned in a week."
+  ],
+  "drop_accepted": [
+    "No soft skill is found in the old rubric.",
+    "Teamwork is a skill not found in every resume.",
+    "This skill is unavailable to most beginners.",
+    "Cooking is a skill unavailable to many students.",
+    "There is no skill to it, just practice.",
+    "I have no skill in cooking.",
+    "No skill is needed here, so I answered directly."
+  ],
+  "rest": "Rank flows by risk first. Then test login. Then test checkout."
+}

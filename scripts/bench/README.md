@@ -318,6 +318,14 @@ Both are libraries. The code that applies them while a run is going is added in 
 
 Two helpers wrap a model call. `lib/retry.js` sorts a failure into a class. A credential failure and a spend stop are never retried and end the run. A provider refusal is tried twice, because a retry gives the same block. A call that can never work as it is (access denied, an invalid request, a model or file that does not exist) is not retried at all and does not count toward the four-in-a-row stop. Anything else, such as a timeout or throttling, is retried up to three tries in all with a growing pause. If four calls in a row fail every try, the run stops, because that points at a credential or provider problem and not bad luck. Classes are matched on the error's message text: the provider's exception names and the phrases the CLIs print, such as `requires AWS credentials` (a credential failure) or `The provided model identifier is invalid` (a call that can never work). A message that matches none is treated as a temporary failure. `lib/pool.js` runs at most a set number of calls at once for each seat. After a fatal error it starts no more calls and rejects with that error, so a caller keeps only the work it already stored. Both are libraries, used by code added in a later PR.
 
+## What the judges see
+
+A judge must not be able to tell which answer used the skill. Before a judge sees an answer, the sanitizer (`lib/sanitize.js`) removes what would give the arm away: lists of available skills, sentences that narrate loading a skill, calling a skill tool, following a skill's guidance, or finding no skill to use, skill, plugin and agent names, harness paths, and arm labels. It works on a copy, so the stored answer is never changed. Text that only mentions a skill as an ordinary noun is left alone.
+
+Every drop is counted, with the share of the answer's non-whitespace characters that was removed, so an answer the rules emptied can be refused instead of being scored on what is left. The rules have a version number and a hash of their whole specification, so a change to the rules can mark earlier judgments stale once judgments exist (added in a later PR).
+
+This is one layer of blinding and not a guarantee. The sanitizer cannot hide a difference in style or content that comes from the skill itself.
+
 ## Not built yet
 
 These are added in a later PR: the commands that run the tasks and the judges, the checklist writer for reading A, scoring, and the report.
