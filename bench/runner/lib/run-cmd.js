@@ -14,7 +14,7 @@ const { STOP_ON } = require('./stop-watch.js');
 const { harnessFor, opencode: oc, claudeCode: cc } = require('./harness/index.js');
 const { AGENT_ENGINES, DEFAULT_ENGINE, isUsdRuntime } = require('./harness/runtime.js');
 const { readProfile } = require('./harness/opencode-creds.js');
-const { isSuiteName, loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
+const { isSuiteName, loadTasks, loadSuite, suiteExtraDirs, suiteDirs, suiteFile, mergeExtraDirs, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
 const real = require('./real.js');
 const reallib = require('../../real/lib.js');
 const { runAll, prepareAll, preflightTable, describePlan, budgetNote, DEFAULT_CENSORED_FLOOR, CREDITS, USD } = require('./orchestrate.js');
@@ -131,10 +131,14 @@ const repoRootOf = (opts) => path.resolve(opts['repo-root'] && opts['repo-root']
 
 async function cmdRun(opts) {
   const benchDir = opts['bench-dir'] ? path.resolve(opts['bench-dir']) : BENCH_DIR;
-  if (!isSuiteName(opts.suite, benchDir)) throw new Error(`--suite ${SUITE_NAMES.join('|')}|skilleval-SKILL is required`);
-  const extraDirs = mergeExtraDirs(suiteExtraDirs(opts.suite, benchDir), list(opts['extra-tasks']));
+  const suitesDir = opts['suites-dir'] && opts['suites-dir'] !== true ? path.resolve(opts['suites-dir']) : null;
+  if (opts['suites-dir'] !== undefined && (!suitesDir || !fs.existsSync(suitesDir) || !fs.statSync(suitesDir).isDirectory())) throw new Error(`--suites-dir directory not found: ${suitesDir ?? '(no value)'}`);
+  if (!isSuiteName(opts.suite, benchDir, suitesDir)) {
+    throw new Error(`--suite ${SUITE_NAMES.join('|')}|skilleval-SKILL is required${opts.suite ? `; no suite "${opts.suite}" (searched ${suiteDirs(benchDir, suitesDir).join(', ')})` : ''}`);
+  }
+  const extraDirs = mergeExtraDirs(suiteExtraDirs(opts.suite, benchDir, suitesDir), list(opts['extra-tasks']));
   const tasksAll = loadTasks(benchDir, { extraDirs });
-  const suite = loadSuite(opts.suite, tasksAll, benchDir);
+  const suite = loadSuite(opts.suite, tasksAll, benchDir, suitesDir);
   const taskIds = opts.tasks ? list(opts.tasks) : suite.taskIds;
   const tasks = taskIds.map((id) => {
     const t = tasksAll.get(id);
@@ -367,6 +371,7 @@ async function cmdRun(opts) {
       }),
       ...rc.benchGit(REPO),
       contentHash: rc.hashTree(benchDir, ['tasks', 'fixtures', 'suites', 'real']),
+      ...(suitesDir ? { suitesDir, suiteFile: suiteFile(opts.suite, benchDir, suitesDir) } : {}),
       ...(realPins ? {
         real: {
           cache: realCache,

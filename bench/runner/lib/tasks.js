@@ -37,7 +37,11 @@ const SUITE_NAMES = Object.keys(SUITE_DEFAULTS);
 const SKILLEVAL_SUITE = /^skilleval-[a-z0-9][a-z0-9-]*$/;
 const SKILLEVAL_DEFAULTS = { arms: ['vanilla', 'main'], replicates: 1, parallel: 1 };
 const defaultsFor = (name) => SUITE_DEFAULTS[name] ?? (SKILLEVAL_SUITE.test(name) ? SKILLEVAL_DEFAULTS : null);
-const isSuiteName = (name, benchDir = BENCH_DIR) => SUITE_NAMES.includes(name) || (SKILLEVAL_SUITE.test(name) && fs.existsSync(path.join(benchDir, 'suites', `${name}.json`)));
+
+// Directories searched for a suite file, in order: the caller's --suites-dir (when given), then <benchDir>/suites.
+const suiteDirs = (benchDir = BENCH_DIR, suitesDir = null) => [...(suitesDir ? [path.resolve(suitesDir)] : []), path.join(benchDir, 'suites')];
+const suiteFile = (name, benchDir = BENCH_DIR, suitesDir = null) => suiteDirs(benchDir, suitesDir).map((d) => path.join(d, `${name}.json`)).find((f) => fs.existsSync(f)) ?? null;
+const isSuiteName = (name, benchDir = BENCH_DIR, suitesDir = null) => SUITE_NAMES.includes(name) || (SKILLEVAL_SUITE.test(name) && suiteFile(name, benchDir, suitesDir) !== null);
 
 // Reads every task file of one directory into `tasks`. Fixtures come from `fixtureRoots` (first hit wins) and
 // hidden test directories from `hiddenRoot`.
@@ -90,11 +94,11 @@ function benchMask(benchDir = BENCH_DIR, extraDirs = []) {
   return [path.join(benchDir, 'fixtures'), path.join(benchDir, 'real'), ...['hidden', 'partials', 'solutions', 'stubs'].map((d) => path.join(benchDir, 'tasks', d)), ...extraDirs.map((d) => path.resolve(d))];
 }
 
-function loadSuite(name, tasks, benchDir = BENCH_DIR) {
+function loadSuite(name, tasks, benchDir = BENCH_DIR, suitesDir = null) {
   const defaults = defaultsFor(name);
-  if (!defaults) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy, pilot, cap, requirements, rootcause, complex, references-read, constraints-probe or canary-layers)`);
-  const file = path.join(benchDir, 'suites', `${name}.json`);
-  const fromFile = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+  if (!defaults) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy, pilot, cap, requirements, rootcause, complex, references-read, constraints-probe or canary-layers; or a skilleval-* suite file in ${suiteDirs(benchDir, suitesDir).join(' or ')})`);
+  const file = suiteFile(name, benchDir, suitesDir);
+  const fromFile = file ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
   const taskIds = fromFile.tasks
     || [...tasks.values()].filter((t) => t.tiers.includes(name) && !t.id.startsWith('_')).map((t) => t.id);
   return {
@@ -108,9 +112,9 @@ function loadSuite(name, tasks, benchDir = BENCH_DIR) {
 }
 
 // Extra task directories a suite file declares in "extraTasks" (relative to the bench directory); [] when it declares none.
-function suiteExtraDirs(name, benchDir = BENCH_DIR) {
-  const file = path.join(benchDir, 'suites', `${name}.json`);
-  if (!fs.existsSync(file)) return [];
+function suiteExtraDirs(name, benchDir = BENCH_DIR, suitesDir = null) {
+  const file = suiteFile(name, benchDir, suitesDir);
+  if (!file) return [];
   const dirs = JSON.parse(fs.readFileSync(file, 'utf8')).extraTasks;
   return Array.isArray(dirs) ? dirs.map((d) => path.resolve(benchDir, d)) : [];
 }
@@ -118,4 +122,4 @@ function suiteExtraDirs(name, benchDir = BENCH_DIR) {
 // The suite's own extra directories followed by the caller's, each once.
 const mergeExtraDirs = (suiteDirs, flagDirs = []) => [...new Set([...suiteDirs, ...flagDirs.map((d) => path.resolve(d))])];
 
-module.exports = { isSuiteName, loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, benchMask, SUITE_DEFAULTS, SUITE_NAMES, BENCH_DIR };
+module.exports = { isSuiteName, suiteFile, suiteDirs, loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, benchMask, SUITE_DEFAULTS, SUITE_NAMES, BENCH_DIR };
