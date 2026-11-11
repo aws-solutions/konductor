@@ -85,7 +85,7 @@ When given requirements or specifications:
 
 ## Output Format
 
-Use `$version: "2"` by default. IDL 2.1 adds inline list and map declarations, `#re` tagged strings, and a member index shorthand, and needs Smithy 1.75.0 or later. Set `$version: "2.1"` only when the model uses one of those and the whole toolchain is on 1.75.0 or later.
+Use `$version: "2"` by default. IDL 2.1 adds inline list and map declarations, tagged string literals (`#re`, `#b`, `#hex`, `#timestamp`), and a member index shorthand that is sugar for the `@idx` trait, and needs Smithy 1.75.0 or later. Set `$version: "2.1"` only when the model uses one of those and the whole toolchain is on 1.75.0 or later.
 
 If step 2 found 10 or more operations, the model will pass 500 lines, or other services share its types, open `references/file-organization.md` (relative to this file) before writing files and split the model the way it shows. Otherwise write one file in this shape. `aws.protocols#restJson1` comes from the `software.amazon.smithy:smithy-aws-traits` package, so the model needs a `smithy-build.json` that lists it (see Deliverables) or `smithy validate` can't resolve the trait:
 
