@@ -89,7 +89,7 @@ PROPOSED="$(cat)"
 if [[ "$CLEAR" == 0 && -f "$TARGET" ]] &&
    ! [[ "$PROPOSED" =~ [^[:space:]] ]] &&
    grep -q '[^[:space:]]' "$TARGET"; then
-  echo "REJECT: proposed content is empty but $TARGET has entries; pass --clear to empty it deliberately" >&2
+  echo "REJECT: proposed content is empty but $TARGET has entries; nothing was written. The content was probably in a variable left unset between shell calls: rebuild it and write in the same call as the validator lookup." >&2
   exit 1
 fi
 mkdir -p "$TARGET_DIR"
