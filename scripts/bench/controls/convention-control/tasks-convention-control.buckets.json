@@ -1,0 +1,103 @@
+{
+  "format_version": 1,
+  "skill": "convention-control",
+  "batch": "convention-control",
+  "rules": {
+    "convention-control-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "convention-control-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "convention-control-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "convention-control-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "convention-control-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "convention-control-r06": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    }
+  },
+  "scenarios": {
+    "convention-control-1-billing-export-status": {
+      "1": { "bucket": "value", "rule_id": "convention-control-r01" },
+      "2": { "bucket": "value", "rule_id": "convention-control-r02" },
+      "3": { "bucket": "value", "rule_id": "convention-control-r03" },
+      "4": { "bucket": "value", "rule_id": "convention-control-r04" },
+      "5": { "bucket": "value", "rule_id": "convention-control-r05" },
+      "6": { "bucket": "guard", "rule_id": "convention-control-r06" },
+      "7": { "bucket": "guard", "rule_id": "convention-control-r06" }
+    },
+    "convention-control-2-payments-incident": {
+      "1": { "bucket": "value", "rule_id": "convention-control-r01" },
+      "2": { "bucket": "value", "rule_id": "convention-control-r02" },
+      "3": { "bucket": "value", "rule_id": "convention-control-r03" },
+      "4": { "bucket": "value", "rule_id": "convention-control-r05" },
+      "5": { "bucket": "guard", "rule_id": "convention-control-r06" },
+      "6": { "bucket": "guard", "rule_id": "convention-control-r06" }
+    },
+    "convention-control-3-planning-recap": {
+      "1": { "bucket": "value", "rule_id": "convention-control-r01" },
+      "2": { "bucket": "value", "rule_id": "convention-control-r02" },
+      "3": { "bucket": "value", "rule_id": "convention-control-r03" },
+      "4": { "bucket": "value", "rule_id": "convention-control-r04" },
+      "5": { "bucket": "value", "rule_id": "convention-control-r05" },
+      "6": { "bucket": "guard", "rule_id": "convention-control-r06" }
+    },
+    "convention-control-4-oncall-handoff": {
+      "1": { "bucket": "value", "rule_id": "convention-control-r01" },
+      "2": { "bucket": "value", "rule_id": "convention-control-r02" },
+      "3": { "bucket": "value", "rule_id": "convention-control-r03" },
+      "4": { "bucket": "value", "rule_id": "convention-control-r04" },
+      "5": { "bucket": "guard", "rule_id": "convention-control-r06" },
+      "6": { "bucket": "guard", "rule_id": "convention-control-r06" }
+    },
+    "convention-control-5-mobile-release": {
+      "1": { "bucket": "value", "rule_id": "convention-control-r01" },
+      "2": { "bucket": "value", "rule_id": "convention-control-r02" },
+      "3": { "bucket": "value", "rule_id": "convention-control-r03" },
+      "4": { "bucket": "value", "rule_id": "convention-control-r04" },
+      "5": { "bucket": "guard", "rule_id": "convention-control-r06" }
+    },
+    "convention-control-6-pipeline-vendor-decision": {
+      "1": { "bucket": "value", "rule_id": "convention-control-r01" },
+      "2": { "bucket": "value", "rule_id": "convention-control-r02" },
+      "3": { "bucket": "value", "rule_id": "convention-control-r03" },
+      "4": { "bucket": "value", "rule_id": "convention-control-r05" },
+      "5": { "bucket": "guard", "rule_id": "convention-control-r06" },
+      "6": { "bucket": "guard", "rule_id": "convention-control-r06" }
+    },
+    "convention-control-7-new-engineer-first-week": {
+      "1": { "bucket": "value", "rule_id": "convention-control-r01" },
+      "2": { "bucket": "value", "rule_id": "convention-control-r02" },
+      "3": { "bucket": "value", "rule_id": "convention-control-r03" },
+      "4": { "bucket": "value", "rule_id": "convention-control-r04" },
+      "5": { "bucket": "value", "rule_id": "convention-control-r05" },
+      "6": { "bucket": "guard", "rule_id": "convention-control-r06" }
+    },
+    "convention-control-8-dental-escalation": {
+      "1": { "bucket": "value", "rule_id": "convention-control-r01" },
+      "2": { "bucket": "value", "rule_id": "convention-control-r02" },
+      "3": { "bucket": "value", "rule_id": "convention-control-r03" },
+      "4": { "bucket": "value", "rule_id": "convention-control-r05" },
+      "5": { "bucket": "guard", "rule_id": "convention-control-r06" },
+      "6": { "bucket": "guard", "rule_id": "convention-control-r06" }
+    }
+  }
+}
