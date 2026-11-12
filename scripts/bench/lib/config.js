@@ -11,8 +11,8 @@
  * The known settings are the key structure of this package's own bench/config.example.json, not of the `--root`
  * repository. The settings file must have every known setting: a missing one is refused by name, and so is a
  * setting the example does not have, so a typo cannot pass silently. In overrides, objects merge key by key and
- * arrays replace. `models.judges` is an open map: it may hold any seat name, and in overrides a seat set to null is
- * removed.
+ * arrays replace. `models.judges` and `judge_timeout_ms_by_seat` are open maps: they may hold any key, and in
+ * overrides a key set to null is removed.
  */
 'use strict';
 
@@ -37,7 +37,7 @@ const shellQuote = (text) => `'${String(text).replace(/'/g, `'\\''`)}'`;
 const missingConfigMessage = (file, example = EXAMPLE_CONFIG_FILE) =>
   `${file} not found: run cp ${shellQuote(example)} ${shellQuote(file)}, then edit it`;
 
-const OPEN_MAPS = new Set(['models.judges']);
+const OPEN_MAPS = new Set(['models.judges', 'judge_timeout_ms_by_seat']);
 // Top-level settings this version does not have, each with the message a settings file that sets one gets in place
 // of the generic "unknown setting".
 const REPLACED_SETTINGS = Object.freeze({
@@ -168,6 +168,23 @@ function validateSettings(config, errors) {
   if (config.aws_profile !== null)
     checkNonEmptyString(config.aws_profile, 'aws_profile');
   checkNonEmptyString(config.aws_region, 'aws_region');
+  const checkTimeout = (value, settingPath) => {
+    if (!Number.isInteger(value) || value < 1000 || value > 3600000)
+      errors.push(
+        `${settingPath}: must be a whole number of milliseconds from 1000 to 3600000`,
+      );
+  };
+  checkTimeout(config.judge_timeout_ms, 'judge_timeout_ms');
+  for (const [seat, timeoutMs] of Object.entries(
+    config.judge_timeout_ms_by_seat,
+  )) {
+    // A seat that is not in models.judges is a typo or a leftover; it would be ignored without a word.
+    if (!Object.hasOwn(config.models.judges, seat))
+      errors.push(
+        `judge_timeout_ms_by_seat.${seat}: no such judge seat in models.judges (remove the entry)`,
+      );
+    checkTimeout(timeoutMs, `judge_timeout_ms_by_seat.${seat}`);
+  }
   for (const [callKind, price] of Object.entries(
     config.estimate_usd_per_call,
   )) {

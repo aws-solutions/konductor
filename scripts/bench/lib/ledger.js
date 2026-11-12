@@ -48,8 +48,8 @@ const LOCK_STALE_MS = 60000;
 // A waiter outlasts the stale age by this margin, so a lock left by a crashed holder is broken before the waiter gives up.
 const LOCK_WAIT_MARGIN_MS = 10000;
 const LOCK_POLL_MS = 20;
-// Config has no call timeout setting yet; the code that first makes a model call adds it, together with the
-// pool widths. 12 minutes is the slowest seat's limit, so a reservation outlives any call.
+// A caller that knows its call timeout passes a ttl of its own (the judge client does, from judge_timeout_ms).
+// 12 minutes is the slowest seat's default limit, so a reservation without one outlives any call.
 const DEFAULT_TTL_MS = 12 * 60 * 1000;
 const EPS = 1e-9;
 const TORN_ROW_TYPE = 'torn';

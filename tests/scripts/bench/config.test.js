@@ -45,6 +45,8 @@ test('the example holds the expected default settings', () => {
     confirm_above_usd: 5,
     aws_profile: null,
     aws_region: 'us-west-2',
+    judge_timeout_ms: 240000,
+    judge_timeout_ms_by_seat: { xai: 720000 },
     estimate_usd_per_call: {
       subject: 0.078125,
       judge: 0.0625,
@@ -333,6 +335,10 @@ test('a settings file with a missing, a missing nested or an unknown setting is 
     refuses({ models: 'x' }, /models: must be an object/);
     refuses({ 'models.judges': null }, /models\.judges: must be an object/);
     refuses(
+      { judge_timeout_ms_by_seat: null },
+      /judge_timeout_ms_by_seat: must be an object/,
+    );
+    refuses(
       { agent_for: {} },
       /agent_for: removed: the agent comes from the agent specs/,
     );
@@ -356,9 +362,11 @@ test('an open map in the settings file may hold any key, and must not be missing
       file: writeSettings(dir, 'c.json', {
         'models.judges': { solo: 'm' },
         'models.rubric_writer': 'writer-m',
+        judge_timeout_ms_by_seat: { solo: 300000 },
       }),
     });
     assert.deepEqual(seatsOf(config), ['solo']);
+    assert.deepEqual(config.judge_timeout_ms_by_seat, { solo: 300000 });
     assert.throws(
       () =>
         loadConfig({
@@ -535,3 +543,74 @@ for (const [overrides, expected] of REFUSED) {
   test(`refuses ${JSON.stringify(overrides)}`, () =>
     assert.throws(() => helpers.exampleConfig(overrides), expected));
 }
+
+test('judge timeouts: a seat entry is added, replaced or removed with null; the default applies to the rest', () => {
+  const config = helpers.exampleConfig({
+    judge_timeout_ms: 300000,
+    judge_timeout_ms_by_seat: { xai: null, openai: 600000 },
+  });
+  assert.equal(config.judge_timeout_ms, 300000);
+  assert.deepEqual(config.judge_timeout_ms_by_seat, { openai: 600000 });
+});
+
+// A seat removed from models.judges needs its per-seat timeout entry removed in the same settings.
+test('judge timeouts: an entry for a seat that is not in models.judges is refused, so a removed seat needs its entry removed', () => {
+  assert.throws(
+    () => helpers.exampleConfig({ models: { judges: { xai: null } } }),
+    /judge_timeout_ms_by_seat\.xai: no such judge seat in models\.judges \(remove the entry\)/,
+  );
+  const noXai = helpers.exampleConfig({
+    models: { judges: { xai: null } },
+    judge_timeout_ms_by_seat: { xai: null },
+  });
+  assert.deepEqual(noXai.judge_timeout_ms_by_seat, {});
+  assert.throws(
+    () => helpers.exampleConfig({ judge_timeout_ms_by_seat: { xia: 720000 } }),
+    /judge_timeout_ms_by_seat\.xia: no such judge seat in models\.judges/,
+  );
+});
+
+for (const [name, overrides, expected] of [
+  [
+    'zero',
+    { judge_timeout_ms: 0 },
+    /^ {2}- judge_timeout_ms: must be a whole/m,
+  ],
+  [
+    'a fraction',
+    { judge_timeout_ms: 1500.5 },
+    /judge_timeout_ms: must be a whole/,
+  ],
+  ['text', { judge_timeout_ms: '240000' }, /judge_timeout_ms: must be a whole/],
+  [
+    'under a second',
+    { judge_timeout_ms: 999 },
+    /judge_timeout_ms: must be a whole/,
+  ],
+  [
+    'over an hour',
+    { judge_timeout_ms: 3600001 },
+    /judge_timeout_ms: must be a whole/,
+  ],
+  [
+    'a bad seat value',
+    { judge_timeout_ms_by_seat: { xai: -1 } },
+    /judge_timeout_ms_by_seat\.xai: must be a whole/,
+  ],
+  [
+    'a map that is not an object',
+    { judge_timeout_ms_by_seat: 5 },
+    /judge_timeout_ms_by_seat: must be an object/,
+  ],
+]) {
+  test(`judge timeouts are validated: ${name}`, () =>
+    assert.throws(() => helpers.exampleConfig(overrides), expected));
+}
+
+test('judge timeouts: the bounds themselves are allowed', () => {
+  for (const timeoutMs of [1000, 3600000])
+    assert.equal(
+      helpers.exampleConfig({ judge_timeout_ms: timeoutMs }).judge_timeout_ms,
+      timeoutMs,
+    );
+});

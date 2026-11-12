@@ -17,5 +17,9 @@
     "writer": 0.01375
   },
   "aws_profile": null,
-  "aws_region": "us-west-2"
+  "aws_region": "us-west-2",
+  "judge_timeout_ms": 240000,
+  "judge_timeout_ms_by_seat": {
+    "xai": 720000
+  }
 }
