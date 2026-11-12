@@ -756,6 +756,28 @@ The guard report reads the same tasks and seats as the task gap of reading B: a 
 
 The guard result changes no label. Reading B uses every item of the checklist, whatever its bucket, so a skill that only adds style rules still raises B. The `value` and `format` figures are kept for later work, and no rule reads them.
 
+## The readings report
+
+`lib/readings-report.js` reads the stored judgments of a run on both scales and gives, for each skill and for each control, reading A (`outcome`) and reading B (`items`) of the same stored answers. It makes no call and writes no file.
+
+- **Task gap.** The same gap the judge job uses (`taskGaps`): the mean over the counted seats of the score with the skill minus the score without, on the 1 to 5 scale. Each answer is judged on its own, so a seat has one judgment per arm. A task counts with at least 2 seats that gave a valid judgment for both arms and no answer that is not loaded or not eligible. Every task left out is listed with its reason.
+- **Reading.** The mean of the counted task gaps with a 95% t interval (tasks minus 1 degrees of freedom), pooled over the skill's batches, and the same for each batch alone. With fewer than 2 counted tasks there is no interval.
+- **Current judgments only.** A judgment is read only when the judge job counts it as current. A judgment file made from other inputs leaves its job pending; the coverage table counts it as stale and it is never read.
+- **Exclusions.** A task in `bench/exclusions.json` is never read by A. B is never excluded, but its main figure is read over the tasks A reads, so the two compare like for like; `B_all` is B over every task.
+- **Coverage.** The judge jobs of each reading are counted by state: done, pending, waiting, not loaded, not eligible, and other arm unusable (not judged, because the other arm's answer cannot be used). The counts add up to the number of jobs, and a job in any other state is refused.
+- **Length ratio.** The mean of the with / without word counts per task, counted on the stored answers as written and not on the text the judges were shown, so a reader can see when one arm simply writes more. It is over every task of the skill that has both stored answers, whatever its state, so its task count can be larger than the counts of A and B.
+
+The controls are cases whose right answer is known in advance. Their pass rules are kept in the code (`PASS_RULES`, dated), and the report writer added in a later PR will hold them in `report.json` and name their date in `report.md`:
+
+| Control              | Pass rule                                                                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `convention-control` | B's lower end is above 0, and A's interval contains 0.                                                                            |
+| Dose ladder          | Read by A: D4 has the lowest mean gap, D0's interval contains 0, and the gap does not rise from D1 to D2 to D4, with D4 below D1. |
+
+A control reading that cannot decide is `NOT RUN`, not a pass or a fail: one with fewer than 2 counted tasks, one that does not count every task of the control, and one with any judgment that is pending, waiting or stale. A control judged on some of its tasks therefore cannot pass. A run is trusted only when every control it includes passes; `controls_status` is `PASS`, `FAIL` (a control failed or was not run) or `NONE` (no control in the run, so not trusted either). The rules read the unrounded interval ends, so a lower end that prints as `+0.00` can still be above 0.
+
+`readSkill` reads one skill from the judge jobs `planJudging` lists for each scale, `ladderDoses` matches a dose ladder's doses to their items (`fixture-d0`, ...), and `buildReadingsReport` puts the skills and the controls together. A later PR adds the report writer that turns the result into `report.md`.
+
 ## Not built yet
 
-These are added in a later PR: the readings, the labels that sum up the scores, and the report writer that puts the guard result beside each label. The judge job does not take a dose ladder yet: the ladder's items are judged once the controls check that reads them is added, and `next` does not name ladder work.
+These are added in a later PR: the labels that sum up the readings, and the report writer that puts the readings, the controls verdict and the guard result beside each label. The judge job does not take a dose ladder yet: the ladder's items are judged once the controls check that reads them is added, and `next` does not name ladder work.
