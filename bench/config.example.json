@@ -28,5 +28,9 @@
     "xai": 37500
   },
   "runner_profile": "legacy",
-  "subject_concurrency": 6
+  "subject_concurrency": 6,
+  "judge_concurrency": 3,
+  "judge_concurrency_by_seat": {
+    "xai": 12
+  }
 }

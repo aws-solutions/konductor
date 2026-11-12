@@ -11,9 +11,10 @@
  * The known settings are the key structure of this package's own bench/config.example.json, not of the `--root`
  * repository. The settings file must have every known setting: a missing one is refused by name, and so is a
  * setting the example does not have, so a typo cannot pass silently. In overrides, objects merge key by key and
- * arrays replace. `models.judges`, `judge_timeout_ms_by_seat` and `judge_max_output_tokens_by_seat` are open maps:
- * they may hold any key, and in overrides a key set to null is removed. `judge_max_output_tokens` is one number
- * for every judge; `judge_max_output_tokens_by_seat` gives the seats that need another number.
+ * arrays replace. `models.judges`, `judge_timeout_ms_by_seat`, `judge_max_output_tokens_by_seat` and
+ * `judge_concurrency_by_seat` are open maps: they may hold any key, and in overrides a key set to null is removed.
+ * `judge_max_output_tokens` is one number for every judge; `judge_max_output_tokens_by_seat` gives the seats that
+ * need another number.
  */
 'use strict';
 
@@ -43,6 +44,7 @@ const OPEN_MAPS = new Set([
   'models.judges',
   'judge_timeout_ms_by_seat',
   'judge_max_output_tokens_by_seat',
+  'judge_concurrency_by_seat',
 ]);
 // The output limit of a judge call, in tokens: opencode.js writes it into the model entry and prices the reservation
 // with it. Below 256 a reply cannot hold a verdict; 128000 is the largest output limit a pinned model has.
@@ -60,6 +62,8 @@ const REPLACED_SETTINGS = Object.freeze({
 });
 // More parallel subject runs than this would mostly meet provider throttling, and each holds a claude process.
 const MAX_SUBJECT_CONCURRENCY = 32;
+// The same ceiling for the judge calls of one seat: each call holds an opencode process.
+const MAX_JUDGE_CONCURRENCY = 32;
 const isPlainObject = (value) =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -218,6 +222,27 @@ function validateSettings(config, errors) {
       );
     checkOutputTokens(tokens, `judge_max_output_tokens_by_seat.${seat}`);
   }
+  const checkJudgeConcurrency = (value, settingPath) => {
+    if (!Number.isInteger(value) || value < 1 || value > MAX_JUDGE_CONCURRENCY)
+      errors.push(
+        `${settingPath}: must be a whole number from 1 to ${MAX_JUDGE_CONCURRENCY}`,
+      );
+  };
+  checkJudgeConcurrency(config.judge_concurrency, 'judge_concurrency');
+  if (!isPlainObject(config.judge_concurrency_by_seat))
+    errors.push(
+      'judge_concurrency_by_seat: must be an object of seat concurrencies',
+    );
+  else
+    for (const [seat, width] of Object.entries(
+      config.judge_concurrency_by_seat,
+    )) {
+      if (!Object.hasOwn(config.models.judges, seat))
+        errors.push(
+          `judge_concurrency_by_seat.${seat}: no such judge seat in models.judges (remove the entry)`,
+        );
+      checkJudgeConcurrency(width, `judge_concurrency_by_seat.${seat}`);
+    }
   for (const [callKind, price] of Object.entries(
     config.estimate_usd_per_call,
   )) {
@@ -312,6 +337,12 @@ function rubricWriterModel(config) {
 /** Judge seat names in config order. */
 const seatsOf = (config) => Object.keys(config.models.judges);
 
+/** Judge calls one seat may have running at once: judge_concurrency_by_seat[seat], else judge_concurrency. */
+function judgeConcurrency(config, seat) {
+  const bySeat = config.judge_concurrency_by_seat || {};
+  return Object.hasOwn(bySeat, seat) ? bySeat[seat] : config.judge_concurrency;
+}
+
 module.exports = {
   EXAMPLE_CONFIG_FILE,
   ConfigError,
@@ -319,4 +350,5 @@ module.exports = {
   loadConfig,
   rubricWriterModel,
   seatsOf,
+  judgeConcurrency,
 };

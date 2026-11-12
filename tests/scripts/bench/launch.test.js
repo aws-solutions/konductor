@@ -108,8 +108,21 @@ test('resolveJobRequest: every bad value is a usage error that names it, before 
         /unknown job "rm"; jobs: pairs/,
       ],
       [
+        () => resolveJobRequest('report', { skills: SKILL, root }),
+        /unknown job "report"; jobs: pairs, checklists, judge/,
+      ],
+      [
         () => resolveJobRequest('judge', { skills: SKILL, root }),
-        /unknown job "judge"/,
+        /--scale is required for the judge job: items \(reading B\) or outcome \(reading A\)/,
+      ],
+      [
+        () =>
+          resolveJobRequest('judge', { skills: SKILL, root, scale: 'blind' }),
+        /--scale must be one of items, outcome, got "blind"/,
+      ],
+      [
+        () => request(root, { scale: 'items' }),
+        /--scale is not an option of the pairs job/,
       ],
       [() => request(root, { skills: undefined }), /--skills is required/],
       [() => request(root, { skills: ' , ' }), /at least one skill/],
@@ -938,6 +951,7 @@ test('launch.js and job.js take the one table of flags that lib/launch.js keeps'
     'maxUsd',
     'root',
     'run',
+    'scale',
     'skills',
   ]);
   assert.deepEqual(Object.values(launchLib.BOOL_FLAGS).sort(), [
