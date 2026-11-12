@@ -163,6 +163,20 @@ test('driver --dry-run prints the plan, the refusal state and the commands, and 
   assert.match(filtered.stdout, /1 groups, 2 runs, 2 replicates/);
 });
 
+test('REFS_PREPARE_ONLY takes only 1 or unset, and 1 prints a loud banner', () => {
+  const sb = driverSandbox({ procs: 'node bench/runner/bench.js run --suite rootcause\n' });
+  for (const bad of ['0', 'false', 'yes']) {
+    const r = sb.run([], { REFS_PREPARE_ONLY: bad });
+    assert.equal(r.status, 2, bad);
+    assert.match(r.stdout, /REFS_PREPARE_ONLY must be 1 or unset/);
+    assert.ok(!fs.existsSync(path.join(sb.base, 'runs')) && !fs.existsSync(path.join(sb.base, 'markers')));
+  }
+  const on = sb.run(['--dry-run'], { REFS_PREPARE_ONLY: '1' });
+  assert.equal(on.status, 0, on.stderr);
+  assert.match(on.stdout, /\*\*\* PREPARE ONLY: REFS_PREPARE_ONLY=1 is set/);
+  assert.doesNotMatch(sb.run(['--dry-run']).stdout, /PREPARE ONLY/);
+});
+
 test('a real start refuses while a bench process runs, and creates no run directory or marker', () => {
   const sb = driverSandbox({ procs: 'node bench/runner/bench.js run --suite rootcause\n' });
   const r = sb.run([]);

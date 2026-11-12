@@ -1153,3 +1153,5 @@ Free checks before spending: `run ... --prepare-only` builds and trial-installs 
 
 ## Running a study unattended
 `bench/scripts/` holds the scripts for long studies: `run-real-pilot.sh` (capability study), `run-after-capability.sh` (judging, the skill bench and a summary, chained after it), `run-judging.sh`, `run-skill-bench.sh` and the read-only dashboard `monitor.sh`. Setup, commands, credentials, what each phase does and how to read the monitor are in [RUNBOOK.md](RUNBOOK.md).
+
+The generated study drivers (`run-all.sh` from `scripts/probe-study.js` and `scripts/refs-study.js`) read `PROBE_PREPARE_ONLY` and `REFS_PREPARE_ONLY`. `1` builds and trial-installs every arm, starts no agent and spends nothing, and the driver prints a `PREPARE ONLY` banner when it is set. Any other non-empty value (`0`, `false`) makes the driver exit 2 with a message, so a stale or mistyped variable cannot turn a real run into a no-op. Unset it for a real run.

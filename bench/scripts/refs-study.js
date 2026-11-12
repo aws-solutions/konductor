@@ -189,6 +189,12 @@ export TMPDIR=\$BASE/tmp
 for v in \$(env | grep -o '^AWS_[A-Za-z_]*'); do unset "\$v"; done
 
 log() { echo "[driver \$(date -u +%FT%TZ)] \$*"; }
+# Only 1 or unset is valid: a stale or mistyped value must not turn a real run into a no-op, or the reverse.
+case "\${REFS_PREPARE_ONLY:-}" in
+  ''|1) ;;
+  *) log "REFS_PREPARE_ONLY must be 1 or unset (got another value). Unset it for a real run."; exit 2 ;;
+esac
+[ -n "\${REFS_PREPARE_ONLY:-}" ] && log "*** PREPARE ONLY: REFS_PREPARE_ONLY=1 is set. Arms are built and trial-installed, no agent runs and nothing is spent. Unset it for a real run. ***"
 plan_args=(--base "\$BASE" --repo "\$REPO")
 [ -n "\${REFS_REPLICATES:-}" ] && plan_args+=(--replicates "\$REFS_REPLICATES")
 [ -n "\${REFS_ARMS:-}" ] && plan_args+=(--arms "\$REFS_ARMS")
