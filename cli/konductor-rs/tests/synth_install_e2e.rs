@@ -1124,6 +1124,58 @@ fn installed_specialists_cannot_spawn_but_orchestrator_can() {
     std::fs::remove_dir_all(&target_dir).ok();
 }
 
+/// Install runs with telemetry on, so the check also covers the telemetry
+/// hook, which V3 keeps in `.kiro/hooks/` rather than in the agent files.
+#[test]
+fn installed_kiro_v3_agent_without_hooks_has_no_hooks_key() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let repo_root = scratch_dir("repo-v3-no-hooks");
+    seed_agent_spec_source(&repo_root);
+    seed_skill_source(&repo_root);
+    let synth_result = run_konductor(
+        &repo_root,
+        &sink,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert!(
+        synth_result.status.success(),
+        "synth: {}",
+        String::from_utf8_lossy(&synth_result.stderr)
+    );
+
+    let target_dir = scratch_dir("target-v3-no-hooks");
+    let install_result = run_konductor(
+        &target_dir,
+        &sink,
+        &[
+            CMD_INSTALL,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--harness",
+            "kiro-v3",
+        ],
+    );
+    assert!(
+        install_result.status.success(),
+        "install: {}",
+        String::from_utf8_lossy(&install_result.stderr)
+    );
+
+    let installed: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(target_dir.join(".kiro/agents/k-example.json")).unwrap(),
+    )
+    .unwrap();
+    assert!(installed.get("hooks").is_none(), "got: {installed}");
+    assert!(target_dir
+        .join(".kiro/hooks/konductor-telemetry-hooks.json")
+        .is_file());
+
+    std::fs::remove_dir_all(&repo_root).ok();
+    std::fs::remove_dir_all(&target_dir).ok();
+}
+
 /// The wired command a harness would run at session start, read from what
 /// install actually wrote at `target`.
 fn installed_orchestration_command(target: &Path, harness: &str) -> String {
