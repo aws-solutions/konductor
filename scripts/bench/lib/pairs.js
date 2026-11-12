@@ -64,9 +64,9 @@ const { fileSha256, sha256 } = require('./provenance');
 const { readJsonFile } = require('./read-file');
 const { redact } = require('./redact');
 const { pool } = require('./pool');
+const { SUPERSEDED_MARK, supersede } = require('./supersede');
 const { ANSWER_KIND, loadTaskSet, subjectRequest } = require('./tasks');
 
-const SUPERSEDED_MARK = '.superseded-';
 const STATUS_OK = 'ok';
 const STATUS_NOT_LOADED = 'not_loaded';
 /**
@@ -86,23 +86,6 @@ const WRONG_MODEL_PROBLEM = 'a model other than the subject produced output';
 
 const isPlainObject = (value) =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
-
-/** The time part of a renamed file: an ISO time with ":" and "." turned into "-". */
-const fileTime = (now) => new Date(now()).toISOString().replace(/[:.]/g, '-');
-
-/**
- * Renames `file` to `<file>.superseded-<time>` and returns the new path, or null when there is no file. A name that is
- * already taken gets `-2`, `-3`, ... after the time, so no kept file is overwritten.
- */
-function supersede(file, now = Date.now) {
-  if (!fs.existsSync(file)) return null;
-  const base = `${file}${SUPERSEDED_MARK}${fileTime(now)}`;
-  let target = base;
-  for (let copy = 2; fs.existsSync(target); copy += 1)
-    target = `${base}-${copy}`;
-  fs.renameSync(file, target);
-  return target;
-}
 
 /**
  * True when `file` holds an answer made from `inputs` (tasks.js answerInputs): same digest, and either a text that

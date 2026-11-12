@@ -26,7 +26,7 @@ This guide covers what exists today: the vocabulary, the formats of the frozen b
 | Task      | A realistic request, written so that at least two rules matter without being named. Each task has a checklist, its `rubric`.                                                                        |
 | Batch     | A named set of tasks for one skill, such as `b1`, with one task file. A second batch of fresh tasks checks that a result holds beyond the first set.                                                |
 | Reading B | The rules reading: judges score each answer on its own against the task's rules checklist. Its scale is `items`.                                                                                    |
-| Reading A | The request-only reading: the same answers scored against a checklist written from the request alone. Its scale is `outcome`. The checklist writer is added in a later PR; `plan` counts its calls. |
+| Reading A | The request-only reading: the same answers scored against a checklist written from the request alone. Its scale is `outcome`. Its writer is a library; its job is later. `plan` counts those calls. |
 | Seat      | One judge: a name (`anthropic`, `openai`, `xai` by default) and a model. The seats use models from different families.                                                                              |
 | Bucket    | Where a checklist item counts, set by its rule's class: `value` (`useful`), `format` (`style`) or `guard` (`generic`).                                                                              |
 | Guard     | The `guard` bucket: items from generic rules. They show whether the skill leaves ordinary quality alone. Its report is added in a later PR.                                                         |
@@ -40,7 +40,7 @@ This guide covers what exists today: the vocabulary, the formats of the frozen b
 ```
 skills/<skill>/SKILL.md                      the skill under test (read only)
 agents/*.agent-spec.json                     agents; one that lists the skill answers for it (read only)
-scripts/bench/prompts/                       judge prompt templates (byte-exact, see Judge prompts)
+scripts/bench/prompts/                       judge and checklist-writer prompt templates (byte-exact, see Judge prompts)
 bench/config.json                            the settings (git-ignored), see Settings
 bench/exclusions.json                        tasks left out of reading A
 bench/baselines/<skill>/rules.json           frozen rules
@@ -574,6 +574,31 @@ On a failure the line is `{"error": "...", "exit_code": N}`. A failed write (the
 
 Neither command uses exit code 2, which this repository keeps for a gate finding.
 
+## Request-only checklists
+
+Reading A scores the answers against a checklist that a writer model makes from the request alone. `lib/request-checklist.js` builds that writer's prompt, checks its reply and writes one file per task, `bench/out/<run-id>/checklists/<skill>/<batch>/<task>.json`. The writer is `models.rubric_writer`, or the `anthropic` seat's model when that is null.
+
+What the writer is given:
+
+- the request text, with any reference to the skill stripped first: its `bench:` name, its name as an identifier (`code-review`, `code_review`; a one-word name such as `verification` is an ordinary word and stays), SKILL.md and paths to it, and rule ids. The task validator already refuses a request that names the skill or a rule; this is the second line. A request that is empty or still names the skill after stripping is not sent;
+- the item count: the length of the task's rules checklist (5 to 8 items).
+
+Nothing else of the task reaches the writer: not the rules checklist's items, the title, the target section, `why_skill_matters`, a rule quote or the skill file. A test reads a task through a recorder and fails if the writer's input touches any other property. The prompt is `scripts/bench/prompts/checklist-prompt.request-only.v2.md`; like the judge prompts, its hash is the hash of its bytes, a test pins it, and a new wording is a new file. Version 2 asks for what a quick answer misses, so that answers made without a skill do not score near the top on it.
+
+A reply is used only when the call succeeded and the reply is one JSON object `{"items": [...]}` (one code fence around it is allowed, and a second `items` key is refused) with exactly the item count, each item 12 to 400 characters after spacing is collapsed, and no item repeated (ignoring case). Otherwise:
+
+| What happened                                                                           | What the writer does                                                     |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| the reply fails a check, or the call failed                                             | retried, up to 3 calls with a growing pause                              |
+| the provider blocked the reply                                                          | one more call to confirm the block, then the task is reported as refused |
+| the provider says the call can never work                                               | not retried; the task fails                                              |
+| credentials missing or expired, a spend stop                                            | the job stops; finished checklists are kept                              |
+| 4 tasks in a row whose every call failed with a temporary error (a timeout, throttling) | the job stops (`ABORT-SYSTEMIC`)                                         |
+
+A call that can never work and a provider block do not count toward the four-in-a-row stop. A writer model that cannot be used therefore makes one call per task and fails each of them, bounded by the spend limits. A refused task is left for a person: they record it in `bench/exclusions.json` with a reason and a date, and it is then left out of reading A only.
+
+A checklist file records the writer prompt's hash, the writer model, the stripped request with its hash, the item count, and the items with their hash. It is current only when the prompt hash, the model, the request hash and the item count match today's values, the stored request and items match their own hashes, and the items still pass the checks; otherwise it is written again and the old file is kept as `<file>.superseded-<time>`. A file that cannot be read for a reason other than "it is not there" or "it is not JSON" (an I/O error, a folder in its place) stops the command with that error, because reading it as missing would pay for the checklist again. If a checklist that passed the checks cannot be written after one more try, the task is reported as failed and its items are printed in the job log, so the paid reply is not lost. Tasks with the same stripped request and item count (the dose ladder's doses share their tasks) share one writer call: the later ones are written as copies that name the task they copy. Each call is a judge call (`lib/opencode.js`), so it is booked in the ledger like any other. It reserves its ceiling in the ledger (the prompt's tokens plus the output limit at the model's token prices, see the paragraph on the ledger), is charged the writer model's mean when the CLI reports no usable cost, and is priced at the model's p90 by `plan`, which checks that figure against the limits.
+
 ## Not built yet
 
-These are added in a later PR: the judge job, the checklist writer for reading A, `next` (which says which job to start), the labels that sum up the scores, and the report. The judge client is a library until the judge job uses it.
+These are added in a later PR: the judge job, the job that runs the checklist writer for reading A, `next` (which says which job to start), the labels that sum up the scores, and the report. The judge client and the checklist writer are libraries until their jobs use them.
