@@ -157,6 +157,8 @@ Guidelines
 - No runbook or operational playbook referenced
 - Cost estimates not validated against architecture
 
+When the review covers a single design document for a small project (1-2 services, see Scope-Tailored Feedback), report a missing item from this list as a SUGGESTION instead. They stay IMPORTANT for a full design package or a medium or large project.
+
 **SUGGESTION:**
 
 - Could add chaos engineering scenarios for resilience validation

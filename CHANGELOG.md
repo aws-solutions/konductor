@@ -73,6 +73,10 @@ not per individual commit.
   pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
   fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
   retry-once recovery to spawns that error, time out, or return nothing.
+- `design-evaluation` reports a missing observability strategy, runbook or cost check as a
+  SUGGESTION, not IMPORTANT, when it reviews a single design document for a small project, so a
+  short design doc no longer fails its review on them. They stay IMPORTANT for a full design
+  package or a larger project.
 - The SOP Selection Contract no longer rules out single-procedure SOPs such as `k-plan`. A
   request matches a SOP row when it asks for what the row's User intent describes, a whole
   workflow or one named procedure. A single deliverable that no row describes still goes to an
