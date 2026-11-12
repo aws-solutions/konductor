@@ -211,8 +211,8 @@ pub fn dispatch_synth_with(
         }
     };
 
-    // Only explicitly bundled MCP servers reach rendered Claude agents.
-    // Apply the allowlist once before transformers run.
+    // Only explicitly bundled MCP servers reach rendered Claude and Kiro
+    // agents. Apply the allowlist once before transformers run.
     let bundled_mcp_allowlist: std::collections::HashSet<String> = claude_bundled_mcp_servers
         .as_deref()
         .unwrap_or("")
@@ -840,6 +840,82 @@ mod tests {
             !written.contains("mcpServers:"),
             "expected no mcpServers: key when --claude-bundled-mcp-servers is omitted, got:\n{written}"
         );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    fn write_kiro_agent_with_aws_and_playwright_registry(root: &Path) {
+        fs::create_dir_all(root.join("agents")).unwrap();
+        fs::write(
+            root.join("agents/k-example.agent-spec.json"),
+            br#"{
+                "schemaVersion": "1",
+                "name": "k-example",
+                "config": {"description": "d", "systemPrompt": "p", "model": "claude-sonnet-5"},
+                "dependencies": {
+                    "mcpRegistry": {
+                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws@latest"]},
+                        "playwright-mcp": {"command": "npx", "args": ["-y", "@playwright/mcp@latest"]}
+                    }
+                },
+                "clientConfig": {"kiroCli": {}}
+            }"#,
+        )
+        .unwrap();
+    }
+
+    fn kiro_mcp_server_names(root: &Path, harness: &str) -> Vec<String> {
+        let path = root.join(format!("dist/{harness}/agents/k-example.json"));
+        let agent: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+        agent["mcpServers"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect()
+    }
+
+    #[test]
+    fn dispatch_synth_with_bundled_mcp_servers_gives_kiro_agents_only_the_allowlisted_entry() {
+        let root = scratch_dir("bundled-mcp-allowlist-kiro");
+        write_kiro_agent_with_aws_and_playwright_registry(&root);
+
+        let code = dispatch_synth_with(
+            &root,
+            None,
+            Some("aws-mcp".to_string()),
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+
+        for harness in ["kiro-cli-v2", "kiro-v3"] {
+            assert_eq!(
+                kiro_mcp_server_names(&root, harness),
+                ["aws-mcp"],
+                "{harness} agent mcpServers"
+            );
+        }
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn dispatch_synth_with_no_bundled_mcp_servers_flag_gives_kiro_agents_no_registry_entry() {
+        let root = scratch_dir("bundled-mcp-allowlist-absent-kiro");
+        write_kiro_agent_with_aws_and_playwright_registry(&root);
+
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
+        assert_eq!(code, 0);
+
+        for harness in ["kiro-cli-v2", "kiro-v3"] {
+            assert!(
+                kiro_mcp_server_names(&root, harness).is_empty(),
+                "{harness} agent mcpServers"
+            );
+        }
 
         fs::remove_dir_all(&root).ok();
     }

@@ -144,11 +144,14 @@ choose one and rerun with `--harness <name>`.
 
 ## MCP servers
 
-Kiro does not configure MCP servers from `dependencies.mcpRegistry`
-automatically. Configure them in `.kiro/settings/mcp.json` for one project or
-`~/.kiro/settings/mcp.json` for all projects.
+The `k-architect` and `k-developer` agent files carry the `aws-mcp` entry
+from their `dependencies.mcpRegistry`, so those two agents launch AWS MCP
+themselves. Kiro does not configure the other `dependencies.mcpRegistry`
+entries automatically. Configure them in `.kiro/settings/mcp.json` for one
+project or `~/.kiro/settings/mcp.json` for all projects.
 
-AWS MCP uses the `aws-mcp` server key. Use this configuration:
+AWS MCP uses the `aws-mcp` server key. To use it from other agents, use this
+configuration:
 
 ```json
 {
