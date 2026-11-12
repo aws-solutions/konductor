@@ -7,16 +7,17 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync, spawnSync } = require('node:child_process');
-const { tmp, makeBench, write } = require('./helpers.js');
+const { tmp, makeBench } = require('./helpers.js');
+const { cliSetup, runCli } = require('./cli-setup.js');
 const { makeFakeKiro } = require('./fake-kiro.js');
 const { runAll } = require('../lib/orchestrate.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { readLedger } = require('../lib/credit-ledger.js');
 const { maxAuthFailuresOf, DEFAULT_MAX_AUTH_FAILURES } = require('../lib/auth-failure.js');
 
-const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 const rm = (d) => fs.rmSync(d, { recursive: true, force: true });
+// A run under one second is flagged as an infrastructure failure (exit 5), so a fake run that should succeed lingers past it.
+const SLOW_OK = { delayMs: 1100 };
 const FAIL = { exitCode: 1, stderrText: 'Error: Authentication failed' };
 const started = (probe) => fs.readdirSync(probe).filter((f) => /^started-\d+\.json$/.test(f)).length;
 
@@ -79,36 +80,6 @@ test('the limit is configurable, and a run that works resets the count', async (
   assert.equal(mixed.out.authStop.tripped, false);
 });
 
-function cliSetup(cfg) {
-  const root = tmp();
-  const bench = makeBench(path.join(root, 'bench'));
-  fs.mkdirSync(path.join(bench, 'suites'), { recursive: true });
-  fs.writeFileSync(path.join(bench, 'suites/lite.json'), JSON.stringify({ tasks: ['t1'], arms: ['vanilla'], replicates: 1, parallel: 1 }));
-  const repo = path.join(root, 'repo');
-  fs.mkdirSync(repo);
-  const git = (...a) => execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@example.invalid', '-c', 'commit.gpgsign=false', ...a], { encoding: 'utf8' }).trim();
-  git('init', '-q', '-b', 'main');
-  write(path.join(repo, 'README'), 'x\n');
-  git('add', '.');
-  git('commit', '-q', '-m', 'one');
-  git('update-ref', 'refs/remotes/origin/main', git('rev-parse', 'HEAD'));
-  const home = path.join(root, 'home');
-  fs.mkdirSync(path.join(home, '.konductor/installs'), { recursive: true });
-  const probe = path.join(root, 'probe');
-  fs.mkdirSync(probe);
-  const kiroBin = makeFakeKiro(path.join(root, 'bin'), { dir: probe, ...cfg });
-  const authDb = path.join(root, 'data.sqlite3');
-  fs.writeFileSync(authDb, 'fake-auth');
-  const tmpdir = path.join(root, 'tmp');
-  fs.mkdirSync(tmpdir);
-  return { root, bench, repo, home, kiroBin, authDb, tmpdir, probe, out: path.join(root, 'out') };
-}
-
-const runCli = (s, extra, env = {}) => spawnSync('node', [BENCH_JS, 'run', '--suite', 'lite', '--arms', 'vanilla', '--bench-dir', s.bench, '--repo-root', s.repo,
-  '--kiro-bin', s.kiroBin, '--auth-db', s.authDb, '--isolate', 'none', '--allow-unisolated', '--cache', path.join(s.root, 'cache'), '--out', s.out, '--replicates', '5', '--seed', '1', ...extra], {
-  encoding: 'utf8', env: { ...process.env, HOME: s.home, TMPDIR: s.tmpdir, BENCH_GATE_HOMES: s.home, BENCH_TEST_MODE: '1', ...env },
-});
-
 test('run exits 6 after the limit, records authStop in summary.json, and honours --max-auth-failures and the environment variable', () => {
   const s = cliSetup(FAIL);
   try {
@@ -157,7 +128,7 @@ test('run checks the login before building or launching anything, and exits 6 wi
 });
 
 test('a valid login lets the chunk run; a kiro-cli with no whoami command only warns', () => {
-  const ok = cliSetup({ whoami: 'ok' });
+  const ok = cliSetup({ whoami: 'ok', ...SLOW_OK });
   try {
     const r = runCli(ok, ['--replicates', '1']);
     assert.equal(r.status, 0, r.stderr);
@@ -165,7 +136,7 @@ test('a valid login lets the chunk run; a kiro-cli with no whoami command only w
     assert.equal(whoamiCalls(ok.probe), 1);
     assert.equal(started(ok.probe), 1);
   } finally { rm(ok.root); }
-  const missing = cliSetup({ whoami: 'missing' });
+  const missing = cliSetup({ whoami: 'missing', ...SLOW_OK });
   try {
     const r = runCli(missing, ['--replicates', '1']);
     assert.equal(r.status, 0, r.stderr);
