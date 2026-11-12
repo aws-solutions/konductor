@@ -113,3 +113,8 @@ test('the README and playbook describe the side-by-side review page and its impo
   for (const re of [/cap review --run DIR/, /cap review-import --ratings FILE/, /review-key\.json/, /opens no port/, /--sample-only/, /raters\/ID\//, /pooled/, /unless `--force`, so a second import never replaces the first/, /result\.prev\.json/, /raterKappa/, /calibration\/review-key\//, /`--key` is always\s+required/, /--run DIR/, /stream\.jsonl/, /A `recheck` does not change it/, /cleared by the next import/, /ratings made on the old page will not import/, /even\s+with `--force`/]) assert.match(readme, re);
   for (const re of [/cap review --run DIR/, /cap review-import/]) assert.match(playbook, re);
 });
+
+test('the README documents the login expiry note, exit code 6, the auth-failure limit and --timeout-sec', () => {
+  const doc = read('README.md');
+  for (const re of [/token already expired/, /inferred from the message and is not confirmed/, /exit code 6/, /--max-auth-failures N/, /BENCH_MAX_AUTH_FAILURES/, /kiro-cli whoami/, /--timeout-sec N/]) assert.match(doc, re);
+});
