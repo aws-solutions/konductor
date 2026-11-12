@@ -26,13 +26,13 @@
  *     an earlier one;
  *   - a task counts when at least MIN_SEATS seats count. A task that does not count is listed with the reason.
  *
- * One check reading B does not make when it reads a file: a valid record must name the seat and arm of the job it
- * was read for. A record that names another seat or arm is listed as a problem and does not count. (planJudging
- * already treats such a file as not current, so a job is `done` only when they match; the check covers a file
- * changed after the plan was made, or a reader that returns another job's record.)
+ * A valid record must name the seat and arm of the job it was read for. A record that names another seat or arm does
+ * not count here, as in the task gap (taskGaps leaves it out as if it had no file); this report also lists it as a
+ * problem. (planJudging already treats such a file as not current, so a job is `done` only when they match; the check
+ * covers a file changed after the plan was made, or a reader that returns another job's record.)
  *
- * The guard result is shown beside the label and changes nothing: reading B and the label use every item of the
- * checklist, whatever its bucket. The value and format figures are kept for later work and no rule reads them.
+ * The guard result changes no label: reading B uses every item of the checklist, whatever its bucket. The value and
+ * format figures are kept for later work and no rule reads them.
  */
 'use strict';
 

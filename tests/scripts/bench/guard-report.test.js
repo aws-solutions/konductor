@@ -777,3 +777,84 @@ test('bad input is refused: an outcome job, a job without a task, a batch given 
     /item 6 has the unknown bucket "style"/,
   );
 });
+
+test('a job that is not done is never read, even when its record is at hand', () => {
+  const jobs = [
+    ...seatJobs('t1', SEATS[0], ALL_MET, NONE_MET),
+    ...seatJobs('t1', SEATS[1], ALL_MET, NONE_MET),
+    // The third seat's with job is pending, but a reader would return its record: the state decides.
+    {
+      ...doneJob('t1', armRecord(SEATS[2], 'with', ALL_MET)),
+      state: 'pending',
+    },
+    doneJob('t1', armRecord(SEATS[2], 'without', NONE_MET)),
+  ];
+  const entry = entryOf(reportOf(jobs));
+  assert.equal(entry.tasks_counted, 1);
+  assert.equal(entry.buckets.value.with.n, 6, '2 seats x 3 value items');
+});
+
+test('a label list longer than the checklist is listed and does not count', () => {
+  const jobs = [
+    ...seatJobs('t1', SEATS[0], [...ALL_MET, M], ALL_MET),
+    ...taskJobs('t1', ALL_MET, ALL_MET).filter((job) => job.seat !== SEATS[0]),
+  ];
+  const entry = entryOf(reportOf(jobs));
+  assert.deepEqual(entry.problems, [
+    `${SKILL}/${BATCH}/t1 seat anthropic with: the judgment has 7 with labels for 6 checklist items`,
+  ]);
+});
+
+test('a task blocked twice keeps the first reason, as the task gap does', () => {
+  const jobs = [
+    ...taskJobs('t1', ALL_MET, ALL_MET),
+    pendingJob('t2', SEATS[0], 'with', 'not_loaded', 'first reason'),
+    pendingJob('t2', SEATS[1], 'with', 'not_loaded', 'second reason'),
+    ...taskJobs('t3', ALL_MET, ALL_MET),
+    doneJob('t4', {
+      kind: 'judgment',
+      status: 'ineligible',
+      scale: 'items',
+      seat: SEATS[0],
+      arm: 'with',
+      reason: 'first record reason',
+    }),
+    doneJob('t4', {
+      kind: 'judgment',
+      status: 'ineligible',
+      scale: 'items',
+      seat: SEATS[1],
+      arm: 'with',
+      reason: 'second record reason',
+    }),
+  ];
+  const entry = entryOf(reportOf(jobs));
+  assert.deepEqual(entry.not_counted, [
+    { task_id: 't2', invalid: 'first reason' },
+    { task_id: 't4', invalid: 'first record reason' },
+  ]);
+  assert.deepEqual(
+    taskGaps(jobs, READ)
+      .filter((row) => !row.counted)
+      .map((row) => row.invalid),
+    ['first reason', 'first record reason'],
+  );
+});
+
+test('the exact interval a reader compares with 0 is not rounded to 4 places', () => {
+  // Gaps of 0.5, 0 and 0.5 on the guard items: the mean is 1/3 and the interval ends have many decimals.
+  const half = labelsOf([M, M, M], [M, X], [M]);
+  const jobs = [
+    ...taskJobs('t1', ALL_MET, half),
+    ...taskJobs('t2', ALL_MET, ALL_MET),
+    ...taskJobs('t3', ALL_MET, half),
+  ];
+  const guard = entryOf(reportOf(jobs)).per_task.guard;
+  assert.equal(guard.tasks, 3);
+  for (const index of [0, 1]) {
+    const exact = guard.t_interval_exact[index];
+    const rounded = guard.t_interval[index];
+    assert.notEqual(exact, rounded);
+    assert.ok(Math.abs(exact - rounded) < 5e-5);
+  }
+});
