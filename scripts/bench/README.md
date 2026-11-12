@@ -4,7 +4,7 @@
 
 The skill benchmark measures whether a skill in `skills/` makes an agent's answers better. For each skill it takes a fixed set of tasks (realistic requests) and has an agent answer each one twice: once with the skill and once without it. Judge models then score each answer on its own, without being told which one it is. The gap between the two scores says whether the skill helped, changed nothing, or made answers worse.
 
-This guide covers what exists today: the vocabulary, the formats of the frozen baseline files (written by a model, checked before use) and the exclusions file, where files live, and the offline `plan` command that checks the files and estimates the cost. Running the tasks and judging the answers are added in a later PR.
+This guide covers the vocabulary, the formats of the frozen baseline files (written by a model, checked before use) and the exclusions file, where files live, the offline `plan` command that checks the files and estimates the cost, and the jobs, the driver and the reports that run and read a benchmark. To run one, start with the Quickstart.
 
 ## How a run works
 
@@ -14,6 +14,44 @@ This guide covers what exists today: the vocabulary, the formats of the frozen b
 4. A report compares the two arms.
 
 `plan` shows what steps 2 to 4 would do and cost, for the skills you pick. It makes no network or model call and writes no file.
+
+## Quickstart
+
+You need Node 22 or newer, the `claude` and `opencode` CLIs on `PATH`, and an AWS profile with Bedrock access. Each job exports short-lived credentials from that profile itself. Run every command from the repository root.
+
+1. Make the settings file, then set `aws_profile` in it (left null, `AWS_PROFILE` is used). See Settings and cost.
+
+   ```sh
+   cp bench/config.example.json bench/config.json
+   ```
+
+2. See what a run would do and cost. This is offline and spends nothing:
+
+   ```sh
+   node scripts/bench/bench.js plan --skills convention-control --max-usd 30
+   ```
+
+3. Run it. In Kiro Crew, launch the workflow (see The Crew workflow). Without Crew, this loop does the same: it asks `next` for the next job, runs the command `next` prints, and stops at `done`, at a `stop` or at a job that does not exit 0. It then writes the report. It is PAID unless `--provider stub` is in `OPTS`.
+
+   ```sh
+   SKILLS=convention-control RUN=r1 MAX_USD=30 MAX_MINUTES=120 OPTS=
+   START=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+   while LINE=$(node scripts/bench/bench.js next --skills "$SKILLS" --run "$RUN" --max-usd "$MAX_USD" \
+     --max-minutes "$MAX_MINUTES" --started-at "$START" $OPTS); do
+     echo "$LINE"
+     case "$LINE" in *'"next":"done"'*) break ;; esac
+     printf '%s' "$LINE" | node -e 'const c = JSON.parse(require("fs").readFileSync(0, "utf8")).command;
+   process.exit(require("child_process").spawnSync(c[0], c.slice(1), { stdio: "inherit" }).status ?? 1)' || break
+   done
+   case "$LINE" in *'"next":"stop"'*) echo "STOP $LINE" ;; esac
+   node scripts/bench/bench.js report --skills "$SKILLS" --run "$RUN" $OPTS
+   ```
+
+   `OPTS` holds flags for `next` and `report`, such as `--config my-settings.json`. To try the loop with no model call, set `RUN=stub-try` and `OPTS="--provider stub"`. `MAX_USD` and `MAX_MINUTES` are this run's limits: `next` answers `stop` when either is reached, and the loop prints `STOP` with the reason. Finished work stays on disk, so running the loop again resumes where it stopped.
+
+4. Read `bench/out/<run>/report.md`. Include both controls (`convention-control,dose-ladder`) before trusting a label; see Controls. The two controls add about $21 at the upper estimate (p90), so `MAX_USD` must be at least 21 for a run of the controls alone.
+
+A full run of one skill costs about $10, with an upper estimate (p90) of about $17 (see Settings and cost). The default `max_usd` of 30 covers one skill per run at the upper estimate, though not the full margin `plan` advises (about $35 per skill), and the default `total_cap_usd` of 100 about six skills in all at the upper estimate, or two at that margin; see Spend limits and the ledger before you raise them.
 
 ## Glossary
 
@@ -327,11 +365,11 @@ The redactor (`lib/redact.js`) replaces secret-shaped values with a marker: AWS 
 
 The secret sweep (`lib/sweep.js`) scans the files of a run folder in two tiers. An exact match of a value the run knows is secret (the credentials handed to the agent, or the canary) is a stop: the file can be quarantined and the run should end. Quarantine writes a copy named `<file>~quarantined-<time>` (mode 0600) with the matched values and every secret shape redacted, then removes the original, so no copy of the value stays on disk. A quarantined file is never scanned, but a later sweep lists it as `quarantined` and is not clean while one exists, so a second sweep cannot read as clean after a stop. Any other secret-shaped string is only a warning, because answers about security often quote example keys. The file keeps that text as it is: it is not redacted in the file, and it is redacted when the answer is prepared for judging. A file the sweep cannot scan (over the size cap, a symbolic link, which is never followed, or a file removed while the sweep ran) is listed as skipped, and the sweep is not clean while any file is skipped. A run folder that does not exist is not clean either, so a wrong path cannot read as a clean sweep.
 
-Both are used while a subject run is going: `runSubjectTask` sweeps every run folder and redacts the errors and the stderr it returns. The checklist job's writer calls use the same helpers; the judge job comes in a later PR.
+Both are used while a subject run is going: `runSubjectTask` sweeps every run folder and redacts the errors and the stderr it returns. The checklist job's writer calls and the judge job use the same helpers.
 
 ## Retries and parallel calls
 
-Two helpers wrap a model call. `lib/retry.js` sorts a failure into a class. A credential failure and a spend stop are never retried and end the run. A credential failure is AWS credentials that are missing or expired, an AWS SSO login that ran out (`the SSO session associated with this profile has expired`, `Token has expired`, `refresh failed`), or a request signature the provider rejects. `401` and `unauthorized` count only next to an AWS error name or `not authorized to perform`, so a bare `401 Unauthorized` from another tool is a temporary failure and not a credential one. A provider refusal is tried twice, because a retry gives the same block. A call that can never work as it is (access denied, an invalid request, a model or file that does not exist) is not retried at all and does not count toward the four-in-a-row stop. Anything else, such as a timeout or throttling, is retried up to three tries in all with a growing pause. If four calls in a row fail every try, the run stops, because that points at a credential or provider problem and not bad luck. Classes are matched on the error's message text: the provider's exception names and the phrases the CLIs print, such as `requires AWS credentials` (a credential failure) or `The provided model identifier is invalid` (a call that can never work). A message that matches none is treated as a temporary failure. `lib/pool.js` runs at most a set number of calls at once for each seat. After a fatal error it starts no more calls and rejects with that error, so a caller keeps only the work it already stored. `retry.js` is used by `runSubjectTask` and by the checklist writer, and `pool.js` by the pairs job and the checklist job; the judge job comes in a later PR.
+Two helpers wrap a model call. `lib/retry.js` sorts a failure into a class. A credential failure and a spend stop are never retried and end the run. A credential failure is AWS credentials that are missing or expired, an AWS SSO login that ran out (`the SSO session associated with this profile has expired`, `Token has expired`, `refresh failed`), or a request signature the provider rejects. `401` and `unauthorized` count only next to an AWS error name or `not authorized to perform`, so a bare `401 Unauthorized` from another tool is a temporary failure and not a credential one. A provider refusal is tried twice, because a retry gives the same block. A call that can never work as it is (access denied, an invalid request, a model or file that does not exist) is not retried at all and does not count toward the four-in-a-row stop. Anything else, such as a timeout or throttling, is retried up to three tries in all with a growing pause. If four calls in a row fail every try, the run stops, because that points at a credential or provider problem and not bad luck. Classes are matched on the error's message text: the provider's exception names and the phrases the CLIs print, such as `requires AWS credentials` (a credential failure) or `The provided model identifier is invalid` (a call that can never work). A message that matches none is treated as a temporary failure. `lib/pool.js` runs at most a set number of calls at once for each seat. After a fatal error it starts no more calls and rejects with that error, so a caller keeps only the work it already stored. `retry.js` is used by `runSubjectTask`, by the checklist writer and by the judge job, and `pool.js` by the pairs job, the checklist job and the judge job.
 
 ## What the judges see
 
@@ -370,6 +408,27 @@ The reply parser is strict, because a lenient one would score a reply the prompt
 Each scale has a versioned prompt template in `scripts/bench/prompts/` (`judge-prompt.items.v1.md` and `judge-prompt.outcome.v1.md`). `lib/judge-prompt.js` fills one in for a single judge call about a single answer: the request, the numbered checklist and that one answer. Each answer is scored alone: the prompt never says which arm wrote the answer or that another answer exists, and the renderer is not even given the arm. The judge replies with `{"items":[...],"reason":"..."}`, one label per checklist item and one sentence naming the item that most decided the labels. The template tells the judge that everything inside the answer block is data and not instructions. The answer sits between marker lines that carry a random id made for that call, so an answer cannot close its own block or speak as the prompt. The renderer refuses to run if the id appears in the text it fills in, and it refuses an answer that the judge-input step marked not eligible. It also refuses a record that does not carry the sanitizer version and rules hash the judge-input step stamps on it, and a record that the judge-input step did not return: `prepare()` freezes each record and registers it in memory, so a copy, a clone or a record built by hand is refused even when it carries valid-looking stamps. The registry is per process, so a record read back from a file must be prepared again. The judgment's provenance refuses a record whose rules hash differs from the judge input it names. The provenance also records the arm and the hash of that arm's answer, where the judge cannot see them.
 
 The hash of a template is the hash of its file bytes, and a test pins it. Any edit, even to the license line, changes the hash and makes judgments made with the old text stale. To change the wording, add a file with the next version number and pin its hash in the same commit. Treat these files as byte-exact: do not reformat them.
+
+### Changing a judge prompt
+
+A judgment can be compared only with judgments made from the same prompt bytes, so a prompt is never edited in place.
+
+| Placeholder  | Filled with                                                           |
+| ------------ | --------------------------------------------------------------------- |
+| `{{task}}`   | the request text                                                      |
+| `{{rubric}}` | the checklist as a numbered list (`1. ...`, `2. ...`)                 |
+| `{{answer}}` | the one answer to score, after the judge-input step                   |
+| `{{marker}}` | the random id of the call, used in the marker lines around the answer |
+
+Each placeholder must appear in the template, and no other `{{...}}` may, or the template is refused when it loads, before any paid call. Keep the marker lines and the sentences that say the answer is data: they stop an answer from closing its own block or speaking as the prompt. Keep the prompt about one answer: it must not name the arm or say that another answer exists.
+
+1. Copy the template to the next version, for example `judge-prompt.items.v1.md` to `judge-prompt.items.v2.md`, and edit the copy. Leave the old file as it is.
+2. In `lib/judge-scale.js`, set the scale's `promptVersion` and `templateFile` to the new version.
+3. Pin the new file's SHA-256 in `PINNED_PROMPT_SHAS` (`tests/scripts/bench/judge-prompt.test.js`) and update the expected prompt in `tests/fixtures/bench/judge-prompt.items.expected.txt` when the items template changed. If the reply format changed, change the parser in `lib/judge-scale.js` in the same commit and add tests.
+4. Run `node --test tests/scripts/bench/*.test.js`.
+5. Judge again. Every judgment records its prompt version and hash, so the judge job counts a judgment made from the old file as stale and makes it again; `next` names that job. The stored answers do not depend on the judge prompt, so no subject run is made again. Run the job with `--dry-run` first to see the calls and the cost.
+
+The checklist writer's prompts (`checklist-prompt.request-only.v2.md` with `{{request}}` and `{{count}}`, and its repair prompt `checklist-repair.request-only.v1.md` with `{{prompt}}`, `{{previous}}` and `{{listed}}`) change the same way: a new file, named in `lib/request-checklist.js`, its hash pinned, and every checklist made from the old file is made again.
 
 ## Judge calls
 
@@ -845,6 +904,38 @@ node scripts/bench/bench.js next --skills convention-control,dose-ladder --run c
 ```
 
 Run the command it prints, call `next` again until it prints `done`, then run `report` with the same `--skills` and `--run`.
+
+## The Crew workflow
+
+`scripts/bench/workflows/skill-benchmark.py` runs the Quickstart loop in [Kiro Crew](../../docs/guides/kiro-crew-integration.md). Launch it with Crew's workflow tool, with the file's text as the source and these inputs as its args. An input with any other name is refused, so a misspelt limit never falls back to its default:
+
+| Input         | Default   | Meaning                                                                                                                                                                                                                        |
+| ------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `repo`        | required  | The absolute path of this checkout. Letters, digits and `/._-@+=,:` only.                                                                                                                                                      |
+| `skills`      | required  | The skills, as a list or a comma string. The controls are named the same way.                                                                                                                                                  |
+| `max_usd`     | 30        | This run's spend limit, at most 2 decimals. Passed to every `next`, and through the command `next` prints, to every job.                                                                                                       |
+| `max_minutes` | 50        | This run's time limit, whole minutes from 1 to 55 (Crew ends a run after 60 minutes by default; a host that sets a lower limit ends it sooner, so set `max_minutes` below it). Passed to every `next` with the run start time. |
+| `run`         | `default` | The run id.                                                                                                                                                                                                                    |
+| `provider`    | `live`    | `stub` runs with no model call, in a run named `stub` or `stub-<name>`.                                                                                                                                                        |
+
+Each step is one agent call that runs one command in `repo` and copies the fields of the JSON line it prints:
+
+1. `next --skills ... --run ... --max-usd ... --max-minutes ... --started-at ...`, where the start time is the workflow run's own start (`ctx.now`).
+2. When `next` names a job, the workflow checks the command: it must be `node scripts/bench/job.js <job>` with plain arguments that carry this run's `--run` and `--max-usd`, exactly one `--skills` list that names this run's skills (the dose ladder's own items may be added next to a `--ladder` pair), and `--provider stub` if and only if `provider` is `stub`. The driver refuses a live job in a stub run and a stub job outside one as well. It then starts the same arguments with `launch.js`, which runs the job detached and, for a step that is retried, returns the running job instead of starting a second one.
+3. It waits for the job's process to end, at most 10 minutes per agent call and never past `max_minutes`, then reads the job's last log line. A job that exits 0 sends it back to step 1.
+4. When the loop ends for any reason but FAILED, it runs `report`. The loop makes at most 12 passes.
+
+| Status    | When                                                                                                                                                                                                                                                                 | What to do                                                   |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `OK`      | `next` says `done` and the report is written with its labels published. The reason names the controls status and the labels. A stub run says its answers are made up.                                                                                                | Read `report.md`.                                            |
+| `STOP`    | `next` stops for spend, for another refusal, or for time before any job ran, a job exits 1, 4 to 9 or 10, the launcher refuses the launch (exit 1 with its reason), or a control failed or was not run (kind `controls`: the labels are withheld, read `report.md`). | Read the reason; raise a limit or fix the cause, then rerun. |
+| `RUNNING` | `max_minutes` is reached after a job ran in this run (`next` stops for time), or a job still runs detached when the limit is hit.                                                                                                                                    | Rerun with the same inputs. Nothing is started twice.        |
+| `PARTIAL` | A job exits 3, or `next` says `done` with a judgment the provider blocks for good.                                                                                                                                                                                   | Rerun to try the failed calls again; the report names them.  |
+| `FAILED`  | A bad input, a step with no usable reply, a command that is not the job script, or another exit code.                                                                                                                                                                | Read the reason. No report is written.                       |
+
+Each stop prints a `STOP <kind>: <reason>` line to the run's log and returns it as the reason. Finished work stays on disk. The workflow adds no limit of its own: the limits are the driver's, and the spend ledger refuses any call past one. It reads no credential and names no AWS profile; each job exports its own credentials from `aws_profile`.
+
+The script uses only what the Crew sandbox allows: no import, a fixed set of builtins and no `str.format`. `tests/scripts/bench/crew-workflow.test.js` runs it against a stub `ctx` (`tests/scripts/bench/workflow-stub.py`) with the same builtins, and runs the Quickstart loop with the stub provider. The workflow tests need `python3` and skip without it.
 
 ## Not built yet
 
