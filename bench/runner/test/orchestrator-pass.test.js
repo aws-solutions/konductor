@@ -483,3 +483,18 @@ test('--verdict takes platform or orchestrator-pass; the new flags are accepted'
     assert.match(r.stderr, /--verdict takes platform or orchestrator-pass/);
   } finally { rm(root); }
 });
+
+test('a --test-arms name that is an A/A repeat, or matches no arm, gets an explicit warning', () => {
+  const root = mk();
+  try {
+    const d = cellDir(root, 'tarm', {});
+    const repeat = run(d, { testArms: ['orch-b'] });
+    assert.equal(armOf(repeat, 0, 'orch'), undefined, 'the primary was not named, so it has no row');
+    assert.equal(armOf(repeat, 0, 'orch-b').call, null);
+    assert.ok(repeat.notes.some((n) => /--test-arms names orch-b, which is an A\/A repeat of .* in kiro-cli v3 \/ claude-sonnet-5\.5\. .*gets no call/.test(n)), repeat.notes.join(' | '));
+    const missing = run(d, { testArms: ['orch', 'nope'] });
+    assert.ok(missing.notes.some((n) => /--test-arms names nope, but no run directory/.test(n)));
+    assert.ok(armOf(missing, 0, 'orch').call);
+    assert.ok(!run(d, { testArms: ['orch'] }).notes.some((n) => /--test-arms/.test(n)));
+  } finally { rm(root); }
+});

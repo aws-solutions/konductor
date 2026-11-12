@@ -316,6 +316,11 @@ function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'van
     }).filter(Boolean) : [];
     if (!ref) notes.push(`${c.model} has no Claude cell on the same harness to compare ratios with. Add a Claude run directory, or read its ratios to vanilla on their own.`);
   }
+  for (const name of testArms ?? []) {
+    const hits = cells.flatMap((c) => c.arms.filter((x) => x.armId === name).map((x) => ({ c, x })));
+    if (!hits.length) notes.push(`--test-arms names ${name}, but no run directory with the baseline arm "${baseline}" has an arm with that id. It has no call.`);
+    for (const { c, x } of hits.filter((h) => h.x.aaRepeatOf)) notes.push(`--test-arms names ${name}, which is an A/A repeat of ${x.aaRepeatOf} in ${c.key}. A repeat measures drift and gets no call. Name ${x.aaRepeatOf} to get one.`);
+  }
   for (const s of skippedDirs) notes.push(`${s.dir} was left out: ${s.reason}.`);
   if (comparisons > 1) notes.push(`${comparisons} test arms are compared with vanilla in this report, so each quality interval is widened to the Bonferroni level of ${levelText(1 - 0.05 / comparisons)} (0.05 divided by ${comparisons}).`);
   if (cells.some((c) => c.arms.some((a) => a.failedAsZero))) notes.push('A run that failed or timed out with nothing to score counts as quality 0, and its cost counts. Infra errors and model mismatches are left out of quality and listed, and a side with more than a fifth of its runs in that state gets no call.');
