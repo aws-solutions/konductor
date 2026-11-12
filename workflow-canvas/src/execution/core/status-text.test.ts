@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { helloRun } from '../../test-support/fixtures';
 import { IDLE, reduce, type ExecutionState } from './execution-state';
-import { statusKind, statusText } from './status-text';
+import { liveStatusText, statusKind, statusText } from './status-text';
 
 const STARTING: ExecutionState = { phase: 'starting' };
 
@@ -136,5 +136,30 @@ describe('statusText and statusKind', () => {
       'Starting the run.',
       'Waiting for the first status of the run.',
     ]);
+  });
+});
+
+describe('liveStatusText', () => {
+  it('says nothing at rest before a workflow has loaded', () => {
+    expect(liveStatusText(IDLE, false)).toBe('');
+  });
+
+  it('says the run is ready once a workflow has loaded', () => {
+    expect(liveStatusText(IDLE, true)).toBe('Ready. Press Run to start.');
+  });
+
+  it('says nothing on an error, loaded or not', () => {
+    const error: ExecutionState = {
+      phase: 'error',
+      message: 'No answer.',
+      started: false,
+    };
+    expect(liveStatusText(error, true)).toBe('');
+    expect(liveStatusText(error, false)).toBe('');
+  });
+
+  it('follows a run that is going on, loaded or not', () => {
+    const state = following(helloRun(1));
+    expect(liveStatusText(state, false)).toBe(statusText(state));
   });
 });

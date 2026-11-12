@@ -4,7 +4,8 @@ A browser UI for designing and running Konductor workflows. This folder is an
 independent npm project (Vite, React, TypeScript, Cloudscape) and is not part
 of the agent package or the CLI.
 
-The page has Designer and Execution tabs. The Designer tab loads the workflow
+The page has Designer and Execution views, picked with a switch in the page
+header. The Designer view loads the workflow
 from the API and draws it: the intent, each stage in list order (name, agent
 and harness) and the end, joined by run-order edges. You can pick the agent of
 a stage, rename it, add a stage, delete one and save the file. It shows a
@@ -602,9 +603,12 @@ corner radii, in a light and a dark mode.
   was at load: a later change of the system setting, or of the choice in
   another tab, shows after a reload.
 - The page header is a dark band with the breadcrumb `Workflows > <workflow>`
-  (the page has no list of workflows yet, so no crumb is a link), the title
-  and the Designer and Execution tabs. The whole tab strip, with its rule and
-  the selected-tab indicator, is part of the band.
+  (the page has no list of workflows yet, so no crumb is a link), the name of
+  the workflow as the title ("Workflow canvas" until one has loaded) and, on
+  the same row, the switch between Designer and Execution
+  (`src/chrome/ModeSwitch.tsx`). The switch is a tab list drawn as segments:
+  Tab reaches the selected one, and the arrow keys, Home and End select
+  another.
 - Nodes are cards with the corner radius of the theme. The `S` run-order
   ports are pieces of a jigsaw, 26 by 16 pixels, with a dark rim and a letter
   `S`: the out port is a square tab that hangs from the bottom edge, the in
@@ -615,11 +619,11 @@ corner radii, in a light and a dark mode.
   focus ring follows the outline of the card and of the tab.
 
 Text meets WCAG 2 AA (4.5:1) in both modes, and the edges of controls, nodes,
-ports and the selected-tab indicator reach 3:1. `src/theme/tokens.test.ts`
+ports and the selected segment of the switch reach 3:1. `src/theme/tokens.test.ts`
 and `test-support/canvas-contrast.test.ts` check each of these colour pairs
 for the palettes, the band and the canvas in both modes, and the end-to-end
-tests run axe (which checks text contrast) in both modes and read the colour
-of the tab strip.
+tests run axe (which checks text contrast) in both modes and read the colours
+of the switch.
 
 ## End-to-end tests
 
