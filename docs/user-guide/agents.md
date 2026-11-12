@@ -219,8 +219,9 @@ Step 6 has `k-developer` write the report, then end with a note asking the orche
 problem is never hidden behind a pending pass. Under `konductor`, the orchestrator runs the
 adversarial review from the note, records its verdict and report path next to the report's
 own verdict, and replaces a `PENDING ADVERSARIAL PASS` verdict with the final one: `READY FOR
-CR`, or `NEEDS FIXES` when the adversarial report lists a CRITICAL or IMPORTANT finding, unless
-a pass is MISSING, which keeps the report pending (`Adversarial pass: incomplete`). The
+CR`, or `NEEDS FIXES` when the adversarial report lists a CRITICAL or IMPORTANT finding, even
+with a pass MISSING. A MISSING pass with no such finding keeps the report pending
+(`Adversarial pass: incomplete`). The
 report's two lines are written by the orchestrator, or by `k-developer` on its behalf when the
 orchestrator does not write files. When `k-developer` is started directly, the note comes back
 to you: ask `konductor` to run the adversarial review.
