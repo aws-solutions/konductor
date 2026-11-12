@@ -143,7 +143,7 @@ Wave rules:
 
 - Wave entries are **leaf** task ids, as strings: a sub-task (`"2.1"`) or a top-level task without sub-tasks (`"1"`, a checkpoint such as `"3"`). A parent that has sub-tasks never appears itself
 - Every leaf task, optional ones included, appears in exactly one wave
-- A task sits in a later wave than every **required** leaf it uses: the leaves of the tasks its top-level task depends on in the flowchart, and the earlier sub-tasks of its own parent. When unsure whether it uses one, wait for every required leaf of those tasks. It does not wait for optional leaves, since a run can skip them, or for a checkpoint: Kiro's own waves start a stage's first sub-task alongside the previous stage's optional tests, before the checkpoint between them
+- A task sits in a later wave than every **required** leaf it uses: the leaves of the tasks its top-level task depends on in the flowchart, and the earlier sub-tasks of its own parent. When unsure whether it uses one, wait for every required leaf of those tasks. It does not wait for optional leaves, since a run can skip them, or for a checkpoint itself: through a checkpoint, it waits for the required leaves of the tasks that checkpoint checks. Kiro's own waves start a stage's first sub-task alongside the previous stage's optional tests, before the checkpoint between them
 - An optional leaf sits in an earlier wave than the next checkpoint after its parent, so the checkpoint checks it when it runs
 - Tasks in one wave are independent; Kiro runs each wave's tasks concurrently
 - A checkpoint gets a wave after every leaf of the tasks it checks
