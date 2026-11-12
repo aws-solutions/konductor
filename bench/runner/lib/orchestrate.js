@@ -10,6 +10,7 @@ const { skippedResult, errorResult } = require('./result.js');
 const { layoutProblem } = require('./arm-source.js');
 const { openLedger } = require('./credit-ledger.js');
 const { describeChange, judgeBatch, GATE_FILE } = require('./isolation-gates.js');
+const { DEFAULT_MAX_AUTH_FAILURES } = require('./auth-failure.js');
 
 const DEFAULT_CENSORED_FLOOR = 1.0;
 
@@ -208,12 +209,15 @@ function preflightTable(arms, prepared, errors) {
   return rows.map((r) => r.map((c, i) => c.padEnd(w[i])).join('  ')).join('\n');
 }
 
-async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false, replicateOffset = 0 }) {
+async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false, replicateOffset = 0, maxAuthFailures = DEFAULT_MAX_AUTH_FAILURES }) {
   const ledger = makeLedger({ budgetCredits, floor: censoredFloor, runsPerReplicate: tasks.length * arms.length, costOf });
   // The study ledger only tracks unless a budget was given; then it also stops new launches at 90% of that budget.
   const study = creditLedger ?? openLedger({ dir: outDir, budget: budgetCredits });
   let guardReason = null;
+  // Consecutive login failures (in completion order) mean the login is gone; every later run would fail the same way.
+  const authStop = { limit: maxAuthFailures, consecutive: 0, tripped: false, reason: null, skipped: 0 };
   const shouldSkip = (item) => {
+    if (authStop.tripped) { guardReason = authStop.reason; return true; }
     guardReason = study.shouldStop() ? study.stopReason() : null;
     return guardReason !== null || ledger.shouldSkip(item);
   };
@@ -247,6 +251,12 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
       writeResult(outDir, arm, task, replicate, r);
       state.spent = ledger.observed;
       state.charged = ledger.charged;
+      if (!r.authFailure) authStop.consecutive = 0;
+      else if (++authStop.consecutive >= authStop.limit && !authStop.tripped) {
+        authStop.tripped = true;
+        authStop.reason = `login failure: ${authStop.consecutive} consecutive runs could not log in (${r.authFailure}); no further run started`;
+        log(`LOGIN FAILURE: ${authStop.reason}`);
+      }
       const spent = unit === 'usd' ? r.costUsd : r.credits;
       const censored = unit === 'usd' ? r.costCensored : r.creditsCensored;
       log(`done ${arm.id} / ${task.id} / #${replicate}: ${r.status}, ${spent == null ? 'n/a' : spent.toFixed(3)} ${unit}${censored ? ` (censored, charged ${charge.toFixed(3)})` : ''}${r.authFailure ? ' (login failure, no turn ran, charged 0)' : ''}${r.creditOvershoot > 0 ? ` (${r.creditOvershoot.toFixed(3)} over the run credit limit ${r.creditLimit})` : ''}, ${r.wallClockMs == null ? 'n/a' : (r.wallClockMs / 1000).toFixed(1) + 's'} (charged ${ledger.charged.toFixed(3)})`);
@@ -256,6 +266,7 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
   };
   const onSkip = ({ task, arm, replicate }) => {
     const why = guardReason ?? ledger.skipReason();
+    if (authStop.tripped) authStop.skipped++;
     const r = skippedResult({ arm, task, replicate, config: ctx.config, env: ctx.envInfo, reason: why });
     writeResult(outDir, arm, task, replicate, r);
     state.results.push(r);
@@ -272,7 +283,7 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
     if (judged.warning) log(`${judged.warning} See ${GATE_FILE}.`);
     if (!installsGate.ok) log(gateStrict ? `ISOLATION FAILURE: ${describeChange(installsGate)}. The runs of this batch are not trustworthy; see ${GATE_FILE}.` : `${judged.alarm} See ${GATE_FILE}.`);
   }
-  return { installsGate, results, observed: ledger.observed, charged: ledger.charged, study: study.totals(), studyLine: study.line(), guard: study.state() };
+  return { installsGate, authStop, results, observed: ledger.observed, charged: ledger.charged, study: study.totals(), studyLine: study.line(), guard: study.state() };
 }
 
 module.exports = {

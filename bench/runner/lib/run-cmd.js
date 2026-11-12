@@ -30,6 +30,7 @@ const { createInstallsGate, describeChange, judgeBatch } = require('./isolation-
 const toolchain = require('./toolchain.js');
 const { ensureOwnedDir } = require('./owned.js');
 const { infraFailure } = require('./infra-check.js');
+const { maxAuthFailuresOf, AUTH_EXIT_CODE } = require('./auth-failure.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -208,6 +209,7 @@ async function cmdRun(opts) {
     stopOn = opts['stop-on'];
     if (!STOP_ON.includes(stopOn)) throw new Error(`--stop-on takes ${STOP_ON.slice(0, -1).join(', ')} or ${STOP_ON.at(-1)}`);
   }
+  const maxAuthFailures = maxAuthFailuresOf(opts['max-auth-failures'], process.env.BENCH_MAX_AUTH_FAILURES);
   const maxToolCalls = opts['max-tool-calls'] === undefined ? null : intOpt(opts['max-tool-calls'], 'max-tool-calls');
   const seed = opts.seed === undefined ? Date.now() % 2147483647 : intOpt(opts.seed, 'seed', 0);
   const isolate = opts.isolate || 'auto';
@@ -338,7 +340,7 @@ async function cmdRun(opts) {
 
     const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main' || a.id === 'cc-main');
     runConfig = {
-      suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, [isUsd ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
+      suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, maxAuthFailures, [isUsd ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
       profile: profile ? { name: profile.name, aaArm: aa?.spec ? { arm: arms.at(-1).id, repeats: aa.twin } : null } : null,
       runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent, armConfig: armOpts.armConfig, oracleSkills: armOpts.oracle,
       isolationGates: { installs: ctx.installsGate.dirs, claudeRules: 'an empty rules file in a scratch CLAUDE_CONFIG_DIR (Claude Code runs)' },
@@ -404,14 +406,14 @@ async function cmdRun(opts) {
     }, null, 2) + '\n');
 
     log(`out=${outDir}`);
-    const { results, observed, charged, studyLine, guard } = await runAll({
+    const { results, observed, charged, studyLine, guard, authStop } = await runAll({
       tasks, arms, prepared, prepErrors: errors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log,
-      costOf: isUsd ? USD : CREDITS, unit, gateStrict: Boolean(opts['gate-strict']), replicateOffset,
+      costOf: isUsd ? USD : CREDITS, unit, gateStrict: Boolean(opts['gate-strict']), replicateOffset, maxAuthFailures,
     });
     const judged = judgeBatch({ gate: batchWindow.end(), results, strict: Boolean(opts['gate-strict']), window: { from: batchFrom, to: new Date().toISOString() } });
     const gate = judged.gate;
     const infra = infraFailure(results);
-    fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(infra ? { infraFailure: infra } : {}), ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
+    fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(authStop.tripped ? { authStop } : {}), ...(infra ? { infraFailure: infra } : {}), ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
     if (judged.warning) log(judged.warning);
     if (!gate.ok) {
       log(judged.alarm);
@@ -419,6 +421,10 @@ async function cmdRun(opts) {
     }
     log(`finished: ${JSON.stringify(summarize(runConfig, { ...state, results }, {}).counts)}, ${observed.toFixed(3)} ${unit} observed, ${charged.toFixed(3)} charged`);
     log(`final ${studyLine}`);
+    if (authStop.tripped) {
+      log(`LOGIN FAILURE: ${authStop.reason}. ${authStop.skipped} planned run(s) were skipped. Log in to kiro-cli again, then rerun the skipped cells in a new --out or with --replicate-offset.`);
+      if (!process.exitCode) process.exitCode = AUTH_EXIT_CODE;
+    }
     if (infra) {
       log(`INFRA FAILURE: ${infra.reason}`);
       if (!process.exitCode) process.exitCode = 5;

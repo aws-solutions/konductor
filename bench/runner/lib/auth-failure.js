@@ -12,6 +12,10 @@ const AUTH_PATTERNS = [
   /please log ?in/i,
 ];
 
+const DEFAULT_MAX_AUTH_FAILURES = 3;
+// Exit code of `bench.js run` when the chunk stopped on login failures (5 is the all-runs-errored flag).
+const AUTH_EXIT_CODE = 6;
+
 const SNIPPET_CHARS = 200;
 const SCAN_CHARS = 200000;
 
@@ -46,4 +50,13 @@ function classifyAuthFailure({ agg, exec, texts = [] }) {
   return authFailureText(exec?.error, ...texts);
 }
 
-module.exports = { AUTH_PATTERNS, authFailureText, neverStartedTurn, classifyAuthFailure };
+/** The consecutive-auth-failure limit: --max-auth-failures, else BENCH_MAX_AUTH_FAILURES, else 3. Throws on anything but a positive integer. */
+function maxAuthFailuresOf(flag, envValue) {
+  const raw = flag !== undefined ? flag : envValue;
+  if (raw === undefined || raw === '') return DEFAULT_MAX_AUTH_FAILURES;
+  if (raw === true || !/^[1-9]\d*$/.test(String(raw))) throw new Error(`${flag !== undefined ? '--max-auth-failures' : 'BENCH_MAX_AUTH_FAILURES'} must be a positive integer`);
+  return Number(raw);
+}
+
+module.exports = {
+  DEFAULT_MAX_AUTH_FAILURES, AUTH_EXIT_CODE, maxAuthFailuresOf, AUTH_PATTERNS, authFailureText, neverStartedTurn, classifyAuthFailure };

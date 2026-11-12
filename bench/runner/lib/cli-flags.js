@@ -10,7 +10,7 @@ const FLAGS = {
     'cargo-online', 'seed', 'isolate', 'allow-unisolated', 'allow-partial', 'censored-floor', 'hide', 'no-default-hide', 'env-keep', 'tripwire-exclude', 'tripwire-depth', 'tripwire-dir',
     'kiro-bin', 'bench-dir', 'repo-root', 'real-cache', 'prepare-only', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'agent-engine',
     'extra-tasks', 'suites-dir', 'run-credit-limit', 'auth-db', 'arm-prefix', 'arm-agent', 'arm-config', 'stop-on', 'max-tool-calls', 'profile',
-    'oracle-skills', 'oracle-manifest', 'claude-bin', 'claude-tools-dir', 'run-budget-usd', 'aws-region', 'gate-strict',
+    'oracle-skills', 'oracle-manifest', 'claude-bin', 'claude-tools-dir', 'run-budget-usd', 'aws-region', 'gate-strict', 'max-auth-failures',
   ],
   judge: [
     'run', 'judges', 'mode', 'baseline', 'concurrency', 'budget-credits', 'judge-cmd', 'max-file-chars', 'max-bundle-chars', 'redact-file',
