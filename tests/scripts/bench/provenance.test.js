@@ -64,6 +64,105 @@ test('fileSha256 hashes the bytes of the file and nothing else', () => {
   });
 });
 
+test('treeSha256 hashes relative paths and file bytes, in name order, and refuses links', () => {
+  const fs = require('fs');
+  const makeTree = (dir, files) => {
+    for (const [relative, text] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(dir, relative)), {
+        recursive: true,
+      });
+      fs.writeFileSync(path.join(dir, relative), text);
+    }
+    return dir;
+  };
+  helpers.withTmp((dir) => {
+    const files = { 'b.md': 'two', 'a/SKILL.md': 'one' };
+    const first = makeTree(path.join(dir, 'first'), files);
+    const second = makeTree(path.join(dir, 'second'), {
+      'a/SKILL.md': 'one',
+      'b.md': 'two',
+    });
+    const expected = provenance.sha256({
+      files: [
+        ['a/SKILL.md', provenance.sha256('one')],
+        ['b.md', provenance.sha256('two')],
+      ],
+    });
+    assert.equal(provenance.treeSha256(first), expected);
+    assert.equal(
+      provenance.treeSha256(second),
+      expected,
+      'the folder name and write order do not count',
+    );
+    fs.mkdirSync(path.join(second, 'empty'));
+    assert.equal(
+      provenance.treeSha256(second),
+      expected,
+      'an empty folder adds nothing',
+    );
+    fs.writeFileSync(path.join(second, 'b.md'), 'two!');
+    assert.notEqual(provenance.treeSha256(second), expected, 'bytes count');
+    fs.writeFileSync(path.join(second, 'b.md'), 'two');
+    fs.renameSync(path.join(second, 'b.md'), path.join(second, 'c.md'));
+    assert.notEqual(provenance.treeSha256(second), expected, 'names count');
+    fs.symlinkSync(path.join(first, 'b.md'), path.join(second, 'link.md'));
+    assert.throws(
+      () => provenance.treeSha256(second),
+      /cannot hash non-file entry .*link\.md/,
+    );
+  });
+});
+
+test('treeSha256 marks a file with an execute bit, and a tree without one hashes from paths and bytes alone', () => {
+  const fs = require('fs');
+  helpers.withTmp((dir) => {
+    const script = path.join(dir, 'run.sh');
+    fs.writeFileSync(script, 'echo hi');
+    fs.chmodSync(script, 0o644);
+    const plain = provenance.treeSha256(dir);
+    assert.equal(
+      plain,
+      provenance.sha256({
+        files: [['run.sh', provenance.sha256('echo hi')]],
+      }),
+    );
+    for (const executable of [0o755, 0o744, 0o654, 0o645]) {
+      fs.chmodSync(script, executable);
+      assert.notEqual(
+        provenance.treeSha256(dir),
+        plain,
+        `mode ${executable.toString(8)}`,
+      );
+    }
+    fs.chmodSync(script, 0o755);
+    assert.equal(
+      provenance.treeSha256(dir),
+      provenance.sha256({
+        files: [['run.sh', provenance.sha256('echo hi'), 'executable']],
+      }),
+    );
+    fs.chmodSync(script, 0o600);
+    assert.equal(provenance.treeSha256(dir), plain, 'other bits do not count');
+  });
+});
+
+test('treeSha256 visits entries in name order whatever order the folder listing comes in', (t) => {
+  const fs = require('fs');
+  helpers.withTmp((dir) => {
+    for (const name of ['b.md', 'a.md', 'c.md'])
+      fs.writeFileSync(path.join(dir, name), name);
+    const expected = provenance.sha256({
+      files: ['a.md', 'b.md', 'c.md'].map((name) => [
+        name,
+        provenance.sha256(name),
+      ]),
+    });
+    const readdir = fs.readdirSync;
+    t.mock.method(fs, 'readdirSync', (...args) => readdir(...args).reverse());
+    assert.equal(provenance.treeSha256(dir), expected);
+  });
+});
+
 test('a checklist hash depends on the order of its items', () => {
   assert.notEqual(
     provenance.checklistSha256(['a', 'b']),
