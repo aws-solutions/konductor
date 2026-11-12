@@ -132,7 +132,10 @@ export function App({
             }
           >
             {notice}
-            <RunAnnouncements state={execution.state} />
+            <RunAnnouncements
+              state={execution.state}
+              loaded={result?.ok === true}
+            />
             <ModePanels views={views} active={view} />
           </ContentLayout>
         }

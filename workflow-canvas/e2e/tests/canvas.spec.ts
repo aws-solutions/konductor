@@ -313,6 +313,7 @@ test('shows an error when the launch code is wrong', async ({ page }) => {
   await expect(page.getByText('The workflow did not load')).toBeVisible();
   await expect(page.getByText('The launch code is not valid.')).toBeVisible();
   await expect(canvas.graph).toHaveCount(0);
+  await expect(canvas.runLiveStatus).toHaveText('');
 });
 
 test('explains what to do when the address has no launch code', async ({

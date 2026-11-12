@@ -92,6 +92,29 @@ describe('App', () => {
     expect(execution.getAttribute('aria-selected')).toBe('true');
   });
 
+  it('announces nothing while the workflow is loading', () => {
+    render(<App load={new Promise<LoadResult>(() => {})} />);
+
+    expect(screen.getByTestId('run-live-status').textContent).toBe('');
+  });
+
+  it('announces nothing to run when the load failed', async () => {
+    render(<App load={settled(failed('The launch code is not valid.'))} />);
+
+    await screen.findByText('The launch code is not valid.');
+    expect(screen.getByTestId('run-live-status').textContent).toBe('');
+  });
+
+  it('says the run is ready once the workflow has loaded', async () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('run-live-status').textContent).toBe(
+        'Ready. Press Run to start.',
+      ),
+    );
+  });
+
   it('lets Tab reach only the selected view in the switch', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
 
