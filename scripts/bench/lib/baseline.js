@@ -35,7 +35,8 @@ function fileExists(file) {
 
 /**
  * @returns {{ hasBaseline: boolean, rules: object|null, rulesStale: boolean,
- *   batches: {batch: string, tasks: object, stale: boolean}[], problems: string[], warnings: string[] }}
+ *   batches: {batch: string, tasks: object, buckets: object|null, stale: boolean}[], problems: string[],
+ *   warnings: string[] }}
  */
 function loadBaseline(layout, skill) {
   const baseline = {
@@ -101,11 +102,16 @@ function loadBaseline(layout, skill) {
       batch,
       rules,
     });
-    readChecked(layout.bucketsFile(skill, batch), 'buckets', { rules, tasks });
+    const buckets = readChecked(layout.bucketsFile(skill, batch), 'buckets', {
+      rules,
+      tasks,
+    });
     if (tasks)
       baseline.batches.push({
         batch,
         tasks,
+        // The bucket of each checklist item; null when the sidecar failed its check (listed in problems).
+        buckets: buckets || null,
         stale: rulesSha !== null && tasks.rules_sha256 !== rulesSha,
       });
   }

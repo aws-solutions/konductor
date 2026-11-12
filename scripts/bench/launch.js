@@ -4,11 +4,13 @@
  *
  *   node scripts/bench/launch.js pairs --skills a,b [--run <id>] [--max-usd N] [--config <file>] [--root <dir>] [--dry-run]
  *   node scripts/bench/launch.js checklists --skills a,b [--ladder <file>] [same options]
+ *   node scripts/bench/launch.js judge --scale items|outcome --skills a,b [same options]
  *
  * The job is `node scripts/bench/job.js` with the same, checked options (lib/launch.js). Its log and pid file are in
  * bench/out/<run-id>/jobs/ (lib/job-dir.js). A job that is already running for the same skills is not started again.
  *
- * Printed on success:  {"job","run_id","skills","dry_run","pid","already_running","log_file","pid_file"}
+ * Printed on success:  {"job","run_id","skills","dry_run","pid","already_running","log_file","pid_file"}, and
+ *                      "scale" after "job" for a judge job
  * Printed on failure:  {"error": "<what went wrong>", "exit_code": <code>}
  *
  * Exit 0 means the job was started, not that it will be accepted: the job checks `plan` for the same skills as its
@@ -16,8 +18,8 @@
  *
  * Exit codes:
  *   0   the job was started, or it was already running
- *   1   refused: another live job of the same kind runs one of these skills, a pid file names a process that cannot
- *       be checked, or another launch holds the lock
+ *   1   refused: another live job of the same kind (for judge, of the same scale) runs one of these skills, a pid
+ *       file names a process that cannot be checked, or another launch holds the lock
  *   64  usage error: a bad flag or value, an unknown job or skill, an invalid settings file
  *   66  a file or folder is missing, 70 internal error, 74 I/O error (as in bench.js)
  */
@@ -51,6 +53,7 @@ Options
   --config <file>    Settings file to use instead of bench/config.json.
   --root <dir>       Repository root to read (default: this checkout).
   --ladder <file>    checklists only: a dose ladder whose items --skills may also name.
+  --scale <scale>    judge only, required: items (reading B) or outcome (reading A).
   --dry-run          Start the job in its dry-run mode: it lists the work and spends nothing.
 
 Exit codes

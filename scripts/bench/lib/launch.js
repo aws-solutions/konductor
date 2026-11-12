@@ -20,9 +20,11 @@
  *     (child-env.js, no profile: the job resolves its own AWS profile from the settings). No credential is read,
  *     exported or written by the launcher; the job exports fresh credentials before every subject run.
  *
- * Jobs that can be launched (JOBS): `pairs`, the subject runs (pairs.js), and `checklists`, the request-only
+ * Jobs that can be launched (JOBS): `pairs`, the subject runs (pairs.js), `checklists`, the request-only
  * checklists of reading A (checklist-job.js), which also takes a dose ladder (--ladder) whose item names --skills may
- * name.
+ * name, and `judge`, the judge calls of one reading (judge-job.js), which needs --scale items or outcome. A judge job
+ * of each scale has its own log and pid file (`judge-items`, `judge-outcome`), so the two readings never stand for
+ * each other as "already running".
  */
 'use strict';
 
@@ -40,21 +42,29 @@ const {
 const { loadConfig, ConfigError } = require('./config');
 const { itemNames, loadLadder, validateLadder } = require('./dose-ladder');
 const jobDir = require('./job-dir');
-const { REPO_ROOT, createLayout } = require('./layout');
+const { REPO_ROOT, SCALES, createLayout } = require('./layout');
 const { listSkills } = require('./skills');
 
 /** The script every job runs in: `node scripts/bench/job.js <job> ...`. Its path is how a live job is recognised. */
 const JOB_SCRIPT = path.join(__dirname, '..', 'job.js');
 
-/** The jobs the launcher can start, with what each one does. `ladder`: the job also takes --ladder <file>. */
+/** The jobs the launcher can start, with what each one does. `ladder`: the job also takes --ladder <file>. `scale`:
+ * the job needs --scale items|outcome, and a job of each scale is a job of its own (its own log and pid file). */
 const JOBS = Object.freeze({
   pairs: Object.freeze({
     summary: 'subject runs with and without the skill (paid)',
     ladder: false,
+    scale: false,
   }),
   checklists: Object.freeze({
     summary: 'request-only checklists for reading A (paid)',
     ladder: true,
+    scale: false,
+  }),
+  judge: Object.freeze({
+    summary: 'judge calls of one reading: --scale items or outcome (paid)',
+    ladder: false,
+    scale: true,
   }),
 });
 
@@ -68,10 +78,11 @@ class LaunchRefusedError extends Error {
 
 /**
  * Checks the options of a job command and returns the request:
- *   { job, skills, layout, config, maxUsdText, configFile, ladder, ladderFile }
- * `options` holds the text of the flags: skills, run, maxUsd, config, root, ladder. `ladder` (a job whose JOBS row has
- * `ladder` set) is a dose ladder file that passes its audit; it comes back parsed as `ladder`, with its absolute path as
- * `ladderFile`, both null without the flag. `skills` comes back sorted and without repeats. Throws UsageError for
+ *   { job, skills, layout, config, maxUsdText, configFile, ladder, ladderFile, scale }
+ * `options` holds the text of the flags: skills, run, maxUsd, config, root, ladder, scale. `ladder` (a job whose JOBS
+ * row has `ladder` set) is a dose ladder file that passes its audit; it comes back parsed as `ladder`, with its
+ * absolute path as `ladderFile`, both null without the flag. `skills` comes back sorted and without repeats. `scale`
+ * is the reading of a judge job and null for every other job. Throws UsageError for
  * anything that is not acceptable. Shared by the launcher and the job itself, so the job accepts exactly what the
  * launcher accepted.
  */
@@ -114,6 +125,7 @@ function resolveJobRequest(job, options = {}) {
   if (!options.skills)
     throw new UsageError('--skills is required: name the skills to run');
   const { ladder, ladderFile } = readLadderOption(job, options.ladder);
+  const scale = readScaleOption(job, options.scale);
   const names = parseSkillSelection(options.skills);
   const knownSkills = [
     ...listSkills(layout.skillsDir),
@@ -140,6 +152,7 @@ function resolveJobRequest(job, options = {}) {
     configFile,
     ladder,
     ladderFile,
+    scale,
   };
 }
 
@@ -151,6 +164,7 @@ const VALUE_FLAGS = Object.freeze({
   '--config': 'config',
   '--root': 'root',
   '--ladder': 'ladder',
+  '--scale': 'scale',
 });
 const BOOL_FLAGS = Object.freeze({
   '--dry-run': 'dryRun',
@@ -176,6 +190,28 @@ function parseJobCommand(argv) {
   if (options.help) return { help: true };
   return { job, options, request: resolveJobRequest(job, options) };
 }
+
+/** The --scale option: required for a job that takes one (JOBS[job].scale), refused for the others; null then. */
+function readScaleOption(job, value) {
+  if (!JOBS[job].scale) {
+    if (value !== undefined)
+      throw new UsageError(`--scale is not an option of the ${job} job`);
+    return null;
+  }
+  if (value === undefined)
+    throw new UsageError(
+      `--scale is required for the ${job} job: ${SCALES.join(' (reading B) or ')} (reading A)`,
+    );
+  if (!SCALES.includes(value))
+    throw new UsageError(
+      `--scale must be one of ${SCALES.join(', ')}, got ${JSON.stringify(value)}`,
+    );
+  return value;
+}
+
+/** The job name in the job folder: `<job>-<scale>` for a job that takes a scale, so each reading has its own files. */
+const fileJobName = (request) =>
+  request.scale ? `${request.job}-${request.scale}` : request.job;
 
 /**
  * The --ladder option: { ladder, ladderFile } for a job that takes one (JOBS[job].ladder), or nulls without it.
@@ -220,6 +256,7 @@ function jobArguments(request, { dryRun }) {
       : ['--max-usd', request.maxUsdText]),
     ...(request.configFile ? ['--config', request.configFile] : []),
     ...(request.ladderFile ? ['--ladder', request.ladderFile] : []),
+    ...(request.scale ? ['--scale', request.scale] : []),
     ...(dryRun ? ['--dry-run'] : []),
   ];
 }
@@ -261,12 +298,14 @@ function launchJob(
   } = {},
 ) {
   const { job, skills, layout } = request;
+  const fileJob = fileJobName(request);
   const dir = jobDir.ensureJobDir(layout.jobsDir);
   const key = jobDir.jobKey(skills);
-  const logFile = jobDir.logFile(dir, job, key, { dryRun });
-  const pidFile = jobDir.pidFile(dir, job, key, { dryRun });
+  const logFile = jobDir.logFile(dir, fileJob, key, { dryRun });
+  const pidFile = jobDir.pidFile(dir, fileJob, key, { dryRun });
   const result = (pid, alreadyRunning) => ({
     job,
+    ...(request.scale ? { scale: request.scale } : {}),
     run_id: layout.runId,
     skills,
     dry_run: dryRun,
@@ -276,7 +315,7 @@ function launchJob(
     pid_file: pidFile,
   });
   const launch = () => {
-    const live = jobDir.liveJobs(dir, job, jobScript, processCheck);
+    const live = jobDir.liveJobs(dir, fileJob, jobScript, processCheck);
     const same = live.find((record) => record.file === pidFile);
     if (same) {
       if (same.unverified)
@@ -310,7 +349,9 @@ function launchJob(
     try {
       jobDir.writePidRecord(pidFile, {
         pid,
-        job,
+        // The job folder's name for it: liveJobs finds a judge job of one scale by `judge-<scale>`.
+        job: fileJob,
+        ...(request.scale ? { scale: request.scale } : {}),
         key,
         skills,
         run_id: layout.runId,
@@ -342,6 +383,7 @@ module.exports = {
   BOOL_FLAGS,
   resolveJobRequest,
   parseJobCommand,
+  fileJobName,
   jobArguments,
   launchJob,
 };
