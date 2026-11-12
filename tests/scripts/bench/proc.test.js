@@ -9,7 +9,11 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
-const { run, MAX_TIMEOUT_MS } = require('../../../scripts/bench/lib/proc');
+const {
+  run,
+  runSync,
+  MAX_TIMEOUT_MS,
+} = require('../../../scripts/bench/lib/proc');
 const helpers = require('./helpers');
 
 const NODE = process.execPath;
@@ -250,4 +254,40 @@ test('exit hooks: a host that calls process.exit does not leave its running chil
       if (isAlive(pid)) process.kill(pid, 'SIGKILL');
     }
   });
+});
+
+test('runSync: returns the exit status and stdout of a short command, and an error for one that cannot start', () => {
+  const ok = runSync(NODE, script('process.stdout.write("listed")'));
+  assert.deepEqual(ok, { status: 0, stdout: 'listed', error: null });
+  assert.equal(runSync(NODE, script('process.exit(3)')).status, 3);
+  helpers.withTmp((dir) => {
+    const missing = runSync(path.join(dir, 'no-such-command'), []);
+    assert.equal(missing.status, null);
+    assert.equal(missing.stdout, '', 'no output from a command that never ran');
+    assert.match(missing.error.message, /ENOENT/);
+  });
+  const slow = runSync(NODE, script('setTimeout(() => {}, 5000)'), {
+    timeoutMs: 100,
+  });
+  assert.equal(slow.status, null, 'a command past its timeout is killed');
+  assert.ok(slow.error);
+  // SIGKILL, so a command that ignores SIGTERM is still ended at the limit.
+  const started = Date.now();
+  const stubborn = runSync(
+    NODE,
+    script('process.on("SIGTERM", () => {}); setTimeout(() => {}, 3000)'),
+    { timeoutMs: 200 },
+  );
+  assert.ok(stubborn.error);
+  assert.ok(
+    Date.now() - started < 2000,
+    'ended at the limit, not when it chose',
+  );
+  assert.throws(() => runSync(NODE, 'not an array'), /args must be an array/);
+  for (const timeoutMs of [0, -1, NaN, Infinity, '100'])
+    assert.throws(
+      () => runSync(NODE, [], { timeoutMs }),
+      /timeoutMs must be a number above 0/,
+      String(timeoutMs),
+    );
 });

@@ -3,7 +3,8 @@
  * Minimal spawn helper: no shell, hard timeout (SIGKILL), optional stdin payload, capped output.
  * Resolves with { code, stdout, stderr, ms, timedOut, overflow } and never rejects on a non-zero exit,
  * so callers can record the failure before deciding what to do. A command that cannot be started
- * resolves with code -1 and a `spawn error: ...` line in stderr.
+ * resolves with code -1 and a `spawn error: ...` line in stderr. `runSync` is the same for a short command
+ * that the caller must wait for.
  *
  * GOTCHA: `opencode run` finds its project config (opencode.json, which carries the Bedrock provider and
  * the judge lockdown) from the PWD environment variable, not from process.cwd(). Node's spawn({ cwd })
@@ -13,7 +14,7 @@
  */
 'use strict';
 
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const DEFAULT_TIMEOUT_MS = 300000;
 // The longest delay setTimeout takes; a larger one fires after 1 ms, so every such call would be killed at once.
@@ -156,10 +157,34 @@ function run(
   });
 }
 
+/**
+ * Runs `command` with `args` (no shell) and waits for it. For short, read-only commands such as `ps`. Returns
+ * { status, stdout, error }: `status` is null and `error` is set when the command could not be started or ran past
+ * `timeoutMs` (it is then killed with SIGKILL). Never throws for a failing command.
+ */
+function runSync(command, args, { timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
+  if (!Array.isArray(args))
+    throw new TypeError('runSync: args must be an array of strings');
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)
+    throw new TypeError('runSync: timeoutMs must be a number above 0');
+  const result = spawnSync(command, args, {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: timeoutMs,
+    killSignal: 'SIGKILL',
+  });
+  return {
+    status: result.error ? null : result.status,
+    stdout: typeof result.stdout === 'string' ? result.stdout : '',
+    error: result.error || null,
+  };
+}
+
 module.exports = {
   DEFAULT_TIMEOUT_MS,
   DEFAULT_MAX_OUTPUT_CHARS,
   DEFAULT_KILL_GRACE_MS,
   MAX_TIMEOUT_MS,
   run,
+  runSync,
 };

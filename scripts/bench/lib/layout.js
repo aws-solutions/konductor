@@ -16,6 +16,7 @@
  *   bench/out/<run-id>/raw/<skill>/<batch>/<task>.<with|without>/raw.jsonl     subject event log
  *   bench/out/<run-id>/checklists/<skill>/<batch>/<task>.json              request-only checklist
  *   bench/out/<run-id>/judgments/<items|outcome>/<skill>/<batch>/<task>.<seat>.<with|without>.json
+ *   bench/out/<run-id>/jobs/<job>.<skills>.log, .pid               job logs and pid files (job-dir.js)
  *
  * The baseline, exclusions, ledger and report paths are fixed. The layout under
  * bench/out/<run-id>/ for answers, checklists and judgments is chosen here; code that writes those
@@ -131,6 +132,8 @@ function createLayout({ root = REPO_ROOT, runId = DEFAULT_RUN_ID } = {}) {
     runDir,
     reportJson: path.join(runDir, 'report.json'),
     reportMd: path.join(runDir, 'report.md'),
+    /** The private job folder: the logs and pid files of the jobs started for this run (job-dir.js). */
+    jobsDir: path.join(runDir, 'jobs'),
 
     skillDir: (skill) =>
       path.join(root, 'skills', requireSafeSegment('skill', skill)),
