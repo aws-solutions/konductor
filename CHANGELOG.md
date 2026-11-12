@@ -215,6 +215,10 @@ not per individual commit.
 - Kiro CLI agents now get the bundled `aws-mcp` server from their agent spec, as Claude Code
   agents already did, so `k-architect` and `k-developer` can use their `@aws-mcp` tools. Without
   `uvx` or AWS credentials the server fails to start and the agents work without it.
+- `uninstall` now keeps tracked files that changed since install and warns about them, instead of
+  deleting them. A Kiro agent file that `kiro-cli agent upgrade` rewrote is still removed when its
+  `.json.bak` backup matches what Konductor installed, and the backup is removed with it. The
+  `--json` output adds `kept_changed`, `kept_changed_paths` and `kiro_backups_removed`.
 
 ### Security
 

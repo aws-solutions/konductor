@@ -27,14 +27,15 @@ Would remove Konductor 1.0.0 from Kiro CLI:
   SOPs            19
   context files    2
 
-  skills/backend-review/SKILL.md   (local edits would be destroyed)
+  skills/backend-review/SKILL.md   (changed since install; kept)
 
 Project files under .konductor/ would be left in place.
 ```
 
-`--dry-run` touches the filesystem in no way at all. It flags each individual path whose
-content has diverged from the hash recorded in the manifest — that is, a file you hand-edited
-after install — in plain text as above, or as a per-path `"diverged"` boolean under `--json`.
+`--dry-run` touches the filesystem in no way at all. It marks each path whose content changed
+since install, a file you hand-edited, as `(changed since install; kept)`, and a Kiro agent file
+that `kiro-cli agent upgrade` rewrote as `(rewritten by Kiro; removed with its .bak)`. Under
+`--json` each path carries a `"diverged"` and a `"kept"` boolean.
 
 ### Then remove it
 
@@ -54,9 +55,12 @@ target's entry in `~/.konductor/installs`. `~/.konductor/installs` itself is nev
 even when its last entry goes. If the install used `--link-bin`, the symlink at
 `$HOME/.local/bin/konductor` is removed too.
 
-A real run also names the specific files it deleted whose hash had diverged from the
-manifest. That is a disclosure after the fact, not a safeguard — it does not block the
-deletion, which is why `--dry-run` exists.
+A file you changed after install is kept. `uninstall` prints a warning naming it and still
+exits `0`; the file is no longer tracked, so delete it yourself if you do not want it.
+
+Kiro CLI's `kiro-cli agent upgrade` rewrites each `.kiro/agents/<name>.json` and saves the
+original as `<name>.json.bak`. When that backup matches what Konductor installed, `uninstall`
+removes both files and lists them. A backup that does not match is left alone.
 
 ### Choosing which install to remove
 
