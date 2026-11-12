@@ -178,6 +178,19 @@ test('the plan carries --extra-tasks and --bench-dir through to every command th
   } finally { s.done(); }
 });
 
+test('the plan prints the real path of a symlinked --extra-tasks directory', () => {
+  const s = setup();
+  try {
+    const real = path.join(s.root, 'extra-real');
+    const link = path.join(s.root, 'extra-link');
+    write(path.join(real, 'x1.json'), JSON.stringify({ id: 'x1', class: 'review', target: null, prompt: 'Review.', fixture: 'fx', timeoutSec: 60, checks: [{ type: 'file_exists', path: 'a.txt' }], rubric: [{ id: 'c', criterion: 'x', weight: 1 }], tiers: ['lite'] }));
+    fs.symlinkSync(real, link);
+    const p = s.plan({ mode: 'lift', cap: 'skill:alpha', tasks: ['x1'], extraTasks: [link] });
+    assert.ok(p.commands.run.includes(`--extra-tasks ${fs.realpathSync(real)}`));
+    assert.ok(!p.commands.run.includes(link));
+  } finally { s.done(); }
+});
+
 test('cap plan via the CLI prints the plan, exits 0, and leaves the scratch HOME empty', () => {
   const s = setup();
   try {

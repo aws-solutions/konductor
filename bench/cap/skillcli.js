@@ -6,7 +6,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { BENCH_DIR } = require('../runner/lib/tasks.js');
+const { BENCH_DIR, realDir } = require('../runner/lib/tasks.js');
 const { optionalProfile } = require('../runner/lib/profiles.js');
 const { planSkillStudy, renderPlan, LARGE_DEFAULT, DUPLICATE_PAIRS_DEFAULT, TIERS } = require('./skillplan.js');
 const { initStudy, loadStudy, runStudy, decideStudy, studyStatus, makeExec } = require('./skillstudy.js');
@@ -27,7 +27,7 @@ const num = (v, name) => {
 function common(opts) {
   const repo = path.resolve(opts['repo-root'] && opts['repo-root'] !== true ? opts['repo-root'] : process.env.BENCH_REPO_ROOT || path.resolve(BENCH_DIR, '..'));
   const benchDir = pathOpt(opts['bench-dir']) ?? BENCH_DIR;
-  return { repo, benchDir, extraTasks: list(opts['extra-tasks']).map((d) => path.resolve(d)) };
+  return { repo, benchDir, extraTasks: list(opts['extra-tasks']).map(realDir) };
 }
 
 function runDirsOf(opts) {
@@ -175,7 +175,7 @@ function cmdCriteria(opts) {
   const dirs = runDirsOf(opts);
   if (!studyArg && !dirs.length) throw new Error('--study DIR or --runs DIR[,DIR] is required');
   if (studyArg && dirs.length) throw new Error('give --study or --runs, not both');
-  const extra = list(opts['extra-tasks']).map((d) => path.resolve(d));
+  const extra = list(opts['extra-tasks']).map(realDir);
   let groups;
   let outDir = pathOpt(opts.out);
   let source;

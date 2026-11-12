@@ -6,7 +6,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { BENCH_DIR } = require('../runner/lib/tasks.js');
+const { BENCH_DIR, realDir } = require('../runner/lib/tasks.js');
 const { resolveArm } = require('../runner/lib/arms.js');
 const { prepareAll } = require('../runner/lib/orchestrate.js');
 const { DEFAULT_ENGINE, AGENT_ENGINES } = require('../runner/lib/harness/runtime.js');
@@ -61,7 +61,7 @@ function common(opts) {
   const repo = path.resolve(opts['repo-root'] && opts['repo-root'] !== true ? opts['repo-root'] : process.env.BENCH_REPO_ROOT || path.resolve(BENCH_DIR, '..'));
   const benchDir = pathOpt(opts['bench-dir']) ?? BENCH_DIR;
   const base = opts.base && opts.base !== true ? String(opts.base) : DEFAULT_BASE;
-  return { repo, benchDir, base, extraTasks: list(opts['extra-tasks']).map((d) => path.resolve(d)) };
+  return { repo, benchDir, base, extraTasks: list(opts['extra-tasks']).map(realDir) };
 }
 
 function engineOf(opts) {

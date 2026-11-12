@@ -6,7 +6,7 @@
 const os = require('node:os');
 const path = require('node:path');
 const { OBSERVED, HEADROOM, quote, stamp, seedOf } = require('../runner/lib/pr-plan.js');
-const { SUITE_NAMES, loadTasks } = require('../runner/lib/tasks.js');
+const { SUITE_NAMES, loadTasks, realDir } = require('../runner/lib/tasks.js');
 const { resolveBase } = require('./source.js');
 const { scanRepo, loadAgentSpecs } = require('./scan.js');
 const { loadRegistry } = require('./registry.js');
@@ -156,7 +156,7 @@ function planCap({
   const stampName = `cap-${mode}-${split(cap)[1]}-${stamp(now)}`;
   const out = path.join(tmpRoot, 'konductor-bench', 'runs', stampName);
   const seedValue = seed === undefined ? seedOf(`${cap}:${mode}`) : Number(seed);
-  const extraFlag = extraTasks.length ? ` --extra-tasks ${quote(extraTasks.map((d) => path.resolve(d)).join(','))}` : '';
+  const extraFlag = extraTasks.length ? ` --extra-tasks ${quote(extraTasks.map(realDir).join(','))}` : '';
   const benchFlag = ` --bench-dir ${quote(path.resolve(benchDir))}`;
   const repoFlag = ` --repo-root ${quote(path.resolve(repoRoot))}`;
   const engineFlag = agentEngine === 'v2' ? '' : ` --agent-engine ${agentEngine}`;
