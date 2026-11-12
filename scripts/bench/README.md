@@ -602,6 +602,19 @@ A reply whose only fault is the length of some items (the count, the JSON shape 
 
 A checklist file records the writer prompt's hash, the writer model, the stripped request with its hash, the item count, and the items with their hash. It is current only when the prompt hash, the model, the request hash and the item count match today's values, the stored request and items match their own hashes, and the items still pass the checks; otherwise it is written again and the old file is kept as `<file>.superseded-<time>`. A file that cannot be read for a reason other than "it is not there" or "it is not JSON" (an I/O error, a folder in its place) stops the command with that error, because reading it as missing would pay for the checklist again. If a checklist that passed the checks cannot be written after one more try, the task is reported as failed and its items are printed in the job log, so the paid reply is not lost. Tasks with the same stripped request and item count (the dose ladder's doses share their tasks) share one writer call: the later ones are written as copies that name the task they copy. Each call is a judge call (`lib/opencode.js`), so it is booked in the ledger like any other. It reserves its ceiling in the ledger (the prompt's tokens plus the output limit at the model's token prices, see the paragraph on the ledger), is charged the writer model's mean when the CLI reports no usable cost, and is priced at the model's p90 by `plan`, which checks that figure against the limits.
 
+## Exclusions and the scale view
+
+`bench/exclusions.json` (format above) holds the tasks a person has left out of reading A, each with a reason and a date. It is read and checked in one place (`lib/baseline.js` `loadExclusions`); a malformed file is refused as a whole, so a bad record never keeps a task in by accident. `lib/exclusions.js` `splitTasks` splits the tasks of one batch into the ones reading A reads and the excluded ones with their reason and date. Records are per batch: the same task id in another batch is not excluded. An excluded task still counts for reading B, and nothing on disk is moved or deleted.
+
+`lib/scale-view.js` says what a judge of each scale is shown of a task:
+
+| Scale     | Checklist shown                                                          | Excluded task | No current checklist                                      |
+| --------- | ------------------------------------------------------------------------ | ------------- | --------------------------------------------------------- |
+| `items`   | the task's rules checklist (the sets come back unchanged)                | shown         | not possible                                              |
+| `outcome` | the request-only checklist from `checklists/<skill>/<batch>/<task>.json` | left out      | empty checklist, listed as `missing`, `stale` or `unsafe` |
+
+A checklist is current only for the same stripped request, item count, writer model and writer prompt. A task that waits for its checklist is never judged against another one, and the judgment digest holds the hash of the checklist shown, so a new checklist makes old judgments pending.
+
 ## Not built yet
 
 These are added in a later PR: the judge job, the job that runs the checklist writer for reading A, `next` (which says which job to start), the labels that sum up the scores, and the report. The judge client and the checklist writer are libraries until their jobs use them.

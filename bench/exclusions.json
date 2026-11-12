@@ -1,0 +1,31 @@
+{
+  "format_version": 1,
+  "batches": {
+    "rules-b7": {
+      "scenarios": [
+        {
+          "id": "security-test-generation-rules-1",
+          "scales": ["outcome"],
+          "reason": "the provider's safety filter blocked the request-only checklist writer's reply on 2026-11-10; a provider block repeats on retry, so the task is left out of reading A",
+          "date": "2026-11-10"
+        },
+        {
+          "id": "security-test-generation-rules-3",
+          "scales": ["outcome"],
+          "reason": "the provider's safety filter blocked the request-only checklist writer's reply on 2026-11-10; a provider block repeats on retry, so the task is left out of reading A",
+          "date": "2026-11-10"
+        }
+      ]
+    },
+    "rules-c3": {
+      "scenarios": [
+        {
+          "id": "security-test-generation-rules-8",
+          "scales": ["outcome"],
+          "reason": "the provider's safety filter blocked the request-only checklist writer's reply on 2026-11-10; a provider block repeats on retry, so the task is left out of reading A",
+          "date": "2026-11-10"
+        }
+      ]
+    }
+  }
+}
