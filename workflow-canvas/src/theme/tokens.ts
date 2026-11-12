@@ -102,29 +102,16 @@ export const DARK: Colors = {
 export interface CanvasColors {
   dots: string;
   edge: string;
-  portFill: string;
-  portRim: string;
-  portLetterOut: string;
-  portLetterIn: string;
-  portNotchBg: string;
 }
-
-const PORTS = {
-  portFill: '#5f6b7a',
-  portRim: '#16191f',
-  portLetterOut: WHITE,
-  portLetterIn: '#414d5c',
-  portNotchBg: WHITE,
-} as const;
 
 /**
  * The canvas colours that are not in the palette. `canvas.css` repeats them,
  * and a test fails when it holds a colour that is not named here or in the
- * palette. The ports look the same in both modes.
+ * palette.
  */
 export const CANVAS: Record<ThemeMode, CanvasColors> = {
-  light: { dots: '#c9c1b3', edge: '#5f6b7a', ...PORTS },
-  dark: { dots: '#3a3168', edge: '#a39bc0', ...PORTS },
+  light: { dots: '#c9c1b3', edge: '#5f6b7a' },
+  dark: { dots: '#3a3168', edge: '#a39bc0' },
 };
 
 /** The colours of a mode. */
