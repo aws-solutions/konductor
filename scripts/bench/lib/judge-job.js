@@ -23,7 +23,8 @@
  *      that says why, with no call and no cost, so the task does not count in either reading, and a rerun does not
  *      ask again until an input changes. A judge prompt above the byte limit of one command-line argument (possible
  *      for a capped answer in a script of several bytes per character) is recorded the same way. While one arm's answer
- *      is not loaded or not eligible, the other arm's judgments of that task are not made either (no call, no file):
+ *      is not loaded, not eligible or blocked by the provider for good, the other arm's judgments of that task are not
+ *      made either (no call, no file):
  *      a seat counts only with both arms valid, so they could never count. They are pending again once that answer
  *      can be used.
  *   6. A judgment on disk is current when its input digest (judge-prompt.js judgmentProvenance: the arm and that
@@ -38,19 +39,38 @@
  *   8. Each seat has its own pool (judge_concurrency, judge_concurrency_by_seat), so a slow seat cannot hold the fast
  *      seats' slots. The call timeout is the seat's (judge_timeout_ms_by_seat, else judge_timeout_ms).
  *
- * A judgment file holds only a finished result: `valid` (the judge's labels and the answer's score) or `ineligible`.
- * A call that fails, or a reply the strict parser rejects, writes no judgment: the judgment stays pending and a rerun
- * asks again. So `plan`, which counts a judgment file as done, never counts a failure as done.
+ * A judgment file holds only a finished result: `valid` (the judge's labels and the answer's score), `ineligible`,
+ * or `refused` (below). A failed judgment writes no judgment file: the judgment stays pending and a rerun asks again.
+ * So `plan`, which counts a judgment file as done, never counts a failure as done.
  *
- * Results. `done` when every judgment of the reading is current. `partial` when a judgment failed, or still waits for
- * an answer or a checklist: the summary names them. `stopped` when the ledger refused a call (spend) or cannot be
- * used; finished judgments are kept and a rerun resumes.
+ * Failures:
+ *   - a failed call, a timeout or a reply the strict parser rejects is retried with a growing pause, up to 3 tries
+ *     in this launch (retry.js). A judgment that fails every try is kept as `<file>.failed-<time>` (the error, the
+ *     last reply, the provider blocks so far) and stays pending.
+ *   - a provider block is confirmed once per launch and counted across launches (the `.failed-` records with the same
+ *     inputs). At MAX_REFUSALS blocks the judgment is written as `refused`: it is not tried again until an input
+ *     changes, its seat is invalid for the task, and the job ends `partial` naming it.
+ *   - an error that says the call can never work (access denied, an invalid request, no such model) is not retried.
+ *     Only the provider's errors are sorted by their text: a reply the parser rejects is always a temporary failure,
+ *     whatever words the judge used in it.
+ *   - 4 judgments in a row that fail every try (blocks and permanent errors excluded) stop the job (systemic): that
+ *     points at a credential or provider problem, not bad luck.
+ *   - fresh credentials are exported once for the configured profile, and no call starts within 3 minutes of their
+ *     expiry; a credential error from a call stops the job too. Nothing more is written for that judgment.
+ *   - a result that cannot be stored (a full disk, a read-only folder) and a bug in a call end the job with that error:
+ *     the calls in flight finish, no new call starts.
+ *
+ * Results. `done` when every judgment of the reading is current. `partial` when a judgment failed, was blocked by the
+ * provider, or still waits for an answer or a checklist: the summary names them. `stopped` for a credential problem,
+ * a spend stop, a ledger that cannot be used, or the systemic stop; finished judgments are kept and a rerun resumes.
  */
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
 
+const awsCredentials = require('./aws-credentials');
+const { CredentialError } = awsCredentials;
 const { judgeConcurrency, rubricWriterModel } = require('./config');
 const { callCost } = require('./cost-profile');
 const { loadBaseline, loadExclusions } = require('./baseline');
@@ -88,17 +108,44 @@ const {
 const { buildPlan } = require('./plan');
 const { createPools } = require('./pool');
 const { readJsonFile } = require('./read-file');
-const { redact } = require('./redact');
+const { createRedactor, redact } = require('./redact');
 const { bookedUsd } = require('./request-checklist');
+const {
+  ATTEMPTS,
+  MAX_REFUSALS: RETRY_MAX_REFUSALS,
+  SYSTEMIC_AFTER,
+  CallError,
+  SystemicFailureError,
+  classifyError,
+  createBreaker,
+  withRetry,
+} = require('./retry');
 const { viewOutcomeTask } = require('./scale-view');
-const { supersede } = require('./supersede');
+const { fileTime, supersede } = require('./supersede');
 const { judgeRequest, loadTaskSet } = require('./tasks');
 
 const JUDGMENT_KIND = 'judgment';
 const STATUS_VALID = 'valid';
 const STATUS_INELIGIBLE = 'ineligible';
+const STATUS_REFUSED = 'refused';
+const STATUS_FAILED = 'failed';
 /** The statuses of a judgment file that is finished: a current one is never made again. */
-const DONE_STATUSES = new Set([STATUS_VALID, STATUS_INELIGIBLE]);
+const DONE_STATUSES = new Set([
+  STATUS_VALID,
+  STATUS_INELIGIBLE,
+  STATUS_REFUSED,
+]);
+/** Tries per judgment within one launch: the call and 2 retries with a growing pause (retry.js). */
+const JUDGE_ATTEMPTS = ATTEMPTS;
+/**
+ * Provider blocks one judgment may collect across launches before it is no longer tried. A launch confirms a block
+ * once (retry.js MAX_REFUSALS), so a judgment blocked on every try reaches this on its second launch, and one that
+ * got through on a later launch is not lost.
+ */
+const MAX_REFUSALS = 3;
+/** Judgments in a row that fail every try (blocks and permanent errors excluded) before the job stops. */
+const JUDGE_SYSTEMIC_AFTER = SYSTEMIC_AFTER;
+const FAILED_MARK = '.failed-';
 const STOP_MESSAGE_CHARS = 400;
 const REASON_CHARS = 2000;
 const RAW_TEXT_CHARS = 20000;
@@ -106,6 +153,39 @@ const LISTED_WAITS = 10;
 
 const isPlainObject = (value) =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
+
+/**
+ * judgeCall threw something that is not a stop: a call it refused to start, or a bug. Fatal, so it is never retried
+ * and the pools start no new call; the job then throws it on.
+ */
+class JudgeCallBug extends Error {
+  constructor(cause) {
+    super(
+      `the judge call threw: ${(cause && cause.message) || String(cause)}`,
+      {
+        cause,
+      },
+    );
+    this.name = 'JudgeCallBug';
+    this.fatal = true;
+  }
+}
+
+/**
+ * A reply the strict parser rejected. Its message holds text the judge chose (an unexpected field name, for one), so
+ * the job never sorts it by what it says: retry.js classes provider errors by their message, and a reply that names
+ * `ExpiredToken` or `AccessDenied` must not stop the job or skip the retries. It is always a temporary failure.
+ */
+class InvalidReplyError extends Error {
+  constructor(scored) {
+    super(`invalid reply (${scored.kind}): ${scored.invalid}`);
+    this.name = 'InvalidReplyError';
+  }
+}
+
+/** The retry class of a failed try: a provider error by its text (retry.js), an invalid reply always `transient`. */
+const classifyTry = (error) =>
+  error instanceof InvalidReplyError ? 'transient' : classifyError(error);
 
 /** The judgment record in `file`, or null when there is none or it cannot be read as JSON. */
 function readJudgment(file) {
@@ -212,6 +292,25 @@ const shownSummary = (prepared) => ({
   removed_by_rule: prepared.removed_by_rule,
   leaks: prepared.leaks.map(({ id, count }) => ({ id, count })),
 });
+
+/** `text` on one line: whitespace runs, newlines included, become one space. */
+const oneLine = (text) => String(text).replace(/\s+/g, ' ').trim();
+
+/**
+ * Runs a write of a judgment record. A write error is thrown on as the I/O error, marked as a write so job.js reports
+ * "cannot write" (exit 74); the seats' pool treats it as fatal (see the handler around judgeOne) and starts no more
+ * calls, because a folder that cannot be written fails every later write the same way.
+ */
+function storing(write) {
+  try {
+    return write();
+  } catch (error) {
+    // job.js reads the flag only for a system error (a string code and syscall), so mark only those.
+    if (typeof error.code === 'string' && typeof error.syscall === 'string')
+      error.writing = true;
+    throw error;
+  }
+}
 
 const jobLabel = (job) =>
   `${job.skill}/${job.batch}/${job.task.id}:${job.scale}:${job.seat}:${job.arm}`;
@@ -373,6 +472,8 @@ function planJudging({
       if (judgmentCurrent(onDisk, job)) {
         job.state = 'done';
         job.record_status = onDisk.status;
+        if (onDisk.status === STATUS_REFUSED)
+          job.reason = `the provider blocked the judge ${onDisk.refusals} time(s); not tried again until an input changes`;
         continue;
       }
       if (!job.shown.eligible) {
@@ -403,7 +504,8 @@ function planJudging({
 
 /**
  * Why the answer of `job` cannot be used for its task and seat in this reading, or null when it can (or may yet):
- * it is stored as not loaded, or it is not eligible (about to be recorded so, or recorded so).
+ * it is stored as not loaded, it is not eligible (about to be recorded so, or recorded so), or its judgment on this
+ * seat is refused (the provider blocked it for good, until an input changes).
  */
 function otherArmUnusable(job) {
   if (job.state === 'not_loaded') return 'is stored as not loaded';
@@ -412,6 +514,8 @@ function otherArmUnusable(job) {
     (job.state === 'done' && job.record_status === STATUS_INELIGIBLE)
   )
     return 'is not eligible';
+  if (job.state === 'done' && job.record_status === STATUS_REFUSED)
+    return 'was blocked by the provider for good on this seat';
   return null;
 }
 
@@ -482,7 +586,16 @@ function ineligibleRecord(job, { now = Date.now } = {}) {
  */
 function validRecord(
   job,
-  { scored, result, openCodeVersion, attempts, usd, now = Date.now },
+  {
+    scored,
+    result,
+    openCodeVersion,
+    attempts,
+    refusals = 0,
+    usd,
+    now = Date.now,
+    redactText = redact,
+  },
 ) {
   return {
     ...recordHead(job, STATUS_VALID, openCodeVersion),
@@ -492,10 +605,11 @@ function validRecord(
     reason:
       scored.reason === null
         ? null
-        : redact(scored.reason, { maxChars: REASON_CHARS }),
+        : redactText(scored.reason, { maxChars: REASON_CHARS }),
     normalized: scored.normalized,
-    raw_text: redact(result.text, { maxChars: RAW_TEXT_CHARS }),
+    raw_text: redactText(result.text, { maxChars: RAW_TEXT_CHARS }),
     attempts,
+    refusals,
     usage: result.usage ?? null,
     usage_source: result.usageSource ?? null,
     reported_usd: result.reportedUsd ?? null,
@@ -512,6 +626,85 @@ function writeJudgment(job, record, now) {
   return setAside;
 }
 
+/**
+ * The record of a judgment that failed every try of this launch (`failed`), or that the provider has now blocked
+ * MAX_REFUSALS times across launches (`refused`). `error` is the CallError, `last` the last try's { result, scored }.
+ * The reply of the last try is kept, redacted and capped, so a person can see what the judge sent.
+ */
+function failedRecord(
+  job,
+  {
+    status,
+    error,
+    refusals,
+    attempts,
+    last,
+    usd,
+    openCodeVersion,
+    now,
+    redactText = redact,
+  },
+) {
+  return {
+    ...recordHead(job, status, openCodeVersion),
+    error_kind: error.kind,
+    error: redactText(error.message, { maxChars: REASON_CHARS }),
+    invalid_reply:
+      last && last.scored && !last.scored.valid ? last.scored.kind : null,
+    raw_text:
+      last && last.result && last.result.text
+        ? redactText(last.result.text, { maxChars: RAW_TEXT_CHARS })
+        : null,
+    refusals,
+    attempts,
+    usd,
+    failed_at: new Date(now()).toISOString(),
+  };
+}
+
+/**
+ * Keeps a failed judgment's record next to the judgment file as `<file>.failed-<time>` (`-2`, `-3`, ... when the
+ * name is taken). The judgment file itself is not written, so the judgment stays pending and `plan`, which counts a
+ * judgment file as done, still counts it pending.
+ */
+function keepFailed(job, record, now) {
+  const base = `${job.file}${FAILED_MARK}${fileTime(now)}`;
+  let target = base;
+  for (let copy = 2; fs.existsSync(target); copy += 1)
+    target = `${base}-${copy}`;
+  writeRecord(target, record);
+  return target;
+}
+
+/**
+ * Provider blocks already recorded for this judgment with today's inputs: the most any kept `.failed-` record of it
+ * with the same input digest says. 0 when there is none, or its inputs changed (a new checklist, answer or prompt
+ * starts the count again).
+ */
+function priorRefusals(job) {
+  const dir = path.dirname(job.file);
+  const prefix = `${path.basename(job.file)}${FAILED_MARK}`;
+  let names;
+  try {
+    names = fs.readdirSync(dir);
+  } catch (error) {
+    if (error.code === 'ENOENT') return 0;
+    throw error;
+  }
+  let most = 0;
+  for (const name of names) {
+    if (!name.startsWith(prefix)) continue;
+    const record = readJudgment(path.join(dir, name));
+    if (
+      record &&
+      isPlainObject(record.inputs) &&
+      record.inputs.input_sha256 === job.inputs.input_sha256 &&
+      Number.isInteger(record.refusals)
+    )
+      most = Math.max(most, record.refusals);
+  }
+  return most;
+}
 /** One judgment as aggregateTask takes it: { seat, scale, arm, valid, score, guard }. */
 function scoredOf(record) {
   return {
@@ -602,10 +795,24 @@ function stopFor(error) {
   const message = redact(String(error && error.message), {
     maxChars: STOP_MESSAGE_CHARS,
   });
+  if (
+    error instanceof CredentialError ||
+    (error instanceof CallError && error.kind === 'credential')
+  )
+    return { kind: 'credentials', message };
   if (error instanceof SpendStopError) return { kind: 'spend', message };
   if (error instanceof LedgerError) return { kind: 'ledger', message };
+  if (error instanceof SystemicFailureError)
+    return { kind: 'systemic', message };
   return null;
 }
+
+/** The default credential source: a fresh `aws configure export-credentials` for the configured profile. */
+const exportForConfig = (config) =>
+  awsCredentials.exportCredentials({
+    profile: awsCredentials.resolveProfile(config),
+    region: config.aws_region,
+  });
 
 /** USD the run has spent or reserved so far, from the ledger. Throws LedgerError for a ledger that cannot be read. */
 function runUsdSoFar(layout) {
@@ -631,22 +838,28 @@ const readVersionForConfig = (config) =>
  *   dryRun           list the pending judgments and stop; nothing is spent or written
  *   log              (line) => void, one line per event (default: nothing)
  *   judgeCall        the call (default opencode.js judgeCall); tests pass a stub
+ *   callOptions      extra options for every judgeCall (tests: run, bin, tmpRoot, baseEnv; costProfile, which also
+ *                    prices what the job books)
+ *   getCredentials   async (config) => credentials (default: export for the configured profile)
  *   readVersion      async (config) => the OpenCode version (default `opencode --version`)
- *   now              () => ms, for the file times
+ *   now              () => ms, for the expiry check and the file times
+ *   retry            extra options for retry.js withRetry (tests: sleep, baseMs)
  *   armsTmpRoot      where the arms are built for their manifests (tests)
  *
  * Returns { status, refused, stop, skipped, scale, excluded, jobs, done, pending, waiting, not_loaded, ineligible,
- * other_arm_unusable, projected_usd, results, remaining, tasks, warnings, usd, estimated } where status is
+ * other_arm_unusable, projected_usd, results, blocked, remaining, tasks, cut_off, warnings, usd, estimated } where
+ * status is
  *   refused   nothing was spent: `plan` refused the skills, or the projection is above max_usd
  *   dry-run   the pending judgments were listed
  *   done      every judgment of the reading is current
- *   partial   a judgment failed, or waits for an answer or a checklist
- *   stopped   a stop ended the job (`stop`: { kind, message }, kind spend or ledger)
- * `waiting` lists [{ judgment, reason }] for the judgments that wait; `results` is { judged, ineligible, failed } with
- * the labels judged and set ineligible by this run and { judgment, reason } for each that failed. `remaining` is the
- * count of judgments still not current, and `tasks` the per-task gaps (taskGaps) after the run. `estimated` is null,
- * or { calls, models } for the calls charged at their mean because the CLI reported no usable cost
- * (jobs.js trackEstimatedCalls).
+ *   partial   a judgment failed, was blocked by the provider, or waits for an answer or a checklist
+ *   stopped   a stop ended the job (`stop`: { kind, message }, kind credentials, spend, ledger or systemic)
+ * `waiting` lists [{ judgment, reason }] for the judgments that wait; `results` is { judged, ineligible, failed,
+ * refused } with the labels judged and set ineligible by this run, { judgment, kind, reason } for each that failed and
+ * { judgment, reason } for each this run found blocked for good. `blocked` lists every current `refused` judgment.
+ * `remaining` is the count of judgments still not current, and `tasks` the per-task gaps (taskGaps) after the run.
+ * `estimated` is null, or { calls, models } for the calls charged at their mean because the CLI reported no
+ * usable cost (jobs.js trackEstimatedCalls).
  */
 async function runJudging({
   layout,
@@ -656,8 +869,11 @@ async function runJudging({
   dryRun = false,
   log = () => {},
   judgeCall = opencode.judgeCall,
+  callOptions = {},
+  getCredentials = exportForConfig,
   readVersion = readVersionForConfig,
   now = Date.now,
+  retry = {},
   armsTmpRoot,
 }) {
   if (!SCALES.includes(scale))
@@ -679,8 +895,9 @@ async function runJudging({
     ineligible: 0,
     other_arm_unusable: 0,
     projected_usd: 0,
-    results: { judged: [], ineligible: [], failed: [] },
+    results: { judged: [], ineligible: [], failed: [], refused: [] },
     cut_off: 0,
+    blocked: [],
     remaining: 0,
     tasks: [],
     warnings: [],
@@ -727,6 +944,9 @@ async function runJudging({
       (job) =>
         !['done', 'not_loaded', 'other_arm_unusable'].includes(job.state),
     ).length;
+    summary.blocked = list
+      .filter((job) => job.record_status === STATUS_REFUSED)
+      .map((job) => ({ judgment: job.label, reason: job.reason }));
     summary.tasks = taskGaps(list);
   };
   describe(jobs);
@@ -775,9 +995,15 @@ async function runJudging({
       log(
         `judge: ${summary.cut_off} reply(ies) cut off at the output limit and not used; raise judge_max_output_tokens, or the seat's entry in judge_max_output_tokens_by_seat, if this keeps happening`,
       );
+    for (const { judgment, reason } of summary.blocked)
+      summary.warnings.push(
+        `${judgment}: ${reason}; the task counts only if ${MIN_SEATS} other seats judged it`,
+      );
+    // A failed judgment has no file, so the replan above leaves it pending and counted in `remaining`. A judgment
+    // whose other arm is the blocked one is counted in `blocked`.
     summary.status = summary.stop
       ? 'stopped'
-      : summary.remaining || summary.results.failed.length
+      : summary.remaining || summary.blocked.length
         ? 'partial'
         : 'done';
     return summary;
@@ -785,7 +1011,7 @@ async function runJudging({
 
   // An answer that is not eligible is recorded without a call: nothing is spent, so no projection applies.
   for (const job of jobs.filter((entry) => entry.state === 'ineligible')) {
-    writeJudgment(job, ineligibleRecord(job, { now }), now);
+    storing(() => writeJudgment(job, ineligibleRecord(job, { now }), now));
     summary.results.ineligible.push(job.label);
     log(`  ${job.label}: ineligible, not judged: ${job.reason}`);
   }
@@ -802,6 +1028,19 @@ async function runJudging({
       summary.status = 'refused';
       return summary;
     }
+    // Fresh credentials once for the job, then the expiry check before every call: no call starts within 3 minutes
+    // of expiry. Every judge process gets these keys, so a call works without AWS_PROFILE in the shell.
+    const credentials = await getCredentials(config);
+    awsCredentials.assertFresh(credentials, { now, label: 'the judge job' });
+    const credentialGuard = {
+      assertFresh: (label) =>
+        awsCredentials.assertFresh(credentials, { now, label }),
+    };
+    // The exported secret key and session token have no secret shape the module redactor knows, so the ledger, the
+    // retry helper and the breaker get a redactor that removes these exact values too.
+    const runRedactor = createRedactor({
+      literals: opencode.exportedSecrets(credentials),
+    });
     let openCodeVersion = null;
     try {
       openCodeVersion = await readVersion(config);
@@ -818,67 +1057,171 @@ async function runJudging({
           total_cap_usd: config.total_cap_usd,
         },
         runId: layout.runId,
+        redact: runRedactor,
       }),
     );
     estimatedCalls = tracker.estimated;
     const { ledger } = tracker;
+    // Shared by every seat: 4 judgments in a row that fail every try stop the job, whichever seats they are on.
+    const breaker = createBreaker({
+      after: JUDGE_SYSTEMIC_AFTER,
+      redact: runRedactor,
+    });
 
     const judgeOne = async (job) => {
-      const result = await judgeCall({
-        ledger,
-        config,
-        modelId: job.model,
-        seat: job.seat,
-        prompt: job.rendered.prompt,
-        label: job.label,
-        timeoutMs: opencode.judgeTimeoutMs(config, job.seat),
-      });
-      const callUsd = bookedUsd(result, config, 'judge', job.model);
-      usd += callUsd;
-      // A reply that reached the output limit and could not be used (the model stopped for length, or the strict
-      // parser could not read it) is counted apart from other failures: a limit set too low shows up here.
-      const failed = (reason) => {
-        const text = redact(reason, { maxChars: REASON_CHARS });
-        if (result.cutOff === true) summary.cut_off += 1;
-        summary.results.failed.push({ judgment: job.label, reason: text });
-        log(`  ${job.label}: failed, stays pending: ${text}`);
-      };
-      if (!result.ok)
-        return failed(
-          [result.error, result.stderr].filter(Boolean).join(' | ') ||
-            'judge call failed',
+      const prior = priorRefusals(job);
+      let refusalsNow = 0;
+      let attempts = 0;
+      let judgmentUsd = 0;
+      let last = null;
+      const tryOnce = async () => {
+        attempts += 1;
+        let result;
+        try {
+          result = await judgeCall({
+            ...callOptions,
+            ledger,
+            config,
+            modelId: job.model,
+            seat: job.seat,
+            prompt: job.rendered.prompt,
+            label: job.label,
+            timeoutMs: opencode.judgeTimeoutMs(config, job.seat),
+            credentialGuard,
+            credentials,
+          });
+        } catch (error) {
+          // judgeCall reports a failed call in its result. What it throws is a stop (credentials, spend, the
+          // ledger), or a call it refused to start (an unsafe model id, a prompt too long), which is a bug here:
+          // neither may be retried as if the provider had failed.
+          if (error && error.fatal) throw error;
+          throw new JudgeCallBug(error);
+        }
+        const callUsd = bookedUsd(
+          result,
+          config,
+          'judge',
+          job.model,
+          callOptions.costProfile,
         );
-      const scored = scoreJudgment({
-        scale,
-        text: result.text,
-        arm: job.arm,
-        itemCount: job.checklist.length,
-        buckets: job.buckets,
-      });
-      if (!scored.valid)
-        return failed(`invalid reply (${scored.kind}): ${scored.invalid}`);
-      const record = validRecord(job, {
-        scored,
-        result,
-        openCodeVersion,
-        attempts: 1,
-        usd: roundUsd(callUsd),
-        now,
-      });
-      let setAside;
+        usd += callUsd;
+        judgmentUsd += callUsd;
+        last = { result, scored: null };
+        // A try whose reply reached the output limit and could not be used (the model stopped for length, or the
+        // strict parser cannot read it) is counted apart from other failures: a limit set too low shows up here.
+        // A try that is retried and cut off again counts again.
+        const countCutOff = () => {
+          if (result.cutOff === true) summary.cut_off += 1;
+        };
+        if (!result.ok) {
+          countCutOff();
+          // A timeout, a throttle and any other failure are sorted by retry.js from the redacted error and stderr.
+          const error = opencode.judgeCallError(result);
+          if (classifyError(error) === 'refusal') refusalsNow += 1;
+          throw error;
+        }
+        last.scored = scoreJudgment({
+          scale,
+          text: result.text,
+          arm: job.arm,
+          itemCount: job.checklist.length,
+          buckets: job.buckets,
+        });
+        // A reply the strict parser rejects is a failed try like any other: it is retried, never scored.
+        if (!last.scored.valid) {
+          countCutOff();
+          throw new InvalidReplyError(last.scored);
+        }
+        return last;
+      };
+      let outcome;
       try {
-        setAside = writeJudgment(job, record, now);
+        outcome = await withRetry(tryOnce, {
+          attempts: JUDGE_ATTEMPTS,
+          // A block counts across launches. A launch confirms a block once (retry.js), and never tries more blocks
+          // than the judgment has left.
+          maxRefusals: Math.max(
+            1,
+            Math.min(RETRY_MAX_REFUSALS, MAX_REFUSALS - prior),
+          ),
+          // The breaker is not passed to withRetry: it counts a failure only after the failed record is stored (below),
+          // so the stop that follows loses no paid judgment.
+          classify: classifyTry,
+          redact: runRedactor,
+          ...retry,
+        });
       } catch (error) {
-        // A folder that cannot be written fails every later write the same way, and each call after it would be paid
-        // for and its reply lost: stop the seats from starting more calls. The error itself is thrown on (job.js
-        // maps it to the I/O exit code).
-        error.fatal = true;
-        throw error;
+        // A stop (credentials, spend, ledger, systemic) or a bug goes on to the pool, which starts no new call.
+        if (!(error instanceof CallError) || error.fatal) throw error;
+        const refusals = prior + refusalsNow;
+        const status =
+          refusals >= MAX_REFUSALS ? STATUS_REFUSED : STATUS_FAILED;
+        const record = failedRecord(job, {
+          status,
+          error,
+          refusals,
+          attempts,
+          last,
+          usd: roundUsd(judgmentUsd),
+          openCodeVersion,
+          now,
+          redactText: runRedactor,
+        });
+        // One line: a reply can steer the text of its own parse error, and a newline in it would forge a log line.
+        const reason = oneLine(
+          runRedactor(error.message, { maxChars: REASON_CHARS }),
+        );
+        if (status === STATUS_REFUSED) {
+          storing(() => writeJudgment(job, record, now));
+          summary.results.refused.push({ judgment: job.label, reason });
+          log(
+            `  ${job.label}: blocked by the provider ${refusals} time(s); not tried again until an input changes`,
+          );
+        } else {
+          storing(() => keepFailed(job, record, now));
+          summary.results.failed.push({
+            judgment: job.label,
+            kind: error.kind,
+            reason,
+          });
+          log(
+            `  ${job.label}: failed (${error.kind}), stays pending: ${reason}`,
+          );
+        }
+        // Counted after the record is stored, so the systemic stop that this may throw loses no paid judgment.
+        // A permanent failure or a provider block neither counts nor resets the streak.
+        if (error.kind === 'transient') breaker.recordFailure(reason);
+        return;
       }
+      breaker.recordSuccess();
+      const record = validRecord(job, {
+        scored: outcome.scored,
+        result: outcome.result,
+        openCodeVersion,
+        attempts,
+        refusals: prior + refusalsNow,
+        usd: roundUsd(judgmentUsd),
+        now,
+        redactText: runRedactor,
+      });
+      const setAside = storing(() => writeJudgment(job, record, now));
       summary.results.judged.push(job.label);
       log(
-        `  ${job.label}: score ${record.score.toFixed(2)}${setAside ? ` (stale judgment kept as ${path.basename(setAside)})` : ''}`,
+        `  ${job.label}: score ${record.score.toFixed(2)}${attempts > 1 ? ` after ${attempts} tries` : ''}${setAside ? ` (stale judgment kept as ${path.basename(setAside)})` : ''}`,
       );
+    };
+
+    // Whatever escapes judgeOne is a stop (already fatal), a failure to store a result (a full disk, a read-only
+    // folder) or a bug. All of them are fatal: a call whose result cannot be stored is paid for and lost, and so would
+    // be every call after it, so the pools start no new call and the job throws the error once the calls in flight end.
+    const judgeGuarded = async (job) => {
+      try {
+        return await judgeOne(job);
+      } catch (error) {
+        const fatal = error instanceof Error ? error : new Error(String(error));
+        fatal.fatal = true;
+        throw fatal;
+      }
     };
 
     const pools = createPools({
@@ -895,15 +1238,11 @@ async function runJudging({
       bySeat.get(job.seat).push(job);
     }
     const settled = await Promise.allSettled(
-      [...bySeat].map(([seat, list]) => pools.run(seat, list, judgeOne)),
+      [...bySeat].map(([seat, list]) => pools.run(seat, list, judgeGuarded)),
     );
+    // The first fatal error, thrown on once every seat's calls in flight have finished.
     const rejected = settled.find((outcome) => outcome.status === 'rejected');
     if (rejected) throw rejected.reason;
-    // A thrown error that is not a stop is a bug: it is thrown on once every seat's calls have finished.
-    const bug = settled
-      .flatMap((outcome) => outcome.value)
-      .find((entry) => entry && entry.error);
-    if (bug) throw bug.error;
   } catch (error) {
     const stop = stopFor(error);
     if (!stop) throw error;
@@ -918,6 +1257,12 @@ module.exports = {
   JUDGMENT_KIND,
   STATUS_VALID,
   STATUS_INELIGIBLE,
+  STATUS_REFUSED,
+  STATUS_FAILED,
+  JUDGE_ATTEMPTS,
+  MAX_REFUSALS,
+  JUDGE_SYSTEMIC_AFTER,
+  FAILED_MARK,
   RUNNABLE_STATUSES,
   readJudgment,
   judgmentCurrent,
@@ -925,6 +1270,9 @@ module.exports = {
   planJudging,
   ineligibleRecord,
   validRecord,
+  failedRecord,
+  priorRefusals,
+  storing,
   taskGaps,
   stopFor,
   runJudging,

@@ -32,7 +32,7 @@
  * They belong to stage 1 of a run.
  * A done call here means its output file exists; whether that file is stale is checked where
  * the file's format is defined. One exception: a judgment whose other arm's answer cannot be used (stored as not
- * loaded, or recorded as not eligible) is not counted, because the judge job does not make it.
+ * loaded, or recorded as not eligible or refused) is not counted, because the judge job does not make it.
  * The sibling-arm skip reads the other arm's stored judgment status as is, without checking that it is current, so
  * after an input changes `plan` may count one call per seat too few until the judge job re-plans; the job's own
  * projection is exact.
@@ -61,8 +61,8 @@ const { resolveAgent, AgentSpecError } = require('./skills');
 const { readLedger, checkLimits, LedgerError } = require('./ledger');
 const { readJsonFile } = require('./read-file');
 
-/** Judgment statuses that leave the answer of that arm unusable for its seat (judge-job.js STATUS_INELIGIBLE). */
-const UNUSABLE_JUDGMENT_STATUSES = new Set(['ineligible']);
+/** Judgment statuses that leave the answer of that arm unusable for its seat (judge-job.js STATUS_INELIGIBLE, STATUS_REFUSED). */
+const UNUSABLE_JUDGMENT_STATUSES = new Set(['ineligible', 'refused']);
 
 const createTally = () => ({ done: 0, total: 0 });
 const createCallTallies = () => ({
@@ -197,8 +197,8 @@ function storedStatus(file) {
 
 /**
  * True when the answer of `arm` cannot be used for one seat's judgments of a reading: the answer is stored as not
- * loaded (pairs.js), or that arm's judgment is recorded as not eligible (judge-job.js). The judge job then makes no
- * judgment of the other arm for that seat, because the seat could never count, so it is no call here either.
+ * loaded (pairs.js), or that arm's judgment is recorded as not eligible or refused (judge-job.js). The judge job then
+ * makes no judgment of the other arm for that seat, because the seat could never count, so it is no call here either.
  */
 const armUnusable = ({ layout, skill, batch, id }, arm, judgmentFile) =>
   storedStatus(layout.answerFile(skill, batch, id, arm)) === 'not_loaded' ||
