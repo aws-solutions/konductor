@@ -17,6 +17,9 @@ const helpers = require('./helpers');
 
 const { SUBJECT_ENV_NAMES, subjectEnv, createPrivateHome, subjectSettings } =
   isolation;
+const { CANARY_ENV, newCanary } = require('../../../scripts/bench/lib/redact');
+
+const CANARY = newCanary();
 
 const CREDENTIALS = Object.freeze({
   accessKeyId: 'ASIA' + 'EXAMPLEFIXTURE01',
@@ -40,6 +43,7 @@ test('subjectEnv holds exactly the allowlisted variables', () =>
       credentials: CREDENTIALS,
       region: 'us-west-2',
       home,
+      canary: CANARY,
       pathValue: '/usr/bin:/bin',
       userHome: userHomeIn(dir),
     });
@@ -53,7 +57,9 @@ test('subjectEnv holds exactly the allowlisted variables', () =>
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
       PATH: '/usr/bin:/bin',
       HOME: home,
+      BENCH_CANARY_TOKEN: CANARY,
     });
+    assert.equal(CANARY_ENV, 'BENCH_CANARY_TOKEN');
   }));
 
 test('subjectEnv passes nothing from the parent environment except PATH', () =>
@@ -78,6 +84,7 @@ test('subjectEnv passes nothing from the parent environment except PATH', () =>
         credentials: CREDENTIALS,
         region: 'eu-central-1',
         home: createPrivateHome(dir),
+        canary: CANARY,
         userHome: userHomeIn(dir),
       });
       for (const name of Object.keys(planted)) assert.ok(!(name in env), name);
@@ -94,7 +101,12 @@ test('subjectEnv passes nothing from the parent environment except PATH', () =>
 test('subjectEnv refuses the real home folder, a folder above it, and a relative home', () =>
   helpers.withTmp((dir) => {
     const userHome = userHomeIn(dir);
-    const base = { credentials: CREDENTIALS, region: 'us-west-2', userHome };
+    const base = {
+      credentials: CREDENTIALS,
+      region: 'us-west-2',
+      canary: CANARY,
+      userHome,
+    };
     assert.throws(
       () => subjectEnv({ ...base, home: userHome }),
       /home must be a private folder/,
@@ -122,6 +134,7 @@ test('subjectEnv refuses the real home folder, a folder above it, and a relative
           credentials: CREDENTIALS,
           region: 'us-west-2',
           home: os.homedir(),
+          canary: CANARY,
         }),
       /home must be a private folder/,
     );
@@ -133,7 +146,11 @@ test('subjectEnv refuses a home that reaches the real home through a link', () =
     fs.mkdirSync(parent);
     const userHome = path.join(parent, 'user-home');
     fs.mkdirSync(userHome);
-    const base = { credentials: CREDENTIALS, region: 'us-west-2' };
+    const base = {
+      credentials: CREDENTIALS,
+      region: 'us-west-2',
+      canary: CANARY,
+    };
     const refused = (home, userHomeValue = userHome) =>
       assert.throws(
         () => subjectEnv({ ...base, home, userHome: userHomeValue }),
@@ -186,6 +203,7 @@ test('subjectEnv refuses missing or malformed credentials, region and PATH', () 
       credentials: CREDENTIALS,
       region: 'us-west-2',
       home: createPrivateHome(dir),
+      canary: CANARY,
       userHome: userHomeIn(dir),
     };
     const refused = (patch, pattern) =>
@@ -236,6 +254,18 @@ test('subjectEnv refuses missing or malformed credentials, region and PATH', () 
         /pathValue must be/.test(error.message) &&
         !error.message.includes('secret-bin'),
     );
+    // The canary must be exactly one value the sweep knows as a canary.
+    for (const canary of [
+      undefined,
+      '',
+      'not-a-canary-value',
+      `${CANARY} trailing`,
+      `${CANARY}\n`,
+      `${CANARY}${CANARY}x`,
+      CANARY.toUpperCase(),
+    ])
+      refused({ canary }, /canary must be one value from newCanary/);
+    assert.doesNotThrow(() => subjectEnv({ ...base, canary: newCanary() }));
     assert.throws(() => subjectEnv(), /credentials must be/);
   }));
 
@@ -376,6 +406,7 @@ test('isolation: flags, settings and environment of a legacy subject run hold th
       credentials: CREDENTIALS,
       region: 'us-west-2',
       home,
+      canary: CANARY,
       userHome,
     });
     const args = subjectFlags({
@@ -431,4 +462,7 @@ test('isolation: flags, settings and environment of a legacy subject run hold th
         !args.some((arg) => arg.includes(value)),
         'credential in the flags',
       );
+    // L4: the canary reaches the child in its environment only.
+    assert.equal(env[CANARY_ENV], CANARY);
+    assert.ok(!args.some((arg) => arg.includes(CANARY)), 'canary in the flags');
   }));

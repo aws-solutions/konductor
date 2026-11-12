@@ -1,0 +1,4 @@
+{"type":"system","subtype":"init","session_id":"sess_fixture_err","tools":["Read"],"mcp_servers":[]}
+{"type":"assistant","message":{"model":"claude-sonnet-5-20250514-v1:0","content":[{"type":"tool_use","id":"toolu_err1","name":"Read","input":{"path":"missing-file.txt"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_err1","is_error":true,"content":"ENOENT: no such file or directory"}]}}
+{"type":"error","message":"claude CLI exited with code 1: fatal error"}
