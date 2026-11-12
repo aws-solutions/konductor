@@ -1,0 +1,103 @@
+{
+  "note": "Synthetic, hand-checkable. Per skill: two batches (b1, b2) of 8 tasks. Every judge seat gives a task the listed gap (with minus without), so a task's number is that gap. Task ids repeat across the two batches on purpose. words: answer lengths (with, without). guard: per-batch guard per-task gaps and the MET rates; loss marks a batch whose guard loss is set.",
+  "words": { "with": 120, "without": 80 },
+  "batches": ["b1", "b2"],
+  "skills": {
+    "helps-skill": {
+      "A": [
+        [1.0, 1.2, 0.8, 1.0, 1.4, 0.6, 1.0, 1.0],
+        [1.0, 0.5, 1.0, 0.5, 1.0, 0.5, 1.0, 0.5]
+      ],
+      "B": [
+        [1.5, 1.0, 1.5, 1.0, 2.0, 1.0, 1.5, 1.5],
+        [1.0, 1.0, 1.5, 1.0, 1.5, 1.0, 1.5, 1.0]
+      ],
+      "guard": [
+        {
+          "gaps": [0.5, 0.25, 0.5, 0.25, 0.5, 0.25, 0.5, 0.25],
+          "with": 0.75,
+          "without": 0.375,
+          "loss": false
+        },
+        {
+          "gaps": [0.5, 0.5, 0.25, 0.25, 0.5, 0.5, 0.25, 0.25],
+          "with": 0.75,
+          "without": 0.375,
+          "loss": false
+        }
+      ]
+    },
+    "conventions-skill": {
+      "A": [
+        [0.3, -0.2, 0.1, -0.4, 0.2, -0.1, 0.0, 0.1],
+        [-0.2, 0.2, 0.1, -0.1, 0.3, -0.3, 0.0, 0.0]
+      ],
+      "B": [
+        [1.5, 1.0, 1.2, 1.4, 0.9, 1.1, 1.3, 1.6],
+        [1.2, 1.0, 1.4, 0.8, 1.3, 1.1, 1.5, 1.2]
+      ],
+      "guard": [
+        {
+          "gaps": [0, 0, 0.25, 0, 0, 0.25, 0, 0],
+          "with": 0.5,
+          "without": 0.4,
+          "loss": false
+        },
+        {
+          "gaps": [0, 0.25, 0, 0, 0, 0, 0.25, 0],
+          "with": 0.5,
+          "without": 0.4,
+          "loss": false
+        }
+      ]
+    },
+    "harm-skill": {
+      "A": [
+        [-0.8, -1.0, -0.6, -0.9, -1.1, -0.7, -1.0, -0.9],
+        [-0.7, -0.9, -0.8, -1.0, -0.6, -0.9, -1.1, -0.8]
+      ],
+      "B": [
+        [0.5, 0.25, 0.75, 0.5, 0.25, 0.5, 0.75, 0.5],
+        [0.5, 0.5, 0.25, 0.75, 0.5, 0.25, 0.5, 0.5]
+      ],
+      "guard": [
+        {
+          "gaps": [-0.5, -0.25, -0.5, -0.25, -0.5, -0.25, -0.5, -0.25],
+          "with": 0.25,
+          "without": 0.625,
+          "loss": true
+        },
+        {
+          "gaps": [-0.25, -0.5, -0.25, -0.5, -0.25, -0.5, -0.25, -0.5],
+          "with": 0.25,
+          "without": 0.625,
+          "loss": true
+        }
+      ]
+    },
+    "none-skill": {
+      "A": [
+        [0.2, -0.3, 0.1, 0.0, -0.1, 0.2, -0.2, 0.1],
+        [0.0, 0.1, -0.2, 0.3, -0.1, 0.0, 0.2, -0.3]
+      ],
+      "B": [
+        [0.2, -0.3, 0.1, 0.0, -0.1, 0.2, -0.2, 0.1],
+        [0.1, 0.0, -0.1, 0.3, -0.2, 0.0, 0.1, -0.2]
+      ],
+      "guard": [
+        {
+          "gaps": [0, 0, 0, 0, 0, 0, 0, 0],
+          "with": 0.5,
+          "without": 0.5,
+          "loss": false
+        },
+        {
+          "gaps": [0, 0, 0, 0, 0, 0, 0, 0],
+          "with": 0.5,
+          "without": 0.5,
+          "loss": false
+        }
+      ]
+    }
+  }
+}

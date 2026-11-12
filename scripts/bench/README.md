@@ -780,4 +780,4 @@ A control reading that cannot decide is `NOT RUN`, not a pass or a fail: one wit
 
 ## Not built yet
 
-These are added in a later PR: the labels that sum up the readings, and the report writer that puts the readings, the controls verdict and the guard result beside each label. The judge job does not take a dose ladder yet: the ladder's items are judged once the controls check that reads them is added, and `next` does not name ladder work.
+These are added in a later PR: the report writer that puts the readings, the controls verdict and the guard result beside each label. The judge job does not take a dose ladder yet: the ladder's items are judged once the controls check that reads them is added, and `next` does not name ladder work.
