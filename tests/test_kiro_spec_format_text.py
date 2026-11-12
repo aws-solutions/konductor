@@ -71,3 +71,45 @@ def test_sop_takes_spec_type_and_workflow_and_writes_the_spec_config():
     assert "`.config.kiro`" in text
     assert "/spec new {feature_name}" in text
     assert "present a traceability summary" not in text
+
+
+def _step(text, number):
+    return text.split(f"### {number}. ", 1)[1].split("\n### ", 1)[0]
+
+
+def test_sop_leaves_the_spec_config_to_the_first_generation_delegate():
+    text = _read("agent-sops/kiro-spec-workflow.sop.md")
+    assert "You do not write it" in _step(text, 0)
+    assert "write spec_dir/.config.kiro" in _step(text, 1)
+    assert "write spec_dir/.config.kiro" in _step(text, 2)
+
+
+def test_sop_offers_the_native_path_and_kiro_execution_only_when_standalone():
+    text = _read("agent-sops/kiro-spec-workflow.sop.md")
+    for number in (0, 4):
+        step = _step(text, number)
+        assert "standalone" in step
+        assert "`.kiro/specs/{feature_name}/`" in step
+    assert "/spec run {feature_name}" in _step(text, 4)
+    assert "owns execution" in _step(text, 4)
+
+
+def test_orchestrator_tables_count_the_sops_five_steps():
+    steps = re.findall(r"^### (\d+)\. ", _read("agent-sops/kiro-spec-workflow.sop.md"), re.M)
+    assert len(steps) == 5
+    direct = _read("context/k-direct-work.md")
+    assert re.search(r"^\| `kiro-spec-workflow` +\| 5 +\|", direct, re.M)
+    routing = _read("context/k-orchestrator-routing-rules.md")
+    assert re.search(r"\| `kiro-spec-workflow` +\| 5 +\|", routing)
+
+
+def test_task_skill_waves_wait_only_for_required_leaves():
+    text = " ".join(_read("skills/kiro-task-generation/SKILL.md").split())
+    assert "every **required** leaf it uses" in text
+    assert "An optional leaf sits in an earlier wave than the next checkpoint" in text
+
+
+def test_requirements_skill_has_a_bugfix_checklist():
+    text = _read("skills/kiro-requirements-generation/SKILL.md")
+    assert "Before presenting a bugfix spec's bugfix.md, verify:" in text
+    assert "its story IDs are authoritative" in text
