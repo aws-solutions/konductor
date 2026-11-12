@@ -13,11 +13,13 @@ interface Media {
   examples?: Record<string, { value: unknown }>;
 }
 interface Operation {
+  security?: unknown[];
   requestBody?: { content: Record<string, Media> };
   responses: Record<string, { content?: Record<string, Media> }>;
 }
 interface Spec {
   info: { description: string };
+  security?: unknown[];
   paths: Record<string, Record<string, Operation>>;
   components: { schemas: Record<string, Json> };
 }
@@ -67,6 +69,37 @@ export function expectContract(
   expectBodyToMatch(
     declared?.content?.['application/json']?.schema,
     reply.body,
+  );
+}
+
+/** One operation of the contract: its method, path template and whether it needs the token. */
+export interface ContractOperation {
+  method: string;
+  path: string;
+  secured: boolean;
+}
+
+const HTTP_METHODS = new Set([
+  'get',
+  'put',
+  'post',
+  'delete',
+  'patch',
+  'head',
+  'options',
+  'trace',
+]);
+
+/** Every method and path that api/openapi.yaml documents. */
+export function contractOperations(): ContractOperation[] {
+  return Object.entries(spec.paths).flatMap(([path, item]) =>
+    Object.entries(item)
+      .filter(([method]) => HTTP_METHODS.has(method))
+      .map(([method, operation]) => ({
+        method: method.toUpperCase(),
+        path,
+        secured: (operation.security ?? spec.security ?? []).length > 0,
+      })),
   );
 }
 
