@@ -908,8 +908,20 @@ def test_empty_input_over_existing_entries_is_refused(tmp_path):
 
     result = run_validator("", Path(_relative_memory_target()), cwd=tmp_path)
     assert result.returncode == 1, result.stderr
-    assert "pass --clear" in result.stderr
+    assert "nothing was written" in result.stderr
+    assert "unset between shell calls" in result.stderr
+    assert "same call as the validator lookup" in result.stderr
     assert memory.read_text() == ENTRY
+
+
+def test_empty_input_refusal_does_not_offer_clear_as_the_fix(tmp_path):
+    """A retry with --clear while the variable is still unset empties the
+    file with exit 0, so the refusal must not suggest it."""
+    _seed_memory(tmp_path)
+
+    result = run_validator("", Path(_relative_memory_target()), cwd=tmp_path)
+    assert result.returncode == 1, result.stderr
+    assert "--clear" not in result.stderr
 
 
 def test_empty_input_with_clear_empties_the_file(tmp_path):
