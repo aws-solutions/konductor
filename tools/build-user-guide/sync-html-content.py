@@ -338,6 +338,13 @@ EDITS = [
      'and occasionally what you want — see <a href="#/sops">which agent owns which SOP</a>.</p>'),
     ("ik which agent: konductor first",
      ">kiro-cli chat --agent k-architect</pre>", ">kiro-cli chat --agent konductor</pre>"),
+    # ---- delegation briefs carry the user's asks, not exhaustive lists ------
+    ("delegation MUST DO row",
+     "Exhaustive requirements, nothing implicit.",
+     "What the user asked, plus constraints the specialist cannot infer."),
+    ("k-delegate MUST DO node",
+     "MUST DO (exhaustive, nothing implicit)",
+     "MUST DO (the user's asks plus constraints the specialist cannot infer)"),
 ]
 
 # Per-agent roster figures, verified against agents/*.agent-spec.json.

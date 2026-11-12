@@ -182,7 +182,7 @@ A **delegation** is not a casual instruction — it is a fixed 7-section format 
 2. EXPECTED OUTCOME — concrete, verifiable deliverables
 3. REQUIRED SKILLS
 4. REQUIRED TOOLS   — an explicit allowlist, to prevent tool sprawl
-5. MUST DO          — exhaustive requirements, nothing implicit
+5. MUST DO          — what the user asked, plus constraints the specialist cannot infer
 6. MUST NOT DO      — prohibitions, including a response size limit
 7. CONTEXT          — paths, patterns, directories to ignore
 ```
