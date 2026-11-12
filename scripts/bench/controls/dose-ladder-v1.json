@@ -1,0 +1,491 @@
+{
+  "set": "dose-ladder-v1",
+  "author": "hand-authored. validateLadder (scripts/bench/lib/dose-ladder.js) checks the mechanical part of the audit checklist on every load; the rest is a reviewer's call. Every task has 5 to 8 rubric items, the range a request-only checklist is written for.",
+  "purpose": "Check that the judging can see a known loss without a subject model. Each task has one good baseline answer and a set of declared defects, each tied to one rubric item. A dose applies N defects. The with-arm carries the DEFECTIVE answer and the without-arm the baseline, so a dose should read as a NEGATIVE gap that grows with N, and D4 should read the lowest gap of the four doses. D0 carries a paraphrase of the baseline, which is the null test: equal quality, different words, so its interval must contain 0.",
+  "why_not_a_control_skill": "A deliberately wrong control skill cannot do this job: the task prompt has to state its requirement to be scorable, and stating it tells the subject model what correct looks like, so the model overrides the bad directive. Authored answers take the model out of the loop, so a refusal is impossible.",
+  "audit_checklist": [
+    "every defect's `find` string occurs exactly once in base_answer",
+    "every defect names a real rubric index and genuinely breaks that item",
+    "a defect changes correctness, never only wording or length",
+    "paraphrase keeps every rubric item met and changes only wording",
+    "answer lengths stay within 15% of the baseline at every dose",
+    "no text mentions a skill, a plugin, guidance, or the benchmark"
+  ],
+  "doses": {
+    "D0": 0,
+    "D1": 1,
+    "D2": 2,
+    "D4": 4
+  },
+  "tasks": [
+    {
+      "id": "fx-1-dedupe",
+      "domain": "python",
+      "prompt": "Write a Python function that removes duplicate email addresses from a list entered by hand, keeping the first spelling of each address. Addresses differ in case, so bob@example.com and Bob@Example.com are the same address. Include a docstring with a couple of examples and say what the complexity is.",
+      "rubric": [
+        "Compares addresses case-insensitively, so differing case counts as one address",
+        "Keeps the FIRST spelling seen, not a lowercased or re-cased version",
+        "Preserves the original order of first appearance",
+        "Runs in linear time rather than scanning the kept list for each address",
+        "Has a docstring with at least one worked example and states the complexity"
+      ],
+      "base_answer": "```python\ndef dedupe_emails(addresses: list[str]) -> list[str]:\n    \"\"\"Remove duplicate email addresses, keeping the first spelling of each.\n\n    Addresses are compared without case, so \"Bob@Example.com\" and\n    \"bob@example.com\" are the same address. The spelling that is kept is the\n    one that appeared first.\n\n    >>> dedupe_emails([\"Bob@Example.com\", \"alice@example.com\", \"bob@example.com\"])\n    ['Bob@Example.com', 'alice@example.com']\n    >>> dedupe_emails([])\n    []\n    \"\"\"\n    seen = set()\n    kept = []\n    for address in addresses:\n        key = address.lower()\n        if key not in seen:\n            seen.add(key)\n            kept.append(address)\n    return kept\n```\n\nIt runs in O(n) time and uses O(n) extra space: one pass over the list, with a set membership check per address.\n\nTwo things worth knowing. Only the case is normalized for comparison, so `bob+tag@example.com` and `bob@example.com` stay separate addresses, which is correct for most providers. And the kept spelling is whatever the person typed first, so a display name entered as `Bob@Example.com` survives unchanged.",
+      "defects": [
+        {
+          "rubric_item": 1,
+          "breaks": "returns the lowercased form instead of the first spelling",
+          "find": "            kept.append(address)",
+          "replace": "            kept.append(key)"
+        },
+        {
+          "rubric_item": 0,
+          "breaks": "compares with case, so Bob@Example.com and bob@example.com both survive",
+          "find": "        key = address.lower()",
+          "replace": "        key = address"
+        },
+        {
+          "rubric_item": 3,
+          "breaks": "scans the kept list for every address, so the function is quadratic rather than linear",
+          "find": "        if key not in seen:",
+          "replace": "        if key not in [k.lower() for k in kept]:"
+        },
+        {
+          "rubric_item": 4,
+          "breaks": "drops the worked examples and the complexity statement",
+          "find": "\n    >>> dedupe_emails([\"Bob@Example.com\", \"alice@example.com\", \"bob@example.com\"])\n    ['Bob@Example.com', 'alice@example.com']\n    >>> dedupe_emails([])\n    []\n",
+          "replace": "\n    Pass the list of addresses in the order they were entered and the\n    deduplicated list comes back in that same order.\n"
+        }
+      ],
+      "paraphrase": [
+        {
+          "find": "It runs in O(n) time and uses O(n) extra space: one pass over the list, with a set membership check per address.",
+          "replace": "Complexity is O(n) time and O(n) additional space: a single pass, with one set lookup per address."
+        },
+        {
+          "find": "Two things worth knowing. Only the case is normalized for comparison, so",
+          "replace": "Two points to note. Comparison normalizes case only, so"
+        }
+      ]
+    },
+    {
+      "id": "fx-2-spend-sql",
+      "domain": "sql",
+      "prompt": "Tables: customers(id, name) and orders(id, customer_id, total_cents, created_at timestamptz). Write a PostgreSQL query returning the top 5 customers by total spend in 2025, with their name and total. Customers with no 2025 orders should not appear. Say which index would help.",
+      "rubric": [
+        "Sums spend per customer rather than returning a single row or a maximum",
+        "Restricts to 2025 with a range condition on created_at that an index can use",
+        "Excludes customers with no 2025 orders, rather than listing them with an empty or null total",
+        "Joins customers so the name is returned alongside the total",
+        "Orders by total spend descending and limits to 5",
+        "Names an index that serves the filter and the grouping, such as one on (customer_id, created_at)"
+      ],
+      "base_answer": "```sql\nSELECT c.name,\n       SUM(o.total_cents) AS total_cents\nFROM orders AS o\nJOIN customers AS c ON c.id = o.customer_id\nWHERE o.created_at >= '2025-01-01'\n  AND o.created_at <  '2026-01-01'\nGROUP BY c.id, c.name\nORDER BY total_cents DESC\nLIMIT 5;\n```\n\nThe inner join is what drops customers with no 2025 orders, so no extra filter is needed for that.\n\nFor the index, `CREATE INDEX ON orders (customer_id, created_at) INCLUDE (total_cents);` lets the planner find each customer's 2025 rows and read the amount without touching the table.\n\nOne detail on the date range: a half-open range keeps the condition index-usable. Wrapping the column in a function, as in `EXTRACT(YEAR FROM created_at) = 2025`, gives the same rows but forces a scan of every order.",
+      "defects": [
+        {
+          "rubric_item": 0,
+          "breaks": "returns the largest single order per customer instead of their total spend",
+          "find": "       SUM(o.total_cents) AS total_cents",
+          "replace": "       MAX(o.total_cents) AS total_cents"
+        },
+        {
+          "rubric_item": 1,
+          "breaks": "wraps the column in a function, so the index cannot be used",
+          "find": "WHERE o.created_at >= '2025-01-01'\n  AND o.created_at <  '2026-01-01'",
+          "replace": "WHERE EXTRACT(YEAR FROM o.created_at) = 2025"
+        },
+        {
+          "rubric_item": 2,
+          "breaks": "switches to a right join, so customers with no 2025 orders are listed with a null total, and Postgres sorts nulls first on DESC so they take the top five",
+          "find": "JOIN customers AS c ON c.id = o.customer_id",
+          "replace": "RIGHT JOIN customers AS c ON c.id = o.customer_id"
+        },
+        {
+          "rubric_item": 5,
+          "breaks": "names an index that does not serve the filter or the grouping",
+          "find": "`CREATE INDEX ON orders (customer_id, created_at) INCLUDE (total_cents);` lets the planner find each customer's 2025 rows and read the amount without touching the table.",
+          "replace": "`CREATE INDEX ON customers (name);` keeps the output sorted, which is the part that costs the most here."
+        }
+      ],
+      "paraphrase": [
+        {
+          "find": "The inner join is what drops customers with no 2025 orders, so no extra filter is needed for that.",
+          "replace": "Customers without 2025 orders fall out through the inner join itself, so there is nothing further to filter."
+        },
+        {
+          "find": "One detail on the date range: a half-open range keeps the condition index-usable.",
+          "replace": "A note on the range: writing it half-open is what keeps the condition usable by an index."
+        }
+      ]
+    },
+    {
+      "id": "fx-3-iso-date",
+      "domain": "python",
+      "prompt": "Write a Python function is_iso_date(s: str) -> bool that validates a form field before saving. It should return True only when the whole string is a real calendar date written as YYYY-MM-DD. Say what it rejects and why a regex alone is not enough.",
+      "rubric": [
+        "Matches the WHOLE string, so a date embedded in other text is rejected",
+        "Rejects dates that do not exist, covering impossible months and days as well as 29 February in a non-leap year",
+        "Explains that a shape check cannot decide whether a date exists",
+        "Names concrete rejected examples",
+        "Returns False for a rejected value instead of raising an error"
+      ],
+      "base_answer": "```python\nimport re\nfrom datetime import date\n\n_SHAPE = re.compile(r\"^\\d{4}-\\d{2}-\\d{2}$\")\n\n\ndef is_iso_date(s: str) -> bool:\n    \"\"\"True only when the whole string is a real date written as YYYY-MM-DD.\"\"\"\n    if not _SHAPE.match(s):\n        return False\n    year, month, day = (int(part) for part in s.split(\"-\"))\n    try:\n        date(year, month, day)\n    except ValueError:\n        return False\n    return True\n```\n\nThe pattern settles the layout and the constructor settles whether the date exists. Both are needed.\n\nWhat it rejects, and why:\n\n- `\"on 2026-10-21\"` and `\"2026-10-21 \"` because the anchors require the whole string to be the date\n- `\"2026-13-45\"` because there is no month 13 and no day 45\n- `\"2025-02-29\"` because 2025 is not a leap year, while `\"2024-02-29\"` passes\n- `\"2026-1-5\"` because the field asks for zero-padded parts\n\nA pattern can only describe the shape of the text. `\\d{4}-\\d{2}-\\d{2}` is happy with month 13 and with 31 February, and a pattern that encodes month lengths still cannot express the leap-year rule without becoming unreadable. Constructing the date answers the real question, which is whether it exists.",
+      "defects": [
+        {
+          "rubric_item": 1,
+          "breaks": "drops the calendar check, so month 13 and day 45 pass the shape test and are accepted",
+          "edits": [
+            {
+              "find": "    year, month, day = (int(part) for part in s.split(\"-\"))\n    try:\n        date(year, month, day)\n    except ValueError:\n        return False\n    return True",
+              "replace": "    # The shape test is all that is needed to accept the value here.\n    return True"
+            }
+          ]
+        },
+        {
+          "rubric_item": 0,
+          "breaks": "unanchors the pattern and searches instead of matching, so a date surrounded by other text is accepted",
+          "edits": [
+            {
+              "find": "r\"^\\d{4}-\\d{2}-\\d{2}$\"",
+              "replace": "r\"\\d{4}-\\d{2}-\\d{2}\""
+            },
+            {
+              "find": "    if not _SHAPE.match(s):",
+              "replace": "    if not _SHAPE.search(s):   # any date-shaped run of digits will do"
+            }
+          ]
+        },
+        {
+          "rubric_item": 2,
+          "breaks": "claims the pattern alone is sufficient, which is the opposite of the point",
+          "edits": [
+            {
+              "find": "A pattern can only describe the shape of the text. `\\d{4}-\\d{2}-\\d{2}` is happy with month 13 and with 31 February, and a pattern that encodes month lengths still cannot express the leap-year rule without becoming unreadable. Constructing the date answers the real question, which is whether it exists.",
+              "replace": "An anchored pattern is sufficient on its own for a form field like this one. Constructing a date object on every keystroke costs more than it returns, and the pattern already rejects anything that is not laid out as a date, which is the check the field actually needs before it is saved."
+            }
+          ]
+        },
+        {
+          "rubric_item": 3,
+          "breaks": "replaces the concrete rejected examples with vague restatements that name no case",
+          "edits": [
+            {
+              "find": "- `\"on 2026-10-21\"` and `\"2026-10-21 \"` because the anchors require the whole string to be the date\n- `\"2026-13-45\"` because there is no month 13 and no day 45\n- `\"2025-02-29\"` because 2025 is not a leap year, while `\"2024-02-29\"` passes\n- `\"2026-1-5\"` because the field asks for zero-padded parts",
+              "replace": "- any value that is not a valid calendar date laid out the way the field expects\n- values where the parts are present but the layout differs from what is wanted\n- values carrying extra characters around the date, depending on how the check is applied\n- values that look close enough to a date but do not satisfy the check as written"
+            }
+          ]
+        }
+      ],
+      "paraphrase": [
+        {
+          "find": "What it rejects, and why:",
+          "replace": "The cases it turns away, and why:"
+        },
+        {
+          "find": "The pattern settles the layout and the constructor settles whether the date exists. Both are needed.",
+          "replace": "The pattern decides the layout and the constructor decides whether the date is real. Both are required."
+        }
+      ]
+    },
+    {
+      "id": "fx-4-ac-coverage",
+      "domain": "test-planning",
+      "prompt": "Acceptance criteria for a sign-up feature, with the tests that exist today:\n\nAC-1 A new user signs up with email and password. Tests: one unit test for the happy path.\nAC-2 A user resets a forgotten password through an emailed link. Tests: none.\nAC-3 Invalid input shows a clear message. Tests: one unit test for an empty email.\nAC-4 Sign-up is rate limited per IP address. Tests: none.\n\nSort these into must-fix, should-fix and manual-only, and for each say what to test, including the negative cases.",
+      "rubric": [
+        "Treats AC-2 as must-fix, because a core flow has no test at all",
+        "Names concrete negative cases for the reset link, such as an expired link, a reused link, or an unknown email",
+        "Treats AC-1 as needing error-path cases such as a duplicate email or a weak password, not only the happy path",
+        "Treats AC-4 as needing a test that crosses the limit and one that stays under it, and notes it needs control of time or the counter",
+        "Assigns every one of the four criteria to a bucket, with nothing left unsorted"
+      ],
+      "base_answer": "**Must-fix**\n\nAC-2, password reset. A core flow with no test at all is the biggest gap here. Cover the happy path, then the cases that actually go wrong: a link used twice, a link past its expiry, a link whose token has been tampered with, and a reset requested for an address that is not registered, which should look identical from the outside so it does not leak who has an account.\n\nAC-4, rate limiting. Untested, and the failure is silent: if it stops working nobody notices until there is an incident. Two tests carry most of the value, one that stays just under the limit and passes, and one that crosses it and gets refused. Both need the clock or the counter under test control, so inject them rather than sleeping.\n\n**Should-fix**\n\nAC-1, sign-up. The happy path is covered and the error paths are not. Add a duplicate email address, a password that fails the policy, and a malformed address. The duplicate case matters most, because it decides what a real user sees on their second attempt.\n\nAC-3, invalid input. One empty-email test is a start, not coverage. Add a malformed address, an over-long value at the field limit, and whitespace that looks empty but is not. Assert the message the user sees, not only that the request failed.\n\n**Manual-only**\n\nNothing here is manual-only. The emailed link in AC-2 is the closest, and even that is better covered by asserting the token the mailer is handed than by opening a mailbox by hand. If the team wants a human check, make it one scripted pass through a real inbox per release, not a per-change step.",
+      "defects": [
+        {
+          "rubric_item": 0,
+          "breaks": "demotes the untested core flow to should-fix",
+          "find": "**Must-fix**\n\nAC-2, password reset. A core flow with no test at all is the biggest gap here.",
+          "replace": "**Should-fix**\n\nAC-2, password reset. Reset is a secondary flow, so it can wait behind the main ones."
+        },
+        {
+          "rubric_item": 1,
+          "breaks": "drops the concrete negative cases for the reset link",
+          "find": " Cover the happy path, then the cases that actually go wrong: a link used twice, a link past its expiry, a link whose token has been tampered with, and a reset requested for an address that is not registered, which should look identical from the outside so it does not leak who has an account.",
+          "replace": " Cover the happy path, then confirm the flow works from the request through to the new password being accepted, and check that the page behaves sensibly when the person arrives at it directly rather than through the email, which is the case most likely to come up in support."
+        },
+        {
+          "rubric_item": 3,
+          "breaks": "makes rate limiting manual and drops the time-control point",
+          "edits": [
+            {
+              "find": "AC-4, rate limiting. Untested, and the failure is silent: if it stops working nobody notices until there is an incident. Two tests carry most of the value, one that stays just under the limit and passes, and one that crosses it and gets refused. Both need the clock or the counter under test control, so inject them rather than sleeping.",
+              "replace": "AC-4, rate limiting. Untested, and it is awkward to automate because the limit is counted over a window of real time, so a check before each release is the practical option: send requests until the limit refuses them, then confirm that a normal user is unaffected by trying one ordinary sign-up."
+            }
+          ]
+        },
+        {
+          "rubric_item": 2,
+          "breaks": "calls the happy-path-only sign-up test sufficient",
+          "find": "AC-1, sign-up. The happy path is covered and the error paths are not. Add a duplicate email address, a password that fails the policy, and a malformed address. The duplicate case matters most, because it decides what a real user sees on their second attempt.",
+          "replace": "AC-1, sign-up. The happy-path unit test covers the behaviour that matters, and the remaining paths are variations on validation that the framework already enforces, so the return on further tests here is low compared with the other three criteria."
+        }
+      ],
+      "paraphrase": [
+        {
+          "find": "One empty-email test is a start, not coverage.",
+          "replace": "A single empty-email test is a beginning rather than real coverage."
+        },
+        {
+          "find": "Nothing here is manual-only.",
+          "replace": "None of the four belongs in the manual-only bucket."
+        }
+      ]
+    },
+    {
+      "id": "fx-5-flaky-triage",
+      "domain": "test-analysis",
+      "prompt": "Our end-to-end suite fails about one run in four, always in a different test. The failures are mostly timeouts waiting for an element, and they go away when the test is retried. Someone has proposed adding two automatic retries to every test. What should we do instead, and how do we decide whether it worked?",
+      "rubric": [
+        "Says retries hide the failures rather than fixing them, and names the cost of that",
+        "Points at waiting on an explicit condition instead of a timeout or a fixed sleep",
+        "Names shared state or test ordering as a cause worth ruling out, given that the failing test moves",
+        "Gives a measurable success signal, such as a pass rate over a stated number of runs",
+        "Allows retries in a bounded way, such as quarantining a known-flaky test, rather than refusing outright"
+      ],
+      "base_answer": "Retrying everything twice would make the suite look green and leave you blind. A real regression that fails one run in three would pass on retry and ship, and the signal you would need to find it is exactly what the retry throws away. Retries also triple the cost of the worst runs.\n\nWhat to do first:\n\n**Wait for a condition, not a duration.** Timeouts waiting for an element almost always mean the test is waiting for wall-clock time while the app is waiting for a request. Assert on the state you actually need, the row being present, the spinner being gone, and let the wait poll for it.\n\n**Rule out shared state.** The failing test moving around is the tell. If each test picked its own fixture data, the order would not matter; when the failure wanders, tests are usually competing for one account, one row, or one browser profile. Run the suite in a fixed order and then in reverse, and see whether the failures follow.\n\n**Quarantine rather than retry.** When a single test is genuinely flaky and the fix is not ready, move it to a quarantined group that runs separately and does not gate the build. That keeps the signal on the main suite honest, and it puts a visible count on how much flake you are carrying.\n\nHow to know it worked: measure the pass rate over 20 consecutive runs of the unchanged suite, before and after. One in four failing is about 75%; aim for 20 of 20 and treat anything below 19 as unfinished. Record which test failed each time, because a flat pass rate with the failures concentrating in one test is a different problem from the one you started with.",
+      "defects": [
+        {
+          "rubric_item": 0,
+          "breaks": "endorses blanket retries as the fix",
+          "find": "Retrying everything twice would make the suite look green and leave you blind. A real regression that fails one run in three would pass on retry and ship, and the signal you would need to find it is exactly what the retry throws away. Retries also triple the cost of the worst runs.",
+          "replace": "Two automatic retries are a reasonable first move. They cost little, they turn the suite green straight away, and a test that passes on a second attempt was not really broken, so the team stops losing time to red builds while the underlying timing is sorted out later."
+        },
+        {
+          "rubric_item": 2,
+          "breaks": "removes the shared-state cause the moving failure points to",
+          "edits": [
+            {
+              "find": "**Rule out shared state.** The failing test moving around is the tell. If each test picked its own fixture data, the order would not matter; when the failure wanders, tests are usually competing for one account, one row, or one browser profile. Run the suite in a fixed order and then in reverse, and see whether the failures follow.\n\n",
+              "replace": "**Raise the timeouts.** The failing test moving around suggests the machine is simply slower on some runs than others. A single global timeout value applied everywhere removes that variability, and it is one change rather than an audit of every spec in the suite.\n\n"
+            }
+          ]
+        },
+        {
+          "rubric_item": 3,
+          "breaks": "replaces the measurable signal with a feeling",
+          "find": "How to know it worked: measure the pass rate over 20 consecutive runs of the unchanged suite, before and after. One in four failing is about 75%; aim for 20 of 20 and treat anything below 19 as unfinished. Record which test failed each time, because a flat pass rate with the failures concentrating in one test is a different problem from the one you started with.",
+          "replace": "How to know it worked: the team will notice the suite feeling more reliable, and the complaints about red builds should drop off over the following couple of weeks, which is the signal that matters most because it is the one people actually act on."
+        },
+        {
+          "rubric_item": 1,
+          "breaks": "recommends a longer timeout and a fixed sleep, which is the cause of the timeouts rather than the cure",
+          "edits": [
+            {
+              "find": "**Wait for a condition, not a duration.** Timeouts waiting for an element almost always mean the test is waiting for wall-clock time while the app is waiting for a request. Assert on the state you actually need, the row being present, the spinner being gone, and let the wait poll for it.",
+              "replace": "**Give it longer.** Timeouts waiting for an element mean the app needs more time than the test allows, so raise the timeout and add a short fixed sleep before the assertion to let the page settle. A sleep is predictable, it needs no knowledge of what the page is doing, and it can be applied uniformly across the suite without reading each spec."
+            }
+          ]
+        }
+      ],
+      "paraphrase": [
+        {
+          "find": "What to do first:",
+          "replace": "Where to start:"
+        },
+        {
+          "find": "The failing test moving around is the tell.",
+          "replace": "The giveaway is that the failing test keeps changing."
+        }
+      ]
+    },
+    {
+      "id": "fx-6-error-text",
+      "domain": "ui-text",
+      "prompt": "Rewrite this error message for a file upload form in a web console: \"Error: Upload failed. Invalid file. Please try again or contact your administrator if the problem persists.\" The real cause is that the file is larger than the 10 MB limit. Explain each change in a sentence.",
+      "rubric": [
+        "States the actual cause, the size limit, rather than a generic failure",
+        "Tells the person what to do next in a way they can act on",
+        "Drops the generic contact-your-administrator tail, which cannot help with a fixed limit",
+        "Keeps the wording plain and avoids blaming the person",
+        "Explains each change, not only the final text"
+      ],
+      "base_answer": "**Rewrite**\n\n> This file is larger than the 10 MB limit.\n> Choose a smaller file, or compress this one and upload it again.\n\n**What changed, and why**\n\n- **Named the real cause.** \"Invalid file\" could mean the wrong format, a corrupt file, or a permissions problem. Size is the actual reason, and it is the one fact that tells the person what to change.\n- **Gave the limit.** 10 MB turns the message from a refusal into something the person can measure their file against.\n- **Said what to do next.** \"Please try again\" asks for the same failure a second time. Choosing a smaller file or compressing this one are the two things that actually work.\n- **Dropped the \"Error:\" prefix.** The message already appears in an error style, so the word repeats what the design is saying.\n- **Dropped the administrator line.** An administrator cannot raise a fixed upload limit, so that sentence sends the person somewhere that cannot help.\n- **Avoided blame.** \"This file is larger than\" describes the file, where \"you uploaded a file that is too large\" describes the person's mistake.\n\nOne thing to check with the team: if the limit is configurable per tenant, read it from configuration rather than writing 10 MB into the string, so the message cannot drift from the real limit.",
+      "defects": [
+        {
+          "rubric_item": 0,
+          "breaks": "keeps the cause generic, so the real reason is still hidden from the person",
+          "edits": [
+            {
+              "find": "> This file is larger than the 10 MB limit.",
+              "replace": "> Upload failed. The file could not be accepted."
+            }
+          ]
+        },
+        {
+          "rubric_item": 2,
+          "breaks": "puts the contact-your-administrator tail back into the message itself, sending the person somewhere that cannot raise a fixed limit",
+          "edits": [
+            {
+              "find": "> Choose a smaller file, or compress this one and upload it again.",
+              "replace": "> Choose a smaller file, or contact your administrator if this continues."
+            },
+            {
+              "find": "- **Dropped the administrator line.** An administrator cannot raise a fixed upload limit, so that sentence sends the person somewhere that cannot help.",
+              "replace": "- **Kept the administrator line.** It gives the person a route to escalate when they cannot resolve it themselves."
+            }
+          ]
+        },
+        {
+          "rubric_item": 3,
+          "breaks": "rewrites the explanation to blame the person",
+          "find": "- **Avoided blame.** \"This file is larger than\" describes the file, where \"you uploaded a file that is too large\" describes the person's mistake.",
+          "replace": "- **Made the cause clear.** Saying \"you uploaded a file that is too large\" leaves no doubt about what went wrong."
+        },
+        {
+          "rubric_item": 4,
+          "breaks": "removes the per-change explanations the task asked for",
+          "find": "**What changed, and why**\n\n",
+          "replace": "**What changed**\n\nThe message is shorter and clearer.\n\n"
+        }
+      ],
+      "paraphrase": [
+        {
+          "find": "**What changed, and why**",
+          "replace": "**The changes, and the reason for each**"
+        },
+        {
+          "find": "One thing to check with the team:",
+          "replace": "One point to raise with the team:"
+        }
+      ]
+    },
+    {
+      "id": "fx-7-login-spec",
+      "domain": "e2e-implementation",
+      "prompt": "We have a React admin console behind a login form. Write a Playwright test that signs in and then checks that a newly created invite appears in the invites table. CI runs Chromium only. Say how you avoid signing in again in every spec, and keep the credentials out of the committed file.",
+      "rubric": [
+        "Signs in once and reuses the stored session, rather than logging in inside every test",
+        "Selects elements by role or accessible name, or by a test id, not by CSS class or position",
+        "Waits for a condition such as the row becoming visible, with no fixed sleep",
+        "Asserts something specific about the invited row, such as the address and its status, not only a count",
+        "Keeps the sign-in credentials out of the committed file, reading them from the environment"
+      ],
+      "base_answer": "Sign in once in a setup project and save the session, then let every spec start already signed in.\n\n```ts\n// auth.setup.ts\nimport { test as setup, expect } from '@playwright/test';\n\nsetup('sign in once', async ({ page }) => {\n  await page.goto('/login');\n  await page.getByLabel('Email').fill(process.env.E2E_USER!);\n  await page.getByLabel('Password').fill(process.env.E2E_PASSWORD!);\n  await page.getByRole('button', { name: 'Sign in' }).click();\n  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();\n  await page.context().storageState({ path: '.auth/user.json' });\n});\n```\n\n```ts\n// invites.spec.ts\nimport { test, expect } from '@playwright/test';\n\ntest('a new invite appears in the table', async ({ page }) => {\n  await page.goto('/invites');\n  await page.getByRole('button', { name: 'Invite user' }).click();\n  await page.getByLabel('Email').fill('new.person@example.com');\n  await page.getByRole('button', { name: 'Send invite' }).click();\n\n  const row = page.getByRole('row', { name: /new\\.person@example\\.com/ });\n  await expect(row).toBeVisible();\n  await expect(row.getByText('Pending')).toBeVisible();\n});\n```\n\nIn `playwright.config.ts`, give the setup its own project and have the test project depend on it with `storageState: '.auth/user.json'`. Add `projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }]` so CI pulls one browser.\n\nThe two credentials come from the environment, so nothing secret is committed. Add `.auth/` to `.gitignore`: the saved session is a live credential.",
+      "defects": [
+        {
+          "rubric_item": 0,
+          "breaks": "signs in inside the test itself, so every spec repeats the login and the saved session is unused",
+          "edits": [
+            {
+              "find": "  await page.goto('/invites');",
+              "replace": "  await page.goto('/login');\n  await page.getByLabel('Email').fill('admin@example.com');\n  await page.getByRole('button', { name: 'Sign in' }).click();\n  await page.goto('/invites');"
+            }
+          ]
+        },
+        {
+          "rubric_item": 1,
+          "breaks": "selects the row by table position, so any reordering or a new row breaks the test",
+          "edits": [
+            {
+              "find": "  const row = page.getByRole('row', { name: /new\\.person@example\\.com/ });",
+              "replace": "  const row = page.locator('table.invites tbody tr:nth-child(1)');"
+            }
+          ]
+        },
+        {
+          "rubric_item": 2,
+          "breaks": "waits a fixed three seconds instead of for the row, so it is slow when fast and flaky when slow",
+          "edits": [
+            {
+              "find": "  await expect(row).toBeVisible();",
+              "replace": "  await page.waitForTimeout(3000);"
+            }
+          ]
+        },
+        {
+          "rubric_item": 4,
+          "breaks": "hardcodes the sign-in credentials into the committed file",
+          "edits": [
+            {
+              "find": "  await page.getByLabel('Email').fill(process.env.E2E_USER!);\n  await page.getByLabel('Password').fill(process.env.E2E_PASSWORD!);",
+              "replace": "  await page.getByLabel('Email').fill('admin@example.com');\n  await page.getByLabel('Password').fill('Summer2026!');"
+            }
+          ]
+        }
+      ],
+      "paraphrase": [
+        {
+          "find": "Sign in once in a setup project and save the session, then let every spec start already signed in.",
+          "replace": "Do the sign-in once in a setup project and store the session, so each spec begins already authenticated."
+        },
+        {
+          "find": "The two credentials come from the environment, so nothing secret is committed.",
+          "replace": "Both credentials are read from the environment, so no secret is committed."
+        }
+      ]
+    },
+    {
+      "id": "fx-8-invite-security",
+      "domain": "security-testing",
+      "prompt": "Our service exposes POST /api/invites, which creates an invite for an email address inside the caller's organisation. It takes a bearer token. List the test cases you would write beyond the happy path, and say what each one asserts.",
+      "rubric": [
+        "Covers authorization across organisations: a token from one must not create an invite in another",
+        "Covers a missing, expired and malformed token as separate cases",
+        "Covers input validation on the address, including a value that is not an email and an over-long one",
+        "Covers a repeated identical submission, and states whether the second is rejected or is idempotent",
+        "States the expected status code for each case, not only the scenario name"
+      ],
+      "base_answer": "**Authorization**\n\n- A token for organisation A posts an invite naming an address in organisation B. The invite must not be created, and the response must not reveal whether B exists.\n- A token whose user has a read-only role in its own organisation. Creation is refused.\n- No `Authorization` header at all.\n- A token that has expired, and a token whose signature does not verify. These are separate cases: one is a valid token out of date, the other is not a token.\n\n**Input validation on the address**\n\n- A value that is not an address at all, such as `not-an-email`.\n- An address at the column limit and one past it, so the failure is a rejection rather than a truncated row.\n- An address with leading or trailing whitespace, which should be trimmed rather than stored as a second distinct address.\n\n**Repeat submission**\n\n- The same address twice in a row. Decide and then assert one behaviour: either the second call is refused as a duplicate, or it is idempotent and returns the existing invite. Both are defensible, silently creating two is not.\n\n**Expected responses**\n\n| Case | Status |\n| --- | --- |\n| cross-organisation address | 404 |\n| read-only role | 403 |\n| no header | 401 |\n| expired or malformed token | 401 |\n| bad or over-long address | 400 |\n| duplicate address | 409 or 200 with the existing invite |\n\nThe cross-organisation case returning 404 rather than 403 is deliberate: 403 would confirm that the other organisation exists.",
+      "defects": [
+        {
+          "rubric_item": 0,
+          "breaks": "drops the cross-organisation case, the one that matters most for a tenanted endpoint",
+          "edits": [
+            {
+              "find": "- A token for organisation A posts an invite naming an address in organisation B. The invite must not be created, and the response must not reveal whether B exists.\n",
+              "replace": "- A token for an organisation posts an invite for an address in that same organisation, which is the case the endpoint is built for and the one worth covering first.\n"
+            }
+          ]
+        },
+        {
+          "rubric_item": 4,
+          "breaks": "removes the expected status codes, so the cases name scenarios without asserting anything",
+          "edits": [
+            {
+              "find": "**Expected responses**\n\n| Case | Status |\n| --- | --- |\n| cross-organisation address | 404 |\n| read-only role | 403 |\n| no header | 401 |\n| expired or malformed token | 401 |\n| bad or over-long address | 400 |\n| duplicate address | 409 or 200 with the existing invite |\n",
+              "replace": "**Expected responses**\n\nEach of the cases above should fail rather than succeed, and the test asserts that the call did not go through and that no invite row was written for it.\n"
+            }
+          ]
+        },
+        {
+          "rubric_item": 2,
+          "breaks": "drops the specific invalid and over-long address cases",
+          "edits": [
+            {
+              "find": "- A value that is not an address at all, such as `not-an-email`.\n- An address at the column limit and one past it, so the failure is a rejection rather than a truncated row.\n- An address with leading or trailing whitespace, which should be trimmed rather than stored as a second distinct address.",
+              "replace": "- Addresses the field should not accept, which the existing validation on the form already covers, so the test confirms the request is turned away rather than enumerating particular values.\n- An address the team considers unusual, checked against whatever the validator currently does with it."
+            }
+          ]
+        },
+        {
+          "rubric_item": 3,
+          "breaks": "leaves the repeat-submission behaviour undecided, which is the thing the test exists to pin",
+          "edits": [
+            {
+              "find": "- The same address twice in a row. Decide and then assert one behaviour: either the second call is refused as a duplicate, or it is idempotent and returns the existing invite. Both are defensible, silently creating two is not.",
+              "replace": "- The same address twice in a row, to see how the endpoint behaves when an address is invited more than once by the same caller, and to record whatever it does today so a change is noticed later."
+            }
+          ]
+        }
+      ],
+      "paraphrase": [
+        {
+          "find": "**Input validation on the address**",
+          "replace": "**Validating the address**"
+        },
+        {
+          "find": "The cross-organisation case returning 404 rather than 403 is deliberate:",
+          "replace": "Returning 404 instead of 403 for the cross-organisation case is intentional:"
+        }
+      ]
+    }
+  ]
+}

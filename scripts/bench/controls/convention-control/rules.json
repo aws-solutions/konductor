@@ -1,0 +1,56 @@
+{
+  "format_version": 1,
+  "skill": "convention-control",
+  "skill_md_sha256": "4dd5f1473dd356c5a9d009d4b2d0638525885b79dba9775c801ae2f281ca8e82",
+  "request_context": "A request to write a short internal note for colleagues: a status update, an incident summary, a meeting recap, a handoff, a release summary, a decision note or an escalation summary, with the facts and dates pasted into the request.",
+  "rules": [
+    {
+      "id": "convention-control-r01",
+      "source_quote": "The first word of every note is `Heads-up:` (with the colon), followed by the first sentence on the same line.",
+      "class": "useful",
+      "outcome": "The first word of the note is `Heads-up:`, followed by the first sentence on the same line.",
+      "why": "A team convention with no effect on whether the note is correct, complete or easy to use. It is arbitrary on purpose: a model cannot know it, and following it adds nothing for the reader.",
+      "scenario_hint": "Any short internal note written for colleagues."
+    },
+    {
+      "id": "convention-control-r02",
+      "source_quote": "Every note has a short summary under a heading named exactly `In Short`, written as a level-2 heading (`## In Short`).",
+      "class": "useful",
+      "outcome": "The note has a short summary under a level-2 heading named exactly `In Short`.",
+      "why": "A team convention about the name of a heading. Arbitrary on purpose; any other name serves the reader as well.",
+      "scenario_hint": "Any short internal note that gives the reader the gist."
+    },
+    {
+      "id": "convention-control-r03",
+      "source_quote": "The last line of every note is exactly `-- end of note`, with nothing after it.",
+      "class": "useful",
+      "outcome": "The last line of the note is exactly `-- end of note`, with nothing after it.",
+      "why": "A team convention about a closing line. Arbitrary on purpose; a note reads as well without it.",
+      "scenario_hint": "Any short internal note written for colleagues."
+    },
+    {
+      "id": "convention-control-r04",
+      "source_quote": "Bulleted lists in a note use `*` as the bullet marker, never `-` or a bullet character.",
+      "class": "useful",
+      "outcome": "Every bulleted list in the note uses `*` as the bullet marker.",
+      "why": "A team convention about a bullet character. Arbitrary on purpose; every marker renders the same list.",
+      "scenario_hint": "A note that lists customers, decisions, changes or things to watch for."
+    },
+    {
+      "id": "convention-control-r05",
+      "source_quote": "Dates in a note are written as day, three-letter month and four-digit year, for example `07 Nov 2026`.",
+      "class": "useful",
+      "outcome": "Every date in the note is written as day, three-letter month and four-digit year, such as `07 Nov 2026`.",
+      "why": "A team convention about date style. Arbitrary on purpose; any unambiguous date serves the reader as well.",
+      "scenario_hint": "A note whose material has several dates."
+    },
+    {
+      "id": "convention-control-r06",
+      "source_quote": "Use the names, dates and figures of the request itself, not placeholders.",
+      "class": "generic",
+      "outcome": "The note states the concrete names, dates and figures of the request instead of placeholders or generalities.",
+      "why": "Any careful writer does this with or without the skill; it is the control's guard rule, met by both arms.",
+      "scenario_hint": "Any short internal note with facts pasted into the request."
+    }
+  ]
+}
