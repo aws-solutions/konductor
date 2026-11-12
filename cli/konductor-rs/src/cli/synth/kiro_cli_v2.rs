@@ -9,9 +9,9 @@ use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use indexmap::IndexMap;
 use serde::Serialize;
 
+use super::claude::merge_mcp_servers;
 use super::content_writers::{write_all_context, write_all_skills, write_all_sops};
 #[cfg(test)]
 use super::content_writers::{write_auxiliary_file, write_skill, write_sop};
@@ -124,23 +124,15 @@ impl HarnessTransformer for KiroCliV2Transformer {
     }
 }
 
-/// A copy of `kiro` whose `mcp_servers` starts with the agent spec's
-/// `dependencies.mcpRegistry` entries, followed by its own
-/// `kiroCli.mcpServers`. A same-named `kiroCli` entry replaces the registry
-/// entry in place, the same precedence as `claude.rs::merge_mcp_servers`.
+/// A copy of `kiro` whose `mcp_servers` is the agent spec's
+/// `dependencies.mcpRegistry` merged with its own `kiroCli.mcpServers` by
+/// `merge_mcp_servers`.
 pub(crate) fn with_registry_mcp_servers(
     kiro: &KiroCliConfig,
     registry: &BTreeMap<String, McpServerDef>,
 ) -> KiroCliConfig {
-    let mut mcp_servers: IndexMap<String, McpServerDef> = registry
-        .iter()
-        .map(|(name, def)| (name.clone(), def.clone()))
-        .collect();
-    for (name, def) in &kiro.mcp_servers {
-        mcp_servers.insert(name.clone(), def.clone());
-    }
     KiroCliConfig {
-        mcp_servers,
+        mcp_servers: merge_mcp_servers(registry, &kiro.mcp_servers),
         ..kiro.clone()
     }
 }
