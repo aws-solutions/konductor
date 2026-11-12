@@ -180,6 +180,36 @@ function runSync(command, args, { timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
   };
 }
 
+/**
+ * Starts `command` with `args` (no shell) as a detached process in its own process group, and returns its pid at
+ * once. The process outlives this one: stdin is closed, stdout and stderr both go to the open file descriptor
+ * `outputFd`, and it is NOT killed by the exit hooks above, because the job launcher starts jobs that must keep
+ * running after it exits. PWD is set to `cwd`, as in run(). Throws when the process could not be started.
+ */
+function startDetached(command, args, { cwd, env, outputFd } = {}) {
+  if (!Array.isArray(args))
+    throw new TypeError('startDetached: args must be an array of strings');
+  if (!Number.isInteger(outputFd) || outputFd < 0)
+    throw new TypeError(
+      'startDetached: outputFd must be an open file descriptor',
+    );
+  const childEnvironment = { ...(env || process.env) };
+  if (cwd) childEnvironment.PWD = cwd;
+  const child = spawn(command, args, {
+    cwd,
+    env: childEnvironment,
+    detached: true,
+    stdio: ['ignore', outputFd, outputFd],
+  });
+  // A start failure is also emitted as an 'error' event on the next tick; the missing pid below reports it, so the
+  // event must not crash this process.
+  child.on('error', () => {});
+  if (!Number.isInteger(child.pid))
+    throw new Error(`could not start ${command}`);
+  child.unref();
+  return child.pid;
+}
+
 module.exports = {
   DEFAULT_TIMEOUT_MS,
   DEFAULT_MAX_OUTPUT_CHARS,
@@ -187,4 +217,5 @@ module.exports = {
   MAX_TIMEOUT_MS,
   run,
   runSync,
+  startDetached,
 };

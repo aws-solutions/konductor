@@ -7,12 +7,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const {
   run,
   runSync,
   MAX_TIMEOUT_MS,
+  startDetached,
 } = require('../../../scripts/bench/lib/proc');
 const helpers = require('./helpers');
 
@@ -290,4 +291,104 @@ test('runSync: returns the exit status and stdout of a short command, and an err
       /timeoutMs must be a number above 0/,
       String(timeoutMs),
     );
+});
+
+test('startDetached: returns the pid at once; the child writes to the given file, gets env and PWD, and runs on', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const logFile = path.join(dir, 'job.log');
+    const outputFd = fs.openSync(logFile, 'a', 0o600);
+    let pid;
+    try {
+      pid = startDetached(
+        NODE,
+        script(
+          'setTimeout(() => { console.log(process.env.MARK, process.env.PWD); console.error("on stderr"); }, 200)',
+        ),
+        { cwd: dir, env: { MARK: 'detached-child' }, outputFd },
+      );
+    } finally {
+      fs.closeSync(outputFd);
+    }
+    assert.ok(Number.isInteger(pid) && pid > 1);
+    assert.equal(
+      fs.readFileSync(logFile, 'utf8'),
+      '',
+      'returned before the child wrote',
+    );
+    let text = '';
+    for (let i = 0; i < 100 && !text.includes('on stderr'); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      text = fs.readFileSync(logFile, 'utf8');
+    }
+    assert.match(text, new RegExp(`detached-child ${dir}\\n`));
+    assert.match(text, /on stderr/);
+  });
+});
+
+test('startDetached: a command that cannot start throws, and bad options are refused', () => {
+  helpers.withTmp((dir) => {
+    const outputFd = fs.openSync(path.join(dir, 'log'), 'a');
+    try {
+      assert.throws(
+        () =>
+          startDetached(path.join(dir, 'no-such-command'), [], { outputFd }),
+        /could not start/,
+      );
+      assert.throws(
+        () => startDetached(NODE, 'x', { outputFd }),
+        /args must be an array/,
+      );
+    } finally {
+      fs.closeSync(outputFd);
+    }
+    for (const bad of [undefined, -1, 1.5, '3'])
+      assert.throws(
+        () => startDetached(NODE, [], { outputFd: bad }),
+        /outputFd must be an open file descriptor/,
+        String(bad),
+      );
+  });
+});
+
+test('startDetached: the child leads its own process group and does not keep the starting process alive', () => {
+  helpers.withTmp((dir) => {
+    const procPath = path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      'scripts',
+      'bench',
+      'lib',
+      'proc.js',
+    );
+    const parent = `
+      const fs = require('fs');
+      const { startDetached } = require(${JSON.stringify(procPath)});
+      const fd = fs.openSync(${JSON.stringify(path.join(dir, 'log'))}, 'a');
+      const pid = startDetached(process.execPath, ['-e', 'setTimeout(() => {}, 4000)'], { outputFd: fd });
+      fs.closeSync(fd);
+      console.log(pid);
+    `;
+    const started = Date.now();
+    const result = spawnSync(NODE, ['-e', parent], { encoding: 'utf8' });
+    const elapsed = Date.now() - started;
+    const pid = Number(result.stdout.trim());
+    try {
+      assert.equal(result.status, 0, result.stderr);
+      assert.ok(Number.isInteger(pid) && pid > 1);
+      assert.ok(
+        elapsed < 3000,
+        `the starting process ended after ${elapsed} ms, not when the child ended`,
+      );
+      const group = runSync('ps', ['-o', 'pgid=', '-p', String(pid)]);
+      assert.equal(Number(group.stdout.trim()), pid, 'its own process group');
+    } finally {
+      try {
+        process.kill(pid, 'SIGKILL');
+      } catch {
+        // The child may have ended already.
+      }
+    }
+  });
 });

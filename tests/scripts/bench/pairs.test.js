@@ -43,6 +43,7 @@ const {
   readSkillsVersion,
   writeRecord,
   setupProblemsOf,
+  WRONG_MODEL_PROBLEM,
   SUPERSEDED_MARK,
 } = pairs;
 
@@ -1274,7 +1275,28 @@ test('setupProblemsOf leaves out the reason for a with run that did not load the
   );
 });
 
-test('runPairs: an invalid run for a reason that is not the skill is stored as nothing and stops the job after the first run', async () => {
+test('WRONG_MODEL_PROBLEM starts the reason claude-run.js gives for a model other than the subject', () => {
+  const problems = runProblems({
+    arm: 'without',
+    trace: {
+      result_seen: true,
+      models_used: ['some-other-model'],
+      available_tools: ['Skill'],
+      tool_calls: [],
+    },
+    skillLoad: { loaded: false },
+    model: MODEL,
+    runner: forSkill(SKILL),
+  });
+  assert.equal(problems.length, 1);
+  assert.ok(problems[0].startsWith(WRONG_MODEL_PROBLEM), problems[0]);
+  assert.ok(
+    problems[0].startsWith(`${WRONG_MODEL_PROBLEM}:`),
+    'the constant is the whole reason up to the list of models',
+  );
+});
+
+test('runPairs: an invalid run for a reason that is not the skill or the model is stored as nothing and stops the job as setup after the first run', async () => {
   for (const [what, trace, pattern] of [
     [
       'a result that names no model',
@@ -1296,7 +1318,7 @@ test('runPairs: an invalid run for a reason that is not the skill is stored as n
       const stub = stubRun(() => ({ stdout: subjectTrace(trace) }));
       const summary = await runPairs(options({ run: stub.run }));
       assert.equal(summary.status, 'stopped', what);
-      assert.equal(summary.stop.kind, 'model', what);
+      assert.equal(summary.stop.kind, 'setup', what);
       assert.match(
         summary.stop.message,
         /^the first run was invalid for a reason that is not the skill: /,
