@@ -83,14 +83,14 @@ Specify the expertise needed and the explicit tool allowlist.
 
 ### 4. Define MUST DO Requirements
 
-Write exhaustive requirements — leave NOTHING implicit.
+List what the user asked for, plus the constraints the subagent cannot infer from its skills, the codebase or the CONTEXT you pass.
 
 **Constraints:**
 
-- You MUST enumerate every requirement the subagent must follow
+- You MUST include every requirement the user stated
 - You MUST include scope boundaries (e.g., "search recursively from project root")
 - You MUST include output format requirements (e.g., "include line numbers")
-- You MUST NOT assume the subagent will infer unstated requirements
+- You MUST NOT add requirements the user did not ask for that the subagent can infer from its skills, its system prompt or the codebase
 
 **Expected Output:** A bulleted list of explicit requirements, e.g.:
 

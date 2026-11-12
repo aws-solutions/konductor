@@ -356,7 +356,7 @@ flowchart TD
         S1["1. TASK — exactly one atomic action"]
         S2["2. EXPECTED OUTCOME — measurable deliverables"]
         S3["3. REQUIRED SKILLS + TOOLS — explicit allowlist"]
-        S4["4. MUST DO — exhaustive, nothing implicit"]
+        S4["4. MUST DO — the user's asks plus constraints the specialist cannot infer"]
         S5["5. MUST NOT DO — includes a response size limit"]
         S6["6. CONTEXT — root path, source dirs, ignore list, patterns"]
         S1 --> S2 --> S3 --> S4 --> S5 --> S6

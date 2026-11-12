@@ -36,7 +36,7 @@ REQUIRED SKILLS: <Relevant expertise the subagent needs>
 REQUIRED TOOLS: <Explicit tool allowlist — only these tools may be used>
 
 MUST DO:
-- <Exhaustive requirements list>
+- <What the user asked for, plus constraints the agent cannot infer from its skills, the code or CONTEXT>
 - Preserve existing comments and JSDoc blocks
 - Preserve existing logging statements
 - Add inline comments for complex logic
