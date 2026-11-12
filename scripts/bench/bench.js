@@ -52,8 +52,9 @@ const { defaultProfile, CostProfileError } = require('./lib/cost-profile');
 const { rebuildProfile } = require('./lib/cost-profile-rebuild');
 const { LedgerError } = require('./lib/ledger');
 const { JsonFileError } = require('./lib/read-file');
-const { listSkills } = require('./lib/skills');
+const { listControlSkills, listSkills } = require('./lib/skills');
 const { buildPlan, renderPlan } = require('./lib/plan');
+const { DOSE_LADDER, selectedLadder } = require('./lib/controls');
 const { redact } = require('./lib/redact');
 const {
   UsageError,
@@ -82,7 +83,8 @@ Commands
           spend ledger. Offline: nothing spent.
 
 Options
-  --skills <a,b>     Skills to plan. Without it, only this help is shown.
+  --skills <a,b>     Skills to plan. Without it, only this help is shown. The controls are named the
+                     same way: convention-control, and dose-ladder (next and report only).
   --run <id>         Run folder under bench/out/ (default: default).
   --max-usd <n>      plan and next: spend limit for this run in USD, a plain decimal such as 2.5 (default: 30). Cannot pass total_cap_usd in bench/config.json.
   --config <file>    Settings file to use instead of bench/config.json.
@@ -336,12 +338,27 @@ function main(argv, io, env = process.env, nextOptions = {}) {
       return 0;
     }
     const names = parseSkillSelection(options.skills);
-    const knownSkills = listSkills(layout.skillsDir);
+    const knownSkills = [
+      ...listSkills(layout.skillsDir),
+      ...listControlSkills(layout),
+      ...(fs.existsSync(layout.ladderFile) ? [DOSE_LADDER] : []),
+    ];
     const unknownSkills = names.filter((name) => !knownSkills.includes(name));
     if (unknownSkills.length)
       throw new UsageError(
-        `unknown skill(s) in --skills: ${unknownSkills.join(', ')} (no skills/<name>/SKILL.md)`,
+        `unknown skill(s) in --skills: ${unknownSkills.join(', ')} (no skills/<name>/SKILL.md, and not a control)`,
       );
+    if (names.includes(DOSE_LADDER)) {
+      if (command === 'plan')
+        throw new UsageError(
+          `${DOSE_LADDER} is a control of next and report; plan prices the skills and control skills only`,
+        );
+      try {
+        selectedLadder(layout);
+      } catch (error) {
+        throw new UsageError(`--skills ${DOSE_LADDER}: ${error.message}`);
+      }
+    }
 
     if (command === 'next')
       return runNext({ layout, config, names, options, nextOptions, io }).catch(

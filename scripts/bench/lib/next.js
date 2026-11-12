@@ -11,9 +11,18 @@
  * The first job with work to do is the answer. Each one's pending work is the job's own dry run (it builds nothing on
  * disk, spends nothing and writes nothing), so `next` and the job can never disagree about what is left.
  *
+ * The controls (controls.js): convention-control is named and run like a skill. The dose ladder (`dose-ladder` in the
+ * skills) has authored answers and no rules checklist, so its items (fixture-d0, ...) join only the two reading A
+ * jobs, whose command then carries --ladder. A selection of the ladder alone starts at the checklists.
+ *
  * Before naming a job, `next` checks the limits:
  *   max_usd, total_cap_usd            `plan` for the same skills must pass: this run's spend so far plus every
  *                                      pending call within max_usd, and the ledger within total_cap_usd. Else `stop`.
+ *                                      `plan` does not price the dose ladder, so the job about to be named is checked
+ *                                      too, with the ledger's own comparison (ledger.js checkLimits): its upper estimate
+ *                                      (p90) on top of this run's spend within max_usd, and on top of the ledger within
+ *                                      total_cap_usd. The job itself checks max_usd before its first call and the ledger
+ *                                      checks both limits at every call, so `next` agrees with them and stops earlier.
  *   max_minutes                        given with the time the run started. No job starts once the limit is reached,
  *                                      or when the job's estimated time does not fit in what is left. Then `stop`.
  *                                      A start time more than a minute ahead of the clock is a usage error.
@@ -38,8 +47,11 @@ const { runChecklists, CHECKLIST_CONCURRENCY } = require('./checklist-job');
 const { UsageError } = require('./cli-args');
 const { judgeConcurrency } = require('./config');
 const { callCost } = require('./cost-profile');
+const { selectedLadder, splitSelection } = require('./controls');
+const { LadderError } = require('./dose-ladder');
 const { runJudging } = require('./judge-job');
 const { jobArguments } = require('./launch');
+const { LedgerError, checkLimits, readLedger } = require('./ledger');
 const { runPairs } = require('./pairs');
 const { buildPlan } = require('./plan');
 const { redact } = require('./redact');
@@ -60,18 +72,28 @@ const START_SKEW_MS = 60000;
  */
 const MINUTES_PER_CALL = Object.freeze({ subject: 3, writer: 1, judge: 1 });
 
-/** The jobs in the order a run makes them. */
+/** The jobs in the order a run makes them. `readsLadder`: the step is part of reading A, so it takes the dose ladder. */
 const STEPS = Object.freeze([
-  Object.freeze({ job: 'pairs', scale: null, stage: 2 }),
-  Object.freeze({ job: 'judge', scale: 'items', stage: 2 }),
-  Object.freeze({ job: 'checklists', scale: null, stage: 3 }),
-  Object.freeze({ job: 'judge', scale: 'outcome', stage: 3 }),
+  Object.freeze({ job: 'pairs', scale: null, stage: 2, readsLadder: false }),
+  Object.freeze({ job: 'judge', scale: 'items', stage: 2, readsLadder: false }),
+  Object.freeze({
+    job: 'checklists',
+    scale: null,
+    stage: 3,
+    readsLadder: true,
+  }),
+  Object.freeze({
+    job: 'judge',
+    scale: 'outcome',
+    stage: 3,
+    readsLadder: true,
+  }),
 ]);
 
 const waves = (calls, width) => Math.ceil(calls / Math.max(1, width));
 
 /** The dry run of one step: { summary, pending, usd, minutes }. */
-async function dryRunOf(step, { layout, config, skills, jobOptions }) {
+async function dryRunOf(step, { layout, config, skills, ladder, jobOptions }) {
   const common = { layout, config, skills, dryRun: true, log: () => {} };
   if (step.job === 'pairs') {
     const summary = await runPairs({ ...common, ...jobOptions.pairs });
@@ -89,6 +111,7 @@ async function dryRunOf(step, { layout, config, skills, jobOptions }) {
   if (step.job === 'checklists') {
     const summary = await runChecklists({
       ...common,
+      ladder,
       ...jobOptions.checklists,
     });
     return {
@@ -102,6 +125,7 @@ async function dryRunOf(step, { layout, config, skills, jobOptions }) {
   const summary = await runJudging({
     ...common,
     scale: step.scale,
+    ladder,
     ...jobOptions.judge,
   });
   const seats = Object.keys(config.models.judges);
@@ -132,6 +156,60 @@ const roundUsd = (usd) => Math.round(usd * 10000) / 10000;
 const UNLIMITED_USD = Number.MAX_SAFE_INTEGER;
 
 /**
+ * An amount in USD with two decimals, and as many more (up to nine) as it takes to show a non-zero amount as
+ * non-zero and, when `other` is given, to tell it from `other`.
+ */
+function money(value, other = null) {
+  let decimals = 2;
+  while (
+    decimals < 9 &&
+    ((value > 0 && Number(value.toFixed(decimals)) === 0) ||
+      (other !== null &&
+        value !== other &&
+        value.toFixed(decimals) === other.toFixed(decimals)))
+  )
+    decimals += 1;
+  return `USD ${value.toFixed(decimals)}`;
+}
+
+/**
+ * A stop for a job whose upper estimate (`usd`, the p90 projection of its dry run) does not fit: this run's spend
+ * and reservations so far plus `usd` above max_usd, or the ledger's total and live reservations plus `usd` above
+ * total_cap_usd. The comparison is the ledger's (checkLimits), so a figure at exactly the limit is allowed, as in
+ * `plan` and the jobs. A ledger that cannot be read is a refusal. Returns { kind, reason } or null.
+ */
+function jobSpendStop({ layout, config, step, pending, usd }) {
+  let totals;
+  try {
+    totals = readLedger(layout.ledgerFile);
+  } catch (error) {
+    if (!(error instanceof LedgerError)) throw error;
+    return { kind: 'refused', reason: error.message };
+  }
+  const run = totals.runs.get(layout.runId) || { spent: 0, reserved: 0 };
+  const runSoFar = run.spent + run.reserved;
+  const ledgerSoFar = totals.total + totals.reserved;
+  const hit = checkLimits(config, {
+    runUsd: runSoFar,
+    totalUsd: ledgerSoFar,
+    callUsd: usd,
+  });
+  if (!hit) return null;
+  const name = `${step.job}${step.scale ? ` ${step.scale}` : ''}`;
+  const estimate = `the next job (${name}, ${pending} call(s)) has an upper estimate (p90) of ${money(usd)}`;
+  const total = money(hit.projected_usd, hit.limit_usd);
+  if (hit.limit === 'max_usd')
+    return {
+      kind: 'spend',
+      reason: `${estimate}; on top of ${money(runSoFar)} already spent or reserved in run ${layout.runId} that comes to ${total}, above max_usd ${config.max_usd}; raise it to approve, or select fewer skills`,
+    };
+  return {
+    kind: 'spend',
+    reason: `${estimate}; on top of the ledger's ${money(ledgerSoFar)} that comes to ${total}, above total_cap_usd ${config.total_cap_usd}`,
+  };
+}
+
+/**
  * Works out the next step of a run. Options:
  *   layout, config, skills   as for the jobs (skills already checked to exist)
  *   provider                 'live' or 'stub', passed on to the job's command
@@ -159,6 +237,7 @@ async function nextStep({
     reason: redact(reason, { maxChars: REASON_MAX_CHARS }),
     ...head,
   });
+  const selection = splitSelection(head.skills);
 
   let minutesLeft = null;
   if (maxMinutes !== null) {
@@ -170,19 +249,32 @@ async function nextStep({
     minutesLeft = maxMinutes - (now() - startedAtMs) / 60000;
   }
 
-  const plan = buildPlan({ layout, config, skills });
   // A limit stops a job that has work to do. A run with nothing left is done, whatever it has spent or however long it
   // took, so a refusal for a limit waits until a job is pending, and the dry runs below ignore the limits.
-  const spendRefusal = !plan.ok && planStopKind(plan) === 'spend';
-  if (!plan.ok && !spendRefusal)
-    return stop('refused', plan.refused.join('; '));
+  let spendRefusal = null;
+  if (selection.skills.length) {
+    const plan = buildPlan({ layout, config, skills: selection.skills });
+    if (!plan.ok) {
+      if (planStopKind(plan) !== 'spend')
+        return stop('refused', plan.refused.join('; '));
+      spendRefusal = plan.refused.join('; ');
+    }
+  }
+  let ladder = null;
+  if (selection.ladder) {
+    try {
+      ladder = selectedLadder(layout);
+    } catch (error) {
+      if (!(error instanceof LadderError)) throw error;
+      return stop('refused', error.message);
+    }
+  }
 
   const context = {
     layout,
     config: spendRefusal
       ? { ...config, max_usd: UNLIMITED_USD, total_cap_usd: UNLIMITED_USD }
       : config,
-    skills: head.skills,
     jobOptions: {
       pairs: jobOptions.pairs || {},
       checklists: jobOptions.checklists || {},
@@ -191,7 +283,18 @@ async function nextStep({
   };
   const totals = { not_loaded: 0, ineligible: 0, blocked: 0 };
   for (const step of STEPS) {
-    const { summary, pending, usd, minutes } = await dryRunOf(step, context);
+    // The dose ladder has authored answers and no rules checklist: its items join only the reading A steps.
+    const withLadder = ladder && step.readsLadder;
+    const stepSkills = [
+      ...selection.skills,
+      ...(withLadder ? ladder.items : []),
+    ];
+    if (!stepSkills.length) continue;
+    const { summary, pending, usd, minutes } = await dryRunOf(step, {
+      ...context,
+      skills: stepSkills,
+      ladder: withLadder ? ladder.ladder : null,
+    });
     if (summary.status === 'refused')
       return stop('refused', summary.refused.join('; '));
     if (step.job === 'judge') {
@@ -205,7 +308,11 @@ async function nextStep({
         'time',
         `max_minutes ${maxMinutes} is reached; finished work is kept, rerun to continue`,
       );
-    if (spendRefusal) return stop('spend', plan.refused.join('; '));
+    if (spendRefusal) return stop('spend', spendRefusal);
+    // The limits the job and the ledger enforce, checked before naming the job, so `next` answers `stop` instead of
+    // naming a job that would refuse. `plan` covers the skills, but not the dose ladder, so this is what stops ladder work.
+    const spendStop = jobSpendStop({ layout, config, step, pending, usd });
+    if (spendStop) return stop(spendStop.kind, spendStop.reason);
     if (minutesLeft !== null && minutes > minutesLeft)
       return stop(
         'time',
@@ -218,11 +325,11 @@ async function nextStep({
       );
     const request = {
       job: step.job,
-      skills: head.skills,
+      skills: [...stepSkills].sort(),
       layout,
       maxUsdText,
       configFile,
-      ladderFile: null,
+      ladderFile: withLadder ? ladder.file : null,
       scale: step.scale,
       provider,
     };

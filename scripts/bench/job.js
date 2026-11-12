@@ -5,7 +5,7 @@
  *
  *   node scripts/bench/job.js pairs --skills a,b [--run <id>] [--max-usd N] [--config <file>] [--root <dir>] [--dry-run]
  *   node scripts/bench/job.js checklists --skills a,b [--ladder <file>] [same options]
- *   node scripts/bench/job.js judge --scale items|outcome --skills a,b [same options]
+ *   node scripts/bench/job.js judge --scale items|outcome --skills a,b [--ladder <file>] [same options]
  *
  * `pairs` makes the subject runs (lib/pairs.js), `checklists` the request-only checklists of reading A
  * (lib/checklist-job.js) and `judge` the judgments of one reading (lib/judge-job.js). Each SPENDS MONEY unless
@@ -86,7 +86,7 @@ Options
   --max-usd <n>      Spend limit for this run in USD, a plain decimal such as 2.5 (default: 30).
   --config <file>    Settings file to use instead of bench/config.json.
   --root <dir>       Repository root to read (default: this checkout).
-  --ladder <file>    checklists only: a dose ladder whose items --skills may also name.
+  --ladder <file>    checklists and judge: a dose ladder whose items --skills may also name.
   --scale <scale>    judge only, required: items (reading B) or outcome (reading A).
   --provider <name>  live (default) or stub (no model call). A run id stub or stub-<name> takes only stub, and stub only there.
   --dry-run          List the work and stop: nothing is spent or written.
@@ -207,6 +207,7 @@ async function judgeJob(request, { dryRun, print, judgeOptions }) {
     config: request.config,
     skills: request.skills,
     scale: request.scale,
+    ladder: request.ladder,
     dryRun,
     log: print,
     ...judgeOptions,

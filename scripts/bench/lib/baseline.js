@@ -14,6 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadChecked, validateRules, FormatError } = require('./formats');
+const { CONTROL_SKILLS, isControlName } = require('./layout');
 const { fileSha256 } = require('./provenance');
 const { readFile, readJsonFile } = require('./read-file');
 const { SAFE_SEGMENT } = require('./names');
@@ -131,14 +132,25 @@ function loadExclusions(layout) {
   }
 }
 
-/** Task ids of one batch name that exist in any skill with a baseline folder: Map(batch -> Set(task id)). */
+/**
+ * Task ids of one batch name that exist in any skill with a baseline folder, or in a control skill's baseline:
+ * Map(batch -> Set(task id)).
+ */
 function knownTaskIds(layout) {
   const known = new Map();
-  if (!fs.existsSync(layout.baselinesDir)) return known;
-  const skills = fs
-    .readdirSync(layout.baselinesDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && SAFE_SEGMENT.test(entry.name));
-  for (const { name: skill } of skills) {
+  const skills = fs.existsSync(layout.baselinesDir)
+    ? fs
+        .readdirSync(layout.baselinesDir, { withFileTypes: true })
+        .filter(
+          (entry) =>
+            entry.isDirectory() &&
+            SAFE_SEGMENT.test(entry.name) &&
+            // A folder there with a control's name is not read: the layout points that name at the control.
+            !isControlName(entry.name),
+        )
+        .map((entry) => entry.name)
+    : [];
+  for (const skill of [...skills, ...CONTROL_SKILLS]) {
     for (const batch of layout.batches(skill)) {
       let scenarios;
       try {

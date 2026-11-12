@@ -22,7 +22,8 @@
  *
  * Jobs that can be launched (JOBS): `pairs`, the subject runs (pairs.js), `checklists`, the request-only
  * checklists of reading A (checklist-job.js), which also takes a dose ladder (--ladder) whose item names --skills may
- * name, and `judge`, the judge calls of one reading (judge-job.js), which needs --scale items or outcome. A judge job
+ * name, and `judge`, the judge calls of one reading (judge-job.js), which needs --scale items or outcome and also
+ * takes a dose ladder (reading A only). A control skill (layout.js CONTROL_SKILLS) is named like a skill. A judge job
  * of each scale has its own log and pid file (`judge-items`, `judge-outcome`), so the two readings never stand for
  * each other as "already running".
  */
@@ -43,7 +44,7 @@ const { loadConfig, ConfigError } = require('./config');
 const { itemNames, loadLadder, validateLadder } = require('./dose-ladder');
 const jobDir = require('./job-dir');
 const { REPO_ROOT, SCALES, createLayout } = require('./layout');
-const { listSkills } = require('./skills');
+const { listControlSkills: presentControls, listSkills } = require('./skills');
 const {
   PROVIDERS,
   assertStubRun,
@@ -69,7 +70,7 @@ const JOBS = Object.freeze({
   }),
   judge: Object.freeze({
     summary: 'judge calls of one reading: --scale items or outcome (paid)',
-    ladder: false,
+    ladder: true,
     scale: true,
   }),
 });
@@ -136,12 +137,13 @@ function resolveJobRequest(job, options = {}) {
   const names = parseSkillSelection(options.skills);
   const knownSkills = [
     ...listSkills(layout.skillsDir),
+    ...presentControls(layout),
     ...(ladder ? itemNames(ladder) : []),
   ];
   const unknownSkills = names.filter((name) => !knownSkills.includes(name));
   if (unknownSkills.length)
     throw new UsageError(
-      `unknown skill(s) in --skills: ${unknownSkills.join(', ')} (no skills/<name>/SKILL.md under ${layout.root}${ladder ? ', and not an item of the dose ladder' : ''})`,
+      `unknown skill(s) in --skills: ${unknownSkills.join(', ')} (no skills/<name>/SKILL.md under ${layout.root}, not a control skill${ladder ? ', and not an item of the dose ladder' : ''})`,
     );
   try {
     jobDir.jobKey(names);
