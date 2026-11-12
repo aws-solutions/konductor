@@ -63,6 +63,14 @@ function engineOpt(opts, runtimes) {
   return v;
 }
 
+// A bare flag parses as `true`, which Number() would read as 1.
+function timeoutSecOpt(opts) {
+  const v = opts['timeout-sec'];
+  if (v === undefined) return null;
+  if (v === true || !/^[1-9]\d*$/.test(String(v))) throw new Error('--timeout-sec must be a positive integer');
+  return Number(v);
+}
+
 const list = (v) => (v ? String(v).split(',').filter(Boolean) : []);
 
 // Paths the agent must not read: the bench answer material, any extra tasks directory, the run output and the credentials file.
@@ -143,10 +151,11 @@ async function cmdRun(opts, deps = {}) {
   const tasksAll = loadTasks(benchDir, { extraDirs });
   const suite = loadSuite(opts.suite, tasksAll, benchDir, suitesDir);
   const taskIds = opts.tasks ? list(opts.tasks) : suite.taskIds;
+  const timeoutOverride = timeoutSecOpt(opts);
   const tasks = taskIds.map((id) => {
     const t = tasksAll.get(id);
     if (!t) throw new Error(`unknown task "${id}" (known: ${[...tasksAll.keys()].join(', ') || 'none'})`);
-    return t;
+    return timeoutOverride === null ? t : { ...t, timeoutSec: timeoutOverride };
   });
   if (!tasks.length) throw new Error('no tasks selected');
   // Real tasks read their base tree from a local cache filled beforehand; stop here, not after the arms are built.
@@ -223,7 +232,7 @@ async function cmdRun(opts, deps = {}) {
   const log = (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`);
   if (profile) log(`profile ${profile.name}: ${replicates} replicate(s) per cell${opts.replicates === undefined ? ' (the profile default)' : ''}`);
   if (aa) log(aa.note);
-  const plan = describePlan({ tasks, arms, replicates, parallel, budgetCredits, unit });
+  const plan = describePlan({ tasks, arms, replicates, parallel, budgetCredits, unit, timeoutSecOverride: timeoutOverride });
   log(plan.text);
   const note = budgetNote(plan.planned, budgetCredits, budgetFlag);
   if (note) log(note);
@@ -352,7 +361,7 @@ async function cmdRun(opts, deps = {}) {
 
     const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main' || a.id === 'cc-main');
     runConfig = {
-      suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, maxAuthFailures, [isUsd ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
+      suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, maxAuthFailures, timeoutSecOverride: timeoutOverride, [isUsd ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
       profile: profile ? { name: profile.name, aaArm: aa?.spec ? { arm: arms.at(-1).id, repeats: aa.twin } : null } : null,
       runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent, armConfig: armOpts.armConfig, oracleSkills: armOpts.oracle,
       isolationGates: { installs: ctx.installsGate.dirs, claudeRules: 'an empty rules file in a scratch CLAUDE_CONFIG_DIR (Claude Code runs)' },
@@ -458,4 +467,4 @@ async function cmdRun(opts, deps = {}) {
   }
 }
 
-module.exports = { cmdRun, repoRootOf, maskPaths, replicateOffsetOpt };
+module.exports = { cmdRun, repoRootOf, maskPaths, replicateOffsetOpt, timeoutSecOpt };

@@ -33,7 +33,7 @@ const USAGE = `Usage:
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
        [--extra-tasks DIR,DIR] [--suites-dir DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
        [--arm-config name=key.path=value[;key.path=value],...] [--oracle-skills [ARM,ARM]] [--oracle-manifest FILE]
-       [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed] [--max-auth-failures N]
+       [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed] [--max-auth-failures N] [--timeout-sec N]
        (--profile quick runs 1 to 3 replicates (default 2) and labels a result under 3 runs anecdotal. --profile detailed runs at least 5 replicates (default 5),
        adds an A/A arm (the first konductor arm repeated at its exact commit), judges with the graded mode as well, and writes calibration-sample.json and .md
        to the results directory. Without --profile the suite defaults apply and no arm is added. Credits are tracked per run in credit-ledger.jsonl; with no
@@ -42,6 +42,8 @@ const USAGE = `Usage:
        A run writes over any result.json already at a planned path and prints a warning with the count of cells it will overwrite)
        (--max-auth-failures N stops the chunk after N consecutive runs that could not log in (no turn ran, "Not logged in", "Authentication failed" or "token already expired"), default 3,
        or the BENCH_MAX_AUTH_FAILURES variable; remaining cells are skipped and the command exits 6. Such a run is charged 0 and marked infra, never a timeout)
+       (--timeout-sec N replaces the timeout of every selected task with N seconds (a positive integer); without it each task keeps the timeoutSec of its task file.
+       The plan line, run-config.json (timeoutSecOverride, timeoutSecByTask) and summary.json show it)
        (--agent-engine is the kiro-cli engine, default v2; v3 installs each arm for the kiro-v3 harness)
        (--prepare-only builds and trial-installs every arm, prints the preflight table and exits before any agent run)
        (--extra-tasks loads tasks from DIR/<id>.json with DIR/fixtures and DIR/hidden; DIR is hidden from the agent like tasks/hidden)

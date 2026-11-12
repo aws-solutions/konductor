@@ -77,12 +77,12 @@ const LARGE_PLAN_RUNS = 10;
  * its timeout. Credits cannot be bounded per run, so the cap is a guard on the ledger: it stops new
  * launches at 90% of the budget; up to `parallel` runs already in flight still finish and are added.
  */
-function describePlan({ tasks, arms, replicates, parallel, budgetCredits, unit = 'credits' }) {
+function describePlan({ tasks, arms, replicates, parallel, budgetCredits, unit = 'credits', timeoutSecOverride = null }) {
   const planned = tasks.length * arms.length * replicates;
   const worstWallSec = tasks.reduce((s, t) => s + t.timeoutSec, 0) * arms.length * replicates / Math.max(1, parallel);
   const hours = (worstWallSec / 3600).toFixed(1);
   const cap = budgetCredits == null ? 'none' : `${budgetCredits} ${unit} (new launches stop at 90% of the cap; up to ${Math.max(1, parallel)} in-flight run(s) still finish)`;
-  return { planned, worstWallSec, text: `${planned} planned run(s); worst-case wall-clock ${hours} h if every run times out (parallel ${parallel}); ${unit === 'usd' ? 'USD' : 'credit'} cap: ${cap}` };
+  return { planned, worstWallSec, text: `${planned} planned run(s); worst-case wall-clock ${hours} h if every run times out (parallel ${parallel}); ${unit === 'usd' ? 'USD' : 'credit'} cap: ${cap}${timeoutSecOverride == null ? '' : `; task timeout overridden to ${timeoutSecOverride} s by --timeout-sec`}` };
 }
 
 // No cap is the default. A large plan gets a note that credits are tracked in the ledger and nothing will stop them.
