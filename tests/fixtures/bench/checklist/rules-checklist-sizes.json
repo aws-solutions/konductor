@@ -1,0 +1,7 @@
+{
+  "about": "How many items the rules checklists of the tasks written so far hold per task, counted once from 704 tasks. The request-only checklist writer asks for exactly the length of the task's own rules checklist (scripts/bench/lib/request-checklist.js); this file is the evidence for the range it accepts. It is a snapshot, not live data: the test pins the range to it.",
+  "tasks": 704,
+  "counts_by_items": { "5": 194, "6": 327, "7": 155, "8": 28 },
+  "mean": 6.02,
+  "median": 6
+}
