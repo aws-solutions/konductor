@@ -99,6 +99,17 @@ def test_removing_the_last_entry_names_the_clear_flag():
     assert "`--clear`" in remove, remove
 
 
+def test_failed_write_steps_do_not_point_at_clear():
+    """Retrying an empty-content refusal with `--clear` while the variable is
+    still unset empties the file with exit 0, so only Remove an entry names it."""
+    writing = RAW.split("## Writing Memory")[1].split("### Add an entry")[0]
+    assert "--clear" not in writing, writing
+    step_5 = " ".join(writing.split("5. ")[1].split())
+    assert "rebuild `$PROPOSED_CONTENT` and run the lookup and the write in one shell call" in step_5, step_5
+    sections = RAW.split("### ")
+    assert [s.split("\n")[0] for s in sections if "--clear" in s] == ["Remove an entry"]
+
+
 def test_gitignore_bootstrap_targets_the_git_root():
     """The validator writes memory at the git root, so a cwd-relative
     `>> .gitignore` run from a subdirectory ignores nothing."""
