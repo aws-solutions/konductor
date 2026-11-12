@@ -420,7 +420,7 @@ konductor/
 ├── mcp/           The skill-lookup MCP server
 ├── shared/        Shared Rust crates (telemetry)
 ├── docs/          User guide, integration guides, GitHub Pages site
-├── scripts/       Install, release and plugin tooling
+├── scripts/       Install, release and plugin tooling, and the skill benchmark (scripts/bench/)
 └── tests/         Benchmark scenarios and script tests
 ```
 
@@ -428,7 +428,8 @@ konductor/
 
 Bug reports, ideas and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md),
 and see the [Code of Conduct](CODE_OF_CONDUCT.md). To change agent behavior or build the CLI from
-source, read [contributing and customizing](docs/user-guide/appendix/contributing.md).
+source, read [contributing and customizing](docs/user-guide/appendix/contributing.md). To measure
+whether a skill makes answers better, run the [skill benchmark](scripts/bench/README.md#quickstart).
 
 ## Security
 

@@ -10,6 +10,12 @@ not per individual commit.
 
 ### Added
 
+- Skill benchmark (`scripts/bench/`): measures whether a skill makes an agent's answers better by
+  answering frozen tasks with and without it and having three judges score each answer on its own. A Kiro
+  Crew workflow (`scripts/bench/workflows/skill-benchmark.py`) runs the driver's `next` in a loop,
+  starts each job it names and writes the report. It takes `skills`, `max_usd` and `max_minutes`,
+  passes both limits to every `next`, and prints `STOP` with the reason when `next` stops.
+  Without Crew, the quickstart in `scripts/bench/README.md` runs the same loop from a shell.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
 - The four phase-gated SOPs, such as `k-full-sdlc`, now carry an
