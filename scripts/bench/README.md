@@ -456,6 +456,23 @@ Spend: a call is reserved at the larger of the subject model's p90 and the run's
 
 The isolation tests use a stub `claude` script: told to read planted credential files outside its folder, it cannot reach them, and a canary it prints stops the run. A fixture skill holding a shell command does not run under `--tools Skill`. The stub enforces `--tools` itself, so these tests show that the harness hands the child the right flags, environment and working directory; only the live test exercises Claude Code. One more test runs the real CLI, asked to read `~/.aws/config` and print the canary; it costs about $0.01 and runs only with `BENCH_LIVE_ISOLATION=1`.
 
+## Dose ladder
+
+`lib/dose-ladder.js` loads a dose ladder: authored answer pairs with a known amount of harm, which check the prune side of the decision rule with no subject model. Each task has one good baseline answer, declared defects (each a find and replace on the baseline that breaks one rubric item) and a paraphrase (edits that change wording only).
+
+| Dose | `with` arm        | `without` arm | Expected gap         |
+| ---- | ----------------- | ------------- | -------------------- |
+| D0   | the paraphrase    | the baseline  | its interval holds 0 |
+| D1   | 1 defect applied  | the baseline  | below 0              |
+| D2   | 2 defects applied | the baseline  | lower                |
+| D4   | 4 defects applied | the baseline  | lowest               |
+
+Each dose is its own item (`fixture-d0`, `fixture-d1`, ...), so the scoring and labels treat it like a skill. `validateLadder` audits a ladder and lists every problem at once: the shape (unknown or missing fields are refused, and task ids that differ only by case, which one file would hold on macOS and Windows), `D0` applying no defect and the defect count growing with the dose number, each `find` occurring exactly once in the baseline, each defect naming a real rubric item and no item twice, no two defects editing overlapping text, a paraphrase that does not carry the replacement of a defect, every dose within 15% of the baseline's length (the paraphrase within 8%), and no word such as "skill", "plugin", "benchmark" (or their plurals), "directive", "with-arm" or "Konductor" in the task id, the domain, the baseline, the prompt, the rubric or any dose answer, because each could tell a judge where the text came from (the title of a dose is built from the task id). `validateLadder(undefined)` reports "ladder must be an object", as `null` and `[]` do. A paraphrase that restores a deleted passage is not detected, because a deletion has no replacement to look for.
+
+`writeLadderAnswers` audits the ladder, then writes one answer record per task and arm to `answers/<item>/<set>/<task>.<with|without>.json` in the run folder. A ladder that fails its audit writes nothing. An answer record holds the text, its input digest, a skill-load entry marked as authored (`loaded` is true for the `with` arm and false for the `without` arm, as for a generated answer, and the note says nothing was loaded), and a cost of 0. The digest covers one task and one arm, so appending a task keeps the judgments of the others, and editing a task makes only its own answers stale. A stored answer that equals the new record in every field is left alone, so a second write of an unchanged ladder writes nothing; one that differs in any field is rewritten. A stored answer that is not an authored one, or that belongs to another set, is never replaced. Answers of a task or dose that the ladder no longer has stay on disk and are not reported.
+
+The ladder data and the controls check that reads its labels come in a later PR.
+
 ## Not built yet
 
 These are added in a later PR: the commands that run the tasks and the judges, the checklist writer for reading A, the labels that sum up the scores, the report, and the job summary that counts the calls charged at their mean, per model. The judge client and the subject runner are libraries until the jobs use them.
