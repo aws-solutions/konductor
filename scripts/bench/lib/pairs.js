@@ -15,8 +15,8 @@
  *      text that does not match its own hash. A pending answer file is renamed `<file>.superseded-<time>` and kept;
  *      it is never read again and never reused.
  *   4. The first pending run goes alone. If it is invalid for a reason other than the skill not loading, the job
- *      stops before any other run starts (stop kind `model`: the setup is wrong, most often the model, so the message
- *      names a model other than the pinned subject model or the other problems). The rest run with at most
+ *      stops before any other run starts: stop kind `model` when a model other than the pinned subject model answered
+ *      it, stop kind `setup` for any other problem (the message names it). The rest run with at most
  *      `subject_concurrency` at once.
  *   5. Each run is runSubjectTask (up to 3 tries; an invalid try's log is kept as `.rejected-<time>`).
  *        ok          the answer record is written with status `ok`
@@ -84,6 +84,12 @@ const RUNNABLE_STATUSES = new Set(['ready', 'rules stale', 'tasks stale']);
 const GIT_TIMEOUT_MS = 10000;
 const COMMIT = /^[0-9a-f]{40,64}$/;
 const STOP_MESSAGE_CHARS = 400;
+/**
+ * The start of what claude-run.js runProblems says when a model other than the subject produced output. A first run
+ * with this reason is a model stop; any other reason that is not the skill is a setup stop (tests pin it to
+ * runProblems).
+ */
+const WRONG_MODEL_PROBLEM = 'a model other than the subject produced output';
 
 const isPlainObject = (value) =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -303,6 +309,10 @@ function setupProblemsOf(outcome) {
   return [...problems];
 }
 
+/** True for the reason `runProblems` gives when a model other than the subject produced output in a try. */
+const isWrongModelProblem = (problem) =>
+  problem.startsWith(WRONG_MODEL_PROBLEM);
+
 /**
  * The stop a thrown error means, or null for an error that is not a stop (a bug, which is thrown on). An error that
  * carries `traceQuarantine` (claude-run.js sets it when the raw log was quarantined for a value in the trace's text)
@@ -343,7 +353,7 @@ const jobLabel = (job) => `${job.skill}/${job.batch}/${job.task.id}:${job.arm}`;
  *   dry-run   the pending runs were listed
  *   done      every pending run gave a valid answer
  *   partial   at least one run failed or was not loaded; the rest are kept
- *   stopped   a stop ended the job (`stop`: { kind, message }, kind one of model, credentials, spend, ledger,
+ *   stopped   a stop ended the job (`stop`: { kind, message }, kind one of model, setup, credentials, spend, ledger,
  *             security)
  * and results is [{ skill, batch, task_id, arm, status }] with status ok, not_loaded, failed or skipped. `estimated`
  * (once runs were made) is null, or { calls, models } for the calls charged at their mean because Claude Code
@@ -569,7 +579,10 @@ async function runPairs({
     const firstEntry = await runOne(first);
     if (!summary.stop && (firstEntry.wrongModel || firstEntry.setupProblems))
       summary.stop = stopOf(
-        'model',
+        firstEntry.wrongModel ||
+          firstEntry.setupProblems.some(isWrongModelProblem)
+          ? 'model'
+          : 'setup',
         firstEntry.wrongModel
           ? `the first run was answered by ${JSON.stringify(firstEntry.wrongModel)}, not ${config.models.subject}`
           : `the first run was invalid for a reason that is not the skill: ${firstEntry.setupProblems.join('; ')}`,
@@ -614,6 +627,7 @@ module.exports = {
   STATUS_OK,
   STATUS_NOT_LOADED,
   RUNNABLE_STATUSES,
+  WRONG_MODEL_PROBLEM,
   supersede,
   answerCurrent,
   pendingSubjectJobs,
