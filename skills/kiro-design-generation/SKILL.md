@@ -1,7 +1,7 @@
 ---
 name: kiro-design-generation
-description: Transforms system design artifacts into per-feature Kiro IDE design.md with the 6 required sections. Use to turn an approved requirements.md and a system design into a Kiro design.md, spec step 2, between kiro-requirements-generation and kiro-task-generation.
-version: 1.1.0
+description: Transforms system design artifacts into a per-feature Kiro IDE design.md with Correctness Properties. Use to turn a system design and an approved requirements.md into a Kiro design.md, spec step 2, or step 1 of a design-first spec.
+version: 1.2.0
 tags: [skill, kiro, specs, design, low-level-design, per-feature]
 ---
 
@@ -12,6 +12,11 @@ tags: [skill, kiro, specs, design, low-level-design, per-feature]
 Decomposes high-level system design artifacts into per-feature low-level designs for Kiro IDE. Takes the system-level architecture (from `system-design-patterns`), threat models, DynamoDB designs, and API specs, then produces a focused `design.md` for each feature that addresses only the components relevant to that feature's requirements.
 
 This skill sits between requirements and implementation — after `kiro-requirements-generation` produces `requirements.md` and before `kiro-task-generation` breaks the design into implementation tasks. The output drives Kiro IDE's spec-driven development, where design.md is the blueprint for task generation.
+
+Two parameters change the order and the shape:
+
+- `workflow` (optional): `requirements-first` (default) reads an approved `requirements.md`. `design-first` writes design.md first, from the system design alone, then links it to the requirements once `kiro-requirements-generation` has derived them. Kiro offers both orders for feature specs. See Step 6.
+- `spec_type` (optional): `feature` (default) or `bugfix`. A bugfix design reads `bugfix.md`, centers on the root cause and the fix, and has its own section list. See [Bugfix Designs](#bugfix-designs).
 
 ## Usage
 
@@ -68,9 +73,9 @@ Example directory structure after both skills run, using the default `spec_dir`:
 │   └── design.md
 ```
 
-## Required 6 Sections
+## Required Sections
 
-Every `design.md` MUST contain exactly these 6 sections in this order. This is the Kiro IDE design document format.
+Every feature `design.md` starts with `# Design Document` and MUST contain these 7 `##` sections in this order, the order the design.md Kiro writes uses: Overview, Architecture, Components and Interfaces, Data Models, Correctness Properties, Error Handling, Testing Strategy. Use `###` sub-headings inside a section as needed.
 
 ### 1. Overview
 
@@ -170,7 +175,36 @@ interface Monitor {
 
 When no DynamoDB design handoff exists and the feature needs a table, load the `dynamodb-design` skill before designing keys and indexes, and apply its quality gate, including write sharding for low-cardinality keys and hot partitions. For depth it does not carry, such as Streams, backup or the cost calculator, load the AWS MCP server's `amazon-dynamodb` skill with `aws___retrieve_skill` or through `find-aws-skills`.
 
-### 5. Error Handling
+### 5. Correctness Properties
+
+The properties that tie the requirements to automated tests. Kiro extracts properties like these from the requirements and generates property-based tests from them. Open the section with this sentence, then one `###` block per property:
+
+```markdown
+## Correctness Properties
+
+*A property is a characteristic that should hold across all valid executions of the system. Properties link the requirements to automated tests.*
+
+### Property 1: Created notes are well-formed and retrievable
+
+*For any* valid title and body, creating a note SHALL return 201 with a note whose title is the input title after trimming and whose body equals the input body.
+
+**Validates: Requirements 1.1, 1.4, 1.6**
+
+### Property 2: Note ids are unique
+
+*For any* sequence of successful creations, all returned ids SHALL be distinct.
+
+**Validates: Requirements 1.2**
+```
+
+Rules:
+
+- Each property states a universally quantified claim, `*For any* <inputs> ... SHALL <outcome>`, over the inputs a test generator can draw, including the boundary values the criteria name
+- `**Validates: Requirements N.M, ...**` lists the acceptance criteria the property checks, by number. Every number must exist in requirements.md (bugfix.md items for a bugfix design)
+- Number properties from 1 in order. `kiro-task-generation` gives each property one test task and copies its title and Validates line
+- Every acceptance criterion is validated by at least one property, or is named in Testing Strategy as covered by an example, integration or fault-injection test instead. Criteria about a single fixed case (a missing header, a 405 on one method) usually fit an example test better
+
+### 6. Error Handling
 
 Error scenarios and handling strategies. For each error scenario:
 
@@ -188,10 +222,11 @@ Cover at minimum:
 - Downstream service failures (502/503)
 - Throttling (429)
 
-### 6. Testing Strategy
+### 7. Testing Strategy
 
-Unit, integration, and E2E testing approach for this feature. Includes:
+Property-based, unit, integration, and E2E testing approach for this feature. Includes:
 
+- Property-based test setup: the library for the design's language (for example Hypothesis or fast-check), at least 100 examples per property, the generators for each input, and which layer each property runs against
 - Unit test scope — what to mock, what to test in isolation
 - Integration test scope — which component interactions to verify
 - E2E test scope — critical user journeys to validate
@@ -242,7 +277,22 @@ When extracting per-feature design from the system-level design:
 
 - Each design.md should be self-contained enough to generate implementation tasks
 - A developer reading only this design.md (plus requirements.md) should understand what to build
-- Target 100-300 lines per design.md — split overly complex features into sub-features if larger
+- Target 100-400 lines per design.md, Correctness Properties included; a design-first design.md runs longer because it carries the function-level detail. Split a feature that needs more into sub-features
+
+## Bugfix Designs
+
+For `spec_type: bugfix`, the input is `{spec_dir}/bugfix.md` and the codebase, and the design is about one defect. Read the code on the failing path before writing. A bugfix design.md does not use the 7 feature sections. It uses these `##` sections, in the order the bugfix design.md Kiro writes uses, under a `# {Bug Title} Bugfix Design` title:
+
+1. **Overview**: the defect, the fix in one or two sentences, and how fix checking and preservation checking split the validation
+2. **Glossary**: `Bug_Condition (C)`, `Property (P)`, `Preservation`, the functions involved, and the name for the fixed function (for example `f'`)
+3. **Bug Details**: `### Bug Condition`, with prose and a `**Formal Specification:**` pseudocode block for `isBugCondition`, then `### Examples`, with actual and expected results and the edge cases outside the condition
+4. **Expected Behavior**: `### Preservation Requirements`, listing the unchanged behaviors and the scope of inputs the fix must not affect
+5. **Hypothesized Root Cause**: the candidate causes, numbered, each confirmed or ruled out with the evidence
+6. **Correctness Properties**: one paragraph per property, headed by a plain line such as `Property 1: Bug Condition - <title>` or `Property 2: Preservation - <title>`, then `_For any_ ... SHALL ...` and `**Validates: Requirements 2.1, 3.2**` citing bugfix.md items by `section.item`
+7. **Fix Implementation**: `### Changes Required`, naming each file and function and each specific change, including what to leave alone
+8. **Testing Strategy**: `### Validation Approach`, `### Exploratory Bug Condition Checking` (tests run on the unfixed code that are expected to fail, with the counterexamples expected), `### Fix Checking` and `### Preservation Checking` (each with pseudocode), then unit, property-based and integration tests
+
+The quality gate's section check applies to this list for a bugfix design.
 
 ## Mermaid Diagrams
 
@@ -261,7 +311,9 @@ When this skill is activated, follow these steps:
 
 ### Step 1: Read requirements.md
 
-Read the approved `requirements.md` from `{spec_dir}/requirements.md`. Extract:
+In a design-first spec, `requirements.md` does not exist yet: skip this step, take the scope from the feature scope or user stories the caller passes, and go to Step 2. For a bugfix design, read `{spec_dir}/bugfix.md` instead.
+
+Otherwise, read the approved `requirements.md` from `{spec_dir}/requirements.md`. Extract:
 
 - All requirements and their acceptance criteria
 - The feature scope and user personas
@@ -287,29 +339,35 @@ Record each one that is missing; it goes in the Overview's Assumptions and Gaps 
 
 From the system design, extract only the components relevant to this feature:
 
-1. Map each requirement to the components that implement it
+1. Map each requirement (each in-scope user story, design-first) to the components that implement it
 2. Identify the data flow path for the feature's primary use case
 3. Note shared components that are used but not owned by this feature
 4. Identify integration points with external services or other features
 
 ### Step 4: Write design.md
 
-Write the design document with all 6 required sections:
+Write the design document with all 7 required sections:
 
-1. **Overview** — Summarize the feature design, list addressed requirements, state key design decisions
-2. **Architecture** — Draw component relationships, include at least one Mermaid diagram
-3. **Components and Interfaces** — Define each component's interface with typed function signatures
-4. **Data Models** — Specify schemas, entities, and relationships with TypeScript interfaces
-5. **Error Handling** — Cover error scenarios per the acceptance criteria plus standard HTTP errors
-6. **Testing Strategy** — Define unit/integration/E2E scope with concrete test case examples
+1. **Overview**: summarize the feature design, list addressed requirements, state key design decisions
+2. **Architecture**: draw component relationships, include at least one Mermaid diagram
+3. **Components and Interfaces**: define each component's interface with typed function signatures
+4. **Data Models**: specify schemas, entities, and relationships with typed definitions in the design's language
+5. **Correctness Properties**: write the `*For any* ... SHALL ...` properties, each with its `**Validates: Requirements N.M**` line
+6. **Error Handling**: cover error scenarios per the acceptance criteria plus standard HTTP errors
+7. **Testing Strategy**: define property-based, unit, integration and E2E scope with concrete test case examples
+
+In a design-first spec, write the properties without their Validates lines and without the Overview's requirement list. Step 6 adds both. Until then, Kiro's format check warns once per property that has no Validates line; that is expected at this point.
+
+A design-first design.md is the low-level design the requirements are derived from, so it carries more detail. Kiro's own design-first design.md adds these `##` sections to the 7: `Request Flows` after Architecture, `Key Functions with Formal Specifications` (preconditions and postconditions per function) and `Algorithmic Pseudocode` after Data Models, `Example Usage` before Correctness Properties, and `Performance Considerations`, `Security Considerations` and `Dependencies` after Testing Strategy. Add the ones the feature needs; keep the 7 required sections in their order.
 
 ### Step 5: Validate
 
 Before presenting output, verify:
 
-- [ ] All 6 required sections are present and non-empty
+- [ ] All 7 required sections are present, non-empty and in order
 - [ ] Every requirement from requirements.md is addressed by at least one component
 - [ ] At least one Mermaid diagram is included (sequence or architecture)
+- [ ] Every property has a `*For any*` statement and a Validates line whose numbers exist in requirements.md, and every criterion is covered by a property or a named test in Testing Strategy (in a design-first spec, after Step 6)
 - [ ] Error handling covers validation, auth, not-found, conflict, and downstream failures
 - [ ] Testing strategy covers unit, integration, and E2E levels
 - [ ] Component interfaces use typed signatures (not vague descriptions)
@@ -318,11 +376,21 @@ Before presenting output, verify:
 - [ ] Gaps, missing inputs and assumptions are written in design.md
 - [ ] Line count checked with `wc -l` (report the real number) and headings checked with `grep -n '^## '`
 
+### Step 6: Link Requirements (Design-First Only)
+
+After `kiro-requirements-generation` has derived `requirements.md` from this design:
+
+1. Read both files
+2. Add the requirement numbers to the Overview's traceability note and a `**Validates: Requirements N.M**` line to each property
+3. Add a property or a Testing Strategy entry for every criterion nothing covers yet, and list any design element no requirement uses under Assumptions and Gaps
+4. Run Step 5's checks again
+
 ## Quality Gate
 
 **CRITICAL (must fix before done):**
 
-- Missing any of the 6 required sections (Overview, Architecture, Components and Interfaces, Data Models, Error Handling, Testing Strategy)
+- Missing any of the 7 required sections (Overview, Architecture, Components and Interfaces, Data Models, Correctness Properties, Error Handling, Testing Strategy), or sections out of that order. A bugfix design is checked against the 8 sections in [Bugfix Designs](#bugfix-designs)
+- A property whose Validates line cites a criterion that does not exist, or a requirements-first design whose properties have no Validates lines
 - Design does not address all requirements from requirements.md — every requirement must trace to at least one component
 - Component interfaces missing typed function signatures
 - Data models missing field types
@@ -332,9 +400,10 @@ Before presenting output, verify:
 
 - No Mermaid diagrams — at least one sequence or architecture diagram should be included
 - Missing error scenarios for operations that call external services or accept user input
-- Testing strategy missing one of the three levels (unit, integration, E2E)
+- Testing strategy missing one of the three levels (unit, integration, E2E), or no property-based test setup for the properties
+- An acceptance criterion covered by neither a property nor a named test
 - Shared components fully duplicated instead of referenced
-- Design exceeds 300 lines without splitting into sub-features
+- A requirements-first design exceeds 400 lines without splitting into sub-features
 
 **SUGGESTION:**
 
