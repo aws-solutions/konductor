@@ -67,6 +67,9 @@ not per individual commit.
 - The Kiro skills index no longer tells an orchestrator to route a listed skill's task to a specialist; the loaded rules file (Direct Work, or the routing rules) decides, and the load rule asks for the skills the task needs instead of at most two.
 - All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change of at most 50 changed lines whose build, test and lint passed (reported with the diff stat; not for auth, secrets, data or infrastructure; `konductor`'s direct-work rules define those four categories), and triage findings against the request, house rules and spec before the fix.
 - `konductor` also closes a standalone document with its checker skill instead of a reviewer, and when it made the artifact, or merged a parallel writer's part into it, a finding it would reject goes to you before it is dropped.
+- `konductor` applies review findings as targeted edits to the passages they name, not a rewrite
+  of the whole file, when it fixes its own work (Verification Protocol item 3 and the Direct Work
+  rules).
 - The handoff, split, denial and brief rules every orchestrator follows now live in
   `context/k-orchestrator-shared.md`, loaded by all three orchestrators.
 - A specialist treats a quoted user decision in its brief as approval only for the action it
