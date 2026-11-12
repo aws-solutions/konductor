@@ -294,7 +294,7 @@ Each SOP has its own default output location. Most accept an override.
 | `k-design-doc-creation` | `docs/design/<slugified-topic>.md`, plus `-aws-validation.md` and `-tradeoffs.md` |
 | `k-test-coverage-review` | `test-coverage-review/` — four files |
 | `k-codebase-analysis` | `codebase-analysis.md` |
-| `kiro-spec-workflow` | `.kiro/specs/<feature-name>/` — three files |
+| `kiro-spec-workflow` | `.kiro/specs/<feature-name>/`: three spec files and `.config.kiro` |
 | `k-context-gathering`, `k-comprehensive-search` | `.konductor/handoff/<name>.md`, only when findings exceed ~100 lines |
 
 Nearly all of these SOPs are required to reference the file path rather than print the report
