@@ -13,11 +13,14 @@ interface Media {
   examples?: Record<string, { value: unknown }>;
 }
 interface Operation {
+  operationId?: string;
+  security?: unknown[];
   requestBody?: { content: Record<string, Media> };
   responses: Record<string, { content?: Record<string, Media> }>;
 }
 interface Spec {
   info: { description: string };
+  security?: unknown[];
   paths: Record<string, Record<string, Operation>>;
   components: { schemas: Record<string, Json> };
 }
@@ -68,6 +71,50 @@ export function expectContract(
     declared?.content?.['application/json']?.schema,
     reply.body,
   );
+}
+
+/** One operation of the contract: its id, method, path template and whether it needs the token. */
+export interface ContractOperation {
+  id: string;
+  method: string;
+  path: string;
+  secured: boolean;
+}
+
+const HTTP_METHODS = new Set([
+  'get',
+  'put',
+  'post',
+  'delete',
+  'patch',
+  'head',
+  'options',
+  'trace',
+]);
+
+/** Every method and path that api/openapi.yaml documents. */
+export function contractOperations(): ContractOperation[] {
+  return Object.entries(spec.paths).flatMap(([path, item]) =>
+    Object.entries(item)
+      .filter(([method]) => HTTP_METHODS.has(method))
+      .map(([method, operation]) => ({
+        id: operation.operationId ?? '',
+        method: method.toUpperCase(),
+        path,
+        secured: (operation.security ?? spec.security ?? []).length > 0,
+      })),
+  );
+}
+
+/** The value of the example of a response, such as the session of `POST /api/session`. */
+export function responseExampleOf(
+  method: string,
+  path: string,
+  status: number,
+): unknown {
+  return operationOf(method, path).responses[String(status)]?.content?.[
+    'application/json'
+  ]?.example;
 }
 
 /** Checks an error that the contract names for every path, such as a 404. */

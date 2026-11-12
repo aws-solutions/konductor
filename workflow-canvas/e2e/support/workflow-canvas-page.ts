@@ -108,14 +108,14 @@ export class WorkflowCanvasPage {
     return this.graph.getByTestId(id);
   }
 
-  /** The tab under a node, where its run order leaves. */
+  /** The dot on the bottom edge of a node, where its run order leaves. */
   outPort(id: NodeId): Locator {
-    return this.node(id).locator('.wf-port-tab');
+    return this.node(id).locator('.wf-port-out');
   }
 
-  /** The notch in the top edge of a node, where its run order arrives. */
+  /** The dot on the top edge of a node, where its run order arrives. */
   inPort(id: NodeId): Locator {
-    return this.node(id).locator('.wf-port-notch');
+    return this.node(id).locator('.wf-port-in');
   }
 
   /** The label that a node shows for its state in a run. */

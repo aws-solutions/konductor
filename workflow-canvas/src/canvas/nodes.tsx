@@ -14,29 +14,17 @@ import {
   CARD_RADIUS,
   FOCUS_GAP,
   FOCUS_WIDTH,
-  IN_HANDLE_STYLE,
-  LETTER_Y,
-  NOTCH_RING,
-  NOTCH_TOP,
-  OUT_HANDLE_STYLE,
-  PORT_SHAPE,
-  PORT_WIDTH,
-  RIM_WIDTH,
-  RING_WIDTH,
   nodeOutline,
-  portTransform,
-  rimSpreadStroke,
   spreadStroke,
-  tabTop,
-} from './jigsaw';
+} from './card-shape';
 
 type FlowNode<N extends { type: string; data: Record<string, unknown> }> = Node<
   N['data'],
   N['type']
 >;
 
-// The port where run order arrives. The handle is only the box that the link
-// measures from; the notch itself is drawn by `NodeShape`.
+// The dot on the top edge where run order arrives. `canvas.css` shows it
+// while the node is hovered, focused or selected.
 function SequenceIn() {
   return (
     <Handle
@@ -44,13 +32,12 @@ function SequenceIn() {
       position={Position.Top}
       id={SEQUENCE_IN}
       isConnectable={false}
-      className="wf-port"
-      style={IN_HANDLE_STYLE}
+      className="wf-port wf-port-in"
     />
   );
 }
 
-// The port where run order leaves, with its tab drawn by `NodeShape`.
+// The dot on the bottom edge where run order leaves.
 function SequenceOut() {
   return (
     <Handle
@@ -58,50 +45,8 @@ function SequenceOut() {
       position={Position.Bottom}
       id={SEQUENCE_OUT}
       isConnectable={false}
-      className="wf-port"
-      style={OUT_HANDLE_STYLE}
+      className="wf-port wf-port-out"
     />
-  );
-}
-
-// The letter of a port, in the body of its tab or notch.
-function PortLetter({ kind }: { kind: 'tab' | 'notch' }) {
-  return (
-    <text
-      className={`wf-port-letter wf-port-letter-${kind}`}
-      x={PORT_WIDTH / 2}
-      y={LETTER_Y}
-    >
-      S
-    </text>
-  );
-}
-
-// The notch where run order arrives: a dark rim, a white inside and a ring in
-// the colour of the tab that fits it, open at the border.
-function Notch() {
-  return (
-    <g className="wf-port-notch" transform={portTransform(NOTCH_TOP)}>
-      <path className="wf-port-rim" strokeWidth={RIM_WIDTH} d={PORT_SHAPE} />
-      <path className="wf-port-notch-inside" d={PORT_SHAPE} />
-      <path
-        className="wf-port-notch-ring"
-        strokeWidth={RING_WIDTH}
-        d={NOTCH_RING}
-      />
-      <PortLetter kind="notch" />
-    </g>
-  );
-}
-
-// The tab where run order leaves: the same outline as the notch, filled.
-function Tab({ top }: { top: number }) {
-  return (
-    <g className="wf-port-tab" transform={portTransform(top)}>
-      <path className="wf-port-rim" strokeWidth={RIM_WIDTH} d={PORT_SHAPE} />
-      <path className="wf-port-tab-body" d={PORT_SHAPE} />
-      <PortLetter kind="tab" />
-    </g>
   );
 }
 
@@ -116,24 +61,11 @@ function StatusBadge({ status }: { status: NodeStatus | undefined }) {
 }
 
 /**
- * The card behind the content of a node: one rounded outline, with a notch
- * just inside the top edge when run order comes in and a tab hanging from the
- * bottom edge when it goes out. A tab fits the notch of the node below it.
- * The focus ring is drawn around the card and the tab, so it follows the tab.
+ * The card behind the content of a node: one rounded outline, with the focus
+ * ring and its gap drawn around it.
  */
-function NodeShape({
-  height,
-  radius,
-  notch,
-  tab,
-}: {
-  height: number;
-  radius: number;
-  notch: boolean;
-  tab: boolean;
-}) {
+function NodeShape({ height, radius }: { height: number; radius: number }) {
   const outline = nodeOutline({ width: NODE_WIDTH, height, radius });
-  const tabAt = tabTop(height);
   return (
     <svg
       className="wf-node-shape"
@@ -147,30 +79,12 @@ function NodeShape({
         strokeWidth={spreadStroke(FOCUS_GAP + FOCUS_WIDTH)}
         d={outline}
       />
-      {tab && (
-        <path
-          className="wf-focus-ring-port"
-          strokeWidth={rimSpreadStroke(FOCUS_GAP + FOCUS_WIDTH)}
-          transform={portTransform(tabAt)}
-          d={PORT_SHAPE}
-        />
-      )}
       <path
         className="wf-focus-gap"
         strokeWidth={spreadStroke(FOCUS_GAP)}
         d={outline}
       />
-      {tab && (
-        <path
-          className="wf-focus-gap"
-          strokeWidth={rimSpreadStroke(FOCUS_GAP)}
-          transform={portTransform(tabAt)}
-          d={PORT_SHAPE}
-        />
-      )}
       <path className="wf-node-body" d={outline} />
-      {notch && <Notch />}
-      {tab && <Tab top={tabAt} />}
     </svg>
   );
 }
@@ -183,12 +97,7 @@ export function IntentNode({ data }: NodeProps<FlowNode<IntentGraphNode>>) {
       data-testid="node-intent"
       data-state={data.status?.state}
     >
-      <NodeShape
-        height={NODE_HEIGHT.intent}
-        radius={CARD_RADIUS}
-        notch={false}
-        tab
-      />
+      <NodeShape height={NODE_HEIGHT.intent} radius={CARD_RADIUS} />
       <div className="wf-node-title">intent</div>
       <div className="wf-node-intent-outcome" title={data.outcome}>
         {data.outcome}
@@ -203,11 +112,11 @@ export function IntentNode({ data }: NodeProps<FlowNode<IntentGraphNode>>) {
 export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
   return (
     <div
-      className="wf-node wf-node-stage wf-node-notched"
+      className="wf-node wf-node-stage"
       data-testid={`node-stage-${data.name}`}
       data-state={data.status?.state}
     >
-      <NodeShape height={NODE_HEIGHT.stage} radius={CARD_RADIUS} notch tab />
+      <NodeShape height={NODE_HEIGHT.stage} radius={CARD_RADIUS} />
       <SequenceIn />
       <div className="wf-node-title" title={data.name}>
         {data.name}
@@ -225,16 +134,11 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
 export function EndNode({ data }: NodeProps<FlowNode<EndGraphNode>>) {
   return (
     <div
-      className="wf-node wf-node-end wf-node-notched"
+      className="wf-node wf-node-end"
       data-testid="node-end"
       data-state={data.status?.state}
     >
-      <NodeShape
-        height={NODE_HEIGHT.end}
-        radius={NODE_HEIGHT.end / 2}
-        notch
-        tab={false}
-      />
+      <NodeShape height={NODE_HEIGHT.end} radius={NODE_HEIGHT.end / 2} />
       <SequenceIn />
       <div className="wf-node-title">end</div>
       <StatusBadge status={data.status} />

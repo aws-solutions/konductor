@@ -5,6 +5,7 @@ import { STATUS_BY_CODE } from '../http/respond.ts';
 import {
   contractDescription,
   errorExamples,
+  responseExampleOf,
   schemaOf,
 } from '../test-support/contract.ts';
 import {
@@ -21,6 +22,7 @@ import {
   PATH_PATTERN_SOURCE,
   RESERVED_STAGE_NAMES,
   RUN_ID_PATTERN,
+  SESSION_LIMITS,
   VERSION_PATTERN,
 } from './contract.ts';
 import { ERROR_CODES, type ErrorCode } from './errors.ts';
@@ -147,6 +149,16 @@ describe('the stub and api/openapi.yaml', () => {
     }
     expect(contractDescription()).toContain(
       `nested deeper than ${MAX_YAML_DEPTH} levels`,
+    );
+  });
+
+  it('report the same limits in the session', () => {
+    const session = responseExampleOf('POST', '/api/session', 200) as {
+      limits: unknown;
+    };
+    expect(SESSION_LIMITS).toEqual(session.limits);
+    expect(Object.keys(SESSION_LIMITS).sort()).toEqual(
+      [...(schemaOf('SessionLimits').required as string[])].sort(),
     );
   });
 });
