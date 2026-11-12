@@ -475,6 +475,17 @@ Each dose is its own item (`fixture-d0`, `fixture-d1`, ...), so the scoring and 
 
 The ladder data and the controls check that reads its labels come in a later PR.
 
+## Task assembly
+
+`lib/tasks.js` turns one skill's frozen baseline into the tasks a run answers. It reads nothing new: the baseline files are checked by the same readers `plan` uses, and a baseline with any problem is refused with every problem listed (`TaskSetError`). A skill that no agent lists is refused the same way. Assembly is done in memory each time and never written, so it cannot drift from the files it came from.
+
+For each task, assembly adds:
+
+- `exercises_section`: the exact `##` or `###` heading of `SKILL.md` that `target_section` names. A name may leave out the heading's list number (`Rules` for `1. Rules`) when it then fits one heading only. A `target_section` that is not a heading is a warning, not a refusal, because the format makes it a note for the reviewer.
+- `inputs`: per arm, the answer inputs and their digest `input_sha256`. They are the skill, the batch, the task id and request, the arm, the arm's agent definition and plugin folder hashes, the subject model, the runner profile digest and `ARM_BLINDING_VERSION`. The `with` arm also has the hash of `SKILL.md`; the `without` arm never has the skill, so editing it does not make those answers stale. A stored answer whose digest differs is stale and is answered again.
+
+Each skill also gets a condition record: what each arm was told (the load instruction, the answer-style rule, the runner profile), stored with every answer. The subject is given the task's request and nothing else; a judge is given the request and the checklist and nothing else. The title, `target_section` and the other fields name the skill's own words, so a model that saw them could tell which arm it is in.
+
 ## Not built yet
 
 These are added in a later PR: the commands that run the tasks and the judges, the checklist writer for reading A, the labels that sum up the scores, the report, and the job summary that counts the calls charged at their mean, per model. The judge client and the subject runner are libraries until the jobs use them.
