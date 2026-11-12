@@ -130,6 +130,7 @@ function judgmentInputs({
 }
 
 module.exports = {
+  PROVENANCE_VERSION,
   sortKeysDeep,
   sha256,
   fileSha256,

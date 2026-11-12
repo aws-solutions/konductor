@@ -1,0 +1,110 @@
+{
+  "set": "dose-ladder-test",
+  "purpose": "A two-task ladder for the loader and writer tests. Each task has one good baseline answer, four declared defects and a paraphrase.",
+  "doses": {
+    "D0": 0,
+    "D1": 1,
+    "D2": 2,
+    "D4": 4
+  },
+  "tasks": [
+    {
+      "id": "fx-1-chunk",
+      "domain": "javascript",
+      "prompt": "Write a JavaScript function chunk(items, size) that splits an array into arrays of at most size items. Keep the order, reject a size that is not a positive integer, and do not change the input array. Show a short usage example.",
+      "rubric": [
+        "Keeps the original order of the items",
+        "Rejects a size that is not a positive integer with an error",
+        "Puts the leftover items in a last, shorter chunk instead of dropping them",
+        "Does not change the input array",
+        "Shows a usage example with its output"
+      ],
+      "base_answer": "```js\nfunction chunk(items, size) {\n  if (!Number.isInteger(size) || size < 1) {\n    throw new RangeError('size must be a positive integer');\n  }\n  const chunks = [];\n  for (let start = 0; start < items.length; start += size) {\n    chunks.push(items.slice(start, start + size));\n  }\n  return chunks;\n}\n```\n\nExample:\n\n```js\nchunk([1, 2, 3, 4, 5], 2); // [[1, 2], [3, 4], [5]]\n```\n\nThe loop steps through the array by `size`, and `slice` copies each part, so the input array is never changed. The last chunk holds whatever is left, so no item is lost.",
+      "defects": [
+        {
+          "rubric_item": 1,
+          "breaks": "quietly rounds a bad size instead of rejecting it",
+          "find": "  if (!Number.isInteger(size) || size < 1) {\n    throw new RangeError('size must be a positive integer');\n  }\n",
+          "replace": "  if (!Number.isInteger(size) || size < 1) {\n    size = Math.max(1, Math.floor(Number(size)) || 1);\n  }\n"
+        },
+        {
+          "rubric_item": 2,
+          "breaks": "stops before the last, shorter chunk, so leftover items are dropped",
+          "find": "start < items.length; start += size",
+          "replace": "start + size <= items.length; start += size"
+        },
+        {
+          "rubric_item": 3,
+          "breaks": "empties the input array before returning",
+          "find": "  return chunks;",
+          "replace": "  items.length = 0;\n  return chunks;"
+        },
+        {
+          "rubric_item": 4,
+          "breaks": "drops the usage example and its output",
+          "find": "Example:\n\n```js\nchunk([1, 2, 3, 4, 5], 2); // [[1, 2], [3, 4], [5]]\n```\n\n",
+          "replace": "Call it with the array first and the chunk size second.\n\n"
+        }
+      ],
+      "paraphrase": [
+        {
+          "find": "The loop steps through the array by `size`, and `slice` copies each part, so the input array is never changed.",
+          "replace": "Each pass of the loop moves ahead by `size`, and `slice` returns a copy, so the input array stays as it was."
+        },
+        {
+          "find": "The last chunk holds whatever is left, so no item is lost.",
+          "replace": "Whatever remains goes into the last chunk, so no item is dropped."
+        }
+      ]
+    },
+    {
+      "id": "fx-2-totals",
+      "domain": "sql",
+      "prompt": "Write a SQL query that lists every customer with their total order amount for 2025. Customers with no 2025 orders must appear with a total of 0. Sort by the total, highest first, and explain where the date filter goes and why.",
+      "rubric": [
+        "Includes customers with no orders in 2025, with a total of 0",
+        "Counts only orders placed in 2025",
+        "Sorts by the total from highest to lowest",
+        "Groups by customer id so two customers with the same name stay separate",
+        "Explains why the date filter sits in the join condition"
+      ],
+      "base_answer": "```sql\nSELECT c.id, c.name, COALESCE(SUM(o.amount), 0) AS total_2025\nFROM customers AS c\nLEFT JOIN orders AS o\n  ON o.customer_id = c.id\n  AND o.placed_at >= DATE '2025-01-01'\n  AND o.placed_at < DATE '2026-01-01'\nGROUP BY c.id, c.name\nORDER BY total_2025 DESC;\n```\n\nThe date filter sits in the `ON` clause, not in `WHERE`. A `WHERE` filter on `orders` would drop the customers with no 2025 orders, because their joined columns are null. `COALESCE` turns their missing sum into 0. Grouping by `c.id` keeps two customers who share a name apart.",
+      "defects": [
+        {
+          "rubric_item": 0,
+          "breaks": "an inner join drops customers with no 2025 orders",
+          "find": "LEFT JOIN orders AS o",
+          "replace": "INNER JOIN orders AS o"
+        },
+        {
+          "rubric_item": 1,
+          "breaks": "the upper date bound is gone, so later orders count too",
+          "find": "  AND o.placed_at < DATE '2026-01-01'\n",
+          "replace": "  AND o.placed_at < CURRENT_DATE\n"
+        },
+        {
+          "rubric_item": 2,
+          "breaks": "sorts from lowest to highest",
+          "find": "ORDER BY total_2025 DESC;",
+          "replace": "ORDER BY total_2025 ASC;"
+        },
+        {
+          "rubric_item": 3,
+          "breaks": "groups by name only, so two customers with one name merge",
+          "find": "GROUP BY c.id, c.name",
+          "replace": "GROUP BY c.name, c.id % 1"
+        }
+      ],
+      "paraphrase": [
+        {
+          "find": "A `WHERE` filter on `orders` would drop the customers with no 2025 orders, because their joined columns are null.",
+          "replace": "Filtering `orders` in `WHERE` would remove the customers who have no 2025 orders, since their joined columns are null."
+        },
+        {
+          "find": "`COALESCE` turns their missing sum into 0.",
+          "replace": "`COALESCE` reports their empty sum as 0."
+        }
+      ]
+    }
+  ]
+}
