@@ -50,6 +50,14 @@ const RESERVED_RUN_IDS = Object.freeze(['ledger.jsonl']);
 const ARMS = Object.freeze(['with', 'without']);
 /** `items` is reading B (the rules checklist), `outcome` is reading A (the request-only checklist). */
 const SCALES = Object.freeze(['items', 'outcome']);
+/**
+ * The control skills: benchmark-owned skills that no agent declares. A control skill is selected by name, like a
+ * skill, and the arms add it to the agent's `with` arm (arms.js). The list is fixed here, not read from disk, and
+ * the arm builder (arms.js isControlSkill) installs only a folder with one of these names, so a folder under any
+ * other name in scripts/bench/skills/ is never installed in place of the skill of the same name.
+ */
+const CONTROL_SKILLS = Object.freeze(['convention-control']);
+const isControlName = (skill) => CONTROL_SKILLS.includes(skill);
 
 // The name rule is shared with the file-format validators (names.js), so a task id or batch name
 // they accept is one this layout accepts.
@@ -184,6 +192,8 @@ module.exports = {
   DEFAULT_RUN_ID,
   ARMS,
   SCALES,
+  CONTROL_SKILLS,
+  isControlName,
   LayoutError,
   createLayout,
 };
