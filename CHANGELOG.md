@@ -30,6 +30,7 @@ not per individual commit.
 
 ### Changed
 
+- The workflow canvas shows the workflow's name as its title, with Designer and Execution as a switch in the page header.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
   may now read files, search the codebase, run read-only shell commands, and answer lookup
   questions themselves instead of spawning a specialist for each. One table in

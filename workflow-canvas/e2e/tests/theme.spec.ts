@@ -20,7 +20,7 @@ test('shows the top bar, the breadcrumb and the title of the page', async ({
   await expect(canvas.themeButton).toBeVisible();
   await expect(canvas.breadcrumbs).toContainText('Workflows');
   await expect(canvas.breadcrumbs).toContainText('hello');
-  await expect(canvas.title).toHaveText('Workflow canvas');
+  await expect(canvas.title).toHaveText('hello');
 });
 
 test('self-hosts the fonts of the theme', async ({ canvas }) => {
@@ -151,34 +151,37 @@ test('switches with the keyboard', async ({ canvas }) => {
   await expect(canvas.themeButton).toHaveText('Theme: dark');
 });
 
-// The strip of the tabs, the selected-tab indicator and the rule under it.
-async function expectTabStripOnBand(canvas: WorkflowCanvasPage) {
-  const strip = canvas.page
-    .getByRole('tablist')
-    .locator('xpath=ancestor::*[2]');
-  await expect(strip).toHaveCSS('background-color', BAND_RGB);
-  await expect(strip).toHaveCSS('border-bottom-color', BAND_DIVIDER_RGB);
-  // The indicator is drawn after the element that wraps the tab button.
-  const indicator = await canvas
-    .tab('Designer')
-    .evaluate(
-      (tab) => getComputedStyle(tab.parentElement!, '::after').backgroundColor,
-    );
-  expect(indicator).toBe(BAND_LINK_RGB);
+// The view switch sits in the header band, on the row of the title, with the
+// selected segment filled.
+async function expectSwitchOnBand(canvas: WorkflowCanvasPage) {
+  const list = canvas.page.getByRole('tablist');
+  const [title, switcher] = await Promise.all([
+    canvas.title.boundingBox(),
+    list.boundingBox(),
+  ]);
+  expect(title && switcher).toBeTruthy();
+  expect(switcher!.y).toBeLessThan(title!.y + title!.height);
+  expect(switcher!.y + switcher!.height).toBeGreaterThan(title!.y);
+  await expect(list).toHaveCSS('border-top-color', BAND_DIVIDER_RGB);
+  await expect(canvas.tab('Designer')).toHaveCSS(
+    'background-color',
+    BAND_LINK_RGB,
+  );
+  await expect(canvas.tab('Designer')).toHaveCSS('color', BAND_RGB);
 }
 
-test('puts the tab strip on the dark band in the light mode', async ({
+test('puts the view switch on the dark band in the light mode', async ({
   canvas,
 }) => {
-  await expectTabStripOnBand(canvas);
+  await expectSwitchOnBand(canvas);
 });
 
-test('puts the tab strip on the dark band in the dark mode', async ({
+test('puts the view switch on the dark band in the dark mode', async ({
   canvas,
 }) => {
   await canvas.switchTheme();
 
-  await expectTabStripOnBand(canvas);
+  await expectSwitchOnBand(canvas);
 });
 
 test('sets the saved mode before the app script runs', async ({ canvas }) => {
