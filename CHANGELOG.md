@@ -325,9 +325,10 @@ not per individual commit.
     a JSON list of waves), which Kiro's spec format check requires.
   - The SOP takes `spec_type` (`feature` or `bugfix`) and `workflow` (`requirements-first` or
     `design-first`), and writes `.config.kiro`. A bugfix spec writes `bugfix.md` with Current,
-    Expected and Unchanged Behavior sections from a `bug_report_path`. On Kiro, the SOP offers
-    `/spec new` seeded with the handoff files and hands execution to `/spec run`. Its last step
-    reports gaps between the documents instead of a traceability table.
+    Expected and Unchanged Behavior sections from a `bug_report_path`. Run on its own on Kiro,
+    the SOP offers `/spec new` seeded with the handoff files and hands execution to `/spec run`;
+    inside `k-full-sdlc` it leaves execution to that SOP. Its last step reports gaps between the
+    documents instead of a traceability table.
 
 ### Fixed
 

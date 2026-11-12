@@ -290,8 +290,9 @@ Chains three skills in sequence — `kiro-requirements-generation` →
 `kiro-design-generation` → `kiro-task-generation` — to turn PM and design artifacts into a
 complete Kiro IDE spec directory, then checks the three documents for gaps. It writes feature
 specs (requirements-first or design-first) and bugfix specs, in the format Kiro itself writes.
-On Kiro, it offers Kiro's own `/spec new` flow, seeded with the same handoff files, as an
-alternative.
+When you run it on its own on Kiro, with the default `spec_dir`, it offers Kiro's own `/spec new`
+flow, seeded with the same handoff files, as an alternative, and hands the finished spec to
+`/spec run`. Inside `k-full-sdlc` it writes the spec and leaves execution to that SOP.
 
 ### When to invoke it
 
@@ -308,7 +309,9 @@ kiro-cli chat --agent konductor
 Run the kiro-spec-workflow SOP for feature_name=user-authentication
 ```
 
-You will need the three other required paths; the SOP will ask if you have not supplied them.
+A feature spec also needs `feature_scope_path`, `user_stories_path` and
+`design_artifacts_path`; a bugfix spec needs `bug_report_path`. The SOP asks for any you leave
+out.
 
 ### Parameters
 
@@ -320,7 +323,7 @@ You will need the three other required paths; the SOP will ask if you have not s
 | `design_artifacts_path` | **Yes**, for a feature spec | — the design artifacts directory from the architect phase; optional for a bugfix spec |
 | `spec_type` | No | `feature`; `bugfix` writes `bugfix.md` in place of `requirements.md` |
 | `workflow` | No | `requirements-first`; `design-first` writes `design.md` before `requirements.md` |
-| `bug_report_path` | **Yes**, for a bugfix spec | None. The bug report: observed behavior, reproduction steps, issue ID |
+| `bug_report_path` | **Yes**, for a bugfix spec | — the bug report: observed behavior, reproduction steps, issue ID |
 | `spec_dir` | No | `.kiro/specs/{feature_name}/` |
 
 ### Flow
@@ -328,7 +331,7 @@ You will need the three other required paths; the SOP will ask if you have not s
 ```mermaid
 %%{init:{'theme':'base','themeVariables':{'fontSize':'14px','primaryColor':'#eef2f7','primaryTextColor':'#0f172a','primaryBorderColor':'#40556e','lineColor':'#7a8899','textColor':'#0f172a','edgeLabelBackground':'#ffffff','clusterBkg':'#fafbfc','clusterBorder':'#c9d2dc'}}}%%
 flowchart TD
-    S0["0. Set up the spec<br/>write .config.kiro (specId, workflowType, specType)<br/>on Kiro, offer /spec new seeded with the handoff files"]
+    S0["0. Set up the spec<br/>run on its own on Kiro: offer /spec new seeded with the handoff files<br/>otherwise generate: step 1 (step 2 for design-first) writes .config.kiro"]
     S0 --> S1
 
     S1["1. kiro-requirements-generation<br/>read feature scope → identify in-scope stories<br/>read user stories, filter to this feature<br/>produce requirements.md: Glossary, EARS criteria<br/>(WHEN / IF / WHILE … SHALL), source story ID per requirement<br/>(bugfix: bugfix.md from the bug report)"]
@@ -366,7 +369,7 @@ flowchart TD
     A3 -->|Approved| S4
     Cap3 --> S4
 
-    S4["4. Validate spec completeness<br/>all files and .config.kiro exist in spec_dir<br/>every criterion cited by a property or task<br/>every property has a test task<br/>every leaf task in exactly one wave<br/>report the gaps"]
+    S4["4. Validate spec completeness<br/>all files and .config.kiro exist in spec_dir<br/>every criterion cited by a property or task<br/>every property has a test task<br/>every leaf task in exactly one wave<br/>report the gaps; on Kiro, run on its own: hand off to /spec run"]
 
     class A1,A2,A3 gate
     class S4 focus
