@@ -9,7 +9,9 @@ const {
   UsageError,
   parseFlags,
   parseMaxUsd,
+  parseMaxMinutes,
   parseSkillSelection,
+  parseStartedAt,
 } = require('../../../scripts/bench/lib/cli-args');
 
 const FLAGS = {
@@ -101,4 +103,51 @@ test('parseSkillSelection: split on commas, trimmed, empty parts and repeats dro
     () => parseSkillSelection(' , '),
     usageError(/at least one skill name/),
   );
+});
+
+test('parseMaxMinutes: a plain decimal above 0 and at most one week', () => {
+  assert.equal(parseMaxMinutes('90'), 90);
+  assert.equal(parseMaxMinutes('0.5'), 0.5);
+  assert.equal(parseMaxMinutes('10080'), 10080);
+  for (const bad of ['0', '0.0', '-5', '1e2', '0x10', ' 5', '5.', '10081', ''])
+    assert.throws(
+      () => parseMaxMinutes(bad),
+      usageError(/--max-minutes: must be a plain decimal number above 0/),
+      bad,
+    );
+});
+
+test('parseStartedAt: a real UTC time, with an optional fraction of a second', () => {
+  assert.equal(
+    parseStartedAt('2026-11-12T15:30:00Z'),
+    Date.parse('2026-11-12T15:30:00Z'),
+  );
+  assert.equal(
+    parseStartedAt('2026-11-12T15:30:00.250Z'),
+    Date.parse('2026-11-12T15:30:00.250Z'),
+  );
+  assert.equal(
+    parseStartedAt('2026-11-12T15:30:00.123456789Z'),
+    Date.parse('2026-11-12T15:30:00.123Z'),
+    'up to nine digits of fraction are accepted',
+  );
+  assert.throws(
+    () => parseStartedAt('2026-11-12T15:30:00.1234567890Z'),
+    usageError(/--started-at: must be a UTC time/),
+    'ten digits are not',
+  );
+  for (const bad of [
+    '2026-11-12T15:30:00',
+    '2026-11-12T15:30:00+01:00',
+    '2026-02-30T10:00:00Z',
+    '2026-11-12T24:00:00Z',
+    '2026-11-12 15:30:00Z',
+    '1794497450',
+    'yesterday',
+  ])
+    assert.throws(
+      () => parseStartedAt(bad),
+      usageError(/--started-at: must be a UTC time/),
+      bad,
+    );
 });

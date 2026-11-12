@@ -1,0 +1,176 @@
+{
+  "steps": [
+    {
+      "max_usd": "4.8",
+      "next_exit": 0,
+      "next": {
+        "next": "job",
+        "job": "pairs",
+        "stage": 2,
+        "run_id": "stub-e2e",
+        "skills": ["brew-log"],
+        "pending": 10,
+        "estimated_usd": 1.2123,
+        "estimated_minutes": 30,
+        "command": "node scripts/bench/job.js pairs --skills brew-log --run stub-e2e --root <dir>/repo --max-usd 4.8 --config <dir>/settings.json --provider stub"
+      },
+      "job_exit": 5,
+      "job_status": "stopped",
+      "job_stop": "spend"
+    },
+    {
+      "max_usd": "4.8",
+      "next_exit": 1,
+      "next": {
+        "next": "stop",
+        "kind": "spend",
+        "reason": "this run has already spent or reserved $5.00; the plan adds $4.19 (upper estimate, p90), which takes it to $9.19, above max_usd $4.80; raise max_usd (it cannot pass total_cap_usd $100.00)",
+        "run_id": "stub-e2e",
+        "skills": ["brew-log"]
+      }
+    },
+    {
+      "max_usd": "25",
+      "next_exit": 0,
+      "next": {
+        "next": "job",
+        "job": "pairs",
+        "stage": 2,
+        "run_id": "stub-e2e",
+        "skills": ["brew-log"],
+        "pending": 5,
+        "estimated_usd": 0.6062,
+        "estimated_minutes": 15,
+        "command": "node scripts/bench/job.js pairs --skills brew-log --run stub-e2e --root <dir>/repo --max-usd 25 --config <dir>/settings.json --provider stub"
+      },
+      "job_exit": 0,
+      "job_status": "done",
+      "job_stop": null
+    },
+    {
+      "max_usd": "25",
+      "next_exit": 0,
+      "next": {
+        "next": "job",
+        "job": "judge",
+        "scale": "items",
+        "stage": 2,
+        "run_id": "stub-e2e",
+        "skills": ["brew-log"],
+        "pending": 30,
+        "estimated_usd": 1.9057,
+        "estimated_minutes": 4,
+        "command": "node scripts/bench/job.js judge --skills brew-log --run stub-e2e --root <dir>/repo --max-usd 25 --config <dir>/settings.json --scale items --provider stub"
+      },
+      "job_exit": 0,
+      "job_status": "done",
+      "job_stop": null
+    },
+    {
+      "max_usd": "25",
+      "next_exit": 0,
+      "next": {
+        "next": "job",
+        "job": "checklists",
+        "stage": 3,
+        "run_id": "stub-e2e",
+        "skills": ["brew-log"],
+        "pending": 4,
+        "estimated_usd": 0.1498,
+        "estimated_minutes": 1,
+        "command": "node scripts/bench/job.js checklists --skills brew-log --run stub-e2e --root <dir>/repo --max-usd 25 --config <dir>/settings.json --provider stub"
+      },
+      "job_exit": 0,
+      "job_status": "done",
+      "job_stop": null
+    },
+    {
+      "max_usd": "25",
+      "next_exit": 0,
+      "next": {
+        "next": "job",
+        "job": "judge",
+        "scale": "outcome",
+        "stage": 3,
+        "run_id": "stub-e2e",
+        "skills": ["brew-log"],
+        "pending": 24,
+        "estimated_usd": 1.5246,
+        "estimated_minutes": 3,
+        "command": "node scripts/bench/job.js judge --skills brew-log --run stub-e2e --root <dir>/repo --max-usd 25 --config <dir>/settings.json --scale outcome --provider stub"
+      },
+      "job_exit": 0,
+      "job_status": "done",
+      "job_stop": null
+    },
+    {
+      "max_usd": "25",
+      "next_exit": 0,
+      "next": {
+        "next": "done",
+        "status": "done",
+        "run_id": "stub-e2e",
+        "skills": ["brew-log"],
+        "not_loaded": 0,
+        "ineligible": 0,
+        "blocked": 0
+      }
+    }
+  ],
+  "judgments": {
+    "items/brew-log/b1/brew-log-rules-1.anthropic.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-1.anthropic.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-1.openai.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-1.openai.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-1.xai.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-1.xai.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-2.anthropic.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-2.anthropic.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-2.openai.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-2.openai.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-2.xai.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-2.xai.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-3.anthropic.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-3.anthropic.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-3.openai.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-3.openai.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-3.xai.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-3.xai.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-4.anthropic.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-4.anthropic.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-4.openai.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-4.openai.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-4.xai.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-4.xai.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-5.anthropic.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-5.anthropic.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-5.openai.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-5.openai.without.json": "valid without 1.8",
+    "items/brew-log/b1/brew-log-rules-5.xai.with.json": "valid with 5",
+    "items/brew-log/b1/brew-log-rules-5.xai.without.json": "valid without 1.8",
+    "outcome/brew-log/b1/brew-log-rules-1.anthropic.with.json": "valid with 5",
+    "outcome/brew-log/b1/brew-log-rules-1.anthropic.without.json": "valid without 1.8",
+    "outcome/brew-log/b1/brew-log-rules-1.openai.with.json": "valid with 5",
+    "outcome/brew-log/b1/brew-log-rules-1.openai.without.json": "valid without 1.8",
+    "outcome/brew-log/b1/brew-log-rules-1.xai.with.json": "valid with 5",
+    "outcome/brew-log/b1/brew-log-rules-1.xai.without.json": "valid without 1.8",
+    "outcome/brew-log/b1/brew-log-rules-2.anthropic.with.json": "valid with 5",
+    "outcome/brew-log/b1/brew-log-rules-2.anthropic.without.json": "valid without 1.8",
+    "outcome/brew-log/b1/brew-log-rules-2.openai.with.json": "valid with 5",
+    "outcome/brew-log/b1/brew-log-rules-2.openai.without.json": "valid without 1.8",
+    "outcome/brew-log/b1/brew-log-rules-2.xai.with.json": "valid with 5",
+    "outcome/brew-log/b1/brew-log-rules-2.xai.without.json": "valid without 1.8",
+    "outcome/brew-log/b1/brew-log-rules-4.anthropic.with.json": "valid with 5",
+    "outcome/brew-log/b1/brew-log-rules-4.anthropic.without.json": "valid without 1.8",
+    "outcome/brew-log/b1/brew-log-rules-4.openai.with.json": "valid with 5",
+    "outcome/brew-log/b1/brew-log-rules-4.openai.without.json": "valid without 1.8",
+    "outcome/brew-log/b1/brew-log-rules-4.xai.with.json": "valid with 5",
+    "outcome/brew-log/b1/brew-log-rules-4.xai.without.json": "valid without 1.8",
+    "outcome/brew-log/b1/brew-log-rules-5.anthropic.with.json": "valid with 5",
+    "outcome/brew-log/b1/brew-log-rules-5.anthropic.without.json": "valid without 1.8",
+    "outcome/brew-log/b1/brew-log-rules-5.openai.with.json": "valid with 5",
+    "outcome/brew-log/b1/brew-log-rules-5.openai.without.json": "valid without 1.8",
+    "outcome/brew-log/b1/brew-log-rules-5.xai.with.json": "valid with 5",
+    "outcome/brew-log/b1/brew-log-rules-5.xai.without.json": "valid without 1.8"
+  }
+}

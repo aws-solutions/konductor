@@ -949,6 +949,7 @@ test('launch.js and job.js take the one table of flags that lib/launch.js keeps'
     'config',
     'ladder',
     'maxUsd',
+    'provider',
     'root',
     'run',
     'scale',
