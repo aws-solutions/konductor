@@ -275,6 +275,7 @@ Every command reads its settings from `bench/config.json`, which is git-ignored.
 | `judge_timeout_ms_by_seat`        | `{"xai": 720000}`                                                                                          | A longer limit for a slow seat, seat name to ms. Grok's valid judgments took up to 223 s (median about 120 s), and several hit 240 s on every try.                                                                                                                                        | When a seat times out often, or a seat is added or dropped.                                                |
 | `judge_max_output_tokens`         | `9000`                                                                                                     | The most tokens one judge or checklist-writer reply may have, from 256 to 128000. It is the output limit in the model's entry of the call's OpenCode config, and it sets what the call reserves (see Judge calls). A seat in `judge_max_output_tokens_by_seat` has its own limit instead. | To tighten or raise the limit of every seat, e.g. when a job result counts replies cut off at the limit.   |
 | `judge_max_output_tokens_by_seat` | `{"openai": 5000, "xai": 37500}`                                                                           | A limit for one seat, seat name to tokens (256 to 128000). Grok writes the longest replies (p99.9 12490 tokens); Terra the shortest (1657). A seat with no entry gets `judge_max_output_tokens`. An entry for a seat that is not in `models.judges` is refused.                           | When a seat is cut off often, or never needs much, or a seat is added or dropped.                          |
+| `runner_profile`                  | `legacy`                                                                                                   | How the `with` arm loads the skill and which tools both arms get (see Runner profile and isolation). `legacy`: an explicit load instruction. `natural`: no instruction, so pickup counts in the gap. The subject runner (a later PR) reads it; no command uses it yet.                    | To measure whether agents pick the skill up on their own. Answers made under the other profile are stale.  |
 
 The model IDs are pinned in the example. They were not re-checked against Bedrock when it was written. A change to one is a settings change in its own commit, and work made with the old ID is stale.
 
@@ -407,6 +408,27 @@ Both arms get the same answer-style rule, which asks the answer not to describe 
 
 Each arm has a manifest: the agent, a hash of its agent definition and a hash of its plugin folder (every file's relative path and bytes, with a mark on a file that has an execute bit). It holds no path or time, so the same inputs give the same manifest on any machine. `ARM_BLINDING_VERSION` is 1 and changes when the arm prompts change in a way that makes new answers not comparable with older ones.
 
+## Runner profile and isolation
+
+`lib/runner.js` holds the runner profiles: how the `with` arm loads the skill and which tools both arms get. The `runner_profile` setting picks one.
+
+| Profile            | Load                                                                          | Tools         |
+| ------------------ | ----------------------------------------------------------------------------- | ------------- |
+| `legacy` (default) | The `with` arm's prompt ends with an instruction to load the skill.           | `Skill` only. |
+| `natural`          | No instruction in either arm, so whether the agent picks the skill up counts. | `Skill` only. |
+
+Both arms run Claude Code with its own bundled skills (`code-review`, `debug`, `verify` and the rest) available, and no flag denies them, so a skill is measured against Claude Code as shipped.
+
+A profile must grant `Skill`. It can never grant an MCP tool, and a `Bash` grant needs a `Bash(...)` rule that names a command: bare `Bash` and a rule made only of wildcards, such as `Bash(*)`, are refused. The subject runner (a later PR) will record the profile's digest (`profile_sha256`) with every answer. The digest covers the load mode, tools, allow rules, permission mode, the per-run budget cap and the isolation deny rules, not the profile's name. An answer made under another digest is stale. The budget cap is 0.75 USD unless the profile sets one, and a profile cannot set more than 10. It is not tied to the ledger's reservation for the call: a run that costs more than it reserved is charged what Claude Code reports, up to the cap, so a spend limit can be passed by the difference. No profile with file tools ships, because the isolation test against the real CLI must pass first.
+
+`subjectFlags` builds the Claude Code arguments of one run as a list, never a shell string: `--tools Skill`, no settings files (`--setting-sources ""`), no MCP servers (`--strict-mcp-config`), no saved session, the budget cap, the isolation settings, and the arm's plugin folder and agent. A model name or agent that could be read as another flag is refused.
+
+`lib/subject-isolation.js` sets up what the child can reach:
+
+- **Environment.** Built from nothing, never copied from the parent: the three short-lived AWS values exported for this launch, `AWS_REGION`, `CLAUDE_CODE_USE_BEDROCK=1`, `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`, `PATH` and `HOME`. `AWS_PROFILE`, credential file paths and any token in the parent shell never reach the child.
+- **Home.** `HOME` is a fresh folder, mode 0700, inside the run's scratch folder. The real home folder, or a folder above it, is refused after links are resolved, so a link to it does not get past, and the child cannot reach `~/.aws` by name.
+- **Deny rules.** The settings deny reading and editing the folders `~/.aws`, `~/.ssh`, `~/.config`, `~/.gnupg`, `~/.docker`, `~/.kube` and `~/.claude`, the files `~/.netrc`, `~/.npmrc` and `~/.git-credentials` (all under the child's `HOME` and at the real paths) and the repository root, and keep file tools inside the working directory. A real home or repository path with a character that has a meaning in a rule (`()*?[]{}`) is refused. This is not an OS sandbox. With `Skill` as the only tool the child has nothing to read with; the rules matter for a later profile with file tools.
+
 ## Not built yet
 
-These are added in a later PR: the commands that run the tasks and the judges, the checklist writer for reading A, the labels that sum up the scores, the report, and the job summary that counts the calls charged at their mean, per model. The judge client is a library until the judge job uses it. The arms are built but nothing runs a subject in them yet.
+These are added in a later PR: the commands that run the tasks and the judges, the checklist writer for reading A, the labels that sum up the scores, the report, and the job summary that counts the calls charged at their mean, per model. The judge client is a library until the judge job uses it. The arms, the runner profile and the isolation settings are built but nothing runs a subject with them yet.
