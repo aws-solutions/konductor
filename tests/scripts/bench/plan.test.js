@@ -107,7 +107,7 @@ test('plan with no skills selected, or --help, shows usage and plans nothing', (
   assert.equal(result.code, 0);
   assert.match(
     result.out,
-    /^Usage: node scripts\/bench\/bench\.js <plan\|next> --skills/,
+    /^Usage: node scripts\/bench\/bench\.js <plan\|next\|report> --skills/,
   );
   assert.match(
     result.out,
@@ -129,8 +129,8 @@ test('plan writes nothing, and its sources use no network, process or AWS module
   });
   // The sources of `plan` are bench.js and every local module it loads, followed through their requires. The
   // judge client (lib/opencode.js) and its spawn helper start processes by design; plan must never load them.
-  // bench.js loads the modules of `next` inside that command only, on lines marked `// next only`; those are not
-  // plan's sources, and the run below shows plan does not load them.
+  // bench.js loads the modules of `next` and `report` inside those commands only, on lines marked `// next only` or
+  // `// report only`; those are not plan's sources, and the run below shows plan does not load them.
   const planSources = new Set();
   const pending = [BENCH_JS];
   while (pending.length) {
@@ -140,7 +140,9 @@ test('plan writes nothing, and its sources use no network, process or AWS module
     const text = fs
       .readFileSync(file, 'utf8')
       .split('\n')
-      .filter((line) => !(file === BENCH_JS && /\/\/ next only$/.test(line)))
+      .filter(
+        (line) => !(file === BENCH_JS && /\/\/ (next|report) only$/.test(line)),
+      )
       .join('\n');
     for (const [, relative] of text.matchAll(
       /require\(['"](\.{1,2}\/[^'"]+)['"]\)/g,

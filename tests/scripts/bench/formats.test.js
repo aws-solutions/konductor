@@ -804,6 +804,31 @@ defineTable('exclusions', [
     /at least 20 characters, got 19/,
   ],
   [
+    'a reason of 20 or 500 characters, or of 500 characters outside the Basic Multilingual Plane',
+    damageWithValues(
+      `${EXCLUSION_PATH}reason`,
+      'x'.repeat(20),
+      'x'.repeat(500),
+      '\u{1F600}'.repeat(500),
+    ),
+    null,
+  ],
+  [
+    'a 501-character reason',
+    [`${EXCLUSION_PATH}reason`, 'x'.repeat(501)],
+    /reason: must be at most 500 characters, got 501/,
+  ],
+  [
+    'a reason of 501 characters outside the Basic Multilingual Plane, counted as characters and not as UTF-16 units',
+    [`${EXCLUSION_PATH}reason`, '\u{1F600}'.repeat(501)],
+    /reason: must be at most 500 characters, got 501/,
+  ],
+  [
+    'a reason of a million characters',
+    [`${EXCLUSION_PATH}reason`, 'x'.repeat(1000000)],
+    /reason: must be at most 500 characters, got 1000000/,
+  ],
+  [
     'a date that is not a real YYYY-MM-DD date',
     damageWithValues(`${EXCLUSION_PATH}date`, '16-01-2026', '2026-13-01'),
     /real date written YYYY-MM-DD/,
