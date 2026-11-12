@@ -37,8 +37,8 @@ afterEach(() => {
 });
 
 describe('App', () => {
-  it('renders the page title inside a main landmark', () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+  it('shows "Workflow canvas" as the title until a workflow loads', () => {
+    render(<App load={new Promise<LoadResult>(() => {})} />);
 
     const main = screen.getByRole('main');
     expect(
@@ -47,6 +47,83 @@ describe('App', () => {
         name: 'Workflow canvas',
       }),
     ).toBeTruthy();
+  });
+
+  it('titles the page with the name of the loaded workflow', async () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+
+    const main = screen.getByRole('main');
+    expect(
+      await within(main).findByRole('heading', { level: 1, name: 'hello' }),
+    ).toBeTruthy();
+  });
+
+  it('keeps "Workflow canvas" as the title when the load failed', async () => {
+    render(<App load={settled(failed('The launch code is not valid.'))} />);
+
+    await screen.findByText('The launch code is not valid.');
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Workflow canvas' }),
+    ).toBeTruthy();
+  });
+
+  it('moves between the views with the arrow keys, Home and End', () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+    const designer = screen.getByRole('tab', { name: 'Designer' });
+    const execution = screen.getByRole('tab', { name: 'Execution' });
+    designer.focus();
+
+    fireEvent.keyDown(designer, { key: 'ArrowRight' });
+    expect(execution.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(execution);
+    expect(screen.getByRole('tabpanel', { name: 'Execution' })).toBeTruthy();
+
+    fireEvent.keyDown(execution, { key: 'ArrowRight' });
+    expect(designer.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(designer);
+
+    fireEvent.keyDown(designer, { key: 'End' });
+    expect(execution.getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(execution, { key: 'Home' });
+    expect(designer.getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(designer, { key: 'ArrowLeft' });
+    expect(execution.getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('announces nothing while the workflow is loading', () => {
+    render(<App load={new Promise<LoadResult>(() => {})} />);
+
+    expect(screen.getByTestId('run-live-status').textContent).toBe('');
+  });
+
+  it('announces nothing to run when the load failed', async () => {
+    render(<App load={settled(failed('The launch code is not valid.'))} />);
+
+    await screen.findByText('The launch code is not valid.');
+    expect(screen.getByTestId('run-live-status').textContent).toBe('');
+  });
+
+  it('says the run is ready once the workflow has loaded', async () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('run-live-status').textContent).toBe(
+        'Ready. Press Run to start.',
+      ),
+    );
+  });
+
+  it('lets Tab reach only the selected view in the switch', () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+
+    expect(
+      screen.getByRole('tab', { name: 'Designer' }).getAttribute('tabindex'),
+    ).toBe('0');
+    expect(
+      screen.getByRole('tab', { name: 'Execution' }).getAttribute('tabindex'),
+    ).toBe('-1');
   });
 
   it('renders the Designer and Execution tabs with Designer selected', () => {

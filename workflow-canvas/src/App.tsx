@@ -2,10 +2,10 @@
 import AppLayout from '@cloudscape-design/components/app-layout';
 import ContentLayout from '@cloudscape-design/components/content-layout';
 import Header from '@cloudscape-design/components/header';
-import Tabs from '@cloudscape-design/components/tabs';
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Breadcrumbs } from './chrome/Breadcrumbs';
 import './chrome/chrome.css';
+import { ModePanels, ModeSwitch, type PageView } from './chrome/ModeSwitch';
 import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
 import { Designer } from './designer/Designer';
 import { isDirty } from './designer/core';
@@ -19,7 +19,6 @@ import { timerScheduler } from './execution/timer-scheduler';
 import { useExecution } from './execution/use-execution';
 import { useGoal } from './execution/use-goal';
 import type { SwapRisk } from './launch/swap-guard';
-import { TAB_STRIP_STYLE } from './theme/tokens';
 import { useThemeMode } from './theme/use-theme-mode';
 import {
   openWorkflowName,
@@ -27,11 +26,13 @@ import {
   type LoadResult,
 } from './workflow/load-workflow';
 
+type ViewId = 'designer' | 'execution';
+
 /**
- * Root component: the top bar, then the page header (breadcrumbs and title)
- * with the Designer and Execution tabs. Both tabs draw the workflow that
- * `load` settles with, and the Execution tab runs it, waiting with
- * `scheduler` between two reads of the run.
+ * Root component: the top bar, then the page header (breadcrumbs, the name of
+ * the workflow as the title, and the Designer and Execution switch), then the
+ * selected view. Both views draw the workflow that `load` settles with, and
+ * Execution runs it, waiting with `scheduler` between two reads of the run.
  */
 export function App({
   load,
@@ -41,7 +42,7 @@ export function App({
   swapRisk,
 }: {
   load: Promise<LoadResult>;
-  /** Shown above the tabs, such as the refusal of a pasted launch address. */
+  /** Shown above the view, such as the refusal of a pasted launch address. */
   notice?: ReactNode;
   scheduler?: Scheduler;
   /** Keeps the latest run across a reload; a page without it starts afresh. */
@@ -74,6 +75,28 @@ export function App({
     [result, document],
   );
   const running = isInFlight(execution.state);
+  const [view, setView] = useState<ViewId>('designer');
+  const workflowName = openWorkflowName(saved);
+  const views: PageView<ViewId>[] = [
+    {
+      id: 'designer',
+      label: 'Designer',
+      content: <Designer result={result} editor={editor} />,
+    },
+    {
+      id: 'execution',
+      label: 'Execution',
+      content: (
+        <Execution
+          result={saved}
+          execution={execution}
+          goal={goal}
+          onGoalChange={setGoal}
+          unsaved={unsaved}
+        />
+      ),
+    },
+  ];
   useEffect(
     () => swapRisk?.set({ draft: unsaved, run: running }),
     [swapRisk, unsaved, running],
@@ -91,37 +114,29 @@ export function App({
           <ContentLayout
             defaultPadding
             headerVariant="high-contrast"
-            breadcrumbs={<Breadcrumbs workflowName={openWorkflowName(saved)} />}
-            header={<Header variant="h1">Workflow canvas</Header>}
+            breadcrumbs={<Breadcrumbs workflowName={workflowName} />}
+            header={
+              <Header
+                variant="h1"
+                actions={
+                  <ModeSwitch
+                    ariaLabel="Workflow canvas views"
+                    views={views}
+                    active={view}
+                    onChange={setView}
+                  />
+                }
+              >
+                {workflowName ?? 'Workflow canvas'}
+              </Header>
+            }
           >
             {notice}
-            <RunAnnouncements state={execution.state} />
-            <div className="wf-tab-strip">
-              <Tabs
-                ariaLabel="Workflow canvas views"
-                style={TAB_STRIP_STYLE}
-                tabs={[
-                  {
-                    id: 'designer',
-                    label: 'Designer',
-                    content: <Designer result={result} editor={editor} />,
-                  },
-                  {
-                    id: 'execution',
-                    label: 'Execution',
-                    content: (
-                      <Execution
-                        result={saved}
-                        execution={execution}
-                        goal={goal}
-                        onGoalChange={setGoal}
-                        unsaved={unsaved}
-                      />
-                    ),
-                  },
-                ]}
-              />
-            </div>
+            <RunAnnouncements
+              state={execution.state}
+              loaded={result?.ok === true}
+            />
+            <ModePanels views={views} active={view} />
           </ContentLayout>
         }
       />

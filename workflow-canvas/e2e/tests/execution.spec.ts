@@ -25,6 +25,7 @@ test('draws the same graph as the Designer, read-only, with a Run button and no 
   await expect(canvas.runButton).toBeEnabled();
   await expect(canvas.goal).toHaveValue('Add a greeting to the README');
   await expect(canvas.runStatus).toContainText('Ready. Press Run to start.');
+  await expect(canvas.runLiveStatus).toHaveText('Ready. Press Run to start.');
   await canvas.expectBadges([null, null, null, null]);
 });
 

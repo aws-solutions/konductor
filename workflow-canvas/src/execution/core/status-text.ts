@@ -50,6 +50,17 @@ export function statusText(state: ExecutionState): string {
   }
 }
 
+/**
+ * What the page's live status region says. It is empty on an error, as the
+ * alert says it all, and empty at rest until a workflow has loaded, as there
+ * is nothing to run yet.
+ */
+export function liveStatusText(state: ExecutionState, loaded: boolean): string {
+  if (state.phase === 'error') return '';
+  if (state.phase === 'idle' && !loaded) return '';
+  return statusText(state);
+}
+
 /** What kind of status the sentence is, so it can be drawn to match. */
 export function statusKind(state: ExecutionState): StatusKind {
   switch (state.phase) {
