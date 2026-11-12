@@ -54,6 +54,7 @@ test('the example holds the expected default settings', () => {
       judge: 0.0625,
       writer: 0.01375,
     },
+    runner_profile: 'legacy',
   });
 });
 
@@ -87,6 +88,8 @@ const isMap = (value) =>
 const listSettings = (object, parentPath = '') =>
   Object.entries(object).flatMap(([key, value]) => {
     const name = parentPath ? `${parentPath}.${key}` : key;
+    // The runner profile is one of a fixed set of names, so the other shipped profile is the changed value.
+    if (name === 'runner_profile') return [[name, 'natural']];
     if (!isMap(value))
       return [
         [
@@ -515,6 +518,11 @@ const REFUSED = [
   // The two limits that total_cap_usd replaced are refused by name, so a stale config file cannot pass.
   [{ stop_usd: 100 }, /stop_usd: replaced by total_cap_usd/],
   [{ hard_cap_usd: 150 }, /hard_cap_usd: replaced by total_cap_usd/],
+  [
+    { runner_profile: 'natural-tools' },
+    /runner_profile: must be one of legacy, natural, got "natural-tools"/,
+  ],
+  [{ runner_profile: null }, /runner_profile: must be one of legacy, natural/],
   [
     { stop_usd: 100, hard_cap_usd: 150 },
     /stop_usd: replaced by total_cap_usd[\s\S]*hard_cap_usd: replaced by total_cap_usd/,
