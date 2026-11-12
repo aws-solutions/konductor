@@ -6,7 +6,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, BENCH_DIR } = require('./lib/tasks.js');
+const { loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, realDir, BENCH_DIR } = require('./lib/tasks.js');
 const sandbox = require('./lib/sandbox.js');
 const { DEFAULTS, MIN_PANEL_FAMILIES, checkPanel, checkJudgeModel, families, modelFamily } = require('../judge/config.js');
 const { resolveIsolation } = require('./lib/isolate.js');
@@ -66,7 +66,7 @@ function seedOf(opts) {
 
 const benchDirOf = (opts) => (opts['bench-dir'] ? path.resolve(opts['bench-dir']) : BENCH_DIR);
 // Extra task directories (--extra-tasks), resolved; empty when the flag is absent.
-const extraDirsOf = (opts) => (opts['extra-tasks'] && opts['extra-tasks'] !== true ? String(opts['extra-tasks']).split(',').filter(Boolean).map((d) => path.resolve(d)) : []);
+const extraDirsOf = (opts) => (opts['extra-tasks'] && opts['extra-tasks'] !== true ? String(opts['extra-tasks']).split(',').filter(Boolean).map(realDir) : []);
 
 function limitsOf(opts) {
   return {

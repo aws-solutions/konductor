@@ -8,6 +8,12 @@ const real = require('./real.js');
 
 const BENCH_DIR = path.join(__dirname, '..', '..');
 
+// Symlinks are resolved so the isolation mask and the task roots name the same real path; a missing path stays resolved but unlinked.
+function realDir(d) {
+  const abs = path.resolve(d);
+  try { return fs.realpathSync(abs); } catch { return abs; }
+}
+
 // Enforced when neither the CLI nor the suite file says otherwise.
 const SUITE_DEFAULTS = {
   lite: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 1, parallel: 1 },
@@ -79,7 +85,7 @@ function loadTasks(benchDir = BENCH_DIR, { extraDirs = [] } = {}) {
   const tasks = new Map();
   readTaskDir({ dir: path.join(benchDir, 'tasks'), tasks, schema, benchDir, fixtureRoots: [path.join(benchDir, 'fixtures')], hiddenRoot: path.join(benchDir, 'tasks', 'hidden'), allowReal: true });
   for (const raw of extraDirs) {
-    const dir = path.resolve(raw);
+    const dir = realDir(raw);
     if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw new Error(`--extra-tasks directory not found: ${dir}`);
     readTaskDir({ dir, tasks, schema, benchDir, fixtureRoots: [path.join(dir, 'fixtures'), path.join(benchDir, 'fixtures')], hiddenRoot: path.join(dir, 'hidden'), allowReal: false, extra: dir });
   }
@@ -91,7 +97,7 @@ function loadTasks(benchDir = BENCH_DIR, { extraDirs = [] } = {}) {
 // manifest with its fetch tooling.
 // An extra tasks directory holds fixtures and hidden tests too, so it is hidden whole.
 function benchMask(benchDir = BENCH_DIR, extraDirs = []) {
-  return [path.join(benchDir, 'fixtures'), path.join(benchDir, 'real'), ...['hidden', 'partials', 'solutions', 'stubs'].map((d) => path.join(benchDir, 'tasks', d)), ...extraDirs.map((d) => path.resolve(d))];
+  return [path.join(benchDir, 'fixtures'), path.join(benchDir, 'real'), ...['hidden', 'partials', 'solutions', 'stubs'].map((d) => path.join(benchDir, 'tasks', d)), ...extraDirs.map(realDir)];
 }
 
 function loadSuite(name, tasks, benchDir = BENCH_DIR, suitesDir = null) {
@@ -120,6 +126,6 @@ function suiteExtraDirs(name, benchDir = BENCH_DIR, suitesDir = null) {
 }
 
 // The suite's own extra directories followed by the caller's, each once.
-const mergeExtraDirs = (suiteDirs, flagDirs = []) => [...new Set([...suiteDirs, ...flagDirs.map((d) => path.resolve(d))])];
+const mergeExtraDirs = (suiteDirs, flagDirs = []) => [...new Set([...suiteDirs, ...flagDirs.map(realDir)])];
 
-module.exports = { isSuiteName, suiteFile, suiteDirs, loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, benchMask, SUITE_DEFAULTS, SUITE_NAMES, BENCH_DIR };
+module.exports = { realDir, isSuiteName, suiteFile, suiteDirs, loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, benchMask, SUITE_DEFAULTS, SUITE_NAMES, BENCH_DIR };
