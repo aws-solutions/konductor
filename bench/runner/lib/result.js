@@ -87,7 +87,8 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
   const { credits } = fromStream;
   const finished = (agg?.runFinishedStatus ?? null) !== null;
   const agentStarted = meta.agentStarted !== false;
-  const censored = agentStarted && (status === 'timeout' || status === 'error') && !finished;
+  // A timeout is censored even when runFinished was seen: the kill can land before a late turn's metering event.
+  const censored = agentStarted && (status === 'timeout' || (status === 'error' && !finished));
   const creditsCensored = censored && !oc;
 
   return {

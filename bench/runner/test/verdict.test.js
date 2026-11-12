@@ -108,6 +108,20 @@ test('refLabel names an arm by its exact ref: id@sha7 for a commit, id@dir:hash 
 
 // ---- from run directories ----
 
+test('timed-out runs make the arm cost a labelled lower-bound estimate in the data and the sentence', () => {
+  const root = mk();
+  try {
+    const { dir, benchDir } = fixtureRun(root, 'rc', { arms: ARMS({ a: { sha: 'a', hidden: [9], credits: 2, extraFn: (task, rep) => (rep === 1 ? { status: 'timeout', creditsCensored: true, creditsLowerBound: 0.5 } : {}) } }), tasks: TASKS6 });
+    const a = verdictFor(V.buildVerdict({ dirs: [dir], benchDir }), 'a@aaaaaaa');
+    assert.equal(a.cost.censoredRuns, 6);
+    assert.equal(a.cost.baseCensoredRuns, 0);
+    if (a.verdict !== NEE) assert.match(a.sentence, /lower-bound estimate: 6 run\(s\) timed out/);
+    const clean = verdictFor(V.buildVerdict({ dirs: [fixtureRun(root, 'rd', { arms: ARMS(), tasks: TASKS6 }).dir], benchDir }), 'a@aaaaaaa');
+    assert.equal(clean.cost.censoredRuns, 0);
+    assert.doesNotMatch(clean.sentence, /lower-bound/);
+  } finally { cleanup(root); }
+});
+
 test('KEEP: a gain well outside the A/A noise, 30 runs a side, six tasks, five replicates a task', () => {
   const root = mk();
   try {

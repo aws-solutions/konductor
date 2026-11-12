@@ -295,7 +295,7 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
   const found = ledgers.filter((l) => l.exists);
   if (found.length) {
     const t = found.reduce((a, l) => ({ run: a.run + l.totals.run, judge: a.judge + l.totals.judge, other: a.other + l.totals.other, total: a.total + l.totals.total, calls: a.calls + l.totals.calls }), { run: 0, judge: 0, other: 0, total: 0, calls: 0 });
-    blocks.push(D.p(`Credit ledger (credit-ledger.jsonl): ${f(t.total, 2)} ${unit} in ${t.calls} call(s): runs ${f(t.run, 2)}, judge ${f(t.judge, 2)}${t.other ? `, other ${f(t.other, 2)}` : ''}.`));
+    blocks.push(D.p(`Credit ledger (credit-ledger.jsonl): ${f(t.total, 2)} ${unit} in ${t.calls} call(s): runs ${f(t.run, 2)}, judge ${f(t.judge, 2)}${t.other ? `, other ${f(t.other, 2)}` : ''}.${t.censored ? ` ${t.censored} run(s) timed out or were killed: their share is a lower-bound estimate, not a measured cost.` : ''}`));
   } else blocks.push(D.p('No credit ledger in this run directory (it predates the ledger); the totals above come from the result files.'));
   if (phases.draft === undefined && phases.trigger === undefined) blocks.push(D.p('Draft and trigger spend are not part of a run directory; they appear here when a spend.json (draft, trigger) sits beside the results.'));
 

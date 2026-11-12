@@ -38,6 +38,7 @@ function addTo(t, entry) {
   t.total += c;
   t.calls++;
   if (amountOf(entry) === null) t.unknown++;
+  if (entry.censored === true) t.censored = (t.censored || 0) + 1;
   const u = usdOf(entry);
   if (u !== null) t.usd = (t.usd || 0) + u;
 }
@@ -100,7 +101,7 @@ function openLedger({ dir, budget = null, budgetUnit = 'credits', create = true,
     },
     line() {
       const cap = budgetValue === null || inUsd ? 'no cap' : `guard ${budgetValue}`;
-      const unknown = t.unknown ? `; ${t.unknown} call(s) with unknown credits` : '';
+      const unknown = (t.unknown ? `; ${t.unknown} call(s) with unknown credits` : '') + (t.censored ? `; ${t.censored} run(s) timed out or were killed, so their share is an estimate, not a measured cost` : '');
       const usd = t.usd === undefined ? '' : `; usd: this command $${t.sessionUsd.toFixed(4)} (${inUsd && budgetValue !== null ? `guard $${budgetValue}` : 'no cap'}), study total $${t.usd.toFixed(4)}`;
       return `credits: this command ${fmt(t.session)} (${cap}), study total ${fmt(t.total)} (runs ${fmt(t.run)}, judge ${fmt(t.judge)}${t.other ? `, other ${fmt(t.other)}` : ''})${unknown}${usd}`;
     },

@@ -40,6 +40,13 @@ test('a timeout without runFinished is censored; its partial credits are a lower
   assert.deepEqual(validateResult(r), []);
 });
 
+test('a timeout is censored even when runFinished was seen, so its credits stay a lower bound', () => {
+  const r = build({ exec: { timedOut: true, exitCode: null, wallClockMs: 5000 }, agg: finished(2) });
+  assert.equal(r.status, 'timeout');
+  assert.equal(r.creditsCensored, true);
+  assert.equal(r.creditsLowerBound, 2);
+});
+
 test('an error run with no metering at all has a zero lower bound, not a null one', () => {
   const r = build({ exec: { timedOut: false, exitCode: 1, wallClockMs: 10 }, agg: aggregateStream([]) });
   assert.equal(r.creditsCensored, true);

@@ -230,11 +230,17 @@ function combineGraded(parts) {
   return { n, armGrade: w('armGrade'), baseGrade: w('baseGrade'), delta: w('delta'), orderDisagreements: dis, disagreementRate: dis / n, errors: parts.reduce((s, p) => s + (p?.errors || 0), 0) };
 }
 
+// A timed-out or killed run is charged an estimate, so a ratio that includes one is not a precise cost.
+function censoredNote(c) {
+  const n = (c.censoredRuns || 0) + (c.baseCensoredRuns || 0);
+  return n ? ` The cost is a lower-bound estimate: ${n} run(s) timed out or were killed before their final metering event.` : '';
+}
+
 function sentenceFor(a, baseLabel, harness = null) {
   if (a.aaRepeatOf) return `A/A repeat of ${a.aaRepeatOf}. It exists to measure run-to-run noise, so it gets no verdict.`;
   if (a.verdict === NEE) return `Not enough evidence. ${a.reason}.`;
   const dir = a.quality.delta > 0 ? 'higher' : 'lower';
-  const cost = a.cost.ratio === null ? '' : ` It cost ${a.cost.ratio.toFixed(2)}x the ${harness === 'claude-code' ? 'cost' : 'credits'} per successful run (95% interval ${a.cost.ciLow.toFixed(2)} to ${a.cost.ciHigh.toFixed(2)}, limit ${COST_MAX.toFixed(1)}x).`;
+  const cost = a.cost.ratio === null ? '' : ` It cost ${a.cost.ratio.toFixed(2)}x the ${harness === 'claude-code' ? 'cost' : 'credits'} per successful run (95% interval ${a.cost.ciLow.toFixed(2)} to ${a.cost.ciHigh.toFixed(2)}, limit ${COST_MAX.toFixed(1)}x).${censoredNote(a.cost)}`;
   const verb = a.verdict === KEEP ? 'Keep' : 'Discard';
   return `${verb}. ${a.label} scored ${f1(Math.abs(a.quality.delta))} points ${dir} than ${baseLabel} (paired ${levelText(a.quality.level ?? 0.95)} interval of the difference ${f1(a.quality.deltaCiLow)} to ${f1(a.quality.deltaCiHigh)} over ${a.quality.k} task cells), outside the A/A noise of ${f1(a.noise.pts)} points, over ${a.quality.n} runs against ${a.quality.baseN} at ${a.minReps} or more replicates per cell.${cost}`;
 }
@@ -354,7 +360,7 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
       quality: { value: h?.quality.value ?? null, ciLow: h?.quality.ciLow ?? null, ciHigh: h?.quality.ciHigh ?? null, n: h?.quality.n ?? 0, baseValue: b?.quality.value ?? null, baseN: b?.quality.n ?? 0, delta: dq.delta, deltaCiLow: dq.ciLow, deltaCiHigh: dq.ciHigh, k: dq.k, droppedCells: dq.droppedCells, method: dq.method, level: dq.level, comparisons: dq.comparisons, p: dq.p, pAdjusted: dq.pAdjusted, pExact: dq.pExact, unpaired: { delta: unpaired.delta, ciLow: unpaired.ciLow, ciHigh: unpaired.ciHigh, note: 'descriptive only: treats every run as independent' }, excluded: h?.quality.excluded ?? null },
       reliability: { value: h?.reliability.value ?? null, baseValue: b?.reliability.value ?? null, delta: dr.delta, ciLow: dr.ciLow, ciHigh: dr.ciHigh, n: h?.reliability.n ?? 0 },
       autonomy: h?.autonomy ? { value: h.autonomy.value, baseValue: b?.autonomy?.value ?? null, n: h.autonomy.n, baseN: b?.autonomy?.n ?? 0, interjectionsPerTask: h.autonomy.interjectionsPerTask } : null,
-      cost: { ratio: cost?.ratio ?? null, ciLow: cost?.ciLow ?? null, ciHigh: cost?.ciHigh ?? null, perSuccess: cost?.value ?? null, basePerSuccess: cost?.baseValue ?? null, n: cost?.n ?? 0, unit: unit === 'USD' ? 'USD' : 'credits' },
+      cost: { ratio: cost?.ratio ?? null, ciLow: cost?.ciLow ?? null, ciHigh: cost?.ciHigh ?? null, perSuccess: cost?.value ?? null, basePerSuccess: cost?.baseValue ?? null, n: cost?.n ?? 0, unit: unit === 'USD' ? 'USD' : 'credits', censoredRuns: headC.filter((r) => r.censored).length, baseCensoredRuns: base.filter((r) => r.censored).length },
       latency: { ratio: wall?.ratio ?? null, ciLow: wall?.ciLow ?? null, ciHigh: wall?.ciHigh ?? null, seconds: fin(wall?.value) ? wall.value / 1000 : null, baseSeconds: fin(wall?.baseValue) ? wall.baseValue / 1000 : null },
       noise, nonScored, components, diligence: { rating, byDir: ratingBy }, graded,
       verdict: out.aaRepeatOf ? null : decision.verdict, reason: out.aaRepeatOf ? null : decision.reason, reasons: out.aaRepeatOf ? [] : decision.reasons,

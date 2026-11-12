@@ -64,7 +64,7 @@ function buildVerdictDocument(v) {
     ['arm', `Quality /100 (arm, ${v.baselineLabel})`, 'Difference in points [paired 95% CI]', 'Unpaired difference (descriptive, not used)', 'Reliability /100 (arm, baseline)', 'Autonomy /100 (arm, baseline)', `Cost ratio (${v.arms[0]?.cost.unit ?? unit} per successful run)`, 'Latency ratio (mean wall clock)'],
     heads.map((a) => [
       a.label, `${f(a.quality.value)}, ${f(a.quality.baseValue)}`, `${signed(a.quality.delta)}${ci(a.quality.deltaCiLow, a.quality.deltaCiHigh)}`, `${signed(a.quality.unpaired.delta)}${ci(a.quality.unpaired.ciLow, a.quality.unpaired.ciHigh)}`,
-      `${f(a.reliability.value, 0)}, ${f(a.reliability.baseValue, 0)}`, a.autonomy ? `${f(a.autonomy.value, 0)}, ${f(a.autonomy.baseValue, 0)}` : 'n/a', ratio(a.cost), ratio(a.latency),
+      `${f(a.reliability.value, 0)}, ${f(a.reliability.baseValue, 0)}`, a.autonomy ? `${f(a.autonomy.value, 0)}, ${f(a.autonomy.baseValue, 0)}` : 'n/a', `${ratio(a.cost)}${a.cost.censoredRuns || a.cost.baseCensoredRuns ? ` (lower-bound estimate, ${(a.cost.censoredRuns || 0) + (a.cost.baseCensoredRuns || 0)} timed-out run(s))` : ''}`, ratio(a.latency),
     ]),
   ));
   const rows = decided.filter((a) => fin(a.quality.delta)).map((a) => ({ label: a.label, delta: a.quality.delta, lo: a.quality.deltaCiLow, hi: a.quality.deltaCiHigh, n: a.quality.n, higherBetter: true }));
@@ -112,7 +112,7 @@ function buildVerdictDocument(v) {
     ['run directory', 'suite', 'diligence rating', 'executed runs', 'arms (exact refs)', v.harness === 'claude-code' ? 'cost (ledger)' : 'credits (ledger)', 'skill-study controls', ...(hasProfile ? ['profile check'] : [])],
     v.dirs.map((d) => [
       d.dir, d.suite ?? 'n/a', d.rating, d.runs, d.arms.join(', '),
-      d.ledger ? `${f(d.ledger.total, 2)} ${unit === 'USD' ? 'USD' : 'credits'} (runs ${f(d.ledger.run, 2)}, judge ${f(d.ledger.judge, 2)})` : 'no ledger',
+      d.ledger ? `${f(d.ledger.total, 2)} ${unit === 'USD' ? 'USD' : 'credits'} (runs ${f(d.ledger.run, 2)}, judge ${f(d.ledger.judge, 2)})${d.ledger.censored ? `; ${d.ledger.censored} timed-out run(s) are estimates` : ''}` : 'no ledger',
       d.controls ? (d.controls.trusted ? 'passed' : 'FAILED: do not trust skill verdicts') : 'not checked',
       ...(hasProfile ? [d.profile ? `profile ${d.profile.name}: ${d.profile.met ? 'met' : 'NOT MET'} (${d.profile.items.filter((i) => !i.ok).map((i) => i.text).join('; ') || 'nothing missing'})` : 'n/a'] : []),
     ]),

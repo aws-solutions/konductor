@@ -75,6 +75,19 @@ test('a censored run is totalled at its charge, not at its lower-bound credits',
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('censored run lines are counted and the progress line says their share is an estimate', () => {
+  const dir = tmp();
+  try {
+    const l = openLedger({ dir });
+    l.record({ kind: 'run', credits: 1, charged: 1, censored: false });
+    assert.doesNotMatch(l.line(), /timed out/);
+    l.record({ kind: 'run', credits: 0.2, charged: 1.5, censored: true });
+    assert.equal(l.totals().censored, 1);
+    assert.match(l.line(), /1 run\(s\) timed out or were killed, so their share is an estimate/);
+    assert.equal(readLedger(dir).totals.censored, 1);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('with no budget the guard never stops, however much is spent', () => {
   const dir = tmp();
   try {
