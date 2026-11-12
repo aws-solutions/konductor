@@ -99,6 +99,13 @@ def test_removing_the_last_entry_names_the_clear_flag():
     assert "`--clear`" in remove, remove
 
 
+def test_clear_command_redirects_stdin():
+    """The validator reads stdin even with `--clear`, so the inline command
+    must give it empty input instead of waiting on an open terminal."""
+    remove = RAW.split("### Remove an entry")[1].split("### ")[0]
+    assert '`bash "$VALIDATOR" --clear "$TARGET" < /dev/null`' in remove, remove
+
+
 def test_failed_write_steps_do_not_point_at_clear():
     """Retrying an empty-content refusal with `--clear` while the variable is
     still unset empties the file with exit 0, so only Remove an entry names it."""
