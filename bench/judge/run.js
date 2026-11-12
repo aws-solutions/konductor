@@ -3,7 +3,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { loadTasks } = require('../runner/lib/tasks.js');
+const { loadTasks, requireTasks } = require('../runner/lib/tasks.js');
 const { runPool } = require('../runner/lib/orchestrate.js');
 const { loadRun } = require('../report/load.js');
 const { checkJudgeModel, checkPanel, families, effectiveLimits, maxPromptBytes: promptBytesFor } = require('./config.js');
@@ -83,10 +83,10 @@ function prepareJudging(o) {
   const skipKeys = new Set(notJudged.map(runKey));
   const judged = candidates.filter((r) => !skipKeys.has(runKey(r)));
   for (const n of notJudged) log(`not judged ${runKey(n)}: ${n.reason}`);
+  requireTasks(judged.map((r) => r.taskId), tasks, benchDir);
   const bundles = new Map();
   for (const r of judged) {
     const task = tasks.get(r.taskId);
-    if (!task) throw new Error(`task "${r.taskId}" is not in ${benchDir}/tasks`);
     bundles.set(runKey(r), buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions }));
   }
   const byKey = new Map(judged.map((r) => [runKey(r), r]));

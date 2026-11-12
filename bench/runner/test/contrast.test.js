@@ -217,7 +217,7 @@ test('the CLI writes contrast.md and contrast.json into the run directory and pr
   const orig = console.log;
   console.log = (m) => lines.push(String(m));
   try {
-    await main(['contrast', '--run', s.runDir]);
+    await main(['contrast', '--run', s.runDir, '--bench-dir', s.bench]);
   } finally { console.log = orig; }
   try {
     const md = fs.readFileSync(path.join(s.runDir, 'contrast.md'), 'utf8');

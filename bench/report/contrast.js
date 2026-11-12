@@ -7,6 +7,7 @@
 const { statFor, classify, armIdentity, MIN_RUNS_FOR_CI } = require('./compare.js');
 const { buildReport, outcomeOf, OUTCOMES, CLASS_ORDER, BASIS } = require('./aggregate.js');
 const { MIN_RECALL } = require('../runner/lib/contamination.js');
+const { requireTasks } = require('../runner/lib/tasks.js');
 const { enrichOrch, phaseTotals } = require('./orch.js');
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -161,6 +162,7 @@ function contrastRun({ run, tasks, base, heads, minRel = 0.15, rule = 'both', by
   }
   if (!headArms.length) throw new Error(`nothing to contrast: the run has only the arm "${baseArm}"`);
 
+  requireTasks(run.runs.map((r) => r.taskId), tasks);
   const basis = BASIS[run.harness ?? 'kiro-cli'];
   const classOf = by === 'task' ? (taskId) => taskId : (taskId) => tasks.get(taskId)?.class ?? 'unknown';
   const { series } = buildReport({ run, tasks, baseline: baseArm });

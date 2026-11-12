@@ -6,7 +6,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { loadTasks } = require('../runner/lib/tasks.js');
+const { loadTasks, requireTasks } = require('../runner/lib/tasks.js');
 const { runPool } = require('../runner/lib/orchestrate.js');
 const { loadRun } = require('../report/load.js');
 const { checkJudgeModel, checkPanel, families, effectiveLimits, maxPromptBytes: promptBytesFor } = require('./config.js');
@@ -35,11 +35,11 @@ const readQuality = (runDir) => {
 function planPack({ run, tasks, benchDir, limits, explicitLimits = {}, redactions, thePack, judges }) {
   const plan = [];
   const notJudged = [];
+  requireTasks(run.runs.filter((x) => x.result.status !== 'budget_skipped' && !notJudgedReason(x)).map((x) => x.taskId), tasks, benchDir);
   for (const r of run.runs.filter((x) => x.result.status !== 'budget_skipped')) {
     const why = notJudgedReason(r);
     if (why) { notJudged.push({ armId: r.armId, taskId: r.taskId, replicate: r.replicate, reason: why }); continue; }
     const task = tasks.get(r.taskId);
-    if (!task) throw new Error(`task "${r.taskId}" is not in ${benchDir}/tasks`);
     const bundle = buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions });
     const app = pack.applicability(thePack, task, bundle.files, { deleted: bundle.deleted });
     const count = (st) => app.criteria.filter((c) => c.status === st).length;

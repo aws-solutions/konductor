@@ -100,6 +100,12 @@ function benchMask(benchDir = BENCH_DIR, extraDirs = []) {
   return [path.join(benchDir, 'fixtures'), path.join(benchDir, 'real'), ...['hidden', 'partials', 'solutions', 'stubs'].map((d) => path.join(benchDir, 'tasks', d)), ...extraDirs.map(realDir)];
 }
 
+// Throws naming every task id a run uses that no loaded task definition covers, so a missing --extra-tasks cannot pass silently.
+function requireTasks(taskIds, tasks, benchDir = BENCH_DIR) {
+  const missing = [...new Set(taskIds)].filter((id) => !tasks.has(id)).sort();
+  if (missing.length) throw new Error(`no task definition for ${missing.map((id) => `"${id}"`).join(', ')} (looked in ${path.join(benchDir, 'tasks')} and the --extra-tasks directories); pass the directory that holds ${missing.length === 1 ? 'it' : 'them'} with --extra-tasks`);
+}
+
 function loadSuite(name, tasks, benchDir = BENCH_DIR, suitesDir = null) {
   const defaults = defaultsFor(name);
   if (!defaults) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy, pilot, cap, requirements, rootcause, complex, references-read, constraints-probe or canary-layers; or a skilleval-* suite file in ${suiteDirs(benchDir, suitesDir).join(' or ')})`);
@@ -128,4 +134,4 @@ function suiteExtraDirs(name, benchDir = BENCH_DIR, suitesDir = null) {
 // The suite's own extra directories followed by the caller's, each once.
 const mergeExtraDirs = (suiteDirs, flagDirs = []) => [...new Set([...suiteDirs, ...flagDirs.map(realDir)])];
 
-module.exports = { realDir, isSuiteName, suiteFile, suiteDirs, loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, benchMask, SUITE_DEFAULTS, SUITE_NAMES, BENCH_DIR };
+module.exports = { requireTasks, realDir, isSuiteName, suiteFile, suiteDirs, loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, benchMask, SUITE_DEFAULTS, SUITE_NAMES, BENCH_DIR };
