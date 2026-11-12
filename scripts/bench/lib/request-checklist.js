@@ -34,6 +34,17 @@
  * denied, an invalid model id) and a provider block are reported for their task and do not count toward that stop, so
  * a writer model that cannot be used makes one call per task, bounded by the spend limits.
  *
+ * The repair call. A reply that fails ONLY on item length (an item under 12 or over 400 characters; the count, the
+ * repeats and the JSON shape are fine) is not thrown away: the writer makes ONE follow-up call per checklist with the
+ * same writer prompt, its own rejected reply, the list of the items that were out of range, and a fixed note
+ * (prompts/checklist-repair.request-only.v1.md). The repaired reply goes through the same checks with the same
+ * limits. A checklist written that way records `repaired: true`, `repair_prompt_sha256` and
+ * `repair_original_rejection`; the keys are absent otherwise and are not part of checklistCurrent. A copy of a
+ * repaired checklist holds no repair keys: `copied_from` names the file that says how the items were obtained. The
+ * writer still sees only the request and its own earlier output: the same blocked-reference checks run over the
+ * whole repair prompt before the call. A wrong count, a repeated item or a malformed reply gets no repair, only a
+ * normal retry. The repair is projected (estimateCall) and counted in the worst case of the projection.
+ *
  * This module starts no process: the job passes the call in (createWriterCall over opencode.js judgeCall, which
  * books every call in the spend ledger).
  */
@@ -77,7 +88,8 @@ const STAGE = 'checklist';
 const ITEM_COUNT = Object.freeze({ min: 5, max: 8 });
 /**
  * The length of one item, in characters after spacing is collapsed: the same limit as a rules checklist item
- * (formats.js LIMITS, checked against this one at its boundaries by a test).
+ * (formats.js LIMITS, checked against this one at its boundaries by a test). The repair prompt file states the same
+ * range in words; a test compares the two.
  */
 const ITEM_CHARS = Object.freeze({ min: 12, max: 400 });
 const REASON_CHARS = 300;
@@ -122,6 +134,20 @@ const WRITER_TEMPLATE = loadTemplate(WRITER_TEMPLATE_FILE, [
   'count',
 ]);
 const WRITER_PROMPT_SHA256 = WRITER_TEMPLATE.sha256;
+/**
+ * The repair call's prompt: the writer prompt, the writer's own rejected reply, the items that were out of range,
+ * and the fixed note.
+ */
+const REPAIR_TEMPLATE_FILE = path.join(
+  PROMPTS_DIR,
+  'checklist-repair.request-only.v1.md',
+);
+const REPAIR_TEMPLATE = loadTemplate(REPAIR_TEMPLATE_FILE, [
+  'prompt',
+  'previous',
+  'listed',
+]);
+const REPAIR_PROMPT_SHA256 = REPAIR_TEMPLATE.sha256;
 
 // ---- the request-only input ------------------------------------------------------------------------------------
 
@@ -214,26 +240,32 @@ function stripReferences(text, { skill = '', ruleIds = [] } = {}) {
   return { text: out, removed };
 }
 
-/** What makes a text unsafe to hand to the writer; an empty list means clean. */
-function findRequestProblems(text, { skill = '', ruleIds = [] } = {}) {
+/**
+ * What makes a text unsafe to hand to the writer; an empty list means clean. `subject` names the text in each
+ * problem: the request by default, the whole repair prompt when that is what is checked.
+ */
+function findRequestProblems(
+  text,
+  { skill = '', ruleIds = [], subject = 'the request' } = {},
+) {
   const problems = [];
   const source = String(text);
-  if (!source.trim()) problems.push('the request is empty');
+  if (!source.trim()) problems.push(`${subject} is empty`);
   for (const variant of skillNameVariants(skill))
     if (nameRegExp(variant, 'i').test(source))
-      problems.push(`the request still names the skill ("${variant}")`);
+      problems.push(`${subject} still names the skill ("${variant}")`);
   for (const id of ruleIds || [])
     if (id && source.toLowerCase().includes(String(id).toLowerCase()))
-      problems.push(`the request still holds the rule id ${id}`);
+      problems.push(`${subject} still holds the rule id ${id}`);
   if (/SKILL\.md/.test(source))
-    problems.push('the request still mentions SKILL.md');
+    problems.push(`${subject} still mentions SKILL.md`);
   if (
     new RegExp(
       `${NAME_BOUNDARY_BEFORE}${escapeRegExp(PLUGIN)}:[A-Za-z0-9]`,
       'i',
     ).test(source)
   )
-    problems.push(`the request still holds a ${PLUGIN}: reference`);
+    problems.push(`${subject} still holds a ${PLUGIN}: reference`);
   return problems;
 }
 
@@ -366,6 +398,40 @@ function readReply(text, { itemCount }) {
   return { items, problems: itemProblems(items, { itemCount }) };
 }
 
+/**
+ * Whether a list of items fails ONLY on item length, the one fault a repair call can fix, and which items are out of
+ * range: { lengthOnly, bad: [{ index (0-based), length }] }. A wrong count or a repeated item, with or without a
+ * length fault, is not length only.
+ */
+function lengthFailures(items, { itemCount }) {
+  const issues = itemIssues(items, { itemCount });
+  const bad = issues
+    .filter((issue) => issue.kind === 'length')
+    .map((issue) => ({ index: issue.index, length: issue.length }));
+  return { lengthOnly: bad.length > 0 && issues.length === bad.length, bad };
+}
+
+/**
+ * The prompt of the repair call. Inputs: the request and the count (the writer prompt, unchanged), the writer's own
+ * rejected `items`, and `bad` (lengthFailures) naming which of them were out of range. Nothing else can get in.
+ * Single-pass substitution, like buildPrompt.
+ */
+function buildRepairPrompt({ request, itemCount, items, bad }) {
+  const values = {
+    prompt: buildPrompt({ request, itemCount }),
+    previous: JSON.stringify({ items }),
+    listed: bad
+      .map(
+        (entry) => `- item ${entry.index + 1} has ${entry.length} characters`,
+      )
+      .join('\n'),
+  };
+  return REPAIR_TEMPLATE.text.replace(
+    PLACEHOLDER_PATTERN,
+    (_match, name) => values[name],
+  );
+}
+
 // ---- files -----------------------------------------------------------------------------------------------------
 
 const isPlainObject = (value) =>
@@ -396,6 +462,9 @@ const RECORD_FIELDS = Object.freeze({
 });
 const OPTIONAL_RECORD_FIELDS = Object.freeze({
   copied_from: isText,
+  repaired: (value) => value === true,
+  repair_prompt_sha256: isSha256,
+  repair_original_rejection: isText,
 });
 
 /**
@@ -450,7 +519,12 @@ function checklistCurrent(record, input, model) {
 
 const roundUsd = (usd) => Number(Number(usd || 0).toFixed(6));
 
-/** The file content of an accepted checklist. `copiedFrom` is the task id whose reply it reuses, for a copy. */
+/**
+ * The file content of an accepted checklist. `copiedFrom` is the task id whose reply it reuses, for a copy. `repair`
+ * ({ reason }) is given when the items come from the repair call: the record then also holds `repaired: true`, the
+ * sha of the repair prompt and the reason the first reply was rejected. These keys say how the items were obtained,
+ * not whether the file is current, so checklistCurrent does not read them. A copy is never given them.
+ */
 function checklistRecord({
   job,
   items,
@@ -459,6 +533,7 @@ function checklistRecord({
   usd = 0,
   ms = null,
   copiedFrom = null,
+  repair = null,
   now = () => new Date(),
 }) {
   return {
@@ -473,6 +548,13 @@ function checklistRecord({
     task_id: job.input.task_id,
     item_count: job.input.item_count,
     ...(copiedFrom ? { copied_from: copiedFrom } : {}),
+    ...(repair
+      ? {
+          repaired: true,
+          repair_prompt_sha256: REPAIR_PROMPT_SHA256,
+          repair_original_rejection: repair.reason,
+        }
+      : {}),
     request: job.input.request,
     items,
     attempt,
@@ -507,8 +589,9 @@ function writeChecklistFile(file, record, { now = Date.now } = {}) {
 const roundEstimate = (usd) => Number(usd.toFixed(4));
 
 /**
- * Projected USD of one writer call: the upper estimate (p90) of the writer model in the cost profile, the figure
- * `plan` uses and the ledger reserves. Offline.
+ * Projected USD of one writer call, a repair call included: the upper estimate (p90) of the writer model in the cost
+ * profile, the figure `plan` uses. The ledger reserves the call's ceiling (`callCeiling` in opencode.js), which can be
+ * higher. Offline.
  */
 const estimateCall = (config, model) => ({
   usd: callCost(config, 'writer', model).p90,
@@ -518,12 +601,14 @@ const estimateCall = (config, model) => ({
 const copyKey = (input) => `${input.request_sha256}:${input.item_count}`;
 
 /**
- * Every task of the job, in order: { skill, batch, task_id, file, input, state, est, copy_of, problem, rule_ids }.
- *   state  'done'     a current file written by `model` is on disk
- *          'pending'  a call is needed
- *          'copy'     same request and item count as an earlier task of the job: written from that task's
- *                     checklist, no call
- *          'blocked'  the request is not clean or the item count is out of range; nothing is written
+ * Every task of the job, in order:
+ *   { skill, batch, task_id, file, input, state, est, est_repair, copy_of, problem, rule_ids }.
+ *   state       'done'     a current file written by `model` is on disk
+ *               'pending'  a call is needed
+ *               'copy'     same request and item count as an earlier task of the job: written from that task's
+ *                          checklist, no call
+ *               'blocked'  the request is not clean or the item count is out of range; nothing is written
+ *   est_repair  the projected USD of the one repair call (estimateCall); null unless the task needs a call
  * `sets` is [{ skill, batch, tasks, ruleIds }]: the tasks of one batch, and the rule ids to strip (never given to the
  * writer). `layout` is createLayout(...) for the run.
  */
@@ -540,6 +625,7 @@ function planChecklists({ sets, layout, model, config }) {
         input: null,
         state: 'pending',
         est: null,
+        est_repair: null,
         copy_of: null,
         problem: null,
         rule_ids: ruleIds,
@@ -563,6 +649,7 @@ function planChecklists({ sets, layout, model, config }) {
       } else {
         firstByKey.set(key, job);
         job.est = estimateCall(config, model);
+        job.est_repair = estimateCall(config, model);
       }
     }
   }
@@ -570,12 +657,14 @@ function planChecklists({ sets, layout, model, config }) {
 }
 
 /**
- * Counts and projected cost of a plan. `projected_usd` is one call per pending task; `worst_case_usd` and
- * `max_calls` count every attempt of every pending task. Copies and done tasks cost nothing.
+ * Counts and projected cost of a plan. `projected_usd` is one call per pending task; `repair_usd` is the one repair
+ * call of each, which is not expected and so is not in `projected_usd`. `worst_case_usd` and `max_calls` count every
+ * attempt of every pending task plus its repair call. Copies and done tasks cost nothing.
  */
 function projection(jobs) {
   const calls = jobs.filter((job) => job.state === 'pending');
   const projected = calls.reduce((sum, job) => sum + job.est.usd, 0);
+  const repair = calls.reduce((sum, job) => sum + job.est_repair.usd, 0);
   return {
     total: jobs.length,
     done: jobs.filter((job) => job.state === 'done').length,
@@ -584,8 +673,9 @@ function projection(jobs) {
     blocked: jobs.filter((job) => job.state === 'blocked').length,
     calls: calls.length,
     projected_usd: roundEstimate(projected),
-    worst_case_usd: roundEstimate(projected * ATTEMPTS),
-    max_calls: calls.length * ATTEMPTS,
+    repair_usd: roundEstimate(repair),
+    worst_case_usd: roundEstimate(projected * ATTEMPTS + repair),
+    max_calls: calls.length * (ATTEMPTS + 1),
   };
 }
 
@@ -625,8 +715,8 @@ function bookedUsd(result, config, callKind = 'judge', model, costProfile) {
  * The call the job passes to writeChecklists: one opencode.js judgeCall with the writer model, booked in the
  * ledger, under `credentialGuard` and the judge call timeout, with the job's exported `credentials` passed to the
  * process and the call priced and booked from `costProfile` (the committed one when not given). `judgeCall` is
- * injected so this module starts no process. Returns { ok, text, usd, ms, error }; `error` is the redacted error and
- * stderr of a failed call.
+ * injected so this module starts no process. The ledger label ends in " repair" for the repair call (`meta.repair`).
+ * Returns { ok, text, usd, ms, error }; `error` is the redacted error and stderr of a failed call.
  */
 function createWriterCall({
   judgeCall,
@@ -638,13 +728,13 @@ function createWriterCall({
   costProfile,
   timeoutMs = config.judge_timeout_ms,
 }) {
-  return async (job, attempt, prompt) => {
+  return async (job, attempt, prompt, meta) => {
     const result = await judgeCall({
       ledger,
       config,
       modelId: model,
       prompt,
-      label: `${STAGE} ${job.skill}/${job.batch}/${job.task_id} #${attempt}`,
+      label: `${STAGE} ${job.skill}/${job.batch}/${job.task_id} #${attempt}${meta && meta.repair ? ' repair' : ''}`,
       timeoutMs,
       callKind: 'writer',
       credentialGuard,
@@ -679,10 +769,12 @@ const credentialStop = (message, attempt) =>
 /**
  * Writes the checklists of the pending tasks, `concurrency` at a time, then the copies. Dependencies are injected so
  * the rules can be tested without a model:
- *   call(job, attempt, prompt) -> { ok, text, usd, ms, error }   (createWriterCall)
- *   write(file, record)                                          (default writeChecklistFile)
+ *   call(job, attempt, prompt, meta) -> { ok, text, usd, ms, error }   (createWriterCall)
+ *     `meta` is { repair: true } for the one repair call of a checklist, else undefined.
+ *   write(file, record)                                                (default writeChecklistFile)
  * A reply is read ONLY when the call's ok flag is true. A failed call or a rejected reply is retried up to
- * `attempts` calls with a growing pause (`delayMs(attempt)`). A provider block is tried `maxRefusals` times, then the
+ * `attempts` calls with a growing pause (`delayMs(attempt)`); a reply that failed only on item length gets the one
+ * repair call first, which is not counted in `attempts`. A provider block is tried `maxRefusals` times, then the
  * task is refused. A failure the provider says can never work is not retried. A fatal error (a credential failure,
  * a spend stop, a ledger error) stops every worker and is thrown after they settle; `systemicAfter` tasks in a row
  * whose every call failed throw SystemicFailureError, which is fatal too. Finished files are kept.
@@ -735,59 +827,139 @@ async function writeChecklists({
     let lastReason = 'no call was made';
     let items = null;
     let acceptedAt = null;
+    let repairMade = false; // one repair call per checklist, whichever attempt it follows
+    let repairInfo = null;
+    let repairNote = null;
     const fail = (list, reason) => {
       list.push({ task_id: job.task_id, reason });
       log(`${job.task_id}: NOT written (${reason}); USD ${spent.toFixed(4)}`);
     };
 
-    for (let attempt = 1; attempt <= attempts; attempt++) {
-      if (attempt > 1) await sleep(delayMs(attempt));
+    /**
+     * One call. Returns { result } for a call that returned, or { thrown } with the reason for a call that threw
+     * before it started. A fatal throw and a credential failure (thrown or returned) stop the job here. A failed
+     * call's `failure` is { kind, message }; its text is never read.
+     */
+    const callOnce = async (attempt, text, meta) => {
       let result;
       try {
-        result = await call(job, attempt, prompt);
+        result = await call(job, attempt, text, meta);
       } catch (error) {
         if (error && error.fatal) throw error;
         const message = shortReason(error && error.message, redactFailure);
         if (classifyError(error) === 'credential')
           throw credentialStop(message, attempt);
-        // A call that throws before it starts (an unsafe model id, a prompt too long to pass) fails the same way
-        // every time, so it is not retried.
-        fail(failed, `the call could not be made: ${message}`);
-        return;
+        return { thrown: message };
       }
       const usd = Number(result.usd) || 0;
       spent += usd;
       usdTotal += usd;
-      if (!result.ok) {
-        const message = shortReason(result.error || 'call failed');
-        const kind = classifyError(new Error(message));
-        if (kind === 'credential') throw credentialStop(message, attempt);
-        lastKind = kind;
-        lastReason = message;
-        if (kind === 'refusal' && ++refusals >= maxRefusals) break;
-        if (kind === 'permanent') break;
+      if (result.ok) return { result };
+      // The class is read from the whole text; only the stored reason is cut.
+      const fullText = result.error || 'call failed';
+      const kind = classifyError(new Error(fullText));
+      const message = shortReason(fullText, redactFailure);
+      if (kind === 'credential') throw credentialStop(message, attempt);
+      return { result, failure: { kind, message } };
+    };
+
+    /**
+     * The one repair call, after a reply that failed only on item length. Returns { items, ms } for a repaired reply
+     * that passes the same checks, else { error }, with `refusal` set when the provider blocked it. The blocked-
+     * reference checks run over the whole repair prompt first: a rejected reply that names the skill or holds a
+     * rule id is not sent back.
+     */
+    const repairOnce = async (attempt, rejected, bad) => {
+      const repairPrompt = buildRepairPrompt({
+        request: job.input.request,
+        itemCount,
+        items: rejected,
+        bad,
+      });
+      const leaks = findRequestProblems(repairPrompt, {
+        skill: job.skill,
+        ruleIds: job.rule_ids,
+        subject: 'the repair prompt',
+      });
+      if (leaks.length) return { error: `not repaired (${leaks[0]})` };
+      const outcome = await callOnce(attempt, repairPrompt, { repair: true });
+      if (outcome.thrown)
+        return {
+          error: `the repair call could not be made: ${outcome.thrown}`,
+        };
+      if (outcome.failure)
+        return {
+          error: `the repair call failed: ${outcome.failure.message}`,
+          refusal: outcome.failure.kind === 'refusal',
+        };
+      const again = readReply(outcome.result.text, { itemCount });
+      if (again.problems.length)
+        return {
+          error: `repair rejected: ${again.problems.slice(0, 4).join('; ')}`,
+        };
+      return { items: again.items, ms: outcome.result.ms ?? null };
+    };
+
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      if (attempt > 1) await sleep(delayMs(attempt));
+      const outcome = await callOnce(attempt, prompt, undefined);
+      if (outcome.thrown) {
+        // A call that throws before it starts (an unsafe model id, a prompt too long to pass) fails the same way
+        // every time, so it is not retried.
+        fail(failed, `the call could not be made: ${outcome.thrown}`);
+        return;
+      }
+      if (outcome.failure) {
+        lastKind = outcome.failure.kind;
+        lastReason = outcome.failure.message;
+        if (lastKind === 'refusal' && ++refusals >= maxRefusals) break;
+        if (lastKind === 'permanent') break;
         continue;
       }
       anyOk = true;
-      const reply = readReply(result.text, { itemCount });
+      const reply = readReply(outcome.result.text, { itemCount });
       if (!reply.problems.length) {
         items = reply.items;
-        acceptedAt = { attempt, ms: result.ms ?? null };
+        acceptedAt = { attempt, ms: outcome.result.ms ?? null };
         break;
       }
       lastKind = 'rejected';
       lastReason = `reply rejected: ${reply.problems.slice(0, 4).join('; ')}`;
+      // A reply that fails only on item length gets the one repair call.
+      const lengths = reply.items
+        ? lengthFailures(reply.items, { itemCount })
+        : null;
+      if (lengths && lengths.lengthOnly && !repairMade) {
+        repairMade = true;
+        const repaired = await repairOnce(attempt, reply.items, lengths.bad);
+        if (repaired.items) {
+          items = repaired.items;
+          acceptedAt = { attempt, ms: repaired.ms };
+          repairInfo = { reason: reply.problems.join('; ') };
+          break;
+        }
+        // Kept: a later fresh attempt overwrites lastReason, and the log must still say why the repair did not help.
+        repairNote = repaired.error;
+        if (repaired.refusal && ++refusals >= maxRefusals) {
+          lastKind = 'refusal';
+          lastReason = repaired.error;
+          break;
+        }
+      }
     }
 
     if (!items) {
       if (anyOk) breaker.recordSuccess();
       else if (lastKind === 'transient') breaker.recordFailure(lastReason);
+      const reason = [lastReason, repairNote]
+        .filter((part, index, parts) => part && parts.indexOf(part) === index)
+        .join('; ');
       if (lastKind === 'refusal' && refusals >= maxRefusals)
         fail(
           refused,
-          `the provider blocked the reply ${refusals} times: ${lastReason}`,
+          `the provider blocked the reply ${refusals} times: ${reason}`,
         );
-      else fail(failed, lastReason);
+      else fail(failed, reason);
       return;
     }
     breaker.recordSuccess();
@@ -798,6 +970,7 @@ async function writeChecklists({
       attempt: acceptedAt.attempt,
       usd: spent,
       ms: acceptedAt.ms,
+      repair: repairInfo,
       now,
     });
     // The reply is paid for and passed every check. One more try covers a passing I/O error; when it fails again the
@@ -823,7 +996,7 @@ async function writeChecklists({
       accepted.set(copyKey(job.input), { items, from: job.task_id });
     written.push(job.task_id);
     log(
-      `${job.task_id}: ${items.length} items written; USD ${spent.toFixed(4)}`,
+      `${job.task_id}: ${items.length} items written${repairInfo ? ` (repaired after: ${repairInfo.reason.slice(0, 100)})` : ''}; USD ${spent.toFixed(4)}`,
     );
   };
 
@@ -888,6 +1061,9 @@ module.exports = {
   WRITER_TEMPLATE_FILE,
   WRITER_TEMPLATE,
   WRITER_PROMPT_SHA256,
+  REPAIR_TEMPLATE_FILE,
+  REPAIR_TEMPLATE,
+  REPAIR_PROMPT_SHA256,
   loadTemplate,
   skillNameVariants,
   stripReferences,
@@ -897,6 +1073,8 @@ module.exports = {
   itemIssues,
   itemProblems,
   readReply,
+  lengthFailures,
+  buildRepairPrompt,
   readChecklistFile,
   checklistCurrent,
   checklistRecord,
