@@ -51,6 +51,7 @@ bench/out/<run-id>/                          run data (git-ignored)
   raw/<skill>/<batch>/<task>.<with|without>/raw.jsonl   subject event log, and its kept earlier tries
   checklists/<skill>/<batch>/<task>.json
   judgments/<items|outcome>/<skill>/<batch>/<task>.<seat>.<with|without>.json
+  jobs/<job>.<skills>.log, .pid            job logs and pid files (private, see Job folder)
   report.json, report.md
 ```
 
@@ -514,6 +515,19 @@ Each answer is scored on its own. A judge call sees one answer, never the other 
 A credential problem (missing credentials, long-term keys, or credentials that expire within the call timeout, 5 minutes by default and never less than 3), a spend stop, a ledger that cannot be used and a security stop from the secret sweep end the job. A run that ends with another error (a ledger failure, for example) after its raw log was quarantined for a value in the trace's text carries `traceQuarantine`; the job reports that as a security stop, with the quarantine note first, and not as the error's own kind. No new run starts, runs already going finish, and finished answers are kept. The result names the stop. Runs charged at the estimate because Claude Code reported no usable cost are counted per model in the result (`estimated`) and in one log line. `dryRun` lists the pending runs, with the agent, whether the `with` arm is told to load the skill and the tools. It spends nothing and writes nothing under `bench/out`; the arms are built in a temporary folder to read their manifests and removed.
 
 Each answer also records the skills version (the commit of the last change under `skills/`) and the Claude Code version. Neither is part of the digest: a new commit or CLI version alone does not make an answer stale.
+
+## Job folder
+
+`lib/job-dir.js` keeps the log and the pid file of every job started for a run in `bench/out/<run-id>/jobs/`. The folder is mode 0700 and its files 0600, because a log can quote a task or an error. Nothing is written to the shared `/tmp`.
+
+| File                         | What it holds                                                                                                                                                         |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<job>.<skills>.log`         | What the job printed. `<skills>` is the sorted skill names joined with `+`.                                                                                           |
+| `<job>.<skills>.pid`         | The pid record, one JSON object. It is read only with `pid`, `job` and `skills`; the launcher also writes `key`, `run_id`, `dry_run`, `script`, `args` and `started`. |
+| `<job>.<skills>.dry-run.log` | The same for a dry run, which spends nothing and so is a job of its own.                                                                                              |
+| `<job>.<skills>.log.<time>`  | An earlier log, set aside when the same job starts again. Logs are not deleted.                                                                                       |
+
+A list whose key is longer than 64 characters keeps its first three names, the count of the others and the first 8 hex digits of the SHA-256 of the whole key; two such lists share a key only when all three agree, which is very unlikely. A pid file alone does not mean the job runs: a job is live only when its pid is alive and that process's command line holds the job script. The command line is read with `ps`, or from `/proc/<pid>/cmdline` when `ps` cannot run. A pid the system gave to another program does not count. A pid that is alive but whose command line neither can read cannot be checked, so the launch is refused (exit 1) and starts nothing; the message names the pid file to remove if that process is not the job.
 
 ## Not built yet
 
