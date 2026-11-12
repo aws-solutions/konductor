@@ -5,6 +5,7 @@
  *   node scripts/bench/bench.js plan --skills a,b [--run <id>] [--max-usd N] [--config <file>] [--root <dir>] [--json]
  *   node scripts/bench/bench.js next --skills a,b [--run <id>] [--max-usd N] [--config <file>] [--root <dir>]
  *                                   [--max-minutes N --started-at <UTC time>] [--provider live|stub]
+ *   node scripts/bench/bench.js report --skills a,b [--run <id>] [--config <file>] [--root <dir>] [--provider live|stub]
  *   node scripts/bench/bench.js cost-profile [--ledger <file>] [--out <file>] [--root <dir>]
  *
  * `plan` is offline. It makes no network, model or AWS call, spends nothing and writes no file. With
@@ -14,6 +15,11 @@
  * `next` (lib/next.js) prints ONE JSON line: the next job to run with its command, `done`, or `stop` with the reason.
  * It works from the baseline and the files on disk, spends nothing and writes no file.
  *
+ * `report` (lib/run-report.js) reads the stored answers and judgments, applies the label rules and writes
+ * bench/out/<run-id>/report.json and report.md, then prints ONE JSON line naming them. Offline: no network, model or
+ * AWS call, nothing spent, and no other file written. `--provider stub` reads the spend of a stub run from its own
+ * ledger.
+ *
  * `cost-profile` (lib/cost-profile-rebuild.js) reads the spend ledger and prints a cost profile built from the calls
  * whose cost the CLI reported, or writes it to --out. It needs no settings file and spends nothing.
  *
@@ -21,16 +27,17 @@
  *
  * Exit codes (the values are the sysexits.h ones where one fits):
  *
- *   0   done (for next: a job to run, or done)
+ *   0   done (for next: a job to run, or done; for report: the report is written)
  *   1   the plan is refused: an invalid baseline or agent spec, a projected cost above max_usd, a plan that
  *       would take the spend ledger past total_cap_usd, or no selected skill that can be run
  *       (no baseline or no agent); for next: stop (a limit is reached, or the plan is refused)
  *   64  usage error (EX_USAGE): a bad flag or value, an unknown skill, a settings file that
- *       cannot be read or is invalid, or a spend ledger that cost-profile cannot parse
+ *       cannot be read or is invalid, a spend ledger that cost-profile cannot parse, or a text in the data
+ *       of `report` that is too long for the redactor to scan
  *   66  a file or folder the plan needs is missing (EX_NOINPUT)
  *   70  internal error (EX_SOFTWARE): a bug in the benchmark. One line says so; the stack trace is
  *       printed only when BENCH_DEBUG=1 is set
- *   74  an I/O error reading a file or folder, such as permission denied (EX_IOERR)
+ *   74  an I/O error reading or writing a file or folder, such as permission denied (EX_IOERR)
  *
  * Every failure except 70 prints an `error: <what> (<file>)` line and no stack trace (a usage error
  * adds a hint line). Code 2 is never used (AGENTS.md reserves it for a gate finding).
@@ -61,7 +68,7 @@ const EX_USAGE = 64;
 const EX_NOINPUT = 66;
 const EX_SOFTWARE = 70;
 const EX_IOERR = 74;
-const USAGE = `Usage: node scripts/bench/bench.js <plan|next> --skills <a,b> [options]
+const USAGE = `Usage: node scripts/bench/bench.js <plan|next|report> --skills <a,b> [options]
        node scripts/bench/bench.js cost-profile [--ledger <file>] [--out <file>] [--root <dir>]
 
 Commands
@@ -69,24 +76,28 @@ Commands
           rest would cost. Offline: no network, no model call, nothing spent.
   next    Print one JSON line: the next job to run and its command, done, or stop with the reason.
           Works from the files on disk; nothing spent, nothing written.
+  report  Read the stored answers and judgments, apply the label rules and write report.json and
+          report.md in the run folder. Offline: no network, no model call, nothing spent.
   cost-profile  Rebuild the cost profile (mean, median, p90 per call kind and model) from the
           spend ledger. Offline: nothing spent.
 
 Options
   --skills <a,b>     Skills to plan. Without it, only this help is shown.
   --run <id>         Run folder under bench/out/ (default: default).
-  --max-usd <n>      Spend limit for this run in USD, a plain decimal such as 2.5 (default: 30). Cannot pass total_cap_usd in bench/config.json.
+  --max-usd <n>      plan and next: spend limit for this run in USD, a plain decimal such as 2.5 (default: 30). Cannot pass total_cap_usd in bench/config.json.
   --config <file>    Settings file to use instead of bench/config.json.
   --root <dir>       Repository root to read (default: this checkout).
   --json             plan only: print the plan as JSON.
   --max-minutes <n>  next only: time limit of the run; needs --started-at.
   --started-at <t>   next only: when the run started, a UTC time such as 2026-11-12T15:30:00Z.
-  --provider <name>  next only: live (default) or stub, passed on to the job's command. A run id stub or stub-<name> takes only stub, and stub only there.
+  --provider <name>  next and report: live (default) or stub. next passes it on to the job's command;
+                     report reads a stub run's spend from its own ledger. A run id stub or stub-<name> takes only
+                     stub, and stub only there.
   --ledger <file>    cost-profile only: the spend ledger to read (default: bench/out/ledger.jsonl).
   --out <file>       cost-profile only: write the profile there instead of printing it.
 
 Exit codes
-  0   done (next: a job to run, or done)
+  0   done (next: a job to run, or done; report: the report is written)
   1   the plan is refused (an invalid baseline or agent spec, a projected cost above max_usd, a ledger past a limit, or no skill to run); next: stop
   64  usage error: a bad flag or value, an unknown skill, an unreadable or invalid settings file, or (cost-profile) a corrupt ledger
   66  a file or folder the plan needs is missing
@@ -176,9 +187,11 @@ const VALUE_FLAGS = {
 };
 /** Flags only `next` takes; `plan` refuses them, so a typo cannot pass quietly. */
 const NEXT_ONLY_FLAGS = ['maxMinutes', 'startedAt', 'provider'];
+/** Flags `report` refuses: it plans and spends nothing, so a limit would do nothing there. */
+const NOT_REPORT_FLAGS = ['maxUsd', 'maxMinutes', 'startedAt'];
 /** Flags only `cost-profile` takes, and the only flags it takes besides --root. */
 const COST_PROFILE_FLAGS = ['ledger', 'out'];
-const COMMANDS = ['plan', 'next', 'cost-profile'];
+const COMMANDS = ['plan', 'next', 'report', 'cost-profile'];
 const BOOL_FLAGS = { '--json': 'json', '--help': 'help', '-h': 'help' };
 /** The command-line spelling of a parsed option name (`maxUsd` is `--max-usd`). */
 const flagOf = (name) =>
@@ -262,9 +275,16 @@ function main(argv, io, env = process.env, nextOptions = {}) {
           `${nextOnly.map(flagOf).join(', ')} is an option of next, not of plan`,
         );
     }
-    if (command === 'next' && options.json)
+    if (command === 'report') {
+      const refused = NOT_REPORT_FLAGS.filter((name) => name in options);
+      if (refused.length)
+        throw new UsageError(
+          `${refused.map(flagOf).join(', ')} is not an option of report: it spends nothing`,
+        );
+    }
+    if (command !== 'plan' && options.json)
       throw new UsageError(
-        'next always prints JSON; --json is an option of plan',
+        `${command} always prints JSON; --json is an option of plan`,
       );
 
     const maxUsd =
@@ -305,8 +325,10 @@ function main(argv, io, env = process.env, nextOptions = {}) {
     }
 
     if (!options.skills) {
-      if (command === 'next')
-        throw new UsageError('--skills is required: name the skills to run');
+      if (command !== 'plan')
+        throw new UsageError(
+          `--skills is required: name the skills to ${command === 'next' ? 'run' : 'report'}`,
+        );
       const baselineSkillNames = listBaselineSkills(layout);
       io.out(
         `${USAGE}\nNo skills selected, so nothing was planned and nothing was spent.\nSkills with a baseline: ${baselineSkillNames.length ? baselineSkillNames.join(', ') : 'none'}\n`,
@@ -325,6 +347,8 @@ function main(argv, io, env = process.env, nextOptions = {}) {
       return runNext({ layout, config, names, options, nextOptions, io }).catch(
         fail,
       );
+    if (command === 'report')
+      return runReport({ layout, config, names, options, nextOptions, io });
 
     const plan = buildPlan({ layout, config, skills: names });
     io.out(
@@ -446,6 +470,41 @@ async function runNext({ layout, config, names, options, nextOptions, io }) {
     `${redact(JSON.stringify(result), { maxChars: Number.POSITIVE_INFINITY })}\n`,
   );
   return result.next === 'stop' ? 1 : 0;
+}
+
+/**
+ * The `report` command: writes report.json and report.md and prints one JSON line naming them; exit 0. `nextOptions`
+ * may carry `now` (tests) and `armsTmpRoot`.
+ */
+function runReport({ layout, config, names, options, nextOptions, io }) {
+  // Loaded here and not at the top, like the modules of `next`: the judge job module loads the judge client, and
+  // `plan` must never load it (plan.test.js checks it). Each line is marked so that check can tell them apart.
+  const { readProviderOption } = require('./lib/launch'); // report only
+  const { stubLayout } = require('./lib/stub-provider'); // report only
+  const { ReportError, writeReport } = require('./lib/run-report'); // report only
+  const provider = readProviderOption(options.provider, layout.runId);
+  let result;
+  try {
+    result = writeReport({
+      layout,
+      config,
+      skills: names,
+      provider,
+      // A stub run books into its own ledger (stub-provider.js stubLayout), so its spend is read from there.
+      ledgerFile: (provider === 'stub' ? stubLayout(layout) : layout)
+        .ledgerFile,
+      ...(nextOptions.now ? { now: nextOptions.now } : {}),
+      ...(nextOptions.armsTmpRoot
+        ? { armsTmpRoot: nextOptions.armsTmpRoot }
+        : {}),
+    });
+  } catch (error) {
+    // A text too long to scan comes from the data the report reads (a task field named in a warning, a record), not from a bug.
+    if (error instanceof ReportError) throw new UsageError(error.message);
+    throw error;
+  }
+  io.out(`${redact(JSON.stringify(result), { maxChars: 16000 })}\n`);
+  return 0;
 }
 
 if (require.main === module) {

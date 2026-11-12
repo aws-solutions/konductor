@@ -35,6 +35,8 @@ const LIMITS = Object.freeze({
   minItemChars: 12,
   maxItemChars: 400,
   minReasonChars: 20,
+  // An exclusion reason is read by a person and printed in the reports; a few sentences say why a task was left out.
+  maxReasonChars: 500,
   // A quote of one or two common words ("the") would match inside almost any prompt, and every prompt would fail the
   // "names a rule's quote" check. 12 is the length of the shortest checklist item. The length is counted on the
   // trimmed text (normalizeForMatch), the value that is matched against prompts, so padding with spaces cannot pass.
@@ -565,7 +567,10 @@ const checkScales = (value, fieldPath, errors) => {
 const EXCLUSION = createShapeCheck({
   id: checkTaskId,
   scales: checkScales,
-  reason: createStringCheck({ min: LIMITS.minReasonChars }),
+  reason: createStringCheck({
+    min: LIMITS.minReasonChars,
+    max: LIMITS.maxReasonChars,
+  }),
   date: checkDay,
 });
 
