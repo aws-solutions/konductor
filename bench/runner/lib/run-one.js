@@ -20,6 +20,7 @@ const { makeCreditMeter } = require('./credit-watch.js');
 const { makeStopWatcher } = require('./stop-watch.js');
 const { describeChange } = require('./isolation-gates.js');
 const { secretLiterals, scrubDeep } = require('./scrub.js');
+const { classifyAuthFailure } = require('./auth-failure.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
@@ -365,6 +366,11 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
         } catch (e) {
           meta.infraError = [meta.infraError, `post-processing failed: ${e.message}`].filter(Boolean).join(' | ');
         }
+      }
+      const authFailure = exec ? classifyAuthFailure({ agg: acc.agg, exec, texts: [readIfPresent(path.join(outDir, 'stderr.txt')), readIfPresent(path.join(outDir, 'stream.jsonl'))] }) : null;
+      if (authFailure) {
+        meta.authFailure = authFailure;
+        meta.infraError = [meta.infraError, `login not valid, no turn ran: ${authFailure}`].filter(Boolean).join(' | ');
       }
       if (exec?.creditLimitHit) meta.flags.push('creditLimit');
       else if (exec?.creditOvershoot > 0) meta.flags.push('creditLimitExceeded');

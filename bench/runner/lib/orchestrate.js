@@ -242,14 +242,14 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
       const charge = ledger.add(r);
       if (unit === 'usd') r.costUsdCharged = charge; else r.creditsCharged = charge;
       const seen = costOf(r);
-      study.record({ kind: 'run', unit, arm: arm.id, task: task.id, replicate, status: r.status, credits: seen.known ? seen.observed : null, charged: charge, censored: seen.censored });
+      study.record({ kind: 'run', unit, arm: arm.id, task: task.id, replicate, status: r.status, credits: seen.known ? seen.observed : null, charged: charge, censored: seen.censored, ...(r.authFailure ? { infra: 'auth' } : {}) });
       log(study.line());
       writeResult(outDir, arm, task, replicate, r);
       state.spent = ledger.observed;
       state.charged = ledger.charged;
       const spent = unit === 'usd' ? r.costUsd : r.credits;
       const censored = unit === 'usd' ? r.costCensored : r.creditsCensored;
-      log(`done ${arm.id} / ${task.id} / #${replicate}: ${r.status}, ${spent == null ? 'n/a' : spent.toFixed(3)} ${unit}${censored ? ` (censored, charged ${charge.toFixed(3)})` : ''}${r.creditOvershoot > 0 ? ` (${r.creditOvershoot.toFixed(3)} over the run credit limit ${r.creditLimit})` : ''}, ${r.wallClockMs == null ? 'n/a' : (r.wallClockMs / 1000).toFixed(1) + 's'} (charged ${ledger.charged.toFixed(3)})`);
+      log(`done ${arm.id} / ${task.id} / #${replicate}: ${r.status}, ${spent == null ? 'n/a' : spent.toFixed(3)} ${unit}${censored ? ` (censored, charged ${charge.toFixed(3)})` : ''}${r.authFailure ? ' (login failure, no turn ran, charged 0)' : ''}${r.creditOvershoot > 0 ? ` (${r.creditOvershoot.toFixed(3)} over the run credit limit ${r.creditLimit})` : ''}, ${r.wallClockMs == null ? 'n/a' : (r.wallClockMs / 1000).toFixed(1) + 's'} (charged ${ledger.charged.toFixed(3)})`);
     }
     state.results.push(r);
     return r;

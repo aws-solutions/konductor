@@ -87,8 +87,10 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
   const { credits } = fromStream;
   const finished = (agg?.runFinishedStatus ?? null) !== null;
   const agentStarted = meta.agentStarted !== false;
+  // A run that failed to log in never ran a turn, so nothing was spent and there is no lower bound to estimate.
+  const authFailure = meta.authFailure ?? null;
   // A timeout is censored even when runFinished was seen: the kill can land before a late turn's metering event.
-  const censored = agentStarted && (status === 'timeout' || (status === 'error' && !finished));
+  const censored = agentStarted && !authFailure && (status === 'timeout' || (status === 'error' && !finished));
   const creditsCensored = censored && !oc;
 
   return {
@@ -163,6 +165,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     inFlightAtStart: meta.inFlightAtStart ?? null,
     flags: [...new Set(flags)],
     infraError: meta.infraError ?? null,
+    authFailure,
     error,
     ...resultFields({ extraction: skills?.extraction ?? null, info: skills?.info ?? null, task, arm }),
     capInvocation: capInvocationOf({ agg, extraction: skills?.extraction ?? null, sops: skills?.info?.catalog?.sops ?? [] }),
