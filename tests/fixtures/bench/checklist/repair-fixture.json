@@ -1,0 +1,74 @@
+{
+  "note": "Synthetic. One task of an imaginary skill 'fixture-skill', and the replies a request-only checklist writer could give for it. The task's rules checklist, title, target_section and why_skill_matters hold sentinel text that must never reach the writer or its repair call. first_reply_items has item 4 over 400 characters (length is its only fault); repaired_items fixes it; still_long_items keeps an item over 400; too_short_items has item 2 under 12 characters; wrong_count_items has 4 items where 6 are wanted; duplicate_items repeats item 1 as item 2; skill_named_items mentions the skill by name.",
+  "skill": "fixture-skill",
+  "batch": "b1",
+  "task": {
+    "id": "fixture-skill-rules-3",
+    "title": "TITLE-SENTINEL",
+    "target_section": "SECTION-SENTINEL",
+    "prompt": "A payments team plans to move the invoice export job from a nightly cron to an event-driven queue before the quarter closes on 30 November. Write a short plan covering the cut-over order, who signs off, and what happens to the 4,200 invoices already queued.",
+    "rubric": [
+      "RULES-SENTINEL-1 uses the fixture-skill convention for plans",
+      "RULES-SENTINEL-2",
+      "RULES-SENTINEL-3",
+      "RULES-SENTINEL-4",
+      "RULES-SENTINEL-5",
+      "RULES-SENTINEL-6"
+    ],
+    "why_skill_matters": "WHY-SENTINEL the skill wants a rollback section, quoted from SKILL.md"
+  },
+  "first_reply_items": [
+    "Gives a cut-over order that moves the invoice export from the nightly cron to the queue in named steps.",
+    "States who signs off on the cut-over before the quarter closes on 30 November.",
+    "Says what happens to the 4,200 invoices already queued, for example drained first or replayed.",
+    "Explains the sequence in enough detail that a reader who has not seen the current cron setup could follow it: which job is switched off first, which consumer is switched on first, how the team confirms that the first batch of exported invoices matches what the nightly cron would have produced, and who is told when that check has passed or failed, including the finance contact who needs the files by the close.",
+    "Fits the steps before the quarter closes on 30 November.",
+    "Gives a way to go back to the nightly cron if the queue misbehaves."
+  ],
+  "repaired_items": [
+    "Gives a cut-over order that moves the invoice export from the nightly cron to the queue in named steps.",
+    "States who signs off on the cut-over before the quarter closes on 30 November.",
+    "Says what happens to the 4,200 invoices already queued, for example drained first or replayed.",
+    "Explains which job is switched off first, which consumer is switched on first, and how the first batch is checked against the nightly cron output.",
+    "Fits the steps before the quarter closes on 30 November.",
+    "Gives a way to go back to the nightly cron if the queue misbehaves."
+  ],
+  "still_long_items": [
+    "Gives a cut-over order that moves the invoice export from the nightly cron to the queue in named steps.",
+    "States who signs off on the cut-over before the quarter closes on 30 November.",
+    "Says what happens to the 4,200 invoices already queued, for example drained first or replayed.",
+    "Explains which job is switched off first, which consumer is switched on first, and how the first batch is checked against the nightly cron output, and who is told when the check has passed or failed, including the finance contact who needs the files by the close and the on-call engineer who owns the queue consumer during the weekend of the cut-over, as well as the manager who approves any delay to the plan.",
+    "Fits the steps before the quarter closes on 30 November.",
+    "Gives a way to go back to the nightly cron if the queue misbehaves."
+  ],
+  "too_short_items": [
+    "Gives a cut-over order that moves the invoice export from the nightly cron to the queue in named steps.",
+    "Sign-off.",
+    "Says what happens to the 4,200 invoices already queued, for example drained first or replayed.",
+    "Explains which job is switched off first, which consumer is switched on first, and how the first batch is checked against the nightly cron output.",
+    "Fits the steps before the quarter closes on 30 November.",
+    "Gives a way to go back to the nightly cron if the queue misbehaves."
+  ],
+  "wrong_count_items": [
+    "Gives a cut-over order that moves the invoice export from the nightly cron to the queue in named steps.",
+    "States who signs off on the cut-over before the quarter closes on 30 November.",
+    "Says what happens to the 4,200 invoices already queued, for example drained first or replayed.",
+    "Gives a way to go back to the nightly cron if the queue misbehaves."
+  ],
+  "duplicate_items": [
+    "Gives a cut-over order that moves the invoice export from the nightly cron to the queue in named steps.",
+    "Gives a cut-over order that moves the invoice export from the nightly cron to the queue in named steps.",
+    "Says what happens to the 4,200 invoices already queued, for example drained first or replayed.",
+    "Explains which job is switched off first, which consumer is switched on first, and how the first batch is checked against the nightly cron output.",
+    "Fits the steps before the quarter closes on 30 November.",
+    "Gives a way to go back to the nightly cron if the queue misbehaves."
+  ],
+  "skill_named_items": [
+    "Gives a cut-over order that moves the invoice export from the nightly cron to the queue in named steps.",
+    "States who signs off on the cut-over before the quarter closes on 30 November.",
+    "Says what happens to the 4,200 invoices already queued, for example drained first or replayed.",
+    "Follows the fixture-skill convention for plans and explains the sequence in enough detail that a reader who has not seen the current cron setup could follow it: which job is switched off first, which consumer is switched on first, how the team confirms that the first batch of exported invoices matches what the nightly cron would have produced, and who is told when that check passed or failed, including the finance contact who needs the files by the close.",
+    "Fits the steps before the quarter closes on 30 November.",
+    "Gives a way to go back to the nightly cron if the queue misbehaves."
+  ]
+}

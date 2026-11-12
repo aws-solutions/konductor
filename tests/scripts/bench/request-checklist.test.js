@@ -562,17 +562,17 @@ test('planChecklists: pending, copy (same request and count, one call), done, an
         projection.calls,
         projection.max_calls,
       ],
-      [4, 3, 1, 3, 3 * 3],
+      [4, 3, 1, 3, 3 * (3 + 1)],
     );
-    const pendingUsd = jobs
-      .filter((job) => job.state === 'pending')
-      .reduce((sum, job) => sum + job.est.usd, 0);
+    const pending = jobs.filter((job) => job.state === 'pending');
+    const pendingUsd = pending.reduce((sum, job) => sum + job.est.usd, 0);
+    const repairUsd = pending.reduce((sum, job) => sum + job.est_repair.usd, 0);
     assert.ok(projection.projected_usd > 0);
     assert.equal(projection.projected_usd, Number(pendingUsd.toFixed(4)));
     assert.equal(
       projection.worst_case_usd,
-      Number((pendingUsd * 3).toFixed(4)),
-      'every attempt of every pending call',
+      Number((pendingUsd * 3 + repairUsd).toFixed(4)),
+      'every attempt of every pending call, and its repair call',
     );
     assert.equal(checklist.remainingOf(jobs), 4);
 
@@ -966,6 +966,44 @@ test('a credential error in a failed call or a thrown error stops the job and wr
   });
 });
 
+test('the class of a failure is read from the whole error text, not from the part kept for the log', async () => {
+  const noise = 'warning: something noisy happened. '.repeat(20);
+  const countCalls = async (message) => {
+    let calls = 0;
+    await helpers.withTmpAsync(async (dir) => {
+      const jobs = plan(dir, [makeSet([makeTask(1)])]);
+      try {
+        await run(jobs, async () => {
+          calls += 1;
+          return failedResult(message);
+        });
+      } catch (error) {
+        assert.equal(error.kind, 'credential', 'only a credential stops');
+      }
+    });
+    return calls;
+  };
+  for (const marker of [
+    'ExpiredToken: the security token included in the request is expired',
+    'AccessDeniedException: not allowed',
+    'provider blocked the response',
+  ]) {
+    const plain = await countCalls(marker);
+    const late = await countCalls(noise + marker);
+    assert.equal(late, plain, `the marker after 700 characters: ${marker}`);
+  }
+  assert.equal(
+    await countCalls(`${noise}ExpiredToken: expired`),
+    1,
+    'a late credential error stops at the first call',
+  );
+  assert.ok(
+    (await countCalls(`${noise}AccessDeniedException: no`)) <
+      (await countCalls(`${noise}timeout`)),
+    'a late permanent error is not retried like a timeout',
+  );
+});
+
 test('four tasks in a row whose every call fails stop the job as systemic; finished files are kept', async () => {
   await helpers.withTmpAsync(async (dir) => {
     const tasks = [0, 1, 2, 3, 4, 5].map((index) => makeTask(index));
@@ -1135,6 +1173,24 @@ test('a run redactor cleans the reason of a thrown error, a write error, a faile
     assert.ok(logCalls > 0);
     assert.equal(poolError.result.failed.length, 1);
     assert.ok(notSecret(poolError.result.failed.map((entry) => entry.reason)));
+  });
+});
+
+test('a run redactor cleans the reason of a failure that a call returned', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const runRedactor = createRedactor({ literals: [BARE_SECRET] });
+    const jobs = plan(dir, [makeSet([makeTask(1), makeTask(2)])]);
+    const returned = await run(
+      jobs,
+      async () => failedResult(`throttled for ${BARE_SECRET}`),
+      { attempts: 1, redact: runRedactor },
+    );
+    assert.equal(returned.result.failed.length, 2);
+    for (const text of [
+      ...returned.result.failed.map((entry) => entry.reason),
+      ...returned.logs,
+    ])
+      assert.ok(!text.includes(BARE_SECRET), text);
   });
 });
 
