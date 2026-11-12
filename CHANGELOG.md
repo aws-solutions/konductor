@@ -88,6 +88,9 @@ not per individual commit.
   plugin ships `NOTICE.txt` with README links pinned to its release.
 - `update --no-telemetry` now keeps a project opted out on later updates, and the new
   `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
+- `delegation-protocol`'s format ownership rule covers output format only. A brief's tool and
+  scope limits, such as no web search, override a skill step that needs the excluded tool, and the
+  brief says so.
 - The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
   agents no longer carry an `mcpServers` block that Claude Code ignores.
 - `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
