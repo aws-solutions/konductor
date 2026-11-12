@@ -31,6 +31,7 @@ const toolchain = require('./toolchain.js');
 const { ensureOwnedDir } = require('./owned.js');
 const { infraFailure } = require('./infra-check.js');
 const { maxAuthFailuresOf, AUTH_EXIT_CODE } = require('./auth-failure.js');
+const { makeLoginCheck } = require('./login-check.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -131,7 +132,7 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
 
 const repoRootOf = (opts) => path.resolve(opts['repo-root'] && opts['repo-root'] !== true ? opts['repo-root'] : process.env.BENCH_REPO_ROOT || DEFAULT_REPO);
 
-async function cmdRun(opts) {
+async function cmdRun(opts, deps = {}) {
   const benchDir = opts['bench-dir'] ? path.resolve(opts['bench-dir']) : BENCH_DIR;
   const suitesDir = opts['suites-dir'] && opts['suites-dir'] !== true ? path.resolve(opts['suites-dir']) : null;
   if (opts['suites-dir'] !== undefined && (!suitesDir || !fs.existsSync(suitesDir) || !fs.statSync(suitesDir).isDirectory())) throw new Error(`--suites-dir directory not found: ${suitesDir ?? '(no value)'}`);
@@ -277,6 +278,17 @@ async function cmdRun(opts) {
   try {
     const kiro = isUsd ? null : opts['kiro-bin'] ? { bin: path.resolve(opts['kiro-bin']), shim: null } : sandbox.resolveKiroCli();
     if (kiro) log(`kiro-cli: ${kiro.bin}${kiro.shim ? ` (bypassing the shim at ${kiro.shim})` : ''}`);
+    // Before any arm is built: a login that has lapsed would only fail every run, so stop here (exit 6).
+    const loginCheck = makeLoginCheck({ isUsd, kiroBin: kiro?.bin, authDb, scratchDir, envKeep, agentEngine: config.agentEngine, check: deps.checkLogin });
+    if (loginCheck) {
+      const login = await loginCheck();
+      if (!login.ok) {
+        log(`LOGIN FAILURE: kiro-cli is not logged in (${login.detail}). Log in again, then start the chunk right away; nothing was run.`);
+        process.exitCode = AUTH_EXIT_CODE;
+        return;
+      }
+      log(login.unavailable ? `warning: login check unavailable: ${login.unavailable}` : 'kiro-cli login ok');
+    }
     const ctx = {
       kiroBin: kiro?.bin, repo: REPO, cacheDir, realCache, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb, config, envKeep,
       envInfo: null,
@@ -408,7 +420,7 @@ async function cmdRun(opts) {
     log(`out=${outDir}`);
     const { results, observed, charged, studyLine, guard, authStop } = await runAll({
       tasks, arms, prepared, prepErrors: errors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log,
-      costOf: isUsd ? USD : CREDITS, unit, gateStrict: Boolean(opts['gate-strict']), replicateOffset, maxAuthFailures,
+      costOf: isUsd ? USD : CREDITS, unit, gateStrict: Boolean(opts['gate-strict']), replicateOffset, maxAuthFailures, loginCheck,
     });
     const judged = judgeBatch({ gate: batchWindow.end(), results, strict: Boolean(opts['gate-strict']), window: { from: batchFrom, to: new Date().toISOString() } });
     const gate = judged.gate;

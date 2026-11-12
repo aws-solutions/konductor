@@ -18,6 +18,12 @@ const engine = args.includes('--agent-engine') ? args[args.indexOf('--agent-engi
 if (args[0] === '--version') { console.log('kiro-cli 9.9.9'); process.exit(0); }
 if (args.includes('--list-models')) { console.log('[]'); process.exit(0); }
 if (args.includes('--help')) { console.log('--agent-engine <ENGINE>\\n[possible values: v2, v1, v3]'); process.exit(0); }
+if (args[0] === 'whoami') {
+  try { fs.appendFileSync(path.join(cfg.dir, 'whoami.log'), 'x\\n'); } catch { /* read-only probe directory */ }
+  if (cfg.whoami === 'fail') { console.error('Error: Not logged in'); process.exit(1); }
+  if (cfg.whoami === 'missing') { console.error("error: unrecognized subcommand 'whoami'"); process.exit(2); }
+  console.log('Logged in as test'); process.exit(0);
+}
 // Multi-turn runs: each invocation is one turn; cfg.turns[i] overrides the base config for turn i+1.
 let turn = 0;
 try { turn = fs.readdirSync(cfg.dir).filter((f) => /^started-\\d+\\.json$/.test(f)).length; } catch { /* read-only probe directory */ }

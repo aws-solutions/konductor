@@ -65,7 +65,7 @@ test('three consecutive login failures stop the chunk; the rest are skipped and 
   assert.equal(out.authStop.tripped, true);
   assert.equal(out.authStop.skipped, 3);
   assert.deepEqual(out.results.map((r) => r.status).sort(), ['budget_skipped', 'budget_skipped', 'budget_skipped', 'error', 'error', 'error']);
-  assert.match(out.results.find((r) => r.status === 'budget_skipped').error, /login failure: 3 consecutive/);
+  assert.match(out.results.find((r) => r.status === 'budget_skipped').error, /3 consecutive runs could not log in/);
   assert.equal(ledger.entries.length, 3);
   assert.equal(out.charged, 0);
 });
@@ -141,4 +141,58 @@ test('a bad --max-auth-failures value is refused before anything starts', () => 
     assert.match(r.stderr, /--max-auth-failures must be a positive integer/);
     assert.equal(started(s.probe), 0);
   } finally { rm(s.root); }
+});
+
+const whoamiCalls = (probe) => (fs.existsSync(path.join(probe, 'whoami.log')) ? fs.readFileSync(path.join(probe, 'whoami.log'), 'utf8').split('\n').filter(Boolean).length : 0);
+
+test('run checks the login before building or launching anything, and exits 6 with nothing run when it has lapsed', () => {
+  const s = cliSetup({ whoami: 'fail' });
+  try {
+    const r = runCli(s, []);
+    assert.equal(r.status, 6, r.stderr);
+    assert.match(r.stderr, /LOGIN FAILURE: kiro-cli is not logged in \(Error: Not logged in\)\. Log in again/);
+    assert.equal(started(s.probe), 0);
+    assert.equal(fs.existsSync(path.join(s.out, 'run-config.json')), false);
+  } finally { rm(s.root); }
+});
+
+test('a valid login lets the chunk run; a kiro-cli with no whoami command only warns', () => {
+  const ok = cliSetup({ whoami: 'ok' });
+  try {
+    const r = runCli(ok, ['--replicates', '1']);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stderr, /kiro-cli login ok/);
+    assert.equal(whoamiCalls(ok.probe), 1);
+    assert.equal(started(ok.probe), 1);
+  } finally { rm(ok.root); }
+  const missing = cliSetup({ whoami: 'missing' });
+  try {
+    const r = runCli(missing, ['--replicates', '1']);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stderr, /login check unavailable: this kiro-cli has no whoami command/);
+    assert.equal(started(missing.probe), 1);
+  } finally { rm(missing.root); }
+});
+
+test('between runs the login is checked on an interval; a failed check skips the remaining runs', async () => {
+  let calls = 0;
+  const loginCheck = async () => (++calls >= 3 ? { ok: false, detail: 'Not logged in' } : { ok: true });
+  const { out, launched } = await runWith({}, { loginCheck, loginCheckEveryMs: 0 }, 5);
+  assert.equal(launched, 2);
+  assert.equal(out.authStop.tripped, true);
+  assert.equal(out.authStop.skipped, 3);
+  assert.match(out.results.find((r) => r.status === 'budget_skipped').error, /login check failed between runs \(Not logged in\)/);
+});
+
+test('no check runs inside the interval, an unavailable check does not stop the chunk, and a throwing check is tolerated', async () => {
+  let calls = 0;
+  const idle = await runWith({}, { loginCheck: async () => { calls++; return { ok: true }; }, loginCheckEveryMs: 3600000 }, 3);
+  assert.equal(calls, 0);
+  assert.equal(idle.launched, 3);
+  const logs = [];
+  const unavailable = await runWith({}, { loginCheck: async () => ({ ok: true, unavailable: 'no whoami' }), loginCheckEveryMs: 0, log: (m) => logs.push(m) }, 3);
+  assert.equal(unavailable.launched, 3);
+  assert.ok(logs.some((m) => /login check unavailable: no whoami/.test(m)));
+  const throwing = await runWith({}, { loginCheck: async () => { throw new Error('boom'); }, loginCheckEveryMs: 0 }, 2);
+  assert.equal(throwing.launched, 2);
 });

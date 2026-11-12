@@ -11,6 +11,7 @@ const { layoutProblem } = require('./arm-source.js');
 const { openLedger } = require('./credit-ledger.js');
 const { describeChange, judgeBatch, GATE_FILE } = require('./isolation-gates.js');
 const { DEFAULT_MAX_AUTH_FAILURES } = require('./auth-failure.js');
+const { DEFAULT_CHECK_EVERY_MS } = require('./login-check.js');
 
 const DEFAULT_CENSORED_FLOOR = 1.0;
 
@@ -209,13 +210,35 @@ function preflightTable(arms, prepared, errors) {
   return rows.map((r) => r.map((c, i) => c.padEnd(w[i])).join('  ')).join('\n');
 }
 
-async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false, replicateOffset = 0, maxAuthFailures = DEFAULT_MAX_AUTH_FAILURES }) {
+async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false, replicateOffset = 0, maxAuthFailures = DEFAULT_MAX_AUTH_FAILURES, loginCheck = null, loginCheckEveryMs = DEFAULT_CHECK_EVERY_MS }) {
   const ledger = makeLedger({ budgetCredits, floor: censoredFloor, runsPerReplicate: tasks.length * arms.length, costOf });
   // The study ledger only tracks unless a budget was given; then it also stops new launches at 90% of that budget.
   const study = creditLedger ?? openLedger({ dir: outDir, budget: budgetCredits });
   let guardReason = null;
   // Consecutive login failures (in completion order) mean the login is gone; every later run would fail the same way.
   const authStop = { limit: maxAuthFailures, consecutive: 0, tripped: false, reason: null, skipped: 0 };
+  const trip = (reason) => {
+    if (authStop.tripped) return;
+    authStop.tripped = true;
+    authStop.reason = reason;
+    log(`LOGIN FAILURE: ${reason}`);
+  };
+  // Long chunks re-check the login between runs. One check at a time; runs already in flight finish.
+  let lastLoginCheck = Date.now();
+  let probing = null;
+  const loginStillValid = async () => {
+    if (authStop.tripped) return false;
+    if (!loginCheck || Date.now() - lastLoginCheck < loginCheckEveryMs) return true;
+    probing ??= (async () => {
+      let res;
+      try { res = await loginCheck(); } catch (e) { res = { ok: true, unavailable: e.message }; }
+      lastLoginCheck = Date.now();
+      if (res.unavailable) log(`warning: login check unavailable: ${res.unavailable}`);
+      if (!res.ok) trip(`login check failed between runs (${res.detail}); no further run started`);
+    })().finally(() => { probing = null; });
+    await probing;
+    return !authStop.tripped;
+  };
   const shouldSkip = (item) => {
     if (authStop.tripped) { guardReason = authStop.reason; return true; }
     guardReason = study.shouldStop() ? study.stopReason() : null;
@@ -228,7 +251,9 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
   const batchWindow = ctx.installsGate ? ctx.installsGate.begin() : null;
   const batchFrom = new Date().toISOString();
 
-  const worker = async ({ task, arm, replicate }) => {
+  const worker = async (item) => {
+    const { task, arm, replicate } = item;
+    if (!prepErrors.has(arm.id) && !(await loginStillValid())) return onSkip(item);
     const dir = path.join(outDir, arm.id, task.id, String(replicate));
     let r;
     if (prepErrors.has(arm.id)) {
@@ -252,11 +277,7 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
       state.spent = ledger.observed;
       state.charged = ledger.charged;
       if (!r.authFailure) authStop.consecutive = 0;
-      else if (++authStop.consecutive >= authStop.limit && !authStop.tripped) {
-        authStop.tripped = true;
-        authStop.reason = `login failure: ${authStop.consecutive} consecutive runs could not log in (${r.authFailure}); no further run started`;
-        log(`LOGIN FAILURE: ${authStop.reason}`);
-      }
+      else if (++authStop.consecutive >= authStop.limit) trip(`${authStop.consecutive} consecutive runs could not log in (${r.authFailure}); no further run started`);
       const spent = unit === 'usd' ? r.costUsd : r.credits;
       const censored = unit === 'usd' ? r.costCensored : r.creditsCensored;
       log(`done ${arm.id} / ${task.id} / #${replicate}: ${r.status}, ${spent == null ? 'n/a' : spent.toFixed(3)} ${unit}${censored ? ` (censored, charged ${charge.toFixed(3)})` : ''}${r.authFailure ? ' (login failure, no turn ran, charged 0)' : ''}${r.creditOvershoot > 0 ? ` (${r.creditOvershoot.toFixed(3)} over the run credit limit ${r.creditLimit})` : ''}, ${r.wallClockMs == null ? 'n/a' : (r.wallClockMs / 1000).toFixed(1) + 's'} (charged ${ledger.charged.toFixed(3)})`);
@@ -265,7 +286,7 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
     return r;
   };
   const onSkip = ({ task, arm, replicate }) => {
-    const why = guardReason ?? ledger.skipReason();
+    const why = authStop.tripped ? authStop.reason : guardReason ?? ledger.skipReason();
     if (authStop.tripped) authStop.skipped++;
     const r = skippedResult({ arm, task, replicate, config: ctx.config, env: ctx.envInfo, reason: why });
     writeResult(outDir, arm, task, replicate, r);
