@@ -1,6 +1,6 @@
 ---
 name: kiro-design-generation
-description: Transforms system design artifacts into a per-feature Kiro IDE design.md with Correctness Properties. Use to turn a system design and an approved requirements.md into a Kiro design.md, spec step 2, or step 1 of a design-first spec.
+description: Transforms system design artifacts into a per-feature Kiro IDE design.md with Correctness Properties. Use to turn a system design and an approved requirements.md or bugfix.md into a Kiro design.md, spec step 2, or step 1 of a design-first spec.
 version: 1.2.0
 tags: [skill, kiro, specs, design, low-level-design, per-feature]
 ---
@@ -22,22 +22,23 @@ Two parameters change the order and the shape:
 
 Use this skill when:
 
-- `requirements.md` is approved and ready for design decomposition
+- `requirements.md` (or `bugfix.md`) is approved and ready for design decomposition
+- A design-first spec starts, and the system design plus the feature scope or user stories are ready
 - A system design exists (from `system-design-patterns`) and needs per-feature breakdown
 - Starting the design phase of a Kiro IDE spec-driven workflow
 - Converting existing architecture documents into Kiro IDE design format
 
 Do NOT use when:
 
-- Requirements are not yet written — use `kiro-requirements-generation` first
-- No system design exists — use `system-design-patterns` first
+- A requirements-first or bugfix spec has no approved `requirements.md` or `bugfix.md` yet: use `kiro-requirements-generation` first
+- A feature spec has no system design: use `system-design-patterns` first
 - You need to generate implementation tasks — use `kiro-task-generation` after this skill
 
 ## Input
 
 This skill consumes multiple upstream artifacts:
 
-1. **requirements.md** from `kiro-requirements-generation` — EARS-format requirements for the feature at `{spec_dir}/requirements.md`
+1. **requirements.md** from `kiro-requirements-generation` — EARS-format requirements for the feature at `{spec_dir}/requirements.md` (`bugfix.md` for a bugfix spec; absent on a design-first spec's first pass)
 2. **System Design** from `system-design-patterns` — High-level architecture, component diagrams, data flow
 3. **Threat Model** from `threat-modeling` — STRIDE analysis, security controls, trust boundaries
 4. **DynamoDB Design** from `dynamodb-design` — Table schemas, PK/SK design, GSIs, access patterns
@@ -49,7 +50,7 @@ Input can come from:
 - Design documents provided directly in conversation
 - Existing architecture artifacts referenced by the user
 
-Not all inputs are required — use what is available. At minimum, `requirements.md` and a system design are needed.
+Not all inputs are required — use what is available. At minimum: `requirements.md` and a system design for a requirements-first spec; the system design and the feature scope or user stories for a design-first spec's first pass; `bugfix.md` and the code on the failing path for a bugfix spec.
 
 ## Output
 
@@ -290,7 +291,7 @@ For `spec_type: bugfix`, the input is `{spec_dir}/bugfix.md` and the codebase, a
 5. **Hypothesized Root Cause**: the candidate causes, numbered, each confirmed or ruled out with the evidence
 6. **Correctness Properties**: one paragraph per property, headed by a plain line such as `Property 1: Bug Condition - <title>` or `Property 2: Preservation - <title>`, then `_For any_ ... SHALL ...` and `**Validates: Requirements 2.1, 3.2**` citing bugfix.md items by `section.item`
 7. **Fix Implementation**: `### Changes Required`, naming each file and function and each specific change, including what to leave alone
-8. **Testing Strategy**: `### Validation Approach`, `### Exploratory Bug Condition Checking` (tests run on the unfixed code that are expected to fail, with the counterexamples expected), `### Fix Checking` and `### Preservation Checking` (each with pseudocode), then unit, property-based and integration tests
+8. **Testing Strategy**: `### Validation Approach`, `### Input Domain and Generators` (the inputs the properties draw and how to generate them), `### Exploratory Bug Condition Checking` (tests run on the unfixed code that are expected to fail, with the counterexamples expected), `### Fix Checking` and `### Preservation Checking` (each with pseudocode), then unit, property-based and integration tests
 
 The quality gate's section check applies to this list for a bugfix design.
 
@@ -346,7 +347,7 @@ From the system design, extract only the components relevant to this feature:
 
 ### Step 4: Write design.md
 
-Write the design document with all 7 required sections:
+Write the design document with all 7 required sections. For a bugfix design, write the 8 sections in [Bugfix Designs](#bugfix-designs) instead, with each property citing bugfix.md items:
 
 1. **Overview**: summarize the feature design, list addressed requirements, state key design decisions
 2. **Architecture**: draw component relationships, include at least one Mermaid diagram
@@ -364,15 +365,15 @@ A design-first design.md is the low-level design the requirements are derived fr
 
 Before presenting output, verify:
 
-- [ ] All 7 required sections are present, non-empty and in order
-- [ ] Every requirement from requirements.md is addressed by at least one component
+- [ ] All 7 required sections are present, non-empty and in order (the 8 bugfix sections, for a bugfix design)
+- [ ] Every requirement from requirements.md is addressed by at least one component (for a bugfix design, every Expected and Unchanged Behavior item by the fix or a preservation property)
 - [ ] At least one Mermaid diagram is included (sequence or architecture)
-- [ ] Every property has a `*For any*` statement and a Validates line whose numbers exist in requirements.md, and every criterion is covered by a property or a named test in Testing Strategy (in a design-first spec, after Step 6)
-- [ ] Error handling covers validation, auth, not-found, conflict, and downstream failures
-- [ ] Testing strategy covers unit, integration, and E2E levels
+- [ ] Every property has a `*For any*` statement (`_For any_` in a bugfix design) and a Validates line whose numbers exist in requirements.md (bugfix.md), and every criterion is covered by a property or a named test in Testing Strategy (in a design-first spec, after Step 6)
+- [ ] Error handling covers validation, auth, not-found, conflict, and downstream failures (feature design)
+- [ ] Testing strategy covers unit, integration, and E2E levels (a bugfix design: exploratory, fix and preservation checking)
 - [ ] Component interfaces use typed signatures (not vague descriptions)
 - [ ] Data models include field types and constraints
-- [ ] design.md is placed alongside requirements.md in `{spec_dir}`
+- [ ] design.md is placed alongside requirements.md (or bugfix.md) in `{spec_dir}`
 - [ ] Gaps, missing inputs and assumptions are written in design.md
 - [ ] Line count checked with `wc -l` (report the real number) and headings checked with `grep -n '^## '`
 
