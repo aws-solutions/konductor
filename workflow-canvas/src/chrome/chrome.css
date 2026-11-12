@@ -1,18 +1,51 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 /*
- * The strip of the Designer and Execution tabs is part of the dark header
- * band: it is painted with the band colour across the full width of the
- * page, so the tab labels, the selected-tab indicator and the rule under
- * them all sit on the band. The colours come from the theme module through
- * `--wf-band-background` and `--wf-band-divider`.
+ * The Designer and Execution switch in the page header, which is dark in
+ * both modes. The selected segment is filled with the band's link colour.
  */
-.wf-tab-strip :has(> * > [role='tablist']) {
-  background: var(--wf-band-background);
-  box-shadow: 0 0 0 100vmax var(--wf-band-background);
-  /* The library sets this colour with a more specific rule. */
-  border-block-end-color: var(--wf-band-divider) !important;
-  clip-path: inset(0 -100vmax);
+.wf-mode-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--wf-band-divider);
+  border-radius: 10px;
+}
+
+.wf-mode-segment {
+  padding: 4px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--wf-band-text-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wf-mode-segment:hover {
+  color: var(--wf-band-text);
+}
+
+.wf-mode-segment[aria-selected='true'] {
+  background: var(--wf-band-link);
+  color: var(--wf-band-background);
+}
+
+.wf-mode-segment:focus-visible {
+  outline: 2px solid var(--wf-band-link);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .wf-mode-segment[aria-selected='true'] {
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
+.wf-mode-panel {
+  padding-block-start: 16px;
 }
 
 /* The trail above the title. */

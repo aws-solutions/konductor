@@ -60,7 +60,7 @@ test('stacks the nodes in the order of the stages', async ({ canvas }) => {
   expect(new Set(tops).size).toBe(tops.length);
 });
 
-test('draws a tab under every node but the end and a notch in every node but the intent', async ({
+test('puts an out dot on every node but the end and an in dot on every node but the intent', async ({
   canvas,
 }) => {
   await canvas.expectWorkflowDrawn();
@@ -71,53 +71,81 @@ test('draws a tab under every node but the end and a notch in every node but the
   }
 });
 
-test('puts each tab in the middle of its card, over the notch of the card under it', async ({
+test('centres each dot on the edge of its card, in line with the card under it', async ({
   canvas,
 }) => {
   await canvas.expectWorkflowDrawn();
+  const centre = (box: Box) => box.x + box.width / 2;
+  const middle = (box: Box) => box.y + box.height / 2;
 
   for (let i = 0; i < NODE_IDS.length - 1; i += 1) {
-    const [tab, notch, card] = [
-      await canvas.outPort(NODE_IDS[i]!).boundingBox(),
-      await canvas.inPort(NODE_IDS[i + 1]!).boundingBox(),
-      await canvas.node(NODE_IDS[i]!).boundingBox(),
-    ];
-    const centre = (box: typeof tab) => (box?.x ?? 0) + (box?.width ?? 0) / 2;
+    const out = await boxOf(canvas.outPort(NODE_IDS[i]!));
+    const into = await boxOf(canvas.inPort(NODE_IDS[i + 1]!));
+    const card = await boxOf(canvas.node(NODE_IDS[i]!));
+    const next = await boxOf(canvas.node(NODE_IDS[i + 1]!));
 
-    expect(Math.abs(centre(tab) - centre(notch))).toBeLessThan(1);
-    expect(Math.abs(centre(tab) - centre(card))).toBeLessThan(1);
-    // The tab hangs below the card, and the notch is the same size.
-    expect((tab?.y ?? 0) + (tab?.height ?? 0)).toBeGreaterThan(
-      (card?.y ?? 0) + (card?.height ?? 0),
-    );
-    expect(Math.abs((tab?.width ?? 0) - (notch?.width ?? 0))).toBeLessThan(1);
-    expect(Math.abs((tab?.height ?? 0) - (notch?.height ?? 0))).toBeLessThan(1);
+    expect(Math.abs(centre(out) - centre(card))).toBeLessThan(1);
+    expect(Math.abs(centre(out) - centre(into))).toBeLessThan(1);
+    expect(Math.abs(middle(out) - (card.y + card.height))).toBeLessThan(1);
+    expect(Math.abs(middle(into) - next.y)).toBeLessThan(1);
+    expect(out.height).toBe(0);
+    expect(out.width).toBeLessThanOrEqual(12);
+    expect(Math.abs(out.width - into.width)).toBeLessThan(1);
   }
 });
 
-test('starts each link at the tip of a tab and ends it at the top of a notch', async ({
+test('hides the dots at rest and shows them on hover, focus and select', async ({
+  canvas,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  const review = 'node-stage-review';
+
+  // The first stage is selected when the page opens.
+  await expect(canvas.outPort('node-stage-draft')).toHaveCSS('opacity', '1');
+  await expect(canvas.outPort(review)).toHaveCSS('opacity', '0');
+  await expect(canvas.inPort(review)).toHaveCSS('opacity', '0');
+
+  await canvas.node(review).hover();
+  await expect(canvas.outPort(review)).toHaveCSS('opacity', '1');
+  await expect(canvas.inPort(review)).toHaveCSS('opacity', '1');
+
+  await canvas.page.mouse.move(0, 0);
+  await expect(canvas.outPort(review)).toHaveCSS('opacity', '0');
+  await canvas.tab('Designer').focus();
+  await canvas.tabToNextNode();
+  await expect(canvas.outPort('node-intent')).toHaveCSS('opacity', '1');
+});
+
+test('starts each link at an out dot and ends it at the next in dot', async ({
   canvas,
 }) => {
   await canvas.expectWorkflowDrawn();
   const links = canvas.edges.locator('.react-flow__edge-path');
-  // The boxes of a port and of a link include the dark rim, the width of the
-  // line and the arrowhead, which add up to a few pixels.
-  const REACH = 4;
+  // The box of a link includes the width of its line and the arrowhead.
+  const REACH = 2;
 
   for (let i = 0; i < NODE_IDS.length - 1; i += 1) {
-    const [tab, notch, link] = [
-      await canvas.outPort(NODE_IDS[i]!).boundingBox(),
-      await canvas.inPort(NODE_IDS[i + 1]!).boundingBox(),
-      await links.nth(i).boundingBox(),
-    ];
-    const centre = (box: typeof tab) => (box?.x ?? 0) + (box?.width ?? 0) / 2;
-    const bottom = (box: typeof tab) => (box?.y ?? 0) + (box?.height ?? 0);
+    const out = await boxOf(canvas.outPort(NODE_IDS[i]!));
+    const into = await boxOf(canvas.inPort(NODE_IDS[i + 1]!));
+    const link = await boxOf(links.nth(i));
+    const centre = (box: Box) => box.x + box.width / 2;
 
-    expect(Math.abs(centre(link) - centre(tab))).toBeLessThan(1);
-    expect(Math.abs((link?.y ?? 0) - bottom(tab))).toBeLessThan(REACH);
-    expect(Math.abs(bottom(link) - (notch?.y ?? 0))).toBeLessThan(REACH + 4);
+    expect(Math.abs(centre(link) - centre(out))).toBeLessThan(1);
+    expect(Math.abs(link.y - (out.y + out.height))).toBeLessThan(REACH);
+    expect(Math.abs(link.y + link.height - into.y)).toBeLessThan(REACH);
   }
 });
+
+type Box = { x: number; y: number; width: number; height: number };
+
+// A port handle has no height, so it is measured in the page instead of with
+// `boundingBox`, which has no box for it.
+async function boxOf(locator: Locator): Promise<Box> {
+  return locator.evaluate((element) => {
+    const { x, y, width, height } = element.getBoundingClientRect();
+    return { x, y, width, height };
+  });
+}
 
 /** A view of a workflow with `count` stages, as `GET /api/workflow` returns it. */
 function workflowOf(count: number) {
@@ -271,7 +299,7 @@ test('reaches each node with the Tab key and names it', async ({ canvas }) => {
   }
 });
 
-test('draws the focus ring around the tab, not across it', async ({
+test('draws the focus ring in the node, in place of the outline of the browser', async ({
   canvas,
 }) => {
   await canvas.expectWorkflowDrawn();
@@ -279,18 +307,13 @@ test('draws the focus ring around the tab, not across it', async ({
 
   await canvas.tabToNextNode();
   const focused = canvas.page.locator('.react-flow__node:focus');
-  const [ring, tab] = [
-    await focused.locator('.wf-focus-ring-port').boundingBox(),
-    await focused.locator('.wf-port-tab').boundingBox(),
-  ];
+  const ring = focused.locator('.wf-focus-ring');
 
   await expect(focused).toHaveCSS('outline-style', 'none');
-  // The ring reaches past the tip of the tab, so no part of it is a line
-  // across the tab.
-  expect((ring?.y ?? 0) + (ring?.height ?? 0)).toBeGreaterThan(
-    (tab?.y ?? 0) + (tab?.height ?? 0),
-  );
-  expect(ring?.width ?? 0).toBeGreaterThan(tab?.width ?? 0);
+  await expect(ring).toBeVisible();
+  // The border is 2 pixels; the ring adds a 2 pixel gap and 3 pixels of ring
+  // on each side, so it lies outside the card.
+  await expect(ring).toHaveAttribute('stroke-width', '12');
 });
 
 test('names the edges by the nodes they join, not by ids', async ({
@@ -313,6 +336,7 @@ test('shows an error when the launch code is wrong', async ({ page }) => {
   await expect(page.getByText('The workflow did not load')).toBeVisible();
   await expect(page.getByText('The launch code is not valid.')).toBeVisible();
   await expect(canvas.graph).toHaveCount(0);
+  await expect(canvas.runLiveStatus).toHaveText('');
 });
 
 test('explains what to do when the address has no launch code', async ({
