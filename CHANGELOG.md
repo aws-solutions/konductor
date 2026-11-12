@@ -80,6 +80,8 @@ not per individual commit.
   its read budget. A thorough codebase or documentation search matches `k-comprehensive-search`.
   The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
   ones.
+- The orchestrators' fix briefs tell the artifact's owner to apply review findings as targeted
+  edits to the passages they name, not a rewrite of the whole file.
 - The Claude Code plugin tag workflow checks the published tree out into its own directory, so
   it can still run the release scripts and create the tag.
 - The README says the mux and cmux orchestrators skip permission checks and that the plugin's AWS
