@@ -1,6 +1,6 @@
 ---
 name: kiro-task-generation
-description: 'Generates a Kiro IDE tasks.md: a numbered checkbox task list with requirement references. Use when turning an approved requirements.md plus design.md into a Kiro tasks.md, spec step 3, after kiro-design-generation and before implementation.'
+description: 'Generates a Kiro IDE tasks.md: a numbered checkbox task list with requirement references. Use when turning an approved requirements.md or bugfix.md plus design.md into a Kiro tasks.md, spec step 3, before implementation.'
 version: 1.2.0
 tags: [skill, kiro, specs, tasks, implementation-plan, spec-driven-development]
 ---
@@ -12,6 +12,8 @@ tags: [skill, kiro, specs, tasks, implementation-plan, spec-driven-development]
 Produces `{spec_dir}/tasks.md`, a structured implementation task list for Kiro IDE's spec-driven development workflow. Each task is a coding or test task designed for a code-generation LLM to execute one at a time, with explicit references back to requirements.md (bugfix.md for a bugfix spec) and to the design's correctness properties.
 
 `spec_dir` (optional): where spec artifacts live. Defaults to `.kiro/specs/{feature-name}/`; when the caller passes one, this skill MUST read and write there instead.
+
+`spec_type` (optional): `feature` (default) or `bugfix`, which uses the shorter form in [Bugfix specs](#bugfix-specs). Without it, a `{spec_dir}/bugfix.md` marks a bugfix spec.
 
 This skill is the final step in the Kiro spec workflow, after `kiro-requirements-generation` produces requirements.md (or bugfix.md) and `kiro-design-generation` produces design.md. A design-first spec writes design.md before requirements.md; the task list is built the same way.
 
@@ -120,7 +122,7 @@ flowchart TD
 
 ### Optional tasks
 
-- Mark a task optional with `- [ ]*`, for a sub-task `  - [ ]* 2.2 ...`. Kiro's Run all Tasks runs only the incomplete tasks marked required and skips the optional ones
+- Mark a task optional with `- [ ]*`, for a sub-task `  - [ ]* 2.2 ...`. Kiro's Run all Tasks button "only runs incomplete tasks that are marked as required" ([kiro.dev/docs/specs/best-practices](https://kiro.dev/docs/specs/best-practices/))
 - Test tasks are the usual optional tasks, property tests in particular. Implementation tasks stay required
 - No implementation task depends on an optional task. A checkpoint can follow optional test tasks; it checks whichever of them ran
 
@@ -134,14 +136,15 @@ flowchart TD
 
 `## Task Dependency Graph` follows `## Tasks` and holds two fenced blocks:
 
-1. A `mermaid` `flowchart TD` over the **top-level** tasks. Node ids are `T<N>`, labels `<N> <short title>`, and an edge `TA --> TB` means B cannot start until A is done
+1. A `mermaid` `flowchart TD` over the **top-level** tasks. Node ids are `T<N>`, labels `<N> <short title>`, and an edge `TA --> TB` means B follows A: it builds on A's code, or checks it when B is a checkpoint
 2. A `json` block with one key, `waves`: an ordered array of `{"id": <int>, "tasks": [<task ids>]}`, ids counting from 0
 
 Wave rules:
 
 - Wave entries are **leaf** task ids, as strings: a sub-task (`"2.1"`) or a top-level task without sub-tasks (`"1"`, a checkpoint such as `"3"`). A parent that has sub-tasks never appears itself
 - Every leaf task, optional ones included, appears in exactly one wave
-- A task sits in a later wave than every task it depends on. A sub-task waits for every leaf of each parent its own parent depends on in the flowchart, and for the earlier sub-tasks of its parent that it uses
+- A task sits in a later wave than every **required** leaf it uses: the leaves of the tasks its top-level task depends on in the flowchart, and the earlier sub-tasks of its own parent. When unsure whether it uses one, wait for every required leaf of those tasks. It does not wait for optional leaves, since a run can skip them, or for a checkpoint: Kiro's own waves start a stage's first sub-task alongside the previous stage's optional tests, before the checkpoint between them
+- An optional leaf sits in an earlier wave than the next checkpoint after its parent, so the checkpoint checks it when it runs
 - Tasks in one wave are independent; Kiro runs each wave's tasks concurrently
 - A checkpoint gets a wave after every leaf of the tasks it checks
 
@@ -154,7 +157,7 @@ When the spec has `bugfix.md` instead of `requirements.md`, follow the bugfix ta
 3. Any other property that fails on the unfixed code gets its own test task here, before the fix
 4. A parent task for the fix, with sub-tasks:
    - `Implement the fix`: each file and line to change and what to leave alone, with `_Bug_Condition: ..._`, `_Expected_Behavior: ..._` and `_Preservation: ..._` lines drawn from the design, then `_Requirements: ..._`
-   - One `Verify ... now passes` sub-task per earlier test task: re-run that SAME test, do not write a new one, and expect it to pass
+   - One `Verify ... now passes` sub-task per earlier test task, headed by that test's property as `**Property N: Expected Behavior** - <title>` (`**Property 2: Preservation** - <title>` for the preservation tests): re-run that SAME test, do not write a new one, and expect it to pass
 5. `Checkpoint - Ensure all tests pass`
 
 ## Task Ordering
@@ -180,7 +183,7 @@ When the spec has `bugfix.md` instead of `requirements.md`, follow the bugfix ta
 **CRITICAL (must fix):**
 
 - Tasks have circular dependencies
-- In a feature spec, `## Task Dependency Graph` missing, or its `waves` JSON is invalid, omits a leaf task, lists one twice, lists a parent task, or puts a task in the same or an earlier wave than a task it depends on
+- In a feature spec, `## Task Dependency Graph` missing, or its `waves` JSON is invalid, omits a leaf task, lists one twice, lists a parent task, puts a task in the same or an earlier wave than a required leaf it uses, or puts an optional leaf in the same or a later wave than the next checkpoint
 - An implementation or test task without its requirement reference (checkpoints are exempt)
 - A reference to an acceptance criterion or property that does not exist
 - tasks.md written anywhere other than `{spec_dir}`
