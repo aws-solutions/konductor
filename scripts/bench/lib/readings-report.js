@@ -38,6 +38,7 @@ const { round4, gapStats } = require('./gap-stats');
 const { taskGaps } = require('./judge-job');
 const { judgeFor } = require('./judge-prompt');
 const { ARMS } = require('./layout');
+const { NOT_RUN, formatGap, formatInterval } = require('./report-text');
 
 const READINGS_REPORT_VERSION = 1;
 const READING_SCALES = Object.freeze({ A: 'outcome', B: 'items' });
@@ -290,14 +291,7 @@ const PASS_RULES = [
 
 const CONVENTION_CONTROL = 'convention-control';
 const LADDER_CONTROL = 'ladder';
-const NOT_RUN = 'NOT RUN';
 
-const formatGap = (value) =>
-  typeof value === 'number'
-    ? `${value >= 0 ? '+' : ''}${value.toFixed(2)}`
-    : 'n/a';
-const formatInterval = (interval) =>
-  interval ? `[${formatGap(interval[0])}, ${formatGap(interval[1])}]` : 'n/a';
 const describe = (label, reading) =>
   `${label} gap ${formatGap(reading.mean_gap)} ${formatInterval(reading.t_interval)}`;
 
