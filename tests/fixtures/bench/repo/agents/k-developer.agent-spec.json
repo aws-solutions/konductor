@@ -1,4 +1,8 @@
 {
   "name": "k-developer",
+  "config": {
+    "description": "Kitchen helper agent. Writes brew logs with brew-log and pantry notes with pantry-note.",
+    "systemPrompt": "# Kitchen helper\n\nYou help a home cook keep short kitchen records.\n\n## Skills Available\n\n- **brew-log**: Writes a short log entry for a tea or coffee brew.\n- **pantry-note**: Writes a note about what is on a pantry shelf.\n- **brew-log-archive**: another skill with a longer name.\n\n## Recommended Workflow\n\n1. `pantry-note` -> check what is on the shelf\n2. `brew-log` -> record the brew\n3. Tidy the counter\n\n`brew-log` and `pantry-note` can run at any time.\nRun `pantry-note`, `brew-log` any time. A pre-brew-log check is fine too."
+  },
   "dependencies": { "skills": { "skillNames": ["brew-log", "pantry-note"] } }
 }
