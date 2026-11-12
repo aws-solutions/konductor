@@ -33,6 +33,7 @@ not per individual commit.
 - The workflow canvas shows the workflow's name as its title, with Designer and Execution as a switch in the page header.
 - The workflow canvas announces "Ready. Press Run to start." only once a workflow has loaded.
 - The workflow canvas draws run-order ports as small dots that show on hover, focus or select, in place of jigsaw tabs.
+- The workflow canvas API session response reports `konductor_version`, `capabilities` and `limits`.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
   may now read files, search the codebase, run read-only shell commands, and answer lookup
   questions themselves instead of spawning a specialist for each. One table in

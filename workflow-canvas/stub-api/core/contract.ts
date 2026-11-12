@@ -11,6 +11,16 @@ export const MAX_PROMPT_CHARS = 32_768;
 export const MAX_STAGES = 40;
 /** Mappings and lists nested inside one another, the root counting as level 1. */
 export const MAX_YAML_DEPTH = 32;
+/** What the session reports as `konductor_version`: the stub is no release. */
+export const KONDUCTOR_VERSION = '0.0.0-stub';
+/** The limits that the session reports, by their names in the contract. */
+export const SESSION_LIMITS = {
+  text_bytes: MAX_TEXT_BYTES,
+  stages: MAX_STAGES,
+  outcome_chars: MAX_INTENT_CHARS,
+  prompt_chars: MAX_PROMPT_CHARS,
+  goal_chars: MAX_GOAL_CHARS,
+} as const;
 export const FORMAT = 'konductor/1';
 /** The version the check suggests when `version` is not a semantic version. */
 export const SUGGESTED_VERSION = '0.1.0';

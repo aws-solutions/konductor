@@ -23,6 +23,22 @@ describe('POST /api/session', () => {
       root: 'hello',
       harness: 'kiro-cli',
       api_version: 1,
+      konductor_version: '0.0.0-stub',
+      capabilities: [
+        'createSession',
+        'getWorkflow',
+        'saveWorkflow',
+        'checkWorkflow',
+        'startRun',
+        'getRun',
+      ],
+      limits: {
+        text_bytes: 262_144,
+        stages: 40,
+        outcome_chars: 300,
+        prompt_chars: 32_768,
+        goal_chars: 2048,
+      },
     });
   });
 
