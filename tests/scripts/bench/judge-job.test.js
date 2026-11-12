@@ -34,6 +34,7 @@ const {
   writeRecord,
 } = require('../../../scripts/bench/lib/pairs');
 const { buildPlan } = require('../../../scripts/bench/lib/plan');
+const { redact } = require('../../../scripts/bench/lib/redact');
 const { sha256 } = require('../../../scripts/bench/lib/provenance');
 const { loadTaskSet } = require('../../../scripts/bench/lib/tasks');
 const helpers = require('./helpers');
@@ -354,11 +355,39 @@ test('a judgment that cannot be saved for any other reason also stops the seats 
     );
   }));
 
+test('runJudging books each call from the cost profile the calls were priced with (callOptions.costProfile)', () =>
+  withRepo(async ({ run }) => {
+    const costProfile = {
+      entries: [
+        { kind: 'judge', model: '*', mean: 0.02, median: 0.02, p90: 0.03 },
+      ],
+    };
+    const stub = stubJudge(async (args) => ({
+      ...okResult(labelsReply(args.prompt)),
+      reportedUsd: null,
+    }));
+    const summary = await run(stub, { callOptions: { costProfile } });
+    assert.equal(summary.status, 'done', JSON.stringify(summary));
+    assert.ok(stub.calls.every((args) => args.costProfile === costProfile));
+    assert.ok(
+      Math.abs(summary.usd - 30 * 0.02) < 1e-9,
+      `${summary.usd} != ${30 * 0.02}`,
+    );
+  }));
+
 test('runJudging items: one call per task, seat and arm, a valid record each, and a rerun has nothing to do', () =>
   withRepo(async ({ layout, run }) => {
     const stub = stubJudge();
     const lines = [];
-    const summary = await run(stub, { log: (line) => lines.push(line) });
+    let credentialExports = 0;
+    const summary = await run(stub, {
+      log: (line) => lines.push(line),
+      getCredentials: async () => {
+        credentialExports += 1;
+        return FRESH;
+      },
+    });
+    assert.equal(credentialExports, 1, 'exported once for all 30 calls');
     assert.equal(summary.status, 'done', JSON.stringify(summary));
     assert.equal(summary.jobs, 30);
     assert.equal(summary.pending, 0);
@@ -1500,7 +1529,9 @@ test('a reply cut off at the output limit is counted apart, whether the call fai
     });
     const summary = await run(stub);
     assert.equal(summary.results.failed.length, 4);
-    assert.equal(summary.cut_off, 2, 'only the two unusable cut-off replies');
+    // Each of the two judgments with an unusable cut-off reply is tried 3 times and cut off each time; the reply that
+    // used the whole limit and read fine, and the plain failures, are not counted.
+    assert.equal(summary.cut_off, 6);
     assert.ok(stub.calls.length > 4);
     for (const call of stub.calls)
       assert.equal(call.seat, call.label.split(':')[2], call.label);
@@ -1798,6 +1829,1018 @@ test('a reading B batch whose tasks are stale has no items work; reading A still
     assert.equal(outcome.calls.length, 24);
   }));
 
+// ---- failure modes: retries, timeouts, provider blocks, the systemic stop, credentials ---------------------------
+
+const refusal = () =>
+  failedResult('provider blocked the response: safeguards flagged it');
+const labelOf = (taskId, seat, scale = 'items', arm = 'with') =>
+  `${SKILL}/b1/${taskId}:${scale}:${seat}:${arm}`;
+const failedRecords = (layout, taskId, seat, arm = 'with') => {
+  const file = layout.judgmentFile('items', SKILL, 'b1', taskId, seat, arm);
+  const dir = path.dirname(file);
+  return fs
+    .readdirSync(dir)
+    .filter((name) =>
+      name.startsWith(`${path.basename(file)}${judgeJob.FAILED_MARK}`),
+    )
+    .sort()
+    .map((name) => helpers.readJson(path.join(dir, name)));
+};
+
+test('a failed call is retried with a growing pause; a judgment that then succeeds is valid and says how many tries', () =>
+  withRepo(async ({ layout, run }) => {
+    const target = labelOf(TASKS[0], 'openai');
+    let tries = 0;
+    const pauses = [];
+    const stub = stubJudge(async (args) => {
+      if (args.label === target && ++tries < 3)
+        return tries === 1
+          ? { ...failedResult('timeout'), timedOut: true }
+          : failedResult('ThrottlingException: rate exceeded');
+      return okResult(labelsReply(args.prompt));
+    });
+    const summary = await run(stub, {
+      retry: {
+        sleep: async (ms) => {
+          pauses.push(ms);
+        },
+        baseMs: 5,
+      },
+    });
+    assert.equal(summary.status, 'done', JSON.stringify(summary));
+    assert.equal(stub.calls.filter((call) => call.label === target).length, 3);
+    assert.deepEqual(pauses, [5, 10]);
+    const record = judgmentOf(layout, 'items', TASKS[0], 'openai');
+    assert.equal(record.status, 'valid');
+    assert.equal(record.attempts, 3);
+    // The three tries are booked; none is free. The two failed tries report no cost and are charged the openai seat
+    // model's mean; the third reports 0.005, below that mean for a model whose CLI reports low, so it is charged the
+    // mean too.
+    assert.equal(
+      record.usd,
+      roundUsd(3 * SEAT_PRICES.openai.mean),
+      String(record.usd),
+    );
+  }));
+
+test('a judgment that fails every try is kept as .failed-<time>, stays pending, and is tried again by a rerun', () =>
+  withRepo(async ({ layout, run }) => {
+    const target = labelOf(TASKS[1], 'xai');
+    const stub = stubJudge(async (args) =>
+      args.label === target
+        ? { ...failedResult('timeout'), timedOut: true }
+        : okResult(labelsReply(args.prompt)),
+    );
+    const summary = await run(stub);
+    assert.equal(summary.status, 'partial');
+    assert.equal(stub.calls.filter((call) => call.label === target).length, 3);
+    assert.deepEqual(summary.results.failed, [
+      {
+        judgment: target,
+        kind: 'transient',
+        reason: 'the call failed 3 time(s): timeout',
+      },
+    ]);
+    assert.equal(
+      fs.existsSync(
+        layout.judgmentFile('items', SKILL, 'b1', TASKS[1], 'xai', 'with'),
+      ),
+      false,
+    );
+    const [kept] = failedRecords(layout, TASKS[1], 'xai');
+    assert.equal(kept.status, 'failed');
+    assert.equal(kept.arm, 'with');
+    assert.equal(kept.error_kind, 'transient');
+    assert.equal(kept.attempts, 3);
+    assert.equal(kept.refusals, 0);
+    assert.equal(
+      kept.usd,
+      roundUsd(3 * SEAT_PRICES.xai.mean),
+      'the three paid tries are booked on the record',
+    );
+    assert.equal(summary.pending, 1);
+    const again = stubJudge();
+    const rerun = await run(again);
+    assert.equal(rerun.status, 'done');
+    assert.deepEqual(
+      again.calls.map((call) => call.label),
+      [target],
+    );
+    assert.equal(
+      failedRecords(layout, TASKS[1], 'xai').length,
+      1,
+      'the failed record is kept',
+    );
+  }));
+
+test('an invalid reply is retried like a failed call, and the last reply is kept with the failure', () =>
+  withRepo(async ({ layout, run }) => {
+    const target = labelOf(TASKS[2], 'anthropic');
+    const stub = stubJudge(async (args) =>
+      args.label === target
+        ? okResult('Answer A is better. {"items_a":["MET"]}')
+        : okResult(labelsReply(args.prompt)),
+    );
+    const summary = await run(stub);
+    assert.equal(summary.status, 'partial');
+    assert.equal(stub.calls.filter((call) => call.label === target).length, 3);
+    const [kept] = failedRecords(layout, TASKS[2], 'anthropic');
+    assert.equal(kept.invalid_reply, 'not_json');
+    assert.equal(kept.raw_text, 'Answer A is better. {"items_a":["MET"]}');
+    assert.match(kept.error, /invalid reply \(not_json\)/);
+  }));
+
+test('an error that can never work is not retried and does not count toward the systemic stop', () =>
+  withRepo(async ({ layout, run }) => {
+    const stub = stubJudge(async (args) =>
+      args.label.includes(':anthropic:')
+        ? failedResult('AccessDeniedException: not authorized for this model')
+        : okResult(labelsReply(args.prompt)),
+    );
+    const summary = await run(stub);
+    assert.equal(summary.status, 'partial');
+    assert.equal(
+      failedRecords(layout, TASKS[0], 'anthropic')[0].error_kind,
+      'permanent',
+    );
+    assert.equal(
+      summary.stop,
+      null,
+      'ten permanent failures in a row are no systemic stop',
+    );
+    assert.equal(
+      stub.calls.filter((call) => call.label.includes(':anthropic:')).length,
+      10,
+    );
+    assert.deepEqual(
+      [...new Set(summary.results.failed.map((entry) => entry.kind))],
+      ['permanent'],
+    );
+  }));
+
+test('provider blocks count across launches: two in the first, the third makes the judgment refused for good', () =>
+  withRepo(async ({ layout, config, tmpRoot, run }) => {
+    const target = labelOf(TASKS[3], 'openai');
+    const blockTarget = (args) =>
+      args.label === target ? refusal() : okResult(labelsReply(args.prompt));
+    const first = stubJudge(blockTarget);
+    const launch1 = await run(first);
+    assert.equal(launch1.status, 'partial');
+    assert.equal(first.calls.filter((call) => call.label === target).length, 2);
+    assert.equal(launch1.results.failed[0].kind, 'refusal');
+    assert.equal(failedRecords(layout, TASKS[3], 'openai')[0].refusals, 2);
+    assert.equal(launch1.pending, 1);
+
+    const second = stubJudge(blockTarget);
+    const launch2 = await run(second);
+    assert.deepEqual(
+      second.calls.map((call) => call.label),
+      [target],
+      'only the one block still allowed is tried',
+    );
+    assert.equal(launch2.status, 'partial');
+    assert.deepEqual(
+      launch2.results.refused.map((entry) => entry.judgment),
+      [target],
+    );
+    const record = judgmentOf(layout, 'items', TASKS[3], 'openai');
+    assert.equal(record.status, 'refused');
+    assert.equal(record.refusals, 3);
+    assert.deepEqual(
+      launch2.blocked.map((entry) => entry.judgment),
+      [target],
+    );
+    assert.match(launch2.warnings.join('\n'), /blocked the judge 3 time\(s\)/);
+    // The task still counts with its two other seats.
+    const row = launch2.tasks.find((entry) => entry.task_id === TASKS[3]);
+    assert.equal(row.counted, true);
+    assert.equal(row.seats_valid, 2);
+
+    const third = stubJudge(blockTarget);
+    const launch3 = await run(third);
+    assert.equal(third.calls.length, 0);
+    assert.equal(launch3.status, 'partial');
+    assert.equal(launch3.blocked.length, 1);
+    const judgeB = buildPlan({ layout, config, skills: [SKILL] }).stages.find(
+      (stage) => stage.id === 2,
+    ).calls.judgeB;
+    assert.deepEqual(judgeB, { done: 30, total: 30 });
+
+    // A new without answer makes its judgments pending, except on the seat whose with judgment is refused: that
+    // seat could never count, so it is not judged until the refused judgment's inputs change.
+    const { taskSet } = loadTaskSet({ layout, config, skill: SKILL, tmpRoot });
+    writeAnswer(layout, {
+      batch: 'b1',
+      task: taskSet.batches[0].tasks[3],
+      arm: 'without',
+      text: `${WITHOUT_TEXT} Then a biscuit.`,
+    });
+    const fourth = stubJudge(blockTarget);
+    const launch4 = await run(fourth);
+    assert.deepEqual(fourth.calls.map((call) => call.label).sort(), [
+      labelOf(TASKS[3], 'anthropic', 'items', 'without'),
+      labelOf(TASKS[3], 'xai', 'items', 'without'),
+    ]);
+    assert.equal(launch4.other_arm_unusable, 1);
+    assert.equal(launch4.status, 'partial');
+    const { jobs } = judgeJob.planJudging({
+      layout,
+      config,
+      skills: [SKILL],
+      scale: 'items',
+      judgeInput:
+        require('../../../scripts/bench/lib/judge-input').createJudgeInput(),
+      armsTmpRoot: tmpRoot,
+    });
+    const held = jobs.find((entry) => entry.state === 'other_arm_unusable');
+    assert.equal(held.label, labelOf(TASKS[3], 'openai', 'items', 'without'));
+    assert.match(
+      held.reason,
+      /the with answer was blocked by the provider for good on this seat/,
+    );
+    // plan agrees: with no file for the held judgment, it is no call there either.
+    fs.unlinkSync(held.file);
+    const planned = buildPlan({ layout, config, skills: [SKILL] }).stages.find(
+      (stage) => stage.id === 2,
+    ).calls.judgeB;
+    assert.deepEqual(planned, { done: 29, total: 29 });
+  }));
+
+test('a judgment that gets through after blocks is valid; a changed input starts the block count again', () =>
+  withRepo(async ({ layout, config, tmpRoot, run }) => {
+    const target = labelOf(TASKS[4], 'xai');
+    await run(
+      stubJudge((args) =>
+        args.label === target ? refusal() : okResult(labelsReply(args.prompt)),
+      ),
+    );
+    const passed = await run(stubJudge());
+    assert.equal(passed.status, 'done');
+    assert.equal(judgmentOf(layout, 'items', TASKS[4], 'xai').refusals, 2);
+
+    // The judgment of task 1 is made again and blocked twice: a `.failed-` record of the current inputs says so.
+    const blocked = labelOf(TASKS[0], 'anthropic');
+    fs.unlinkSync(
+      layout.judgmentFile('items', SKILL, 'b1', TASKS[0], 'anthropic', 'with'),
+    );
+    const earlier = stubJudge((args) =>
+      args.label === blocked ? refusal() : okResult(labelsReply(args.prompt)),
+    );
+    await run(earlier);
+    assert.equal(
+      earlier.calls.filter((call) => call.label === blocked).length,
+      2,
+    );
+    assert.equal(failedRecords(layout, TASKS[0], 'anthropic')[0].refusals, 2);
+
+    // A new with answer gives that judgment new inputs: the two blocks of the old inputs do not count.
+    const { taskSet } = loadTaskSet({ layout, config, skill: SKILL, tmpRoot });
+    writeAnswer(layout, {
+      batch: 'b1',
+      task: taskSet.batches[0].tasks[0],
+      arm: 'with',
+      text: `${WITH_TEXT} Then a second cup.`,
+    });
+    const stub = stubJudge((args) =>
+      args.label === blocked ? refusal() : okResult(labelsReply(args.prompt)),
+    );
+    const summary = await run(stub);
+    assert.equal(
+      stub.calls.filter((call) => call.label === blocked).length,
+      2,
+      'two blocks allowed again, not one',
+    );
+    assert.equal(summary.results.refused.length, 0);
+  }));
+
+test('the words of an invalid reply never decide how the failure is classed: a reply that names a credential, access or block error is retried and counts toward the systemic stop', () =>
+  withRepo(async ({ layout, run }) => {
+    for (const word of [
+      'ExpiredToken',
+      'AccessDenied',
+      'provider blocked the response',
+    ]) {
+      const stub = stubJudge(async (args) =>
+        okResult(
+          JSON.stringify({
+            ...JSON.parse(labelsReply(args.prompt)),
+            [word]: 1,
+          }),
+        ),
+      );
+      const summary = await run(stub);
+      assert.equal(summary.stop && summary.stop.kind, 'systemic', word);
+      assert.match(summary.stop.message, /ABORT-SYSTEMIC: 4 calls in a row/);
+      assert.ok(summary.results.failed.length >= 1, word);
+      for (const failed of summary.results.failed) {
+        assert.equal(failed.kind, 'transient', word);
+        assert.match(
+          failed.reason,
+          /the call failed 3 time\(s\): invalid reply \(fields\)/,
+        );
+        assert.equal(
+          stub.calls.filter((call) => call.label === failed.judgment).length,
+          3,
+          `${word}: every try is made`,
+        );
+      }
+      assert.deepEqual(judgmentFiles(layout, 'items'), []);
+      const [, taskId, seat, arm] =
+        /\/(brew-log-rules-\d):items:([a-z]+):(with|without)$/.exec(
+          summary.results.failed[0].judgment,
+        );
+      assert.equal(
+        failedRecords(layout, taskId, seat, arm).at(-1).error_kind,
+        'transient',
+        word,
+      );
+    }
+  }));
+
+/** One call wide for every seat, so the calls in flight are known: at most one per seat. */
+const ONEWIDE = {
+  config: { judge_concurrency: 1, judge_concurrency_by_seat: { xai: 1 } },
+};
+
+/**
+ * An `answer` for stubJudge that, on its first call, turns `judgments/items` into a dangling link. Reads then see no
+ * folder (so the block count is 0) and every write of a result fails with ENOENT, without chmod (a root user ignores it).
+ */
+function breakStoreOnFirstCall(layout, dir, inner) {
+  const link = path.join(layout.runDir, 'judgments', 'items');
+  let broken = false;
+  const answer = async (args, index) => {
+    if (!broken) {
+      broken = true;
+      fs.mkdirSync(path.dirname(link), { recursive: true });
+      fs.symlinkSync(path.join(dir, 'nowhere'), link);
+    }
+    return inner(args, index);
+  };
+  return { answer, link };
+}
+
+test('a judgment that cannot be stored ends the job: the calls in flight finish, no new call starts, and a rerun resumes', () =>
+  withRepo(async ({ dir, layout, run }) => {
+    const { answer, link } = breakStoreOnFirstCall(layout, dir, async (args) =>
+      okResult(labelsReply(args.prompt)),
+    );
+    const stub = stubJudge(answer);
+    await assert.rejects(run(stub), (error) => error.code === 'ENOENT');
+    // Each of the three seats is one call wide: at most three calls were in flight when the first write failed.
+    assert.ok(
+      stub.calls.length >= 1 && stub.calls.length <= 4,
+      stub.calls.length,
+    );
+    assert.deepEqual(judgmentFiles(layout, 'items'), []);
+    fs.unlinkSync(link);
+    const again = stubJudge();
+    const rerun = await run(again);
+    assert.equal(rerun.status, 'done', JSON.stringify(rerun));
+    assert.equal(again.calls.length, 30);
+  }, ONEWIDE));
+
+test('a failed judgment that cannot be kept ends the job the same way', () =>
+  withRepo(async ({ dir, layout, run }) => {
+    const { answer } = breakStoreOnFirstCall(layout, dir, async () =>
+      failedResult('exit 7: boom'),
+    );
+    const stub = stubJudge(answer);
+    await assert.rejects(run(stub), (error) => error.code === 'ENOENT');
+    // Three judgments in flight at most, each tried 3 times.
+    assert.ok(stub.calls.length <= 9, stub.calls.length);
+  }, ONEWIDE));
+
+test('a provider block that cannot be stored ends the job the same way', () =>
+  withRepo(async ({ dir, layout, run }) => {
+    const { answer } = breakStoreOnFirstCall(layout, dir, async () =>
+      refusal(),
+    );
+    const stub = stubJudge(answer);
+    await assert.rejects(run(stub), (error) => error.code === 'ENOENT');
+    assert.ok(stub.calls.length <= 6, stub.calls.length);
+  }, ONEWIDE));
+
+test('an error that is neither a stop nor a call failure ends the job once the calls in flight finish', () =>
+  withRepo(async ({ layout, run }) => {
+    // A result that cannot be written as JSON stands for any bug in the job's own code after a paid call.
+    const stub = stubJudge(async (args) => {
+      const reply = JSON.parse(labelsReply(args.prompt));
+      return { ...okResult(JSON.stringify(reply)), usage: null, ms: 1n };
+    });
+    await assert.rejects(run(stub), (error) => error instanceof Error);
+    assert.ok(stub.calls.length <= 3, stub.calls.length);
+    assert.deepEqual(judgmentFiles(layout, 'items'), []);
+  }, ONEWIDE));
+
+test('what a failed judgment keeps of the reply and the error is redacted', () =>
+  withRepo(async ({ layout, config, tmpRoot, run }) => {
+    const target = labelOf(TASKS[2], 'anthropic');
+    const stub = stubJudge(async (args) =>
+      args.label === target
+        ? okResult(`The labels are not given. ${SECRET}`)
+        : okResult(labelsReply(args.prompt)),
+    );
+    await run(stub);
+    const [kept] = failedRecords(layout, TASKS[2], 'anthropic');
+    assert.equal(kept.invalid_reply, 'not_json');
+    assert.match(kept.raw_text, /The labels are not given\./);
+    assert.equal(kept.raw_text.includes(SECRET), false, kept.raw_text);
+    assert.equal(JSON.stringify(kept).includes(SECRET), false);
+
+    // failedRecord redacts on its own, whatever the caller passes in.
+    const { jobs } = judgeJob.planJudging({
+      layout,
+      config,
+      skills: [SKILL],
+      scale: 'items',
+      judgeInput: createJudgeInput(),
+      armsTmpRoot: tmpRoot,
+    });
+    const record = judgeJob.failedRecord(jobs[0], {
+      status: 'failed',
+      error: Object.assign(new Error(`the call failed: ${SECRET}`), {
+        kind: 'transient',
+      }),
+      refusals: 0,
+      attempts: 3,
+      last: {
+        result: { text: `a reply with ${SECRET}` },
+        scored: { valid: false, kind: 'not_json' },
+      },
+      usd: 0,
+      openCodeVersion: null,
+      now: () => NOW_MS,
+    });
+    assert.match(record.error, /the call failed: /);
+    assert.equal(record.error.includes(SECRET), false, record.error);
+    assert.match(record.raw_text, /a reply with /);
+    assert.equal(record.raw_text.includes(SECRET), false, record.raw_text);
+  }));
+
+test('two failures of one judgment in the same millisecond keep two records', () =>
+  withRepo(async ({ layout, run }) => {
+    const target = labelOf(TASKS[1], 'xai');
+    const failing = () =>
+      stubJudge(async (args) =>
+        args.label === target
+          ? failedResult('exit 7: boom')
+          : okResult(labelsReply(args.prompt)),
+      );
+    await run(failing());
+    await run(failing());
+    const file = layout.judgmentFile(
+      'items',
+      SKILL,
+      'b1',
+      TASKS[1],
+      'xai',
+      'with',
+    );
+    const names = fs
+      .readdirSync(path.dirname(file))
+      .filter((name) => name.includes(`${path.basename(file)}.failed-`))
+      .sort();
+    assert.equal(names.length, 2, names.join(', '));
+    assert.match(names[0], /\.failed-[^-]+(?:-[^-]+)*$/);
+    assert.match(names[1], /-2$/);
+    assert.equal(failedRecords(layout, TASKS[1], 'xai').length, 2);
+  }));
+
+test('4 judgments in a row that fail every try stop the job (systemic); nothing failed is written as done', () =>
+  withRepo(async ({ layout, run }) => {
+    const stub = stubJudge(async () => failedResult('exit 7: boom'));
+    const summary = await run(stub, {
+      config: helpers.exampleConfig({
+        judge_concurrency: 1,
+        judge_concurrency_by_seat: { xai: 1 },
+      }),
+    });
+    assert.equal(summary.status, 'stopped');
+    assert.equal(summary.stop.kind, 'systemic');
+    assert.match(
+      summary.stop.message,
+      /ABORT-SYSTEMIC: 4 calls in a row failed every try/,
+    );
+    assert.deepEqual(judgmentFiles(layout, 'items'), []);
+    assert.ok(stub.calls.length < 30 * 3, String(stub.calls.length));
+    assert.equal(summary.remaining, 30);
+  }));
+
+test('the job passes a redactor with the exported values to the ledger, the retry helper and the breaker, so a bare value is removed from a label and from the stop message', () =>
+  withRepo(async ({ layout, run }) => {
+    const bare = FRESH.secretAccessKey;
+    assert.equal(
+      redact(bare),
+      bare,
+      'the module redactor does not know a bare value',
+    );
+    const labelled = stubJudge(async (args) => {
+      (await args.ledger.reserve(0.001, `note ${bare}`)).cancel();
+      return okResult(labelsReply(args.prompt));
+    });
+    const done = await run(labelled);
+    assert.equal(done.status, 'done', JSON.stringify(done));
+    const ledgerText = fs.readFileSync(layout.ledgerFile, 'utf8');
+    assert.ok(ledgerText.includes('note [REDACTED]'), 'the label was written');
+    assert.ok(!ledgerText.includes(bare), 'no bare value in the ledger');
+  }));
+
+test('permanent failures in a row are no systemic stop', () =>
+  withRepo(async ({ run }) => {
+    const narrow = {
+      config: helpers.exampleConfig({
+        judge_concurrency: 1,
+        judge_concurrency_by_seat: { anthropic: 1, openai: 1, xai: 1 },
+      }),
+    };
+    const permanent = stubJudge(async () =>
+      failedResult('AccessDeniedException: not authorized for this model'),
+    );
+    const allPermanent = await run(permanent, narrow);
+    assert.equal(allPermanent.stop, null, 'permanent failures never count');
+    assert.equal(permanent.calls.length, 30, 'each is tried once');
+    assert.equal(allPermanent.results.failed.length, 30);
+  }));
+
+test('a failed or a refused record that cannot be written is the I/O error: marked as a write, fatal, and no more calls start', (context) =>
+  withRepo(async ({ layout, run }) => {
+    if (process.getuid && process.getuid() === 0) {
+      context.skip('a root user can write to a read-only folder');
+      return;
+    }
+    const folderOf = (taskId) =>
+      path.dirname(
+        layout.judgmentFile('items', SKILL, 'b1', taskId, 'anthropic', 'with'),
+      );
+    const readOnly = async (folder, callback) => {
+      fs.chmodSync(folder, 0o500);
+      try {
+        return await callback();
+      } catch (error) {
+        return error;
+      } finally {
+        fs.chmodSync(folder, 0o700);
+      }
+    };
+    // Every call fails, so only failed and refused records are written: nothing else can make the first write error.
+    const everyCall = (message) => stubJudge(async () => failedResult(message));
+    // A failed judgment: its record cannot be kept.
+    fs.mkdirSync(folderOf(TASKS[0]), { recursive: true });
+    const failedError = await readOnly(folderOf(TASKS[0]), () =>
+      run(everyCall('timeout')),
+    );
+    assert.equal(failedError.writing, true, String(failedError));
+    assert.equal(failedError.fatal, true);
+    // A blocked judgment: two launches make it `refused`, and the second cannot write it.
+    const blocked = 'The provider blocked the response';
+    await run(everyCall(blocked));
+    const refusedError = await readOnly(folderOf(TASKS[0]), () =>
+      run(everyCall(blocked)),
+    );
+    assert.equal(refusedError.writing, true, String(refusedError));
+  }));
+
+test('a bare exported value in the error of a failed call is removed from the retry error and from the systemic stop message', () =>
+  withRepo(async ({ layout, run }) => {
+    const bare = FRESH.secretAccessKey;
+    const stub = stubJudge(async () => ({
+      ...failedResult(`exit 7: ${bare}`),
+      text: `the judge printed ${bare}`,
+    }));
+    const summary = await run(stub, {
+      config: helpers.exampleConfig({
+        judge_concurrency: 1,
+        judge_concurrency_by_seat: { xai: 1 },
+      }),
+    });
+    assert.equal(summary.stop.kind, 'systemic');
+    assert.match(
+      summary.stop.message,
+      /\(last: the call failed 3 time\(s\): exit 7: \[REDACTED\]\)/,
+    );
+    const everything = JSON.stringify(summary);
+    assert.ok(!everything.includes(bare), 'no bare value in the summary');
+    for (const file of fs.readdirSync(layout.runDir, { recursive: true })) {
+      const full = path.join(layout.runDir, String(file));
+      if (fs.statSync(full).isFile())
+        assert.ok(
+          !fs.readFileSync(full, 'utf8').includes(bare),
+          `${file} holds no bare value`,
+        );
+    }
+  }));
+
+test('a valid reply that quotes a bare exported value is kept with the value removed', () =>
+  withRepo(async ({ layout, run }) => {
+    const bare = FRESH.secretAccessKey;
+    const stub = stubJudge(async (args) => {
+      const reply = JSON.parse(labelsReply(args.prompt));
+      reply.reason = `the answer printed ${bare}`;
+      return okResult(JSON.stringify(reply));
+    });
+    const summary = await run(stub);
+    assert.equal(summary.status, 'done', JSON.stringify(summary));
+    for (const file of fs.readdirSync(layout.runDir, { recursive: true })) {
+      const full = path.join(layout.runDir, String(file));
+      if (fs.statSync(full).isFile())
+        assert.ok(
+          !fs.readFileSync(full, 'utf8').includes(bare),
+          `${file} holds no bare value`,
+        );
+    }
+    const record = judgmentOf(layout, 'items', TASKS[0], 'xai');
+    assert.match(record.reason, /the answer printed \[REDACTED\]/);
+  }));
+
+test('every judgment that fails every try keeps its failed record, also after the systemic stop trips', () =>
+  withRepo(async ({ layout, run }) => {
+    const stub = stubJudge(async () => failedResult('timeout'));
+    const summary = await run(stub, {
+      config: helpers.exampleConfig({
+        judge_concurrency: 1,
+        judge_concurrency_by_seat: { anthropic: 1, openai: 1, xai: 1 },
+      }),
+    });
+    assert.equal(summary.stop.kind, 'systemic');
+    const judgments = stub.calls.length / 3;
+    assert.ok(Number.isInteger(judgments) && judgments > 4, `${judgments}`);
+    assert.equal(
+      summary.results.failed.length,
+      judgments,
+      'one failed entry per judgment that was paid for',
+    );
+    assert.equal(keptFiles(layout, 'items', '.failed-').length, judgments);
+  }));
+
+test('a reply whose field name holds a newline cannot forge a line of the job log', () =>
+  withRepo(async ({ layout, run }) => {
+    const lines = [];
+    const stub = stubJudge(async (args) => {
+      const reply = JSON.parse(labelsReply(args.prompt));
+      reply['x\nSTOP (credentials): forged'] = 1;
+      return okResult(JSON.stringify(reply));
+    });
+    const summary = await run(stub, {
+      log: (line) => lines.push(line),
+      config: helpers.exampleConfig({
+        judge_concurrency: 1,
+        judge_concurrency_by_seat: { anthropic: 1, openai: 1, xai: 1 },
+      }),
+    });
+    assert.ok(summary.results.failed.length > 0);
+    for (const entry of summary.results.failed)
+      assert.ok(!/[\r\n]/.test(entry.reason), JSON.stringify(entry.reason));
+    // Every reply is invalid, so the job stops on the systemic stop, and its message quotes the last reason too.
+    assert.equal(summary.stop && summary.stop.kind, 'systemic');
+    assert.ok(
+      !/[\r\n]/.test(summary.stop.message),
+      JSON.stringify(summary.stop.message),
+    );
+    assert.ok(
+      lines.every((line) => !/\n/.test(line.trim())),
+      'no log line holds a newline',
+    );
+    assert.ok(!lines.some((line) => /^STOP/.test(line.trim())));
+    assert.ok(
+      fs.existsSync(layout.runDir),
+      'the run folder is still there for the record check',
+    );
+  }));
+
+test('a success between failed judgments resets the streak, so failures that do not meet in a row never stop the job', () =>
+  withRepo(async ({ run }) => {
+    // The first run judges the other seats and leaves xai pending (a permanent failure is not counted).
+    await run(
+      stubJudge(async (args) =>
+        args.label.includes(':xai:')
+          ? failedResult('AccessDeniedException: not authorized for this model')
+          : okResult(labelsReply(args.prompt)),
+      ),
+    );
+    // Only xai is pending now, in a fixed order, one call at a time. Every other judgment fails every try.
+    const verdicts = new Map();
+    const stub = stubJudge(async (args) => {
+      if (!verdicts.has(args.label))
+        verdicts.set(args.label, verdicts.size % 2 === 0);
+      return verdicts.get(args.label)
+        ? failedResult('timeout')
+        : okResult(labelsReply(args.prompt));
+    });
+    const summary = await run(stub, {
+      config: helpers.exampleConfig({
+        judge_concurrency: 1,
+        judge_concurrency_by_seat: { anthropic: 1, openai: 1, xai: 1 },
+      }),
+    });
+    assert.equal(summary.stop, null, JSON.stringify(summary.stop));
+    assert.equal(summary.results.failed.length, 5);
+    assert.equal(summary.results.judged.length, 5);
+  }));
+
+test('an ineligible record that cannot be written is the "cannot write" error, and no call is made', () =>
+  withRepo(async ({ layout, config, tmpRoot, run }) => {
+    writeAnswers(layout, config, tmpRoot, (arm, taskId) =>
+      taskId === TASKS[0] && arm === 'without'
+        ? 'I loaded the brew-log skill. Tea.'
+        : arm === 'with'
+          ? WITH_TEXT
+          : WITHOUT_TEXT,
+    );
+    fs.mkdirSync(layout.runDir, { recursive: true });
+    fs.writeFileSync(path.join(layout.runDir, 'judgments'), 'not a folder');
+    const stub = stubJudge();
+    await assert.rejects(run(stub), (error) => error.writing === true);
+    assert.equal(stub.calls.length, 0);
+  }));
+
+test('storing marks a system error as a write and leaves any other error unmarked', () => {
+  const system = Object.assign(new Error('boom'), {
+    code: 'ENOSPC',
+    syscall: 'write',
+  });
+  assert.throws(
+    () =>
+      judgeJob.storing(() => {
+        throw system;
+      }),
+    (error) => error === system && error.writing === true,
+  );
+  const bug = new TypeError('bug');
+  assert.throws(
+    () =>
+      judgeJob.storing(() => {
+        throw bug;
+      }),
+    (error) => error === bug && error.writing === undefined,
+  );
+  assert.equal(
+    judgeJob.storing(() => 'kept'),
+    'kept',
+  );
+});
+
+test("priorRefusals: the most that a kept record of today's inputs says, not the sum; a record without a whole count or of other inputs is not counted", () =>
+  helpers.withTmp((dir) => {
+    const file = path.join(dir, 'task.anthropic.with.json');
+    const job = { file, inputs: { input_sha256: 'today' } };
+    const keep = (suffix, record) =>
+      helpers.write(`${file}.failed-${suffix}`, record);
+    assert.equal(judgeJob.priorRefusals(job), 0, 'nothing kept');
+    keep('a', { inputs: { input_sha256: 'today' }, refusals: 1 });
+    keep('b', { inputs: { input_sha256: 'today' }, refusals: 1 });
+    assert.equal(judgeJob.priorRefusals(job), 1, 'the maximum, not the sum');
+    keep('c', { inputs: { input_sha256: 'today' }, refusals: 2 });
+    assert.equal(judgeJob.priorRefusals(job), 2);
+    keep('d', { inputs: { input_sha256: 'yesterday' }, refusals: 5 });
+    assert.equal(judgeJob.priorRefusals(job), 2, 'other inputs start again');
+    keep('e', { inputs: { input_sha256: 'today' } });
+    keep('f', { inputs: { input_sha256: 'today' }, refusals: '9' });
+    keep('g', { inputs: { input_sha256: 'today' }, refusals: 1.5 });
+    assert.equal(judgeJob.priorRefusals(job), 2, 'no whole count, no vote');
+    assert.equal(
+      judgeJob.priorRefusals({
+        file: path.join(dir, 'other.xai.with.json'),
+        inputs: { input_sha256: 'today' },
+      }),
+      0,
+      'another judgment',
+    );
+  }));
+
+test('a judgment that was stale and is then blocked for good keeps the stale file as .superseded-<time>', () =>
+  withRepo(async ({ layout, run }) => {
+    await run(stubJudge());
+    // A new answer for the with arm makes its judgments stale; the redo is blocked every time.
+    const target = labelOf(TASKS[0], 'anthropic');
+    helpers.update(
+      layout.answerFile(SKILL, 'b1', TASKS[0], 'with'),
+      (record) => {
+        record.text = `${record.text} Also noted: the cup was warm.`;
+        record.answer_sha256 = sha256(record.text);
+      },
+    );
+    const blocked = stubJudge(async (args) =>
+      args.label === target
+        ? failedResult('The provider blocked the response')
+        : okResult(labelsReply(args.prompt)),
+    );
+    for (let launch = 0; launch < 2; launch += 1) await run(blocked);
+    assert.ok(
+      keptFiles(layout, 'items', '.superseded-').some((name) =>
+        name.includes(`${TASKS[0]}.anthropic.with.json.superseded-`),
+      ),
+      'the stale judgment is kept next to the refused one',
+    );
+    assert.equal(
+      judgmentOf(layout, 'items', TASKS[0], 'anthropic', 'with').status,
+      'refused',
+    );
+  }));
+
+test('credentials within 3 minutes of expiry start no call; a credential error from a call stops at once, not retried', () =>
+  withRepo(async ({ layout, run }) => {
+    // A call that never checks the guard itself: the job's own check at the start is what refuses.
+    let started = 0;
+    let versionRead = false;
+    const early = await run(
+      {
+        judgeCall: async (args) => {
+          started += 1;
+          return okResult(labelsReply(args.prompt));
+        },
+      },
+      {
+        getCredentials: async () => ({
+          ...FRESH,
+          expiration: new Date(NOW_MS + 2 * 60 * 1000).toISOString(),
+        }),
+        readVersion: async () => {
+          versionRead = true;
+          return 'v';
+        },
+      },
+    );
+    assert.equal(early.status, 'stopped');
+    assert.equal(early.stop.kind, 'credentials');
+    assert.match(early.stop.message, /less than 3 minutes away/);
+    assert.equal(started, 0);
+    assert.equal(versionRead, false);
+
+    // The clock passes the margin during the run: the guard refuses the next call before it starts.
+    let clock = NOW_MS;
+    const expiring = stubJudge(async (args) => {
+      clock += 60 * 60 * 1000;
+      return okResult(labelsReply(args.prompt));
+    });
+    const during = await run(expiring, {
+      now: () => clock,
+      config: helpers.exampleConfig({
+        judge_concurrency: 1,
+        judge_concurrency_by_seat: { xai: 1 },
+      }),
+    });
+    assert.equal(during.stop.kind, 'credentials');
+    assert.equal(
+      expiring.calls.length,
+      3,
+      'one call per seat, then the clock is past the margin',
+    );
+    assert.equal(judgmentFiles(layout, 'items').length, 3);
+
+    const target = labelOf(TASKS[2], 'xai');
+    let targetCalls = 0;
+    const expired = stubJudge(async (args) => {
+      if (args.label === target) {
+        targetCalls += 1;
+        return failedResult(
+          'ExpiredTokenException: The security token included in the request is expired',
+        );
+      }
+      return okResult(labelsReply(args.prompt));
+    });
+    const stopped = await run(expired);
+    assert.equal(stopped.status, 'stopped');
+    assert.equal(stopped.stop.kind, 'credentials');
+    assert.equal(targetCalls, 1);
+    assert.equal(
+      fs.existsSync(
+        layout.judgmentFile('items', SKILL, 'b1', TASKS[2], 'xai', 'with'),
+      ),
+      false,
+    );
+    assert.deepEqual(failedRecords(layout, TASKS[2], 'xai'), []);
+  }));
+
+test('no credentials are exported when no call is needed: ineligible answers and current judgments only', () =>
+  withRepo(
+    async ({ layout, config, tmpRoot, run }) => {
+      writeAnswers(
+        layout,
+        config,
+        tmpRoot,
+        () => 'I loaded the brew-log skill. Tea.',
+      );
+      let exported = 0;
+      const summary = await run(stubJudge(), {
+        getCredentials: async () => {
+          exported += 1;
+          throw new Error('must not export');
+        },
+      });
+      assert.equal(summary.status, 'done', JSON.stringify(summary));
+      assert.equal(summary.results.ineligible.length, 30);
+      assert.equal(exported, 0);
+    },
+    { answers: false },
+  ));
+
+test('the default judge call: every judgment goes through OpenCode in a locked-down private sandbox that is removed', () =>
+  withRepo(async ({ dir, layout, run }) => {
+    const sandboxRoot = path.join(dir, 'judge-tmp');
+    fs.mkdirSync(sandboxRoot, { mode: 0o700 });
+    const seen = [];
+    const runStub = async (command, args, options) => {
+      // The --help probe: this stub is an OpenCode that has --standalone.
+      if (args.length === 2 && args[1] === '--help')
+        return {
+          code: 0,
+          stdout: 'opencode run\n  --format  format\n  --standalone  private\n',
+          stderr: '',
+          ms: 1,
+          timedOut: false,
+        };
+      const config = JSON.parse(
+        fs.readFileSync(path.join(options.cwd, 'opencode.json'), 'utf8'),
+      );
+      seen.push({
+        command,
+        args,
+        cwd: options.cwd,
+        mode: fs.statSync(path.dirname(options.cwd)).mode & 0o777,
+        config,
+        env: options.env,
+      });
+      const prompt = args.at(-1);
+      const text = labelsReply(prompt);
+      const stdout = [
+        JSON.stringify({
+          type: 'text',
+          sessionID: 'ses_stub1',
+          part: { type: 'text', text },
+        }),
+        JSON.stringify({
+          type: 'step_finish',
+          sessionID: 'ses_stub1',
+          part: {
+            type: 'step-finish',
+            tokens: { input: 1000, output: 100 },
+            cost: 0.01,
+          },
+        }),
+      ].join('\n');
+      return {
+        code: 0,
+        stdout,
+        stderr: '',
+        ms: 3,
+        timedOut: false,
+        overflow: false,
+      };
+    };
+    const summary = await run(
+      { judgeCall: undefined },
+      {
+        judgeCall: require('../../../scripts/bench/lib/opencode').judgeCall,
+        callOptions: {
+          run: runStub,
+          tmpRoot: sandboxRoot,
+          baseEnv: {
+            PATH: '/usr/bin:/bin',
+            HOME: dir,
+            ANTHROPIC_API_KEY: 'stale',
+            AWS_PROFILE: 'bench',
+          },
+        },
+      },
+    );
+    assert.equal(summary.status, 'done', JSON.stringify(summary));
+    assert.equal(seen.length, 30);
+    for (const call of seen) {
+      assert.equal(call.command, 'opencode');
+      assert.deepEqual(call.args.slice(0, 5), [
+        'run',
+        '--standalone',
+        '--format',
+        'json',
+        '--auto',
+      ]);
+      assert.ok(call.cwd.startsWith(path.join(sandboxRoot, 'bench-judge-')));
+      assert.equal(call.mode, 0o700);
+      assert.equal(call.config.permission['*'], 'deny');
+      assert.equal(call.env.ANTHROPIC_API_KEY, undefined);
+      // The keys the job exported reach every call; the shell's profile does not.
+      assert.equal(call.env.AWS_ACCESS_KEY_ID, FRESH.accessKeyId);
+      assert.equal(call.env.AWS_SECRET_ACCESS_KEY, FRESH.secretAccessKey);
+      assert.equal(call.env.AWS_SESSION_TOKEN, FRESH.sessionToken);
+      assert.equal(call.env.AWS_PROFILE, undefined);
+      assert.equal(
+        call.env.XDG_CONFIG_HOME.startsWith(path.dirname(call.cwd)),
+        true,
+      );
+    }
+    assert.deepEqual(
+      fs.readdirSync(sandboxRoot),
+      [],
+      'every sandbox is removed',
+    );
+    const totals = readLedger(layout.ledgerFile);
+    assert.equal(totals.calls, 30);
+    assert.equal(totals.reserved, 0);
+    const record = judgmentOf(layout, 'items', TASKS[0], 'anthropic');
+    assert.equal(record.usage_source, 'stream');
+  }));
+
 // ---- buckets and task gaps ------------------------------------------------------------------------------------------
 
 test('a judgment records the score of the one answer it saw, with that answer arm', () => {
@@ -2049,14 +3092,19 @@ async function runJobMain(argv, judgeOptions) {
   };
 }
 
+/** judgeOptions for job main: the stub call, made-up fresh credentials, no retry pause, the arms in the temp folder. */
+const jobOptions = (tmpRoot, judgeCall) => ({
+  judgeCall,
+  readVersion: async () => 'v',
+  getCredentials: async () => FRESH,
+  now: () => NOW_MS,
+  retry: { sleep: async () => {}, baseMs: 0 },
+  armsTmpRoot: tmpRoot,
+});
+
 test('job main judge: exit 0 and a last line with the reading counts; exit 3 when judgments wait', () =>
   withRepo(async ({ layout, tmpRoot }) => {
-    const options = (stub) => ({
-      judgeCall: stub.judgeCall,
-      readVersion: async () => 'v',
-      now: () => NOW_MS,
-      armsTmpRoot: tmpRoot,
-    });
+    const options = (stub) => jobOptions(tmpRoot, stub.judgeCall);
     const argv = (scale) => [
       'judge',
       '--scale',
@@ -2082,7 +3130,9 @@ test('job main judge: exit 0 and a last line with the reading counts; exit 3 whe
       judged: 30,
       ineligible: 0,
       failed: 0,
+      refused: 0,
     });
+    assert.equal(done.last.blocked, 0);
     // Nothing is judged yet on a dry run, so every task would "not count": no task lines are printed.
     const dry = await runJobMain(
       [...argv('outcome'), '--dry-run'],
@@ -2109,6 +3159,37 @@ test('job main judge: exit 0 and a last line with the reading counts; exit 3 whe
     );
   }));
 
+test('job main judge: a judgment folder that cannot be written is exit 74 with "cannot write", and it stops the paid calls', (context) =>
+  withRepo(async ({ layout, tmpRoot }) => {
+    if (process.getuid && process.getuid() === 0) {
+      context.skip('a root user can write to a read-only folder');
+      return;
+    }
+    const folder = path.join(layout.runDir, 'judgments');
+    fs.mkdirSync(folder, { recursive: true });
+    fs.chmodSync(folder, 0o500);
+    try {
+      let calls = 0;
+      const out = [];
+      const err = [];
+      const code = await job.main(
+        ['judge', '--scale', 'items', '--skills', SKILL, '--root', layout.root],
+        { out: (text) => out.push(text), err: (text) => err.push(text) },
+        {
+          judgeOptions: jobOptions(tmpRoot, async (args) => {
+            calls += 1;
+            return okResult(labelsReply(args.prompt));
+          }),
+        },
+      );
+      assert.equal(code, 74, out.join('') + err.join(''));
+      assert.match(err.join(''), /cannot write/);
+      assert.ok(calls < 30, `${calls} calls`);
+    } finally {
+      fs.chmodSync(folder, 0o700);
+    }
+  }));
+
 test('job main judge: a spend stop is exit 5 and a failed judgment is printed by name', () =>
   withRepo(async ({ layout, tmpRoot }) => {
     const argv = [
@@ -2120,27 +3201,57 @@ test('job main judge: a spend stop is exit 5 and a failed judgment is printed by
       '--root',
       layout.root,
     ];
-    const spend = await runJobMain(argv, {
-      judgeCall: async () => {
+    const spend = await runJobMain(
+      argv,
+      jobOptions(tmpRoot, async () => {
         throw new SpendStopError('max_usd reached', 'max_usd');
-      },
-      readVersion: async () => 'v',
-      armsTmpRoot: tmpRoot,
-    });
+      }),
+    );
     assert.equal(spend.code, 5, spend.out + spend.err);
     assert.match(spend.out, /STOP \(spend\): SPEND STOP: max_usd reached/);
-    const failed = await runJobMain(argv, {
-      judgeCall: async (args) =>
-        args.label.includes(':anthropic:')
+    const failed = await runJobMain(
+      argv,
+      jobOptions(tmpRoot, async (args) =>
+        args.label.includes(`${TASKS[0]}:items:anthropic:`)
           ? failedResult('exit 1: boom')
           : okResult(labelsReply(args.prompt)),
-      readVersion: async () => 'v',
-      armsTmpRoot: tmpRoot,
-    });
+      ),
+    );
     assert.equal(failed.code, 3);
     assert.match(
       failed.out,
-      /failed: brew-log\/b1\/brew-log-rules-1:items:anthropic:with: exit 1: boom/,
+      /failed: brew-log\/b1\/brew-log-rules-1:items:anthropic:with: the call failed 3 time\(s\): exit 1: boom/,
+    );
+  }));
+
+test('job main judge: a judgment the provider blocked for good is printed by name, with the count on the last line', () =>
+  withRepo(async ({ layout, tmpRoot }) => {
+    const argv = [
+      'judge',
+      '--scale',
+      'items',
+      '--skills',
+      SKILL,
+      '--root',
+      layout.root,
+    ];
+    const target = `${TASKS[0]}:items:anthropic:with`;
+    const options = jobOptions(tmpRoot, async (args) =>
+      args.label.endsWith(target)
+        ? refusal()
+        : okResult(labelsReply(args.prompt)),
+    );
+    // Two blocks in the first launch, the third in the second: the judgment is refused for good.
+    const first = await runJobMain(argv, options);
+    assert.equal(first.code, 3, first.out + first.err);
+    assert.equal(first.last.blocked, 0);
+    const second = await runJobMain(argv, options);
+    assert.equal(second.code, 3, second.out + second.err);
+    assert.equal(second.last.blocked, 1);
+    assert.equal(second.last.results.refused, 1);
+    assert.match(
+      second.out,
+      /blocked by the provider: brew-log\/b1\/brew-log-rules-1:items:anthropic:with: the provider blocked the judge 3 time\(s\)/,
     );
   }));
 
