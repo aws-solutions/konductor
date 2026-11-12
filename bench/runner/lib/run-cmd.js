@@ -29,6 +29,7 @@ const { loadRun } = require('../../report/load.js');
 const { createInstallsGate, describeChange, judgeBatch } = require('./isolation-gates.js');
 const toolchain = require('./toolchain.js');
 const { ensureOwnedDir } = require('./owned.js');
+const { infraFailure } = require('./infra-check.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -409,7 +410,8 @@ async function cmdRun(opts) {
     });
     const judged = judgeBatch({ gate: batchWindow.end(), results, strict: Boolean(opts['gate-strict']), window: { from: batchFrom, to: new Date().toISOString() } });
     const gate = judged.gate;
-    fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
+    const infra = infraFailure(results);
+    fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(infra ? { infraFailure: infra } : {}), ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
     if (judged.warning) log(judged.warning);
     if (!gate.ok) {
       log(judged.alarm);
@@ -417,6 +419,10 @@ async function cmdRun(opts) {
     }
     log(`finished: ${JSON.stringify(summarize(runConfig, { ...state, results }, {}).counts)}, ${observed.toFixed(3)} ${unit} observed, ${charged.toFixed(3)} charged`);
     log(`final ${studyLine}`);
+    if (infra) {
+      log(`INFRA FAILURE: ${infra.reason}`);
+      if (!process.exitCode) process.exitCode = 5;
+    }
     if (guard === 'hard') {
       log('credit guard: HARD STOP, this command spent past 100% of --budget-credits; runs already in flight were counted, and no further run started');
       process.exitCode = 3;
