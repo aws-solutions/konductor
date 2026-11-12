@@ -42,6 +42,12 @@ const { LedgerError } = require('./lib/ledger');
 const { JsonFileError } = require('./lib/read-file');
 const { listSkills } = require('./lib/skills');
 const { buildPlan, renderPlan } = require('./lib/plan');
+const {
+  UsageError,
+  parseFlags,
+  parseMaxUsd,
+  parseSkillSelection,
+} = require('./lib/cli-args');
 
 const EX_USAGE = 64;
 const EX_NOINPUT = 66;
@@ -77,8 +83,6 @@ Exit codes
 Every failure except 70 prints an "error: <what> (<file>)" line and no stack trace.
 See scripts/bench/README.md for the file formats and what each term means.
 `;
-
-class UsageError extends Error {}
 
 /** Why a read failed, by the Node error code. Codes not listed here are shown as they are. */
 const IO_REASONS = {
@@ -167,57 +171,17 @@ const UNSUPPORTED_SELECTIONS = ['--all', '--changed-since'];
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
-  const options = {};
-  for (let i = 0; i < rest.length; i++) {
-    const equalsIndex = rest[i].startsWith('-') ? rest[i].indexOf('=') : -1;
-    const flag = equalsIndex > 0 ? rest[i].slice(0, equalsIndex) : rest[i];
-    if (UNSUPPORTED_SELECTIONS.includes(flag))
-      throw new UsageError(
+  const options = parseFlags(rest, {
+    valueFlags: VALUE_FLAGS,
+    boolFlags: BOOL_FLAGS,
+    refusedFlags: Object.fromEntries(
+      UNSUPPORTED_SELECTIONS.map((flag) => [
+        flag,
         `${flag} is not available yet; select skills with --skills a,b`,
-      );
-    if (Object.hasOwn(BOOL_FLAGS, flag)) {
-      // `--json=false` must not switch JSON on, so a value on a flag that takes none is refused.
-      if (equalsIndex > 0)
-        throw new UsageError(`${flag} does not take a value`);
-      options[BOOL_FLAGS[flag]] = true;
-    } else if (Object.hasOwn(VALUE_FLAGS, flag)) {
-      const value =
-        equalsIndex > 0 ? rest[i].slice(equalsIndex + 1) : rest[++i];
-      if (value === undefined || value === '' || value.startsWith('--'))
-        throw new UsageError(`${flag} needs a value`);
-      options[VALUE_FLAGS[flag]] = value;
-    } else {
-      throw new UsageError(`unknown option ${flag}`);
-    }
-  }
-  return { command, options };
-}
-
-/** Digits with an optional fraction: "2.5" and "25". Not "0x10", "1e1", " 5 ", "+5", ".5" or "5.". */
-const PLAIN_DECIMAL = /^\d+(\.\d+)?$/;
-
-/** The value of --max-usd as a number. `Number()` alone would read hex, exponents and padded text. */
-function parseMaxUsd(text) {
-  const maxUsd = PLAIN_DECIMAL.test(text) ? Number(text) : NaN;
-  if (!(Number.isFinite(maxUsd) && maxUsd > 0))
-    throw new UsageError(
-      `--max-usd: must be a plain decimal number above 0 such as 2.5, got ${JSON.stringify(text)}`,
-    );
-  return maxUsd;
-}
-
-function parseSkillSelection(skillList) {
-  const names = [
-    ...new Set(
-      skillList
-        .split(',')
-        .map((skillName) => skillName.trim())
-        .filter(Boolean),
+      ]),
     ),
-  ];
-  if (!names.length)
-    throw new UsageError('--skills needs at least one skill name');
-  return names;
+  });
+  return { command, options };
 }
 
 function listBaselineSkills(layout) {
@@ -417,6 +381,7 @@ module.exports = {
   main,
   parseArgs,
   describeFailure,
+  isSystemError,
   USAGE,
   EX_USAGE,
   EX_NOINPUT,
