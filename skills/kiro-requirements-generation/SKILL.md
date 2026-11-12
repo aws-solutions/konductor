@@ -187,7 +187,7 @@ The generated `requirements.md` MUST follow this exact structure:
 
 **User Story:** As a [role], I want [feature], so that [benefit]
 
-**Source:** [Story ID] ([story title]), [source file name]
+**Source:** [Story ID] ([story title]), [feature-split or stories file name]
 
 #### Acceptance Criteria
 
@@ -221,6 +221,7 @@ The generated `requirements.md` MUST follow this exact structure:
 
 ### Format Rules
 
+- An optional `## Out of Scope` section may sit between the Introduction and the Glossary, listing the non-goals no requirement covers. Kiro's design-first requirements.md can include one
 - Each requirement maps to one user story and names it on its `**Source:**` line. A story may produce several requirements (for example, the behavior and its input validation); each of them cites the same story
 - The Glossary defines every system, component and domain term the criteria use. Write multi-word terms as one token with underscores (`Notes_API`, `Create_Request`) and use them with that exact spelling in every criterion, so each criterion reads unambiguously. Put limits in the definition (`A valid Title is 1 to 200 characters`) rather than repeating them loosely
 - Requirement titles are short and descriptive (3-8 words)
@@ -317,11 +318,11 @@ When this skill is activated, follow these steps:
 
 Read the approved user stories from the upstream artifact. Sources (in priority order):
 
-1. The user stories path the caller passes, or a handoff file such as `.konductor/handoff/product-manager-user-stories.md` or `user-stories-extract.md`
+1. The feature split and user stories paths the caller passes, or a handoff file such as `.konductor/handoff/product-manager-user-stories.md` or `user-stories-extract.md`
 2. User stories provided directly in the conversation
 3. Existing requirements documents referenced by the user
 
-Record each story's ID as the source gives it: `US-3` from a feature split, `Story 2.1` from `user-stories-extract.md`. If the stories carry no IDs, number them `US-1`, `US-2`, ... in the order they appear in the source and say so in the Introduction, so the IDs stay reproducible.
+When the caller passes a feature split (`feature_scope_path`, from `task-decomposition`), its story IDs are authoritative: use the ID the split gives each story, even where the stories file numbers it differently, take the title from the stories file, and name the feature-split file on the Source line. Without a split, record each story's ID as the stories file gives it, for example `Story 2.1` from `user-stories-extract.md`. If the stories carry no IDs, number them `US-1`, `US-2`, ... in the order they appear in the source and say so in the Introduction, so the IDs stay reproducible.
 
 ### Step 2: Confirm Feature Scope
 
@@ -360,37 +361,51 @@ Assemble the full `requirements.md` following the output format:
 
 ### Step 6: Validate
 
-Before presenting output, verify:
+Before presenting a feature spec's requirements.md, verify:
 
 - [ ] Every acceptance criterion contains `SHALL`
 - [ ] Every criterion uses one of the 6 EARS patterns
-- [ ] Every requirement has a user story and a `**Source:**` line whose ID exists in the source stories file
+- [ ] Every requirement has a user story and a `**Source:**` line whose ID exists in the feature split, or in the stories file when there is no split
 - [ ] Every in-scope story is the source of at least one requirement
 - [ ] Every term the criteria capitalize as a defined term is in the Glossary
 - [ ] No vague terms without measurable values (replace "fast" with "< 200ms", "many" with specific counts)
 - [ ] Error/failure scenarios are covered with Unwanted (IF/THEN) patterns
 - [ ] Feature directory name is kebab-case
 
+Before presenting a bugfix spec's bugfix.md, verify:
+
+- [ ] The Current, Expected and Unchanged Behavior sections and the Bug Condition are all present
+- [ ] Items are plain lines numbered `section.item`, not a Markdown list
+- [ ] Every Current Behavior item states the defect without `SHALL` and is reproducible from its condition
+- [ ] Every Current Behavior item `1.N` has an Expected Behavior item `2.N` with the same condition and a `SHALL`
+- [ ] Every Unchanged Behavior item uses `SHALL CONTINUE TO`, with at least one per changed code path
+- [ ] `isBugCondition` is defined precisely enough to generate inputs, with the fix and preservation properties after it
+- [ ] The Introduction names the bug report ID
+- [ ] No vague terms without measurable values
+- [ ] Spec directory name is kebab-case
+
 ## Quality Gate
 
 **CRITICAL (must fix before done):**
 
-- Acceptance criterion missing EARS keywords (`SHALL`, `WHEN`, `WHILE`, `WHERE`, `IF/THEN`)
-- No `SHALL` keyword in a criterion — every criterion must specify what the system SHALL do
-- Requirement missing its source user story, or its `**Source:**` ID not found in the source stories
-- An in-scope user story with no requirement citing it
-- Feature directory name not in kebab-case
-- requirements.md missing the Introduction or Requirements sections
-- bugfix.md missing one of its three behavior sections or the Bug Condition, or an Unchanged Behavior item without `SHALL CONTINUE TO`
+- Feature spec: an acceptance criterion missing EARS keywords (`SHALL`, `WHEN`, `WHILE`, `WHERE`, `IF/THEN`)
+- Feature spec: no `SHALL` keyword in a criterion — every criterion must specify what the system SHALL do
+- Feature spec: a requirement missing its source user story, or its `**Source:**` ID not found in the feature split (or the stories file when there is no split)
+- Feature spec: an in-scope user story with no requirement citing it
+- Feature spec: requirements.md missing the Introduction or Requirements sections
+- Bugfix spec: bugfix.md missing one of its three behavior sections or the Bug Condition, or an Unchanged Behavior item without `SHALL CONTINUE TO`
+- Bugfix spec: a Current Behavior item with no Expected Behavior item of the same number, or an Expected Behavior item without `SHALL`
+- Spec directory name not in kebab-case
 
 **IMPORTANT (should fix):**
 
-- No Glossary, or a term used in criteria that the Glossary does not define
+- Feature spec: no Glossary, or a term used in criteria that the Glossary does not define
+- Bugfix spec: a Current Behavior item that carries `SHALL` or cannot be reproduced from its condition, or an Introduction without the bug report ID
 - Vague triggers without specific events ("when something happens" → specify the exact event)
 - Untestable criteria — no measurable outcome or observable behavior
-- Missing error/failure scenarios for a requirement that involves external calls or user input
+- Feature spec: missing error/failure scenarios for a requirement that involves external calls or user input
 - Acceptance criteria describe implementation details instead of observable behavior
-- Fewer than 3 acceptance criteria per requirement
+- Feature spec: fewer than 3 acceptance criteria per requirement
 
 **SUGGESTION:**
 
