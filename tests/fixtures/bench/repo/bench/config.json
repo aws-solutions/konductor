@@ -21,5 +21,6 @@
   "judge_timeout_ms": 240000,
   "judge_timeout_ms_by_seat": {
     "xai": 720000
-  }
+  },
+  "runner_profile": "legacy"
 }
