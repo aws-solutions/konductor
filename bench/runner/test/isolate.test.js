@@ -309,3 +309,26 @@ test('realHomes finds the account home from the password database even when HOME
     assert.ok(homes.includes(fs.realpathSync(os.userInfo().homedir)));
   } finally { fs.rmSync(scratch, { recursive: true, force: true }); }
 });
+
+test('an ssh-agent dir that vanishes or refuses the mount does not abort the isolation script', () => {
+  const scratch = mkScratch('scr-');
+  const tmp = mkScratch('sshtmp-');
+  const gone = path.join(fs.realpathSync(tmp), 'ssh-GONE');
+  const stuck = path.join(fs.realpathSync(tmp), 'ssh-STUCK');
+  fs.mkdirSync(gone);
+  fs.mkdirSync(stuck);
+  try {
+    const iso = makeIsolation({ mode: 'unshare', scratchRoot: scratch, sshTmp: tmp });
+    fs.rmSync(gone, { recursive: true });
+    const lines = iso.script.split('\n').filter((l) => l.includes('ssh-'));
+    assert.equal(lines.length, 2);
+    const run = spawnSync('sh', ['-c', ['set -e', 'mount() { return 32; }', ...lines, 'echo reached'].join('\n')], { encoding: 'utf8' });
+    assert.equal(run.status, 0, run.stderr);
+    assert.match(run.stdout, /reached/);
+    assert.match(run.stderr, /could not hide .*ssh-STUCK/);
+    assert.doesNotMatch(run.stderr, /ssh-GONE/);
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});

@@ -224,12 +224,20 @@ function buildProfile({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTre
   ].join('\n');
 }
 
-function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees, offline = false }) {
+// A soft mask is best effort: its path can vanish or refuse the mount after the listing (an ssh-agent dir
+// is removed when its session ends), and that must not abort the whole script under `set -e`.
+function softMaskLine(p) {
+  if (!statOrNull(p)) return null;
+  const mount = statOrNull(p).isDirectory() ? `mount -t tmpfs tmpfs ${shq(p)}` : `mount --bind /dev/null ${shq(p)}`;
+  return `if [ -e ${shq(p)} ]; then ${mount} || echo ${shq(`bench: could not hide ${p}`)} >&2; fi`;
+}
+
+function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees, softMasks = [], offline = false }) {
   const lines = ['set -e', 'ro() { mount --rbind "$1" "$1" && mount -o remount,ro,bind "$1"; }'];
   for (const d of [...homes, ...systemDirs, ...readOnlyTrees]) lines.push(`ro ${shq(d)}`);
   lines.push(`mount --bind ${shq(scratchRoot)} ${shq(scratchRoot)} && mount -o remount,rw,bind ${shq(scratchRoot)}`);
   for (const t of hideTargets(homes, hide, masks)) {
-    const line = maskLine(t);
+    const line = softMasks.includes(t) ? softMaskLine(t) : maskLine(t);
     if (line) lines.push(line);
   }
   // Loopback must come up while the namespace still holds its capabilities; a missing `ip` leaves it down.
@@ -266,7 +274,8 @@ function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [
     (keepPaths.some((k) => inside(k, r)) ? readOnlyTrees : hidden).push(r);
   }
 
-  const tmpMasks = [...runtimeSockets(socketDirs), ...sshAgentDirs(sshTmp), runtimeDir(), ...hidden].filter(Boolean);
+  const sshDirs = sshAgentDirs(sshTmp);
+  const tmpMasks = [...runtimeSockets(socketDirs), ...sshDirs, runtimeDir(), ...hidden].filter(Boolean);
   const dirMasks = mask.map((m) => realOrNull(m)).filter((m) => m && !inside(scratch, m) && !inside(m, scratch));
   const keys = uniq([...mask, ...keyRoots].flatMap((m) => findAnswerKeys(m))).filter((k) => !dirMasks.some((d) => inside(k, d)));
   const masks = uniq([...tmpMasks, ...dirMasks, ...keys]).filter((m) => !inside(scratch, m));
@@ -275,7 +284,7 @@ function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [
     const profile = buildProfile({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees: sbReadOnly, offline });
     return { mode, profile, flaggedInHome: sandboxFlaggedInHome(homes), wrap: (file, args) => ({ file: SANDBOX_BIN, args: ['-p', profile, file, ...args] }) };
   }
-  const script = buildScript({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees, offline });
+  const script = buildScript({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees, softMasks: sshDirs, offline });
   return {
     mode,
     script,
