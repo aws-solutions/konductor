@@ -305,6 +305,54 @@ const isPlainObject = (value) =>
 const isNonEmptyString = (value) =>
   typeof value === 'string' && value.length > 0;
 
+/**
+ * What the judge job plans the ladder items in `items` from, without a file on disk:
+ *   taskSets   { [item]: { skill, batches: [{ batch, read_b, tasks }], warnings } } in the shape jobs.js planJobs reads.
+ *              The batch is the ladder's `set`. `read_b` is false: an item has no rules checklist, so it is read by
+ *              A only. Each task holds the fields the request-only checklist is written from (id, prompt, rubric:
+ *              the same three the checklist job gives the writer).
+ *   answer     (item, taskId, arm) => the authored answer record (assembleLadder), or null
+ * The answers come from the ladder itself. They are authored, so there is no run that could leave one missing or
+ * stale; a changed ladder changes the answer hashes, and the judgment digest with them.
+ */
+function judgingSets(ladder, items) {
+  const assembled = assembleLadder(ladder);
+  const records = new Map(
+    assembled.answers.map(({ item, taskId, arm, record }) => [
+      `${item}\u0000${taskId}\u0000${arm}`,
+      record,
+    ]),
+  );
+  const taskSets = {};
+  for (const item of items) {
+    const itemRecord = assembled.items[item];
+    if (!itemRecord)
+      throw new LadderError(
+        `${item} is not an item of dose ladder ${assembled.set}`,
+      );
+    taskSets[item] = {
+      skill: item,
+      batches: [
+        {
+          batch: assembled.set,
+          read_b: false,
+          tasks: itemRecord.tasks.map((task) => ({
+            id: task.id,
+            prompt: task.prompt,
+            rubric: [...task.rubric],
+          })),
+        },
+      ],
+      warnings: [],
+    };
+  }
+  return {
+    taskSets,
+    answer: (item, taskId, arm) =>
+      records.get(`${item}\u0000${taskId}\u0000${arm}`) || null,
+  };
+}
+
 /** Problems with the keys of one object: a missing required key or a key the format does not have. */
 function fieldProblems(where, value, fields) {
   if (!isPlainObject(value)) return [`${where} must be an object`];
@@ -705,6 +753,7 @@ module.exports = {
   itemNames,
   buildPairs,
   assembleLadder,
+  judgingSets,
   validateLadder,
   writeLadderAnswers,
 };

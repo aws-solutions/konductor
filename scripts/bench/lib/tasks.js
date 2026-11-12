@@ -33,7 +33,7 @@ const { ARMS } = require('./layout');
 const { PROVENANCE_VERSION, fileSha256, sha256 } = require('./provenance');
 const { readFile } = require('./read-file');
 const { forSkill } = require('./runner');
-const { resolveAgent } = require('./skills');
+const { listStrayControlFolders, resolveAgent } = require('./skills');
 
 const ANSWER_KIND = 'answer';
 const HEADING_LEVELS = Object.freeze([3, 4]);
@@ -279,7 +279,8 @@ function assembleTasks({
  * the arms stay on disk for the subject runs and the caller removes them (arms.js removeArms); otherwise they are
  * removed here and `arms` is null. A call that throws leaves no arms on disk.
  *
- * Throws TaskSetError when the skill has no agent or its baseline cannot be assembled.
+ * Throws TaskSetError when the skill has no agent, its baseline cannot be assembled, or the control skills folder holds
+ * a folder that is not a control skill (skills.js listStrayControlFolders).
  * An agent spec that cannot be read is thrown as skills.js AgentSpecError.
  */
 function loadTaskSet({
@@ -295,13 +296,19 @@ function loadTaskSet({
   if (!agent) throw new TaskSetError(skill, ['no agent lists the skill']);
   requireUsableBaseline(skill, baseline);
   const runner = forSkill(skill, config.runner_profile);
+  const controlsDir = controlSkillsDir || layout.controlSkillsDir;
+  const strays = listStrayControlFolders(controlsDir);
+  if (strays.length)
+    throw new TaskSetError(skill, [
+      `${controlsDir} holds ${strays.join(', ')}, which ${strays.length === 1 ? 'is' : 'are'} not a control skill (layout.js CONTROL_SKILLS); the arms would install ${strays.length === 1 ? 'it' : 'them'} in place of the skill of that name`,
+    ]);
   const arms = buildArms(skill, {
     skillsDir: layout.skillsDir,
     agentsDir: layout.agentsDir,
     agent,
     explicitInstruction: runner.explicitInstruction,
     ...(tmpRoot ? { tmpRoot } : {}),
-    ...(controlSkillsDir ? { controlSkillsDir } : {}),
+    controlSkillsDir: controlsDir,
   });
   let taskSet;
   try {

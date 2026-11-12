@@ -962,6 +962,24 @@ test('launch.js and job.js take the one table of flags that lib/launch.js keeps'
   ]);
 });
 
+test('launch.js and job.js say the same of --ladder: the jobs that take it are the jobs of the table', () => {
+  const jobCli = require('../../../scripts/bench/job');
+  const takers = Object.entries(launchLib.JOBS)
+    .filter(([, job]) => job.ladder)
+    .map(([name]) => name);
+  assert.deepEqual(takers, ['checklists', 'judge']);
+  for (const [name, usage] of [
+    ['launch.js', launchCli.USAGE],
+    ['job.js', jobCli.USAGE],
+  ]) {
+    const line = usage.split('\n').find((text) => /^ {2}--ladder /.test(text));
+    assert.ok(line, `${name} describes --ladder`);
+    for (const taker of takers)
+      assert.ok(line.includes(taker), `${name}: ${line}`);
+    assert.doesNotMatch(line, /only/, `${name}: ${line}`);
+  }
+});
+
 test('parseJobCommand: no job, --help and -h answer help; a valid command gives the job, its options and the checked request', () => {
   const { parseJobCommand } = launchLib;
   for (const argv of [

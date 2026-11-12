@@ -14,7 +14,8 @@
  *   3. Readings (readings-report.js readSkill), the guard result (guard-report.js), the label (labels.js) and the
  *      report figures (report.js skillDetails).
  * `convention-control` is a control, not a measured skill: it is read the same way and goes to the controls check,
- * never to the label table. The dose ladder is not judged yet, so it is not in the report.
+ * never to the label table. The dose ladder (--skills dose-ladder, controls.js) has no plan row: its items are read by
+ * A from the judgments of the ladder's authored answers and go to the controls check too.
  *
  * The run's spend comes from `ledgerFile` (the shared ledger, or a stub run's own one). Both files are redacted and
  * written through temporary files: each is written to a temporary file first, and the two renames follow. A write
@@ -29,6 +30,8 @@ const fs = require('fs');
 const path = require('path');
 
 const { collectBatches, buildGuardReport } = require('./guard-report');
+const { selectedLadder, splitSelection } = require('./controls');
+const { itemNames } = require('./dose-ladder');
 const { createJudgeInput } = require('./judge-input');
 const { RUNNABLE_STATUSES, planJudging } = require('./judge-job');
 const { labelSkill } = require('./labels');
@@ -37,6 +40,7 @@ const { buildPlan } = require('./plan');
 const {
   CONVENTION_CONTROL,
   buildReadingsReport,
+  ladderDoses,
   readSkill,
 } = require('./readings-report');
 const { INPUT_CEILING, redact } = require('./redact');
@@ -178,6 +182,34 @@ function readOneSkill({
 }
 
 /**
+ * The ladder input of the readings report (readings-report.js ladderDoses): each dose item read by A from the
+ * judgments the judge job counts as current. Returns [{ dose, n, skill, summary }] in dose order.
+ */
+function readLadderControl({ layout, config, ladder, judgeInput, warnings }) {
+  const items = itemNames(ladder);
+  const planned = planJudging({
+    layout,
+    config,
+    skills: items,
+    scale: 'outcome',
+    judgeInput,
+    ladder,
+  });
+  warnings.push(...planned.warnings);
+  const summaries = Object.fromEntries(
+    items.map((item) => [
+      item,
+      readSkill({
+        skill: item,
+        outcomeJobs: planned.jobs,
+        excluded: planned.excluded,
+      }),
+    ]),
+  );
+  return ladderDoses(ladder.doses, summaries);
+}
+
+/**
  * Builds the report of `skills` in the run of `layout`. Reads files and writes nothing. Options:
  *   layout, config, skills   the layout, the settings and the selected skill names
  *   ledgerFile               the ledger the run books into (default: layout.ledgerFile)
@@ -195,7 +227,8 @@ function collectReport({
   provider = 'live',
   armsTmpRoot,
 }) {
-  const plan = buildPlan({ layout, config, skills });
+  const { skills: planned, ladder: wantsLadder } = splitSelection(skills);
+  const plan = buildPlan({ layout, config, skills: planned });
   const warnings = [...plan.warnings];
   // The subject runner stores an answer as it is. A text that holds one of the run's credential values stops that run
   // (claude-run.js, sweepTrace), so no stored answer holds one and the report, which has none of those values, needs
@@ -215,10 +248,20 @@ function collectReport({
     if (row.skill === CONVENTION_CONTROL) convention = read.summary;
     else measured.push(read);
   }
+  const ladder = wantsLadder
+    ? readLadderControl({
+        layout,
+        config,
+        ladder: selectedLadder(layout).ladder,
+        judgeInput,
+        warnings,
+      })
+    : null;
   const generatedAt = new Date(now()).toISOString();
   const readings = buildReadingsReport({
     skills: measured.map((entry) => entry.summary),
     convention,
+    ladder,
     generatedAt,
   });
   let spend = null;

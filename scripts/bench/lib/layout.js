@@ -19,6 +19,16 @@
  *   bench/out/<run-id>/judgments/<items|outcome>/<skill>/<batch>/<task>.<seat>.<with|without>.json
  *   bench/out/<run-id>/jobs/<job>.<skills>.log, .pid               job logs and pid files (job-dir.js)
  *
+ * The controls belong to the benchmark, not to the skills folder, so no installer ships them:
+ *
+ *   scripts/bench/skills/<control>/SKILL.md            a control skill (CONTROL_SKILLS)
+ *   scripts/bench/controls/<control>/rules.json, tasks-<batch>.json, tasks-<batch>.buckets.json
+ *                                                       its baseline, in the same formats as any baseline
+ *   scripts/bench/controls/dose-ladder-v1.json          the dose ladder (dose-ladder.js)
+ *
+ * For a control skill, skillDir, skillMd and baselineDir point there; every other path is the same as for a skill.
+ * Both folders are under `root`, so a copy of the repository carries its own controls.
+ *
  * The baseline, exclusions, ledger and report paths are fixed. The layout under
  * bench/out/<run-id>/ for answers, checklists and judgments is chosen here; code that writes those
  * files must use these helpers. Each answer is judged on its own, so a judgment file belongs to one arm: its
@@ -54,13 +64,17 @@ const ARMS = Object.freeze(['with', 'without']);
 /** `items` is reading B (the rules checklist), `outcome` is reading A (the request-only checklist). */
 const SCALES = Object.freeze(['items', 'outcome']);
 /**
- * The control skills: benchmark-owned skills that no agent declares. A control skill is selected by name, like a
- * skill, and the arms add it to the agent's `with` arm (arms.js). The list is fixed here, not read from disk, and
- * the arm builder (arms.js isControlSkill) installs only a folder with one of these names, so a folder under any
- * other name in scripts/bench/skills/ is never installed in place of the skill of the same name.
+ * The control skills and the agent each one runs under. A control skill is selected with --skills by name, like a
+ * skill; no agent declares it, so the arms add it to the agent's `with` arm (arms.js). The list is fixed here, not
+ * read from disk: every path below follows it, and the arm builder (arms.js isControlSkill) installs only a folder
+ * with one of these names. A folder in scripts/bench/skills/ under any other name is ignored there and refused by
+ * task assembly (tasks.js loadTaskSet), because the hashes and the staleness checks read skills/<name>/SKILL.md and
+ * not the stray folder.
  */
-const CONTROL_SKILLS = Object.freeze(['convention-control']);
+const CONTROL_AGENTS = Object.freeze({ 'convention-control': 'k-developer' });
+const CONTROL_SKILLS = Object.freeze(Object.keys(CONTROL_AGENTS));
 const isControlName = (skill) => CONTROL_SKILLS.includes(skill);
+const LADDER_FILE_NAME = 'dose-ladder-v1.json';
 
 // The name rule is shared with the file-format validators (names.js), so a task id or batch name
 // they accept is one this layout accepts.
@@ -108,8 +122,18 @@ function createLayout({ root = REPO_ROOT, runId = DEFAULT_RUN_ID } = {}) {
   const baselinesDir = path.join(benchDir, 'baselines');
   const outDir = path.join(benchDir, 'out');
   const runDir = path.join(outDir, requireRunId(runId));
+  const controlSkillsDir = path.join(root, 'scripts', 'bench', 'skills');
+  const controlsDir = path.join(root, 'scripts', 'bench', 'controls');
   const baselineDir = (skill) =>
-    path.join(baselinesDir, requireSafeSegment('skill', skill));
+    path.join(
+      isControlName(skill) ? controlsDir : baselinesDir,
+      requireSafeSegment('skill', skill),
+    );
+  const skillDir = (skill) =>
+    path.join(
+      isControlName(skill) ? controlSkillsDir : path.join(root, 'skills'),
+      requireSafeSegment('skill', skill),
+    );
   const taskTree = (kind, skill, batch) =>
     path.join(
       runDir,
@@ -136,10 +160,13 @@ function createLayout({ root = REPO_ROOT, runId = DEFAULT_RUN_ID } = {}) {
     /** The private job folder: the logs and pid files of the jobs started for this run (job-dir.js). */
     jobsDir: path.join(runDir, 'jobs'),
 
-    skillDir: (skill) =>
-      path.join(root, 'skills', requireSafeSegment('skill', skill)),
-    skillMd: (skill) =>
-      path.join(root, 'skills', requireSafeSegment('skill', skill), 'SKILL.md'),
+    /** The benchmark's own control skills (arms.js controlSkillsDir) and their baselines, and the dose ladder. */
+    controlSkillsDir,
+    controlsDir,
+    ladderFile: path.join(controlsDir, LADDER_FILE_NAME),
+
+    skillDir,
+    skillMd: (skill) => path.join(skillDir(skill), 'SKILL.md'),
     baselineDir,
     rulesFile: (skill) => path.join(baselineDir(skill), 'rules.json'),
     tasksFile: (skill, batch) =>
@@ -206,6 +233,7 @@ module.exports = {
   DEFAULT_RUN_ID,
   ARMS,
   SCALES,
+  CONTROL_AGENTS,
   CONTROL_SKILLS,
   isControlName,
   LayoutError,

@@ -4,7 +4,8 @@
  *
  * An agent declares a skill in `dependencies.skills.skillNames` of its `agents/<name>.agent-spec.json`.
  * Agent for a skill: the agent that declares the skill. When several declare it, `k-developer` if it is one of them,
- * otherwise the first by name. When none does, the skill is skipped as `no agent`.
+ * otherwise the first by name. A control skill (layout.js CONTROL_AGENTS) runs under its fixed agent. When none
+ * does, the skill is skipped as `no agent`.
  *
  * Every spec is read with the shared JSON reader (read-file.js), so a byte order mark is fine and a key used
  * twice is refused. A spec that cannot be used is not skipped, because the plan would then pick another agent or
@@ -15,6 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { CONTROL_AGENTS, CONTROL_SKILLS, isControlName } = require('./layout');
 const { readJsonFile, JsonFileError } = require('./read-file');
 
 const PREFERRED_AGENT = 'k-developer';
@@ -28,6 +30,32 @@ class AgentSpecError extends Error {
     this.file = file;
     this.detail = detail;
   }
+}
+
+/** Names of the control skills (layout.js CONTROL_SKILLS) whose SKILL.md is in the layout's control folder. */
+const listControlSkills = (layout) =>
+  CONTROL_SKILLS.filter((skill) => fs.existsSync(layout.skillMd(skill)));
+
+/**
+ * Names in `controlSkillsDir` that hold a SKILL.md but are not control skills (layout.js CONTROL_SKILLS), sorted. The
+ * folder belongs to the controls: such a name is a mistake, and the arm builder would install it in place of the
+ * skill of that name.
+ */
+function listStrayControlFolders(controlSkillsDir) {
+  let names;
+  try {
+    names = fs.readdirSync(controlSkillsDir);
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+  return names
+    .filter(
+      (name) =>
+        !isControlName(name) &&
+        fs.existsSync(path.join(controlSkillsDir, name, 'SKILL.md')),
+    )
+    .sort();
 }
 
 /** Names of the folders under skillsDir that hold a SKILL.md, sorted. */
@@ -87,6 +115,9 @@ function declaringAgents(skill, agentsDir) {
 
 /** @returns {{ agent: string|null, why: string }} `why` says how the agent was chosen, for `plan` to print. */
 function resolveAgent(skill, { agentsDir }) {
+  // A control skill is the benchmark's own, so no agent declares it; it runs under its fixed agent.
+  if (isControlName(skill))
+    return { agent: CONTROL_AGENTS[skill], why: 'control skill' };
   const declared = declaringAgents(skill, agentsDir);
   if (!declared.length) return { agent: null, why: 'no agent declares it' };
   if (declared.length === 1)
@@ -103,6 +134,8 @@ function resolveAgent(skill, { agentsDir }) {
 }
 
 module.exports = {
+  listControlSkills,
+  listStrayControlFolders,
   listSkills,
   declaringAgents,
   resolveAgent,
