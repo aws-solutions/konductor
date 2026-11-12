@@ -966,7 +966,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.1.0');
+      expect(info.version).toBe('1.2.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -983,6 +983,59 @@ describe('workflow canvas API contract', () => {
       expect(description).toMatch(/limits `version` to a semantic version/);
       expect(description).toMatch(/drops the string form of `intent`/);
       expect(description).toMatch(/`api_version` stays 1/);
+    });
+  });
+
+  describe('the session', () => {
+    const words = (text: string) => text.replace(/\s+/g, ' ');
+    const session = () =>
+      jsonBodyOf(spec, 'POST /api/session', '200').example as {
+        capabilities: string[];
+        limits: Record<string, number>;
+      };
+    const schema = (name: string) => spec.components.schemas[name]!;
+    const property = (name: string, key: string) =>
+      (schema(name)['properties'] as Record<string, Schema>)[key]!;
+
+    it('lists every operation of this document as a capability', () => {
+      const ids = listOperations(spec).map(
+        ({ operation }) => operation.operationId,
+      );
+      expect([...session().capabilities].sort()).toEqual([...ids].sort());
+    });
+
+    it('reports the limits that the rest of the document states', () => {
+      const { limits } = session();
+      const runParams = property('RunRequest', 'params')[
+        'properties'
+      ] as Record<string, Schema>;
+
+      expect(limits['stages']).toBe(
+        property('WorkflowView', 'stages')['maxItems'],
+      );
+      expect(limits['outcome_chars']).toBe(
+        property('Intent', 'outcome')['maxLength'],
+      );
+      expect(limits['prompt_chars']).toBe(
+        property('Stage', 'prompt')['maxLength'],
+      );
+      expect(limits['goal_chars']).toBe(runParams['goal']?.['maxLength']);
+      expect(property('SaveRequest', 'text')['description']).toContain(
+        `at most ${limits['text_bytes']} bytes`,
+      );
+    });
+
+    it('names every limit as required', () => {
+      const limits = schema('SessionLimits');
+      expect([...(limits['required'] as string[])].sort()).toEqual(
+        Object.keys(limits['properties'] as object).sort(),
+      );
+    });
+
+    it('says that version 1.2.0 only adds to the session response', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.2\.0 only adds: the session response gains `konductor_version`, `capabilities` and `limits`/,
+      );
     });
   });
 

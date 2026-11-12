@@ -13,6 +13,7 @@ interface Media {
   examples?: Record<string, { value: unknown }>;
 }
 interface Operation {
+  operationId?: string;
   security?: unknown[];
   requestBody?: { content: Record<string, Media> };
   responses: Record<string, { content?: Record<string, Media> }>;
@@ -72,8 +73,9 @@ export function expectContract(
   );
 }
 
-/** One operation of the contract: its method, path template and whether it needs the token. */
+/** One operation of the contract: its id, method, path template and whether it needs the token. */
 export interface ContractOperation {
+  id: string;
   method: string;
   path: string;
   secured: boolean;
@@ -96,11 +98,23 @@ export function contractOperations(): ContractOperation[] {
     Object.entries(item)
       .filter(([method]) => HTTP_METHODS.has(method))
       .map(([method, operation]) => ({
+        id: operation.operationId ?? '',
         method: method.toUpperCase(),
         path,
         secured: (operation.security ?? spec.security ?? []).length > 0,
       })),
   );
+}
+
+/** The value of the example of a response, such as the session of `POST /api/session`. */
+export function responseExampleOf(
+  method: string,
+  path: string,
+  status: number,
+): unknown {
+  return operationOf(method, path).responses[String(status)]?.content?.[
+    'application/json'
+  ]?.example;
 }
 
 /** Checks an error that the contract names for every path, such as a 404. */

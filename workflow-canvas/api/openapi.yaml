@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.1.0
+  version: 1.2.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -25,7 +25,9 @@ info:
     version and drops the string form of `intent`. None of these is an
     addition, so a file written for 1.0.0 fails the check. `api_version` stays
     1 and `info.version` moves from 1.0.0 to 1.1.0: there is no client of 1.0.0
-    to break, so there is no reason to start a second major version.
+    to break, so there is no reason to start a second major version. Version
+    1.2.0 only adds: the session response gains `konductor_version`,
+    `capabilities` and `limits`.
 
     **Conventions**
 
@@ -399,6 +401,11 @@ paths:
         Exchanges the launch code for the session token that every other call
         needs. This call needs no token. A code works once, and for 60 seconds from
         the moment the server prints the launch address.
+
+        The answer also says which server the page is talking to: the version
+        of Konductor that serves it, the operations it supports, and the limits
+        it holds a workflow and a run to. A client reads the limits from here
+        instead of keeping its own copy.
       tags: [Session]
       security: []
       requestBody:
@@ -424,6 +431,20 @@ paths:
                 root: hello
                 harness: kiro-cli
                 api_version: 1
+                konductor_version: 1.2.0
+                capabilities:
+                  - createSession
+                  - getWorkflow
+                  - saveWorkflow
+                  - checkWorkflow
+                  - startRun
+                  - getRun
+                limits:
+                  text_bytes: 262144
+                  stages: 40
+                  outcome_chars: 300
+                  prompt_chars: 32768
+                  goal_chars: 2048
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1710,7 +1731,14 @@ components:
           description: The launch code.
     SessionResponse:
       type: object
-      required: [token, root, harness, api_version]
+      required:
+        - token
+        - root
+        - harness
+        - api_version
+        - konductor_version
+        - capabilities
+        - limits
       properties:
         token:
           type: string
@@ -1725,6 +1753,55 @@ components:
           type: integer
           minimum: 1
           description: The major version of this contract. It is `1`, as in `X-Konductor-Api`.
+        konductor_version:
+          type: string
+          pattern: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'
+          description: |
+            The version of Konductor that serves the API, as `X.Y.Z` with an
+            optional `-` suffix. It is for showing to a person and for bug
+            reports. A client does not pick what to call from it; it reads
+            `capabilities`.
+        capabilities:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            pattern: '^[a-z][A-Za-z]*$'
+          description: |
+            The `operationId` of every operation this server supports, in any
+            order. A server of this version lists all six. A later server may
+            list operations this document does not have, and a client ignores
+            the ones it does not know.
+        limits:
+          $ref: '#/components/schemas/SessionLimits'
+    SessionLimits:
+      type: object
+      required: [text_bytes, stages, outcome_chars, prompt_chars, goal_chars]
+      description: |
+        The limits of this server, the same as this document states for each
+        field. A length in characters counts Unicode code points.
+      properties:
+        text_bytes:
+          type: integer
+          minimum: 1
+          description: The most bytes of UTF-8 in the `text` of a workflow.
+        stages:
+          type: integer
+          minimum: 1
+          description: The most stages in a workflow.
+        outcome_chars:
+          type: integer
+          minimum: 1
+          description: The most characters in `intent.outcome`.
+        prompt_chars:
+          type: integer
+          minimum: 1
+          description: The most characters in the `prompt` of a stage.
+        goal_chars:
+          type: integer
+          minimum: 1
+          description: The most characters in the `goal` of a run.
     SaveRequest:
       type: object
       additionalProperties: false
