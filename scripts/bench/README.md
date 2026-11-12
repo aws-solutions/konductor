@@ -297,7 +297,7 @@ The profile projects about 9.71 USD (mean) and 16.68 USD (p90) for one skill rea
 
 ## Spend limits and the ledger
 
-Every paid call is recorded in `bench/out/ledger.jsonl`. One file is shared by all runs and by parallel jobs, and it is git-ignored. A call is reserved at its upper estimate (the p90 of its kind and model in the cost profile; for a judge or checklist call its ceiling, see Judge calls) before it is made and settled after at the cost its CLI reports, or at its mean when it reports none. Both rows record the call's `kind` and `model`. A reservation with no settlement counts as in flight until its timeout passes. After that it counts as spent, because a call that outlived its reservation may have been paid for, and `plan` says how many such reservations the spent figure includes. A job that waits for the ledger lock gives up after the lock's stale age (60 s) plus 10 s, so one crashed job delays the next and does not stop it.
+Every paid call is recorded in `bench/out/ledger.jsonl`. One file is shared by all runs and by parallel jobs (a stub run keeps its own, see The stub provider), and it is git-ignored. A call is reserved at its upper estimate (the p90 of its kind and model in the cost profile; for a judge or checklist call its ceiling, see Judge calls) before it is made and settled after at the cost its CLI reports, or at its mean when it reports none. Both rows record the call's `kind` and `model`. A reservation with no settlement counts as in flight until its timeout passes. After that it counts as spent, because a call that outlived its reservation may have been paid for, and `plan` says how many such reservations the spent figure includes. A job that waits for the ledger lock gives up after the lock's stale age (60 s) plus 10 s, so one crashed job delays the next and does not stop it.
 
 Two limits apply, checked in this order. A call that would pass one is refused by the ledger. The check is made when a call is reserved, at its p90 (a judge or checklist call at its ceiling). A call that then costs more than its reservation is still charged what it cost: its settle row has `over_reservation_usd`, and the next call is refused once a limit is passed. So a run can end above a limit by what the calls already running cost over their reservations.
 
@@ -698,6 +698,49 @@ What happens when a call goes wrong:
 
 A rerun resumes: a current judgment is never made again.
 
+## The next command
+
+`next` says what a run should do now. It prints one JSON line and exits:
+
+```
+node scripts/bench/bench.js next --skills brew-log --run r1 [--max-usd 5] [--max-minutes 90 --started-at 2026-11-12T15:30:00Z] [--provider live|stub] [--config <file>] [--root <dir>]
+```
+
+It works from the baselines and the files on disk and reads no plan file, so a rerun after a crash or a STOP starts at the first unfinished job. It spends nothing and writes no file. The jobs come in this order, and the first one with work left is the answer:
+
+| Order | Job                     | Stage                  |
+| ----- | ----------------------- | ---------------------- |
+| 1     | `pairs`                 | 2 rules reading        |
+| 2     | `judge --scale items`   | 2 rules reading        |
+| 3     | `checklists`            | 3 request-only reading |
+| 4     | `judge --scale outcome` | 3 request-only reading |
+
+A job's work left is what its own dry run lists, so `next` and the job always agree. A judgment of an answer that is not eligible is work for the judge job too, because only the job records it (with no call).
+
+| Line                                               | Exit | Meaning                                                                                                                                                                                                                                         |
+| -------------------------------------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `{"next":"job","job":"pairs",...,"command":[...]}` | 0    | Run `command` from the repository root (the job in the foreground; its script path is relative to the root, while `--root` and `--config` are absolute). Also `scale`, `stage`, `pending`, `estimated_usd` and `estimated_minutes`.             |
+| `{"next":"done","status":"done",...}`              | 0    | Nothing is left. `status` is `partial` when a judgment is blocked by the provider for good. Also `not_loaded`, `ineligible`, `blocked`.                                                                                                         |
+| `{"next":"stop","kind":"spend","reason":"..."}`    | 1    | `plan` refuses the run: this run's spend so far plus the pending work is above `max_usd`, or the ledger would pass `total_cap_usd`.                                                                                                             |
+| `{"next":"stop","kind":"time","reason":"..."}`     | 1    | `max_minutes` is reached, or the next job's estimate does not fit in the time left. Finished work is kept; rerun to continue. A job estimated at more than `max_minutes` on its own never fits, so the reason then says to raise `max_minutes`. |
+| `{"next":"stop","kind":"refused","reason":"..."}`  | 1    | `plan` or the job refuses for another reason, such as an invalid baseline.                                                                                                                                                                      |
+
+`--max-minutes` and `--started-at` go together: the limit counts from the start of the run, given as a UTC time that is not more than a minute ahead of the clock (a later time would add minutes to the limit, so it is a usage error). The estimate of a job is its calls in waves of the job's concurrency, at 3 minutes a wave of subject runs and 1 a wave of checklist or judge calls. These are assumed upper bounds for the check, not limits: the slowest writer or judge call seen took about 42 s, and no timing file is kept in the repository. A usage error exits 64, as for `plan`. The `reason` of a `stop` line is redacted and cut to 2000 characters, so the line is always whole JSON.
+
+A loop that runs the jobs stops when a job exits with anything but 0. A job that ends `partial` (exit 3) is named again by the next `next`, so a failed call is tried again on the next pass, once per pass and not once per loop.
+
+## The stub provider
+
+`--provider stub` runs a job with no model, AWS or network call. `lib/stub-provider.js` stands in for the `claude` and `opencode` processes and refuses any other command. Everything above the process is the real code: the arms, the isolation settings, the trace readers, the secret sweep, the judge input step, the reply parser and the ledger, which charges the cost each stub call reports (1 USD per subject run, 0.001 USD per judge or writer step). So a spend STOP and a resume behave as in a paid run. Those dollars are made up, so a stub run keeps its own ledger, `bench/out/<run-id>/ledger.jsonl`: `job.js`, `launch.js` and `next` read and write it for `--provider stub`, and the shared `bench/out/ledger.jsonl` that counts toward `total_cap_usd` of real runs is never touched. `plan` has no `--provider`, so it still shows the shared ledger.
+
+| Stub    | Answers                                                                                      |
+| ------- | -------------------------------------------------------------------------------------------- |
+| subject | The `with` arm loads the skill and gives a full answer; the `without` arm gives a short one. |
+| writer  | The number of checklist items it is asked for.                                               |
+| judge   | Every item `MET` for the full answer, only the first item `MET` for the short one.           |
+
+Stub answers must never be read as a measurement, so the run id keeps them apart. The stub runs only in a run whose id is `stub` or starts with `stub-`, and such a run id takes only the stub: `--provider live`, or no `--provider` (which means live), is refused with exit 64 by `job.js`, `launch.js` and `next`, because a live job would read the stub's answers, checklists and judgments as current. Answer and judgment records name the version `stub` where a CLI version goes; checklist records and ledger rows carry no marker. `job.js` and `launch.js` take the same `--provider`, and `next --provider stub` puts it in each command. `tests/scripts/bench/stub-run.test.js` runs `plan`, then `next` and its jobs until done on the fixture skill, with a spend STOP and a resume on the way, and compares the steps and the stored judgments with `tests/fixtures/bench/stub-run.expected.json`.
+
 ## Not built yet
 
-These are added in a later PR: `next` (which says which job to start), the labels that sum up the scores, and the report. The judge job does not take a dose ladder yet: the ladder's items are judged once the controls check that reads them is added.
+These are added in a later PR: the labels that sum up the scores, and the report. The judge job does not take a dose ladder yet: the ladder's items are judged once the controls check that reads them is added, and `next` does not name ladder work.

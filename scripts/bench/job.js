@@ -19,6 +19,10 @@
  *                  skipped }
  * Every printed line passes through the redactor.
  *
+ * `--provider stub` swaps the claude and opencode processes for the stub provider (lib/stub-provider.js): no model,
+ * AWS or network call, and the ledger books the cost the stub reports. It is allowed only in a run id `stub` or
+ * `stub-<name>`, and such a run id takes only the stub, so made-up answers never mix with real ones.
+ *
  * Exit codes (2 is never used: AGENTS.md reserves it for a gate finding):
  *
  *   0   done: every pending run gave a valid answer (every task has a current checklist, every judgment of the
@@ -54,6 +58,7 @@ const {
 } = require('./lib/launch');
 const { runPairs } = require('./lib/pairs');
 const { redact } = require('./lib/redact');
+const { stubJobOptions } = require('./lib/stub-provider');
 
 const EXIT_DONE = 0;
 const EXIT_REFUSED = 1;
@@ -83,6 +88,7 @@ Options
   --root <dir>       Repository root to read (default: this checkout).
   --ladder <file>    checklists only: a dose ladder whose items --skills may also name.
   --scale <scale>    judge only, required: items (reading B) or outcome (reading A).
+  --provider <name>  live (default) or stub (no model call). A run id stub or stub-<name> takes only stub, and stub only there.
   --dry-run          List the work and stop: nothing is spent or written.
 
 Exit codes
@@ -117,6 +123,20 @@ function countResults(results) {
   const counts = {};
   for (const { status } of results) counts[status] = (counts[status] || 0) + 1;
   return counts;
+}
+
+/** `base` with `extra` on top; a nested options object (subject, writer, retry) is merged one level down. */
+function mergeOptions(base, extra) {
+  const merged = { ...base, ...extra };
+  for (const [key, value] of Object.entries(extra))
+    if (
+      value &&
+      typeof value === 'object' &&
+      base[key] &&
+      typeof base[key] === 'object'
+    )
+      merged[key] = { ...base[key], ...value };
+  return merged;
 }
 
 /** The pairs job: its summary and its last line. */
@@ -255,8 +275,15 @@ async function main(
     }
     const { job, options, request } = command;
     const dryRun = options.dryRun === true;
+    // The stub provider (lib/stub-provider.js) replaces the claude and opencode processes; test options still win.
+    if (request.provider === 'stub') {
+      const stub = stubJobOptions();
+      pairsOptions = mergeOptions(stub.pairsOptions, pairsOptions);
+      checklistOptions = mergeOptions(stub.checklistOptions, checklistOptions);
+      judgeOptions = mergeOptions(stub.judgeOptions, judgeOptions);
+    }
     print(
-      `${job}: run ${request.layout.runId}, skills ${request.skills.join(', ')}${request.scale ? `, scale ${request.scale}` : ''}${dryRun ? ', dry run' : ''}, pid ${process.pid}`,
+      `${job}: run ${request.layout.runId}, skills ${request.skills.join(', ')}${request.scale ? `, scale ${request.scale}` : ''}${request.provider === 'stub' ? ', stub provider' : ''}${dryRun ? ', dry run' : ''}, pid ${process.pid}`,
     );
     const { summary, last } =
       job === 'checklists'

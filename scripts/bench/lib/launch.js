@@ -44,6 +44,12 @@ const { itemNames, loadLadder, validateLadder } = require('./dose-ladder');
 const jobDir = require('./job-dir');
 const { REPO_ROOT, SCALES, createLayout } = require('./layout');
 const { listSkills } = require('./skills');
+const {
+  PROVIDERS,
+  assertStubRun,
+  isStubRun,
+  stubLayout,
+} = require('./stub-provider');
 
 /** The script every job runs in: `node scripts/bench/job.js <job> ...`. Its path is how a live job is recognised. */
 const JOB_SCRIPT = path.join(__dirname, '..', 'job.js');
@@ -78,11 +84,11 @@ class LaunchRefusedError extends Error {
 
 /**
  * Checks the options of a job command and returns the request:
- *   { job, skills, layout, config, maxUsdText, configFile, ladder, ladderFile, scale }
- * `options` holds the text of the flags: skills, run, maxUsd, config, root, ladder, scale. `ladder` (a job whose JOBS
- * row has `ladder` set) is a dose ladder file that passes its audit; it comes back parsed as `ladder`, with its
- * absolute path as `ladderFile`, both null without the flag. `skills` comes back sorted and without repeats. `scale`
- * is the reading of a judge job and null for every other job. Throws UsageError for
+ *   { job, skills, layout, config, maxUsdText, configFile, ladder, ladderFile, scale, provider }
+ * `options` holds the text of the flags: skills, run, maxUsd, config, root, ladder, scale, provider. `ladder` (a job
+ * whose JOBS row has `ladder` set) is a dose ladder file that passes its audit; it comes back parsed as `ladder`, with
+ * its absolute path as `ladderFile`, both null without the flag. `skills` comes back sorted and without repeats.
+ * `scale` is the reading of a judge job and null for every other job. Throws UsageError for
  * anything that is not acceptable. Shared by the launcher and the job itself, so the job accepts exactly what the
  * launcher accepted.
  */
@@ -126,6 +132,7 @@ function resolveJobRequest(job, options = {}) {
     throw new UsageError('--skills is required: name the skills to run');
   const { ladder, ladderFile } = readLadderOption(job, options.ladder);
   const scale = readScaleOption(job, options.scale);
+  const provider = readProviderOption(options.provider, layout.runId);
   const names = parseSkillSelection(options.skills);
   const knownSkills = [
     ...listSkills(layout.skillsDir),
@@ -146,13 +153,15 @@ function resolveJobRequest(job, options = {}) {
   return {
     job,
     skills: [...names].sort(),
-    layout,
+    // A stub run books made-up dollars, so it keeps its own ledger (stub-provider.js stubLayout).
+    layout: provider === 'stub' ? stubLayout(layout) : layout,
     config,
     maxUsdText: maxUsd === undefined ? undefined : options.maxUsd,
     configFile,
     ladder,
     ladderFile,
     scale,
+    provider,
   };
 }
 
@@ -165,6 +174,7 @@ const VALUE_FLAGS = Object.freeze({
   '--root': 'root',
   '--ladder': 'ladder',
   '--scale': 'scale',
+  '--provider': 'provider',
 });
 const BOOL_FLAGS = Object.freeze({
   '--dry-run': 'dryRun',
@@ -189,6 +199,32 @@ function parseJobCommand(argv) {
   });
   if (options.help) return { help: true };
   return { job, options, request: resolveJobRequest(job, options) };
+}
+
+/**
+ * The --provider option: `live` (the default, the real CLIs) or `stub` (stub-provider.js, no model call). The two are
+ * kept apart by the run id: the stub is refused outside a stub run id, so made-up answers can never land in a run that
+ * holds real ones, and the live provider, given or by default, is refused in a stub run id, because a live job would
+ * read the stub answers, checklists and judgments there as current and build a real report on them.
+ */
+function readProviderOption(value, runId) {
+  if (value !== undefined && !PROVIDERS.includes(value))
+    throw new UsageError(
+      `--provider must be one of ${PROVIDERS.join(', ')}, got ${JSON.stringify(value)}`,
+    );
+  const provider = value === undefined ? 'live' : value;
+  if (provider === 'live' && isStubRun(runId))
+    throw new UsageError(
+      `the run id ${JSON.stringify(runId)} is a stub run, which holds made-up answers and judgments, so it takes --provider stub only; for real work pick another run id`,
+    );
+  if (provider === 'stub') {
+    try {
+      assertStubRun(runId);
+    } catch (error) {
+      throw new UsageError(error.message);
+    }
+  }
+  return provider;
 }
 
 /** The --scale option: required for a job that takes one (JOBS[job].scale), refused for the others; null then. */
@@ -257,6 +293,7 @@ function jobArguments(request, { dryRun }) {
     ...(request.configFile ? ['--config', request.configFile] : []),
     ...(request.ladderFile ? ['--ladder', request.ladderFile] : []),
     ...(request.scale ? ['--scale', request.scale] : []),
+    ...(request.provider === 'stub' ? ['--provider', 'stub'] : []),
     ...(dryRun ? ['--dry-run'] : []),
   ];
 }
@@ -383,6 +420,7 @@ module.exports = {
   BOOL_FLAGS,
   resolveJobRequest,
   parseJobCommand,
+  readProviderOption,
   fileJobName,
   jobArguments,
   launchJob,

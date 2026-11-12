@@ -62,6 +62,42 @@ function parseMaxUsd(text) {
   return maxUsd;
 }
 
+/** The longest --max-minutes accepted: one week. A longer run is a typo, not a limit. */
+const MAX_MINUTES_CEILING = 7 * 24 * 60;
+
+/** The value of --max-minutes as a number: a plain decimal above 0, at most one week. */
+function parseMaxMinutes(text) {
+  const minutes = PLAIN_DECIMAL.test(text) ? Number(text) : NaN;
+  if (!(
+    Number.isFinite(minutes) &&
+    minutes > 0 &&
+    minutes <= MAX_MINUTES_CEILING
+  ))
+    throw new UsageError(
+      `--max-minutes: must be a plain decimal number above 0 and at most ${MAX_MINUTES_CEILING} such as 90, got ${JSON.stringify(text)}`,
+    );
+  return minutes;
+}
+
+/** A UTC time such as 2026-11-12T15:30:00Z, with an optional fraction of a second. */
+const UTC_TIME =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d{1,9})?Z$/;
+
+/** The value of --started-at as milliseconds. Only a real UTC time is read; a local time would shift the limit. */
+function parseStartedAt(text) {
+  const match = UTC_TIME.exec(text);
+  const ms = match ? Date.parse(text) : NaN;
+  // Date.parse rolls 2026-02-30 over to March, so the parts are read back to catch a date that does not exist.
+  const real =
+    Number.isFinite(ms) &&
+    new Date(ms).toISOString().slice(0, 19) === text.slice(0, 19);
+  if (!real)
+    throw new UsageError(
+      `--started-at: must be a UTC time such as 2026-11-12T15:30:00Z, got ${JSON.stringify(text)}`,
+    );
+  return ms;
+}
+
 /** The names in a --skills value: split on ",", trimmed, empty parts and repeats dropped, in the order given. */
 function parseSkillSelection(skillList) {
   const names = [
@@ -81,5 +117,7 @@ module.exports = {
   UsageError,
   parseFlags,
   parseMaxUsd,
+  parseMaxMinutes,
+  parseStartedAt,
   parseSkillSelection,
 };

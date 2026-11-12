@@ -10,7 +10,8 @@
  *   bench/baselines/<skill>/rules.json            frozen rules
  *   bench/baselines/<skill>/tasks-<batch>.json    frozen tasks, one file per batch
  *   bench/baselines/<skill>/tasks-<batch>.buckets.json
- *   bench/out/ledger.jsonl                        spend ledger, shared by every run (git-ignored)
+ *   bench/out/ledger.jsonl                        spend ledger, shared by every run (git-ignored); a stub run
+ *                                                 keeps its own in bench/out/<run-id>/ (stub-provider.js)
  *   bench/out/<run-id>/report.json, report.md     run output (git-ignored)
  *   bench/out/<run-id>/answers/<skill>/<batch>/<task>.<with|without>.json
  *   bench/out/<run-id>/raw/<skill>/<batch>/<task>.<with|without>/raw.jsonl     subject event log

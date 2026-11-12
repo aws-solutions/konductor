@@ -54,6 +54,7 @@ Options
   --root <dir>       Repository root to read (default: this checkout).
   --ladder <file>    checklists only: a dose ladder whose items --skills may also name.
   --scale <scale>    judge only, required: items (reading B) or outcome (reading A).
+  --provider <name>  live (default) or stub: no model call, only in a run id stub or stub-<name>.
   --dry-run          Start the job in its dry-run mode: it lists the work and spends nothing.
 
 Exit codes
