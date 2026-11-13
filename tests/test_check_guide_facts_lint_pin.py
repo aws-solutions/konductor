@@ -146,6 +146,70 @@ def test_existence_check_fails_for_a_name_in_neither_source():
     assert "cli/README.md does not declare it and cli.rs has no hidden command of that name" in problem
 
 
+def test_stale_delegation_phrases_stay_forbidden():
+    assert set(check_guide_facts.STALE_DELEGATION_PHRASES) == {
+        "can also spawn each other",
+        "carry Agent(...) tools",
+        "holds the subagent tool but can spawn nothing",
+        "via Agent(...)",
+        "adversarial handoff never fires",
+        "step 6 silently no-ops",
+        "Its step-6 adversarial pass never fires",
+    }
+
+
+def test_stale_phrase_is_matched_through_inline_code_backticks():
+    assert check_guide_facts.stale_delegation_phrases(
+        "k-architect and k-quality-assurance carry `Agent(...)` tools"
+    ) == ["carry Agent(...) tools"]
+    assert check_guide_facts.stale_delegation_phrases("k-developer via `Agent(...)`") == [
+        "via Agent(...)"
+    ]
+
+
+def test_konductor_spawn_cell_is_exempt_in_markdown_and_bundle_forms():
+    assert check_guide_facts.stale_delegation_phrases(
+        "| `konductor` | the 8 specialists | the same 8, via `Agent(...)`, plus `SendMessage` |"
+    ) == []
+    assert check_guide_facts.stale_delegation_phrases(
+        '{ k: "konductor", v: "the 8 specialists · the same 8 via Agent(...), plus SendMessage" }'
+    ) == []
+
+
+def test_stale_delegation_phrase_in_a_markdown_source_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "user-guide" / "agents.md"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original + "\nIn Claude Code the specialists carry `Agent(...)` tools too.\n",
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert "agents.md: says 'carry Agent(...) tools'" in result.stdout
+
+
+def test_stale_delegation_phrase_in_a_bundle_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "site" / "user-guide.html"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original.replace("nothing · nothing", "k-developer via Agent(...)", 1),
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert "specialists hold no spawn tool" in result.stdout
+
+
 def test_notes_describe_the_existence_check_the_code_runs():
     """A visible command missing from cli/README.md fails the check; the guide
     must not say that any command in cli.rs, hidden or not, passes."""

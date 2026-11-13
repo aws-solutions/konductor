@@ -33,8 +33,8 @@ Another name for a **SOP**.
 ### `availableAgents`
 
 The list in a Kiro CLI agent spec (`clientConfig.kiroCli.toolsSettings.subagent.availableAgents`)
-naming exactly which agents that agent may spawn. An empty list means the agent holds the
-`subagent` tool but can spawn nothing. Only `konductor` is unrestricted. See
+naming exactly which agents that agent may spawn. Only `konductor` declares one; specialists
+hold no `subagent` tool at all. See
 [Who can delegate to whom](agents.md#who-can-delegate-to-whom).
 
 ### Canonical model

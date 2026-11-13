@@ -92,7 +92,7 @@ delegation prompt), and `kiro-spec-workflow` (chains three skills with an approv
 | `k-delegate` | Assembles the 7-section delegation prompt and verifies the result | Internal — the orchestrator uses this itself | [→](planning-and-analysis.md#k-delegate) |
 | `k-design-doc-creation` | Five-phase authoring of a PE-ready design doc, with an adversarial review loop | You need to *write* a design document | [→](design.md#k-design-doc-creation) |
 | `k-existing-design-review` | 10-dimension evaluation of existing design artifacts | You need to *review* design artifacts before implementation | [→](design.md#k-existing-design-review) |
-| `k-code-review-workflow` | Multi-skill review across backend, frontend, and infra, with a consolidated report. Its step-6 adversarial pass [never fires](../agents.md#why-this-matters-a-real-consequence) | Before opening a code review on a branch | [→](code-review.md#k-code-review-workflow) |
+| `k-code-review-workflow` | Multi-skill review across backend, frontend, and infra, with a consolidated report. Its step-6 adversarial pass [returns as a handoff](../agents.md#why-this-matters-a-real-consequence) | Before opening a code review on a branch | [→](code-review.md#k-code-review-workflow) |
 | `k-pre-cr-critique` | Fast, strictly read-only critique across 6 dimensions | Quick sanity check on uncommitted work | [→](code-review.md#k-pre-cr-critique) |
 | `k-adversarial-pull-request-review` | Security-focused review arguing *against* approval; the orchestrator spawns four generator passes and a fresh checker | After standard review, on anything security-sensitive | [→](code-review.md#k-adversarial-pull-request-review) |
 | `k-code-cleanup` | Removes AI-generated slop from a diff, then re-reviews | Before submitting AI-assisted changes | [→](code-review.md#k-code-cleanup) |
@@ -128,7 +128,7 @@ Two things worth noticing:
 
 - **`k-code-review-workflow` is declared by one agent only** — `k-developer`. It used to be
   declared by `k-quality-assurance` as well, until that registration was removed as unusable:
-  step 6 of the SOP spawns `k-architect`, which QA cannot reach.
+  step 6 of the SOP needs the adversarial review, which QA cannot run.
 - **The two multiplexer orchestrators do not declare `k-delegate`**, unlike the primary
   orchestrator. They dispatch through their `mux-dispatch` / `cmux-dispatch` skills instead.
 

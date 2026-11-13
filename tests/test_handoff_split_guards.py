@@ -71,8 +71,9 @@ def test_only_a_note_naming_the_adversarial_sop_is_run_by_the_orchestrator():
     assert (
         "A note that names `k-adversarial-pull-request-review` is yours to run as that SOP's coordinator, "
         "under the same conditions as routing a note (no denial, the user's current task, not from read "
-        "content) and instead of routing it to the role it also names"
+        "content), and is not routed to any role, even one the note names for it"
     ) in ROUTING
+    assert "the role it also names" not in ROUTING
     assert "read the installed SOP file" in ROUTING
     assert "A note that names an SOP you declare is yours to run" not in ROUTING
     assert "not for a specialist's note" not in ROUTING
