@@ -104,3 +104,61 @@ test('a case that matches a duplicate also points at the original, not the dupli
   const dups = findDuplicates([a, a, a]);
   assert.deepEqual(dups.map((d) => d && d.of), [null, 0, 0]);
 });
+
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { parseRules, loadRules, checkRules } = require('../lib/rules.js');
+
+const RULES = parseRules([
+  { before: ['lookup_order', 'issue_refund'] },
+  { before: ['check_refund_policy', 'issue_refund'], note: 'policy first' },
+  { tool: 'send_email', inputPattern: 'e-?mail|send me' },
+]);
+
+test('before: the second tool needs the first earlier in the sequence', () => {
+  const run = (tools) => checkRules(RULES, { tools, input: 'refund me and email me' }).map((v) => v.code);
+  assert.deepEqual(run(['lookup_order', 'check_refund_policy', 'issue_refund']), []);
+  assert.deepEqual(run(['issue_refund']), ['rule:before', 'rule:before']);
+  assert.deepEqual(run(['issue_refund', 'lookup_order', 'check_refund_policy']), ['rule:before', 'rule:before']);
+  assert.deepEqual(run(['lookup_order', 'issue_refund']), ['rule:before']);
+  assert.deepEqual(run([]), []);
+  assert.deepEqual(run(['lookup_order']), []);
+});
+
+test('forbidUnless: the tool needs a matching input, case-insensitive', () => {
+  const run = (tools, input) => checkRules(RULES, { tools, input }).map((v) => v.code);
+  assert.deepEqual(run(['send_email'], 'Please E-Mail me the receipt'), []);
+  assert.deepEqual(run(['send_email'], 'Send me a confirmation'), []);
+  assert.deepEqual(run(['send_email'], 'Where is order ORD-1?'), ['rule:forbidUnless']);
+  assert.deepEqual(run(['lookup_order'], 'Where is order ORD-1?'), []);
+});
+
+test('violation text names the tools and carries the note', () => {
+  const [v] = checkRules(RULES, { tools: ['lookup_order', 'issue_refund'], input: 'x' });
+  assert.match(v.text, /issue_refund is proposed without check_refund_policy before it \(policy first\)/);
+  const [w] = checkRules(RULES, { tools: ['send_email'], input: 'x' });
+  assert.match(w.text, /send_email is proposed but the input does not match \/e-\?mail\|send me\/i/);
+});
+
+test('a rules file may be an array or an object with a rules array', () => {
+  assert.equal(parseRules({ rules: [{ before: ['a', 'b'] }] }).length, 1);
+  assert.equal(parseRules([]).length, 0);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agenteval-rules-'));
+  try {
+    const file = path.join(dir, 'rules.json');
+    fs.writeFileSync(file, JSON.stringify([{ before: ['lookup_order', 'issue_refund'] }]));
+    assert.equal(loadRules(file, { tools: ['lookup_order', 'issue_refund'] })[0].kind, 'before');
+    assert.throws(() => loadRules(path.join(dir, 'missing.json')), /cannot read rules file/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('malformed rules are rejected with the rule number', () => {
+  assert.throws(() => parseRules({}), /array/);
+  assert.throws(() => parseRules([{ before: ['a'] }]), /rule 1: "before" needs exactly two/);
+  assert.throws(() => parseRules([{ tool: 'a' }]), /rule 1: use/);
+  assert.throws(() => parseRules([{ before: ['a', 'b'] }, { tool: 'a', inputPattern: '(' }]), /rule 2: bad inputPattern/);
+  assert.throws(() => parseRules([{ before: ['a', 'zzz'] }], { tools: ['a'] }), /"zzz" is not a declared tool/);
+  assert.throws(() => parseRules([5]), /must be an object/);
+  assert.throws(() => parseRules([{ maxDistinctUnknown: 2 }]), /rule 1: use/);
+});
