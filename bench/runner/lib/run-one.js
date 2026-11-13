@@ -21,6 +21,7 @@ const { makeStopWatcher } = require('./stop-watch.js');
 const { describeChange } = require('./isolation-gates.js');
 const { secretLiterals, scrubDeep } = require('./scrub.js');
 const { classifyAuthFailure } = require('./auth-failure.js');
+const { classifyLaunchFailure } = require('./launch-failure.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
@@ -371,6 +372,11 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       if (authFailure) {
         meta.authFailure = authFailure;
         meta.infraError = [meta.infraError, `login not valid, no turn ran: ${authFailure}`].filter(Boolean).join(' | ');
+      }
+      const launchFailure = exec && !authFailure ? classifyLaunchFailure({ agg: acc.agg, exec, texts: [readIfPresent(path.join(outDir, 'stderr.txt'))] }) : null;
+      if (launchFailure) {
+        meta.launchFailure = launchFailure;
+        meta.infraError = [meta.infraError, `agent binary could not be launched, no turn ran: ${launchFailure}`].filter(Boolean).join(' | ');
       }
       if (exec?.creditLimitHit) meta.flags.push('creditLimit');
       else if (exec?.creditOvershoot > 0) meta.flags.push('creditLimitExceeded');

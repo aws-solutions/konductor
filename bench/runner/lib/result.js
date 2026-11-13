@@ -89,8 +89,10 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
   const agentStarted = meta.agentStarted !== false;
   // A run that failed to log in never ran a turn, so nothing was spent and there is no lower bound to estimate.
   const authFailure = meta.authFailure ?? null;
+  // The same holds for a run whose agent binary could not be launched.
+  const launchFailure = meta.launchFailure ?? null;
   // A timeout is censored even when runFinished was seen: the kill can land before a late turn's metering event.
-  const censored = agentStarted && !authFailure && (status === 'timeout' || (status === 'error' && !finished));
+  const censored = agentStarted && !authFailure && !launchFailure && (status === 'timeout' || (status === 'error' && !finished));
   const creditsCensored = censored && !oc;
 
   return {
@@ -166,6 +168,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     flags: [...new Set(flags)],
     infraError: meta.infraError ?? null,
     authFailure,
+    launchFailure,
     error,
     ...resultFields({ extraction: skills?.extraction ?? null, info: skills?.info ?? null, task, arm }),
     capInvocation: capInvocationOf({ agg, extraction: skills?.extraction ?? null, sops: skills?.info?.catalog?.sops ?? [] }),
