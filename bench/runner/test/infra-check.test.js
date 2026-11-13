@@ -37,3 +37,15 @@ test('the driver sets exit code 5 and records infraFailure in summary.json', () 
   assert.match(src, /infraFailure: infra/);
   assert.match(src, /process\.exitCode = 5/);
 });
+
+test('BENCH_TEST_MODE lifts the one-second floor but errored runs still count as an infra failure', () => {
+  const before = process.env.BENCH_TEST_MODE;
+  process.env.BENCH_TEST_MODE = '1';
+  try {
+    assert.equal(infraFailure([r('success', 5)]), null);
+    assert.equal(infraFailure([r('error', 5)]).errored, 1);
+  } finally {
+    if (before === undefined) delete process.env.BENCH_TEST_MODE; else process.env.BENCH_TEST_MODE = before;
+  }
+  assert.equal(infraFailure([r('success', 5)]).quick, 1);
+});

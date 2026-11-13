@@ -147,7 +147,7 @@ Pass `--tasks` with the ids of tasks that exercise the agent. `cap list --base $
 ("target-only tasks design-hold-service"); a task that is not linked in the registry still works when you pass it this way.
 
 Limits today. These commands work on the skills and agents of this repository at the ref you give, and the agent that does the work is konductor.
-Testing an arbitrary third-party skill or agent definition is not supported yet. Per-skill studies run on Kiro CLI only.
+Testing an arbitrary third-party skill or agent definition is not supported yet (the adapter contract for the supported runtimes is in [runner/lib/harness/CONTRACT.md](runner/lib/harness/CONTRACT.md)). Per-skill studies run on Kiro CLI only.
 
 ## Evaluate one skill, step by step
 
@@ -326,8 +326,9 @@ that stops new runs at 90% of X; a run that carries the command past 100% ends i
 Login and exit codes. The kiro-cli Identity Center login can expire in the middle of a long chunk: a failing run then ends in about 0.2 s with "Not logged in", "Authentication failed" or "Host refresh callback returned token already expired". That a login has a maximum age is inferred from the message and is not confirmed, so log in again right before starting a long chunk. To contain it:
 - `run` checks the login with `kiro-cli whoami` (in a scratch HOME with a copy of the auth database, as a run does) before it builds any arm, and again between runs at most every 5 minutes. A failed check stops with exit code 6 and a message to log in again. A kiro-cli without `whoami`, or a check that times out, only prints a warning. opencode and Claude Code runs are not checked.
 - A run that never started a turn (no metering, tool call or finished run in its stream) and printed one of those messages is an auth failure: it is charged 0, gets `authFailure` and `infraError` in `result.json`, is marked `infra` in `credit-ledger.jsonl`, and is not counted as a timed-out, lower-bound run. A real timeout keeps the lower-bound charge.
-- `--max-auth-failures N` (or `BENCH_MAX_AUTH_FAILURES`, default 3, a positive integer; the flag wins) stops the chunk after N auth failures in a row. Later cells are written as `budget_skipped` with the reason, `summary.json` gets `authStop`, and the command exits 6. A run that works resets the count. Exit code 5 (every run errored) is not set when 6 is.
-- Exit codes of `run`: 0 ok, 1 error, 2 bad arguments, 3 credit guard hard stop, 4 isolation failure, 5 infrastructure failure, 6 login failure.
+- `--max-auth-failures N` (or `BENCH_MAX_AUTH_FAILURES`, default 3, a positive integer; the flag wins) stops the chunk after N auth failures in a row. Later cells are written as `budget_skipped` with the reason, `summary.json` gets `authStop`, and the command exits 6. A run that works resets the count. Exit code 5 (infrastructure failure) is not set when 6 is.
+- A run that never started a turn because the agent binary could not be launched (exit 127, or 126 or a spawn error with a "No such file or directory", "Permission denied" or ENOENT message, ending in under 5 s) is a launch failure, for example when the kiro-cli install is replaced while a chunk runs. It is treated like an auth failure: charged 0, `launchFailure` and `infraError` in `result.json`, `infra: "launch"` in `credit-ledger.jsonl`, never a timed-out lower bound. Launch failures count toward the same `--max-auth-failures` limit; the stop message then reads "agent binary missing or replaced during the run", `summary.json` `authStop.kind` is `launch`, and the exit code is 6. `run-config.json` records the resolved binary in `kiroBinary.path`.
+- Exit codes of `run`: 0 ok, 1 error, 2 bad arguments, 3 credit guard hard stop, 4 isolation failure, 5 infrastructure failure, 6 login or launch failure stop.
 - `--timeout-sec N` replaces the timeout of every selected task with N seconds (a positive integer). Without it each task keeps the `timeoutSec` of its task file. The plan line, `run-config.json` (`timeoutSecOverride`, `timeoutSecByTask`) and `summary.json` show it.
 
 The unit tests for the real-task track run a fake project's pytest suite. Without `python3 -m pytest`

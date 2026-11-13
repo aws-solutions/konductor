@@ -104,6 +104,38 @@ test('run exits 6 after the limit, records authStop in summary.json, and honours
   } finally { rm(viaEnv.root); }
 });
 
+const GONE = { missingBinary: true };
+
+test('consecutive launch failures stop the chunk with their own message, and a run that works resets the count', async () => {
+  const { out, launched, ledger } = await runWith(GONE);
+  assert.equal(launched, 3);
+  assert.equal(out.authStop.tripped, true);
+  assert.equal(out.authStop.kind, 'launch');
+  assert.equal(out.authStop.skipped, 3);
+  assert.match(out.results.find((r) => r.status === 'budget_skipped').error, /agent binary missing or replaced during the run/);
+  assert.doesNotMatch(out.authStop.reason, /could not log in/);
+  assert.equal(ledger.entries.length, 3);
+  assert.equal(out.charged, 0);
+  const two = await runWith(GONE, { maxAuthFailures: 2 });
+  assert.equal(two.launched, 2);
+  const mixed = await runWith({ turns: [GONE, GONE, { exitCode: 0 }, GONE, GONE, { exitCode: 0 }] }, {}, 6);
+  assert.equal(mixed.launched, 6);
+  assert.equal(mixed.out.authStop.tripped, false);
+});
+
+test('run exits 6 after consecutive launch failures and names the binary, not the login', () => {
+  const s = cliSetup(GONE);
+  try {
+    const r = runCli(s, []);
+    assert.equal(r.status, 6, r.stderr);
+    assert.match(r.stderr, /LAUNCH FAILURE: .*agent binary missing or replaced during the run/);
+    assert.doesNotMatch(r.stderr, /Log in to kiro-cli again/);
+    assert.equal(started(s.probe), 3);
+    const summary = JSON.parse(fs.readFileSync(path.join(s.out, 'summary.json'), 'utf8'));
+    assert.equal(summary.authStop.kind, 'launch');
+  } finally { rm(s.root); }
+});
+
 test('a bad --max-auth-failures value is refused before anything starts', () => {
   const s = cliSetup(FAIL);
   try {

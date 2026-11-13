@@ -249,7 +249,7 @@ test('a result built for opencode validates and keeps credits null', () => {
 function runCli(root, extra, envExtra = {}) {
   return spawn(process.execPath, [BENCH_JS, 'run', '--suite', 'lite', '--tasks', 't1', '--isolate', 'none', '--allow-unisolated', '--bench-dir', path.join(root, 'bench'),
     '--cache', path.join(root, 'cache'), '--aws-creds-file', path.join(root, 'creds'), '--opencode-bin', path.join(root, 'bin', 'opencode'),
-    '--rg-bin', path.join(root, 'rg'), '--repo-root', root, ...extra], { env: { PATH: process.env.PATH, HOME: path.join(root, 'home'), TMPDIR: path.join(root, 'tmp'), ...envExtra }, stdio: ['ignore', 'pipe', 'pipe'] });
+    '--rg-bin', path.join(root, 'rg'), '--repo-root', root, ...extra], { env: { PATH: process.env.PATH, HOME: path.join(root, 'home'), TMPDIR: path.join(root, 'tmp'), BENCH_TEST_MODE: '1', ...envExtra }, stdio: ['ignore', 'pipe', 'pipe'] });
 }
 
 function prepareRoot(cfg) {

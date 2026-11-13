@@ -5,8 +5,11 @@
 
 const MIN_REAL_RUN_MS = 1000;
 
+// Fake agents in CLI tests finish in milliseconds; BENCH_TEST_MODE is the same test-only switch the isolation gate uses.
+const minRealRunMs = () => (process.env.BENCH_TEST_MODE === '1' ? 0 : MIN_REAL_RUN_MS);
+
 /** null when at least one run looks like real work; otherwise { runs, errored, quick, reason }. Budget-skipped runs are ignored. */
-function infraFailure(results, minMs = MIN_REAL_RUN_MS) {
+function infraFailure(results, minMs = minRealRunMs()) {
   const ran = results.filter((r) => r.status !== 'budget_skipped');
   if (!ran.length) return null;
   const errored = ran.filter((r) => r.status === 'error').length;
