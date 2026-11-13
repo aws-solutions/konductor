@@ -55,7 +55,8 @@ flowchart LR
     s1d --> s1e["1e"]
     s1d & s1e --> s1f1["1f-1"]
     s1f1 --> s1f2["1f-2"]
-    s1a & s1b & s1c & s1d & s1e --> s1g["1g"]
+    s1f2 --> s1f3["1f-3"]
+    s1a & s1b2 & s1c & s1e --> s1g["1g"]
     s1f2 --> s1g
     s1g --> s1g2["1g-2"]
     s1g --> s1h["1h"]
@@ -85,8 +86,10 @@ flowchart LR
 | 1e   | 1d                                   | `flow run`, which 1d adds, calls the trust gate. The hash covers the workflow file and its prompt files, which the format defines.                         |
 | 1f-1 | 1d, 1e                               | A real harness needs the runner, and D14 forbids a run of an unconfirmed project workflow.                                                                 |
 | 1f-2 | 1f-1                                 | The Claude adapter uses the launcher and the harness choice that 1f-1 adds.                                                                                |
-| 1g   | 1a, 1b, 1b-2, 1c, 1d, 1e, 1f-1, 1f-2 | The server implements the new contract, passes the 1b and 1b-2 Playwright tests, checks files, starts runs on a real harness and answers `trust_required`. |
 | 1f-3 | 1f-2                                 | A third adapter behind the Harness trait. Nothing needs it.                                                                                                |
+| 1g   | 1a, 1b, 1b-2, 1c, 1d, 1e, 1f-1, 1f-2 | The server implements the new contract, passes the 1b and 1b-2 Playwright tests, checks files, starts runs on a real harness and answers `trust_required`. |
+| 1g-2 | 1g                                   | It adds the contract operations and fields that 1g leaves out. `getRunEvents` and its stub-suite skips come off in 1h.                                     |
+| 1h   | 1g                                   | The 1g server reads the log file the runner writes, so it needs the server and no new core port.                                                           |
 | 2    | 1g                                   | A canvas control and an engine key ship together (D13), so the canvas must already run on the engine.                                                      |
 | 3a   | 1g                                   | A check key is a canvas control and an engine key together (D13), so the canvas must already run on the engine.                                            |
 | 11a  | 2, 3a                                | The port uses params, outputs and checks.                                                                                                                  |
@@ -104,9 +107,11 @@ Where the order differs from the obvious one, and why:
 - **1g waits for the real harnesses.** The canvas server starts real runs, and its demo runs a real harness, so it needs
   1f-1 and 1f-2 as well as the runner.
 - **1g waits for the prompt control.** Its demo edits a prompt in the browser, so it needs 1b-2 (D39).
-- **Slice 2 waits for 1g.** Otherwise a key would reach the engine before the canvas could show it (D13).
 - **1f-3 is optional.** It needs 1f-2, nothing needs it, and it is not in the first release. It is off the critical
   path: slices 2, 3a and 11a, and 1g, do not wait for it.
+- **1g-2 follows 1g.** 1g builds the contract of its own cut, and 1g-2 adds the later operations and fields (D47).
+  Its `getRunEvents` and the stub-suite skips for it come off in [1h](#1h-run-events).
+- **Slice 2 waits for 1g.** Otherwise a key would reach the engine before the canvas could show it (D13).
 - **3a does not need slice 2.** The two can be built in parallel. The table lists 2 first.
 - **11a comes before 3b.** The first port needs checks, not command stages.
 - **Slice 14 needs 2 and 3a, not 11a.** An export states outputs and param defaults (slice 2) and renders the checks
@@ -394,12 +399,31 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
   the catalogs would resolve an agent to different files, `flow run` and `flow trust` exit 77 with
   `tool_config_unreadable`.
 - **Tests:** unit: the hash is stable, and changes with the workflow's bytes or a `prompt_file`'s bytes but not with
-  another workflow; the loader hashes the bytes it parses. Functional: yes records trust, no exits 77 and runs nothing,
-  no terminal exits 77 naming both ways, `--trust` matches or mismatches, a changed file asks again, revoke removes the
-  record, and the record file has mode 0600, the summary lists the tools each agent runs without asking, the summary of
-  a Claude agent with no `tools` key says every tool is available and none is pre-approved, a repo with a
-  `.claude/settings.json` asks for a shipped workflow, two writers do not lose an update, an unreadable record trusts
-  nothing, and `flow trust` on a user or shipped workflow exits 0 and writes no record. Playwright: none.
+  another workflow; the loader hashes the bytes it parses. Functional: typing the first 8 characters of the hash records
+  trust, a bare `y`, an empty answer or any other text exits 77 and runs nothing, no terminal exits 77 naming both ways,
+  `--trust` matches or mismatches, a changed file asks again, revoke removes the record, and the record file has mode
+  0600, the summary lists the tools each agent runs without asking, the summary of a Claude agent with no `tools` key
+  says every tool is available and none is pre-approved, a repo with a `.claude/settings.json` asks for a shipped
+  workflow, two writers do not lose an update, an unreadable record trusts nothing, and `flow trust` on a user or
+  shipped workflow exits 0 and writes no record. Scan limits: a link, a folder past the depth or entry limit, a file
+  over 1 MiB, an unreadable file and a name that is not UTF-8 each exit 77 with `tool_config_unreadable`, even with
+  `--trust`. Re-check, on the fake harness: a tool configuration file changed between two stages halts the run before
+  the second session starts (exit 1, `SESSION_FAILED`). Claude agent lookup by `name` (D32): a duplicate `name`, a name
+  that differs from the file stem, a file with no `name`, a nested `.claude/agents/` subfolder, a name that differs in
+  case or has a space, a non-markdown file, and an unrelated mismatched file that does not block a run. For a duplicate
+  `name`, `flow check` and `flow show` print the summary with every declaring file named, and `flow run` and `flow
+  trust` print the same text and exit 77 with `tool_config_unreadable`. Summary lines: a Claude agent that sets
+  `permissionMode`, `hooks` or `mcpServers` shows each set key by name and no value (D33), and an Unknown `tools` list
+  reads "tools: unreadable" plus the reason (D35). Agent file front matter (D38): a column-0 list under `skills` and
+  `mcpServers` is read, indented lines under an `mcpServers` item belong to the item, and a column-0 item under any
+  other key, after a value, or after another key makes the file unreadable. A Kiro agent id defined in both the working
+  folder and the home folder: the summary names the working folder's file (D42). The summary names the file the harness
+  catalog runs, tested with a catalog double: for Kiro, an agent in a folder above the project root is not found
+  (D42), and for Claude, a repo file in a folder above the project root is named when Claude's lookup would pick it
+  (D44). Two catalogs that pick different files, for Kiro and for Claude, exit 77 with `tool_config_unreadable` under
+  `flow run` and `flow trust`, even with `--trust`. Exit 74, on the trust record side: a
+  record that is not valid JSON, one from a newer Konductor and a home folder that is not absolute (the
+  `home_unusable` exit of the three commands is tested in 1d). Playwright: none.
 - **Demo:** you can run an untrusted workflow, confirm at the prompt, edit the file and be asked again, and in a run
   with no terminal get exit 77 with `--trust` named.
 
@@ -488,7 +512,6 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
 - **Demo:** you can run `hello-plan` on Claude Code and read `PLAN.md`.
 - **Release:** it merges after 1f-1. The conformance checks run before it merges.
 
-### 1g: Canvas server in Rust and `flow view`
 ### 1f-3: ACP harness (optional)
 
 - **Why now:** it is not needed for the first release, and it blocks nothing. It gives live stage output, which the
@@ -582,6 +605,7 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
 - **Demo:** you can run `hello-plan` with `--harness kiro-cli-acp` and with `--harness claude-acp`, and read `PLAN.md`.
 - **Release:** it merges after 1f-2, on its own. A harness that cannot select the named agent is not released.
 
+### 1g: Canvas server in Rust and `flow view`
 
 - **Why now:** this joins the tracks. The stub stops being the server.
 - **YAML keys:** none new.
@@ -613,6 +637,61 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
   first confirms the workflow with `konductor flow trust <name> --yes`.
 - **Demo:** you can run `flow view hello-plan`, edit a prompt in the browser and save, confirm the changed workflow with
   the command the `trust_required` dialog shows, and run it on a real harness.
+
+### 1g-2: Agent list, fields and events
+
+- **Why now:** the canvas contract has grown since 1g was cut. 1g builds the contract of its own cut, and this step adds
+  what 1g leaves out, so the canvas can offer the agents a stage may name and show what each editable key takes (D47).
+  It needs 1g and nothing else.
+- **YAML keys:** none new.
+- **Canvas:** the page offers the agents of `listAgents` for a stage's `agent`, and a stage may still name an id that is
+  not on the list, which the page keeps as it is. It reads the field information to show what each editable key takes.
+  The contract gives the data and does not fix the controls.
+- **API rows:**
+  - `listAgents`: the specialist agents in the order of their ids, each with a short line. An orchestrator is not
+    listed, and the server does not look up whether a named agent exists.
+  - The field information: `stage_fields` in the answer of `getWorkflow`. For each kind of stage it names the editable
+    keys and what each takes. It is the same for every text.
+  - `getRunEvents`: the events of a run in order, from the one after `after`, as a long poll. 1h serves it.
+- **Engine:** the three operations on the HTTP adapter of 1g, with no new core port. `capabilities` lists the
+  operations the server serves, as the contract says a client reads it. `getRunEvents` is served in
+  [1h](#1h-run-events), which reads the event log. Until then the server leaves `getRunEvents` out of `capabilities`, so
+  a client can tell. A server lists the operations it serves, in `capabilities`. The owner of the canvas API may
+  reword the contract line that says a server lists every operation of the document.
+- **Tests:** unit: the agent list, and the field information against the contract. Functional: the stub's cases for the
+  three operations, pointed at the Rust server, and the drift test. The `getRunEvents` cases and their skips come off in
+  1h.
+  Playwright: pick an agent from the list and save.
+- **Demo:** you can open `flow view hello-plan`, pick an agent for a stage from a list, and see what each editable key
+  takes.
+- **Release:** it merges after 1g, on its own.
+
+### 1h: Run events
+
+- **Why now:** the canvas wants to show a run as it goes, and `state.json` holds only the current state. Owner: the
+  user. Status: not started. The brief is `handoff/workflows-build/events-step-brief.md` in the build handoff folder
+  (not in the repo). It follows 1g and nothing else.
+- **YAML keys:** none new.
+- **Canvas:** none. The page talks to the contract.
+- **API rows:** `getRunEvents` is served by the real server, and `capabilities` lists it. The route is
+  `GET /api/runs/{id}/events` with the query `after` and `wait`, and it answers `events`, `next` and `finished`. The
+  event types are `stage_state`, `console` and `run_finished`.
+- **Engine:**
+  - An event sink on the runner, with a no-op default. The runner calls it when a stage changes state and for each
+    line of stage output.
+  - An append-only `events.jsonl` next to `state.json`, one line per kept event, each with `seq`, `run_id`, `at` and
+    `type`. `state.json` keeps only the current state.
+  - Redaction of values that look like secrets, and the cap of 8192 bytes of UTF-8 at a character boundary, happen
+    in the sink, not in the runner.
+  - Console lines are live only. They are never stored, and a run that ended more than 60 seconds ago has none.
+  - The 1g server reads the file. There is no new core port.
+  - The README and the changelog describe the new file.
+- **Tests:** unit: the sink, the no-op default, redaction, the cap and the order of `seq`. Functional: the stub's
+  `getRunEvents` cases pointed at the Rust server, and the drift test. The real-server run of the stub's suite stops
+  skipping them. The fake harness emits console lines, so the tests have lines to read.
+- **Demo:** you can run `hello-plan`, ask for its events with `getRunEvents`, and read the stage changes in order.
+- **Release:** it merges after 1g, on its own.
+- **Open points for the write-up:** see [the open question on events](#open-questions).
 
 ## Slice 2: Data between stages
 

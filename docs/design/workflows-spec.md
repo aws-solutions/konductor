@@ -174,7 +174,8 @@ Use "failure" as the status if you could not do the work. List each file you wro
 
 - **Where the runner reads it.** The final message is the stdout of `kiro-cli chat --no-interactive` and the `result`
   field of `claude -p --output-format json` ([Sources](workflows.md#sources)). The runner takes the last line that
-  starts with `KONDUCTOR_RESULT `, so an example quoted earlier in the message does not count.
+  starts with `KONDUCTOR_RESULT `, so an example quoted earlier in the message does not count. Over ACP, the runner
+  keeps the last 1 MiB of the agent message text that it builds from the updates, as the output of the session (D45).
 - **Shape.** The rest of that line is one JSON object. `status` is `success` or `failure`, and `outputs` is a list of
   paths, not names, that follow the [path rules](#rules-for-every-file). Other keys are ignored.
 - **Invalid or missing.** The stage is `blocked`, and the run state records the reason, when:
@@ -182,8 +183,12 @@ Use "failure" as the status if you could not do the work. List each file you wro
   - its JSON is invalid, a field is missing or has the wrong type, or an `outputs` path breaks the [path
     rules](#rules-for-every-file) (`RESULT_INVALID`);
   - `status` is `failure` (`RESULT_FAILURE`);
-  - the session exits with a non-zero status (`SESSION_FAILED`);
-  - the stage or one of its checks exceeds its time limit (`TIMEOUT`, see [Limits](#limits)).
+  - the session cannot start, exits with a non-zero status, or its owner stopped, the repo tool configuration changed,
+    or an ACP permission was denied, or an ACP adapter serves only v2 (`SESSION_FAILED`, one code for all of these, with
+    the cause in the stage message, and the denied tool for a denied permission);
+  - the harness reports that the session timed out, or one of the stage's checks is ended at its limit (`TIMEOUT`, see
+    [Limits](#limits)). A check is a command that the engine starts and kills at the limit, so the verdict is the
+    engine's own kill and not a late clock comparison.
 - **Then the evidence.** Before a stage starts, the runner records the state of each declared output: absent, or its
   size, modification time and content hash. After the stage it checks each declared output path on disk. An output
   passes only if it was absent before and exists now, or its modification time or content differs from before. A
@@ -198,28 +203,47 @@ How the runner starts each runner harness. The conformance check re-tests these 
 
 - **Kiro CLI (`kiro-cli`).** `kiro-cli chat --no-interactive --agent <agent-id> "<prompt>"` plus an engine flag. Kiro
   CLI has the engine values `v1`, `v2` and `v3` (`--agent-engine`), and this design uses two. The runner passes `--v2`
-  with a `kiro-cli-v2` agent file and `--v3` with a `kiro-v3` file (D16). A `kiro-v3` file under `--v2` exits 4 with
-  `Mode '<name>' not found`.
-- **Finding the agent.** The runner resolves a stage's agent the way the harness will: from the working directory (the
-  project root), then from `$HOME`. On Kiro this order is assumed until step 1f-1 records it, and the catalog follows
-  what 1f-1 finds. An install made with another `--target` is visible only if that directory is the project root or
-  `$HOME`. If neither has the agent, `flow run` fails before the first stage. The message names the agent, the install
-  index (`~/.konductor/installs`) and the target that has the agent, if any. The trust summary uses the definition the
-  harness would use, and lists the tools the runner lets it run without asking.
+  with a `kiro-cli-v2` agent file and `--v3` with a `kiro-v3` file (D16). The engine comes from the shape of
+  the agent file: `allowedTools` is V2 and `permissions.rules` is V3, and a file with neither or both exits 64. A
+  `kiro-v3` file under `--v2` is not refused. Kiro ignores its `permissions`, so the agent runs with no allow rules
+  (D28). The runner never starts that pair, because it passes the flag that matches the file.
+- **Finding the agent.** The runner resolves a stage's agent the way the harness will, from one catalog per harness.
+  The trust summary, the ambiguity check and the hash scan use that same catalog, so the file the summary names is the
+  file the session runs (D42, D44). The Kiro catalog is the working directory (the project root), then `$HOME`, and the
+  first definition wins (D42). An install made with another `--target` is visible only if that directory is the project
+  root or `$HOME`. If neither has the agent, `flow run` fails before the first stage. The message names the agent, the
+  install index (`~/.konductor/installs`) and the target that has the agent, if any. The Claude Code catalog finds an
+  agent the way Claude does: by the `name` field in the front matter of the files under `.claude/agents/` and its
+  subfolders, in each folder from the working directory up to the git top folder (the project root search rule, D25),
+  then the user folder (D32, D44), except that `claude-acp` has no user folder (D44, D45). For `claude-acp`, an agent
+  that exists only in the user folder is also exit 64. A file with no `name` is not an agent of that id. A name matches
+  as an exact string,
+  with no trimming and no case folding, and only `.md` files with front matter count. The fake harness uses the Kiro
+  rule. The summary names the file it read and lists the tools the runner lets the agent run without asking.
+  **Refusal.** The agent is Unknown if the catalog of the summary and the catalog of the harness would resolve it to
+  different files (D42, D44), if two repo files declare the requested `name`, or if the file that declares it has a
+  file stem different from that name (D32). The trust summary then names every file involved. `flow check` and `flow
+  show` print that summary, and `flow run` and `flow trust` print the same text, then exit 77 with
+  `tool_config_unreadable`. The unreadable message prints the files too. The summary text of an Unknown agent has no
+  `--json` shape yet, and the contract of step 1g (`openapi.yaml`) fixes one if the Designer needs it. `flow check`
+  still prints the hash, because the files are readable. Across folder levels the Claude catalog mirrors Claude's order
+  ([Which definition wins](#harness-invocation)), and the question of a repo file that shares an id with an installed
+  agent stays [deferred](#deferred-to-a-later-slice). The rule concerns only the id the stage asks for: an unrelated
+  agent whose name differs from its file stem blocks nothing (D32).
 - **Which definition wins.** Claude Code documents its order when definitions share a name: managed settings, then
   `--agents`, then the project's `.claude/agents/` (the directory closest to the working directory wins), then
   `~/.claude/agents/`, then plugins ([Sources](workflows.md#sources)). The runner passes no `--agents`, so a repo
   agent file that declares `name: <id>` wins over an installed `~/.claude/agents/` file that declares it, which matches
-  the project-first order above. Kiro does not look for agent files above its working directory (D27). If the working
-  folder and the home folder both define a Kiro agent id, the working folder's definition wins, as Kiro does (D27).
-- **Kiro permissions.** On V3 the runner passes `--trust-tools=<ids>`: the exact ids of the tools in the agent's own
-  allow list, found with a map from the agent's tools to ids, so the flag grants nothing beyond that list. On V2 that
-  flag had no effect for any tool-name form tried, so the agent file's `allowedTools` applies and the conformance check
-  re-tests the flag. The runner never passes `--trust-all-tools` (D19).
+  the project-first order above. If the working folder and the home folder both define a Kiro agent id, the working
+  folder's definition wins, as Kiro does (D42).
+- **Kiro permissions.** The runner passes no `--trust-tools` flag on Kiro V2 or V3 (D43). The agent file is the single
+  source of what the session may do without asking: its `allowedTools` on V2 and its `permissions.rules` on V3. The
+  trust summary lists the agent's own allow rules. The runner never passes `--trust-all-tools` (D19).
 - **Claude Code (`claude`).** `claude -p "<prompt>" --output-format json --agent <agent-id> --allowedTools
   "<rule>,<rule>"`, with the stage's final message in `result`. The prompt comes right after `-p`, so `--allowedTools`
   cannot take it as a rule. `--agent` makes the session run as the stage's agent, with its prompt, model and `tools`,
-  and that `tools` list caps which tools the session has.
+  and that `tools` list caps which tools the session has. The runner does not pass `--bare`: it does not load project
+  agents, and Claude then exits 1 for a project agent (D34).
 - **Claude permissions.** Claude has no approval list separate from `tools`. The runner passes `--allowedTools` with one
   rule for each tool in the `tools` list of the definition the harness would use, so every tool the definition makes
   available runs without asking. That is wider than the Kiro allow list of the same agent. For `k-architect`, the Kiro
@@ -235,9 +259,13 @@ How the runner starts each runner harness. The conformance check re-tests these 
   1f-3](workflows-plan.md#1f-3-acp-harness-optional) (D45).
 - **Versions.** The runner checks ran on one pre-release build. Each tool has conformance checks that repeat them in
   real runs on a public release, and pin a minimum version of the tool. [Step
-  1f-1](workflows-plan.md#1f-1-process-launcher-and-kiro-cli) owns Kiro CLI's checks, `--trust-tools` on V2 included,
-  and [step 1f-2](workflows-plan.md#1f-2-claude-adapter-and-conformance) owns Claude Code's. Each runs before its step
-  merges. `konductor doctor` reports a version below the minimum as a `warn`, and that does not change its exit code.
+  1f-1](workflows-plan.md#1f-1-process-launcher-and-kiro-cli) owns Kiro CLI's checks, and [step
+  1f-2](workflows-plan.md#1f-2-claude-adapter-and-conformance) owns Claude Code's. Each runs before its step merges. The
+  minimum for Kiro CLI is 3.3.0, and it is re-checked on a public release before release (D29). The minimum for Claude
+  Code is 2.1.323, the lowest build the checks ran on, and it is re-checked on a public release before release (D34).
+  Those two minimums are for `kiro-cli` and `claude`, and they do not change. The ACP harnesses have their own minimums,
+  with no upper bound: Kiro CLI 3.5.0 for `kiro-cli-acp`, and the Claude ACP adapter 0.108.1 for `claude-acp` (D45).
+  `konductor doctor` reports a version below any minimum as a `warn`, and that does not change its exit code.
 
 What a native export needs is in [the exports note](workflows-exports.md#harness-invocation-for-exports).
 
@@ -245,11 +273,34 @@ What a native export needs is in [the exports note](workflows-exports.md#harness
 
 These are fixed in the first release. A per-run override can be added later without changing a released key (D20).
 
-- **Time.** A stage may run for 30 minutes of wall-clock time, and a check for 10 minutes. On expiry the runner sends a
-  terminate signal to the whole process group, waits 10 seconds, then kills it. The stage is `blocked` with the reason
-  `TIMEOUT`.
+- **Time.** A stage may run for 30 minutes of wall-clock time, and a check for 10 minutes. The launcher starts the
+  session program of a Kiro or Claude harness under `timeout -k 10 <limit in seconds>` (GNU `timeout`, or `gtimeout`
+  where it exists), so the kill grace is 10 seconds (`KILL_GRACE_MS`). `timeout` is the leader of the session group, so
+  the deadline is enforced even if the owner dies (D51). GNU coreutils `timeout` ends the whole group at the limit. The
+  uutils `timeout` only signals the group with TERM, so a descendant that ignores TERM can outlive the limit when the
+  owner is dead. The launcher runs `timeout --version` once per path, with a 2 second bound, and caches the answer for
+  the process. Output with "GNU coreutils" means GNU, and anything else is the weaker flavor. The strict whole-group
+  guarantee is stated for GNU only. With the other flavor, the owner loop still kills the group while the owner lives
+  (D56). Under `timeout`, the launcher reports an exit status of 124 or 137 as `TimedOut` only when its own clock has
+  reached the limit. An earlier 124 or 137 is a normal exit and becomes `SESSION_FAILED` (D52). A stage is `TIMEOUT`
+  only when the harness reports `TimedOut`. Elapsed time alone is no verdict, so a laptop suspend or a clock step does
+  not make a finished stage `TIMEOUT` (D57). If neither program is on the PATH, the launcher runs the program directly
+  and prints one warning, the limit then depends on the owner, and an exit status is never reinterpreted. Only the Kiro
+  and Claude session programs run under `timeout`, and the ACP adapter and the checks keep the limit of the owner (D52).
+  On expiry the whole process group gets a terminate signal, and is killed after the grace. On an ACP harness it sends
+  `session/cancel` in the same step as the terminate signal, so there is one wait in total (D45). It sends
+  `session/cancel` at the stage limit only, and never on a signal to the owner (D53). The stage is `blocked` with the
+  reason `TIMEOUT`.
+- **ACP adapter.** A frame is at most 4 MiB, the queued frames are at most 8 MiB, and the unwritten output is at most
+  1 MiB. A request id is a number or a string of at most 256 bytes. A stage may hold at most 1000 requests other than
+  permission requests. After a cancel there is one 10 second grace. The deadline is checked before every frame (D45).
+  Any breach of these limits ends the stage as `SESSION_FAILED`: the stage is blocked and the run halts as usual
+  (exit 1).
 - **Output.** The runner keeps the last 1 MiB of a harness session's stdout, because the result line is the last line of
-  the final message. It keeps the last 256 KiB of a check's output.
+  the final message. Over ACP, the runner keeps the last 1 MiB of the agent message text that it builds from the
+  updates, as the output of the session (D45). It keeps the last 256 KiB of a check's output.
+  The runner shows the last 4 KiB of a session's stderr, with the failure line, on the terminal only, and never writes
+  it to the run state (D50).
 - **Params.** Each param other than `goal` is at most 64 KiB, and a rendered stage prompt is at most 100 KiB. A longer
   value or prompt is a usage error (exit 64). Step 1f-1 checks the host's command-line argument limit against this.
 - **Budgets.** A cap on cost or tokens waits for slice 12.
@@ -258,7 +309,13 @@ These are fixed in the first release. A per-run override can be added later with
 
 `base_hash` is the SHA-256 of the file's raw bytes as 64 lower-case hex digits. A mismatch refuses the write, and `null`
 means the file must not exist yet (D12). The writer stores the text exactly as sent: it adds or removes no byte order
-mark, changes no line ending and adds no final newline.
+mark, changes no line ending and adds no final newline. The one exception is a block scalar that replaces the last
+value of a file with no final newline: its new text ends with a line break, inside the edited value, and no byte
+outside the value changes (D41). That break is CRLF in a CRLF file. A plain or quoted prompt on the last line changes
+only its value bytes, and no newline is added. The editor does not edit a prompt in a file that has a lone carriage
+return anywhere, as CR-only breaks or among LF lines (D40). It does not edit a prompt in a file with mixed line
+endings, any two of LF, CRLF and CR (D40). Each of these two refusals gives its own reason. Edits to `name`, `agent`
+and whole stages still save in such files.
 
 Anything that rewrites a workflow keeps every key it does not edit. Those keys keep their values and order. A writer
 replaces only the bytes of the values it edits, and every other byte stays identical, comments included. The span of an
@@ -348,10 +405,22 @@ it exits 77 without running anything. The summary lists:
 
 - the workflow name and path;
 - its trust hash;
-- each agent id, with the runner harness it will use and the tools the runner lets it run without asking; for a Claude
-  agent with no `tools` key, the summary says that every tool is available and none is pre-approved; an agent file
-  whose front matter this build cannot read in full (a quoted key, a space before a colon) is shown as unreadable, and
-  never as a shorter list;
+- each agent id, with the runner harness it will use, the file it was read from, which is the file the harness runs
+  ([Finding the agent](#harness-invocation), D42, D44), and the tools the runner lets it run without asking (for a Kiro
+  agent, the agent's own allow rules, D43); for a
+  Claude agent with no `tools` key, the summary says that every tool is available and none is pre-approved; a one-line
+  `tools` value does not split on a comma inside parentheses, so `Agent(a, b), Read` is two items, but the `[...]` form
+  with such a comma, an unbalanced or stray parenthesis in any form, or an item outside `[A-Za-z0-9_*:.-]+` (other than
+  the `Agent(...)` form) makes the list Unknown, with no `--allowedTools` flag and one stderr note (D31). The summary
+  line of an Unknown list reads "tools: unreadable" plus the reason. A scoped rule with a space, such as `Bash(git
+  status)`, and a quoted item in a `[...]` list are outside that charset, so they make the list Unknown (D35). An empty
+  list (`tools:` with no items, or `[]`) pre-approves no tool and gets no `--allowedTools` flag (D35). A block list,
+  with `- item` lines at column 0, is read under `tools`, `skills` and `mcpServers`, and indented lines under an
+  `mcpServers` item belong to that item. A column-0 item under any other key, after a value, or after another key makes
+  the front matter unreadable (D38). An agent file whose front matter this build cannot read in full (a quoted key, a
+  space before a colon, or such an item) gets the same line, "tools: unreadable" plus the reason, and never a shorter
+  list. For a Claude agent, the summary also shows which of `permissionMode`, `hooks` and `mcpServers` the file sets, by
+  key name only, as it does for a settings file (D33);
 - each `run` check command (argv), with a note when its program is a path into the repo;
 - each file the hash covers, and under a settings file its top-level keys, and under an MCP file each server with the
   command or address it starts.
@@ -429,15 +498,15 @@ it is trusted: on a terminal it asks, and without one it exits 77. User and ship
 repo carries tool configuration files. These are
 the first-release rules until the runner's design decides ([deferred](#deferred-to-a-later-slice)).
 
-| Command                                                                          | Purpose                                                      | Needs trust |
-| -------------------------------------------------------------------------------- | ------------------------------------------------------------ | ----------- |
-| `flow check <name>`                                                              | Validates the workflow                                       | no          |
-| `flow show <name>`                                                               | Prints the resolved workflow as JSON, with prompt text       | no          |
-| `flow run <name> --goal "..." [--param name=value] [--harness h] [--trust hash]` | Runs it with the runner (harness `h` below)                  | yes         |
-| `flow verify <run-id> [--trust hash]`                                            | Runs the checks in `intent.accept` of the run's workflow     | yes         |
-| `flow trust <name> [--yes]`                                                      | Shows the summary, asks, and records trust                   | no          |
-| `flow trust --revoke <name>`                                                     | Removes the record of one workflow                           | no          |
-| `flow view <name> [--harness h]`                                                 | Starts the canvas, asking first if the workflow is untrusted | no          |
+| Command                                                                                                        | Purpose                                                      | Needs trust |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ----------- |
+| `flow check <name>`                                                                                            | Validates the workflow                                       | no          |
+| `flow show <name>`                                                                                             | Prints the resolved workflow as JSON, with prompt text       | no          |
+| `flow run <name> --goal "..." [--param name=value] [--harness h] [--fake-script path] [--trust hash] [--json]` | Runs it with the runner (harness `h` below)                  | yes         |
+| `flow verify <run-id> [--trust hash]`                                                                          | Runs the checks in `intent.accept` of the run's workflow     | yes         |
+| `flow trust <name> [--yes]`                                                                                    | Shows the summary, asks, and records trust                   | no          |
+| `flow trust --revoke <name>`                                                                                   | Removes the record of one workflow                           | no          |
+| `flow view <name> [--harness h]`                                                                               | Starts the canvas                                            | no          |
 
 `flow build` and `flow verify <name> --workspace` belong to [slice 14](workflows-exports.md#commands).
 
@@ -472,13 +541,20 @@ both before any name lookup. Once the root is found, and before slice 11a, `flow
 library/<name>` and `flow trust --revoke library/<name>` print the same "not available yet" text and exit 64. The
 `--revoke` form removes nothing.
 
-`--harness` takes `kiro-cli`, `claude` or `fake`. Without it, `flow run` and `flow view` use the one runner harness that
-is installed: the install harnesses `kiro-cli-v2` and `kiro-v3` mean `kiro-cli`, and `claude` means `claude`. If both
-runner harnesses are installed, or neither, `--harness` is required and leaving it out is a usage error (exit 64).
-`fake` is for tests only and is never a default. The canvas session's `harness` field reports the chosen value.
+`--harness` takes `kiro-cli`, `claude` or `fake`. Without it, `flow run` and `flow view` use the one runner harness
+that is installed: the install harnesses `kiro-cli-v2` and `kiro-v3` mean `kiro-cli`, and `claude` means `claude`. If
+both runner harnesses are installed, or neither, `--harness` is required and leaving it out is a usage error (exit
+64). `flow run` also takes `kiro-cli-acp` and `claude-acp`, never chosen without `--harness`, and `flow view` does not
+take them yet. An installed adapter does not count as an installed runner harness (D45). `fake` is for tests only and
+is never a default. The CLI prints "(harness: fake, no agent ran)" on its own final line of the `flow run` summary,
+never inside a stage message and never parsed as a stage result (D57).
+A test names its reply script with `--fake-script <path>` or `KONDUCTOR_FAKE_SCRIPT=<path>`. The
+canvas session's `harness` field reports the chosen value.
 
 `flow check` and `flow show` take `--json`. Their output is stable: keys sorted, no machine paths, byte-identical
 whatever the YAML key order. The one exception is the `trust_hash` of `flow check`, which hashes the file's bytes.
+`flow run` takes `--json` too: it prints one object when the command ends, with `run_id`, `state` and `exit_code`, or on
+a refusal the `code`.
 
 Exit codes follow the CLI's exit-code contract in `cli/README.md`. A command that needs trust checks it first.
 
@@ -549,6 +625,25 @@ the workspace looks at it, by these rules:
 The sweep writes `halted` like this: the stage that was running, or the next `pending` one if none was, is `blocked`
 with the reason `SESSION_FAILED`, `exit_code` is 1, and `finished_at` is the time it was found. If every stage had
 `passed`, there is none to block, and the run reads as `passed` with `exit_code` 0.
+
+**Sessions that outlive a killed owner (D24).** A normal exit of the owner kills its sessions and checks with their
+process groups. A signal is the second way a group ends. While a session runs, the owner handles SIGINT, SIGTERM and
+SIGHUP. It ends the recorded session group as [Time](#limits) says (terminate, 10 second grace, kill), writes the run as
+`halted` with an interrupted status, and exits with that status (D49). A hard kill (SIGKILL) cannot be handled and
+leaves them running, because each session has its own process group. Step 1f-1 records each session's process group,
+start time and absolute deadline in the run state, right after the spawn (D51). If the group cannot be recorded, the
+launcher stops it and the stage
+fails as `SESSION_FAILED` with a message that the session was not started (D49). A new run, after it takes the lock and
+before it marks the old run `halted`, terminates each recorded group that still exists and whose start time matches. The
+sweep never ends a group whose leader has ended, because its start time cannot be read once the leader is gone. It
+warns once and drops the record, so the next run does not warn again (D49). The sweep does not end a group because it
+is past its recorded deadline. It ends the group of any dead owner whatever the deadline, a live owner enforces its own
+limit, and the deadline in the record is only named in the sweep's note (D54). If the `timeout` process itself is
+killed, its group has no leader. The next run's sweep warns once, drops the record and leaves the group running (D49).
+This is a known gap, and [the plan](workflows-plan.md#open-questions) lists a marker as a way to close it. With the
+other flavor, a descendant may outlive the limit (D56). A reader that halts a dead owner's run does the same before it
+writes `halted` (D36), so halting never leaves a session running. Step 1d needs no change, because only the
+sessions of step 1f-1 are real processes.
 
 **Where run state lives.** Run state is in the repo, at `.konductor/runs/<run-id>/`. It is git-ignored through
 `.konductor/.gitignore`, which `konductor init` writes (pattern `runs/`). Inside an existing `.konductor/`, `flow run`
