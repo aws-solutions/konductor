@@ -5,6 +5,8 @@
 bench runs the same tasks with and without a change, scores the output with a panel of judge models,
 and reports cost, quality and run-to-run noise. It is plain Node, with no install step beyond the tools below.
 
+New to bench? Start with [GUIDE.md](GUIDE.md).
+
 Two kinds of question, two sets of commands:
 
 | You want to know | Use | Needs credits? |
