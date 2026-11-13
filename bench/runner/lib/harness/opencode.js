@@ -20,6 +20,7 @@ const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
 
 const id = 'opencode';
+const meta = require('./opencode-meta.js');
 const VERSION = '1.19.5';
 const PROVIDER = 'amazon-bedrock';
 const DEFAULT_MODEL = 'global.anthropic.claude-sonnet-5-5';
@@ -279,7 +280,7 @@ function trialInstall(prepared, ctx) {
 const keepPaths = (ctx) => [ctx.opencode?.bin, ctx.rgBin].filter(Boolean);
 
 module.exports = {
-  id, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS,
+  id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize, secrets,
   resolveOpencode, resolveRipgrep, variantOf, zeroTokens,
 };

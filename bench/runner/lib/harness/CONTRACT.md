@@ -2,7 +2,7 @@
 
 A harness runs one agent CLI for one benchmark run. `runner/lib/harness/index.js` maps a runtime name to a harness module (`harnessFor(armOrResult)`). Today there are three: `kiro.js` (`kiro-cli`), `opencode.js` (`opencode`) and `claude-code.js` (`claude-code`).
 
-This file lists what the runner calls. It is derived from the call sites in `run-one.js`, `orchestrate.js`, `run-cmd.js`, `arm-opts.js`, `skills.js` and `trace.js`, and it is checked against the three modules by reading them. Nothing enforces it yet, so a missing member shows up as a `TypeError` in the middle of a run.
+This file lists what the runner calls. It is derived from the call sites in `run-one.js`, `orchestrate.js`, `run-cmd.js`, `arm-opts.js`, `skills.js` and `trace.js`, and it is checked against the three modules by reading them. `runner/test/harness-contract.test.js` reads the member tables below and checks every entry of `HARNESSES` against them, then runs `parseResult` on a recorded stream and checks `acc`. A missing member fails that test instead of raising a `TypeError` in the middle of a run.
 
 "Required" means the runner calls it without a guard. "Optional" means the call site is guarded by `if (harness.x)`.
 
@@ -40,6 +40,32 @@ This file lists what the runner calls. It is derived from the call sites in `run
 | `secrets(ctx)` | run context | array of secret strings that are scrubbed from `result.json` before it is written | `run-one.executeRun`: `harness.secrets ? harness.secrets(ctx) : []` |
 | `cleanupRun({ cwd, tmpdir, tmpBases })` | run paths | whatever `describeCleanup` accepts. Removes agent state that escapes the scratch HOME (Claude Code writes under the temp dir) | `run-one.executeRun`: `if (harness.cleanupRun)` |
 | `describeCleanup(removed, tmpdir)` | the value `cleanupRun` returned | a record stored as `result.claudeCode.tmpCleanup` | `run-one.executeRun`, only when `cleanupRun` exists and the result has a `claudeCode` block. Required if `cleanupRun` is defined |
+
+## Descriptor (`meta`)
+
+Every harness module exports `meta`, a frozen record of static facts about the runtime. It lives in `<name>-meta.js` next to the module, with no requires, because `runtime.js` and `arms.js` read it and the harness modules cannot be loaded from there (`result.js` requires `runtime.js`). `descriptors.js` lists the three records; `index.js` exposes them as `registry` (id to descriptor), built from `HARNESSES`. `registry.test.js` checks that both lists agree, that every record has the fields below, and that the `harness` enum in `schema/result.schema.json` equals the registry ids.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | runtime name, equal to the module's `id` and its `HARNESSES` key |
+| `label` | string | display name |
+| `armPrefix` | string | arm id prefix: `''` for kiro-cli, `oc-`, `cc-`. Exactly one runtime has `''`; it is the fallback of `runtimeOf` |
+| `costUnit` | `'credits'` or `'usd'` | `'usd'` runtimes are the `USD_RUNTIMES` and fill `acc.usage` |
+| `supports` | object of booleans | `trace`, `stopOn`, `effort`, `runCreditLimit`, `multiTurn`, `capCommands`, `skillStudy` |
+
+`supports` records what the code allows today, read from the consumers named here. Nothing reads it yet.
+
+| Key | Meaning | Where it is enforced today |
+| --- | --- | --- |
+| `trace` | `trace` can read the run | `trace.js:327` refuses opencode |
+| `stopOn` | `--stop-on` and `--max-tool-calls` apply | `run-cmd.js:197-201` refuses Claude Code; `stop-watch.js:27` has an opencode branch |
+| `effort` | the effort level is passed to the agent | `run-cmd.js:197-201` refuses `--effort` for Claude Code |
+| `runCreditLimit` | `--run-credit-limit` applies | `run-cmd.js:215` refuses USD runtimes |
+| `multiTurn` | autonomy (multi-turn) tasks run | `run-cmd.js:202-204` refuses Claude Code |
+| `capCommands` | the `cap` commands accept the runtime | `cap/*` accept `kiro-cli` and `opencode` only |
+| `skillStudy` | `cap skill-study` can drive the runtime | `cap/skillstudy.js` and `cap/studyio.js` are kiro-cli only |
+
+Derived from the descriptors: `RUNTIMES`, `USD_RUNTIMES`, `isUsdRuntime` and `runtimeOf` in `runtime.js`, and the `oc-`/`cc-` prefix handling and `OC_PREFIX`/`CC_PREFIX` in `arms.js`.
 
 ## Other exports the runner uses from harness modules
 
@@ -96,22 +122,24 @@ All of these are read by `buildResult` (through `streamFields`) or by classifica
 
 1. Write `harness/<name>.js` exporting every required member above, with `id` set to the new runtime name. Add the optional members you need. Keep the parser for the agent's event stream in its own `<name>-parse.js` and reuse `parseStream` from `runner/lib/stream.js` for JSON-lines splitting.
 2. Make the agent launchable as one local executable. An agent that is a library or a hosted service needs a small wrapper command that writes JSON lines to stdout and exits non-zero on failure. `buildCommand` returns that command.
-3. Register the module in `harness/index.js` (`HARNESSES`) and the name in `RUNTIMES`, plus `USD_RUNTIMES` if it reports USD, in `harness/runtime.js`.
-4. Add the arm prefix and arm construction in `runner/lib/arms.js` (`oc-` and `cc-` are the existing examples). Today every arm is a konductor ref, so a runtime that does not build konductor also needs a new arm source and a `prepareArm` that does not build anything.
-5. Add a fixture: a fake agent executable under `runner/test/` that prints a canned stream, and a recorded stream file the parser test reads. Copy the shape of `claude-code-parse.test.js`, `claude-code-harness.test.js` and `opencode-run.test.js`.
+3. Add `harness/<name>-meta.js` (the descriptor above), re-export it as `meta` from the module, list it in `harness/descriptors.js`, and register the module in `harness/index.js` (`HARNESSES`). `RUNTIMES`, `USD_RUNTIMES` and the arm prefix follow from the descriptor. Add the id to the `harness` enum in `schema/result.schema.json`; `registry.test.js` fails until you do.
+4. Arm construction in `runner/lib/arms.js` follows the descriptor's `armPrefix`. Today every arm is a konductor ref, so a runtime that does not build konductor also needs a new arm source and a `prepareArm` that does not build anything.
+5. Add a fixture: a recorded single-turn stream (one tool call, one final answer) at `runner/test/fixtures/harness-contract/<id>.jsonl` and one row in `CASES` in `harness-contract.test.js`. Also add a fake agent executable under `runner/test/` that prints a canned stream, and a parser test. Copy the shape of `claude-code-parse.test.js`, `claude-code-harness.test.js` and `opencode-run.test.js`.
 6. Make `parseResult` fill `acc` as listed above, and run `validateResult` on a result built from the fixture.
 7. Update the places that still switch on the runtime name (next section).
 
 ### Places outside `harness/` that still switch on the runtime name
 
-Each of these must be edited by hand when a runtime is added. They are to be removed by the registry work, which moves the per-runtime facts (unit, label, stream-event predicates) into the harness itself.
+Each of these must be edited by hand when a runtime is added. The registry work moves them onto the descriptor in steps. "Next step" marks the switches the following piece migrates; "later" marks the rest. Line numbers are at the time of writing.
 
-- `runner/lib/skills.js`: skill-load capture (`firstDecisionOf`, `extractSkills`, startup summaries, `skillsScope`).
-- `runner/lib/stop-watch.js`: `--stop-on` treats `opencode` specially and everything else as kiro.
-- `runner/lib/trace.js`: `trace` refuses opencode and has separate timelines for kiro-cli and Claude Code.
-- `runner/lib/result.js`, `runner/lib/run-cmd.js`: cost unit (`isUsdRuntime`), flag legality per runtime, per-runtime run-config blocks and credential checks.
-- `runner/lib/arms.js`: arm id prefixes and the `runtime` field.
-- `judge/bundle.js`: how the final text is extracted per runtime.
-- `report/render.js`, `report/verdict.js`, `report/verdictdoc.js`, `report/factorial.js`, `report/aggregate.js`, `report/scores.js`, `report/orchpass.js`: labels, units and score formulas per runtime.
-- `cap/audit.js`, `cap/cli.js`, `cap/evidence.js`, `cap/forced.js`, `cap/proxy.js`, `cap/prune.js`, `cap/usage.js`: accept only `kiro-cli` and `opencode`.
-- `schema/result.schema.json`: the `harness` enum.
+- Next step. `runner/lib/run-cmd.js`: `:60` and `:114` (`r !== 'kiro-cli'`), `:188` (Claude Code only flags), `:191-192` (`isOc`, `isCc`), `:193-195` (cost unit and budget flag), `:197-201` (flags refused for Claude Code, from `supports.stopOn`, `supports.effort`), `:202-204` (multi-turn, from `supports.multiTurn`), `:215` (`--run-credit-limit`, from `supports.runCreditLimit`), `:99` (summary unit, from `costUnit`).
+- Next step. `runner/lib/stop-watch.js:27`: `--stop-on` treats `opencode` specially and everything else as kiro.
+- Next step. `runner/lib/trace.js`: `:236`, `:240`, `:326-329`, `:335-336` (refusal from `supports.trace`; timeline and skill-listing note per runtime).
+- Next step. `runner/lib/result.js:64`: cost unit, already behind `isUsdRuntime`; switch to `costUnit` when the others move.
+- Next step. `judge/bundle.js:49-50`: how the final text is extracted per runtime.
+- Next step. `runner/lib/arms.js` `KNOWN_ARMS` and the `listArms` condition text; `report/aggregate.js:312`, `report/skills.js:165`, `report/factorial.js:60`, `cap/cli.js:328`, `cap/cli.js:567` (arm prefix literals; use `armPrefix`).
+- Later. `runner/lib/skills.js`: `:125`, `:135`, `:177`, `:191`, `:291`, `:464` (skill-load capture, startup summaries, `skillsScope`).
+- Later. `runner/lib/backfill.js:39`, `runner/lib/backfill-skills.js:34`: kiro-cli only.
+- Later. `report/render.js:112,170`, `report/verdict.js:243,271`, `report/verdictdoc.js:43,112`, `report/orchpass.js:327`, `report/scores.js:237`, `report/diligence.js:166`, `report/compare.js:48,51`, `report/factorial.js:32,51`: labels, units and score formulas per runtime.
+- Later. `cap/audit.js`, `cap/cli.js`, `cap/evidence.js`, `cap/forced.js`, `cap/proxy.js`, `cap/prune.js`, `cap/usage.js`: accept only `kiro-cli` and `opencode` (`supports.capCommands`); `cap/skillstudy.js`, `cap/studyio.js` (`supports.skillStudy`).
+- Done by hand once: `schema/result.schema.json`, the `harness` enum. `registry.test.js` fails when it differs from the registry.

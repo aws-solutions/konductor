@@ -3,11 +3,15 @@
 
 // Which harness produced an arm or a result. Arms made by the opencode or Claude Code adapter carry that runtime and
 // their results carry it as `harness`; every other arm, and results written before the field existed
-// (harness 'none' or 'kiro-cli-v2'), belong to kiro-cli.
-const RUNTIMES = ['kiro-cli', 'opencode', 'claude-code'];
+// (harness 'none' or 'kiro-cli-v2'), belong to the runtime whose descriptor has no arm prefix (kiro-cli).
+// The lists come from the descriptors; kiro-cli stays first so the exported order is unchanged.
+const { DESCRIPTORS } = require('./descriptors.js');
+
+const RUNTIMES = DESCRIPTORS.map((d) => d.id);
 // Runtimes costed in list-price USD with real token counts; kiro-cli is metered in credits.
-const USD_RUNTIMES = ['opencode', 'claude-code'];
-const runtimeOf = (armOrResult) => RUNTIMES.find((r) => r !== 'kiro-cli' && (armOrResult?.runtime === r || armOrResult?.harness === r)) ?? 'kiro-cli';
+const USD_RUNTIMES = DESCRIPTORS.filter((d) => d.costUnit === 'usd').map((d) => d.id);
+const DEFAULT_RUNTIME = DESCRIPTORS.find((d) => d.armPrefix === '').id;
+const runtimeOf = (armOrResult) => RUNTIMES.find((r) => r !== DEFAULT_RUNTIME && (armOrResult?.runtime === r || armOrResult?.harness === r)) ?? DEFAULT_RUNTIME;
 const isUsdRuntime = (runtime) => USD_RUNTIMES.includes(runtime);
 
 // kiro-cli --agent-engine value -> the `konductor install --harness` value whose agents that engine loads.
