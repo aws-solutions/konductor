@@ -251,7 +251,7 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
   [spec](workflows-spec.md#harness-invocation) says and reads its tools). For a Claude agent with no `tools` key, the
   summary says that every tool is available and none is pre-approved, because the runner then passes no
   `--allowedTools`. The step checks whether the install manifest records a hash for each installed file. The hash layout
-  is fixed here ([deferred](workflows-spec.md#deferred-to-a-later-slice)).
+  is fixed here ([spec](workflows-spec.md#trust)).
 - **Tests:** unit: the hash is stable, and changes with the workflow's bytes or a `prompt_file`'s bytes but not with
   another workflow; the loader hashes the bytes it parses. Functional: yes records trust, no exits 77 and runs nothing,
   no terminal exits 77 naming both ways, `--trust` matches or mismatches, a changed file asks again, revoke removes the
