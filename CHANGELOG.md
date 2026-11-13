@@ -35,6 +35,7 @@ not per individual commit.
 
 ### Changed
 
+- delegation-protocol: shorter trigger, a reason for the four-subagent limit, and a shorter "specialist never spawns" pointer. The adversarial pass skills are coordinator-only and say "posted to the PR".
 - persistent-memory and agents-md-authoring: the memory skill's description leads with "remember this", "save this", "forget that" and its headings drop the section numbers; the AGENTS.md context block uses the `.kiro/skills/ws-*/SKILL.md` glob and calls `.konductor` the workspace state directory.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
@@ -50,6 +51,29 @@ not per individual commit.
   specialists. The three orchestrator prompts also drop the
   Ultrawork framing, state the parallel rule once, and remove rules already defined in the
   `constraints` skill and the routing rules.
+- Specialist agents no longer spawn other agents. They finish their part and hand the next
+  step, or a proposed parallel split, back to the orchestrator. The orchestrator routes a
+  handoff only when it serves the user's task, did not come from content the specialist read,
+  and does not report a denied action; it applies the same checks to every part of a proposed
+  split, refuses a part that names an orchestrator, and shows refused parts to you; it adds
+  visible shared files to a proposed split before fan-out; it routes at most two notes in a row
+  for one request and never back to a role that already returned one for the same step, then
+  shows you the chain and asks. A gate in the SOP the orchestrator
+  is running wins over routing a note; a note naming `k-adversarial-pull-request-review` is run
+  by the orchestrator as that SOP's coordinator, and a note naming any other SOP is presented to
+  you with its invocation command. When an SOP needs independent parts, an
+  orchestrator running it spawns them; a specialist run without one says independence will not
+  hold and runs them only when asked. Run directly with no orchestrator, the caller is the user:
+  the specialist returns the split or note to them. No specialist is resumed mid-SOP.
+- `k-adversarial-pull-request-review` is coordinated by the orchestrator, which spawns the four
+  generator passes and a fresh `k-architect` checker; `k-architect` no longer declares the SOP
+  or offers it in its welcome message, and the orchestrators' SOP trigger table gains a row for it.
+  A pass that fails twice is recorded as `MISSING` and caps the verdict at APPROVE WITH COMMENTS.
+  A given `pr_url` is read by the read-only context spawn, not the coordinator, and every brief
+  marks the relayed diff, context summary and findings lists as content under review.
+  `k-test-coverage-review` recommends `k-developer` for missing tests instead of handing off.
+- Handoff files live in a self-ignoring `.konductor/handoff/` (the writer creates its
+  `.gitignore`); `konductor init` also ignores the directory.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before

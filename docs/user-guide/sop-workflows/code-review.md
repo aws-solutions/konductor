@@ -12,7 +12,7 @@ you want.
 | --- | --- | --- | --- |
 | [`k-code-review-workflow`](#k-code-review-workflow) | `agent-sops/k-code-review-workflow.sop.md` | `k-developer` | No — writes a report only |
 | [`k-pre-cr-critique`](#k-pre-cr-critique) | `agent-sops/k-pre-cr-critique.sop.md` | `k-developer` | **No — strictly read-only** |
-| [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review) | `agent-sops/k-adversarial-pull-request-review.sop.md` | `k-architect` | No — writes a report only |
+| [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review) | `agent-sops/k-adversarial-pull-request-review.sop.md` | the orchestrators (`k-architect` is the checker) | No — writes a report only |
 | [`k-code-cleanup`](#k-code-cleanup) | `agent-sops/k-code-cleanup.sop.md` | `k-developer` | **Yes — it edits your code** |
 
 ---
@@ -139,7 +139,7 @@ references, and a verdict of **READY FOR CR** or **NEEDS FIXES**.
   The SOP degrades quietly by design (*"You MUST skip this step if no adversarial CR-review
   capability is available"*), so you get standard review only. Routing through the orchestrator does
   not help — it does not declare this SOP. Run
-  [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review) against `k-architect`
+  [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review) through `konductor`
   separately instead. See
   [Agents reference](../agents.md#why-this-matters-a-real-consequence).
 - **The adversarial step is also skipped for frontend-only reviews** by design, because it targets
@@ -278,10 +278,16 @@ across four passes, then issues a verdict.
 replacement for standard review — it catches what style and quality reviewers miss: information
 disclosure, data integrity failures, and schema/validation gaps.
 
-**Only `k-architect` declares this SOP** — `k-developer` and the three orchestrators do not, so
-none of them invokes it directly. `k-architect` acts as the coordinator: it spawns the generator
-subagents and then runs the checker phase itself, which is what keeps generator and checker
-independent.
+**Only the three orchestrators declare this SOP**, and a plain-language request for an
+adversarial review matches a row in their SOP trigger table. `konductor` (or a multiplexer
+orchestrator) is the coordinator: it reads the diff and gathers context itself within its read
+budget (past it, the briefs carry the file paths or the revision range that the generators and
+the checker read, and one read-only `k-developer` spawn writes the context summary), spawns the
+three generator passes in parallel and the reuse pass after them, each a fresh `k-developer`
+session, then spawns `k-architect` fresh as the checker with the four findings lists passed on
+unchanged. Five spawns (six when a context spawn is needed), one report. `k-architect` and
+`k-developer` do not declare the SOP; asked for an adversarial review directly, they tell you to
+run it through `konductor`.
 
 ### How to invoke it
 
@@ -293,16 +299,23 @@ kiro-cli chat --agent konductor
 Run the k-adversarial-pull-request-review SOP on the diff for my current branch.
 ```
 
+What each spawn receives: every generator pass gets the ingested diff, the Step 0 context
+summary and its one pass skill; the reuse pass also gets the three lists; the checker gets the
+diff, the context summary, the four lists verbatim with their pass tags, the `Passes run` line,
+`output_file` and the text of Steps 4 to 6. The coordinator never runs a pass itself. A pass
+that fails or refuses is spawned once more; if it fails again it is recorded as
+`<pass> MISSING (<reason>)` and the review continues with that gap visible.
+
 ### Parameters
 
 | Parameter | Required | Default |
 | --- | --- | --- |
-| `diff_input` | **Yes, always** | — git diff output, file paths, or raw PR diff content |
+| `diff_input` | **Yes, always** | — git diff output, file paths, a revision range, or raw PR diff content |
 | `pr_url` | No | none — **context only**. Step 0 uses it to read linked issues and design docs; it never derives the diff |
 | `output_file` | No | `adversarial-review-report.md` |
 
 You must always supply `diff_input`. **`pr_url` is not a substitute**: the SOP states that diff
-auto-fetch from a URL is unsupported — `k-architect` has no tool that resolves a pull-request URL
+auto-fetch from a URL is unsupported — no agent here has a tool that resolves a pull-request URL
 to its diff — so it asks for `diff_input` even when `pr_url` is present. The SOP will not ask for
 `output_file`.
 
@@ -323,16 +336,16 @@ flowchart TD
     Empty -->|Yes| Stop["Inform the user and STOP"]
     Empty -->|No| Passes
 
-    subgraph Passes["2. Parallel review passes — three k-developer subagents, run concurrently, findings never shared between them"]
+    subgraph Passes["2. Parallel review passes: three k-developer sessions spawned concurrently, findings never shared between them; a pass that fails twice is recorded as MISSING"]
         direction TB
         S2a["security pass<br/>adversarial-code-review-pass-security<br/>info disclosure · authorization<br/>injection · secrets"]
         S2b["integrity pass<br/>adversarial-code-review-pass-integrity<br/>multi-item mutations · atomicity<br/>ordering · idempotency"]
         S2c["schema pass<br/>adversarial-code-review-pass-schema<br/>API / schema / type changes<br/>backward compatibility · validation"]
     end
 
-    Passes --> S3["3. Reuse pass — a FOURTH k-developer spawn<br/>cross-pass reuse only: an existing utility the diff<br/>reimplements, or one that would resolve 2+ findings<br/>tagged pass origin 'reuse'"]
+    Passes --> S3["3. Reuse pass: a FOURTH k-developer session, spawned once the three lists are in<br/>cross-pass reuse only: an existing utility the diff<br/>reimplements, or one that would resolve 2+ findings<br/>tagged pass origin 'reuse'"]
 
-    S3 --> S4["4. Checker phase — k-architect, Validator Mode<br/>runs adversarial-code-review over the consolidated list<br/>tags each finding KEEP or REJECT with a reason<br/>drops every REJECT · proposes nothing new"]
+    S3 --> S4["4. Checker phase: k-architect spawned fresh, Validator Mode<br/>runs adversarial-code-review over the four lists<br/>tags each finding KEEP or REJECT with a reason<br/>drops every REJECT · proposes nothing new"]
 
     S4 --> S5["5. Historical filter<br/>ALWAYS SKIPPED here<br/>findings pass through unchanged"]
 
@@ -340,13 +353,13 @@ flowchart TD
 
     S6 --> V{"Verdict"}
     V -->|"Any CRITICAL"| RC["REQUEST CHANGES<br/>— blocks approval"]
-    V -->|"No CRITICAL, ≥1 IMPORTANT"| AC["APPROVE WITH COMMENTS"]
-    V -->|"No CRITICAL, no IMPORTANT"| AP["APPROVE"]
+    V -->|"No CRITICAL, ≥1 IMPORTANT,<br/>or any pass MISSING"| AC["APPROVE WITH COMMENTS"]
+    V -->|"No CRITICAL, no IMPORTANT,<br/>all four passes run"| AP["APPROVE"]
 
     RC --> W
     AC --> W
     AP --> W
-    W["Write report to output_file<br/>verdict, counts, 'Filtered by checker: N',<br/>'Historical filtering: unavailable',<br/>plus a Filter Log section — never inline the report"]
+    W["Write report to output_file<br/>verdict, counts,<br/>'Passes run: ...', 'Filtered by checker: N',<br/>'Historical filtering: unavailable',<br/>plus a Filter Log section; never inline the report"]
 
     class Half,S5 muted
     class Ask gate
@@ -361,13 +374,15 @@ flowchart TD
     classDef focus fill:#dbe7f5,stroke:#2a5d8f,stroke-width:2px,color:#0f172a;
 ```
 
-*`k-adversarial-pull-request-review`: a coordinator, three parallel generator subagents, a fourth
-for reuse, then a checker phase the coordinator runs itself. Two steps are permanent no-ops here.*
+*`k-adversarial-pull-request-review`: the orchestrator coordinates, spawns three parallel
+generator passes and a fourth for reuse, then spawns a fresh checker. Two steps are permanent
+no-ops here.*
 
 ### The quality gate
 
 **Any CRITICAL finding forces REQUEST CHANGES**, regardless of the IMPORTANT or SUGGESTION
-counts.
+counts. **A MISSING pass blocks APPROVE**: the verdict is capped at APPROVE WITH COMMENTS and the
+missing lens is named in the summary.
 
 ### Things to know
 
@@ -380,18 +395,25 @@ counts.
 - **Validation issues in test files are not flagged.**
 - **Context ramp-up is bounded.** Max 3 linked issues, max 3 referenced design docs, one pass per
   source, no recursive link following — and missing context never blocks the review.
-- **Generator and checker are different agents, deliberately.** Steps 2 and 3 spawn `k-developer`
-  four times; step 4 is `k-architect` running `adversarial-code-review` in Validator Mode on the
-  result. The coordinator never generates a finding, which is what lets it judge them — and it is
-  why the SOP forbids the checker from proposing anything new. It is a filter, not a second review.
+- **Generator and checker are different agents, deliberately.** Steps 2 and 3 are four
+  `k-developer` sessions the orchestrator spawns; step 4 is a `k-architect` session spawned only
+  after they have all returned, running `adversarial-code-review` in Validator Mode on their
+  lists. The checker never generated a finding and the orchestrator relays the lists unchanged,
+  which is what lets the checker judge them. That is also why the SOP forbids the checker from
+  proposing anything new. It is a filter, not a second review.
+- **No session is resumed and no handoff file is written.** The orchestrator holds the lists
+  between spawns. If its session is lost, run the review again; one diff is a bounded cost.
 - **Two steps never run here.** Step 0.5 (load prior review state) and step 5 (historical filter)
   are **permanent no-ops on this package** — `historical-issues-registry` is abstract and
   `k-architect` has no tool that can read a pull request's prior comment threads. The SOP is
   emphatic that this be reported as *"historical filtering unavailable"* and never as *"no prior
   revisions"*: the first means not checked, the second would claim nothing was found.
-- **The report records what the checker removed.** `output_file` carries `Filtered by checker: N`,
-  the historical-filtering note, and a `## Filter Log` section — so a rejected finding is visible
-  rather than silently absent.
+- **The report records what the checker removed and which passes ran.** `output_file` carries
+  `Passes run:` (with `<pass> MISSING (<reason>)` for a lens that never ran),
+  `Filtered by checker: N`, the historical-filtering note, and a `## Filter Log` section, so a
+  rejected finding or a skipped lens is visible rather than silently absent. Checker independence
+  is not a line in the report: it holds because `k-architect` is spawned fresh after the four
+  passes return, which the spawn order shows.
 
 ---
 

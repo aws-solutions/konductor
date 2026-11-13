@@ -107,7 +107,7 @@ A skill lives at `skills/<name>/SKILL.md` and starts with YAML frontmatter:
 ```yaml
 ---
 name: delegation-protocol
-description: Use when spawning any subagent, deciding which agent should handle a piece of work, coordinating parallel or sequential agent execution, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.
+description: Use when spawning a subagent, choosing the agent for a piece of work, running agents in parallel or in sequence, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.
 version: 1.4.0
 tags: [skill, behavioral, orchestration, delegation, multi-agent]
 ---
@@ -172,7 +172,9 @@ specialists can also spawn each other directly (`k-architect` → developer and 
 researcher), and in Claude Code `k-architect` and `k-quality-assurance` carry `Agent(...)` tools
 of their own — see [Who can delegate to whom](agents.md#who-can-delegate-to-whom). In the common
 case, though, every piece of work routes through `konductor`, which decides who owns it, hands it
-over, and checks the result.
+over, and checks the result. The core rules tell specialists not to use those grants: a
+specialist does its own part, then returns a note naming the next role, or a proposed parallel
+split that gives each part's agent, inputs and files, and `konductor` routes it.
 
 A **delegation** is not a casual instruction — it is a fixed 7-section format defined by the
 `k-delegate` SOP and the `delegation-protocol` skill:

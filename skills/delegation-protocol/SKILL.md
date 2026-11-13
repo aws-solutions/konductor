@@ -1,6 +1,6 @@
 ---
 name: delegation-protocol
-description: Use when spawning any subagent, deciding which agent should handle a piece of work, coordinating parallel or sequential agent execution, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.
+description: Use when spawning a subagent, choosing the agent for a piece of work, running agents in parallel or in sequence, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.
 version: 1.4.0
 tags: [skill, behavioral, orchestration, delegation, multi-agent]
 ---
@@ -67,7 +67,7 @@ This is distinct from spawning the wrong agent for the task (an IMPORTANT-tier Q
 
 **Deliberate exception for `Workflow` `agent()` calls:** a call may omit `agentType` only when the step is pure reasoning over data already inlined into the prompt (decomposition, classification, or synthesis with no need to read files, run commands, or use any other tool) — in that case the session's default reasoning agent is a legitimate choice, not an oversight. Every such omission MUST carry an inline comment immediately above the call explaining why no specialist is needed, so the omission is never mistaken for the bug this rule exists to prevent. A call that needs file/tool access (reading a file, listing a directory, running a command, web search, etc.) always needs an explicit `agentType` — omitting it there is the CRITICAL defect below, not a deliberate exception.
 
-> **Format ownership rule**: MUST DO / MUST NOT DO sections should not contradict the receiving agent's skills or system prompt. If a specialist agent has a skill that defines how output is produced (e.g., `cloudscape-mock-ui` uses a CDN bundle), do not add constraints that override that skill's behavior. Format guidance from the user's request (e.g., "output as a single file") is acceptable to pass through.
+> **Format ownership rule**: MUST DO / MUST NOT DO sections should not contradict the receiving agent's skills or system prompt. If a specialist agent has a skill that defines how output is produced (e.g., `kiro-task-generation` fixes the tasks.md checkbox format), do not add constraints that override that skill's behavior. Format guidance from the user's request (e.g., "output as a single file") is acceptable to pass through.
 
 ## Agent Registry
 
@@ -107,15 +107,15 @@ For web content, prefer `k-researcher` for information retrieval. Delegate to `k
 
 Which SOPs each agent declares in its own `dependencies.agentSops.agentSopNames`, read directly from `agents/*.agent-spec.json`. This is the authoritative source for which agent a SOP dispatches to when it names another SOP by identifier — a referencing SOP should look up the owning agent here rather than stating or assuming one independently.
 
-| Agent                                                                         | Registered SOPs (own `agentSopNames`)                                                                                                                                                      |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `k-architect`                                                                 | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review`                                                             |
-| `k-developer`                                                                 | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow`                                                                                                     |
-| `k-quality-assurance`                                                         | `k-test-coverage-review`                                                                                                                                                                   |
-| `konductor`                                                                   | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` |
-| `konductor-mux-orchestrator`                                                  | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor`               |
-| `konductor-cmux-orchestrator`                                                 | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor`               |
-| `k-product-manager`, `k-researcher`, `k-tpm`, `k-browser`, `k-media-analyzer` | None declared — these agents execute delegated tasks; they do not select their own SOPs                                                                                                    |
+| Agent                                                                         | Registered SOPs (own `agentSopNames`)                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `k-architect`                                                                 | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`                                                                                                                                       |
+| `k-developer`                                                                 | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow`                                                                                                                                          |
+| `k-quality-assurance`                                                         | `k-test-coverage-review`                                                                                                                                                                                                        |
+| `konductor`                                                                   | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-adversarial-pull-request-review`, `about-konductor` |
+| `konductor-mux-orchestrator`                                                  | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor`               |
+| `konductor-cmux-orchestrator`                                                 | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor`               |
+| `k-product-manager`, `k-researcher`, `k-tpm`, `k-browser`, `k-media-analyzer` | None declared — these agents execute delegated tasks; they do not select their own SOPs                                                                                                                                         |
 
 `konductor` additionally registers `k-delegate`; `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` do not.
 
@@ -125,7 +125,7 @@ A SOP registered directly on an orchestrator's own `agentSopNames`, such as `kir
 
 ## Parallel Execution
 
-- Independent tasks ALWAYS run in parallel (max 4 concurrent subagents)
+- Independent tasks ALWAYS run in parallel, at most 4 subagents at once: beyond that you lose track of each brief, its result and its file list, and the integration merge grows with every extra writer
 - Typical pattern: `research + explore` → `synthesize` → `plan` → `implement`
 - Never block on one subagent when another independent task can start
 - Dependent tasks run sequentially — wait for the upstream handoff file before spawning
@@ -147,13 +147,21 @@ registry), give that file to one agent, or run the parts that touch it
 in sequence. Separate worktrees do not prevent this: both edits
 conflict at merge, or one is lost.
 
+A specialist never spawns. It returns a handoff note naming the next
+role, or a proposed split giving each part's agent, skill or SOP step,
+inputs and files. Before routing a note or any part of a split, apply
+the guards in your orchestrator context (the "Specialists do not spawn
+agents" paragraph), which also says how to check a split's file lists
+and that a note naming `k-adversarial-pull-request-review` is yours
+to run while a note naming any other SOP is presented to the user.
+
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
 Teams), `mux-dispatch` (tmux/zellij), or `cmux-dispatch` (cmux) for the
 dispatch-method-specific steps. `mux-dispatch` and `cmux-dispatch` each
 detect and drive Kiro CLI the same as Claude Code, so Kiro CLI is already
 covered there; for a plain in-session `subagent`/`Agent()` call with no
-multiplexer, the three paragraphs above are the complete procedure on either
+multiplexer, the paragraphs above are the complete procedure on either
 runtime and no separate skill is needed.
 
 Examples of parallelizable work:
@@ -166,7 +174,7 @@ Examples of parallelizable work:
 
 Large outputs between agents go through handoff files:
 
-1. Subagent writes output to `.konductor/handoff/<agent>-<task>.md`
+1. Subagent writes output to `.konductor/handoff/<agent>-<task>.md` (first create `.konductor/handoff/.gitignore` containing `*` if it is missing, so handoff files are never committed)
 2. Subagent returns only the file path to the orchestrator
 3. Next subagent reads the handoff file directly as CONTEXT
 4. Max ~300 lines per handoff file — split into multiple files if larger
