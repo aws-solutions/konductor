@@ -83,7 +83,7 @@ You should get a list of `k-*` specialists: `k-developer`, `k-architect`,
 Run the k-code-review-workflow SOP against my current branch.
 ```
 
-The orchestrator routes this to `k-developer`, which is the agent that declares that SOP.
+`konductor` spawns `k-developer`, the agent that declares that SOP, to run it.
 
 ---
 
@@ -92,13 +92,14 @@ The orchestrator routes this to `k-developer`, which is the agent that declares 
 - [ ] `konductor doctor` reports all checks ok and exits `0`.
 - [ ] `kiro-cli chat --agent konductor` starts a session without an "agent not found" error.
 - [ ] Asking "what agents do you have available?" lists `k-*` specialists.
-- [ ] Giving it implementation work produces a **delegation** to a specialist, not the orchestrator
-      doing the work itself.
+- [ ] Giving it implementation work has `konductor` edit files itself, each write asking you first,
+      then spawn a `k-*` **reviewer** when the phase closes.
 
 That last point is the real signal. In Kiro CLI the orchestrator pre-approves `fs_read` alone, so
 a write or a shell command surfaces a permission prompt instead of happening quietly — it is not
 refused, because `@builtin` grants both. (In Claude Code it is granted `Write` and `Bash` with no
-prompt gate of its own; only its routing rules stop it using them.) If it starts editing files
+prompt gate of its own; the reviewer at each phase gate is the check.) If you use
+`konductor-mux-orchestrator` or `konductor-cmux-orchestrator` and it starts editing files
 directly, its routing rules did not load — see
 [Troubleshooting](../troubleshooting.md#3-the-orchestrator-does-the-work-itself-instead-of-delegating).
 
@@ -116,7 +117,8 @@ directly, its routing rules did not load — see
 
 ## Which agent to invoke
 
-Start with `konductor` and let it route. That is the default for everything in this guide: it is
+Start with `konductor` and ask in plain language; it does the work itself or spawns the agent that
+declares the SOP you need. That is the default for everything in this guide: it is
 the only entry point that verifies a handoff before moving on, and it does not require you to know
 who owns which workflow.
 

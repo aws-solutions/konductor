@@ -32,6 +32,7 @@ RULE_FILES = (
     "context/k-orchestrator-routing-rules.md",
     "skills/persistent-memory/SKILL.md",
     "context/k-direct-work.md",
+    "context/k-orchestrator-shared.md",
 )
 
 

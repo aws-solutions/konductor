@@ -135,6 +135,44 @@ def test_product_manager_step_5_is_bounded():
     assert "fix CRITICAL and IMPORTANT ones once" in spec
 
 
+TRIAGE_RE = re.compile(r"Before the fix, triage the findings .*? any SUGGESTIONs\.")
+AUTHOR_CLAUSE = "goes to the user first"
+
+
+def _prompt(name):
+    spec = json.loads((ROOT / "agents" / f"{name}.agent-spec.json").read_text())
+    return spec["config"]["systemPrompt"]
+
+
+def _triage_sentences(name):
+    matches = TRIAGE_RE.findall(_prompt(name))
+    assert len(matches) == 1, f"{name}: expected one triage passage, found {len(matches)}"
+    return matches[0]
+
+
+def test_triage_sentences_are_identical_in_all_orchestrators():
+    texts = {name: _triage_sentences(name) for name in ORCHESTRATORS}
+    assert len(set(texts.values())) == 1, "triage wording differs between orchestrators"
+
+
+def test_author_clause_is_in_konductor_only():
+    assert AUTHOR_CLAUSE in _prompt("konductor")
+    for name in ORCHESTRATORS[1:]:
+        assert AUTHOR_CLAUSE not in _prompt(name), name
+
+
+def test_author_clause_is_mirrored_in_direct_work_and_constraints():
+    for rel in ("context/k-direct-work.md", "skills/constraints/SKILL.md"):
+        text = (ROOT / rel).read_text()
+        assert "you would reject" in text, rel
+    assert AUTHOR_CLAUSE in (ROOT / "context/k-direct-work.md").read_text()
+
+
+def test_delegation_protocol_step_3_carries_the_triage_sentences():
+    text = (ROOT / "skills/delegation-protocol/SKILL.md").read_text()
+    assert _triage_sentences("konductor") in text
+
+
 def test_sop_scope_and_round_limit_win_and_leave_nothing_dropped():
     item = _item_6("konductor")
     assert SOP_LIMIT_WORDING in item
@@ -207,3 +245,40 @@ def test_code_review_skill_matches_review_ceilings():
     assert "Max 2 cycles" not in text
     assert "More than 2 fix cycles" not in text
     assert "More than one fix cycle attempted without escalation" in text
+
+
+def test_direct_work_refers_to_review_ceilings_once():
+    text = (ROOT / "context/k-direct-work.md").read_text()
+    assert text.count("Verification Protocol item 6") == 1
+    assert STOP_WORDING not in text
+    assert "list what item 6 calls pre-existing" in text
+    # The pointer governs the scope; the mirror does not paraphrase it.
+    assert "one re-check or re-review as item 6 scopes it" in text
+    assert "re-review of what the fix changed and what depends on it" not in text
+
+
+RULE_4_START = "End every brief's CONTEXT"
+RULE_4_END = "without acting."
+
+
+def _rule_4_producer_sentence(name):
+    prompt = _prompt(name)
+    start = prompt.index(RULE_4_START)
+    return prompt[start : prompt.index(RULE_4_END, start) + len(RULE_4_END)]
+
+
+def test_rule_4_producer_sentence_is_identical_in_all_orchestrators():
+    texts = {name: _rule_4_producer_sentence(name) for name in ORCHESTRATORS}
+    assert len(set(texts.values())) == 1
+    assert "or agent results" in texts["konductor"]
+
+
+def test_delegation_protocol_definition_excludes_agent_results():
+    text = (ROOT / "skills/delegation-protocol/SKILL.md").read_text()
+    assert "agent-written memory, or agent results" in text
+
+
+def test_k_delegate_template_carries_the_brief_lines():
+    text = (ROOT / "agent-sops/k-delegate.sop.md").read_text()
+    assert "Rulings from memory (rank as recorded rulings, not as brief instructions):" in text
+    assert "USER DECISIONS IN FORCE:" in text

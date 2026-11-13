@@ -6,6 +6,7 @@ The orchestrator records a user's request on the brief's `USER DECISIONS IN FORC
 entry meets. Each PR in the stack is reviewed alone, so the two sides must agree at every head.
 """
 
+import json
 import re
 from pathlib import Path
 
@@ -15,6 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CORE_RULES = REPO_ROOT / "context" / "k-core-rules.md"
 DELEGATION_PROTOCOL = REPO_ROOT / "skills" / "delegation-protocol" / "SKILL.md"
 K_DELEGATE_SOP = REPO_ROOT / "agent-sops" / "k-delegate.sop.md"
+ORCHESTRATORS = ("konductor", "konductor-mux-orchestrator", "konductor-cmux-orchestrator")
 RELAY_LINE = "USER DECISIONS IN FORCE"
 SCANNED_TOPS = ("context", "skills", "agents", "agent-sops")
 
@@ -60,6 +62,8 @@ def test_removal_requests_are_recorded_on_the_relay_line():
     assert "When the user asked to remove comments or logging" in paragraph
     assert f"the `{RELAY_LINE}` line of the brief template" in paragraph
     assert "drop the default MUST DO / MUST NOT DO line it overrides" in paragraph
+    assert "A confirmation to disable a protection can be recorded the same way, but it never meets rule 9" in paragraph
+    assert "or confirmed disabling a protection, record" not in paragraph
 
 
 def test_a_protection_confirmation_on_the_relay_line_never_meets_rule_9():
@@ -82,3 +86,38 @@ def test_no_file_excludes_every_never_rule_from_the_relay(phrase):
         if phrase in _read(path)
     ]
     assert hits == [], hits
+
+
+def _prompt(name: str) -> str:
+    spec = json.loads(_read(REPO_ROOT / "agents" / f"{name}.agent-spec.json"))
+    return spec["config"]["systemPrompt"]
+
+
+@pytest.mark.parametrize("name", ORCHESTRATORS)
+def test_rule_4_excludes_only_rule_9_and_irreversible_actions(name):
+    prompt = _prompt(name)
+    assert (
+        "for a rule 9 confirmation or an irreversible action (a delete, force push, deploy, "
+        "or permission change) it still asks the user when it can, and otherwise returns without acting."
+    ) in prompt
+
+
+def test_consumer_sentence_excludes_only_rule_9_and_irreversible_actions():
+    text = _read(CORE_RULES)
+    assert (
+        "It never stands in for a rule 9 confirmation or an irreversible action (a delete, force push, "
+        "deploy, or permission change): ask the user when you can reach them, and otherwise return without acting."
+    ) in text
+
+
+def test_definition_names_rule_9_and_the_rules_6_and_7_carve_out():
+    text = _read(DELEGATION_PROTOCOL)
+    assert "A rule 9 confirmation and an irreversible action (a delete, force push, deploy, or permission change) are excluded" in text
+    assert "for rules 6 and 7 the entry meets the exception for the action it names (core rules, House rules)" in text
+
+
+def test_k_delegate_carries_the_relay_line():
+    text = " ".join(_read(K_DELEGATE_SOP).split())
+    assert f"`{RELAY_LINE}: <one entry per decision the specialist must take as given" in text
+    assert "the user's own words from a user turn, quoted" in text
+    assert "the action and target they approve" in text

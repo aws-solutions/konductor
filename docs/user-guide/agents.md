@@ -28,9 +28,9 @@ and the MCP registry entries.
 
 | Agent | Role | Model | Skills | SOPs | MCP |
 | --- | --- | --- | --- | --- | --- |
-| `konductor` | Coordinator. Delegates everything, implements nothing. | `claude-sonnet-5.5` | 13 | 11 | — |
-| `konductor-mux-orchestrator` | Same, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 10 | — |
-| `konductor-cmux-orchestrator` | Same, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 10 | — |
+| `konductor` | Single writer. Does the work, reviews at each phase gate. | `claude-sonnet-5.5` | 24 | 11 | — |
+| `konductor-mux-orchestrator` | Coordinator. Delegates every change, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 10 | — |
+| `konductor-cmux-orchestrator` | Coordinator. Delegates every change, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 10 | — |
 | `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 16 | 0 | — |
 | `k-architect` | System designs, APIs, data models, threat models. | `claude-sonnet-5.5` | **38** | 3 | `aws-mcp` |
 | `k-developer` | Implementation, code review, git, builds. | `claude-sonnet-5.5` | 27 | 4 | `aws-mcp` |
@@ -57,9 +57,10 @@ A few things stand out and are worth knowing before you pick an agent:
   `k-browser`, and `k-media-analyzer`. They are skill-driven — you ask for an outcome and
   they apply the relevant skills, rather than following a scripted procedure.
 
-Every agent declares the `context/k-core-rules.md` context file. Only the three orchestrators
+Every agent declares the `context/k-core-rules.md` context file, and the three orchestrators also
+declare `context/k-orchestrator-shared.md`. The mux and cmux orchestrators
 also declare `context/k-orchestrator-routing-rules.md`, which is what makes them behave as
-dispatchers.
+dispatchers; `konductor` declares `context/k-direct-work.md` and does the work itself.
 
 ---
 
@@ -114,10 +115,11 @@ Three observations that are not obvious and do affect what you should trust:
    either.** All three declare `Write` and `Bash` in `clientConfig.claudeCli.tools`. In Kiro
    CLI `konductor` pre-approves nothing but `fs_read`, and the two multiplexer variants
    pre-approve shell — which is a *prompting* difference, not a capability one. If you are
-   relying on "the orchestrator only delegates, it never touches my repository", what actually
-   holds that line is the routing rule in
+   relying on "the mux or cmux orchestrator only delegates, it never touches my repository",
+   what actually holds that line is the routing rule in
    [`context/k-orchestrator-routing-rules.md`](#the-three-orchestrators) plus your own answer
-   to the prompt — not the tool configuration.
+   to the prompt, not the tool configuration. `konductor` is outside that line by design: it
+   writes in its own session.
 2. **`k-browser` and `k-media-analyzer` pre-approve reads only in Kiro CLI, and are granted
    write and shell outright in Claude Code.** If you expect a media analyser to be incapable
    of editing your repository, that expectation does not hold in either runtime — in Kiro CLI
@@ -245,8 +247,10 @@ Code the distinction disappears — all three declare `Bash` there.
 
 ## The three orchestrators
 
-All three load `context/k-orchestrator-routing-rules.md` at session start, which is what makes
-them behave as dispatchers rather than implementers. Treat that as intent, not enforcement: it
+The mux and cmux orchestrators load `context/k-orchestrator-routing-rules.md` at session start,
+which is what makes them behave as dispatchers rather than implementers. `konductor` loads
+`context/k-direct-work.md` instead and writes and runs commands itself; it commits when you ask. Treat the
+dispatcher rule as intent, not enforcement: it
 is a prompt rule, and the tool configuration does not back it up in either runtime. Kiro CLI
 pre-approves reads only, so a mutating call stops to ask you rather than being refused, and
 Claude Code grants all three `Write` and `Bash` outright.
@@ -259,10 +263,10 @@ The default entry point, and the one to use unless you have a specific reason no
 | --- | --- |
 | **Model** | `claude-sonnet-5.5` (`claude-sonnet-5-5` on Claude Code) |
 | **SOPs** (11) | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-adversarial-pull-request-review`, `about-konductor` |
-| **Skills** (13) | `constraints`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor`. `claude-teams-behavior` is Claude Code only. Kiro CLI has the other 12 plus `humanize-writing`, on demand |
+| **Skills** (24) | `constraints`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor`, `threat-modeling`, `design-doc-guidelines`, `user-story-writing`, `backend-review`, `frontend-review`, `backend-development`, `frontend-development`, `design-evaluation`, `plan-review`, `design-impact-review`, `infra-validation`. `claude-teams-behavior` is Claude Code only. Kiro CLI has the other 23 plus `humanize-writing`, on demand |
 | **Kiro CLI tools** | `@builtin`, `subagent`; `allowedTools` is `fs_read` **only** |
-| **Claude Code tools** | `Workflow`, `WebFetch`, `WebSearch`, `TodoWrite`, `Agent(...)` over the 8 specialists, `SendMessage`, `Read`, `Glob`, `Grep`, `Bash`, `Write`, `Skill` |
-| **Can mutate?** | In Claude Code, yes — it declares `Bash` and `Write`. In Kiro CLI it can too, but nothing beyond reading is pre-approved: `allowedTools` is `fs_read` alone, so every write or command stops to ask you |
+| **Claude Code tools** | `Workflow`, `WebFetch`, `WebSearch`, `TodoWrite`, `Agent(...)` over the 8 specialists, `SendMessage`, `Read`, `Glob`, `Grep`, `Bash`, `Write`, `Edit`, `Skill` |
+| **Can mutate?** | Yes, by design: it does the work itself. In Claude Code it declares `Bash`, `Write` and `Edit`. In Kiro CLI it can too, but nothing beyond reading is pre-approved: `allowedTools` is `fs_read` alone, so every write or command stops to ask you |
 
 It is the agent with the widest delegation reach — an explicit allowlist of all eight
 specialists — and the only one that declares

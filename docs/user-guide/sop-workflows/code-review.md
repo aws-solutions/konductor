@@ -39,7 +39,8 @@ kiro-cli chat --agent konductor
 Run the k-code-review-workflow SOP against my current branch.
 ```
 
-The orchestrator routes this to `k-developer`, the only agent that declares it.
+`konductor` spawns `k-developer`, the only agent that declares it, to run it; the mux and cmux
+orchestrators route it there.
 
 ### Parameters
 

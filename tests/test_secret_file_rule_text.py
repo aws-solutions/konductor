@@ -63,9 +63,10 @@ def test_app_discovery_reads_only_the_named_keys():
 
 
 def test_orchestrator_files_point_to_rule_12_without_copying_the_carve_out():
-    text = _read("context/k-orchestrator-routing-rules.md")
-    assert "Core rule 12" in text
-    assert "counts as named by the user" not in text
+    for rel in ("context/k-direct-work.md", "context/k-orchestrator-routing-rules.md"):
+        text = _read(rel)
+        assert "Core rule 12" in text, rel
+        assert "counts as named by the user" not in text, rel
 
 
 def test_rule_12_carve_out_names_the_two_browser_sops():

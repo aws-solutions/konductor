@@ -103,10 +103,10 @@ def test_rule_11_limits_one_hop_files_to_house_rules_categories():
     assert "for the House rules categories only" in core
 
 
-def test_routing_rules_briefs_keeps_the_named_collision_qualifier():
-    routing = _read("context/k-orchestrator-routing-rules.md")
-    assert "## Briefs" in routing
-    assert "decides the same named collision" in routing
+def test_shared_rules_briefs_keeps_the_named_collision_qualifier():
+    shared = _read("context/k-orchestrator-shared.md")
+    assert "## Briefs" in shared
+    assert "decides the same named collision" in shared
 
 
 def _brief_template_default_lines() -> list[str]:
@@ -134,6 +134,7 @@ def test_template_defaults_backed_by_never_rules_are_not_dropped_by_house_rules(
     assert "Every default MUST DO / MUST NOT DO line in the template is backed by NEVER rules 6 and 7" in protocol
     assert "a house rule never drops one, only the user's own request does" in protocol
     assert "a house rule overrides and name the house rule in CONTEXT" not in protocol
+    assert "a house rule named in CONTEXT" not in _read("context/k-orchestrator-shared.md")
 
 
 def test_review_dedup_lives_in_constraints_skill():
@@ -144,9 +145,9 @@ def test_review_dedup_lives_in_constraints_skill():
 
 
 def _briefs_section() -> str:
-    routing = _read("context/k-orchestrator-routing-rules.md")
-    match = re.search(r"^## Briefs\n(.*?)(?=^---|^## |\Z)", routing, re.S | re.M)
-    assert match, "routing rules have no Briefs section"
+    shared = _read("context/k-orchestrator-shared.md")
+    match = re.search(r"^## Briefs\n(.*?)(?=^---|^## |\Z)", shared, re.S | re.M)
+    assert match, "shared orchestrator rules have no Briefs section"
     return match.group(1)
 
 
@@ -166,8 +167,8 @@ def test_level_2_qualifies_brief_rulings():
 def test_cited_memory_entries_are_origin_qualified():
     needle = "`[origin:user]` or untagged memory entry"
     assert needle in _read("skills/constraints/SKILL.md")
-    routing = " ".join(_read("context/k-orchestrator-routing-rules.md").split())
-    assert "(tagged `[origin:user]` or untagged)" in routing
+    shared = " ".join(_read("context/k-orchestrator-shared.md").split())
+    assert "(tagged `[origin:user]` or untagged)" in shared
 
 
 def test_briefs_does_not_restate_the_scope_reduction_rule():
@@ -228,7 +229,7 @@ def test_adversarial_review_replaced_only_on_direct_word_or_agent_file():
 def test_drop_a_default_paragraph_has_one_owner():
     template = _read("skills/delegation-protocol/SKILL.md")
     assert "USER DECISIONS IN FORCE:" in template
-    routing = " ".join(_read("context/k-orchestrator-routing-rules.md").split())
+    routing = " ".join(_read("context/k-orchestrator-shared.md").split())
     assert "only as the `delegation-protocol` skill's brief template says" in routing
 
 
