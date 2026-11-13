@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "measuredOn": "2026-11-11",
+  "unit": "usd",
+  "provenance": "Cost per call measured over 16,667 calls of an earlier version of this benchmark, run from 2026-11-02 to 2026-11-11 on Amazon Bedrock. Subject runs went through Claude Code, judge and checklist writer calls through OpenCode. Failed calls are kept because they cost money. Costs are the ones each CLI reported, except where an entry says cliReportsLow: OpenCode reported about 0.0009 USD per call for GPT-6.1 Terra, so those calls are priced from their token counts at the Bedrock model card rate for the us. profile with a prompt under 272K tokens (USD per 1M tokens: input 1.10, cache write 1.375, cache read 0.055, output 5.50). In that study the reported total ran about 9% below the AWS bill. Judge calls then showed the judge two answers at once; a judge call now shows one, so the judge figures are high.",
+  "lookup": "exact (kind, model), then (kind, \"*\"). kind is subject, judge or writer. With no entry, estimate_usd_per_call is used.",
+  "entries": [
+    {
+      "kind": "subject",
+      "model": "claude-sonnet-5-5",
+      "calls": 3572,
+      "failed": 11,
+      "mean": 0.06693,
+      "median": 0.0506,
+      "p90": 0.12123,
+      "cliReportsLow": false
+    },
+    {
+      "kind": "judge",
+      "model": "us.anthropic.claude-opus-5-5",
+      "calls": 3046,
+      "failed": 5,
+      "mean": 0.0478,
+      "median": 0.04565,
+      "p90": 0.07183,
+      "cliReportsLow": false
+    },
+    {
+      "kind": "judge",
+      "model": "us.openai.gpt-6.1-terra",
+      "calls": 3040,
+      "failed": 0,
+      "mean": 0.01336,
+      "median": 0.01258,
+      "p90": 0.02052,
+      "cliReportsLow": true
+    },
+    {
+      "kind": "judge",
+      "model": "us.xai.grok-4.7",
+      "calls": 3263,
+      "failed": 225,
+      "mean": 0.05061,
+      "median": 0.04538,
+      "p90": 0.09822,
+      "cliReportsLow": false
+    },
+    {
+      "kind": "writer",
+      "model": "us.anthropic.claude-opus-5-5",
+      "calls": 746,
+      "failed": 6,
+      "mean": 0.02586,
+      "median": 0.02408,
+      "p90": 0.03746,
+      "cliReportsLow": false
+    }
+  ]
+}

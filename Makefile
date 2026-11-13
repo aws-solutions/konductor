@@ -75,7 +75,7 @@
 .PHONY: all build fmt lint install link synth claude-plugin claude-plugin-check version-check notice-check \
         test test-rust test-schema-dump test-py test-skills-sh clean help \
         guide guide-check guide-sync guide-html guide-record kiro-power-check \
-        sop-orchestration-check sop-gate-facts-check
+        sop-orchestration-check sop-gate-facts-check bench-check
 
 all: build
 
@@ -100,6 +100,7 @@ help:
 	@echo "  make version-check      Check crates, lockfiles and CHANGELOG.md match VERSION"
 	@echo "  make notice-check       Fail if NOTICE.txt is out of date with the shipped crates"
 	@echo "  make test-skills-sh     Run every tests/skills/*/*.sh regression test"
+	@echo "  make bench-check        Run the skill benchmark tests (scripts/bench/, offline)"
 	@echo "  make sop-orchestration-check  Check the gated SOP list against agent-sops/"
 	@echo "  make sop-gate-facts-check  Check gated SOP text against its gate boundaries"
 	@echo "  make clean              Remove build artifacts in cli/, mcp/, and shared/"
@@ -275,6 +276,15 @@ test-skills-sh:
 		bash "$$f" || failed="$$failed $$f"; \
 	done; \
 	if [ -n "$$failed" ]; then echo "FAILED:$$failed" >&2; exit 1; fi
+
+# ── bench-check ───────────────────────────────────────────────────────────────
+# Tests for the skill benchmark (scripts/bench/). They read the committed
+# fixtures in tests/fixtures/bench/ and need only node: no network, no AWS, no
+# model call. Node 22 or newer, as package.json "engines" says; CI sets it up
+# with actions/setup-node. The file list is expanded by the shell, and
+# `npm test` also runs these through its glob.
+bench-check:
+	node --test tests/scripts/bench/*.test.js
 
 # ── test ──────────────────────────────────────────────────────────────────────
 # Delegates to each subdirectory's own `test` target, which already encodes
