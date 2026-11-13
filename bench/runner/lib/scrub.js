@@ -38,6 +38,25 @@ function scrubString(text, literals = []) {
   return out;
 }
 
+/** scrubString that also counts the replacements made: one per literal occurrence and one per shape match. */
+function scrubStringCounted(text, literals = []) {
+  let out = text;
+  let count = 0;
+  for (const l of literals) {
+    if (!l || !out.includes(l)) continue;
+    const parts = out.split(l);
+    count += parts.length - 1;
+    out = parts.join(MASK);
+  }
+  for (const [re, to] of SHAPES) {
+    const found = out.match(re);
+    if (!found) continue;
+    count += found.length;
+    out = out.replace(re, to);
+  }
+  return { text: out, count };
+}
+
 /** A copy of `value` with every string scrubbed. count is the number of strings that changed. */
 function scrubDeep(value, literals = []) {
   let count = 0;
@@ -54,4 +73,4 @@ function scrubDeep(value, literals = []) {
   return { value: walk(value), count };
 }
 
-module.exports = { secretLiterals, scrubString, scrubDeep, SHAPES, MASK };
+module.exports = { secretLiterals, scrubString, scrubStringCounted, scrubDeep, SHAPES, MASK };
