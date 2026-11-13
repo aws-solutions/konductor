@@ -79,7 +79,7 @@ service TodoService {
 }
 ```
 
-Use either a `///` doc comment or a `@documentation` trait on a shape, not both: a doc comment is the `documentation` trait, so two different values collide and the model fails to validate.
+Use either a `///` doc comment or a `@documentation` trait on a shape, not both. A doc comment is the `documentation` trait, so both together are redundant, and two different values are a trait conflict.
 
 `operations.smithy` holds operations and their HTTP traits:
 
@@ -109,10 +109,10 @@ metadata validators = [
     {
         name: "EmitEachSelector"
         id: "MissingDocumentation"
-        message: "All public shapes must have documentation"
+        message: "Every operation needs documentation"
         severity: "WARNING"
         configuration: {
-            selector: ":not([trait|documentation]) :not([trait|internal])"
+            selector: "operation :not([trait|documentation])"
         }
     }
 ]
@@ -122,7 +122,7 @@ metadata validators = [
 
 **Do:**
 
-- Name files consistently (lowercase with hyphens)
+- Name files consistently (lowercase with hyphens is this guide's convention; Smithy does not require it)
 - Group related shapes in the same file, one responsibility per file
 - Use one namespace for a service's own shapes, plus a separate common namespace only for shapes other services reuse
 - State the file's purpose at the top and order shapes logically within it
@@ -137,16 +137,17 @@ metadata validators = [
 
 ## Build configuration
 
-Point `smithy-build.json` at the model directory:
+Point `smithy-build.json` at the model directory. Pin the Maven dependencies to the current release from the [Smithy releases page](https://github.com/smithy-lang/smithy/releases), and use the same version for every `software.amazon.smithy` artifact. IDL 2.1 needs 1.75.0 or later. The example pins 1.74.1, the newest release on Maven Central when this guide was checked, which does not read IDL 2.1. The `$schema` key lets editors validate the file:
 
 ```json
 {
+  "$schema": "https://smithy.io/2.0/_static/smithy-build-schema.json",
   "version": "1.0",
   "sources": ["model"],
   "maven": {
     "dependencies": [
-      "software.amazon.smithy:smithy-aws-traits:1.51.0",
-      "software.amazon.smithy:smithy-openapi:1.51.0"
+      "software.amazon.smithy:smithy-aws-traits:1.74.1",
+      "software.amazon.smithy:smithy-openapi:1.74.1"
     ]
   },
   "plugins": {

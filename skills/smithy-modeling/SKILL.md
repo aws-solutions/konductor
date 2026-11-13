@@ -24,7 +24,7 @@ Use this skill when:
 ### 1. Service Definition
 
 - Define service shape with appropriate metadata
-- Set the service version, a date string such as `"2024-01-15"` as in the template below
+- Set the service `version`. Any string is valid; a date such as `"2024-01-15"`, as in the template below, is a common convention
 - Include title and documentation
 - List all operations the service provides
 
@@ -32,7 +32,7 @@ Use this skill when:
 
 - Create focused, single-purpose operations
 - Define clear input/output structures
-- Apply appropriate HTTP traits (@http, @readonly, @idempotent)
+- Apply the `@http` trait, plus the behavior traits `@readonly` (safe reads) and `@idempotent` (repeatable writes such as PUT and DELETE) where they fit
 - Specify all possible errors for each operation
 - A POST that creates something or changes state (create, check out, submit) is not idempotent. Give its input an `@idempotencyToken` member so clients can retry a timed-out call without doing the work twice, or say in the operation docs why a retry is unsafe
 
@@ -50,7 +50,9 @@ Use this skill when:
 - Use @range for numeric bounds
 - Apply @length for string/collection size limits
 - Use @pattern for format validation (email, URLs, etc.)
-- Mark passwords, tokens, and PII with @sensitive
+- Mark passwords, tokens, and PII with `@sensitive` on the shape the member targets, for example `@sensitive string Password`. The trait cannot go on a member
+- Mark every `@httpLabel` member `@required`
+- Use an `enum` shape for a fixed set of strings, not the deprecated `@enum` trait. Use `intEnum` for integer codes, with an explicit `@enumValue` on every member
 - When the requirements call for authentication, put the auth scheme trait (for example `@httpBearerAuth`) on the service. Operations inherit it; use `@auth` on an operation only to narrow or reorder its schemes, and `@optionalAuth` only for operations callable without credentials. Don't add a scheme the input never asked for, since it changes every generated client; list it as a suggestion instead
 
 ### 5. Error Handling
@@ -65,9 +67,10 @@ Use this skill when:
 
 ### 6. Pagination Support
 
-- Apply @paginated trait to list operations
-- Define inputToken, outputToken, and pageSize
-- Create appropriate pagination structures
+- Apply `@paginated` to list operations, naming `inputToken`, `outputToken`, `pageSize`, and `items` (the output list or map being paged)
+- The `inputToken` member must not be `@required`; `pageSize` should not be either
+- Only one list or map per operation can be paginated
+- When every list operation pages the same way, put the shared settings in a `@paginated` trait on the service; operations inherit them and set only what differs, usually `items`
 
 ## Input Processing
 
@@ -81,6 +84,8 @@ When given requirements or specifications:
 6. **Consider Code Generation**: Ensure model supports target languages (TypeScript, OpenAPI, etc.)
 
 ## Output Format
+
+Use `$version: "2"` by default. IDL 2.1 adds inline list and map declarations, tagged string literals (`#re`, `#b`, `#hex`, `#timestamp`), and a member index shorthand that is sugar for the `@idx` trait, and needs Smithy 1.75.0 or later. Set `$version: "2.1"` only when the model uses one of those and the whole toolchain is on 1.75.0 or later.
 
 If step 2 found 10 or more operations, the model will pass 500 lines, or other services share its types, open `references/file-organization.md` (relative to this file) before writing files and split the model the way it shows. Otherwise write one file in this shape. `aws.protocols#restJson1` comes from the `software.amazon.smithy:smithy-aws-traits` package, so the model needs a `smithy-build.json` that lists it (see Deliverables) or `smithy validate` can't resolve the trait:
 
@@ -160,7 +165,7 @@ structure [ErrorName] {
 
 - Avoid overly generic shapes (Document, String for everything)
 - Create specific types for domain concepts
-- Use enums for fixed value sets
+- Use `enum` and `intEnum` shapes for fixed value sets
 - Apply appropriate constraints to all fields
 
 ### Error Design
@@ -204,6 +209,14 @@ operation GetUser {
     errors: [UserNotFound, UnauthorizedAccess]
 }
 
+@input
+structure GetUserInput {
+    /// Bound to `{userId}` in the URI, so it must be required
+    @required
+    @httpLabel
+    userId: String
+}
+
 @http(method: "PUT", uri: "/users/{userId}")
 @idempotent
 operation UpdateUser {
@@ -238,6 +251,25 @@ structure User with [UserAttributes] {
     userId: String
 }
 ```
+
+A mixin passes its traits, documentation included, to every shape that uses it. List a trait in `@mixin(localTraits: [...])` to keep it on the mixin only.
+
+### Resource Lifecycle
+
+Model a resource when its operations share an identifier. Read and list operations must be `@readonly`; put and delete must be `@idempotent`.
+
+```smithy
+resource User {
+    identifiers: { userId: String }
+    create: CreateUser
+    read: GetUser
+    update: UpdateUser
+    delete: DeleteUser
+    list: ListUsers
+}
+```
+
+Bind it with `resources: [User]` on the service and leave these operations out of the service's `operations` list, since an operation can be bound only once. Instance operations (read, update, delete) bind every identifier as a `@required` input member. Collection operations (create, list) leave the resource's own identifier out.
 
 ### Common Errors
 
@@ -294,6 +326,7 @@ structure ServiceUnavailableError {
     inputToken: "nextToken"
     outputToken: "nextToken"
     pageSize: "maxResults"
+    items: "users"
 )
 operation ListUsers {
     input: ListUsersInput
@@ -326,6 +359,7 @@ string Email
 @range(min: 0, max: 150)
 integer Age
 
+@sensitive
 @length(min: 8, max: 128)
 string Password
 
@@ -343,7 +377,7 @@ list UserList {
 - Missing constraints on strings and numbers
 - Inconsistent error handling across operations
 - Missing documentation on public shapes
-- Breaking changes without versioning. Renaming a member changes its JSON wire name, so when you fix an existing model, say in the change notes whether any clients depend on it, and keep the old wire name with `@jsonName` if they do
+- Breaking changes without versioning. Renaming a member is a breaking change: it renames the member in every generated client. `@jsonName` keeps only the old JSON property name on the wire. When you fix an existing model, say in the change notes whether any clients depend on the member
 - Missing pagination on list operations
 - Exposing internal implementation details
 - Using snake_case instead of camelCase
@@ -352,7 +386,7 @@ list UserList {
 
 - Forgetting @required on mandatory fields
 - Not defining specific error types
-- Missing @sensitive on passwords, tokens, PII
+- Missing `@sensitive` on passwords, tokens, PII, or putting it on a member instead of the target shape
 - Inconsistent naming conventions
 - Overly nested structures
 - Missing HTTP traits on operations
@@ -390,7 +424,7 @@ Provide:
 
 **CRITICAL (must fix):**
 
-- Model fails `smithy validate`
+- Model fails `smithy validate` (an ERROR, or a DANGER that is not suppressed)
 - Service namespace missing or not a valid reverse-DNS namespace
 - Operations missing required `@http` traits
 - Error shapes not defined for failure cases

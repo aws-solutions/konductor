@@ -16,7 +16,7 @@ Example:
 ```smithy
 @documentation("Temperature in Celsius. Range: -273.15 to 1000")
 @range(min: -273.15, max: 1000)
-Double TemperatureCelsius
+double TemperatureCelsius
 ```
 
 **Error Handling** - GetForecast operation
@@ -90,13 +90,15 @@ operation ListLocations {
 
 **Security** - User.email field
 Issue: Email field not marked as sensitive
-Recommendation: Mark PII with @sensitive trait
+Recommendation: Mark PII with the @sensitive trait on the shape the member targets; the trait cannot go on a member
 Example:
 
 ```smithy
+@sensitive
+string EmailAddress
+
 structure User {
-    @sensitive
-    email: String
+    email: EmailAddress
 }
 ```
 
