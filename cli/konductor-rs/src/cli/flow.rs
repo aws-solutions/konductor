@@ -22,11 +22,11 @@
 // `library/<name>` names a shipped workflow, and none exist yet.
 //
 // Harness: `--harness` takes `kiro-cli`, `claude` or `fake`. Without it the one runner harness that the install index
-// records is used (`flow_harness.rs` reads the index). `claude` is a usage error until step 1f-2. A stage whose agent
-// Kiro CLI cannot see is a usage error (exit 64) before the first stage and before the trust question.
+// records is used (`flow_harness.rs` reads the index). A stage whose agent the harness cannot see is a usage error (exit
+// 64) before the first stage and before the trust question.
 //
-// Interrupts: on Kiro CLI, SIGINT, SIGTERM and SIGHUP end the running session's process group through the launcher and
-// halt the run (`flow_interrupt.rs`). The command exits 1 like any halted run.
+// Interrupts: on Kiro CLI and on Claude Code, SIGINT, SIGTERM and SIGHUP end the running session's process group
+// through the launcher and halt the run (`flow_interrupt.rs`). The command exits 1 like any halted run.
 //
 // Trust: a project workflow, and any workflow in a repository that has tool configuration files, runs only after
 // the user confirmed its trust hash. The hash is made from the bytes the loader parsed (`workflow_core::trust`). The
@@ -42,13 +42,16 @@ use std::sync::Arc;
 
 use workflow_adapters::process::current_owner;
 use workflow_adapters::{
-    config_folders, resolve_harness, scan_repo_config, FakeHarness, FileAgentCatalog, FileRunLock,
-    FileRunStore, FileTrustStore, Found, HarnessChoice, InstalledFiles, KiroHarness, Located,
-    Lookup, Scope, Script, SimulatedClock, Skip, Skipped, StdTerminal, SystemLauncher,
-    FAKE_SCRIPT_ENV, NO_TIMEOUT_WARNING,
+    config_folders, resolve_harness, scan_repo_config, ClaudeHarness, FakeHarness,
+    FileAgentCatalog, FileRunLock, FileRunStore, FileTrustStore, Found, HarnessChoice,
+    InstalledFiles, KiroHarness, Located, Lookup, Scope, Script, SimulatedClock, Skip, Skipped,
+    StdTerminal, SystemLauncher, FAKE_SCRIPT_ENV, NO_TIMEOUT_WARNING,
 };
 use workflow_core::json::Json;
-use workflow_core::ports::{Harness, ProcessGroup, RunLock, Terminal, TrustStore};
+use workflow_core::model::Workflow;
+use workflow_core::ports::{
+    AgentCatalog, Harness, ProcessGroup, RunLock, Runner, Terminal, TrustStore,
+};
 use workflow_core::run::{Run, RunStatus, StageState, StageStatus};
 use workflow_core::runner::{execute, prepare, start, GuardedHarness, StartError, SweepResult};
 use workflow_core::time::format_timestamp;
@@ -58,7 +61,7 @@ use workflow_core::trust::{
 };
 use workflow_core::{check_text, parse_reference, Checked, Reference, ReferenceError};
 
-use crate::cli::flow_harness::{check_kiro_agents, installed_runners};
+use crate::cli::flow_harness::{check_claude_agents, check_kiro_agents, installed_runners};
 use crate::cli::flow_interrupt;
 use crate::cli::output::{self, status, ColorMode};
 use crate::cli::FlowAction;
@@ -511,6 +514,7 @@ fn run_workflow(
     // catalog checks the agents, builds the trust summary and the ambiguity check, and is the one the harness runs
     // from, so the file the user is shown is the file that runs.
     let kiro_catalog = FileAgentCatalog::new(context.project_root, context.home);
+    let claude_catalog = claude_catalog(context);
     let script = match &choice {
         HarnessChoice::Fake { script } => match Script::load(script) {
             Ok(script) => Some(script),
@@ -521,7 +525,7 @@ fn run_workflow(
         },
         // A stage whose agent the harness cannot see fails before the first stage, and before the trust question: the
         // user has to change the install or the folder, so nothing is shown that cannot run.
-        HarnessChoice::KiroCli => {
+        HarnessChoice::KiroCli | HarnessChoice::Claude => {
             // A session starts in the project root, which a path that is not UTF-8 cannot be given to the launcher as.
             if context.project_root.to_str().is_none() {
                 return usage_error(
@@ -531,12 +535,13 @@ fn run_workflow(
                     err,
                 );
             }
-            if let Err(message) = check_kiro_agents(
-                &prepared.workflow.stages,
-                &kiro_catalog,
-                context.project_root,
-                context.home,
-            ) {
+            let stages = &prepared.workflow.stages;
+            let visible = if choice == HarnessChoice::Claude {
+                check_claude_agents(stages, &claude_catalog, context.project_root, context.home)
+            } else {
+                check_kiro_agents(stages, &kiro_catalog, context.project_root, context.home)
+            };
+            if let Err(message) = visible {
                 return usage_error(&message, context, out, err);
             }
             None
@@ -546,8 +551,12 @@ fn run_workflow(
     let catalog = match &choice {
         HarnessChoice::Fake { .. } => agent_catalog(context),
         HarnessChoice::KiroCli => kiro_catalog.clone(),
+        HarnessChoice::Claude => claude_catalog.clone(),
     };
-    let assessment = assess(context, &checked, &found, &catalog);
+    let mut assessment = assess(context, &checked, &found, &catalog);
+    if choice == HarnessChoice::Claude {
+        add_claude_mismatches(&mut assessment, &checked, &claude_catalog, context);
+    }
     let subject = Subject {
         name: &name,
         checked: &checked,
@@ -565,10 +574,10 @@ fn run_workflow(
     let mut lock = FileRunLock::new(context.project_root);
     let owner = current_owner();
     let clock = Rc::new(SimulatedClock::default());
-    // From here on a Ctrl-C, SIGTERM or SIGHUP does not end this process by itself on Kiro CLI: it ends the session's
+    // From here on a Ctrl-C, SIGTERM or SIGHUP does not end this process by itself on a real harness: it ends the session's
     // group through the launcher and halts the run. The fake harness starts no process, so it keeps the default.
     let interrupt = Arc::new(AtomicBool::new(false));
-    if matches!(choice, HarnessChoice::KiroCli) {
+    if matches!(choice, HarnessChoice::KiroCli | HarnessChoice::Claude) {
         if let Err(error) = flow_interrupt::watch(&interrupt) {
             let message =
                 format!("Interrupts cannot be handled, so the run was not started: {error}");
@@ -647,13 +656,22 @@ fn run_workflow(
             let note = Box::new(move |line: &str| {
                 let _ = writeln!(std::io::stderr(), "{prefix} {line}");
             });
-            Box::new(KiroHarness::new(
-                &mut launcher,
-                &kiro_catalog,
-                "kiro-cli",
-                &cwd,
-                note,
-            ))
+            match &choice {
+                HarnessChoice::Claude => Box::new(ClaudeHarness::new(
+                    &mut launcher,
+                    &claude_catalog,
+                    "claude",
+                    &cwd,
+                    note,
+                )),
+                _ => Box::new(KiroHarness::new(
+                    &mut launcher,
+                    &kiro_catalog,
+                    "kiro-cli",
+                    &cwd,
+                    note,
+                )),
+            }
         }
     };
     // The confirmation covers what was on disk when it was given. The runner reads the tool configuration files again
@@ -1046,11 +1064,69 @@ fn agent_catalog(context: &Context) -> FileAgentCatalog {
         .with_folders_above(folders.get(1..).unwrap_or_default())
 }
 
+/// The catalog of a run on Claude Code, which starts its session in the project root: the project root, the folders
+/// above it up to the git top folder (the nearest definition wins), then the home folder.
+fn claude_catalog(context: &Context) -> FileAgentCatalog {
+    FileAgentCatalog::new(context.project_root, context.home).with_folders_above(
+        config_folders(context.project_root, context.home)
+            .get(1..)
+            .unwrap_or_default(),
+    )
+}
+
+/// Marks as ambiguous each agent of the workflow for which the search from the working folder and the search Claude
+/// Code makes from the project root find different definitions, so the file the user confirms is the file that runs.
+/// Run from the project root the two are the same search and nothing is added.
+fn add_claude_mismatches(
+    assessment: &mut Assessment,
+    checked: &Checked,
+    claude: &FileAgentCatalog,
+    context: &Context,
+) {
+    let Some(workflow) = checked.workflow.as_ref() else {
+        return;
+    };
+    let from_cwd = agent_catalog(context);
+    assessment
+        .ambiguous_agents
+        .extend(claude_mismatches(workflow, claude, &from_cwd));
+}
+
+fn claude_mismatches(
+    workflow: &Workflow,
+    claude: &FileAgentCatalog,
+    from_cwd: &FileAgentCatalog,
+) -> Vec<AmbiguousAgent> {
+    let pick = |catalog: &FileAgentCatalog, agent: &str| {
+        catalog
+            .definitions(agent)
+            .into_iter()
+            .find(|d| d.runner == Runner::Claude)
+    };
+    let mut found: Vec<AmbiguousAgent> = Vec::new();
+    for stage in &workflow.stages {
+        if found.iter().any(|a| a.agent == stage.agent) {
+            continue;
+        }
+        if pick(claude, &stage.agent) != pick(from_cwd, &stage.agent) {
+            found.push(AmbiguousAgent {
+                agent: stage.agent.clone(),
+                reason: "the search from the current folder and the search that Claude Code makes from the project \
+                         root find different files, so what you would confirm may not be what runs. Run it from the \
+                         project root, or remove the extra file"
+                    .to_string(),
+            });
+        }
+    }
+    found
+}
+
 /// The catalog for `flow trust`, which has no `--harness`: the one a `flow run` without it would use. When that is not
 /// known, the wider search of the other harnesses, which shows more files and never fewer.
 fn trust_catalog(context: &Context) -> FileAgentCatalog {
     match resolve_harness(None, installed_runners(context.home), None, None) {
         Ok(HarnessChoice::KiroCli) => FileAgentCatalog::new(context.project_root, context.home),
+        Ok(HarnessChoice::Claude) => claude_catalog(context),
         _ => agent_catalog(context),
     }
 }
@@ -1395,7 +1471,13 @@ fn trust_workflow(
         print_show(&checked, found.scope, &[], context.json, out, err);
         return EXIT_WORKFLOW_ERRORS;
     }
-    let assessment = assess(context, &checked, &found, &trust_catalog(context));
+    let mut assessment = assess(context, &checked, &found, &trust_catalog(context));
+    if matches!(
+        resolve_harness(None, installed_runners(context.home), None, None),
+        Ok(HarnessChoice::Claude)
+    ) {
+        add_claude_mismatches(&mut assessment, &checked, &claude_catalog(context), context);
+    }
     let subject = Subject {
         name: &name,
         checked: &checked,

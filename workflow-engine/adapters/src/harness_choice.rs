@@ -21,6 +21,8 @@ pub enum HarnessChoice {
     Fake { script: PathBuf },
     /// Headless Kiro CLI sessions.
     KiroCli,
+    /// Headless Claude Code sessions.
+    Claude,
 }
 
 impl HarnessChoice {
@@ -29,6 +31,7 @@ impl HarnessChoice {
         match self {
             HarnessChoice::Fake { .. } => "fake",
             HarnessChoice::KiroCli => "kiro-cli",
+            HarnessChoice::Claude => "claude",
         }
     }
 }
@@ -44,8 +47,6 @@ pub struct InstalledRunners {
 /// Why a harness is not accepted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HarnessRefusal {
-    /// `claude`, which step 1f-2 adds.
-    NotInThisBuild(String),
     Unknown(String),
     /// No `--harness`, and both runner harnesses are installed.
     BothInstalled,
@@ -58,10 +59,6 @@ pub enum HarnessRefusal {
 impl fmt::Display for HarnessRefusal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            HarnessRefusal::NotInThisBuild(name) => write!(
-                f,
-                "The `{name}` harness arrives in step 1f-2. This build runs the `kiro-cli` harness."
-            ),
             HarnessRefusal::BothInstalled => write!(
                 f,
                 "`--harness` is required: both `kiro-cli` and `claude` are installed, so Konductor cannot pick one. \
@@ -102,7 +99,7 @@ pub fn choose_harness(
             })
         }
         "kiro-cli" => Ok(HarnessChoice::KiroCli),
-        "claude" => Err(HarnessRefusal::NotInThisBuild(name.to_string())),
+        "claude" => Ok(HarnessChoice::Claude),
         _ => Err(HarnessRefusal::Unknown(name.to_string())),
     }
 }
