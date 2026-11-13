@@ -192,14 +192,15 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
 
 - **Why now:** the Designer and Execution tabs must keep every key of the new format on save (D13) and show what the
   new contract adds.
-- **YAML keys:** the slice 1 keys, edited through form controls and a raw YAML editor (D13).
+- **YAML keys:** the slice 1 keys, edited through form controls (D13). 1b edits `name` and `agent`, and 1b-2 edits
+  `prompt`.
 - **Canvas:** the editor keeps a stage's other keys (`prompt`, `prompt_file`, and the later `outputs` and `done_when`)
-  when it rewrites that stage, and no save drops `format`, `version`, `params` or a comment outside the stage block. A
-  file the editor cannot edit in place is not rewritten whole, and the editor says why. The Execution tab shows a
-  blocked stage's `reason`. The page keeps the session token in the `sessionStorage` of its tab, so a reload resumes the
-  session. A 401 drops the token and tells the user to start `flow view` again. A `trust_required` answer opens a dialog
-  that shows the `fix` command with a copy button and a Run again button. The harness values include `claude` and
-  `fake`. Both tabs show only slice 1 keys.
+  when it rewrites that stage, and no save drops `format`, `version`, `params` or a comment outside the stage block. 1b
+  keeps `prompt` and leaves editing it to 1b-2. A file the editor cannot edit in place is not rewritten whole, and the
+  editor says why. The Execution tab shows a blocked stage's `reason`. The page keeps the session token in the
+  `sessionStorage` of its tab, so a reload resumes the session. A 401 drops the token and tells the user to start
+  `flow view` again. A `trust_required` answer opens a dialog that shows the `fix` command with a copy button and a Run
+  again button. The harness values include `claude` and `fake`. Both tabs show only slice 1 keys.
 - **API rows:** all six.
 - **Engine:** none. The page talks to the stub.
 - **Tests:** unit: the editor's writer for each stage layout, with first-release stages that carry `prompt` and
@@ -208,6 +209,85 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
 - **Demo:** you can edit `hello-plan` in the browser, change a stage's agent, save, and find every other key in the file
   unchanged, see the next Run answer `trust_required` with the `fix` command, and watch a fake run of an unedited
   workflow pass.
+
+### 1b-2: The Designer edits a stage `prompt`
+
+- **Why now:** D13 gives every key a control, and no step built the one for `prompt`. The 1g demo edits a prompt in the
+  browser (D39).
+- **YAML keys:** `prompt` is edited. `prompt_file` is shown read-only.
+- **Canvas:** a multi-line prompt control. A new writer finds the range of the value with the `yaml` package and
+  replaces only those bytes. The range of a block scalar starts at its `|` or `>` and takes the final line break, so the
+  header line is inside it. Empty text removes the key. The line writer stays for names, agents and whole stages.
+  `yaml` moves from `devDependencies` to `dependencies` in `workflow-canvas/package.json`.
+- **Order of forms:** the writer tries forms in order, parses each result, compares it with what was typed, and keeps
+  the first that reads back as typed. If none does, it refuses, and the editor says why. The order depends on where
+  the value sits:
+  - In an existing block scalar, the writer keeps its style (`|` or `>`), any explicit indentation indicator and any
+    comment after the header, with chomping set from the new text. This holds for single-line text too, so it can stay a
+    block. If that does not read back, it tries a literal `|` block, then double quotes. An existing `|` makes the first
+    two the same try. A folded `>` can read back differently, since it joins single newlines. A header comment is kept
+    in a block, folded or literal, and dropped only when the text is double-quoted. Double quotes replace the whole
+    block, header line included, and the edit is not refused.
+  - Single-line text in a plain or quoted place is plain when it reads back as typed, and double-quoted otherwise. It
+    never becomes a literal block. This holds when a comment follows the value on its line.
+  - Text with a line break in a plain place or an existing quoted place becomes a literal block, then double-quoted.
+    If a comment follows the value on its line, no block is possible and the text is double-quoted.
+  - A plain or quoted value is replaced alone, so a comment after it stays after the new value on that line, even for
+    a multi-line quoted value that becomes double-quoted. A comment on the line before a block stays too.
+
+  A literal block that reads back differently falls to double quotes, then to a refusal. The writer adds an indentation
+  indicator when the first line starts with a space, and does not refuse for that alone.
+- **Characters a block cannot hold:** text with a control character (C0 or C1, except tab), U+2028, U+2029, the byte
+  order mark, U+FFFE, U+FFFF or a lone surrogate cannot sit in a block, so it is double-quoted with `\u` escapes. In
+  an existing block scalar it goes straight to double quotes, which drop the header comment. If that does not read
+  back, the writer refuses.
+- **Refusals:** the writer refuses a prompt edit, and says why, when a stage has two `prompt` keys, when the prompt
+  node is an alias or has an anchor or a tag, or when the file uses a `<<` merge key. The parsers can read these
+  differently (see Open questions). Changes to `name` and `agent` still save, even in a file where a prompt edit is
+  refused. A save still passes the stub validator, so what the engine refuses stays refused.
+- **Line endings:** in a CRLF file the typed text is written with CRLF and compared after the breaks are normalized.
+  The editor does not edit a prompt in a file that has a lone carriage return anywhere, in CR-only breaks or among LF
+  lines. It also refuses a prompt edit in a file with mixed line endings, any two of LF, CRLF and CR (D40). Each of
+  the two refusals gives its own reason.
+- **Final newline:** the line break added to a block at the end of a file is CRLF in a CRLF file. A plain or quoted
+  prompt on the last line of a file with no final newline changes only its value bytes, and no newline is added (D41
+  covers block scalars only). Removing a last-line key in a file with no final newline leaves the file without one.
+- **Trust line:** the Designer shows one line near the text area: "Saving a prompt ends trust. The next Run asks
+  again." D14 does not change.
+- **API rows:** none new. The edit goes through the existing `saveWorkflow`.
+- **Engine:** none. The page talks to the stub.
+- **Tests:** unit: the writer on block scalars `>`, `>-`, `|` and `|-`, on quoted and plain values, a comment next to
+  the value, CRLF line ends, a value at the end of the file with no final newline, the read-back refusal, empty text
+  that removes the key, a lone carriage return anywhere in the file (CR-only breaks, and a stray CR among LF lines:
+  the editor refuses to edit the prompt, with its own reason), mixed line endings of any two kinds (LF, CRLF, CR: the
+  prompt edit is refused, with its own reason), `name`, `agent` and whole-stage edits that still save in such files, a
+  block scalar that ends a file with no final newline (the new block ends with a line break inside the value, CRLF in
+  a CRLF file, and no byte outside it changes), a plain or quoted prompt on the last line of a file with no final
+  newline (only the value bytes change and no newline is added), and `prompt_file` shown read-only. One test per
+  refusal (two `prompt` keys, an alias, an anchor or a tag on the prompt node, a `<<` merge key), and one test that a
+  save the validator rejects is not written. Header cases: `|` and `>` kept, an explicit indentation indicator kept,
+  a comment after the header kept, also on a fall from `>` to a literal block, a block that falls to double quotes
+  losing the header comment without a refusal, chomping set from the new text, and an indentation indicator added for
+  a first line that starts with a space. Order cases: an existing `>` that would read back differently goes to a
+  literal block, then double quotes, then a refusal. An existing `|` goes to double quotes after its own try.
+  Single-line text in an
+  existing block scalar stays a block, and falls to a literal block, double quotes, then a refusal if it does not read
+  back. Single-line text in a plain or quoted place is never written as a literal block. Cases that read back as typed
+  stay plain and cases that do not are double-quoted, each with and without a comment after the value, and the comment
+  stays on its line after a plain or quoted value. The characters
+  that decide this live in `workflow-canvas/src/designer/core/scalar-text.ts` and its tests. Text with a line break in a
+  plain place or an existing quoted place is a literal block, then double-quoted, and double-quoted when a comment
+  follows the value on its line. A literal block that reads back differently falls to double quotes, then a refusal. One
+  case each for a control
+  character (C0 and C1, except tab), U+2028, U+2029, the byte order mark, U+FFFE, U+FFFF and a lone surrogate: the text
+  is double-quoted with `\u` escapes, and in an existing block scalar it goes straight to double quotes, then a refusal
+  if that does not read back. CRLF cases: the typed text written with CRLF, and removing the last-line key in a file
+  with no final newline. A test that the trust line is shown. The purity test of the Designer core
+  (`workflow-canvas/test-support/designer-purity.test.ts`) allows `yaml` for that one module.
+  Functional: the page against the stub. Playwright: edit the prompt of a `>-` stage, save, and compare every other
+  byte.
+- **Demo:** you can edit the prompt of a `>-` stage in the browser, save, and find every other byte in the file
+  unchanged.
 
 ### 1c: Format and checks in Rust
 
