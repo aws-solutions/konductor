@@ -176,7 +176,7 @@ Then in a session:
 
 - [ ] `claude --agent konductor` starts without an "agent not
       found" error.
-- [ ] A task needing implementation causes a **specialist to spawn**, visible in your session.
+- [ ] A task needing implementation has `konductor` edit files itself and spawn a **`k-*` reviewer** when the phase closes, visible in your session.
 - [ ] The specialist can actually read and edit files, rather than silently doing nothing.
 
 If the first works but the second does not, revisit setting 1. If the second works but the third

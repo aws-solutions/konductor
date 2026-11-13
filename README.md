@@ -36,8 +36,10 @@ right specialist, checks what comes back, and sends it back for fixes when it fa
 
 - 🎼 **One request, the whole lifecycle.** Requirements, design, code, tests and docs, without
   hand-carrying artifacts between chats.
-- ✅ **Every deliverable gets checked.** Work passes a maker-checker gate, and failed checks
-  go back for up to two fix cycles.
+- ✅ **Every phase gets checked.** Code, and documents a later phase implements or you ask to have
+  reviewed, pass one fresh reviewer; a standalone design, plan or requirements document passes its
+  checker skill; a one-file change of at most 50 lines passes by build, test and lint, reported with the diff stat. Anything touching auth, secrets,
+  data or infrastructure, and every threat model, gets the reviewer. Failed checks get one fix and one re-review.
 - 🧠 **Expertise built in.** 82 skills and 19 step-by-step workflows (SOPs) cover threat models,
   IAM policies, DynamoDB design, code review, E2E testing and more.
 - 🪶 **No infrastructure.** Agents are configuration (prompts, skills, SOPs) that your Kiro or
@@ -234,12 +236,15 @@ for the full fallback chain.
 
 ## Meet the team
 
-`konductor` is where you start. It never writes code itself: it delegates, verifies, and re-delegates
-when a quality gate fails (up to two fix cycles).
+`konductor` is where you start. It does the work in your session and brings in one fresh specialist
+reviewer at each phase gate; it spawns a specialist to do work only for a tool, skill or SOP it lacks
+or for parallel work on disjoint files. A failed review gets one fix and one re-review; a CRITICAL or IMPORTANT finding still open after that is reported to you. On Kiro CLI it trusts only reads, so
+each write and shell command asks you first; widen `allowedTools` in your agent config if you want
+fewer prompts.
 
 | Agent | What it does |
 | --- | --- |
-| `konductor` | Coordinates every specialist across the lifecycle, tracks progress and enforces quality gates |
+| `konductor` | Takes a request through the lifecycle, tracks progress and enforces review gates |
 | `konductor-mux-orchestrator` | Same job, with specialists running in parallel tmux or zellij panes (auto-detected) |
 | `konductor-cmux-orchestrator` | Same job, with specialists in parallel [cmux](https://github.com/manaflow-ai/cmux) surfaces |
 | `k-product-manager` | User stories, requirements summaries and decision research, validated before handoff |
@@ -362,8 +367,15 @@ Each one is explained, with a flowchart, in [SOP workflows](docs/user-guide/sop-
 ### 💾 Persistent memory
 
 Agents with the `persistent-memory` skill keep a small scratchpad across sessions, with no setup.
-The directory is created on first write and added to `.gitignore`.
-Agents treat your own entries as instructions only while `.konductor/memory/` is untracked by git; committed memory is read as content.
+The directory is created on first write and added to `.gitignore` by default; remove the ignore
+to share memory with your team. Agents treat these files like AGENTS.md, and shared memory
+carries agent-written entries to every clone, so review memory diffs as you would AGENTS.md
+changes. The validator requires an `[origin:agent]` or `[origin:user]` tag on each new line;
+agents follow only untagged and `[origin:user]` entries, which were written by hand or at your
+request. Upgrading with a committed memory file: untagged lines were data before and are
+instructions now; list them with
+`grep -vE '^\s*-\s*(\[[0-9-]+\]\s*)?\[origin:' .konductor/memory/*.md` and tag agent-written
+ones `[origin:agent]`.
 
 | File | Holds |
 | --- | --- |

@@ -17,23 +17,27 @@ All three are declared by all three orchestrators. This page uses the plain
 
 ## What "owned by the orchestrator" actually means
 
-The orchestrators are dispatchers by design — but no runtime enforces it. In Kiro CLI
+The mux and cmux orchestrators are dispatchers by design, and `konductor` does the work itself; no
+runtime enforces either shape. In Kiro CLI
 `konductor`'s `allowedTools` is `fs_read` alone, which pre-approves reads and nothing else; a write
 or a shell command still reaches you as a permission prompt, because `@builtin` grants both. In
-**Claude Code it is granted `Bash` and `Write`** with no prompt of its own, alongside `Read`, `Glob`, `Grep`,
+**Claude Code it is granted `Bash`, `Write` and `Edit`** with no prompt of its own, alongside `Read`, `Glob`, `Grep`,
 `WebFetch`, `WebSearch`, `TodoWrite`, `Workflow`, `Skill`, `SendMessage`, and an `Agent(...)` tool
-scoped to the eight specialists. Only its routing rules stop it using them, so the dispatcher
-behaviour you see there is a convention rather than a wall.
+scoped to the eight specialists. `konductor` uses them as its direct-work rules allow. For the mux and cmux orchestrators only the
+routing rules stop them, so the dispatcher behaviour you see there is a convention rather than a
+wall.
 
 `k-context-gathering` says this out loud:
 
 > **Execution context:** Steps below run shell commands and may write files. An agent without those
 > tools delegates them to specialist agents per its routing rules.
 
-So when you run this chain "via the orchestrator", the orchestrator reads, synthesises, and routes.
-The file writes, `git diff` calls, and build and test commands execute through whichever specialist
-it delegates to — `k-developer` for implementation and shell work, `k-researcher` for
-parallel research, `k-architect` for escalations.
+So when you run this chain through `konductor`, it reads, synthesises, writes the files and runs the
+`git diff`, build and test commands itself, as its direct-work rules allow; it spawns a specialist
+only for a tool, skill or SOP it lacks or for independent work on disjoint files (`k-researcher`
+for parallel research), and a fresh reviewer when a phase closes. Through the mux or cmux orchestrator the same
+steps execute in whichever specialist it delegates to: `k-developer` for implementation and shell
+work, `k-researcher` for parallel research, `k-architect` for escalations.
 
 That is the point of running it through the orchestrator rather than a single specialist: it is the
 one agent built to coordinate across all three SOPs in one pass, and the one with the widest
@@ -182,10 +186,8 @@ The chain itself is runtime-agnostic. What differs is dispatch mechanics:
 
 Functionally the same three SOPs run either way.
 
-One caveat worth knowing: **specialist-to-specialist handoff is narrower in Claude Code**. There,
-only `k-architect` (→ developer, QA) and `k-quality-assurance` (→ developer, browser) carry
-`Agent(...)` tools of their own; `k-developer` and `k-tpm` have Kiro CLI targets but no `Agent(...)`
-tool at all. The multiplexer variants shell out instead, so they work either way.
+Specialists never spawn each other. Kiro CLI v3 and Claude Code enforce this in config; Kiro CLI
+v2 relies on the core rules. A specialist returns to the orchestrator, which routes the next step.
 
 ---
 
