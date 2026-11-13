@@ -598,6 +598,8 @@ node bench/runner/bench.js run --suite skilleval-$S --arms vanilla,natural=GITSH
 ```
 The oracle arm puts the skill body in front of every prompt, near-miss tasks included, which measures the cost of applying the skill where it should not apply; `expectations.json` records that the natural path should not load the skill for them. Tests: `node --test bench/skilleval/test/`.
 
+`bench/agenteval/agenteval.js` turns a Strands Evals experiment file into reviewable scenario candidates for an agent that is not a Konductor agent; it runs no agent and emits no bench tasks yet (see [agenteval/README.md](agenteval/README.md)).
+
 ### Tasks from the committed skill eval data
 
 `bench/skilleval/import.js` builds tasks and trigger queries on demand from `bench/skill-evals/skills/<skill>/`, with no model call. The data is written by a model (skill-creator style, two cases per behavior), so treat results from it as supporting evidence. The skills themselves come from the git ref of each arm; a skill whose `skills/<name>/SKILL.md` is not in `--ref` is skipped.

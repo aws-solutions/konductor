@@ -294,6 +294,7 @@ Details, credentials and flags are in the harness sections of [README.md](README
 An arm is always a Konductor git ref or directory plus a condition, or the bare agent CLI. There is no arm kind for "this other agent definition".
 The task generators (`skilleval.js` and `cap scenarios`) read one Konductor `SKILL.md` or one Konductor capability, not a system prompt or a tool list.
 `README.md` states the same limit: testing an arbitrary third-party skill or agent definition is not supported yet.
+The Strands experiment importer in [agenteval/README.md](agenteval/README.md) only prepares reviewable scenario candidates from generated test cases; it does not run or benchmark any agent.
 
 **What a new runtime has to provide.** [runner/lib/harness/CONTRACT.md](runner/lib/harness/CONTRACT.md) is the written adapter contract: the members a harness module exports, the fields its parser fills, the steps to add a runtime and the places that still switch on the runtime name. It is derived from reading the code and is not tested yet. No conformance test exists, so a missing member shows up as an error in the middle of a run. In short:
 
