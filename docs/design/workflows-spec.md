@@ -269,48 +269,111 @@ trust, unless the repo carries tool configuration files (see below). Content tha
 a trust question. Content written by a model or taken from a repository is not trusted until the user confirms it. No
 setting turns trust off.
 
-**What the trust hash covers.** The trust hash is a SHA-256 over the bytes of the workflow file and the bytes of every
-`prompt_file` it names, in a fixed order. Later slices add the workflows a workflow reaches. The loader hashes the same
-bytes it parses, so a file edited after the confirmation cannot run. A change to another workflow in the repo does not
-change this workflow's hash. The hash pins the command line of each `run` check, not the code it runs. The byte layout
-is [deferred](#deferred-to-a-later-slice).
+**What the trust hash covers.** The trust hash is a SHA-256 over the bytes of the workflow file, the bytes of every
+`prompt_file` it names and the repo tool configuration files below, in a fixed order. Later slices add the workflows a
+workflow reaches. The loader hashes the same bytes it parses, and reads a prompt file once even when two stages name it,
+so a file edited after the confirmation cannot run. A change to another workflow in the repo does not change this
+workflow's hash. The hash pins the command line of each `run` check, not the code it runs.
 
-**Repo tool configuration.** A headless run loads some repo files with no tool prompt: `.claude/settings.json`,
-`.mcp.json`, agent files under `.kiro/agents/` and agent files under `.claude/agents/`. When the repo root contains any
-of these, a run of any workflow, project, user or shipped, needs confirmation, and the hash also covers those files. The
-summary lists them. A user or shipped workflow then has a record keyed by the repo root and its name, like a project
-workflow. Files that Konductor's install manifest records and that are unchanged since the install are not counted, so a
-project install does not ask on every run.
+The byte layout is fixed. The hashed input is the tag `konductor-trust/1` and a newline, then one frame per file. A
+frame is a kind byte, the length of the path as 8 bytes (big endian), the path (UTF-8, `/` between parts), the length of
+the content as 8 bytes, and the content. The frames are the workflow (kind `w`, empty path, so the file's name and
+folder do not count), then each distinct prompt file (`p`, the path as written in the workflow) sorted by path in byte
+order, then each tool configuration file (`c`, the path relative to the git top folder) sorted by path in byte order.
+There is no frame for a file that cannot be read, because such a file has no hash. An unreadable prompt file is
+`INVALID_VALUE` (exit 65), and an unreadable tool configuration file refuses the run (exit 77, `tool_config_unreadable`,
+below). The hash is written as 64 lowercase hex digits. The tag changes with any change to this layout.
+
+**Repo tool configuration.** Some repo files are loaded by a headless run with no tool prompt, and others can approve a
+tool or start a program on their own. They are `.claude/settings.json`, `.claude/settings.local.json`, `.mcp.json`,
+`.kiro/settings/mcp.json`, and the files under `.kiro/agents/`, `.claude/agents/`, `.claude/commands/`,
+`.claude/skills/` and `.claude/hooks/`. Claude Code loads `.claude/settings.local.json` as well as `settings.json`
+(`--setting-sources user,project,local`), and a hook in either runs with no prompt. Git usually ignores the local file,
+and an edit to it still changes the hash. Skills and commands can carry `allowed-tools`, which pre-approves tools while
+they run, and the scripts a hook runs are kept by convention under `.claude/hooks/`. When the folders searched contain
+any of these, a run of any workflow, project, user or shipped, needs confirmation, and the hash also covers those files.
+The summary lists them: for a settings file the top-level keys, and for an MCP file each server and the command or
+address it starts. A user or shipped workflow then has a record keyed by the repo root and its name, like a project
+workflow. The folders searched are the project root and each folder above it up to the git top folder, where the
+[project root search](workflows-spec.md#commands-and-exit-codes) stops (D25).
+
+Not covered, on purpose. `CLAUDE.md` and the Kiro steering and skill files are text for the model: they start nothing
+and pre-approve nothing, and an agent can be steered just as well by any other text in the repo, which the hash cannot
+list. `.claude/` and `.kiro/` as whole trees are not read, because `.claude/` also holds state such as the checkouts of
+Claude Code worktrees, and a folder that size would refuse every run. A hook that points at a script outside
+`.claude/hooks/` is covered by its command line and not by the script. Each folder in the list is read to a depth of 4
+and to 512 files and folders together, and a file to 1 MiB.
+
+An entry the scan cannot read in full refuses the run, whatever hash is passed: a link, a folder over the limits above,
+a file that is over 1 MiB or cannot be read, and a name that is not UTF-8. A change behind it would not show in the
+hash. The refusal exits 77 with the code `tool_config_unreadable` under `--json`, and `--trust` and `--yes` do not
+override it. Step 1e owns the scan limits and this refusal (D23).
+
+Files that Konductor's install manifest records and that are unchanged since the install are not counted, so a project
+install does not ask on every run. The manifest counts only when the install index in the user's home
+(`~/.konductor/installs`) lists the repo as a finished install target, and each file has a recorded hash. The manifest
+is a file in the repo, so a repo that is already an install target and ships its own manifest is not asked about the
+files it lists, until the install keeps its own record of file hashes outside the repo
+([deferred](#deferred-to-a-later-slice)).
 
 **The record.** Trust is recorded in `~/.konductor/trust.json`, in the user's home directory and outside every
-repository, with file mode 0600. A clone cannot ship a record. Each entry is keyed by the canonical repository root and
-the workflow name, and holds the trust hash the user confirmed. The file is global on purpose, so that a record cannot
-come from a clone. The runner writes it to a temporary file in the same directory and renames it, under an advisory
-lock, so two writers do not lose an update. A record that cannot be read or parsed counts as "nothing trusted".
+repository, with file mode 0600. The folder `~/.konductor` is made with mode 0700 when it is missing. `HOME` must be an
+absolute path: a relative one counts as no home folder, so a clone cannot get the record written into itself. A clone
+cannot ship a record. Each entry is keyed by the canonical repository root and the workflow name, and holds the trust
+hash the user confirmed. The file is global on purpose, so that a record cannot come from a clone. The runner writes it
+to a temporary file in the same directory and renames it, under an advisory lock, so two writers do not lose an update.
+An entry is read on its own: a malformed entry trusts nothing and does not hide the others, and a change keeps every
+entry it does not touch. A record that cannot be read trusts nothing. A record that is not valid JSON, has no usable
+`schema_version` or `trusted` object, or comes from a newer Konductor is never replaced: `flow trust` and its `--revoke`
+form exit 74 and name the file, and the user moves it aside to start again. Step 1e owns exit 74 (D23).
 
-**Asking.** `flow run` and `flow verify <run-id>` on a workflow that needs confirmation show a summary and ask once,
-"Trust this workflow and run it? y/N". On yes, the command records trust and continues. On no, it exits 77 without
-running anything. The summary lists:
+Two workflows with the same name under one git top folder, such as `plan` in two packages of a monorepo, share one
+entry. Trusting one replaces the hash of the other, so each asks again when the user switches between them. Different
+names avoid it. Keying the entry by the workflow's path is possible later, at the cost of a new record schema.
+
+**Asking.** `flow run` and `flow verify <run-id>` on a workflow that needs confirmation show a summary and ask once. To
+confirm, the user types the first 8 characters of the trust hash, which the summary shows (D23). A bare `y` does not
+confirm:
+a key pressed before the summary was on screen is already waiting in the input, and it must not be able to confirm what
+the user has not seen. On a match, the command records trust and continues. On anything else, an empty answer included,
+it exits 77 without running anything. The summary lists:
 
 - the workflow name and path;
 - its trust hash;
 - each agent id, with the runner harness it will use and the tools the runner lets it run without asking; for a Claude
-  agent with no `tools` key, the summary says that every tool is available and none is pre-approved;
+  agent with no `tools` key, the summary says that every tool is available and none is pre-approved; an agent file
+  whose front matter this build cannot read in full (a quoted key, a space before a colon) is shown as unreadable, and
+  never as a shorter list;
 - each `run` check command (argv), with a note when its program is a path into the repo;
-- each file the hash covers.
+- each file the hash covers, and under a settings file its top-level keys, and under an MCP file each server with the
+  command or address it starts.
 
-Later slices extend this list as they add commands, connections and reached workflows.
+Later slices extend this list as they add commands, connections and reached workflows. Text that comes from the repo is
+shown with control characters, format characters and other code points that print as nothing replaced.
 
 **At `flow view`.** `flow view <name>` on a workflow that needs confirmation, with a terminal, shows the same summary
 and asks the same question before it starts the server. On yes, it records trust. On no, or without a terminal, the
 canvas still opens, and a Run gets `trust_required`.
 
 **Without a terminal.** A workflow that needs confirmation exits 77 and names the two ways to proceed:
-`konductor flow trust <name>`, or `--trust <hash>` on the command, also settable as `KONDUCTOR_TRUST=<hash>`. A
-`--trust` hash applies only when it equals the current hash of the workflow being run (for `flow verify`, the run's
-workflow), and it permits that command only. A
-mismatch exits 77 and prints both hashes. `flow check` prints the trust hash of the file it checked, in a `trust_hash`
-field of `--json`.
+`konductor flow trust <name>` in a terminal, or `--trust <hash>` on the command, also settable as
+`KONDUCTOR_TRUST=<hash>`. A `--trust` hash applies only when it equals the current hash of the workflow being run (for
+`flow verify`, the run's workflow), and it permits that command only. A mismatch exits 77 and prints both hashes.
+`flow check` prints the trust hash of the file it checked, in a `trust_hash` field of `--json`. When the repo tool
+configuration cannot be read in full, `flow check` prints "trust hash: none" with the reason, leaves `trust_hash` out of
+its `--json` output and keeps its normal exit code, because it is not a trust command, while `flow run` and `flow trust`
+still exit 77 with `tool_config_unreadable` (D26). The hash is for a
+version the user reviewed. It must not come from a file the repo controls, such as `.envrc`, a Makefile or a CI file in
+the repo, and it must not be worked out in the script that runs the workflow, because then whoever writes the repo
+chooses what is trusted. The message says so.
+
+**Checked again before each session.** The confirmation covers the files as they were when it was given. Before each
+session starts, the runner reads the tool configuration files again and compares their hash with the one confirmed. If
+it differs, the session does not start and the run halts (exit 1, the stage ends `SESSION_FAILED`), and the message says
+that the files changed. This catches an edit made while the summary was on screen and an edit made by an earlier stage,
+which a stage agent with a file-write tool can make. The check sits in the runner, in front of the harness port, so it
+applies to every harness, and step 1e owns it and tests it on the fake harness (D23). The workflow and prompt files need
+no second read: the run uses the bytes that were hashed.
 
 **Explicit form.** `flow trust <name>` shows the same summary and asks for confirmation unless `--yes` is given.
 `flow trust --revoke <name>` removes the record. `flow trust <name>` on a user or shipped workflow in a repo without
@@ -387,28 +450,34 @@ whatever the YAML key order. The one exception is the `trust_hash` of `flow chec
 
 Exit codes follow the CLI's exit-code contract in `cli/README.md`. A command that needs trust checks it first.
 
-| Code | Meaning in the `flow` commands                                                                                         |
-| ---- | ---------------------------------------------------------------------------------------------------------------------- |
-| `0`  | Done. `flow check`: no errors. `flow run`: run `passed`. `flow verify`: `passed` or `unverified`                       |
-| `1`  | `flow run`: run `halted`. `flow verify`: result `failed`                                                               |
-| `64` | Usage error, in any command                                                                                            |
-| `65` | The workflow has errors (`flow check`, `flow show`, `flow run`, `flow verify`)                                         |
-| `75` | `flow run`: the run lock refuses the run. Another run holds it, or its owner record cannot be read                     |
-| `77` | Trust refusal: the workflow is not trusted and the user said no, no terminal was available, or `--trust` did not match |
+| Code | Meaning in the `flow` commands                                                                                             |
+| ---- | -------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | Done. `flow check`: no errors. `flow run`: run `passed`. `flow verify`: `passed` or `unverified`                           |
+| `1`  | `flow run`: run `halted`. `flow verify`: result `failed`                                                                   |
+| `64` | Usage error, in any command                                                                                                |
+| `65` | The workflow has errors (`flow check`, `flow show`, `flow run`, `flow verify`)                                             |
+| `74` | The trust record cannot be kept or changed: no usable home folder, a file error, or a record that is damaged or newer      |
+| `75` | The run lock refuses `flow run` (D22), or `flow verify` on a run still in progress                                         |
+| `77` | Trust refusal: not trusted and the user did not confirm, no terminal, `--trust` did not match, or `tool_config_unreadable` |
 
-The CLI's contract defines `65` as an unsupported manifest or index `schema_version`, a state failure, and has no `75`
-or `77`. Its `1` row reads "Halted (timeout / runtime error / parse error)", and `doctor` reuses it for a failed check.
-The change that adds the commands edits `cli/README.md` in four places:
+The CLI's contract has no `74`, `75` or `77`. Its `65` row covers workflow errors (`flow check`, `flow show`) as well as
+a bad `schema_version`, and needs no change. Its `1` row reads "Halted (timeout / runtime error / parse error)", and
+`doctor` reuses it for a failed check. The steps that add the commands edit `cli/README.md` in four places, and each
+step edits the rows of the codes it first emits:
 
-- widen the `65` row to cover workflow errors;
-- add the `75` row;
-- add the `77` row;
-- widen the `1` row to cover a `flow run` that halted and a `flow verify` that failed.
+| Edit                                                                                | Owner |
+| ----------------------------------------------------------------------------------- | ----- |
+| Add the `74` row (`EX_IOERR`)                                                       | 1e    |
+| Add the `77` row                                                                    | 1e    |
+| Add the `75` row (`EX_TEMPFAIL`)                                                    | 1d    |
+| Widen the `1` row to cover a `flow run` that halted and a `flow verify` that failed | 1d    |
 
-Every trust refusal exits `77`, including a no at the prompt, so a script handles one code. A lock refusal exits `75`,
-the "try again later" code. Under `--json` its code is `already_running`, with the active `run_id` and the owner's
-`pid`, or `lock_unreadable`. The `flow` commands never emit `2`, which the CLI reserves, or `4`, which stays reserved
-for a user who aborts a paused verdict.
+Every trust refusal exits `77`, including an answer other than the code at the prompt, so a script handles one code. A
+record that cannot be read only trusts nothing, so it gives `77` and not `74`; `74` is for a record that cannot be kept
+or changed. A lock refusal exits `75`, the "try again later" code. It covers a lock held by a live run, a lock held with
+a record that cannot be read, and a platform that cannot lock (D22). Under `--json` its code is `already_running`, with
+the active `run_id` and the owner's `pid`, or `lock_unreadable`. The `flow` commands never emit `2`, which the CLI
+reserves, or `4`, which stays reserved for a user who aborts a paused verdict.
 
 ## Run, stage and check states
 
@@ -569,8 +638,6 @@ Each item has a slice or a design that owns it, and a rule until then.
   see in each tool (the stdout of a Claude `SessionStart` hook goes to the model, not the user), and it must not fire
   in runner stage sessions. Until then `flow run` and `flow verify` ask on a terminal and otherwise exit 77
   ([Trust](#trust)).
-- **Trust hash byte layout.** Owner: [step 1e](workflows-plan.md#1e-trust), which builds `flow trust`. It fixes the
-  separators, path encoding, sort order and hex form of the hash, and the order of the files in it.
 - **Session recovery in the canvas.** Decided in: the canvas contract, after the first release.
   A reload, a duplicated tab
   or a tab the browser restores keeps the session, because the page keeps the token in the tab's `sessionStorage`. A tab
@@ -582,6 +649,16 @@ Each item has a slice or a design that owns it, and a rule until then.
   shipped workflows run from the CLI only.
 - **Path-typed params.** Slice 13. Until then a large input such as a diff is passed inline, within the size cap in
   [Limits](#limits).
+- **Install records outside the repo.** Decided in: the install design. A repo that is already an install target and
+  ships its own `.konductor/manifest` is not asked about the files that manifest lists, and neither is a `git pull`
+  that changes an installed agent file and the manifest together. The fix has `install` and `update` keep the file
+  hashes in the install index in the home folder, and compare against those. It changes the index schema and the
+  install, update and uninstall paths, so it is separate from the trust gate. The [Threats](workflows.md#threats) table
+  records the residual risk.
+- **Trust at stage start for real harnesses.** Owner: [step 1e](workflows-plan.md#1e-trust), which builds the check
+  before each session ([Trust](#trust)) in the runner, in front of the harness port. Steps 1f-1 and 1f-2 only start
+  every session through the runner. A session refused because the files changed halts the run with `SESSION_FAILED` and
+  a message. A reason code of its own needs the codes table.
 - **Stage agents editing the trust record.** Decided in: the runner design. A stage agent with a broad write tool can
   edit `~/.konductor/trust.json`. Until then the Threats table records it as a residual risk.
 - **Per-run limit overrides, a per-stage harness and an opt-in shared session.** Not scheduled. Each is added without

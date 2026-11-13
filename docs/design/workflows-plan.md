@@ -260,14 +260,19 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
 - **API rows:** none. 1g adds `trust_required` to `startRun`.
 - **Engine:** the [trust rules](workflows-spec.md#trust): the summary and prompt in `flow run`, `flow trust <name>` with
   `--yes` and `--revoke <name>`, `--trust` and `KONDUCTOR_TRUST`, the `trust_hash` of `flow check`, the per-workflow
-  hash and the record. The summary lists, for each agent, the tools the runner lets it run without asking, and the repo
-  tool configuration files, which the hash covers; a repo that has them needs confirmation for shipped and user
-  workflows too. The record is written to a temporary file and renamed under a lock, and an unreadable record means
-  nothing is trusted. Ports: `TrustStore`, `Terminal` and `AgentCatalog` (finds an agent as the
-  [spec](workflows-spec.md#harness-invocation) says and reads its tools). For a Claude agent with no `tools` key, the
-  summary says that every tool is available and none is pre-approved, because the runner then passes no
-  `--allowedTools`. The step checks whether the install manifest records a hash for each installed file. The hash layout
-  is fixed here ([deferred](workflows-spec.md#deferred-to-a-later-slice)).
+  hash and the record. The user confirms by typing the first 8 characters of the hash (D23). This step also owns three
+  behaviors of the trust rules: the scan limits of the repo tool configuration files, with the refusal
+  `tool_config_unreadable` (exit 77); the re-check of those files before each session, which sits in the runner in front
+  of the `Harness` port, so every harness gets it; and exit 74 for a record that cannot be kept or changed.
+  `cli/README.md` gets the `74` and `77` rows ([rule](workflows-spec.md#commands-and-exit-codes)). The summary lists,
+  for each agent, the tools the runner lets it run without asking, and the repo tool configuration files, which the hash
+  covers; a repo that has them needs confirmation for shipped and user workflows too. The record is written to a
+  temporary file and renamed under a lock, and an unreadable record means nothing is trusted. Ports: `TrustStore`,
+  `Terminal` and `AgentCatalog` (finds an agent as the [spec](workflows-spec.md#harness-invocation) says and reads its
+  tools). For a Claude agent with no `tools` key, the summary says that every tool is available and none is
+  pre-approved, because the runner then passes no `--allowedTools`. The step checks whether the install manifest records
+  a hash for each installed file. The hash layout is fixed here, with no frame for an unreadable file
+  ([spec](workflows-spec.md#trust)).
 - **Tests:** unit: the hash is stable, and changes with the workflow's bytes or a `prompt_file`'s bytes but not with
   another workflow; the loader hashes the bytes it parses. Functional: yes records trust, no exits 77 and runs nothing,
   no terminal exits 77 naming both ways, `--trust` matches or mismatches, a changed file asks again, revoke removes the
