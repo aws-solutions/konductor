@@ -286,7 +286,8 @@ fn a_session_that_fails_halts_the_run_and_says_why_in_one_line() {
 }
 
 #[test]
-fn both_or_neither_installed_makes_the_flag_required_and_claude_says_step_1f_2() {
+fn both_or_neither_installed_makes_the_flag_required_and_claude_alone_is_chosen_but_needs_its_agents(
+) {
     let neither = Project::new("neither").with_agents();
     let output = neither.run(&[]);
     assert_eq!(exit(&output), 64);
@@ -314,7 +315,12 @@ fn both_or_neither_installed_makes_the_flag_required_and_claude_says_step_1f_2()
     for extra in [&[][..], &["--harness", "claude"][..]] {
         let output = only_claude.run(extra);
         assert_eq!(exit(&output), 64, "{extra:?}");
-        assert!(stderr(&output).contains("step 1f-2"), "{}", stderr(&output));
+        // Claude was chosen, and the project holds Kiro agent files only.
+        assert!(
+            stderr(&output).contains("Claude Code cannot see it"),
+            "{}",
+            stderr(&output)
+        );
     }
     // Nothing ran, and nothing was written.
     for project in [&neither, &both, &only_claude] {
@@ -349,7 +355,11 @@ fn every_refusal_under_json_is_the_error_envelope_on_standard_output() {
     let cases: [(&Project, &[&str], &str); 4] = [
         (&neither, &["--json"], "`--harness` is required"),
         (&both, &["--json"], "both `kiro-cli` and `claude`"),
-        (&claude, &["--json", "--harness", "claude"], "step 1f-2"),
+        (
+            &claude,
+            &["--json", "--harness", "claude"],
+            "Claude Code cannot see it",
+        ),
         (
             &unseen,
             &["--json", "--harness", "kiro-cli"],
