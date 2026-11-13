@@ -50,7 +50,7 @@ flowchart LR
     s1d --> s1e["1e"]
     s1d & s1e --> s1f1["1f-1"]
     s1f1 --> s1f2["1f-2"]
-    s1a & s1b & s1c & s1d & s1e --> s1g["1g"]
+    s1a & s1b & s1c & s1e --> s1g["1g"]
     s1f2 --> s1g
     s1g --> s2["2"]
     s1g --> s3a["3a"]
@@ -274,12 +274,19 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
   a hash for each installed file. The hash layout is fixed here, with no frame for an unreadable file
   ([spec](workflows-spec.md#trust)).
 - **Tests:** unit: the hash is stable, and changes with the workflow's bytes or a `prompt_file`'s bytes but not with
-  another workflow; the loader hashes the bytes it parses. Functional: yes records trust, no exits 77 and runs nothing,
-  no terminal exits 77 naming both ways, `--trust` matches or mismatches, a changed file asks again, revoke removes the
-  record, and the record file has mode 0600, the summary lists the tools each agent runs without asking, the summary of
-  a Claude agent with no `tools` key says every tool is available and none is pre-approved, a repo with a
-  `.claude/settings.json` asks for a shipped workflow, two writers do not lose an update, an unreadable record trusts
-  nothing, and `flow trust` on a user or shipped workflow exits 0 and writes no record. Playwright: none.
+  another workflow; the loader hashes the bytes it parses. Functional: typing the first 8 characters of the hash records
+  trust, a bare `y`, an empty answer or any other text exits 77 and runs nothing, no terminal exits 77 naming both ways,
+  `--trust` matches or mismatches, a changed file asks again, revoke removes the record, and the record file has mode
+  0600, the summary lists the tools each agent runs without asking, the summary of a Claude agent with no `tools` key
+  says every tool is available and none is pre-approved, a repo with a `.claude/settings.json` asks for a shipped
+  workflow, two writers do not lose an update, an unreadable record trusts nothing, and `flow trust` on a user or
+  shipped workflow exits 0 and writes no record. Scan limits: a link, a folder past the depth or entry limit, a file
+  over 1 MiB, an unreadable file and a name that is not UTF-8 each exit 77 with `tool_config_unreadable`, even with
+  `--trust`. Re-check, on the fake harness: a tool configuration file changed between two stages halts the run before
+  the second session starts (exit 1, `SESSION_FAILED`). Claude agent lookup by `name` (D32): a duplicate `name`, a name
+  that differs from the file stem, a file with no `name`, a nested `.claude/agents/` subfolder, and an unrelated
+  mismatched file that does not block a run. Exit 74: a record that is not valid JSON, one from a newer
+  Konductor and a home folder that is not absolute. Playwright: none.
 - **Demo:** you can run an untrusted workflow, confirm at the prompt, edit the file and be asked again, and in a run
   with no terminal get exit 77 with `--trust` named.
 

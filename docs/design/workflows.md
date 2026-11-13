@@ -50,7 +50,7 @@ flowchart LR
 ## Decision requested
 
 Approve this note, with the specification and the plan, as the contract for building workflows, so that the three
-goals above hold. Approving also approves the [decisions](#decisions), all Proposed.
+goals above hold. Approving also approves the [decisions](#decisions) below.
 
 The first release lets a user run the review workflow ported from the `k-adversarial-pull-request-review` SOP end to
 end. The SOP runs its review passes in parallel, and the port runs them in sequence until slice 6 (a numbered unit of
@@ -111,6 +111,17 @@ stages:
 | D19 | The runner grants no tool access of its own                                                 | [Runner](#runner)                                              |
 | D20 | The format only grows                                                                       | [Keys](workflows-spec.md#keys)                                 |
 | D21 | A fresh headless session per agent stage                                                    | [Runner](#runner)                                              |
+| D22 | One OS file lock per workspace says whether a run is alive                                  | [Run states](workflows-spec.md#run-stage-and-check-states)     |
+| D23 | Trust is confirmed by typing the first 8 characters of the hash                             | [Trust](workflows-spec.md#trust)                               |
+| D24 | A new run ends the sessions that a killed owner left behind                                 | [Run states](workflows-spec.md#run-stage-and-check-states)     |
+| D25 | The project root search stops at the git top folder                                         | [Commands](workflows-spec.md#commands-and-exit-codes)          |
+| D26 | `flow check` prints no trust hash when the tool configuration cannot be read                | [Trust](workflows-spec.md#trust)                               |
+| D27 | Kiro does not look above its working directory, and the trust summary still does            | [Harness invocation](workflows-spec.md#harness-invocation)     |
+| D28 | A V3 agent file under `--v2` is not refused                                                 | [Harness invocation](workflows-spec.md#harness-invocation)     |
+| D29 | The `doctor` pin for `kiro-cli` is 3.3.0                                                    | [Harness invocation](workflows-spec.md#harness-invocation)     |
+| D30 | `--trust-tools` adds to the agent's own rules on V3 and does nothing on V2                  | [Harness invocation](workflows-spec.md#harness-invocation)     |
+| D31 | How the `tools` list of a Claude agent file is read                                         | [Trust](workflows-spec.md#trust)                               |
+| D32 | How the Claude agent for a stage is found, by its `name` field                              | [Harness invocation](workflows-spec.md#harness-invocation)     |
 
 - **D1. One YAML file per workflow, with an ordered list of stages.** Why: a flat list reads in order, and it maps onto
   Kiro's `sequence` and Claude's `pipeline()`, which keeps exports possible. Rejected: Kiro's node tree, which authors
@@ -177,9 +188,10 @@ stages:
   Rejected: checking only at the end finds a failed check late. Consequences: `flow verify <run-id>` runs the checks
   again later, and `unverified` exits 0, so a caller that needs proof reads the result. A native run is checked at its
   end ([D15, export part](workflows-exports.md#decisions-for-exports)).
-- **D16. The runner supports Kiro V2 and V3 and sets the engine flag itself.** Why: a `kiro-v3` file under `--v2` exits
-  4, and V3 upgrades project `kiro-cli-v2` files in place. Rejected: V3 only drops V2 users, though Kiro plans V3 as the
-  default. Consequences: two permission paths to test ([Harness invocation](workflows-spec.md#harness-invocation)).
+- **D16. The runner supports Kiro V2 and V3 and sets the engine flag itself.** Why: a `kiro-v3` file under `--v2` runs
+  with no allow rules (D28), and V3 upgrades project `kiro-cli-v2` files in place. Rejected: V3 only drops V2 users,
+  though Kiro plans V3 as the default. Consequences: two permission paths to test ([Harness
+  invocation](workflows-spec.md#harness-invocation)).
 - **D17.** Moved to [the exports note](workflows-exports.md#decisions-for-exports) with its number, because only an
   export needs it.
 - **D18. `effort`, typed params, the string form of `intent` and per-stage `model` wait for slice 13.** Why: no
@@ -211,6 +223,112 @@ stages:
   session (6 to 11 s in 14 one-file runs). Evidence still comes from the files and checks, not the session (D8). A
   shared session could be an opt-in later for consecutive stages with the same agent and no independence need, which
   adds a key and changes no released one (D20).
+- **D22. One OS file lock per workspace says whether a run is alive.** A run holds a lock on
+  `<project root>/.konductor/runs/lock` for its whole run, and the kernel frees it when the owner ends. Why: a
+  kernel-freed lock has no stale state to detect, and a reused PID cannot fool it. Rejected: a PID file with a start
+  time check, which needs a dead-owner test that can misjudge a reused PID. Consequences: the PID, start time and run id
+  in the lock file are for messages only. A reader that finds the lock free takes it, re-reads the state and writes
+  `halted` only if the state still says `running`. A reader that finds it held only reads. A new `flow run` sweeps any
+  other `running` run before it creates its own state. A refused run exits 75, and so does a platform that cannot lock
+  (some network filesystems). Deleting the lock file by hand during a run is unsupported. Rules: [the dead-owner
+  rule](workflows-spec.md#run-stage-and-check-states), [exit codes](workflows-spec.md#commands-and-exit-codes), plan
+  steps [1d](workflows-plan.md#1d-stage-prompt-and-the-runner-on-the-fake-harness) and
+  [1g](workflows-plan.md#1g-canvas-server-in-rust-and-flow-view). Reverse: go back to PID and start-time detection.
+  Change the spec's dead-owner rule, its one-run-per-workspace text and the exit 75 row, the plan text of 1d and 1g, and
+  the 1d lock tests.
+- **D23. Trust is confirmed by typing the first 8 characters of the hash, and step 1e owns the checks around it.** Why:
+  a key pressed before the summary was on screen is already waiting in the input, and a bare `y` would confirm what the
+  user has not seen. Rejected: a y/N prompt. Consequences: a file that cannot be read has no hash, so there is no frame
+  for it: a prompt file is exit 65, and a tool configuration file is exit 77 with `tool_config_unreadable`. Step 1e owns
+  the scan limits, the re-check before each session, which sits in the runner in front of the harness port so every
+  harness gets it, and exit 74. Steps 1f-1 and 1f-2 only start sessions through the runner. Rules:
+  [Trust](workflows-spec.md#trust), plan step [1e](workflows-plan.md#1e-trust). Reverse: restore the y/N prompt and
+  the `u` frame. Change the spec's trust layout and asking text and the plan text and tests of 1e.
+- **D24. A new run ends the sessions that a killed owner left behind.** Why: each session runs in its own process
+  group, so a hard kill of the owner leaves it running, and only step 1f-1 has real sessions to track. Rejected: leaving
+  them running and documenting the limit. Consequences: step 1f-1 records each session's process group and start time
+  in the run state. A new run, after it takes the lock and before it marks the old run `halted`, terminates each
+  recorded group that still exists and whose start time matches. A normal exit still kills the groups directly, and
+  step 1d needs no change. Rules: [sessions that outlive a killed
+  owner](workflows-spec.md#run-stage-and-check-states), plan step
+  [1f-1](workflows-plan.md#1f-1-process-launcher-and-kiro-cli). Reverse: drop the sweep and document the limit.
+  Restore the spec sentence "when the owner exits, its sessions and checks are killed" and remove the sweep from the
+  plan text of 1f-1.
+- **D25. The project root search stops at the git top folder,** the folder that holds `.git` (a file or a folder). It
+  never goes above that folder and never reads the home folder. With no git folder, only the working folder is used.
+  Why: it keeps the search inside the repository the user opened, and anything above it is outside what the trust
+  record covers. Rejected: also stopping at the home folder, which still lets a search climb through folders the
+  repository does not own. Consequences: widening the rule later is a small change, and narrowing it later could break
+  users. The tool configuration scan in [Trust](workflows-spec.md#trust) searches up to the same folder. Rules: [project
+  root](workflows-spec.md#commands-and-exit-codes), plan step
+  [1d](workflows-plan.md#1d-stage-prompt-and-the-runner-on-the-fake-harness). Reverse: widen the stop rule and update
+  its three tests: the spec's project root paragraph and Trust section, and the three 1d tests (inside a git folder,
+  no git folder, a nested folder).
+- **D26. `flow check` prints no trust hash when the repo tool configuration cannot be read in full.** It prints "trust
+  hash: none" with the reason, leaves `trust_hash` out of its `--json` output and keeps its normal exit code. Why:
+  `flow check` is not a trust command, so it is the smallest change, its output stays stable and no new code is
+  invented. Rejected: printing an error or exiting 77 from `flow check`, which would make a read-only check act as a
+  trust command. Consequences: `flow run` and `flow trust` still refuse with exit 77 and `tool_config_unreadable`. A
+  script that reads `trust_hash` from `--json` must handle a missing field. Rules: [Trust](workflows-spec.md#trust),
+  plan step [1e](workflows-plan.md#1e-trust). Reverse: print the hash or an error instead. Change the spec sentence and
+  the 1e tests that check the output and the JSON field.
+- **D27. Kiro does not look above its working directory, and the trust summary still does.** Kiro CLI finds an agent
+  file in its working directory or the home folder, and not in a folder above the working directory. The trust summary
+  searches the project root and each folder above it, up to the git top folder, so it can list an agent that Kiro will
+  not run. Why: the summary over-reports and never hides a tool, and leaving step 1e alone is the smaller change.
+  Rejected: dropping the folders-above search, which changes a finished step and makes the summary no safer.
+  Consequences: a user can read the tools of an agent that `flow run` then fails to find, and that failure comes before
+  the first stage. Rules: [Finding the agent](workflows-spec.md#harness-invocation), plan steps
+  [1e](workflows-plan.md#1e-trust) and [1f-1](workflows-plan.md#1f-1-process-launcher-and-kiro-cli). Reverse: drop the
+  folders-above search in the trust summary of step 1e, and remove the spec note.
+- **D28. A V3 agent file under `--v2` is not refused.** The runner picks the engine flag from the shape of the agent
+  file: `allowedTools` is V2 and `permissions.rules` is V3. A file with neither or both exits 64. Kiro runs a V3 file
+  under `--v2` with no allow rules, because it ignores `permissions`, so there is no exit 4. Why: the file is what the
+  engine reads, and the install index can be wrong or missing. Rejected: refusing that pair with exit 4, which Kiro does
+  not do and the runner would have to add. Consequences: the runner never starts that pair, because it passes the flag
+  that matches the file. Run by hand, that pair gives an agent with no allow rules, and the trust summary of its tools
+  would then over-report in the way D27 describes. Rules: [Kiro CLI](workflows-spec.md#harness-invocation), plan step
+  [1f-1](workflows-plan.md#1f-1-process-launcher-and-kiro-cli). Reverse: refuse a V3 file under `--v2` with exit 4, and
+  restore the spec sentence.
+- **D29. The `doctor` pin for `kiro-cli` is 3.3.0.** `konductor doctor` reports a lower version as a `warn`. Why: it is
+  the one version the conformance checks cover, and it may not be a public release, so the pin is re-checked on a public
+  release before release. Rejected: a pin that no run supports. Consequences: the 1f-1 tests of the version check name
+  3.3.0. Rules: [Versions](workflows-spec.md#harness-invocation), plan step
+  [1f-1](workflows-plan.md#1f-1-process-launcher-and-kiro-cli). Reverse: change the pin and the 1f-1 tests that name it.
+- **D30. `--trust-tools` adds to the agent's own rules on V3 and does nothing on V2.** The runner passes it on V3 only,
+  and only with ids it has confirmed: `read`, `write` and `shell`. Why: the flag cannot take a tool away, so passing
+  only ids that the agent's own list already allows keeps D19. Rejected: passing ids beyond the agent's list, or
+  `--trust-all-tools`. Consequences: another tool, such as an `@aws-mcp` tool, gets no id and keeps the agent's own
+  rule, and the flag is left out when no id applies. Rules: [Kiro permissions](workflows-spec.md#harness-invocation),
+  plan step [1f-1](workflows-plan.md#1f-1-process-launcher-and-kiro-cli). Reverse: stop passing `--trust-tools` on V3
+  and revert the spec note.
+
+- **D31. The `tools` list of a Claude agent file is read in one way, and an item the runner cannot turn into a rule
+  makes the whole list Unknown.** In a bare or whole-quoted one-line value, a comma inside parentheses does not split,
+  so `Agent(a, b), Read` is two items. In the `[...]` form, a comma inside parentheses makes `tools` Unknown, because
+  Claude itself reads that form as a YAML list. Unbalanced or stray parentheses are Unknown in every form, and block
+  lists are read as before. The runner builds `--allowedTools` rules only from names that match `[A-Za-z0-9_*:.-]+`,
+  plus the one `Agent(...)` form. Any other item makes the whole list Unknown: no `--allowedTools` flag and one stderr
+  note. Why: the first draft could grant more tools than the trust summary shows, which breaks "less, never more"
+  (D19). Both changes only narrow what a session gets. Rejected: guessing the intended items from a list that does not
+  parse, because a wrong guess can grant a tool that the summary does not show. Consequences: the trust hash comes
+  from file bytes, so existing trust records stay valid and only the summary text changes. An Unknown list pre-approves
+  nothing, because the runner passes no flag. Rules: [Trust](workflows-spec.md#trust), plan step
+  [1f-2](workflows-plan.md#1f-2-claude-adapter-and-conformance). Reverse: restore the plain comma split and the
+  unchecked pass-through.
+- **D32. The catalog finds a Claude agent by its `name` field, the way Claude does.** Claude resolves `--agent <id>`
+  by the `name` in an agent file's front matter, and it scans `.claude/agents/` and its subfolders. A repo could ship a
+  benign `<id>.md` and another file whose `name` is `<id>`, for example with `permissionMode: bypassPermissions`. The
+  trust summary would show the benign file while Claude runs the other. The hash covers every file under
+  `.claude/agents/`, so the gap is the summary, not the hash. Why: the summary must describe the agent that runs.
+  Rejected: keeping the lookup by file name, which lets a repo file run that the summary never describes. Consequences:
+  the hash is unchanged, so existing trust records stay valid. Only the summary and one new exit 77 case change: two
+  repo files that declare the requested `name`, or a declaring file whose stem differs from that name, make the agent
+  Unknown, and `flow run` and `flow trust` exit 77 with `tool_config_unreadable`. `flow check` still prints the hash.
+  A file with no `name` is not an agent of that id, and an unrelated agent whose name differs from its file stem blocks
+  nothing. Rules: [Finding the agent](workflows-spec.md#harness-invocation), plan step [1e](workflows-plan.md#1e-trust).
+  Reverse: keep the lookup by file name and accept the gap. Restore the spec's `<id>.md` wording and drop the 1e tests
+  of the `name` lookup.
 
 ## How it works
 
@@ -257,10 +375,10 @@ sequenceDiagram
     else no record, or the workflow or one of its prompt files changed
         alt a terminal is available
             Flow-->>User: summary of what will run, then "Trust this workflow and run it?" (type the first 8 characters of the hash)
-            alt yes
+            alt the user types the first 8 characters of the hash
                 Flow->>Record: store the hash
                 Flow-->>User: the run starts
-            else no
+            else anything else, a bare y included
                 Flow-->>User: exit 77, nothing ran
             end
         else no terminal
@@ -338,7 +456,7 @@ Observed on one pre-release build, with the write tool only (the conformance che
 
 | Fact                                                                                                                                                                                                                | How we ran it                                                                                                      |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| A `kiro-v3` agent file run with `--v2` exits 4 with `Mode '<name>' not found`                                                                                                                                       | One headless run of a `kiro-v3` agent with `--v2`                                                                  |
+| A `kiro-v3` agent file run with `--v2` ran with no allow rules, because Kiro ignored its `permissions`                                                                                                              | One headless run of a `kiro-v3` agent with `--v2`                                                                  |
 | V3 upgraded project `kiro-cli-v2` agent files in place at first launch, with `.bak` copies. Global agents not tried                                                                                                 | The first V3 launch in a project that held V2 agent files                                                          |
 | `--trust-tools` had no effect on V2 for `fs_write`, `write`, `@builtin/write`, `@builtin`, a list, the space form and `*`; `--trust-tools=fs_write` works on V3. Allow rules in the agent file work on both engines | Headless runs of an agent with an empty allow list, one per form on V2; a locked and a writer agent on each engine |
 | A headless session whose only tool call was denied exits 0 on both engines, with the failure only in prose                                                                                                          | Headless runs, empty allow list, each engine. Partial denial not tried                                             |
