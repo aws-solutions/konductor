@@ -14,6 +14,8 @@ const STATUSES = ['ok', 'needs-edit', 'reject'];
 
 const slug = (name) => String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/, '');
 
+const isEmptyTrajectory = (t) => t == null || (Array.isArray(t) && t.length === 0);
+
 const outputText = (v) => (v == null ? null : typeof v === 'string' ? v : JSON.stringify(v));
 
 /**
@@ -88,7 +90,7 @@ function buildCandidates(experiment, opts = {}) {
   const rubrics = experiment.evaluators.map((e) => e.rubric).filter((r) => typeof r === 'string' && r.trim());
   return {
     candidates,
-    summary: { total: n, byStatus, byReason, byQuality },
+    summary: { total: n, byStatus, byReason, byQuality, trajectoriesGenerated: experiment.cases.some((c) => !isEmptyTrajectory(c.expectedTrajectory)) },
     rubricHint: rubrics.length ? rubrics.map((r) => r.trim()).join('\n\n') : null,
   };
 }

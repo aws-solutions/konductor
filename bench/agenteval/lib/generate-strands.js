@@ -104,6 +104,8 @@ async function run(argv, { out, err }) {
   let experiment;
   try { experiment = loadExperiment(outFile); } catch (e) { throw new Error(`${path.basename(bin)} wrote a file that is not a usable experiment: ${e.message}`); }
 
+  if (experiment.cases.length === 0) throw new Error(`${path.basename(bin)} wrote an experiment with no cases to ${opts.out}; nothing was recorded. Try again, or raise --num-cases.`);
+
   const record = {
     schemaVersion: 1,
     tool: 'strands-evals',
@@ -121,7 +123,6 @@ async function run(argv, { out, err }) {
     exitCode: 0,
   };
   writeJson(sidecar, record);
-  if (experiment.cases.length === 0) err('warning: the generator wrote an experiment with no cases');
   out(`${experiment.cases.length} cases written to ${opts.out}; provenance in ${path.basename(sidecar)}`);
   return 0;
 }

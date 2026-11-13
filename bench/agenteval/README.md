@@ -132,7 +132,7 @@ generate-strands --context-file FILE --task-description TEXT --out FILE
 - `--out` must end in `.json`. The sidecar is the same path with `.json` replaced by `.generation.json`.
 - Without `--force` the command refuses when either file exists. With `--force` it deletes both first, so a failed run leaves neither behind.
 - The context text goes to the generator as one `--context=TEXT` argument, so it must be under about 120 KB.
-- The generator's output goes to stderr. A non-zero exit, a missing output file, or a file that does not load as an experiment is an error (exit 1) and no sidecar is written.
+- The generator's output goes to stderr. A non-zero exit, a missing output file, a file that does not load as an experiment, or an experiment with zero cases is an error (exit 1) and no sidecar is written.
 
 ### import-strands
 
@@ -146,7 +146,7 @@ import-strands --experiment FILE (--tools FILE | --tools-from-text FILE)
 - `--tools-from-text` reads declared tool names from a descriptive file. A line counts when it starts with a bullet (`-`, `*`, `+`, or a number and a dot) followed by an identifier and an opening parenthesis, as in `- lookup_order(order_id: str) -> dict`. The names found are printed on stderr. If none are found the command fails. Give exactly one of the two flags.
 - `--rules` is described in [rules.json](#rulesjson).
 - `--generation` is the sidecar from `generate-strands`. Without it the provenance fields are null and the review says so.
-- `--batches N` labels cases by position as coming from topic 0 to N-1 (`batchIndex`, with `batchInferred: true`, because the experiment file does not record it).
+- `--batches N` labels cases by position as coming from topic 0 to N-1 (`batchIndex`, with `batchInferred: true`, because the experiment file does not record it). When `--generation` is given and `--batches` is not, N defaults to the sidecar's `numTopics` (nothing is labelled when that is null). An explicit `--batches` wins.
 - `--duplicate-threshold X` is the token overlap (Jaccard, default 0.6) at which an input counts as a near-duplicate of an earlier one.
 
 Exit codes for both commands: 0 ok, 1 error (unreadable file, existing output, generator failure), 2 usage (unknown flag, missing value, missing required flag). `--help` works on the tool and on each command.
@@ -161,7 +161,7 @@ Exit codes for both commands: 0 ok, 1 error (unreadable file, existing output, g
   "source": { "experiment": "experiment.json", "generation": "experiment.generation.json" or null,
               "version": ..., "model": ..., "contextSha256": ..., "taskDescription": ... },
   "tools": ["lookup_order", ...],
-  "summary": { "total": 14, "byStatus": {...}, "byReason": {...}, "byQuality": {...} },
+  "summary": { "total": 14, "byStatus": {...}, "byReason": {...}, "byQuality": {...}, "trajectoriesGenerated": true },
   "rubricHint": "text of the generated rubric, or null",
   "candidates": [ ... ]
 }
@@ -256,7 +256,7 @@ The file has a header and a table.
 2. The counts by status, reason code and trajectory quality show how much of the batch survived. A large `trajectory:not-clean` count means the generator wrote trajectories in many shapes, so check the tool names by hand.
 3. The provenance lines show the generator version, model, context hash and task description from the sidecar, or say they were not recorded.
 4. The coverage lines list declared tools that no proposed trajectory uses, and tools used only by rejected candidates. A tool that no candidate exercises is untested, whatever the status counts say.
-5. If no candidate proposes any tool, a note says the generator may not have written trajectories.
+5. If no candidate proposes any tool, a note says the generator may not have written trajectories. When the experiment has a `TrajectoryEvaluator` rubric (or the sidecar's evaluator is `TrajectoryEvaluator`) and every case has a null or empty `expected_trajectory`, a warning at the top says no trajectories were generated and that status `ok` does not mean tool use was checked. The same fact is `summary.trajectoriesGenerated: false` in `candidates.json` (it is true when at least one case has a non-empty trajectory). Per-case statuses are not changed by this.
 6. The table has one row per candidate: id, status, reasons, trajectory quality, proposed tools, the first 100 characters of the input, and `duplicateOf`.
 
 Work from the `reject` rows to confirm the drops, then the `needs-edit` rows, then read the `ok` rows too. The full text of each reason is in `candidates.json`.

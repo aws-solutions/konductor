@@ -26,7 +26,8 @@ Turns a Strands experiment file into reviewable scenario candidates. Every gener
                              (give exactly one of --tools and --tools-from-text)
   --rules FILE               optional rules JSON: {"before": [a, b]} and {"tool": t, "inputPattern": p}
   --generation FILE          the .generation.json written by generate-strands; without it the provenance fields are null
-  --batches N                number of generation batches (topics) the cases were produced in, in order
+  --batches N                number of generation batches (topics) the cases were produced in, in order; with --generation
+                             and no --batches, the sidecar's numTopics is used when it is not null (an explicit --batches wins)
   --duplicate-threshold X    token overlap above which an input counts as a duplicate, in (0, 1] (default 0.6)
   --out DIR                  directory for candidates.json and review.md (required; must not exist unless --force)
   --force                    write into an existing OUT, replacing candidates.json and review.md
@@ -46,7 +47,7 @@ function run(argv, { out, err }) {
   for (const need of ['experiment', 'out']) if (opts[need] === undefined) throw new UsageError(`--${need} is required`);
   if (opts.tools !== undefined && opts['tools-from-text'] !== undefined) throw new UsageError('give only one of --tools and --tools-from-text');
   if (opts.tools === undefined && opts['tools-from-text'] === undefined) throw new UsageError('one of --tools or --tools-from-text is required');
-  const batches = positiveInt(opts, 'batches');
+  const explicitBatches = positiveInt(opts, 'batches');
   const duplicateThreshold = unitInterval(opts, 'duplicate-threshold');
 
   const outDir = path.resolve(opts.out);
@@ -60,6 +61,9 @@ function run(argv, { out, err }) {
   const rules = opts.rules !== undefined ? loadRules(opts.rules, { tools }) : [];
   const generation = opts.generation !== undefined ? loadGeneration(opts.generation) : null;
 
+  const batches = explicitBatches ?? (Number.isInteger(generation?.numTopics) && generation.numTopics >= 1 ? generation.numTopics : undefined);
+  if (explicitBatches === undefined && batches !== undefined) err(`--batches not given; using numTopics ${batches} from ${path.basename(opts.generation)}`);
+
   const provenance = {
     version: generation?.toolVersion ?? null,
     model: generation?.model ?? null,
@@ -67,11 +71,13 @@ function run(argv, { out, err }) {
     taskDescription: generation?.taskDescription ?? null,
   };
   const built = buildCandidates(experiment, { tools, rules, batches, duplicateThreshold, source: provenance });
+  const trajectoryRubric = experiment.evaluators.some((e) => e.evaluatorType === 'TrajectoryEvaluator') || generation?.evaluator === 'TrajectoryEvaluator';
+  const trajectoryWarning = trajectoryRubric && built.summary.total > 0 && !built.summary.trajectoriesGenerated;
   const source = { experiment: experiment.sourceFile, generation: generation ? path.basename(opts.generation) : null, ...provenance };
 
   fs.mkdirSync(outDir, { recursive: true });
   writeJson(path.join(outDir, 'candidates.json'), { schemaVersion: SCHEMA_VERSION, source, tools, summary: built.summary, rubricHint: built.rubricHint, candidates: built.candidates });
-  fs.writeFileSync(path.join(outDir, 'review.md'), renderReview(built, { tools, source: { ...source, hasGeneration: generation !== null, generationFile: source.generation } }));
+  fs.writeFileSync(path.join(outDir, 'review.md'), renderReview(built, { tools, source: { ...source, hasGeneration: generation !== null, generationFile: source.generation }, trajectoryWarning }));
 
   const { byStatus, total } = built.summary;
   out(`${total} candidates: ok ${byStatus.ok}, needs-edit ${byStatus['needs-edit']}, reject ${byStatus.reject}; written to ${opts.out}`);

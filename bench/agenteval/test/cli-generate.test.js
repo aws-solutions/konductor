@@ -141,6 +141,17 @@ test('output that is not a usable experiment is detected and no sidecar is writt
   }
 });
 
+test('an experiment with zero cases is an error: exit 1, a clear message, and no sidecar', () => {
+  const t = setup({ FAKE_MODE: 'empty' });
+  try {
+    const r = cli(t.args, { env: t.env });
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /wrote an experiment with no cases to .*exp\.json; nothing was recorded/);
+    assert.equal(fs.existsSync(t.sidecar), false);
+    assert.equal(r.stdout, '');
+  } finally { cleanup(t.dir); }
+});
+
 test('an unavailable --version leaves toolVersion null without failing', () => {
   const t = setup({ FAKE_VERSION_FAIL: '1' });
   try {

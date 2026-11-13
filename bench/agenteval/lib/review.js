@@ -5,6 +5,8 @@
 
 const INPUT_CHARS = 100;
 
+const NO_TRAJECTORY_WARNING = '**Warning: no trajectories were generated; status ok does not mean tool use was checked.** The experiment uses a trajectory rubric, but no case has an expected trajectory. Generate them through the Python API (include_expected_trajectory=True, see the README) or write them in by hand.';
+
 const cell = (text) => String(text).replace(/\s+/g, ' ').replace(/\|/g, '\\|').trim();
 const counts = (obj) => Object.entries(obj).filter(([, n]) => n > 0).map(([k, n]) => `${k} ${n}`).join(', ') || 'none';
 const clip = (text) => (text.length > INPUT_CHARS ? `${text.slice(0, INPUT_CHARS)}...` : text);
@@ -28,9 +30,9 @@ function provenanceLines(source) {
 
 /**
  * @param {{candidates: object[], summary: object}} built output of buildCandidates
- * @param {{tools: string[], source: object}} meta
+ * @param {{tools: string[], source: object, trajectoryWarning?: boolean}} meta trajectoryWarning: a trajectory rubric was used but no case has a trajectory
  */
-function renderReview(built, { tools, source }) {
+function renderReview(built, { tools, source, trajectoryWarning = false }) {
   const { candidates, summary } = built;
   const show = (v) => (v == null ? 'null' : v);
   const lines = [
@@ -40,6 +42,7 @@ function renderReview(built, { tools, source }) {
     '',
     '**Warning: every expected output, trajectory and rubric here was written by a model. They are proposals only. Read each candidate before it becomes a scenario.**',
     '',
+    ...(trajectoryWarning ? [NO_TRAJECTORY_WARNING, ''] : []),
     `- Candidates: ${summary.total}`,
     `- By status: ${counts(summary.byStatus)}`,
     `- By reason code: ${counts(summary.byReason)}`,

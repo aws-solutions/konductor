@@ -15,7 +15,7 @@ function assertCandidatesShape(doc) {
   assert.equal(doc.schemaVersion, 1);
   assert.deepEqual(Object.keys(doc.source).sort(), ['contextSha256', 'experiment', 'generation', 'model', 'taskDescription', 'version']);
   assert.ok(Array.isArray(doc.tools) && doc.tools.every((t) => typeof t === 'string'));
-  assert.deepEqual(Object.keys(doc.summary).sort(), ['byQuality', 'byReason', 'byStatus', 'total']);
+  assert.deepEqual(Object.keys(doc.summary).sort(), ['byQuality', 'byReason', 'byStatus', 'total', 'trajectoriesGenerated']);
   assert.equal(doc.summary.total, doc.candidates.length);
   assert.ok(doc.rubricHint === null || typeof doc.rubricHint === 'string');
   const ids = new Set();
@@ -253,5 +253,68 @@ test('--duplicate-threshold changes what counts as a duplicate', () => {
     assert.equal(cli([...base(out), '--duplicate-threshold', '0.99']).code, 0);
     const doc = JSON.parse(fs.readFileSync(path.join(out, 'candidates.json'), 'utf8'));
     assert.equal(doc.summary.byReason.duplicate, undefined);
+  } finally { cleanup(dir); }
+});
+
+const writeExp = (dir, cases, evaluators) => { const f = path.join(dir, 'exp.json'); fs.writeFileSync(f, JSON.stringify({ cases, evaluators })); return f; };
+const INPUTS = { a: 'Where is my order #ORD-1? It is late.', b: 'Please cancel the subscription on my account today.', c: 'The blue jacket I received has a broken zipper.', d: 'Can you update the shipping address for my pending parcel?' };
+const msg = (name, traj) => ({ name, input: INPUTS[name], expected_output: 'It ships today.', expected_trajectory: traj });
+const importArgs = (dir, exp, out, extra = []) => ['import-strands', '--experiment', exp, '--tools', path.join(dir, 'tools.json'), '--out', out, ...extra];
+const writeSidecar = (dir, patch) => { const f = path.join(dir, 'exp.generation.json'); fs.writeFileSync(f, JSON.stringify({ schemaVersion: 1, toolVersion: '1.0', model: null, contextSha256: null, taskDescription: null, numTopics: null, evaluator: null, ...patch })); return f; };
+const batchesOf = (out) => JSON.parse(fs.readFileSync(path.join(out, 'candidates.json'), 'utf8')).candidates.map((c) => c.batchIndex);
+
+test('--batches defaults to the sidecar numTopics, an explicit --batches wins, and null numTopics leaves it unset', () => {
+  const { dir, out } = setup();
+  const cases = ['a', 'b', 'c', 'd'].map((n) => msg(n, null));
+  const exp = writeExp(dir, cases, []);
+  try {
+    const fromSidecar = cli(importArgs(dir, exp, out, ['--generation', writeSidecar(dir, { numTopics: 2 })]));
+    assert.equal(fromSidecar.code, 0, fromSidecar.stderr);
+    assert.match(fromSidecar.stderr, /--batches not given; using numTopics 2 from exp.generation.json/);
+    assert.deepEqual(batchesOf(out), [0, 0, 1, 1]);
+
+    const explicit = cli([...importArgs(dir, exp, out, ['--generation', writeSidecar(dir, { numTopics: 2 })]), '--batches', '4', '--force']);
+    assert.equal(explicit.code, 0, explicit.stderr);
+    assert.doesNotMatch(explicit.stderr, /numTopics/);
+    assert.deepEqual(batchesOf(out), [0, 1, 2, 3]);
+
+    const nullTopics = cli([...importArgs(dir, exp, out, ['--generation', writeSidecar(dir, { numTopics: null })]), '--force']);
+    assert.equal(nullTopics.code, 0, nullTopics.stderr);
+    assert.deepEqual(batchesOf(out), [undefined, undefined, undefined, undefined]);
+
+    const noSidecar = cli([...importArgs(dir, exp, out), '--force']);
+    assert.deepEqual(batchesOf(out), [undefined, undefined, undefined, undefined]);
+    assert.equal(noSidecar.code, 0);
+  } finally { cleanup(dir); }
+});
+
+test('a trajectory rubric with no generated trajectories puts a warning in review.md and trajectoriesGenerated false in the summary', () => {
+  const { dir, out } = setup();
+  const empty = [msg('a', null), msg('b', []), msg('c', null)];
+  try {
+    const byRubric = writeExp(dir, empty, [{ evaluator_type: 'TrajectoryEvaluator', rubric: 'Use the tools well.' }]);
+    assert.equal(cli(importArgs(dir, byRubric, out)).code, 0);
+    let doc = JSON.parse(fs.readFileSync(path.join(out, 'candidates.json'), 'utf8'));
+    assert.equal(doc.summary.trajectoriesGenerated, false);
+    assert.ok(doc.candidates.every((c) => c.status === 'ok'), 'per-case status is unchanged');
+    assert.ok(doc.candidates.every((c) => !c.reasons.some((r) => r.code === 'trajectory:missing')));
+    let md = fs.readFileSync(path.join(out, 'review.md'), 'utf8');
+    assert.match(md, /Warning: no trajectories were generated; status ok does not mean tool use was checked/);
+    assert.ok(md.indexOf('no trajectories were generated') < md.indexOf('- Candidates:'), 'the warning comes before the counts');
+
+    const byOutput = writeExp(dir, empty, [{ evaluator_type: 'OutputEvaluator', rubric: 'Be right.' }]);
+    assert.equal(cli([...importArgs(dir, byOutput, out), '--force']).code, 0);
+    md = fs.readFileSync(path.join(out, 'review.md'), 'utf8');
+    assert.doesNotMatch(md, /no trajectories were generated/);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(out, 'candidates.json'), 'utf8')).summary.trajectoriesGenerated, false);
+
+    const bySidecar = cli([...importArgs(dir, byOutput, out, ['--generation', writeSidecar(dir, { evaluator: 'TrajectoryEvaluator' })]), '--force']);
+    assert.equal(bySidecar.code, 0, bySidecar.stderr);
+    assert.match(fs.readFileSync(path.join(out, 'review.md'), 'utf8'), /no trajectories were generated/);
+
+    const withTrajectory = writeExp(dir, [...empty, msg('d', ['lookup_order(1)'])], [{ evaluator_type: 'TrajectoryEvaluator', rubric: 'x' }]);
+    assert.equal(cli([...importArgs(dir, withTrajectory, out), '--force']).code, 0);
+    assert.doesNotMatch(fs.readFileSync(path.join(out, 'review.md'), 'utf8'), /no trajectories were generated/);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(out, 'candidates.json'), 'utf8')).summary.trajectoriesGenerated, true);
   } finally { cleanup(dir); }
 });

@@ -37,7 +37,8 @@ console.log('fake generator stdout noise');
 const mode = process.env.FAKE_MODE || 'ok';
 if (mode === 'fail') process.exit(3);
 if (mode === 'nowrite') process.exit(0);
-if (mode === 'invalid') fs.writeFileSync(out, '{"not": "an experiment"}');
+if (mode === 'empty') fs.writeFileSync(out, JSON.stringify({ cases: [], evaluators: [] }));
+else if (mode === 'invalid') fs.writeFileSync(out, '{"not": "an experiment"}');
 else if (mode === 'notjson') fs.writeFileSync(out, 'oops');
 else fs.writeFileSync(out, JSON.stringify({ cases: [
   { name: 'a', input: 'Where is my order #ORD-1? It is late.', expected_output: 'It ships today.', expected_trajectory: null },
