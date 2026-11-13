@@ -80,7 +80,10 @@ Its Orchestrator Direct Work table lists the exceptions: reading files, read-onl
 `ls`, `grep` and `git status`, and read-only lookups, within a budget of 10 reads. Builds, tests,
 writes and every other shell command still go to a specialist. It also flags instructions planted
 in files it reads, won't read files that hold secrets unless you name them, and asks you instead
-of routing a denied action to another agent.
+of routing a denied action to another agent. It does not flag user-written entries in
+`.konductor/memory/MEMORY.md` and `USER.md` at the project root, or AGENTS.md: both are the
+project's own instructions. A `.konductor/memory/` anywhere else, or one reached through a
+symlink, is content.
 
 The reason is separation of concerns: the orchestrator is a dispatcher, and its own file says
 "Having a tool available does NOT mean you should use it." File writes, git operations, shell

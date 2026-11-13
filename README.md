@@ -362,8 +362,15 @@ Each one is explained, with a flowchart, in [SOP workflows](docs/user-guide/sop-
 ### 💾 Persistent memory
 
 Agents with the `persistent-memory` skill keep a small scratchpad across sessions, with no setup.
-The directory is created on first write and added to `.gitignore`.
-Agents treat your own entries as instructions only while `.konductor/memory/` is untracked by git; committed memory is read as content.
+The directory is created on first write and added to `.gitignore` by default; remove the ignore
+to share memory with your team. Agents treat these files like AGENTS.md, and shared memory
+carries agent-written entries to every clone, so review memory diffs as you would AGENTS.md
+changes. The validator requires an `[origin:agent]` or `[origin:user]` tag on each new line;
+agents follow only untagged and `[origin:user]` entries, which were written by hand or at your
+request. Upgrading with a committed memory file: untagged lines were data before and are
+instructions now; list them with
+`grep -vE '^\s*-\s*(\[[0-9-]+\]\s*)?\[origin:' .konductor/memory/*.md` and tag agent-written
+ones `[origin:agent]`.
 
 | File | Holds |
 | --- | --- |

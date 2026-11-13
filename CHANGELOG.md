@@ -35,13 +35,15 @@ not per individual commit.
 
 ### Changed
 
+- persistent-memory and agents-md-authoring: the memory skill's description leads with "remember this", "save this", "forget that" and its headings drop the section numbers; the AGENTS.md context block uses the `.kiro/skills/ws-*/SKILL.md` glob and calls `.konductor` the workspace state directory.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
   may now read files, search the codebase, run read-only shell commands, and answer lookup
   questions themselves instead of spawning a specialist for each. One table in
   `context/k-orchestrator-routing-rules.md` defines what is allowed, including the
-  `k-light-ui-testing` SOP-step exception, and `claude-teams-behavior`, `mux-dispatch`, and
+  `k-light-ui-testing` SOP-step exception and the memory validator's read-only `--check-path`,
+  and `claude-teams-behavior`, `mux-dispatch`, and
   `cmux-dispatch` point at it. The 10-file read budget covers requests the orchestrator answers
   itself; for a request it will delegate, it reads only what routing and the brief need and
   passes file paths. Writes, state-changing git, builds, tests, and whole phases still go to
@@ -52,10 +54,17 @@ not per individual commit.
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
   non-trivial work; orchestrators route skill work to the owning specialist.
-- Agents ignore planted instructions and follow user-written memory only from an untracked
-  `.konductor/memory/` at the top of the project's own git work tree, refusing a symlinked `.konductor`
-  or `.konductor/memory`, and treating memory as content when a tracked top-level dot name is
-  non-ASCII; orchestrators never bypass a denial or read unnamed secrets.
+- Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
+  and is never read or written through a symlink; the brief carries the check result, so a specialist
+  without a shell reads only checked paths. The memory validator rejects a new or edited line without
+  an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
+  instruction-like text after the date and origin tag, reads the text of a leading `[label]`
+  or `[label](url)` as entry text, and matches a leading keyword as a whole word. It refuses an
+  empty write over existing entries unless `--clear` is passed, the skill's write line takes its
+  target from a variable, and the `.gitignore` bootstrap never glues onto an existing line. Upgrade note: if your repository commits `.konductor/memory/`,
+  review its untagged lines before upgrading and tag agent-written ones `[origin:agent]`; they are
+  followed as project instructions from this version.
+  Orchestrators never bypass denials or read unnamed secrets.
 - `k-full-sdlc` records gate facts in its session file and reports a `konductor verify-run`
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an

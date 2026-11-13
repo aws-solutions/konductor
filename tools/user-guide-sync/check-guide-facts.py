@@ -46,13 +46,25 @@ _DIAGRAM_DIR = {"agents": "agents", "skills": "skills", "SOPs": "agent-sops"}
 # for agents ("11 agent specs"), which is why this needs its own map.
 _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 
-# Commands the CLI accepts but the guide deliberately does not document, with the
-# decision recorded so the carve-out is auditable rather than folklore. `config`
-# is withheld from the v1 customer-visible surface (reviewer decision on
-# reviewer decision); `.konductor/config.yml` itself stays documented, since `init`
-# writes it and `doctor` validates it. Adding a name here is a product decision,
-# not a way to silence this script -- see docs/user-guide/notes.md.
-WITHDRAWN_COMMANDS = {"config"}
+# Commands the CLI accepts but the guide deliberately does not document. `config`
+# is hidden (`#[command(hide = true)]` in cli/konductor-rs/src/cli.rs), so it is
+# not in cli/README.md's command list; the leak checks keep it out of the guide.
+WITHDRAWN_COMMANDS: set[str] = {"config"}
+
+_HIDDEN_COMMAND = re.compile(r"#\[command\(hide = true[^\]]*\]\s*\n\s*(\w+)\s*\{")
+
+
+def hidden_commands(cli_rs_text: str) -> set[str]:
+    """Names of the clap variants marked `#[command(hide = true)]`, lower-cased."""
+    return {name.lower() for name in _HIDDEN_COMMAND.findall(cli_rs_text)}
+
+
+def withdrawn_command_problem(cmd: str, commands: list[str], hidden: set[str]) -> str | None:
+    if cmd in commands or cmd in hidden:
+        return None
+    return (f"`{cmd}` is listed as withdrawn from the guide, but cli/README.md does not "
+            f"declare it and cli.rs has no hidden command of that name "
+            f"-- drop it from WITHDRAWN_COMMANDS")
 
 
 def html_pages_for_flags(root: Path):
@@ -647,10 +659,8 @@ def main() -> int:
     keys = re.findall(r"^([a-z][a-z0-9_]*):", cfg, re.MULTILINE)
     if not keys:
         fail("could not parse any top-level keys from cli/gate-config/config.yml")
-    # reference.md is the only page documenting the schema now. The task page that
-    # used to carry it went with the `konductor config` command -- see the
-    # WITHDRAWN_COMMANDS note below. The FILE is still documented, because
-    # `init` writes it and `doctor` validates it.
+    # reference.md is the only page documenting the schema. The file is documented
+    # because `init` writes it and `doctor` validates it.
     for page in ("reference.md",):
         text = read(guide / page)
         missing = [k for k in keys if f"`{k}`" not in text]
@@ -686,21 +696,18 @@ def main() -> int:
         commands = [
             c for c in re.findall(r"`([a-z][a-z-]*)`", first_para) if c not in subcommands
         ]
-    # `config` is a real command the CLI accepts and a deliberately undocumented
-    # one: it is not part of the customer-visible surface for the v1 launch, by
-    # reviewer decision. Excluding it here keeps this section
-    # meaningful rather than deleting it -- every OTHER command must still be
-    # documented, and the exclusion itself is asserted against cli/README.md, so
-    # a `config` that stops existing (or a second withdrawal nobody recorded)
-    # fails loudly instead of silently widening the carve-out.
+    # `config` is hidden in cli.rs and withheld from the guide. Every other command
+    # must be documented, and each withdrawn name must still be declared in
+    # cli/README.md or hidden with `#[command(hide = true)]` in cli.rs, so a
+    # deleted command fails loudly instead of widening the carve-out.
+    hidden = hidden_commands(read(root / "cli" / "konductor-rs" / "src" / "cli.rs"))
     documented = [c for c in commands if c not in WITHDRAWN_COMMANDS]
     for cmd in documented:
         if f"`konductor {cmd}" not in ref_md:
             fail(f"reference.md command table missing `konductor {cmd}`")
     for cmd in sorted(WITHDRAWN_COMMANDS):
-        if cmd not in commands:
-            fail(f"`{cmd}` is listed as withdrawn from the guide, but cli/README.md "
-                 f"no longer declares it — drop it from WITHDRAWN_COMMANDS")
+        if problem := withdrawn_command_problem(cmd, commands, hidden):
+            fail(problem)
         elif f"`konductor {cmd}" in ref_md:
             fail(f"reference.md documents `konductor {cmd}`, which is withdrawn for v1")
     if documented:

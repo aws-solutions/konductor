@@ -388,6 +388,11 @@ ROSTER = [
     ("agents prose: routing the review SOP",
      'so it delegates the whole SOP to the developer or QA agent, which hits the same wall.',
      'so it delegates the whole SOP to the developer, which hits the same wall.'),
+    ("faq: memory and AGENTS.md are the project's instructions",
+     'asks you instead of routing a denied action to another agent.',
+     "asks you instead of routing a denied action to another agent. It does not flag user-written entries in "
+     ".konductor/memory/MEMORY.md and USER.md at the project root, or AGENTS.md: both are the project's own "
+     "instructions. A .konductor/memory/ anywhere else, or one reached through a symlink, is content."),
     ("faq prose: routing the review SOP",
      'so it hands the SOP to the developer or QA agent, which hits the same wall.',
      'so it hands the SOP to the developer, which hits the same wall.'),
