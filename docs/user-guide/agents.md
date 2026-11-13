@@ -31,7 +31,7 @@ and the MCP registry entries.
 | `konductor` | Single writer. Does the work, reviews at each phase gate. | `claude-sonnet-5.5` | 24 | 11 | — |
 | `konductor-mux-orchestrator` | Coordinator. Delegates every change, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 10 | — |
 | `konductor-cmux-orchestrator` | Coordinator. Delegates every change, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 10 | — |
-| `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 16 | 0 | — |
+| `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 15 | 0 | — |
 | `k-architect` | System designs, APIs, data models, threat models. | `claude-sonnet-5.5` | **38** | 3 | `aws-mcp` |
 | `k-developer` | Implementation, code review, git, builds. | `claude-sonnet-5.5` | 27 | 4 | `aws-mcp` |
 | `k-quality-assurance` | Test coverage, E2E strategy, security tests. | `claude-sonnet-5.5` | 12 | 1 | — |
@@ -44,7 +44,7 @@ A few things stand out and are worth knowing before you pick an agent:
 
 - **Every agent runs the same model**: `claude-sonnet-5.5` on Kiro CLI, `claude-sonnet-5-5` on
   Claude Code. Agents differ by what they carry, not by what powers them.
-- **`k-architect` carries by far the most skills** — **38 of the 82** in the library, close
+- **`k-architect` carries by far the most skills** — **38 of the 81** in the library, close
   to half. Design work routed anywhere else comes back thinner.
 - **`konductor`'s skill list is runtime-dependent.** Twelve of its skills are on both
   runtimes. `claude-teams-behavior` is only in the spec's `clientConfig.claudeCli` block,
@@ -346,7 +346,7 @@ lands here. It owns the only source-modifying SOP, `k-code-cleanup`.
 | | |
 | --- | --- |
 | **SOPs** | **none** — skill-driven |
-| **Skills** | 16 — `user-story-writing`, `requirements-extraction`, `decision-research`, `sprint-planning`, `asana-sprint-planning`, `task-decomposition`, `legacy-to-agentic-estimate`, `humanize-writing`, `deliberation-panel`, `kiro-requirements-generation`, and others |
+| **Skills** | 15 — `user-story-writing`, `requirements-extraction`, `decision-research`, `sprint-planning`, `task-decomposition`, `legacy-to-agentic-estimate`, `humanize-writing`, `deliberation-panel`, `kiro-requirements-generation`, and others |
 | **Can mutate?** | Write pre-approved in Kiro CLI and granted in Claude Code; shell asks first in Kiro CLI and is granted in Claude Code |
 | **Can delegate to** | nothing (returns to the orchestrator) |
 
@@ -430,7 +430,7 @@ In both runtimes a specialist hands off by returning to the orchestrator, never 
 
 ## Related
 
-- [Skills catalog](skills.md) — all 82 skills, and which agents declare each
+- [Skills catalog](skills.md) — all 81 skills, and which agents declare each
 - [SOP workflows](sop-workflows/README.md) — the 19 procedures and which agent owns each
 - [Core concepts → agent](concepts.md#agent) — what an agent is
 - [Install for Kiro CLI](tasks/install-kiro-cli.md) · [Install for Claude Code](tasks/install-claude-code.md)

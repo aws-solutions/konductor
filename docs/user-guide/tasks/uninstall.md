@@ -23,7 +23,7 @@ konductor uninstall --dry-run
 ```text
 Would remove Konductor 1.0.0 from Kiro CLI:
   agents          11
-  skills          82
+  skills          81
   SOPs            19
   context files    2
 

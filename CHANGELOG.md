@@ -81,6 +81,10 @@ not per individual commit.
 - delegation-protocol: shorter trigger, a reason for the four-subagent limit, and a shorter "specialist never spawns" pointer. The adversarial pass skills are coordinator-only and say "posted to the PR".
 - persistent-memory and agents-md-authoring: the memory skill's description leads with "remember this", "save this", "forget that" and its headings drop the section numbers; the AGENTS.md context block uses the `.kiro/skills/ws-*/SKILL.md` glob and calls `.konductor` the workspace state directory.
 - app-discovery, claude-teams-behavior and pre-planning-analysis state when to use them in one sentence that fits the Kiro skill index; claude-teams-behavior uses "PR diff" and "read-only checkout" and points at delegation-protocol for the worktree rule; pre-planning-analysis names an Owner per intent.
+- `asana-sprint-planning` is folded into `sprint-planning` as
+  `skills/sprint-planning/references/asana.md`, which the skill opens when the team uses Asana
+  (81 skills). `sprint-planning` now also covers team-size capacity, sprint rollover, batch
+  approval, and linking tasks to tickets and code reviews.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
@@ -235,6 +239,13 @@ not per individual commit.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 - `NOTICE.txt` lists every shipped crate, and `make notice-check` keeps it current.
+- Nine skills no longer name tools, templates or steps that don't exist where they run.
+  `humanize-writing`, `mux-dispatch` and `workspace-skills` use harness-neutral wording, and
+  `workspace-skills` says where Claude Code keeps workspace skills. `cost-estimation` names the
+  AWS Pricing MCP server and how to install it, and says why it waits for load figures before
+  pricing. `program-planning` and `playwright-test-implementation` no longer point at SOP steps
+  that are missing when the skill runs alone. `cmux-dispatch`, `design-doc-guidelines` and
+  `external-research` drop terms that do not apply in this repo.
 
 ### Security
 

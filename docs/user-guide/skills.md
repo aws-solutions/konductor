@@ -4,7 +4,7 @@
 
 [← Back to guide index](README.md)
 
-All **82 skills** the package ships, grouped by what they are for. Each entry gives what the
+All **81 skills** the package ships, grouped by what they are for. Each entry gives what the
 skill does, when it makes sense to reach for it, and which agents declare it.
 
 A **skill** is a module of knowledge an agent loads on demand — see
@@ -21,7 +21,7 @@ know exactly which lens you want applied.
 ## Contents
 
 - [Behaviour, routing, and memory](#behaviour-routing-and-memory) — 13
-- [Requirements and product](#requirements-and-product) — 7
+- [Requirements and product](#requirements-and-product) — 6
 - [Program and delivery management](#program-and-delivery-management) — 7
 - [Architecture and design](#architecture-and-design) — 12
 - [Design quality gates](#design-quality-gates) — 6
@@ -69,8 +69,7 @@ Turning a business ask into something an engineer can build.
 | `requirements-extraction` | Extracts design inputs from existing requirements and user stories into three focused files: business-context.md, requirements-summary.md, user-stories-extract.md. | Requirements and stories already exist and you are handing them to the architect. With no requirements yet, write user stories first. | `k-architect`, `k-product-manager` |
 | `user-story-writing` | Creates user stories with INVEST principles, epics, and acceptance criteria, from validated requirements or a rough ask. Scales to MVP (10-15), Production (20-30), or full scope (30-40 stories). | You need stories, epics or acceptance criteria, or want to turn a feature idea into backlog items. No requirements doc is needed. | `k-product-manager`, `konductor` |
 | `task-decomposition` | Splits stories and a system design into independent features that individual engineers can build with minimal overlap. | The HLD is done and you need to parallelise the work across people. | `k-developer`, `k-product-manager`, `k-tpm` |
-| `sprint-planning` | Task hierarchy, story-point sizing, capacity tracking, sprint workflow. | You are planning a sprint or sizing work, with no external tracker involved. | `k-product-manager`, `k-tpm` |
-| `asana-sprint-planning` | The same sprint workflow, driven through Asana. | You track sprints in Asana. Needs an Asana MCP server — opt-in. | `k-product-manager` |
+| `sprint-planning` | Task hierarchy, story-point sizing, capacity tracking, sprint workflow. Its Asana reference drives the same workflow through Asana. | You are planning a sprint or sizing work. For Asana, it needs an Asana MCP server (opt-in). | `k-product-manager`, `k-tpm` |
 | `decision-research` | Research patterns for gathering context before deciding and verifying artifact claims: prior art, alternatives, trade-offs, evidence base, assumption challenges. | A decision needs evidence rather than opinion. | `k-architect`, `k-product-manager` |
 | `document-formats` | Reads and writes `.docx` via pandoc. | Your requirements arrived as a Word document. | `k-product-manager`, `k-quality-assurance`, `k-researcher`, `k-tpm` |
 
@@ -227,7 +226,7 @@ Looking things up outside the repository.
 
 ## Coverage
 
-**All 82 skills are declared by at least one agent.** That matters because a skill no agent
+**All 81 skills are declared by at least one agent.** That matters because a skill no agent
 declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use
 it. Contributors adding a skill should see
 [Contributing → check skill coverage](appendix/contributing.md#check-skill-coverage).
@@ -251,7 +250,7 @@ Useful when deciding which agent to talk to directly.
 | `k-architect` | 38 |
 | `k-developer` | 27 |
 | `konductor` | 24 |
-| `k-product-manager` | 16 |
+| `k-product-manager` | 15 |
 | `k-tpm` | 14 |
 | `k-quality-assurance` | 12 |
 | `konductor-cmux-orchestrator` | 10 |
