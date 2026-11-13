@@ -8,6 +8,8 @@
     "generate-notice": "node scripts/generate-notice.js",
     "benchmark": "node scripts/benchmark.js",
     "benchmark:regression": "node tests/scripts/check-benchmark-regression.js",
+    "skill-bench": "node scripts/bench/bench.js",
+    "test:bench": "node --test tests/scripts/bench/*.test.js",
     "test": "node --test \"tests/scripts/**/*.test.js\""
   },
   "engines": {

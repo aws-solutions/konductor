@@ -1,0 +1,21 @@
+Skill benchmark plan (offline: no network, no model call, nothing spent)
+run: default | max_usd: $30.00 | judge seats: anthropic, openai, xai
+
+Skills
+  brew-log     ready        agent k-developer (2 declare it, k-developer preferred)
+                            batch b1: 5 tasks, 4 in the request-only reading, 1 excluded
+  pantry-note  no baseline
+
+Stages
+  1  prep                  pending    $0.00  runs at the start of every run, leaves no file
+  2  rules reading         pending    $1.79  0/40 calls done (10 subject, 30 judge)
+  3  request-only reading  pending    $1.00  0/28 calls done (4 writer, 24 judge)
+  4  report                pending    $0.00
+
+Estimated cost (mean) of pending work: $2.78
+Upper estimate (p90) of pending work: $4.79 of max_usd $30.00: within the limit
+The per-call costs were measured on earlier runs and can differ on this one. Budget about $35 per skill.
+Not checked offline: AWS credentials, Bedrock model availability and the spend ledger. Stage 1 of a run checks them.
+
+Warnings
+  exclusions.json: batch b1: "brew-log-rules-9" names no task of any skill with a baseline, so it excludes nothing

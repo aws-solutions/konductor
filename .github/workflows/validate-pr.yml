@@ -118,6 +118,18 @@ jobs:
       - name: Run the skill shell tests (make test-skills-sh)
         run: make test-skills-sh
 
+      - name: Set up Node.js 22
+        # package.json "engines" requires Node 22 or newer; the runner's default
+        # Node may be older. This also sets the Node that later steps use.
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Run the skill benchmark tests (make bench-check)
+        # scripts/bench/ is tested against committed fixtures only. No network,
+        # no AWS credentials and no model call; needs just Node 22 (set up above).
+        run: make bench-check
+
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
 

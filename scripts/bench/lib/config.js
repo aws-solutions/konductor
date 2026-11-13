@@ -184,18 +184,21 @@ const deepFreeze = (object) => {
 };
 
 /**
- * Reads a settings file. Bad content and a failed read are both a ConfigError that names the file: bad content keeps
- * the reader's message, and a failed read flattens the system error (its code) into the message. `missing`, when
- * given, is the whole message for a file that is not there (ENOENT).
+ * Reads a settings file. Bad content and a failed system call are both a ConfigError that names the file: bad
+ * content keeps the reader's message, and a failed call flattens the system error (its code) into the message.
+ * `missing`, when given, is the whole message for a file that is not there (ENOENT). Anything else thrown is a bug
+ * and is rethrown as is.
  */
 function readConfigFile(file, { missing = null } = {}) {
   try {
     return readJsonFile(file);
   } catch (error) {
     if (error instanceof JsonFileError) throw new ConfigError(error.message);
+    // Only a failed system call is a settings problem; anything else thrown while reading is a bug.
+    if (typeof error?.code !== 'string') throw error;
     if (missing && error.code === 'ENOENT') throw new ConfigError(missing);
     throw new ConfigError(
-      `${file}: cannot read the config file (${error.code || error.message})`,
+      `${file}: cannot read the config file (${error.code})`,
     );
   }
 }

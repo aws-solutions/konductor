@@ -1,0 +1,76 @@
+{
+  "format_version": 1,
+  "skill": "brew-log",
+  "batch": "b1",
+  "generated_at": "2026-01-15T10:00:00Z",
+  "model": "human",
+  "skills_version": "fixture-1",
+  "rules_sha256": "cd78f457d2aa74e560ab17f5102e74a1c3e40ca789b199d620fc6c22277caeac",
+  "scenarios": [
+    {
+      "id": "brew-log-rules-1",
+      "title": "Morning sencha that came out sharp",
+      "target_section": "Rules",
+      "prompt": "I keep a little notebook of every pot I make and I want to add this morning's pot before I forget the details. I used a sencha from the green tin, about five grams, in a small clay pot. The kettle was set to 80 C, I poured it over the leaves and let it sit for two minutes. The first cup came out sharp and a bit grassy, and my guest said it tasted thin at the end. I also noticed that I did not rinse the leaves first, which I normally do. Today is the fourth of March, 2026. Could you write the notebook entry for me so I can paste it in?",
+      "rubric": [
+        "The entry opens with the 80 C water temperature and the two minute steep before anything else is said.",
+        "The entry names the sencha and gives the amount of about five grams.",
+        "The entry has no more than three sentences in total.",
+        "The entry writes out C as degrees Celsius, or avoids the abbreviation, the first time it is used.",
+        "The entry ends with a concrete change for next time, such as rinsing the leaves or shortening the steep."
+      ]
+    },
+    {
+      "id": "brew-log-rules-2",
+      "title": "Cold-brew coffee for a picnic",
+      "target_section": "Rules",
+      "prompt": "We are heading to a lake on Saturday and I made cold-brew coffee the night before to take along. I ground 120 g of the dark roast from the corner roaster, put it in a big jar with a litre of cold filtered water, and left it in the fridge for fourteen hours. Then I strained it through a paper filter, which took ages. It tasted smooth but flat, a bit like chocolate with no brightness. My brother asked what the TDS was and I had no idea, so I did not measure it. The date was the twelfth of July, 2025. I would like a short entry for my coffee log that I can keep with the jar's label.",
+      "rubric": [
+        "The entry opens with the cold water and the fourteen hour steep, since cold-brew has no heat to report.",
+        "The entry names the dark roast and gives the 120 g amount.",
+        "The entry has no more than three sentences in total.",
+        "The entry spells out TDS as total dissolved solids if it mentions TDS at all.",
+        "The entry ends with a concrete change, such as a coarser grind, a shorter steep or adding a brighter bean."
+      ]
+    },
+    {
+      "id": "brew-log-rules-3",
+      "title": "Gongfu oolong with many short steeps",
+      "target_section": "Rules",
+      "prompt": "Last night I did a gongfu session with a roasted oolong in my gaiwan, and I want to keep a proper record because it was the best session in months. I used 7 g of the roasted oolong from the new batch my friend sent. The water was just off the boil at 95 C. I did ten infusions, starting at fifteen seconds and adding five seconds each time, and the fourth and fifth cups were the sweetest. By the eighth the flavour was thinning out and I felt I had pushed the leaves too hard. I did not write down the date. Please draft the log entry for me.",
+      "rubric": [
+        "The entry opens with the 95 C water and the fifteen second first infusion, ahead of other details.",
+        "The entry names the roasted oolong and gives the 7 g amount.",
+        "The entry has no more than three sentences, even though the session had ten infusions.",
+        "The entry explains the word gaiwan, or avoids it, the first time it appears.",
+        "The entry ends with one concrete change, such as stopping at the seventh infusion or using more leaf."
+      ]
+    },
+    {
+      "id": "brew-log-rules-4",
+      "title": "Chai made on the stove for a crowd",
+      "target_section": "Rules",
+      "prompt": "I made a big pot of chai on the stove for a family gathering on Sunday and I want to log how it went so I can make it the same way at the next one. I used four tablespoons of loose assam, about twenty grams, with a small piece of ginger, six cardamom pods and a cinnamon stick. I simmered everything in water for five minutes, then added two cups of whole milk and brought it back up to a gentle simmer. The water was at a rolling boil when the tea went in. People said it was lovely, though a few thought it was too sweet because I put in a lot of jaggery. Please write the entry.",
+      "rubric": [
+        "The entry opens with the rolling boil and the five minute simmer, ahead of other details.",
+        "The entry names the assam and gives the amount of four tablespoons or about twenty grams.",
+        "The entry has no more than three sentences in total.",
+        "The entry gives no abbreviation without explaining it, and does not use shorthand such as tbsp unexplained.",
+        "The entry ends with a concrete change, such as using less jaggery next time."
+      ]
+    },
+    {
+      "id": "brew-log-rules-5",
+      "title": "Iced hibiscus for a hot afternoon",
+      "target_section": "Rules",
+      "prompt": "It was very hot on Thursday, so I brewed dried hibiscus flowers to chill for the afternoon. I put 15 g of hibiscus in a heatproof jug and poured about 90 C water over them, then left it for ten minutes while I did the dishes. After that I strained it, stirred in a little honey and poured it over ice. It turned a deep ruby colour and tasted tart, but a little too sour for most people who tried it. I forgot to write down the date until now, so just say it was last week. I would like a tidy entry for my drinks journal.",
+      "rubric": [
+        "The entry opens with the 90 C water and the ten minute steep before anything else.",
+        "The entry names the dried hibiscus and gives the 15 g amount.",
+        "The entry has no more than three sentences in total.",
+        "The entry spells out C as degrees Celsius, or avoids the abbreviation, the first time it is used.",
+        "The entry ends with a concrete change, such as adding more honey or steeping for less time."
+      ]
+    }
+  ]
+}

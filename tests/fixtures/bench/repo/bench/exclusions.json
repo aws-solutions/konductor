@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "batches": {
+    "b1": {
+      "scenarios": [
+        {
+          "id": "brew-log-rules-3",
+          "scales": ["outcome"],
+          "reason": "fixture: the request-only writer exceeded the item length limit twice",
+          "date": "2026-01-16"
+        },
+        {
+          "id": "brew-log-rules-9",
+          "scales": ["outcome"],
+          "reason": "fixture: a record that names no task, to show the warning",
+          "date": "2026-01-16"
+        }
+      ]
+    }
+  }
+}
