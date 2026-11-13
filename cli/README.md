@@ -59,9 +59,8 @@ of failing.
   Defaults to `$HOME` when omitted, same as `install --target`.
 
 The CLI utility handles setup, content build, lifecycle, and diagnostics, and it checks,
-shows and runs workflow files with [`flow`](#flow). `flow run` runs stages on Kiro CLI, and
-the `claude` harness arrives in a later release. Other SDLC work with real agents is still
-driven by the Konductor Kiro agent.
+shows and runs workflow files with [`flow`](#flow). `flow run` runs stages on Kiro CLI or Claude Code. Other SDLC
+work with real agents is still driven by the Konductor Kiro agent.
 
 ---
 
@@ -670,7 +669,8 @@ rather than re-implementing any validation.
 | `container_runtime` | Probes `docker`/`podman`/`nerdctl`/`finch` on PATH, in that order — informational only.                                                                                    |
 | `index_status`      | Compares `~/.konductor/installs`'s cached status for the target against that target's real manifest status — catches an install/update interrupted between the two writes. |
 | `cli_version`       | Machine-wide, runs exactly once even under `--all`. Compares the running `konductor` binary's own version against the latest published GitHub release. `warn` severity only when stale — never `failed`, never affects `doctor`'s own exit code. |
-| `kiro_cli_version`  | Machine-wide, runs exactly once even under `--all`. Runs `kiro-cli --version` (stopped after 5 seconds) and compares it with the lowest version that `flow run` was checked on. `warn` when the version is lower or cannot be read, `info` when `kiro-cli` is not on `PATH`. Never `failed`, never affects `doctor`'s own exit code. It uses no network, so `--no-version-check` does not skip it. A later release adds a row for each runner tool it supports. |
+| `kiro_cli_version`  | Machine-wide, runs exactly once even under `--all`. Runs `kiro-cli --version` (stopped after 5 seconds) and compares it with the lowest version that `flow run` was checked on. `warn` when the version is lower or cannot be read, `info` when `kiro-cli` is not on `PATH`. Never `failed`, never affects `doctor`'s own exit code. It uses no network, so `--no-version-check` does not skip it. |
+| `claude_version`    | The same check for Claude Code: machine-wide, once even under `--all`, runs `claude --version` (stopped after 5 seconds) and compares the first three numbers with the lowest version that `flow run` was checked on. `warn` when it is lower or cannot be read, `info` when `claude` is not on `PATH`, never `failed`, never affects `doctor`'s exit code, and `--no-version-check` does not skip it. |
 | `content_version`   | Per-target, runs once per tracked target under `--all`. Compares that target's recorded content version (`agent_version` in `install-info.json`) against the latest published release. Fully independent of `cli_version` — no shared check name, summary line, or comparison logic. |
 
 A few forward-looking checks (`gitignore`, `provider_model_access`, `role_allowlists`)
@@ -894,9 +894,8 @@ directory or anything bigger is treated as not there, and a link is never follow
   `--harness` takes `kiro-cli`, `claude` or `fake`. Without it, `flow run` uses the one runner harness that
   `~/.konductor/installs` records as installed, whatever the install's target: `kiro-cli-v2` and `kiro-v3` mean
   `kiro-cli`, and `claude` means `claude`. With both installed, or neither, `--harness` is required and leaving it out
-  is a usage error (exit `64`). `claude` is a usage error too until step 1f-2 adds it, whether it is named or the only
-  one installed. `fake` is for tests and is never a default: it runs no agent and replays the reply, exit status and
-  duration that a JSON script gives for each stage. The script is named by `--fake-script <path>` or by
+  is a usage error (exit `64`). `fake` is for tests and is never a default: it runs no agent and replays the reply, exit
+  status and duration that a JSON script gives for each stage. The script is named by `--fake-script <path>` or by
   `KONDUCTOR_FAKE_SCRIPT`, and the flag wins. Without one, `--harness fake` is a usage error. `--fake-script` is left
   out of `--help` because it is for tests. The script format is described in
   [`workflow-engine/adapters/src/fake_harness.rs`](../workflow-engine/adapters/src/fake_harness.rs). A stage whose
@@ -913,6 +912,25 @@ directory or anything bigger is treated as not there, and a link is never follow
   the same way. A session that ends with an exit status other than 0, or cannot start, prints one line on stderr with
   the stage and the status. A session that passes the stage limit gets a terminate signal for its whole process group,
   then a kill after 10 seconds, and its stage is `blocked` with `TIMEOUT`.
+
+  On `claude`, each stage is one headless session, `claude -p "<prompt>" --output-format json --agent <id>
+  --allowedTools "<rule>,<rule>"`, started in the project root. `--agent` runs the session as the stage's agent, with
+  its prompt, model and `tools`, and the `tools` list also caps which tools the session has. The prompt comes right
+  after `-p`, so `--allowedTools` cannot take it as a rule. `--allowedTools` gets one rule for each tool in the agent's
+  `tools` key, so every tool the agent makes available runs without asking: `Agent(a, b)` becomes `Agent(a),Agent(b)`,
+  and `Agent` and `mcp__server__*` pass through. A tool name that holds anything but letters, digits and `_ * : . -`,
+  an `Agent()` with no names, and a `tools` key that cannot be read give no `--allowedTools` at all, with one line on
+  stderr. So does an agent with no `tools` key (every tool is available and none is approved) and an empty list. The
+  runner passes no permission mode and no flag that skips permission checks, so a call that neither the flag nor your
+  settings allow is denied, and your settings can still deny a tool in `tools`. The final message is the `result` field
+  of the JSON reply. A reply that is not JSON, or has no `result`, gives an empty final message and one line on stderr,
+  and the exit status decides: not 0 is `SESSION_FAILED`, and 0 is `RESULT_MISSING`. A reply with `"is_error": true`
+  is `SESSION_FAILED` whatever the exit status, with its text on stderr. Claude Code looks for `.claude/agents` in the
+  project root, in each folder above it up to the git top folder (the nearest wins), and then in your home folder, and
+  the catalog that checks the stages looks in the same places and in the same order. If a stage's agent is in none of
+  them, `flow run` exits `64` before the first stage, in the same way as on `kiro-cli`, and a Kiro agent file of the
+  same name does not count. Claude Code finds an agent by the `name` in its front matter, and the check looks for
+  `<id>.md`.
 
   The run state is `.konductor/runs/<run-id>/state.json` under the project root, replaced whole at each change. While
   a session runs the state also holds `session_group`, its process group and the start time of that group's leader,
@@ -966,7 +984,9 @@ is present the summary names it on an "also sets" line. A Claude agent file whos
 plain `key:`, such as a quoted key or a space before the colon, is shown as unreadable, because a key could hide in it.
 The agent is looked for in the current directory, then the folders above it up to the git root, then your home folder,
 for Kiro CLI and for Claude Code. Kiro CLI itself does not look in the folders above its working directory, so for
-`flow run` on `kiro-cli` the agent must be in the project root or your home folder.
+`flow run` on `kiro-cli` the agent must be in the project root or your home folder. Claude Code does, so on `claude`
+the summary and the run look in the same folders. A `tools` value with a comma inside parentheses, such as
+`Agent(a, b), Read`, is read as two tools.
 
 Some tool configuration cannot be hashed from its content: a link to a folder, a folder with more than 512 files and
 folders together or nested more than 4 levels below `.kiro/agents`, `.claude/agents`, `.claude/commands`,
@@ -1013,7 +1033,7 @@ never need trust.
 
 Exit codes: `0` when the workflow has no errors (for `flow run`, when the run passed), `1` when a run halted, `64` for
 a usage error (a bad name, `library/<name>`, a name that matches no file, a bad `flow run` input, no `--harness` when
-none or both runner harnesses are installed, `claude` before it arrives, or a stage agent that Kiro CLI cannot see),
+none or both runner harnesses are installed, or a stage agent that the harness cannot see),
 `65` when the workflow has errors, `74` when the trust record cannot be kept or changed (no usable home folder, a file
 error, or a record that is damaged or from a newer Konductor; a record that cannot be read only trusts nothing), `75`
 when the workspace lock refuses the run, and `77` when the workflow is not trusted and you did not confirm it, there
@@ -1091,12 +1111,13 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
     own logic and reporting per-check ok/info/failed/stale status with remediation
     guidance
   - `flow check` and `flow show` reading workflow files through the `workflow-engine/` crates
-  - `flow run` running a workflow on `kiro-cli` (Kiro CLI V2 and V3), or on the `fake` harness, which is for tests,
+  - `flow run` running a workflow on `kiro-cli` (Kiro CLI V2 and V3), on `claude` (Claude Code), or on the `fake`
+    harness, which is for tests,
     with its run state in `.konductor/runs/` and one run at a time per workspace
 - **Stubs:** `metrics` still prints "not yet implemented."
 - **Not yet started:** the run-engine/conductor (which will read/write
   `.konductor/run-state.json`-shaped documents and is responsible for exit code 2's
-  "unresolved CRITICAL gate" signal), and `flow run` on `claude`.
+  "unresolved CRITICAL gate" signal).
 
 ## Current limitations
 
