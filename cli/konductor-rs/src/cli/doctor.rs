@@ -315,6 +315,7 @@ pub fn dispatch_doctor_with(
 
     let latest_release_tag = resolve_latest_release_tag(no_version_check);
     let cli_version_result = check_cli_version(no_version_check, &latest_release_tag);
+    let runner_tools = check_runner_tools();
     let mut results = run_checks(target_dir, from.as_deref(), &destination, home_dir_override);
     results.push(check_content_version(
         &destination,
@@ -325,10 +326,14 @@ pub fn dispatch_doctor_with(
     if json {
         println!(
             "{}",
-            format_report_json_with_cli_version(&cli_version_result, &results)
+            add_runner_tools(
+                &format_report_json_with_cli_version(&cli_version_result, &results),
+                &runner_tools
+            )
         );
     } else {
         print_report(std::slice::from_ref(&cli_version_result), verbose, color);
+        print_report(&runner_tools, verbose, color);
         print_report(&results, verbose, color);
     }
 
@@ -442,6 +447,7 @@ fn dispatch_doctor_all(
     // exactly once here, never per-target.
     let latest_release_tag = resolve_latest_release_tag(no_version_check);
     let cli_version_result = check_cli_version(no_version_check, &latest_release_tag);
+    let runner_tools = check_runner_tools();
     for entry in &entries {
         let destination = PathBuf::from(&entry.target_dir);
         let mut results = run_checks(target_dir, None, &destination, home_dir_override);
@@ -459,10 +465,14 @@ fn dispatch_doctor_all(
     if json {
         println!(
             "{}",
-            format_report_json_all_with_cli_version(&cli_version_result, &per_target)
+            add_runner_tools(
+                &format_report_json_all_with_cli_version(&cli_version_result, &per_target),
+                &runner_tools
+            )
         );
     } else {
         print_report(std::slice::from_ref(&cli_version_result), verbose, color);
+        print_report(&runner_tools, verbose, color);
         for (target, results) in &per_target {
             println!(
                 "{}",
@@ -1707,6 +1717,175 @@ fn check_container_runtime_with_path(path_var: Option<std::ffi::OsString>) -> Ch
          sandbox mode; not required otherwise"
             .to_string(),
     )
+}
+
+/// One runner tool that `flow run` starts, and the lowest version of it that Konductor's runner checks pass on (spec:
+/// "Versions"). A later step adds a row for each runner tool it supports.
+struct RunnerTool {
+    /// The name of the check in the report.
+    check: &'static str,
+    /// The program, looked up on `PATH`.
+    program: &'static str,
+    /// The lowest version the conformance checks passed on, as `major.minor.patch`.
+    minimum: &'static str,
+}
+
+const RUNNER_TOOLS: &[RunnerTool] = &[RunnerTool {
+    check: "kiro_cli_version",
+    program: "kiro-cli",
+    minimum: "3.3.0",
+}];
+
+/// How long `<tool> --version` may run before the check gives up on it. `check_container_runtime` never runs a
+/// candidate because a runtime's CLI can hang waiting on a daemon, and a tool's `--version` can hang too, so the wait
+/// is bounded and the process is killed at the limit.
+const RUNNER_VERSION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// The version in the output of `<tool> --version`: the first word that starts with a digit, read as up to three
+/// numbers separated by dots. A suffix such as `-beta` ends the number it follows, and a missing number is 0.
+fn parse_tool_version(text: &str) -> Option<(u64, u64, u64)> {
+    let word = text
+        .split_whitespace()
+        .find(|w| w.starts_with(|c: char| c.is_ascii_digit()))?;
+    let mut parts = [0u64; 3];
+    for (slot, part) in parts.iter_mut().zip(word.split('.')) {
+        let digits: String = part.chars().take_while(char::is_ascii_digit).collect();
+        if digits.is_empty() {
+            break;
+        }
+        *slot = digits.parse().ok()?;
+        if digits.len() != part.len() {
+            break;
+        }
+    }
+    Some((parts[0], parts[1], parts[2]))
+}
+
+/// What `<program> --version` printed, or why that is not known.
+fn read_tool_version(
+    program: &Path,
+    timeout: std::time::Duration,
+) -> Result<(u64, u64, u64), String> {
+    use std::io::Read;
+    let mut child = std::process::Command::new(program)
+        .arg("--version")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|e| format!("could not run it: {e}"))?;
+    let until = std::time::Instant::now() + timeout;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if std::time::Instant::now() >= until => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!(
+                    "`--version` did not finish in {} seconds",
+                    timeout.as_secs()
+                ));
+            }
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(10)),
+            Err(e) => return Err(format!("could not wait for it: {e}")),
+        }
+    };
+    if !status.success() {
+        return Err("`--version` failed".to_string());
+    }
+    let mut text = String::new();
+    if let Some(stdout) = child.stdout.as_mut() {
+        let _ = stdout.take(4096).read_to_string(&mut text);
+    }
+    parse_tool_version(&text).ok_or_else(|| "`--version` printed no version".to_string())
+}
+
+fn show_version((major, minor, patch): (u64, u64, u64)) -> String {
+    format!("{major}.{minor}.{patch}")
+}
+
+/// `doctor`'s check of one runner tool: machine-wide, run once even under `--all`. A tool that is not on `PATH` is
+/// `info`, since a user may run workflows on the other tool only. A version below the minimum, or one that cannot be
+/// read, is `warn` and never changes `doctor`'s exit code. It does not use the network, so `--no-version-check` does
+/// not skip it.
+fn check_runner_tool(tool: &RunnerTool) -> CheckResult {
+    // The unit tests of this binary run `doctor` many times in one process, next to tests that hold the run lock. A
+    // process that one test starts holds a copy of every open file, the lock included, until it execs, which makes
+    // such a test read the lock as held. So under `cfg(test)` the tool is never looked for. The tests in
+    // `tests/doctor_runner_tools_e2e.rs` run the real binary, which does look.
+    #[cfg(test)]
+    let path_var = None;
+    #[cfg(not(test))]
+    let path_var = std::env::var_os("PATH");
+    check_runner_tool_with(tool, path_var, RUNNER_VERSION_TIMEOUT)
+}
+
+fn check_runner_tool_with(
+    tool: &RunnerTool,
+    path_var: Option<std::ffi::OsString>,
+    timeout: std::time::Duration,
+) -> CheckResult {
+    let Some(program) = find_binary_on_path(tool.program, path_var.as_deref()) else {
+        return CheckResult::info(
+            tool.check,
+            format!("{} not found on PATH", tool.program),
+            format!(
+                "install {} if you plan to run workflows on it; not required otherwise",
+                tool.program
+            ),
+        );
+    };
+    let minimum = parse_tool_version(tool.minimum).expect("the minimum version is a version");
+    match read_tool_version(&program, timeout) {
+        Ok(found) if found >= minimum => CheckResult::ok(
+            tool.check,
+            format!(
+                "{} {} is at or above the minimum {}",
+                tool.program,
+                show_version(found),
+                tool.minimum
+            ),
+        ),
+        Ok(found) => CheckResult::warn(
+            tool.check,
+            format!(
+                "{} {} is below the minimum {}",
+                tool.program,
+                show_version(found),
+                tool.minimum
+            ),
+            format!(
+                "update {} to {} or later before running workflows on it",
+                tool.program, tool.minimum
+            ),
+        ),
+        Err(why) => CheckResult::warn(
+            tool.check,
+            format!("the version of {} could not be read: {why}", tool.program),
+            format!(
+                "check that `{} --version` works, and that it is {} or later",
+                tool.program, tool.minimum
+            ),
+        ),
+    }
+}
+
+/// The check of every runner tool, once for the machine.
+fn check_runner_tools() -> Vec<CheckResult> {
+    RUNNER_TOOLS.iter().map(check_runner_tool).collect()
+}
+
+/// Adds the runner tool checks to a `--json` report as the top-level `runner_tools` array, next to `cli_version`. The
+/// checks never fail, so `ok` does not change, and `warnings` turns on when one is a `warn`.
+fn add_runner_tools(report: &str, runner_tools: &[CheckResult]) -> String {
+    let mut doc: serde_json::Value =
+        serde_json::from_str(report).expect("the report is valid JSON");
+    doc["runner_tools"] =
+        serde_json::Value::Array(runner_tools.iter().map(check_result_to_json).collect());
+    if runner_tools.iter().any(|r| r.status.is_warning()) {
+        doc["warnings"] = serde_json::Value::Bool(true);
+    }
+    doc.to_string()
 }
 
 /// Scans each directory in `path_var` (`PATH`-syntax, via
@@ -5210,5 +5389,64 @@ mod tests {
 
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
+    }
+}
+
+#[cfg(test)]
+mod runner_tool_tests {
+    use super::*;
+
+    #[test]
+    fn versions_are_read_from_the_first_word_that_starts_with_a_digit() {
+        assert_eq!(parse_tool_version("kiro-cli 3.3.0"), Some((3, 3, 0)));
+        assert_eq!(parse_tool_version("tool v1 2.5"), Some((2, 5, 0)));
+        assert_eq!(parse_tool_version("9.1.2-rc.1\n"), Some((9, 1, 2)));
+        assert_eq!(parse_tool_version("7"), Some((7, 0, 0)));
+        assert_eq!(parse_tool_version("no version"), None);
+        assert_eq!(parse_tool_version(""), None);
+    }
+
+    #[test]
+    fn a_tool_that_is_not_on_path_is_info_not_a_warning() {
+        let empty = std::env::temp_dir().join(format!(
+            "konductor-doctor-runner-empty-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&empty).unwrap();
+        let timeout = std::time::Duration::from_secs(1);
+        for path in [Some(empty.clone().into_os_string()), None] {
+            let result = check_runner_tool_with(&RUNNER_TOOLS[0], path, timeout);
+            assert_eq!(result.status, CheckStatus::Info);
+            assert!(
+                result.summary.contains("not found on PATH"),
+                "{}",
+                result.summary
+            );
+        }
+        std::fs::remove_dir_all(empty).ok();
+    }
+
+    #[test]
+    fn the_table_holds_a_minimum_that_reads_as_a_version_for_every_tool() {
+        for tool in RUNNER_TOOLS {
+            assert!(parse_tool_version(tool.minimum).is_some(), "{}", tool.check);
+        }
+        assert!(RUNNER_TOOLS.iter().any(|t| t.program == "kiro-cli"));
+    }
+
+    #[test]
+    fn the_json_report_gets_its_own_runner_tools_array_and_the_warnings_flag() {
+        let base = format_report_json(&[CheckResult::ok("x", "fine")]);
+        let warn = CheckResult::warn("kiro_cli_version", "low", "update");
+        let with = add_runner_tools(&base, std::slice::from_ref(&warn));
+        let doc: serde_json::Value = serde_json::from_str(&with).unwrap();
+        assert_eq!(doc["runner_tools"][0]["name"], "kiro_cli_version");
+        assert_eq!(doc["runner_tools"][0]["status"], "warn");
+        assert_eq!(doc["warnings"], true);
+        // A warning in this array never turns `ok` off.
+        assert_eq!(doc["ok"], true);
+        let quiet = add_runner_tools(&base, &[CheckResult::ok("kiro_cli_version", "fine")]);
+        let doc: serde_json::Value = serde_json::from_str(&quiet).unwrap();
+        assert_eq!(doc["warnings"], false);
     }
 }
