@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
-const { tmp, write, makeBench } = require('./helpers.js');
+const { tmp, write, makeBench, testModeEnv } = require('./helpers.js');
 const { loadTasks, loadSuite, SUITE_DEFAULTS, BENCH_DIR } = require('../lib/tasks.js');
 const { checkPanel } = require('../../judge/config.js');
 const { mkScratch } = require('./scratch.js');
@@ -202,7 +202,7 @@ test('run --suite pilot executes tasks of different classes in one run; only the
     const tmpdir = path.join(root, 'tmp');
     fs.mkdirSync(tmpdir);
     const out = path.join(root, 'out');
-    const env = { PATH: `${path.join(root, 'bin')}${path.delimiter}${process.env.PATH}`, HOME: home, TMPDIR: tmpdir };
+    const env = testModeEnv({ PATH: `${path.join(root, 'bin')}${path.delimiter}${process.env.PATH}`, HOME: home, TMPDIR: tmpdir });
     const run = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'pilot', '--isolate', 'none', '--allow-unisolated', '--bench-dir', bench, '--out', out, '--cache', path.join(root, 'cache')], { env, encoding: 'utf8' });
     assert.equal(run.status, 0, run.stderr);
     const r1 = JSON.parse(fs.readFileSync(path.join(out, 'vanilla/t1/1/result.json'), 'utf8'));
