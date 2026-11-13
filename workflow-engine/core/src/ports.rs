@@ -42,9 +42,105 @@ pub struct SessionOutcome {
     pub final_message: String,
 }
 
+/// A process group that a session runs in, with the start time of its leader. The pair identifies the group: a later
+/// process that the system gave the same number has another start time. `started` is text that only the launcher that
+/// wrote it reads.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProcessGroup {
+    pub pgid: u32,
+    pub started: String,
+}
+
+impl ProcessGroup {
+    pub fn to_json(&self) -> Json {
+        let mut object = Json::object();
+        object.insert("pgid", Json::Number(u64::from(self.pgid)));
+        object.insert("started", Json::str(&self.started));
+        object
+    }
+
+    pub fn from_json(value: &Json) -> Option<ProcessGroup> {
+        let pgid = u32::try_from(value.get("pgid")?.as_u64()?).ok()?;
+        let started = value.get("started")?.as_str()?.to_string();
+        Some(ProcessGroup { pgid, started })
+    }
+}
+
 /// The program that runs each agent stage, such as Kiro CLI, Claude Code or the fake harness of the tests.
 pub trait Harness {
     fn run_session(&mut self, session: &Session) -> SessionOutcome;
+
+    /// Runs a session like [`Harness::run_session`] and calls `started` once, as soon as the session's process group
+    /// exists and before the session ends, so the runner can record it. A harness that starts no process never calls
+    /// it, which is why the default does not.
+    fn run_session_recorded(
+        &mut self,
+        session: &Session,
+        started: &mut dyn FnMut(&ProcessGroup),
+    ) -> SessionOutcome {
+        let _ = started;
+        self.run_session(session)
+    }
+}
+
+/// A program to start, and how long it may run.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Launch<'a> {
+    pub program: &'a str,
+    pub args: &'a [String],
+    /// The folder the program starts in.
+    pub cwd: &'a str,
+    /// How long it may run before it is stopped.
+    pub time_limit_ms: u64,
+    /// How much of its standard output to keep: the last this many bytes.
+    pub keep_output_bytes: usize,
+}
+
+/// How a launched program ended.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LaunchEnd {
+    /// It ended by itself. A program that a signal ended has the status 128 plus the signal, as a shell reports it.
+    Exited(i32),
+    /// It ran past its time limit and was stopped with its whole process group.
+    TimedOut,
+    /// It could not be started. The text says why.
+    NotStarted(String),
+}
+
+/// What a launched program gave back: how it ended and the tail of its standard output.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Launched {
+    pub end: LaunchEnd,
+    pub output: String,
+}
+
+/// What a recorded process group is now.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GroupState {
+    /// No process is in it.
+    Gone,
+    /// It exists and its leader has the recorded start time.
+    Matches,
+    /// It exists but the process that leads it has another start time, so it is not the recorded group.
+    Differs,
+    /// It cannot be told. The text says why.
+    Unknown(String),
+}
+
+/// Starts programs in their own process group, and ends groups. Each program is its own group leader, so that ending
+/// the group ends everything the program started. The core defines the port and the adapters crate does the work.
+pub trait ProcessLauncher {
+    /// Starts the program in a new process group, calls `started` with the group, reads its standard output and waits
+    /// for it. At the time limit it sends a terminate signal to the whole group, waits a grace period, then kills the
+    /// group (spec: "Limits"). The program gets no standard input and keeps no file that the caller holds open.
+    fn launch(&mut self, launch: &Launch, started: &mut dyn FnMut(&ProcessGroup)) -> Launched;
+
+    /// Whether `group` still exists, and whether it is the group that was recorded.
+    fn group_state(&mut self, group: &ProcessGroup) -> GroupState;
+
+    /// Sends a terminate signal to `group`, waits the grace period, then kills what is left. `Ok` once no process is
+    /// in the group.
+    fn end_group(&mut self, group: &ProcessGroup) -> Result<(), String>;
 }
 
 /// The run state of a workspace: one folder per run, each with one state document.

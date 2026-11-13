@@ -7,8 +7,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use workflow_core::ports::Clock;
 
 /// The system's wall clock. The runner takes a stage's elapsed time from two readings of its clock, so a clock that is
-/// set back or forward during a stage changes it. The fake harness is the only harness so far, and its sessions take
-/// simulated time, so step 1f should measure real sessions with a monotonic clock (`std::time::Instant`).
+/// set back or forward during a stage changes it. The launcher does not use this clock for a real session's time limit:
+/// it times the deadline with a monotonic clock (`std::time::Instant`), and this clock stamps the run state.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SystemClock;
 

@@ -29,6 +29,7 @@ pub(crate) mod config_lock;
 mod dispatch;
 pub(crate) mod doctor;
 pub(crate) mod flow;
+pub(crate) mod flow_harness;
 pub(crate) mod harness_select;
 pub(crate) mod init;
 pub(crate) mod install;
@@ -484,10 +485,13 @@ pub enum FlowAction {
         /// the workflow's default goal is used.
         #[arg(long)]
         goal: Option<String>,
-        /// The program that runs each stage. Only `fake`, which is for
-        /// tests, exists in this build.
-        #[arg(long, required = true)]
-        harness: String,
+        /// The program that runs each stage: `kiro-cli`, `claude` or `fake`
+        /// (`fake` is for tests). Without it the one runner harness that
+        /// `konductor install` recorded is used (`kiro-cli-v2` and
+        /// `kiro-v3` mean `kiro-cli`). With both installed, or neither, it
+        /// is required. `claude` arrives in step 1f-2.
+        #[arg(long)]
+        harness: Option<String>,
         /// The script the `fake` harness replays. `KONDUCTOR_FAKE_SCRIPT`
         /// names one too; this flag wins. Hidden from `--help` because it
         /// is for tests.
@@ -923,7 +927,7 @@ mod tests {
         for argv in [
             vec!["konductor", Commands::FLOW, "check"],
             vec!["konductor", Commands::FLOW, "show"],
-            vec!["konductor", Commands::FLOW, "run", "hello-plan"],
+            vec!["konductor", Commands::FLOW, "run"],
             vec!["konductor", Commands::FLOW, "trust"],
             vec!["konductor", Commands::FLOW, "trust", "a", "--revoke", "b"],
             vec![
@@ -979,7 +983,7 @@ mod tests {
                 assert_eq!(trust, None);
                 assert_eq!(name, "hello-plan");
                 assert_eq!(goal.as_deref(), Some("Do it."));
-                assert_eq!(harness, "fake");
+                assert_eq!(harness.as_deref(), Some("fake"));
                 assert_eq!(fake_script, Some(std::path::PathBuf::from("s.json")));
             }
             other => panic!("expected Flow run, got {other:?}"),
@@ -1004,7 +1008,7 @@ mod tests {
     }
 
     #[test]
-    fn flow_run_without_a_harness_is_a_parse_error() {
+    fn flow_run_without_a_harness_parses_and_leaves_the_choice_to_the_index() {
         let argv = [
             "konductor",
             Commands::FLOW,
@@ -1013,7 +1017,13 @@ mod tests {
             "--goal",
             "x",
         ];
-        assert!(Cli::try_parse_from(argv).is_err());
+        let cli = Cli::try_parse_from(argv).unwrap();
+        match cli.command {
+            Some(Commands::Flow {
+                action: FlowAction::Run { harness, .. },
+            }) => assert_eq!(harness, None),
+            other => panic!("expected Flow run, got {other:?}"),
+        }
     }
 
     #[test]

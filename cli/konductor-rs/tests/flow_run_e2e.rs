@@ -620,20 +620,18 @@ fn many_flow_runs_against_a_stale_record_leave_exactly_one_active() {
 // --- choosing the harness ------------------------------------------------------------------------------------------
 
 #[test]
-fn a_missing_or_real_harness_is_a_usage_error() {
+fn a_missing_claude_or_unknown_harness_is_a_usage_error() {
     let project = Project::new("harness");
     let output = project.flow(&["run", "hello-plan"]);
     assert_eq!(exit(&output), 64);
     assert!(stderr(&output).contains("--harness"), "{}", stderr(&output));
-    for harness in ["kiro-cli", "claude"] {
-        let output = project.flow(&["run", "hello-plan", "--harness", harness]);
-        assert_eq!(exit(&output), 64, "{harness}");
-        assert!(
-            stderr(&output).contains("arrives in step 1f"),
-            "{}",
-            stderr(&output)
-        );
-    }
+    let output = project.flow(&["run", "hello-plan", "--harness", "claude"]);
+    assert_eq!(exit(&output), 64);
+    assert!(
+        stderr(&output).contains("arrives in step 1f-2"),
+        "{}",
+        stderr(&output)
+    );
     let output = project.flow(&["run", "hello-plan", "--harness", "kiro"]);
     assert_eq!(exit(&output), 64);
     assert!(project.run_ids().is_empty());
