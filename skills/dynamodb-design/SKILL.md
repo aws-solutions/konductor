@@ -93,6 +93,17 @@ Run this gate on every design, your own or one under review.
 - Could add Streams for event-driven consumers (idempotent, with a DLQ)
 - Could price the design with `cost-estimation`
 
+### Checks to run on a review
+
+For each check, report the finding with its fact stated in one sentence, so the reader can quote it.
+
+1. **Throttle alarms (IMPORTANT).** Alarm on `ReadThrottleEvents` and `WriteThrottleEvents` with both `TableName` and `GlobalSecondaryIndexName` dimensions, and on `ReadKeyRangeThroughputThrottleEvents` and `WriteKeyRangeThroughputThrottleEvents` for hot-partition throttling; the `TableName` dimension alone leaves GSIs out.
+2. **Write sharding on a deployed table (CRITICAL).** A low-cardinality GSI partition key on a table that takes production writes needs a shard suffix (`hash(id) % N`); a GSI's key schema cannot be changed in place, so add a new sharded GSI, backfill it, move readers, then drop the old one.
+3. **PITR and deletion protection (IMPORTANT).** Production tables need point-in-time recovery (restore to any second in a 1 to 35 day window) and deletion protection.
+4. **TTL (IMPORTANT).** The TTL attribute must be a Number holding epoch seconds; expired items are typically deleted within a few days and stay readable until then, so reads filter them out.
+5. **Capacity-mode switch (IMPORTANT).** Provisioned to on-demand is limited to four switches in a rolling 24 hours, and on-demand to provisioned is allowed at any time; a plan that switches more often is not valid.
+6. **Price (IMPORTANT).** Every rate names its Region, table class and the date it was checked; a rate that was not looked up is labelled "recalled, unverified".
+
 ## 8. Output format
 
 1. **Access patterns** table (section 1), every row mapped to a key condition.

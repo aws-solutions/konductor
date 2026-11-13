@@ -50,7 +50,7 @@ Load each skill with `aws___retrieve_skill` and follow it for the code in scope.
 | Code in scope | AWS MCP skill | What to run |
 | --- | --- | --- |
 | CloudFormation template, or the template CDK synthesizes into `cdk.out/` | `aws-cloudformation` | Its validation workflow (`references/validation-tool-selection.md`): one local validator (cfn-lint or cloudformation-validate), then cfn-guard security and compliance rules |
-| CDK app | `aws-cdk` | `cdk synth --strict` (`references/compliance-and-drift.md`). Synth runs the app's own code, so treat it like running the project's build. Run cdk-nag only if the app already applies its rule packs; otherwise list cdk-nag as not run |
+| CDK app | `aws-cdk` | When `scope_confirmed` is set by a review SOP, validate the template under `cdk.out/` if the project already has one, or read the constructs; list `cdk synth` and cdk-nag as not run. Synth runs the app's own code, so running it needs the user's explicit confirmation that the code is trusted. After that confirmation, run `cdk synth --strict` (`references/compliance-and-drift.md`), and run cdk-nag only if the app already applies its rule packs; otherwise list cdk-nag as not run |
 | Any IaC, when the Step 0 focus includes cost, reliability or operations (a General focus does) | `aws-well-architected-review` | A quick or pillar-scoped review against the IaC for that focus. Fold its findings into this skill's tiers in Step 2; do not emit its report or its follow-up offer |
 | DynamoDB tables | `amazon-dynamodb` | Check the table and index definitions against its design axioms and best practices |
 | S3 buckets | `securing-s3-buckets` | Read `references/audit-checklist.md` as a list of controls and judge each one from the code; run none of its CLI commands |
@@ -60,7 +60,7 @@ Load each skill with `aws___retrieve_skill` and follow it for the code in scope.
 
 For a service none of these covers, find its skill with `find-aws-skills`.
 
-Keep the run read-only. Do not deploy, create a stack or change set, or install a tool without the user's approval. Skip the account-aware layer unless the user asks for it: the pre-deployment checks of `aws-cloudformation`, and `cdk diff` against a deployed stack. Report each layer's outcome separately, as `aws-cloudformation` asks: one passing layer does not show another passed.
+Reads only unless the user explicitly confirms synth. Do not deploy, create a stack or change set, install a tool, or run `cdk synth` without the user's approval. Skip the account-aware layer unless the user asks for it: the pre-deployment checks of `aws-cloudformation`, and `cdk diff` against a deployed stack. Report each layer's outcome separately, as `aws-cloudformation` asks: one passing layer does not show another passed.
 
 ### Without the AWS MCP server
 
@@ -112,8 +112,8 @@ Policy-level IAM depth (condition keys, permission boundaries, KMS key policies,
 
 Use the same CRITICAL, IMPORTANT and SUGGESTION scale as the Quality Gate:
 
-- **CRITICAL** blocks deployment. Use it only for exposure, data loss or credential risk: the Quality Gate CRITICAL list, which covers public access, missing encryption the data requires, open ingress, missing deletion protection, hardcoded secrets and the wildcard IAM cases rated CRITICAL above.
-- **IMPORTANT** is for operational and reliability gaps such as missing alarms, backups, DLQs, tracing, reserved concurrency or a hot partition key. They stay IMPORTANT even in production.
+- **CRITICAL** blocks deployment. Use it only for exposure, data loss, credential risk or blocked writes: the Quality Gate CRITICAL list, which covers public access, missing encryption the data requires, open ingress, missing deletion protection, hardcoded secrets, the wildcard IAM cases rated CRITICAL above, and an unsharded low-cardinality DynamoDB partition key.
+- **IMPORTANT** is for operational and reliability gaps such as missing alarms, backups, DLQs, tracing or reserved concurrency. They stay IMPORTANT even in production.
 - **SUGGESTION** is for cost, performance and code-quality improvements.
 
 If you would hedge a rating with "arguably", use the lower tier.
@@ -179,6 +179,7 @@ End the report with its limits: the inputs you did not inspect (Lambda handler c
 - Hardcoded passwords, keys or tokens in code or environment variables
 - IAM statements with wildcard actions (`*`, `ec2:*`, or `service:*` on a data, credential, code or permission service: `s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) or wildcard resources, including `iam:PassRole` on `*`
 - Cross-account trust with no `sts:ExternalId` or other condition key
+- An unsharded low-cardinality partition key (status, type, day, boolean) on a DynamoDB table or GSI that takes production writes. This is the `dynamodb-design` quality gate's hot-partition CRITICAL: throttling on that key blocks writes
 
 **IMPORTANT (should fix):**
 
@@ -188,7 +189,6 @@ End the report with its limits: the inputs you did not inspect (Lambda handler c
 - Cross-account trust that has a condition key but whose intent is unverified
 - IAM escalation actions scoped to named resources, `ForAllValues` with no `Null` check, or a Deny that matches `aws:TagKeys` case-sensitively
 - Lambda functions without reserved concurrency limits, DLQ or tracing
-- Low-cardinality partition keys that create hot partitions
 
 **SUGGESTION:**
 

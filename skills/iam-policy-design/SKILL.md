@@ -492,7 +492,7 @@ Ensure every threat has at least one security control, verify mitigations are sp
 **Example 1: Unauthorized Access to Customer Data**
 
 - Threat: Unauthorized users accessing customer PII in DynamoDB
-- IAM Policy: `"Condition": {"ForAllValues:StringEquals": {"dynamodb:LeadingKeys": ["${aws:userid}"]}}`
+- IAM Policy: `"Action": ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:PutItem"]` with `"Condition": {"ForAllValues:StringEquals": {"dynamodb:LeadingKeys": ["${aws:userid}"]}, "Null": {"dynamodb:LeadingKeys": "false"}}`. `ForAllValues` passes when the key is absent, so the `Null` check on the same key is required
 - Encryption: DynamoDB encryption with KMS customer-managed key
 - Logging: CloudTrail data events, CloudWatch alarm for unauthorized access
 
