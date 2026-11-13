@@ -132,7 +132,7 @@ These call no model. The marks in the table say what each command costs.
 | What will this cost, and which commands do I run? | `node bench/runner/bench.js pr-plan --ref opt-a=REF --suite lite --budget-credits 100` | free, runs nothing |
 | Do all arms build and install? | add `--prepare-only` to any `run` command | free, builds arms, starts no agent |
 | What will judging cost? | `node bench/runner/bench.js judge --run DIR --plan` | free, calls no model |
-| Is the code healthy? | `node --test "bench/runner/test/*.test.js"` | free |
+| Is the code healthy? | `node --test "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js"` | free |
 
 `pr-plan` prints the next commands in order, with an estimate:
 
@@ -257,13 +257,14 @@ For studies that run for hours, read [RUNBOOK.md](RUNBOOK.md). It covers the una
 | Risk | What bench does | What you do |
 | --- | --- | --- |
 | Kiro CLI login expires mid-run | `run` checks `kiro-cli whoami` before building and again between runs, at most every 5 minutes. A run that never started a turn and printed a login error is charged 0 and marked infra. After `--max-auth-failures` such runs in a row (default 3) the rest are skipped and `run` exits 6. | Log in again right before a long chunk. After an exit 6, log in and rerun. |
-| Every run failed | `run` exits 5 and writes `infraFailure` to `summary.json`. | Read `stderr.txt` of one run before spending more. |
+| Every run failed, or every run was over in under a second | `run` exits 5 and writes `infraFailure` to `summary.json`. A study where each run either errored or took under 1 s measured nothing, because the agent most likely never ran. Exit code 3, 4 or 6 takes its place when it applies. | Read `stderr.txt` of one run before spending more. |
+| The agent CLI is updated or removed mid-study | A run whose agent binary could not be started (exit 127, or exit 126 or a spawn error with a "No such file or directory" or "Permission denied" message; no turn, under 5 s) is charged 0, marked infra of kind `launch` and never counted as a timeout. Launch failures count toward the same consecutive-failure stop as login failures (default 3, `--max-auth-failures` or `BENCH_MAX_AUTH_FAILURES`), with their own message ("agent binary missing or replaced during the run"). The rest are skipped and `run` exits 6. | Do not update, reinstall or move the agent CLI while a study runs. After an exit 6 with a launch message, check that the binary is in place, then rerun the skipped cells in a new `--out` or with `--replicate-offset`. |
 | A task hangs | Each task has a `timeoutSec`. | `--timeout-sec N` replaces it for every selected task. |
 | Spend runs away | `--budget-credits X` stops launching new runs at 90% of X. A command that ends past 100% exits 3. Without it nothing stops a run. | Always pass a budget on a new study. `--run-credit-limit` kills one run on engine v2 only. |
 | Something wrote to your real home | The tripwire scans for changes after each run. A hash of `~/.konductor/installs` before and after fails the batch with exit 4. | Do not run `konductor install` or switch branches while a study runs. |
 | Disk fills up | Runs keep a full workspace each. | `gc` lists what bench made and may reclaim (a dry run). `archive --run DIR` packs finished workspaces. |
 
-Exit codes of `run`: 0 ok, 1 error, 2 bad arguments, 3 credit guard stop, 4 isolation failure, 5 every run failed, 6 login failure.
+Exit codes of `run`: 0 ok, 1 error, 2 bad arguments, 3 credit guard stop, 4 isolation failure, 5 infra check (every run errored or finished in under 1 s), 6 login or launch failure stop.
 
 **Charged and observed.** Observed credits are what the stream metered. Charged credits are what the ledger counts. They match for a finished run. For a censored run the charge is an estimate (above), and the report says how many runs it covers.
 Kiro engine v3 meters only at the end of a turn, so a killed v3 run has no observed spend at all.
@@ -294,13 +295,15 @@ An arm is always a Konductor git ref or directory plus a condition, or the bare 
 The task generators (`skilleval.js` and `cap scenarios`) read one Konductor `SKILL.md` or one Konductor capability, not a system prompt or a tool list.
 `README.md` states the same limit: testing an arbitrary third-party skill or agent definition is not supported yet.
 
-**What a new runtime has to provide.** This list is derived from reading the code. It is not a stable contract, nothing tests it, and the real surface is wider than any list here.
+**What a new runtime has to provide.** [runner/lib/harness/CONTRACT.md](runner/lib/harness/CONTRACT.md) is the written adapter contract: the members a harness module exports, the fields its parser fills, the steps to add a runtime and the places that still switch on the runtime name. It is derived from reading the code and is not tested yet. No conformance test exists, so a missing member shows up as an error in the middle of a run. In short:
 
 - A local executable the runner can start (a small wrapper, for an in-process agent).
 - A stream of JSON lines on stdout, and a parser that turns it into the fields `result.json` needs: session id, finished status, final text, tool calls and tool names, and spend as credits or USD.
 - An install step that fills a scratch home, an environment allowlist, and a step that removes credentials afterwards.
 - A source for the arm. Arms are Konductor refs today, so the arm preparation and trial install assume Konductor.
-- Runtime-specific branches elsewhere, in roughly fifteen places by a count of the code (an estimate, not a measured figure): skill-load capture, early stop, `trace`, the cost unit, the judge bundle's final-text reader, the report, and the result schema's runtime list.
+- Runtime-specific branches outside the harness folder. CONTRACT.md lists them in its last section: skill-load capture, early stop, `trace`, the cost unit, the judge bundle's final-text reader, the report, and the result schema's runtime list.
+
+The contract documents the adapter surface for the runtimes above. It does not add support for third-party agents.
 
 **What is not available.**
 
