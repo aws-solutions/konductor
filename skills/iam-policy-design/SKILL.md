@@ -1,6 +1,6 @@
 ---
 name: iam-policy-design
-description: Generates IAM policies and security controls for AWS architectures following least-privilege principles. Use when designing access controls for a new service. Produces IAM role policies, resource policies, and compliance configurations.
+description: 'Generates least-privilege IAM policies and security controls for AWS. Use when writing an IAM role, S3 bucket, or KMS key policy, a permission boundary, or an SCP, or when asked for least-privilege access for a service.'
 version: 1.0.0
 tags: [skill, iam, security, policy, aws, least-privilege]
 ---
