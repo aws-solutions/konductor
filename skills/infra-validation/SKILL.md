@@ -112,8 +112,8 @@ Policy-level IAM depth (condition keys, permission boundaries, KMS key policies,
 
 Use the same CRITICAL, IMPORTANT and SUGGESTION scale as the Quality Gate:
 
-- **CRITICAL** blocks deployment. Use it only for exposure, data loss or credential risk: the Quality Gate CRITICAL list, which covers public access, missing encryption the data requires, open ingress, missing deletion protection, hardcoded secrets and the wildcard IAM cases rated CRITICAL above.
-- **IMPORTANT** is for operational and reliability gaps such as missing alarms, backups, DLQs, tracing, reserved concurrency or a hot partition key. They stay IMPORTANT even in production.
+- **CRITICAL** blocks deployment. Use it only for exposure, data loss, credential risk or blocked writes: the Quality Gate CRITICAL list, which covers public access, missing encryption the data requires, open ingress, missing deletion protection, hardcoded secrets, the wildcard IAM cases rated CRITICAL above, and an unsharded low-cardinality DynamoDB partition key.
+- **IMPORTANT** is for operational and reliability gaps such as missing alarms, backups, DLQs, tracing or reserved concurrency. They stay IMPORTANT even in production.
 - **SUGGESTION** is for cost, performance and code-quality improvements.
 
 If you would hedge a rating with "arguably", use the lower tier.
@@ -179,6 +179,7 @@ End the report with its limits: the inputs you did not inspect (Lambda handler c
 - Hardcoded passwords, keys or tokens in code or environment variables
 - IAM statements with wildcard actions (`*`, `ec2:*`, or `service:*` on a data, credential, code or permission service: `s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) or wildcard resources, including `iam:PassRole` on `*`
 - Cross-account trust with no `sts:ExternalId` or other condition key
+- An unsharded low-cardinality partition key (status, type, day, boolean) on a DynamoDB table or GSI that takes production writes. This is the `dynamodb-design` quality gate's hot-partition CRITICAL: throttling on that key blocks writes
 
 **IMPORTANT (should fix):**
 
@@ -188,7 +189,6 @@ End the report with its limits: the inputs you did not inspect (Lambda handler c
 - Cross-account trust that has a condition key but whose intent is unverified
 - IAM escalation actions scoped to named resources, `ForAllValues` with no `Null` check, or a Deny that matches `aws:TagKeys` case-sensitively
 - Lambda functions without reserved concurrency limits, DLQ or tracing
-- Low-cardinality partition keys that create hot partitions
 
 **SUGGESTION:**
 
