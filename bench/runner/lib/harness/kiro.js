@@ -20,6 +20,7 @@ const { scrubTree, redactHostPaths } = require('../hygiene.js');
 const { secretLiterals } = require('../scrub.js');
 
 const id = 'kiro-cli';
+const meta = require('./kiro-meta.js');
 
 // resume: {sessionId, prompt} continues an earlier turn of the same conversation (autonomy tasks). The session store
 // lives in the run's scratch HOME and is keyed by directory, so the same HOME and cwd find it.
@@ -253,6 +254,6 @@ function collectArtifacts(home, outDir, { arm } = {}) {
 }
 
 module.exports = {
-  id, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, installInto, buildCommand, env, removeCredentials, keepPaths,
+  id, meta, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, installInto, buildCommand, env, removeCredentials, keepPaths,
   parseResult, aggregateRunDir, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions, finalize,
 };

@@ -20,6 +20,7 @@ const { orchMetrics: computeOrchMetrics } = require('../orch-metrics.js');
 const parse = require('./claude-code-parse.js');
 
 const id = 'claude-code';
+const meta = require('./claude-code-meta.js');
 const PROVIDER = 'bedrock';
 const DEFAULT_MODEL = 'us.anthropic.claude-sonnet-5-5';
 const REGION = 'us-east-1';
@@ -400,7 +401,7 @@ function runConfigRecord({ ctx, config, region, runBudgetUsd, arms = [] }) {
 const keepPaths = (ctx) => [ctx.claude?.bin].filter(Boolean);
 
 module.exports = {
-  id, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
+  id, meta, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
   resolveClaude, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,

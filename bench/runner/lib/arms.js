@@ -4,10 +4,15 @@
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const source = require('./arm-source.js');
+const { DESCRIPTORS } = require('./harness/descriptors.js');
 
 const MAIN_LABEL = 'main-unreleased';
-const OC_PREFIX = 'oc-';
-const CC_PREFIX = 'cc-';
+// Runtimes other than kiro-cli are selected by an arm-id prefix; the prefixes live in the harness descriptors.
+const PREFIXED = DESCRIPTORS.filter((d) => d.armPrefix);
+const prefixOf = (runtime) => DESCRIPTORS.find((d) => d.id === runtime).armPrefix;
+const OC_PREFIX = prefixOf('opencode');
+const CC_PREFIX = prefixOf('claude-code');
+const prefixedRuntime = (spec) => PREFIXED.find((d) => spec.startsWith(d.armPrefix));
 const KNOWN_ARMS = ['vanilla', 'v1.0.0', 'v1.1.0', 'v1.2.0', 'main', 'oc-vanilla', 'oc-v1.2.0', 'oc-main', 'cc-vanilla', 'cc-main'];
 
 function git(repo, args) {
@@ -53,8 +58,8 @@ const TAG_NAME_RE = /^v\d+\.\d+\.\d+$/;
  * says what it is.
  */
 function parseArmSpec(spec) {
-  if (spec.startsWith(OC_PREFIX)) return { ...parseArmSpec(spec.slice(OC_PREFIX.length)), oc: true };
-  if (spec.startsWith(CC_PREFIX)) return { ...parseArmSpec(spec.slice(CC_PREFIX.length)), cc: true };
+  const d = prefixedRuntime(spec);
+  if (d) return { ...parseArmSpec(spec.slice(d.armPrefix.length)), [d.armPrefix.slice(0, -1)]: true };
   if (spec === 'vanilla') return { kind: 'vanilla', name: 'vanilla' };
   const eq = spec.indexOf('=');
   if (eq === -1) {
@@ -122,15 +127,12 @@ function withProvenance(base, repo) {
 // An arm is a ref plus a condition. Vanilla has no ref: the agent CLI with nothing installed. An `oc-` arm is
 // the same condition run through opencode instead of kiro-cli (runtime 'opencode').
 function resolveArm(spec, repo) {
+  const d = prefixedRuntime(spec);
+  if (d) {
+    const base = resolveArm(spec.slice(d.armPrefix.length), repo);
+    return { ...base, id: `${d.armPrefix}${base.id}`, label: `${d.armPrefix}${base.label}`, runtime: d.id, harness: base.vanilla ? 'none' : 'claude' };
+  }
   const parsed = parseArmSpec(spec);
-  if (parsed.oc) {
-    const base = resolveArm(spec.slice(OC_PREFIX.length), repo);
-    return { ...base, id: `${OC_PREFIX}${base.id}`, label: `${OC_PREFIX}${base.label}`, runtime: 'opencode', harness: base.vanilla ? 'none' : 'claude' };
-  }
-  if (parsed.cc) {
-    const base = resolveArm(spec.slice(CC_PREFIX.length), repo);
-    return { ...base, id: `${CC_PREFIX}${base.id}`, label: `${CC_PREFIX}${base.label}`, runtime: 'claude-code', harness: base.vanilla ? 'none' : 'claude' };
-  }
   if (parsed.kind === 'vanilla') {
     return { id: 'vanilla', label: 'vanilla', ref: null, commitSha: null, source: null, dirty: null, contentHash: null, harness: 'none', runtime: 'kiro-cli', agent: null, vanilla: true, warnings: [] };
   }
