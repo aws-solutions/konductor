@@ -59,9 +59,10 @@ of failing.
   Defaults to `$HOME` when omitted, same as `install --target`.
 
 The CLI utility handles setup, content build, lifecycle, and diagnostics, and it checks,
-shows and runs workflow files with [`flow`](#flow). `flow run` has no harness that runs an agent yet (only a
-[test-only `fake` one](#the-fake-harness-test-only)), so SDLC work with real agents is still driven by the Konductor
-Kiro agent.
+shows and runs workflow files with [`flow`](#flow). `flow run` runs stages on Kiro CLI, and
+the `claude` harness arrives in a later release (the [test-only `fake` harness](#the-fake-harness-test-only) runs no
+agent). Other SDLC work with real agents is still
+driven by the Konductor Kiro agent.
 
 ---
 
@@ -670,6 +671,7 @@ rather than re-implementing any validation.
 | `container_runtime` | Probes `docker`/`podman`/`nerdctl`/`finch` on PATH, in that order — informational only.                                                                                    |
 | `index_status`      | Compares `~/.konductor/installs`'s cached status for the target against that target's real manifest status — catches an install/update interrupted between the two writes. |
 | `cli_version`       | Machine-wide, runs exactly once even under `--all`. Compares the running `konductor` binary's own version against the latest published GitHub release. `warn` severity only when stale — never `failed`, never affects `doctor`'s own exit code. |
+| `kiro_cli_version`  | Machine-wide, runs exactly once even under `--all`. Runs `kiro-cli --version` (stopped after 5 seconds) and compares it with the lowest version that `flow run` was checked on. `warn` when the version is lower or cannot be read, `info` when `kiro-cli` is not on `PATH`. Never `failed`, never affects `doctor`'s own exit code. It uses no network, so `--no-version-check` does not skip it. A later release adds a row for each runner tool it supports. |
 | `content_version`   | Per-target, runs once per tracked target under `--all`. Compares that target's recorded content version (`agent_version` in `install-info.json`) against the latest published release. Fully independent of `cli_version` — no shared check name, summary line, or comparison logic. |
 
 A few forward-looking checks (`gitignore`, `provider_model_access`, `role_allowlists`)
@@ -716,6 +718,7 @@ unaffected by `--no-telemetry`, `telemetry.enabled` in config, or `KONDUCTOR_TEL
 — gated only by this flag. A version-check fetch failure (network error, etc.) never
 fails `doctor` itself; it degrades to an `info`-level result explaining the fetch could
 not complete.
+It does not skip `kiro_cli_version`, which makes no network call.
 
 ### Checking every tracked install with `--all`
 
@@ -843,7 +846,7 @@ stdout instead:
 ```bash
 konductor flow check <name> [--json]
 konductor flow show <name> [--json]
-konductor flow run <name> --harness <harness> [--goal "..."] [--trust <hash>] [--json]
+konductor flow run <name> [--harness <kiro-cli|claude|fake>] [--fake-script <path>] [--goal "..."] [--trust <hash>] [--json]
 konductor flow trust <name> [--yes]
 konductor flow trust --revoke <name>
 ```
@@ -896,20 +899,69 @@ directory or anything bigger is treated as not there, and a link is never follow
   `fake` harness that line ends with ` (harness: fake, no agent ran)`. With `--json` it prints only the run state,
   which names the harness.
 
-  `--harness` is required. This build has only `fake`, which is test-only and runs no agent (see
-  [the `fake` harness](#the-fake-harness-test-only)). `kiro-cli` and `claude` are usage errors until a later release
-  adds them.
+  `--harness` takes `kiro-cli`, `claude` or `fake`. Without it, `flow run` uses the one runner harness that
+  `~/.konductor/installs` records as installed, whatever the install's target: `kiro-cli-v2` and `kiro-v3` mean
+  `kiro-cli`, and `claude` means `claude`. With both installed, or neither, `--harness` is required and leaving it out
+  is a usage error (exit `64`). `claude` is a usage error too until step 1f-2 adds it, whether it is named or the only
+  one installed. `fake` is for tests (see [the `fake` harness](#the-fake-harness-test-only)) and is never a default: it runs no agent and replays the reply, exit status and
+  duration that a JSON script gives for each stage. The script is named by `--fake-script <path>` or by
+  `KONDUCTOR_FAKE_SCRIPT`, and the flag wins. Without one, `--harness fake` is a usage error. `--fake-script` is left
+  out of `--help` because it is for tests. The script format is described in
+  [`workflow-engine/adapters/src/fake_harness.rs`](../workflow-engine/adapters/src/fake_harness.rs). A stage whose
+  script entry has `wait_for` waits at most the 30-minute stage limit for it, then times out.
 
-  The run state is `.konductor/runs/<run-id>/state.json` under the project root, replaced whole at each change.
-  `flow run` makes sure `.konductor/.gitignore` has the line `runs/` (as `init` writes it) and adds it if it is
-  missing, keeping every other line. Only one run is active in a workspace: the run holds an OS file lock on
-  `.konductor/runs/lock`, which records the PID of the process that owns it, its start time (UTC, to the second) and
-  the run id, and a second `flow run` exits `75` with a message that names that PID. The lock ends when its process
-  ends, however it ends, so a run that such a process left `running` reads as `halted` on the next start. If that
-  run's state cannot be written, the new run still starts, and a `warning:` line on stderr, also under `--json`, names
-  the run, which still reads as `running`. A lock that is held but whose record cannot be read, or that another start
-  is taking at that moment, also exits `75`. Under `--json` the envelope's `code` tells them apart: `already_running`
-  (with `run_id` and `pid`) or `lock_unreadable`.
+  On `kiro-cli`, each stage is one headless session, `kiro-cli chat --no-interactive --agent <id>` with the engine flag
+  and the prompt, started in the project root. The agent file says which engine runs it: a file with `allowedTools` is
+  Kiro CLI V2 and gets `--v2`, and a file with `permissions.rules` is V3 and gets `--v3`. The runner passes neither
+  `--trust-tools` nor `--trust-all-tools`, so the agent file is the one place that says what the session may run without
+  asking. The final message is the session's standard output, of which the last 1 MiB is kept. Kiro CLI looks for
+  `.kiro/agents/<id>.json` in the project root and then in your home folder, and nowhere else. If a stage's agent is in
+  neither, `flow run` exits `64` before the first stage and names the agent, `~/.konductor/installs` and the install
+  target that has the agent, if any. A file that is not clearly V2 or V3 fails the same way. A session that ends with an
+  exit status other than 0, or cannot start, prints one line on stderr with the stage and the status, and under it the
+  last 4 KiB of the session's own standard error, cut to printable text, so that a missing login or an unsupported flag
+  shows. That text goes to the terminal only. The run state never holds it, and there is no redaction of secret-looking
+  values. A session that passes the stage limit gets a terminate signal for its whole process group, then a kill after
+  10 seconds, and its stage is `blocked` with `TIMEOUT`.
+
+  The session is started under `timeout -k 10s <limit> <program> <args>`, with `gtimeout` used where that is the name
+  (GNU coreutils on macOS, `brew install coreutils`). Both are looked up on `PATH`, in absolute folders only. `timeout`
+  is the leader of the session's process group and counts the limit itself, so the limit holds after the owner was
+  killed with SIGKILL. `timeout` does not use `--foreground`, so at the limit it signals the whole group and not only
+  the program. With GNU `timeout` the kill after the grace period ends the whole group. With uutils `timeout` (the
+  default on Ubuntu 26.04) the group gets the terminate signal, but the kill reaches only the program, so a process the
+  session started that ignores the terminate signal can outlive the limit when the owner was killed. While the owner
+  lives, it ends the whole group itself. The recorded group number is the process number of `timeout`. When `timeout` ends the session, it
+  exits 124 (or 137 after the kill), and the runner reads that as `TIMEOUT` only when its own clock has reached the
+  limit, so a program that exits 124 or 137 earlier is a failed session (`SESSION_FAILED`). If neither program is
+  found, the session runs directly, `flow run` prints one `warning:` line on stderr at the start, and the limit lasts
+  only while the owner does: after a SIGKILL of the owner the session has no limit until the next run ends it.
+
+  The run state is `.konductor/runs/<run-id>/state.json` under the project root, replaced whole at each change. While a
+  session runs the state also holds `session_group`, its process group and the start time of that group's leader, and
+  the next state write after the session ends removes it. `flow run` makes sure `.konductor/.gitignore` has the line
+  `runs/` (as `init` writes it) and adds it if it is missing, keeping every other line. Only one run is active in a
+  workspace: the run holds an OS file lock on `.konductor/runs/lock`, which records the PID of the process that owns it,
+  its start time (UTC, to the second) and the run id, and a second `flow run` exits `75` with a message that names that
+  PID. The lock ends when its process ends, however it ends, so a run that such a process left `running` reads as
+  `halted` on the next start. A session has its own process group, so a Ctrl-C in the terminal, a SIGTERM or a SIGHUP
+  reaches the owner and not the session. On `kiro-cli`, the owner handles those three signals while the run is active:
+  it sends the terminate signal to the session's whole group, waits 10 seconds, kills what is left, marks the stage
+  `blocked` with `SESSION_FAILED`, writes the run as `halted` and exits `1`, the same code as any halted run. A signal
+  that arrives between two stages starts no further session. A SIGKILL cannot be handled, so it leaves the session
+  running until its limit, which `timeout` enforces. If the next `flow run` comes first, it ends the recorded group, if
+  it still exists and its leader has the recorded start time, before it marks the old run `halted`, and prints `note:
+  Run <id> left a session running in process group <n> (its time limit ends at <time>). It was ended.` The time is the
+  deadline that the run state records with the group, in UTC to the second; a state file from before it was recorded
+  has no such part. A group whose start time differs is left alone. A group whose leader has ended and left members behind cannot
+  be matched to the record, so it is not ended, and it gets a `warning:` line, as does any group that cannot be ended;
+  the warning is also shown under `--json`. With `timeout` as the leader, a group is left without a leader only if
+  something sends SIGKILL to the `timeout` process itself, and then its members run on without a limit; matching
+  members by a marker is a follow-up. If that run's state cannot be written, the new run still starts, and a
+  `warning:` line on stderr, also under `--json`, names the run, which still reads as `running`. A lock that is held but
+  whose record cannot be read, or that another start is taking at that moment, also exits `75`. Under `--json` the
+  envelope's `code` tells them apart: `already_running` (with `run_id` and `pid`) or `lock_unreadable`.
+
 
 - `flow trust <name>` shows what the workflow will run and asks you to confirm it. To confirm, you type the first 8
   characters of the trust hash, which the summary shows. A bare `y` does not confirm, so a key pressed before the
@@ -959,11 +1011,14 @@ A `tools` list is shown as `tools: unreadable` with the reason when it has an it
 right under `tools:`, as installed agent files write them, and the list ends at the next key. A column-0 `- item` under
 any other key, or after an indented item, makes the file unreadable. None of this changes the trust hash.
 
-The agent is looked for in the current directory, then the folders above it up to the git root, then your home folder,
-for Kiro CLI and for Claude Code. Kiro looks for `.kiro/agents/<id>.json`, and the first folder that has it wins, so a
-file in the repository beats one in your home folder. Claude Code identifies an agent by the exact `name` in the front
-matter of the `.md` files under `.claude/agents/` and its subfolders (a link to a regular file counts as that file, as
-in the scan of the tool configuration), with no trimming and no case folding. Only that
+For `flow run` on `kiro-cli`, the summary, the check for an ambiguous agent and the session all use one search: the
+project root, then your home folder, and nowhere else. Kiro looks for `.kiro/agents/<id>.json`, and the first of the two
+that has it wins, so a file in the project root beats one in your home folder. The summary shows that file, and the
+session runs it, so a file of the same name in a folder between your current directory and the project root, or above
+the project root, is not shown and does not run. With `--harness fake`, and for `flow check` and `flow trust` when
+no one runner harness is installed, the agent is looked for in the current directory, then the folders above it up to
+the git root, then your home folder. Claude Code identifies an agent by the exact `name` in the front
+matter of the `.md` files under `.claude/agents/` and its subfolders (a link to a regular file counts as that file, as in the scan of the tool configuration), with no trimming and no case folding. Only that
 `name` key declares an agent: the id in the body, in a comment, in another key's value or in a file name does not. A
 file with no front matter or no `name` is not an agent. In the nearest folder that has the id, two files that declare it, or a
 declaring file whose name is not `<id>.md`, make the agent unknown: `flow run` and `flow trust` exit `77` with the code
@@ -1020,12 +1075,13 @@ trust --revoke` exit `74` and name the file. Move the file aside to start a new 
 never need trust.
 
 Exit codes: `0` when the workflow has no errors (for `flow run`, when the run passed), `1` when a run halted, `64` for a
-usage error (a bad name, `library/<name>`, a name that matches no file, or a bad `flow run` input), `65` when the
-workflow has errors, `74` when the trust record cannot be kept or changed (no usable home folder, a file error, or a
-record that is damaged or from a newer Konductor; a record that cannot be read only trusts nothing), or when `flow run`
-or `flow trust` needs `HOME` and it is unset or not an absolute path, `75` when the workspace lock refuses the run, and
-`77` when the workflow is not trusted and you did not confirm it, there was no terminal, or `--trust` did not match, or
-when the project root would be the home folder.
+usage error (a bad name, `library/<name>`, a name that matches no file, a bad `flow run` input, no `--harness` when
+none or both runner harnesses are installed, `claude` before it arrives, or a stage agent that Kiro CLI cannot see),
+`65` when the workflow has errors, `74` when the trust record cannot be kept or changed (no usable home folder, a file
+error, or a record that is damaged or from a newer Konductor; a record that cannot be read only trusts nothing), or when
+`flow run` or `flow trust` needs `HOME` and it is unset or not an absolute path, `75` when the workspace lock refuses
+the run, and `77` when the workflow is not trusted and you did not confirm it, there was no terminal, or `--trust` did
+not match, or when the project root would be the home folder.
 
 
 ### The `fake` harness (test-only)
@@ -1111,13 +1167,12 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
     own logic and reporting per-check ok/info/failed/stale status with remediation
     guidance
   - `flow check` and `flow show` reading workflow files through the `workflow-engine/` crates
-  - `flow run` running a workflow on the `fake` harness, which is for tests, with its run
-    state in `.konductor/runs/` and one run at a time per workspace
+  - `flow run` running a workflow on `kiro-cli` (Kiro CLI V2 and V3), or on the `fake` harness, which is for tests,
+    with its run state in `.konductor/runs/` and one run at a time per workspace
 - **Stubs:** `metrics` still prints "not yet implemented."
 - **Not yet started:** the run-engine/conductor (which will read/write
   `.konductor/run-state.json`-shaped documents and is responsible for exit code 2's
-  "unresolved CRITICAL gate" signal), and `flow run` on a real harness (`kiro-cli` or
-  `claude`).
+  "unresolved CRITICAL gate" signal), and `flow run` on `claude`.
 
 ## Current limitations
 
