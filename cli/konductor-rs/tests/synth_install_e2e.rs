@@ -603,17 +603,17 @@ fn claude_reinstall_with_no_telemetry_strips_previously_installed_hooks() {
         !serialized.contains("__telemetry-hook"),
         "no telemetry hook may remain after a --no-telemetry reinstall, got: {after_off}"
     );
-    // The foreign hook and the unrelated top-level key survive.
-    let session_start = after_off["hooks"]["SessionStart"].as_array().unwrap();
-    assert_eq!(
-        session_start.len(),
-        1,
-        "the foreign SessionStart block must survive, got: {session_start:?}"
-    );
-    assert_eq!(
-        session_start[0]["hooks"][0]["command"],
-        serde_json::json!("/usr/bin/env my-own-hook")
-    );
+    // The foreign hook, the orchestration hook (wired under
+    // --no-telemetry too) and the unrelated top-level key survive.
+    let commands: Vec<&str> = after_off["hooks"]["SessionStart"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|block| block["hooks"][0]["command"].as_str().unwrap())
+        .collect();
+    assert_eq!(commands.len(), 2, "got: {commands:?}");
+    assert!(commands.contains(&"/usr/bin/env my-own-hook"));
+    assert!(commands.iter().any(|c| c.contains("__orchestration-hook")));
     assert_eq!(
         after_off["permissions"],
         serde_json::json!({"allow": ["Read(*)"]}),
@@ -1122,4 +1122,155 @@ fn installed_specialists_cannot_spawn_but_orchestrator_can() {
 
     std::fs::remove_dir_all(&repo_root).ok();
     std::fs::remove_dir_all(&target_dir).ok();
+}
+
+/// The wired command a harness would run at session start, read from what
+/// install actually wrote at `target`.
+fn installed_orchestration_command(target: &Path, harness: &str) -> String {
+    let read = |relative: &str| -> serde_json::Value {
+        serde_json::from_slice(&std::fs::read(target.join(relative)).unwrap()).unwrap()
+    };
+    let commands: Vec<String> = match harness {
+        "kiro-v3" => read(".kiro/hooks/konductor-orchestration-hooks.json")["hooks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|hook| hook["action"]["command"].as_str().unwrap().to_string())
+            .collect(),
+        "kiro-cli-v2" => read(".kiro/agents/konductor.json")["hooks"]["agentSpawn"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|hook| hook["command"].as_str().unwrap().to_string())
+            .collect(),
+        "claude" => read(".claude/settings.json")["hooks"]["SessionStart"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|block| block["hooks"].as_array().unwrap().clone())
+            .map(|hook| hook["command"].as_str().unwrap().to_string())
+            .collect(),
+        other => panic!("unknown harness {other}"),
+    };
+    let mut ours = commands
+        .into_iter()
+        .filter(|command| command.contains("__orchestration-hook"));
+    let command = ours.next().expect("an orchestration hook must be wired");
+    assert!(ours.next().is_none(), "exactly one orchestration hook");
+    command
+}
+
+fn last_heading(markdown: &str) -> String {
+    markdown
+        .lines()
+        .rfind(|line| line.starts_with("## "))
+        .expect("the routing rules file has headings")
+        .to_string()
+}
+
+/// For each harness: a real synth and install with `orchestration.mode:
+/// coordinator` in the user config, then the installed hook command run
+/// with that harness's captured session-start payload, prints the
+/// coordinator header and names an installed rules file whose last
+/// heading is the shipped one.
+#[test]
+fn coordinator_mode_round_trips_through_each_harness_install() {
+    let shipped = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../context");
+    let rules_source =
+        std::fs::read_to_string(shipped.join("k-orchestrator-routing-rules.md")).unwrap();
+    let repo_root = scratch_dir("coordinator-repo");
+    let agents_dir = repo_root.join("agents");
+    std::fs::create_dir_all(&agents_dir).unwrap();
+    seed_spawning_agent_spec(&agents_dir, "konductor");
+    std::fs::create_dir_all(repo_root.join("context")).unwrap();
+    for file in ["k-orchestrator-routing-rules.md", "k-coordinator-digest.md"] {
+        std::fs::copy(shipped.join(file), repo_root.join("context").join(file)).unwrap();
+    }
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let synth = run_konductor(
+        &repo_root,
+        &sink,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert!(
+        synth.status.success(),
+        "synth: {}",
+        String::from_utf8_lossy(&synth.stderr)
+    );
+
+    let session = "sess_8147fdc3-f3ec-4b32-a669-a0d26bd4cea0";
+    for (harness, payload) in [
+        (
+            "kiro-v3",
+            format!(r#"{{"session_id":"{session}","hook_event_name":"SessionStart","cwd":"/p"}}"#),
+        ),
+        (
+            "kiro-cli-v2",
+            r#"{"hook_event_name":"agentSpawn","cwd":"/p","session_id":"cb4556d5"}"#.to_string(),
+        ),
+        (
+            "claude",
+            r#"{"session_id":"4a192073","agent_type":"konductor","hook_event_name":"SessionStart","source":"startup"}"#
+                .to_string(),
+        ),
+    ] {
+        let target = std::fs::canonicalize(scratch_dir(&format!("coordinator-{harness}"))).unwrap();
+        install_harness(&repo_root, &target, harness);
+        std::fs::create_dir_all(target.join(".konductor")).unwrap();
+        std::fs::write(
+            target.join(".konductor/config.yml"),
+            "orchestration:\n  mode: coordinator\n",
+        )
+        .unwrap();
+        let kiro_home = target.join("kiro-home");
+        let record = kiro_home.join("sessions/0b8bd61f2c902ceb").join(session);
+        std::fs::create_dir_all(&record).unwrap();
+        std::fs::write(
+            record.join("session.json"),
+            format!(r#"{{"id":"{session}","agentMode":"konductor"}}"#),
+        )
+        .unwrap();
+
+        let command = installed_orchestration_command(&target, harness);
+        assert!(
+            command.ends_with(&format!(" --harness {harness}")),
+            "{harness}: {command}"
+        );
+        let mut child = Command::new("sh")
+            .arg("-c")
+            .arg(&command)
+            .current_dir(&target)
+            .env("HOME", &target)
+            .env("KIRO_HOME", &kiro_home)
+            .env_remove("CLAUDE_CODE_AGENT")
+            .env_remove("KIRO_SESSION_ID")
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        use std::io::Write as _;
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(payload.as_bytes())
+            .unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert!(output.status.success(), "{harness}");
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(
+            stdout.starts_with("Orchestration: coordinator\n"),
+            "{harness}: {stdout}"
+        );
+        assert!(stdout.len() <= 2500, "{harness}: {} bytes", stdout.len());
+        let named = stdout
+            .split("read ")
+            .nth(1)
+            .and_then(|rest| rest.split(" in full.").next())
+            .unwrap_or_else(|| panic!("{harness}: no rules path in {stdout}"));
+        let installed = std::fs::read_to_string(named).unwrap();
+        assert_eq!(last_heading(&installed), last_heading(&rules_source), "{harness}");
+        std::fs::remove_dir_all(&target).ok();
+    }
+    std::fs::remove_dir_all(&repo_root).ok();
 }

@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Telemetry-hook wiring for both Kiro engines. V2 (`TelemetryHookPass`) merges
+// Kiro hook wiring for both Kiro engines: telemetry and the orchestration
+// mode hook. V2 (`TelemetryHookPass`, `OrchestrationHookPass`) merges
 // an entry into each agent's own inline `hooks.agentSpawn` array. V3/KAS
 // (`apply_v3_standalone_telemetry_hook`) writes one standalone
 // `.kiro/hooks/konductor-telemetry-hooks.json` document shared by every agent,
-// since KAS 3.0 has no per-agent hooks. Every command includes
+// since KAS 3.0 has no per-agent hooks, plus a separate
+// `.kiro/hooks/konductor-orchestration-hooks.json` that `--no-telemetry`
+// leaves in place. Every command includes
 // `--install-root` so an invocation is counted once even with multiple
 // installs visible from the working directory. A transient `current_exe()`
 // failure is non-fatal on both sides.
@@ -49,6 +52,46 @@ impl ResourceRewritePass for TelemetryHookPass {
         verify_agent_spawn_hook_command(value, AGENT_SPAWN_TRIGGER_V2, agent_file)
     }
 }
+
+/// Wires `konductor __orchestration-hook --agent konductor` into the V2
+/// `konductor` agent's inline `hooks.agentSpawn` array. Independent of
+/// `--no-telemetry`; no other agent gets it.
+pub(super) struct OrchestrationHookPass;
+
+impl ResourceRewritePass for OrchestrationHookPass {
+    fn matches(&self, value: &serde_json::Value, _ctx: &RewriteContext<'_>) -> bool {
+        value.get("name").and_then(|name| name.as_str())
+            == Some(crate::cli::orchestration_hook::MODE_AGENT)
+    }
+
+    fn rewrite(&self, value: &mut serde_json::Value, ctx: &RewriteContext<'_>) {
+        let exe = super::claude_settings::resolve_konductor_exe_path();
+        let command = super::claude_settings::orchestration_hook_command(
+            &super::claude_settings::shell_quote_for_hook_command(&exe),
+            Some(crate::cli::orchestration_hook::MODE_AGENT),
+            ctx.install_root(),
+            Some(crate::cli::install::kiro_cli::STRATEGY_NAME),
+        );
+        merge_agent_spawn_command(value, AGENT_SPAWN_TRIGGER_V2, &exe, command);
+    }
+
+    fn verify(
+        &self,
+        value: &serde_json::Value,
+        _ctx: &RewriteContext<'_>,
+        agent_file: &Path,
+    ) -> Result<(), String> {
+        verify_agent_spawn_hook_command_with_exe(
+            value,
+            AGENT_SPAWN_TRIGGER_V2,
+            agent_file,
+            &super::claude_settings::resolve_konductor_exe_path(),
+            ORCHESTRATION_HOOK_SUFFIX,
+        )
+    }
+}
+
+const ORCHESTRATION_HOOK_SUFFIX: &str = "__orchestration-hook";
 
 // ── V3/KAS: standalone telemetry hook document ───────────────────────
 
@@ -136,22 +179,36 @@ pub(super) fn write_v3_standalone_telemetry_hook_file(
     target_dir: &Path,
     exe: &str,
 ) -> Result<Vec<u8>, String> {
-    let file_path = target_dir.join(V3_STANDALONE_HOOKS_RELATIVE_PATH);
+    let quoted_exe = super::claude_settings::shell_quote_for_hook_command(exe);
+    write_v3_hook_document(
+        target_dir,
+        V3_STANDALONE_HOOKS_RELATIVE_PATH,
+        V3_STANDALONE_HOOK_LOCK_FILE_NAME,
+        &build_v3_standalone_hook_document(&quoted_exe, target_dir),
+    )
+}
+
+/// Locks `lock_name` in the document's directory, creates the directory,
+/// and atomically overwrites `<target_dir>/<relative>` with `document`.
+/// Returns the bytes written.
+fn write_v3_hook_document(
+    target_dir: &Path,
+    relative: &str,
+    lock_name: &str,
+    document: &serde_json::Value,
+) -> Result<Vec<u8>, String> {
+    let file_path = target_dir.join(relative);
     let hooks_dir = file_path
         .parent()
-        .expect("V3_STANDALONE_HOOKS_RELATIVE_PATH always has a parent");
+        .expect("a V3 hook document path always has a parent");
 
-    let _lock_guard =
-        crate::cli::config_lock::acquire_named(hooks_dir, V3_STANDALONE_HOOK_LOCK_FILE_NAME)
-            .map_err(|source| format!("failed to lock {}: {source}", hooks_dir.display()))?;
+    let _lock_guard = crate::cli::config_lock::acquire_named(hooks_dir, lock_name)
+        .map_err(|source| format!("failed to lock {}: {source}", hooks_dir.display()))?;
 
     std::fs::create_dir_all(hooks_dir)
         .map_err(|e| format!("failed to create {}: {e}", hooks_dir.display()))?;
 
-    let quoted_exe = super::claude_settings::shell_quote_for_hook_command(exe);
-    let document = build_v3_standalone_hook_document(&quoted_exe, target_dir);
-
-    let mut bytes = serde_json::to_vec_pretty(&document)
+    let mut bytes = serde_json::to_vec_pretty(document)
         .map_err(|e| format!("failed to serialize {}: {e}", file_path.display()))?;
     bytes.push(b'\n');
 
@@ -159,6 +216,82 @@ pub(super) fn write_v3_standalone_telemetry_hook_file(
         .map_err(|e| format!("failed to write {}: {e}", file_path.display()))?;
 
     Ok(bytes)
+}
+
+// ── V3/KAS: orchestration hook document ──────────────────────────────
+
+/// Relative path of the V3 orchestration hook document. Separate from the
+/// telemetry document because `--no-telemetry` deletes that one.
+pub(crate) const V3_ORCHESTRATION_HOOKS_RELATIVE_PATH: &str =
+    ".kiro/hooks/konductor-orchestration-hooks.json";
+
+/// Lock file guarding the orchestration document's write; never
+/// manifest-tracked, so `uninstall.rs` removes it directly.
+pub(crate) const V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME: &str =
+    ".konductor-orchestration-session-start.lock";
+
+const V3_ORCHESTRATION_HOOK_NAME: &str = "konductor-orchestration-session-start";
+
+fn build_v3_orchestration_hook_document(
+    quoted_exe: &str,
+    install_root: &Path,
+) -> serde_json::Value {
+    serde_json::json!({
+        "version": "v1",
+        "hooks": [
+            {
+                "name": V3_ORCHESTRATION_HOOK_NAME,
+                "trigger": V3_SESSION_START_TRIGGER,
+                "action": {
+                    "type": "command",
+                    "command": super::claude_settings::orchestration_hook_command(
+                        quoted_exe,
+                        None,
+                        Some(install_root),
+                        Some(crate::cli::install::kiro_cli_v3::STRATEGY_NAME),
+                    )
+                },
+                "timeout": 10,
+                "enabled": true
+            }
+        ]
+    })
+}
+
+/// Writes the V3 orchestration hook document for a whole install run and
+/// returns its manifest path and content hash. Refuses a bare-word exe,
+/// as the telemetry document does.
+pub(in crate::cli::install) fn apply_v3_orchestration_hook(
+    target_dir: &Path,
+) -> Result<(String, String), String> {
+    apply_v3_orchestration_hook_with_exe(
+        target_dir,
+        &super::claude_settings::resolve_konductor_exe_path(),
+    )
+}
+
+fn apply_v3_orchestration_hook_with_exe(
+    target_dir: &Path,
+    exe: &str,
+) -> Result<(String, String), String> {
+    if !super::claude_settings::is_resolved_absolute_exe_path(exe) {
+        return Err(format!(
+            "could not resolve the running konductor binary's own absolute path \
+             (current_exe() failed) -- refusing to write a PATH-relative command into \
+             {V3_ORCHESTRATION_HOOKS_RELATIVE_PATH}"
+        ));
+    }
+    let quoted_exe = super::claude_settings::shell_quote_for_hook_command(exe);
+    let bytes = write_v3_hook_document(
+        target_dir,
+        V3_ORCHESTRATION_HOOKS_RELATIVE_PATH,
+        V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME,
+        &build_v3_orchestration_hook_document(&quoted_exe, target_dir),
+    )?;
+    Ok((
+        V3_ORCHESTRATION_HOOKS_RELATIVE_PATH.to_string(),
+        super::super::artifact::sha256_hex(&bytes),
+    ))
 }
 
 /// Performs the V3 standalone telemetry-hook write for a whole install
@@ -313,7 +446,17 @@ fn merge_agent_spawn_hook_for_install(
         agent.as_deref(),
         install_root,
     );
+    merge_agent_spawn_command(value, trigger, exe, command);
+}
 
+/// Pushes `command` into `value["hooks"][trigger]` unless it is already
+/// there, the shape is malformed, or `exe` is not absolute.
+fn merge_agent_spawn_command(
+    value: &mut serde_json::Value,
+    trigger: &str,
+    exe: &str,
+    command: String,
+) {
     let Ok(existing_entries) = read_existing_hook_entries(value, trigger) else {
         return;
     };
@@ -345,8 +488,8 @@ fn merge_agent_spawn_hook_for_install(
 }
 
 /// Confirms `value["hooks"][trigger]` carries an entry whose stable
-/// command suffix starts with `__telemetry-hook agent-invocation`.
-fn hooks_array_has_telemetry_entry(value: &serde_json::Value, trigger: &str) -> bool {
+/// command suffix starts with `marker`.
+fn hooks_array_has_entry(value: &serde_json::Value, trigger: &str, marker: &str) -> bool {
     let entries = value
         .get("hooks")
         .and_then(|hooks| hooks.get(trigger))
@@ -357,12 +500,8 @@ fn hooks_array_has_telemetry_entry(value: &serde_json::Value, trigger: &str) -> 
                 .get("command")
                 .and_then(|c| c.as_str())
                 .is_some_and(|c| {
-                    super::claude_settings::stable_hook_command_suffix(c).is_some_and(|suffix| {
-                        suffix.starts_with(&format!(
-                            "__telemetry-hook {}",
-                            crate::cli::telemetry_hook::AGENT_INVOCATION
-                        ))
-                    })
+                    super::claude_settings::stable_hook_command_suffix(c)
+                        .is_some_and(|suffix| suffix.starts_with(marker))
                 })
         })
     })
@@ -384,6 +523,14 @@ fn verify_agent_spawn_hook_command(
         trigger,
         agent_file,
         &super::claude_settings::resolve_konductor_exe_path(),
+        &telemetry_agent_spawn_marker(),
+    )
+}
+
+fn telemetry_agent_spawn_marker() -> String {
+    format!(
+        "__telemetry-hook {}",
+        crate::cli::telemetry_hook::AGENT_INVOCATION
     )
 }
 
@@ -395,29 +542,28 @@ fn verify_agent_spawn_hook_command_with_exe(
     trigger: &str,
     agent_file: &Path,
     exe: &str,
+    marker: &str,
 ) -> Result<(), String> {
-    if hooks_array_has_telemetry_entry(value, trigger) {
+    if hooks_array_has_entry(value, trigger, marker) {
         return Ok(());
     }
     if !super::claude_settings::is_resolved_absolute_exe_path(exe) {
         eprintln!(
-            "konductor install: warning: telemetry hook wiring skipped for agent '{}' \
-             (hooks.{trigger}, __telemetry-hook {}) -- could not resolve the running \
+            "konductor install: warning: hook wiring skipped for agent '{}' \
+             (hooks.{trigger}, {marker}) -- could not resolve the running \
              konductor binary's own absolute path (current_exe() failed); the rest of this \
              install is unaffected",
             agent_file.display(),
-            crate::cli::telemetry_hook::AGENT_INVOCATION,
         );
         return Ok(());
     }
     Err(format!(
-        "agent '{}' was supposed to have a telemetry hook wired into hooks.{trigger}, but no \
-         entry invoking '__telemetry-hook {}' is present -- this means the agent file's \
+        "agent '{}' was supposed to have a hook wired into hooks.{trigger}, but no \
+         entry invoking '{marker}' is present -- this means the agent file's \
          pre-existing \"hooks\" or \"hooks.{trigger}\" field is not the JSON shape this pass \
          expects (an object and an array, respectively) -- fix the agent file's hooks shape \
          (or remove the hand-edited override) and run `konductor install` again",
         agent_file.display(),
-        crate::cli::telemetry_hook::AGENT_INVOCATION,
     ))
 }
 
@@ -568,6 +714,7 @@ mod tests {
                 AGENT_SPAWN_TRIGGER_V2,
                 Path::new("/tmp/agent.json"),
                 "konductor",
+                &telemetry_agent_spawn_marker(),
             )
             .is_ok(),
             "a current_exe()-unresolvable missing entry must be a non-fatal warning, not an \
@@ -584,6 +731,7 @@ mod tests {
             AGENT_SPAWN_TRIGGER_V2,
             Path::new("/tmp/agent.json"),
             "/usr/local/bin/konductor",
+            &telemetry_agent_spawn_marker(),
         )
         .expect_err("a resolvable exe with a missing entry is the genuine malformed-shape case");
         assert!(err.contains("hooks.agentSpawn"));

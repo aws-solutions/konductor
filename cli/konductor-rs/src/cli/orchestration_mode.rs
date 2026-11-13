@@ -9,9 +9,6 @@
 // it like any unknown key, `config set` keeps it (it edits the YAML mapping),
 // and this module parses it on its own, turning a bad shape into a fallback.
 
-// Callers arrive with the session hook; delete this line then.
-#![allow(dead_code)]
-
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
@@ -34,6 +31,7 @@ impl Mode {
         }
     }
 
+    #[allow(dead_code)] // `doctor orchestration` prints it.
     pub(crate) fn as_str(self) -> &'static str {
         match self {
             Mode::Auto => "auto",
