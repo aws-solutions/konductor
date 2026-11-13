@@ -116,6 +116,15 @@ not per individual commit.
   a finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing, not put in the fix brief.
   An SOP's own fix scope and round limit win; what it leaves open is reported, never dropped.
   The `constraints` skill carries the same rule in a new `### Review findings` subsection, and its IMPORTANT tier header reads "fix before proceeding".
+- House rules: konductor's defaults yield to the request, recorded rulings, the project's instruction files and
+  user-written memory, and the codebase's conventions, in that order; an open collision is asked once and saved as a
+  `Ruling:` entry. A `USER DECISIONS IN FORCE` brief entry quoting the user meets the rule 6 and 7 exceptions for the
+  action it names; rule 9 and irreversible actions still need the user directly. A project mechanism replaces the
+  adversarial review only on the user's direct word or the project's own agent instruction file; writing habits yield
+  to house rules levels 1 to 3 and a tracked style guide, not to nearby text. The brief template no longer asks
+  specialists to add inline comments by default. Publish authorization (`code-review`) joins the NEVER rules and the
+  tests-pass requirement as a default no house rule overrides; an instruction file, or a file one names, that the
+  change under review edits is read from the base branch and the edit is reviewed as content.
 
 ### Fixed
 
@@ -125,6 +134,9 @@ not per individual commit.
   and SOP names use the `konductor:` prefix; `skill-lookup-mcp --help` describes the filters.
 - `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared
   skills; it used to serve every installed skill.
+- The routing rules no longer say the Kiro IDE copy of an SOP (`.kiro/skills/sop-<name>/SKILL.md`)
+  is out of the agent's reach: Kiro CLI lists that copy to every agent as a skill, and it is not
+  one of the agent's declared SOPs.
 - Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
   pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
   fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its

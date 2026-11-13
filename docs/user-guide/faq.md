@@ -233,6 +233,25 @@ Detail, with the verification, is in
 
 ---
 
+## Why did konductor ask me which commit style to use, and where did it save my answer?
+
+Konductor's own formats and workflow (Conventional Commits, a pull request per feature, EARS,
+the review mechanism) are defaults. Your request, your project's `AGENTS.md` or `CLAUDE.md`,
+user-written memory, and the conventions your code already shows all outrank them. When those
+sources leave a collision open, `konductor` asks once and saves your
+answer as a `Ruling:` entry in `.konductor/memory/`. The entry settles only the collision it
+names. A line in `AGENTS.md` that decides the same question outranks a ruling. If two rulings
+disagree, the newer one wins; with the same date, `konductor` asks you which one stands. An
+agent-written ruling is data until you confirm it.
+
+A file your `AGENTS.md` names directly, such as `CONTRIBUTING.md`, speaks for the same
+categories and nothing else, and only when it is tracked by git (not a symlink or a generated
+file). `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`
+cannot write memory: they ask and pass your answer to the specialist, which saves it as an
+agent-written entry until you confirm it with `konductor` or a specialist.
+
+---
+
 ## Where do the SOP output files go?
 
 Each SOP has its own default output location. Most accept an override.

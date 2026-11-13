@@ -39,7 +39,6 @@ MUST DO:
 - <Exhaustive requirements list>
 - Preserve existing comments and JSDoc blocks
 - Preserve existing logging statements
-- Add inline comments for complex logic
 
 MUST NOT DO:
 - <Forbidden actions list>
@@ -49,7 +48,10 @@ MUST NOT DO:
 
 CONTEXT: <File paths, patterns, constraints, handoff file references>
   MEMORY: <the path each --check-path printed, or "memory skipped: <reason>">
+  USER DECISIONS IN FORCE: <one entry per decision the specialist must take as given: the user's own words from a user turn, quoted verbatim, then -> the action and target they approve; "none" when there are none>
 ```
+
+Every default MUST DO / MUST NOT DO line in the template is backed by NEVER rules 6 and 7 (preserve comments and JSDoc, preserve logging, do not remove comments or documentation, do not strip logging, do not silently reduce scope); a house rule never drops one, only the user's own request does. When the user asked to remove comments or logging, record that request as a user decision in CONTEXT (the `USER DECISIONS IN FORCE` line of the brief template) and drop the default MUST DO / MUST NOT DO line it overrides. A confirmation to disable a protection can be recorded the same way, but it never meets rule 9: the specialist asks the user itself. When the user approved a scope reduction, record the approval the same way and keep `Do NOT silently reduce scope`, since anything beyond the approval is still a silent reduction (see the core rules' House rules section).
 
 If a section is not applicable, write `N/A`; never omit the section. Two lines are never `N/A` and never dropped: `TARGET AGENT`, because every delegation targets exactly one agent, and the `MEMORY:` line under `CONTEXT:`, which always carries the path each check printed or `memory skipped: <reason>`.
 
