@@ -62,18 +62,33 @@ STALE_DELEGATION_PHRASES = (
     "adversarial handoff never fires",
     "step 6 silently no-ops",
     "Its step-6 adversarial pass never fires",
+    "Kiro CLI v2 is not covered",
+    "only the core rules stop",
+    "the core rules forbid it in Kiro CLI v2",
+    "cannot spawn the architect in either runtime",
+    "no spawn tool in either runtime",
 )
 # konductor's own delegation cell is the one place "via Agent(...)" is correct. The
 # Markdown source writes it as "the same 8, via `Agent(...)`"; the bundle drops the
 # comma and the backticks.
 KONDUCTOR_SPAWN_CELL = re.compile(r"the same 8,? via Agent\(\.\.\.\)")
 _INLINE_CODE = re.compile(r"`([^`\n]*)`")
+# kiro-cli 3.1.0 ships v2 as its default engine, and no minimum client version is
+# enforced; versions are checked, not required.
+STALE_VERSION_CLAIMS = ("last v2 release", "2.36.0 or later")
+KIRO_V2_SYNTH = Path("cli") / "konductor-rs" / "src" / "cli" / "synth" / "kiro_cli_v2.rs"
+
+
+def _flat(text: str) -> str:
+    """Collapse line wraps and indentation so a phrase split across Markdown or
+    doc-comment lines still matches."""
+    return " ".join(text.split())
 
 
 def stale_delegation_phrases(text: str) -> list[str]:
     """Stale phrases in `text`, matched with inline-code backticks stripped so the
     Markdown sources are checked by the same rule as the published bundle."""
-    plain = KONDUCTOR_SPAWN_CELL.sub("", _INLINE_CODE.sub(r"\1", text))
+    plain = _flat(KONDUCTOR_SPAWN_CELL.sub("", _INLINE_CODE.sub(r"\1", text)))
     return [phrase for phrase in STALE_DELEGATION_PHRASES if phrase in plain]
 
 
@@ -499,7 +514,7 @@ def main() -> int:
         for phrase in stale_delegation_phrases(text):
             perm_fails.append(
                 f"{rel}: says {phrase!r}: specialists hold no spawn tool "
-                f"in Kiro CLI v3 or Claude Code"
+                f"in any runtime"
             )
         for phrase in STALE_DISPATCHER_PHRASES:
             if phrase in text:
@@ -513,6 +528,18 @@ def main() -> int:
                 perm_fails.append(
                     f"{rel}: says {phrase!r} — `tools` grants the capability, "
                     f"`allowedTools` only pre-approves it"
+                )
+    version_sources = dict(sources)
+    version_sources[KIRO_V2_SYNTH] = read(root / KIRO_V2_SYNTH)
+    for rel, text in version_sources.items():
+        if rel.name == "notes.md":
+            continue
+        flat = _flat(text.replace("///", " "))
+        for phrase in STALE_VERSION_CLAIMS:
+            if phrase in flat:
+                perm_fails.append(
+                    f"{rel}: says {phrase!r}: state the checked kiro-cli versions, "
+                    f"not a last release or a minimum"
                 )
 
     if perm_fails:

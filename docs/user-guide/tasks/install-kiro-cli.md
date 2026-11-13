@@ -14,7 +14,7 @@ Registers the 11 agents, 82 skills, 19 SOPs, the core rules, and the orchestrato
 
 | Requirement | Verify with |
 | --- | --- |
-| Kiro CLI installed | `kiro-cli --version` |
+| Kiro CLI (checked: 2.36.0, 3.0.0) | `kiro-cli --version` |
 | Git on your `PATH` | `git --version` |
 | The Konductor CLI | `konductor --version` — see [Quick Start step 1](../quick-start.md#step-1--download-the-cli) |
 
