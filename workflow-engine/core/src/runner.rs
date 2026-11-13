@@ -14,8 +14,8 @@ use crate::limits::{
 };
 use crate::model::Workflow;
 use crate::ports::{
-    Claim, Clock, Harness, LockRecord, Owner, PortError, RunLock, RunStore, Session, SessionEnd,
-    SessionOutcome,
+    Claim, Clock, GroupState, Harness, LockRecord, Owner, PortError, ProcessGroup, ProcessLauncher,
+    RunLock, RunStore, Session, SessionEnd, SessionOutcome,
 };
 use crate::prompt::runner_prompt;
 use crate::result::{parse_result, Reason, StageResult};
@@ -173,21 +173,60 @@ pub struct Unrecovered {
     pub error: PortError,
 }
 
-/// What [`recover`] did: the runs it ended, and the ones it could not.
+/// What became of a process group that an abandoned run recorded (D24).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SweepResult {
+    /// The group existed with the recorded start time, and it was ended.
+    Ended,
+    /// No process was left in it.
+    Gone,
+    /// The group number is in use again by another process, so the group was left alone.
+    Differs,
+    /// The group could not be checked or ended. The text says why.
+    Failed(String),
+}
+
+/// A recorded process group of an abandoned run, and what the sweep did to it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SweptGroup {
+    pub run_id: String,
+    pub group: ProcessGroup,
+    pub result: SweepResult,
+}
+
+/// Ends the process group of a session that a killed owner left behind. A group is signalled only while it exists
+/// and its leader has the recorded start time, so a group number that the system gave to another process since is
+/// never signalled. Anything that reads the state of a run can call this before it reads the run as `halted`.
+pub fn sweep_session(group: &ProcessGroup, launcher: &mut dyn ProcessLauncher) -> SweepResult {
+    match launcher.group_state(group) {
+        GroupState::Gone => SweepResult::Gone,
+        GroupState::Differs => SweepResult::Differs,
+        GroupState::Unknown(why) => SweepResult::Failed(why),
+        GroupState::Matches => match launcher.end_group(group) {
+            Ok(()) => SweepResult::Ended,
+            Err(why) => SweepResult::Failed(why),
+        },
+    }
+}
+
+/// What [`recover`] did: the runs it ended, the ones it could not, and the process groups it found recorded.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Recovery {
     pub ended: Vec<Run>,
     pub failed: Vec<Unrecovered>,
+    pub swept: Vec<SweptGroup>,
 }
 
 /// Ends every run in the store other than `current` that is `running`, and saves it. The caller holds the workspace
-/// lock, so no process is running any of them: each was left by an owner that ended. A state document that cannot be
-/// read, or does not hold a run, is left as it is. A run whose state cannot be written is reported in
-/// [`Recovery::failed`] and skipped, so one bad folder does not stop every start.
+/// lock, so no process is running any of them: each was left by an owner that ended. The process group that such a run
+/// recorded for its session is ended first ([`sweep_session`]), so no session runs on after its run reads `halted`. A
+/// state document that cannot be read, or does not hold a run, is left as it is. A run whose state cannot be written is
+/// reported in [`Recovery::failed`] and skipped, so one bad folder does not stop every start.
 pub fn recover(
     store: &mut dyn RunStore,
     current: &str,
     now_ms: u64,
+    launcher: &mut dyn ProcessLauncher,
 ) -> Result<Recovery, PortError> {
     let mut recovery = Recovery::default();
     for run_id in store.list()? {
@@ -203,6 +242,14 @@ pub fn recover(
         if run.run_id != run_id || run.status != RunStatus::Running {
             continue;
         }
+        if let Some(group) = run.session_group.clone() {
+            let result = sweep_session(&group, launcher);
+            recovery.swept.push(SweptGroup {
+                run_id: run_id.clone(),
+                group,
+                result,
+            });
+        }
         end_abandoned(&mut run, now_ms);
         match store.write_state(&run_id, &run.to_text()) {
             Ok(()) => recovery.ended.push(run),
@@ -212,18 +259,20 @@ pub fn recover(
     Ok(recovery)
 }
 
-/// A run that started: its state, the lock it holds, the runs that were found abandoned and ended, and the abandoned
-/// runs that could not be ended.
+/// A run that started: its state, the lock it holds, the runs that were found abandoned and ended, the abandoned runs
+/// that could not be ended, and the process groups that those runs had recorded.
 #[derive(Debug)]
 pub struct Started {
     pub run: Run,
     pub record: LockRecord,
     pub recovered: Vec<Run>,
     pub unrecovered: Vec<Unrecovered>,
+    pub swept: Vec<SweptGroup>,
 }
 
-/// Starts a run: makes its folder, takes the workspace lock, ends abandoned runs and saves the new run with every stage
-/// `pending`. The caller runs it with [`execute`] and then gives the lock back.
+/// Starts a run: makes its folder, takes the workspace lock, ends abandoned runs (and the session groups they left
+/// running, through `launcher`) and saves the new run with every stage `pending`. The caller runs it with [`execute`]
+/// and then gives the lock back.
 pub fn start(
     prepared: &Prepared,
     harness: &str,
@@ -231,6 +280,7 @@ pub fn start(
     store: &mut dyn RunStore,
     lock: &mut dyn RunLock,
     clock: &dyn Clock,
+    launcher: &mut dyn ProcessLauncher,
 ) -> Result<Started, StartError> {
     let now = clock.now_ms();
     let run_id = store.reserve(&run_id_prefix(now))?;
@@ -248,7 +298,7 @@ pub fn start(
         let _ = store.discard(&run_id);
         return Err(error);
     }
-    match begin(prepared, harness, &record, now, store) {
+    match begin(prepared, harness, &record, now, store, launcher) {
         Ok(run) => Ok(run),
         Err(error) => {
             // The new run's state was not written, so its folder is still empty.
@@ -266,9 +316,10 @@ fn begin(
     record: &LockRecord,
     now: u64,
     store: &mut dyn RunStore,
+    launcher: &mut dyn ProcessLauncher,
 ) -> Result<Started, PortError> {
     let run_id = &record.run_id;
-    let recovery = recover(store, run_id, now)?;
+    let recovery = recover(store, run_id, now, launcher)?;
     let workflow = &prepared.workflow;
     let run = Run {
         run_id: run_id.clone(),
@@ -294,6 +345,7 @@ fn begin(
             .map(|check| (check.id.clone(), CheckState::Deferred))
             .collect(),
         owner: record.owner.clone(),
+        session_group: None,
     };
     store.write_state(run_id, &run.to_text())?;
     Ok(Started {
@@ -301,12 +353,15 @@ fn begin(
         record: record.clone(),
         recovered: recovery.ended,
         unrecovered: recovery.failed,
+        swept: recovery.swept,
     })
 }
 
-/// Runs each stage of a started run in order and saves the state after each change. `report` is told about each stage
-/// when it ends. Returns when the run has `passed` or `halted`. A store error stops the run and is returned; the run
-/// then reads as `halted` on the next start, which takes the lock this run gave back.
+/// Runs each stage of a started run in order and saves the state after each change. A session's process group is
+/// saved the moment the harness reports it, and removed by the next write after the session ends, so a kill at any
+/// moment in between leaves the record for the next run to find (D24). `report` is told about each stage when it
+/// ends. Returns when the run has `passed` or `halted`. A store error stops the run and is returned; the run then
+/// reads as `halted` on the next start, which takes the lock this run gave back.
 pub fn execute(
     run: &mut Run,
     prepared: &Prepared,
@@ -319,12 +374,25 @@ pub fn execute(
         run.stages[index].status = StageStatus::Running;
         store.write_state(&run.run_id, &run.to_text())?;
         let began = clock.now_ms();
-        let outcome = harness.run_session(&Session {
-            stage: &stage.name,
-            agent: &stage.agent,
-            prompt: &prepared.prompts[index],
-            time_limit_ms: STAGE_TIME_LIMIT_MS,
-        });
+        let mut record_error = None;
+        let outcome = harness.run_session_recorded(
+            &Session {
+                stage: &stage.name,
+                agent: &stage.agent,
+                prompt: &prepared.prompts[index],
+                time_limit_ms: STAGE_TIME_LIMIT_MS,
+            },
+            &mut |group| {
+                run.session_group = Some(group.clone());
+                if let Err(error) = store.write_state(&run.run_id, &run.to_text()) {
+                    record_error.get_or_insert(error);
+                }
+            },
+        );
+        run.session_group = None;
+        if let Some(error) = record_error {
+            return Err(error);
+        }
         let elapsed = clock.now_ms().saturating_sub(began);
         match judge(&outcome, elapsed) {
             Ok(result) => {
@@ -373,18 +441,40 @@ impl<'a> GuardedHarness<'a> {
     }
 }
 
-impl Harness for GuardedHarness<'_> {
-    fn run_session(&mut self, session: &Session) -> SessionOutcome {
+impl GuardedHarness<'_> {
+    /// Whether the session may start. The first check that fails refuses this session and every one after it.
+    fn allows(&mut self, session: &Session) -> bool {
         if self.refused.is_none() && !(self.unchanged)() {
             self.refused = Some(session.stage.to_string());
         }
-        if self.refused.is_some() {
-            return SessionOutcome {
-                end: SessionEnd::NotStarted,
-                final_message: String::new(),
-            };
+        self.refused.is_none()
+    }
+}
+
+fn not_started() -> SessionOutcome {
+    SessionOutcome {
+        end: SessionEnd::NotStarted,
+        final_message: String::new(),
+    }
+}
+
+impl Harness for GuardedHarness<'_> {
+    fn run_session(&mut self, session: &Session) -> SessionOutcome {
+        if !self.allows(session) {
+            return not_started();
         }
         self.inner.run_session(session)
+    }
+
+    fn run_session_recorded(
+        &mut self,
+        session: &Session,
+        started: &mut dyn FnMut(&ProcessGroup),
+    ) -> SessionOutcome {
+        if !self.allows(session) {
+            return not_started();
+        }
+        self.inner.run_session_recorded(session, started)
     }
 }
 

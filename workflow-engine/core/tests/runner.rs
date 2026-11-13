@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! The runner with in-memory ports and a fake clock: state transitions, limits, the lock and abandoned runs.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 
 use workflow_core::limits::{
@@ -10,13 +10,13 @@ use workflow_core::limits::{
 };
 use workflow_core::model::{Check, Intent, Param, Stage, Workflow};
 use workflow_core::ports::{
-    Claim, Clock, Harness, LockRecord, Owner, PortError, RunLock, RunStore, Session, SessionEnd,
-    SessionOutcome,
+    Claim, Clock, GroupState, Harness, Launch, LaunchEnd, Launched, LockRecord, Owner, PortError,
+    ProcessGroup, ProcessLauncher, RunLock, RunStore, Session, SessionEnd, SessionOutcome,
 };
 use workflow_core::run::{CheckState, Run, RunStatus, StageStatus};
 use workflow_core::runner::{
     acquire, end_abandoned, execute, judge, keep_tail, prepare, start, Prepared, StartError,
-    UsageError,
+    SweepResult, SweptGroup, UsageError,
 };
 use workflow_core::time::{format_timestamp, is_run_id, parse_timestamp, run_id_prefix};
 use workflow_core::Reason;
@@ -25,6 +25,24 @@ use workflow_core::Reason;
 const T0: u64 = 1_793_881_800_000;
 
 const SUCCESS: &str = "KONDUCTOR_RESULT {\"status\": \"success\", \"outputs\": [\"PLAN.md\"]}";
+
+/// A launcher for runs that record no process group.
+struct NoGroups;
+
+impl ProcessLauncher for NoGroups {
+    fn launch(&mut self, _: &Launch, _: &mut dyn FnMut(&ProcessGroup)) -> Launched {
+        Launched {
+            end: LaunchEnd::NotStarted("this test starts no process".to_string()),
+            output: String::new(),
+        }
+    }
+    fn group_state(&mut self, _: &ProcessGroup) -> GroupState {
+        GroupState::Gone
+    }
+    fn end_group(&mut self, _: &ProcessGroup) -> Result<(), String> {
+        Ok(())
+    }
+}
 
 struct FakeClock(Cell<u64>);
 
@@ -206,7 +224,16 @@ fn run_through(stage_names: &[&str], replies: &[(&str, Reply)]) -> (Run, MemoryS
     let mut store = MemoryStore::default();
     let mut lock = MemoryLock::default();
     let prepared = prepared(stage_names);
-    let started = start(&prepared, "fake", me(), &mut store, &mut lock, &clock).expect("start");
+    let started = start(
+        &prepared,
+        "fake",
+        me(),
+        &mut store,
+        &mut lock,
+        &clock,
+        &mut NoGroups,
+    )
+    .expect("start");
     let mut run = started.run;
     let mut harness = FakeHarness {
         clock: &clock,
@@ -290,9 +317,17 @@ fn each_session_gets_its_stage_agent_and_full_prompt() {
     let mut store = MemoryStore::default();
     let mut lock = MemoryLock::default();
     let prepared = prepared(&["plan", "build"]);
-    let mut run = start(&prepared, "fake", me(), &mut store, &mut lock, &clock)
-        .expect("start")
-        .run;
+    let mut run = start(
+        &prepared,
+        "fake",
+        me(),
+        &mut store,
+        &mut lock,
+        &clock,
+        &mut NoGroups,
+    )
+    .expect("start")
+    .run;
     let mut harness = FakeHarness {
         clock: &clock,
         replies: [("plan", reply(SUCCESS)), ("build", reply(SUCCESS))]
@@ -589,6 +624,7 @@ fn a_held_lock_refuses_a_second_run_and_no_run_folder_is_left() {
         &mut store,
         &mut lock,
         &clock,
+        &mut NoGroups,
     )
     .unwrap_err();
     assert_eq!(error, StartError::AlreadyRunning(holder.clone()));
@@ -608,6 +644,7 @@ fn a_free_lock_is_taken_with_the_record_of_the_new_run() {
         &mut store,
         &mut lock,
         &clock,
+        &mut NoGroups,
     )
     .unwrap();
     assert_eq!(lock.holder, Some(started.record.clone()));
@@ -645,6 +682,7 @@ fn a_run_whose_first_state_cannot_be_written_leaves_no_folder_and_no_lock() {
         &mut store,
         &mut lock,
         &clock,
+        &mut NoGroups,
     )
     .unwrap_err();
     assert_eq!(error, StartError::Port(PortError("disk full".to_string())));
@@ -680,6 +718,7 @@ fn store_with_abandoned(left_by: Owner, stages: &[StageStatus]) -> (MemoryStore,
         &mut store,
         &mut lock,
         &clock,
+        &mut NoGroups,
     )
     .unwrap()
     .run;
@@ -705,6 +744,7 @@ fn a_run_whose_owner_is_gone_reads_halted_on_the_next_start() {
         &mut store,
         &mut lock,
         &clock,
+        &mut NoGroups,
     )
     .unwrap();
     let ended = store.run(&old);
@@ -733,6 +773,7 @@ fn a_run_left_running_is_ended_whatever_its_owner_record_says() {
         &mut store,
         &mut lock,
         &clock,
+        &mut NoGroups,
     )
     .unwrap();
     assert_eq!(store.run(&old).status, RunStatus::Halted);
@@ -769,6 +810,7 @@ fn an_abandoned_run_that_cannot_be_written_is_skipped_and_reported() {
         &mut store,
         &mut lock,
         &clock,
+        &mut NoGroups,
     )
     .expect("one unwritable run does not stop the start");
     assert_eq!(started.unrecovered.len(), 1);
@@ -800,6 +842,7 @@ fn a_run_that_did_not_start_ends_no_abandoned_run() {
         &mut store,
         &mut lock,
         &clock,
+        &mut NoGroups,
     )
     .unwrap_err();
     assert!(matches!(error, StartError::AlreadyRunning(_)));
@@ -834,6 +877,7 @@ fn a_run_left_running_by_the_caller_itself_is_ended_too() {
         &mut store,
         &mut lock,
         &clock,
+        &mut NoGroups,
     )
     .unwrap();
     assert_eq!(store.run(&old).status, RunStatus::Halted);
@@ -858,6 +902,7 @@ fn a_run_that_finished_before_the_next_start_is_left_as_passed() {
         &mut store,
         &mut lock,
         &clock,
+        &mut NoGroups,
     )
     .unwrap();
     assert_eq!(store.run(&old), run);
@@ -887,6 +932,7 @@ fn a_start_sweeps_abandoned_runs_before_writing_its_own_first_state() {
         &mut store,
         &mut lock,
         &clock,
+        &mut NoGroups,
     )
     .unwrap();
     let writes: Vec<Run> = store.writes[before..]
@@ -1020,4 +1066,221 @@ fn times_and_run_ids_follow_the_contract() {
     ] {
         assert!(!is_run_id(bad), "{bad}");
     }
+}
+
+// --- the record of a session's process group (D24) ------------------------------------------------------------------
+
+fn group(pgid: u32) -> ProcessGroup {
+    ProcessGroup {
+        pgid,
+        started: "t1".to_string(),
+    }
+}
+
+/// A launcher that answers for recorded groups and remembers which ones it was asked to end.
+struct ScriptedGroups {
+    state: GroupState,
+    end: Result<(), String>,
+    ended: Vec<u32>,
+}
+
+impl ScriptedGroups {
+    fn new(state: GroupState) -> ScriptedGroups {
+        ScriptedGroups {
+            state,
+            end: Ok(()),
+            ended: Vec::new(),
+        }
+    }
+}
+
+impl ProcessLauncher for ScriptedGroups {
+    fn launch(&mut self, _: &Launch, _: &mut dyn FnMut(&ProcessGroup)) -> Launched {
+        unreachable!("the sweep starts nothing")
+    }
+    fn group_state(&mut self, _: &ProcessGroup) -> GroupState {
+        self.state.clone()
+    }
+    fn end_group(&mut self, group: &ProcessGroup) -> Result<(), String> {
+        self.ended.push(group.pgid);
+        self.end.clone()
+    }
+}
+
+/// A harness that reports a process group, as a real one does, and looks at the state document while its session runs.
+struct RecordingHarness<'a> {
+    store: &'a RefCell<MemoryStore>,
+    run_id: String,
+    seen_while_running: Vec<Option<ProcessGroup>>,
+}
+
+impl Harness for RecordingHarness<'_> {
+    fn run_session(&mut self, _: &Session) -> SessionOutcome {
+        unreachable!("the runner starts sessions through run_session_recorded")
+    }
+    fn run_session_recorded(
+        &mut self,
+        _: &Session,
+        started: &mut dyn FnMut(&ProcessGroup),
+    ) -> SessionOutcome {
+        started(&group(4242));
+        let text = self.store.borrow().states[&self.run_id].clone().unwrap();
+        self.seen_while_running
+            .push(Run::from_text(&text).unwrap().session_group);
+        SessionOutcome {
+            end: SessionEnd::Exited(0),
+            final_message: SUCCESS.to_string(),
+        }
+    }
+}
+
+#[test]
+fn the_group_is_saved_while_the_session_runs_and_gone_from_the_next_write() {
+    // `execute` writes through `&mut dyn RunStore`, so the store sits behind a RefCell that the harness can also read.
+    struct Shared<'a>(&'a RefCell<MemoryStore>);
+    impl RunStore for Shared<'_> {
+        fn reserve(&mut self, prefix: &str) -> Result<String, PortError> {
+            self.0.borrow_mut().reserve(prefix)
+        }
+        fn discard(&mut self, run_id: &str) -> Result<(), PortError> {
+            self.0.borrow_mut().discard(run_id)
+        }
+        fn write_state(&mut self, run_id: &str, text: &str) -> Result<(), PortError> {
+            self.0.borrow_mut().write_state(run_id, text)
+        }
+        fn read_state(&self, run_id: &str) -> Result<Option<String>, PortError> {
+            self.0.borrow().read_state(run_id)
+        }
+        fn list(&self) -> Result<Vec<String>, PortError> {
+            self.0.borrow().list()
+        }
+    }
+    let clock = FakeClock(Cell::new(T0));
+    let store = RefCell::new(MemoryStore::default());
+    let mut lock = MemoryLock::default();
+    let prepared = prepared(&["plan"]);
+    let mut shared = Shared(&store);
+    let mut run = start(
+        &prepared,
+        "fake",
+        me(),
+        &mut shared,
+        &mut lock,
+        &clock,
+        &mut NoGroups,
+    )
+    .unwrap()
+    .run;
+    let mut harness = RecordingHarness {
+        store: &store,
+        run_id: run.run_id.clone(),
+        seen_while_running: Vec::new(),
+    };
+    execute(
+        &mut run,
+        &prepared,
+        &mut harness,
+        &clock,
+        &mut shared,
+        &mut |_| {},
+    )
+    .unwrap();
+    assert_eq!(harness.seen_while_running, [Some(group(4242))]);
+    assert_eq!(run.session_group, None);
+    assert_eq!(store.borrow().run(&run.run_id).session_group, None);
+    assert_eq!(store.borrow().run(&run.run_id).status, RunStatus::Passed);
+}
+
+#[test]
+fn a_state_document_without_the_record_reads_as_no_group() {
+    use StageStatus::Running;
+    let (store, old) = store_with_abandoned(owner(9, "gone"), &[Running]);
+    let text = store.states[&old].clone().unwrap();
+    assert!(!text.contains("session_group"));
+    assert_eq!(Run::from_text(&text).unwrap().session_group, None);
+    let mut run = Run::from_text(&text).unwrap();
+    run.session_group = Some(group(77));
+    let again = Run::from_text(&run.to_text()).unwrap();
+    assert_eq!(again.session_group, Some(group(77)));
+    // A record that cannot be read does not keep the run from being read.
+    let damaged = run.to_text().replace("\"pgid\": 77", "\"pgid\": \"x\"");
+    assert_eq!(Run::from_text(&damaged).unwrap().session_group, None);
+}
+
+/// The abandoned run of `store_with_abandoned`, with `group(99)` recorded, and a new run started over it with
+/// `launcher`.
+fn start_over_recorded_group(
+    launcher: &mut ScriptedGroups,
+) -> (MemoryStore, String, Vec<SweptGroup>) {
+    let (mut store, old) = store_with_abandoned(owner(9, "gone"), &[StageStatus::Running]);
+    let mut run = store.run(&old);
+    run.session_group = Some(group(99));
+    store.write_state(&old, &run.to_text()).unwrap();
+    let clock = FakeClock(Cell::new(T0));
+    let mut lock = MemoryLock::default();
+    let started = start(
+        &prepared(&["a"]),
+        "fake",
+        me(),
+        &mut store,
+        &mut lock,
+        &clock,
+        launcher,
+    )
+    .unwrap();
+    (store, old, started.swept)
+}
+
+#[test]
+fn a_recorded_group_that_matches_is_ended_before_its_run_reads_halted() {
+    let mut launcher = ScriptedGroups::new(GroupState::Matches);
+    let (store, old, swept) = start_over_recorded_group(&mut launcher);
+    assert_eq!(launcher.ended, [99]);
+    assert_eq!(
+        swept,
+        [SweptGroup {
+            run_id: old.clone(),
+            group: group(99),
+            result: SweepResult::Ended
+        }]
+    );
+    let ended = store.run(&old);
+    assert_eq!(ended.status, RunStatus::Halted);
+    assert_eq!(ended.session_group, None);
+}
+
+#[test]
+fn a_group_with_another_start_time_is_left_alone_and_its_run_still_ends() {
+    let mut launcher = ScriptedGroups::new(GroupState::Differs);
+    let (store, old, swept) = start_over_recorded_group(&mut launcher);
+    assert!(launcher.ended.is_empty());
+    assert_eq!(swept[0].result, SweepResult::Differs);
+    assert_eq!(store.run(&old).status, RunStatus::Halted);
+}
+
+#[test]
+fn a_group_with_no_process_left_is_reported_as_gone() {
+    let mut launcher = ScriptedGroups::new(GroupState::Gone);
+    let (_, _, swept) = start_over_recorded_group(&mut launcher);
+    assert!(launcher.ended.is_empty());
+    assert_eq!(swept[0].result, SweepResult::Gone);
+}
+
+#[test]
+fn a_group_that_cannot_be_checked_or_ended_is_reported_and_its_run_still_ends() {
+    let mut launcher = ScriptedGroups::new(GroupState::Unknown("no leader".to_string()));
+    let (store, old, swept) = start_over_recorded_group(&mut launcher);
+    assert_eq!(
+        swept[0].result,
+        SweepResult::Failed("no leader".to_string())
+    );
+    assert_eq!(store.run(&old).status, RunStatus::Halted);
+
+    let mut launcher = ScriptedGroups::new(GroupState::Matches);
+    launcher.end = Err("still running".to_string());
+    let (_, _, swept) = start_over_recorded_group(&mut launcher);
+    assert_eq!(
+        swept[0].result,
+        SweepResult::Failed("still running".to_string())
+    );
 }

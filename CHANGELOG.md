@@ -28,9 +28,15 @@ not per individual commit.
 - `konductor flow check` and `konductor flow show` validate a workflow file and print its resolved form as JSON. The
   engine behind them is the Rust workspace in `workflow-engine/`, with its own CI.
 - `konductor flow run <name> --harness fake` runs a workflow on the `fake` harness, which replays scripted replies and
-  is for tests. Each stage gets the stage prompt and passes on a valid `KONDUCTOR_RESULT` line, a blocked stage halts
-  the run with exit 1, and the run state is kept in `.konductor/runs/`, which `.konductor/.gitignore` ignores. One run
-  is active per workspace, and a second one exits 75.
+  is for tests. `--harness kiro-cli` runs each stage in a headless Kiro CLI session (V2 or V3, chosen from the agent
+  file), started in the project root in its own process group, with the stage time limit and a kill after 10 seconds.
+  Without `--harness` the one runner harness in `~/.konductor/installs` is used, and with both or neither installed
+  the flag is required. A stage whose agent Kiro CLI cannot see exits 64 before the first stage. A session left
+  running by an owner that was killed is ended by the next run. `konductor doctor` checks the version of `kiro-cli`
+  against the lowest version that was tested and warns when it is lower. `claude` is a usage error until a later
+  release. Each stage gets the stage prompt and passes on a valid `KONDUCTOR_RESULT` line, a blocked stage halts the
+  run with exit 1, and the run state is kept in `.konductor/runs/`, which `.konductor/.gitignore` ignores. One run is
+  active per workspace, and a second one exits 75.
 - `konductor flow trust <name>` shows what a workflow will run and records that you trust it, and `--revoke` removes the
   record. To confirm you type the first 8 characters of the trust hash, so a key pressed before the summary was on
   screen cannot confirm it. `flow run` asks before it runs a project workflow, or any workflow in a repository that has

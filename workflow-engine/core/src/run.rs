@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //! The run, stage and check states (spec: "Run, stage and check states"), and the state document a run store keeps.
 //!
-//! The document has the fields of the canvas contract's `Run` schema, which step 1g serves, and three more:
-//! `checks` (the state of each check in `intent.accept`), `owner` (the process that runs it) and `reported_outputs`
-//! (the files each passed stage said it wrote, which are not proof).
+//! The document has the fields of the canvas contract's `Run` schema, which step 1g serves, and four more:
+//! `checks` (the state of each check in `intent.accept`), `owner` (the process that runs it), `reported_outputs`
+//! (the files each passed stage said it wrote, which are not proof) and `session_group` (the process group of the
+//! session that is running, present only while it runs).
 
 use std::collections::BTreeMap;
 
 use crate::json::{self, Json};
-use crate::ports::Owner;
+use crate::ports::{Owner, ProcessGroup};
 use crate::result::Reason;
 use crate::time::{format_timestamp, is_run_id, parse_timestamp};
 
@@ -91,6 +92,10 @@ pub struct Run {
     /// The checks of `intent.accept`, by id.
     pub checks: BTreeMap<String, CheckState>,
     pub owner: Owner,
+    /// The process group of the session that is running, so that a later run can end it if this owner is killed. Set
+    /// while a session runs and cleared by the next state write after it ends, and by [`Run::halt`] and
+    /// [`Run::pass`].
+    pub session_group: Option<ProcessGroup>,
 }
 
 /// A time in milliseconds, cut to the whole second, which is what the state document keeps.
@@ -105,6 +110,7 @@ impl Run {
         self.status = RunStatus::Halted;
         self.finished_at = Some(whole_second(now_ms));
         self.exit_code = Some(HALTED_EXIT_CODE);
+        self.session_group = None;
     }
 
     /// Ends the run as `passed` at `now_ms`.
@@ -112,6 +118,7 @@ impl Run {
         self.status = RunStatus::Passed;
         self.finished_at = Some(whole_second(now_ms));
         self.exit_code = Some(0);
+        self.session_group = None;
     }
 
     /// The state document. Keys are sorted.
@@ -160,6 +167,9 @@ impl Run {
         }
         root.insert("checks", checks);
         root.insert("owner", self.owner.to_json());
+        if let Some(group) = &self.session_group {
+            root.insert("session_group", group.to_json());
+        }
         root
     }
 
@@ -241,6 +251,9 @@ impl Run {
             stages,
             checks,
             owner: Owner::from_json(root.get("owner")?)?,
+            // A document from before step 1f-1 has no record. A record that cannot be read counts as none, so a damaged
+            // one never keeps its run from being ended.
+            session_group: root.get("session_group").and_then(ProcessGroup::from_json),
         })
     }
 }

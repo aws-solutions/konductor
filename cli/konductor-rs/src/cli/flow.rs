@@ -19,6 +19,10 @@
 // directory and stops at the git top folder (the folder that holds `.git`). `flow check` and `flow show` still use the
 // current directory as in 1c. `library/<name>` names a shipped workflow, and none exist yet.
 //
+// Harness: `--harness` takes `kiro-cli`, `claude` or `fake`. Without it the one runner harness that the install index
+// records is used (`flow_harness.rs` reads the index). `claude` is a usage error until step 1f-2. A stage whose agent
+// Kiro CLI cannot see is a usage error (exit 64) before the first stage and before the trust question.
+//
 // Trust (D14): a project workflow, and any workflow in a repository that has tool configuration files, runs only after
 // the user confirmed its trust hash. The hash is made from the bytes the loader parsed (`workflow_core::trust`). The
 // record is `~/.konductor/trust.json`.
@@ -31,19 +35,21 @@ use std::rc::Rc;
 
 use workflow_adapters::process::current_owner;
 use workflow_adapters::{
-    choose_harness, config_folders, scan_repo_config, FakeHarness, FileAgentCatalog, FileRunLock,
-    FileRunStore, FileTrustStore, Found, HarnessChoice, InstalledFiles, Located, Lookup, Scope,
-    Script, SimulatedClock, Skip, Skipped, StdTerminal, FAKE_SCRIPT_ENV,
+    config_folders, resolve_harness, scan_repo_config, FakeHarness, FileAgentCatalog, FileRunLock,
+    FileRunStore, FileTrustStore, Found, HarnessChoice, InstalledFiles, KiroHarness, Located,
+    Lookup, Scope, Script, SimulatedClock, Skip, Skipped, StdTerminal, SystemLauncher,
+    FAKE_SCRIPT_ENV,
 };
 use workflow_core::json::Json;
-use workflow_core::ports::{RunLock, Terminal, TrustStore};
+use workflow_core::ports::{Harness, RunLock, Terminal, TrustStore};
 use workflow_core::run::{Run, RunStatus, StageState, StageStatus};
-use workflow_core::runner::{execute, prepare, start, GuardedHarness, StartError};
+use workflow_core::runner::{execute, prepare, start, GuardedHarness, StartError, SweepResult};
 use workflow_core::trust::{
     decide, needs_trust, render_summary, ConfigFile, SummaryInput, UnreadableConfig, Verdict,
 };
 use workflow_core::{check_text, parse_reference, Checked, Reference, ReferenceError};
 
+use crate::cli::flow_harness::{check_kiro_agents, installed_runners};
 use crate::cli::output::{self, status, ColorMode};
 use crate::cli::FlowAction;
 
@@ -83,7 +89,8 @@ struct Context<'a> {
 /// The inputs of `flow run` besides the name.
 struct RunArgs {
     goal: Option<String>,
-    harness: String,
+    /// `--harness`. Without it the install index picks the runner harness.
+    harness: Option<String>,
     fake_script: Option<PathBuf>,
     /// The value of `KONDUCTOR_FAKE_SCRIPT`.
     fake_script_env: Option<OsString>,
@@ -361,8 +368,10 @@ fn run_workflow(
     out: &mut dyn Write,
     err: &mut dyn Write,
 ) -> u8 {
-    let choice = match choose_harness(
-        &args.harness,
+    // The install index is read here and the engine gets the answer: which runner harnesses are installed.
+    let choice = match resolve_harness(
+        args.harness.as_deref(),
+        installed_runners(context.home),
         args.fake_script.as_deref(),
         args.fake_script_env.as_deref(),
     ) {
@@ -383,12 +392,38 @@ fn run_workflow(
         Ok(prepared) => prepared,
         Err(error) => return usage_error(&error.message(), context, out, err),
     };
-    let HarnessChoice::Fake { script } = &choice;
-    let script = match Script::load(script) {
-        Ok(script) => script,
-        Err(why) => {
-            let message = format!("The fake script cannot be used: {why}.");
-            return usage_error(&message, context, out, err);
+    // Kiro CLI starts in the project root and finds an agent there, then in the home folder, and nowhere else, so the
+    // catalog that checks the agents does not search the folders above the project root.
+    let kiro_catalog = FileAgentCatalog::new(context.project_root, context.home);
+    let script = match &choice {
+        HarnessChoice::Fake { script } => match Script::load(script) {
+            Ok(script) => Some(script),
+            Err(why) => {
+                let message = format!("The fake script cannot be used: {why}.");
+                return usage_error(&message, context, out, err);
+            }
+        },
+        // A stage whose agent the harness cannot see fails before the first stage, and before the trust question: the
+        // user has to change the install or the folder, so nothing is shown that cannot run.
+        HarnessChoice::KiroCli => {
+            // A session starts in the project root, which a path that is not UTF-8 cannot be given to the launcher as.
+            if context.project_root.to_str().is_none() {
+                return usage_error(
+                    "The project root is not valid UTF-8, so a session cannot start in it.",
+                    context,
+                    out,
+                    err,
+                );
+            }
+            if let Err(message) = check_kiro_agents(
+                &prepared.workflow.stages,
+                &kiro_catalog,
+                context.project_root,
+                context.home,
+            ) {
+                return usage_error(&message, context, out, err);
+            }
+            None
         }
     };
 
@@ -410,6 +445,7 @@ fn run_workflow(
     let mut lock = FileRunLock::new(context.project_root);
     let owner = current_owner();
     let clock = Rc::new(SimulatedClock::default());
+    let mut launcher = SystemLauncher::new();
     let started = match start(
         &prepared,
         choice.name(),
@@ -417,10 +453,31 @@ fn run_workflow(
         &mut store,
         &mut lock,
         &*clock,
+        &mut launcher,
     ) {
         Ok(started) => started,
         Err(error) => return refused(&error, &lock, context, out, err),
     };
+    for swept in &started.swept {
+        match &swept.result {
+            SweepResult::Ended if !context.json => {
+                let _ = writeln!(
+                    err,
+                    "note: Run {} left a session running in process group {}. It was ended.",
+                    swept.run_id, swept.group.pgid
+                );
+            }
+            // Shown under `--json` too, since a session may still be running.
+            SweepResult::Failed(why) => {
+                let _ = writeln!(
+                    err,
+                    "warning: Run {} left a session running in process group {}, and it could not be ended: {why}",
+                    swept.run_id, swept.group.pgid
+                );
+            }
+            _ => {}
+        }
+    }
     if !context.json {
         for ended in &started.recovered {
             let _ = writeln!(
@@ -442,7 +499,25 @@ fn run_workflow(
         );
     }
     let mut run = started.run;
-    let mut fake = FakeHarness::new(script, Rc::clone(&clock));
+    let mut inner: Box<dyn Harness + '_> = match script {
+        Some(script) => Box::new(FakeHarness::new(script, Rc::clone(&clock))),
+        None => {
+            // Checked above, so nothing is replaced.
+            let cwd = context.project_root.to_string_lossy();
+            let prefix = output::error_prefix(context.color, "konductor flow:");
+            // One line on standard error when a session does not end well. It is not part of the run state.
+            let note = Box::new(move |line: &str| {
+                let _ = writeln!(std::io::stderr(), "{prefix} {line}");
+            });
+            Box::new(KiroHarness::new(
+                &mut launcher,
+                &kiro_catalog,
+                "kiro-cli",
+                &cwd,
+                note,
+            ))
+        }
+    };
     // The confirmation covers what was on disk when it was given. The runner reads the tool configuration files again
     // before each session, so an edit made while the summary was on screen, or by an earlier stage, does not run under
     // the old confirmation. A file that can no longer be read in full counts as a change. The gate has refused a run
@@ -450,7 +525,7 @@ fn run_workflow(
     let confirmed = assessment.hash.clone().unwrap_or_default();
     let unchanged =
         || scan_config(context).is_ok_and(|files| checked.trust_inputs.hash(&files) == confirmed);
-    let mut harness = GuardedHarness::new(&mut fake, &unchanged);
+    let mut harness = GuardedHarness::new(&mut *inner, &unchanged);
     let json = context.json;
     let mut report = |stage: &StageState| {
         if !json {
@@ -466,7 +541,7 @@ fn run_workflow(
         &mut report,
     );
     lock.release();
-    if let Some(stage) = harness.refused_stage() {
+    if let Some(stage) = harness.refused_stage().map(str::to_string) {
         let prefix = output::error_prefix(context.color, "konductor flow:");
         let _ = writeln!(
             err,
@@ -1480,7 +1555,7 @@ mod tests {
         fs::write(&script, PASSING).unwrap();
         let args = RunArgs {
             goal: Some("Do it.".into()),
-            harness: "fake".into(),
+            harness: Some("fake".into()),
             fake_script: Some(script),
             fake_script_env: None,
             trust: offered.map(str::to_string),
@@ -2011,7 +2086,7 @@ mod tests {
         fs::write(&script, PASSING).unwrap();
         let args = RunArgs {
             goal: Some("Do it.".into()),
-            harness: "fake".into(),
+            harness: Some("fake".into()),
             fake_script: Some(script),
             fake_script_env: None,
             trust: None,
@@ -2070,7 +2145,7 @@ mod tests {
         fs::write(&script, PASSING).unwrap();
         let args = RunArgs {
             goal: Some("Do it.".into()),
-            harness: "fake".into(),
+            harness: Some("fake".into()),
             fake_script: Some(script),
             fake_script_env: None,
             trust: None,

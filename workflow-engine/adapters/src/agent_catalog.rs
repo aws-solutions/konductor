@@ -6,8 +6,14 @@
 //! - Claude Code: `.claude/agents/<id>.md`, and the tools in the `tools` key of its front matter, as written there. A
 //!   definition with no `tools` key makes every tool available and pre-approves none.
 //!
-//! The order on Kiro is assumed until step 1f-1 records it. An install made with another `--target` is seen only when
-//! that folder is the project root or the home folder.
+//! Kiro CLI looks for `.kiro/agents/<id>.json` in its working directory and then in the home folder, and nowhere else:
+//! it does not search the folders above its working directory, and a file in the working directory wins over one with
+//! the same id in the home folder (checked on Kiro CLI V2 and V3, step 1f-1). An install made with another `--target`
+//! is seen only when that folder is the project root or the home folder.
+//!
+//! A Kiro agent file has one of two shapes, and the shape says which engine reads it: V2 has an `allowedTools` list,
+//! and V3 has `permissions.rules`. The tools a V3 file lets run without asking are its `allow` rules, each named by its
+//! capability (`fs_write`), or with its scope when it has one (`mcp (aws-mcp/aws___search_documentation)`).
 
 use std::fs;
 use std::io::Read;
@@ -19,6 +25,51 @@ use workflow_core::rules::is_name;
 
 /// A definition over this many bytes is not read.
 const MAX_BYTES: u64 = 1024 * 1024;
+
+/// The Kiro CLI engine that reads an agent file (D16). Which one is decided by the shape of the file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KiroEngine {
+    V2,
+    V3,
+}
+
+impl KiroEngine {
+    /// The flag that makes `kiro-cli chat` use this engine.
+    pub fn flag(self) -> &'static str {
+        match self {
+            KiroEngine::V2 => "--v2",
+            KiroEngine::V3 => "--v3",
+        }
+    }
+}
+
+/// A Kiro agent as the harness will find it: the definition, and the engine its file shape says. `engine` is an error
+/// when the file has neither shape, both, or cannot be read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KiroAgent {
+    pub definition: AgentDefinition,
+    pub engine: Result<KiroEngine, String>,
+}
+
+/// The engine of a Kiro agent file, from its shape: V2 has `allowedTools` and V3 has `permissions.rules`.
+pub fn kiro_engine(text: &str) -> Result<KiroEngine, String> {
+    let value = json::parse(text).map_err(|_| "the agent file is not valid JSON".to_string())?;
+    let v2 = value.get("allowedTools").is_some();
+    let v3 = value
+        .get("permissions")
+        .and_then(|p| p.get("rules"))
+        .is_some();
+    match (v2, v3) {
+        (true, false) => Ok(KiroEngine::V2),
+        (false, true) => Ok(KiroEngine::V3),
+        (true, true) => Err("the agent file has both `allowedTools` (V2) and `permissions.rules` (V3), so it is not \
+                             clear which engine reads it"
+            .to_string()),
+        (false, false) => Err("the agent file has neither `allowedTools` (V2) nor `permissions.rules` (V3), so it is \
+                              not clear which engine reads it"
+            .to_string()),
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct FileAgentCatalog {
@@ -46,7 +97,28 @@ impl FileAgentCatalog {
         self
     }
 
+    /// The Kiro agent that `agent` names, with the engine its file shape says. `None` if no file is there.
+    pub fn kiro_agent(&self, agent: &str) -> Option<KiroAgent> {
+        if !is_name(agent) {
+            return None;
+        }
+        let (definition, text) = self.find_with_text(Runner::KiroCli, agent)?;
+        let engine = match text {
+            Ok(text) => kiro_engine(&text),
+            Err(why) => Err(why),
+        };
+        Some(KiroAgent { definition, engine })
+    }
+
     fn find(&self, runner: Runner, agent: &str) -> Option<AgentDefinition> {
+        self.find_with_text(runner, agent).map(|(found, _)| found)
+    }
+
+    fn find_with_text(
+        &self,
+        runner: Runner,
+        agent: &str,
+    ) -> Option<(AgentDefinition, Result<String, String>)> {
         let (folder, file) = match runner {
             Runner::KiroCli => (".kiro/agents", format!("{agent}.json")),
             Runner::Claude => (".claude/agents", format!("{agent}.md")),
@@ -64,19 +136,20 @@ impl FileAgentCatalog {
             let Some(text) = read_definition(&path) else {
                 continue;
             };
-            let (tools, also_sets) = match text {
+            let (tools, also_sets) = match &text {
                 Ok(text) => match runner {
-                    Runner::KiroCli => (kiro_tools(&text), kiro_also_sets(&text)),
-                    Runner::Claude => (claude_tools(&text), claude_also_sets(&text)),
+                    Runner::KiroCli => (kiro_tools(text), kiro_also_sets(text)),
+                    Runner::Claude => (claude_tools(text), claude_also_sets(text)),
                 },
-                Err(why) => (AgentTools::Unknown(why), Vec::new()),
+                Err(why) => (AgentTools::Unknown(why.clone()), Vec::new()),
             };
-            return Some(AgentDefinition {
+            let definition = AgentDefinition {
                 runner,
                 placement,
                 tools,
                 also_sets,
-            });
+            };
+            return Some((definition, text));
         }
         None
     }
@@ -197,6 +270,15 @@ fn kiro_tools(text: &str) -> AgentTools {
     let Ok(value) = json::parse(text) else {
         return AgentTools::Unknown("the agent file is not valid JSON".into());
     };
+    if value.get("allowedTools").is_none() {
+        if let Some(rules) = value
+            .get("permissions")
+            .and_then(|p| p.get("rules"))
+            .and_then(Json::as_array)
+        {
+            return v3_allow_list(rules);
+        }
+    }
     let list = value.get("allowedTools").and_then(Json::as_array);
     let names: Option<Vec<String>> = list.and_then(|items| {
         items
@@ -212,6 +294,71 @@ fn kiro_tools(text: &str) -> AgentTools {
                 .into(),
         ),
     }
+}
+
+/// The tools a V3 agent file lets run without asking: its `allow` rules, in order. A rule with no scope is its
+/// capability. A rule with a `match` or `exclude` scope is named with the scope, so that nothing reads it as the whole
+/// capability. A capability that the file also has a rule against (`deny` or any other effect) is named as partly
+/// restricted, so it never reads as the whole capability either, and the runner gives it no id.
+fn v3_allow_list(rules: &[Json]) -> AgentTools {
+    let unreadable = || {
+        AgentTools::Unknown(
+            "the agent file has a permission rule in a form this build cannot read, so it cannot say what the runner \
+             lets it run without asking"
+                .into(),
+        )
+    };
+    let mut names: Vec<String> = Vec::new();
+    let mut restricted: Vec<&str> = Vec::new();
+    for rule in rules {
+        let (Some(capability), Some(effect)) = (
+            rule.get("capability").and_then(Json::as_str),
+            rule.get("effect").and_then(Json::as_str),
+        ) else {
+            return unreadable();
+        };
+        if effect != "allow" {
+            restricted.push(capability);
+        }
+    }
+    for rule in rules {
+        let Some(capability) = rule.get("capability").and_then(Json::as_str) else {
+            return unreadable();
+        };
+        if rule.get("effect").and_then(Json::as_str) != Some("allow") {
+            continue;
+        }
+        let scope = |key: &str| -> Option<Vec<String>> {
+            match rule.get(key) {
+                None => Some(Vec::new()),
+                Some(list) => list
+                    .as_array()?
+                    .iter()
+                    .map(|item| item.as_str().map(str::to_string))
+                    .collect(),
+            }
+        };
+        let (Some(matches), Some(excludes)) = (scope("match"), scope("exclude")) else {
+            return unreadable();
+        };
+        let mut name = capability.to_string();
+        if !matches.is_empty() || !excludes.is_empty() {
+            let mut parts = Vec::new();
+            if !matches.is_empty() {
+                parts.push(matches.join(", "));
+            }
+            if !excludes.is_empty() {
+                parts.push(format!("except {}", excludes.join(", ")));
+            }
+            name = format!("{name} ({})", parts.join("; "));
+        } else if restricted.contains(&capability) {
+            name = format!("{name} (partly denied)");
+        }
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    }
+    AgentTools::Listed(names)
 }
 
 fn claude_tools(text: &str) -> AgentTools {
@@ -305,4 +452,75 @@ fn unquote_whole(body: &str) -> String {
         }
     }
     trimmed.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_shape_of_the_file_says_the_engine() {
+        assert_eq!(kiro_engine(r#"{"allowedTools":[]}"#), Ok(KiroEngine::V2));
+        assert_eq!(
+            kiro_engine(r#"{"permissions":{"rules":[]}}"#),
+            Ok(KiroEngine::V3)
+        );
+        for text in [
+            r#"{"allowedTools":[],"permissions":{"rules":[]}}"#,
+            r#"{"tools":["read"]}"#,
+            r#"{"permissions":{}}"#,
+            "{",
+        ] {
+            assert!(kiro_engine(text).is_err(), "{text}");
+        }
+    }
+
+    #[test]
+    fn engines_have_their_flags() {
+        assert_eq!(KiroEngine::V2.flag(), "--v2");
+        assert_eq!(KiroEngine::V3.flag(), "--v3");
+    }
+
+    #[test]
+    fn a_v3_file_lists_its_allow_rules_and_names_the_scope_of_a_scoped_one() {
+        let tools = kiro_tools(
+            r#"{"permissions":{"rules":[
+              {"capability":"fs_read","effect":"allow"},
+              {"capability":"fs_write","effect":"allow"},
+              {"capability":"fs_write","effect":"allow"},
+              {"capability":"web_fetch","effect":"deny"},
+              {"capability":"web_fetch","effect":"allow"},
+              {"capability":"shell","match":["ls *","pwd"],"exclude":["rm *"],"effect":"allow"},
+              {"capability":"mcp","match":["aws-mcp/x"],"effect":"allow"}]}}"#,
+        );
+        assert_eq!(
+            tools,
+            AgentTools::Listed(vec![
+                "fs_read".to_string(),
+                "fs_write".to_string(),
+                "web_fetch (partly denied)".to_string(),
+                "shell (ls *, pwd; except rm *)".to_string(),
+                "mcp (aws-mcp/x)".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn a_v3_rule_that_cannot_be_read_makes_the_list_unknown_and_never_shorter() {
+        for text in [
+            r#"{"permissions":{"rules":[{"effect":"allow"}]}}"#,
+            r#"{"permissions":{"rules":[{"capability":"shell","match":"ls","effect":"allow"}]}}"#,
+            r#"{"permissions":{"rules":[{"capability":"shell"}]}}"#,
+        ] {
+            assert!(matches!(kiro_tools(text), AgentTools::Unknown(_)), "{text}");
+        }
+    }
+
+    #[test]
+    fn a_v2_file_keeps_its_allow_list_even_if_it_also_has_a_permissions_key() {
+        assert_eq!(
+            kiro_tools(r#"{"allowedTools":["fs_read"],"permissions":{"rules":[]}}"#),
+            AgentTools::Listed(vec!["fs_read".to_string()])
+        );
+    }
 }

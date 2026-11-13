@@ -6,8 +6,9 @@ The Rust workspace behind `konductor flow`. It reads a workflow file, checks it 
 [the specification](../docs/design/workflows-spec.md) and runs it. The design and the plan are in
 [docs/design/workflows.md](../docs/design/workflows.md) and [docs/design/workflows-plan.md](../docs/design/workflows-plan.md).
 
-This is step 1e of the plan: the file format and its checks (1c), the stage prompt and the runner on the `fake`
-harness (1d), and trust (1e). It has no real harness and no canvas server yet.
+This is step 1f-1 of the plan: the file format and its checks (1c), the stage prompt and the runner on the `fake`
+harness (1d), trust (1e), and the process launcher with the `kiro-cli` harness (1f-1). It has no Claude harness
+(step 1f-2) and no canvas server yet.
 
 ## Crates
 
@@ -17,14 +18,19 @@ harness (1d), and trust (1e). It has no real harness and no canvas server yet.
   tool configuration changed after the confirmation. It does no IO. `core/tests/purity.rs` fails the build if the
   crate reads a file, opens a socket, starts a process, reads the environment, the clock or a random source, uses
   `unsafe`, or depends on a crate that is not in its allow list. The world reaches it through ports: `WorkflowSource`,
-  `Clock`, `Harness`, `RunStore`, `RunLock`, `TrustStore`, `Terminal` and `AgentCatalog` (`ports.rs`). `trust.rs` holds the
+  `Clock`, `Harness`, `ProcessLauncher`, `RunStore`, `RunLock`, `TrustStore`, `Terminal` and `AgentCatalog`
+  (`ports.rs`). The runner records the process group of each running session in the run state, and a new run ends the
+  groups that a killed owner left behind (`runner.rs`, `sweep_session`). `trust.rs` holds the
   trust hash and its byte layout, the verdict on a `--trust` hash, and the summary the user reads before confirming.
 - `adapters` holds what touches the world: the file source and the lookup of a bare name in `.konductor/workflows/` of
   the project and then of the home folder; the run store and the workspace lock under `.konductor/runs/`; the system
   clock; the trust record `~/.konductor/trust.json`; the scan of the repo tool configuration files; the agent catalog,
-  which reads the tools of a Kiro or Claude agent definition; the terminal; and the `fake` harness, which replays
-  scripted replies and is for tests only. `harness_choice.rs` decides
-  which harness a run may use.
+  which reads the tools of a Kiro or Claude agent definition; the terminal; the process launcher (`launcher.rs`), which
+  starts a program as the leader of its own process group, keeps the tail of its output, stops it at a deadline and ends
+  a group with the system `kill` program; the `kiro-cli` harness (`kiro_harness.rs`), which runs one headless Kiro CLI
+  session for each stage; and the `fake` harness, which replays scripted replies and is for tests only.
+  `harness_choice.rs` decides which harness a run may use: the name given, or else the one runner harness that the
+  install index records, which the CLI reads and passes in.
 
 The golden files of the stage prompt are in `core/tests/golden/`. They hold the exact text, with no final newline.
 
