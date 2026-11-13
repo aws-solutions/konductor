@@ -3,8 +3,12 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const { checkInput, checkExpectedOutput } = require('../lib/validity.js');
 const { findDuplicates } = require('../lib/dedup.js');
+const { parseRules, loadRules, checkRules } = require('../lib/rules.js');
 
 const codes = (r) => r.reasons.map((x) => x.code);
 
@@ -104,11 +108,6 @@ test('a case that matches a duplicate also points at the original, not the dupli
   const dups = findDuplicates([a, a, a]);
   assert.deepEqual(dups.map((d) => d && d.of), [null, 0, 0]);
 });
-
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
-const { parseRules, loadRules, checkRules } = require('../lib/rules.js');
 
 const RULES = parseRules([
   { before: ['lookup_order', 'issue_refund'] },
