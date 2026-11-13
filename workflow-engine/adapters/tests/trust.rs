@@ -735,6 +735,58 @@ fn claude_tools_are_read_as_written_in_every_form() {
 }
 
 #[test]
+fn commas_inside_parentheses_do_not_split_a_bare_or_whole_quoted_tools_value() {
+    assert_eq!(
+        claude("---\ntools: Agent(a, b), Read\n---\n"),
+        listed(&["Agent(a, b)", "Read"])
+    );
+    assert_eq!(
+        claude("---\ntools: \"Agent(a, b), Read\"\n---\n"),
+        listed(&["Agent(a, b)", "Read"])
+    );
+    assert_eq!(
+        claude("---\ntools:\n  - Agent(a, b)\n  - Read\n---\n"),
+        listed(&["Agent(a, b)", "Read"])
+    );
+    assert_eq!(
+        claude("---\ntools: [Agent(a), Read]\n---\n"),
+        listed(&["Agent(a)", "Read"])
+    );
+}
+
+#[test]
+fn a_comma_inside_parentheses_in_the_list_form_and_a_stray_parenthesis_are_unknown() {
+    for text in [
+        "---\ntools: [Agent(a, b)]\n---\n",
+        "---\ntools: Agent(a, b\n---\n",
+        "---\ntools: Read)\n---\n",
+        "---\ntools: [Read)]\n---\n",
+        "---\ntools: \"Agent(a, b, Read\"\n---\n",
+        "---\ntools:\n  - Agent(a\n  - Read\n---\n",
+    ] {
+        assert!(
+            matches!(claude(text), AgentTools::Unknown(why) if why.contains("cannot read")),
+            "{text:?}"
+        );
+    }
+}
+
+#[test]
+fn a_claude_agent_in_the_project_wins_over_the_same_id_in_the_home_folder() {
+    let (project, home) = (TempDir::new("cat-cp"), TempDir::new("cat-ch"));
+    home.write(".claude/agents/k-a.md", b"---\ntools: Read\n---\n");
+    let found = catalog(&project, &home).definitions("k-a");
+    assert_eq!(
+        (found[0].runner, found[0].placement),
+        (Runner::Claude, Placement::Home)
+    );
+    project.write(".claude/agents/k-a.md", b"---\ntools: Bash\n---\n");
+    let found = catalog(&project, &home).definitions("k-a");
+    assert_eq!(found[0].placement, Placement::Project);
+    assert_eq!(found[0].tools, listed(&["Bash"]));
+}
+
+#[test]
 fn a_claude_agent_with_no_tools_key_has_every_tool_and_none_pre_approved() {
     assert_eq!(
         claude("---\nname: k-a\ndescription: tools: are nice\n---\nUse tools: Read\n"),
@@ -767,7 +819,9 @@ fn a_front_matter_line_that_is_not_a_plain_key_makes_the_whole_file_unknown() {
         "---\n{tools: Bash, permissionMode: bypassPermissions}\n---\n",
         "---\ntools: Read\n\"hooks\": {}\n---\n",
         "---\ntools:Read\n---\n",
-        "---\ntools:\n- Read\n---\n",
+        "---\ntools: Read\n- Write\n---\n",
+        "---\n- Read\ntools: Write\n---\n",
+        "---\nname: k-a\n- tools: Bash\n---\n",
         "---\nname k-a\n---\n",
     ] {
         let (project, home) = (TempDir::new("cat-odd1"), TempDir::new("cat-odd2"));
@@ -779,6 +833,19 @@ fn a_front_matter_line_that_is_not_a_plain_key_makes_the_whole_file_unknown() {
             found[0].tools
         );
     }
+}
+
+#[test]
+fn a_list_in_column_0_under_a_key_with_no_value_is_that_keys_list() {
+    // The agent files that Konductor installs for Claude Code are written this way.
+    assert_eq!(
+        claude("---\nname: k-a\ntools:\n- Read\n- Write # edits\n- Agent(a, b)\nskills:\n- x\nmodel: m\n---\n"),
+        listed(&["Read", "Write", "Agent(a, b)"])
+    );
+    assert_eq!(
+        claude("---\nskills:\n- x\n# note\n\n- y\ntools: Bash\n---\n"),
+        listed(&["Bash"])
+    );
 }
 
 #[test]
