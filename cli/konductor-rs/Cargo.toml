@@ -5,25 +5,30 @@ edition = "2021"
 description = "Konductor CLI — placeholder skeleton for build pipeline validation"
 license = "Apache-2.0"
 # Minimum supported Rust version, driven by the dependency tree rather than
-# this crate's own code: `icu_collections`, `icu_locale_core`,
+# this crate's own code. The floor is 1.89 because the path dependency
+# `workflow-adapters` declares it: its workspace lock uses `File::try_lock`,
+# stable since 1.89. Below that, `icu_collections`, `icu_locale_core`,
 # `icu_normalizer`, `icu_normalizer_data`, `icu_properties`,
 # `icu_properties_data`, and `icu_provider` (all pulled in transitively via
 # `idna`/`url`) each declare `rust-version = "1.88"`, which cargo enforces at
 # resolve/build time. Verified empirically against this exact `Cargo.lock`:
 # `rustup run 1.87.0 cargo build --release` fails closed with an error naming
-# the icu_* packages; `rustup run 1.88.0 cargo build --release` succeeds
-# end-to-end. Declaring it here makes cargo itself enforce and report this
-# floor up front, instead of a caller discovering it from a lockfile
-# consumer's own tooling.
+# the icu_* packages; `rustup run 1.88.0 cargo build --release` fails closed
+# naming `workflow-adapters` and `workflow-core`; `rustup run 1.89.0 cargo
+# build --release` succeeds end-to-end. Declaring it here makes cargo itself
+# enforce and report this floor up front, instead of a caller discovering it
+# from a lockfile consumer's own tooling.
 #
 # Bump by re-running that same empirical check against a candidate version --
 # `rustup toolchain install <version> --profile minimal && rustup run
 # <version> cargo build --release` from this directory -- after any
 # `Cargo.lock` update that could raise a transitive MSRV, then updating this
-# field alongside the pinned toolchain version consumers build against (e.g.
-# `RUST_TOOLCHAIN_VERSION` in the release-pipeline package's
-# konductor-release-project.ts).
-rust-version = "1.88"
+# field. The `Test (Rust 1.89)` job in .github/workflows/workflow-engine.yml
+# runs the workflow-engine tests on this floor, so its `toolchain:` must
+# match this field. .github/workflows/release.yml installs Rust with
+# `dtolnay/rust-toolchain` and no `toolchain:` input, so it builds on the
+# current stable and has nothing to bump.
+rust-version = "1.89"
 
 [lints.rust]
 # On aarch64, this toolchain's linker (GNU ld, binutils 2.41) does not
@@ -182,8 +187,9 @@ owo-colors = "=4.2.2"
 # per repo convention.
 textwrap = { version = "=0.16.2", default-features = false, features = ["terminal_size"] }
 
-# The workflow engine: the format and its checks (`workflow-core`, which does no IO)
-# and the file source (`workflow-adapters`). Path dependencies, like
+# The workflow engine: the format, its checks, the stage prompt and the runner
+# (`workflow-core`, which does no IO), and the file source, the run store, the
+# workspace lock and the `fake` harness (`workflow-adapters`). Path dependencies, like
 # konductor-telemetry above. The engine is its own Cargo workspace under
 # `workflow-engine/`, not part of this crate's.
 workflow-core = { path = "../../workflow-engine/core" }

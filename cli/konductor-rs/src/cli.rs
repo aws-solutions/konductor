@@ -390,12 +390,13 @@ pub enum Commands {
         no_version_check: bool,
     },
 
-    /// Check and show workflow files.
+    /// Check, show and run workflow files.
     ///
     /// A workflow is `<name>.yml` in `.konductor/workflows/` of the project,
-    /// then in `~/.konductor/workflows/`. Exit codes: 0 with no errors, 64
-    /// for a usage error (including a name that matches no file), 65 when
-    /// the workflow has errors.
+    /// then in `~/.konductor/workflows/`. Exit codes: 0 with no errors (or a
+    /// run that passed), 1 for a run that halted, 64 for a usage error
+    /// (including a name that matches no file), 65 when the workflow has
+    /// errors, 75 when another run is active in the workspace.
     Flow {
         #[command(subcommand)]
         action: FlowAction,
@@ -469,6 +470,28 @@ pub enum FlowAction {
     Show {
         /// The workflow name, which is its file name without `.yml`.
         name: String,
+    },
+    /// Run a workflow: one fresh session per stage, in order. A stage
+    /// passes on a valid result line, and a blocked stage halts the run.
+    /// The state is kept in `.konductor/runs/<run-id>/state.json`. Exit 0
+    /// when the run passed, 1 when it halted, 64 for a usage error, 65 when
+    /// the workflow has errors, 75 when another run is active.
+    Run {
+        /// The workflow name, which is its file name without `.yml`.
+        name: String,
+        /// What the run should achieve, at most 2048 characters. Without it
+        /// the workflow's default goal is used.
+        #[arg(long)]
+        goal: Option<String>,
+        /// The program that runs each stage. Only `fake`, which is for
+        /// tests, exists in this build.
+        #[arg(long, required = true)]
+        harness: String,
+        /// The script the `fake` harness replays. `KONDUCTOR_FAKE_SCRIPT`
+        /// names one too; this flag wins. Hidden from `--help` because it
+        /// is for tests.
+        #[arg(long = "fake-script", hide = true)]
+        fake_script: Option<std::path::PathBuf>,
     },
 }
 
@@ -887,13 +910,60 @@ mod tests {
     }
 
     #[test]
-    fn flow_names_only_the_check_and_show_actions() {
+    fn flow_names_only_the_check_show_and_run_actions() {
         let command = Cli::command();
         let flow = command
             .find_subcommand(Commands::FLOW)
             .expect("flow command");
         let names: Vec<&str> = flow.get_subcommands().map(|c| c.get_name()).collect();
-        assert_eq!(names, ["check", "show"]);
+        assert_eq!(names, ["check", "show", "run"]);
+    }
+
+    #[test]
+    fn parses_flow_run_with_its_flags() {
+        let cli = Cli::try_parse_from([
+            "konductor",
+            Commands::FLOW,
+            "run",
+            "hello-plan",
+            "--goal",
+            "Do it.",
+            "--harness",
+            "fake",
+            "--fake-script",
+            "s.json",
+        ])
+        .unwrap();
+        match cli.command {
+            Some(Commands::Flow {
+                action:
+                    FlowAction::Run {
+                        name,
+                        goal,
+                        harness,
+                        fake_script,
+                    },
+            }) => {
+                assert_eq!(name, "hello-plan");
+                assert_eq!(goal.as_deref(), Some("Do it."));
+                assert_eq!(harness, "fake");
+                assert_eq!(fake_script, Some(std::path::PathBuf::from("s.json")));
+            }
+            other => panic!("expected Flow run, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn flow_run_without_a_harness_is_a_parse_error() {
+        let argv = [
+            "konductor",
+            Commands::FLOW,
+            "run",
+            "hello-plan",
+            "--goal",
+            "x",
+        ];
+        assert!(Cli::try_parse_from(argv).is_err());
     }
 
     #[test]

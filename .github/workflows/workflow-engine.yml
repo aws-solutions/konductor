@@ -1,13 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# Format, lint and test for workflow-engine/. Runs only when that folder (or this
-# workflow) changes. The integration/** and engine/** targets cover stacked PRs, where
-# a PR's base is another feature branch rather than main.
+# Format, lint and test for workflow-engine/ and the CLI in cli/, which builds on the
+# engine crates. Runs only when one of those folders (or this workflow) changes. The
+# integration/** and engine/** targets cover stacked PRs, where a PR's base is another
+# feature branch rather than main.
 #
 # The first job runs on the stable toolchain: `cargo fmt --check`, `cargo clippy` with
 # warnings as errors, and `cargo test`. The second job runs the tests on the oldest
 # toolchain the crates declare in `rust-version`, so a newer language feature cannot
-# slip in unnoticed.
+# slip in unnoticed. The third job lints and tests the CLI. validate-pr.yml tests the
+# CLI too, but only on PRs to main, so without this job a stacked PR that changes the
+# CLI runs no CLI checks.
 #
 # Triggers on `pull_request`, NOT `pull_request_target`, so PR-head code runs
 # with a read-only, secret-free token even for fork PRs.
@@ -18,6 +21,7 @@ on:
     branches: [main, 'integration/**', 'engine/**']
     paths:
       - 'workflow-engine/**'
+      - 'cli/**'
       - '.github/workflows/workflow-engine.yml'
 
 permissions:
@@ -56,7 +60,7 @@ jobs:
         run: cargo test --locked
 
   minimum-rust-version:
-    name: Test (Rust 1.88)
+    name: Test (Rust 1.89)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -71,7 +75,36 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
-          toolchain: '1.88'
+          toolchain: '1.89'
 
       - name: Test
         run: cargo test --locked
+
+  cli:
+    name: CLI lint, test (stable)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Lint
+        run: make lint
+
+      - name: Test
+        # Skips the same intermittent test as validate-pr.yml, for the same reason: it
+        # fails now and then on a 4-vCPU runner. Drop the --skip once it is fixed.
+        working-directory: cli/konductor-rs
+        run: >-
+          cargo test -- --exact
+          --skip cli::update::tests::update_finalize_index_reflects_a_concurrently_installed_other_strategy
