@@ -1,0 +1,6 @@
+[
+  { "before": ["lookup_order", "issue_refund"] },
+  { "before": ["check_refund_policy", "issue_refund"] },
+  { "tool": "send_email", "inputPattern": "e-?mail|send me", "note": "the agent never emails unless asked" },
+  { "tool": "lookup_order", "inputPattern": "#\\w{3,}|\\b[a-z]{1,5}-[a-z0-9-]*\\d{3,}|\\b(?=[a-z0-9]*\\d)(?=[a-z0-9]*[a-z])[a-z0-9]{6,}\\b", "note": "a lookup needs an order id in the message" }
+]

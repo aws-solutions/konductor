@@ -1,0 +1,433 @@
+{
+  "cases": [
+    {
+      "name": "custom_item_non_refundable",
+      "session_id": "4bb6497f-f758-4d9c-9781-9e5d57572b8c",
+      "input": "I want to return my order #ORD-55555. I received it 5 days ago but ordered a custom-engraved item.",
+      "expected_output": "I've checked your order ORD-55555 which contains custom-engraved items. Unfortunately, custom items are non-refundable according to our policy, even though your order is within the 30-day window.",
+      "expected_assertion": null,
+      "expected_trajectory": [
+        "lookup_order(ORD-55555)",
+        "check_refund_policy(ORD-55555)"
+      ],
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": {
+        "order_id": "ORD-55555",
+        "item_type": "custom_engraved",
+        "delivered_days_ago": 5,
+        "status": "delivered"
+      }
+    },
+    {
+      "name": "Verbal abuse followed by refund demand",
+      "session_id": "daf40065-6ec8-4af2-80b3-c4d26076dacc",
+      "input": "Customer: You people are a joke! My order #ORD222 never showed up.\nCustomer: You're all a bunch of scammers and thieves! Give me my money back ($450) or I'll sue!",
+      "expected_output": "I've checked your order ORD222. I'm unable to continue this conversation due to the abusive language and threats. I'm escalating this case to a human agent who will review your concerns about the undelivered order and refund request for $450.",
+      "expected_assertion": null,
+      "expected_trajectory": [
+        {
+          "function": "lookup_order",
+          "arguments": {
+            "order_id": "ORD222"
+          }
+        },
+        {
+          "function": "escalate_to_human",
+          "arguments": {
+            "summary": "Customer using abusive language (calling team 'scammers and thieves') and making legal threats regarding order ORD222. Customer demanding $450 refund for undelivered order with threat of lawsuit. Escalating due to abusive behavior requiring human handling."
+          }
+        }
+      ],
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": {
+        "tags": [
+          "escalation",
+          "abusive-language",
+          "legal-threats",
+          "refund-demand",
+          "undelivered-order"
+        ],
+        "order_id": "ORD222",
+        "tools_available": [
+          "lookup_order",
+          "check_refund_policy",
+          "issue_refund",
+          "send_email",
+          "escalate_to_human"
+        ],
+        "difficulty": "medium"
+      }
+    },
+    {
+      "name": "check_refund_eligibility",
+      "session_id": "efbfcf91-9168-426e-8bfb-d85ac1792288",
+      "input": "Hi, I received my order ORD98765 today and I'm not happy with the product quality. Can I get a refund?",
+      "expected_output": "I've checked your order ORD98765 and our refund policy. Since your order was delivered on 2024-01-15, it's within the 30-day refund window. Yes, you are eligible for a refund. Would you like me to start the refund process for the full amount of $45.50?",
+      "expected_assertion": null,
+      "expected_trajectory": [
+        {
+          "type": "tool_usage",
+          "tool": "lookup_order",
+          "args": {
+            "order_id": "ORD98765"
+          }
+        },
+        {
+          "type": "tool_response",
+          "tool": "lookup_order",
+          "data": {
+            "status": "delivered",
+            "delivered_at": "2024-01-15",
+            "total": 45.5,
+            "items": [
+              {
+                "name": "Bluetooth Speaker",
+                "quantity": 1,
+                "price": 45.5
+              }
+            ]
+          }
+        },
+        {
+          "type": "tool_usage",
+          "tool": "check_refund_policy",
+          "args": {
+            "order_id": "ORD98765"
+          }
+        },
+        {
+          "type": "tool_response",
+          "tool": "check_refund_policy",
+          "data": {
+            "eligible": true,
+            "reason": "Within 30-day window",
+            "window_days": 30
+          }
+        }
+      ],
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": {
+        "difficulty": "easy",
+        "order_delivered_recently": true,
+        "refund_eligible": true,
+        "total_amount": 45.5
+      }
+    },
+    {
+      "name": "simple_order_status_check",
+      "session_id": "b7c920de-4377-4676-8a6e-af9e8fd1322f",
+      "input": "Hi! Can you check the status of my order #ORD-789? It was supposed to be delivered yesterday.",
+      "expected_output": "I've checked your order #ORD-789. It is currently marked as 'shipped'. I've sent you an email with the status details. Please check your inbox for more information.",
+      "expected_assertion": null,
+      "expected_trajectory": [
+        [
+          "lookup_order",
+          "order_id=ORD-789"
+        ],
+        [
+          "send_email",
+          {
+            "to": "[customer_email]",
+            "subject": "Order Status Update",
+            "body": "Your order #ORD-789 is currently marked as 'shipped'. Please allow 1-2 business days for delivery. Let us know if you have any other questions!"
+          }
+        ]
+      ],
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": {
+        "difficulty": "easy",
+        "domain": "customer_service"
+      }
+    },
+    {
+      "name": "Refund inquiry for partially damaged order",
+      "session_id": "d0dedf6d-cf00-449a-b060-2b9bf89cb93c",
+      "input": "Hi, I received order #ORD-XYZ-789 three weeks ago, but one of the items arrived damaged. I'd like to get a refund for the damaged item which was $45. Can you help me with this?",
+      "expected_output": "I've looked up your order #ORD-XYZ-789 and processed a partial refund of $45 for the damaged item. The refund should appear in your original payment method within 5-7 business days. I've also sent you a confirmation email with the refund details and refund ID. Is there anything else I can help you with today?",
+      "expected_assertion": null,
+      "expected_trajectory": [
+        [
+          "lookup_order",
+          "search_order_info"
+        ],
+        [
+          "check_refund_policy",
+          "check_refund_eligibility"
+        ],
+        [
+          "issue_refund",
+          "process_partial_refund"
+        ],
+        [
+          "send_email",
+          "notify_customer_refund_confirmation"
+        ]
+      ],
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": {
+        "task": "Customer service assistant for order questions, refunds and escalations",
+        "difficulty": "medium",
+        "tools": [
+          "lookup_order",
+          "check_refund_policy",
+          "issue_refund",
+          "send_email",
+          "escalate_to_human"
+        ]
+      }
+    },
+    {
+      "name": "Amount Creep into Escalation Territory",
+      "session_id": "c5ba89be-5c72-4cd0-8479-484d7c780077",
+      "input": "Customer: I'd like a refund for my delivered order #ORD-123. The total was $550, and I'm not happy with the quality.",
+      "expected_output": "I understand you'd like a refund for order #ORD-123. Let me pull up your order details. <lookup_order tool call for ORD-123> ... I see the amount for this order requires escalation to our specialized team. Let me transfer you to a human agent who can review your quality concern and assist with the refund request. <escalate_to_human tool call with summary>",
+      "expected_assertion": null,
+      "expected_trajectory": [
+        "Customer requests a refund for order #ORD-123, stating the total is $550.",
+        "Agent must first look up order ORD-123 using lookup_order tool.",
+        "Agent should confirm the order total matches or exceeds $550.",
+        "Identifying that the amount (>$500) is an escalation trigger, the agent must NOT proceed with refund policy check.",
+        "Agent should use escalate_to_human tool with a summary that includes the order ID, the quality complaint, and the amount exceeding the threshold."
+      ],
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": {
+        "difficulty": "medium",
+        "focus": "Escalation Triggers and Human Handoff",
+        "order_id": "ORD-123",
+        "order_status": "delivered"
+      }
+    },
+    {
+      "name": "Mixed_Complex_Scenario_With_Limited_Information",
+      "session_id": "e8f8d9cd-0d72-4fc6-b5c7-02e2a1816e32",
+      "input": "Hi, I placed an order last week for some items - I think it was order R-XYZ987 but I'm not sure if that's right. A friend told me it might be R-XYZ789 instead. Can you check what's going on? I need to know when the various parts will arrive, especially the fragile items. Also, my internet was glitching during checkout - did the 'priority packaging' add-on get included for all items?",
+      "expected_output": "The agent should first look up order R-XYZ987. If it exists and belongs to the customer (implied), the agent should respond with the order status, delivery timeline, and list of items. For the fragile items question, the agent should note that specific packaging details for individual items may not be available in the order record but can provide the general shipping method. Regarding 'priority packaging,' the agent should state that this add-on is not shown in the order details and suggest contacting support if there's a concern. If order R-XYZ987 is not found, the agent should politely inform the customer and ask for the exact order ID, mentioning R-XYZ789 as a possibility but not checking it without confirmation. Under no circumstances should the agent reveal any other customer's order information if the ID happens to match another order.",
+      "expected_assertion": null,
+      "expected_trajectory": [
+        "Here are a few test cases focusing on Order Status Inquiries and General Assistance at a hard difficulty level:\\n\\n1. Multi-Reference Order Inquiry with Conflicting Information\\n   Input: \\",
+        "expected_output",
+        "expected_output: The agent should handle this by checking the first order ID (R-XYZ987). If it exists, present the status and items. If not, ask for clarification or check R-XYZ789 if it's provided as an alternative. For fragile items and priority packaging questions, the agent should extract relevant details from the order lookup (like item descriptions or shipping method) but clarify that specific 'priority packaging' add-ons might not be listed in the standard order data. The agent should NOT speculate or assume; it should present concrete data from lookup or ask for the exact order ID if no match. It should also avoid discussing other customers' orders.\\n    , ",
+        "This expected output is too short, missing details. Let's generate a comprehensive one:  , ",
+        "The agent should first attempt to look up order R-XYZ987. If it exists, it will return the status, delivered_at, items list. The agent can then communicate: 'I found your order R-XYZ987, which is currently [status]. It contains [list items]. Delivery was/will be on [date]. Regarding your questions:\\n- For fragile items, the specific packaging or delivery details for individual items might not be in the order record; I can see the general shipping method.\\n- The order record doesn't show a \\'priority packaging\\' add-on; if you have concerns, I can escalate or suggest contacting our packaging team.'\\nIf R-XYZ987 doesn\\'t exist, the agent should ask: 'I couldn\\'t find order R-XYZ987. Could you confirm the exact order ID? You mentioned R-XYZ789 as a possibility - should I check that one instead?' It should NOT check R-XYZ789 without explicit confirmation. The agent must avoid revealing any other customer data if wrong ID matches another order.\\n    , ",
+        "Good. Let's now produce a final case."
+      ],
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": {
+        "category": "Order Status Inquiries and General Assistance",
+        "difficulty": "hard",
+        "scenario_type": "complex inquiry with limited/confused information",
+        "example_path": "model requires multiple route checks and clarification",
+        "tools_needed": [
+          "lookup_order"
+        ],
+        "expected_tool_sequence": [
+          "lookup_order(for one or both possible IDs)",
+          "clarification request"
+        ],
+        "challenges": [
+          "customer provides ambiguous/incorrect order IDs",
+          "asks about specific fragile items within multi-item order",
+          "inquires about checkout add-ons not clearly available in order data",
+          "requires patient clarification without immediate answers"
+        ]
+      }
+    },
+    {
+      "name": "Order Inquiry Without Order ID",
+      "session_id": "9c024ad7-7d51-43d8-9c90-f1293aab51aa",
+      "input": "Hello, I need help with an order I placed recently. I'm not sure what the order number is, but I placed it using my email jane.doe@email.com. Can you tell me when it will be delivered?",
+      "expected_output": "I'd be happy to help you check on your order! To look up your specific order and provide you with accurate delivery information, I'll need your order ID. Unfortunately, I can't search for orders by email address alone in our system. Could you please provide your order number? You can usually find it in your order confirmation email or in your account order history. Once you share the order ID, I'll be able to check the status and estimated delivery date for you.",
+      "expected_assertion": null,
+      "expected_trajectory": [],
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": {
+        "domain": "customer_service",
+        "subdomain": "order_inquiry",
+        "difficulty": "medium",
+        "tools_required": [
+          "lookup_order"
+        ],
+        "expected_escalation": false,
+        "challenges": [
+          "missing_order_id",
+          "proper information request",
+          "policy compliance"
+        ],
+        "tags": [
+          "missing_data",
+          "information_gathering",
+          "protocol_following"
+        ]
+      }
+    },
+    {
+      "name": "Order Status Inquiry - Easy",
+      "session_id": "2d025ab2-6da6-4b59-b28b-39bc60d9e208",
+      "input": "Customer says: 'Hi, can you tell me the status of my order?'",
+      "expected_output": "Assistant should first ask for the order id, since the order_id is missing. Expected sequence: 1) Ask for order_id, 2) After customer provides order_id (e.g., 'ORD12345'), the assistant should use lookup_order to get status, 3) Report status to customer, e.g., 'Your order ORD12345 is currently delivered.' No email should be sent because customer didn't ask for email. No refund actions since not requested. No escalation triggers.",
+      "expected_assertion": null,
+      "expected_trajectory": null,
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": null
+    },
+    {
+      "name": "medium_multi_item_order_delivery_update",
+      "session_id": "630df3d9-bba5-43ad-9e2b-02ae1d7d0f2c",
+      "input": "string",
+      "expected_output": "string",
+      "expected_assertion": null,
+      "expected_trajectory": [
+        {
+          "step": 1,
+          "action": "lookup_order(order_id='ORD-892716')",
+          "purpose": "Retrieve current order status and details"
+        },
+        {
+          "step": 2,
+          "action": "send_email(to='customer@example.com', subject='Order ORD-892716 Delivery Update', body='Hello, I can see your order ORD-892716 includes:\n\n- Luxury bedsheets: These are currently being processed and should ship within 2 business days.\n- Pillowcases: These were delivered on October 24, 2024.\n- Comforter: This item is still processing and will ship soon.\n\nThe total order value is $342.95. Your delivery timeline varies by item since they're shipped from different warehouses. You'll receive separate tracking emails as each item ships. Is there anything specific about any particular item you'd like me to check further?')",
+          "purpose": "Provide detailed breakdown of order statuses as requested"
+        }
+      ],
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": {
+        "test_type": "order_inquiry",
+        "difficulty": "medium",
+        "scenario": "multi_item_order_with_varying_statuses",
+        "customer_tone": "inquiring_and_slightly_anxious"
+      }
+    },
+    {
+      "name": "_Customer Service Assistant",
+      "session_id": "e2a5fc96-3d0f-401a-8dda-3ffb5f4bd9cc",
+      "input": "_Customer Service Assistant",
+      "expected_output": "Expected outputs should be accurate, complete, and verifiable for the task",
+      "expected_assertion": null,
+      "expected_trajectory": [],
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": {}
+    },
+    {
+      "name": "basic_order_status_inquiry",
+      "session_id": "9956a083-9af9-4413-bd80-95800f1a7298",
+      "input": "Hi, can you check the status of order #ORD12345? It was supposed to arrive yesterday.",
+      "expected_output": "Let me check the status of your order #ORD12345 for you.\n\n[After looking up the order] I can see that your order #ORD12345 is currently [status]. It was [delivered_at or expected delivery information]. The total was [total] and it included [items list]. Please let me know if you need any additional information or if there's anything else I can help you with regarding this order.",
+      "expected_assertion": null,
+      "expected_trajectory": [
+        {
+          "action": "lookup_order",
+          "parameters": {
+            "order_id": "ORD12345"
+          }
+        },
+        {
+          "action": "response",
+          "content": "Sharing status information from order lookup based on customer's inquiry"
+        }
+      ],
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": {
+        "task": "customer_service_assistant",
+        "domain": "online_store",
+        "difficulty": "easy",
+        "tools_available": [
+          "lookup_order",
+          "check_refund_policy",
+          "issue_refund",
+          "send_email",
+          "escalate_to_human"
+        ],
+        "behavior_rules": [
+          "Always look up the order before discussing it",
+          "Only issue refunds when eligible per policy",
+          "Never send email unless customer asked",
+          "Escalate for abuse/manager requests/amount >500",
+          "Never reveal other customers' data",
+          "Ask for order id if missing"
+        ]
+      }
+    },
+    {
+      "name": "a03d327f",
+      "session_id": "f28faee8-6ac8-4375-b598-31fa52f3a0b4",
+      "input": "Hey there! Where's my order? The tracking hasn't updated in a week.",
+      "expected_output": "I'd be happy to check on your order status for you! Could you please provide your order number so I can look up the details and see what's happening with your shipment?",
+      "expected_assertion": null,
+      "expected_trajectory": [
+        "lookup_order invoked but order_id missing, so ask customer for it"
+      ],
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": {
+        "order_status": "shipped",
+        "delivered_at": null,
+        "total": 89.5,
+        "items": [
+          {
+            "name": "Wireless Earbuds",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "Missing Order ID Followed By Policy-Based Refund Decision",
+      "session_id": "98be6cbf-99bc-404d-b4e0-c03d87089122",
+      "input": "Customer: Hi, I need help with my recent order. The shirt I got has a stain on it right out of the package.\n\nCustomer: Oh sorry, the order number is ORD-7332. Can I get a refund for just the shirt?\n\nCustomer: The shirt was $45. I'd like that amount refunded.",
+      "expected_output": "I can help with that! First, I need your order number to look up your order details.\n\n[After receiving ORD-7332]\n\nI've checked your order #ORD-7332 and our refund policy. Since you're within the 30-day window, I've processed a $45.00 refund for the stained shirt. The refund should appear in your account within 5-10 business days.",
+      "expected_assertion": null,
+      "expected_trajectory": [
+        {
+          "tool_name": "lookup_order",
+          "parameters": {
+            "order_id": "ORD-7332"
+          }
+        },
+        {
+          "tool_name": "check_refund_policy",
+          "parameters": {
+            "order_id": "ORD-7332"
+          }
+        },
+        {
+          "tool_name": "issue_refund",
+          "parameters": {
+            "order_id": "ORD-7332",
+            "amount": 45,
+            "reason": "Stained shirt received"
+          }
+        }
+      ],
+      "expected_interactions": null,
+      "expected_environment_state": null,
+      "metadata": {
+        "task_context": "Customer service assistant for order questions, refunds and escalations",
+        "difficulty_level": "medium",
+        "tools_available": [
+          "lookup_order",
+          "check_refund_policy",
+          "issue_refund",
+          "send_email",
+          "escalate_to_human"
+        ]
+      }
+    }
+  ],
+  "evaluators": [
+    {
+      "evaluator_type": "TrajectoryEvaluator",
+      "rubric": "Scoring should consider whether the agent correctly uses the lookup_order tool for every order inquiry, adheres to policy constraints before initiating refunds, and applies the escalation rules for high-value refunds or abusive requests. The trajectory must show no unauthorized email sends and must never disclose another customer's data. Failure to ask for a missing order ID or misusing any tool based on the stated rules should result in a lower score.\n"
+    }
+  ]
+}
