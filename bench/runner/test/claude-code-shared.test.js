@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
-const { tmp, makeBench, makeRun } = require('./helpers.js');
+const { tmp, makeBench, makeRun, testModeEnv } = require('./helpers.js');
 const { makeFakeClaude } = require('./fake-claude.js');
 const { produce } = require('./regression-reports.js');
 const { parseArmSpec, resolveArm, listArms, KNOWN_ARMS } = require('../lib/arms.js');
@@ -176,7 +176,7 @@ function cliRoot(cfg = {}) {
 const cli = (s, extra, env = CC_ENV) => spawn(process.execPath, [
   BENCH_JS, 'run', '--suite', 'lite', '--tasks', 't1', '--isolate', 'none', '--allow-unisolated', '--bench-dir', s.bench, '--cache', path.join(s.root, 'cache'),
   '--claude-bin', s.bin, '--repo-root', s.root, ...extra,
-], { env: { PATH: process.env.PATH, HOME: path.join(s.root, 'home'), TMPDIR: path.join(s.root, 'tmp'), ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+], { env: testModeEnv({ PATH: process.env.PATH, HOME: path.join(s.root, 'home'), TMPDIR: path.join(s.root, 'tmp'), ...env }), stdio: ['ignore', 'pipe', 'pipe'] });
 const collect = (child) => new Promise((resolve) => {
   let out = '';
   let err = '';
@@ -307,7 +307,7 @@ test('CLI: --claude-tools-dir picks the newest binary there, and with no binary 
     const viaDir = (extra) => spawn(process.execPath, [
       BENCH_JS, 'run', '--suite', 'lite', '--tasks', 't1', '--isolate', 'none', '--allow-unisolated', '--bench-dir', s.bench, '--cache', path.join(s.root, 'cache'),
       '--repo-root', s.root, '--arms', 'cc-vanilla', '--out', path.join(s.root, 'o'), ...extra,
-    ], { env: { PATH: process.env.PATH, HOME: path.join(s.root, 'home'), TMPDIR: path.join(s.root, 'tmp'), ...CC_ENV }, stdio: ['ignore', 'pipe', 'pipe'] });
+    ], { env: testModeEnv({ PATH: process.env.PATH, HOME: path.join(s.root, 'home'), TMPDIR: path.join(s.root, 'tmp'), ...CC_ENV }), stdio: ['ignore', 'pipe', 'pipe'] });
     const none = await collect(viaDir([]));
     assert.notEqual(none.code, 0);
     assert.match(none.err, /pass --claude-bin PATH or --claude-tools-dir DIR/);

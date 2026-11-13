@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { tmp, write } = require('./helpers.js');
+const { tmp, write, testModeEnv } = require('./helpers.js');
 const { makeFakeClaude } = require('./fake-claude.js');
 
 const SCRIPT = path.join(__dirname, '..', '..', 'scripts', 'claude-code-smoke.sh');
@@ -69,10 +69,10 @@ function setup(stream = 'vanilla-success', cfg = {}) {
 function smoke(s, args, env = {}) {
   return spawnSync('bash', [SCRIPT, '--claude-bin', s.bin, ...args], {
     encoding: 'utf8', timeout: 120000,
-    env: {
+    env: testModeEnv({
       PATH: `${path.join(s.root, 'bin')}:${process.env.PATH}`, HOME: s.home, TMPDIR: process.env.TMPDIR,
       SMOKE_SCRATCH_ROOT: s.scratchRoot, SMOKE_CLAUDE_TMP_BASE: s.claudeTmp, ...env,
-    },
+    }),
   });
 }
 const awsMode = (s, mode) => {

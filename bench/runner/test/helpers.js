@@ -68,7 +68,10 @@ function makeRun(runDir, benchDir, specs, config = {}) {
   return runDir;
 }
 
-module.exports = { RUBRIC, tmp, write, makeBench, makeRun, mkResult };
+// Fake agents finish in milliseconds; BENCH_TEST_MODE keeps the under-one-second infra check from rejecting those runs.
+const testModeEnv = (env) => ({ ...env, BENCH_TEST_MODE: '1' });
+
+module.exports = { RUBRIC, tmp, write, makeBench, makeRun, mkResult, testModeEnv };
 
 function addTask(bench, id, cls) {
   const t = JSON.parse(fs.readFileSync(path.join(bench, 'tasks/t1.json'), 'utf8'));
