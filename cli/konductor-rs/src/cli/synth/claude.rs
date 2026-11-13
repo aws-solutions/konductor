@@ -244,34 +244,35 @@ fn render_mcp_servers(
 
 /// Merges `mcp_registry` (an agent's `dependencies.mcpRegistry` --
 /// cross-harness MCP server declarations every harness's transformer is
-/// meant to read) with `claude_mcp_servers` (an agent's
-/// `clientConfig.claudeCli.mcpServers` -- a Claude-specific override or
-/// addition) into the single map `render_agent_md` actually renders. See
-/// this module's own docstring for why this merge exists at all.
+/// meant to read) with `harness_mcp_servers` (an agent's
+/// `clientConfig.claudeCli.mcpServers` or `clientConfig.kiroCli.mcpServers`
+/// -- a harness-specific override or addition) into the single map the
+/// harness renders. Claude Code and both Kiro transformers share it so
+/// every harness applies the same precedence. See this module's own
+/// docstring for why this merge exists at all.
 ///
 /// `mcp_registry` entries are inserted first, in `BTreeMap`'s own sorted-
 /// by-server-name order (deterministic regardless of the source JSON's
 /// declaration order, since `AgentDependencies.mcp_registry` is itself a
-/// `BTreeMap`, not an order-preserving map). `claude_mcp_servers` entries
+/// `BTreeMap`, not an order-preserving map). `harness_mcp_servers` entries
 /// are then applied on top: a same-named entry REPLACES the registry-
-/// derived one in place (an author who explicitly sets
-/// `clientConfig.claudeCli.mcpServers` for a server name already in the
-/// registry is customizing that server's Claude-specific launch config,
-/// not adding a duplicate), while any new name is appended after every
-/// registry entry, in its own declared order. `IndexMap::insert`'s own
-/// semantics make this fallout naturally: inserting an already-present
-/// key updates its value without moving its position; only a genuinely
-/// new key extends the tail.
-fn merge_mcp_servers(
+/// derived one in place (an author who explicitly sets a harness's
+/// `mcpServers` for a server name already in the registry is customizing
+/// that server's harness-specific launch config, not adding a duplicate),
+/// while any new name is appended after every registry entry, in its own
+/// declared order. `IndexMap::insert`'s own semantics make this fallout
+/// naturally: inserting an already-present key updates its value without
+/// moving its position; only a genuinely new key extends the tail.
+pub(crate) fn merge_mcp_servers(
     mcp_registry: &BTreeMap<String, McpServerDef>,
-    claude_mcp_servers: &IndexMap<String, McpServerDef>,
+    harness_mcp_servers: &IndexMap<String, McpServerDef>,
 ) -> IndexMap<String, McpServerDef> {
     let mut merged: IndexMap<String, McpServerDef> =
-        IndexMap::with_capacity(mcp_registry.len() + claude_mcp_servers.len());
+        IndexMap::with_capacity(mcp_registry.len() + harness_mcp_servers.len());
     for (name, def) in mcp_registry {
         merged.insert(name.clone(), def.clone());
     }
-    for (name, def) in claude_mcp_servers {
+    for (name, def) in harness_mcp_servers {
         merged.insert(name.clone(), def.clone());
     }
     merged

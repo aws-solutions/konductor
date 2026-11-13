@@ -1286,3 +1286,30 @@ SOP_EDITS += [
      'paras: ["konductor-mux-orchestrator and konductor-cmux-orchestrator have no subagent tool and no Agent(...) tool. Their Kiro CLI tools are [\\"@builtin\\", \\"read\\", \\"shell\\", \\"todo\\"], and shell is how they work:',
      'paras: ["konductor-mux-orchestrator and konductor-cmux-orchestrator have no subagent tool and no Agent(...) tool. Their specs declare [\\"@builtin\\", \\"read\\", \\"shell\\", \\"todo\\"] for Kiro CLI; on Kiro CLI v2 synth replaces that @builtin with the same explicit built-in list a specialist gets, so only konductor holds subagent on Kiro CLI v2. Shell is how they work:'),
 ]
+
+_MONO13 = "<span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">"
+
+SOP_EDITS += [
+    # Synth bundles aws-mcp into the Kiro CLI agent files too, so k-architect and
+    # k-developer launch it themselves (docs/user-guide/{agents,reference}.md,
+    # tasks/install-kiro-cli.md). The guide has no Kiro Power page to update.
+    ("agents: runtime MCP servers row bundles aws-mcp in both runtimes",
+     '{ k: "MCP servers", v: "declared and launched from dependencies.mcpRegistry \u00b7 requested via tool globs (mcp__aws-mcp__*); you configure the server yourself" }',
+     '{ k: "MCP servers", v: "aws-mcp launched from dependencies.mcpRegistry; tools granted as @aws-mcp \u00b7 aws-mcp launched from dependencies.mcpRegistry; tools granted via globs (mcp__aws-mcp__*)" }'),
+    ("reference: MCP registry note says synth bundles aws-mcp",
+     "In Claude Code these agents request the corresponding tools via globs \u2014 mcp__aws-mcp__* and mcp__playwright-mcp__* \u2014 rather than launching the servers themselves.",
+     "konductor synth --claude-bundled-mcp-servers aws-mcp (what make synth and the release build run) writes the aws-mcp entry into the Claude Code and Kiro CLI agent files, so those agents launch it themselves. playwright-mcp is not bundled: k-browser requests its tools (mcp__playwright-mcp__* in Claude Code, @playwright-mcp in Kiro CLI) and you configure the server yourself."),
+    ("install-kiro-cli: AWS lookups paragraph names the bundled aws-mcp entry",
+     f"AWS documentation lookups</strong> \u2014 {_MONO13}k-architect</span> and {_MONO13}k-developer</span>. "
+     f"Install {_MONO13}uvx</span> and configure AWS credentials in {_MONO13}~/.aws/credentials</span> or environment variables. "
+     "Both agents work without credentials, just without AWS lookups.</p>",
+     f"AWS documentation lookups</strong> for {_MONO13}k-architect</span> and {_MONO13}k-developer</span>. "
+     f"Their agent files carry an {_MONO13}aws-mcp</span> entry in {_MONO13}mcpServers</span>, launched via "
+     f"{_MONO13}uvx mcp-proxy-for-aws-cli==1.7.0</span>, so you do not add it to your own MCP config. "
+     f"Install {_MONO13}uvx</span> and configure AWS credentials in {_MONO13}~/.aws/credentials</span> or environment variables. "
+     "Without them the server fails to start and both agents still work, just without AWS lookups. "
+     f"The first start downloads the proxy through {_MONO13}uvx</span>, which can delay the agent's first reply. "
+     "Knowledge tools are pre-approved; AWS API tools ask first. "
+     f"Use the {_MONO13}aws:ViaAWSMCPService</span> and {_MONO13}aws:CalledViaAWSMCP</span> IAM condition keys "
+     "to limit agent-initiated calls.</p>"),
+]

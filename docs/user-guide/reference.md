@@ -113,7 +113,7 @@ Accepted before or after a subcommand.
 | `init` | `--preset <PRESET>` | enum | No | `solo`, `team`, `org` |
 | `init` | `--force` | flag | No | Overwrite an existing `.konductor/` instead of failing |
 | `synth` | `--from <PATH>` | path | No | Synthesize this source tree instead of the current directory. Output goes to `<PATH>/dist/` |
-| `synth` | `--claude-bundled-mcp-servers <LIST>` | string | No | Comma-separated allowlist of `dependencies.mcpRegistry` server names to merge into each agent's rendered Claude Code `mcpServers:` frontmatter. Omitted: nothing is merged. `make synth` and `make claude-plugin` pass this from `scripts/claude-plugin-mcp-servers.json` |
+| `synth` | `--claude-bundled-mcp-servers <LIST>` | string | No | Comma-separated allowlist of `dependencies.mcpRegistry` server names to merge into each agent's rendered Claude Code `mcpServers:` frontmatter and Kiro CLI `mcpServers` object. Omitted: nothing is merged. `make synth` and `make claude-plugin` pass this from `scripts/claude-plugin-mcp-servers.json` |
 | `metrics` | `--since <WINDOW>` | string | No | Limit the report to runs within a time window. `metrics` is a stub in this release |
 
 
@@ -418,8 +418,11 @@ Every agent declares `context/k-core-rules.md`. The three orchestrators also dec
 | `aws-mcp` | `k-architect`, `k-developer` | `command: uvx`, args `mcp-proxy-for-aws-cli==1.7.0`, `https://aws-mcp.us-east-1.api.aws/mcp`, `--metadata`, `AWS_REGION=us-east-1` |
 | `playwright-mcp` | `k-browser` | args `-y`, `@playwright/mcp@latest` |
 
-In Claude Code these agents request the corresponding tools via globs — `mcp__aws-mcp__*` and
-`mcp__playwright-mcp__*` — rather than launching the servers themselves.
+`konductor synth --claude-bundled-mcp-servers aws-mcp` (what `make synth` and the release build
+run) writes the `aws-mcp` entry into the Claude Code and Kiro CLI agent files, so those agents
+launch it themselves. `playwright-mcp` is not bundled: `k-browser` requests its tools
+(`mcp__playwright-mcp__*` in Claude Code, `@playwright-mcp` in Kiro CLI) and you configure the
+server yourself.
 
 ---
 

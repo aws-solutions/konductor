@@ -144,11 +144,14 @@ choose one and rerun with `--harness <name>`.
 
 ## MCP servers
 
-Kiro does not configure MCP servers from `dependencies.mcpRegistry`
-automatically. Configure them in `.kiro/settings/mcp.json` for one project or
-`~/.kiro/settings/mcp.json` for all projects.
+The `k-architect` and `k-developer` agent files carry the `aws-mcp` entry
+from their `dependencies.mcpRegistry`, so those two agents launch AWS MCP
+themselves. Kiro does not configure the other `dependencies.mcpRegistry`
+entries automatically. Configure them in `.kiro/settings/mcp.json` for one
+project or `~/.kiro/settings/mcp.json` for all projects.
 
-AWS MCP uses the `aws-mcp` server key. Use this configuration:
+AWS MCP uses the `aws-mcp` server key. To use it from other agents, use this
+configuration:
 
 ```json
 {
@@ -167,7 +170,8 @@ AWS MCP uses the `aws-mcp` server key. Use this configuration:
 ```
 
 Install `uvx` and configure AWS credentials before using AWS API tools. The
-proxy is pinned for repeatable client behavior; the managed endpoint supplies
+first start downloads the proxy through `uvx`, which can delay the agent's
+first reply. The proxy is pinned for repeatable client behavior; the managed endpoint supplies
 current AWS documentation and skills. `k-architect` and `k-developer` can use
 all AWS MCP tools. Knowledge tools are pre-approved; API tools prompt for
 confirmation. Use the `aws:ViaAWSMCPService` and `aws:CalledViaAWSMCP` IAM

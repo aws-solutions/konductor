@@ -150,9 +150,14 @@ Choosing among the three orchestrators:
 
 Two are pre-configured in the agent specs and need only their local dependency.
 
-**AWS documentation lookups** — `k-architect` and `k-developer`. Install `uvx` and configure
-AWS credentials in `~/.aws/credentials` or environment variables. Both agents work without
-credentials, just without AWS lookups.
+**AWS documentation lookups** for `k-architect` and `k-developer`. Their agent files carry an
+`aws-mcp` entry in `mcpServers`, launched via `uvx mcp-proxy-for-aws-cli==1.7.0`, so you do not
+add it to your own MCP config. Install `uvx` and configure AWS credentials in `~/.aws/credentials`
+or environment variables. Without them the server fails to start and both agents still work,
+just without AWS lookups. The first start downloads the proxy through `uvx`, which can delay the
+agent's first reply. Knowledge tools are pre-approved; AWS API tools ask first. Use the
+`aws:ViaAWSMCPService` and `aws:CalledViaAWSMCP` IAM condition keys to limit agent-initiated
+calls.
 
 **Browser automation** — `k-browser`. Install the browser binary:
 

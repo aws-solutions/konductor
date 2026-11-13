@@ -411,8 +411,8 @@ pub enum Commands {
         from: Option<String>,
 
         /// Comma-separated allowlist of `dependencies.mcpRegistry` server
-        /// names the Claude Code transformer is permitted to merge into
-        /// each agent's rendered `mcpServers:` frontmatter. Omitted (the
+        /// names the Claude Code and Kiro transformers are permitted to
+        /// merge into each agent's rendered `mcpServers`. Omitted (the
         /// default): the allowlist is empty, so no `mcpRegistry` entry is
         /// ever merged -- matching this field's behavior before any
         /// caller opts a server in. This is deliberately opt-in, not

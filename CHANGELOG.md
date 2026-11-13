@@ -212,6 +212,9 @@ not per individual commit.
 - `NOTICE.txt` lists every shipped crate, and `make notice-check` keeps it current.
 - Kiro CLI v3 agent files no longer carry an empty `hooks: []` list. Only the mux and cmux
   orchestrators, which have a `stop` hook, still have a `hooks` field.
+- Kiro CLI agents now get the bundled `aws-mcp` server from their agent spec, as Claude Code
+  agents already did, so `k-architect` and `k-developer` can use their `@aws-mcp` tools. Without
+  `uvx` or AWS credentials the server fails to start and the agents work without it.
 
 ### Security
 

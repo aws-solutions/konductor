@@ -416,7 +416,7 @@ images, and diagrams — not a skill library. Point it at a file and ask a quest
 | --- | --- | --- |
 | Agent name | `konductor` | `konductor` |
 | Cross-agent delegation | only `konductor` holds `subagent` on Kiro CLI v2; the mux orchestrators dispatch through shell and get the same explicit built-in list as specialists. Synth also keeps the built-in spawn tools out of specialists (`excludedTools` on v3, an explicit built-in list on v2) | only `konductor` holds `Agent(...)` |
-| MCP servers | declared and launched from `dependencies.mcpRegistry` | requested via tool globs (`mcp__aws-mcp__*`); you configure the server yourself |
+| MCP servers | `aws-mcp` launched from `dependencies.mcpRegistry`; tools granted as `@aws-mcp` | `aws-mcp` launched from `dependencies.mcpRegistry`; tools granted via globs (`mcp__aws-mcp__*`) |
 | Tool naming | `fs_read`, `fs_write`, `shell` | `Read`, `Write`, `Edit`, `Bash` |
 | Permission model | two lists: `tools` grants with a prompt, `allowedTools` pre-approves | one list: `clientConfig.claudeCli.tools` is the ceiling, and your `settings.json` decides what prompts |
 | `k-browser` / `k-media-analyzer` | reads pre-approved; writes and shell ask first | write and shell granted |
