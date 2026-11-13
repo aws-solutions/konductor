@@ -295,14 +295,40 @@ after 1g.
 - **API rows:** none. 1g adds `trust_required` to `startRun`.
 - **Engine:** the [trust rules](workflows-spec.md#trust): the summary and prompt in `flow run`, `flow trust <name>` with
   `--yes` and `--revoke <name>`, `--trust` and `KONDUCTOR_TRUST`, the `trust_hash` of `flow check`, the per-workflow
-  hash and the record. The summary lists, for each agent, the tools the runner lets it run without asking, and the repo
-  tool configuration files, which the hash covers; a repo that has them needs confirmation for shipped and user
-  workflows too. The record is written to a temporary file and renamed under a lock, and an unreadable record means
-  nothing is trusted. Ports: `TrustStore`, `Terminal` and `AgentCatalog` (finds an agent as the
+  hash and the record. The user confirms by typing the first 8 characters of the hash (D23). This step also owns three
+  behaviors of the trust rules: the scan limits of the repo tool configuration files, with the refusal
+  `tool_config_unreadable` (exit 77); the re-check of those files before each session, which sits in the runner in front
+  of the `Harness` port, so every harness gets it; and exit 74 for a record that cannot be kept or changed.
+  Step 1d adds the `74` and `77` rows to `cli/README.md` ([rule](workflows-spec.md#commands-and-exit-codes)), and this
+  step keeps them. The summary lists, for each agent, the tools the runner lets it run without asking, and the repo tool
+  configuration files, which the hash covers; a repo that has them needs confirmation for shipped and user workflows
+  too. The record is written to a temporary file and renamed under a lock, and an unreadable record means nothing is
+  trusted. Ports: `TrustStore`, `Terminal` and `AgentCatalog` (finds an agent as the
   [spec](workflows-spec.md#harness-invocation) says and reads its tools). For a Claude agent with no `tools` key, the
   summary says that every tool is available and none is pre-approved, because the runner then passes no
-  `--allowedTools`. The step checks whether the install manifest records a hash for each installed file. The hash layout
-  is fixed here ([deferred](workflows-spec.md#deferred-to-a-later-slice)).
+  `--allowedTools`. The step checks whether the install manifest records a hash for each installed file, and leaves a
+  recorded file out of the hash only when it is a markdown file whose front matter is readable and has no key that can
+  carry config (D59, D68). The hash layout is fixed here, with no frame for
+  an unreadable file ([spec](workflows-spec.md#trust)). A link to a regular file is read as that file, and a refusal
+  names the path and the cause (D60). Step 1e owns the summary rules of D32, D33, D35, D61, D65, D66, D67, D68, D69, D70 and D71: the
+  Claude agent lookup by `name`, the Kiro lookup by the JSON `name`, the keys the summary shows by name, the Unknown
+  `tools` list, the Unreadable agent file, the end of the front matter at the first `---`, the mention check on the
+  front matter only, and the lossy read of Claude markdown against the lenient Kiro JSON read that fails closed on what
+  it shows (D66, D68). Only an ambiguous agent, or an unreadable config entry, exits 77. An agent is ambiguous when two
+  files declare it, when a Claude file declares it under another file name, when a Kiro file that cannot be read
+  mentions the id, or when an `<id>.json` object has no `name`, or when a Kiro markdown file opens a front matter block with no `name` and has the id for its stem, or has
+  front matter that cannot be read in full (D69, D71). A Kiro markdown file with no front matter block is not a
+  candidate (D71). A declared Kiro markdown agent is shown as "tools: unreadable" and
+  does not refuse (D70). A lone Unreadable agent file is shown with "tools:
+  unreadable" and does not refuse, and `flow check` still prints the hash. D68 adds to this step: the 16 MiB cap of the
+  scan, the refusal of a link in place of a folder above a covered path, the record check before the prompt (exit 74),
+  no `trust_hash` in the refusal for a run with no terminal, the `memory` key, and the documented limits of the guard
+  (`--yes`, the last stage, a session in progress). D69 adds the walk of `.kiro/agents` at any depth for `.json` and
+  `.md`, the `memory` spellings, `useLegacyMcpJson` and the f64 overflow. The summary, the ambiguity check and the hash scan use the catalog of the harness, so the summary names the
+  file each agent was read from and that file is the one the harness runs (D42, D44). The Kiro catalog is the project
+  root, then the home folder, the Claude catalog is the one of D32 and D44, and the fake harness uses the Kiro rule. If
+  the catalogs would resolve an agent to different files, `flow run` and `flow trust` exit 77 with
+  `tool_config_unreadable`.
 - **Tests:** unit: the hash is stable, and changes with the workflow's bytes or a `prompt_file`'s bytes but not with
   another workflow; the loader hashes the bytes it parses. Functional: yes records trust, no exits 77 and runs nothing,
   no terminal exits 77 naming both ways, `--trust` matches or mismatches, a changed file asks again, revoke removes the
