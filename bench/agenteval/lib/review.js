@@ -51,6 +51,9 @@ function renderReview(built, { tools, source }) {
     `  - task description: ${show(source.taskDescription)}`,
     `- Declared tools (${tools.length}): ${tools.join(', ')}`,
     ...coverage(tools, candidates),
+    ...(candidates.length && candidates.every((c) => c.proposedTools.length === 0)
+      ? ['- Note: no candidate proposes a tool call. The generator may not have written expected trajectories (see the README); status ok then does not mean the right tools were checked.']
+      : []),
     '',
     '| id | status | reasons | trajectory | proposed tools | input | duplicateOf |',
     '| --- | --- | --- | --- | --- | --- | --- |',

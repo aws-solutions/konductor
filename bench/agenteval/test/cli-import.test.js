@@ -76,6 +76,7 @@ test('review.md carries the counts, the warning, the coverage note and one row p
     assert.match(md, /By trajectory quality: clean 1, structured 2, extracted 7, none 4/);
     assert.match(md, /Declared tools that never appear in any proposed trajectory: cancel_order$/m);
     assert.match(md, /proposals only/);
+    assert.doesNotMatch(md, /no candidate proposes a tool call/);
     assert.match(md, /Provenance: not recorded \(no --generation file was given\)/);
     const rows = md.split('\n').filter((l) => l.startsWith('| ') && !l.startsWith('| id') && !l.startsWith('| ---'));
     assert.equal(rows.length, 14);
