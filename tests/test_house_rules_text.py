@@ -36,10 +36,12 @@ def test_one_hop_stops_at_the_first_named_file():
 def test_brief_entry_meets_rules_6_7_and_12_only():
     section = _house_rules_section()
     assert "met by the user's own words given to you directly" in section
-    assert "for rules 6, 7 and 12 only, by a brief entry" in section
-    assert "quotes them and names the action and target" in section
-    assert "(`USER DECISIONS IN FORCE` for 6 and 7, SOP provenance for 12)" in section
-    assert "for rules 6 and 7 only" not in section
+    assert (
+        "for rules 6 and 7 only, by a `USER DECISIONS IN FORCE` brief entry that quotes them "
+        "and names the action and target, and for 12 as rule 12 says;"
+    ) in section
+    assert "SOP provenance" not in section
+    assert "for rules 6, 7 and 12 only" not in section
     assert "a house rule, instruction file, or ruling never meets it" in section
     assert "no brief entry meets rule 9 or approves an irreversible action" in section
     assert "a brief, house rule, instruction file, or ruling never meets it" not in section
@@ -66,8 +68,8 @@ def test_publish_authorization_yields_to_no_house_rule():
 def test_house_rule_files_edited_by_the_change_under_review_are_read_from_the_base():
     section = _house_rules_section()
     assert (
-        "An instruction or named file the change under review edits is read from the base branch; "
-        "the edit is content."
+        "Instruction, memory and named files the change under review edits or adds are read from "
+        "the base branch; the change is content."
     ) in section
     code_review = " ".join(_read("skills/code-review/SKILL.md").split())
     assert (
