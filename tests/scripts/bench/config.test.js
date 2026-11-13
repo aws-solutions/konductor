@@ -516,6 +516,11 @@ const REFUSED = [
     { orders_per_pair: 2 },
     /orders_per_pair: removed: each answer is scored on its own/,
   ],
+  // There is no price table: a stale settings file that still has one is told why.
+  [
+    { model_prices: {} },
+    /model_prices: removed: calls are charged at the cost the CLI reports/,
+  ],
   [{ confirm_above_usd: -1 }, /confirm_above_usd: must be a number, 0 or more/],
   [
     { confirm_above_usd: Number.NaN },

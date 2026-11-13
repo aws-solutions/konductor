@@ -18,8 +18,14 @@
  * or batch, because it waits for a refreshed baseline; reading A still runs. When none of the selected skills is
  * planned and no skill has a problem to report, the plan is refused with one line that names each skill and its status.
  *
- * Not in the offline plan, and said so in its output: the credential check, the Bedrock model list
- * and the spend ledger total. They belong to stage 1 of a run and to the ledger.
+ * The spend ledger (lib/ledger.js) is read, never written: its total and live reservations are shown, and a plan
+ * whose pending p90 cost would take the ledger past total_cap_usd is refused. max_usd is counted
+ * as the ledger counts it: the run's settled spend and live reservations (ledger rows with this run id) plus the
+ * pending p90 cost, which is what the ledger reserves, so a resumed run cannot pass `plan` and then be refused by the
+ * ledger.
+ *
+ * Not in the offline plan, and said so in its output: the credential check and the Bedrock model list.
+ * They belong to stage 1 of a run.
  * A done call here means its output file exists; whether that file is stale is checked where
  * the file's format is defined.
  */
@@ -43,6 +49,7 @@ const {
   unmatchedExclusions,
 } = require('./baseline');
 const { resolveAgent, AgentSpecError } = require('./skills');
+const { readLedger, checkLimits, LedgerError } = require('./ledger');
 
 const createTally = () => ({ done: 0, total: 0 });
 const createCallTallies = () => ({
@@ -390,32 +397,93 @@ function buildStages(context) {
   ];
 }
 
+/**
+ * What the spend ledger holds, for this plan. The ledger is shared by every run and is cumulative, so the pending
+ * p90 cost is added to what it holds. max_usd is checked the way the ledger checks it: this run's settled spend plus
+ * its live reservations (rows with this run id) plus the pending p90 cost. A resumed run that plan passes is
+ * therefore not refused later by the ledger. A ledger that cannot be used is a problem of the plan.
+ */
+function readLedgerView({ layout, config, problems }, pendingUsd) {
+  const view = {
+    ledger: null,
+    ledgerHit: null,
+    runUsd: 0,
+  };
+  try {
+    const ledgerState = readLedger(layout.ledgerFile);
+    const runTotals = ledgerState.runs.get(layout.runId) || {
+      spent: 0,
+      reserved: 0,
+    };
+    view.runUsd = runTotals.spent + runTotals.reserved;
+    view.ledger = {
+      total_usd: roundToCents(ledgerState.total),
+      reserved_usd: roundToCents(ledgerState.reserved),
+      calls: ledgerState.calls,
+      unstarted_calls: ledgerState.unstarted.calls,
+      expired: {
+        count: ledgerState.expired.count,
+        usd: roundToCents(ledgerState.expired.usd),
+      },
+      projected_usd: roundToCents(
+        ledgerState.total + ledgerState.reserved + pendingUsd,
+      ),
+    };
+    view.ledgerHit = checkLimits(
+      { ...config, max_usd: Infinity },
+      {
+        runUsd: 0,
+        totalUsd: ledgerState.total + ledgerState.reserved,
+        callUsd: pendingUsd,
+      },
+    );
+  } catch (error) {
+    if (!(error instanceof LedgerError)) throw error;
+    problems.push(`ledger: ${error.message}`);
+  }
+  return view;
+}
+
 /** Why a plan with no skill to run is refused, in one line: each selected skill with the status that keeps it out. */
 const describeNothingRunnable = (rows) =>
   `no selected skill can be run: ${rows.map((row) => `${row.skill} (${row.status})`).join(', ')}`;
 
+/** The refusal for a plan that takes the run past max_usd. Both amounts get enough decimals to read as different. */
+function describeMaxRefusal(config, maxHit, { pendingUsd, runUsd }) {
+  const [projected, limitText] = formatMoneyPair(
+    maxHit.projected_usd,
+    config.max_usd,
+  );
+  // A limit above 0 that rounds to $0.00 is shown with the decimals it needs, so it does not read as no limit.
+  const limit =
+    limitText === formatMoney(0) ? formatMoneyShown(config.max_usd) : limitText;
+  const projectionIntro =
+    runUsd > 0
+      ? `this run has already spent or reserved ${formatMoney(runUsd)}; the plan adds ${formatMoney(pendingUsd)} (upper estimate, p90), which takes it to ${projected}, `
+      : `the plan's upper estimate (p90) is ${projected}, `;
+  return `${projectionIntro}above max_usd ${limit}; raise max_usd (it cannot pass total_cap_usd ${formatMoney(config.total_cap_usd)})`;
+}
+
+/** The refusal for a plan that takes the ledger past total_cap_usd. */
+function describeLedgerRefusal(ledger, ledgerHit) {
+  const [projected, limit] = formatMoneyPair(
+    ledgerHit.projected_usd,
+    ledgerHit.limit_usd,
+  );
+  return `the ledger holds ${formatMoney(ledger.total_usd)} spent and ${formatMoney(ledger.reserved_usd)} reserved; this plan would take it to ${projected}, above ${ledgerHit.limit} ${limit}; raise total_cap_usd in bench/config.json, or move the ledger file aside to start a new count`;
+}
+
 /**
  * Everything that refuses the plan: the problems collected on the way, then (only when nothing else
- * refuses it) a selection with no skill to run, then an upper estimate (p90) above max_usd.
+ * refuses it) a selection with no skill to run, then a run past max_usd, then a ledger past a limit.
  */
-function buildRefusals({ problems, config }, rows, pendingP90Usd, isWithinMax) {
+function buildRefusals({ problems, config }, rows, cost) {
   const refused = [...problems];
   if (!refused.length && !rows.some((row) => PLANNED_STATUSES.has(row.status)))
     refused.push(describeNothingRunnable(rows));
-  if (!isWithinMax) {
-    const [projected, limitText] = formatMoneyPair(
-      pendingP90Usd,
-      config.max_usd,
-    );
-    // A limit above 0 that rounds to $0.00 is shown with the decimals it needs, so it does not read as no limit.
-    const limit =
-      limitText === formatMoney(0)
-        ? formatMoneyShown(config.max_usd)
-        : limitText;
-    refused.push(
-      `the plan's upper estimate (p90) is ${projected}, above max_usd ${limit}; raise max_usd (it cannot pass total_cap_usd ${formatMoney(config.total_cap_usd)})`,
-    );
-  }
+  if (cost.maxHit) refused.push(describeMaxRefusal(config, cost.maxHit, cost));
+  if (cost.ledgerHit)
+    refused.push(describeLedgerRefusal(cost.ledger, cost.ledgerHit));
   return refused;
 }
 
@@ -440,12 +508,25 @@ function buildPlan({ layout, config, skills, costProfile = defaultProfile() }) {
     (total, stage) => total + stage.usd_p90,
     0,
   );
-  const isWithinMax = pendingP90Usd <= config.max_usd + MONEY_EPSILON;
-  const refused = buildRefusals(context, rows, pendingP90Usd, isWithinMax);
+  const { ledger, ledgerHit, runUsd } = readLedgerView(context, pendingP90Usd);
+  const maxHit = checkLimits(
+    { ...config, total_cap_usd: Infinity },
+    { runUsd, totalUsd: 0, callUsd: pendingP90Usd },
+  );
+  const refused = buildRefusals(context, rows, {
+    pendingUsd: pendingP90Usd,
+    runUsd,
+    maxHit,
+    ledger,
+    ledgerHit,
+  });
   const noHistoryWarning = describeNoHistory(context.noHistory);
   return {
     run_id: layout.runId,
     max_usd: config.max_usd,
+    run_usd: roundToCents(runUsd),
+    total_cap_usd: config.total_cap_usd,
+    ledger,
     seats: context.seats,
     skills: rows,
     stages: stages.map((stage) => ({
@@ -458,7 +539,9 @@ function buildPlan({ layout, config, skills, costProfile = defaultProfile() }) {
     pending_usd_p90: roundToCents(pendingP90Usd),
     pending_usd_p90_unrounded: pendingP90Usd,
     worst_case_usd: roundToCents(pendingP90Usd),
-    within_max: isWithinMax,
+    within_max: !maxHit,
+    // null when the ledger could not be read (that is a problem, so the plan is refused).
+    within_total_cap: ledger ? !ledgerHit : null,
     warnings: [
       ...rows.flatMap((row) =>
         row.warnings.map((warning) => `${row.skill}: ${warning}`),
@@ -517,6 +600,10 @@ function renderPlan(plan) {
       `  ${stage.id}  ${stage.name.padEnd(nameWidth)}  ${stage.state.padEnd(stateWidth)}  ${formatMoney(stage.usd).padStart(7)}  ${detail}`.trimEnd(),
     );
   }
+  const priorSpendText =
+    plan.run_usd > 0
+      ? `, after ${formatMoney(plan.run_usd)} already spent or reserved by this run,`
+      : '';
   const [pendingText, maxText] = formatMoneyPair(
     plan.pending_usd_p90_unrounded,
     plan.max_usd,
@@ -527,13 +614,26 @@ function renderPlan(plan) {
   lines.push(
     '',
     `Estimated cost (mean) of pending work: ${formatMoney(plan.pending_usd)}`,
-    `Upper estimate (p90) of pending work: ${pendingText} of max_usd ${maxShown}: ${plan.within_max ? 'within the limit' : 'OVER the limit'}`,
+    `Upper estimate (p90) of pending work: ${pendingText}${priorSpendText} of max_usd ${maxShown}: ${plan.within_max ? 'within the limit' : 'OVER the limit'}`,
   );
   lines.push(
     `The per-call costs were measured on earlier runs and can differ on this one. Budget about $${BUDGET_PER_SKILL_USD} per skill.`,
   );
+  if (plan.ledger) {
+    const ledger = plan.ledger;
+    const callWord = ledger.calls === 1 ? 'call' : 'calls';
+    const expiredText = ledger.expired.count
+      ? ` The spent figure includes ${ledger.expired.count} expired ${ledger.expired.count === 1 ? 'reservation' : 'reservations'} that never settled (${formatMoney(ledger.expired.usd)}), counted as spent.`
+      : '';
+    const unstartedText = ledger.unstarted_calls
+      ? ` ${ledger.unstarted_calls} ${ledger.unstarted_calls === 1 ? 'call' : 'calls'} ended before a model step started and ${ledger.unstarted_calls === 1 ? 'was' : 'were'} charged ${formatMoney(0)}.`
+      : '';
+    lines.push(
+      `Spend ledger: ${formatMoney(ledger.total_usd)} spent in ${ledger.calls} ${callWord}, ${formatMoney(ledger.reserved_usd)} reserved. With this plan: ${formatMoney(ledger.projected_usd)} of total_cap_usd ${formatMoney(plan.total_cap_usd)}.${expiredText}${unstartedText}`,
+    );
+  }
   lines.push(
-    'Not checked offline: AWS credentials, Bedrock model availability and the spend ledger. Stage 1 of a run checks them.',
+    'Not checked offline: AWS credentials and Bedrock model availability. Stage 1 of a run checks them.',
   );
   if (plan.warnings.length)
     lines.push(

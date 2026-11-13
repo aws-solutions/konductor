@@ -37,6 +37,15 @@ function withTmp(callback) {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 }
+/** Like withTmp, for an async callback: the directory is removed after the returned promise settles. */
+async function withTmpAsync(callback) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-test-'));
+  try {
+    return await callback(dir);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
 /**
  * A copy of `source` with the value at the dotted path `dottedPath` ("rules.0.id") replaced; `undefined`
  * deletes the field. The field is defined as an own property, so a key such as `__proto__` is a real key,
@@ -239,6 +248,14 @@ const UNSAFE_NAMES = NAME_CASES.filter(([, isSegment]) => !isSegment).map(
 );
 /** Values that are not even strings. */
 const NON_STRING_NAMES = [null, 7, {}, ['a']];
+/** Writes ledger rows (objects) as JSON lines, creating the folder. */
+function writeLedger(file, rows) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(
+    file,
+    rows.map((row) => `${JSON.stringify(row)}\n`).join(''),
+  );
+}
 
 /**
  * The settings of the committed bench/config.example.json, with `overrides` merged as the command line would.
@@ -255,8 +272,10 @@ module.exports = {
   write,
   update,
   withTmp,
+  withTmpAsync,
   edit,
   exampleConfig,
+  writeLedger,
   goodRules,
   goodTasks,
   goodBuckets,
