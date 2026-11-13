@@ -46,7 +46,7 @@ function buildCandidates(experiment, opts = {}) {
     if (inputCheck.multiTurn) add('input:multi-turn', 'the input holds more than one speaker-labelled turn');
     if (dups[i]) add('duplicate', `near-duplicate of ${ids[dups[i].of]} (token overlap ${dups[i].similarity})`);
     if (extraction.steps > 0) {
-      if (extraction.quality === 'extracted') add('trajectory:not-clean', `tool names were recovered from a mixed or richer trajectory (${extraction.notes.join('; ') || 'dict, list or prose steps'})`);
+      if (extraction.quality === 'extracted') add('trajectory:not-clean', `tool names were recovered from a mixed or prose trajectory, not only call strings or dicts that name a tool (${extraction.notes.join('; ') || 'list, prose or noisy steps'})`);
       else if (extraction.quality === 'none') add('trajectory:unreadable', 'the trajectory has steps but no declared tool name could be found');
     }
     if (extraction.undeclared.length) add('tool:undeclared', `the trajectory names tools the agent does not declare: ${extraction.undeclared.join(', ')}`);
@@ -79,7 +79,7 @@ function buildCandidates(experiment, opts = {}) {
 
   const byStatus = Object.fromEntries(STATUSES.map((s) => [s, 0]));
   const byReason = {};
-  const byQuality = { clean: 0, extracted: 0, none: 0 };
+  const byQuality = { clean: 0, structured: 0, extracted: 0, none: 0 };
   for (const c of candidates) {
     byStatus[c.status]++;
     byQuality[c.trajectoryQuality]++;

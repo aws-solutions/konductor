@@ -21,12 +21,44 @@ test('a call string may span lines', () => {
   assert.equal(r.quality, 'clean');
 });
 
-test('dicts keyed by tool, tool_name, name, function, action or step are extracted', () => {
+test('dicts keyed by tool, tool_name, name, function, action or step that name a declared tool are structured', () => {
   for (const key of ['tool', 'tool_name', 'name', 'function', 'action', 'step']) {
     const r = run([{ [key]: 'lookup_order', parameters: { order_id: 'X' } }]);
     assert.deepEqual(r.tools, ['lookup_order'], key);
-    assert.equal(r.quality, 'extracted', key);
+    assert.equal(r.quality, 'structured', key);
+    assert.deepEqual(r.notes, [], key);
   }
+});
+
+test('structured steps may carry any argument container, flat short values, or none, and mix with call strings', () => {
+  const r = run([{ tool: 'lookup_order', args: { order_id: 'A' } }, { action: 'check_refund_policy', order_id: 'A', step: 2 }, { tool_name: 'send_email' }, 'issue_refund(A, 5)', { function: { name: 'escalate_to_human' }, arguments: { summary: 'a long free text summary that is allowed inside arguments' } }]);
+  assert.deepEqual(r.tools, ['lookup_order', 'check_refund_policy', 'send_email', 'issue_refund', 'escalate_to_human']);
+  assert.equal(r.quality, 'structured');
+});
+
+test('call strings alone stay clean, and a dict step with prose, a prose key or an undeclared name is extracted', () => {
+  assert.equal(run(['lookup_order(A)', 'send_email(B)']).quality, 'clean');
+  const cases = [
+    { tool: 'lookup_order', reason: 'to find the order' },
+    { tool: 'lookup_order', purpose: 'Retrieve current order status' },
+    { tool: 'lookup_order', note: 'x' },
+    { tool: 'lookup_order', comment: 'Agent first looks up the order carefully' },
+    { action: "lookup_order(order_id='A')" },
+    { tool: 'lookup_order_v2' },
+  ];
+  for (const step of cases) {
+    const r = run([step]);
+    assert.notEqual(r.quality, 'structured', JSON.stringify(step));
+  }
+  assert.equal(run([{ tool: 'lookup_order', reason: 'to find the order' }]).quality, 'extracted');
+});
+
+test('one non-structured step makes the whole trajectory extracted', () => {
+  assert.equal(run([{ tool: 'lookup_order' }, 'Agent should then call send_email to confirm']).quality, 'extracted');
+  assert.equal(run([{ tool: 'lookup_order' }, ['send_email', 'to=x']]).quality, 'extracted');
+  assert.equal(run([{ tool: 'lookup_order' }, { type: 'tool_response', tool: 'lookup_order', data: {} }]).quality, 'extracted');
+  assert.equal(run([{ tool: 'lookup_order' }, { tool: 'search_order_info' }]).quality, 'extracted');
+  assert.equal(run([{ tool: 'lookup_order' }, { action: 'response', content: 'hi' }]).quality, 'extracted');
 });
 
 test('a dict value may be a name(args) string, and a numeric step is skipped', () => {

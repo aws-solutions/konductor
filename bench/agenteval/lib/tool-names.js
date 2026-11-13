@@ -8,6 +8,8 @@ const STRONG_KEYS = ['tool', 'tool_name', 'function', 'function_name'];
 const WEAK_KEYS = ['name', 'action', 'step'];
 const RESPONSE_TYPE = /^tool[_ -]?(?:response|result|output)s?$/i;
 const RESPONSE_KEYS = ['tool_response', 'tool_result', 'tool_output'];
+const ARG_KEYS = new Set(['args', 'arguments', 'parameters', 'params', 'input', 'inputs', 'kwargs']);
+const PROSE_KEYS = new Set(['reason', 'description', 'thought', 'explanation', 'comment', 'note', 'rationale', 'purpose', 'expected', 'summary']);
 const CHATTER = /^\s*(?:here (?:are|is)\b|sure[,.!]|certainly[,.!]|below (?:are|is)\b|expected(?:_output)?\b|this expected output\b|good\.|let'?s\b|ok(?:ay)?[,.!])/i;
 const NEGATION = /\b(?:not|never|no|don't|do not|doesn't|without|avoid|shouldn't|must not|should not)\b[^.;\n]*$/i;
 const SNAKE = /^[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+$/;
@@ -56,10 +58,23 @@ function nameFieldOf(step) {
   return null;
 }
 
+// A dict step is structured when its name field is exactly a declared tool and nothing else in it is prose: other keys are argument
+// containers, or short flat values such as an order id or a step number, and none is a prose-named key.
+function isStructured(step, declared) {
+  const field = nameFieldOf(step);
+  if (!field || !declared.has(field.value.trim())) return false;
+  for (const [key, value] of Object.entries(step)) {
+    if (key === field.key || ARG_KEYS.has(key)) continue;
+    if (PROSE_KEYS.has(key.toLowerCase())) return false;
+    if (typeof value === 'string' && value.trim().split(/\s+/).length > 3) return false;
+  }
+  return true;
+}
+
 /**
  * @param {unknown} trajectory raw expected_trajectory (any shape, null allowed)
  * @param {string[]} declaredTools tool names the agent declares
- * @returns {{tools: string[], quality: 'clean'|'extracted'|'none', undeclared: string[], notes: string[], steps: number}}
+ * @returns {{tools: string[], quality: 'clean'|'structured'|'extracted'|'none', undeclared: string[], notes: string[], steps: number}}
  */
 function extractTools(trajectory, declaredTools) {
   if (!Array.isArray(declaredTools) || declaredTools.length === 0 || declaredTools.some((t) => typeof t !== 'string' || !t)) {
@@ -72,6 +87,7 @@ function extractTools(trajectory, declaredTools) {
   const undeclared = [];
   const notes = [];
   let allPlain = true;
+  let structured = 0;
   let chatter = 0;
   let responses = 0;
   let recovered = 0;
@@ -97,8 +113,8 @@ function extractTools(trajectory, declaredTools) {
       if (!handleString(step, i, { strict: true })) skipped++;
       return;
     }
-    allPlain = false;
     if (Array.isArray(step)) {
+      allPlain = false;
       const [first, ...rest] = step;
       if (typeof first !== 'string') { skipped++; return; }
       if (!handleString(first, i, { strict: true })) skipped++;
@@ -109,7 +125,11 @@ function extractTools(trajectory, declaredTools) {
     }
     if (step && typeof step === 'object') {
       const isResponse = RESPONSE_TYPE.test(String(step.type ?? '')) || (RESPONSE_KEYS.some((k) => k in step) && !nameFieldOf(step));
-      if (isResponse) { responses++; return; }
+      if (isResponse) { responses++; allPlain = false; return; }
+      const isClean = isStructured(step, declared);
+      const recoveredBefore = recovered;
+      if (isClean) structured++;
+      else allPlain = false;
       const field = nameFieldOf(step);
       let hit = false;
       if (field) hit = handleString(field.value, i, { strict: field.strong });
@@ -119,9 +139,11 @@ function extractTools(trajectory, declaredTools) {
           if (handleString(value, i, { strict: false })) { hit = true; break; }
         }
       }
+      if (isClean) recovered = recoveredBefore;
       if (!hit) skipped++;
       return;
     }
+    allPlain = false;
     skipped++;
   });
 
@@ -133,7 +155,7 @@ function extractTools(trajectory, declaredTools) {
   if (steps.length === 0) notes.push('empty trajectory');
 
   let quality = 'none';
-  if (tools.length) quality = allPlain && undeclared.length === 0 ? 'clean' : 'extracted';
+  if (tools.length) quality = allPlain && undeclared.length === 0 ? (structured ? 'structured' : 'clean') : 'extracted';
   return { tools, quality, undeclared, notes, steps: steps.length };
 }
 

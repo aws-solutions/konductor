@@ -81,6 +81,17 @@ test('an empty or missing trajectory is a valid no-tool case and stays ok', () =
   }
 });
 
+test('structured dict trajectories are accepted, extracted ones still get trajectory:not-clean', () => {
+  const structured = one({ ...GOOD, expected_trajectory: [{ tool: 'lookup_order', args: { order_id: 'ORD-55555' } }, { action: 'check_refund_policy', parameters: {} }] });
+  assert.equal(structured.trajectoryQuality, 'structured');
+  assert.equal(structured.status, 'ok');
+  assert.deepEqual(structured.reasons, []);
+  assert.deepEqual(structured.proposedTools, ['lookup_order', 'check_refund_policy']);
+  const noisy = one({ ...GOOD, expected_trajectory: [{ tool: 'lookup_order' }, { type: 'tool_response', tool: 'lookup_order', data: {} }] });
+  assert.equal(noisy.trajectoryQuality, 'extracted');
+  assert.deepEqual(noisy.reasons.map((r) => r.code), ['trajectory:not-clean']);
+});
+
 test('batches label cases by position and mark the label as inferred', () => {
   const cases = Array.from({ length: 6 }, (_, i) => ({ ...GOOD, name: `c${i}`, input: `question number ${i} about unique topic ${'x'.repeat(i + 1)} zeta${i}` }));
   const out = buildCandidates(make(cases), { tools: TOOLS, batches: 3 }).candidates;
@@ -107,21 +118,26 @@ test('raw rule objects are parsed against the declared tools, and bad ones fail 
   assert.throws(() => one(GOOD, { rules: [{ before: ['lookup_order', 'nope'] }] }), /not a declared tool/);
 });
 
-// Expected counts for the 14-case sample, derived by hand from the fixture (index: reasons):
-//  0 custom_item_non_refundable     clean strings, order id present                         ok
-//  1 Verbal abuse ...               dict steps (function key), two Customer: turns          needs-edit  multi-turn, not-clean
-//  2 check_refund_eligibility       tool_response dicts ignored                             needs-edit  not-clean
-//  3 simple_order_status_check      [name, args] lists, send_email never asked for          needs-edit  not-clean, forbidUnless
-//  4 Refund inquiry ... damaged     lists with search_order_info and 3 more, unasked email  needs-edit  not-clean, undeclared, forbidUnless
-//  5 Amount Creep ...               prose trajectory, <tool call> and ... in the output     needs-edit  not-clean, output placeholder
-//  6 Mixed_Complex_Scenario ...     generator chatter and prose, no tool name               needs-edit  unreadable
-//  7 Order Inquiry Without Order ID empty trajectory, no tool needed                        ok
-//  8 Order Status Inquiry - Easy    no trajectory (OutputEvaluator run), label and quotes   ok  (input normalized)
-//  9 medium_multi_item ...          input is the word string, output is string              reject  input placeholder (+ not-clean, output placeholder)
-// 10 _Customer Service Assistant    input is a title                                        reject  title-like
-// 11 basic_order_status_inquiry     near-duplicate of 3, [status] slots in the output       reject  duplicate (+ not-clean, output placeholder)
-// 12 a03d327f                       lookup named in prose, no order id in the input         needs-edit  not-clean, forbidUnless
-// 13 Missing Order ID ...           three Customer: turns, [After receiving ...] in output  needs-edit  multi-turn, not-clean, output placeholder
+// Expected results for the 14-case sample, derived by hand from the fixture. Trajectory quality: clean = call strings only,
+// structured = dicts that name a declared tool with arguments only (accepted, no reason), extracted = prose, lists, mixed or noisy steps.
+//  #  case                          trajectory                                                         quality     status      reasons
+//  0  custom_item_non_refundable    call strings                                                       clean       ok
+//  1  Verbal abuse ...              {function, arguments} dicts, two Customer: turns                   structured  needs-edit  multi-turn
+//  2  check_refund_eligibility      tool_response dicts mixed in                                       extracted   needs-edit  not-clean
+//  3  simple_order_status_check     [name, args] lists, send_email never asked for                     extracted   needs-edit  not-clean, forbidUnless
+//  4  Refund inquiry ... damaged    lists with search_order_info and 3 more, unasked email             extracted   needs-edit  not-clean, undeclared, forbidUnless
+//  5  Amount Creep ...              prose trajectory, <tool call> and ... in the output                extracted   needs-edit  not-clean, output placeholder
+//  6  Mixed_Complex_Scenario ...    generator chatter and prose, no tool name                          none        needs-edit  unreadable
+//  7  Order Inquiry Without Order   empty trajectory, no tool needed                                   none        ok
+//  8  Order Status Inquiry - Easy   no trajectory (OutputEvaluator run), label and quotes              none        ok          (input normalized)
+//  9  medium_multi_item ...         dicts with a purpose key (prose), input is the word string         extracted   reject      input placeholder, not-clean, output placeholder
+// 10  _Customer Service Assistant   input is a title, empty trajectory                                 none        reject      title-like
+// 11  basic_order_status_inquiry    action dict plus an {action: response, content} step               extracted   reject      duplicate of 3, not-clean, output placeholder
+// 12  a03d327f                      lookup named in prose, no order id in the input                    extracted   needs-edit  not-clean, forbidUnless
+// 13  Missing Order ID ...          {tool_name, parameters} dicts, three Customer: turns               structured  needs-edit  multi-turn, output placeholder
+// Status counts: ok 3 (0, 7, 8), needs-edit 8 (1-6, 12, 13), reject 3 (9, 10, 11). Same as before the structured level, because
+// cases 1 and 13 still have other reasons. trajectory:not-clean drops from 9 to 7 (cases 1 and 13 leave it).
+// Quality counts: clean 1 (0), structured 2 (1, 13), extracted 7 (2, 3, 4, 5, 9, 11, 12), none 4 (6, 7, 8, 10).
 test('end to end on the 14-case sample', () => {
   const tools = TOOLS;
   const exp = loadExperiment(path.join(FIXTURES, 'strands-sample.json'));
@@ -132,7 +148,7 @@ test('end to end on the 14-case sample', () => {
   assert.deepEqual(summary.byStatus, { ok: 3, 'needs-edit': 8, reject: 3 });
   assert.deepEqual(summary.byReason, {
     'input:multi-turn': 2,
-    'trajectory:not-clean': 9,
+    'trajectory:not-clean': 7,
     'trajectory:unreadable': 1,
     'tool:undeclared': 1,
     'output:placeholder': 4,
@@ -141,7 +157,7 @@ test('end to end on the 14-case sample', () => {
     'input:title-like': 1,
     duplicate: 1,
   });
-  assert.deepEqual(summary.byQuality, { clean: 1, extracted: 9, none: 4 });
+  assert.deepEqual(summary.byQuality, { clean: 1, structured: 2, extracted: 7, none: 4 });
   assert.equal(summary.total, 14);
 
   const by = (i) => candidates[i];
@@ -150,6 +166,9 @@ test('end to end on the 14-case sample', () => {
   assert.equal(by(8).inputNormalized, true);
   assert.equal(by(8).input, 'Hi, can you tell me the status of my order?');
   assert.equal(by(1).multiTurn, true);
+  assert.deepEqual(by(1).reasons.map((r) => r.code), ['input:multi-turn']);
+  assert.deepEqual(by(13).reasons.map((r) => r.code), ['input:multi-turn', 'output:placeholder']);
+  assert.deepEqual([1, 13].map((i) => by(i).trajectoryQuality), ['structured', 'structured']);
   assert.equal(by(13).multiTurn, true);
   assert.equal(by(5).placeholderOutput, true);
   assert.deepEqual(by(12).reasons.map((r) => r.code), ['trajectory:not-clean', 'rule:forbidUnless']);
