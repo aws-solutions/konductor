@@ -458,6 +458,12 @@
         "null"
       ]
     },
+    "launchFailure": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "installHarness": {
       "type": [
         "string",

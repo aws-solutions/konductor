@@ -443,7 +443,9 @@ async function cmdRun(opts, deps = {}) {
     log(`finished: ${JSON.stringify(summarize(runConfig, { ...state, results }, {}).counts)}, ${observed.toFixed(3)} ${unit} observed, ${charged.toFixed(3)} charged`);
     log(`final ${studyLine}`);
     if (authStop.tripped) {
-      log(`LOGIN FAILURE: ${authStop.reason}. ${authStop.skipped} planned run(s) were skipped. Log in to kiro-cli again, then rerun the skipped cells in a new --out or with --replicate-offset.`);
+      log(authStop.kind === 'launch'
+        ? `LAUNCH FAILURE: ${authStop.reason}. ${authStop.skipped} planned run(s) were skipped. Check that the kiro-cli binary is still in place, then rerun the skipped cells in a new --out or with --replicate-offset.`
+        : `LOGIN FAILURE: ${authStop.reason}. ${authStop.skipped} planned run(s) were skipped. Log in to kiro-cli again, then rerun the skipped cells in a new --out or with --replicate-offset.`);
       if (!process.exitCode) process.exitCode = AUTH_EXIT_CODE;
     }
     if (infra) {
