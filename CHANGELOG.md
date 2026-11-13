@@ -210,6 +210,8 @@ not per individual commit.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 - `NOTICE.txt` lists every shipped crate, and `make notice-check` keeps it current.
+- Kiro CLI v3 agent files no longer carry an empty `hooks: []` list. Only the mux and cmux
+  orchestrators, which have a `stop` hook, still have a `hooks` field.
 
 ### Security
 

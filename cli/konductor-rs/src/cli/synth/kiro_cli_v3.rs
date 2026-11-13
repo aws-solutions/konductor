@@ -116,6 +116,10 @@ use super::HarnessTransformer;
 /// It is a Kiro-only field, so it lives in the Kiro client config -- exactly
 /// the "corresponding `KiroCliConfig` field plus a matching addition here"
 /// the note above calls for.
+///
+/// `hooks` is omitted when the agent has none. Kiro accepts a file without
+/// the key, and the Kiro IDE docs say it does not show agents that carry
+/// `hooks`, so only agents with real hooks pay that cost.
 #[derive(Serialize)]
 struct KiroV3AgentFile<'a> {
     name: &'a str,
@@ -130,8 +134,13 @@ struct KiroV3AgentFile<'a> {
     permissions: PermissionsBlock,
     #[serde(rename = "mcpServers")]
     mcp_servers: serde_json::Value,
+    #[serde(skip_serializing_if = "is_empty_hook_list")]
     hooks: serde_json::Value,
     resources: Vec<String>,
+}
+
+fn is_empty_hook_list(hooks: &serde_json::Value) -> bool {
+    hooks.as_array().is_some_and(Vec::is_empty)
 }
 
 /// The V3 `permissions` block. `rules` mirrors the shape confirmed on
@@ -2323,8 +2332,8 @@ mod tests {
     }
 
     /// An empty `hooks` object converts to an empty array -- KAS rejects
-    /// `{}` but accepts `[]` -- matching this module's existing
-    /// "minimal valid output" contract for `permissions`.
+    /// `{}` but accepts `[]`. `KiroV3AgentFile` then leaves the empty list
+    /// out of the written file.
     #[test]
     fn convert_hooks_for_v3_empty_object_becomes_empty_array() {
         let hooks = indexmap::IndexMap::new();
@@ -2335,8 +2344,8 @@ mod tests {
     /// End-to-end guard, at the `transform` level rather than the unit
     /// level: a `hooks` object anywhere in the installed V3 agent file
     /// is exactly the shape KAS's own validator rejects (see this
-    /// module's header comment), so the file `render_agent_file`
-    /// produces must always carry `hooks` as an array.
+    /// module's header comment), so an agent with hooks must get them
+    /// as an array in the file `render_agent_file` produces.
     #[test]
     fn transform_emits_hooks_as_array_not_object() {
         let mut hooks_map = indexmap::IndexMap::new();
@@ -2369,6 +2378,23 @@ mod tests {
             "got: {}",
             parsed["hooks"]
         );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn transform_omits_hooks_key_when_the_agent_has_no_hooks() {
+        let dir = temp_dir("no-hooks");
+        let model = CanonicalModel {
+            agents: vec![agent_with_kiro("k-unhooked", KiroCliConfig::default())],
+            ..Default::default()
+        };
+        KiroCliV3Transformer.transform(&model, &dir).unwrap();
+
+        let agent_file = dir.join(expected_output_dir()).join("k-unhooked.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&agent_file).unwrap()).unwrap();
+        assert!(parsed.get("hooks").is_none(), "got: {parsed}");
 
         let _ = fs::remove_dir_all(&dir);
     }
