@@ -125,6 +125,7 @@ serde_json under the MIT OR Apache-2.0 license.
 serde_yaml under the MIT OR Apache-2.0 license.
 sha2 under the MIT OR Apache-2.0 license.
 shlex under the MIT OR Apache-2.0 license.
+signal-hook under the MIT OR Apache-2.0 license.
 signal-hook-registry under the MIT OR Apache-2.0 license.
 simd-adler32 under the MIT license.
 slab under the MIT license.

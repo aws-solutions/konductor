@@ -7,8 +7,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use workflow_core::ports::Clock;
 
 /// The system's wall clock. It stamps the run state. The harness decides whether a session timed out, and the stamps are
-/// only information about how long a stage took, so a clock that is set back or forward cannot block a stage. Step 1f
-/// should still measure real sessions with a monotonic clock (`std::time::Instant`).
+/// only information about how long a stage took, so a clock that is set back or forward cannot block a stage. The
+/// launcher does not use this clock for a real session's time limit: it times the deadline with a monotonic clock
+/// (`std::time::Instant`).
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SystemClock;
 

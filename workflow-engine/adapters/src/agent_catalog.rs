@@ -13,8 +13,20 @@
 //!   tools in the `tools` key of its front matter, as written there. A definition with no `tools` key makes every tool
 //!   available and pre-approves none.
 //!
-//! The order on Kiro is assumed until step 1f-1 records it. An install made with another `--target` is seen only when
-//! that folder is the project root or the home folder.
+//! Kiro CLI identifies an agent by the JSON `name` of a file under `.kiro/agents/` (any file name, any subfolder, and
+//! on Kiro 3 a `.md` file too), in its working directory and then in the home folder, and nowhere else: it does not
+//! search the folders above its working directory, and an agent in the working directory wins over one with the same id
+//! in the home folder (checked on Kiro CLI V2 and V3 in step 1f-1, and again in step 1e). An install made with another
+//! `--target` is seen only when that folder is the project root or the home folder.
+//!
+//! The summary of `flow run` and the harness that starts the session use one lookup and one parse of that file
+//! (`find_kiro_with_text`, one `kiro_candidates` walk), so they never read two different files. The engine is read from
+//! the text of the one JSON file that declares the agent. A Kiro markdown agent, two files that may be the agent, or a
+//! file this build cannot read has no engine, and the session does not start.
+//!
+//! A Kiro agent file has one of two shapes, and the shape says which engine reads it: V2 has an `allowedTools` list,
+//! and V3 has `permissions.rules`. The tools a V3 file lets run without asking are its `allow` rules, each named by its
+//! capability (`fs_write`), or with its scope when it has one (`mcp (aws-mcp/aws___search_documentation)`).
 
 use std::fs;
 use std::io::Read;
@@ -28,6 +40,53 @@ use crate::repo_config::{MAX_DEPTH, MAX_ENTRIES};
 
 /// A definition over this many bytes is not read.
 const MAX_BYTES: u64 = 1024 * 1024;
+
+/// The Kiro CLI engine that reads an agent file (D16). Which one is decided by the shape of the file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KiroEngine {
+    V2,
+    V3,
+}
+
+impl KiroEngine {
+    /// The flag that makes `kiro-cli chat` use this engine.
+    pub fn flag(self) -> &'static str {
+        match self {
+            KiroEngine::V2 => "--v2",
+            KiroEngine::V3 => "--v3",
+        }
+    }
+}
+
+/// A Kiro agent as the harness will find it: the definition, and the engine its file shape says. `engine` is an error
+/// when the file has neither shape, both, or cannot be read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KiroAgent {
+    pub definition: AgentDefinition,
+    pub engine: Result<KiroEngine, String>,
+}
+
+/// The engine of a Kiro agent file, from its shape: V2 has `allowedTools` and V3 has `permissions.rules`.
+pub fn kiro_engine(text: &str) -> Result<KiroEngine, String> {
+    // The same parse as the lookup and the tools use (`parse_kiro`), so a file that the lookup finds is read one way
+    // everywhere: deep nesting and a repeated key that is not read are accepted, as Kiro accepts them.
+    let value = parse_kiro(text).ok_or_else(|| "the agent file is not valid JSON".to_string())?;
+    let v2 = value.get("allowedTools").is_some();
+    let v3 = value
+        .get("permissions")
+        .and_then(|p| p.get("rules"))
+        .is_some();
+    match (v2, v3) {
+        (true, false) => Ok(KiroEngine::V2),
+        (false, true) => Ok(KiroEngine::V3),
+        (true, true) => Err("the agent file has both `allowedTools` (V2) and `permissions.rules` (V3), so it is not \
+                             clear which engine reads it"
+            .to_string()),
+        (false, false) => Err("the agent file has neither `allowedTools` (V2) nor `permissions.rules` (V3), so it is \
+                              not clear which engine reads it"
+            .to_string()),
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct FileAgentCatalog {
@@ -53,6 +112,19 @@ impl FileAgentCatalog {
             }
         }
         self
+    }
+
+    /// The Kiro agent that `agent` names, with the engine its file shape says. `None` if no file is there.
+    pub fn kiro_agent(&self, agent: &str) -> Option<KiroAgent> {
+        if !is_name(agent) {
+            return None;
+        }
+        let (definition, text) = self.find_kiro_with_text(agent)?;
+        let engine = match text {
+            Ok(text) => kiro_engine(&text),
+            Err(why) => Err(why),
+        };
+        Some(KiroAgent { definition, engine })
     }
 
     /// The folders searched, nearest first, each with where it counts and how its files are shown.
@@ -84,6 +156,16 @@ impl FileAgentCatalog {
     /// Kiro CLI identifies an agent by the `name` in its JSON, not by the file name. The first folder with a file that
     /// declares `agent` gives the definition. Within it, two such files leave the agent unknown and ambiguous.
     fn find_kiro(&self, agent: &str) -> Option<AgentDefinition> {
+        self.find_kiro_with_text(agent).map(|(found, _)| found)
+    }
+
+    /// The Kiro definition and, for the engine, the text of the one JSON file that declares the agent. The text is an
+    /// error when no single readable JSON file does (a markdown agent, two files, a file this build cannot read), so
+    /// the engine is never guessed from a file that may not be the one Kiro loads.
+    fn find_kiro_with_text(
+        &self,
+        agent: &str,
+    ) -> Option<(AgentDefinition, Result<String, String>)> {
         for place in self.places() {
             let candidates = kiro_candidates(&place.base.join(".kiro/agents"), agent);
             let shown = |c: &KiroCandidate| format!("{}.kiro/agents/{}", place.label, c.file);
@@ -98,11 +180,22 @@ impl FileAgentCatalog {
             match candidates.as_slice() {
                 [] => continue,
                 [one] => {
-                    let (tools, also_sets) = match &one.kind {
-                        Kind::Declares(text) => (kiro_tools(text), kiro_also_sets(text)),
-                        Kind::Unreadable(why) => (AgentTools::Unknown(why.clone()), Vec::new()),
+                    let (tools, also_sets, text) = match &one.kind {
+                        Kind::Declares(text) => (
+                            kiro_tools(text),
+                            kiro_also_sets(text),
+                            engine_text(&one.file, text),
+                        ),
+                        Kind::Unreadable(why) => (
+                            AgentTools::Unknown(why.clone()),
+                            Vec::new(),
+                            Err(why.clone()),
+                        ),
                     };
-                    return Some(definition(tools, also_sets, shown(one), one.ambiguous));
+                    return Some((
+                        definition(tools, also_sets, shown(one), one.ambiguous),
+                        text,
+                    ));
                 }
                 many => {
                     let names: Vec<&str> = many.iter().map(|c| c.file.as_str()).collect();
@@ -111,11 +204,14 @@ impl FileAgentCatalog {
                          the harness will use",
                         names.join(", ")
                     );
-                    return Some(definition(
-                        AgentTools::Unknown(why),
-                        Vec::new(),
-                        shown(&many[0]),
-                        true,
+                    return Some((
+                        definition(
+                            AgentTools::Unknown(why.clone()),
+                            Vec::new(),
+                            shown(&many[0]),
+                            true,
+                        ),
+                        Err(why),
                     ));
                 }
             }
@@ -240,6 +336,22 @@ fn claude_candidates(folder: &Path, agent: &str) -> Vec<Candidate> {
         });
     }
     found
+}
+
+/// The text of the one JSON file that declares a Kiro agent, as the engine is read from it, or why the engine is unclear.
+/// Kiro 2 loads only the top-level `.json` files of `.kiro/agents/`, and the engine is read from the shape of the file,
+/// not from where it sits. So a V2-shaped file in a subfolder would get `--v2` and never be loaded: Kiro 2 would run
+/// another file with the same id, one that nothing here showed. That leaves the engine unclear, as a markdown agent
+/// does. A V3-shaped file in a subfolder is loaded by Kiro 3 and keeps its engine.
+fn engine_text(file: &str, text: &str) -> Result<String, String> {
+    if file.contains('/') && kiro_engine(text) == Ok(KiroEngine::V2) {
+        return Err(format!(
+            "the file {file} is a V2-style agent file (`allowedTools`) in a subfolder, which Kiro 2 does not load, so it \
+             cannot say which file the session would run. Move it to the top level of `.kiro/agents` or give it V3 \
+             `permissions.rules`"
+        ));
+    }
+    Ok(text.to_string())
 }
 
 /// A `.json` or `.md` file under `.kiro/agents/` that declares the id asked for, or may.
@@ -927,6 +1039,15 @@ fn kiro_tools(text: &str) -> AgentTools {
     let Some(value) = parse_kiro(text) else {
         return AgentTools::Unknown("the agent file is not valid JSON".into());
     };
+    if value.get("allowedTools").is_none() {
+        if let Some(rules) = value
+            .get("permissions")
+            .and_then(|p| p.get("rules"))
+            .and_then(Json::as_array)
+        {
+            return v3_allow_list(rules);
+        }
+    }
     let list = value.get("allowedTools").and_then(Json::as_array);
     let names: Option<Vec<String>> = list.and_then(|items| {
         items
@@ -942,6 +1063,71 @@ fn kiro_tools(text: &str) -> AgentTools {
                 .into(),
         ),
     }
+}
+
+/// The tools a V3 agent file lets run without asking: its `allow` rules, in order. A rule with no scope is its
+/// capability. A rule with a `match` or `exclude` scope is named with the scope, so that nothing reads it as the whole
+/// capability. A capability that the file also has a rule against (`deny` or any other effect) is named as partly
+/// restricted, so it never reads as the whole capability either.
+fn v3_allow_list(rules: &[Json]) -> AgentTools {
+    let unreadable = || {
+        AgentTools::Unknown(
+            "the agent file has a permission rule in a form this build cannot read, so it cannot say what the runner \
+             lets it run without asking"
+                .into(),
+        )
+    };
+    let mut names: Vec<String> = Vec::new();
+    let mut restricted: Vec<&str> = Vec::new();
+    for rule in rules {
+        let (Some(capability), Some(effect)) = (
+            rule.get("capability").and_then(Json::as_str),
+            rule.get("effect").and_then(Json::as_str),
+        ) else {
+            return unreadable();
+        };
+        if effect != "allow" {
+            restricted.push(capability);
+        }
+    }
+    for rule in rules {
+        let Some(capability) = rule.get("capability").and_then(Json::as_str) else {
+            return unreadable();
+        };
+        if rule.get("effect").and_then(Json::as_str) != Some("allow") {
+            continue;
+        }
+        let scope = |key: &str| -> Option<Vec<String>> {
+            match rule.get(key) {
+                None => Some(Vec::new()),
+                Some(list) => list
+                    .as_array()?
+                    .iter()
+                    .map(|item| item.as_str().map(str::to_string))
+                    .collect(),
+            }
+        };
+        let (Some(matches), Some(excludes)) = (scope("match"), scope("exclude")) else {
+            return unreadable();
+        };
+        let mut name = capability.to_string();
+        if !matches.is_empty() || !excludes.is_empty() {
+            let mut parts = Vec::new();
+            if !matches.is_empty() {
+                parts.push(matches.join(", "));
+            }
+            if !excludes.is_empty() {
+                parts.push(format!("except {}", excludes.join(", ")));
+            }
+            name = format!("{name} ({})", parts.join("; "));
+        } else if restricted.contains(&capability) {
+            name = format!("{name} (partly denied)");
+        }
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    }
+    AgentTools::Listed(names)
 }
 
 fn claude_tools(text: &str) -> AgentTools {
@@ -1173,4 +1359,75 @@ fn unquote_whole(body: &str) -> String {
         }
     }
     trimmed.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_shape_of_the_file_says_the_engine() {
+        assert_eq!(kiro_engine(r#"{"allowedTools":[]}"#), Ok(KiroEngine::V2));
+        assert_eq!(
+            kiro_engine(r#"{"permissions":{"rules":[]}}"#),
+            Ok(KiroEngine::V3)
+        );
+        for text in [
+            r#"{"allowedTools":[],"permissions":{"rules":[]}}"#,
+            r#"{"tools":["read"]}"#,
+            r#"{"permissions":{}}"#,
+            "{",
+        ] {
+            assert!(kiro_engine(text).is_err(), "{text}");
+        }
+    }
+
+    #[test]
+    fn engines_have_their_flags() {
+        assert_eq!(KiroEngine::V2.flag(), "--v2");
+        assert_eq!(KiroEngine::V3.flag(), "--v3");
+    }
+
+    #[test]
+    fn a_v3_file_lists_its_allow_rules_and_names_the_scope_of_a_scoped_one() {
+        let tools = kiro_tools(
+            r#"{"permissions":{"rules":[
+              {"capability":"fs_read","effect":"allow"},
+              {"capability":"fs_write","effect":"allow"},
+              {"capability":"fs_write","effect":"allow"},
+              {"capability":"web_fetch","effect":"deny"},
+              {"capability":"web_fetch","effect":"allow"},
+              {"capability":"shell","match":["ls *","pwd"],"exclude":["rm *"],"effect":"allow"},
+              {"capability":"mcp","match":["aws-mcp/x"],"effect":"allow"}]}}"#,
+        );
+        assert_eq!(
+            tools,
+            AgentTools::Listed(vec![
+                "fs_read".to_string(),
+                "fs_write".to_string(),
+                "web_fetch (partly denied)".to_string(),
+                "shell (ls *, pwd; except rm *)".to_string(),
+                "mcp (aws-mcp/x)".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn a_v3_rule_that_cannot_be_read_makes_the_list_unknown_and_never_shorter() {
+        for text in [
+            r#"{"permissions":{"rules":[{"effect":"allow"}]}}"#,
+            r#"{"permissions":{"rules":[{"capability":"shell","match":"ls","effect":"allow"}]}}"#,
+            r#"{"permissions":{"rules":[{"capability":"shell"}]}}"#,
+        ] {
+            assert!(matches!(kiro_tools(text), AgentTools::Unknown(_)), "{text}");
+        }
+    }
+
+    #[test]
+    fn a_v2_file_keeps_its_allow_list_even_if_it_also_has_a_permissions_key() {
+        assert_eq!(
+            kiro_tools(r#"{"allowedTools":["fs_read"],"permissions":{"rules":[]}}"#),
+            AgentTools::Listed(vec!["fs_read".to_string()])
+        );
+    }
 }
