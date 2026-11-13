@@ -696,6 +696,9 @@ note](workflows-exports.md).
 
 Each item has a slice or a design that owns it, and a rule until then.
 
+- **ACP adapters and checks under `timeout`.** Decided in: D52. Until then their limit is that of the owner.
+- **A watchdog of our own for the weaker `timeout` flavor.** Decided in: D56. Until then the strict whole-group
+  guarantee is stated for GNU `timeout` only, and with the other flavor the owner loop ends the group while it lives.
 - **Escape for literal template-reference text.** Slice 2. Until then, text that matches the reference pattern is
   rejected with `NOT_SUPPORTED_BY_THIS_BUILD`.
 - **Worktree isolation for runner stages.** Slice 12. Until then the runner never passes `--trust-all-tools` (D19).
