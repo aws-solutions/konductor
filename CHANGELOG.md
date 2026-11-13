@@ -324,6 +324,21 @@ not per individual commit.
     `aws___retrieve_skill`, `aws___search_documentation` and `aws___read_documentation`, and its
     prompt forbids `aws___run_script` and requires confirmation before any mutating AWS action.
     The skill-name test now also checks aws-mcp skill names in table cells and prose.
+- The Kiro spec skills and the `kiro-spec-workflow` SOP write specs in the format Kiro writes
+  them:
+  - `requirements.md` has a Glossary, and each requirement names the user story it came from on
+    a `**Source:**` line (for example `US-3`), so it traces back to the PM handoff.
+  - `design.md` has Kiro's seven sections, with Correctness Properties: `*For any* ... SHALL`
+    statements, each with the requirements it validates.
+  - `tasks.md` marks optional test tasks with `- [ ]*`, adds checkpoint tasks, names the
+    property each property test checks, and ends with a Task Dependency Graph (a flowchart and
+    a JSON list of waves), which Kiro's spec format check requires.
+  - The SOP takes `spec_type` (`feature` or `bugfix`) and `workflow` (`requirements-first` or
+    `design-first`), and writes `.config.kiro`. A bugfix spec writes `bugfix.md` with Current,
+    Expected and Unchanged Behavior sections from a `bug_report_path`. Run on its own on Kiro,
+    the SOP offers `/spec new` seeded with the handoff files and hands execution to `/spec run`;
+    inside `k-full-sdlc` it leaves execution to that SOP. Its last step reports gaps between the
+    documents instead of a traceability table.
 
 ### Fixed
 

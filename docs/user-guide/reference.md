@@ -434,7 +434,7 @@ All 19, with owning agent and required parameters. Detail and flowcharts:
 | `k-context-gathering` | orchestrators | `target` |
 | `k-verify` | orchestrators | `source_dir` |
 | `k-delegate` | `konductor` | `task_description`, `target_agent` |
-| `kiro-spec-workflow` | orchestrators | `feature_name`, `feature_scope_path`, `user_stories_path`, `design_artifacts_path` |
+| `kiro-spec-workflow` | orchestrators | `feature_name`, `feature_scope_path`, `user_stories_path`, `design_artifacts_path` (a bugfix spec: `feature_name`, `bug_report_path`) |
 | `k-design-doc-creation` | `k-architect` | `topic` |
 | `k-existing-design-review` | `k-architect` | `design_dir` |
 | `k-adversarial-pull-request-review` | orchestrators (`k-architect` is the checker) | `diff_input` (always; `pr_url` is context-only) |

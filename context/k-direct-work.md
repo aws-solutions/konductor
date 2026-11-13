@@ -7,7 +7,7 @@ SOP check, on every request. A request for a multi-phase workflow, or for a proc
 | SOP                                 | Phases | Use for                                                                          |
 | ----------------------------------- | ------ | -------------------------------------------------------------------------------- |
 | `k-full-sdlc`                       | 12     | build something end to end, requirements through tests and docs                  |
-| `kiro-spec-workflow`                | 4      | turn PM and design artifacts into a Kiro IDE spec (requirements, design, tasks)  |
+| `kiro-spec-workflow`                | 5      | turn PM and design artifacts into a Kiro IDE spec (requirements, design, tasks)  |
 | `k-plan`                            | 6      | a work breakdown with success criteria, dependencies, owners and estimates       |
 | `k-context-gathering`               | 5      | gather context before implementing in unfamiliar code or after repeated failures |
 | `k-verify`                          | 7      | verify a finished task with collected evidence                                   |

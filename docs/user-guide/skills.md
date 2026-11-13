@@ -211,9 +211,9 @@ it that step's parameters, and the specialist runs its own skill.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `kiro-requirements-generation` | Turns user stories into a Kiro IDE `requirements.md` with EARS-format acceptance criteria. | Step 1 of the `kiro-spec-workflow` SOP. | `k-product-manager` |
-| `kiro-design-generation` | Turns design artifacts into a per-feature Kiro IDE `design.md` with all 6 required sections. | Step 2 of the `kiro-spec-workflow` SOP, after requirements are approved. | `k-architect` |
-| `kiro-task-generation` | Generates a Kiro IDE `tasks.md` — numbered checkboxes with requirement references. | Step 3 of the `kiro-spec-workflow` SOP, after design is approved. | `k-developer` |
+| `kiro-requirements-generation` | Turns user stories into a Kiro IDE `requirements.md` with a Glossary, EARS-format acceptance criteria, and the source story ID on each requirement, or a bug report into `bugfix.md`. | Step 1 of the `kiro-spec-workflow` SOP. | `k-product-manager` |
+| `kiro-design-generation` | Turns design artifacts into a per-feature Kiro IDE `design.md` with Kiro's 7 sections, including Correctness Properties. Runs first in a design-first spec. | Step 2 of the `kiro-spec-workflow` SOP, after requirements are approved. | `k-architect` |
+| `kiro-task-generation` | Generates a Kiro IDE `tasks.md`: numbered checkboxes with requirement references, optional test tasks, checkpoints, and a task dependency graph. | Step 3 of the `kiro-spec-workflow` SOP, after design is approved. | `k-developer` |
 
 ---
 
