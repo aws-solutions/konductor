@@ -39,10 +39,22 @@ reference.
   `yaml` is now a dependency of the page.
 - `konductor flow check` and `konductor flow show` validate a workflow file and print its resolved form as JSON. The
   engine behind them is the Rust workspace in `workflow-engine/`, with its own CI.
-- `konductor flow run <name> --harness <harness>` runs a workflow. Each stage gets the stage prompt and passes on a
-  valid `KONDUCTOR_RESULT` line, a blocked stage halts the run with exit 1, and the run state is kept in
-  `.konductor/runs/`, which `.konductor/.gitignore` ignores. One run is active per workspace, and a second one exits 75.
-  The only harness so far is `fake`, which is test-only: it runs no agent, and the last line of its runs says so.
+- `konductor flow run <name> --harness fake` runs a workflow on the `fake` harness, which replays scripted replies. It is
+  test-only: it runs no agent, and the last line of its runs says so. `--harness kiro-cli` runs each stage in a headless Kiro CLI session (V2 or V3, chosen from the agent
+  file), started in the project root in its own process group, with the stage time limit and a kill after 10 seconds.
+  The runner passes no `--trust-tools` and no `--trust-all-tools`: the agent file says what the session may run without
+  asking.
+  Without `--harness` the one runner harness in `~/.konductor/installs` is used, and with both or neither installed
+  the flag is required. A stage whose agent Kiro CLI cannot see exits 64 before the first stage. A session is also
+  ended when the owner gets Ctrl-C, Ctrl-\, SIGTERM or SIGHUP, and the run halts with exit 1. The session runs under `timeout`
+  (or `gtimeout`), which holds the stage limit if the owner is killed with SIGKILL (the whole group ends only with GNU `timeout`); without either program the run
+  warns once and the limit lasts only while the owner does. A session left running by an owner that was killed with
+  SIGKILL is ended by the next run if its limit has not ended it. A failed session shows the last 4 KiB of its standard
+  error on the terminal, never in the run state. `konductor doctor` checks the version of `kiro-cli` against the lowest
+  version that was tested and warns when it is lower. `claude` is a usage error until a later
+  release. Each stage gets the stage prompt and passes on a valid `KONDUCTOR_RESULT` line, a blocked stage halts the
+  run with exit 1, and the run state is kept in `.konductor/runs/`, which `.konductor/.gitignore` ignores. One run is
+  active per workspace, and a second one exits 75.
 - `konductor flow trust <name>` shows what a workflow will run and records that you trust it, and `--revoke` removes the
   record. To confirm you type the first 8 characters of the trust hash, so a key pressed before the summary was on
   screen cannot confirm it. `flow run` asks before it runs a project workflow, or any workflow in a repository that has
@@ -61,8 +73,9 @@ reference.
   link in place of `.claude` or `.kiro`, is refused. The refusal for a run with no terminal does not carry the hash.
   A Claude agent is
   found by the exact `name` in its front matter, and two files with that name, or a declaring file whose name is not
-  `<id>.md`, refuse the run with exit 77. A front matter this build cannot read in full, or a `name` key in a form it
-  cannot read (a quoted key, a space before the colon, an indented or `{...}` front matter, an escaped value, an alias,
+  `<id>.md`, refuse the run with exit 77. On `kiro-cli` the agent is looked for in the project root and then in the home
+  folder, which is where Kiro CLI looks, and the summary shows that file. A front matter this build cannot read in full, or a `name` key in a form it cannot
+  read (a quoted key, a space before the colon, an indented or `{...}` front matter, an escaped value, an alias,
   a tab before a comment after the id, an opening `---` line in another form, a line break other than a line feed),
   that mentions the id is shown as unreadable, not skipped. A name that is another agent, even one that contains the
   id, is not this agent, and neither is a file that names the id only in its body or after a `---` in the front matter.
