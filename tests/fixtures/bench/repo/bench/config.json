@@ -1,0 +1,21 @@
+{
+  "models": {
+    "subject": "claude-sonnet-5-5",
+    "judges": {
+      "anthropic": "us.anthropic.claude-opus-5-5",
+      "openai": "us.openai.gpt-6.1-terra",
+      "xai": "us.xai.grok-4.7"
+    },
+    "rubric_writer": null
+  },
+  "max_usd": 30,
+  "total_cap_usd": 100,
+  "confirm_above_usd": 5,
+  "estimate_usd_per_call": {
+    "subject": 0.078125,
+    "judge": 0.0625,
+    "writer": 0.01375
+  },
+  "aws_profile": null,
+  "aws_region": "us-west-2"
+}

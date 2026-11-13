@@ -15,12 +15,19 @@ const SKILL = 'brew-log';
 /** A fake SHA-256 hex string: `digit` repeated 64 times. */
 const makeFakeSha256 = (digit) => digit.repeat(64);
 
+const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 /** Writes `data` as JSON, or as given when it is a string (to write broken JSON on purpose). */
 const write = (file, data) =>
   fs.writeFileSync(
     file,
     typeof data === 'string' ? data : JSON.stringify(data, null, 2),
   );
+/** Reads a JSON file, lets `mutate` change it in place, writes it back. */
+const update = (file, mutate) => {
+  const data = readJson(file);
+  mutate(data);
+  write(file, data);
+};
 /** Runs callback(dir) in a throw-away directory that is removed afterwards. */
 function withTmp(callback) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-test-'));
@@ -139,6 +146,51 @@ const goodExclusions = () => ({
     },
   },
 });
+/** The committed fixture: a miniature repository root with one skill that has a baseline. */
+const FIXTURE_DIR = path.join(__dirname, '..', '..', 'fixtures', 'bench');
+/** The fixture repository root. Throws, loudly, when the fixture is gone, so a test never passes on nothing. */
+function fixtureRoot() {
+  const marker = path.join(FIXTURE_DIR, 'repo', 'skills', SKILL, 'SKILL.md');
+  if (!fs.existsSync(marker))
+    throw new Error(
+      `benchmark fixture is missing: expected ${marker}. Restore tests/fixtures/bench/.`,
+    );
+  return path.join(FIXTURE_DIR, 'repo');
+}
+/** Runs callback(dir, layout) on a throw-away copy of the fixture root, so a test can add, change or delete files. */
+const withFixtureCopy = (callback) =>
+  withTmp((dir) => {
+    fs.cpSync(fixtureRoot(), dir, { recursive: true });
+    return callback(
+      dir,
+      require('../../../scripts/bench/lib/layout').createLayout({ root: dir }),
+    );
+  });
+
+/**
+ * The committed example settings with `changes` merged in: objects merge key by key, anything else replaces, and
+ * undefined deletes the key. Tests write it as a settings file, which must hold every setting.
+ */
+function settingsWith(changes = {}, base = readExample()) {
+  const merged = { ...base };
+  for (const [key, value] of Object.entries(changes)) {
+    if (value === undefined) delete merged[key];
+    else if (
+      value !== null &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      merged[key] !== null &&
+      typeof merged[key] === 'object' &&
+      !Array.isArray(merged[key])
+    )
+      merged[key] = settingsWith(value, merged[key]);
+    else merged[key] = value;
+  }
+  return merged;
+}
+const readExample = () =>
+  JSON.parse(fs.readFileSync(EXAMPLE_CONFIG_FILE, 'utf8'));
+
 /**
  * Names for the name-rule tests: [name, usable as a path segment (SAFE_SEGMENT), usable as a batch name
  * (BATCH_NAME)]. One table feeds the pattern tests, the layout tests and the validator tests, so a case is
@@ -199,7 +251,9 @@ function exampleConfig(overrides) {
 module.exports = {
   SKILL,
   makeFakeSha256,
+  readJson,
   write,
+  update,
   withTmp,
   edit,
   exampleConfig,
@@ -207,6 +261,10 @@ module.exports = {
   goodTasks,
   goodBuckets,
   goodExclusions,
+  FIXTURE_DIR,
+  fixtureRoot,
+  withFixtureCopy,
+  settingsWith,
   NAME_CASES,
   UNSAFE_NAMES,
   NON_STRING_NAMES,

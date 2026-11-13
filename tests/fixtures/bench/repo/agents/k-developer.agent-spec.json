@@ -1,0 +1,4 @@
+{
+  "name": "k-developer",
+  "dependencies": { "skills": { "skillNames": ["brew-log", "pantry-note"] } }
+}
