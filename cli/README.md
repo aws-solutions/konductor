@@ -842,7 +842,9 @@ stdout instead:
 ```bash
 konductor flow check <name> [--json]
 konductor flow show <name> [--json]
-konductor flow run <name> --harness fake [--fake-script <path>] [--goal "..."] [--json]
+konductor flow run <name> --harness fake [--fake-script <path>] [--goal "..."] [--trust <hash>] [--json]
+konductor flow trust <name> [--yes]
+konductor flow trust --revoke <name>
 ```
 
 A workflow is a YAML file, `<name>.yml`, that lists the stages of a piece of work and the agent that does each one.
@@ -903,9 +905,92 @@ directory or anything bigger is treated as not there, and a link is never follow
   is taking at that moment, also exits `75`. Under `--json` the envelope's `code` tells them apart: `already_running`
   (with `run_id` and `pid`) or `lock_unreadable`.
 
-Exit codes: `0` when the workflow has no errors (for `flow run`, when the run passed), `1` when a run halted, `64` for
-a usage error (a bad name, `library/<name>`, a name that matches no file, or a bad `flow run` input), `65` when the
-workflow has errors, and `75` when the workspace lock refuses the run.
+- `flow trust <name>` shows what the workflow will run and asks you to confirm it. To confirm, you type the first 8
+  characters of the trust hash, which the summary shows. A bare `y` does not confirm, so a key pressed before the
+  summary was on screen cannot trust a workflow you have not read. On a match it records the workflow's trust hash. On a
+  workflow that is already trusted at its current hash it says so and exits 0; `--yes` records it again without the
+  summary or the question. `flow trust --revoke <name>` removes the record. On a workflow that needs no trust (see
+  below), `flow trust` says so, exits 0 and writes nothing. There is no repo-wide form.
+
+**Trust.** A project workflow runs only after you confirm it, once for each workflow. A user workflow needs no
+confirmation, unless the repository has tool configuration files. A headless run loads some of them without asking, and
+others can approve a tool or start a program: `.claude/settings.json`, `.claude/settings.local.json`, `.mcp.json`,
+`.kiro/settings/mcp.json`, and the files under `.kiro/agents/`, `.claude/agents/`, `.claude/commands/`,
+`.claude/skills/` and `.claude/hooks/`. Then every workflow run there needs it. Git usually ignores
+`.claude/settings.local.json`, but Claude Code loads it, so it counts and an edit to it asks again. `CLAUDE.md` and the
+Kiro steering and skill files are text for the model. They start nothing and pre-approve nothing, so they are not
+covered. A hook in a settings file is covered by its command line, and the script it runs only when that script is under
+`.claude/hooks/`.
+
+The folders searched are the current directory and each folder above it up to the git root, and a git root that is your
+home folder does not widen the search. Files that `konductor install` recorded in the repository's
+`.konductor/manifest`, and that have not changed since, are not counted, but only when the install index in your home
+folder lists the repository as an install target. The manifest is a file in the repository, so a repository that is
+already an install target and ships its own manifest is not asked about the agent files it lists. Closing that needs the
+install to keep file hashes outside the repository.
+
+`flow run` shows the summary and asks on a terminal. The summary has the workflow's name, path and trust hash, each
+agent with the tools the runner lets it run without asking (the `allowedTools` of a Kiro agent file, or the `tools` of a
+Claude agent file as written there, and for a Claude agent with no `tools` key the line "every tool is available, and
+the file's tools key pre-approves none"), each `run` check command, and every file the hash covers. Under a settings
+file it names the top-level keys, and under an MCP file each server with the command it starts or the address it
+connects to. An agent file can also set keys that change what runs and that this build does not read: `hooks`,
+`mcpServers`, `permissionMode` (Claude Code), and `permissions`, `includeMcpJson`, `toolsSettings` (Kiro CLI). When one
+is present the summary names it on an "also sets" line. A Claude agent file whose front matter has a line that is not a
+plain `key:`, such as a quoted key or a space before the colon, is shown as unreadable, because a key could hide in it.
+The agent is looked for in the current directory, then the folders above it up to the git root, then your home folder,
+for Kiro CLI and for Claude Code.
+
+Some tool configuration cannot be hashed from its content: a link to a folder, a folder with more than 512 files and
+folders together or nested more than 4 levels below `.kiro/agents`, `.claude/agents`, `.claude/commands`,
+`.claude/skills` or `.claude/hooks`, a file over 1 MiB or one that cannot be read, or a name that is not UTF-8. A change
+behind it would not show in the hash, so `flow run` and `flow trust` exit `77` and name the entry, and `--trust` and
+`--yes` do not override that. Remove the link, reduce the folder or make the file readable. Under `--json` the `code` of
+that refusal is `tool_config_unreadable`. Such a repository has no trust hash: `flow check` prints `trust hash: none`
+and leaves `trust_hash` out of its `--json` report. A prompt file that cannot be read is a workflow error instead, and
+exits `65`.
+
+`--trust` and `KONDUCTOR_TRUST` are ignored when the workflow needs no trust.
+
+Without a terminal, an untrusted workflow exits `77` and names the two ways to go on: `konductor flow trust <name>` in a
+terminal, or `--trust <hash>` (also `KONDUCTOR_TRUST=<hash>`). The hash must equal the current trust hash, which
+`flow check` prints (`trust hash:` in the text, `trust_hash` with `--json`). It permits that one run and records
+nothing. A hash that does not match exits `77` and prints both hashes. Pass the hash of a version you reviewed. Do not
+set `KONDUCTOR_TRUST` from a file that the repository controls, such as `.envrc`, a Makefile or a CI file in the
+repository, and do not work the hash out in the script that runs the workflow, because then whoever writes the
+repository chooses what is trusted.
+
+The trust hash is a SHA-256 over the bytes of the workflow file, of every `prompt_file` it names, and of the tool
+configuration files, written as 64 lowercase hex digits. Each file is a frame of a kind byte, the length of its path as
+8 bytes (big endian), the path, the length of its content as 8 bytes, and the content, after the tag `konductor-trust/1`
+and a newline. The frames are the workflow (empty path), then the prompt files sorted by path, then the tool
+configuration files sorted by path. A file that cannot be read has no frame, because it has no hash. The exact layout is
+in [`workflow-engine/core/src/trust.rs`](../workflow-engine/core/src/trust.rs). The hash is made from the bytes the
+loader parsed, so a workflow or prompt file edited after you confirmed it does not run: the run uses the bytes that were
+hashed. The tool configuration files are read again before the session of each stage starts. If their hash is no longer
+the one you confirmed, the stage does not start, the run halts with exit `1` and the stage reads `SESSION_FAILED`, and
+the message says that the files changed. So an edit made while the summary was on screen, or by an earlier stage, does
+not take effect under the old confirmation.
+
+The record is `~/.konductor/trust.json` (mode 0600), keyed by the canonical path of the git root and the workflow name.
+`~/.konductor` is made with mode 0700 if it is missing. `HOME` must be an absolute path. A relative one counts as no
+home folder, so nothing is trusted or recorded, and `flow trust` and `flow trust --revoke` exit `74`. The git root is
+the one the tool configuration scan uses (a git root equal to your home folder does not count); with no git root the key
+is the current directory. A run from a subfolder and a run from the root share one record. So do two workflows of the
+same name under one git root, such as `plan` in two packages of a monorepo: trusting one replaces the hash of the other,
+and each asks again when you switch. Give them different names to avoid that. The record is written to a temporary file
+and renamed, under a lock. A record that cannot be read trusts nothing, and one malformed entry does not hide the
+others. A record that is not valid JSON, or comes from a newer Konductor, is never replaced: `flow trust` and `flow
+trust --revoke` exit `74` and name the file. Move the file aside to start a new record. `flow check` and `flow show`
+never need trust.
+
+Exit codes: `0` when the workflow has no errors (for `flow run`, when the run passed), `1` when a run halted, `64` for a
+usage error (a bad name, `library/<name>`, a name that matches no file, or a bad `flow run` input), `65` when the
+workflow has errors, `74` when the trust record cannot be kept or changed (no usable home folder, a file error, or a
+record that is damaged or from a newer Konductor; a record that cannot be read only trusts nothing), `75` when the
+workspace lock refuses the run, and `77` when the workflow is not trusted and you did not confirm it, there was no
+terminal, or `--trust` did not match.
+
 
 ---
 
@@ -954,7 +1039,9 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   | 6 | Success with warnings — emitted by `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink |
   | 64 | CLI usage error (`EX_USAGE`) — never the reserved code `2` |
   | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error). Also the workflow has errors (`flow check`, `flow show`, `flow run`) |
+  | 74 | The trust record cannot be kept or changed (`flow run`, `flow trust`, `EX_IOERR`): no usable home folder, a file error, or a record that is damaged or from a newer Konductor. Nothing ran |
   | 75 | The workspace lock refuses the run (`flow run`, `EX_TEMPFAIL`): another run is active, the lock cannot be read, or other starts were taking it. Try again later |
+  | 77 | Trust refusal (`flow run`, `flow trust`): the workflow is not trusted and you said no, no terminal was available, `--trust` did not match, or the repository's tool configuration cannot be read in full |
 - **Unknown-command suggestions.** An unknown command suggests a close match from the
   real command set.
 

@@ -345,6 +345,49 @@ pub fn execute(
     store.write_state(&run.run_id, &run.to_text())
 }
 
+/// A harness that starts a session only while `unchanged` holds, so every harness gets the same check. The runner puts
+/// it in front of the harness port for a trusted run: `unchanged` reads the repo tool configuration files again and
+/// compares their hash with the one the user confirmed (spec: "Checked again before each session").
+///
+/// A session that is refused does not start. It ends as [`SessionEnd::NotStarted`], so its stage is `blocked` with
+/// `SESSION_FAILED` and the run halts, and every session after it is refused too without a second check. The workflow
+/// and prompt files need no second read, because the run uses the bytes that were hashed.
+pub struct GuardedHarness<'a> {
+    inner: &'a mut dyn Harness,
+    unchanged: &'a dyn Fn() -> bool,
+    refused: Option<String>,
+}
+
+impl<'a> GuardedHarness<'a> {
+    pub fn new(inner: &'a mut dyn Harness, unchanged: &'a dyn Fn() -> bool) -> GuardedHarness<'a> {
+        GuardedHarness {
+            inner,
+            unchanged,
+            refused: None,
+        }
+    }
+
+    /// The stage whose session was the first to be refused, if any.
+    pub fn refused_stage(&self) -> Option<&str> {
+        self.refused.as_deref()
+    }
+}
+
+impl Harness for GuardedHarness<'_> {
+    fn run_session(&mut self, session: &Session) -> SessionOutcome {
+        if self.refused.is_none() && !(self.unchanged)() {
+            self.refused = Some(session.stage.to_string());
+        }
+        if self.refused.is_some() {
+            return SessionOutcome {
+                end: SessionEnd::NotStarted,
+                final_message: String::new(),
+            };
+        }
+        self.inner.run_session(session)
+    }
+}
+
 /// Whether a session passes its stage. The time limit comes first, then the exit status, then the result line, which is
 /// read from the last [`MAX_SESSION_OUTPUT_BYTES`] of the final message.
 pub fn judge(outcome: &SessionOutcome, elapsed_ms: u64) -> Result<StageResult, Reason> {

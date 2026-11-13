@@ -21,6 +21,7 @@ use crate::rules::{
 };
 use crate::source::WorkflowSource;
 use crate::source_map::SourceMap;
+use crate::trust::TrustInputs;
 use crate::yaml::{load, Entry, Map, Node};
 
 /// The result of checking one workflow.
@@ -33,6 +34,8 @@ pub struct Checked {
     pub diagnostics: Vec<Diagnostic>,
     /// The number of entries in `stages`, counted even when the file has errors.
     pub stage_count: usize,
+    /// The bytes that were parsed, for the trust hash.
+    pub trust_inputs: TrustInputs,
 }
 
 impl Checked {
@@ -84,6 +87,8 @@ pub fn check_text(name: &str, text: &str, source: &dyn WorkflowSource) -> Checke
         problems: loaded.problems,
         stage_names: Vec::new(),
         check_ids: BTreeSet::new(),
+        prompt_bytes: BTreeMap::new(),
+        prompt_reads: BTreeMap::new(),
     };
     let mut workflow = None;
     if let Some(Node::Map(root)) = &loaded.root {
@@ -118,6 +123,7 @@ pub fn check_text(name: &str, text: &str, source: &dyn WorkflowSource) -> Checke
         workflow,
         diagnostics,
         stage_count,
+        trust_inputs: TrustInputs::new(text.as_bytes().to_vec(), checker.prompt_bytes),
     }
 }
 
@@ -164,6 +170,11 @@ struct Checker<'a> {
     problems: Vec<Problem>,
     stage_names: Vec<Option<String>>,
     check_ids: BTreeSet<String>,
+    // The bytes of each prompt file as read, for the trust hash.
+    prompt_bytes: BTreeMap<String, Vec<u8>>,
+    // What the source gave for each prompt file, the first time it was asked. Two stages that name one file get the
+    // same text, so the text a stage runs is the text the trust hash covers even if the file changes between reads.
+    prompt_reads: BTreeMap<String, Option<String>>,
 }
 
 fn child(path: &[Seg], key: &str) -> Vec<Seg> {
@@ -713,12 +724,22 @@ impl<'a> Checker<'a> {
     /// Reads the file that `prompt_file` names. A file that is not there, or is not a regular UTF-8 file within the
     /// size limit, is `INVALID_VALUE` at the `prompt_file` value.
     fn read_prompt_file(&mut self, path: &str, entry: &Entry, at: &[Seg]) -> Option<String> {
-        let Some(text) = self.source.prompt_file_bytes(path).and_then(decode_file) else {
+        let read = match self.prompt_reads.get(path) {
+            Some(read) => read.clone(),
+            None => {
+                let read = self.source.prompt_file_bytes(path).and_then(decode_file);
+                self.prompt_reads.insert(path.to_string(), read.clone());
+                read
+            }
+        };
+        let Some(text) = read else {
             let message = "The file named by `prompt_file` is not there, or it is not a regular UTF-8 file within the \
                            size limit.";
             self.report(Code::InvalidValue, at, entry.value_span(), message);
             return None;
         };
+        self.prompt_bytes
+            .insert(path.to_string(), text.as_bytes().to_vec());
         let text = text.strip_prefix('\u{feff}').unwrap_or(&text).to_string();
         if !(1..=MAX_PROMPT_CHARS).contains(&code_points(&text)) {
             let message = format!("The text of the file named by `prompt_file` must have 1 to {MAX_PROMPT_CHARS} characters.");

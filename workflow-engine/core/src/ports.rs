@@ -135,3 +135,93 @@ pub trait RunLock {
     /// Gives the lock back. Does nothing if this caller does not hold it.
     fn release(&mut self);
 }
+
+/// The record of the workflows the user has confirmed (D14). One entry holds the trust hash the user confirmed for one
+/// workflow of one repository.
+pub trait TrustStore {
+    /// The hash confirmed for workflow `workflow` of the repository `repo`, which is its canonical root. A record that
+    /// cannot be read or parsed holds nothing, so this gives `None` for every workflow then.
+    fn recorded(&self, repo: &str, workflow: &str) -> Option<String>;
+    /// Stores `hash` for the workflow. Two writers at once must not lose an update.
+    fn record(&mut self, repo: &str, workflow: &str, hash: &str) -> Result<(), PortError>;
+    /// Removes the entry. `Ok(false)` if there was none.
+    fn revoke(&mut self, repo: &str, workflow: &str) -> Result<bool, PortError>;
+    /// Whether a record could be kept at all. It is checked before the user is asked, so that a yes is never
+    /// followed by a failure to keep it.
+    fn can_record(&self) -> Result<(), PortError> {
+        Ok(())
+    }
+}
+
+/// The person at the keyboard, if there is one.
+pub trait Terminal {
+    /// Whether a person can be asked. A run with no terminal must not wait for an answer.
+    fn is_available(&self) -> bool;
+    /// Shows `summary`, asks `question` and gives `true` only when the person types `code`, ignoring case and the
+    /// space around it. Anything else, an empty answer and the end of the input included, is no. A code to type, and
+    /// not a bare yes, means that a key pressed before the summary was on screen cannot confirm it.
+    fn confirm(&mut self, summary: &str, question: &str, code: &str) -> bool;
+}
+
+/// A harness that runs agent stages. The tools of an agent are defined differently for each one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Runner {
+    KiroCli,
+    Claude,
+}
+
+impl Runner {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Runner::KiroCli => "kiro-cli",
+            Runner::Claude => "claude",
+        }
+    }
+}
+
+/// Where an agent definition was found: the project root is searched first, then the home folder (spec: "Finding the
+/// agent").
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Placement {
+    Project,
+    Home,
+}
+
+impl Placement {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Placement::Project => "project",
+            Placement::Home => "home folder",
+        }
+    }
+}
+
+/// The tools an agent definition lets the runner run without asking. The names are as the definition spells them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AgentTools {
+    /// Kiro: the tools in the agent's own allow list. Claude: the tools in its `tools` key. Both can be empty.
+    Listed(Vec<String>),
+    /// A Claude definition with no `tools` key. Every tool is available, and the key pre-approves none, because the
+    /// runner then passes no `--allowedTools`.
+    EveryToolNonePreApproved,
+    /// The definition is there but this build cannot say. The text says why.
+    Unknown(String),
+}
+
+/// One agent definition that a harness would use.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentDefinition {
+    pub runner: Runner,
+    pub placement: Placement,
+    pub tools: AgentTools,
+    /// Other keys of the definition that can change what runs, such as `hooks` and `mcpServers`, by name. This build
+    /// does not read their values, so the summary names them and nothing more.
+    pub also_sets: Vec<String>,
+}
+
+/// Finds agent definitions the way the harness will, from the project root and then from the home folder.
+pub trait AgentCatalog {
+    /// The definition of `agent` for each runner harness that has one: at most one for each, the nearest. Empty if
+    /// none has. The Kiro definition comes first.
+    fn definitions(&self, agent: &str) -> Vec<AgentDefinition>;
+}
