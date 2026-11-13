@@ -33,17 +33,31 @@ SOPS = {p.name.removesuffix(".sop.md") for p in (REPO_ROOT / "agent-sops").glob(
 AWS_MCP_SKILLS = {
     "amazon-dynamodb",
     "aws-billing-and-cost-management",
+    "aws-cdk",
+    "aws-cloudformation",
     "aws-iam",
+    "aws-well-architected-review",
+    "creating-secrets-using-best-practices",
     "securing-s3-buckets",
+    "setting-up-cloudtrail-multi-region",
 }
 
 # Kebab-case names that the patterns below catch but that are not skills.
 NOT_SKILLS = {
+    "add-to-existing",  # an e2e SOP mode value
+    "alert-rule-management",  # an example feature name
     "aws-mcp",  # the MCP server's name
     "data-cy",  # a Cypress selector attribute
     "data-testid",  # a test selector attribute
+    "general-tradeoff",  # a deliberation-panel decision_domain value
+    "network-monitoring-dashboard",  # an example feature name
+    "playwright-mcp",  # the browser MCP server's name
+    "research-options",  # a deliberation-panel decision_domain value
     "single-document",  # a design-evaluation mode value
+    "user-authentication",  # an example feature name
     "verify-run",  # a konductor CLI subcommand
+    "viability-feasibility",  # a deliberation-panel decision_domain value
+    "vpc-flow-log-analyzer",  # an example feature name
 }
 
 NAME = r"`([a-z][a-z0-9]*(?:-[a-z0-9]+)+)`"
@@ -56,6 +70,11 @@ REFERENCE_PATTERNS = [
     ),
     re.compile(NAME + r"\s+skill\b"),
     re.compile(r"\bskill\s+" + NAME),
+    re.compile(r"\bfrom\s+" + NAME),
+    re.compile(NAME + r"\s+covers\b"),
+    # a table cell holding only a backticked skill name; bare cells also hold
+    # ordinary words ("unit-prompts"), so they are not matched
+    re.compile(r"\|\s*" + NAME + r"\s*\|"),
 ]
 # A row of the published skills catalog: the first cell is a skill name.
 CATALOG_ROW = re.compile(r"^\| " + NAME + r" \|", re.M)

@@ -286,15 +286,20 @@ not per individual commit.
 - AWS guidance comes from the AWS MCP server's skills instead of local copies:
   - `dynamodb-design` is now a short skill: access patterns first, keys and per-partition
     limits, GSI write sharding for low-cardinality keys with a worked example, capacity, and a
-    review gate that rates a hot partition or an unsharded low-cardinality GSI key CRITICAL. It
-    points to the server's `amazon-dynamodb` skill, loaded through `find-aws-skills`, which
+    review gate that rates a hot partition or an unsharded low-cardinality GSI key CRITICAL, with
+    six checks that each state their fact and severity: throttle alarm metrics, sharding a
+    deployed GSI key, PITR and deletion protection, TTL, the capacity-mode switch limit and
+    price provenance. It points to the server's `amazon-dynamodb` skill, loaded through `find-aws-skills`, which
     `k-architect` now declares, for Streams, backup, security and cost depth.
     `dynamodb-validation` is removed; `dynamodb-design`'s gate reviews a finished design. Custom
     agent specs that declare it must drop it: `konductor synth` rejects a spec that names a skill
     that does not exist.
   - `infra-validation` runs the server's `aws-cloudformation`, `aws-cdk` and
     `aws-well-architected-review` checks (cfn-lint, cfn-guard, cdk-nag, a pillar review)
-    read-only and rates their findings CRITICAL, IMPORTANT or SUGGESTION. Without the server it
+    read-only and rates their findings CRITICAL, IMPORTANT or SUGGESTION. It runs `cdk synth`
+    only after the user confirms the code is trusted; otherwise it reads the template in
+    `cdk.out/` or the constructs and lists synth and cdk-nag as not run. An unsharded
+    low-cardinality DynamoDB partition key is CRITICAL, matching `dynamodb-design`. Without the server it
     runs the local tools the project has and checks its quality gate items by reading the code.
     `k-code-review-workflow` passes it `scope_confirmed`, the infra files and a new optional
     `environment` parameter, so the review does not stop to ask for scope.
@@ -303,17 +308,22 @@ not per individual commit.
     `aws-iam`'s edge cases and S3 buckets against `securing-s3-buckets`. It and
     `infra-validation` rate `iam:PassRole` or an IAM escalation action on `*` CRITICAL, a scoped
     escalation action or `ForAllValues` without a `Null` check IMPORTANT, and map the S3
-    checklist's tiers onto their own scale.
+    checklist's tiers onto their own scale. The `iam-policy-design` tenant isolation example
+    pairs its `LeadingKeys` condition with a `Null` check and limits the actions.
   - `cost-estimation` prices through Price List API calls on the AWS MCP server, guided by
     `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server. With a
     shell, it prices DynamoDB with the `amazon-dynamodb` cost calculator, fetched from the
-    server and run locally.
+    server and run locally. When the server is available it requires a Price List lookup for
+    each line item and labels any figure it did not look up "recalled, unverified".
   - `policy-validation` checks the API Gateway `SecurityPolicy` property, treats the KMS key
     rotation period as configurable, uses the Security Hub CSPM name, and can run IAM Access
     Analyzer policy validation.
   - `konductor` declares `aws-mcp` and `find-aws-skills`, like `k-architect` and `k-developer`,
     so it can run `infra-validation`'s AWS checks. On Kiro CLI the three agents pre-approve only the server's
-    read-only documentation, skill and Region tools.
+    read-only documentation, skill and Region tools. On Claude Code `konductor` is granted only
+    `aws___retrieve_skill`, `aws___search_documentation` and `aws___read_documentation`, and its
+    prompt forbids `aws___run_script` and requires confirmation before any mutating AWS action.
+    The skill-name test now also checks aws-mcp skill names in table cells and prose.
 - The Kiro spec skills and the `kiro-spec-workflow` SOP write specs in the format Kiro writes
   them:
   - `requirements.md` has a Glossary, and each requirement names the user story it came from on
