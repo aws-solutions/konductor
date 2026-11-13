@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Render the plugin's hooks/hooks.json for the telemetry hook.
+"""Render the plugin's hooks/hooks.json for the telemetry and dispatch hooks.
 
 SessionStart (startup|clear) reports agent_invocation and SubagentStart
 reports subagent_invocation, the same events the CLI wires into Claude
-Code settings. The SubagentStart matcher is built from the assembled
-agents/*.md, so a new agent can't be left out. It matches only the
+Code settings. A second, synchronous SessionStart entry copies the
+plugin's dispatch_permission_mode option into the session environment.
+The SubagentStart matcher is built from the assembled agents/*.md, so a
+new agent can't be left out. It matches only the
 `<plugin>:<agent>` names Claude Code gives plugin agents; a bare name
 belongs to a CLI install, whose own hook reports it.
 
@@ -18,6 +20,9 @@ import sys
 from pathlib import Path
 
 HOOK_SCRIPT = "hooks/konductor-telemetry.js"
+DISPATCH_ENV_SCRIPT = "hooks/konductor-dispatch-env.sh"
+# Every session start, so a resumed or compacted session keeps the mode.
+DISPATCH_ENV_MATCHER = "startup|resume|clear|compact"
 
 
 def frontmatter_name(agent_file: Path):
@@ -57,6 +62,15 @@ def command(event_type: str) -> dict:
     }
 
 
+def dispatch_env_command() -> dict:
+    # Synchronous: the environment file must be written before the session
+    # runs a dispatch script.
+    return {
+        "type": "command",
+        "command": f'bash "${{CLAUDE_PLUGIN_ROOT}}/{DISPATCH_ENV_SCRIPT}"',
+    }
+
+
 def regex_escape(text: str) -> str:
     # Same character set as the CLI's installed_agents_matcher, so a
     # JavaScript regex compiled with or without the `u` flag accepts it.
@@ -68,7 +82,8 @@ def render(plugin_name: str, names) -> dict:
     return {
         "hooks": {
             "SessionStart": [
-                {"matcher": "startup|clear", "hooks": [command("agent-invocation")]}
+                {"matcher": "startup|clear", "hooks": [command("agent-invocation")]},
+                {"matcher": DISPATCH_ENV_MATCHER, "hooks": [dispatch_env_command()]},
             ],
             "SubagentStart": [
                 {

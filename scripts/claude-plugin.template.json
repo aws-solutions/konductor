@@ -17,7 +17,6 @@
     "orchestration",
     "aws-solutions",
     "software-development-lifecycle",
-    "kiro",
     "multi agent orchestration",
     "sdlc workflow",
     "ai sdlc workflow",
@@ -30,11 +29,17 @@
       "title": "Send usage telemetry to AWS",
       "description": "Report which Konductor agents run. Each event carries the agent name, the delegating Konductor agent's name on a delegation, the plugin version, a hashed session ID, the claude-plugin harness tag, and the machine ID in ~/.konductor/telemetry.json, which the Konductor CLI also uses. See Data Collection in the README.",
       "default": true
+    },
+    "dispatch_permission_mode": {
+      "type": "string",
+      "title": "Permission mode for dispatched agents",
+      "description": "How the mux and cmux orchestrators start each child Claude Code session. interactive (default): the child runs in its pane and asks you before using tools. headless: the child runs with -p, accepts file edits, and denies anything else your permissions.allow settings do not allow. bypass: the child skips every permission check; use it only in an isolated environment. The value is case-sensitive; any other value makes dispatch fail with an error. The KONDUCTOR_DISPATCH_PERMISSION_MODE environment variable overrides this option.",
+      "default": "interactive"
     }
   },
   "metadata": {
     "sourceRepo": "https://github.com/aws-solutions/konductor",
     "generatedFrom": "agents/*.agent-spec.json, skills/*/SKILL.md, agent-sops/*.sop.md",
-    "generatedBy": "konductor synth --from . (agents) and konductor install --harness claude (SOP-to-skill conversion); see generated/claude-plugin/README.md"
+    "generatedBy": "konductor synth --from . (agents) and konductor install --harness claude (SOP-to-skill conversion); see docs/guides/claude-plugin-build.md"
   }
 }

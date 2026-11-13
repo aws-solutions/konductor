@@ -4,7 +4,7 @@
 # Usage: bash cmux-dispatch.sh --agent <name> --task "description" [options]
 #
 # Modes: split right (default), --split down, --tab, --workspace
-# Flags: --name, --cwd, --close, --interactive
+# Flags: --name, --cwd, --close, --interactive, --brief <file> (instead of --task)
 #
 # Features:
 #   - Readiness polling: waits for shell init before sending kiro command
@@ -47,11 +47,12 @@ if [[ ! -f "$SCRIPT_DIR/cmux-completion-hook.sh" ]]; then
   echo "WARNING: cmux-completion-hook.sh not found next to $SCRIPT_DIR/cmux-dispatch.sh -- completion detection will rely on the shell fallback only." >&2
 fi
 
-AGENT="" TASK="" CWD="" NAME="" MODE="split" SPLIT_DIR="right" CLOSE=false INTERACTIVE=false
+AGENT="" TASK="" BRIEF="" CWD="" NAME="" MODE="split" SPLIT_DIR="right" CLOSE=false INTERACTIVE=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --agent)       AGENT="$2"; shift 2 ;;
     --task)        TASK="$2"; shift 2 ;;
+    --brief)       BRIEF="$2"; shift 2 ;;
     --name)        NAME="$2"; shift 2 ;;
     --cwd)         CWD="$2"; shift 2 ;;
     --workspace)   MODE="workspace"; shift ;;
@@ -70,15 +71,87 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -z "$AGENT" ]] && { echo "ERROR: --agent required" >&2; exit 1; }
-[[ -z "$TASK" ]]  && { echo "ERROR: --task required" >&2; exit 1; }
+if [[ -n "$TASK" && -n "$BRIEF" ]]; then
+  echo "ERROR: pass --task or --brief, not both" >&2; exit 1
+fi
+if [[ -n "$BRIEF" ]]; then
+  [[ -f "$BRIEF" && -r "$BRIEF" ]] || { echo "ERROR: --brief file not found or unreadable: $BRIEF" >&2; exit 1; }
+  [[ "$(wc -c < "$BRIEF")" -le 1048576 ]] || { echo "ERROR: --brief file is over 1 MB: $BRIEF" >&2; exit 1; }
+  TASK_TEXT="$(head -c 100 "$BRIEF")"
+else
+  [[ -z "$TASK" ]] && { echo "ERROR: --task or --brief required" >&2; exit 1; }
+  TASK_TEXT="$TASK"
+fi
 # AGENT is the name from the orchestrator routing table (e.g. 'k-developer'),
 # or one qualified with this plugin's name ('konductor:k-developer').
 [[ "$AGENT" =~ ^([a-z0-9-]+:)?[a-z0-9-]+$ ]] || { echo "ERROR: --agent must be alphanumeric/hyphens only, optionally prefixed with '<plugin>:'" >&2; exit 1; }
+
+# Permission mode for a Claude Code child session, from
+# KONDUCTOR_DISPATCH_PERMISSION_MODE. Kiro CLI children ignore it.
+quote_args() {
+  local out="" a
+  for a in "$@"; do out+=" $(printf '%q' "$a")"; done
+  printf '%s' "$out"
+}
+CLAUDE_PERMISSION_ARGS=""
+if [[ -n "${CLAUDECODE:-}" ]]; then
+  case "${KONDUCTOR_DISPATCH_PERMISSION_MODE:-interactive}" in
+    interactive) ;;
+    headless) CLAUDE_PERMISSION_ARGS="$(quote_args -p --permission-mode acceptEdits --permission-prompts none)" ;;
+    bypass)
+      CLAUDE_PERMISSION_ARGS="$(quote_args --dangerously-skip-permissions -p)"
+      echo "WARNING: KONDUCTOR_DISPATCH_PERMISSION_MODE=bypass: the child session skips every permission check. Use it only in an isolated environment." >&2
+      ;;
+    *)
+      echo "ERROR: KONDUCTOR_DISPATCH_PERMISSION_MODE must be interactive, headless or bypass (got '${KONDUCTOR_DISPATCH_PERMISSION_MODE}')" >&2
+      # The plugin's SessionStart hook writes "invalid" for a mistyped option.
+      if [[ "$KONDUCTOR_DISPATCH_PERMISSION_MODE" == invalid ]]; then
+        echo "ERROR: check the Claude Code plugin's dispatch_permission_mode option; it must be interactive, headless or bypass (case-sensitive)." >&2
+      fi
+      exit 1
+      ;;
+  esac
+fi
+
+# Run by the launcher after the child exits. It keeps a .done the child
+# wrote itself (the completion signal) and adds the exit code, so an early
+# .done can't hide a crash: a non-zero exit always ends as status "error".
+# It reads only a regular file of at most 64 KiB, never through a symlink and
+# never blocking on a FIFO, and replaces it through a fresh temp file.
+RECORD_DONE_PY='import json, os, stat, sys, tempfile
+path, ws, code, default = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+data = None
+try:
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        st = os.fstat(fd)
+        if stat.S_ISREG(st.st_mode) and st.st_size <= 65536:
+            data = json.loads(os.read(fd, 65537).decode("utf-8"))
+    finally:
+        os.close(fd)
+except (OSError, ValueError):
+    data = None
+if not isinstance(data, dict):
+    data = {"workspace_id": ws, "summary": default}
+data.setdefault("workspace_id", ws)
+if data.get("status") not in ("done", "error"):
+    data["status"] = "done" if code == 0 else "error"
+data["exit_code"] = code
+if code != 0:
+    data["status"] = "error"
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".done-")
+try:
+    with os.fdopen(fd, "w") as f:
+        json.dump(data, f)
+    os.replace(tmp, path)
+except BaseException:
+    os.unlink(tmp)
+    raise'
 CMUX_BIN="${CMUX_BIN:-/Applications/cmux.app/Contents/MacOS/cmux}"
 [[ -x "$CMUX_BIN" ]] || { echo "ERROR: cmux binary not found or not executable (set CMUX_BIN to override)" >&2; exit 1; }
 cmux() { "$CMUX_BIN" "$@"; }
 
-LABEL="${NAME:-$AGENT: $(echo "$TASK" | head -c 40)}"
+LABEL="${NAME:-$AGENT: $(printf '%s' "$TASK_TEXT" | head -c 40 | tr '\n' ' ')}"
 WS_ID="${CMUX_WORKSPACE_ID:-}"
 # KONDUCTOR_CMUX_REGISTRY_DIR lets tests point at an isolated directory
 # instead of the real shared production registry; unset (the default) for
@@ -90,6 +163,41 @@ REGISTRY_FILE="$REGISTRY_DIR/dispatched.json"
 # the shared registry (flock creates it on demand; the lock is released when
 # the wrapped process exits).
 REGISTRY_LOCK="$REGISTRY_FILE.lock"
+# The registry holds every dispatch's files, so it must be a real directory
+# owned by this user that no one else can write to. Prints the problem and
+# fails when it isn't.
+registry_problem() {
+  python3 - "$1" "$(id -u)" <<'PY'
+import os, stat, sys
+path, uid = sys.argv[1], int(sys.argv[2])
+try:
+    st = os.lstat(path)
+except OSError as e:
+    sys.exit(f"cannot be read ({e.strerror})")
+if stat.S_ISLNK(st.st_mode):
+    sys.exit("is a symlink")
+if not stat.S_ISDIR(st.st_mode):
+    sys.exit("is not a directory")
+if st.st_uid != uid:
+    sys.exit(f"is owned by uid {st.st_uid}, not {uid}")
+if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+    sys.exit("is group- or world-writable")
+PY
+}
+
+[[ -e "$REGISTRY_DIR" || -L "$REGISTRY_DIR" ]] || { mkdir -p "$(dirname "$REGISTRY_DIR")" && mkdir -m 700 "$REGISTRY_DIR"; }
+if ! problem="$(registry_problem "$REGISTRY_DIR" 2>&1)"; then
+  echo "ERROR: dispatch registry $REGISTRY_DIR $problem; it must be a directory you own that no one else can write to (chmod 700 it, or set KONDUCTOR_CMUX_REGISTRY_DIR to a private directory)" >&2
+  exit 1
+fi
+
+# The dispatch directory is created before the surface opens, so a failure
+# here leaves no surface behind. It gets its final name once the surface id
+# is known.
+DISPATCH_SUFFIX="$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")"
+PENDING_DIR="$REGISTRY_DIR/.pending-$DISPATCH_SUFFIX"
+mkdir -m 700 "$PENDING_DIR"
+trap '[ -z "$PENDING_DIR" ] || rm -rf "$PENDING_DIR"' EXIT
 
 # --- Readiness polling ---
 wait_for_shell() {
@@ -108,31 +216,57 @@ wait_for_shell() {
 case "$MODE" in
   workspace)
     WS_OUTPUT=$(cmux new-workspace --name "$LABEL" ${CWD:+--cwd "$CWD"} 2>&1)
-    WS_ID=$(echo "$WS_OUTPUT" | grep -o 'workspace:[0-9]*')
+    WS_ID=$(echo "$WS_OUTPUT" | { grep -o 'workspace:[0-9][0-9]*' || true; })
     [[ -z "$WS_ID" ]] && { echo "ERROR: Failed to create workspace: $WS_OUTPUT" >&2; exit 1; }
     SURFACE_OUTPUT=$(cmux list-pane-surfaces --workspace "$WS_ID" 2>&1)
-    SURFACE_ID=$(echo "$SURFACE_OUTPUT" | grep -o 'surface:[0-9]*' | head -1)
+    SURFACE_ID=$(echo "$SURFACE_OUTPUT" | { grep -o 'surface:[0-9][0-9]*' || true; } | head -1)
     ;;
   split)
     SURFACE_OUTPUT=$(cmux new-split "${SPLIT_DIR}" 2>&1)
-    SURFACE_ID=$(echo "$SURFACE_OUTPUT" | grep -o 'surface:[0-9]*' | head -1)
+    SURFACE_ID=$(echo "$SURFACE_OUTPUT" | { grep -o 'surface:[0-9][0-9]*' || true; } | head -1)
     cmux rpc workspace.equalize_splits '{}' >/dev/null 2>&1 || true
     ;;
   tab)
     SURFACE_OUTPUT=$(cmux new-surface 2>&1)
-    SURFACE_ID=$(echo "$SURFACE_OUTPUT" | grep -o 'surface:[0-9]*' | head -1)
+    SURFACE_ID=$(echo "$SURFACE_OUTPUT" | { grep -o 'surface:[0-9][0-9]*' || true; } | head -1)
     cmux rename-tab --surface "$SURFACE_ID" "$LABEL" 2>/dev/null || true
     ;;
 esac
 [[ -z "$SURFACE_ID" ]] && { echo "ERROR: No surface: ${SURFACE_OUTPUT}" >&2; exit 1; }
 
-# Derive unique-per-dispatch key from surface id (surface:3 -> surface_3)
-DONE_KEY=$(printf '%s' "$SURFACE_ID" | tr -c 'A-Za-z0-9._-' '_')
+# Per-dispatch key: the surface id (surface:3 -> surface_3) plus a random
+# suffix, since surface numbers repeat across cmux sessions.
+DONE_KEY="$(printf '%s' "$SURFACE_ID" | tr -c 'A-Za-z0-9._-' '_')-$DISPATCH_SUFFIX"
 
-# Write task to file — no escaping needed (mirrors zellij/tmux)
-mkdir -p "$REGISTRY_DIR"
-TASK_FILE="$REGISTRY_DIR/task-${DONE_KEY}.txt"
-printf '%s' "$TASK" > "$TASK_FILE"
+# Each dispatch gets its own 0700 directory holding its brief, its result and
+# its .done. It is the only directory the child is granted; the shared
+# registry and other dispatches stay outside that grant.
+DISPATCH_DIR="$REGISTRY_DIR/$DONE_KEY"
+# mv into an existing directory would nest the pending dir inside it, and
+# macOS mv has no -T, so refuse first.
+if [[ -e "$DISPATCH_DIR" || -L "$DISPATCH_DIR" ]]; then
+  echo "ERROR: dispatch directory $DISPATCH_DIR already exists; not dispatching" >&2
+  cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true
+  exit 1
+fi
+if ! mv "$PENDING_DIR" "$DISPATCH_DIR"; then
+  echo "ERROR: cannot create the dispatch directory $DISPATCH_DIR; not dispatching" >&2
+  cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true
+  exit 1
+fi
+PENDING_DIR=""
+TASK_FILE="$DISPATCH_DIR/task.md"
+RESULT_FILE="$DISPATCH_DIR/result.md"
+DONE_FILE="$DISPATCH_DIR/$DONE_KEY.done"
+# The brief goes in its own file, so its text never passes through a shell.
+if [[ -n "$BRIEF" ]]; then
+  cp "$BRIEF" "$TASK_FILE"
+else
+  printf '%s' "$TASK" > "$TASK_FILE"
+fi
+# The child's prompt names its files by literal path: a headless child can't
+# run a shell to read them from the environment.
+PROMPT="Read and execute the task in $TASK_FILE. Write your full result to $RESULT_FILE. As your last step, write {\"status\": \"done\", \"summary\": \"<one line>\"} to $DONE_FILE, with \"error\" as the status if you could not finish."
 
 # Wait for shell to be ready before sending command
 wait_for_shell --surface "$SURFACE_ID"
@@ -213,55 +347,44 @@ if [ -n "${CLAUDECODE:-}" ]; then
   fi
   if [ -n "$AMBIGUOUS" ]; then
     echo "ERROR: --agent ${AGENT} matches multiple installed agents; pass a fully-qualified name. Candidates: $AMBIGUOUS" >&2
-    mkdir -p "$REGISTRY_DIR"
-    python3 -c "import json; json.dump({'workspace_id':'${WS_ID:-$DONE_KEY}','status':'error','summary':'ambiguous agent name'},open('${REGISTRY_DIR}/${DONE_KEY}.done','w'))"
+    python3 -c "import json; json.dump({'workspace_id':'${WS_ID:-$DONE_KEY}','status':'error','summary':'ambiguous agent name'},open('${DONE_FILE}','w'))"
     cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true
     exit 1
   fi
   # PREFIX comes from a filename and is pasted into PANE_CMD below.
   if [[ ! "$PREFIX" =~ ^[A-Za-z0-9._-]*$ ]]; then
     echo "ERROR: unsafe agent file name for ${AGENT} under ~/.claude/agents (prefix '${PREFIX}'); not dispatching" >&2
-    mkdir -p "$REGISTRY_DIR"
-    python3 -c "import json; json.dump({'workspace_id':'${WS_ID:-$DONE_KEY}','status':'error','summary':'unsafe agent file name'},open('${REGISTRY_DIR}/${DONE_KEY}.done','w'))"
+    python3 -c "import json; json.dump({'workspace_id':'${WS_ID:-$DONE_KEY}','status':'error','summary':'unsafe agent file name'},open('${DONE_FILE}','w'))"
     cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true
     exit 1
   fi
   if [ -z "$FOUND" ]; then
     echo "ERROR: claude agent ${AGENT} not installed under ~/.claude/agents or in this plugin; not dispatching" >&2
-    mkdir -p "$REGISTRY_DIR"
-    python3 -c "import json; json.dump({'workspace_id':'${WS_ID:-$DONE_KEY}','status':'error','summary':'agent not installed'},open('${REGISTRY_DIR}/${DONE_KEY}.done','w'))"
+    python3 -c "import json; json.dump({'workspace_id':'${WS_ID:-$DONE_KEY}','status':'error','summary':'agent not installed'},open('${DONE_FILE}','w'))"
     cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true
     exit 1
   fi
   # Fix 1: bake resolved WS_ID at dispatch time — no in-pane parameter expansion
   # Fall back to DONE_KEY when WS_ID is empty (split/tab mode has no workspace id)
   RECORDED_WS_ID="${WS_ID:-$DONE_KEY}"
-  # DONE_FILE and the mkdir below derive from $REGISTRY_DIR (already
-  # resolved from KONDUCTOR_CMUX_REGISTRY_DIR above) rather than a
-  # hardcoded /tmp/konductor-cmux literal, so a test pointed at an
-  # isolated registry dir never leaks a .done file into the real one.
-  DONE_FILE="${REGISTRY_DIR}/${DONE_KEY}.done"
-  PANE_CMD="${CMD_PREFIX}claude --agent \"${PREFIX}${AGENT}\" --dangerously-skip-permissions -p \"\$(cat '${TASK_FILE}')\""
-  # Fix 2: capture claude exit code; set status done/error to mirror tmux/zellij
-  PANE_CMD="${PANE_CMD} ; ec=\$? ; st=done ; [ \"\$ec\" != 0 ] && st=error"
-  PANE_CMD="${PANE_CMD} ; mkdir -p '${REGISTRY_DIR}' && python3 -c \"import json; f=open('${DONE_FILE}','w'); json.dump({'workspace_id':'${RECORDED_WS_ID}','status':'\$st','summary':'claude exit'},f)\""
+  # --add-dir grants this dispatch's own directory, outside the child's
+  # working directory. It takes a list, so it goes before --agent and can
+  # never swallow the prompt.
+  PANE_CMD="${CMD_PREFIX}export KONDUCTOR_DONE_FILE=$(printf '%q' "$DONE_FILE") && claude --add-dir $(printf '%q' "$DISPATCH_DIR") --agent \"${PREFIX}${AGENT}\"${CLAUDE_PERMISSION_ARGS} $(printf '%q' "$PROMPT")"
+  # Record the exit: keep a .done the child wrote and add the exit code, or
+  # write a fallback .done.
+  PANE_CMD="${PANE_CMD} ; ec=\$? ; mkdir -p -m 700 $(printf '%q' "$DISPATCH_DIR") ; python3 -c $(printf '%q' "$RECORD_DONE_PY") $(printf '%q %q' "$DONE_FILE" "$RECORDED_WS_ID") \"\$ec\" 'claude exit' || true"
 else
   # kiro-cli: no filesystem resolution needed -- kiro-cli resolves --agent
   # against its own registry and warns on collisions itself. Unlike Claude
   # Code, kiro agents aren't looked up by a package-prefixed filename this
   # script would have to reconstruct, so AGENT is passed through as-is.
-  if [[ "$INTERACTIVE" == true ]]; then
-    PANE_CMD="${CMD_PREFIX}export ASDLC_DONE_KEY=\"${DONE_KEY}\" ; kiro-cli chat --agent \"$AGENT\" --trust-all-tools \"\$(cat '${TASK_FILE}')\""
-  else
-    PANE_CMD="${CMD_PREFIX}export ASDLC_DONE_KEY=\"${DONE_KEY}\" ; kiro-cli chat --agent \"$AGENT\" --no-interactive --trust-all-tools \"\$(cat '${TASK_FILE}')\""
-  fi
-  # Write .done fallback for kiro-cli path (mirrors Claude Code branch); cmux-completion-hook.sh
-  # writes the file on clean stop, but this guarantees completion detection on abnormal exit too.
-  # Derived from $REGISTRY_DIR (see comment on the claude branch above) for
-  # the same isolation reason.
-  DONE_FILE="${REGISTRY_DIR}/${DONE_KEY}.done"
-  PANE_CMD="${PANE_CMD} ; ec=\$? ; st=done ; [ \"\$ec\" != 0 ] && st=error"
-  PANE_CMD="${PANE_CMD} ; [ ! -f '${DONE_FILE}' ] && mkdir -p '${REGISTRY_DIR}' && python3 -c \"import json; f=open('${DONE_FILE}','w'); json.dump({'workspace_id':'${WS_ID:-$DONE_KEY}','status':'\$st','summary':'shell fallback'},f)\""
+  KIRO_FLAGS="--no-interactive --trust-all-tools"
+  [[ "$INTERACTIVE" == true ]] && KIRO_FLAGS="--trust-all-tools"
+  PANE_CMD="${CMD_PREFIX}export ASDLC_DONE_KEY=\"${DONE_KEY}\" KONDUCTOR_DONE_FILE=$(printf '%q' "$DONE_FILE") ; kiro-cli chat --agent \"$AGENT\" ${KIRO_FLAGS} $(printf '%q' "$PROMPT")"
+  # Record the exit: keep a .done cmux-completion-hook.sh wrote on a clean stop
+  # and add the exit code, or write a fallback .done on an abnormal exit.
+  PANE_CMD="${PANE_CMD} ; ec=\$? ; mkdir -p -m 700 $(printf '%q' "$DISPATCH_DIR") ; python3 -c $(printf '%q' "$RECORD_DONE_PY") $(printf '%q %q' "$DONE_FILE" "${WS_ID:-$DONE_KEY}") \"\$ec\" 'shell fallback' || true"
 fi
 # Append close for both runtimes when --close is set
 [[ "$CLOSE" == true ]] && PANE_CMD="$PANE_CMD ; cmux close-surface --surface \"$SURFACE_ID\" 2>/dev/null || exit"
@@ -275,7 +398,7 @@ cmux send-key ${WS_ID:+--workspace "$WS_ID"} --surface "$SURFACE_ID" enter
 # read-modify-write against every other concurrent cmux-dispatch.sh
 # invocation writing the same $REGISTRY_FILE.
 mkdir -p "$REGISTRY_DIR"
-TASK_SUMMARY=$(echo "$TASK" | head -c 100)
+TASK_SUMMARY=$(printf '%s' "$TASK_TEXT" | head -c 100)
 ENTRY=$(ASDLC_WS_ID="$WS_ID" \
   ASDLC_SURFACE_ID="$SURFACE_ID" \
   ASDLC_AGENT="$AGENT" \
@@ -285,6 +408,7 @@ ENTRY=$(ASDLC_WS_ID="$WS_ID" \
   ASDLC_REGISTRY_FILE="$REGISTRY_FILE" \
   ASDLC_REGISTRY_LOCK="$REGISTRY_LOCK" \
   ASDLC_DONE_KEY="$DONE_KEY" \
+  ENTRY_DISPATCH_DIR="$DISPATCH_DIR" \
   python3 -c "
 import json, os, sys, fcntl, tempfile
 entry = {
@@ -295,6 +419,7 @@ entry = {
     'mode': os.environ['ASDLC_MODE'],
     'cwd': os.environ['ASDLC_CWD'],
     'done_key': os.environ['ASDLC_DONE_KEY'],
+    'dispatch_dir': os.environ['ENTRY_DISPATCH_DIR'],
     'dispatched_at': '$(date -u +%Y-%m-%dT%H:%M:%SZ)'
 }
 registry_file = os.environ['ASDLC_REGISTRY_FILE']
@@ -356,4 +481,4 @@ elif [[ "$reg_write_rc" -ne 0 ]]; then
   echo "WARNING: Failed to record dispatch in registry — deduplication may not work" >&2
 fi
 
-echo "DISPATCHED workspace=${WS_ID:-$DONE_KEY} surface=$SURFACE_ID agent=$AGENT mode=$MODE close=$CLOSE cwd=${CWD:-$(pwd)} done_key=$DONE_KEY"
+echo "DISPATCHED workspace=${WS_ID:-$DONE_KEY} surface=$SURFACE_ID agent=$AGENT mode=$MODE close=$CLOSE cwd=${CWD:-$(pwd)} done_key=$DONE_KEY dispatch_dir=$DISPATCH_DIR done_file=$DONE_FILE"

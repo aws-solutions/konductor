@@ -9,8 +9,24 @@ description: Delegate tasks to parallel agent sessions via cmux. Use when the us
 
 The orchestrator always dispatches via panes. The dispatch script selects the CLI automatically:
 
-- **Claude Code** (`$CLAUDECODE` is set): runs `claude --agent <PREFIX><agent-name> --dangerously-skip-permissions -p "<prompt>"` in the pane, where `<agent-name>` is the exact value passed via `--agent` (e.g. `k-developer`). The script never strips a prefix. `<PREFIX>` is the package-install prefix (e.g. `local-your-package-`), derived by searching `~/.claude/agents/` for any installed agent file ending in `-<agent-name>.md` (local- installs preferred over registry installs, checked as separate tiers). No package name is hardcoded, so this resolves correctly for any installed package. If `~/.claude/agents/` has no match and the skill ships inside a Claude Code plugin whose `agents/` has that agent, the bare name is launched and Claude resolves it to `<plugin>:<agent>`. A qualified `--agent` (`konductor:k-developer`) is launched only if the prefix is this plugin's name (from its `.claude-plugin/plugin.json`) and the plugin ships that agent; anything else is refused as not installed. **`--agent` must be a fully-qualified name.** If it matches 2+ installed agent files within the same tier (e.g. a partial name like `orchestrator` matching both `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`), the script errors and lists the candidates rather than guessing. `--agent` values are also restricted to `[a-z0-9-]+`, optionally prefixed with `<plugin>:`, before any of this runs. A `<PREFIX>` derived from a file name must match `[A-Za-z0-9._-]*`, or the dispatch is refused. Completion is detected via process exit (claude -p exits on task completion); the script then writes the `.done` marker file.
+- **Claude Code** (`$CLAUDECODE` is set): runs `claude --add-dir <dispatch dir> --agent <PREFIX><agent-name> <mode flags> "<prompt>"` in the pane, with the flags set by the permission mode (see [Permission modes](#permission-modes-claude-code)), where `<agent-name>` is the exact value passed via `--agent` (e.g. `k-developer`). The script never strips a prefix. `<PREFIX>` is the package-install prefix (e.g. `local-your-package-`), derived by searching `~/.claude/agents/` for any installed agent file ending in `-<agent-name>.md` (local- installs preferred over registry installs, checked as separate tiers). No package name is hardcoded, so this resolves correctly for any installed package. If `~/.claude/agents/` has no match and the skill ships inside a Claude Code plugin whose `agents/` has that agent, the bare name is launched and Claude resolves it to `<plugin>:<agent>`. A qualified `--agent` (`konductor:k-developer`) is launched only if the prefix is this plugin's name (from its `.claude-plugin/plugin.json`) and the plugin ships that agent; anything else is refused as not installed. **`--agent` must be a fully-qualified name.** If it matches 2+ installed agent files within the same tier (e.g. a partial name like `orchestrator` matching both `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`), the script errors and lists the candidates rather than guessing. `--agent` values are also restricted to `[a-z0-9-]+`, optionally prefixed with `<plugin>:`, before any of this runs. A `<PREFIX>` derived from a file name must match `[A-Za-z0-9._-]*`, or the dispatch is refused. Completion follows the `.done` contract in [Completion Detection](#completion-detection).
 - **kiro-cli** (default): runs `kiro-cli chat --agent <agent-name> ...` in the pane, using the exact `--agent` value passed in — no prefix is added or stripped. Completion is detected via the kiro-cli `stop` hook writing the `.done` file.
+
+## Permission modes (Claude Code)
+
+`KONDUCTOR_DISPATCH_PERMISSION_MODE` sets how a Claude Code child session starts. Kiro CLI children ignore it.
+
+| Mode | Child command | What the child can do |
+| --- | --- | --- |
+| `interactive` (default) | `claude --add-dir <dispatch dir> --agent <agent> "<prompt>"` | Runs as a normal session in the pane and asks you there before it uses a tool that needs permission. Its task is complete when it writes its `.done`; the session stays open until you type `/exit`. |
+| `headless` | `claude --add-dir <dispatch dir> --agent <agent> -p --permission-mode acceptEdits --permission-prompts none "<prompt>"` | Runs once and exits. It can edit files in its working directory and its dispatch dir. `-p` also skips the workspace trust dialog. Any other call that would prompt, Bash and network calls included, is denied unless `permissions.allow` in your `settings.json` (or `--allowedTools`) allows it. `acceptEdits` alone does not allow build or test commands. |
+| `bypass` | `claude --add-dir <dispatch dir> --agent <agent> --dangerously-skip-permissions -p "<prompt>"` | Skips every permission check. It is opt-in and meant only for an isolated environment, such as a disposable container or VM. The dispatch script prints a warning. |
+
+Any other value makes the dispatch script exit with an error before it opens a pane. Set the mode by exporting the variable in the shell that starts Claude Code, or, in the Claude Code plugin, with the plugin's `dispatch_permission_mode` option. An exported variable wins over the option. The child's prompt is always the same fixed instruction naming its files, so task text never reaches the command line.
+
+`<dispatch dir>` is `<registry>/<id>/`, where `<registry>` is `/tmp/konductor-cmux` (or `$KONDUCTOR_CMUX_REGISTRY_DIR` when set) and `<id>` is the dispatch's own id. The script creates it with mode 0700 and prints it as `dispatch_dir=`. It holds that dispatch's brief (`task.md`), result (`result.md`) and `.done`, and it is the only directory `--add-dir` grants: the shared `dispatched.json`, the launchers and every other dispatch's directory stay outside it. Without the grant, `headless` denies reading the brief and writing the result. `--add-dir` comes before `--agent` because it takes a list and would otherwise swallow the prompt.
+
+The registry must be private to you. The dispatch script creates it with mode 700, and it refuses to dispatch, as the cleanup helper refuses to remove, when the registry is a symlink, is not owned by you, or is group- or world-writable. Fix an older registry with `chmod 700`, or point `KONDUCTOR_CMUX_REGISTRY_DIR` at a private directory. The registry is per-user: on a host where several users share the default path, each user sets their own `KONDUCTOR_CMUX_REGISTRY_DIR`.
 
 ## Overview
 
@@ -60,14 +76,14 @@ Spawns a agent session in a cmux tab, split, or workspace.
 | Flag                  | Required | Description                                                                                                              |
 | --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `--agent`             | Yes      | Agent name (e.g. `k-developer`) or a plugin-qualified name (`konductor:k-developer`). On Claude Code the install prefix is resolved as described above |
-| `--task`              | Yes      | Task prompt to send to the agent                                                                                         |
+| `--task` or `--brief` | Yes      | Task text, or a file holding it; the script copies either to `<dispatch dir>/task.md`                                                                                         |
 | `--cwd`               | Yes      | Absolute path to project root — agent starts here                                                                        |
 | `--name`              | No       | Tab/workspace title (defaults to agent + task summary)                                                                   |
 | `--split right\|down` | No       | Split direction (default: right)                                                                                         |
 | `--tab`               | No       | Create a new tab instead of a split                                                                                      |
 | `--workspace`         | No       | Create a full workspace instead of a tab                                                                                 |
 | `--close`             | No       | Auto-close the tab when the agent finishes                                                                               |
-| `--interactive`       | No       | Keep kiro-cli open for human interaction (default: non-interactive)                                                      |
+| `--interactive`       | No       | Keep kiro-cli open for human interaction (default: non-interactive; kiro-cli only, on Claude Code the permission mode decides) |
 
 **Examples:**
 
@@ -94,22 +110,25 @@ bash "<CMUX_DISPATCH_DIR>/cmux-dispatch.sh" \
 
 ## Completion Detection
 
-Each agent's kiro-cli `stop` hook writes a done file:
+Every dispatch has one `.done` file:
 
-- Path: `/tmp/konductor-cmux/<done-key>.done` — `<done-key>` is the surface-derived dispatch key (`DONE_KEY`, from `SURFACE_ID`), not the workspace id. In split/tab mode there is no workspace id at all; in `--workspace` mode the workspace id is recorded inside the file's `workspace_id` field, but the filename itself always uses `DONE_KEY`.
-- Format: `{"workspace_id": "...", "status": "done|error", "summary": "..."}`
+- Path: `/tmp/konductor-cmux/<id>/<id>.done`, inside the dispatch's own directory. The script prints it as `done_file=` and exports it to the child as `KONDUCTOR_DONE_FILE`.
+- Format: `{"workspace_id": "...", "status": "done|error", "summary": "..."}`, plus `"exit_code"` once the session has ended.
+- The child writes it as its last step: the script's prompt tells it to. That is the completion signal, so an interactive Claude Code child completes without `/exit`; `/exit` only closes the surface.
+- `<id>` is the dispatch key: the surface id (`surface:3` becomes `surface_3`) plus a random suffix, since surface numbers repeat. In `--workspace` mode the workspace id is recorded in the file's `workspace_id` field. On Kiro CLI the `cmux-completion-hook.sh` stop hook may also write it, to `KONDUCTOR_DONE_FILE`.
+- When the child's session ends, the launcher keeps any `.done` already there and adds `exit_code`, or writes one with summary `"claude exit"` (Claude Code) or `"shell fallback"` (Kiro CLI) if nothing did. A non-zero exit sets `status` to `"error"`, so a `.done` the child wrote early never hides a crash.
+- A `.done` the child wrote can turn into `"status": "error"` after you first read it, once the launcher records a non-zero exit. Check it again once it has an `exit_code`.
+- Remove `<dispatch dir>` only once its `.done` has an `exit_code`, and only with `bash "<CMUX_DISPATCH_DIR>/cmux-cleanup-dispatch.sh" --id <done-key>`. It takes the id, never a path: it refuses an id that doesn't match the dispatch format, a symlinked directory, and a registry that fails the checks below, and removes nothing outside `<registry>/<id>`.
 
 Poll (glob-free — an unmatched `*.done` glob is a hard error under zsh, which
 aborts the whole compound command before `2>/dev/null` can apply):
-`find /tmp/konductor-cmux -maxdepth 1 -name '*.done' 2>/dev/null`
+`find /tmp/konductor-cmux -mindepth 2 -maxdepth 2 -name '*.done' 2>/dev/null`
 
 Running the dispatch script, polling, and reading result files are orchestrator direct work, as defined in the Orchestrator Direct Work table of `k-orchestrator-routing-rules.md`. Run them yourself; never dispatch them to another surface.
 
-The `summary` field in the `.done` payload is a short status string (and is
-literally `"shell fallback"` / `"claude exit"` when the completion hook didn't
-run) — not a substitute for the deliverable. Dispatch prompts SHOULD instruct
-the child agent to write its full deliverable to a file (e.g.
-`/tmp/konductor-cmux/result-<slug>.md`) for the orchestrator to read; use
+The `summary` field in the `.done` payload is a short status string, not a
+substitute for the deliverable. The script tells every child to write its full
+deliverable to `<dispatch dir>/result.md` for the orchestrator to read; use
 `cmux read-screen` only as a fallback.
 
 ## Worktree Provisioning for Write Agents

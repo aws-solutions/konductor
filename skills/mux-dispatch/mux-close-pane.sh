@@ -115,6 +115,9 @@ close_pane() {
     rm -f "$REGISTRY_DIR/launcher-${ws_id}.sh" \
            "$REGISTRY_DIR/task-text-${ws_id}.txt" \
            "$REGISTRY_DIR/${ws_id}.done" 2>/dev/null || true
+    # The dispatch's own directory (brief, result, .done), through the same
+    # helper the orchestrator uses, which validates the id and the registry.
+    bash "$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)/mux-cleanup-dispatch.sh" --id "$ws_id" >/dev/null || true
   fi
 
   # Remove entry from registry (only when we have a workspace_id)

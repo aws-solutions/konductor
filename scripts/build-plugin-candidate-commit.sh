@@ -14,7 +14,7 @@
 # checkout is the same one `make -C cli build` and
 # scripts/generate-claude-plugin.sh already ran in, so it carries
 # untracked build output (cli/konductor-rs/target/, build/cli/konductor,
-# dist/, generated/claude-plugin/). `git rm -rq .` also deletes the
+# dist/). `git rm -rq .` also deletes the
 # checked-out .gitignore, so `git add -A` picks that untracked output up
 # alongside the assembled tree.
 #
