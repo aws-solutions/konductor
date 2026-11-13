@@ -143,8 +143,8 @@ pass not yet run or a pass MISSING), and an `Adversarial pass:` line with the pa
   the verdict comes from the findings, so a known CRITICAL reads `NEEDS FIXES` even on a direct
   run, and an `Adversarial pass:` line records the pass state. Under `konductor` the orchestrator
   runs the pass and sets the final verdict, unless a pass is MISSING, which keeps the report
-  pending; started directly, the note comes back to you: ask
-  `konductor` to run the adversarial review. See
+  pending when neither report has a CRITICAL or IMPORTANT finding open; started directly, the
+  note comes back to you: ask `konductor` to run the adversarial review. See
   [Agents reference](../agents.md#why-this-matters-a-real-consequence).
 - **The adversarial step is also skipped for frontend-only reviews** by design, because it targets
   backend and infra gaps.

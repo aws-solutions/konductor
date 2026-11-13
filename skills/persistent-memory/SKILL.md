@@ -94,7 +94,7 @@ Checked re-read (step 1) → replace the matching bullet line in place → pipe 
 
 ### Remove an entry
 
-Checked re-read (step 1) → delete the matching bullet line → pipe full content through validator. Deleting the last entry leaves the content empty, so that write needs `--clear` before the target: `bash "$VALIDATOR" --clear "$TARGET"`.
+Checked re-read (step 1) → delete the matching bullet line → pipe full content through validator. Deleting the last entry leaves the content empty, so that write needs `--clear` before the target: `bash "$VALIDATOR" --clear "$TARGET" < /dev/null`.
 
 ### First-session bootstrap
 
