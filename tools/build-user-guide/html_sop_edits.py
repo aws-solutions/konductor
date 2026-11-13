@@ -241,10 +241,10 @@ SOP_EDITS += [
      "OVERWRITTEN. The count of clobbered files is reported afterwards; run --dry-run first to see which."),
     ("uninstall task: sample output",
      "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          82\n  SOPs            19\n  context files    1\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place.",
-     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          82\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place."),
+     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          82\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (changed since install; kept)\n\nProject files under .konductor/ would be left in place."),
     ("uninstall task: prompt prose",
      'Answer <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">y</span> and it reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> Exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. Answering anything else cancels and changes nothing. To skip the prompt in a script:',
-     'That was <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--dry-run</span>, which touches the filesystem in no way at all and flags each path whose content has diverged from the manifest. <strong style="color:var(--tx);font-weight:600">A real run has no confirmation prompt</strong> \u2014 it proceeds directly and reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> with exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. To remove it for real:'),
+     'That was <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--dry-run</span>, which touches the filesystem in no way at all. It marks each path whose content changed since install, a file you hand-edited, as <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">(changed since install; kept)</span>, and a Kiro agent file that <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">kiro-cli agent upgrade</span> rewrote as <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">(rewritten by Kiro; removed with its .bak)</span>. Under <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--json</span> each path carries a <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">"diverged"</span> and a <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">"kept"</span> boolean. <strong style="color:var(--tx);font-weight:600">A real run has no confirmation prompt</strong> \u2014 it proceeds directly and reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> with exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. To remove it for real:'),
 ]
 
 # Install samples: --harness is required and there is no destination auto-detection,
@@ -1312,4 +1312,20 @@ SOP_EDITS += [
      "Knowledge tools are pre-approved; AWS API tools ask first. "
      f"Use the {_MONO13}aws:ViaAWSMCPService</span> and {_MONO13}aws:CalledViaAWSMCP</span> IAM condition keys "
      "to limit agent-initiated calls.</p>"),
+]
+
+_UNINSTALL_P = '<p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)">'
+
+SOP_EDITS += [
+    # uninstall keeps a file changed since install and removes a Kiro agent file
+    # that kiro-cli agent upgrade rewrote, with its .bak (docs/user-guide/tasks/uninstall.md).
+    ("uninstall: a real run keeps changed files and removes matching Kiro backups",
+     f'<p style="margin:0 0 40px;font-size:16px;line-height:1.75;color:var(--mu)">{_MONO13}uninstall</span> deliberately leaves',
+     f"{_UNINSTALL_P}A file you changed after install is kept. {_MONO13}uninstall</span> prints a warning naming it "
+     f"and still exits {_MONO13}0</span>; the file is no longer tracked, so delete it yourself if you do not want it.</p>\n"
+     f"        {_UNINSTALL_P}Kiro CLI's {_MONO13}kiro-cli agent upgrade</span> rewrites each "
+     f"{_MONO13}.kiro/agents/&lt;name&gt;.json</span> and saves the original as {_MONO13}&lt;name&gt;.json.bak</span>. "
+     f"When that backup matches what Konductor installed, {_MONO13}uninstall</span> removes both files and lists them. "
+     "A backup that does not match is left alone.</p>\n"
+     f'        <p style="margin:0 0 40px;font-size:16px;line-height:1.75;color:var(--mu)">{_MONO13}uninstall</span> deliberately leaves'),
 ]

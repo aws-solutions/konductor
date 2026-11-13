@@ -668,12 +668,12 @@ lock file; a partial uninstall and `--dry-run` leave it. The manifest's own lock
 (`.konductor/.manifest.lock`) is not removed, so `.konductor/` is not empty after a full
 uninstall.
 
-`--dry-run` reports exactly which files would be removed for every selected target,
-without touching the filesystem in any way, flagging each individual path that has
-diverged from its manifest-recorded hash (i.e. would have local edits destroyed) - distinct
-from an unmodified tracked path, both in plain-text (`(local edits would be destroyed)`)
-and `--json` (a per-path `"diverged"` boolean), not just an aggregate count. Without
-`--dry-run`, a real uninstall proceeds directly, with no confirmation prompt of any kind.
+`--dry-run` reports what a real run would do for every selected target, without touching
+the filesystem in any way. It lists each tracked path and marks a file that changed since
+install as `(changed since install; kept)` and a Kiro-rewritten agent as
+`(rewritten by Kiro; removed with its .bak)`. Under `--json` each path carries a
+`"diverged"` and a `"kept"` boolean. Without `--dry-run`, a real uninstall proceeds
+directly, with no confirmation prompt of any kind.
 
 Uses `update`'s `--target`/`--all` selection table above exactly, with no divergence:
 a bare invocation (`--target` omitted, `--all` not passed) against 2+ tracked installs
@@ -687,10 +687,17 @@ treats this as a non-fatal prune - it removes the stale tracked install entry an
 reports `stale: true` rather than failing, since there is nothing left on disk to
 protect.
 
-`uninstall` reports how many deleted files had a hash that diverged from the manifest's
-recorded hash (i.e. a file that was hand-edited after install and is about to be deleted
-anyway), naming the specific diverged file paths - a disclosure, not a safeguard that
-blocks deletion.
+`uninstall` keeps a tracked file whose content no longer matches the manifest's recorded
+hash, prints a warning naming it, and still exits `0`. The kept file is no longer tracked
+once the manifest entry is gone. One exception covers Kiro CLI's `kiro-cli agent upgrade`,
+which rewrites each `.kiro/agents/<name>.json` in place and saves the original as
+`<name>.json.bak`: when that backup hashes to the manifest's recorded hash, the rewritten
+agent file and its backup are both removed and listed. A matching backup next to an
+unchanged agent file is removed too. A backup that does not match is never touched, and
+`.bak` files anywhere else are ignored. The `--json` result keeps `diverged_deleted` and
+`diverged_paths` (now only Kiro-rewritten agent files) and adds `kept_changed` (a count),
+`kept_changed_paths` and `kiro_backups_removed`; removed backups also count in
+`files_deleted`.
 
 Exit codes: `0` on success, `64` (`EXIT_USAGE_ERROR`) on any usage error (including the
 2+-tracked-installs ambiguity case), `65` (`EXIT_VERIFY_FAILED`) on an unsupported index
