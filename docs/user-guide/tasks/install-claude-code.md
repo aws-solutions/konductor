@@ -214,7 +214,8 @@ the upstream source of truth for the package (`mcp-proxy-for-aws-cli`) and args.
 its own `aws-mcp` server key rather than the toolkit README's `aws` key, for continuity with
 AWS's own getting-started docs, OAuth commands, and existing configs.
 
-**AWS documentation lookups:** `k-architect` and `k-developer` request the whole `aws-mcp`
+**AWS documentation lookups:** `konductor`, `k-architect` and `k-developer` request the whole
+`aws-mcp`
 server via the `mcp__aws-mcp__*` glob, so every tool it exposes is granted, including the
 AWS-API-acting ones (see Tool grant below). Each agent's rendered `.md` file carries an
 `mcpServers:` entry (built from `dependencies.mcpRegistry`, filtered to just this server,
@@ -229,7 +230,8 @@ service documentation and skills still come from the managed endpoint at request
 and configure AWS credentials (`~/.aws/credentials` or environment variables) so the agent has
 something to authenticate with; it degrades gracefully if credentials are absent.
 
-**Tool grant: the whole server.** `k-architect`/`k-developer` grant every tool the server
+**Tool grant: the whole server.** `konductor`, `k-architect` and `k-developer` grant every tool
+the server
 exposes: the five AWS knowledge/documentation tools (`aws___search_documentation`,
 `aws___retrieve_skill`, `aws___read_documentation`, `aws___list_regions`,
 `aws___get_regional_availability`) and the three AWS-API-acting tools (`aws___run_script`,

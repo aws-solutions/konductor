@@ -144,8 +144,8 @@ by `Fix these issues? [y/n]`.
 ### MCP (Model Context Protocol)
 
 A standard for exposing external tools to an AI agent. Konductor declares MCP servers in an agent
-spec's `dependencies.mcpRegistry`. Two are pre-declared: `aws-mcp` (on `k-architect` and
-`k-developer`) and `playwright-mcp` (on `k-browser`).
+spec's `dependencies.mcpRegistry`. Two are pre-declared: `aws-mcp` (on `konductor`, `k-architect`
+and `k-developer`) and `playwright-mcp` (on `k-browser`).
 
 ### Mermaid
 
@@ -208,7 +208,7 @@ declared in the file named by the `severities_source` config key.
 
 A self-contained module of knowledge an **agent** loads on demand, at `skills/<name>/SKILL.md`
 with YAML frontmatter (`name`, `description`, often `version` and `tags`). Only names and
-descriptions load at session start. 81 ship. Contrast **SOP**.
+descriptions load at session start. 80 ship. Contrast **SOP**.
 
 ### SOP (standard operating procedure)
 

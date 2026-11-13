@@ -36,12 +36,14 @@ Overly permissive actions (wildcards without justification), missing condition k
 
 ## Severity Mapping
 
-The per-check "Flag as" lines follow this mapping. When a check and this list disagree, this list wins. The wildcard and cross-account tiers match the IAM checks in `infra-validation`.
+The per-check "Flag as" lines follow this mapping. When a check and this list disagree, this list wins. The wildcard, cross-account and privilege-escalation tiers match the IAM checks in `infra-validation`.
 
 **CRITICAL:** one of the findings below.
 
 - `*` action, `*` resource, `ec2:*` (it covers EBS snapshots, security-group ingress and instance userData), or `service:*` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) without a documented justification
 - Cross-account trust without `sts:ExternalId` or another condition key
+- `iam:PassRole` on `Resource: "*"`. With a compute create or update action (`ec2:RunInstances`, `lambda:CreateFunction`, `lambda:UpdateFunctionConfiguration`, `ecs:RegisterTaskDefinition`) it lets the principal run code as any passable role; alone it is still a wildcard resource
+- A direct privilege-escalation action (`iam:PutRolePolicy`, `iam:PutUserPolicy`, `iam:PutGroupPolicy`, `iam:CreatePolicy`, `iam:CreatePolicyVersion`, `iam:AttachRolePolicy`, `iam:AttachUserPolicy`, `iam:AttachGroupPolicy`) on `Resource: "*"`
 - `kms:*` granted to a non-admin principal
 - S3 bucket open to the public, an RDS instance or EBS volume with no encryption at rest, S3 or DynamoDB data that needs SSE-KMS or a customer managed key left on default keys, or no TLS enforcement where sensitive data moves
 - No CloudTrail trail at all
@@ -59,6 +61,8 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 - `service:*` on a low-risk service (`cloudwatch:*`, `xray:*`) without a documented justification
 - Cross-account trust that has a condition key but whose intent is unverified
 - Named actions beyond what the role needs, with no wildcard
+- A direct privilege-escalation action scoped to named resources
+- `ForAllValues` with no `Null` check on the same key, or a Deny that matches `aws:TagKeys` case-sensitively
 - Key administrators who can also decrypt
 - No permission boundary on a role with `iam:*` or `sts:AssumeRole`
 - Log retention shorter than a compliance requirement, or missing security alarms
@@ -98,14 +102,13 @@ Check for:
 - Recommend specific ARN patterns with account ID, region, and resource identifiers
 - Example: Replace `*` with `arn:aws:s3:::bucket-name/path/${aws:userid}/*`
 
-**Missing IAM Condition Detection**:
+**Missing or Unsafe IAM Conditions**:
 
 - Check if policies lack condition blocks for fine-grained access control
-- Recommend conditions based on use case:
-  - IP restrictions: `"IpAddress": {"aws:SourceIp": ["10.0.0.0/8"]}`
-  - MFA requirements: `"Bool": {"aws:MultiFactorAuthPresent": "true"}`
-  - Resource tagging: `"StringEquals": {"s3:ExistingObjectTag/Owner": "${aws:userid}"}`
-  - Time-based access: `"DateGreaterThan": {"aws:CurrentTime": "2024-01-01T00:00:00Z"}`
+- Load the AWS MCP server's `aws-iam` skill through `find-aws-skills` and check each statement against its verified edge cases: `ForAllValues` without a `Null` check on the same key, case-sensitive `aws:TagKeys` matches in a Deny, `iam:PassRole` on `Resource: "*"`, and the direct privilege-escalation actions. Check each service role's trust policy against its `references/aws-iam-role-management.md`, which requires the confused-deputy keys `aws:SourceArn` and `aws:SourceAccount` when the assuming service supports them. Rate what it flags with the Severity Mapping above
+- This skill's own rule, not taken from `aws-iam`: a resource-based policy that grants a service or another account access needs `aws:SourceArn`, `aws:SourceAccount` or `aws:PrincipalOrgID`
+- Without the AWS MCP server, check the edge cases named above directly, and state in the report that `aws-iam` was not consulted
+- For S3 bucket policies and settings, read `references/audit-checklist.md` from the `securing-s3-buckets` skill as a list of controls and judge each one from the design or IaC. Its audit workflow runs AWS CLI commands against a live bucket; run none of them. Rate a control that fails or is not configured the same way. A control on the Severity Mapping CRITICAL list stays CRITICAL whatever its checklist tier; otherwise Critical and High become IMPORTANT, and Medium and Low become SUGGESTION
 
 **Permission Boundary Validation**:
 
@@ -139,7 +142,7 @@ Check for:
 **TLS Enforcement Validation**:
 
 - **S3 Bucket Policies**: Check for policy statement denying requests where `"aws:SecureTransport": "false"`
-- **API Gateway**: Check for `MinimumTLSVersion: TLS_1_2` or higher
+- **API Gateway**: Check custom domain names for `SecurityPolicy: TLS_1_2` or any enhanced `SecurityPolicy_*` policy (not `TLS_1_0`). An enhanced policy also needs an endpoint access mode set; AWS recommends `STRICT`
 - **Application Load Balancer**: Check for HTTPS listeners with TLS 1.2+ policy
 - **CloudFront**: Check for `ViewerProtocolPolicy: https-only` and `MinimumProtocolVersion: TLSv1.2_2021`
 - Flag as CRITICAL if TLS enforcement is missing for any service handling sensitive data
@@ -147,7 +150,7 @@ Check for:
 **KMS Key Rotation Validation**:
 
 - Check for `EnableKeyRotation: true` on all KMS customer-managed keys
-- Verify rotation schedule is annual (AWS default)
+- Verify the rotation period meets the requirement: 365 days by default, configurable from 90 to 2560 days (`RotationPeriodInDays`)
 - Flag as CRITICAL if rotation is disabled and a named compliance framework or the design requires it; otherwise flag as IMPORTANT if rotation is disabled for keys encrypting sensitive data
 - Recommend enabling automatic rotation for all customer-managed keys
 
@@ -315,7 +318,7 @@ When the user or the design under review names a compliance framework, or the de
 Check for:
 
 - GuardDuty not enabled
-- Security Hub not enabled
+- AWS Security Hub CSPM not enabled
 - Missing CloudWatch alarms for security events
 - No automated remediation for security violations
 - Missing SNS notifications for critical alerts
@@ -371,7 +374,7 @@ Check for:
 - Extract IAM policies (identity-based and resource-based)
 - Identify encryption configurations (KMS, S3, DynamoDB, RDS)
 - List audit logging configurations (CloudTrail, service logs)
-- Note monitoring and alerting setup (CloudWatch, GuardDuty, Security Hub)
+- Note monitoring and alerting setup (CloudWatch, GuardDuty, Security Hub CSPM)
 - Extract compliance requirements
 - Identify threat model references (if provided)
 - **Note explicit design decisions** (e.g., "AWS-managed keys chosen for Internal/Confidential data")
@@ -383,6 +386,7 @@ Check for:
 - Calculate security impact score for each issue
 - Estimate remediation effort
 - Collect evidence for each finding
+- Optional, when AWS credentials are available: run IAM Access Analyzer policy validation on each IAM policy document through `aws___run_script`, calling the read-only `accessanalyzer` operation `ValidatePolicy` with `policyType` `IDENTITY_POLICY` or `RESOURCE_POLICY`. Without the AWS MCP server, use the AWS CLI (`aws accessanalyzer validate-policy --policy-type IDENTITY_POLICY --policy-document file://policy.json`). It needs `access-analyzer:ValidatePolicy` permission. Map its security warnings and errors into this skill's severities; if it cannot run, say so and continue with the manual checks
 
 ### STEP 3: Generate Findings
 
@@ -751,7 +755,7 @@ Generate output in this format:
 
 3. **Encrypt new S3 bucket** (CRITICAL, < 1 hour)
    - Enable default encryption with KMS customer-managed key
-   - Add bucket policy to deny unencrypted uploads
+   - Add a bucket policy that denies non-TLS requests
    - Enable versioning and MFA delete
 
 ### Future Improvements (SUGGESTION)

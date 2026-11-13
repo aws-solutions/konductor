@@ -172,10 +172,10 @@ SOP_EDITS += [
 # k-architect's model and skill count, in the agents page's own prose and tables.
 SOP_EDITS += [
     ("agents bullet: architect model",
-     "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model, claude-sonnet-5.5.",
-     "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model: claude-sonnet-5.5 on Kiro CLI, claude-sonnet-5-5 on Claude Code."),
+     "k-architect carries 39 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model: claude-sonnet-5.5 on Kiro CLI, claude-sonnet-5-5 on Claude Code.",
+     "k-architect carries 38 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model: claude-sonnet-5.5 on Kiro CLI, claude-sonnet-5-5 on Claude Code."),
     ("specialists table: architect",
-     '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review. 38 skills.',
+     '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review. 39 skills.',
      '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review. 38 skills.'),
     ("specialists table: developer skills",
      '{ k: "k-developer", v: "SOPs: k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow. 19 skills',
@@ -234,14 +234,14 @@ SOP_EDITS += [
 # directly with no prompt of any kind.
 SOP_EDITS += [
     ("update task: sample output",
-     "Updating Konductor\n  agents          11 updated\n  skills          82 updated\n  SOPs            19 updated\n  context files    1 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes.",
-     "Updating Konductor\n  agents          11 updated\n  skills          81 updated\n  SOPs            19 updated\n  context files    2 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes."),
+     "Updating Konductor\n  agents          11 updated\n  skills          81 updated\n  SOPs            19 updated\n  context files    2 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes.",
+     "Updating Konductor\n  agents          11 updated\n  skills          80 updated\n  SOPs            19 updated\n  context files    2 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes."),
     ("update task: locally-modified row",
      "Your files are kept. The release version is not applied to them.",
      "OVERWRITTEN. The count of clobbered files is reported afterwards; run --dry-run first to see which."),
     ("uninstall task: sample output",
-     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          82\n  SOPs            19\n  context files    1\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place.",
-     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          81\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place."),
+     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          81\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place.",
+     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          80\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place."),
     ("uninstall task: prompt prose",
      'Answer <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">y</span> and it reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> Exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. Answering anything else cancels and changes nothing. To skip the prompt in a script:',
      'That was <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--dry-run</span>, which touches the filesystem in no way at all and flags each path whose content has diverged from the manifest. <strong style="color:var(--tx);font-weight:600">A real run has no confirmation prompt</strong> \u2014 it proceeds directly and reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> with exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. To remove it for real:'),
@@ -276,14 +276,14 @@ SOP_EDITS += [
 # command with no --harness.
 SOP_EDITS += [
     ("hero tile: skills",
-     '>75</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>',
-     '>81</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>'),
+     '>81</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>',
+     '>80</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>'),
     ("hero tile: SOPs",
      '>13</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SOPS</span>',
      '>19</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SOPS</span>'),
     ('hero snippet: banner',
-     'harness: {{ harnessFlag }}<br>agents 11 · skills 82 · SOPs 19 · context 2',
-     'harness: {{ harnessFlag }}<br>agents 11 · skills 81 · SOPs 19 · context 4'),
+     'harness: {{ harnessFlag }}<br>agents 11 · skills 81 · SOPs 19 · context 4',
+     'harness: {{ harnessFlag }}<br>agents 11 · skills 80 · SOPs 19 · context 4'),
     ("runtime binding: harnessFlag",
      'runtimeLabel: kiro ? "KIRO CLI" : "CLAUDE CODE",',
      'runtimeLabel: kiro ? "KIRO CLI" : "CLAUDE CODE",\n      harnessFlag: kiro ? "kiro-cli-v2" : "claude",'),
@@ -397,14 +397,14 @@ SOP_EDITS += [
      "the Kiro CLI allowedTools enumerates 13 specific browser tools: snapshot, screenshot, console messages, network requests, tabs, navigate, navigate back, wait for, click, type, select option, press key, close."),
     # counts
     ("concepts tree: skills/sops counts",
-     "skills/ \u2014 75 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 13 procedures",
-     "skills/ \u2014 81 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 19 procedures"),
+     "skills/ \u2014 81 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 19 procedures",
+     "skills/ \u2014 80 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 19 procedures"),
     ("concepts grid: skills count",
-     ">75 modules</span>",
-     ">81 modules</span>"),
+     ">81 modules</span>",
+     ">80 modules</span>"),
     ("home: on-demand modules",
-     "<div>11 agents with scoped tools and 75 on-demand knowledge modules.</div>",
-     "<div>11 agents with scoped tools and 81 on-demand knowledge modules.</div>"),
+     "<div>11 agents with scoped tools and 81 on-demand knowledge modules.</div>",
+     "<div>11 agents with scoped tools and 80 on-demand knowledge modules.</div>"),
     # pr_url is context-only (agent-sops/k-adversarial-pull-request-review.sop.md:15)
     ("pr_url: flow gate",
      'node("00", "diff_input OR pr_url given?", "If neither, the SOP asks for one and waits. It will not ask for output_file.", "gate")',
@@ -557,11 +557,11 @@ SOP_EDITS += [
 # Values from agents/konductor*.agent-spec.json.
 SOP_EDITS += [
     ('orchestrators: konductor skills',
-     '{ k: "konductor skills (13)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor. claude-teams-behavior is Claude Code only. Kiro CLI has the other 12 plus humanize-writing, on demand" }',
-     '{ k: "konductor skills (24)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation. claude-teams-behavior is Claude Code only. Kiro CLI has the other 23 plus humanize-writing, on demand" }'),
-    ("orchestrators: konductor tools",
-     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Skill — so it CAN write and run shell there; only its routing rules stop it" }',
-     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check" }'),
+     '{ k: "konductor skills (24)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation. claude-teams-behavior is Claude Code only. Kiro CLI has the other 23 plus humanize-writing, on demand" }',
+     '{ k: "konductor skills (25)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation, find-aws-skills. claude-teams-behavior is Claude Code only. Kiro CLI has the other 24 plus humanize-writing, on demand" }'),
+    ('orchestrators: konductor tools',
+     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check" }',
+     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check. It also requests mcp__aws-mcp__*" }'),
     ("orchestrators: mux/cmux SOPs",
      '{ k: "mux / cmux SOPs (9)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor — konductor\'s ten, minus k-delegate" }',
      '{ k: "mux / cmux SOPs (10)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor. konductor\'s eleven, minus k-delegate" }'),
@@ -758,11 +758,11 @@ SOP_EDITS += [
 # the essentials table instead of being dropped.
 SOP_EDITS += [
     ("concepts: drop the verify-it-yourself panel",
-     "<div style=\"border:1px solid rgba(61,220,151,.35);border-radius:12px;background:rgba(61,220,151,.05);padding:18px 20px\">\n              <div style=\"font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--sig);margin-bottom:10px\">COUNT · VERIFY IT YOURSELF</div>\n              <p style=\"margin:0 0 12px;font-size:14.5px;line-height:1.6;color:var(--mu)\">The package ships 82 skills — 82 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>.</p>\n              <pre style=\"margin:0;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:var(--tx)\">ls skills | wc -l</pre>\n            </div>\n          </section>",
-     "<p style=\"margin:0;font-size:16px;line-height:1.75;color:var(--mu)\"><strong style=\"color:var(--tx);font-weight:600\">The package ships 81 skills</strong> — 81 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>. All 81 are catalogued, grouped, with a when-to-use note each, in the <a href=\"#/skills\">Skills catalog</a>.</p>\n          </section>"),
+     "<p style=\"margin:0;font-size:16px;line-height:1.75;color:var(--mu)\"><strong style=\"color:var(--tx);font-weight:600\">The package ships 81 skills</strong> — 81 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>. All 81 are catalogued, grouped, with a when-to-use note each, in the <a href=\"#/skills\">Skills catalog</a>.</p>\n          </section>",
+     "<p style=\"margin:0;font-size:16px;line-height:1.75;color:var(--mu)\"><strong style=\"color:var(--tx);font-weight:600\">The package ships 80 skills</strong> — 80 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>. All 80 are catalogued, grouped, with a when-to-use note each, in the <a href=\"#/skills\">Skills catalog</a>.</p>\n          </section>"),
     ("skills: coverage section drops check-it-yourself",
-     "{\"paras\":[\"All 82 skills are declared by at least one agent. Check it yourself with ls skills | wc -l, then compare that against the union of every spec's declared skills — if the two ever diverge, a skill exists that no agent can load, which matters most when a SOP instructs an agent to use it.\"],\"code\":\"ls skills | wc -l\",",
-     "{\"paras\":[\"All 81 skills are declared by at least one agent. That matters because a skill no agent declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use it. Contributors adding a skill should see Contributing → check skill coverage.\"],"),
+     "{\"paras\":[\"All 81 skills are declared by at least one agent. That matters because a skill no agent declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use it. Contributors adding a skill should see Contributing → check skill coverage.\"],",
+     "{\"paras\":[\"All 80 skills are declared by at least one agent. That matters because a skill no agent declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use it. Contributors adding a skill should see Contributing → check skill coverage.\"],"),
     ("prerequisites: drop the what-you-do-not-need section",
      "\n\n          <section id=\"p-not\" style=\"padding-bottom:44px;border-top:1px solid var(--bd);padding-top:40px\">\n            <h2 style=\"margin:0 0 16px;font-size:30px;letter-spacing:-.025em;font-weight:600\">What you do <em>not</em> need</h2>\n            <p style=\"margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)\">Worth stating, because it is unusual:</p>\n            <div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px\">\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No servers or infrastructure</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">Agents are configuration files your runtime executes.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No database</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">Nothing persists except plain files you can read.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No build toolchain</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">There is no published binary yet, so you build the CLI from a clone with make build. A Rust toolchain is required.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No network access at run time for the CLI</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\"><span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">init</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">config</span>, and <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">synth</span> touch only the local filesystem — and so do <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">update</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">doctor</span> and <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">metrics</span>. The single remote path is <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">install</span> with --from omitted, which tries a GitHub Release. Every documented workflow here passes --from, so in practice nothing reaches the network.</div>\n              </div>\n            </div>\n          </section>\n\n          ",
      "\n\n          "),
@@ -1219,19 +1219,9 @@ SPAN = "<span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;colo
 
 SOP_EDITS += [
     # ---- single-writer shape: konductor edits, the shared rules file, four context files ----
-    ("qs checkpoint names the single-writer shape",
-     "Watch what happens after you ask for implementation work. You should see the orchestrator "
-     "<strong style=\"color:var(--tx);font-weight:600\">delegate</strong> to a specialist rather than start "
-     "editing files itself. That is the whole design, and it is a rule rather than a wall in both runtimes. "
-     "In Kiro CLI konductor pre-approves fs_read alone, so a write or a command stops to ask you rather than "
-     "being refused; in Claude Code it holds Write and Bash outright. Either way what keeps it delegating is "
-     "its routing rules. If it starts editing directly, see",
-     "Watch what happens when you ask for a single change, such as a bug fix in one module. You should see "
-     "konductor edit files and run the build itself, then spawn a k-* reviewer when the phase closes. A "
-     "multi-phase request like the one above gets an SOP name instead. In Kiro CLI konductor pre-approves "
-     "fs_read alone, so each write or command stops to ask you first; in Claude Code it holds Write and Bash "
-     "outright. If you want an orchestrator that hands every change to a specialist, use "
-     "konductor-mux-orchestrator or konductor-cmux-orchestrator. If one of those starts editing directly, see"),
+    ('qs checkpoint names the single-writer shape',
+     'Watch what happens when you ask for a single change, such as a bug fix in one module. You should see konductor edit files and run the build itself, then spawn a k-* reviewer when the phase closes. A multi-phase request like the one above gets an SOP name instead. In Kiro CLI konductor pre-approves fs_read alone, so each write or command stops to ask you first; in Claude Code it holds Write and Bash outright. If you want an orchestrator that hands every change to a specialist, use konductor-mux-orchestrator or konductor-cmux-orchestrator. If one of those starts editing directly, see',
+     'Watch what happens when you ask for a single change, such as a bug fix in one module. You should see konductor edit files and run the build itself, then spawn a k-* reviewer when the phase closes. A multi-phase request like the one above gets an SOP name instead. In Kiro CLI konductor pre-approves only reads (fs_read and read-only aws-mcp lookups), so each write or command stops to ask you first; in Claude Code it holds Write and Bash outright. If you want an orchestrator that hands every change to a specialist, use konductor-mux-orchestrator or konductor-cmux-orchestrator. If one of those starts editing directly, see'),
     ("ik success signal: konductor edits and spawns a reviewer",
      "Giving it implementation work produces a <strong style=\"color:var(--tx);font-weight:600\">delegation</strong> "
      "to a specialist, not the orchestrator doing the work itself.",
@@ -1244,10 +1234,8 @@ SOP_EDITS += [
      "is the check.) If you use konductor-mux-orchestrator or konductor-cmux-orchestrator and it starts editing "
      "files directly, its routing rules did not load — see"),
     ("faq: read-only rule scope and konductor's permissions",
-     "konductor loads k-direct-work.md instead and edits files itself. On Kiro CLI it pre-approves fs_read alone",
-     "konductor loads k-direct-work.md instead and edits files itself in the default auto mode. In coordinator mode "
-     "it hands every change to a specialist, like the mux and cmux orchestrators (see the FAQ entry Coordinator "
-     "mode). On Kiro CLI it pre-approves fs_read alone"),
+     'konductor loads k-direct-work.md instead and edits files itself in the default auto mode. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators (see the FAQ entry Coordinator mode). On Kiro CLI it pre-approves fs_read alone',
+     'konductor loads k-direct-work.md instead and edits files itself in the default auto mode. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators (see the FAQ entry Coordinator mode). On Kiro CLI it pre-approves only reads (fs_read and read-only aws-mcp lookups)'),
     ("faq: shared rules apply to all three orchestrators",
      "still go to a specialist. It also flags instructions planted in files it reads, won't read files that hold "
      "secrets unless you name them, and asks you instead of routing a denied action to another agent. It does not flag",

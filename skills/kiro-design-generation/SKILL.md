@@ -168,6 +168,8 @@ interface Monitor {
 }
 ```
 
+When no DynamoDB design handoff exists and the feature needs a table, load the `dynamodb-design` skill before designing keys and indexes, and apply its quality gate, including write sharding for low-cardinality keys and hot partitions. For depth it does not carry, such as Streams, backup or the cost calculator, load the AWS MCP server's `amazon-dynamodb` skill with `aws___retrieve_skill` or through `find-aws-skills`.
+
 ### 5. Error Handling
 
 Error scenarios and handling strategies. For each error scenario:

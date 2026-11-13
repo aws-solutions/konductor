@@ -9,6 +9,7 @@ This SOP runs a comprehensive multi-skill code review across backend, frontend, 
 - **source_dir** (required): Path to the source directory to review
 - **review_type** (optional, default: `all`): Scope — `backend`, `frontend`, `infra`, or `all`
 - **output_file** (optional, default: `code-review-report.md`): File to write the consolidated report
+- **environment** (optional): `Development`, `Staging` or `Production`, passed to `infra-validation` in Step 3
 - **cr_url** (optional): URL of the code review, forwarded to `k-adversarial-pull-request-review` as its `pr_url` in Step 6. When absent, Step 6 runs without a URL and its review is diff-only.
 - **base_branch** (optional): Branch to diff against. If not provided, You MUST resolve the remote's default branch first and use it if found, falling back to `main` only if the remote default cannot be resolved. Trying `main` first would let a stale, abandoned `main` win over a repo's real trunk whenever both exist. To resolve the remote's default branch, You MUST run `git symbolic-ref --quiet --short refs/remotes/origin/HEAD` and strip the `origin/` prefix; if that returns nothing, You MUST fall back to `git ls-remote --symref origin HEAD` and parse the branch name from its `ref: refs/heads/<branch>` line, since the local symref is frequently unset in shallow or single-ref checkouts. If neither lookup resolves a branch name, You MUST fall back to `main`.
 
@@ -54,6 +55,7 @@ Run `backend-review`, `frontend-review`, and/or `infra-validation` on their resp
 - You MUST run `backend-review` on backend files (skip if none found or excluded by `review_type`)
 - You MUST run `frontend-review` on frontend files (skip if none found or excluded by `review_type`)
 - You MUST run `infra-validation` on infra files (skip if none found or excluded by `review_type`)
+- When you run `infra-validation`, You MUST pass it `scope_confirmed: true`, the infra file list from Step 2 as the code location, CDK TypeScript as the infrastructure type (Step 2 puts only `.ts` files in infra), and `environment` if the caller gave one, so its Step 0 does not stop to ask. Without `environment`, it assumes Production and says so in its report
 
 **Expected Output:** Review findings per category with severity levels
 

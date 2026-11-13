@@ -4,7 +4,7 @@
 
 [← Task guides](README.md) · [Guide index](../README.md)
 
-Registers the 11 agents, 81 skills, 19 SOPs, the core rules, and the orchestrator routing rules with `kiro-cli`.
+Registers the 11 agents, 80 skills, 19 SOPs, the core rules, and the orchestrator routing rules with `kiro-cli`.
 
 **Time required:** about 2 minutes.
 
@@ -97,7 +97,7 @@ Run the k-code-review-workflow SOP against my current branch.
 - [ ] Giving it implementation work has `konductor` edit files itself, each write asking you first,
       then spawn a `k-*` **reviewer** when the phase closes.
 
-That last point is the real signal. In Kiro CLI the orchestrator pre-approves `fs_read` alone, so
+That last point is the real signal. In Kiro CLI the orchestrator pre-approves only reads, so
 a write or a shell command surfaces a permission prompt instead of happening quietly — it is not
 refused, because `@builtin` grants both. (In Claude Code it is granted `Write` and `Bash` with no
 prompt gate of its own; the reviewer at each phase gate is the check.) If you use
@@ -150,8 +150,9 @@ Choosing among the three orchestrators:
 
 Two are pre-configured in the agent specs and need only their local dependency.
 
-**AWS documentation lookups** — `k-architect` and `k-developer`. Install `uvx` and configure
-AWS credentials in `~/.aws/credentials` or environment variables. Both agents work without
+**AWS documentation lookups** — `konductor`, `k-architect` and `k-developer`. Install `uvx` and
+configure
+AWS credentials in `~/.aws/credentials` or environment variables. All three work without
 credentials, just without AWS lookups.
 
 **Browser automation** — `k-browser`. Install the browser binary:

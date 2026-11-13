@@ -4,7 +4,7 @@
 
 [← Back to guide index](README.md)
 
-All **81 skills** the package ships, grouped by what they are for. Each entry gives what the
+All **80 skills** the package ships, grouped by what they are for. Each entry gives what the
 skill does, when it makes sense to reach for it, and which agents declare it.
 
 A **skill** is a module of knowledge an agent loads on demand — see
@@ -25,7 +25,7 @@ know exactly which lens you want applied.
 - [Program and delivery management](#program-and-delivery-management) — 7
 - [Architecture and design](#architecture-and-design) — 12
 - [Design quality gates](#design-quality-gates) — 6
-- [API and data modelling](#api-and-data-modelling) — 6
+- [API and data modelling](#api-and-data-modelling) — 5
 - [Security](#security) — 3
 - [Implementation and code review](#implementation-and-code-review) — 17
 - [Testing and browser automation](#testing-and-browser-automation) — 7
@@ -131,16 +131,19 @@ Checking a design before anyone builds it.
 
 ## API and data modelling
 
-Interface and storage design, each paired with its own validator.
+API, data and access policy design. The Smithy and IAM skills each pair with a validator;
+`dynamodb-design` carries its own review gate.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
 | `smithy-modeling` | Generates Smithy API models — service definitions, operations, structures, validation, errors. Supports TypeScript, OpenAPI, and AWS SDK codegen. | Designing a new service API. | `k-architect` |
 | `smithy-validation` | Validates Smithy models for structure, naming, security, and codegen readiness. | Before implementing against a Smithy model. | `k-architect` |
-| `dynamodb-design` | DynamoDB table designs optimized for access patterns: partition keys, GSI strategy, capacity planning, plus CDK/CloudFormation code. | Designing a data model on DynamoDB. | `k-architect` |
-| `dynamodb-validation` | Validates a DynamoDB design against best practice across 13 categories — hot partitions, missing indexes, cost, security. | Before implementing a DynamoDB design. | `k-architect` |
+| `dynamodb-design` | Designs DynamoDB tables and GSIs from access patterns, and reviews a design for hot partitions and unsharded low-cardinality keys. | Designing or reviewing a DynamoDB data model. | `k-architect` |
 | `iam-policy-design` | Generates least-privilege IAM role policies, resource policies, and compliance configuration. | Designing access control for a new service. | `k-architect` |
 | `policy-validation` | Validates IAM policies for over-permissive grants, missing conditions, and compliance gaps. | Before deploying any IAM change. | `k-architect` |
+
+For DynamoDB depth that `dynamodb-design` does not carry, such as Streams, backup and the cost
+calculator, it points to the AWS MCP server's `amazon-dynamodb` skill.
 
 ---
 
@@ -177,7 +180,7 @@ Writing and reviewing code.
 | `k-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer` |
 | `git-workflow` | Atomic commits, branch management, history operations. | Committing, branching, or searching history. | `k-developer` |
 | `git-merge` | Branch merges into the default branch, release merges, merge conflicts. | Merging locally; use `code-review` when merges go through PRs. Declared only by the two multiplexer orchestrators. | `konductor-cmux-orchestrator`, `konductor-mux-orchestrator` |
-| `find-aws-skills` | Discovers additional AWS skills from the AWS MCP server for tasks the bundled skills do not cover. | Your task involves an AWS service and nothing bundled matches. | `k-developer` |
+| `find-aws-skills` | Discovers additional AWS skills from the AWS MCP server for tasks the bundled skills do not cover. | Your task involves an AWS service and nothing bundled matches. | `k-architect`, `k-developer`, `konductor` |
 | `agents-md-authoring` | Creates and maintains AGENTS.md files that bootstrap agent context. Covers the agents.md standard, the context-loading block, and the CLAUDE.md bridge. | Onboarding a repo for agents, or your conventions have drifted from what agents are told. | `k-developer`, `konductor` |
 
 ---
@@ -226,7 +229,7 @@ Looking things up outside the repository.
 
 ## Coverage
 
-**All 81 skills are declared by at least one agent.** That matters because a skill no agent
+**All 80 skills are declared by at least one agent.** That matters because a skill no agent
 declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use
 it. Contributors adding a skill should see
 [Contributing → check skill coverage](appendix/contributing.md#check-skill-coverage).
@@ -249,7 +252,7 @@ Useful when deciding which agent to talk to directly.
 | --- | --- |
 | `k-architect` | 38 |
 | `k-developer` | 27 |
-| `konductor` | 24 |
+| `konductor` | 25 |
 | `k-product-manager` | 16 |
 | `k-tpm` | 14 |
 | `k-quality-assurance` | 12 |
