@@ -41,7 +41,8 @@ const USAGE = `Usage:
        (--replicate-offset N numbers the replicates N+1 to N+replicates, to add runs to an out dir that already holds replicates 1 to N. The default 0 numbers them from 1.
        A run writes over any result.json already at a planned path and prints a warning with the count of cells it will overwrite)
        (--max-auth-failures N stops the chunk after N consecutive runs that could not log in (no turn ran, "Not logged in", "Authentication failed" or "token already expired"), default 3,
-       or the BENCH_MAX_AUTH_FAILURES variable; remaining cells are skipped and the command exits 6. Such a run is charged 0 and marked infra, never a timeout)
+       or the BENCH_MAX_AUTH_FAILURES variable; remaining cells are skipped and the command exits 6. Such a run is charged 0 and marked infra, never a timeout.
+       Runs whose agent binary could not be launched (exit 127, no such file) count toward the same limit)
        (--timeout-sec N replaces the timeout of every selected task with N seconds (a positive integer); without it each task keeps the timeoutSec of its task file.
        The plan line, run-config.json (timeoutSecOverride, timeoutSecByTask) and summary.json show it)
        (--agent-engine is the kiro-cli engine, default v2; v3 installs each arm for the kiro-v3 harness)
