@@ -34,7 +34,8 @@ by standard review. It needs four review passes and a fresh `k-architect` checke
 **Through `konductor`, step 6 runs.** `k-developer` writes the report with the verdict from its
 findings and an `Adversarial pass: not run` line, then ends with a note; `konductor` runs
 `k-adversarial-pull-request-review` on the same diff, records its verdict and report path, and
-sets the final verdict, unless a pass is MISSING, which keeps the report pending. Detail in
+sets the final verdict, unless a pass is MISSING, which keeps the report pending when neither
+report has a CRITICAL or IMPORTANT finding open. Detail in
 [Agents reference](../agents.md#why-this-matters-a-real-consequence).
 
 **Started directly, the note comes back to you.** Nothing runs it, so you get the report with
