@@ -6,7 +6,10 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { tmpDir, cleanup, cli, writeFakeBin } = require('./cli-helpers.js');
+const { spawnSync } = require('node:child_process');
+const { tmpDir, cleanup, cli, writeFakeBin, writeFakePython } = require('./cli-helpers.js');
+
+const HELPER = path.join(__dirname, '..', 'python', 'generate_experiment.py');
 
 const CONTEXT = '- lookup_order(order_id: str) -> dict\n- issue_refund(order_id: str, amount: float) -> str\nA context line with "quotes" and $dollars.\n';
 
@@ -34,9 +37,10 @@ test('generate-strands runs the binary with an argument array, writes the experi
     assert.deepEqual(seen, ['generate', `--context=${CONTEXT}`, '--task-description', 'Customer service assistant', '--num-cases', '2', '--num-topics', '1', '--evaluator', 'TrajectoryEvaluator', '--model', 'some-model', '-o', t.out]);
 
     const gen = JSON.parse(fs.readFileSync(t.sidecar, 'utf8'));
-    assert.deepEqual(Object.keys(gen), ['schemaVersion', 'tool', 'toolVersion', 'command', 'contextSha256', 'contextFile', 'taskDescription', 'numCases', 'numTopics', 'evaluator', 'model', 'startedAt', 'durationMs', 'exitCode']);
+    assert.deepEqual(Object.keys(gen), ['schemaVersion', 'tool', 'mode', 'toolVersion', 'command', 'contextSha256', 'contextFile', 'taskDescription', 'numCases', 'numTopics', 'evaluator', 'model', 'startedAt', 'durationMs', 'exitCode']);
     assert.equal(gen.schemaVersion, 1);
     assert.equal(gen.tool, 'strands-evals');
+    assert.equal(gen.mode, 'cli');
     assert.equal(gen.toolVersion, 'strands-evals 9.9.9');
     assert.equal(gen.contextSha256, crypto.createHash('sha256').update(CONTEXT).digest('hex'));
     assert.equal(gen.contextFile, 'tools-context.md');
@@ -191,4 +195,148 @@ test('--help documents the install hint and the expected-trajectory finding', ()
   assert.match(r.stdout, /pip install strands-agents-evals/);
   assert.match(r.stdout, /include_expected_trajectory/);
   assert.match(r.stdout, /expected_trajectory null/);
+});
+
+function setupApi(extra = {}) {
+  const t = setup(extra);
+  const python = writeFakePython(t.dir);
+  const env = { ...t.env, FAKE_VERSION_RECORD: path.join(t.dir, 'version.json') };
+  const args = ['generate-strands', '--trajectories', '--context-file', t.ctx, '--task-description', 'Customer service assistant', '--out', t.out, '--python', python];
+  return { ...t, python, env, args, versionRecord: () => JSON.parse(fs.readFileSync(path.join(t.dir, 'version.json'), 'utf8')) };
+}
+
+test('--trajectories runs the Python helper with an argument array and records mode api', () => {
+  const t = setupApi();
+  try {
+    const r = cli([...t.args, '--num-cases', '2', '--num-topics', '1', '--evaluator', 'TrajectoryEvaluator', '--model', 'some-model'], { env: t.env });
+    assert.equal(r.code, 0, r.stderr);
+    assert.equal(r.stdout.trim(), '2 cases written to ' + t.out + '; provenance in exp.generation.json');
+    assert.match(r.stderr, /fake helper running/, 'stderr passes through');
+    assert.doesNotMatch(r.stdout, /noise/);
+
+    const seen = t.record().args;
+    assert.equal(path.resolve(seen[0]), HELPER);
+    assert.ok(fs.existsSync(seen[0]), 'the helper exists');
+    assert.deepEqual(seen.slice(1), ['--context-file', t.ctx, '--task-description', 'Customer service assistant', '--num-cases', '2', '--num-topics', '1', '--evaluator', 'TrajectoryEvaluator', '--model', 'some-model', '--out', t.out]);
+
+    const text = fs.readFileSync(t.sidecar, 'utf8');
+    const gen = JSON.parse(text);
+    assert.deepEqual(Object.keys(gen), ['schemaVersion', 'tool', 'mode', 'toolVersion', 'command', 'contextSha256', 'contextFile', 'taskDescription', 'numCases', 'numTopics', 'evaluator', 'model', 'startedAt', 'durationMs', 'exitCode']);
+    assert.equal(gen.mode, 'api');
+    assert.equal(gen.tool, 'strands-evals');
+    assert.equal(gen.toolVersion, '1.9.0');
+    assert.equal(gen.contextSha256, crypto.createHash('sha256').update(CONTEXT).digest('hex'));
+    assert.deepEqual(gen.command, ['fake-python', 'generate_experiment.py', '--context-file', 'tools-context.md', '--task-description', 'Customer service assistant', '--num-cases', '2', '--num-topics', '1', '--evaluator', 'TrajectoryEvaluator', '--model', 'some-model', '--out', 'exp.json']);
+    assert.ok(!text.includes(t.dir), 'no temp directory path');
+    assert.ok(!text.includes('lookup_order'), 'no context text');
+    assert.ok(!text.includes(HELPER), 'no local helper path');
+  } finally { cleanup(t.dir); }
+});
+
+test('--trajectories reads the package version through the interpreter and leaves null when that fails', () => {
+  const t = setupApi();
+  try {
+    assert.equal(cli(t.args, { env: t.env }).code, 0);
+    const [flag, code] = t.versionRecord();
+    assert.equal(flag, '-c');
+    assert.match(code, /importlib\.metadata/);
+    assert.match(code, /version\('strands-agents-evals'\)/);
+  } finally { cleanup(t.dir); }
+  const f = setupApi({ FAKE_VERSION_FAIL: '1' });
+  try {
+    assert.equal(cli(f.args, { env: f.env }).code, 0);
+    assert.equal(JSON.parse(fs.readFileSync(f.sidecar, 'utf8')).toolVersion, null);
+  } finally { cleanup(f.dir); }
+});
+
+test('the experiment from --trajectories carries trajectories into import-strands', () => {
+  const t = setupApi();
+  try {
+    assert.equal(cli(t.args, { env: t.env }).code, 0);
+    const toolsFile = path.join(t.dir, 'tools.json');
+    fs.writeFileSync(toolsFile, JSON.stringify(['lookup_order', 'issue_refund']));
+    const imp = cli(['import-strands', '--experiment', t.out, '--tools', toolsFile, '--generation', t.sidecar, '--out', path.join(t.dir, 'cand')]);
+    assert.equal(imp.code, 0, imp.stderr);
+    const doc = JSON.parse(fs.readFileSync(path.join(t.dir, 'cand', 'candidates.json'), 'utf8'));
+    assert.equal(doc.summary.trajectoriesGenerated, true);
+    assert.deepEqual(doc.candidates.map((c) => c.proposedTools), [['lookup_order'], ['lookup_order', 'issue_refund']]);
+    const md = fs.readFileSync(path.join(t.dir, 'cand', 'review.md'), 'utf8');
+    assert.doesNotMatch(md, /no trajectories were generated|no candidate proposes a tool call/);
+  } finally { cleanup(t.dir); }
+});
+
+test('--trajectories propagates a helper failure, an empty result and a missing output as exit 1 with no sidecar', () => {
+  for (const [mode, pattern] of [['fail', /fake-python generate_experiment\.py exited with code 1; nothing was recorded/], ['empty', /fake-python generate_experiment\.py wrote an experiment with no cases/], ['nowrite', /fake-python generate_experiment\.py exited 0 but did not write/]]) {
+    const t = setupApi({ FAKE_MODE: mode });
+    try {
+      const r = cli(t.args, { env: t.env });
+      assert.equal(r.code, 1, mode);
+      assert.match(r.stderr, pattern, mode);
+      if (mode === 'fail') assert.match(r.stderr, /RuntimeError: model unavailable/, 'the helper message reaches stderr');
+      assert.equal(fs.existsSync(t.sidecar), false, mode);
+    } finally { cleanup(t.dir); }
+  }
+});
+
+test('--trajectories with a missing interpreter says how to install and pass --python', () => {
+  const t = setupApi();
+  try {
+    const r = cli([...t.args.slice(0, -2), '--python', path.join(t.dir, 'no-python')], { env: t.env });
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /cannot find ".*no-python"/);
+    assert.match(r.stderr, /pip install strands-agents-evals/);
+    assert.match(r.stderr, /--python \.venv\/bin\/python/);
+    assert.equal(fs.existsSync(t.sidecar), false);
+    const byName = cli(t.args.slice(0, -2), { env: { ...t.env, PATH: path.join(t.dir, 'empty') } });
+    assert.equal(byName.code, 1);
+    assert.match(byName.stderr, /cannot find "python3"/);
+  } finally { cleanup(t.dir); }
+});
+
+test('--trajectories and --python usage errors exit 2 before anything runs', () => {
+  const t = setupApi();
+  try {
+    const both = cli([...t.args, '--strands-bin', t.bin], { env: t.env });
+    assert.equal(both.code, 2);
+    assert.match(both.stderr, /--strands-bin cannot be combined with --trajectories/);
+    const pyOnly = cli([...t.args.filter((a) => a !== '--trajectories')], { env: t.env });
+    assert.equal(pyOnly.code, 2);
+    assert.match(pyOnly.stderr, /--python is only used with --trajectories/);
+    const noValue = cli([...t.args.slice(0, -1), '--python'], { env: t.env });
+    assert.equal(noValue.code, 2);
+    assert.equal(fs.existsSync(path.join(t.dir, 'record.json')), false);
+  } finally { cleanup(t.dir); }
+});
+
+test('--trajectories does not limit the context size, since the helper reads the file', () => {
+  const t = setupApi();
+  try {
+    fs.writeFileSync(t.ctx, CONTEXT + 'x'.repeat(130000));
+    const r = cli(t.args, { env: t.env });
+    assert.equal(r.code, 0, r.stderr);
+  } finally { cleanup(t.dir); }
+});
+
+test('--help documents --trajectories and --python and keeps the CLI-mode finding', () => {
+  const r = cli(['generate-strands', '--help']);
+  assert.match(r.stdout, /--trajectories /);
+  assert.match(r.stdout, /--python PATH/);
+  assert.match(r.stdout, /include_expected_trajectory=True/);
+  assert.match(r.stdout, /mode "api"/);
+});
+
+function pythonVersionOk() {
+  const r = spawnSync('python3', ['-c', 'import sys; print(int(sys.version_info >= (3, 11)))'], { encoding: 'utf8' });
+  if (r.error || r.status !== 0) return 'python3 is not on PATH';
+  return r.stdout.trim() === '1' ? null : 'python3 is older than 3.11';
+}
+
+test('the Python helper compiles with python3 -m py_compile', (t) => {
+  const why = pythonVersionOk();
+  if (why) return t.skip(`${why}; the helper needs Python 3.11+`);
+  const dir = tmpDir();
+  try {
+    const r = spawnSync('python3', ['-m', 'py_compile', HELPER], { encoding: 'utf8', env: { ...process.env, PYTHONPYCACHEPREFIX: dir } });
+    assert.equal(r.status, 0, r.stderr);
+  } finally { cleanup(dir); }
 });

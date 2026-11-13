@@ -70,11 +70,22 @@ Read `work/candidates/review.md` first, then edit or drop candidates in `candida
 
 ### Does the generator write expected trajectories?
 
-Not from its command line. We read the installed source of strands-agents-evals 1.9.0. The `generate` command builds its generator with `include_expected_trajectory` left at its default of `False`, and nothing in the command or in `from_context_async` sets it for `TrajectoryEvaluator`. The `--evaluator` choice only decides which rubric text the generator writes. So with this version the cases from `generate-strands` come back with `expected_trajectory` set to null, and every candidate has trajectory quality `none`.
+Not from its command line. We read the installed source of strands-agents-evals 1.9.0. The `generate` command builds its generator with `include_expected_trajectory` left at its default of `False`, and nothing in the command or in `from_context_async` sets it for `TrajectoryEvaluator`. The `--evaluator` choice only decides which rubric text the generator writes. So with this version the plain `generate-strands` command (CLI mode) returns cases with `expected_trajectory` set to null, and every candidate has trajectory quality `none`.
 
-To get trajectories, call `ExperimentGenerator(..., include_expected_trajectory=True)` from Python, save the experiment with `to_file`, and give that file to `import-strands`. The sample fixture in this directory has trajectories for that reason. When no candidate has a proposed tool, `review.md` says so, because a status of `ok` then does not mean any tool use was checked.
+To get trajectories, add `--trajectories`. That runs `python/generate_experiment.py` with the interpreter you give in `--python` (default `python3`, which must have `strands-agents-evals` installed) instead of the `strands-evals` binary. The helper builds `ExperimentGenerator` with `include_expected_trajectory=True` and saves the experiment with `to_file`; the importer stays in Node.
 
-Finding from one version of the package. Re-check it when you upgrade.
+```
+node bench/agenteval/agenteval.js generate-strands --trajectories \
+  --context-file context.md \
+  --task-description "Customer service assistant for an online shop" \
+  --out work/experiment.json \
+  --num-cases 20 --num-topics 4 --evaluator TrajectoryEvaluator \
+  --python .venv/bin/python
+```
+
+The sidecar records `mode: "api"` for this path and `mode: "cli"` for the binary. The helper calls a model like the CLI does, so it can cost money and needs the same credentials.
+
+The trajectory finding is for one version of the package. To check what your installed version does, read the generator source, for example `.venv/bin/python -c "import inspect, strands_evals.cli.commands.generate as g; print(inspect.getsource(g))"` (the module name may change between versions), or generate a few cases and look at `expected_trajectory` in the file. When no candidate has a proposed tool, `review.md` says so, because a status of `ok` then does not mean any tool use was checked.
 
 ## Worked example on the sample fixtures
 
@@ -126,8 +137,10 @@ Running the same command a second time fails with `already exists; pass --force`
 generate-strands --context-file FILE --task-description TEXT --out FILE
                  [--num-cases N] [--num-topics K]
                  [--evaluator OutputEvaluator|TrajectoryEvaluator|InteractionsEvaluator]
-                 [--model ID] [--strands-bin PATH] [--force]
+                 [--model ID] [--strands-bin PATH | --trajectories [--python PATH]] [--force]
 ```
+
+- `--trajectories` runs the Python helper instead of the binary (see [Does the generator write expected trajectories?](#does-the-generator-write-expected-trajectories)). It cannot be combined with `--strands-bin`, and `--python` is only valid with it. The context file is read by the helper, so the 120 KB limit below does not apply.
 
 - `--out` must end in `.json`. The sidecar is the same path with `.json` replaced by `.generation.json`.
 - Without `--force` the command refuses when either file exists. With `--force` it deletes both first, so a failed run leaves neither behind.
@@ -269,6 +282,7 @@ Work from the `reject` rows to confirm the drops, then the `needs-edit` rows, th
 {
   "schemaVersion": 1,
   "tool": "strands-evals",
+  "mode": "cli",
   "toolVersion": "output of --version, or null",
   "command": ["strands-evals", "generate", "--context=<contents of contextFile>", "--task-description", "...", "-o", "experiment.json"],
   "contextSha256": "sha256 of the context file",
@@ -284,7 +298,7 @@ Work from the `reject` rows to confirm the drops, then the `needs-edit` rows, th
 }
 ```
 
-`command` is the argument list without the context text, with the binary and output path reduced to file names. `numCases`, `numTopics`, `evaluator` and `model` are null when the flag was not passed. `toolVersion` comes from `<bin> --version` with a 5 second limit and is null when that fails. The sidecar holds no environment values.
+`mode` is `cli` for the binary and `api` for `--trajectories`. In `api` mode `command` is the interpreter name, `generate_experiment.py` and its flags, with the context file and output reduced to file names. `command` is the argument list without the context text, with the binary and output path reduced to file names. `numCases`, `numTopics`, `evaluator` and `model` are null when the flag was not passed. `toolVersion` comes from `<bin> --version` (in `api` mode, the `strands-agents-evals` package version read through `<python> -c`) with a 5 second limit and is null when that fails. The sidecar holds no environment values.
 
 ## What is not built
 
@@ -301,7 +315,7 @@ Until those exist, a reviewed `candidates.json` is an input for a person writing
 
 ## Tests
 
-Plain Node, no dependencies, no network, no Python. The command line tests use a fake `strands-evals` script in a temporary directory.
+Plain Node, no dependencies, no network, no model calls. The command line tests use a fake `strands-evals` script and a fake Python interpreter in a temporary directory. One test runs `python3 -m py_compile` on the helper and is skipped when `python3` is missing or older than 3.11.
 
 ```
 nice -n 19 node --test bench/agenteval/test/*.test.js
@@ -317,3 +331,4 @@ Modules in `lib/`:
 - `candidates.js`: composes the checks into candidate records.
 - `tools-file.js`, `review.js`, `args.js`: tool declarations, `review.md` and flag parsing.
 - `import-strands.js`, `generate-strands.js`: the two commands.
+- `python/generate_experiment.py`: the optional helper behind `--trajectories` (standard library plus `strands_evals`).

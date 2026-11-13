@@ -5,7 +5,7 @@
 
 const INPUT_CHARS = 100;
 
-const NO_TRAJECTORY_WARNING = '**Warning: no trajectories were generated; status ok does not mean tool use was checked.** The experiment uses a trajectory rubric, but no case has an expected trajectory. Generate them through the Python API (include_expected_trajectory=True, see the README) or write them in by hand.';
+const NO_TRAJECTORY_WARNING = '**Warning: no trajectories were generated; status ok does not mean tool use was checked.** The experiment uses a trajectory rubric, but no case has an expected trajectory. Generate with `generate-strands --trajectories` or write them in by hand.';
 
 const cell = (text) => String(text).replace(/\s+/g, ' ').replace(/\|/g, '\\|').trim();
 const counts = (obj) => Object.entries(obj).filter(([, n]) => n > 0).map(([k, n]) => `${k} ${n}`).join(', ') || 'none';

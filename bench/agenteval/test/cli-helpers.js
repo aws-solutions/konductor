@@ -52,4 +52,35 @@ function writeFakeBin(dir) {
   return file;
 }
 
-module.exports = { writeFakeBin, CLI, FIXTURES, SAMPLE, RULES, TOOLS, tmpDir, cleanup, cli };
+// A stand-in for a Python interpreter: "-c CODE" prints a version, anything else is the helper script and writes an experiment with trajectories.
+const FAKE_PYTHON_SOURCE = (execPath) => `#!${execPath}
+'use strict';
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+if (args[0] === '-c') {
+  if (process.env.FAKE_VERSION_FAIL) process.exit(1);
+  fs.writeFileSync(process.env.FAKE_VERSION_RECORD, JSON.stringify(args));
+  console.log('1.9.0');
+  process.exit(0);
+}
+const out = args[args.indexOf('--out') + 1];
+fs.writeFileSync(process.env.FAKE_RECORD, JSON.stringify({ args }));
+console.error('fake helper running');
+console.log('fake helper stdout noise');
+const mode = process.env.FAKE_MODE || 'ok';
+if (mode === 'fail') { console.error('generate_experiment.py: RuntimeError: model unavailable'); process.exit(1); }
+if (mode === 'nowrite') process.exit(0);
+if (mode === 'empty') fs.writeFileSync(out, JSON.stringify({ cases: [], evaluators: [] }));
+else fs.writeFileSync(out, JSON.stringify({ cases: [
+  { name: 'a', input: 'Where is my order #ORD-1? It is late.', expected_output: 'It ships today.', expected_trajectory: ['lookup_order(ORD-1)'] },
+  { name: 'b', input: 'Please refund order #ORD-2, it arrived broken.', expected_output: 'Refund issued.', expected_trajectory: ['lookup_order(ORD-2)', 'issue_refund(ORD-2, 10)'] },
+], evaluators: [{ evaluator_type: 'TrajectoryEvaluator', rubric: 'Use the tools well.' }] }));
+`;
+
+function writeFakePython(dir) {
+  const file = path.join(dir, 'fake-python');
+  fs.writeFileSync(file, FAKE_PYTHON_SOURCE(process.execPath), { mode: 0o755 });
+  return file;
+}
+
+module.exports = { writeFakePython, writeFakeBin, CLI, FIXTURES, SAMPLE, RULES, TOOLS, tmpDir, cleanup, cli };
