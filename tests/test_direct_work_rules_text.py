@@ -125,8 +125,33 @@ def test_stack_skills_load_only_when_the_project_uses_the_stack():
     assert "review against the codebase's conventions" in text
 
 
-def test_posture_bearing_documents_always_get_the_gate_review():
-    assert "always gets the gate review" in _direct_work()
+DOCUMENT_TRIGGER = (
+    "a threat model, and a document that designs authentication, authorization, or how credentials "
+    "are stored or handled, always gets the gate review, but a data model, schema, or deployment "
+    "configuration alone does not call for one;"
+)
+DOCUMENT_SELF_CHECK = (
+    "a document phase without the gate review must still run the document's checker skill on it "
+    "before the phase closes"
+)
+
+
+def test_only_threat_models_and_auth_or_credential_designs_always_get_the_gate_review():
+    direct = _direct_work()
+    assert DOCUMENT_TRIGGER in direct
+    assert "a document that touches auth, secrets, data, or infrastructure" not in direct
+    readme = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
+    assert (
+        "Code touching auth, secrets, data or infrastructure, every threat model, and a document that "
+        "designs authentication, authorization or credential handling get the reviewer."
+    ) in readme
+    assert "Anything touching auth, secrets" not in readme
+
+
+def test_a_document_phase_without_the_gate_review_still_runs_its_checker_skill():
+    direct = _direct_work()
+    assert DOCUMENT_TRIGGER + " " + DOCUMENT_SELF_CHECK in direct
+    assert "otherwise check it with its checker skill" not in direct
 
 
 UNCOMMITTED_MERGE = "uncommitted (for example `git merge --squash --no-commit` from each worktree branch), leaving HEAD unchanged so the user decides what to commit"
