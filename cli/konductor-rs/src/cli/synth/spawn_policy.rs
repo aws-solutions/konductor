@@ -15,6 +15,14 @@ pub(crate) fn is_specialist(agent_name: &str) -> bool {
     !is_orchestrator(agent_name)
 }
 
+/// Only `konductor` keeps the v2 engine's spawn tools. The mux and cmux
+/// orchestrators dispatch through shell panes and never call `subagent`,
+/// so the v2 transformer gives them the same explicit built-in list as a
+/// specialist.
+pub(crate) fn holds_kiro_v2_spawn_tools(agent_name: &str) -> bool {
+    agent_name == "konductor"
+}
+
 /// Kiro's permission capability for spawning; also the v3 tool tag.
 pub(crate) const SUBAGENT_CAPABILITY: &str = "subagent";
 
@@ -79,6 +87,14 @@ mod tests {
         assert!(!is_specialist("konductor"));
         assert!(!is_specialist("konductor-mux-orchestrator"));
         assert!(!is_specialist("konductor-cmux-orchestrator"));
+    }
+
+    #[test]
+    fn only_konductor_holds_kiro_v2_spawn_tools() {
+        assert!(holds_kiro_v2_spawn_tools("konductor"));
+        assert!(!holds_kiro_v2_spawn_tools("konductor-mux-orchestrator"));
+        assert!(!holds_kiro_v2_spawn_tools("konductor-cmux-orchestrator"));
+        assert!(!holds_kiro_v2_spawn_tools("k-architect"));
     }
 
     #[test]

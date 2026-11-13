@@ -161,15 +161,17 @@ This is enforced in config, not just in the prompt:
   list and denies them with `disallowedTools` as well, so a specialist with no `tools` list is
   still blocked.
 - Kiro CLI v2 ignores `excludedTools`, and its `@builtin` includes the `subagent` tool. Synth
-  therefore replaces a specialist's `@builtin` with the v2 built-in tools listed one by one,
-  without `subagent`, and drops `toolsSettings.subagent`. A `*` entry gets the same list plus
-  `@<server>` for each of the spec's MCP servers. The list matches kiro-cli 2.36.0 and the v2
-  engine in kiro-cli 3.0.0, which shows `fs_read`, `fs_write` and `execute_bash` as `read`,
-  `write` and `shell`; kiro-cli 3.1.0 still defaults to the v2 engine and was not re-probed.
-  Older v2 clients were not checked. An unknown tool name does not stop an agent from loading,
-  and `kiro-cli agent validate` checks the file's schema, not tool names, so to confirm the set
-  on your client start `kiro-cli chat --agent-engine v2 --agent <name>` and run `/tools`; the 13
-  built-ins should be listed and `subagent` should not. Setting
+  therefore replaces `@builtin` with the v2 built-in tools listed one by one, without
+  `subagent`, and drops `toolsSettings.subagent`, for every agent except `konductor`: the
+  specialists and the two multiplexer orchestrators, which dispatch through shell panes, get the
+  same explicit list, so only `konductor` holds `subagent` on Kiro CLI v2. A `*` entry gets the
+  same list plus `@<server>` for each of the spec's MCP servers. The list matches kiro-cli
+  2.36.0 and the v2 engine in kiro-cli 3.0.0, which shows `fs_read`, `fs_write` and
+  `execute_bash` as `read`, `write` and `shell`; kiro-cli 3.1.0 still defaults to the v2 engine
+  and was not re-probed. Older v2 clients were not checked. An unknown tool name does not stop
+  an agent from loading, and `kiro-cli agent validate` checks the file's schema, not tool names,
+  so to confirm the set on your client start `kiro-cli chat --agent-engine v2 --agent <name>`
+  and run `/tools`; the 13 built-ins should be listed and `subagent` should not. Setting
   `toolsSettings.subagent.availableAgents` is not an alternative: a list that matches no agent
   still exposes the tool.
 
@@ -205,8 +207,8 @@ flowchart LR
 | Agent | Kiro CLI can spawn | Claude Code can spawn |
 | --- | --- | --- |
 | `konductor` | the 8 specialists (an explicit allowlist, not "anything") | the same 8, via `Agent(...)`, plus `SendMessage` |
-| `konductor-mux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
-| `konductor-cmux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
+| `konductor-mux-orchestrator` | no `subagent` tool (on v2, the same explicit built-in list as a specialist); dispatches via shell scripts | dispatches via shell |
+| `konductor-cmux-orchestrator` | no `subagent` tool (on v2, the same explicit built-in list as a specialist); dispatches via shell scripts | dispatches via shell |
 | every `k-*` specialist | **nothing** | **nothing** |
 
 Run directly with no orchestrator, the caller is you and the note or split comes back to you.
@@ -243,7 +245,9 @@ through `konductor`, which coordinates it.
 ### The two multiplexer orchestrators do not use subagents at all
 
 `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` have **no `subagent` tool and no
-`Agent(...)` tool**. Their Kiro CLI tools are `["@builtin", "read", "shell", "todo"]`, and shell
+`Agent(...)` tool**. Their specs declare `["@builtin", "read", "shell", "todo"]` for Kiro CLI; on
+Kiro CLI v2 synth replaces that `@builtin` with the same explicit built-in list a specialist gets,
+so only `konductor` holds `subagent` on Kiro CLI v2. Shell
 is how they work: their `mux-dispatch` / `cmux-dispatch` skills ship shell scripts that open a
 pane or surface per specialist, run the runtime's CLI inside it, and poll for a `.done` marker
 file under `/tmp/konductor-mux/` or `/tmp/konductor-cmux/`.
@@ -411,7 +415,7 @@ images, and diagrams — not a skill library. Point it at a file and ask a quest
 | Difference | Kiro CLI | Claude Code |
 | --- | --- | --- |
 | Agent name | `konductor` | `konductor` |
-| Cross-agent delegation | only `konductor` declares `subagent`; the mux orchestrators dispatch through shell and reach it only through `@builtin`. Synth also keeps the built-in spawn tools out of specialists (`excludedTools` on v3, an explicit built-in list on v2) | only `konductor` holds `Agent(...)` |
+| Cross-agent delegation | only `konductor` holds `subagent` on Kiro CLI v2; the mux orchestrators dispatch through shell and get the same explicit built-in list as specialists. Synth also keeps the built-in spawn tools out of specialists (`excludedTools` on v3, an explicit built-in list on v2) | only `konductor` holds `Agent(...)` |
 | MCP servers | declared and launched from `dependencies.mcpRegistry` | requested via tool globs (`mcp__aws-mcp__*`); you configure the server yourself |
 | Tool naming | `fs_read`, `fs_write`, `shell` | `Read`, `Write`, `Edit`, `Bash` |
 | Permission model | two lists: `tools` grants with a prompt, `allowedTools` pre-approves | one list: `clientConfig.claudeCli.tools` is the ceiling, and your `settings.json` decides what prompts |
