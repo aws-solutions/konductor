@@ -154,7 +154,7 @@ stages:
   and the canvas drifts from the file. Consequences: the second of two editors to save is refused, and nothing merges.
 - **D13. The canvas keeps up with the format, through one validator.** Why: a key the canvas cannot hold blocks the file
   or is dropped on save. Rejected: a second canvas validator, which can disagree with the runner. Consequences: a key is
-  done when the canvas accepts, keeps and shows it, in the slice that adds it, with a control or the raw YAML editor.
+  done when the canvas accepts, keeps and shows it, in the slice that adds it, with a control.
 - **D14. Project workflows run only after the user confirms them, once per workflow,** and anything a headless run loads
   from the repo takes effect only after trust. Why: three things execute instructions from the repo: the runner, `run`
   checks and the tool configuration a headless run loads from it (Claude's `.claude/settings.json` and

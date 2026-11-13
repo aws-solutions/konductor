@@ -625,6 +625,7 @@ note](workflows-exports.md).
 
 Each item has a slice or a design that owns it, and a rule until then.
 
+- **A raw YAML editor in the canvas.** Decided in: the canvas design.
 - **Escape for literal template-reference text.** Slice 2. Until then, text that matches the reference pattern is
   rejected with `NOT_SUPPORTED_BY_THIS_BUILD`.
 - **Worktree isolation for runner stages.** Slice 12. Until then the runner never passes `--trust-all-tools` (D19).

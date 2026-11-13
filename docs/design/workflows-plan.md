@@ -174,7 +174,7 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
 
 - **Why now:** the Designer and Execution tabs must keep every key of the new format on save (D13) and show what the
   new contract adds.
-- **YAML keys:** the slice 1 keys, edited through form controls and a raw YAML editor (D13).
+- **YAML keys:** the slice 1 keys, edited through form controls (D13).
 - **Canvas:** the editor keeps a stage's other keys (`prompt`, `prompt_file`, and the later `outputs` and `done_when`)
   when it rewrites that stage, and no save drops `format`, `version`, `params` or a comment outside the stage block. A
   file the editor cannot edit in place is not rewritten whole, and the editor says why. The Execution tab shows a
