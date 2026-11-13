@@ -18,10 +18,10 @@ use super::{ResourceRewritePass, RewriteContext};
 
 /// V2 (Kiro CLI 2.x) hook trigger name for "a new agent/session invocation
 /// begins".
-const AGENT_SPAWN_TRIGGER_V2: &str = "agentSpawn";
+pub(super) const AGENT_SPAWN_TRIGGER_V2: &str = "agentSpawn";
 
 /// V3 (KAS 3.0) trigger name for the same event (`agentSpawn` -> `SessionStart`).
-const V3_SESSION_START_TRIGGER: &str = "SessionStart";
+pub(super) const V3_SESSION_START_TRIGGER: &str = "SessionStart";
 
 /// V3 trigger for the delegation entry; its matcher is tested against
 /// the tool name.
@@ -65,14 +65,12 @@ impl ResourceRewritePass for OrchestrationHookPass {
     }
 
     fn rewrite(&self, value: &mut serde_json::Value, ctx: &RewriteContext<'_>) {
-        let exe = super::claude_settings::resolve_konductor_exe_path();
-        let command = super::claude_settings::orchestration_hook_command(
-            &super::claude_settings::shell_quote_for_hook_command(&exe),
-            Some(crate::cli::orchestration_hook::MODE_AGENT),
+        wire_v2_orchestration_hook(
+            value,
+            &super::claude_settings::resolve_konductor_exe_path(),
             ctx.install_root(),
             Some(crate::cli::install::kiro_cli::STRATEGY_NAME),
         );
-        merge_agent_spawn_command(value, AGENT_SPAWN_TRIGGER_V2, &exe, command);
     }
 
     fn verify(
@@ -89,6 +87,21 @@ impl ResourceRewritePass for OrchestrationHookPass {
             ORCHESTRATION_HOOK_SUFFIX,
         )
     }
+}
+
+pub(super) fn wire_v2_orchestration_hook(
+    value: &mut serde_json::Value,
+    exe: &str,
+    install_root: Option<&Path>,
+    harness: Option<&str>,
+) {
+    let command = super::claude_settings::orchestration_hook_command(
+        &super::claude_settings::shell_quote_for_hook_command(exe),
+        Some(crate::cli::orchestration_hook::MODE_AGENT),
+        install_root,
+        harness,
+    );
+    merge_agent_spawn_command(value, AGENT_SPAWN_TRIGGER_V2, exe, command);
 }
 
 const ORCHESTRATION_HOOK_SUFFIX: &str = "__orchestration-hook";
@@ -270,7 +283,7 @@ pub(in crate::cli::install) fn apply_v3_orchestration_hook(
     )
 }
 
-fn apply_v3_orchestration_hook_with_exe(
+pub(super) fn apply_v3_orchestration_hook_with_exe(
     target_dir: &Path,
     exe: &str,
 ) -> Result<(String, String), String> {

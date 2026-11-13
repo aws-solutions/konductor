@@ -41,8 +41,10 @@ not per individual commit.
   lines are a preview of the named rules file. The pointer names an install under a symlinked
   home through the logical home for project and parent-of-project installs too. On a Claude Code
   resume or compact under `auto` the hook prints `Orchestration: auto`. The hook resolves the
-  owning install per harness. Core rule 11 defines the project root and names the install
-  locations whose rules file it trusts.
+  owning install per harness; when a nearer install owns `konductor` but its own hook is not
+  wired for that harness, the shadowed hook prints a fallback naming that install instead of
+  staying silent. Core rule 11 defines the project root and names the install locations whose
+  rules file it trusts.
 - Claude Code installs copy the context files to `.konductor/context/`, where the orchestration
   hook finds the routing rules; uninstall removes the directory and keeps memory.
 - A Claude Code install with `--no-telemetry` now writes `.claude/settings.local.json` for the
@@ -50,6 +52,11 @@ not per individual commit.
   only the telemetry hooks there, so it writes no Claude hooks file under `--no-telemetry`; the
   orchestration hook is the Claude Code install's.
 - The telemetry hook's Kiro CLI v3 session lookup follows `$KIRO_HOME` when set.
+- `konductor doctor` reports the orchestration mode, whether its hook is wired, and whether the
+  config value is valid; a hand-edited hook entry, or one naming a bare `konductor` found only on
+  this shell's PATH, is reported as warn, not as missing. Under `coordinator` it runs the same
+  persona load the session-start hook runs, so a digest over the hook's output budget is
+  `failed`, and an install root outside the home that is not a git checkout root is `warn`.
 
 ### Changed
 
