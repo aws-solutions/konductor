@@ -59,7 +59,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 - Code left in non-compiling state
 - Secrets or credentials in source code
 
-**IMPORTANT (must fix before proceeding):**
+**IMPORTANT (fix before proceeding):**
 
 - ALWAYS DO rule not followed
 - Circuit breaker not triggered after 2 failed attempts
@@ -69,3 +69,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 
 - Could improve comment coverage on complex logic
 - Could strengthen logging with additional context fields
+
+### Review findings
+
+A CRITICAL or IMPORTANT review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it. A first-review finding in the task's own output still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done until the user decides. A finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing, not put in the fix brief. (Orchestrators: Review ceilings, Verification Protocol item 6.)

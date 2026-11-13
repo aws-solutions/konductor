@@ -111,6 +111,11 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- Review ceilings: CRITICAL and IMPORTANT findings get one fix and one re-review. One in the task's own output still open,
+  or one the re-review reports there, carried over or new, or caused by the fix in what depends on it, stops work on that artifact;
+  a finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing, not put in the fix brief.
+  An SOP's own fix scope and round limit win; what it leaves open is reported, never dropped.
+  The `constraints` skill carries the same rule in a new `### Review findings` subsection, and its IMPORTANT tier header reads "fix before proceeding".
 
 ### Fixed
 
