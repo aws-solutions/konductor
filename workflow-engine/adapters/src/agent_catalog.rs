@@ -239,11 +239,23 @@ fn front_matter(text: &str) -> Result<Vec<&str>, String> {
 /// colon at the end of the line or before a space). A line in column 0 that is anything else, such as a quoted key, a
 /// key with a space before its colon, a list item or a flow mapping, might set a key this build would miss, so the
 /// whole file is unreadable. Indented lines belong to the value above them, and blank and comment lines are skipped.
+///
+/// One list form is allowed in column 0: `- item` lines right after a key with no value on its own line. YAML makes
+/// them that key's list, and the agent files that Konductor installs for Claude Code are written this way. They cannot
+/// set a key of their own.
 fn top_level_keys<'a>(front: &[&'a str]) -> Result<Vec<(usize, &'a str)>, String> {
     let mut keys = Vec::new();
+    // Whether the last key has no value on its own line, so that `- item` lines in column 0 are its list.
+    let mut list_open = false;
     for (n, line) in front.iter().enumerate() {
         if line.trim().is_empty() || line.starts_with([' ', '\t', '#']) {
             continue;
+        }
+        if line.trim_end() == "-" || line.starts_with("- ") {
+            if list_open {
+                continue;
+            }
+            return Err(unreadable_front_matter());
         }
         let Some((key, rest)) = line.split_once(':') else {
             return Err(unreadable_front_matter());
@@ -255,6 +267,7 @@ fn top_level_keys<'a>(front: &[&'a str]) -> Result<Vec<(usize, &'a str)>, String
         if !plain_key || !(rest.is_empty() || rest.starts_with([' ', '\t'])) {
             return Err(unreadable_front_matter());
         }
+        list_open = strip_comment(rest).trim().is_empty();
         keys.push((n, key));
     }
     Ok(keys)
@@ -392,11 +405,14 @@ fn parse_tools_value(inline: &str, following: &[&str]) -> AgentTools {
             .map_while(|l| {
                 let trimmed = l.trim_start();
                 let item = trimmed.strip_prefix('-')?;
-                (l.starts_with(' ') || l.starts_with('\t'))
+                // Indented, or a `- item` line in column 0, which YAML also reads as this key's list.
+                (l.starts_with(' ') || l.starts_with('\t') || l.starts_with("- ") || *l == "-")
                     .then(|| unquote(strip_comment(item).trim()))
             })
             .collect();
-        return if items.is_empty() {
+        // A list item is read whole, so a comma inside parentheses needs no care. A stray parenthesis still makes the
+        // item one this build cannot say anything about.
+        return if items.is_empty() || !items.iter().all(|item| parens_balanced(item)) {
             unreadable()
         } else {
             AgentTools::Listed(items)
@@ -405,16 +421,65 @@ fn parse_tools_value(inline: &str, following: &[&str]) -> AgentTools {
     if value.starts_with(['|', '>', '&', '*', '!', '{']) {
         return unreadable();
     }
-    let body = match value.strip_prefix('[') {
+    let (body, flow_list) = match value.strip_prefix('[') {
         Some(rest) => match rest.strip_suffix(']') {
-            Some(inner) => inner,
+            Some(inner) => (inner, true),
             None => return unreadable(),
         },
-        None => value,
+        None => (value, false),
     };
-    let body = unquote_whole(body);
-    AgentTools::Listed(
-        body.split(',')
+    match split_tools(&unquote_whole(body), flow_list) {
+        Some(items) => AgentTools::Listed(items),
+        None => unreadable(),
+    }
+}
+
+/// Whether every `(` has a `)` after it and no `)` comes first.
+fn parens_balanced(text: &str) -> bool {
+    let mut depth = 0usize;
+    for c in text.chars() {
+        match c {
+            '(' => depth += 1,
+            ')' => match depth.checked_sub(1) {
+                Some(rest) => depth = rest,
+                None => return false,
+            },
+            _ => {}
+        }
+    }
+    depth == 0
+}
+
+/// The items of a one-line `tools` value. Claude Code reads a bare or whole-quoted value as one string and splits it on
+/// the commas outside parentheses, so `Agent(a, b), Read` is two items. It reads the `[...]` form as a YAML list, where
+/// a comma inside parentheses splits the item in a way this build does not follow, so that is `None`, as is any
+/// parenthesis without its partner. `None` means the key cannot be read.
+fn split_tools(body: &str, flow_list: bool) -> Option<Vec<String>> {
+    let mut items = Vec::new();
+    let mut current = String::new();
+    let mut depth = 0usize;
+    for c in body.chars() {
+        match c {
+            '(' => {
+                depth += 1;
+                current.push(c);
+            }
+            ')' => {
+                depth = depth.checked_sub(1)?;
+                current.push(c);
+            }
+            ',' if depth == 0 => items.push(std::mem::take(&mut current)),
+            ',' if flow_list => return None,
+            _ => current.push(c),
+        }
+    }
+    if depth != 0 {
+        return None;
+    }
+    items.push(current);
+    Some(
+        items
+            .iter()
             .map(|item| unquote(item.trim()))
             .filter(|item| !item.is_empty())
             .collect(),

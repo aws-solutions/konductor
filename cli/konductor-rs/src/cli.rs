@@ -489,7 +489,7 @@ pub enum FlowAction {
         /// (`fake` is for tests). Without it the one runner harness that
         /// `konductor install` recorded is used (`kiro-cli-v2` and
         /// `kiro-v3` mean `kiro-cli`). With both installed, or neither, it
-        /// is required. `claude` arrives in step 1f-2.
+        /// is required.
         #[arg(long)]
         harness: Option<String>,
         /// The script the `fake` harness replays. `KONDUCTOR_FAKE_SCRIPT`

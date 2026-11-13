@@ -754,17 +754,16 @@ fn fake_is_accepted_with_a_flag_or_the_variable_and_the_flag_wins() {
 }
 
 #[test]
-fn kiro_cli_is_accepted_claude_waits_for_step_1f_2_and_other_names_are_unknown() {
+fn kiro_cli_and_claude_are_accepted_and_other_names_are_unknown() {
     assert_eq!(
         choose_harness("kiro-cli", None, None),
         Ok(HarnessChoice::KiroCli)
     );
-    let refusal = choose_harness("claude", Some(Path::new("a.json")), None).unwrap_err();
     assert_eq!(
-        refusal,
-        HarnessRefusal::NotInThisBuild("claude".to_string())
+        choose_harness("claude", None, None),
+        Ok(HarnessChoice::Claude)
     );
-    assert!(refusal.to_string().contains("step 1f-2"), "{refusal}");
+    assert_eq!(HarnessChoice::Claude.name(), "claude");
     assert_eq!(
         choose_harness("kiro", None, None),
         Err(HarnessRefusal::Unknown("kiro".to_string()))
@@ -779,11 +778,7 @@ fn installed(kiro_cli: bool, claude: bool) -> InstalledRunners {
 fn without_a_name_the_one_installed_runner_harness_is_used() {
     let pick = |kiro, claude| resolve_harness(None, installed(kiro, claude), None, None);
     assert_eq!(pick(true, false), Ok(HarnessChoice::KiroCli));
-    // `claude` is the only one installed, so it is chosen, and step 1f-2 has not added it yet.
-    assert_eq!(
-        pick(false, true),
-        Err(HarnessRefusal::NotInThisBuild("claude".to_string()))
-    );
+    assert_eq!(pick(false, true), Ok(HarnessChoice::Claude));
     assert_eq!(pick(true, true), Err(HarnessRefusal::BothInstalled));
     assert_eq!(pick(false, false), Err(HarnessRefusal::NoneInstalled));
     for refusal in [HarnessRefusal::BothInstalled, HarnessRefusal::NoneInstalled] {

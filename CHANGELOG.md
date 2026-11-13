@@ -33,10 +33,13 @@ not per individual commit.
   Without `--harness` the one runner harness in `~/.konductor/installs` is used, and with both or neither installed
   the flag is required. A stage whose agent Kiro CLI cannot see exits 64 before the first stage. A session left
   running by an owner that was killed is ended by the next run. `konductor doctor` checks the version of `kiro-cli`
-  against the lowest version that was tested and warns when it is lower. `claude` is a usage error until a later
-  release. Each stage gets the stage prompt and passes on a valid `KONDUCTOR_RESULT` line, a blocked stage halts the
-  run with exit 1, and the run state is kept in `.konductor/runs/`, which `.konductor/.gitignore` ignores. One run is
-  active per workspace, and a second one exits 75.
+  against the lowest version that was tested and warns when it is lower. `--harness claude` runs each stage in a
+  headless Claude Code session (`claude -p --output-format json --agent <id>`) with an `--allowedTools` rule for each
+  tool in the agent's `tools`, and `konductor doctor` checks the version of `claude` the same way. A `tools` value
+  with a comma inside parentheses, such as `Agent(a, b)`, is read as one tool with two names, and a list written with
+  its `- item` lines in column 0 is read as the key's list. Each stage gets the stage prompt and passes on a valid
+  `KONDUCTOR_RESULT` line, a blocked stage halts the run with exit 1, and the run state is kept in `.konductor/runs/`,
+  which `.konductor/.gitignore` ignores. One run is active per workspace, and a second one exits 75.
 - `konductor flow trust <name>` shows what a workflow will run and records that you trust it, and `--revoke` removes the
   record. To confirm you type the first 8 characters of the trust hash, so a key pressed before the summary was on
   screen cannot confirm it. `flow run` asks before it runs a project workflow, or any workflow in a repository that has

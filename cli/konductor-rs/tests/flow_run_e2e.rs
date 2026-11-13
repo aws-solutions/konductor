@@ -620,7 +620,7 @@ fn many_flow_runs_against_a_stale_record_leave_exactly_one_active() {
 // --- choosing the harness ------------------------------------------------------------------------------------------
 
 #[test]
-fn a_missing_claude_or_unknown_harness_is_a_usage_error() {
+fn a_missing_or_unknown_harness_is_a_usage_error_and_claude_needs_its_agents() {
     let project = Project::new("harness");
     let output = project.flow(&["run", "hello-plan"]);
     assert_eq!(exit(&output), 64);
@@ -628,7 +628,7 @@ fn a_missing_claude_or_unknown_harness_is_a_usage_error() {
     let output = project.flow(&["run", "hello-plan", "--harness", "claude"]);
     assert_eq!(exit(&output), 64);
     assert!(
-        stderr(&output).contains("arrives in step 1f-2"),
+        stderr(&output).contains("Claude Code cannot see it"),
         "{}",
         stderr(&output)
     );

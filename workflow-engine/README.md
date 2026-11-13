@@ -6,9 +6,9 @@ The Rust workspace behind `konductor flow`. It reads a workflow file, checks it 
 [the specification](../docs/design/workflows-spec.md) and runs it. The design and the plan are in
 [docs/design/workflows.md](../docs/design/workflows.md) and [docs/design/workflows-plan.md](../docs/design/workflows-plan.md).
 
-This is step 1f-1 of the plan: the file format and its checks (1c), the stage prompt and the runner on the `fake`
-harness (1d), trust (1e), and the process launcher with the `kiro-cli` harness (1f-1). It has no Claude harness
-(step 1f-2) and no canvas server yet.
+This is step 1f-2 of the plan: the file format and its checks (1c), the stage prompt and the runner on the `fake`
+harness (1d), trust (1e), the process launcher with the `kiro-cli` harness (1f-1), and the `claude` harness (1f-2). It
+has no canvas server yet.
 
 ## Crates
 
@@ -28,7 +28,9 @@ harness (1d), trust (1e), and the process launcher with the `kiro-cli` harness (
   which reads the tools of a Kiro or Claude agent definition; the terminal; the process launcher (`launcher.rs`), which
   starts a program as the leader of its own process group, keeps the tail of its output, stops it at a deadline and ends
   a group with the system `kill` program; the `kiro-cli` harness (`kiro_harness.rs`), which runs one headless Kiro CLI
-  session for each stage; and the `fake` harness, which replays scripted replies and is for tests only.
+  session for each stage; the `claude` harness (`claude_harness.rs`), which runs one headless Claude Code session for
+  each stage and maps the agent's `tools` to `--allowedTools` rules; and the `fake` harness, which replays scripted
+  replies and is for tests only.
   `harness_choice.rs` decides which harness a run may use: the name given, or else the one runner harness that the
   install index records, which the CLI reads and passes in.
 
@@ -51,3 +53,13 @@ cargo fmt --check && cargo clippy --all-targets --locked -- -D warnings && cargo
 ```
 
 The crates declare `rust-version = "1.89"`, the first release with `File::try_lock`, which the workspace lock uses.
+
+The checks of the `claude` harness against the real Claude Code are opt-in, because each one starts a session and
+spends model time. A plain `cargo test` skips them with a message. To run them:
+
+```bash
+KONDUCTOR_CLAUDE_CONFORMANCE=1 cargo test --test claude_conformance -- --nocapture --test-threads=1
+```
+
+Each check works in a temporary project with its own `.claude/agents` and `.claude/settings.json` and a temporary
+`CLAUDE_CONFIG_DIR`, so your own settings are not read. `KONDUCTOR_CLAUDE_PROGRAM` names another program than `claude`.
