@@ -77,9 +77,12 @@ By design. `context/k-orchestrator-routing-rules.md` makes it read-only:
 > You are a read-only orchestrator. You MUST NOT directly execute mutating operations.
 
 This read-only rule applies to the mux and cmux orchestrators. `konductor` loads `k-direct-work.md`
-instead and edits files itself. On Kiro CLI it pre-approves `fs_read` alone, so each write or
-command asks you first; on Claude Code it holds `Write`, `Edit` and `Bash` with no prompt gate, and
-the reviewer it spawns at each phase gate is the check.
+instead and edits files itself in the default `auto` mode. In `coordinator` mode it hands every change
+to a specialist, like the mux and cmux orchestrators (see
+[How do I make konductor hand every change to a specialist?](#how-do-i-make-konductor-hand-every-change-to-a-specialist)).
+On Kiro CLI it pre-approves `fs_read` alone, so each write or command asks you first; on Claude Code
+it holds `Write`, `Edit` and `Bash` with no prompt gate, and the reviewer it spawns at each phase gate
+is the check.
 
 The mux and cmux Orchestrator Direct Work table lists the exceptions: reading files, read-only commands such as
 `ls`, `grep` and `git status`, and read-only lookups, within a budget of 10 reads. Builds, tests,
@@ -187,6 +190,26 @@ Any project's own `.konductor/config.yml` still overrides this for the fields it
 This is also the answer to "why is my config not what I expect?" — a forgotten user-level file is
 the usual culprit, since it applies everywhere and nothing surfaces it. See
 [Diagnose problems → which layer supplied a value](tasks/diagnose-problems.md#why-is-a-config-value-what-it-is).
+
+---
+
+## How do I make `konductor` hand every change to a specialist?
+
+Set the `coordinator` orchestration mode by hand in your user config. There is no command for it.
+
+```yaml
+# ~/.konductor/config.yml
+orchestration:
+  mode: coordinator   # or auto (the default)
+```
+
+Only `~/.konductor/config.yml` is read; a value in a project's `.konductor/config.yml` is ignored,
+and `konductor doctor` reports it. The next `konductor` session picks it up, with no reinstall. Its
+first reply should read `Orchestration: coordinator`. `Orchestration: auto (default)` with
+`coordinator` set means no hook output arrived: run `konductor doctor`, then see
+[Troubleshooting](troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator).
+This works on Kiro CLI v3 and on Claude Code installed with `konductor install`. The Claude Code plugin does not wire the hook, so coordinator mode is not available there yet. The hook acts only for the install that wired it; see [where the hook may point](../../cli/README.md#orchestration-mode). Kiro CLI v2 is not supported: the hook is wired but
+untested there, and a session it does not reach runs as `auto`.
 
 ---
 

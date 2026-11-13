@@ -168,6 +168,9 @@ not per individual commit.
   specialists to add inline comments by default. Publish authorization (`code-review`) joins the NEVER rules and the
   tests-pass requirement as a default no house rule overrides; an instruction file, or a file one names, that the
   change under review edits is read from the base branch and the edit is reviewed as content.
+- Docs describe setting `orchestration.mode` by hand, reading the mode line in the first reply,
+  and that Kiro CLI v2 is not supported. Claude Code support is for `konductor install`; the
+  plugin does not wire the hook.
 
 ### Fixed
 

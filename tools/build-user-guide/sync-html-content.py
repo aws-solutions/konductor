@@ -100,9 +100,9 @@ EDITS = [
     # ---- every agent loads context/k-core-rules.md ---------------------------
     ('concepts context file paragraph', 'There are two today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains', 'There are four today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-direct-work.md</span> is loaded by konductor; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by the mux and cmux orchestrators; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-shared.md</span> holds the handoff, split, denial and brief rules, and all three orchestrators load it. The routing rules file contains'),
     # ---- single-writer shape: konductor does the work itself (R4-144.c) ----
-    ("quick-start step 3: konductor does the work itself",
-     "You are now talking to the coordinator. It never implements anything itself — it routes each piece of work to the specialist that owns it, checks what comes back, and re-delegates if a check fails.</p>",
-     "You are now talking to the orchestrator. It does the work itself, in this one session, and spawns a fresh k-* reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool, skill or SOP it lacks or for parallel work on disjoint files.</p>"),
+    ("quick-start step 3: konductor does the work itself in auto",
+     "You are now talking to the orchestrator. It does the work itself, in this one session, and spawns a fresh k-* reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool, skill or SOP it lacks or for parallel work on disjoint files.</p>",
+     "You are now talking to the orchestrator. In the default auto mode it does the work itself, in this one session, and spawns a fresh k-* reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool, skill or SOP it lacks or for parallel work on disjoint files. In coordinator mode it hands every change to a specialist.</p>"),
     ("concepts context paragraph: coordinator rules, not a routing table",
      "The routing rules file contains the capability-to-agent routing table and three",
      "The routing rules file contains the coordinator rules and three"),
@@ -123,11 +123,13 @@ EDITS = [
      'v: "An agent that coordinates other agents; konductor also does the work itself. Three exist:'),
     # Two edits around the "uc owned-by prose" fragment, which stays byte-identical
     # in the middle of this paragraph so that entry remains satisfied.
-    ("use-cases owned-by-the-orchestrator: mux and cmux dispatch, konductor works",
-     "The orchestrators are dispatchers by design. " + _code("konductor")
-     + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>",
+    ("use-cases owned-by-the-orchestrator: mux and cmux dispatch, konductor works in auto",
      "The mux and cmux orchestrators are dispatchers by design, and " + _code("konductor")
      + " does the work itself; no runtime enforces either shape. " + _code("konductor")
+     + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>",
+     "The mux and cmux orchestrators are dispatchers by design, and " + _code("konductor")
+     + " does the work itself in the default auto mode (in coordinator mode it hands every change to a "
+     + "specialist); no runtime enforces either shape. " + _code("konductor")
      + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>"),
     ("use-cases owned-by-the-orchestrator: konductor's Claude Code tools",
      "alone; in Claude Code its tool list has no " + _code("Bash") + ", " + _code("Write") + ", or " + _code("Edit")
@@ -216,21 +218,21 @@ EDITS = [
     ('concepts context files row',
      '{ k: "Context files — 2", v: "The core rules for every agent and the orchestrator routing rules, always active" }',
      '{ k: "Context files — 4", v: "The core rules for every agent, the shared orchestrator rules, and the direct-work or routing rules, always active" }'),
-    ('glossary orchestrator entry: konductor works itself',
-     'Three exist: konductor (background subagents), konductor-mux-orchestrator (tmux/zellij panes), and konductor-cmux-orchestrator (cmux surfaces). All are read-only by rule — they delegate every file write and shell command.',
-     'Three exist: konductor (background subagents), konductor-mux-orchestrator (tmux/zellij panes), and konductor-cmux-orchestrator (cmux surfaces). The mux and cmux orchestrators are read-only by rule and delegate every file write and shell command; konductor writes in its own session and spawns a reviewer at each phase gate.'),
-    ('glossary read-only entry: mux and cmux only',
-     'The orchestrators are read-only by rule. Applied to a SOP',
-     'The mux and cmux orchestrators are read-only by rule. Applied to a SOP'),
+    ('glossary orchestrator entry: konductor works itself in auto',
+     'konductor writes in its own session and spawns a reviewer at each phase gate.',
+     'konductor writes in its own session and spawns a reviewer at each phase gate in the default auto mode. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators.'),
+    ('glossary read-only entry: mux and cmux, and konductor in coordinator mode',
+     'The mux and cmux orchestrators are read-only by rule. Applied to a SOP',
+     'The mux and cmux orchestrators are read-only by rule, and konductor is too in coordinator mode. Applied to a SOP'),
     ('glossary context file',
      'Two exist: context/k-core-rules.md, loaded by all 11 agents, and context/k-orchestrator-routing-rules.md, loaded by all three orchestrators.',
      'Four exist: context/k-core-rules.md, loaded by all 11 agents; context/k-orchestrator-shared.md, loaded by all three orchestrators; context/k-direct-work.md, loaded by konductor; and context/k-orchestrator-routing-rules.md, loaded by the mux and cmux orchestrators.'),
     ("reference roster note: context files",
      'Every agent declares context/k-core-rules.md. Only the three orchestrators also declare context/k-orchestrator-routing-rules.md."]',
      'Every agent declares context/k-core-rules.md. Only the mux and cmux orchestrators also declare context/k-orchestrator-routing-rules.md; konductor declares context/k-direct-work.md. The three orchestrators also declare context/k-orchestrator-shared.md."]'),
-    ("agents note: context files",
-     "Every agent declares the context/k-core-rules.md context file. Only the three orchestrators also declare context/k-orchestrator-routing-rules.md, which is what makes them behave as dispatchers.",
-     "Every agent declares the context/k-core-rules.md context file. Only the mux and cmux orchestrators also declare context/k-orchestrator-routing-rules.md, which is what makes them behave as dispatchers. konductor declares context/k-direct-work.md and does the work itself. The three orchestrators also declare context/k-orchestrator-shared.md."),
+    ("agents note: context files and konductor's mode",
+     "konductor declares context/k-direct-work.md and does the work itself. The three orchestrators also declare context/k-orchestrator-shared.md.",
+     "konductor declares context/k-direct-work.md and does the work itself in the default auto mode. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators. The three orchestrators also declare context/k-orchestrator-shared.md."),
     ('layout tree context',
      '│   ├── k-core-rules.md\\n│   └── k-orchestrator-routing-rules.md\\n',
      '│   ├── k-core-rules.md\\n│   ├── k-direct-work.md\\n│   ├── k-orchestrator-routing-rules.md\\n│   └── k-orchestrator-shared.md\\n'),
@@ -445,12 +447,14 @@ EDITS = [
      "konductor anyway: it is the only entry point that verifies a handoff before moving on. "
      "Reach for the direct form when you are deliberately scoping a session to one agent, and "
      "treat it as the exception."),
-    ("ik which agent: prose",
-     ">Start with konductor and let it route. That is the default for everything in this guide: "
+    ("ik which agent: prose, konductor works in auto",
+     ">Start with konductor and ask in plain language; it does the work itself or spawns the agent "
+     "that declares the SOP you need. That is the default for everything in this guide: "
      "it is the only entry point that verifies a handoff before moving on, and it does not "
      "require you to know who owns which workflow. Starting a specialist directly is supported "
      'and occasionally what you want — see <a href="#/sops">which agent owns which SOP</a>.</p>',
-     ">Start with konductor and ask in plain language; it does the work itself or spawns the agent "
+     ">Start with konductor and ask in plain language; it does the work itself (in coordinator mode it "
+     "hands every change to a specialist) or spawns the agent "
      "that declares the SOP you need. That is the default for everything in this guide: "
      "it is the only entry point that verifies a handoff before moving on, and it does not "
      "require you to know who owns which workflow. Starting a specialist directly is supported "
@@ -552,6 +556,25 @@ ROSTER = [
      'Test coverage, E2E strategy, security tests. claude-sonnet-5.5 · 12 skills · 1 SOP'),
     ("card researcher", 'External documentation and web research. claude-sonnet-5.5 · 7 skills · 0 SOPs',
      'External documentation and web research. claude-sonnet-5.5 · 8 skills · 0 SOPs'),
+    # ---- orchestration.mode docs: converted from a hand edit of the bundles ----
+    ('faq: coordinator mode section',
+     '      sec("faq-data", "Is my data sent anywhere?"',
+     '      sec("faq-mode", "Coordinator mode", "How do I make konductor hand every change to a specialist?", {\n        paras: ["Set the coordinator orchestration mode by hand in ~/.konductor/config.yml. There is no command for it. Only that file is read; a value in a project\'s .konductor/config.yml is ignored, and konductor doctor reports it. The next konductor session picks it up, with no reinstall.", "The first reply of every konductor session states the mode. It should read Orchestration: coordinator. Orchestration: auto (default) with coordinator set means no session-start hook output arrived: run konductor doctor, then see Troubleshooting 9.", "The hook acts only for the install that wired it; see Orchestration mode in cli/README.md for where it may point."],\n        bullets: ["Kiro CLI v3 and Claude Code installed with konductor install: supported. The Claude Code plugin does not wire the hook, so coordinator mode is not available there yet.", "Kiro CLI v2: not supported. The hook is wired but untested there, and a session it does not reach runs as auto."],\n        code: "# ~/.konductor/config.yml\\norchestration:\\n  mode: coordinator   # or auto (the default)", codeLang: "YAML" }),\n      sec("faq-data", "Is my data sent anywhere?"'),
+    ('troubleshooting 9: coordinator mode not applied',
+     'code: "cat ~/.konductor/config.yml" })\n    ]\n  },\n  help: {',
+     'code: "cat ~/.konductor/config.yml" }),\n      sec("t-9", "9: coordinator mode not applied", "9. The first reply says Orchestration: auto but I set coordinator", {\n        paras: ["SYMPTOM: ~/.konductor/config.yml sets orchestration.mode: coordinator, but the first reply of a konductor session reads Orchestration: auto (default) or Orchestration: auto (fallback: ...), and konductor writes files itself.", "CAUSE: Orchestration: auto (default) with coordinator set means no session-start hook output arrived. Either the harness did not deliver it, or the hook did not recognise the session as a konductor session from a Konductor install and printed nothing. Orchestration: auto (fallback: <reason>) means the hook ran but could not apply coordinator; the reason names why. Either way the session runs as auto. After a resume, Orchestration: auto without (default) means the mode was changed to auto since the session started.", "FIX: Run konductor doctor and fix what its orchestration row names."],\n        bullets: ["The value must be exactly auto or coordinator, in ~/.konductor/config.yml. A project .konductor/config.yml value is ignored; doctor reports it.", "Installed as the Claude Code plugin? The plugin does not wire the hook, so coordinator mode is not available there. konductor doctor and konductor update apply to CLI installs only.", "A missing hook or rules file: run konductor update.", "Orchestration: auto (fallback: the install at <path> owns the konductor session but its session-start hook is not wired ...): a nearer Konductor install owns the session and its own hook is missing for this harness. Run konductor update in the path the line names. konductor doctor under coordinator runs the same persona load as the hook, so it reports an over-budget digest as failed and an install root outside your home that is not a git checkout root as warn.", "doctor passes but the line still does not arrive: check that the session runs the konductor agent of the install doctor checked, then check the harness. Kiro CLI v3 and Claude Code installed with konductor install are supported. Kiro CLI v2 is not; its hook is wired but untested, so use v3 or Claude Code for coordinator sessions.", "On Kiro CLI v3 the rules may not come back after /compact. A coordinator session that starts writing files itself after a compaction has lost them; start a new session."],\n        code: "konductor doctor" })\n    ]\n  },\n  help: {'),
+    ('concepts: digest is hook output',
+     'rather than doing them themselves.</p>\n          </section>\n\n          <section id="c-delegation"',
+     'rather than doing them themselves.</p>\n            <p style="margin:20px 0 0;font-size:16px;line-height:1.75;color:var(--mu)"><span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-coordinator-digest.md</span> also lives in <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/</span>, but no agent loads it: the session-start hook prints it into a coordinator session. In that mode konductor also reads the routing rules file (see the FAQ entry Coordinator mode).</p>\n          </section>\n\n          <section id="c-delegation"'),
+    ('install-kiro: session-start hook',
+     'and the command to start a session with. Exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">0</span>.</p>',
+     'and the command to start a session with. Exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">0</span>.</p>\n            <p style="margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)">Install also wires a session-start hook for konductor: .kiro/hooks/konductor-orchestration-hooks.json on Kiro CLI v3, an agentSpawn entry in .kiro/agents/konductor.json on Kiro CLI v2. orchestration.mode: coordinator relies on it, and uninstall removes it.</p>'),
+    ('install-claude: session-start hook',
+     'and says that two more settings are required before teammates can run. Both are below.</p>',
+     'and says that two more settings are required before teammates can run. Both are below.</p>\n            <p style="margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)">Install also wires a session-start hook for konductor, a SessionStart block in the Claude Code hooks settings file, which orchestration.mode: coordinator relies on. uninstall removes it.</p>\n            <p style="margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)">Install also copies the context files to .konductor/context/ under the install target, where the hook reads the routing rules and the coordinator digest. No agent loads them from there, and uninstall removes them.</p>'),
+    ('uninstall: hook and context rows',
+     '  { where: "Runtime agent directories", by: "konductor install", gone: "konductor uninstall" },\n',
+     '  { where: "Runtime agent directories", by: "konductor install", gone: "konductor uninstall" },\n  { where: "Session-start hook: .kiro/hooks/konductor-orchestration-hooks.json (Kiro CLI v3), the agentSpawn entry in .kiro/agents/konductor.json (Kiro CLI v2), the SessionStart block in the Claude Code hooks settings file", by: "konductor install", gone: "konductor uninstall" },\n  { where: ".konductor/context/ under the install target (Claude Code installs only; .konductor/memory/ is kept)", by: "konductor install", gone: "konductor uninstall" },\n'),
 ]
 
 

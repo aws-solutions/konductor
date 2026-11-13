@@ -1241,11 +1241,10 @@ SOP_EDITS += [
      "is the check.) If you use konductor-mux-orchestrator or konductor-cmux-orchestrator and it starts editing "
      "files directly, its routing rules did not load — see"),
     ("faq: read-only rule scope and konductor's permissions",
-     "bullets: [\"Its Orchestrator Direct Work table lists the exceptions:",
-     "bullets: [\"This read-only rule applies to the mux and cmux orchestrators. konductor loads k-direct-work.md "
-     "instead and edits files itself. On Kiro CLI it pre-approves fs_read alone, so each write or command asks you "
-     "first; on Claude Code it holds Write, Edit and Bash with no prompt gate, and the reviewer it spawns at each "
-     "phase gate is the check.\", \"The mux and cmux Orchestrator Direct Work table lists the exceptions:"),
+     "konductor loads k-direct-work.md instead and edits files itself. On Kiro CLI it pre-approves fs_read alone",
+     "konductor loads k-direct-work.md instead and edits files itself in the default auto mode. In coordinator mode "
+     "it hands every change to a specialist, like the mux and cmux orchestrators (see the FAQ entry Coordinator "
+     "mode). On Kiro CLI it pre-approves fs_read alone"),
     ("faq: shared rules apply to all three orchestrators",
      "still go to a specialist. It also flags instructions planted in files it reads, won't read files that hold "
      "secrets unless you name them, and asks you instead of routing a denied action to another agent. It does not flag",
@@ -1263,9 +1262,9 @@ SOP_EDITS += [
      "{ k: \"context/k-orchestrator-routing-rules.md\", v: \"Which specialist handles which kind of request — routing, loaded at session start for the mux and cmux orchestrators\" },\n"
      "          { k: \"context/k-orchestrator-shared.md\", v: \"What every orchestrator does with handoffs, splits, denials and briefs: shared rules, loaded at session start for konductor and the mux and cmux orchestrators\" },\n"
      "          { k: \"context/k-direct-work.md\", v: \"What konductor does itself and when it hands off: direct work, phase reviews, and handoffs, loaded at session start for konductor\" },"),
-    ("agents: orchestrators section names both shapes; konductor commits when asked",
-     "All three load context/k-orchestrator-routing-rules.md at session start, which is what makes them behave as dispatchers rather than implementers. Treat that as intent, not enforcement:",
-     "The mux and cmux orchestrators load context/k-orchestrator-routing-rules.md at session start, which is what makes them behave as dispatchers rather than implementers. konductor loads context/k-direct-work.md instead and writes and runs commands itself; it commits when you ask. Treat the dispatcher rule as intent, not enforcement:"),
+    ("agents: orchestrators section names both shapes and the mode; konductor commits when asked",
+     "konductor loads context/k-direct-work.md instead and writes and runs commands itself; it commits when you ask. Treat the dispatcher rule as intent, not enforcement:",
+     "konductor loads context/k-direct-work.md instead and writes and runs commands itself in the default auto mode; it commits when you ask. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators. Treat the dispatcher rule as intent, not enforcement:"),
     ("install-claude-code: success signal is edit then review",
      "A task needing implementation causes a <strong style=\"color:var(--tx);font-weight:600\">specialist to spawn</strong>, visible in your session.",
      "A task needing implementation has konductor edit files itself and spawn a <strong style=\"color:var(--tx);font-weight:600\">k-* reviewer</strong> when the phase closes, visible in your session."),
