@@ -83,7 +83,8 @@ issue reports describe the refusal for subagent writes ([Sources](#sources)).
   - a `PreToolUse` hook that allows the call;
   - a host approval (`--permission-prompt-tool`, or `canUseTool` in the Agent SDK).
 - **Versions.** The exports follow the tool documentation in [Sources](#sources). The conformance check
-  runs the exports live on a public release of each tool and pins a minimum version, which `konductor doctor` enforces.
+  runs the exports live on a public release of each tool and pins a minimum version. `konductor doctor` reports a
+  version below it as a `warn`, and its exit code does not change.
 
 ### Commands
 
