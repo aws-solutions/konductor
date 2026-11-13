@@ -9,10 +9,19 @@ export type StageStatuses = readonly [
   'pending' | 'running' | 'passed' | 'blocked',
 ];
 
-/** A reply of `GET /api/runs/{id}` for the sample workflow. */
+// A stage of a run as the contract has it: a blocked stage has a reason.
+function stageOf(status: StageStatuses[number], reason: string) {
+  return status === 'blocked' ? { status, reason } : { status };
+}
+
+/**
+ * A reply of `GET /api/runs/{id}` for the sample workflow. A blocked stage
+ * has `reason`, `RESULT_MISSING` unless it is given.
+ */
 export function runReply(
   status: 'running' | 'passed' | 'halted',
   [draft, review]: StageStatuses,
+  reason = 'RESULT_MISSING',
 ) {
   const finished = status !== 'running';
   return {
@@ -25,7 +34,10 @@ export function runReply(
       finished_at: finished ? '2026-10-24T04:12:49Z' : null,
       exit_code: finished ? (status === 'passed' ? 0 : 1) : null,
       order: ['draft', 'review'],
-      stages: { draft: { status: draft }, review: { status: review } },
+      stages: {
+        draft: stageOf(draft, reason),
+        review: stageOf(review, reason),
+      },
     },
   };
 }
@@ -75,7 +87,7 @@ export async function answerRunsInTurn(
 export async function refuseRunsWith(
   page: Page,
   status: number,
-  body: { error: string; code: string },
+  body: { error: string; code: string; fix?: string },
 ): Promise<void> {
   await page.route('**/api/run', (route) =>
     route.fulfill({ status, json: body }),

@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, test } from '../support/editing-fixtures';
-import { answerRunsWith, runReply } from '../support/run-routes';
+import {
+  answerRunsWith,
+  refuseRunsWith,
+  runReply,
+} from '../support/run-routes';
 import { overwriteWorkflow, SAMPLE_TEXT } from '../support/stub-workflow';
 import { saveFullPageScreenshot } from '../support/screenshots';
 import type { WorkflowCanvasPage } from '../support/workflow-canvas-page';
@@ -70,6 +74,41 @@ test('capture the Execution tab after the run passed', async ({ canvas }) => {
   await saveFullPageScreenshot(canvas.page, 'execution-tab-finished');
 });
 
+test('capture the Execution tab after a stage was blocked', async ({
+  canvas,
+}) => {
+  await answerRunsWith(
+    canvas.page,
+    runReply('halted', ['passed', 'blocked'], 'OUTPUT_MISSING'),
+  );
+  await canvas.selectTab('Execution');
+  await canvas.expectTabLoaded('Execution');
+
+  await canvas.runButton.click();
+  await canvas.expectBadges(['Done', 'Done', 'Failed', 'Halted']);
+  await canvas.page.getByTestId('blocked-stage').waitFor();
+
+  await saveFullPageScreenshot(canvas.page, 'execution-tab-blocked');
+});
+
+// With the dialog open, an arm64 host draws the dimmed page in the tiles next
+// to the dialog one level of colour off, so the committed PNG is the one that
+// CI draws (see Screenshots in the README).
+test('capture the Execution tab when a Run needs trust', async ({ canvas }) => {
+  await refuseRunsWith(canvas.page, 409, {
+    error: 'The workflow is not trusted yet.',
+    code: 'trust_required',
+    fix: 'Run `konductor flow trust hello` in a terminal, then try again.',
+  });
+  await canvas.selectTab('Execution');
+  await canvas.expectTabLoaded('Execution');
+
+  await canvas.runButton.click();
+  await canvas.page.getByTestId('trust-command').waitFor();
+
+  await saveFullPageScreenshot(canvas.page, 'execution-trust-required');
+});
+
 // The Execution tab in the dark mode, while the first stage runs.
 test('capture the Execution tab in the dark mode during a run', async ({
   canvas,
@@ -133,6 +172,26 @@ test('capture the Designer tab when the file changed on disk', async ({
   await expect(designer.conflict).toBeVisible();
 
   await saveFullPageScreenshot(designer.page, 'designer-conflict');
+});
+
+test('capture the Designer tab with a change it cannot write in place', async ({
+  canvas,
+  designer,
+  request,
+}) => {
+  await overwriteWorkflow(
+    request,
+    SAMPLE_TEXT.replace(
+      /  - name: review\n    agent: k-quality-assurance\n(    prompt_file: .*\n)?/,
+      '  - {name: review, agent: k-quality-assurance}\n',
+    ),
+  );
+  await canvas.page.reload();
+  await designer.stage('review').click();
+  await designer.rename('check');
+  await expect(designer.page.getByTestId('not-in-place')).toBeVisible();
+
+  await saveFullPageScreenshot(designer.page, 'designer-not-in-place');
 });
 
 test('capture the Designer tab with unsaved edits in the dark mode', async ({

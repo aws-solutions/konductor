@@ -127,6 +127,25 @@ test('shows a failed stage with its words, the stages that will not run, and the
   await expect(canvas.runError).toHaveCount(0);
 });
 
+test('shows the stage that stopped the run, its reason and what the reason means', async ({
+  canvas,
+}) => {
+  await answerRunsWith(
+    canvas.page,
+    runReply('halted', ['passed', 'blocked'], 'OUTPUT_MISSING'),
+  );
+
+  await canvas.runButton.click();
+
+  const blocked = canvas.page.getByTestId('blocked-stage');
+  await expect(blocked).toContainText('Blocked stage');
+  await expect(blocked).toContainText('review');
+  await expect(blocked).toContainText('OUTPUT_MISSING');
+  await expect(blocked).toContainText(
+    'A file that the stage must leave behind does not exist.',
+  );
+});
+
 test('says so when the stages of the run are not the stages in the graph', async ({
   canvas,
 }) => {
@@ -396,7 +415,7 @@ test('drops the session when the run start is answered 401, so a reload does not
   await expect(canvas.runError).toContainText(
     'The server no longer knows this session',
   );
-  await expect(canvas.runError).toContainText('fresh launch address');
+  await expect(canvas.runError).toContainText('Start flow view again');
   expect(await canvas.page.evaluate(() => window.sessionStorage.length)).toBe(
     0,
   );

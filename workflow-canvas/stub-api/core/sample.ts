@@ -23,9 +23,9 @@ export interface Fixture {
 
 // The same workflow under each name, so that every fixture shows the keys of
 // the first release. The `prompt_file` is a path only: the stub reads no
-// files. `hello` has plain stages, with a name and an agent and nothing else,
-// because the stage writer of the Designer writes those two keys for a stage it
-// changes and would drop a prompt. The other fixtures show the stage keys.
+// files. `hello` has plain stages, with a name and an agent and nothing else.
+// The other fixtures show the stage keys, a `prompt` and a `prompt_file`,
+// which the stage writer of the Designer keeps when it changes a stage.
 const workflow = (
   name: string,
   { extraStages = '', prompts = true } = {},

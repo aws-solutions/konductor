@@ -119,6 +119,27 @@ test('starts each link at the tip of a tab and ends it at the top of a notch', a
   }
 });
 
+/** The text of a first-release workflow with these stages. */
+function textOf(
+  name: string,
+  outcome: string,
+  stages: ReadonlyArray<{ name: string; agent: string }>,
+): string {
+  return [
+    'format: konductor/1',
+    `name: ${name}`,
+    'version: 0.1.0',
+    'intent:',
+    `  outcome: ${outcome}`,
+    'stages:',
+    ...stages.flatMap((stage) => [
+      `  - name: ${stage.name}`,
+      `    agent: ${stage.agent}`,
+    ]),
+    '',
+  ].join('\n');
+}
+
 /** A view of a workflow with `count` stages, as `GET /api/workflow` returns it. */
 function workflowOf(count: number) {
   const stages = Array.from({ length: count }, (_, i) => ({
@@ -127,10 +148,16 @@ function workflowOf(count: number) {
   }));
   return {
     name: 'big',
-    text: 'name: big\n',
+    text: textOf('big', 'Run it', stages),
     hash: 'a'.repeat(64),
     read_only: false,
-    view: { name: 'big', intent: { outcome: 'Run it' }, stages },
+    view: {
+      format: 'konductor/1',
+      version: '0.1.0',
+      name: 'big',
+      intent: { outcome: 'Run it' },
+      stages,
+    },
     diagnostics: [],
   };
 }
@@ -185,6 +212,21 @@ test('fits the nodes of a bigger workflow that replaces the one on the page', as
   await expectEveryNodeInCanvas(canvas);
 });
 
+test('shows the harness of the session as it is, fake included, with no way to pick it', async ({
+  page,
+}) => {
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: { ...sharedSession(), harness: 'fake' } }),
+  );
+  const canvas = new WorkflowCanvasPage(page);
+  await canvas.open(STUB_LAUNCH_CODE);
+
+  await expect(canvas.node('node-stage-draft')).toContainText(
+    'k-developer · fake',
+  );
+  await expect(page.getByText(/harness/i)).toHaveCount(0);
+});
+
 test('shows in full the Japanese text that a node cuts short', async ({
   page,
 }) => {
@@ -197,10 +239,12 @@ test('shows in full the Japanese text that a node cuts short', async ({
     route.fulfill({
       json: {
         name: 'jp',
-        text: 'name: jp\n',
+        text: textOf('jp', outcome, [{ name, agent: 'a' }]),
         hash: 'a'.repeat(64),
         read_only: false,
         view: {
+          format: 'konductor/1',
+          version: '0.1.0',
           name: 'jp',
           intent: { outcome },
           stages: [{ name, agent: 'a' }],
@@ -324,4 +368,7 @@ test('explains what to do when the address has no launch code', async ({
 
   await expect(page.getByText('The workflow did not load')).toBeVisible();
   await expect(page.getByText(/no launch code in the address/)).toBeVisible();
+  await expect(
+    page.getByText(/Start flow view again and open the address it prints/),
+  ).toBeVisible();
 });

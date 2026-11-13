@@ -12,6 +12,7 @@ import {
 } from './follow-run';
 import {
   RunAlreadyActive,
+  RunNeedsTrust,
   RunReadRefused,
   RunStartUnsure,
   type RunPort,
@@ -119,6 +120,27 @@ describe('startAndFollow', () => {
     expect(runs.get).not.toHaveBeenCalled();
     expect(events).toEqual([
       { type: 'failed', message: 'A run is already active.', runId: undefined },
+    ]);
+  });
+
+  it('keeps the fix and the goal when the workflow must be trusted first', async () => {
+    const fix =
+      'Run `konductor flow trust hello` in a terminal, then try again.';
+    const { runs, events, done } = setup(
+      [],
+      vi.fn().mockRejectedValue(new RunNeedsTrust('Not trusted.', fix)),
+    );
+
+    await done;
+
+    expect(runs.get).not.toHaveBeenCalled();
+    expect(events).toEqual([
+      {
+        type: 'failed',
+        message: 'Not trusted.',
+        runId: undefined,
+        trust: { fix, goal: 'Ship it' },
+      },
     ]);
   });
 

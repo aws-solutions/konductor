@@ -4,6 +4,7 @@ import type { RunView } from '../../api/types';
 import type { ExecutionEvent } from './execution-state';
 import {
   RunAlreadyActive,
+  RunNeedsTrust,
   RunReadRefused,
   RunStartUnsure,
   type RunPort,
@@ -29,16 +30,21 @@ interface Watch {
   signal: AbortSignal;
 }
 
-// The failure event of a loop. A start that got no clear answer says so.
+// The failure event of a loop. A start that got no clear answer says so, and
+// a start refused for trust keeps its goal, so it can be asked for again.
 function failure(
   error: unknown,
   runId: string | undefined,
+  goal?: string,
 ): Extract<ExecutionEvent, { type: 'failed' }> {
   const failed = {
     type: 'failed',
     message: messageOf(error, UNKNOWN_FAILURE),
     runId,
   } as const;
+  if (error instanceof RunNeedsTrust && goal !== undefined) {
+    return { ...failed, trust: { fix: error.fix, goal } };
+  }
   return error instanceof RunStartUnsure
     ? { ...failed, maybeStarted: true }
     : failed;
@@ -136,7 +142,7 @@ export async function startAndFollow(request: FollowRequest): Promise<void> {
     );
     await follow(request, runId);
   } catch (error) {
-    if (!signal.aborted) emit(failure(error, runId));
+    if (!signal.aborted) emit(failure(error, runId, request.goal));
   }
 }
 

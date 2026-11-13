@@ -1006,7 +1006,7 @@ describe('a check that the server refuses for a lost session', () => {
     const edits = acceptingEdits();
     edits.check.mockRejectedValue(
       new SessionLost(
-        'The session is not valid. Get a fresh launch address from the server. The changes you made on this page are lost when you do; copy them first.',
+        'The session is not valid. Start `flow view` again and open the address it prints. The changes you made on this page are lost when you do; copy them first.',
       ),
     );
     const { scheduler } = await openDesigner(edits);
@@ -1016,6 +1016,7 @@ describe('a check that the server refuses for a lost session', () => {
 
     expect(await screen.findByText('The session is lost')).toBeTruthy();
     expect(screen.getByText(/copy them first/)).toBeTruthy();
+    expect(screen.getByText('flow view').tagName).toBe('CODE');
     expect(screen.queryByText('The workflow was not saved')).toBeNull();
   });
 });
@@ -1110,32 +1111,114 @@ describe('a save that is refused with nothing to fix', () => {
   });
 });
 
-describe('a file whose stages are not a block', () => {
+describe('a file whose stages cannot be edited in place', () => {
   const FLOW = {
     ...HELLO_DOCUMENT,
-    text: 'name: hello\nintent: Add a greeting to the README\nstages: [{name: draft, agent: k-developer}]\n',
+    text: 'format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nstages: [{name: draft, agent: k-developer}, {name: review, agent: k-quality-assurance}]\n',
+  };
+  // The second stage is a mapping on one line; the first is a block of keys.
+  const ONE_FLOW_STAGE = {
+    ...HELLO_DOCUMENT,
+    text: 'format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nstages:\n  - name: draft\n    agent: k-developer\n  - {name: review, agent: k-quality-assurance}\n',
   };
 
-  it('says before a save that the file is written whole', async () => {
+  it('says before a change that no change of its stages can be saved, and why', async () => {
     await openDesigner(acceptingEdits(), FLOW);
 
-    const note = screen.getByTestId('rewrite-notice');
+    const note = screen.getByTestId('in-place-notice');
 
-    expect(note.textContent).toContain('Saving rewrites this file');
-    expect(note.textContent).toContain('comments');
+    expect(note.textContent).toContain(
+      'Changes to this file cannot be saved here',
+    );
+    expect(note.textContent).toContain('stages: [...]');
+  });
+
+  it('keeps Save off for a change of such a file, with the reason, and writes nothing', async () => {
+    const { edits } = await openDesigner(acceptingEdits(), FLOW);
+
+    type('write');
+    fireEvent.click(saveButton());
+
+    expect(isOff(saveButton())).toBe(true);
+    expect(reasonOf('Save')).toContain('cannot change them in place');
+    expect(status()).toBe('Unsaved changes');
+    expect(edits.save).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('not-in-place')).toBeNull();
+  });
+
+  it('checks no text for a change it cannot write', async () => {
+    const { edits, scheduler } = await openDesigner(acceptingEdits(), FLOW);
+
+    type('write');
+    await checkNow(scheduler);
+
+    expect(edits.check).not.toHaveBeenCalled();
+  });
+
+  it('saves a change of a stage that is a block of keys, next to one that is not', async () => {
+    const { edits } = await openDesigner(acceptingEdits(), ONE_FLOW_STAGE);
+
+    expect(screen.queryByTestId('in-place-notice')).toBeNull();
+    chooseAgent('k-architect');
+    fireEvent.click(saveButton());
+
+    await waitFor(() => expect(edits.save).toHaveBeenCalledTimes(1));
+    expect(edits.save.mock.calls[0]![0]).toBe(
+      ONE_FLOW_STAGE.text.replace('agent: k-developer', 'agent: k-architect'),
+    );
+  });
+
+  it('warns that a change of a stage on one line cannot be saved, and why', async () => {
+    const { edits } = await openDesigner(acceptingEdits(), ONE_FLOW_STAGE);
+    fireEvent.click(screen.getByTestId('node-stage-review'));
+
+    type('check');
+    fireEvent.click(saveButton());
+
+    const warning = await screen.findByTestId('not-in-place');
+    expect(warning.textContent).toContain('This change cannot be saved');
+    expect(warning.textContent).toContain('The stage review is not written');
+    expect(isOff(saveButton())).toBe(true);
+    expect(edits.save).not.toHaveBeenCalled();
+  });
+
+  it('gives the reason as plain text on Save, and shows its names as code in the warning', async () => {
+    await openDesigner(acceptingEdits(), ONE_FLOW_STAGE);
+    fireEvent.click(screen.getByTestId('node-stage-review'));
+
+    type('check');
+
+    expect(reasonOf('Save')).toContain('The stage review is not written');
+    expect(reasonOf('Save')).not.toContain('`');
+    const warning = await screen.findByTestId('not-in-place');
+    expect(warning.querySelector('code')?.textContent).toBe('review');
+  });
+
+  it('gives a file-wide reason as plain text on Save, and as code in the note', async () => {
+    await openDesigner(acceptingEdits(), FLOW);
+
+    type('write');
+
+    expect(reasonOf('Save')).toContain('as in stages: [...], or');
+    expect(reasonOf('Save')).not.toContain('`');
+    expect(
+      [...screen.getByTestId('in-place-notice').querySelectorAll('code')].map(
+        (code) => code.textContent,
+      ),
+    ).toEqual(['stages: [...]', 'stages:']);
   });
 
   it('says nothing for a file with a block of stages', async () => {
     await openDesigner();
 
-    expect(screen.queryByTestId('rewrite-notice')).toBeNull();
+    expect(screen.queryByTestId('in-place-notice')).toBeNull();
   });
 
   it('says nothing when the workflow is read-only, as nothing will be saved', async () => {
     await openDesigner(acceptingEdits(), { ...FLOW, readOnly: true });
 
     expect(screen.getByTestId('read-only-note')).toBeTruthy();
-    expect(screen.queryByTestId('rewrite-notice')).toBeNull();
+    expect(screen.queryByTestId('in-place-notice')).toBeNull();
   });
 });
 

@@ -120,11 +120,9 @@ describe('the wire types and text of the Designer against PUT /api/workflow', ()
     const loaded = await document();
     if (!loaded.view) throw new Error('The sample has no view.');
     const draft = change(draftOf(loaded.view.stages));
-    return {
-      loaded,
-      text: withStages(sample, loaded.view, stagesOf(draft)),
-      draft,
-    };
+    const written = withStages(sample, loaded.view, stagesOf(draft));
+    if (!written.ok) throw new Error(written.reason);
+    return { loaded, text: written.text, draft };
   }
 
   it('accepts the text of a renamed stage and returns the new view', async () => {

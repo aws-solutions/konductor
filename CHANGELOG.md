@@ -25,6 +25,10 @@ not per individual commit.
 - A launch code trade that gets no answer shows "Still waiting for the server" with a way to stop, and ends with an error after 120 seconds.
 - The Designer tab edits stages (agent, rename, add, delete) and saves with checks while typing.
 - The workflow canvas contract and stub read the first-release workflow format and name the slice of a key they do not read yet. The contract also covers stage evidence, trust and one run per workspace; `STUB_WORKFLOW` picks a stub fixture for each answer of a run.
+- The workflow canvas saves a stage change in place and keeps every other key of the file. It refuses, with the
+  reason, a change it cannot write in place, shows the reason of a blocked stage, opens a dialog with the
+  `konductor flow trust` command when a Run needs trust, and shows the harness as the server names it, `claude` and
+  `fake` included. When the server no longer knows the session, the page tells the user to start `flow view` again.
 - `konductor flow check` and `konductor flow show` validate a workflow file and print its resolved form as JSON. The
   engine behind them is the Rust workspace in `workflow-engine/`, with its own CI.
 

@@ -12,6 +12,7 @@ import {
   saveBlocker,
   saveStatus,
   textOf,
+  writtenOf,
 } from './edit-view';
 
 function run(...events: EditEvent[]): EditState {
@@ -52,6 +53,122 @@ describe('textOf', () => {
   it('is the saved text with the stages of the draft', () => {
     expect(textOf(run(AGENT_CHANGE))).toBe(
       HELLO_TEXT.replace('k-developer', 'k-tpm'),
+    );
+  });
+});
+
+describe('writtenOf', () => {
+  it('gives the same result again for the same draft, document and bases', () => {
+    const state = run(AGENT_CHANGE);
+
+    expect(writtenOf({ ...state })).toBe(writtenOf(state));
+  });
+
+  it('writes again when the draft, the document or the bases change', () => {
+    const state = run(AGENT_CHANGE);
+    const first = writtenOf(state);
+    const other = { ...state.draft.stages[0]!, id: 's9' };
+
+    const moved = writtenOf({
+      ...state,
+      bases: ['s9', ...state.bases.slice(1)],
+    });
+    const draft = writtenOf({
+      ...state,
+      draft: {
+        ...state.draft,
+        stages: [other, ...state.draft.stages.slice(1)],
+      },
+    });
+    const saved = writtenOf({
+      ...state,
+      saved: { ...state.saved },
+    });
+
+    expect(moved).not.toBe(first);
+    expect(draft).not.toBe(first);
+    expect(saved).not.toBe(first);
+    expect(saved).toEqual(first);
+  });
+});
+
+describe('textOf, across saves', () => {
+  // A file whose stages carry the keys the Designer does not edit.
+  const PROMPTED = {
+    ...HELLO_DOCUMENT,
+    text: 'format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nstages:\n  - name: draft\n    agent: k-developer\n    prompt: Write the greeting.\n  - name: review\n    agent: k-quality-assurance\n    prompt_file: review.md\n',
+  };
+
+  function runOn(state: EditState | undefined, ...events: EditEvent[]) {
+    for (const event of events) state = reduce(state, event);
+    if (!state) throw new Error('Nothing to edit.');
+    return state;
+  }
+
+  // The answer to a save of the text that was sent, with the stages it holds.
+  function savedOf(
+    state: EditState,
+    stages: EditState['saved']['view']['stages'],
+  ): EditEvent {
+    return {
+      type: 'saved',
+      text: textOf(state)!,
+      result: {
+        hash: 'b'.repeat(64),
+        view: { ...state.saved.view, stages },
+        diagnostics: [],
+      },
+    };
+  }
+
+  it('keeps the prompt of a stage whose agent changes', () => {
+    const state = runOn(openDocument(PROMPTED), AGENT_CHANGE);
+
+    expect(textOf(state)).toBe(PROMPTED.text.replace('k-developer', 'k-tpm'));
+  });
+
+  it('edits a stage in place after a save that deleted the one before it', () => {
+    const deleted = runOn(
+      openDocument(PROMPTED),
+      { type: 'remove', id: 's1' },
+      {
+        type: 'save',
+      },
+    );
+    const saved = runOn(
+      deleted,
+      savedOf(deleted, [{ name: 'review', agent: 'k-quality-assurance' }]),
+    );
+
+    const next = runOn(saved, { type: 'set-agent', id: 's2', agent: 'k-tpm' });
+
+    expect(textOf(next)).toBe(
+      textOf(deleted)!.replace('k-quality-assurance', 'k-tpm'),
+    );
+    expect(textOf(next)).toContain('prompt_file: review.md');
+  });
+
+  it('knows the stages that were sent when the draft changed during the save', () => {
+    const saving = runOn(
+      openDocument(PROMPTED),
+      { type: 'rename', id: 's1', name: 'write' },
+      { type: 'save' },
+    );
+    const sent = textOf(saving)!;
+    const saved = runOn(
+      saving,
+      { type: 'add' },
+      savedOf(saving, [
+        { name: 'write', agent: 'k-developer' },
+        { name: 'review', agent: 'k-quality-assurance' },
+      ]),
+    );
+
+    const next = runOn(saved, { type: 'set-agent', id: 's1', agent: 'k-tpm' });
+
+    expect(isDirty(next)).toBe(true);
+    expect(textOf(next)).toBe(
+      `${sent.replace('agent: k-developer', 'agent: k-tpm')}  - name: agent-1\n    agent: k-developer\n`,
     );
   });
 });

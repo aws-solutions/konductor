@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { plainText } from '../workflow/message-parts';
 import type { ExecutionState } from './core';
 
 /** What the person is told when a run could not start or be followed. */
@@ -32,11 +33,15 @@ export function runErrorOf(state: ExecutionState): RunErrorText | undefined {
 
 const withStop = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`);
 
-/** The error as one run of sentences for a screen reader, or an empty string. */
+/**
+ * The error as one run of sentences for a screen reader, or an empty string.
+ * It is plain text: a name in backticks, which the alert shows as code, is
+ * read without its ticks.
+ */
 export function runErrorSentence(state: ExecutionState): string {
   const error = runErrorOf(state);
   if (!error) return '';
-  return [error.header, error.message, error.note]
+  return [error.header, plainText(error.message), error.note]
     .filter((part): part is string => part !== undefined)
     .map(withStop)
     .join(' ');
