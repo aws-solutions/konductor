@@ -178,6 +178,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     oracle: oracleResult(arm, task),
     armConfig: arm.armConfig ?? null,
     ...(meta.claudeCode ? { claudeCode: meta.claudeCode } : {}),
+    ...(meta.unscrubbed?.length ? { unscrubbedFiles: meta.unscrubbed } : {}),
     ...(autonomyFields({ task, conv, checks: checks || [], finalText: agg?.finalText ?? null, aggregateGroup }) ?? {}),
   };
 }

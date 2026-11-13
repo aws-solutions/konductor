@@ -17,7 +17,7 @@
  * @property {(home: string, outDir: string, o: {arm: object}) => void} collectArtifacts
  * @property {string[]} [requiredPaths] repo-relative files the arm source must contain
  * @property {(outDir: string) => ?object} [orchMetrics]
- * @property {(outDir: string, ctx: object) => number} [finalize] redacts secrets from output files; returns the count
+ * @property {(outDir: string, ctx: object) => ({scrubbed: number, unscrubbed: {file: string, reason: string}[]}|number)} [finalize] redacts secrets from output files; returns the count of files rewritten and the files it could not scrub (a bare count means none)
  * @property {(ctx: object) => string[]} [secrets] literals scrubbed from result.json
  * @property {(o: {cwd: string, tmpdir: string, tmpBases: string[]}) => any} [cleanupRun]
  * @property {(removed: any, tmpdir: string) => object} [describeCleanup] required when cleanupRun is defined

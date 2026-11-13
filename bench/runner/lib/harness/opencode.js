@@ -14,7 +14,7 @@ const { ALLOW } = require('../env.js');
 const { translateAll } = require('./opencode-translate.js');
 const { aggregateEvents, queryRollup, totalTokens, zeroTokens } = require('./opencode-parse.js');
 const { installCredentials, removeCredentials, readProfile } = require('./opencode-creds.js');
-const { scrubTree } = require('../hygiene.js');
+const { scrubTreeDetailed } = require('../hygiene.js');
 const { secretLiterals } = require('../scrub.js');
 const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
@@ -233,9 +233,7 @@ function secrets(ctx) {
 }
 
 function finalize(outDir, ctx) {
-  try {
-    return scrubTree(outDir, secretLiterals(process.env, secrets(ctx)), { shapes: true });
-  } catch { return 0; }
+  return scrubTreeDetailed(outDir, secretLiterals(process.env, secrets(ctx)), { shapes: true });
 }
 
 function prepareArm(arm, ctx) {

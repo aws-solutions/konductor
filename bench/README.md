@@ -413,7 +413,9 @@ node bench/runner/bench.js run --suite lite --arms oc-vanilla,oc-v1.2.0,oc-main 
 - Credentials: `--aws-creds-file` is read-only input; only the named profile is copied to `<scratch HOME>/.aws`,
   `AWS_PROFILE`/`AWS_REGION=us-east-1` are set, the real `~/.aws` and the file itself are hidden in the namespace, and
   the copy is deleted when the agent exits and on any signal. Exact secret values are scrubbed from outputs
-  (`credsRedacted`); `env.json` lists names only.
+  (`credsRedacted`); `env.json` lists names only. Files of any size are scrubbed (large ones in chunks), symlinks are not
+  followed, and a file that cannot be scrubbed sets `credsUnscrubbed`, lists it in `unscrubbedFiles`, and keeps the run out of
+  judging (`not judged ... credsUnscrubbed`).
 - Usage comes from the session database (`opencode db`), summed over the parent and every subagent session
   (stream and export carry the parent only). `tokens.total` = input + output + cache read + cache write;
   `costUsd` is list price (2 / 10 / 0.1 / 2.5 USD per M tokens for in / out / cache read / cache write on Sonnet 5.5).

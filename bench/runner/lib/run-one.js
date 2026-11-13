@@ -310,6 +310,18 @@ function failOnLeak(result, leak) {
   result.status = 'error';
 }
 
+// The scrub of the run's output files. A harness may return a bare count (nothing left unscrubbed) or {scrubbed, unscrubbed}.
+// A throw is recorded as an unscrubbed output directory: a run whose scrub did not finish must not be judged.
+function finalizeOutput(harness, outDir, ctx) {
+  try {
+    const r = harness.finalize(outDir, ctx);
+    if (typeof r === 'number') return { scrubbed: r, unscrubbed: [] };
+    return { scrubbed: r?.scrubbed ?? 0, unscrubbed: (r?.unscrubbed ?? []).map((u) => ({ file: path.relative(outDir, u.file) || '.', reason: String(u.reason) })) };
+  } catch (e) {
+    return { scrubbed: 0, unscrubbed: [{ file: '.', reason: `scrub failed: ${e.message}` }] };
+  }
+}
+
 async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFlightAtStart = null }) {
   const { config } = ctx;
   const harness = harnessFor(arm);
@@ -382,7 +394,14 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       else if (exec?.creditOvershoot > 0) meta.flags.push('creditLimitExceeded');
       if (exec?.creditLimit != null) { meta.creditLimit = exec.creditLimit; meta.creditOvershoot = exec.creditOvershoot ?? null; }
       if (exec?.stopped) meta.flags.push('earlyStopped');
-      if (harness.finalize && harness.finalize(outDir, ctx) > 0) meta.flags.push('credsRedacted');
+      if (harness.finalize) {
+        const fin = finalizeOutput(harness, outDir, ctx);
+        if (fin.scrubbed > 0) meta.flags.push('credsRedacted');
+        if (fin.unscrubbed.length) {
+          meta.flags.push('credsUnscrubbed');
+          meta.unscrubbed = fin.unscrubbed;
+        }
+      }
       result = buildResult({ ...base, exec, agg: acc.agg, session: acc.session, usage: acc.usage ?? null, skills: acc.skills ?? null, orch: acc.orch ?? null, checks: acc.checks, transcript: acc.transcript, meta, conv });
     }
   }

@@ -152,6 +152,18 @@
       ],
       "description": "Claude Code runs only: canonical model, models seen, modelUsage keys, cost basis, hook events, permission denials, spawn counts (runner/lib/harness/claude-code.js)."
     },
+    "unscrubbedFiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "reason"],
+        "properties": {
+          "file": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      },
+      "description": "Present when the flag credsUnscrubbed is set: output files (relative to the run directory) the credential scrub could not process, with the reason. A run with this flag is not judged."
+    },
     "armConfig": {
       "type": [
         "object",
