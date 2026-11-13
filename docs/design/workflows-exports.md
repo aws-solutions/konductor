@@ -2,10 +2,10 @@
 
 # Workflows: exports
 
-**Status:** Slice 14, not in the first release. Nothing here is built, and no first-release code, test or file depends
-on it. The [design](workflows.md), the [specification](workflows-spec.md) and the [plan](workflows-plan.md) describe the
-first release. This note holds what an export needs, so that it is not lost and does not weigh on the first release.
-The [export-ready invariants](workflows.md#export-ready-invariants) keep the door open.
+**Status:** Slice 14, not in the first release. No first-release code, test or file depends on it. The
+[design](workflows.md), the [specification](workflows-spec.md) and the [plan](workflows-plan.md) describe the first
+release. This note holds what an export needs, so that it is not lost and does not weigh on the first release. The
+[export-ready invariants](workflows.md#export-ready-invariants) keep the door open.
 
 An **export** is a file in the native workflow format of Kiro CLI or Claude Code, written from a workflow file by
 `konductor flow build`. A **target** is where a workflow can go: `runner`, `kiro` or `claude`, the values of the
@@ -82,8 +82,9 @@ issue reports describe the refusal for subagent writes ([Sources](#sources)).
   - bypass permissions mode;
   - a `PreToolUse` hook that allows the call;
   - a host approval (`--permission-prompt-tool`, or `canUseTool` in the Agent SDK).
-- **Versions.** The exports follow Kiro CLI 2.33.1 and Claude Code 2.1.305 ([Sources](#sources)). The conformance check
-  runs the exports live on a public release of each tool and pins a minimum version, which `konductor doctor` enforces.
+- **Versions.** The exports follow the tool documentation in [Sources](#sources). The conformance check
+  runs the exports live on a public release of each tool and pins a minimum version. `konductor doctor` reports a
+  version below it as a `warn`, and its exit code does not change.
 
 ### Commands
 
@@ -214,12 +215,11 @@ Public sources for the facts above about Kiro CLI and Claude Code. The runner's 
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Kiro recipes: `.kiro/workflows/`, lookup project, user, synced, bundled; at most 50 `step` nodes. Inputs have no default or required flag, and `{{name}}` has no documented escape. A Kiro step's model comes from step, workflow, parent session, agent; an unknown id fails. A step with no `completion` condition ends on a turn without `send_message` | [authoring page](https://kiro.dev/docs/workflows/authoring/)                                                                       |
 | Kiro workflows run in V3 sessions and are opt-in (`chat.enableWorkflows`)                                                                                                                                                                                                                                                                                  | [settings page](https://kiro.dev/docs/reference/settings/)                                                                         |
-| Interactive V3 asks to trust a folder before loading its workflows (2.33.0)                                                                                                                                                                                                                                                                                | [2.33 changelog](https://kiro.dev/changelog/cli/2-33/)                                                                             |
-| The exports follow Kiro CLI 2.33.1 and Claude Code 2.1.305                                                                                                                                                                                                                                                                                                 | [Kiro 2.33.1](https://kiro.dev/changelog/cli/2-33-1/), [Claude Code changelog](https://code.claude.com/docs/en/changelog)          |
+| Interactive V3 asks to trust a folder before loading its workflows                                                                                                                                                                                                                                                                                | [2.33 changelog](https://kiro.dev/changelog/cli/2-33/)                                                                             |
 | Claude workflows: `.js` in `.claude/workflows/`; the project one wins; no filesystem access. `Workflow` and `Workflow(<name>)` allow rules, and other approval routes, for `claude -p`                                                                                                                                                                     | [workflows page](https://code.claude.com/docs/en/workflows)                                                                        |
 | Claude refuses subagent writes to report, summary, findings or analysis `.md` names (issues)                                                                                                                                                                                                                                                               | [44657](https://github.com/anthropics/claude-code/issues/44657), [101519](https://github.com/anthropics/claude-code/issues/101519) |
 
-Observed on one Kiro CLI 2.34 pre-release build (the conformance check repeats it):
+Observed on one pre-release build (the conformance check repeats it):
 
 | Fact                                                                                                       | How we ran it                                           |
 | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
