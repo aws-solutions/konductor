@@ -8,7 +8,7 @@ const { runChecks } = require('./checks.js');
 const { buildResult, errorResult, validateResult } = require('./result.js');
 const { buildCheckEnv } = require('./env.js');
 const { harnessFor, kiro } = require('./harness/index.js');
-const { makeIsolation } = require('./isolate.js');
+const { makeIsolation, liveStdioDir } = require('./isolate.js');
 const { createTripwire, tripwireFlags } = require('./tripwire.js');
 const procs = require('./procs.js');
 const sandbox = require('./sandbox.js');
@@ -39,10 +39,11 @@ function moveLive(src, dest, tampered) {
   }
 }
 
-// Where the child's stdout and stderr files live while it runs. The out dir is masked from the
-// agent, and on macOS sandbox-exec denies even fstat on a descriptor whose file is under a masked
-// path; the v3 engine's node checks its stdio descriptors at startup and aborts on that failure.
-// With `stdioDir` (the run's scratch root, which the sandbox allows) the files are written there
+// Where the child's stdout and stderr files live while it runs. Normally the final paths in the out dir,
+// which is masked from the agent; the runner opens them before the child starts and the child inherits the
+// descriptors. On macOS sandbox-exec denies even fstat on a descriptor whose file is under a masked path, and the
+// v3 engine's node checks its stdio descriptors at startup and aborts on that failure. With `stdioDir` (see
+// liveStdioDir: outside the agent-writable scratch root) the files are written there
 // and moved to their final paths when the child exits.
 function liveStdioPath(finalPath, stdioDir) {
   return stdioDir ? path.join(stdioDir, path.basename(finalPath)) : finalPath;
@@ -59,8 +60,15 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
     // A file as stdin ends at its last byte; a pipe left open would make some CLIs wait for more input.
     const input = stdinPath ? fs.openSync(stdinPath, 'r') : null;
     const tampered = [];
-    const closeAll = () => {
+    // The child has its own copies once spawned; the runner reads the files by path from then on.
+    let open = true;
+    const closeFds = () => {
+      if (!open) return;
+      open = false;
       fs.closeSync(out); fs.closeSync(err); if (input !== null) fs.closeSync(input);
+    };
+    const closeAll = () => {
+      closeFds();
       if (liveOut !== stdoutPath) moveLive(liveOut, stdoutPath, tampered);
       if (liveErr !== stderrPath) moveLive(liveErr, stderrPath, tampered);
     };
@@ -77,6 +85,7 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
       resolve({ exitCode: null, timedOut: false, wallClockMs: 0, error: e.message, tamperedFiles: tampered });
       return;
     }
+    closeFds();
     if (child.pid) procs.trackGroup(child.pid);
     const kill = (sig) => { try { process.kill(-child.pid, sig); } catch { /* already gone */ } };
     const finish = (result) => {
@@ -334,11 +343,13 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
   const meta = { flags: [], isolation: ctx.isolation.mode, inFlightAtStart, mcpSha256: prepared?.mcpSha256 ?? null, agentStarted: false };
   let result;
   let runRoot = null;
+  let stdioDir = null;
   let home = null;
   const installsWindow = ctx.installsGate ? ctx.installsGate.begin() : null;
   try {
     fs.mkdirSync(outDir, { recursive: true });
     runRoot = fs.mkdtempSync(path.join(ctx.scratchDir, 'r-'));
+    stdioDir = liveStdioDir(ctx.isolation.mode, runRoot);
   } catch (e) {
     meta.infraError = `cannot create run directories: ${e.message}`;
     result = errorResult({ ...base, message: meta.infraError, meta });
@@ -357,7 +368,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       const leaked = sandbox.findAnswerKey(cwd);
       if (leaked) throw new Error(`answer key present in the agent working directory: ${leaked}`);
       fs.mkdirSync(path.join(runRoot, 'tmp'), { recursive: true });
-      fs.mkdirSync(path.join(runRoot, 'stdio'), { recursive: true });
+      if (stdioDir) fs.mkdirSync(stdioDir, { mode: 0o700 });
     } catch (e) {
       meta.infraError = e.message;
       result = errorResult({ ...base, message: `setup failed: ${e.message}`, meta });
@@ -371,7 +382,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
         const env = harness.env({ arm, config, ctx, home, tmpdir });
         tripwire.start();
         meta.agentStarted = true;
-        exec = await runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir: path.join(runRoot, 'stdio'), conv, startedAt: new Date().toISOString() });
+        exec = await runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir, conv, startedAt: new Date().toISOString() });
       } catch (e) {
         meta.infraError = e.message;
         exec = { timedOut: false, exitCode: null, wallClockMs: null, error: e.message };
@@ -424,6 +435,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       if (result.claudeCode) result.claudeCode = { ...result.claudeCode, tmpCleanup: harness.describeCleanup(removed, tmpdir) };
     }
     fs.rmSync(runRoot, { recursive: true, force: true });
+    if (stdioDir) fs.rmSync(stdioDir, { recursive: true, force: true });
   }
   const scrubbed = scrubDeep(result, secretLiterals(process.env, harness.secrets ? harness.secrets(ctx) : []));
   result = scrubbed.value;

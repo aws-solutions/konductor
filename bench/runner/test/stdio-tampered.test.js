@@ -52,7 +52,7 @@ test('a normal move reports no tampered files', async () => {
   }
 });
 
-test('executeRun sets stdioTampered and infraError, lists the file name only, and the run is not judged', async () => {
+test('executeRun (sandbox-exec path) sets stdioTampered and infraError, lists the file name only, and the run is not judged', async () => {
   const root = tmp();
   const prevPath = process.env.PATH;
   try {
@@ -63,9 +63,12 @@ test('executeRun sets stdioTampered and infraError, lists the file name only, an
     const real = makeFakeKiro(bin, { dir: probe });
     const canary = path.join(root, 'canary.txt');
     fs.writeFileSync(canary, CANARY);
-    // The agent runs in <run root>/work; the live files sit in <run root>/stdio.
+    // Only the sandbox-exec path keeps a live stdio directory. A stand-in sandbox-exec drops the profile and runs the
+    // command, so the macOS wiring runs here. The agent runs in <run root>/work; the live files sit in the sibling
+    // <run root>-stdio.
+    fs.writeFileSync(path.join(bin, 'sandbox-exec'), '#!/bin/sh\nshift 2\nexec "$@"\n', { mode: 0o755 });
     fs.renameSync(real, path.join(bin, 'kiro-real'));
-    fs.writeFileSync(real, `#!/bin/sh\nif [ -d ../stdio ]; then rm -f ../stdio/stderr.txt; ln -s '${canary}' ../stdio/stderr.txt; fi\nexec "$(dirname "$0")/kiro-real" "$@"\n`, { mode: 0o755 });
+    fs.writeFileSync(real, `#!/bin/sh\nd="../../$(basename "$(cd .. && pwd)")-stdio"\nif [ -d "$d" ]; then rm -f "$d/stderr.txt"; ln -s '${canary}' "$d/stderr.txt"; fi\nexec "$(dirname "$0")/kiro-real" "$@"\n`, { mode: 0o755 });
     const authDb = path.join(root, 'data.sqlite3');
     fs.writeFileSync(authDb, 'fake-auth');
     const scratchDir = path.join(root, 'scratch'); const watch = path.join(root, 'watch');
@@ -73,7 +76,7 @@ test('executeRun sets stdioTampered and infraError, lists the file name only, an
     const outDir = path.join(root, 'out', 't1');
     const ctx = {
       config: { model: 'claude-sonnet-5.5', effort: 'high', agentEngine: 'v2' }, scratchDir, authDb, envKeep: [], envInfo: { kiroCliVersion: 'fake', modelListSnapshotPath: null },
-      isolation: { mode: 'none' }, tripwire: { roots: [{ dir: watch, depth: 2 }], extraExcludes: [], absExclude: [scratchDir, outDir] },
+      isolation: { mode: 'sandbox-exec' }, tripwire: { roots: [{ dir: watch, depth: 2 }], extraExcludes: [], absExclude: [scratchDir, outDir] },
     };
     process.env.PATH = `${bin}${path.delimiter}${prevPath}`;
     const r = await executeRun({ arm: ARM, task: loadTasks(bench).get('t1'), replicate: 1, ctx, prepared: null, outDir, inFlightAtStart: 0 });

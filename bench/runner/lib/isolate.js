@@ -382,7 +382,16 @@ function workingMode(home) {
   return PROBES[mode](home).ok ? mode : null;
 }
 
+// Where a run's live stdout and stderr files are written, or null when they go straight to the out dir.
+// Only sandbox-exec needs a directory: it denies even fstat on a descriptor whose file is under a masked path, and
+// the out dir is masked. The directory is a sibling of the run's scratch root, so it is outside the space the agent
+// is allowed to write. Linux hands the child descriptors opened on the out dir files.
+function liveStdioDir(mode, runRoot) {
+  if (mode !== SANDBOX_BIN) return null;
+  return path.join(path.dirname(runRoot), `${path.basename(runRoot)}-stdio`);
+}
+
 module.exports = {
-  makeIsolation, probeUnshare, probeSandboxExec, resolveIsolation, workingMode, autoMode, realHomes, writableTrees, userLocalTrees, runtimeSockets, findAnswerKeys,
+  liveStdioDir, makeIsolation, probeUnshare, probeSandboxExec, resolveIsolation, workingMode, autoMode, realHomes, writableTrees, userLocalTrees, runtimeSockets, findAnswerKeys,
   UNSHARE_FLAGS, HIDE_IN_HOME, HIDE_CREDENTIALS_IN_HOME, describeHide, ISOLATE_MODES, COMPARABLE_MODES, isComparableMode, resultComparable,
 };
