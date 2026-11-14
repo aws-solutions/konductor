@@ -4,7 +4,7 @@
 
 [← Task guides](README.md) · [Guide index](../README.md)
 
-Registers the 11 agents, 82 skills, 19 SOPs, the core rules, and the orchestrator routing rules with `kiro-cli`.
+Registers the 11 agents, 81 skills, 19 SOPs, the core rules, and the orchestrator routing rules with `kiro-cli`.
 
 **Time required:** about 2 minutes.
 
@@ -14,7 +14,7 @@ Registers the 11 agents, 82 skills, 19 SOPs, the core rules, and the orchestrato
 
 | Requirement | Verify with |
 | --- | --- |
-| Kiro CLI installed | `kiro-cli --version` |
+| Kiro CLI (checked: 2.36.0, 3.0.0) | `kiro-cli --version` |
 | Git on your `PATH` | `git --version` |
 | The Konductor CLI | `konductor --version` — see [Quick Start step 1](../quick-start.md#step-1--download-the-cli) |
 
@@ -30,6 +30,8 @@ konductor install --harness kiro-cli-v2
 
 On success it reports a per-content-type count — agents, skills, SOPs and context files — and
 the command to start a session with. Exit code `0`.
+
+Install also wires a session-start hook for `konductor`: `.kiro/hooks/konductor-orchestration-hooks.json` on Kiro CLI v3, an `agentSpawn` entry in `.kiro/agents/konductor.json` on Kiro CLI v2. `orchestration.mode: coordinator` relies on it, and `uninstall` removes it.
 
 `--harness` is **required**. There is no default and no auto-detection from the destination:
 every `install` says explicitly which synthed harness output it means. `--target` is the
@@ -117,8 +119,8 @@ directly, its routing rules did not load — see
 
 ## Which agent to invoke
 
-Start with `konductor` and ask in plain language; it does the work itself or spawns the agent that
-declares the SOP you need. That is the default for everything in this guide: it is
+Start with `konductor` and ask in plain language; it does the work itself (in `coordinator` mode it
+hands every change to a specialist) or spawns the agent that declares the SOP you need. That is the default for everything in this guide: it is
 the only entry point that verifies a handoff before moving on, and it does not require you to know
 who owns which workflow.
 

@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Use when creating or submitting a pull request, reviewing a diff or PR from another developer, addressing PR feedback, or running a post-implementation review cycle on local changes. Uses standard git and GitHub CLI (`gh`) commands and classifies findings by severity (CRITICAL/IMPORTANT/SUGGESTION).
+description: Use when reviewing a folder, repo, diff or PR, creating or submitting a PR, addressing PR feedback, or reviewing your own changes after implementation. Checks correctness, security and error handling, including in a source tree with no git history. Uses standard git and GitHub CLI (`gh`) commands and classifies findings by severity (CRITICAL/IMPORTANT/SUGGESTION).
 version: 1.3.3
 tags: [skill, code-review, pr, git, workflow, humanize-writing]
 ---
@@ -19,6 +19,7 @@ Use this skill when:
 - Reviewing a diff or PR from another developer
 - Addressing PR feedback and re-submitting
 - Running a post-implementation review cycle on local changes
+- Reviewing a folder or repository with no PR or git history
 
 ## Explicit Publish Authorization
 
@@ -98,6 +99,21 @@ event=COMMENT` (or `APPROVE` / `REQUEST_CHANGES`).
    - `gh pr review <number> --comment --body "..."` submits right away and
      has no pending option. Prefer the pending-review calls above so the
      findings can be checked before anyone else sees them.
+
+### Review a Source Tree
+
+When the code to review is a folder or repository with no PR, or with no git
+history, there is no diff to capture. Skip the checkout and pending-review
+steps, since there is no PR to post to.
+
+1. Settle the scope. If the user named files or a folder, that is the scope.
+   If the tree is too large to read in full, list its top-level layout and
+   ask the user which parts to review before reading any of it.
+2. Read in priority order: entry points, then code that handles auth, input
+   parsing, data writes and external calls, then the rest.
+3. Apply the Review Checklist below to each file you read.
+4. Report findings by severity with file and line. End the report with the
+   in-scope files you did not read, so the user knows what was not reviewed.
 
 ### Address Feedback
 

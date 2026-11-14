@@ -235,13 +235,13 @@ SOP_EDITS += [
 SOP_EDITS += [
     ("update task: sample output",
      "Updating Konductor\n  agents          11 updated\n  skills          82 updated\n  SOPs            19 updated\n  context files    1 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes.",
-     "Updating Konductor\n  agents          11 updated\n  skills          82 updated\n  SOPs            19 updated\n  context files    2 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes."),
+     "Updating Konductor\n  agents          11 updated\n  skills          81 updated\n  SOPs            19 updated\n  context files    2 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes."),
     ("update task: locally-modified row",
      "Your files are kept. The release version is not applied to them.",
      "OVERWRITTEN. The count of clobbered files is reported afterwards; run --dry-run first to see which."),
     ("uninstall task: sample output",
      "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          82\n  SOPs            19\n  context files    1\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place.",
-     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          82\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place."),
+     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          81\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place."),
     ("uninstall task: prompt prose",
      'Answer <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">y</span> and it reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> Exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. Answering anything else cancels and changes nothing. To skip the prompt in a script:',
      'That was <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--dry-run</span>, which touches the filesystem in no way at all and flags each path whose content has diverged from the manifest. <strong style="color:var(--tx);font-weight:600">A real run has no confirmation prompt</strong> \u2014 it proceeds directly and reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> with exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. To remove it for real:'),
@@ -277,13 +277,13 @@ SOP_EDITS += [
 SOP_EDITS += [
     ("hero tile: skills",
      '>75</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>',
-     '>82</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>'),
+     '>81</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>'),
     ("hero tile: SOPs",
      '>13</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SOPS</span>',
      '>19</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SOPS</span>'),
     ('hero snippet: banner',
      'harness: {{ harnessFlag }}<br>agents 11 · skills 82 · SOPs 19 · context 2',
-     'harness: {{ harnessFlag }}<br>agents 11 · skills 82 · SOPs 19 · context 4'),
+     'harness: {{ harnessFlag }}<br>agents 11 · skills 81 · SOPs 19 · context 4'),
     ("runtime binding: harnessFlag",
      'runtimeLabel: kiro ? "KIRO CLI" : "CLAUDE CODE",',
      'runtimeLabel: kiro ? "KIRO CLI" : "CLAUDE CODE",\n      harnessFlag: kiro ? "kiro-cli-v2" : "claude",'),
@@ -398,13 +398,13 @@ SOP_EDITS += [
     # counts
     ("concepts tree: skills/sops counts",
      "skills/ \u2014 75 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 13 procedures",
-     "skills/ \u2014 82 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 19 procedures"),
+     "skills/ \u2014 81 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 19 procedures"),
     ("concepts grid: skills count",
      ">75 modules</span>",
-     ">82 modules</span>"),
+     ">81 modules</span>"),
     ("home: on-demand modules",
      "<div>11 agents with scoped tools and 75 on-demand knowledge modules.</div>",
-     "<div>11 agents with scoped tools and 82 on-demand knowledge modules.</div>"),
+     "<div>11 agents with scoped tools and 81 on-demand knowledge modules.</div>"),
     # pr_url is context-only (agent-sops/k-adversarial-pull-request-review.sop.md:15)
     ("pr_url: flow gate",
      'node("00", "diff_input OR pr_url given?", "If neither, the SOP asks for one and waits. It will not ask for output_file.", "gate")',
@@ -713,8 +713,8 @@ SOP_EDITS += [
     # that kept drifting unnoticed. Counts from dependencies.skills.skillNames;
     # delegation from availableAgents plus each spec's Agent(...) tool.
     ("roster row: PM skills",
-     "No SOPs — skill-driven. 14 skills: user-story-writing",
-     "No SOPs — skill-driven. 16 skills: user-story-writing"),
+     "No SOPs — skill-driven. 16 skills: user-story-writing",
+     "No SOPs — skill-driven. 15 skills: user-story-writing"),
     ("roster row: researcher skills",
      "No SOPs — skill-driven. 7 skills: external-research",
      "No SOPs — skill-driven. 8 skills: external-research"),
@@ -759,10 +759,10 @@ SOP_EDITS += [
 SOP_EDITS += [
     ("concepts: drop the verify-it-yourself panel",
      "<div style=\"border:1px solid rgba(61,220,151,.35);border-radius:12px;background:rgba(61,220,151,.05);padding:18px 20px\">\n              <div style=\"font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--sig);margin-bottom:10px\">COUNT · VERIFY IT YOURSELF</div>\n              <p style=\"margin:0 0 12px;font-size:14.5px;line-height:1.6;color:var(--mu)\">The package ships 82 skills — 82 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>.</p>\n              <pre style=\"margin:0;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:var(--tx)\">ls skills | wc -l</pre>\n            </div>\n          </section>",
-     "<p style=\"margin:0;font-size:16px;line-height:1.75;color:var(--mu)\"><strong style=\"color:var(--tx);font-weight:600\">The package ships 82 skills</strong> — 82 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>. All 82 are catalogued, grouped, with a when-to-use note each, in the <a href=\"#/skills\">Skills catalog</a>.</p>\n          </section>"),
+     "<p style=\"margin:0;font-size:16px;line-height:1.75;color:var(--mu)\"><strong style=\"color:var(--tx);font-weight:600\">The package ships 81 skills</strong> — 81 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>. All 81 are catalogued, grouped, with a when-to-use note each, in the <a href=\"#/skills\">Skills catalog</a>.</p>\n          </section>"),
     ("skills: coverage section drops check-it-yourself",
      "{\"paras\":[\"All 82 skills are declared by at least one agent. Check it yourself with ls skills | wc -l, then compare that against the union of every spec's declared skills — if the two ever diverge, a skill exists that no agent can load, which matters most when a SOP instructs an agent to use it.\"],\"code\":\"ls skills | wc -l\",",
-     "{\"paras\":[\"All 82 skills are declared by at least one agent. That matters because a skill no agent declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use it. Contributors adding a skill should see Contributing → check skill coverage.\"],"),
+     "{\"paras\":[\"All 81 skills are declared by at least one agent. That matters because a skill no agent declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use it. Contributors adding a skill should see Contributing → check skill coverage.\"],"),
     ("prerequisites: drop the what-you-do-not-need section",
      "\n\n          <section id=\"p-not\" style=\"padding-bottom:44px;border-top:1px solid var(--bd);padding-top:40px\">\n            <h2 style=\"margin:0 0 16px;font-size:30px;letter-spacing:-.025em;font-weight:600\">What you do <em>not</em> need</h2>\n            <p style=\"margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)\">Worth stating, because it is unusual:</p>\n            <div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px\">\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No servers or infrastructure</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">Agents are configuration files your runtime executes.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No database</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">Nothing persists except plain files you can read.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No build toolchain</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">There is no published binary yet, so you build the CLI from a clone with make build. A Rust toolchain is required.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No network access at run time for the CLI</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\"><span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">init</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">config</span>, and <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">synth</span> touch only the local filesystem — and so do <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">update</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">doctor</span> and <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">metrics</span>. The single remote path is <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">install</span> with --from omitted, which tries a GitHub Release. Every documented workflow here passes --from, so in practice nothing reaches the network.</div>\n              </div>\n            </div>\n          </section>\n\n          ",
      "\n\n          "),
@@ -1108,23 +1108,23 @@ SOP_EDITS += [
      r'''body: "Writes code-review-report.md with a verdict: READY FOR CR or NEEDS FIXES."''',
      r'''body: "Writes code-review-report.md with a verdict from the findings: NEEDS FIXES if any CRITICAL or IMPORTANT is open, otherwise READY FOR CR once the adversarial pass is complete or skipped, or PENDING ADVERSARIAL PASS while it has not run or a pass is MISSING. An Adversarial pass: line records the pass state."'''),
     ("faq: code review security pass",
-     r'''paras: ["Because it always does. k-code-review-workflow step 6 tries to spawn k-architect for an adversarial pass, and the only agent that owns the SOP cannot spawn the architect — in Kiro CLI their availableAgents lists do not include it, and in Claude Code neither has an Agent(...) tool. The SOP is written to skip the step quietly when the capability is missing, so you get standard review with no error.", "Routing through konductor does not fix it either: the orchestrator does not declare k-code-review-workflow, so it hands the SOP to the developer, which hits the same wall. Run the adversarial pass through konductor, which coordinates it."]''',
-     r'''paras: ["k-code-review-workflow step 6 is an adversarial pass, and the agent that owns the SOP cannot run it: no specialist holds a spawn tool in Kiro CLI v3 or Claude Code, and in Kiro CLI v2 the core rules forbid it until #149 removes the tool. Step 6 writes the report, then ends with a note asking the orchestrator to run k-adversarial-pull-request-review on the same diff; the verdict comes from the findings, so a known CRITICAL reads NEEDS FIXES even before the pass runs, and an Adversarial pass: line records the pass state.", "Under konductor the orchestrator runs the pass and sets the final verdict, unless a pass is MISSING, which keeps the report pending when neither report has a CRITICAL or IMPORTANT finding open; if you started k-developer directly, the note comes back to you: ask konductor to run the adversarial review."]'''),
+     r'''paras: ["k-code-review-workflow step 6 is an adversarial pass, and the agent that owns the SOP cannot run it: no specialist holds a spawn tool in Kiro CLI v3 or Claude Code, and in Kiro CLI v2 the core rules forbid it until #149 removes the tool. Step 6 writes the report, then ends with a note asking the orchestrator to run k-adversarial-pull-request-review on the same diff; the verdict comes from the findings, so a known CRITICAL reads NEEDS FIXES even before the pass runs, and an Adversarial pass: line records the pass state.", "Under konductor the orchestrator runs the pass and sets the final verdict, unless a pass is MISSING, which keeps the report pending when neither report has a CRITICAL or IMPORTANT finding open; if you started k-developer directly, the note comes back to you: ask konductor to run the adversarial review."]''',
+     r'''paras: ["k-code-review-workflow step 6 is an adversarial pass, and the agent that owns the SOP cannot run it: no specialist holds a spawn tool in any runtime. Step 6 writes the report, then ends with a note asking the orchestrator to run k-adversarial-pull-request-review on the same diff; the verdict comes from the findings, so a known CRITICAL reads NEEDS FIXES even before the pass runs, and an Adversarial pass: line records the pass state.", "Under konductor the orchestrator runs the pass and sets the final verdict; if you started k-developer directly, the note comes back to you: ask konductor to run the adversarial review."]'''),
     ("agents warn: adversarial handoff",
-     r'''warn: "Why this matters: k-code-review-workflow step 6 says to spawn k-architect in adversarial mode. That SOP is declared only by k-developer — which cannot spawn the architect in either runtime. The SOP anticipates this (\"You MUST skip this step if no adversarial CR-review capability is available\"), so it degrades quietly. In practice step 6 always no-ops and you get standard review only. Routing through the orchestrator does not fix it — it does not declare that SOP. Run k-adversarial-pull-request-review through konductor, which coordinates it."''',
-     r'''warn: "Why this matters: k-code-review-workflow step 6 is an adversarial pass. That SOP is declared only by k-developer, which cannot run the adversarial review in either runtime. Step 6 writes the report, then ends with a note asking the orchestrator to run k-adversarial-pull-request-review on the same diff; the verdict comes from the findings and the adversarial state is its own line, so a known CRITICAL reads NEEDS FIXES even on a direct run. Under konductor, the orchestrator runs the adversarial review, records its verdict next to the report's and replaces a PENDING ADVERSARIAL PASS verdict with the final one: READY FOR CR, or NEEDS FIXES when the adversarial report lists a CRITICAL or IMPORTANT finding, even with a pass MISSING. A MISSING pass with no such finding keeps the report pending (Adversarial pass: incomplete). The report's two lines are written by the orchestrator, or by k-developer on its behalf when the orchestrator does not write files. Started directly, the note comes back to you: ask konductor to run the adversarial review."'''),
+     r'''warn: "Why this matters: k-code-review-workflow step 6 is an adversarial pass. That SOP is declared only by k-developer, which cannot run the adversarial review in either runtime. Step 6 writes the report, then ends with a note asking the orchestrator to run k-adversarial-pull-request-review on the same diff; the verdict comes from the findings and the adversarial state is its own line, so a known CRITICAL reads NEEDS FIXES even on a direct run. Under konductor, the orchestrator runs the adversarial review, records its verdict next to the report's and replaces a PENDING ADVERSARIAL PASS verdict with the final one: READY FOR CR, or NEEDS FIXES when the adversarial report lists a CRITICAL or IMPORTANT finding, even with a pass MISSING. A MISSING pass with no such finding keeps the report pending (Adversarial pass: incomplete). The report's two lines are written by the orchestrator, or by k-developer on its behalf when the orchestrator does not write files. Started directly, the note comes back to you: ask konductor to run the adversarial review."''',
+     r'''warn: "Why this matters: k-code-review-workflow step 6 is an adversarial pass. That SOP is declared only by k-developer, which cannot run the adversarial review in any runtime. Step 6 writes the report, then ends with a note asking the orchestrator to run k-adversarial-pull-request-review on the same diff; the verdict comes from the findings and the adversarial state is its own line, so a known CRITICAL reads NEEDS FIXES even on a direct run. Under konductor, the orchestrator runs the adversarial review, records its verdict next to the report's and replaces a PENDING ADVERSARIAL PASS verdict with the final one: READY FOR CR, or NEEDS FIXES when the adversarial report lists a CRITICAL or IMPORTANT finding. The report's two lines are written by the orchestrator, or by k-developer on its behalf when the orchestrator does not write files. Started directly, the note comes back to you: ask konductor to run the adversarial review."'''),
 ]
 
-# Specialists hold no spawn tool in Kiro CLI v3 or Claude Code. Each `old` is the
-# bundle sentence as published after the handoff-routing edits; the pre-existing
+# Specialists hold no spawn tool in any runtime. Each `old` is the bundle sentence
+# as published by the stack below this branch; the pre-existing
 # claims that specialists spawn each other are replaced, not appended to.
 SOP_EDITS += [
     ("concepts: hub is exclusive",
-     "is a hub. Specialists never talk to each other and hold no spawn tool in Kiro CLI v3 or Claude Code (Kiro CLI v2 specialists lose it when #149 lands), so every piece of work routes through the orchestrator, which decides who owns it, hands it over, and checks the result. A specialist does its own part,",
-     "is a hub. Specialists never talk to each other and hold no spawn tool in Kiro CLI v3 or Claude Code (Kiro CLI v2 specialists lose it when #149 lands), so every piece of work passes through the orchestrator: konductor does it itself or, for a step it cannot do, spawns the owner and checks the result; the mux and cmux orchestrators decide who owns it, hand it over, and check the result. A specialist does its own part,"),
+     "is a hub. Specialists never talk to each other and hold no spawn tool in Kiro CLI v3 or Claude Code (Kiro CLI v2 specialists lose it when #149 lands), so every piece of work passes through the orchestrator: konductor does it itself or, for a step it cannot do, spawns the owner and checks the result; the mux and cmux orchestrators decide who owns it, hand it over, and check the result. A specialist does its own part,",
+     "is a hub. Specialists never talk to each other and hold no spawn tool in any runtime, so every piece of work passes through the orchestrator: konductor does it itself or, for a step it cannot do, spawns the owner and checks the result; the mux and cmux orchestrators decide who owns it, hand it over, and check the result. A specialist does its own part,"),
     ("agents: delegation edges are the orchestrator's",
-     "Delegation is not open, and the edges below are tool grants that the core rules tell specialists not to use: a specialist returns a handoff note or a proposed split to its caller, and the grants are still in the agent specs.",
-     "Only the orchestrators delegate. The edges below are the orchestrator's tool grants: specialists hold none in Kiro CLI v3 or Claude Code, and none in Kiro CLI v2 once #149 lands. A specialist returns a handoff note or a proposed split to its caller."),
+     "Only the orchestrators delegate. The edges below are the orchestrator's tool grants: specialists hold none in Kiro CLI v3 or Claude Code, and none in Kiro CLI v2 once #149 lands. A specialist returns a handoff note or a proposed split to its caller.",
+     "Only the orchestrators delegate. The edges below are the orchestrator's tool grants: specialists hold none in any runtime. A specialist returns a handoff note or a proposed split to its caller."),
     ("agents: delegation governance sentence",
      " In Kiro CLI it is governed by each agent's toolsSettings.subagent.availableAgents; in Claude Code by whether the agent has an Agent(...) tool at all. In Claude Code, k-architect and k-quality-assurance carry Agent(...) tools too, so delegation there is not konductor-only.",
      " In Kiro CLI, konductor's toolsSettings.subagent.availableAgents names the eight specialists; in Claude Code only konductor has an Agent(...) tool."),
@@ -1147,14 +1147,14 @@ SOP_EDITS += [
      '{ k: "k-researcher", v: "has the tool, zero targets · nothing" }',
      '{ k: "k-researcher", v: "nothing · nothing" }'),
     ("delegation: glossary",
-     "An empty list means the agent holds the subagent tool but can spawn nothing. konductor's list is the widest, naming all eight specialists.",
-     "Specialists carry no spawn tool in Kiro CLI v3 or Claude Code; only the orchestrators spawn, and konductor's list names all eight specialists."),
+     "Specialists carry no spawn tool in Kiro CLI v3 or Claude Code; only the orchestrators spawn, and konductor's list names all eight specialists.",
+     "Specialists carry no spawn tool in any runtime; only the orchestrators spawn, and konductor's list names all eight specialists."),
     ("use-case: claude spawn claim",
      "cannot reach the architect there: k-developer has no Agent(...) tool at all, and k-quality-assurance's names k-developer and k-browser. (k-architect and k-quality-assurance do hold Agent(...) tools, so delegation in Claude Code is not orchestrator-only.)",
      "cannot reach the architect there: no specialist has an Agent(...) tool."),
     ("use-case: kiro spawn claim",
-     "In <strong style=\"color:var(--tx);font-weight:600\">Kiro CLI</strong>, delegation goes through <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">toolsSettings.subagent.availableAgents</code>, and the developer, this SOP's only owner, does not list the architect: its targets are <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">[\"k-quality-assurance\"]</code>.",
-     "In <strong style=\"color:var(--tx);font-weight:600\">Kiro CLI v3</strong>, no specialist has the <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">subagent</code> tool; only konductor does. In Kiro CLI v2, <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">@builtin</code> still carries it and the empty target list does not stop a spawn; specialists lose the tool when #149 lands."),
+     "In <strong style=\"color:var(--tx);font-weight:600\">Kiro CLI</strong>, no specialist has the <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">subagent</code> tool. Only konductor declares <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">subagent</code>; the mux orchestrators dispatch through shell and reach it only through <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">@builtin</code>.",
+     "In <strong style=\"color:var(--tx);font-weight:600\">Kiro CLI</strong>, no specialist has the <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">subagent</code> tool. Only konductor holds <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">subagent</code> on Kiro CLI v2; the mux orchestrators dispatch through shell and get the same explicit built-in list as specialists."),
     ("roster row: architect delegation",
      "Can delegate to developer and QA in both runtimes.",
      "Delegates to nothing; it returns to its caller."),
@@ -1170,6 +1170,9 @@ SOP_EDITS += [
     ("roster rows: empty target list",
      "Delegates to nothing — has the subagent tool with an empty target list.",
      "Delegates to nothing; it returns to its caller."),
+    ("install prerequisites: checked kiro-cli versions",
+     "Kiro CLI installed</div>",
+     "Kiro CLI (checked: 2.36.0, 3.0.0)</div>"),
 ]
 
 # The published page's "adversarial handoff never fires" section and index row,
@@ -1241,11 +1244,10 @@ SOP_EDITS += [
      "is the check.) If you use konductor-mux-orchestrator or konductor-cmux-orchestrator and it starts editing "
      "files directly, its routing rules did not load — see"),
     ("faq: read-only rule scope and konductor's permissions",
-     "bullets: [\"Its Orchestrator Direct Work table lists the exceptions:",
-     "bullets: [\"This read-only rule applies to the mux and cmux orchestrators. konductor loads k-direct-work.md "
-     "instead and edits files itself. On Kiro CLI it pre-approves fs_read alone, so each write or command asks you "
-     "first; on Claude Code it holds Write, Edit and Bash with no prompt gate, and the reviewer it spawns at each "
-     "phase gate is the check.\", \"The mux and cmux Orchestrator Direct Work table lists the exceptions:"),
+     "konductor loads k-direct-work.md instead and edits files itself. On Kiro CLI it pre-approves fs_read alone",
+     "konductor loads k-direct-work.md instead and edits files itself in the default auto mode. In coordinator mode "
+     "it hands every change to a specialist, like the mux and cmux orchestrators (see the FAQ entry Coordinator "
+     "mode). On Kiro CLI it pre-approves fs_read alone"),
     ("faq: shared rules apply to all three orchestrators",
      "still go to a specialist. It also flags instructions planted in files it reads, won't read files that hold "
      "secrets unless you name them, and asks you instead of routing a denied action to another agent. It does not flag",
@@ -1263,10 +1265,24 @@ SOP_EDITS += [
      "{ k: \"context/k-orchestrator-routing-rules.md\", v: \"Which specialist handles which kind of request — routing, loaded at session start for the mux and cmux orchestrators\" },\n"
      "          { k: \"context/k-orchestrator-shared.md\", v: \"What every orchestrator does with handoffs, splits, denials and briefs: shared rules, loaded at session start for konductor and the mux and cmux orchestrators\" },\n"
      "          { k: \"context/k-direct-work.md\", v: \"What konductor does itself and when it hands off: direct work, phase reviews, and handoffs, loaded at session start for konductor\" },"),
-    ("agents: orchestrators section names both shapes; konductor commits when asked",
-     "All three load context/k-orchestrator-routing-rules.md at session start, which is what makes them behave as dispatchers rather than implementers. Treat that as intent, not enforcement:",
-     "The mux and cmux orchestrators load context/k-orchestrator-routing-rules.md at session start, which is what makes them behave as dispatchers rather than implementers. konductor loads context/k-direct-work.md instead and writes and runs commands itself; it commits when you ask. Treat the dispatcher rule as intent, not enforcement:"),
+    ("agents: orchestrators section names both shapes and the mode; konductor commits when asked",
+     "konductor loads context/k-direct-work.md instead and writes and runs commands itself; it commits when you ask. Treat the dispatcher rule as intent, not enforcement:",
+     "konductor loads context/k-direct-work.md instead and writes and runs commands itself in the default auto mode; it commits when you ask. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators. Treat the dispatcher rule as intent, not enforcement:"),
     ("install-claude-code: success signal is edit then review",
      "A task needing implementation causes a <strong style=\"color:var(--tx);font-weight:600\">specialist to spawn</strong>, visible in your session.",
      "A task needing implementation has konductor edit files itself and spawn a <strong style=\"color:var(--tx);font-weight:600\">k-* reviewer</strong> when the phase closes, visible in your session."),
+]
+
+SOP_EDITS += [
+    # Only konductor holds subagent on Kiro CLI v2: the mux and cmux orchestrators get the
+    # specialists' explicit built-in list, so the bundle's three mux rows follow agents.md.
+    ("delegation: cross-agent runtime row",
+     '{ k: "Cross-agent delegation", v: "7 agents have subagent, 5 with real targets \u00b7 only konductor" }',
+     '{ k: "Cross-agent delegation", v: "only konductor holds subagent on Kiro CLI v2; the mux orchestrators dispatch through shell and get the same explicit built-in list as specialists \u00b7 only konductor" }'),
+    ("delegation: mux and cmux row",
+     '{ k: "konductor-mux-orchestrator \u00b7 konductor-cmux-orchestrator", v: "no subagent tool \u2014 dispatches via shell scripts \u00b7 dispatches via shell" }',
+     '{ k: "konductor-mux-orchestrator \u00b7 konductor-cmux-orchestrator", v: "no subagent tool (on v2, the same explicit built-in list as a specialist); dispatches via shell scripts \u00b7 dispatches via shell" }'),
+    ("agents: mux section declares @builtin, synth strips it on v2",
+     'paras: ["konductor-mux-orchestrator and konductor-cmux-orchestrator have no subagent tool and no Agent(...) tool. Their Kiro CLI tools are [\\"@builtin\\", \\"read\\", \\"shell\\", \\"todo\\"], and shell is how they work:',
+     'paras: ["konductor-mux-orchestrator and konductor-cmux-orchestrator have no subagent tool and no Agent(...) tool. Their specs declare [\\"@builtin\\", \\"read\\", \\"shell\\", \\"todo\\"] for Kiro CLI; on Kiro CLI v2 synth replaces that @builtin with the same explicit built-in list a specialist gets, so only konductor holds subagent on Kiro CLI v2. Shell is how they work:'),
 ]

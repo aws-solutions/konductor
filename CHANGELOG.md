@@ -41,8 +41,10 @@ not per individual commit.
   lines are a preview of the named rules file. The pointer names an install under a symlinked
   home through the logical home for project and parent-of-project installs too. On a Claude Code
   resume or compact under `auto` the hook prints `Orchestration: auto`. The hook resolves the
-  owning install per harness. Core rule 11 defines the project root and names the install
-  locations whose rules file it trusts.
+  owning install per harness; when a nearer install owns `konductor` but its own hook is not
+  wired for that harness, the shadowed hook prints a fallback naming that install instead of
+  staying silent. Core rule 11 defines the project root and names the install locations whose
+  rules file it trusts.
 - Claude Code installs copy the context files to `.konductor/context/`, where the orchestration
   hook finds the routing rules; uninstall removes the directory and keeps memory.
 - A Claude Code install with `--no-telemetry` now writes `.claude/settings.local.json` for the
@@ -50,6 +52,11 @@ not per individual commit.
   only the telemetry hooks there, so it writes no Claude hooks file under `--no-telemetry`; the
   orchestration hook is the Claude Code install's.
 - The telemetry hook's Kiro CLI v3 session lookup follows `$KIRO_HOME` when set.
+- `konductor doctor` reports the orchestration mode, whether its hook is wired, and whether the
+  config value is valid; a hand-edited hook entry, or one naming a bare `konductor` found only on
+  this shell's PATH, is reported as warn, not as missing. Under `coordinator` it runs the same
+  persona load the session-start hook runs, so a digest over the hook's output budget is
+  `failed`, and an install root outside the home that is not a git checkout root is `warn`.
 
 ### Changed
 
@@ -74,6 +81,10 @@ not per individual commit.
 - delegation-protocol: shorter trigger, a reason for the four-subagent limit, and a shorter "specialist never spawns" pointer. The adversarial pass skills are coordinator-only and say "posted to the PR".
 - persistent-memory and agents-md-authoring: the memory skill's description leads with "remember this", "save this", "forget that" and its headings drop the section numbers; the AGENTS.md context block uses the `.kiro/skills/ws-*/SKILL.md` glob and calls `.konductor` the workspace state directory.
 - app-discovery, claude-teams-behavior and pre-planning-analysis state when to use them in one sentence that fits the Kiro skill index; claude-teams-behavior uses "PR diff" and "read-only checkout" and points at delegation-protocol for the worktree rule; pre-planning-analysis names an Owner per intent.
+- `asana-sprint-planning` is folded into `sprint-planning` as
+  `skills/sprint-planning/references/asana.md`, which the skill opens when the team uses Asana
+  (81 skills). `sprint-planning` now also covers team-size capacity, sprint rollover, batch
+  approval, and linking tasks to tickets and code reviews.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
@@ -115,11 +126,12 @@ not per individual commit.
   `k-test-coverage-review` recommends `k-developer` for missing tests instead of handing off.
 - Handoff files live in a self-ignoring `.konductor/handoff/` (the writer creates its
   `.gitignore`); `konductor init` also ignores the directory.
-- Specialist specs grant no spawn tool, and Kiro CLI v3 and Claude Code configs block it, with
-  `disallowedTools` on Claude Code for every specialist (not shell). On Kiro CLI v2,
-  `@builtin` keeps the `subagent` tool and the empty `toolsSettings.subagent` target list
-  every specialist carries does not stop a spawn; v2 specialists lose the tool when #149
-  lands, and #124 merges together with #149.
+- Specialist specs grant no spawn tool, and Kiro CLI v2, Kiro CLI v3 and Claude Code configs
+  block it, with `disallowedTools` on Claude Code for every specialist (not shell). Kiro CLI v2
+  gets an explicit tool list in place of `@builtin` (checked with kiro-cli 2.36.0 and 3.0.0).
+  `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`, which dispatch through shell
+  panes, get the same Kiro CLI v2 list, so only `konductor` holds `subagent` on Kiro CLI v2,
+  and a Kiro CLI v2 install summary prints the checked versions and the `/tools` re-check command.
   `k-code-review-workflow` step 6 writes the report and ends with a note asking the orchestrator
   to run the adversarial review, no resume; the verdict comes from the findings, with the
   adversarial pass state on its own line. After the pass, the orchestrator, or `k-developer` on
@@ -161,6 +173,34 @@ not per individual commit.
   specialists to add inline comments by default. Publish authorization (`code-review`) joins the NEVER rules and the
   tests-pass requirement as a default no house rule overrides; an instruction file, or a file one names, that the
   change under review edits is read from the base branch and the edit is reviewed as content.
+- Docs describe setting `orchestration.mode` by hand, reading the mode line in the first reply,
+  and that Kiro CLI v2 is not supported. Claude Code support is for `konductor install`; the
+  plugin does not wire the hook.
+- The `code-review`, `non-functional-requirements`, `risk-management` and
+  `system-design-patterns` descriptions now name the tasks they cover, so they load on
+  ordinary task prompts: reviewing a folder or repository, adding measurable targets to a
+  requirements or design document, listing a plan's risks, and writing a system design.
+  `code-review` gains a step for reviewing a source tree with no diff, which asks the user to
+  narrow the scope of a tree too large to read and lists the files it did not read, and
+  `system-design-patterns` gains a no-questions mode that works from documents the user
+  already gave.
+- The `kiro-requirements-generation`, `kiro-design-generation` and `kiro-task-generation`
+  descriptions each name their own input and output and the spec step before and after, so
+  the model picks the right one of the three.
+- The `user-story-writing` description now matches requests that start from a feature idea
+  or rough ask with no requirements document yet. `requirements-extraction` and
+  `kiro-requirements-generation` say they need existing requirements or user stories, and that
+  a bare request needs its user stories written first.
+- 26 more skill descriptions name the requests they cover in a "Use ..." sentence that fits
+  within the 160 characters the Kiro skill index keeps. `verification` and `git-merge` replace
+  "MUST USE" with a concrete trigger, and `adversarial-design-review`, `design-quality-check`,
+  `dom-inspection` and `socratic-elicitation`, which had none, gain one. `git-merge` now says
+  the default branch instead of `mainline`, and long descriptions such as
+  `historical-issues-registry` and `legacy-to-agentic-estimate` are shorter. `adr-generator`
+  and `adversarial-code-review` also shorten theirs to fit, and a test now checks every skill.
+- `k-product-manager`, `k-tpm` and `k-quality-assurance` prompts drop their hand-written
+  skill lists, whose old triggers contradicted the new descriptions. Each skill's description is
+  now the one place that says when to use it.
 
 ### Fixed
 
@@ -199,6 +239,13 @@ not per individual commit.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 - `NOTICE.txt` lists every shipped crate, and `make notice-check` keeps it current.
+- Nine skills no longer name tools, templates or steps that don't exist where they run.
+  `humanize-writing`, `mux-dispatch` and `workspace-skills` use harness-neutral wording, and
+  `workspace-skills` says where Claude Code keeps workspace skills. `cost-estimation` names the
+  AWS Pricing MCP server and how to install it, and says why it waits for load figures before
+  pricing. `program-planning` and `playwright-test-implementation` no longer point at SOP steps
+  that are missing when the skill runs alone. `cmux-dispatch`, `design-doc-guidelines` and
+  `external-research` drop terms that do not apply in this repo.
 
 ### Security
 

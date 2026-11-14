@@ -17,8 +17,9 @@ All three are declared by all three orchestrators. This page uses the plain
 
 ## What "owned by the orchestrator" actually means
 
-The mux and cmux orchestrators are dispatchers by design, and `konductor` does the work itself; no
-runtime enforces either shape. In Kiro CLI
+The mux and cmux orchestrators are dispatchers by design, and `konductor` does the work itself in
+the default `auto` mode (in `coordinator` mode it hands every change to a specialist); no runtime
+enforces either shape. In Kiro CLI
 `konductor`'s `allowedTools` is `fs_read` alone, which pre-approves reads and nothing else; a write
 or a shell command still reaches you as a permission prompt, because `@builtin` grants both. In
 **Claude Code it is granted `Bash`, `Write` and `Edit`** with no prompt of its own, alongside `Read`, `Glob`, `Grep`,
@@ -186,8 +187,8 @@ The chain itself is runtime-agnostic. What differs is dispatch mechanics:
 
 Functionally the same three SOPs run either way.
 
-Specialists never spawn each other. Kiro CLI v3 and Claude Code enforce this in config; Kiro CLI
-v2 relies on the core rules. A specialist returns to the orchestrator, which routes the next step.
+Specialists never spawn each other in any runtime. A specialist returns to the orchestrator,
+which routes the next step.
 
 ---
 

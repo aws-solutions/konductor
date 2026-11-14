@@ -27,9 +27,9 @@ by standard review. It needs four review passes and a fresh `k-architect` checke
 **`k-developer`, the SOP's only owner, cannot spawn them**, verified against the agent specs:
 
 - In **Claude Code**, no specialist has an `Agent(...)` tool; only `konductor` does.
-- In **Kiro CLI v3**, no specialist has the `subagent` tool; only `konductor` does. In Kiro CLI
-  v2, `@builtin` still carries it and the empty target list does not stop a spawn;
-  specialists lose the tool when #149 lands.
+- In **Kiro CLI**, no specialist has the `subagent` tool. Only `konductor` holds `subagent` on
+  Kiro CLI v2; the mux orchestrators dispatch through shell and get the same explicit built-in
+  list as specialists.
 
 **Through `konductor`, step 6 runs.** `k-developer` writes the report with the verdict from its
 findings and an `Adversarial pass: not run` line, then ends with a note; `konductor` runs

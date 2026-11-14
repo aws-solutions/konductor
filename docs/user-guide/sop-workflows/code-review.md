@@ -135,10 +135,9 @@ pass not yet run or a pass MISSING), and an `Adversarial pass:` line with the pa
 - **The diff, not just the file list, is the input.** Step 1 captures full hunks; the changed-file
   list is derived from them.
 - **The adversarial step runs only through `konductor`.** Step 6 needs `k-architect` and four
-  review passes, but the owning agent cannot spawn: no specialist holds a spawn tool in Kiro CLI
-  v3 or Claude Code, and in Kiro CLI v2 the core rules forbid it until #149 removes the
-  tool. Step 6 has
-  `k-developer` write the report, then end with a note asking the orchestrator to run
+  review passes, but the owning agent cannot spawn: no specialist holds a spawn tool in any
+  runtime. Step 6 has `k-developer` write
+  the report, then end with a note asking the orchestrator to run
   [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review) on the same diff;
   the verdict comes from the findings, so a known CRITICAL reads `NEEDS FIXES` even on a direct
   run, and an `Adversarial pass:` line records the pass state. Under `konductor` the orchestrator

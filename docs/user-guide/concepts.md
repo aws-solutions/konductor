@@ -116,7 +116,7 @@ tags: [skill, behavioral, orchestration, delegation, multi-agent]
 Some skills also ship helper scripts alongside `SKILL.md` — for example
 `skills/legacy-to-agentic-estimate/` contains `scripts/` and `evals/` directories.
 
-**The package ships 82 skills** — 82 directories under `skills/`, each with a `SKILL.md`. All 82
+**The package ships 81 skills** — 81 directories under `skills/`, each with a `SKILL.md`. All 81
 are catalogued, grouped, with a when-to-use note each, in the [Skills catalog](skills.md).
 
 ## SOP (standard operating procedure)
@@ -166,19 +166,40 @@ rules, including this one:
 That is why the mux and cmux orchestrators hand file edits and shell commands to `k-developer`
 rather than doing them themselves.
 
+`context/k-coordinator-digest.md` also lives in `context/`, but no agent loads it: the session-start hook prints it into a `coordinator` session. In that mode `konductor` also reads the routing rules file (see Orchestration shapes).
+
 ## Orchestration shapes
 
 `konductor` ships in its single-writer shape: it reads, writes and runs commands itself and spawns a
-fresh `k-*` reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat). The
-coordinator shape, where the orchestrator never writes and every change goes to a specialist, is
-what `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` still use, and what a later
-release will expose as a setting.
+fresh `k-*` reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat). This shape is the `auto` orchestration mode, the default.
+The coordinator shape, where the orchestrator never writes and every change goes to a specialist, is
+what `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` use, and what `konductor` uses
+in the `coordinator` mode. Set the mode by hand in your user config; there is no command for it:
+
+```yaml
+# ~/.konductor/config.yml
+orchestration:
+  mode: coordinator   # or auto (the default)
+```
+
+Only this file is read; a value in a project's `.konductor/config.yml` is ignored, and
+`konductor doctor` reports it. The change applies from the next session, with no reinstall, and
+stays until you edit the file again. A session-start hook that `install` wires reads it. Under
+`coordinator` the hook injects a short digest, `context/k-coordinator-digest.md`, and tells
+`konductor` to read the full routing rules file first. Under `auto` it injects nothing on startup; on a Claude Code resume or compact it prints `Orchestration: auto`.
+
+The first reply of every `konductor` session states the mode: `Orchestration: coordinator`,
+`Orchestration: auto (default)`, or `Orchestration: auto (fallback: <reason>)` when the hook could
+not apply `coordinator`. `Orchestration: auto (default)` with `coordinator` set means no hook
+output arrived; run `konductor doctor`, then see
+[Troubleshooting](troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator).
+Kiro CLI v3 and Claude Code installed with `konductor install` are supported; the Claude Code plugin does not wire the hook, so coordinator mode is not available there. The hook acts only for the install that wired it; see [where the hook may point](../../cli/README.md#orchestration-mode). Kiro CLI v2 is not: the hook is wired there but untested,
+and a v2 session the hook does not reach runs as `auto`.
 
 ## Orchestrator and delegation
 
-**`konductor`**, as the orchestrator, is the hub. Specialists hold no spawn tool in Kiro CLI
-v3 or Claude Code, and the core rules forbid spawning everywhere (see
-[Who can delegate to whom](agents.md#who-can-delegate-to-whom)), so every piece of
+**`konductor`**, as the orchestrator, is the hub. Specialists hold no spawn tool in any
+runtime (see [Who can delegate to whom](agents.md#who-can-delegate-to-whom)), so every piece of
 work passes through `konductor`, which does it itself or, for a step it cannot do, spawns the owner
 and checks the result. A specialist does its own part, then returns a note naming the next role, or
 a proposed parallel split that gives each part's agent, inputs and files, and `konductor` does that
@@ -233,7 +254,7 @@ flowchart LR
     User(["You"])
     Ctx["<b>context/</b><br/>direct-work rules<br/><i>always active</i>"]:::gate
     Orch["<b>konductor</b><br/><i>does the work, reviews at phase gates</i>"]:::focus
-    Store["<b>skills/</b> — 82 modules<br/><b>agent-sops/</b> — 19 procedures<br/><i>loaded on demand</i>"]:::muted
+    Store["<b>skills/</b> — 81 modules<br/><b>agent-sops/</b> — 19 procedures<br/><i>loaded on demand</i>"]:::muted
 
     subgraph Specialists["8 specialist agents"]
         Dev["k-developer"]

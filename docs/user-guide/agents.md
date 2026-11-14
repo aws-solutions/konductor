@@ -31,7 +31,7 @@ and the MCP registry entries.
 | `konductor` | Single writer. Does the work, reviews at each phase gate. | `claude-sonnet-5.5` | 24 | 11 | — |
 | `konductor-mux-orchestrator` | Coordinator. Delegates every change, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 10 | — |
 | `konductor-cmux-orchestrator` | Coordinator. Delegates every change, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 10 | — |
-| `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 16 | 0 | — |
+| `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 15 | 0 | — |
 | `k-architect` | System designs, APIs, data models, threat models. | `claude-sonnet-5.5` | **38** | 3 | `aws-mcp` |
 | `k-developer` | Implementation, code review, git, builds. | `claude-sonnet-5.5` | 27 | 4 | `aws-mcp` |
 | `k-quality-assurance` | Test coverage, E2E strategy, security tests. | `claude-sonnet-5.5` | 12 | 1 | — |
@@ -44,7 +44,7 @@ A few things stand out and are worth knowing before you pick an agent:
 
 - **Every agent runs the same model**: `claude-sonnet-5.5` on Kiro CLI, `claude-sonnet-5-5` on
   Claude Code. Agents differ by what they carry, not by what powers them.
-- **`k-architect` carries by far the most skills** — **38 of the 82** in the library, close
+- **`k-architect` carries by far the most skills** — **38 of the 81** in the library, close
   to half. Design work routed anywhere else comes back thinner.
 - **`konductor`'s skill list is runtime-dependent.** Twelve of its skills are on both
   runtimes. `claude-teams-behavior` is only in the spec's `clientConfig.claudeCli` block,
@@ -60,7 +60,7 @@ A few things stand out and are worth knowing before you pick an agent:
 Every agent declares the `context/k-core-rules.md` context file, and the three orchestrators also
 declare `context/k-orchestrator-shared.md`. The mux and cmux orchestrators
 also declare `context/k-orchestrator-routing-rules.md`, which is what makes them behave as
-dispatchers; `konductor` declares `context/k-direct-work.md` and does the work itself.
+dispatchers; `konductor` declares `context/k-direct-work.md` and does the work itself in the default `auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators.
 
 ---
 
@@ -160,19 +160,29 @@ This is enforced in config, not just in the prompt:
 - Claude Code: synth drops `Agent(...)`, `Task` and `Workflow` from every specialist's `tools`
   list and denies them with `disallowedTools` as well, so a specialist with no `tools` list is
   still blocked.
-- Kiro CLI v2: the `subagent` tool stays in `@builtin`, and the empty
-  `toolsSettings.subagent` target list every specialist carries does not stop a spawn
-  (kiro-cli 2.36.0 let an empty list reach every agent). v2 specialists lose the `subagent`
-  tool when #149 lands, and #124 merges together with #149.
+- Kiro CLI v2 ignores `excludedTools`, and its `@builtin` includes the `subagent` tool. Synth
+  therefore replaces `@builtin` with the v2 built-in tools listed one by one, without
+  `subagent`, and drops `toolsSettings.subagent`, for every agent except `konductor`: the
+  specialists and the two multiplexer orchestrators, which dispatch through shell panes, get the
+  same explicit list, so only `konductor` holds `subagent` on Kiro CLI v2. A `*` entry gets the
+  same list plus `@<server>` for each of the spec's MCP servers. The list matches kiro-cli
+  2.36.0 and the v2 engine in kiro-cli 3.0.0, which shows `fs_read`, `fs_write` and
+  `execute_bash` as `read`, `write` and `shell`; kiro-cli 3.1.0 still defaults to the v2 engine
+  and was not re-probed. Older v2 clients were not checked. An unknown tool name does not stop
+  an agent from loading, and `kiro-cli agent validate` checks the file's schema, not tool names,
+  so to confirm the set on your client start `kiro-cli chat --agent-engine v2 --agent <name>`
+  and run `/tools`; the 13 built-ins should be listed and `subagent` should not. Setting
+  `toolsSettings.subagent.availableAgents` is not an alternative: a list that matches no agent
+  still exposes the tool.
 
 The block covers the runtime's agent-spawning tools only, not shell. A specialist with shell
 access could still start a new agent session by running `kiro-cli` or `claude` from the shell.
 `k-architect`, `k-developer` and `k-quality-assurance` have shell pre-approved in Kiro CLI, and
 every specialist except `k-researcher` is granted `Bash` in Claude Code.
 
-The edges below are the orchestrator's tool grants. Specialists hold none in Kiro CLI v3 or
-Claude Code, and none in Kiro CLI v2 once #149 lands. A specialist does its own part, then
-returns a handoff note or a proposed parallel split to its caller.
+The edges below are the orchestrator's tool grants. Specialists hold none in any runtime.
+A specialist does its own part, then returns a handoff note or a proposed parallel
+split to its caller.
 
 ```mermaid
 %%{init:{'theme':'base','themeVariables':{'fontSize':'14px','primaryColor':'#eef2f7','primaryTextColor':'#0f172a','primaryBorderColor':'#40556e','lineColor':'#7a8899','textColor':'#0f172a','edgeLabelBackground':'#ffffff','clusterBkg':'#fafbfc','clusterBorder':'#c9d2dc'}}}%%
@@ -197,9 +207,9 @@ flowchart LR
 | Agent | Kiro CLI can spawn | Claude Code can spawn |
 | --- | --- | --- |
 | `konductor` | the 8 specialists (an explicit allowlist, not "anything") | the same 8, via `Agent(...)`, plus `SendMessage` |
-| `konductor-mux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
-| `konductor-cmux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
-| every `k-*` specialist | **nothing** in Kiro CLI v3 (v2: nothing once #149 lands, see the bullet above) | **nothing** |
+| `konductor-mux-orchestrator` | no `subagent` tool (on v2, the same explicit built-in list as a specialist); dispatches via shell scripts | dispatches via shell |
+| `konductor-cmux-orchestrator` | no `subagent` tool (on v2, the same explicit built-in list as a specialist); dispatches via shell scripts | dispatches via shell |
+| every `k-*` specialist | **nothing** | **nothing** |
 
 Run directly with no orchestrator, the caller is you and the note or split comes back to you.
 The adversarial review is the exception: only the orchestrators declare
@@ -209,9 +219,9 @@ The adversarial review is the exception: only the orchestrators declare
 ### Why this matters: a real consequence
 
 `k-code-review-workflow` step 6 is an adversarial pass. That SOP is declared only by
-`k-developer`, which **cannot run the adversarial review** in Kiro CLI v3 or Claude Code:
+`k-developer`, which **cannot run the adversarial review** in any runtime:
 
-- Specialists hold no spawn tool there (see above; in Kiro CLI v2, once #149 lands).
+- Specialists hold no spawn tool in any runtime (see above).
 - The core rules tell a specialist to do such steps itself or return them to its caller.
 
 Step 6 has `k-developer` write the report, then end with a note asking the orchestrator to run
@@ -235,7 +245,9 @@ through `konductor`, which coordinates it.
 ### The two multiplexer orchestrators do not use subagents at all
 
 `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` have **no `subagent` tool and no
-`Agent(...)` tool**. Their Kiro CLI tools are `["@builtin", "read", "shell", "todo"]`, and shell
+`Agent(...)` tool**. Their specs declare `["@builtin", "read", "shell", "todo"]` for Kiro CLI; on
+Kiro CLI v2 synth replaces that `@builtin` with the same explicit built-in list a specialist gets,
+so only `konductor` holds `subagent` on Kiro CLI v2. Shell
 is how they work: their `mux-dispatch` / `cmux-dispatch` skills ship shell scripts that open a
 pane or surface per specialist, run the runtime's CLI inside it, and poll for a `.done` marker
 file under `/tmp/konductor-mux/` or `/tmp/konductor-cmux/`.
@@ -249,7 +261,7 @@ Code the distinction disappears — all three declare `Bash` there.
 
 The mux and cmux orchestrators load `context/k-orchestrator-routing-rules.md` at session start,
 which is what makes them behave as dispatchers rather than implementers. `konductor` loads
-`context/k-direct-work.md` instead and writes and runs commands itself; it commits when you ask. Treat the
+`context/k-direct-work.md` instead and writes and runs commands itself in the default `auto` mode; it commits when you ask. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators. Treat the
 dispatcher rule as intent, not enforcement: it
 is a prompt rule, and the tool configuration does not back it up in either runtime. Kiro CLI
 pre-approves reads only, so a mutating call stops to ask you rather than being refused, and
@@ -266,7 +278,7 @@ The default entry point, and the one to use unless you have a specific reason no
 | **Skills** (24) | `constraints`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor`, `threat-modeling`, `design-doc-guidelines`, `user-story-writing`, `backend-review`, `frontend-review`, `backend-development`, `frontend-development`, `design-evaluation`, `plan-review`, `design-impact-review`, `infra-validation`. `claude-teams-behavior` is Claude Code only. Kiro CLI has the other 23 plus `humanize-writing`, on demand |
 | **Kiro CLI tools** | `@builtin`, `subagent`; `allowedTools` is `fs_read` **only** |
 | **Claude Code tools** | `Workflow`, `WebFetch`, `WebSearch`, `TodoWrite`, `Agent(...)` over the 8 specialists, `SendMessage`, `Read`, `Glob`, `Grep`, `Bash`, `Write`, `Edit`, `Skill` |
-| **Can mutate?** | Yes, by design: it does the work itself. In Claude Code it declares `Bash`, `Write` and `Edit`. In Kiro CLI it can too, but nothing beyond reading is pre-approved: `allowedTools` is `fs_read` alone, so every write or command stops to ask you |
+| **Can mutate?** | Yes, by design: it does the work itself in the default `auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators. In Claude Code it declares `Bash`, `Write` and `Edit`. In Kiro CLI it can too, but nothing beyond reading is pre-approved: `allowedTools` is `fs_read` alone, so every write or command stops to ask you |
 
 It is the agent with the widest delegation reach — an explicit allowlist of all eight
 specialists — and the only one that declares
@@ -334,7 +346,7 @@ lands here. It owns the only source-modifying SOP, `k-code-cleanup`.
 | | |
 | --- | --- |
 | **SOPs** | **none** — skill-driven |
-| **Skills** | 16 — `user-story-writing`, `requirements-extraction`, `decision-research`, `sprint-planning`, `asana-sprint-planning`, `task-decomposition`, `legacy-to-agentic-estimate`, `humanize-writing`, `deliberation-panel`, `kiro-requirements-generation`, and others |
+| **Skills** | 15 — `user-story-writing`, `requirements-extraction`, `decision-research`, `sprint-planning`, `task-decomposition`, `legacy-to-agentic-estimate`, `humanize-writing`, `deliberation-panel`, `kiro-requirements-generation`, and others |
 | **Can mutate?** | Write pre-approved in Kiro CLI and granted in Claude Code; shell asks first in Kiro CLI and is granted in Claude Code |
 | **Can delegate to** | nothing (returns to the orchestrator) |
 
@@ -403,7 +415,7 @@ images, and diagrams — not a skill library. Point it at a file and ask a quest
 | Difference | Kiro CLI | Claude Code |
 | --- | --- | --- |
 | Agent name | `konductor` | `konductor` |
-| Cross-agent delegation | only `konductor` declares `subagent`; the mux orchestrators use shell. v3 specialists also have the built-in spawn tools excluded; v2 specialists still get `subagent` from `@builtin` | only `konductor` holds `Agent(...)` |
+| Cross-agent delegation | only `konductor` holds `subagent` on Kiro CLI v2; the mux orchestrators dispatch through shell and get the same explicit built-in list as specialists. Synth also keeps the built-in spawn tools out of specialists (`excludedTools` on v3, an explicit built-in list on v2) | only `konductor` holds `Agent(...)` |
 | MCP servers | declared and launched from `dependencies.mcpRegistry` | requested via tool globs (`mcp__aws-mcp__*`); you configure the server yourself |
 | Tool naming | `fs_read`, `fs_write`, `shell` | `Read`, `Write`, `Edit`, `Bash` |
 | Permission model | two lists: `tools` grants with a prompt, `allowedTools` pre-approves | one list: `clientConfig.claudeCli.tools` is the ceiling, and your `settings.json` decides what prompts |
@@ -418,7 +430,7 @@ In both runtimes a specialist hands off by returning to the orchestrator, never 
 
 ## Related
 
-- [Skills catalog](skills.md) — all 82 skills, and which agents declare each
+- [Skills catalog](skills.md) — all 81 skills, and which agents declare each
 - [SOP workflows](sop-workflows/README.md) — the 19 procedures and which agent owns each
 - [Core concepts → agent](concepts.md#agent) — what an agent is
 - [Install for Kiro CLI](tasks/install-kiro-cli.md) · [Install for Claude Code](tasks/install-claude-code.md)

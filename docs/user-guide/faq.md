@@ -13,7 +13,7 @@ Configuration, registered with your runtime. Specifically:
 | | Count | What it is |
 | --- | --- | --- |
 | Agents | 11 | Three orchestrators plus eight specialists |
-| Skills | 82 | On-demand knowledge modules |
+| Skills | 81 | On-demand knowledge modules |
 | SOPs | 19 | Written multi-step procedures |
 | Context files | 2 | The core rules for every agent and the orchestrator routing rules, always active |
 
@@ -77,9 +77,12 @@ By design. `context/k-orchestrator-routing-rules.md` makes it read-only:
 > You are a read-only orchestrator. You MUST NOT directly execute mutating operations.
 
 This read-only rule applies to the mux and cmux orchestrators. `konductor` loads `k-direct-work.md`
-instead and edits files itself. On Kiro CLI it pre-approves `fs_read` alone, so each write or
-command asks you first; on Claude Code it holds `Write`, `Edit` and `Bash` with no prompt gate, and
-the reviewer it spawns at each phase gate is the check.
+instead and edits files itself in the default `auto` mode. In `coordinator` mode it hands every change
+to a specialist, like the mux and cmux orchestrators (see
+[How do I make konductor hand every change to a specialist?](#how-do-i-make-konductor-hand-every-change-to-a-specialist)).
+On Kiro CLI it pre-approves `fs_read` alone, so each write or command asks you first; on Claude Code
+it holds `Write`, `Edit` and `Bash` with no prompt gate, and the reviewer it spawns at each phase gate
+is the check.
 
 The mux and cmux Orchestrator Direct Work table lists the exceptions: reading files, read-only commands such as
 `ls`, `grep` and `git status`, and read-only lookups, within a budget of 10 reads. Builds, tests,
@@ -123,7 +126,7 @@ so a typo can never be mistaken for a real gate failure. Full table:
 | Lives at | `skills/<name>/SKILL.md` | `agent-sops/<name>.sop.md` |
 | Structure | YAML frontmatter plus guidance | Overview, Parameters, numbered Steps with MUST/MUST NOT constraints |
 | Loaded | On demand — name and description at session start, full content when relevant | On demand, and only for agents whose spec declares it |
-| Count | 82 | 19 |
+| Count | 81 | 19 |
 
 A SOP usually *invokes* skills. `k-test-coverage-review` is a good example: the SOP is the
 sequence and the gates, while `test-coverage-analysis`, `e2e-test-strategy`, and
@@ -190,6 +193,26 @@ the usual culprit, since it applies everywhere and nothing surfaces it. See
 
 ---
 
+## How do I make `konductor` hand every change to a specialist?
+
+Set the `coordinator` orchestration mode by hand in your user config. There is no command for it.
+
+```yaml
+# ~/.konductor/config.yml
+orchestration:
+  mode: coordinator   # or auto (the default)
+```
+
+Only `~/.konductor/config.yml` is read; a value in a project's `.konductor/config.yml` is ignored,
+and `konductor doctor` reports it. The next `konductor` session picks it up, with no reinstall. Its
+first reply should read `Orchestration: coordinator`. `Orchestration: auto (default)` with
+`coordinator` set means no hook output arrived: run `konductor doctor`, then see
+[Troubleshooting](troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator).
+This works on Kiro CLI v3 and on Claude Code installed with `konductor install`. The Claude Code plugin does not wire the hook, so coordinator mode is not available there yet. The hook acts only for the install that wired it; see [where the hook may point](../../cli/README.md#orchestration-mode). Kiro CLI v2 is not supported: the hook is wired but
+untested there, and a session it does not reach runs as `auto`.
+
+---
+
 ## Is any of my data sent anywhere?
 
 The CLI touches the network in one place only: `install`, fetching the release it installs from.
@@ -217,8 +240,7 @@ transmitted. Delete it whenever you like.
 ## Why did my code review skip the security pass?
 
 `k-code-review-workflow` step 6 is an adversarial pass, and **the agent that owns the SOP
-cannot run it**: no specialist holds a spawn tool in Kiro CLI v3 or Claude Code, and in Kiro
-CLI v2 the core rules forbid it until #149 removes the tool.
+cannot run it**: no specialist holds a spawn tool in any runtime.
 
 Step 6 writes the report, then ends with a note asking the orchestrator to run
 `k-adversarial-pull-request-review` on the same diff; the verdict comes from the findings, so a

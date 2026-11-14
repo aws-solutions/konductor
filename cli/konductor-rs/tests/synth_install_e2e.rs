@@ -1274,3 +1274,65 @@ fn coordinator_mode_round_trips_through_each_harness_install() {
     }
     std::fs::remove_dir_all(&repo_root).ok();
 }
+
+#[test]
+fn installed_kiro_v2_specialists_get_no_spawn_tool() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let repo_root = scratch_dir("repo-specialist-spawn-v2");
+    let agents_dir = repo_root.join("agents");
+    std::fs::create_dir_all(&agents_dir).unwrap();
+    seed_spawning_agent_spec(&agents_dir, "k-example");
+    seed_spawning_agent_spec(&agents_dir, "konductor-mux-orchestrator");
+    seed_spawning_agent_spec(&agents_dir, "konductor-cmux-orchestrator");
+    seed_spawning_agent_spec(&agents_dir, "konductor");
+    seed_skill_source(&repo_root);
+
+    let synth_result = run_konductor(
+        &repo_root,
+        &sink,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert!(
+        synth_result.status.success(),
+        "real `synth --from <repo>` must succeed: stderr={}",
+        String::from_utf8_lossy(&synth_result.stderr)
+    );
+
+    let target_dir = scratch_dir("target-specialist-spawn-v2");
+    install_harness(&repo_root, &target_dir, "kiro-cli-v2");
+
+    let read_kiro = |name: &str| -> serde_json::Value {
+        let path = target_dir.join(format!(".kiro/agents/{name}.json"));
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap()
+    };
+    // The mux and cmux orchestrators dispatch through shell panes, so on
+    // v2 they lose `subagent` the same way a specialist does.
+    for name in [
+        "k-example",
+        "konductor-mux-orchestrator",
+        "konductor-cmux-orchestrator",
+    ] {
+        let stripped = read_kiro(name);
+        let tools = stripped["tools"].as_array().unwrap();
+        assert!(!tools.contains(&serde_json::json!("@builtin")), "{name}");
+        assert!(!tools.contains(&serde_json::json!("subagent")), "{name}");
+        assert!(tools.contains(&serde_json::json!("fs_read")), "{name}");
+        assert!(
+            stripped["toolsSettings"].get("subagent").is_none(),
+            "{name}"
+        );
+    }
+
+    let orchestrator = read_kiro("konductor");
+    assert_eq!(
+        orchestrator["tools"],
+        serde_json::json!(["@builtin", "subagent"])
+    );
+    assert_eq!(
+        orchestrator["toolsSettings"]["subagent"]["trustedAgents"],
+        serde_json::json!(["k-other"])
+    );
+
+    std::fs::remove_dir_all(&repo_root).ok();
+    std::fs::remove_dir_all(&target_dir).ok();
+}

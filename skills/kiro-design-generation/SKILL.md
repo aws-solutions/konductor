@@ -1,6 +1,6 @@
 ---
 name: kiro-design-generation
-description: Transforms system design artifacts into per-feature Kiro IDE design.md with the 6 required sections. Use after requirements.md is approved and before task generation.
+description: Transforms system design artifacts into per-feature Kiro IDE design.md with the 6 required sections. Use to turn an approved requirements.md and a system design into a Kiro design.md, spec step 2, between kiro-requirements-generation and kiro-task-generation.
 version: 1.0.0
 tags: [skill, kiro, specs, design, low-level-design, per-feature]
 ---

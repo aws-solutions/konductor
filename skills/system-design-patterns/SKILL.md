@@ -1,6 +1,6 @@
 ---
 name: system-design-patterns
-description: Guides system architecture design through a structured interview. Use when starting a new service or feature that needs a system design document. Produces system design, non-functional requirements, threat model inputs, and architecture diagram description.
+description: Guides system architecture design through a structured interview. Use when writing a system design document for a new service or feature (components, data model, API, error handling, testing). Works from existing requirements without an interview when the user asks for no questions. Produces system design, non-functional requirements, threat model inputs, and architecture diagram description.
 version: 1.0.0
 tags: [skill, system-design, architecture, interview, requirements]
 ---
@@ -56,6 +56,12 @@ At the start, ask the user:
 > "Would you prefer a **comprehensive interview** (20+ questions covering all aspects) or a **focused interview** (5-10 questions on core components)?"
 
 Default to comprehensive unless the user specifies otherwise.
+
+**No-questions mode.** If the user asks for no questions, or says to work
+from documents they already gave you (requirements, user stories, an
+existing design), skip the interview and this scope question. Answer each
+phase from those documents, state every assumption you make, and list what
+they leave undecided under Open Questions in the system design document.
 
 ## Interview Structure
 

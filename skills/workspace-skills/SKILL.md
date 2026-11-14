@@ -1,11 +1,6 @@
 ---
 name: workspace-skills
-description: >
-  Use after trial-and-error that succeeded, a mid-task course correction, a
-  user correction that worked, or an unexpected outcome requiring
-  investigation. Captures the reusable procedure as a project-specific
-  workspace skill, with proactive capture, dedup, and provenance
-  protection.
+description: 'Use when told "save this as a skill", "remember how to do this" or "make this repeatable", or after trial-and-error, a correction or an unexpected outcome. Also use to update a saved workspace procedure. Captures the reusable procedure as a project-specific workspace skill, with proactive capture, dedup, and provenance protection.'
 origin: agent-created
 version: 4
 last_used: 2026-07-01
@@ -115,10 +110,11 @@ capture is initiated.
 **Before creating any new skill entry, you MUST check for overlap.**
 
 Check the `ws-*` workspace skills **already visible in your context**.
-They are loaded at session start via the `skill://.kiro/skills/ws-*/SKILL.md`
-resource glob (re-resolved each session). Each workspace skill's name
-and description appear in your context — scan those for overlap before
-writing anything.
+On Kiro CLI they are loaded at session start via the
+`skill://.kiro/skills/ws-*/SKILL.md` resource glob (re-resolved each
+session). On Claude Code, list `.claude/skills/ws-*`. Each workspace
+skill's name and description appear in your context — scan those for
+overlap before writing anything.
 
 **Decision rules:**
 
@@ -166,14 +162,6 @@ enough yet — keep iterating, do not save.
 
 ---
 
-## Key Distinctions
-
-| Type             | Location        | Scope                               | Contains            |
-| ---------------- | --------------- | ----------------------------------- | ------------------- |
-| Workspace skills | `.kiro/skills/` | Local; commit is developer's choice | Procedures (how-to) |
-
----
-
 ## How to Create a Skill
 
 1. **Scan** for overlap using the `ws-*` workspace skills already in context
@@ -185,6 +173,8 @@ enough yet — keep iterating, do not save.
    confirmation:
    - `.kiro/skills/ws-<name>/SKILL.md` (Kiro CLI)
    - `.claude/skills/ws-<name>/SKILL.md` (Claude Code)
+
+   The skill is local; whether to commit it is the developer's choice.
 4. **Notify** the user: "Captured skill `<name>` — `<desc>`."
 
 The `ws-` prefix is **mandatory** for both runtimes — it prevents name

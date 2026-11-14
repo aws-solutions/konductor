@@ -1511,6 +1511,9 @@ fn report_install_success(
     if let Some(result) = &link_bin_result {
         println!("{}", link_bin_report_line(result, color));
     }
+    if let Some(line) = checked_kiro_versions_line(destination, harness_dir) {
+        println!("{line}");
+    }
     if let Some(warning) = warning {
         println!(
             "{} {warning}",
@@ -1522,6 +1525,35 @@ fn report_install_success(
             println!("{line}");
         }
     }
+}
+
+/// One extra line after a Kiro CLI v2 install summary naming the kiro-cli
+/// versions whose v2 built-in list the agents' explicit tool lists were
+/// checked against, and the `/tools` command that re-checks it against the
+/// installed `k-developer` agent file (every install has one; a release
+/// install has no repo checkout to point at). Informs only: nothing is
+/// spawned, compared or gated. Other harnesses print nothing.
+fn checked_kiro_versions_line(destination: &Path, harness_dir: &str) -> Option<String> {
+    use crate::cli::synth::kiro_cli_v2::{
+        KiroCliV2Transformer, SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH,
+    };
+    use crate::cli::synth::HarnessTransformer as _;
+
+    if harness_dir != KiroCliV2Transformer.name() {
+        return None;
+    }
+    let versions = match SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH.split_last() {
+        Some((last, [])) => last.to_string(),
+        Some((last, rest)) => format!("{} and {last}", rest.join(", ")),
+        None => return None,
+    };
+    let agent_file = destination.join(".kiro/agents/k-developer.json");
+    Some(format!(
+        "konductor install: agent tool lists were checked against kiro-cli {versions}; on \
+         another version, run `/tools` in a `kiro-cli chat --agent-engine v2 --agent \
+         k-developer` session and compare with the `tools` list in {}",
+        agent_file.display()
+    ))
 }
 
 /// Reports the content-version skip-if-unchanged outcome: the target
@@ -3253,6 +3285,44 @@ mod tests {
         assert!(
             summary.contains("(version: 0.1.1)"),
             "summary must report the installed content's own version, got: {summary:?}"
+        );
+    }
+
+    /// After a Kiro CLI v2 install the summary is followed by one line
+    /// naming every kiro-cli version in
+    /// `SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH`, the `/tools` re-check and
+    /// the installed `k-developer` agent file to compare against; the v3
+    /// and Claude harnesses print no such line.
+    #[test]
+    fn checked_kiro_versions_line_names_every_checked_version_on_v2_only() {
+        use crate::cli::synth::kiro_cli_v2::SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH;
+
+        let target = Path::new("/home/me");
+        let line = checked_kiro_versions_line(target, "kiro-cli-v2").expect("v2 prints the line");
+        for version in SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH {
+            assert!(line.contains(version), "missing {version} in {line:?}");
+        }
+        assert!(
+            line.contains("checked against kiro-cli 2.36.0 and 3.0.0"),
+            "{line:?}"
+        );
+        assert!(
+            line.contains(
+                "run `/tools` in a `kiro-cli chat --agent-engine v2 --agent k-developer`"
+            ),
+            "{line:?}"
+        );
+        assert!(
+            line.contains(
+                "compare with the `tools` list in /home/me/.kiro/agents/k-developer.json"
+            ),
+            "{line:?}"
+        );
+
+        assert_eq!(checked_kiro_versions_line(target, "kiro-v3"), None);
+        assert_eq!(
+            checked_kiro_versions_line(target, claude::CLAUDE_HARNESS_DIR),
+            None
         );
     }
 

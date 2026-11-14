@@ -144,13 +144,15 @@ def _generated_specialists(generated):
     return [(p.name, json.loads(p.read_text())) for p in files]
 
 
-def test_synth_kiro_v2_specialists_keep_the_empty_subagent_target_list():
+def test_synth_kiro_v2_specialists_have_no_subagent_tool():
     failures = [
         name
         for name, agent in _generated_specialists("dist/kiro-cli-v2/agents")
-        if not _is_empty_target_list(agent.get("toolsSettings", {}).get("subagent"))
+        if "@builtin" in agent.get("tools", [])
+        or "subagent" in agent.get("tools", [])
+        or "subagent" in agent.get("toolsSettings", {})
     ]
-    assert not failures, "v2 output without an empty toolsSettings.subagent:\n" + "\n".join(failures)
+    assert not failures, "v2 output that still grants the subagent tool:\n" + "\n".join(failures)
 
 
 def test_synth_kiro_v3_specialists_have_no_subagent_rule():
