@@ -22,17 +22,20 @@ const { describeChange } = require('./isolation-gates.js');
 const { secretLiterals, scrubDeep } = require('./scrub.js');
 const { classifyAuthFailure } = require('./auth-failure.js');
 const { classifyLaunchFailure } = require('./launch-failure.js');
+const { moveFile, UntrustedFileError } = require('./move-file.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
-// rename() fails across filesystems (EXDEV); the scratch root and the out dir need not share one.
-function moveFile(src, dest) {
+// A live file the agent replaced is not moved. An empty file takes its place in the out dir so readers
+// of the stream and stderr do not fail, and the caller flags the run.
+function moveLive(src, dest, tampered) {
   try {
-    fs.renameSync(src, dest);
+    moveFile(src, dest);
   } catch (e) {
-    if (e.code !== 'EXDEV') throw e;
-    fs.copyFileSync(src, dest);
-    fs.unlinkSync(src);
+    if (!(e instanceof UntrustedFileError)) throw e;
+    tampered.push(path.basename(dest));
+    fs.rmSync(dest, { force: true });
+    fs.writeFileSync(dest, '', { flag: 'wx', mode: 0o600 });
   }
 }
 
@@ -55,10 +58,11 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
     const err = fs.openSync(liveErr, 'w');
     // A file as stdin ends at its last byte; a pipe left open would make some CLIs wait for more input.
     const input = stdinPath ? fs.openSync(stdinPath, 'r') : null;
+    const tampered = [];
     const closeAll = () => {
       fs.closeSync(out); fs.closeSync(err); if (input !== null) fs.closeSync(input);
-      if (liveOut !== stdoutPath) moveFile(liveOut, stdoutPath);
-      if (liveErr !== stderrPath) moveFile(liveErr, stderrPath);
+      if (liveOut !== stdoutPath) moveLive(liveOut, stdoutPath, tampered);
+      if (liveErr !== stderrPath) moveLive(liveErr, stderrPath, tampered);
     };
     const started = Date.now();
     let timedOut = false;
@@ -70,7 +74,7 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
       child = spawn(cmd, args, { cwd, env, stdio: [input ?? 'ignore', out, err], detached: true });
     } catch (e) {
       closeAll();
-      resolve({ exitCode: null, timedOut: false, wallClockMs: 0, error: e.message });
+      resolve({ exitCode: null, timedOut: false, wallClockMs: 0, error: e.message, tamperedFiles: tampered });
       return;
     }
     if (child.pid) procs.trackGroup(child.pid);
@@ -81,7 +85,7 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
       // Read the final credits before closeAll moves the live stream file.
       const credits = meter ? meter.poll() : null;
       closeAll();
-      resolve({ ...result, credits, creditLimitHit: limitHit, stopped });
+      resolve({ ...result, credits, creditLimitHit: limitHit, stopped, tamperedFiles: tampered });
     };
     // Kills the process group once the credits metered so far pass the limit, or the stop watcher has a decision.
     // The run is then recorded as censored.
@@ -295,6 +299,7 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
     creditLimitHit: execs.some((e) => e.creditLimitHit),
     ...(ctx.runCreditLimit == null ? {} : { creditLimit: ctx.runCreditLimit, creditOvershoot: spent > ctx.runCreditLimit ? spent - ctx.runCreditLimit : null }),
     stopped: execs.map((e) => e.stopped).find((x) => x && x.reason !== 'end_turn') ?? null,
+    tamperedFiles: execs.flatMap((e) => e.tamperedFiles ?? []),
     wallClockMs: execs.reduce((n, e) => n + (e.wallClockMs ?? 0), 0),
     error: last.error ?? null,
     startedAt,
@@ -372,6 +377,11 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
         exec = { timedOut: false, exitCode: null, wallClockMs: null, error: e.message };
       }
       harness.removeCredentials(home);
+      if (exec?.tamperedFiles?.length) {
+        meta.flags.push('stdioTampered');
+        meta.tamperedFiles = exec.tamperedFiles;
+        meta.infraError = [meta.infraError, `live output replaced by the agent, not moved: ${exec.tamperedFiles.join(', ')}`].filter(Boolean).join(' | ');
+      }
 
       if (fs.existsSync(path.join(outDir, 'stream.jsonl'))) {
         try {

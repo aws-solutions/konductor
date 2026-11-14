@@ -179,6 +179,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     armConfig: arm.armConfig ?? null,
     ...(meta.claudeCode ? { claudeCode: meta.claudeCode } : {}),
     ...(meta.unscrubbed?.length ? { unscrubbedFiles: meta.unscrubbed } : {}),
+    ...(meta.tamperedFiles?.length ? { tamperedFiles: meta.tamperedFiles } : {}),
     ...(autonomyFields({ task, conv, checks: checks || [], finalText: agg?.finalText ?? null, aggregateGroup }) ?? {}),
   };
 }

@@ -164,6 +164,11 @@
       },
       "description": "Present when the flag credsUnscrubbed is set: output files (relative to the run directory) the credential scrub could not process, with the reason. A run with this flag is not judged."
     },
+    "tamperedFiles": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Present when the flag stdioTampered is set: names of the live output files (stream, stderr) the agent replaced with a symlink, hardlink, special file or foreign file. They were not moved; an empty file stands in. The run also has infraError and is not judged."
+    },
     "armConfig": {
       "type": [
         "object",
