@@ -96,6 +96,10 @@ not per individual commit.
   plan it promised. `threat-modeling` uses its built-in template by default and drops the
   tool-check step. `ui-text-validation` reports inline unless the audit spans several pages or
   the user asks for a file, and checks headings for sentence case.
+- `progress-tracking` moved its final-mode stages (code analysis, pattern matching, traceability)
+  into `references/final-mode.md`, and `security-test-generation` moved its Kiro and other-tool
+  output steps into `references/output-kiro.md` and `references/output-generic.md`. Each skill
+  opens the file only when the mode or tool type needs it.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
