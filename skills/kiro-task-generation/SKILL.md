@@ -110,7 +110,7 @@ flowchart TD
 - Max 2 levels of hierarchy (top-level + one sub-level)
 - Each task includes: clear objective, sub-bullets with details, and its reference line
 - Implementation tasks end with `_Requirements: X.Y_`, listing the acceptance criteria (requirements.md) or behavior items (bugfix.md) they satisfy
-- A property-based test task names its design property and the requirements that property validates, as two bold lines: `**Property N: <title from design.md>**`, then `**Validates: Requirements N.M, ...**`. Copy both from design.md's Correctness Properties so the three documents agree
+- A property-based test task names its design property and the requirements that property validates, as two bold lines: `**Property N: <title from design.md>**`, then `**Validates: Requirements N.M, ...**`, and carries no `_Requirements:_` line of its own. Copy both from design.md's Correctness Properties so the three documents agree
 - Example and unit test tasks end with `_Requirements: X.Y_`, like implementation tasks
 - Each task builds incrementally on previous tasks and ends with code wired into what came before
 - Tasks are designed for a code-generation LLM to execute one at a time
@@ -156,7 +156,7 @@ When the spec has `bugfix.md` instead of `requirements.md`, follow the bugfix ta
 3. Any other property that fails on the unfixed code gets its own test task here, before the fix
 4. A parent task for the fix, with sub-tasks:
    - `Implement the fix`: each file and line to change and what to leave alone, with `_Bug_Condition: ..._`, `_Expected_Behavior: ..._` and `_Preservation: ..._` lines drawn from the design, then `_Requirements: ..._`
-   - One `Verify ... now passes` sub-task per earlier test task, headed by that test's property as `**Property N: Expected Behavior** - <title>` (`**Property 2: Preservation** - <title>` for the preservation tests): re-run that SAME test, do not write a new one, and expect it to pass
+   - One `Verify ... now passes` sub-task per earlier test task, headed by that test's property as `**Property N: Expected Behavior** - <title>` (`**Property 2: Preservation** - <title>` for the preservation tests): re-run that SAME test, do not write a new one, and expect it to pass. End it with a `_Requirements: X.Y_` line citing the behavior items the passing test confirms, so a bugfix spec carries `_Requirements:_` on every task but the checkpoint
 5. `Checkpoint - Ensure all tests pass`
 
 ## Task Ordering
@@ -183,7 +183,7 @@ When the spec has `bugfix.md` instead of `requirements.md`, follow the bugfix ta
 
 - Tasks have circular dependencies
 - In a feature spec, `## Task Dependency Graph` missing, or its `waves` JSON is invalid, omits a leaf task, lists one twice, lists a parent task, or puts a leaf in a wave other than the one the wave rule gives it
-- An implementation or test task without its requirement reference (checkpoints are exempt)
+- A task missing the requirement reference its kind calls for: an implementation, example or unit test task without its `_Requirements: X.Y_` line, a property-based test task without its `**Validates: Requirements N.M**` line, or a bugfix verify sub-task without its `_Requirements: X.Y_` line. Checkpoints are exempt
 - A reference to an acceptance criterion or property that does not exist
 - tasks.md written anywhere other than `{spec_dir}`
 
