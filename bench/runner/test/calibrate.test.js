@@ -73,6 +73,23 @@ test('export writes a blinded sheet, a separate key, and is deterministic for a 
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 
+test('a run whose scrub failed, whose output files were replaced, or that had an infrastructure error is never sampled', () => {
+  const root = tmp();
+  try {
+    const bench = makeBench(path.join(root, 'bench'));
+    const flagged = { 1: { flags: ['credsUnscrubbed'] }, 2: { flags: ['stdioTampered'] }, 3: { infraError: 'setup failed' } };
+    const specs = [];
+    for (let i = 1; i <= 6; i++) specs.push({ arm: i % 2 ? 'vanilla' : 'v1.2.0', rep: i, finalText: `answer ${i} UNSCRUBBED_MARK_${i}`, ...(flagged[i] || {}) });
+    const runDir = makeRun(path.join(root, 'run'), bench, specs);
+    const out = path.join(root, 'cal');
+    exportSheet({ runDir, benchDir: bench, limits: DEFAULTS.limits, redactions: compileRedactions(DEFAULT_REDACTIONS), n: 6, seed: 1, outDir: out });
+    const key = JSON.parse(fs.readFileSync(path.join(out, 'key.json'), 'utf8'));
+    assert.deepEqual(Object.values(key.items).map((i) => i.replicate).sort(), [4, 5, 6]);
+    const sheet = fs.readFileSync(path.join(out, 'sheet.md'), 'utf8') + fs.readFileSync(path.join(out, 'sheet.json'), 'utf8');
+    for (const i of [1, 2, 3]) assert.doesNotMatch(sheet, new RegExp(`UNSCRUBBED_MARK_${i}\\b`));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('score compares judges to human labels and judges to each other, with PASS/WARN', () => {
   const f = fixture(6);
   try {

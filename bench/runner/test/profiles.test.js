@@ -4,6 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { tmp, write } = require('./helpers.js');
 const P = require('../lib/profiles.js');
@@ -110,7 +111,11 @@ test('aaArmFor names the repeat of a Claude Code arm with one cc- prefix', () =>
 
 // ---- calibration sample ----
 
-const run = (n) => ({ dir: '/r', runs: Array.from({ length: n }, (_, i) => ({ armId: i % 2 ? 'a' : 'vanilla', taskId: `t${i % 3}`, replicate: Math.floor(i / 2) + 1, dir: `/r/${i}`, result: { status: i === 0 ? 'budget_skipped' : 'success' } })) });
+// The draw leaves out runs with no workspace folder, so every fake run points at one real folder that has one.
+const RUN_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'profiles-test-'));
+fs.mkdirSync(path.join(RUN_DIR, 'workspace'));
+test.after(() => fs.rmSync(RUN_DIR, { recursive: true, force: true }));
+const run = (n) => ({ dir: '/r', runs: Array.from({ length: n }, (_, i) => ({ armId: i % 2 ? 'a' : 'vanilla', taskId: `t${i % 3}`, replicate: Math.floor(i / 2) + 1, dir: RUN_DIR, result: { status: i === 0 ? 'budget_skipped' : 'success' } })) });
 
 test('the calibration sample is the draw calibrate export would make, is repeatable and skips budget-skipped runs', () => {
   const a = P.calibrationSample({ run: run(40), n: 10, seed: 7 });

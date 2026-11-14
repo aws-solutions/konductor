@@ -716,3 +716,36 @@ test('cap review and cap review-import from the command line', () => {
     assert.match(typo.stderr, /unknown flag --sample\b/);
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
+
+test('a run whose scrub failed or whose output files were replaced is neither sampled nor shown as a peer', () => {
+  const root = tmp();
+  try {
+    const bench = makeBench(path.join(root, 'bench'));
+    const specs = [];
+    for (const arm of ['vanilla', 'v1.2.0']) {
+      for (let rep = 1; rep <= 2; rep++) {
+        const flags = arm === 'vanilla' && rep === 1 ? ['credsUnscrubbed'] : arm === 'v1.2.0' && rep === 2 ? ['stdioTampered'] : [];
+        specs.push({ arm, rep, flags, finalText: `answer ${arm} r${rep} PEERMARK_${arm === 'vanilla' ? 'a' : 'b'}${rep}` });
+      }
+    }
+    const runDir = makeRun(path.join(root, 'run'), bench, specs);
+    const f = { root, bench, runDir };
+    const r = writeReview(opts(f, { n: 4, seed: 1 }));
+    const key = readJson(r.keyPath);
+    const runs = key.groups.flatMap((g) => g.items).map((i) => `${i.armId}/${i.replicate}`).sort();
+    assert.deepEqual(runs, ['v1.2.0/1', 'vanilla/2']);
+    const html = fs.readFileSync(r.pagePath, 'utf8');
+    assert.doesNotMatch(html, /PEERMARK_a1|PEERMARK_b2/);
+    const all = writeReview(opts(f, { n: 4, seed: 1, sampleOnly: true, outDir: path.join(root, 'o2'), keyOutDir: path.join(root, 'k2') }));
+    assert.deepEqual(readJson(all.keyPath).groups.flatMap((g) => g.items).map((i) => `${i.armId}/${i.replicate}`).sort(), ['v1.2.0/1', 'vanilla/2']);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('review fails with a clear message when every run is excluded', () => {
+  const root = tmp();
+  try {
+    const bench = makeBench(path.join(root, 'bench'));
+    const runDir = makeRun(path.join(root, 'run'), bench, [{ arm: 'vanilla', rep: 1, flags: ['credsUnscrubbed'] }]);
+    assert.throws(() => writeReview(opts({ root, bench, runDir }, { n: 2, seed: 1 })), /budget-skipped or not judgeable/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});

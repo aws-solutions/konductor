@@ -13,6 +13,7 @@ const { effectiveLimits } = require('./config.js');
 const { percentAgreement, cohenKappa, spearman } = require('./agreement.js');
 const packLib = require('./pack/index.js');
 const { readQuality } = require('./packrun.js');
+const { notJudgedReason } = require('./run.js');
 
 const VERDICTS = ['pass', 'partial', 'fail'];
 
@@ -26,9 +27,11 @@ function shuffle(list, seed) {
   return a;
 }
 
-// The runs a calibration sheet is drawn from: every run that was not budget-skipped, shuffled by the seed, the first n.
+// The runs a calibration sheet is drawn from, shuffled by the seed, the first n. Runs the judges never see are left out
+// too (budget-skipped, credentials possibly unscrubbed, output files replaced by the agent, no workspace): their text must
+// not reach raters either.
 function drawSample(runs, n, seed) {
-  return shuffle(runs.filter((r) => r.result.status !== 'budget_skipped'), seed).slice(0, n);
+  return shuffle(runs.filter((r) => r.result.status !== 'budget_skipped' && !notJudgedReason(r)), seed).slice(0, n);
 }
 
 function fence(text) {

@@ -27,6 +27,7 @@ const { secretLiterals, scrubString } = require('../runner/lib/scrub.js');
 const { loadRun, readJson } = require('../report/load.js');
 const { runtimeOf } = require('../runner/lib/harness/runtime.js');
 const { buildBundle } = require('../judge/bundle.js');
+const { notJudgedReason } = require('../judge/run.js');
 const { effectiveLimits } = require('../judge/config.js');
 const { drawSample, scoreLabels, raterKappas } = require('../judge/calibrate.js');
 const { makeQuoteMatcher } = require('../judge/quote.js');
@@ -112,10 +113,10 @@ function sampleParams(runDir, { n, seed }) {
 /**
  * The groups a person rates: one per (task, replicate) in the drawn sample, in draw order. With peers (the default)
  * each group holds every arm's run of that task and replicate, so the outputs sit side by side; with sampleOnly only
- * the drawn runs. Budget-skipped runs are never shown.
+ * the drawn runs. Budget-skipped runs and runs notJudgedReason rejects are never shown.
  */
 function groupSample(runs, picked, { sampleOnly = false } = {}) {
-  const usable = runs.filter((r) => r.result.status !== 'budget_skipped');
+  const usable = runs.filter((r) => r.result.status !== 'budget_skipped' && !notJudgedReason(r));
   const groups = new Map();
   for (const p of picked) {
     const id = `${p.taskId}\u0000${p.replicate}`;
@@ -137,7 +138,7 @@ function writeReview({ runDir, benchDir, extraTasks = [], n, seed, sampleOnly = 
   const tasks = loadTasks(benchDir, { extraDirs: extraTasks });
   const params = sampleParams(run.dir, { n, seed });
   const picked = drawSample(run.runs, params.n, params.seed);
-  if (!picked.length) throw new ReviewError(`no runs to review in ${run.dir} (every run was budget-skipped)`);
+  if (!picked.length) throw new ReviewError(`no runs to review in ${run.dir} (every run was budget-skipped or not judgeable)`);
   const literals = secretLiterals(env);
   const groups = [];
   const keyGroups = [];
