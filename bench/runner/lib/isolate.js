@@ -191,11 +191,19 @@ function hideTargets(homes, hide, masks) {
   return withoutNested(uniq([...targets, ...masks]));
 }
 
+// The real path of a target, or its absolute path when it does not exist yet. The kernel mounts on the real path, so a
+// hide named through a symlinked parent (/home/u -> /local/home/u) must be compared and mounted as the real one.
+function resolveTarget(t) {
+  const abs = path.resolve(t);
+  try { return fs.realpathSync(abs); } catch { return abs; }
+}
+
 // A target inside another one is already hidden with it, and mounting over a path the parent tmpfs removed aborts
 // the setup script. Needed when --hide names a tree (the checkout) that also holds bench fixtures and tasks.
+// Returns the resolved paths, which are also what the mount script and the macOS profile are given.
 function withoutNested(targets) {
-  const abs = targets.map((t) => path.resolve(t));
-  return targets.filter((t, i) => !abs.some((p, j) => j !== i && abs[i] !== p && inside(abs[i], p)));
+  const abs = uniq(targets.map(resolveTarget));
+  return abs.filter((p) => !abs.some((q) => p !== q && inside(p, q)));
 }
 
 const sbq = (s) => `"${String(s).replace(/[\\"]/g, '\\$&')}"`;
@@ -246,8 +254,9 @@ function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTree
   const lines = ['set -e', 'ro() { mount --rbind "$1" "$1" && mount -o remount,ro,bind "$1"; }'];
   for (const d of [...homes, ...systemDirs, ...readOnlyTrees]) lines.push(`ro ${shq(d)}`);
   lines.push(`mount --bind ${shq(scratchRoot)} ${shq(scratchRoot)} && mount -o remount,rw,bind ${shq(scratchRoot)}`);
+  const soft = softMasks.map(resolveTarget);
   for (const t of hideTargets(homes, hide, masks)) {
-    const line = softMasks.includes(t) ? softMaskLine(t) : maskLine(t);
+    const line = soft.includes(t) ? softMaskLine(t) : maskLine(t);
     if (line) lines.push(line);
   }
   // Loopback must come up while the namespace still holds its capabilities; a missing `ip` leaves it down.
