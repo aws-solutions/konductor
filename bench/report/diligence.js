@@ -26,6 +26,8 @@ const THRESHOLDS = {
 
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 const pct = (v) => `${Math.round(v * 100)}%`;
+// Flags for runs the judges never see or whose numbers the agent could have touched; the failures line names them.
+const TAMPER_FLAGS = ['credsUnscrubbed', 'stdioTampered', 'usageDbTampered'];
 const ORDINAL = { pass: 2, partial: 1, fail: 0 };
 
 const C = (id, label, key, status, value, threshold, note = '') => ({ id, label, key, status, value, threshold, note });
@@ -187,7 +189,7 @@ function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, we
     checks: { withChecks: checkRows.length, currentRevision, stale },
     hidden: { tasks: taskIds.length, withHidden: taskIds.filter((t) => rows.some((r) => r.task === t && r.hidden !== null)).length },
     headroom: { tasks: baseTasks.length, ceilingTasks },
-    failures: { n: rows.length, timeout: rows.filter((r) => r.outcome === 'timeout').length, error: rows.filter((r) => r.outcome === 'error').length, infraError: rows.filter((r) => r.outcome === 'infraError').length, modelMismatch: rows.filter((r) => r.outcome === 'modelMismatch').length, checksFailed: rows.filter((r) => r.outcome === 'checksFailed').length },
+    failures: { n: rows.length, timeout: rows.filter((r) => r.outcome === 'timeout').length, error: rows.filter((r) => r.outcome === 'error').length, infraError: rows.filter((r) => r.outcome === 'infraError').length, modelMismatch: rows.filter((r) => r.outcome === 'modelMismatch').length, checksFailed: rows.filter((r) => r.outcome === 'checksFailed').length, ...Object.fromEntries(TAMPER_FLAGS.map((f) => [f, rows.filter((r) => (r.flags || []).includes(f)).length])) },
     censored: rows.filter((r) => r.censored).length,
     contamination: contaminated.length ? { audited: contaminated.length, flagged: flagged.length, externalFetch: contaminated.filter((r) => (r.contamination.externalFetch || []).length).length, externalFetchUnchecked: contaminated.filter((r) => fetchUnchecked(r.contamination)).length, fixRecall: contaminated.filter((r) => (r.contamination.fixRecallChars || 0) >= MIN_RECALL).length } : null,
     pin: { runs: rows.length, verified: rows.filter(pinOk).length, mismatch: rows.filter((r) => r.outcome === 'modelMismatch').length, ...unrecordedPin(rows.filter((r) => r.outcome !== 'modelMismatch' && !pinOk(r) && !r.sessionModel && !r.streamModel).length) },
@@ -273,7 +275,9 @@ function evaluate(f, t = THRESHOLDS) {
 
   const fl = f.failures;
   const bad = fl.timeout + fl.error + fl.infraError + fl.modelMismatch;
-  add(C('failures', 'Failed, timed-out, infra and model-mismatch runs', false, bad === 0 ? 'PASS' : bad / Math.max(1, fl.n) > t.failureShareFail ? 'FAIL' : 'WARN', `${bad} of ${fl.n} (timeout ${fl.timeout}, error ${fl.error}, infra ${fl.infraError}, model mismatch ${fl.modelMismatch}); checks failed ${fl.checksFailed}`, `0 PASS, over ${pct(t.failureShareFail)} FAIL`));
+  // These runs may be clean passes in the outcome counts yet are kept out of judging or have untrusted numbers, so they are never a silent PASS.
+  const tampered = TAMPER_FLAGS.filter((f) => fl[f] > 0).map((f) => `${f} ${fl[f]}`);
+  add(C('failures', 'Failed, timed-out, infra and model-mismatch runs', false, bad === 0 && !tampered.length ? 'PASS' : bad / Math.max(1, fl.n) > t.failureShareFail ? 'FAIL' : 'WARN', `${bad} of ${fl.n} (timeout ${fl.timeout}, error ${fl.error}, infra ${fl.infraError}, model mismatch ${fl.modelMismatch}); checks failed ${fl.checksFailed}${tampered.length ? `; flagged ${tampered.join(', ')}` : ''}`, `0 PASS, over ${pct(t.failureShareFail)} FAIL`));
   add(C('censored', 'Censored credits', false, f.censored === 0 ? 'PASS' : 'WARN', `${f.censored} run(s)${f.censored ? ' (credits are lower bounds)' : ''}`, '0'));
   if (!f.contamination) add(C('contamination', 'Contamination flags', false, 'N/A', 'no audited runs', '0 flagged'));
   else add(C('contamination', 'Contamination flags', false, f.contamination.flagged === 0 && !f.contamination.externalFetchUnchecked ? 'PASS' : 'WARN', `${f.contamination.flagged} of ${f.contamination.audited} audited (externalFetch ${f.contamination.externalFetch}, fixRecall ${f.contamination.fixRecall})${f.contamination.externalFetchUnchecked ? `; fetch audit ${FETCH_UNCHECKED} in ${f.contamination.externalFetchUnchecked} run(s)` : ''}`, '0 flagged'));

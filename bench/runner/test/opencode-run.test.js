@@ -201,6 +201,8 @@ test('an unreadable session database is flagged and falls back to the parent str
     const r = await executeRun({ arm: OC_VANILLA, task: s.task, replicate: 1, ctx: s.ctx, prepared: null, outDir: s.outDir });
     assert.ok(r.flags.includes('usageUnavailable'));
     assert.equal(r.tokens.cacheWrite, 10685, 'parent stream totals');
+    assert.equal(r.usageUnavailableReason, 'opencode db exited with status 1');
+    assert.equal(r.flags.includes('usageDbTampered'), false);
   } finally {
     s.cleanup();
   }

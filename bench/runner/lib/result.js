@@ -180,6 +180,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     ...(meta.claudeCode ? { claudeCode: meta.claudeCode } : {}),
     ...(meta.unscrubbed?.length ? { unscrubbedFiles: meta.unscrubbed } : {}),
     ...(meta.tamperedFiles?.length ? { tamperedFiles: meta.tamperedFiles } : {}),
+    ...(meta.usageUnavailableReason ? { usageUnavailableReason: meta.usageUnavailableReason } : {}),
     ...(autonomyFields({ task, conv, checks: checks || [], finalText: agg?.finalText ?? null, aggregateGroup }) ?? {}),
   };
 }

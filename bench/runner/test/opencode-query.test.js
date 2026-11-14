@@ -136,6 +136,44 @@ test('a symlinked database file is refused: no query runs, the run is flagged an
   }
 });
 
+test('a planted link or non-regular database file sets usageDbTampered and a reason that names no host path', () => {
+  const s = setup();
+  try {
+    const home = plantRun(s);
+    const target = path.join(s.root, 'host-secret');
+    write(target, 'HOST-SECRET');
+    const db = path.join(home, '.local', 'share', 'opencode', 'opencode.db');
+    fs.rmSync(db);
+    fs.symlinkSync(target, db);
+    const linked = parse(s, home);
+    assert.ok(linked.meta.flags.includes('usageUnavailable') && linked.meta.flags.includes('usageDbTampered'));
+    assert.match(linked.meta.usageUnavailableReason, /link or non-regular file/);
+    assert.equal(linked.meta.usageUnavailableReason.includes(s.root), false);
+
+    fs.rmSync(db);
+    write(db, 'DB-BYTES');
+    fs.mkdirSync(path.join(home, '.local', 'share', 'opencode', 'opencode.db-shm'));
+    const special = parse(s, home);
+    assert.ok(special.meta.flags.includes('usageDbTampered'), 'a directory where a database file belongs is refused the same way');
+    noPostDir(s.outDir);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('a failing query is usageUnavailable with a fixed reason but is not flagged as tampering', () => {
+  const s = setup({ dbFails: true });
+  try {
+    const acc = parse(s, plantRun(s));
+    assert.ok(acc.meta.flags.includes('usageUnavailable'));
+    assert.equal(acc.meta.flags.includes('usageDbTampered'), false);
+    assert.equal(acc.meta.usageUnavailableReason, 'opencode db exited with status 1');
+    noPostDir(s.outDir);
+  } finally {
+    s.cleanup();
+  }
+});
+
 test('a symlinked data directory or parent is refused', () => {
   const s = setup();
   try {

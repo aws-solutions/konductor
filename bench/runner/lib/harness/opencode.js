@@ -168,6 +168,18 @@ function queryDir({ outDir, home, tmpdir, arm, ctx, config }) {
   return prepareQueryDir({ outDir, home, dataHome: set.XDG_DATA_HOME, config: configJson({ konductor: !arm.vanilla }), flags });
 }
 
+// Why the usage query could not run, as a short fixed sentence: the error text names host paths and the output goes into
+// result.json. A link or non-regular file where the database should be is something the agent planted, so it also flags.
+function usageFailure(e) {
+  const msg = String(e?.message ?? '');
+  if (/symlink|not a plain|not a regular file/.test(msg)) return { reason: 'a link or non-regular file in the usage database path, nothing was copied or queried', tamper: true };
+  if (/would exceed/.test(msg)) return { reason: 'the usage database is over the copy size limit', tamper: false };
+  if (e instanceof SyntaxError) return { reason: 'opencode db printed output that is not JSON', tamper: false };
+  if (typeof e?.status === 'number') return { reason: `opencode db exited with status ${e.status}`, tamper: false };
+  if (typeof e?.code === 'string' && /^[A-Z0-9_]+$/.test(e.code)) return { reason: `the usage query failed (${e.code})`, tamper: false };
+  return { reason: 'the usage query failed', tamper: false };
+}
+
 // What the runner needs to know after one turn: how it ended and what the agent said last.
 function turnSummary(streamText) {
   const a = aggregateEvents(parseStream(streamText).events);
@@ -186,15 +198,22 @@ function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config }) {
 
   let rollup = null;
   let q = null;
+  let failure = null;
   try {
     q = queryDir({ outDir, home, tmpdir, arm, ctx, config });
     rollup = queryRollup(dbRunner(ctx.opencode.bin, q), a.sessionId);
-  } catch { /* flagged below */ } finally {
+  } catch (e) {
+    failure = usageFailure(e);
+  } finally {
     if (q) q.cleanup();
   }
   const flags = acc.meta.flags;
-  if (!rollup) flags.push('usageUnavailable');
-  else {
+  if (!rollup) {
+    flags.push('usageUnavailable');
+    failure ??= { reason: 'the usage database held no session for this run', tamper: false };
+    acc.meta.usageUnavailableReason = failure.reason;
+    if (failure.tamper) flags.push('usageDbTampered');
+  } else {
     if (rollup.orphanSessions.length) flags.push('orphanSessions');
     const streamDone = a.runFinishedStatus !== null;
     const same = (x, y) => Object.keys(x).every((k) => x[k] === y[k]);

@@ -134,6 +134,16 @@ test('failures: none pass, a few warn, over 20% fail', () => {
   assert.equal(status(fl(5), 'failures'), 'FAIL');
 });
 
+test('failures: a run kept out of judging or with untrusted numbers is named and never a silent PASS', () => {
+  const failures = (extra) => ({ n: 20, timeout: 0, error: 0, infraError: 0, modelMismatch: 0, checksFailed: 0, ...extra });
+  for (const flag of ['credsUnscrubbed', 'stdioTampered', 'usageDbTampered']) {
+    const f = good({ failures: failures({ [flag]: 2 }) });
+    assert.equal(status(f, 'failures'), 'WARN', flag);
+    assert.match(by(evaluate(f), 'failures').value, new RegExp(`flagged ${flag} 2`));
+  }
+  assert.doesNotMatch(by(evaluate(good()), 'failures').value, /flagged/);
+});
+
 test('censored credits and contamination warn when present', () => {
   assert.equal(status(good({ censored: 2 }), 'censored'), 'WARN');
   assert.equal(status(good({ contamination: { audited: 4, flagged: 1, externalFetch: 1, fixRecall: 0 } }), 'contamination'), 'WARN');

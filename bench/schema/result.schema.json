@@ -169,6 +169,10 @@
       "items": { "type": "string" },
       "description": "Present when the flag stdioTampered is set: names of the live output files (stream, stderr) the agent replaced with a symlink, hardlink, special file or foreign file. They were not moved; an empty file stands in. The run also has infraError and is not judged."
     },
+    "usageUnavailableReason": {
+      "type": "string",
+      "description": "Present when the flag usageUnavailable is set (opencode runs): a short fixed reason the post-run usage query did not produce numbers, with no host paths. The flag usageDbTampered is set when the reason is a link or non-regular file the agent planted where the database should be."
+    },
     "armConfig": {
       "type": [
         "object",

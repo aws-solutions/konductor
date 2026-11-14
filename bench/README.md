@@ -420,7 +420,8 @@ node bench/runner/bench.js run --suite lite --arms oc-vanilla,oc-v1.2.0,oc-main 
   (stream and export carry the parent only). `tokens.total` = input + output + cache read + cache write;
   `costUsd` is list price (2 / 10 / 0.1 / 2.5 USD per M tokens for in / out / cache read / cache write on Sonnet 5.5).
   A timed-out run uses the rows present and sets `costCensored`. `credits` stays null. Flags: `usageMismatch`,
-  `usageUnavailable`, `orphanSessions`, `variantMismatch`, `throttled`.
+  `usageUnavailable` (with a short `usageUnavailableReason` in result.json), `usageDbTampered` (the reason is a link or
+  non-regular file the agent planted where the database should be), `orphanSessions`, `variantMismatch`, `throttled`.
 - Bedrock caches prompts for about 5 minutes, so a run started soon after another can read its cache: cost carries
   run-order noise (the seeded shuffle is kept). The model id, region, variant, version and start time are recorded.
 
