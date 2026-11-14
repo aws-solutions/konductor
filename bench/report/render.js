@@ -3,6 +3,7 @@
 
 const { renderSkillsMarkdown } = require('./skills.js');
 const { externalFetchCell } = require('../runner/lib/contamination.js');
+const { EXCLUSION_CLASS } = require('../judge/exclusion.js');
 
 const pct = (v) => (v === null || v === undefined ? 'n/a' : `${(v * 100).toFixed(0)}%`);
 const f = (v, d = 2) => (v === null || v === undefined ? 'n/a' : Number(v).toFixed(d));
@@ -19,6 +20,35 @@ function rubricCell(c) {
   if (!c.rubric) return 'n/a';
   const parts = Object.entries(c.rubric.byJudge).map(([j, s]) => `${j} ${f(s.mean)} (raw ${f(s.meanRaw)})${s.errors ? ` (${s.errors} err)` : ''}`);
   return [...parts, `mean ${f(c.rubric.meanOfJudges.mean)} (raw ${f(c.rubric.meanOfJudges.meanRaw)})`].join('<br>');
+}
+
+// A stamped study (report.rubricPolicy) shows the main rubric number with excluded runs as 0, the judged-only number
+// beside it and the excluded count, always, so the table has the same shape whether or not a run was excluded.
+const RUBRIC_HEAD = 'rubric score, scored (raw judge verdicts)';
+function rubricHeads(report) {
+  return report.rubricPolicy ? ['rubric (excluded runs = 0), scored (raw)', 'rubric (judged runs only), scored (raw)', 'excluded runs (counted as 0)'] : [RUBRIC_HEAD];
+}
+function rubricCells(report, c) {
+  if (!report.rubricPolicy) return [rubricCell(c)];
+  if (!c.rubricAll) return ['n/a', rubricCell(c), String(c.excludedCount ?? 0)];
+  return [`mean ${f(c.rubricAll.mean)} (raw ${f(c.rubricAll.meanRaw)}) over ${c.rubricAll.n} run(s)`, rubricCell(c), String(c.excludedCount)];
+}
+
+// How each reason a run is kept out of judging counts in a stamped study.
+const exclusionRows = () => [
+  ...Object.entries(EXCLUSION_CLASS).map(([reason, cls]) => [reason, cls, cls === 'integrity' ? 'counted as 0' : 'left out']),
+  ['budget_skipped', 'gap', 'not executed, left out'],
+];
+
+function rubricPolicyNote(report) {
+  if (!report.judging) return [];
+  if (!report.rubricPolicy) return ['legacy: excluded runs are gaps', ''];
+  return [
+    'Rubric policy: runs kept out of judging for an integrity reason count as failures (0 on every rubric item) in the main rubric number. The judged-runs-only number leaves them out. Runs left out for a reason that is not the agent\'s doing stay gaps in both.',
+    '',
+    table(['reason', 'class', 'in the main rubric number'], exclusionRows()),
+    '',
+  ];
 }
 
 // Cost figures always carry the failure rates and say when censored runs make them lower bounds.
@@ -118,7 +148,7 @@ function scopeSection(report, scope) {
   const quality = arms.map((a) => {
     const c = report.arms[a][scope];
     const st = `${c.byStatus.success}/${c.byStatus.timeout}/${c.byStatus.error}${c.skipped ? ` +${c.skipped} skipped` : ''}`;
-    return withHidden([a, c.n, st, pct(c.successRate), pct(c.checkPassRate), pct(c.askedUserRate), rubricCell(c), pairCell(c), `${f(c.credits.perSuccessfulRun)}<br>${costNote(c)}`], c, arms, report, scope);
+    return withHidden([a, c.n, st, pct(c.successRate), pct(c.checkPassRate), pct(c.askedUserRate), ...rubricCells(report, c), pairCell(c), `${f(c.credits.perSuccessfulRun)}<br>${costNote(c)}`], c, arms, report, scope);
   });
   const eff = arms.map((a) => {
     const c = report.arms[a][scope];
@@ -127,7 +157,7 @@ function scopeSection(report, scope) {
   });
   return [
     `### ${scope}`,
-    table(qHead(['arm', 'n', 'ok/timeout/error', 'success', 'pass', 'asked user', 'rubric score, scored (raw judge verdicts)', `win/tie/loss vs ${report.baseline}`, 'credits per successful run'], report, arms, scope), quality),
+    table(qHead(['arm', 'n', 'ok/timeout/error', 'success', 'pass', 'asked user', ...rubricHeads(report), `win/tie/loss vs ${report.baseline}`, 'credits per successful run'], report, arms, scope), quality),
     '',
     table(['arm', 'clean passes in medians', 'credits', 'modelCalls', 'toolCalls', 'subagentCalls', 'wallClock s', 'estTokens (estimate)'], eff),
     ...[contaminationSection(report, scope, arms)].filter(Boolean).flatMap((x) => ['', x]),
@@ -140,7 +170,7 @@ function scopeSectionOpencode(report, scope) {
   const quality = arms.map((a) => {
     const c = report.arms[a][scope];
     const st = `${c.byStatus.success}/${c.byStatus.timeout}/${c.byStatus.error}${c.skipped ? ` +${c.skipped} skipped` : ''}`;
-    return withHidden([a, c.n, st, pct(c.successRate), pct(c.checkPassRate), pct(c.askedUserRate), rubricCell(c), pairCell(c), `${f(c.cost.perSuccessfulRun, 3)}<br>${costNote(c)}`], c, arms, report, scope);
+    return withHidden([a, c.n, st, pct(c.successRate), pct(c.checkPassRate), pct(c.askedUserRate), ...rubricCells(report, c), pairCell(c), `${f(c.cost.perSuccessfulRun, 3)}<br>${costNote(c)}`], c, arms, report, scope);
   });
   const eff = arms.map((a) => {
     const c = report.arms[a][scope];
@@ -149,7 +179,7 @@ function scopeSectionOpencode(report, scope) {
   });
   return [
     `### ${scope}`,
-    table(qHead(['arm', 'n', 'ok/timeout/error', 'success', 'pass', 'asked user', 'rubric score, scored (raw judge verdicts)', `win/tie/loss vs ${report.baseline}`, 'USD per successful run'], report, arms, scope), quality),
+    table(qHead(['arm', 'n', 'ok/timeout/error', 'success', 'pass', 'asked user', ...rubricHeads(report), `win/tie/loss vs ${report.baseline}`, 'USD per successful run'], report, arms, scope), quality),
     '',
     table(['arm', 'clean passes in medians', 'USD (list price)', 'tokens (input + output + cache read + cache write)', 'modelCalls', 'toolCalls', 'subagentCalls', 'wallClock s'], eff),
     ...[contaminationSection(report, scope, arms)].filter(Boolean).flatMap((x) => ['', x]),
@@ -170,6 +200,7 @@ function renderMarkdown(report) {
     '',
     report.harness === 'claude-code' ? HOW_TO_READ_CLAUDE_CODE : isUsdHarness(report.harness) ? HOW_TO_READ_OPENCODE : 'How to read: efficiency cells (credits, calls, wall clock, tokens) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median, so they cannot make an arm look cheap; they are shown as rates beside every cost figure (timeout, error, infra, model mismatch, checks failed, budget-skipped). "success" is the share of runs that finished cleanly; "pass" also needs every check to pass. "credits per successful run" is the total charged over all executed runs divided by clean passes, so failures raise it; a run killed before its final metering event is charged the runner\'s ledger value, not its partial figure. Tokens are not exposed by kiro-cli, so credits are the cost measure and estTokens is transcript characters / 4, an estimate. "asked user" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.',
     '',
+    ...rubricPolicyNote(report),
   ];
   const flags = [];
   const rc = report.checksRecheck;
@@ -196,7 +227,7 @@ function renderMarkdown(report) {
       out.push(`Left out of every score and tally (${report.judging.stale.length} record(s)): judged against an earlier version of the rubric, answer key or prompt. They are still in judgments.json. Re-run the judge command to refresh them.`, '');
     }
     if (report.judging.notJudged.length) {
-      out.push(`Not judged (${report.judging.notJudged.length}): ${report.judging.notJudged.map((x) => `${x.armId}/${x.taskId}/#${x.replicate} (${x.reason})`).join(', ')}`, '');
+      out.push(`Not judged (${report.judging.notJudged.length}): ${report.judging.notJudged.map((x) => `${x.armId}/${x.taskId}/#${x.replicate} (${x.reason}${x.exclusionClass ? `, ${x.exclusionClass}` : ''})`).join(', ')}`, '');
     }
   }
   if (report.skills) out.push(renderSkillsMarkdown(report.skills), '');

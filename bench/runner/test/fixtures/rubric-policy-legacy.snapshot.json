@@ -1,0 +1,668 @@
+{
+  "json": {
+    "schemaVersion": 1,
+    "harness": "kiro-cli",
+    "costUnit": "credits",
+    "run": {
+      "dir": "<ROOT>/head",
+      "suite": "lite",
+      "model": "claude-sonnet-5.5",
+      "effort": "high",
+      "taskIds": [
+        "t1"
+      ],
+      "kiroCliVersion": "kiro-cli 2.35.1",
+      "harnessVersion": "kiro-cli 2.35.1"
+    },
+    "baseline": "vanilla",
+    "judges": [
+      "j1",
+      "j2"
+    ],
+    "scopes": [
+      "overall",
+      "simple"
+    ],
+    "arms": {
+      "vanilla": {
+        "overall": {
+          "n": 4,
+          "skipped": 0,
+          "byStatus": {
+            "success": 3,
+            "timeout": 0,
+            "error": 1
+          },
+          "counts": {
+            "good": 3,
+            "checksFailed": 0,
+            "timeout": 0,
+            "error": 0,
+            "infraError": 1,
+            "modelMismatch": 0
+          },
+          "rates": {
+            "good": 0.75,
+            "checksFailed": 0,
+            "timeout": 0,
+            "error": 0,
+            "infraError": 0.25,
+            "modelMismatch": 0
+          },
+          "successRate": 0.75,
+          "timeoutRate": 0,
+          "askedUserRate": null,
+          "flagCounts": {},
+          "checkPassRate": 0.75,
+          "hidden": null,
+          "regression": null,
+          "contamination": null,
+          "minReplicates": 4,
+          "lowReplicates": false,
+          "notJudged": 1,
+          "efficiencyRuns": 3,
+          "credits": {
+            "unit": "credits",
+            "total": 4,
+            "observedTotal": 4,
+            "missing": 0,
+            "censoredRuns": 0,
+            "isLowerBound": false,
+            "successfulRuns": 3,
+            "perSuccessfulRun": 1.3333333333333333
+          },
+          "rubric": {
+            "byJudge": {
+              "j1": {
+                "n": 3,
+                "mean": 0.75,
+                "meanRaw": 0.75,
+                "errors": 0
+              },
+              "j2": {
+                "n": 3,
+                "mean": 0.75,
+                "meanRaw": 0.75,
+                "errors": 0
+              }
+            },
+            "meanOfJudges": {
+              "n": 3,
+              "mean": 0.75,
+              "meanRaw": 0.75
+            },
+            "disagreement": {
+              "n": 3,
+              "meanAbsDiff": 0,
+              "runsOver": 0
+            }
+          },
+          "pairwise": null,
+          "efficiency": {
+            "credits": {
+              "n": 3,
+              "median": 1,
+              "ciLow": 1,
+              "ciHigh": 1
+            },
+            "modelCalls": {
+              "n": 3,
+              "median": 2,
+              "ciLow": 2,
+              "ciHigh": 2
+            },
+            "toolCalls": {
+              "n": 3,
+              "median": 3,
+              "ciLow": 3,
+              "ciHigh": 3
+            },
+            "subagentCalls": {
+              "n": 3,
+              "median": 0,
+              "ciLow": 0,
+              "ciHigh": 0
+            },
+            "wallClockMs": {
+              "n": 3,
+              "median": 1000,
+              "ciLow": 1000,
+              "ciHigh": 1000
+            },
+            "estTokens": {
+              "n": 3,
+              "median": 100,
+              "ciLow": 100,
+              "ciHigh": 100,
+              "isEstimate": true
+            }
+          },
+          "flags": [
+            "1 of 4 run(s) were not clean passes (1 infraError); efficiency medians use the 3 clean pass(es) only, the failure rates and credits per successful run include all",
+            "1 run(s) not judged (infraError); they have no rubric or pairwise result"
+          ],
+          "cost": {
+            "unit": "credits",
+            "total": 4,
+            "observedTotal": 4,
+            "missing": 0,
+            "censoredRuns": 0,
+            "isLowerBound": false,
+            "successfulRuns": 3,
+            "perSuccessfulRun": 1.3333333333333333
+          }
+        },
+        "simple": {
+          "n": 4,
+          "skipped": 0,
+          "byStatus": {
+            "success": 3,
+            "timeout": 0,
+            "error": 1
+          },
+          "counts": {
+            "good": 3,
+            "checksFailed": 0,
+            "timeout": 0,
+            "error": 0,
+            "infraError": 1,
+            "modelMismatch": 0
+          },
+          "rates": {
+            "good": 0.75,
+            "checksFailed": 0,
+            "timeout": 0,
+            "error": 0,
+            "infraError": 0.25,
+            "modelMismatch": 0
+          },
+          "successRate": 0.75,
+          "timeoutRate": 0,
+          "askedUserRate": null,
+          "flagCounts": {},
+          "checkPassRate": 0.75,
+          "hidden": null,
+          "regression": null,
+          "contamination": null,
+          "minReplicates": 4,
+          "lowReplicates": false,
+          "notJudged": 1,
+          "efficiencyRuns": 3,
+          "credits": {
+            "unit": "credits",
+            "total": 4,
+            "observedTotal": 4,
+            "missing": 0,
+            "censoredRuns": 0,
+            "isLowerBound": false,
+            "successfulRuns": 3,
+            "perSuccessfulRun": 1.3333333333333333
+          },
+          "rubric": {
+            "byJudge": {
+              "j1": {
+                "n": 3,
+                "mean": 0.75,
+                "meanRaw": 0.75,
+                "errors": 0
+              },
+              "j2": {
+                "n": 3,
+                "mean": 0.75,
+                "meanRaw": 0.75,
+                "errors": 0
+              }
+            },
+            "meanOfJudges": {
+              "n": 3,
+              "mean": 0.75,
+              "meanRaw": 0.75
+            },
+            "disagreement": {
+              "n": 3,
+              "meanAbsDiff": 0,
+              "runsOver": 0
+            }
+          },
+          "pairwise": null,
+          "efficiency": {
+            "credits": {
+              "n": 3,
+              "median": 1,
+              "ciLow": 1,
+              "ciHigh": 1
+            },
+            "modelCalls": {
+              "n": 3,
+              "median": 2,
+              "ciLow": 2,
+              "ciHigh": 2
+            },
+            "toolCalls": {
+              "n": 3,
+              "median": 3,
+              "ciLow": 3,
+              "ciHigh": 3
+            },
+            "subagentCalls": {
+              "n": 3,
+              "median": 0,
+              "ciLow": 0,
+              "ciHigh": 0
+            },
+            "wallClockMs": {
+              "n": 3,
+              "median": 1000,
+              "ciLow": 1000,
+              "ciHigh": 1000
+            },
+            "estTokens": {
+              "n": 3,
+              "median": 100,
+              "ciLow": 100,
+              "ciHigh": 100,
+              "isEstimate": true
+            }
+          },
+          "flags": [
+            "1 of 4 run(s) were not clean passes (1 infraError); efficiency medians use the 3 clean pass(es) only, the failure rates and credits per successful run include all",
+            "1 run(s) not judged (infraError); they have no rubric or pairwise result"
+          ],
+          "cost": {
+            "unit": "credits",
+            "total": 4,
+            "observedTotal": 4,
+            "missing": 0,
+            "censoredRuns": 0,
+            "isLowerBound": false,
+            "successfulRuns": 3,
+            "perSuccessfulRun": 1.3333333333333333
+          }
+        }
+      },
+      "v1": {
+        "overall": {
+          "n": 4,
+          "skipped": 0,
+          "byStatus": {
+            "success": 4,
+            "timeout": 0,
+            "error": 0
+          },
+          "counts": {
+            "good": 4,
+            "checksFailed": 0,
+            "timeout": 0,
+            "error": 0,
+            "infraError": 0,
+            "modelMismatch": 0
+          },
+          "rates": {
+            "good": 1,
+            "checksFailed": 0,
+            "timeout": 0,
+            "error": 0,
+            "infraError": 0,
+            "modelMismatch": 0
+          },
+          "successRate": 1,
+          "timeoutRate": 0,
+          "askedUserRate": null,
+          "flagCounts": {
+            "credsUnscrubbed": 1,
+            "usageDbTampered": 1
+          },
+          "checkPassRate": 1,
+          "hidden": null,
+          "regression": null,
+          "contamination": null,
+          "minReplicates": 4,
+          "lowReplicates": false,
+          "notJudged": 2,
+          "efficiencyRuns": 4,
+          "credits": {
+            "unit": "credits",
+            "total": 4,
+            "observedTotal": 4,
+            "missing": 0,
+            "censoredRuns": 0,
+            "isLowerBound": false,
+            "successfulRuns": 4,
+            "perSuccessfulRun": 1
+          },
+          "rubric": {
+            "byJudge": {
+              "j1": {
+                "n": 2,
+                "mean": 0.875,
+                "meanRaw": 0.875,
+                "errors": 0
+              },
+              "j2": {
+                "n": 2,
+                "mean": 0.875,
+                "meanRaw": 0.875,
+                "errors": 0
+              }
+            },
+            "meanOfJudges": {
+              "n": 2,
+              "mean": 0.875,
+              "meanRaw": 0.875
+            },
+            "disagreement": {
+              "n": 2,
+              "meanAbsDiff": 0,
+              "runsOver": 0
+            }
+          },
+          "pairwise": {
+            "byJudge": {
+              "j1": {
+                "win": 0,
+                "tie": 0,
+                "loss": 0,
+                "positionInconsistent": 0,
+                "errors": 0
+              },
+              "j2": {
+                "win": 0,
+                "tie": 0,
+                "loss": 0,
+                "positionInconsistent": 0,
+                "errors": 0
+              }
+            },
+            "total": {
+              "win": 0,
+              "tie": 0,
+              "loss": 0,
+              "positionInconsistent": 0,
+              "errors": 0
+            }
+          },
+          "efficiency": {
+            "credits": {
+              "n": 4,
+              "median": 1,
+              "ciLow": 1,
+              "ciHigh": 1
+            },
+            "modelCalls": {
+              "n": 4,
+              "median": 2,
+              "ciLow": 2,
+              "ciHigh": 2
+            },
+            "toolCalls": {
+              "n": 4,
+              "median": 3,
+              "ciLow": 3,
+              "ciHigh": 3
+            },
+            "subagentCalls": {
+              "n": 4,
+              "median": 0,
+              "ciLow": 0,
+              "ciHigh": 0
+            },
+            "wallClockMs": {
+              "n": 4,
+              "median": 1000,
+              "ciLow": 1000,
+              "ciHigh": 1000
+            },
+            "estTokens": {
+              "n": 4,
+              "median": 100,
+              "ciLow": 100,
+              "ciHigh": 100,
+              "isEstimate": true
+            }
+          },
+          "flags": [
+            "1 run(s) flagged credsUnscrubbed",
+            "1 run(s) flagged usageDbTampered",
+            "2 run(s) not judged (credsUnscrubbed, usageDbTampered); they have no rubric or pairwise result"
+          ],
+          "cost": {
+            "unit": "credits",
+            "total": 4,
+            "observedTotal": 4,
+            "missing": 0,
+            "censoredRuns": 0,
+            "isLowerBound": false,
+            "successfulRuns": 4,
+            "perSuccessfulRun": 1
+          }
+        },
+        "simple": {
+          "n": 4,
+          "skipped": 0,
+          "byStatus": {
+            "success": 4,
+            "timeout": 0,
+            "error": 0
+          },
+          "counts": {
+            "good": 4,
+            "checksFailed": 0,
+            "timeout": 0,
+            "error": 0,
+            "infraError": 0,
+            "modelMismatch": 0
+          },
+          "rates": {
+            "good": 1,
+            "checksFailed": 0,
+            "timeout": 0,
+            "error": 0,
+            "infraError": 0,
+            "modelMismatch": 0
+          },
+          "successRate": 1,
+          "timeoutRate": 0,
+          "askedUserRate": null,
+          "flagCounts": {
+            "credsUnscrubbed": 1,
+            "usageDbTampered": 1
+          },
+          "checkPassRate": 1,
+          "hidden": null,
+          "regression": null,
+          "contamination": null,
+          "minReplicates": 4,
+          "lowReplicates": false,
+          "notJudged": 2,
+          "efficiencyRuns": 4,
+          "credits": {
+            "unit": "credits",
+            "total": 4,
+            "observedTotal": 4,
+            "missing": 0,
+            "censoredRuns": 0,
+            "isLowerBound": false,
+            "successfulRuns": 4,
+            "perSuccessfulRun": 1
+          },
+          "rubric": {
+            "byJudge": {
+              "j1": {
+                "n": 2,
+                "mean": 0.875,
+                "meanRaw": 0.875,
+                "errors": 0
+              },
+              "j2": {
+                "n": 2,
+                "mean": 0.875,
+                "meanRaw": 0.875,
+                "errors": 0
+              }
+            },
+            "meanOfJudges": {
+              "n": 2,
+              "mean": 0.875,
+              "meanRaw": 0.875
+            },
+            "disagreement": {
+              "n": 2,
+              "meanAbsDiff": 0,
+              "runsOver": 0
+            }
+          },
+          "pairwise": {
+            "byJudge": {
+              "j1": {
+                "win": 0,
+                "tie": 0,
+                "loss": 0,
+                "positionInconsistent": 0,
+                "errors": 0
+              },
+              "j2": {
+                "win": 0,
+                "tie": 0,
+                "loss": 0,
+                "positionInconsistent": 0,
+                "errors": 0
+              }
+            },
+            "total": {
+              "win": 0,
+              "tie": 0,
+              "loss": 0,
+              "positionInconsistent": 0,
+              "errors": 0
+            }
+          },
+          "efficiency": {
+            "credits": {
+              "n": 4,
+              "median": 1,
+              "ciLow": 1,
+              "ciHigh": 1
+            },
+            "modelCalls": {
+              "n": 4,
+              "median": 2,
+              "ciLow": 2,
+              "ciHigh": 2
+            },
+            "toolCalls": {
+              "n": 4,
+              "median": 3,
+              "ciLow": 3,
+              "ciHigh": 3
+            },
+            "subagentCalls": {
+              "n": 4,
+              "median": 0,
+              "ciLow": 0,
+              "ciHigh": 0
+            },
+            "wallClockMs": {
+              "n": 4,
+              "median": 1000,
+              "ciLow": 1000,
+              "ciHigh": 1000
+            },
+            "estTokens": {
+              "n": 4,
+              "median": 100,
+              "ciLow": 100,
+              "ciHigh": 100,
+              "isEstimate": true
+            }
+          },
+          "flags": [
+            "1 run(s) flagged credsUnscrubbed",
+            "1 run(s) flagged usageDbTampered",
+            "2 run(s) not judged (credsUnscrubbed, usageDbTampered); they have no rubric or pairwise result"
+          ],
+          "cost": {
+            "unit": "credits",
+            "total": 4,
+            "observedTotal": 4,
+            "missing": 0,
+            "censoredRuns": 0,
+            "isLowerBound": false,
+            "successfulRuns": 4,
+            "perSuccessfulRun": 1
+          }
+        }
+      }
+    },
+    "judging": {
+      "byJudge": {
+        "j1": {
+          "records": 5,
+          "errors": 0,
+          "calls": 5,
+          "cachedCalls": 0,
+          "parseFailures": 0,
+          "credits": 0.5,
+          "medianLatencyMs": 100,
+          "evidenceDowngraded": 0,
+          "evidenceQuoteFoundRate": 1,
+          "unverifiedQuoteRate": 0
+        },
+        "j2": {
+          "records": 5,
+          "errors": 0,
+          "calls": 5,
+          "cachedCalls": 0,
+          "parseFailures": 0,
+          "credits": 0.5,
+          "medianLatencyMs": 100,
+          "evidenceDowngraded": 0,
+          "evidenceQuoteFoundRate": 1,
+          "unverifiedQuoteRate": 0
+        }
+      },
+      "positionInconsistent": 0,
+      "spentCredits": null,
+      "spentUsd": null,
+      "panel": {
+        "families": [
+          "a",
+          "b",
+          "c"
+        ],
+        "small": false
+      },
+      "notJudged": [
+        {
+          "armId": "vanilla",
+          "taskId": "t1",
+          "replicate": 4,
+          "reason": "infraError"
+        },
+        {
+          "armId": "v1",
+          "taskId": "t1",
+          "replicate": 3,
+          "reason": "credsUnscrubbed"
+        },
+        {
+          "armId": "v1",
+          "taskId": "t1",
+          "replicate": 4,
+          "reason": "usageDbTampered"
+        }
+      ],
+      "stale": [],
+      "backend": "kiro",
+      "backends": [
+        "kiro"
+      ],
+      "backendInfo": null
+    },
+    "checksRecheck": null
+  },
+  "md": "# Benchmark report\n\nRun: <ROOT>/head  \nSuite: lite, model claude-sonnet-5.5, effort high, 1 task(s), kiro-cli kiro-cli 2.35.1  \nBaseline: vanilla. Judges: j1, j2\n\nHow to read: efficiency cells (credits, calls, wall clock, tokens) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median, so they cannot make an arm look cheap; they are shown as rates beside every cost figure (timeout, error, infra, model mismatch, checks failed, budget-skipped). \"success\" is the share of runs that finished cleanly; \"pass\" also needs every check to pass. \"credits per successful run\" is the total charged over all executed runs divided by clean passes, so failures raise it; a run killed before its final metering event is charged the runner's ledger value, not its partial figure. Tokens are not exposed by kiro-cli, so credits are the cost measure and estTokens is transcript characters / 4, an estimate. \"asked user\" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.\n\n## Flags\n\n- vanilla / overall: 1 of 4 run(s) were not clean passes (1 infraError); efficiency medians use the 3 clean pass(es) only, the failure rates and credits per successful run include all\n- vanilla / overall: 1 run(s) not judged (infraError); they have no rubric or pairwise result\n- vanilla / simple: 1 of 4 run(s) were not clean passes (1 infraError); efficiency medians use the 3 clean pass(es) only, the failure rates and credits per successful run include all\n- vanilla / simple: 1 run(s) not judged (infraError); they have no rubric or pairwise result\n- v1 / overall: 1 run(s) flagged credsUnscrubbed\n- v1 / overall: 1 run(s) flagged usageDbTampered\n- v1 / overall: 2 run(s) not judged (credsUnscrubbed, usageDbTampered); they have no rubric or pairwise result\n- v1 / simple: 1 run(s) flagged credsUnscrubbed\n- v1 / simple: 1 run(s) flagged usageDbTampered\n- v1 / simple: 2 run(s) not judged (credsUnscrubbed, usageDbTampered); they have no rubric or pairwise result\n\n## Results\n\n### overall\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs vanilla | credits per successful run |\n|---|---|---|---|---|---|---|---|---|\n| vanilla | 4 | 3/0/1 | 75% | 75% | n/a | j1 0.75 (raw 0.75)<br>j2 0.75 (raw 0.75)<br>mean 0.75 (raw 0.75) | - | 1.33<br>timeout 0%; error 0%, infra 25%, model mismatch 0%, checks failed 0% |\n| v1 | 4 | 4/0/0 | 100% | 100% | n/a | j1 0.88 (raw 0.88)<br>j2 0.88 (raw 0.88)<br>mean 0.88 (raw 0.88) | 0/0/0 | 1.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | credits | modelCalls | toolCalls | subagentCalls | wallClock s | estTokens (estimate) |\n|---|---|---|---|---|---|---|---|\n| vanilla | 3 of 4 | 1.00 [1.00, 1.00]<br>timeout 0%; error 0%, infra 25%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n| v1 | 4 of 4 | 1.00 [1.00, 1.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n\n### simple\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs vanilla | credits per successful run |\n|---|---|---|---|---|---|---|---|---|\n| vanilla | 4 | 3/0/1 | 75% | 75% | n/a | j1 0.75 (raw 0.75)<br>j2 0.75 (raw 0.75)<br>mean 0.75 (raw 0.75) | - | 1.33<br>timeout 0%; error 0%, infra 25%, model mismatch 0%, checks failed 0% |\n| v1 | 4 | 4/0/0 | 100% | 100% | n/a | j1 0.88 (raw 0.88)<br>j2 0.88 (raw 0.88)<br>mean 0.88 (raw 0.88) | 0/0/0 | 1.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | credits | modelCalls | toolCalls | subagentCalls | wallClock s | estTokens (estimate) |\n|---|---|---|---|---|---|---|---|\n| vanilla | 3 of 4 | 1.00 [1.00, 1.00]<br>timeout 0%; error 0%, infra 25%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n| v1 | 4 of 4 | 1.00 [1.00, 1.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n\n## Judging\n\nJudge backend: kiro.\n\n| judge | records | errors | calls (cached) | parse failures | credits (all invocations) | median latency s | quote not found | downgraded (quote missing) |\n|---|---|---|---|---|---|---|---|---|\n| j1 | 5 | 0 | 5 (0) | 0 | 0.500 | 0.1 | 0% | 0 |\n| j2 | 5 | 0 | 5 (0) | 0 | 0.500 | 0.1 | 0% | 0 |\n\nTotal judge spend over all invocations: n/a credits. Cached calls cost 0 and show the latency measured when they ran. Pairwise results where the two orderings disagreed: 0\n\nRubric score: \"scored\" lowers a verdict one level when the judge's evidence quote is not found in the output (ellipsis, case, whitespace and markdown emphasis are ignored when matching); \"raw\" is the judge's own verdicts. \"quote not found\" is the share of quoted criteria whose quote was not found.\n\nNot judged (3): vanilla/t1/#4 (infraError), v1/t1/#3 (credsUnscrubbed), v1/t1/#4 (usageDbTampered)\n",
+  "compare": "Rule: both, minimum relative change 1%\nREGRESSIONS (0):\n  none\nIMPROVEMENTS (2):\n  v1 / overall / rubricScore: 0.500 -> 0.875 (+75%) [few runs, CI not used]\n  v1 / simple / rubricScore: 0.500 -> 0.875 (+75%) [few runs, CI not used]",
+  "verdict": [
+    "Not enough evidence. fewer than 5 paired task cells (1), too few for an interval that holds its 95% level; 1 of 4 runs of vanilla have no score (infra errors, model mismatches or nothing to score), over the 20% limit; the arm and vanilla were scored on different components in 1 cell(s) (t1: the arm 2 x checks+rubric, 2 x checks; vanilla 3 x checks+rubric), so their scores are not comparable; the diligence rating is anecdotal (Judge coverage (FAIL)); there is no A/A noise floor, so a difference cannot be told from run-to-run noise; the paired interval of the quality difference could not be computed."
+  ]
+}

@@ -6,6 +6,7 @@ const { summarizeSkills, rowsFromResults } = require('./skills.js');
 const { rubricScore } = require('../judge/score.js');
 const { taskRevision } = require('../judge/revision.js');
 const { MIN_RECALL, fetchUnchecked } = require('../runner/lib/contamination.js');
+const { RUBRIC_POLICY, exclusionClassOfReason } = require('../judge/exclusion.js');
 
 const CLASS_ORDER = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'complex', 'real', 'autonomy'];
 const MIN_REPLICATES = 3;
@@ -156,7 +157,14 @@ function contaminationSummary(executed) {
   };
 }
 
-function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagreeScore, notJudged = [], basis = BASIS['kiro-cli'], rawScoreOf = (rec) => rec.scoreRaw ?? rec.score, noQuestionTasks = new Set() }) {
+// Executed runs kept out of judging for an integrity reason that no judge scored. A stamped study counts each as a failure.
+function integrityExcluded(executed, notJudged, judges, rubricIdx) {
+  const key = (x) => `${x.armId}|${x.taskId}|${x.replicate}`;
+  const keys = new Set(notJudged.filter((x) => exclusionClassOfReason(x.reason) === 'integrity').map(key));
+  return executed.filter((e) => keys.has(key(e)) && !judges.some((j) => typeof rubricIdx.get(`${j}|${key(e)}`)?.score === 'number'));
+}
+
+function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagreeScore, notJudged = [], stamped = false, basis = BASIS['kiro-cli'], rawScoreOf = (rec) => rec.scoreRaw ?? rec.score, noQuestionTasks = new Set() }) {
   const charged = basis.charged;
   const executed = entries.filter((e) => e.result.status !== 'budget_skipped');
   const n = executed.length;
@@ -203,6 +211,7 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
   series.completedWithoutHelp = withData.map((e) => e.result.completedWithoutHelp).filter((v) => typeof v === 'boolean').map(Number);
 
   let rubric = null;
+  let rubricPolicyCell = null;
   const flags = [];
   if (judges.length) {
     const byJudge = {};
@@ -239,6 +248,17 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
       disagreement: { n: diffs.length, meanAbsDiff: avg(diffs), runsOver: diffs.filter((d) => d > disagreeScore).length },
     };
     series.rubricScore = perRun;
+    if (stamped) {
+      const zeros = integrityExcluded(executed, notJudged, judges, rubricIdx).map(() => 0);
+      const all = [...perRun, ...zeros];
+      series.rubricScore = all;
+      series.rubricScoreJudged = perRun;
+      rubricPolicyCell = {
+        rubricAll: { n: all.length, mean: avg(all), meanRaw: avg([...perRunRaw, ...zeros]) },
+        rubricJudged: { n: perRun.length, mean: avg(perRun), meanRaw: avg(perRunRaw) },
+        excludedCount: zeros.length,
+      };
+    }
     if (rubric.disagreement.meanAbsDiff !== null && rubric.disagreement.meanAbsDiff > disagreeScore) {
       flags.push(`judges disagree: mean difference ${rubric.disagreement.meanAbsDiff.toFixed(2)} > ${disagreeScore} on ${diffs.length} run(s)`);
     }
@@ -262,7 +282,7 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
   if (oracleRuns.length) flags.push(`ORACLE: ${oracleRuns.length} of ${n} run(s) had the expected skill bodies (${[...new Set(oracleRuns.flatMap((e) => e.result.oracle.skills))].sort().join(', ')}) put in the prompt; they are not comparable with normal runs, so never pool them with normal runs or use them for a platform verdict`);
   if (n - counts.good > 0) flags.push(`${n - counts.good} of ${n} run(s) were not clean passes (${OUTCOMES.slice(1).filter((o) => counts[o]).map((o) => `${counts[o]} ${o}`).join(', ')}); efficiency medians use the ${counts.good} clean pass(es) only, the failure rates and credits per successful run include all`);
   const skippedJudge = notJudged.length;
-  if (skippedJudge) flags.push(`${skippedJudge} run(s) not judged (${[...new Set(notJudged.map((x) => x.reason))].join(', ')}); they have no rubric or pairwise result`);
+  if (skippedJudge) flags.push(`${skippedJudge} run(s) not judged (${[...new Set(notJudged.map((x) => x.reason))].join(', ')}); they have no rubric or pairwise result${rubricPolicyCell?.excludedCount ? `; ${rubricPolicyCell.excludedCount} of them count as failures (0) in the main rubric score` : ''}`);
 
   const cell = {
     n, skipped: entries.length - n, byStatus, counts, rates,
@@ -291,6 +311,7 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
   const autonomy = autonomySummary(executed, { noQuestionTasks, charged, outcome: (e) => outcome.get(e) });
   if (autonomy) cell.autonomy = autonomy;
   if (basis.unit === 'credits') cell.cost = cell.credits;
+  if (rubricPolicyCell) Object.assign(cell, rubricPolicyCell);
   return { cell, series };
 }
 
@@ -334,6 +355,7 @@ function buildReport({ run, tasks, baseline = defaultBaseline(run), disagreeScor
   const arms = [...new Set([...(armIds.includes(baseline) ? [baseline] : []), ...order, ...armIds.sort()])];
   const classes = [...new Set(run.runs.map((r) => classOf(r.taskId)))].sort((a, b) => (CLASS_ORDER.indexOf(a) + 1 || 99) - (CLASS_ORDER.indexOf(b) + 1 || 99));
 
+  const stamped = j?.rubricPolicy === RUBRIC_POLICY;
   const basis = BASIS[run.harness ?? 'kiro-cli'];
   const report = {
     schemaVersion: 1,
@@ -344,6 +366,7 @@ function buildReport({ run, tasks, baseline = defaultBaseline(run), disagreeScor
     judging: j ? judgingSummary(j, isStale, stale) : null,
     checksRecheck: recheckSummary(run.runs),
   };
+  if (stamped) report.rubricPolicy = RUBRIC_POLICY;
   const series = {};
   for (const arm of arms) {
     report.arms[arm] = {};
@@ -352,7 +375,7 @@ function buildReport({ run, tasks, baseline = defaultBaseline(run), disagreeScor
       const entries = run.runs.filter((r) => r.armId === arm && (scope === 'overall' || classOf(r.taskId) === scope));
       if (!entries.length) continue;
       const pairRecords = j ? j.pairwise.filter((r) => !isStale(r) && r.armId === arm && (scope === 'overall' || classOf(r.taskId) === scope)) : null;
-      const built = buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline: arm === baseline, disagreeScore, basis, rawScoreOf, noQuestionTasks, notJudged: (j?.notJudged || []).filter((x) => x.armId === arm && (scope === 'overall' || classOf(x.taskId) === scope)) });
+      const built = buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline: arm === baseline, disagreeScore, basis, rawScoreOf, noQuestionTasks, stamped, notJudged: (j?.notJudged || []).filter((x) => x.armId === arm && (scope === 'overall' || classOf(x.taskId) === scope)) });
       report.arms[arm][scope] = built.cell;
       series[arm][scope] = built.series;
     }
@@ -360,7 +383,9 @@ function buildReport({ run, tasks, baseline = defaultBaseline(run), disagreeScor
   const startup = Object.fromEntries((run.config.arms || []).filter((a) => a.startupResources).map((a) => [a.id, a.startupResources]));
   const skills = summarizeSkills(rowsFromResults(run.runs, classOf, (id) => tasks.get(id)?.target ?? null), { armOrder: arms, startup });
   if (skills.recorded) report.skills = skills;
-  return { report, series, ctx: { rubricIdx, isStale, judges, rawScoreOf, classOf, noQuestionTasks, basis, arms } };
+  // Row-level consumers (scores, verdict) read the same policy: the runs the stamped study counts as failures.
+  const integrityKeys = stamped ? new Set(integrityExcluded(run.runs.filter((r) => r.result.status !== 'budget_skipped'), j.notJudged || [], judges, rubricIdx).map((e) => `${e.armId}|${e.taskId}|${e.replicate}`)) : null;
+  return { report, series, ctx: { rubricIdx, isStale, judges, rawScoreOf, classOf, noQuestionTasks, basis, arms, ...(integrityKeys ? { integrityKeys } : {}) } };
 }
 
 // Records written before verdictRaw existed keep the judge's own verdict in judgeVerdict when it was downgraded.
@@ -372,7 +397,7 @@ function rawFromCriteria(rec, task) {
 function judgingSummary(j, isStale, stale) {
   const backends = j.backends ?? [j.backend ?? 'kiro'];
   const out = {
-    byJudge: {}, positionInconsistent: 0, spentCredits: j.spentCredits ?? null, spentUsd: j.spentUsd ?? null, panel: j.panel ?? null, notJudged: j.notJudged || [], stale,
+    byJudge: {}, positionInconsistent: 0, spentCredits: j.spentCredits ?? null, spentUsd: j.spentUsd ?? null, panel: j.panel ?? null, notJudged: j.rubricPolicy === RUBRIC_POLICY ? (j.notJudged || []).map((x) => ({ ...x, exclusionClass: exclusionClassOfReason(x.reason) })) : j.notJudged || [], stale,
     backend: backends.length > 1 ? 'mixed' : backends[0], backends, backendInfo: j.backendInfo ?? null,
   };
   for (const judge of j.judges) {

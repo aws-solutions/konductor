@@ -165,7 +165,7 @@ function contrastRun({ run, tasks, base, heads, minRel = 0.15, rule = 'both', by
   requireTasks(run.runs.map((r) => r.taskId), tasks);
   const basis = BASIS[run.harness ?? 'kiro-cli'];
   const classOf = by === 'task' ? (taskId) => taskId : (taskId) => tasks.get(taskId)?.class ?? 'unknown';
-  const { series } = buildReport({ run, tasks, baseline: baseArm });
+  const { series, report: built } = buildReport({ run, tasks, baseline: baseArm });
   const classes = [...new Set(run.runs.map((r) => classOf(r.taskId)))].sort(by === 'task' ? (a, b) => (a < b ? -1 : a > b ? 1 : 0) : (a, b) => (CLASS_ORDER.indexOf(a) + 1 || 99) - (CLASS_ORDER.indexOf(b) + 1 || 99));
   const scopes = ['overall', ...classes];
   const opts = { minRel, rule };
@@ -184,6 +184,7 @@ function contrastRun({ run, tasks, base, heads, minRel = 0.15, rule = 'both', by
       if (!baseEntries.length && !headEntries.length) continue;
       const rubric = (arm) => series[arm]?.[scope]?.rubricScore ?? [];
       const cell = buildCell({ spec: specs, baseEntries, headEntries, base: baseArm, head, basis, rubric, opts });
+      if (built.rubricPolicy) cell.rubricPolicy = built.rubricPolicy;
       cells[head][scope] = cell;
       const n = Math.min(cell.outcomes.base.n, cell.outcomes.head.n);
       if (n < MIN_RUNS_FOR_CI) anecdotal.push({ head, scope, n, kind: 'runs' });
@@ -231,7 +232,7 @@ function tableFor(cell) {
     const m = cell.metrics[spec.name];
     if (!m) continue;
     if (spec.optional && m.nBase === 0 && m.nHead === 0) continue;
-    const label = spec.name === 'cost' ? `cost (${m.unit})` : LABELS[spec.name];
+    const label = spec.name === 'cost' ? `cost (${m.unit})` : spec.name === 'rubric' && cell.rubricPolicy ? 'rubric score (excluded runs = 0)' : LABELS[spec.name];
     const [abs, rel] = fmtDelta(m);
     const extra = m.unscoredHead || m.unscoredBase ? ` (unscored runs: base ${m.unscoredBase}, head ${m.unscoredHead})` : '';
     rows.push(`| ${label} | ${fmtValue(m, m.base, m.nBase)} (n=${m.nBase}) | ${fmtValue(m, m.head, m.nHead)} (n=${m.nHead}) | ${abs} | ${rel} | ${m.verdict}${extra} |`);

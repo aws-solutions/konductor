@@ -4,6 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { runtimeOf } = require('../runner/lib/harness/runtime.js');
+const { RUBRIC_POLICY } = require('../judge/exclusion.js');
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -102,6 +103,8 @@ function loadRuns(dirs) {
       pairwise: withJudg.flatMap((x) => (x.j.pairwise || []).map((rec) => fix(rec, x.map))),
       graded: withJudg.flatMap((x) => (x.j.graded || []).map((rec) => fix(rec, x.map))),
     };
+    // The merged set follows the new rubric policy only when every judged directory does; one older directory makes it legacy.
+    if (!withJudg.every((x) => x.j.rubricPolicy === RUBRIC_POLICY)) delete judgments.rubricPolicy;
   }
   return { dir: loaded.map((r) => r.dir).join(', '), dirs: loaded.map((r) => r.dir), harness: harnesses[0], config, configs: loaded.map((r) => ({ dir: r.dir, config: r.config })), runs, judgments, merged: true };
 }

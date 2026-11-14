@@ -17,7 +17,7 @@ const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : nu
  * cost basis, packScoreOf when the quality pack is part of the score, and scoring: the loaded weights, which say how checks are scored). Budget-skipped runs are not rows; they are counted by `skippedCount`.
  */
 function buildRows(run, tasks, ctx) {
-  const { rubricIdx, judges, rawScoreOf, classOf, noQuestionTasks, basis, packScoreOf = null, scoring } = ctx;
+  const { rubricIdx, judges, rawScoreOf, classOf, noQuestionTasks, basis, packScoreOf = null, scoring, integrityKeys = null } = ctx;
   const rows = [];
   for (const e of run.runs) {
     const r = e.result;
@@ -30,12 +30,15 @@ function buildRows(run, tasks, ctx) {
       verified.push(rec.score);
       raw.push(rawScoreOf(rec));
     }
+    // A stamped study counts an integrity-excluded run as a failure: 0 on the rubric. judgesUsed stays 0, so coverage counts still see it as unjudged.
+    const counted = integrityKeys !== null && !verified.length && integrityKeys.has(`${e.armId}|${e.taskId}|${e.replicate}`);
     const checks = checksScore(r.checks, scoring);
     const hidden = fraction(r.hiddenTests) ?? fraction(r.intendedTests);
     rows.push({
       arm: e.armId, task: e.taskId, cls: classOf(e.taskId), rep: e.replicate, outcome: outcomeOf(r), status: r.status,
       hidden, hiddenSource: fraction(r.hiddenTests) !== null ? 'hiddenTests' : fraction(r.intendedTests) !== null ? 'intendedTests' : null,
-      checks, rubric: verified.length ? mean(verified) : null, rubricRaw: raw.length ? mean(raw) : null, judgesUsed: verified.length,
+      checks, rubric: counted ? 0 : verified.length ? mean(verified) : null, rubricRaw: counted ? 0 : raw.length ? mean(raw) : null, judgesUsed: verified.length,
+      ...(counted ? { rubricCountedAsFailure: true } : {}),
       credits: basis.charged(r), creditsObserved: basis.observed(r), censored: basis.censored(r),
       wall: finite(r.wallClockMs) ? r.wallClockMs : null, modelCalls: finite(r.modelCalls?.meteringEntries) ? r.modelCalls.meteringEntries : null,
       workToolCalls: finite(r.workToolCalls) ? r.workToolCalls : null, subagentCalls: finite(r.subagentCalls) ? r.subagentCalls : null,

@@ -21,6 +21,7 @@ const { writeAtomic } = require('../runner/lib/owned.js');
 const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
 const { mergeRecords, addSpend } = require('./merge.js');
 const { loadObserved, estimateFromObserved } = require('./observed-cost.js');
+const { EXCLUSION_CLASS, RUBRIC_POLICY, exclusionClassOfReason } = require('./exclusion.js');
 
 const runKey = (r) => `${r.armId}|${r.taskId}|${r.replicate}`;
 
@@ -34,6 +35,12 @@ function notJudgedReason(r) {
   if (r.result.infraError) return 'infraError';
   if (!fs.existsSync(path.join(r.dir, 'workspace')) || (r.result.flags || []).includes('snapshotFailed')) return 'no workspace';
   return null;
+}
+
+/** 'integrity' | 'gap' | null for a loaded run. A budget-skipped run never ran, so it is a gap. */
+function exclusionClass(r) {
+  if (r.result.status === 'budget_skipped') return 'gap';
+  return exclusionClassOfReason(notJudgedReason(r));
 }
 
 // One judged answer: call, validate, retry once with a short correction on a bad reply.
@@ -312,6 +319,8 @@ async function runJudging(o) {
 function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded = [], notJudged, calls, smallPanel }) {
   const file = path.join(run.dir, 'judgments.json');
   const prev = run.judgments || { rubric: [], pairwise: [], graded: [], judges: [], modes: [] };
+  // New studies are stamped; a judgments file that already exists without the stamp stays legacy, so its reports do not change.
+  const stamp = !run.judgments || run.judgments.rubricPolicy === RUBRIC_POLICY;
   const byJudge = addSpend(prev.spentByJudge, spentByJudge);
   const allJudges = [...new Set([...prev.judges, ...judges])].sort();
   const usd = backend === 'opencode';
@@ -321,6 +330,7 @@ function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJud
     createdAt: new Date().toISOString(),
     subjectModel: run.config.model ?? null,
     baseline,
+    ...(stamp ? { rubricPolicy: RUBRIC_POLICY } : {}),
     backend,
     ...(backendInfo ? { backendInfo: { ...(prev.backendInfo || {}), ...backendInfo, models: { ...(prev.backendInfo?.models || {}), ...(backendInfo.models || {}) } } } : {}),
     judges: allJudges,
@@ -340,4 +350,4 @@ function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJud
   return out;
 }
 
-module.exports = { runJudging, planJudging, estimateSpend, judgeOnce, notJudgedReason, runKey };
+module.exports = { runJudging, planJudging, estimateSpend, judgeOnce, notJudgedReason, exclusionClass, exclusionClassOfReason, EXCLUSION_CLASS, RUBRIC_POLICY, runKey };

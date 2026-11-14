@@ -12,6 +12,8 @@ const METRICS = [
   { name: 'successRate', better: 'higher', kind: 'mean' },
   { name: 'checkPassRate', better: 'higher', kind: 'mean' },
   { name: 'rubricScore', better: 'higher', kind: 'mean' },
+  // Series exist only for studies stamped with the rubric policy; rubricScore then counts integrity-excluded runs as 0.
+  { name: 'rubricScoreJudged', better: 'higher', kind: 'mean' },
   { name: 'credits', better: 'lower', kind: 'median' },
   { name: 'modelCalls', better: 'lower', kind: 'median' },
   { name: 'toolCalls', better: 'lower', kind: 'median' },
@@ -49,6 +51,7 @@ function describe(run) {
     isolation: run.config.isolation?.mode ?? results[0].isolation ?? '',
     // Runs written before --agent-engine existed all used v2.
     agentEngine: run.harness !== undefined && run.harness !== 'kiro-cli' ? '' : run.config.agentEngine ?? results[0].agentEngine ?? 'v2',
+    rubricPolicy: run.judgments ? run.judgments.rubricPolicy ?? 'legacy, excluded runs are gaps' : '',
   };
 }
 
@@ -58,7 +61,7 @@ function refusalsFor(base, head) {
   const labels = {
     harness: 'harness', model: 'model pin', effort: 'effort', tasks: 'suite task set', judges: 'judge set',
     contentHash: 'task/fixture/suite content hash', harnessVersion: `${a.harness} version`, isolation: 'isolation mode',
-    agentEngine: 'agent engine',
+    agentEngine: 'agent engine', rubricPolicy: 'rubric policy',
   };
   return Object.keys(labels).filter((k) => a[k] !== b[k]).map((k) => `${labels[k]} differs: base "${a[k] || 'none'}" vs head "${b[k] || 'none'}"`);
 }
@@ -154,7 +157,9 @@ function compareRuns({ baseDir, headDir, benchDir, minRel = 0.15, rule = 'both',
         if (sb.value === null || sh.value === null) continue;
         const verdict = classify(m, sb, sh, { minRel, rule });
         if (!verdict) continue;
-        const row = { arm, scope, metric: m.name, base: sb.value, head: sh.value, baseCI: [sb.ciLow, sb.ciHigh], headCI: [sh.ciLow, sh.ciHigh], nBase: sb.n, nHead: sh.n, rel: verdict.rel, lowN: verdict.lowN, direction: verdict.direction };
+        const stamped = Boolean(b.report.rubricPolicy && h.report.rubricPolicy);
+        const metric = !stamped ? m.name : m.name === 'rubricScore' ? 'rubricScore (excluded runs = 0)' : m.name === 'rubricScoreJudged' ? 'rubricScore (judged runs only)' : m.name;
+        const row = { arm, scope, metric, base: sb.value, head: sh.value, baseCI: [sb.ciLow, sb.ciHigh], headCI: [sh.ciLow, sh.ciHigh], nBase: sb.n, nHead: sh.n, rel: verdict.rel, lowN: verdict.lowN, direction: verdict.direction };
         (verdict.direction === 'worse' ? result.regressions : result.improvements).push(row);
       }
     }
