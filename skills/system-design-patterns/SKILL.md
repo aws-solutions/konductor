@@ -1,6 +1,6 @@
 ---
 name: system-design-patterns
-description: Guides system architecture design through a structured interview. Use when writing a system design document for a new service or feature (components, data model, API, error handling, testing). Works from existing requirements without an interview when the user asks for no questions. Produces system design, non-functional requirements, threat model inputs, and architecture diagram description.
+description: Guides system architecture design through a structured interview. Use when writing a system design document for a new service or feature (components, data model, API, error handling, testing). Works from existing requirements without an interview when the user asks for no questions. Produces four documents, a system design (with NFRs), threat model input, an architecture diagram description, and a design review handoff.
 version: 1.0.0
 tags: [skill, system-design, architecture, interview, requirements]
 ---
@@ -19,33 +19,24 @@ Use this skill when:
 - Preparing inputs for threat modeling, API design, or data modeling
 - Creating a system design document for stakeholder review
 
+The questions assume an AWS architecture built with CDK or CloudFormation, often a packaged solution that customers deploy in their own AWS accounts.
+
 ## Core Concepts
 
 ### Interview Phases
 
-The interview follows four phases: System Overview (business context, users, scale), Architecture Preferences (cloud services, deployment model, technology stack), Component Deep-Dive (data stores, APIs, compute, messaging), and Cross-Cutting Concerns (security, observability, cost, operational readiness).
+The interview has five phases: System Overview (business context, users, scale), Architecture Preferences (compute, event processing, storage, state, API style), Component Deep-Dive (one pass per component), Cross-Cutting Concerns (security, observability, resilience, cost, deployment, testing), and Data Design Preparation when the system needs DynamoDB or API design.
 
 ### Output Artifacts
 
-Produces a system design document, threat model input (for the threat modeling skill), architecture diagram description (for the diagram generation skill), and non-functional requirements across 10 categories.
+Produces four documents: a system design document (including measurable non-functional requirements), threat model input (for `threat-modeling`), an architecture diagram description (for `architecture-diagram-generation`), and a design review handoff. Apply the Quality Gate before presenting them.
 
-## Execution
-
-When this skill is activated, use the following as your full instruction set for conducting the system design interview. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# System Design Interviewer
-
-You are an expert system design interviewer specializing in AWS-based architectures for packaged software solutions. Your role is to conduct a structured interview that gathers requirements, challenges assumptions, and produces artifacts for senior engineers building CDK/CloudFormation solutions that customers deploy in their AWS accounts.
-
-## Your Approach
+## Interview Approach
 
 ### Interview Philosophy
 
 - **Start High-Level, Then Dive Deep**: Begin with system overview and architecture outline, then systematically explore each component
-- **Challenge Assumptions**: Question design decisions and explore alternatives
-- **Opinionated Guidance**: Recommend AWS best practices and architectural patterns
+- **Challenge Assumptions and Recommend Patterns**: See Interview Best Practices below
 - **Security-First**: Ensure IAM policies, authentication, and authorization follow AWS standards
 - **Cost-Conscious**: Consider cost implications throughout the design
 
@@ -190,7 +181,7 @@ If the system uses DynamoDB or requires API design:
 4. **Consistency Requirements**: Strong consistency needed or eventual consistency acceptable?
 5. **Data Lifecycle**: How long is data retained? Archive strategy?
 
-**Handoff Note**: "Based on these patterns, I recommend using the **Smithy Expert** prompt for API design and **DynamoDB Design Expert** maker/checker pair for data modeling."
+**Handoff Note**: Recommend `smithy-modeling` for API design and `dynamodb-design` (checked with `dynamodb-validation`) for data modeling.
 
 ## Output Deliverables
 
@@ -249,13 +240,22 @@ After completing the interview, generate:
 - **Retry Strategy**: [How retries work]
 - **Circuit Breakers**: [When to stop trying]
 - **Dead Letter Queues**: [Failed message handling]
-- **Disaster Recovery**: [RTO/RPO and backup strategy]
+- **Disaster Recovery**: [Backup and restore strategy; RTO/RPO go under Availability]
 
 ### Cost Optimization
 
 - **Primary Cost Drivers**: [What costs the most]
 - **Cost Control Mechanisms**: [How customers control costs]
 - **Estimated Cost**: [Cost per transaction or monthly estimate]
+
+## Non-Functional Requirements
+
+- **Performance**: [Latency targets per operation, e.g. <500ms p99 for reads; throughput]
+- **Availability**: [Uptime target as a percentage, RTO, RPO]
+- **Scale**: [Demo scale vs. production scale; scale-out triggers]
+- **Observability**: [Required metrics, log retention period, trace sampling rate]
+- **Security & Compliance**: [Standards that apply and how the design meets them]
+- **Cost**: [Monthly budget or cost-per-transaction target]
 
 ## Data Design
 
@@ -275,7 +275,7 @@ After completing the interview, generate:
 
 ## API Design Overview
 
-[High-level API structure - input for Smithy Expert]
+[High-level API structure - input for `smithy-modeling`]
 
 ## Deployment Strategy
 
@@ -297,7 +297,7 @@ After completing the interview, generate:
 ## Next Steps
 
 1. [Immediate next actions]
-2. [Recommended follow-up prompts]
+2. [Recommended follow-up skills]
 ```
 
 ### 2. Threat Model Input
@@ -403,12 +403,12 @@ After completing the interview, generate:
 
 [How we'll know the implementation is successful]
 
-## Recommended Next Prompts
+## Recommended Next Skills
 
-- **Smithy Expert**: For API design (if applicable)
-- **DynamoDB Design Expert**: For data modeling (if applicable)
-- **Threat Model Generator**: For detailed security analysis
-- **CDK Implementation Guide**: For infrastructure as code
+- **smithy-modeling**: For API design (if applicable)
+- **dynamodb-design**: For data modeling (if applicable)
+- **threat-modeling**: For detailed security analysis
+- **infra-validation**: For checking the CDK or CloudFormation code once written
 ```
 
 ## Interview Best Practices
@@ -429,7 +429,7 @@ Suggest proven patterns:
 
 - **Event-Driven**: "For loose coupling, consider EventBridge instead of direct Lambda invocations"
 - **Serverless-First**: "Lambda + DynamoDB can handle this with lower operational overhead than ECS"
-- **Cost Optimization**: "Consider S3 Intelligent-Tiering for infrequently accessed data"
+- **Cost Optimization**: "Consider S3 Intelligent-Tiering for data with unknown or changing access patterns"
 - **Security**: "Use IAM roles for service-to-service auth instead of API keys"
 
 ### Recognizing Gaps
