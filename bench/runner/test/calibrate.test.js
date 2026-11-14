@@ -90,6 +90,22 @@ test('a run whose scrub failed, whose output files were replaced, or that had an
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('a run whose usage database was tampered with is never sampled', () => {
+  const root = tmp();
+  try {
+    const bench = makeBench(path.join(root, 'bench'));
+    const specs = [];
+    for (let i = 1; i <= 4; i++) specs.push({ arm: i % 2 ? 'vanilla' : 'v1.2.0', rep: i, finalText: `answer ${i} DBTAMPER_MARK_${i}`, ...(i === 1 ? { flags: ['usageDbTampered'] } : {}) });
+    const runDir = makeRun(path.join(root, 'run'), bench, specs);
+    const out = path.join(root, 'cal');
+    exportSheet({ runDir, benchDir: bench, limits: DEFAULTS.limits, redactions: compileRedactions(DEFAULT_REDACTIONS), n: 4, seed: 1, outDir: out });
+    const key = JSON.parse(fs.readFileSync(path.join(out, 'key.json'), 'utf8'));
+    assert.deepEqual(Object.values(key.items).map((i) => i.replicate).sort(), [2, 3, 4]);
+    const sheet = fs.readFileSync(path.join(out, 'sheet.md'), 'utf8') + fs.readFileSync(path.join(out, 'sheet.json'), 'utf8');
+    assert.doesNotMatch(sheet, /DBTAMPER_MARK_1\b/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('a bare secret from the environment is masked in the sheet a rater reads', () => {
   const bare = 'plainbaresecretvalue-93e1b7c2';
   const f = fixture(2);

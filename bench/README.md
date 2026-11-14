@@ -421,7 +421,7 @@ node bench/runner/bench.js run --suite lite --arms oc-vanilla,oc-v1.2.0,oc-main 
   `costUsd` is list price (2 / 10 / 0.1 / 2.5 USD per M tokens for in / out / cache read / cache write on Sonnet 5.5).
   A timed-out run uses the rows present and sets `costCensored`. `credits` stays null. Flags: `usageMismatch`,
   `usageUnavailable` (with a short `usageUnavailableReason` in result.json), `usageDbTampered` (the reason is a link or
-  non-regular file the agent planted where the database should be), `orphanSessions`, `variantMismatch`, `throttled`.
+  non-regular file the agent planted where the database should be; the run is not judged), `orphanSessions`, `variantMismatch`, `throttled`.
 - Bedrock caches prompts for about 5 minutes, so a run started soon after another can read its cache: cost carries
   run-order noise (the seeded shuffle is kept). The model id, region, variant, version and start time are recorded.
 
@@ -778,7 +778,7 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   - **Sensitivity.** Every full report has a "Quote-rule sensitivity" section: per judge, the share of criteria lowered under the rule in use and under the other; per arm, mean rubric and quality under both with the rank under each and flips marked; and one warning line when the arm order differs. `report --verdict platform` and `--verdict orchestrator-pass` score with the rule in use and add a "Sensitivity" block with the call, the quality difference with its interval and the A/A band under the other rule, marked "same call" or "DIFFERENT CALL". `contrast` and `report-2x2` carry the same line and a table. The diligence scorecard's judge agreement row shows the share of quotes lowered per judge under the rule in use with the strict share beside it.
   - **The quality-pack pass is always strict.** Its prompt asks for exact text and its own quote checks (including quotes from the answer key) were built for it, so it does not use the lenient rule. Its tables say "quality pack quotes: strict". `judge --criteria-pack` refuses `--quote-match`.
   - **`judge --run DIR --rescore-quotes`** still works for old judgments: it matches the stored quotes again with no model call, applies the tightened rule, and writes `judgments-lenient.json` beside `judgments.json` (which it never changes), then prints the share of verdicts lowered per judge and the mean rubric per arm before and after. Reports no longer read that file. `--quote-match strict` with it only checks that the strict rule reproduces the stored values.
-- Runs with `infraError` or no kept workspace are not judged; they are listed in `notJudged`.
+- Runs with `credsUnscrubbed`, `stdioTampered`, `usageDbTampered`, `infraError` or no kept workspace are not judged; they are listed in `notJudged`.
 - Replies must be strict JSON; one retry, then `judgeError` is recorded. Results are cached by hash of
   (judge, prompt) in `<out>/judge/cache`. `spentCredits` and `spentByJudge` add up over invocations;
   a cached call costs 0 and keeps its original latency with `cached: true`. Only a reply that passes the same check

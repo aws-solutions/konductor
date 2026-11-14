@@ -8,7 +8,7 @@ const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const { tmp, makeBench, makeRun } = require('./helpers.js');
 const { makeFakeKiro } = require('./fake-kiro.js');
-const { runJudging } = require('../../judge/run.js');
+const { runJudging, notJudgedReason } = require('../../judge/run.js');
 const { buildBundle } = require('../../judge/bundle.js');
 const { DEFAULT_REDACTIONS, compileRedactions, redact } = require('../../judge/redact.js');
 const { resolveJudges, DEFAULT_JUDGES } = require('../eval-commands.js');
@@ -132,6 +132,23 @@ test('runs with an infra error or no workspace are not judged and are listed apa
     const { report } = buildReport({ run: loadRun(runDir), tasks: loadTasks(common.benchDir), baseline: 'vanilla' });
     assert.equal(report.arms.vanilla.overall.notJudged, 2);
     assert.match(renderMarkdown(report), /Not judged \(2\)/);
+  } finally { rm(root); }
+});
+
+test('a run flagged usageDbTampered is not judged and is listed like stdioTampered; a clean run is unaffected', async () => {
+  const { root, common, runDir } = fixture([
+    { arm: 'vanilla', rep: 1 }, { arm: 'vanilla', rep: 2, flags: ['usageDbTampered'] }, { arm: 'vanilla', rep: 3, flags: ['stdioTampered'] },
+  ]);
+  try {
+    const dir = (rep) => path.join(runDir, 'vanilla/t1', String(rep));
+    assert.equal(notJudgedReason({ result: { flags: ['usageDbTampered'] }, dir: dir(2) }), 'usageDbTampered');
+    assert.equal(notJudgedReason({ result: { flags: ['usageDbTampered', 'stdioTampered'] }, dir: dir(2) }), 'stdioTampered');
+    assert.equal(notJudgedReason({ result: { flags: ['usageUnavailable'] }, dir: dir(1) }), null);
+    const caller = stub();
+    const j = await runJudging({ ...common, caller });
+    assert.equal(j.rubric.length, 1);
+    assert.equal(caller.calls.length, 1);
+    assert.deepEqual(j.notJudged.map((n) => `${n.replicate}:${n.reason}`).sort(), ['2:usageDbTampered', '3:stdioTampered']);
   } finally { rm(root); }
 });
 

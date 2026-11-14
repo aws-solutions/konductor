@@ -171,7 +171,7 @@
     },
     "usageUnavailableReason": {
       "type": "string",
-      "description": "Present when the flag usageUnavailable is set (opencode runs): a short fixed reason the post-run usage query did not produce numbers, with no host paths. The flag usageDbTampered is set when the reason is a link or non-regular file the agent planted where the database should be."
+      "description": "Present when the flag usageUnavailable is set (opencode runs): a short fixed reason the post-run usage query did not produce numbers, with no host paths. The flag usageDbTampered is set when the reason is a link or non-regular file the agent planted where the database should be, and the run is not judged."
     },
     "armConfig": {
       "type": [

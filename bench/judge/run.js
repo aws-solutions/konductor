@@ -25,10 +25,12 @@ const { loadObserved, estimateFromObserved } = require('./observed-cost.js');
 const runKey = (r) => `${r.armId}|${r.taskId}|${r.replicate}`;
 
 // Runs that are not sent to a judge: the credential scrub could not finish (so the text may still hold a secret),
-// the agent replaced its live output files, setup or post-run infrastructure failed, or no workspace was kept.
+// the agent replaced its live output files or planted a link where the usage database should be, setup or post-run
+// infrastructure failed, or no workspace was kept.
 function notJudgedReason(r) {
   if ((r.result.flags || []).includes('credsUnscrubbed')) return 'credsUnscrubbed';
   if ((r.result.flags || []).includes('stdioTampered')) return 'stdioTampered';
+  if ((r.result.flags || []).includes('usageDbTampered')) return 'usageDbTampered';
   if (r.result.infraError) return 'infraError';
   if (!fs.existsSync(path.join(r.dir, 'workspace')) || (r.result.flags || []).includes('snapshotFailed')) return 'no workspace';
   return null;
