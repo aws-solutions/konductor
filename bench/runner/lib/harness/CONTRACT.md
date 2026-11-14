@@ -147,7 +147,7 @@ Each of these must be edited by hand when a runtime is added. The registry work 
 - Done. `runner/lib/stop-watch.js`: reads `streamFormat`. `opencode-json` gets the opencode reader (capability tools `skill` and `task` are still literal there); every other format is read as kiro-cli updates.
 - Done. `runner/lib/trace.js`: the refusal (`supports.trace`), the timeline reader (`streamFormat`), the missing-data notes and the skill listing (`trace`) read the descriptor. Left: `claudeTimeline` writes `engine: 'claude-code'` into its start entry (`:172`), and a stream format other than `claude-stream-json` is read by `kiroTimeline`.
 - Done. `runner/lib/result.js`: the cost unit comes from `costUnitOf` (`costUnit`); the default runtime comes from `DEFAULT_RUNTIME`.
-- Next step. `judge/bundle.js:49-50`: how the final text is extracted per runtime.
+- Done. `judge/bundle.js`: `finalTextOf` picks its reader from `streamFormat` (`FINAL_TEXT`). A new stream format adds a reader there.
 - Next step. `runner/lib/arms.js` `KNOWN_ARMS` and the `listArms` condition text; `report/aggregate.js:312`, `report/skills.js:165`, `report/factorial.js:60`, `cap/cli.js:328`, `cap/cli.js:567` (arm prefix literals; use `armPrefix`).
 - Later. `runner/lib/skills.js`: `:125`, `:135`, `:177`, `:191`, `:291`, `:464` (skill-load capture, startup summaries, `skillsScope`).
 - Later. `runner/lib/backfill.js:39`, `runner/lib/backfill-skills.js:34`: kiro-cli only.
