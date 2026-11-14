@@ -8,12 +8,30 @@
 //   fixRecall      the agent's change to non-test files repeats 80 or more consecutive characters of the
 //                  upstream fix verbatim (indentation ignored).
 // Both are recorded in result.json and reported on their own; neither changes the check results.
+// The fetch audit reads the kiro-cli stream only. For a runtime whose stream it cannot read, externalFetch is
+// null and externalFetchChecked is false, and reports say "not checked for this runtime" instead of counting
+// the run as clean. fixRecall reads the final tree, so it applies to every runtime.
 
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { isTestPath } = require('../../real/lib.js');
 const { toolNameOf, mcpToolNameOf, mcpInputOf } = require('./stream.js');
+
+// Runtimes whose stream scanStream understands. A literal list until the harness descriptors carry this fact;
+// see the registry work in harness/CONTRACT.md. A new runtime is unchecked until it is added here with a parser.
+const FETCH_AUDIT_RUNTIMES = new Set(['kiro-cli']);
+const canAuditFetches = (runtime) => FETCH_AUDIT_RUNTIMES.has(runtime);
+const FETCH_UNCHECKED = 'not checked for this runtime';
+// A recorded audit that could not read the runtime's stream. Results written before the field existed read as checked.
+const fetchUnchecked = (contamination) => contamination?.externalFetchChecked === false;
+
+// The externalFetch cell of a report table: the count, with runs the audit could not read named apart from clean ones.
+function externalFetchCell({ hits, audited, unchecked }) {
+  if (!unchecked) return hits;
+  if (unchecked >= audited) return FETCH_UNCHECKED;
+  return `${hits} (${unchecked} of ${audited} ${FETCH_UNCHECKED})`;
+}
 
 const MIN_RECALL = 80;
 const EVIDENCE_MAX = 200;
@@ -185,7 +203,7 @@ function fixRecall({ baseDir, workDir, patch }) {
 }
 
 function contaminationFlags({ externalFetch = [], fixRecallChars = 0 }) {
-  return [...(externalFetch.length ? ['externalFetch'] : []), ...(fixRecallChars >= MIN_RECALL ? ['fixRecall'] : [])];
+  return [...((externalFetch || []).length ? ['externalFetch'] : []), ...(fixRecallChars >= MIN_RECALL ? ['fixRecall'] : [])];
 }
 
-module.exports = { scanStream, fixRecall, contaminationFlags, MIN_RECALL, WEB_TOOL, SHELL_TOOL };
+module.exports = { scanStream, fixRecall, contaminationFlags, canAuditFetches, fetchUnchecked, externalFetchCell, FETCH_UNCHECKED, MIN_RECALL, WEB_TOOL, SHELL_TOOL };

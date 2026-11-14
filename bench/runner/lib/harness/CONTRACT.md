@@ -28,7 +28,7 @@ This file lists what the runner calls. It is derived from the call sites in `run
 | `keepPaths(ctx)` | run context | array of absolute paths that must stay visible inside the isolation namespace (the agent binary and its helpers) | `run-one.makeIso` |
 | `turnSummary(streamText)` | the stdout of one turn | `{ sessionId, runFinishedStatus, stopReason, finalText, askedUser }`. `runFinishedStatus === 'success'` is what lets an autonomy conversation continue | `run-one.runTurns` (autonomy tasks only, but always called then) |
 | `parseResult(outDir, { home, tmpdir, acc, arm, ctx, config })` | the run directory and the accumulator | nothing used (kiro returns `acc`, the others return nothing). Fills `acc`, see below | `run-one.postProcess`, only when `outDir/stream.jsonl` exists |
-| `collectArtifacts(home, outDir, { arm })` | scratch HOME and run directory | nothing. Copies files worth keeping (installed agent definition, settings) before HOME is deleted. A throw becomes the flag `artifactCopyFailed` | `run-one.postProcess` |
+| `collectArtifacts(home, outDir, { arm })` | scratch HOME and run directory | nothing. Copies files worth keeping (installed agent definition, settings) before HOME is deleted, through `safe-copy.copyPlainFile`, which refuses a symlink on the path. A throw becomes the flag `artifactCopyFailed` | `run-one.postProcess` |
 
 ## Optional members
 
@@ -36,10 +36,14 @@ This file lists what the runner calls. It is derived from the call sites in `run
 | --- | --- | --- | --- |
 | `requiredPaths` | none (array property) | repo-relative files that must exist in the arm's source tree, checked before building | `orchestrate.prepareAll`: `harnessFor(arm).requiredPaths \|\| []` |
 | `orchMetrics(outDir)` | run directory | spawn, depth, review-flow and phase-document metrics, or `null`. Stored as `acc.orch`. A throw becomes the flag `orchMetricsFailed` | `run-one.postProcess`: `if (harness.orchMetrics)` |
-| `finalize(outDir, ctx)` | run directory | number of secrets redacted from output files. A value above 0 adds the flag `credsRedacted` | `run-one.executeRun`: `if (harness.finalize && ...)` |
+| `finalize(outDir, ctx)` | run directory | `{ scrubbed, unscrubbed }` from `hygiene.scrubTreeDetailed`: files rewritten, and the files it could not scrub (`[{file, reason}]`). `scrubbed` above 0 adds the flag `credsRedacted`; any `unscrubbed` entry (or a throw) adds `credsUnscrubbed`, lists the files in `result.unscrubbedFiles`, and the run is not judged. Do not catch errors here. Files over 8 MB are scrubbed in chunks, symlinks are skipped. A bare number is still accepted as a count with nothing unscrubbed | `run-one.executeRun`: `if (harness.finalize)` |
 | `secrets(ctx)` | run context | array of secret strings that are scrubbed from `result.json` before it is written | `run-one.executeRun`: `harness.secrets ? harness.secrets(ctx) : []` |
 | `cleanupRun({ cwd, tmpdir, tmpBases })` | run paths | whatever `describeCleanup` accepts. Removes agent state that escapes the scratch HOME (Claude Code writes under the temp dir) | `run-one.executeRun`: `if (harness.cleanupRun)` |
 | `describeCleanup(removed, tmpdir)` | the value `cleanupRun` returned | a record stored as `result.claudeCode.tmpCleanup` | `run-one.executeRun`, only when `cleanupRun` exists and the result has a `claudeCode` block. Required if `cleanupRun` is defined |
+
+## Host steps after the run
+
+The agent can write its scratch HOME, its workspace and, until it exits, the files it was given. Every host step that runs after the run treats the run home, the workspace and the output files as untrusted: it does not execute them, does not load configuration from them, and does not follow symlinks in them. A query that needs a tool on the host (`parseResult` asking opencode for usage) runs on a clean copy of only the data it needs, in a fresh directory made by the runner after the agent exited, with an allowlisted environment that points only into that directory. Anything that must read agent-written files as code or config runs inside the sandbox instead. `lib/safe-copy.js` has the copy helper for `collectArtifacts`; `harness/opencode-query.js` is the reference for a query. The live output files are opened by the runner outside the agent-writable space and passed as inherited descriptors (on Linux the out dir files themselves; on macOS files in a directory beside the run root that the profile makes read-only, moved afterwards). Files the runner moves out of that directory (the live stream and stderr) are checked with `lstat` and opened without following links by `lib/move-file.js`, and a swapped file flags the run `stdioTampered`, lists its name in `tamperedFiles`, and keeps it out of judging.
 
 ## Descriptor (`meta`)
 

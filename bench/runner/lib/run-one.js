@@ -7,39 +7,44 @@ const { spawn } = require('node:child_process');
 const { runChecks } = require('./checks.js');
 const { buildResult, errorResult, validateResult } = require('./result.js');
 const { buildCheckEnv } = require('./env.js');
-const { harnessFor, kiro } = require('./harness/index.js');
-const { makeIsolation } = require('./isolate.js');
+const { harnessFor, runtimeOf, kiro } = require('./harness/index.js');
+const { makeIsolation, liveStdioDir } = require('./isolate.js');
 const { createTripwire, tripwireFlags } = require('./tripwire.js');
 const procs = require('./procs.js');
 const sandbox = require('./sandbox.js');
 const real = require('./real.js');
 const { parseStream } = require('./stream.js');
-const { scanStream, fixRecall, contaminationFlags } = require('./contamination.js');
+const { scanStream, fixRecall, contaminationFlags, canAuditFetches } = require('./contamination.js');
 const { newConversation } = require('./autonomy.js');
 const { makeCreditMeter } = require('./credit-watch.js');
 const { makeStopWatcher } = require('./stop-watch.js');
 const { describeChange } = require('./isolation-gates.js');
 const { secretLiterals, scrubDeep } = require('./scrub.js');
+const { writeAtomic } = require('./owned.js');
 const { classifyAuthFailure } = require('./auth-failure.js');
 const { classifyLaunchFailure } = require('./launch-failure.js');
+const { moveFile, UntrustedFileError } = require('./move-file.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
-// rename() fails across filesystems (EXDEV); the scratch root and the out dir need not share one.
-function moveFile(src, dest) {
+// A live file the agent replaced is not moved. An empty file takes its place in the out dir so readers
+// of the stream and stderr do not fail, and the caller flags the run.
+function moveLive(src, dest, tampered) {
   try {
-    fs.renameSync(src, dest);
+    moveFile(src, dest);
   } catch (e) {
-    if (e.code !== 'EXDEV') throw e;
-    fs.copyFileSync(src, dest);
-    fs.unlinkSync(src);
+    if (!(e instanceof UntrustedFileError)) throw e;
+    tampered.push(path.basename(dest));
+    fs.rmSync(dest, { force: true });
+    fs.writeFileSync(dest, '', { flag: 'wx', mode: 0o600 });
   }
 }
 
-// Where the child's stdout and stderr files live while it runs. The out dir is masked from the
-// agent, and on macOS sandbox-exec denies even fstat on a descriptor whose file is under a masked
-// path; the v3 engine's node checks its stdio descriptors at startup and aborts on that failure.
-// With `stdioDir` (the run's scratch root, which the sandbox allows) the files are written there
+// Where the child's stdout and stderr files live while it runs. Normally the final paths in the out dir,
+// which is masked from the agent; the runner opens them before the child starts and the child inherits the
+// descriptors. On macOS sandbox-exec denies even fstat on a descriptor whose file is under a masked path, and the
+// v3 engine's node checks its stdio descriptors at startup and aborts on that failure. With `stdioDir` (see
+// liveStdioDir: outside the agent-writable scratch root and frozen by the profile) the files are written there
 // and moved to their final paths when the child exits.
 function liveStdioPath(finalPath, stdioDir) {
   return stdioDir ? path.join(stdioDir, path.basename(finalPath)) : finalPath;
@@ -55,10 +60,18 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
     const err = fs.openSync(liveErr, 'w');
     // A file as stdin ends at its last byte; a pipe left open would make some CLIs wait for more input.
     const input = stdinPath ? fs.openSync(stdinPath, 'r') : null;
-    const closeAll = () => {
+    const tampered = [];
+    // The child has its own copies once spawned; the runner reads the files by path from then on.
+    let open = true;
+    const closeFds = () => {
+      if (!open) return;
+      open = false;
       fs.closeSync(out); fs.closeSync(err); if (input !== null) fs.closeSync(input);
-      if (liveOut !== stdoutPath) moveFile(liveOut, stdoutPath);
-      if (liveErr !== stderrPath) moveFile(liveErr, stderrPath);
+    };
+    const closeAll = () => {
+      closeFds();
+      if (liveOut !== stdoutPath) moveLive(liveOut, stdoutPath, tampered);
+      if (liveErr !== stderrPath) moveLive(liveErr, stderrPath, tampered);
     };
     const started = Date.now();
     let timedOut = false;
@@ -70,9 +83,10 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
       child = spawn(cmd, args, { cwd, env, stdio: [input ?? 'ignore', out, err], detached: true });
     } catch (e) {
       closeAll();
-      resolve({ exitCode: null, timedOut: false, wallClockMs: 0, error: e.message });
+      resolve({ exitCode: null, timedOut: false, wallClockMs: 0, error: e.message, tamperedFiles: tampered });
       return;
     }
+    closeFds();
     if (child.pid) procs.trackGroup(child.pid);
     const kill = (sig) => { try { process.kill(-child.pid, sig); } catch { /* already gone */ } };
     const finish = (result) => {
@@ -81,7 +95,7 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
       // Read the final credits before closeAll moves the live stream file.
       const credits = meter ? meter.poll() : null;
       closeAll();
-      resolve({ ...result, credits, creditLimitHit: limitHit, stopped });
+      resolve({ ...result, credits, creditLimitHit: limitHit, stopped, tamperedFiles: tampered });
     };
     // Kills the process group once the credits metered so far pass the limit, or the stop watcher has a decision.
     // The run is then recorded as censored.
@@ -129,20 +143,21 @@ function snapshotWorkspace(cwd, dest) {
 }
 
 // A real task also hides the host copies of its project and the package caches. Its checks run with no network.
-function makeIso(ctx, arm, scratchRoot, task, { offline = false } = {}) {
+function makeIso(ctx, arm, scratchRoot, task, { offline = false, frozenDirs = [] } = {}) {
   const extra = task?.real ? real.hidePaths(task, { cache: ctx.realCache }) : [];
   return makeIsolation({
-    mode: ctx.isolation.mode, scratchRoot, hide: [...(ctx.hide || []), ...extra], mask: ctx.mask || [], keyRoots: ctx.keyRoots || [], keep: harnessFor(arm).keepPaths(ctx), offline,
+    mode: ctx.isolation.mode, scratchRoot, hide: [...(ctx.hide || []), ...extra], mask: ctx.mask || [], keyRoots: ctx.keyRoots || [], keep: harnessFor(arm).keepPaths(ctx), frozenDirs, offline,
   });
 }
 
 // Reads the stream and the final tree of a real run: fetches made by the agent and verbatim use of the upstream fix.
-function auditContamination({ task, ctx, outDir, cwd }) {
+function auditContamination({ task, arm, ctx, outDir, cwd }) {
   const stream = path.join(outDir, 'stream.jsonl');
-  const { events } = parseStream(fs.existsSync(stream) ? fs.readFileSync(stream, 'utf8') : '');
-  const externalFetch = scanStream(events, task.realEntry).map((f) => `${f.tool}: ${f.text}`);
+  const checked = canAuditFetches(runtimeOf(arm));
+  const { events } = checked ? parseStream(fs.existsSync(stream) ? fs.readFileSync(stream, 'utf8') : '') : { events: [] };
+  const externalFetch = checked ? scanStream(events, task.realEntry).map((f) => `${f.tool}: ${f.text}`) : null;
   const recall = fixRecall({ baseDir: real.pristineDir(task, { cache: ctx.realCache }), workDir: cwd, patch: real.fixPatchText(task, { cache: ctx.realCache }) });
-  const record = { externalFetch, fixRecallChars: recall.matchedChars };
+  const record = { externalFetch, externalFetchChecked: checked, fixRecallChars: recall.matchedChars };
   return { record, flags: contaminationFlags(record) };
 }
 
@@ -178,7 +193,7 @@ function postProcess({ acc, task, arm, ctx, outDir, runRoot, home, cwd, iso, tri
   });
   if (task.real) {
     try {
-      const audit = auditContamination({ task, ctx, outDir, cwd });
+      const audit = auditContamination({ task, arm, ctx, outDir, cwd });
       acc.meta.contamination = audit.record;
       acc.meta.flags.push(...audit.flags);
     } catch (e) {
@@ -295,6 +310,7 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
     creditLimitHit: execs.some((e) => e.creditLimitHit),
     ...(ctx.runCreditLimit == null ? {} : { creditLimit: ctx.runCreditLimit, creditOvershoot: spent > ctx.runCreditLimit ? spent - ctx.runCreditLimit : null }),
     stopped: execs.map((e) => e.stopped).find((x) => x && x.reason !== 'end_turn') ?? null,
+    tamperedFiles: execs.flatMap((e) => e.tamperedFiles ?? []),
     wallClockMs: execs.reduce((n, e) => n + (e.wallClockMs ?? 0), 0),
     error: last.error ?? null,
     startedAt,
@@ -310,6 +326,18 @@ function failOnLeak(result, leak) {
   result.status = 'error';
 }
 
+// The scrub of the run's output files. A harness may return a bare count (nothing left unscrubbed) or {scrubbed, unscrubbed}.
+// A throw is recorded as an unscrubbed output directory: a run whose scrub did not finish must not be judged.
+function finalizeOutput(harness, outDir, ctx) {
+  try {
+    const r = harness.finalize(outDir, ctx);
+    if (typeof r === 'number') return { scrubbed: r, unscrubbed: [] };
+    return { scrubbed: r?.scrubbed ?? 0, unscrubbed: (r?.unscrubbed ?? []).map((u) => ({ file: path.relative(outDir, u.file) || '.', reason: String(u.reason) })) };
+  } catch (e) {
+    return { scrubbed: 0, unscrubbed: [{ file: '.', reason: `scrub failed: ${e.message}` }] };
+  }
+}
+
 async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFlightAtStart = null }) {
   const { config } = ctx;
   const harness = harnessFor(arm);
@@ -317,11 +345,13 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
   const meta = { flags: [], isolation: ctx.isolation.mode, inFlightAtStart, mcpSha256: prepared?.mcpSha256 ?? null, agentStarted: false };
   let result;
   let runRoot = null;
+  let stdioDir = null;
   let home = null;
   const installsWindow = ctx.installsGate ? ctx.installsGate.begin() : null;
   try {
     fs.mkdirSync(outDir, { recursive: true });
     runRoot = fs.mkdtempSync(path.join(ctx.scratchDir, 'r-'));
+    stdioDir = liveStdioDir(ctx.isolation.mode, runRoot);
   } catch (e) {
     meta.infraError = `cannot create run directories: ${e.message}`;
     result = errorResult({ ...base, message: meta.infraError, meta });
@@ -340,26 +370,31 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       const leaked = sandbox.findAnswerKey(cwd);
       if (leaked) throw new Error(`answer key present in the agent working directory: ${leaked}`);
       fs.mkdirSync(path.join(runRoot, 'tmp'), { recursive: true });
-      fs.mkdirSync(path.join(runRoot, 'stdio'), { recursive: true });
+      if (stdioDir) fs.mkdirSync(stdioDir, { mode: 0o700 });
     } catch (e) {
       meta.infraError = e.message;
       result = errorResult({ ...base, message: `setup failed: ${e.message}`, meta });
     }
 
     if (!result) {
-      const iso = makeIso(ctx, arm, runRoot, task);
+      const iso = makeIso(ctx, arm, runRoot, task, { frozenDirs: stdioDir ? [stdioDir] : [] });
       const tripwire = createTripwire({ markerPath: path.join(runRoot, '.marker'), ...ctx.tripwire });
       try {
         const tmpdir = path.join(runRoot, 'tmp');
         const env = harness.env({ arm, config, ctx, home, tmpdir });
         tripwire.start();
         meta.agentStarted = true;
-        exec = await runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir: path.join(runRoot, 'stdio'), conv, startedAt: new Date().toISOString() });
+        exec = await runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir, conv, startedAt: new Date().toISOString() });
       } catch (e) {
         meta.infraError = e.message;
         exec = { timedOut: false, exitCode: null, wallClockMs: null, error: e.message };
       }
       harness.removeCredentials(home);
+      if (exec?.tamperedFiles?.length) {
+        meta.flags.push('stdioTampered');
+        meta.tamperedFiles = exec.tamperedFiles;
+        meta.infraError = [meta.infraError, `live output replaced by the agent, not moved: ${exec.tamperedFiles.join(', ')}`].filter(Boolean).join(' | ');
+      }
 
       if (fs.existsSync(path.join(outDir, 'stream.jsonl'))) {
         try {
@@ -382,7 +417,14 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       else if (exec?.creditOvershoot > 0) meta.flags.push('creditLimitExceeded');
       if (exec?.creditLimit != null) { meta.creditLimit = exec.creditLimit; meta.creditOvershoot = exec.creditOvershoot ?? null; }
       if (exec?.stopped) meta.flags.push('earlyStopped');
-      if (harness.finalize && harness.finalize(outDir, ctx) > 0) meta.flags.push('credsRedacted');
+      if (harness.finalize) {
+        const fin = finalizeOutput(harness, outDir, ctx);
+        if (fin.scrubbed > 0) meta.flags.push('credsRedacted');
+        if (fin.unscrubbed.length) {
+          meta.flags.push('credsUnscrubbed');
+          meta.unscrubbed = fin.unscrubbed;
+        }
+      }
       result = buildResult({ ...base, exec, agg: acc.agg, session: acc.session, usage: acc.usage ?? null, skills: acc.skills ?? null, orch: acc.orch ?? null, checks: acc.checks, transcript: acc.transcript, meta, conv });
     }
   }
@@ -395,6 +437,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       if (result.claudeCode) result.claudeCode = { ...result.claudeCode, tmpCleanup: harness.describeCleanup(removed, tmpdir) };
     }
     fs.rmSync(runRoot, { recursive: true, force: true });
+    if (stdioDir) fs.rmSync(stdioDir, { recursive: true, force: true });
   }
   const scrubbed = scrubDeep(result, secretLiterals(process.env, harness.secrets ? harness.secrets(ctx) : []));
   result = scrubbed.value;
@@ -405,9 +448,9 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
   if (problems.length) result.error = [result.error, `schema: ${problems.join('; ')}`].filter(Boolean).join(' | ');
   try {
     fs.mkdirSync(outDir, { recursive: true });
-    fs.writeFileSync(path.join(outDir, 'result.json'), JSON.stringify(result, null, 2) + '\n');
+    writeAtomic(path.join(outDir, 'result.json'), JSON.stringify(result, null, 2) + '\n');
   } catch { /* the caller still gets the result object */ }
   return result;
 }
 
-module.exports = { executeRun, makeIso, kiroArgs: kiro.kiroArgs, spawnWithTimeout, readTranscripts: kiro.readTranscripts };
+module.exports = { executeRun, auditContamination, makeIso, kiroArgs: kiro.kiroArgs, spawnWithTimeout, readTranscripts: kiro.readTranscripts };

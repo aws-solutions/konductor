@@ -58,9 +58,9 @@ test('FAIL_TO_PASS gives a mean fraction and the share of runs passing all; regr
 test('contamination counts per arm and class, never dropped, with the flagged runs named', () => {
   const r = reportFor(SPECS);
   try {
-    assert.deepEqual(r.report.arms.vanilla.real.contamination, { audited: 2, externalFetch: 1, fixRecall: 0, unchecked: 0, flagged: [{ taskId: 't1', replicate: 2, kinds: ['externalFetch'] }] });
+    assert.deepEqual(r.report.arms.vanilla.real.contamination, { audited: 2, externalFetch: 1, fixRecall: 0, unchecked: 0, externalFetchUnchecked: 0, flagged: [{ taskId: 't1', replicate: 2, kinds: ['externalFetch'] }] });
     assert.deepEqual(r.report.arms.main.real.contamination, {
-      audited: 2, externalFetch: 1, fixRecall: 2, unchecked: 0,
+      audited: 2, externalFetch: 1, fixRecall: 2, unchecked: 0, externalFetchUnchecked: 0,
       flagged: [{ taskId: 't1', replicate: 1, kinds: ['fixRecall'] }, { taskId: 't1', replicate: 2, kinds: ['externalFetch', 'fixRecall'] }],
     });
     assert.deepEqual(r.report.arms.vanilla.overall.contamination.externalFetch, 1);

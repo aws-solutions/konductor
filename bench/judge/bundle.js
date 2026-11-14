@@ -10,6 +10,7 @@ const claudeParse = require('../runner/lib/harness/claude-code-parse.js');
 const { runtimeOf } = require('../runner/lib/harness/runtime.js');
 const { ANSWER_KEY } = require('../runner/lib/sandbox.js');
 const { redact } = require('./redact.js');
+const { scrubStringCounted } = require('../runner/lib/scrub.js');
 
 // Tool state, not deliverables; listing it would also reveal the arm. Deliverables such as
 // .kiro/specs/** are kept. Names match at any depth, paths from the workspace root.
@@ -72,8 +73,10 @@ function checkLine(c) {
 
 // Builds the only view of a run that a judge sees. It is assembled from the
 // final text, the files that differ from the fixture, and the check results;
-// the transcript and tool calls are never read.
-function buildBundle({ runDir, result, fixtureDir, limits, redactions }) {
+// the transcript and tool calls are never read. Credential-shaped text, and the exact values in `literals` when the caller has
+// them, is scrubbed from the text and the file texts last, so nothing the run output scrubber missed reaches a model.
+// meta.credsScrubbed counts the replacements.
+function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals = [] }) {
   const { maxFileChars, maxBundleChars } = limits;
   const meta = { truncatedFiles: [], omittedFiles: [], excluded: 0 };
   const ws = walk(path.join(runDir, 'workspace'));
@@ -124,10 +127,20 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions }) {
   const shownChecks = result.checksOriginal ?? result.checks ?? [];
   parts.push(`## Deterministic check results\n${shownChecks.map(checkLine).join('\n') || '(none)'}`);
 
-  const { text, fired } = redact(parts.join('\n\n'), redactions);
+  const redacted = redact(parts.join('\n\n'), redactions);
+  const { fired } = redacted;
+  const scrubbedText = scrubStringCounted(redacted.text, literals);
+  const text = scrubbedText.text;
+  let fileReplacements = 0;
+  const files = changed.map((f) => {
+    const scrubbed = f.binary ? null : scrubStringCounted(f.text, literals);
+    fileReplacements += scrubbed?.count ?? 0;
+    return { rel: f.rel, created: f.created, binary: Boolean(f.binary), text: scrubbed?.text ?? null, orig: f.orig };
+  });
+  meta.credsScrubbed = { text: scrubbedText.count, files: fileReplacements };
   // changed and deleted name the workspace files the bundle was built from, so a reader can tell later whether they moved.
-  // `files` carries the unredacted file texts for local analysis (the quality pack's gating and diff); it is never sent to a judge as is.
-  return { text, fired, meta, changed: changed.map((f) => f.rel), deleted, files: changed.map((f) => ({ rel: f.rel, created: f.created, binary: Boolean(f.binary), text: f.binary ? null : f.text, orig: f.orig })) };
+  // `files` carries the file texts, credential-scrubbed but not redacted, for local analysis (the quality pack's gating and diff); it is never sent to a judge as is.
+  return { text, fired, meta, changed: changed.map((f) => f.rel), deleted, files };
 }
 
 module.exports = { buildBundle, finalTextOf };

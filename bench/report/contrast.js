@@ -6,7 +6,7 @@
 
 const { statFor, classify, armIdentity, MIN_RUNS_FOR_CI } = require('./compare.js');
 const { buildReport, outcomeOf, OUTCOMES, CLASS_ORDER, BASIS } = require('./aggregate.js');
-const { MIN_RECALL } = require('../runner/lib/contamination.js');
+const { MIN_RECALL, fetchUnchecked } = require('../runner/lib/contamination.js');
 const { requireTasks } = require('../runner/lib/tasks.js');
 const { enrichOrch, phaseTotals } = require('./orch.js');
 
@@ -28,7 +28,7 @@ const SPECS = [
   { name: 'checksPass', group: 'quality', better: 'higher', kind: 'mean', fmt: 'rate', runs: 'executed', get: (r) => (outcomeOf(r) === 'good' ? 1 : 0) },
   { name: 'rubric', group: 'quality', better: 'higher', kind: 'mean', fmt: 'score', rubric: true },
   { name: 'askedUser', group: 'flags', better: 'lower', kind: 'mean', fmt: 'rate', runs: 'executed', get: (r) => (typeof r.askedUser === 'boolean' ? Number(r.askedUser) : null) },
-  { name: 'externalFetch', group: 'flags', better: 'lower', kind: 'mean', fmt: 'rate', runs: 'executed', get: (r) => (r.contamination ? Number((r.contamination.externalFetch || []).length > 0) : null) },
+  { name: 'externalFetch', group: 'flags', better: 'lower', kind: 'mean', fmt: 'rate', runs: 'executed', get: (r) => (r.contamination && !fetchUnchecked(r.contamination) ? Number((r.contamination.externalFetch || []).length > 0) : null) },
   { name: 'fixRecall', group: 'flags', better: 'lower', kind: 'mean', fmt: 'rate', runs: 'executed', get: (r) => (r.contamination ? Number((r.contamination.fixRecallChars || 0) >= MIN_RECALL) : null) },
   { name: 'modelMismatch', group: 'flags', better: 'lower', kind: 'mean', fmt: 'rate', runs: 'executed', get: (r) => Number(outcomeOf(r) === 'modelMismatch') },
   { name: 'timeouts', group: 'flags', better: 'lower', kind: 'mean', fmt: 'rate', runs: 'executed', get: (r) => Number(outcomeOf(r) === 'timeout') },

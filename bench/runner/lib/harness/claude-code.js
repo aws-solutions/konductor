@@ -12,11 +12,12 @@ const { parseStream } = require('../stream.js');
 const sandbox = require('../sandbox.js');
 const { ALLOW } = require('../env.js');
 const { ensureEmptyClaudeRules } = require('../isolation-gates.js');
-const { scrubTree } = require('../hygiene.js');
+const { scrubTreeDetailed } = require('../hygiene.js');
 const { secretLiterals } = require('../scrub.js');
 const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
 const { orchMetrics: computeOrchMetrics } = require('../orch-metrics.js');
+const { copyPlainFile } = require('../safe-copy.js');
 const parse = require('./claude-code-parse.js');
 
 const id = 'claude-code';
@@ -366,8 +367,7 @@ function orchMetrics(outDir) {
 
 function collectArtifacts(home, outDir) {
   for (const [rel, name] of [['.claude/settings.json', 'installed-settings.json']]) {
-    const f = path.join(home, rel);
-    if (fs.existsSync(f)) fs.copyFileSync(f, path.join(outDir, name));
+    copyPlainFile(home, rel, path.join(outDir, name));
   }
 }
 
@@ -375,7 +375,7 @@ const secrets = () => CREDENTIAL_VARS.map((k) => process.env[k]).filter((v) => t
 
 // A model can print its environment, so exact credential values are scrubbed from every output file.
 function finalize(outDir) {
-  try { return scrubTree(outDir, secretLiterals(process.env, secrets()), { shapes: true }); } catch { return 0; }
+  return scrubTreeDetailed(outDir, secretLiterals(process.env, secrets()), { shapes: true });
 }
 
 /** What run-config.json records about a Claude Code batch: names and settings, never credential values. */

@@ -197,7 +197,7 @@ const subpaths = (ps) => uniq(ps.flatMap(withDataVolume)).map((p) => `  (subpath
 const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // The last matching rule wins, so each allow follows the deny it carves out of, and the read denies come last.
-function buildProfile({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees, offline = false }) {
+function buildProfile({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees, frozenDirs = [], offline = false }) {
   const block = (head, ps) => (ps.length ? [`(${head}`, ...subpaths(ps), ')'] : []);
   const hidden = [...hideTargets(homes, hide, masks), ...homes.flatMap((h) => KEYCHAINS_IN_HOME.map((d) => path.join(h, d)))];
   // A Time Machine local snapshot exposes another copy of the home under /private/var/folders.
@@ -212,6 +212,9 @@ function buildProfile({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTre
     // Anything written here would run outside the sandbox later (a login item, a service, a plug-in).
     ...block('deny file-write*', homes.flatMap((h) => LIBRARY_AUTORUN.map((d) => path.join(h, d)))),
     ...block('allow file-write*', [scratchRoot]),
+    // After the scratch allow, so it holds even when the directory sits under a path that rule covers. The child
+    // keeps writing through the descriptors it inherited; it cannot open, truncate, replace or remove the files.
+    ...block('deny file-write*', frozenDirs),
     ...block('deny file-read* file-write*', hidden),
     ...(homes.length ? ['(deny file-read* file-write*', ...snapshotRe, ')'] : []),
     '(deny file-read* file-write*', launchdSockets, ')',
@@ -253,9 +256,10 @@ function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTree
  * `hide` lists extra home-relative (or absolute) paths to hide; the credential set above is added unless `defaultHide` is false.
  * `mask` lists extra paths to hide (bench fixtures, reference solutions, the output
  * directory); every answer key under `mask` or `keyRoots` is blanked as well. `keep` lists
- * paths that must stay visible (the agent binary). `offline` also gives the command an empty network namespace.
+ * paths that must stay visible (the agent binary). `frozenDirs` lists directories the command can read but not change
+ * (sandbox-exec only; the live stdout and stderr files, see liveStdioDir). `offline` also gives the command an empty network namespace.
  */
-function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [], keyRoots = [], keep = [], socketDirs, sshTmp, offline = false, defaultHide = defaultHideOn() }) {
+function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [], keyRoots = [], keep = [], frozenDirs = [], socketDirs, sshTmp, offline = false, defaultHide = defaultHideOn() }) {
   if (mode !== 'unshare' && mode !== SANDBOX_BIN) return { mode: 'none', wrap: (file, args) => ({ file, args }) };
   const hide = defaultHide ? uniq([...HIDE_CREDENTIALS_IN_HOME, ...extraHide]) : extraHide;
   const scratch = fs.realpathSync(scratchRoot);
@@ -281,7 +285,8 @@ function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [
   const masks = uniq([...tmpMasks, ...dirMasks, ...keys]).filter((m) => !inside(scratch, m));
   if (mode === SANDBOX_BIN) {
     const sbReadOnly = uniq([...readOnlyTrees, ...userLocalTrees().map(realOrNull).filter(Boolean)]);
-    const profile = buildProfile({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees: sbReadOnly, offline });
+    const frozen = frozenDirs.map((d) => realOrNull(d)).filter(Boolean);
+    const profile = buildProfile({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees: sbReadOnly, frozenDirs: frozen, offline });
     return { mode, profile, flaggedInHome: sandboxFlaggedInHome(homes), wrap: (file, args) => ({ file: SANDBOX_BIN, args: ['-p', profile, file, ...args] }) };
   }
   const script = buildScript({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees, softMasks: sshDirs, offline });
@@ -382,7 +387,16 @@ function workingMode(home) {
   return PROBES[mode](home).ok ? mode : null;
 }
 
+// Where a run's live stdout and stderr files are written, or null when they go straight to the out dir.
+// Only sandbox-exec needs a directory: it denies even fstat on a descriptor whose file is under a masked path, and
+// the out dir is masked. The directory is a sibling of the run's scratch root, so it is outside the space the agent
+// can write, and the profile freezes it (frozenDirs). Linux hands the child descriptors opened on the out dir files.
+function liveStdioDir(mode, runRoot) {
+  if (mode !== SANDBOX_BIN) return null;
+  return path.join(path.dirname(runRoot), `${path.basename(runRoot)}-stdio`);
+}
+
 module.exports = {
-  makeIsolation, probeUnshare, probeSandboxExec, resolveIsolation, workingMode, autoMode, realHomes, writableTrees, userLocalTrees, runtimeSockets, findAnswerKeys,
+  liveStdioDir, makeIsolation, probeUnshare, probeSandboxExec, resolveIsolation, workingMode, autoMode, realHomes, writableTrees, userLocalTrees, runtimeSockets, findAnswerKeys,
   UNSHARE_FLAGS, HIDE_IN_HOME, HIDE_CREDENTIALS_IN_HOME, describeHide, ISOLATE_MODES, COMPARABLE_MODES, isComparableMode, resultComparable,
 };

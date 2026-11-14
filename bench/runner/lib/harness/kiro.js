@@ -16,7 +16,8 @@ const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
 const { writeArmConfig } = require('../arm-config.js');
 const { orchMetricsOfRunDir } = require('../orch-metrics.js');
-const { scrubTree, redactHostPaths } = require('../hygiene.js');
+const { copyPlainFile } = require('../safe-copy.js');
+const { scrubTreeDetailed, redactHostPaths } = require('../hygiene.js');
 const { secretLiterals } = require('../scrub.js');
 
 const id = 'kiro-cli';
@@ -210,8 +211,9 @@ function removeCredentials(home) {
 const keepPaths = (ctx) => [ctx.kiroBin].filter(Boolean);
 
 // A model can print a credential it found in its environment or in a file. Same scrub as the opencode harness.
+// Returns {scrubbed, unscrubbed}; a file that could not be scrubbed is listed, never skipped silently.
 function finalize(outDir) {
-  try { return scrubTree(outDir, secretLiterals(process.env), { shapes: true }); } catch { return 0; }
+  return scrubTreeDetailed(outDir, secretLiterals(process.env), { shapes: true });
 }
 
 // What the runner needs to know after one turn: how it ended and what the agent said last.
@@ -249,8 +251,7 @@ function orchMetrics(outDir) {
 
 // The file saved is the entry agent's own: its skill filter is what the skill load-rate math counts as offered to the run.
 function collectArtifacts(home, outDir, { arm } = {}) {
-  const agentJson = path.join(home, '.kiro/agents', `${arm?.agent ?? 'konductor'}.json`);
-  if (fs.existsSync(agentJson)) fs.copyFileSync(agentJson, path.join(outDir, 'installed-agent.json'));
+  copyPlainFile(home, path.join('.kiro', 'agents', `${arm?.agent ?? 'konductor'}.json`), path.join(outDir, 'installed-agent.json'));
 }
 
 module.exports = {

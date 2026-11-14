@@ -2,6 +2,7 @@
 'use strict';
 
 const { renderSkillsMarkdown } = require('./skills.js');
+const { externalFetchCell } = require('../runner/lib/contamination.js');
 
 const pct = (v) => (v === null || v === undefined ? 'n/a' : `${(v * 100).toFixed(0)}%`);
 const f = (v, d = 2) => (v === null || v === undefined ? 'n/a' : Number(v).toFixed(d));
@@ -69,7 +70,7 @@ function contaminationSection(report, scope, arms) {
   const rows = arms.map((a) => {
     const c = report.arms[a][scope].contamination;
     if (!c) return [a, '0', '-', '-', '-', 'not audited'];
-    return [a, c.audited, c.externalFetch, c.fixRecall, c.unchecked, c.flagged.map((x) => `${x.taskId} #${x.replicate} (${x.kinds.join(', ')})`).join('; ') || 'none'];
+    return [a, c.audited, externalFetchCell({ hits: c.externalFetch, audited: c.audited, unchecked: c.externalFetchUnchecked }), c.fixRecall, c.unchecked, c.flagged.map((x) => `${x.taskId} #${x.replicate} (${x.kinds.join(', ')})`).join('; ') || 'none'];
   });
   return [
     `**Contamination audit, ${scope}** (read from the stream and the final tree after the run; it never changes a check)`,

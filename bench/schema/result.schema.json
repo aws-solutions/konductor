@@ -152,6 +152,23 @@
       ],
       "description": "Claude Code runs only: canonical model, models seen, modelUsage keys, cost basis, hook events, permission denials, spawn counts (runner/lib/harness/claude-code.js)."
     },
+    "unscrubbedFiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "reason"],
+        "properties": {
+          "file": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      },
+      "description": "Present when the flag credsUnscrubbed is set: output files (relative to the run directory) the credential scrub could not process, with the reason. A run with this flag is not judged."
+    },
+    "tamperedFiles": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Present when the flag stdioTampered is set: names of the live output files (stream, stderr) the agent replaced with a symlink, hardlink, special file or foreign file. They were not moved; an empty file stands in. The run also has infraError and is not judged."
+    },
     "armConfig": {
       "type": [
         "object",
@@ -754,10 +771,16 @@
       ],
       "properties": {
         "externalFetch": {
-          "type": "array",
+          "type": [
+            "array",
+            "null"
+          ],
           "items": {
             "type": "string"
           }
+        },
+        "externalFetchChecked": {
+          "type": "boolean"
         },
         "fixRecallChars": {
           "type": "integer",

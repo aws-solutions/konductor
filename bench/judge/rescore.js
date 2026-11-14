@@ -12,6 +12,7 @@ const path = require('node:path');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { loadRun } = require('../report/load.js');
 const { effectiveLimits } = require('./config.js');
+const { writeAtomic } = require('../runner/lib/owned.js');
 const { buildBundle } = require('./bundle.js');
 const { makeQuoteMatcher, MAX_UNSUPPORTED_LETTERS } = require('./quote.js');
 const { rubricScore, DOWNGRADE } = require('./score.js');
@@ -100,7 +101,7 @@ function rescoreQuotes({ runDir, benchDir, extraDirs = [], redactions, mode = 'l
   if (mode === 'lenient' && write) {
     const file = path.join(run.dir, LENIENT_FILE);
     const quoteMatch = { mode: 'lenient', maxUnsupportedLetters: MAX_UNSUPPORTED_LETTERS, rescoredFrom: 'judgments.json', createdAt: new Date().toISOString(), before, after, recordsChanged: changed };
-    fs.writeFileSync(file, `${JSON.stringify({ ...j, quoteMatch, rubric }, null, 2)}\n`);
+    writeAtomic(file, `${JSON.stringify({ ...j, quoteMatch, rubric }, null, 2)}\n`);
     result.file = file;
   }
   return result;

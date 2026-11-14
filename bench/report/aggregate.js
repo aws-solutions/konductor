@@ -5,7 +5,7 @@ const { median, medianCI, mean } = require('./stats.js');
 const { summarizeSkills, rowsFromResults } = require('./skills.js');
 const { rubricScore } = require('../judge/score.js');
 const { taskRevision } = require('../judge/revision.js');
-const { MIN_RECALL } = require('../runner/lib/contamination.js');
+const { MIN_RECALL, fetchUnchecked } = require('../runner/lib/contamination.js');
 
 const CLASS_ORDER = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'complex', 'real', 'autonomy'];
 const MIN_REPLICATES = 3;
@@ -137,6 +137,7 @@ function autonomySummary(executed, { noQuestionTasks, charged, outcome }) {
 }
 
 // Post-run audit of the real class. Flagged runs are named, and a run whose audit failed counts as unchecked.
+// A run on a runtime whose stream the fetch audit cannot read is counted apart (externalFetchUnchecked), never as clean.
 function contaminationSummary(executed) {
   const audited = executed.filter((e) => e.result.contamination);
   if (!audited.length) return null;
@@ -150,6 +151,7 @@ function contaminationSummary(executed) {
     externalFetch: flagged.filter((f) => f.kinds.includes('externalFetch')).length,
     fixRecall: flagged.filter((f) => f.kinds.includes('fixRecall')).length,
     unchecked: audited.filter((e) => (e.result.flags || []).includes('contaminationUnchecked')).length,
+    externalFetchUnchecked: audited.filter((e) => fetchUnchecked(e.result.contamination)).length,
     flagged,
   };
 }

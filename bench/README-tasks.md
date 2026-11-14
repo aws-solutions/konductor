@@ -185,6 +185,8 @@ command, FAIL_TO_PASS in full, PASS_TO_PASS as a count, a hash and `real/p2p/<id
 - Masked per run: host copies of the project (site-packages), `~/.cache/uv`, `~/.cache/pip`, the cache and `bench/real`.
 - After the run: `externalFetch` (clone, fetch, curl, wget, gh, pip or npm install, or an upstream URL in a command) and
   `fixRecall` (80+ characters of the upstream patch repeated) go to `flags`, `contamination` and the report.
+  The fetch audit reads only the kiro-cli stream. For opencode and Claude Code runs `externalFetch` is `null`,
+  `externalFetchChecked` is `false`, and the report says "not checked for this runtime" instead of counting the run as clean.
 - Add one: pin a PR in the manifest, then `fetch.js`, `discover.js --write`, `validate-real.js --write`, the task file, the suite.
 
 ## Autonomy tasks

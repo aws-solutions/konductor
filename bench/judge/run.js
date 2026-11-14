@@ -17,14 +17,18 @@ const { DEFAULT_QUOTE_RULE } = require('./quote.js');
 const { dualCriteria, dualScores, matchersFor, checkRule } = require('./views.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
+const { writeAtomic } = require('../runner/lib/owned.js');
 const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
 const { mergeRecords, addSpend } = require('./merge.js');
 const { loadObserved, estimateFromObserved } = require('./observed-cost.js');
 
 const runKey = (r) => `${r.armId}|${r.taskId}|${r.replicate}`;
 
-// Runs whose output is not a fair basis for scoring: setup or post-run infrastructure failed, or no workspace was kept.
+// Runs that are not sent to a judge: the credential scrub could not finish (so the text may still hold a secret),
+// the agent replaced its live output files, setup or post-run infrastructure failed, or no workspace was kept.
 function notJudgedReason(r) {
+  if ((r.result.flags || []).includes('credsUnscrubbed')) return 'credsUnscrubbed';
+  if ((r.result.flags || []).includes('stdioTampered')) return 'stdioTampered';
   if (r.result.infraError) return 'infraError';
   if (!fs.existsSync(path.join(r.dir, 'workspace')) || (r.result.flags || []).includes('snapshotFailed')) return 'no workspace';
   return null;
@@ -330,7 +334,7 @@ function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJud
     pairwise: mergeRecords(prev.pairwise, pairwise),
     graded: mergeRecords(prev.graded || [], graded),
   };
-  fs.writeFileSync(file, JSON.stringify(out, null, 2) + '\n');
+  writeAtomic(file, JSON.stringify(out, null, 2) + '\n');
   return out;
 }
 

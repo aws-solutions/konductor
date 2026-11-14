@@ -12,7 +12,7 @@ const { qualityOfRun, FORMULAS, checksModeNote, formulasForWeights } = require('
 const { agreementOf, THRESHOLDS } = require('./diligence.js');
 const { renderMarkdown } = require('./render.js');
 const { CLASS_ORDER } = require('./aggregate.js');
-const { MIN_RECALL } = require('../runner/lib/contamination.js');
+const { MIN_RECALL, fetchUnchecked, externalFetchCell } = require('../runner/lib/contamination.js');
 const { gradedSummary, gradedTable } = require('./graded.js');
 const { readLedger } = require('../runner/lib/credit-ledger.js');
 const { orchBlocks } = require('./orch.js');
@@ -280,7 +280,7 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
   const cont = rows.filter((x) => x.contamination);
   if (cont.length) {
     blocks.push(D.h(2, 'Contamination'));
-    blocks.push(D.table(['arm', 'audited', 'externalFetch', 'fixRecall'], arms.map((a) => { const c = cont.filter((x) => x.arm === a); return [a, c.length, c.filter((x) => (x.contamination.externalFetch || []).length).length, c.filter((x) => (x.contamination.fixRecallChars || 0) >= MIN_RECALL).length]; })));
+    blocks.push(D.table(['arm', 'audited', 'externalFetch', 'fixRecall'], arms.map((a) => { const c = cont.filter((x) => x.arm === a); return [a, c.length, externalFetchCell({ hits: c.filter((x) => (x.contamination.externalFetch || []).length).length, audited: c.length, unchecked: c.filter((x) => fetchUnchecked(x.contamination)).length }), c.filter((x) => (x.contamination.fixRecallChars || 0) >= MIN_RECALL).length]; })));
   }
 
   blocks.push(...orchBlocks(run, { phases: docPhases }));

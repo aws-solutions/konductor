@@ -19,6 +19,7 @@ const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
 const { judgeOnce, notJudgedReason, runKey, estimateSpend } = require('./run.js');
 const { cacheSaltOf } = require('./opencode.js');
 const { mergeRecords, addSpend } = require('./merge.js');
+const { writeAtomic } = require('../runner/lib/owned.js');
 const pack = require('./pack/index.js');
 
 const FILE = 'judgments-quality.json';
@@ -179,7 +180,7 @@ function mergeAndWrite(run, prev, { thePack, judges, backend, limits, spent, spe
     notJudged,
     records: mergeRecords(prev?.records || [], records),
   };
-  fs.writeFileSync(path.join(run.dir, FILE), JSON.stringify(out, null, 2) + '\n');
+  writeAtomic(path.join(run.dir, FILE), JSON.stringify(out, null, 2) + '\n');
   return out;
 }
 

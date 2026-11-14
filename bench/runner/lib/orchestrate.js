@@ -12,6 +12,7 @@ const { openLedger } = require('./credit-ledger.js');
 const { describeChange, judgeBatch, GATE_FILE } = require('./isolation-gates.js');
 const { DEFAULT_MAX_AUTH_FAILURES } = require('./auth-failure.js');
 const { DEFAULT_CHECK_EVERY_MS } = require('./login-check.js');
+const { writeAtomic } = require('./owned.js');
 
 const DEFAULT_CENSORED_FLOOR = 1.0;
 
@@ -146,7 +147,7 @@ function makeLedger({ budgetCredits, floor = DEFAULT_CENSORED_FLOOR, runsPerRepl
 function writeResult(outDir, arm, task, rep, result) {
   const dir = path.join(outDir, arm.id, task.id, String(rep));
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'result.json'), JSON.stringify(result, null, 2) + '\n');
+  writeAtomic(path.join(dir, 'result.json'), JSON.stringify(result, null, 2) + '\n');
 }
 
 /**

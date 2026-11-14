@@ -25,17 +25,33 @@ function resolveInside(root, rel) {
   return full;
 }
 
+// Returns the first component of `full` below `root` that is a symlink, or null. Checks run in the runner
+// process and the agent controls its tree, so a link must never be followed (it could point at a masked file).
+// A missing component ends the walk: the caller reports the file as missing as before.
+function symlinkOnPath(root, full) {
+  const parts = path.relative(root, full).split(path.sep).filter(Boolean);
+  let cur = root;
+  for (const part of parts) {
+    cur = path.join(cur, part);
+    let st;
+    try { st = fs.lstatSync(cur); } catch { return null; }
+    if (st.isSymbolicLink()) return path.relative(root, cur);
+  }
+  return null;
+}
+
 function isFile(p) {
   try { return fs.statSync(p).isFile(); } catch { return false; }
 }
 
-function readTreeFiles(dir, rel = '') {
+function readTreeFiles(dir, rel = '', links = []) {
   const out = [];
   for (const e of fs.readdirSync(path.join(dir, rel), { withFileTypes: true })) {
     if (COMPARE_SKIP.has(e.name)) continue;
     const r = path.join(rel, e.name);
-    if (e.isDirectory()) out.push(...readTreeFiles(dir, r));
+    if (e.isDirectory()) out.push(...readTreeFiles(dir, r, links));
     else out.push(r);
+    if (e.isSymbolicLink()) links.push(r);
   }
   return out.sort();
 }
@@ -47,7 +63,9 @@ function diffPaths(actual, pristine, { allowAdditions = false } = {}) {
   const p = fs.lstatSync(pristine);
   if (a.isDirectory() !== p.isDirectory()) return 'file/directory mismatch';
   if (!p.isDirectory()) return fs.readFileSync(actual).equals(fs.readFileSync(pristine)) ? null : 'content differs';
-  const af = readTreeFiles(actual);
+  const links = [];
+  const af = readTreeFiles(actual, '', links);
+  if (links.length) return `path is a symlink: ${links[0]}`;
   const pf = readTreeFiles(pristine);
   const missing = pf.filter((f) => !af.includes(f));
   const extra = af.filter((f) => !pf.includes(f));
@@ -204,6 +222,8 @@ function evalCheck(root, check, opts = {}) {
   if (check.type === 'tests') return testsResult(root, check, opts);
 
   const file = resolveInside(root, check.path);
+  const link = symlinkOnPath(root, file);
+  if (link) return { passed: false, detail: `path is a symlink: ${link}` };
   if (check.type === 'file_exists') {
     const ok = isFile(file);
     return { passed: ok, detail: ok ? 'present' : 'missing' };

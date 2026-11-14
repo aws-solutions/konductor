@@ -413,7 +413,9 @@ node bench/runner/bench.js run --suite lite --arms oc-vanilla,oc-v1.2.0,oc-main 
 - Credentials: `--aws-creds-file` is read-only input; only the named profile is copied to `<scratch HOME>/.aws`,
   `AWS_PROFILE`/`AWS_REGION=us-east-1` are set, the real `~/.aws` and the file itself are hidden in the namespace, and
   the copy is deleted when the agent exits and on any signal. Exact secret values are scrubbed from outputs
-  (`credsRedacted`); `env.json` lists names only.
+  (`credsRedacted`); `env.json` lists names only. Files of any size are scrubbed (large ones in chunks), symlinks are not
+  followed, and a file that cannot be scrubbed sets `credsUnscrubbed`, lists it in `unscrubbedFiles`, and keeps the run out of
+  judging (`not judged ... credsUnscrubbed`).
 - Usage comes from the session database (`opencode db`), summed over the parent and every subagent session
   (stream and export carry the parent only). `tokens.total` = input + output + cache read + cache write;
   `costUsd` is list price (2 / 10 / 0.1 / 2.5 USD per M tokens for in / out / cache read / cache write on Sonnet 5.5).
@@ -655,10 +657,11 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   denied, except `~/Library` (system frameworks write caches and keychains there, but the dirs macOS runs
   code from, `LaunchAgents`, `Services`, `Scripts`, `QuickLook` and similar, stay denied) and the run's
   scratch root. The probe checks that scratch is writable, the home and temp dir are not, and a masked
-  file cannot be read. The child's `stream.jsonl` and `stderr.txt` are written under the scratch root
-  (`<run>/stdio/`) while it runs and moved into the out dir when it exits: the out dir is masked, and
-  sandbox-exec denies even `fstat` on a descriptor whose file sits under a masked path, which made
-  the v3 engine's node abort at startup. The same
+  file cannot be read. The child's `stream.jsonl` and `stderr.txt` are written in a runner-made
+  directory next to the run's scratch root (`<run>-stdio/`, outside the writable space, read-only for
+  the agent in the profile) while it runs and moved into the out dir when it exits: the out dir is
+  masked, and sandbox-exec denies even `fstat` on a descriptor whose file sits under a masked path,
+  which made the v3 engine's node abort at startup. On Linux the files are opened in the out dir directly. The same
   hidden paths and masks as above are denied for reading, writing and Unix-socket connects (a denied
   read fails with "Operation not permitted" instead of showing an empty directory), plus the kiro-cli
   auth database under `~/Library/Application Support/kiro-cli` and launchd's per-session sockets under

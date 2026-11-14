@@ -28,7 +28,7 @@ const { optionalProfile, replicatesFor, aaArmFor, writeCalibrationSample } = req
 const { loadRun } = require('../../report/load.js');
 const { createInstallsGate, describeChange, judgeBatch } = require('./isolation-gates.js');
 const toolchain = require('./toolchain.js');
-const { ensureOwnedDir } = require('./owned.js');
+const { ensureOwnedDir, writeAtomic } = require('./owned.js');
 const { infraFailure } = require('./infra-check.js');
 const { maxAuthFailuresOf, AUTH_EXIT_CODE } = require('./auth-failure.js');
 const { makeLoginCheck } = require('./login-check.js');
@@ -280,7 +280,7 @@ async function cmdRun(opts, deps = {}) {
   const state = { results: [], spent: 0, charged: 0 };
   let runConfig = { suite: suite.name, armIds, startedAt: new Date().toISOString(), seed };
   const flush = (signal) => {
-    fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, state, { interrupted: signal }), null, 2) + '\n');
+    writeAtomic(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, state, { interrupted: signal }), null, 2) + '\n');
   };
   const removeHandlers = procs.installSignalHandlers({ flush, log });
 
@@ -410,7 +410,7 @@ async function cmdRun(opts, deps = {}) {
       toolchainCheck,
       startedAt: new Date().toISOString(),
     };
-    fs.writeFileSync(path.join(outDir, 'run-config.json'), JSON.stringify(runConfig, null, 2) + '\n');
+    writeAtomic(path.join(outDir, 'run-config.json'), JSON.stringify(runConfig, null, 2) + '\n');
     if (variants.length) {
       fs.mkdirSync(path.join(outDir, 'variants'), { recursive: true });
       for (const v of variants) fs.writeFileSync(path.join(outDir, 'variants', `${v.variantId}.json`), JSON.stringify(v, null, 2) + '\n');
@@ -434,7 +434,7 @@ async function cmdRun(opts, deps = {}) {
     const judged = judgeBatch({ gate: batchWindow.end(), results, strict: Boolean(opts['gate-strict']), window: { from: batchFrom, to: new Date().toISOString() } });
     const gate = judged.gate;
     const infra = infraFailure(results);
-    fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(authStop.tripped ? { authStop } : {}), ...(infra ? { infraFailure: infra } : {}), ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
+    writeAtomic(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(authStop.tripped ? { authStop } : {}), ...(infra ? { infraFailure: infra } : {}), ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
     if (judged.warning) log(judged.warning);
     if (!gate.ok) {
       log(judged.alarm);

@@ -140,6 +140,14 @@ test('censored credits and contamination warn when present', () => {
   assert.equal(status(good({ contamination: null }), 'contamination'), 'N/A');
 });
 
+test('contamination warns, and names the runs whose fetch audit could not run, instead of passing them as clean', () => {
+  const c = { audited: 4, flagged: 0, externalFetch: 0, fixRecall: 0 };
+  assert.equal(status(good({ contamination: c }), 'contamination'), 'PASS');
+  const un = by(evaluate(good({ contamination: { ...c, externalFetchUnchecked: 4 } })), 'contamination');
+  assert.equal(un.status, 'WARN');
+  assert.match(un.value, /fetch audit not checked for this runtime in 4 run\(s\)/);
+});
+
 test('model pin: all verified passes, unrecorded warns, a mismatch fails', () => {
   assert.equal(status(good({ pin: { runs: 4, verified: 3, mismatch: 0 } }), 'pin'), 'WARN');
   assert.equal(status(good({ pin: { runs: 4, verified: 3, mismatch: 1 } }), 'pin'), 'FAIL');
