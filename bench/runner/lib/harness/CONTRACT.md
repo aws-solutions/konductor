@@ -53,21 +53,28 @@ Every harness module exports `meta`, a frozen record of static facts about the r
 | --- | --- | --- |
 | `id` | string | runtime name, equal to the module's `id` and its `HARNESSES` key |
 | `label` | string | display name |
+| `proseName` | string | the name used inside error messages and notes (`kiro-cli`, `opencode`, `Claude Code`) |
 | `armPrefix` | string | arm id prefix: `''` for kiro-cli, `oc-`, `cc-`. Exactly one runtime has `''`; it is the fallback of `runtimeOf` |
 | `costUnit` | `'credits'` or `'usd'` | `'usd'` runtimes are the `USD_RUNTIMES` and fill `acc.usage` |
-| `supports` | object of booleans | `trace`, `stopOn`, `effort`, `runCreditLimit`, `multiTurn`, `capCommands`, `skillStudy` |
+| `streamFormat` | `'kiro-acp'`, `'opencode-json'` or `'claude-stream-json'` | the shape of `stream.jsonl`. `stop-watch.js`, `trace.js` and `judge/bundle.js` pick their parser from it. A runtime with a new shape adds a value here and a parser to each of those three |
+| `supports` | object of booleans | `trace`, `stopOn`, `effort`, `runCreditLimit`, `multiTurn`, `capCommands`, `skillStudy`, `agentEngine`, `prepareOnly` |
+| `flags` | object | `own`: run flags that only this runtime's arms accept (refused when no arm of the run uses it). `refused`: run flag to the reason it does not apply, in the order `run` checks them. `perRunCapFlag`: the flag that caps one run's cost, named in the `--run-credit-limit` refusal, or `null` |
+| `multiTurnNote` | string or `null` | why autonomy tasks are refused; a string exactly when `supports.multiTurn` is false |
+| `trace` | object | what `trace` says about the run. `sessionFiles`: the harness saves session files (`trace` reports their absence). `timeNote`: how time is known in `stream.jsonl`. `skillsListing`: `'agent-filter'` (the installed agent's skill filter) or `'slash-commands'` (the session init); `null` when `supports.trace` is false |
 
-`supports` records what the code allows today, read from the consumers named here. Nothing reads it yet.
+`supports` records what the runner allows. `run-cmd.js` reads `runCreditLimit`, `multiTurn`, `agentEngine` and `prepareOnly`; `trace.js` reads `trace`. `effort` and `stopOn` must agree with `flags.refused` (`registry.test.js` checks it). The other keys are not read yet.
 
-| Key | Meaning | Where it is enforced today |
+| Key | Meaning | Where it is enforced |
 | --- | --- | --- |
-| `trace` | `trace` can read the run | `trace.js:327` refuses opencode |
-| `stopOn` | `--stop-on` and `--max-tool-calls` apply | `run-cmd.js:197-201` refuses Claude Code; `stop-watch.js:27` has an opencode branch |
-| `effort` | the effort level is passed to the agent | `run-cmd.js:197-201` refuses `--effort` for Claude Code |
-| `runCreditLimit` | `--run-credit-limit` applies | `run-cmd.js:215` refuses USD runtimes |
-| `multiTurn` | autonomy (multi-turn) tasks run | `run-cmd.js:202-204` refuses Claude Code |
+| `trace` | `trace` can read the run | `trace.js` refuses a run whose runtime is false here |
+| `stopOn` | `--stop-on` and `--max-tool-calls` apply | `flags.refused` in `run-cmd.js`; `stop-watch.js` reads `streamFormat` |
+| `effort` | the effort level is passed to the agent | `flags.refused` in `run-cmd.js` |
+| `runCreditLimit` | `--run-credit-limit` applies | `run-cmd.js` refuses runtimes that are false here |
+| `multiTurn` | autonomy (multi-turn) tasks run | `run-cmd.js` refuses runtimes that are false here, with `multiTurnNote` |
 | `capCommands` | the `cap` commands accept the runtime | `cap/*` accept `kiro-cli` and `opencode` only |
 | `skillStudy` | `cap skill-study` can drive the runtime | `cap/skillstudy.js` and `cap/studyio.js` are kiro-cli only |
+| `agentEngine` | `--agent-engine` applies | `engineOpt` in `run-cmd.js` |
+| `prepareOnly` | `--prepare-only` covers the runtime | `prepareOnlyRun` in `run-cmd.js` |
 
 Derived from the descriptors: `RUNTIMES`, `USD_RUNTIMES`, `isUsdRuntime` and `runtimeOf` in `runtime.js`, and the `oc-`/`cc-` prefix handling and `OC_PREFIX`/`CC_PREFIX` in `arms.js`.
 
@@ -136,11 +143,11 @@ All of these are read by `buildResult` (through `streamFields`) or by classifica
 
 Each of these must be edited by hand when a runtime is added. The registry work moves them onto the descriptor in steps. "Next step" marks the switches the following piece migrates; "later" marks the rest. Line numbers are at the time of writing.
 
-- Next step. `runner/lib/run-cmd.js`: `:60` and `:114` (`r !== 'kiro-cli'`), `:188` (Claude Code only flags), `:191-192` (`isOc`, `isCc`), `:193-195` (cost unit and budget flag), `:197-201` (flags refused for Claude Code, from `supports.stopOn`, `supports.effort`), `:202-204` (multi-turn, from `supports.multiTurn`), `:215` (`--run-credit-limit`, from `supports.runCreditLimit`), `:99` (summary unit, from `costUnit`).
-- Next step. `runner/lib/stop-watch.js:27`: `--stop-on` treats `opencode` specially and everything else as kiro.
-- Next step. `runner/lib/trace.js`: `:236`, `:240`, `:326-329`, `:335-336` (refusal from `supports.trace`; timeline and skill-listing note per runtime).
-- Next step. `runner/lib/result.js:64`: cost unit, already behind `isUsdRuntime`; switch to `costUnit` when the others move.
-- Next step. `judge/bundle.js:49-50`: how the final text is extracted per runtime.
+- Done. `runner/lib/run-cmd.js`: flag legality (`flags.own`, `flags.refused`, `supports.runCreditLimit`, `supports.multiTurn`, `supports.agentEngine`, `supports.prepareOnly`, `costUnit`) reads the descriptor. Still by runtime name, because each arm needs its own binary, credentials and run-config record: `:100` (`isUsdRuntime` for the summary unit), `:195-196` (`isOc`, `isCc`), `:211` (Claude Code credential check), `:257-259`, `:269`, `:278-282`, `:314-321`, `:353-355`, `:381-390`, `:423-425`.
+- Done. `runner/lib/stop-watch.js`: reads `streamFormat`. `opencode-json` gets the opencode reader (capability tools `skill` and `task` are still literal there); every other format is read as kiro-cli updates.
+- Done. `runner/lib/trace.js`: the refusal (`supports.trace`), the timeline reader (`streamFormat`), the missing-data notes and the skill listing (`trace`) read the descriptor. Left: `claudeTimeline` writes `engine: 'claude-code'` into its start entry (`:172`), and a stream format other than `claude-stream-json` is read by `kiroTimeline`.
+- Done. `runner/lib/result.js`: the cost unit comes from `costUnitOf` (`costUnit`); the default runtime comes from `DEFAULT_RUNTIME`.
+- Done. `judge/bundle.js`: `finalTextOf` picks its reader from `streamFormat` (`FINAL_TEXT`). A new stream format adds a reader there.
 - Next step. `runner/lib/arms.js` `KNOWN_ARMS` and the `listArms` condition text; `report/aggregate.js:312`, `report/skills.js:165`, `report/factorial.js:60`, `cap/cli.js:328`, `cap/cli.js:567` (arm prefix literals; use `armPrefix`).
 - Later. `runner/lib/skills.js`: `:125`, `:135`, `:177`, `:191`, `:291`, `:464` (skill-load capture, startup summaries, `skillsScope`).
 - Later. `runner/lib/backfill.js:39`, `runner/lib/backfill-skills.js:34`: kiro-cli only.

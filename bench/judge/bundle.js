@@ -7,7 +7,7 @@ const path = require('node:path');
 const { parseStream, aggregateStream } = require('../runner/lib/stream.js');
 const { aggregateEvents } = require('../runner/lib/harness/opencode-parse.js');
 const claudeParse = require('../runner/lib/harness/claude-code-parse.js');
-const { runtimeOf } = require('../runner/lib/harness/runtime.js');
+const { runtimeOf, descriptorOf } = require('../runner/lib/harness/runtime.js');
 const { ANSWER_KEY } = require('../runner/lib/sandbox.js');
 const { redact } = require('./redact.js');
 const { scrubStringCounted } = require('../runner/lib/scrub.js');
@@ -40,19 +40,22 @@ function readText(file) {
   return { binary: true, size: buf.length, sha: crypto.createHash('sha256').update(buf).digest('hex') };
 }
 
-// kiro-cli: the runFinished event's text. opencode: the last assistant text event of the parent session. Claude Code: the
-// last result line's text, else the last assistant text of the main session.
+// By stream format. kiro-acp: the runFinished event's text. opencode-json: the last assistant text event of the parent
+// session. claude-stream-json: the last result line's text, else the last assistant text of the main session.
+const FINAL_TEXT = {
+  'kiro-acp': (events) => aggregateStream(events).finalText,
+  'opencode-json': (events) => aggregateEvents(events).lastText,
+  'claude-stream-json': (events) => {
+    const a = claudeParse.aggregateEvents(events);
+    return a.finalText ?? a.lastText;
+  },
+};
+
 function finalTextOf(runDir, result = null) {
   const file = path.join(runDir, 'stream.jsonl');
   if (!fs.existsSync(file)) return null;
   const { events } = parseStream(fs.readFileSync(file, 'utf8'));
-  const runtime = runtimeOf(result);
-  if (runtime === 'opencode') return aggregateEvents(events).lastText;
-  if (runtime === 'claude-code') {
-    const a = claudeParse.aggregateEvents(events);
-    return a.finalText ?? a.lastText;
-  }
-  return aggregateStream(events).finalText;
+  return FINAL_TEXT[descriptorOf(runtimeOf(result)).streamFormat](events);
 }
 
 // Autonomy runs only: what the scripted user was asked and what it answered. Judged with the rest of the bundle, so redaction applies.

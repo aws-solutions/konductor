@@ -5,7 +5,12 @@
 module.exports = Object.freeze({
   id: 'opencode',
   label: 'opencode',
+  proseName: 'opencode',
   armPrefix: 'oc-',
   costUnit: 'usd',
-  supports: Object.freeze({ trace: false, stopOn: true, effort: true, runCreditLimit: false, multiTurn: true, capCommands: true, skillStudy: false }),
+  streamFormat: 'opencode-json',
+  supports: Object.freeze({ trace: false, stopOn: true, effort: true, runCreditLimit: false, multiTurn: true, capCommands: true, skillStudy: false, agentEngine: false, prepareOnly: false }),
+  flags: Object.freeze({ own: Object.freeze([]), refused: Object.freeze({}), perRunCapFlag: null }),
+  multiTurnNote: null,
+  trace: Object.freeze({ sessionFiles: false, timeNote: null, skillsListing: null }),
 });

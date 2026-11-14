@@ -12,7 +12,8 @@ const { applyArmOptions, attachVariant } = require('./arm-opts.js');
 const { applyOracle } = require('./oracle.js');
 const { STOP_ON } = require('./stop-watch.js');
 const { harnessFor, opencode: oc, claudeCode: cc } = require('./harness/index.js');
-const { AGENT_ENGINES, DEFAULT_ENGINE, isUsdRuntime } = require('./harness/runtime.js');
+const { AGENT_ENGINES, DEFAULT_ENGINE, isUsdRuntime, descriptorOf, supporting, notSupporting, joinNames } = require('./harness/runtime.js');
+const { DESCRIPTORS } = require('./harness/descriptors.js');
 const { readProfile } = require('./harness/opencode-creds.js');
 const { isSuiteName, loadTasks, loadSuite, suiteExtraDirs, suiteDirs, suiteFile, mergeExtraDirs, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
 const real = require('./real.js');
@@ -53,12 +54,12 @@ function replicateOffsetOpt(opts) {
   return Number(v);
 }
 
-// --agent-engine picks the kiro-cli engine and the matching install (v2: kiro-cli-v2, v3: kiro-v3). opencode and Claude Code have no engine.
+// --agent-engine picks the kiro-cli engine and the matching install (v2: kiro-cli-v2, v3: kiro-v3). Runtimes without supports.agentEngine have no engine.
 function engineOpt(opts, runtimes) {
   const v = opts['agent-engine'];
   if (v === undefined) return DEFAULT_ENGINE;
-  const other = runtimes.find((r) => r !== 'kiro-cli');
-  if (other) throw new Error(`--agent-engine applies to kiro-cli arms only; ${other} arms have no agent engine`);
+  const other = runtimes.find((r) => !descriptorOf(r).supports.agentEngine);
+  if (other) throw new Error(`--agent-engine applies to ${joinNames(supporting('agentEngine').map((d) => d.proseName))} arms only; ${other} arms have no agent engine`);
   if (!AGENT_ENGINES.includes(v)) throw new Error(`--agent-engine must be ${AGENT_ENGINES.join(' or ')}`);
   return v;
 }
@@ -111,7 +112,7 @@ function summarize(runConfig, state, extra) {
 // Builds and trial-installs every arm exactly as `run` does before it launches an agent, prints the preflight table
 // and stops. It needs no kiro-cli login, creates no run directory and starts no agent, so it spends no credits.
 function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
-  if (runtimes.some((r) => r !== 'kiro-cli')) throw new Error('--prepare-only covers kiro-cli arms; opencode and Claude Code arms need their binary and AWS credentials, so check them with a normal run');
+  if (runtimes.some((r) => !descriptorOf(r).supports.prepareOnly)) throw new Error(`--prepare-only covers ${joinNames(supporting('prepareOnly').map((d) => d.proseName))} arms; ${joinNames(notSupporting('prepareOnly').map((d) => d.proseName))} arms need their binary and AWS credentials, so check them with a normal run`);
   const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
   const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
   ensureOwnedDir(cacheDir, 'cache');
@@ -185,25 +186,29 @@ async function cmdRun(opts, deps = {}) {
   const variants = arms.map(attachVariant).filter(Boolean);
   const runtimes = [...new Set(arms.map((a) => harnessFor(a).id))];
   const agentEngine = engineOpt(opts, runtimes);
-  if (!runtimes.includes('claude-code')) for (const flag of ['claude-bin', 'claude-tools-dir', 'run-budget-usd']) if (opts[flag] !== undefined) throw new Error(`--${flag} applies to Claude Code (cc-) arms only`);
+  for (const d of DESCRIPTORS) {
+    if (runtimes.includes(d.id)) continue;
+    for (const flag of d.flags.own) if (opts[flag] !== undefined) throw new Error(`--${flag} applies to ${d.proseName}${d.armPrefix ? ` (${d.armPrefix})` : ''} arms only`);
+  }
   if (prepareOnly) return prepareOnlyRun({ opts, arms, runtimes, repo: REPO, agentEngine, log: (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`) });
   if (runtimes.length > 1) throw new Error(`arms from different harnesses cannot share one run (${arms.map((a) => `${a.id}: ${harnessFor(a).id}`).join(', ')}); run them separately with different --out`);
   const isOc = runtimes[0] === 'opencode';
   const isCc = runtimes[0] === 'claude-code';
-  const isUsd = isOc || isCc;
-  const unit = isUsd ? 'usd' : 'credits';
+  const desc = descriptorOf(runtimes[0]);
+  const unit = desc.costUnit;
+  const isUsd = unit === 'usd';
+  const unitName = isUsd ? 'USD' : 'credits';
   const budgetFlag = isUsd ? 'budget-usd' : 'budget-credits';
-  if (opts[isUsd ? 'budget-credits' : 'budget-usd'] !== undefined) throw new Error(`--${isUsd ? 'budget-credits' : 'budget-usd'} does not apply here: ${isUsd ? `${runtimes[0]} runs are costed in USD, use --budget-usd` : 'kiro-cli runs are costed in credits, use --budget-credits'}`);
-  if (isCc) {
-    for (const flag of ['effort', 'stop-on', 'max-tool-calls', 'aws-creds-file', 'aws-profile']) {
-      if (opts[flag] !== undefined) throw new Error(`--${flag} does not apply to Claude Code arms (${{ effort: 'the effort level is not passed to claude, so a value would be recorded but not applied', 'stop-on': 'the early-stop watcher reads kiro-cli and opencode events only', 'max-tool-calls': 'the early-stop watcher reads kiro-cli and opencode events only', 'aws-creds-file': 'credentials come from the AWS_* variables in the environment that starts the bench', 'aws-profile': 'credentials come from the AWS_* variables in the environment that starts the bench' }[flag]})`);
-    }
+  const otherBudgetFlag = isUsd ? 'budget-credits' : 'budget-usd';
+  if (opts[otherBudgetFlag] !== undefined) throw new Error(`--${otherBudgetFlag} does not apply here: ${runtimes[0]} runs are costed in ${unitName}, use --${budgetFlag}`);
+  for (const [flag, why] of Object.entries(desc.flags.refused)) {
+    if (opts[flag] !== undefined) throw new Error(`--${flag} does not apply to ${desc.proseName} arms (${why})`);
   }
-  if (isCc) {
+  if (!desc.supports.multiTurn) {
     const multiTurn = tasks.filter((t) => t.autonomy).map((t) => t.id);
-    if (multiTurn.length) throw new Error(`multi-turn (autonomy) tasks are not supported on the Claude Code harness yet: ${multiTurn.join(', ')}; the resume flags have not been verified. Choose other tasks with --tasks`);
-    cc.checkCredentials(process.env);
+    if (multiTurn.length) throw new Error(`multi-turn (autonomy) tasks are not supported on the ${desc.proseName} harness yet: ${multiTurn.join(', ')}; ${desc.multiTurnNote}. Choose other tasks with --tasks`);
   }
+  if (isCc) cc.checkCredentials(process.env);
   const budgetCredits = opts[budgetFlag] ? Number(opts[budgetFlag]) : null;
   if (budgetCredits !== null && !(budgetCredits > 0)) throw new Error(`--${budgetFlag} must be a positive number`);
   const censoredFloor = opts['censored-floor'] ? Number(opts['censored-floor']) : isUsd ? DEFAULT_CENSORED_FLOOR_USD : DEFAULT_CENSORED_FLOOR;
@@ -212,7 +217,7 @@ async function cmdRun(opts, deps = {}) {
   if (opts['run-credit-limit'] !== undefined) {
     runCreditLimit = Number(opts['run-credit-limit']);
     if (opts['run-credit-limit'] === true || !(runCreditLimit > 0)) throw new Error('--run-credit-limit must be a positive number');
-    if (isUsd) throw new Error(`--run-credit-limit applies to kiro-cli arms only; ${runtimes[0]} runs are costed in USD${isCc ? ' (use --run-budget-usd for a per-run cap)' : ''}`);
+    if (!desc.supports.runCreditLimit) throw new Error(`--run-credit-limit applies to ${joinNames(supporting('runCreditLimit').map((d) => d.proseName))} arms only; ${runtimes[0]} runs are costed in ${unitName}${desc.flags.perRunCapFlag ? ` (use --${desc.flags.perRunCapFlag} for a per-run cap)` : ''}`);
   }
   let stopOn = null;
   if (opts['stop-on'] !== undefined) {
