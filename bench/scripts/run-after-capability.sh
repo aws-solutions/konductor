@@ -39,12 +39,12 @@
 #   without it. Only the path is used; the contents are never read or printed. The profile inside the file is
 #   AWS_PROFILE_NAME (default bench, which is also what bench.js and run-skill-bench.sh use).
 #
-# FILES (under AC_STATE_DIR, default /tmp/konductor-bench)
+# FILES (under AC_STATE_DIR, default: a per-user dir, see state-dir.sh)
 #   after-capability.log / .state / .pid / -summary.txt, real-pilot-summary.txt, after-capability-p2-tests.log,
 #   real-pilot-autonomy-rerun.log, judge-capability-<dir>.log
 #
 # ENVIRONMENT OVERRIDES (defaults in brackets)
-#   AC_STATE_DIR [/tmp/konductor-bench]        AC_REPO [the checkout this script sits in]   AC_BRANCH [unset: any branch, not detached]
+#   AC_STATE_DIR [per-user dir, see state-dir.sh]        AC_REPO [the checkout this script sits in]   AC_BRANCH [unset: any branch, not detached]
 #   AC_CLI_JS [$AC_REPO/bench/runner/bench.js]
 #   AC_PATCHES / PATCHES   comma list of patch files for P2, applied in order   [unset: P2 is skipped]
 #   AC_RERUN_AUTONOMY / RERUN_AUTONOMY  1 runs P3   [1 when PATCHES is set, else 0]   AC_P3_DEST_PREFIX [autonomy-rerun]
@@ -73,7 +73,8 @@ set -u -o pipefail
 SELF=$(readlink -f "${BASH_SOURCE[0]}")
 SELF_DIR=$(dirname "$SELF")
 DEFAULT_REPO=$(cd "$SELF_DIR/../.." 2>/dev/null && pwd)
-STATE_DIR=${AC_STATE_DIR:-/tmp/konductor-bench}
+. "$SELF_DIR/state-dir.sh"
+STATE_DIR=$(bench_state_dir "${AC_STATE_DIR:-}") || exit 1
 REPO=${AC_REPO:-$DEFAULT_REPO}
 BRANCH=${AC_BRANCH:-}
 CLI_JS=${AC_CLI_JS:-$REPO/bench/runner/bench.js}

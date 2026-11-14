@@ -34,7 +34,7 @@
 #
 # ENVIRONMENT (defaults in brackets)
 #   REPO          checkout to run from                                  [the checkout this script sits in]
-#   STATE_DIR     pid, log, study pointer, caches                       [/tmp/konductor-bench]
+#   STATE_DIR     pid, log, study pointer, caches                       [per-user dir, see state-dir.sh]
 #   RESULTS       where study dirs go                                   [STATE_DIR/results]
 #   TASKS_FILE    task list                                             [real-pilot-tasks.txt beside this script]
 #   ORCH_DIR      worktree of the branch under test; adds the arm orch-all=dir:ORCH_DIR   [unset]
@@ -75,7 +75,8 @@ set -u -o pipefail
 SCRIPT=$(readlink -f "${BASH_SOURCE[0]}")
 DEFAULT_REPO=$(cd "$(dirname "$SCRIPT")/../.." 2>/dev/null && pwd)
 REPO=${REPO:-$DEFAULT_REPO}
-BASE=${STATE_DIR:-/tmp/konductor-bench}
+. "$(dirname "$SCRIPT")/state-dir.sh"
+BASE=$(bench_state_dir "${STATE_DIR:-}") || exit 1
 CLI_JS=${CLI_JS:-$REPO/bench/runner/bench.js}
 TASKS_FILE=${TASKS_FILE:-$(dirname "$SCRIPT")/real-pilot-tasks.txt}
 ORCH_DIR=${ORCH_DIR:-}

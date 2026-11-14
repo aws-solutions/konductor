@@ -25,7 +25,7 @@
 # subprocesses beyond ps/df/jq/grep; run-skill-bench --status makes a short-lived scratch dir under its SCRATCH_PARENT, which it removes.
 #
 # ENVIRONMENT (defaults in brackets)
-#   STATE_DIR [/tmp/konductor-bench]   where the chain keeps its pid, log and state files
+#   STATE_DIR [per-user dir, see state-dir.sh]   where the chain keeps its pid, log and state files
 #   STUDY     [contents of $STATE_DIR/real-pilot.study]   the capability study directory
 #   MON_COLS [118]  line width        MON_STALL_MIN [30]  minutes without log output before ATTENTION
 #   MON_N_ARMS [4]  MON_REPS [5]      (a complete task dir holds N_ARMS x REPS runs)
@@ -41,7 +41,8 @@ export LC_ALL=C
 # shellcheck disable=SC2034  # globals are shared between gather, render and json_out
 SELF=$(readlink -f "${BASH_SOURCE[0]}")
 SELF_DIR=$(dirname "$SELF")
-STATE_DIR=${STATE_DIR:-/tmp/konductor-bench}
+. "$SELF_DIR/state-dir.sh"
+STATE_DIR=$(bench_state_dir "${STATE_DIR:-}" --no-create) || exit 1
 STUDY=${STUDY:-}
 COLS=${MON_COLS:-118}
 N_ARMS=${MON_N_ARMS:-4}
