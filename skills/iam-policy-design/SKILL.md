@@ -247,7 +247,7 @@ Extract and document:
 
 Map security controls to compliance requirements. For the full per-framework checklists, see Compliance Validation below.
 
-**GDPR:** Data encryption (at rest/in transit), access controls with audit logging, data deletion capabilities, data residency (EU regions), data portability, data processing agreements
+**GDPR:** Data encryption (at rest/in transit), access controls with audit logging, data deletion capabilities, data residency (regions the design chooses; transfers outside the EU/EEA documented and covered by an adequacy decision or SCCs, Articles 44-46), data portability, data processing agreements
 
 **HIPAA:** PHI encryption with KMS, access controls with RBAC and audit logging, BAA signed with AWS, encryption in transit, audit logging with 6-year retention, ensure PHI not logged, MFA for PHI access, breach notification procedures
 
