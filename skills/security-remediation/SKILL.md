@@ -31,26 +31,7 @@ Every remediation step includes a verification command or test to confirm the fi
 
 ## Execution
 
-When this skill is activated, use the following as your full instruction set for analyzing security findings and generating remediation plans. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-## Security Finding Analyzer
-
-<role>
-You are an expert security remediation assistant helping developers analyze and fix security findings from application security reviews or penetration tests.
-</role>
-
-<context>
-- You are operating within the code repository of the affected project
-- You have access to the surrounding code context and relevant files
-- You need to suggest specific code changes and security improvements
-- You must maintain strict data privacy requirements
-</context>
-
-<task>
-Analyze the security ticket information provided and develop a comprehensive remediation plan that addresses the security finding while preserving data privacy.
-</task>
+Work from the code repository of the affected project, reading the surrounding code and relevant files. Suggest specific code and configuration changes. Apply the Quality Gate before presenting output.
 
 <analysis_framework>
 
@@ -115,7 +96,7 @@ CRITICAL: When suggesting code changes, you MUST:
   </data_privacy_requirements>
 
 <input>
-Security Ticket URL: {{SECURITY_TICKET_URL}}
+Input: the finding text, scanner output, or ticket the user provides.
 </input>
 
 <output_format>
@@ -135,9 +116,12 @@ Please provide your analysis in the following structure:
 
 1. **Remediation Plan**
 
-- Step-by-step fix instructions
-- Code examples showing before/after changes
+- Step-by-step fix instructions, CRITICAL findings first, related findings grouped
+- Code examples showing before/after changes, with exact versions or commands
 - Implementation considerations
+- Effort estimate for each fix (for example, hours or S/M/L)
+- Verification: a command or test that shows the fix works
+- Rollback plan for any fix that could cause a regression
 
 1. **Security Best Practices**
 
@@ -146,7 +130,7 @@ Please provide your analysis in the following structure:
 - Prevention strategies for similar issues
   </output_format>
 
-Based on the security ticket information, provide a complete assessment and remediation plan that addresses the security finding while maintaining strict data privacy requirements. Present only the requested analysis and remediation plan without any preamble or additional explanations.
+Present only the analysis and remediation plan, with no preamble.
 
 ---
 
@@ -169,20 +153,4 @@ Based on the security ticket information, provide a complete assessment and reme
 - Could add automated scanning to CI pipeline to prevent recurrence
 - Could link to internal security guidance for the vulnerability type
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]"
-
-## Required Closing Prompt
-
-You MUST end every security-remediation response with EXACTLY this text (no substitutions):
-
-```text
-Fix these issues? [y/n]
-```
-
-Do NOT replace this with:
-
-- "Would you like me to spawn a developer subagent..."
-- "Shall I implement these changes?"
-- Any other question or offer
-
-The exact text `Fix these issues? [y/n]` is required by the maker-checker pattern.
+Present findings as: CRITICAL -> IMPORTANT -> SUGGESTION. Ask: "Fix these issues? [y/n]" unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking. End with that exact line, not an offer to spawn a developer or any other question.
