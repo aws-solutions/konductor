@@ -7,6 +7,7 @@
 
 const fs = require('node:fs');
 const { SUBAGENT_TOOL, toolNameOf, skillsCallOf, mcpInputOf } = require('./stream.js');
+const { descriptorOf, DEFAULT_RUNTIME } = require('./harness/runtime.js');
 
 const STOP_ON = ['first-capability', 'first-load', 'end_turn'];
 
@@ -21,10 +22,11 @@ const hasInput = (input) => input && typeof input === 'object' && Object.keys(in
  * On engine v3 a skills call made before the tool was loaded is refused, so it is not a capability call; the retry is.
  * poll() returns null or a sticky { reason: 'first-capability'|'max-tool-calls'|'end_turn', detail }.
  */
-function makeStopWatcher(file, { runtime = 'kiro-cli', stopOn = 'end_turn', maxToolCalls = null, graceMs = 2000, now = Date.now } = {}) {
+function makeStopWatcher(file, { runtime = DEFAULT_RUNTIME, stopOn = 'end_turn', maxToolCalls = null, graceMs = 2000, now = Date.now } = {}) {
   if (!STOP_ON.includes(stopOn)) throw new Error(`--stop-on takes ${STOP_ON.slice(0, -1).join(', ')} or ${STOP_ON.at(-1)}`);
   if (maxToolCalls !== null && !(Number.isInteger(maxToolCalls) && maxToolCalls >= 1)) throw new Error('--max-tool-calls must be an integer >= 1');
-  const oc = runtime === 'opencode';
+  // Two event shapes are known: opencode's JSON events, and the kiro-cli updates that every other runtime is read as.
+  const ocEvents = descriptorOf(runtime).streamFormat === 'opencode-json';
   let offset = 0;
   let pending = '';
   let decision = null;
@@ -35,7 +37,7 @@ function makeStopWatcher(file, { runtime = 'kiro-cli', stopOn = 'end_turn', maxT
 
   const isCapability = (tool) => {
     if (stopOn === 'end_turn') return false;
-    if (oc) return tool === 'skill' || tool === 'task';
+    if (ocEvents) return tool === 'skill' || tool === 'task';
     return tool === SUBAGENT_TOOL;
   };
   // The tool name of a kiro capability call: a subagent call, or a skills-server call the engine did not refuse. Else null.
@@ -48,7 +50,7 @@ function makeStopWatcher(file, { runtime = 'kiro-cli', stopOn = 'end_turn', maxT
   };
 
   function onEvent(ev) {
-    if (oc) {
+    if (ocEvents) {
       if (ev?.type === 'step_finish' && ev.part?.reason && ev.part.reason !== 'tool-calls') ended = true;
       if (ev?.type !== 'tool_use') return;
       const p = ev.part ?? {};
