@@ -112,6 +112,11 @@ not per individual commit.
   longer claims a fixed 3-year log retention. `policy-validation` now also checks SOC 2, and its
   report uses one per-framework template. `smithy-validation` loads its example review only when
   writing a report.
+- `cost-estimation` moved its CREATE workflow out of `SKILL.md`. The setup reply, context
+  gathering and clarifying questions are in `references/create-context.md`, which the skill opens
+  when the user picks CREATE. The pricing research, scenarios, growth modeling, optimization and
+  report steps are in `references/create-analysis.md`, which it opens once the context is
+  confirmed.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
