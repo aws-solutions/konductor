@@ -771,10 +771,16 @@
       ],
       "properties": {
         "externalFetch": {
-          "type": "array",
+          "type": [
+            "array",
+            "null"
+          ],
           "items": {
             "type": "string"
           }
+        },
+        "externalFetchChecked": {
+          "type": "boolean"
         },
         "fixRecallChars": {
           "type": "integer",

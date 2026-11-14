@@ -7,14 +7,14 @@ const { spawn } = require('node:child_process');
 const { runChecks } = require('./checks.js');
 const { buildResult, errorResult, validateResult } = require('./result.js');
 const { buildCheckEnv } = require('./env.js');
-const { harnessFor, kiro } = require('./harness/index.js');
+const { harnessFor, runtimeOf, kiro } = require('./harness/index.js');
 const { makeIsolation, liveStdioDir } = require('./isolate.js');
 const { createTripwire, tripwireFlags } = require('./tripwire.js');
 const procs = require('./procs.js');
 const sandbox = require('./sandbox.js');
 const real = require('./real.js');
 const { parseStream } = require('./stream.js');
-const { scanStream, fixRecall, contaminationFlags } = require('./contamination.js');
+const { scanStream, fixRecall, contaminationFlags, canAuditFetches } = require('./contamination.js');
 const { newConversation } = require('./autonomy.js');
 const { makeCreditMeter } = require('./credit-watch.js');
 const { makeStopWatcher } = require('./stop-watch.js');
@@ -151,12 +151,13 @@ function makeIso(ctx, arm, scratchRoot, task, { offline = false, frozenDirs = []
 }
 
 // Reads the stream and the final tree of a real run: fetches made by the agent and verbatim use of the upstream fix.
-function auditContamination({ task, ctx, outDir, cwd }) {
+function auditContamination({ task, arm, ctx, outDir, cwd }) {
   const stream = path.join(outDir, 'stream.jsonl');
-  const { events } = parseStream(fs.existsSync(stream) ? fs.readFileSync(stream, 'utf8') : '');
-  const externalFetch = scanStream(events, task.realEntry).map((f) => `${f.tool}: ${f.text}`);
+  const checked = canAuditFetches(runtimeOf(arm));
+  const { events } = checked ? parseStream(fs.existsSync(stream) ? fs.readFileSync(stream, 'utf8') : '') : { events: [] };
+  const externalFetch = checked ? scanStream(events, task.realEntry).map((f) => `${f.tool}: ${f.text}`) : null;
   const recall = fixRecall({ baseDir: real.pristineDir(task, { cache: ctx.realCache }), workDir: cwd, patch: real.fixPatchText(task, { cache: ctx.realCache }) });
-  const record = { externalFetch, fixRecallChars: recall.matchedChars };
+  const record = { externalFetch, externalFetchChecked: checked, fixRecallChars: recall.matchedChars };
   return { record, flags: contaminationFlags(record) };
 }
 
@@ -192,7 +193,7 @@ function postProcess({ acc, task, arm, ctx, outDir, runRoot, home, cwd, iso, tri
   });
   if (task.real) {
     try {
-      const audit = auditContamination({ task, ctx, outDir, cwd });
+      const audit = auditContamination({ task, arm, ctx, outDir, cwd });
       acc.meta.contamination = audit.record;
       acc.meta.flags.push(...audit.flags);
     } catch (e) {
@@ -452,4 +453,4 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
   return result;
 }
 
-module.exports = { executeRun, makeIso, kiroArgs: kiro.kiroArgs, spawnWithTimeout, readTranscripts: kiro.readTranscripts };
+module.exports = { executeRun, auditContamination, makeIso, kiroArgs: kiro.kiroArgs, spawnWithTimeout, readTranscripts: kiro.readTranscripts };

@@ -66,7 +66,7 @@ test('an agent that fixes the bug scores FAIL_TO_PASS and regression separately,
   assert.equal(tests.passed, true);
   assert.equal(r.checks.find((c) => c.type === 'fixture_unchanged').passed, true);
   assert.deepEqual(audit(r), []);
-  assert.deepEqual(r.contamination, { externalFetch: [], fixRecallChars: 0 });
+  assert.deepEqual(r.contamination, { externalFetch: [], externalFetchChecked: true, fixRecallChars: 0 });
   assert.ok(started, 'the agent started');
 });
 

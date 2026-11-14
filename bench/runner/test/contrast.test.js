@@ -187,6 +187,18 @@ test('checks pass share, flags (askedUser, externalFetch, fixRecall) and rubric 
   } finally { s.done(); }
 });
 
+test('a run whose fetch audit could not read the stream has no data for externalFetch, not a clean zero', () => {
+  const s = setup([
+    ...reps('base', 3, () => ({ contamination: { externalFetch: null, externalFetchChecked: false, fixRecallChars: 0 } })),
+    ...reps('pr', 3, () => ({ contamination: { externalFetch: null, externalFetchChecked: false, fixRecallChars: 0 } })),
+  ], { tasks: {} });
+  try {
+    const cell = cellOf(analyze(s, { base: 'base' }), 'pr', 'overall');
+    const m = metric(cell, 'externalFetch');
+    assert.deepEqual([m.nBase, m.nHead, m.base, m.head, m.verdict], [0, 0, null, null, 'no data']);
+  } finally { s.done(); }
+});
+
 test('rubric is "no data" when the run was not judged', () => {
   const s = setup([...reps('base', 3, () => ({})), ...reps('pr', 3, () => ({}))], { tasks: {} });
   try {

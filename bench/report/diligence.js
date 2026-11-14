@@ -7,7 +7,7 @@
 
 const { modelFamily } = require('../judge/config.js');
 const { raterKappas, formatRaterKappas } = require('../judge/calibrate.js');
-const { MIN_RECALL } = require('../runner/lib/contamination.js');
+const { MIN_RECALL, fetchUnchecked, FETCH_UNCHECKED } = require('../runner/lib/contamination.js');
 const { qualityOfRun, DEFAULT_WEIGHTS } = require('./scores.js');
 const { checksRevision } = require('../runner/lib/recheck.js');
 const { prefixIdentity } = require('./aa-identity.js');
@@ -189,7 +189,7 @@ function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, we
     headroom: { tasks: baseTasks.length, ceilingTasks },
     failures: { n: rows.length, timeout: rows.filter((r) => r.outcome === 'timeout').length, error: rows.filter((r) => r.outcome === 'error').length, infraError: rows.filter((r) => r.outcome === 'infraError').length, modelMismatch: rows.filter((r) => r.outcome === 'modelMismatch').length, checksFailed: rows.filter((r) => r.outcome === 'checksFailed').length },
     censored: rows.filter((r) => r.censored).length,
-    contamination: contaminated.length ? { audited: contaminated.length, flagged: flagged.length, externalFetch: contaminated.filter((r) => (r.contamination.externalFetch || []).length).length, fixRecall: contaminated.filter((r) => (r.contamination.fixRecallChars || 0) >= MIN_RECALL).length } : null,
+    contamination: contaminated.length ? { audited: contaminated.length, flagged: flagged.length, externalFetch: contaminated.filter((r) => (r.contamination.externalFetch || []).length).length, externalFetchUnchecked: contaminated.filter((r) => fetchUnchecked(r.contamination)).length, fixRecall: contaminated.filter((r) => (r.contamination.fixRecallChars || 0) >= MIN_RECALL).length } : null,
     pin: { runs: rows.length, verified: rows.filter(pinOk).length, mismatch: rows.filter((r) => r.outcome === 'modelMismatch').length, ...unrecordedPin(rows.filter((r) => r.outcome !== 'modelMismatch' && !pinOk(r) && !r.sessionModel && !r.streamModel).length) },
     isolation: { modes: [...new Set(rows.map((r) => r.isolation).filter(Boolean))], unknown: rows.filter((r) => !r.isolation).length, tripwire: rows.filter((r) => r.tripwire).length, runs: rows.length },
     budget: { recorded: capKey !== null, cap: capKey ? (cfgs.every((c) => typeof c[capKey] === 'number') ? cfgs.reduce((n, c) => n + c[capKey], 0) : cfg[capKey]) : null, spent: rows.reduce((n, r) => n + (finite(r.credits) ? r.credits : 0), 0), skipped },
@@ -276,7 +276,7 @@ function evaluate(f, t = THRESHOLDS) {
   add(C('failures', 'Failed, timed-out, infra and model-mismatch runs', false, bad === 0 ? 'PASS' : bad / Math.max(1, fl.n) > t.failureShareFail ? 'FAIL' : 'WARN', `${bad} of ${fl.n} (timeout ${fl.timeout}, error ${fl.error}, infra ${fl.infraError}, model mismatch ${fl.modelMismatch}); checks failed ${fl.checksFailed}`, `0 PASS, over ${pct(t.failureShareFail)} FAIL`));
   add(C('censored', 'Censored credits', false, f.censored === 0 ? 'PASS' : 'WARN', `${f.censored} run(s)${f.censored ? ' (credits are lower bounds)' : ''}`, '0'));
   if (!f.contamination) add(C('contamination', 'Contamination flags', false, 'N/A', 'no audited runs', '0 flagged'));
-  else add(C('contamination', 'Contamination flags', false, f.contamination.flagged === 0 ? 'PASS' : 'WARN', `${f.contamination.flagged} of ${f.contamination.audited} audited (externalFetch ${f.contamination.externalFetch}, fixRecall ${f.contamination.fixRecall})`, '0 flagged'));
+  else add(C('contamination', 'Contamination flags', false, f.contamination.flagged === 0 && !f.contamination.externalFetchUnchecked ? 'PASS' : 'WARN', `${f.contamination.flagged} of ${f.contamination.audited} audited (externalFetch ${f.contamination.externalFetch}, fixRecall ${f.contamination.fixRecall})${f.contamination.externalFetchUnchecked ? `; fetch audit ${FETCH_UNCHECKED} in ${f.contamination.externalFetchUnchecked} run(s)` : ''}`, '0 flagged'));
 
   const pin = f.pin;
   add(C('pin', 'Model pin verified in every run', true, pin.mismatch > 0 ? 'FAIL' : pin.verified === pin.runs && pin.runs > 0 ? 'PASS' : 'WARN', `${pin.verified} of ${pin.runs} runs verified${pin.mismatch ? `; ${pin.mismatch} mismatch` : ''}${pin.unrecorded ? `; ${pin.unrecorded} with no model record (no session file kept and no model setting in the stream, as in kiro-cli runs without agent files to rewrite)` : ''}${f.hasDifferentModels ? '; run directories use different models' : ''}`, 'all runs'));
