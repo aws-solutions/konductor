@@ -162,6 +162,7 @@ module.exports = {
   DEFAULT_MAX_CHARS,
   MIN_LITERAL,
   KNOWN_EXAMPLES,
+  RULES,
   newCanary,
   createRedactor,
   redact,
