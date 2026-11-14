@@ -90,6 +90,28 @@ test('a run whose scrub failed, whose output files were replaced, or that had an
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('a bare secret from the environment is masked in the sheet a rater reads', () => {
+  const bare = 'plainbaresecretvalue-93e1b7c2';
+  const f = fixture(2);
+  const before = process.env.BENCH_TEST_SHEET_SECRET_TOKEN;
+  process.env.BENCH_TEST_SHEET_SECRET_TOKEN = bare;
+  try {
+    for (const dir of fs.readdirSync(f.runDir)) {
+      const ws = path.join(f.runDir, dir, 't1');
+      if (!fs.existsSync(ws)) continue;
+      for (const rep of fs.readdirSync(ws)) fs.writeFileSync(path.join(ws, rep, 'workspace/a.txt'), `leaked ${bare}\n`);
+    }
+    const out = path.join(f.root, 'cal');
+    exportSheet({ ...common(f), n: 2, seed: 1, outDir: out });
+    const text = fs.readFileSync(path.join(out, 'sheet.md'), 'utf8') + fs.readFileSync(path.join(out, 'sheet.json'), 'utf8');
+    assert.doesNotMatch(text, /plainbaresecretvalue/);
+    assert.match(text, /leaked <redacted>/);
+  } finally {
+    if (before === undefined) delete process.env.BENCH_TEST_SHEET_SECRET_TOKEN; else process.env.BENCH_TEST_SHEET_SECRET_TOKEN = before;
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
 test('score compares judges to human labels and judges to each other, with PASS/WARN', () => {
   const f = fixture(6);
   try {

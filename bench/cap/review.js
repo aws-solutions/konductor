@@ -155,7 +155,7 @@ function writeReview({ runDir, benchDir, extraTasks = [], n, seed, sampleOnly = 
     order.forEach((r, i) => {
       const label = letter(i);
       const itemId = `${groupId}-${label}`;
-      const built = buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions });
+      const built = buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions, literals });
       const bundle = scrubString(built.text, literals);
       outputs.push({ itemId, label, bundle });
       const seen = { files: built.changed, deleted: built.deleted };

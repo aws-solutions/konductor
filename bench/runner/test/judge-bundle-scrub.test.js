@@ -38,7 +38,7 @@ test('a key in the final text and in a changed file is replaced, and the replace
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('exact secret values passed as literals are replaced too; without them only shapes are', () => {
+test('exact secret values passed as literals are replaced too; without them or a matching environment variable only shapes are', () => {
   const { root, build } = setup({ finalText: `token is ${LITERAL}`, files: { 'a.txt': `x ${LITERAL}\n` } });
   try {
     assert.ok(build().text.includes(LITERAL));
@@ -65,4 +65,20 @@ test('scrubStringCounted matches scrubString and counts each literal occurrence 
   const r = scrubStringCounted(text, [LITERAL]);
   assert.equal(r.text, scrubString(text, [LITERAL]));
   assert.equal(r.count, 5);
+});
+
+test('a bare secret with no known prefix is masked when it is in the environment, without the caller passing it', () => {
+  const bare = 'plainbaresecretvalue-93e1b7c2';
+  const { root, build } = setup({ finalText: `the token is ${bare}`, files: { 'a.txt': `x ${bare}\n` } });
+  const before = process.env.BENCH_TEST_BUNDLE_SECRET_TOKEN;
+  process.env.BENCH_TEST_BUNDLE_SECRET_TOKEN = bare;
+  try {
+    const b = build();
+    assert.ok(!b.text.includes(bare));
+    assert.ok(!b.files.some((f) => f.text?.includes(bare)));
+    assert.deepEqual(b.meta.credsScrubbed, { text: 2, files: 1 });
+  } finally {
+    if (before === undefined) delete process.env.BENCH_TEST_BUNDLE_SECRET_TOKEN; else process.env.BENCH_TEST_BUNDLE_SECRET_TOKEN = before;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

@@ -10,7 +10,7 @@ const claudeParse = require('../runner/lib/harness/claude-code-parse.js');
 const { runtimeOf, descriptorOf } = require('../runner/lib/harness/runtime.js');
 const { ANSWER_KEY } = require('../runner/lib/sandbox.js');
 const { redact } = require('./redact.js');
-const { scrubStringCounted } = require('../runner/lib/scrub.js');
+const { scrubStringCounted, secretLiterals } = require('../runner/lib/scrub.js');
 
 // Tool state, not deliverables; listing it would also reveal the arm. Deliverables such as
 // .kiro/specs/** are kept. Names match at any depth, paths from the workspace root.
@@ -76,10 +76,12 @@ function checkLine(c) {
 
 // Builds the only view of a run that a judge sees. It is assembled from the
 // final text, the files that differ from the fixture, and the check results;
-// the transcript and tool calls are never read. Credential-shaped text, and the exact values in `literals` when the caller has
-// them, is scrubbed from the text and the file texts last, so nothing the run output scrubber missed reaches a model.
-// meta.credsScrubbed counts the replacements.
-function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals = [] }) {
+// the transcript and tool calls are never read. Credential-shaped text, and the exact values in `literals`, is scrubbed from
+// the text and the file texts last, so nothing the run output scrubber missed reaches a model. `literals` defaults to the
+// credential values of this process's environment, the same set the run scrubber uses, so a caller cannot leave it out by
+// accident. Callers that build the same bundle twice (judging, quote matching, rescoring) get the same text. meta.credsScrubbed
+// counts the replacements.
+function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals = secretLiterals(process.env) }) {
   const { maxFileChars, maxBundleChars } = limits;
   const meta = { truncatedFiles: [], omittedFiles: [], excluded: 0 };
   const ws = walk(path.join(runDir, 'workspace'));
