@@ -20,6 +20,7 @@ const { makeCreditMeter } = require('./credit-watch.js');
 const { makeStopWatcher } = require('./stop-watch.js');
 const { describeChange } = require('./isolation-gates.js');
 const { secretLiterals, scrubDeep } = require('./scrub.js');
+const { writeAtomic } = require('./owned.js');
 const { classifyAuthFailure } = require('./auth-failure.js');
 const { classifyLaunchFailure } = require('./launch-failure.js');
 const { moveFile, UntrustedFileError } = require('./move-file.js');
@@ -446,7 +447,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
   if (problems.length) result.error = [result.error, `schema: ${problems.join('; ')}`].filter(Boolean).join(' | ');
   try {
     fs.mkdirSync(outDir, { recursive: true });
-    fs.writeFileSync(path.join(outDir, 'result.json'), JSON.stringify(result, null, 2) + '\n');
+    writeAtomic(path.join(outDir, 'result.json'), JSON.stringify(result, null, 2) + '\n');
   } catch { /* the caller still gets the result object */ }
   return result;
 }

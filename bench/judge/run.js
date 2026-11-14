@@ -17,6 +17,7 @@ const { DEFAULT_QUOTE_RULE } = require('./quote.js');
 const { dualCriteria, dualScores, matchersFor, checkRule } = require('./views.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
+const { writeAtomic } = require('../runner/lib/owned.js');
 const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
 const { mergeRecords, addSpend } = require('./merge.js');
 const { loadObserved, estimateFromObserved } = require('./observed-cost.js');
@@ -333,7 +334,7 @@ function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJud
     pairwise: mergeRecords(prev.pairwise, pairwise),
     graded: mergeRecords(prev.graded || [], graded),
   };
-  fs.writeFileSync(file, JSON.stringify(out, null, 2) + '\n');
+  writeAtomic(file, JSON.stringify(out, null, 2) + '\n');
   return out;
 }
 
