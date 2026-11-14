@@ -10,9 +10,18 @@ const { DESCRIPTORS } = require('./descriptors.js');
 const RUNTIMES = DESCRIPTORS.map((d) => d.id);
 // Runtimes costed in list-price USD with real token counts; kiro-cli is metered in credits.
 const USD_RUNTIMES = DESCRIPTORS.filter((d) => d.costUnit === 'usd').map((d) => d.id);
-const DEFAULT_RUNTIME = DESCRIPTORS.find((d) => d.armPrefix === '').id;
+const DEFAULT_DESCRIPTOR = DESCRIPTORS.find((d) => d.armPrefix === '');
+const DEFAULT_RUNTIME = DEFAULT_DESCRIPTOR.id;
 const runtimeOf = (armOrResult) => RUNTIMES.find((r) => r !== DEFAULT_RUNTIME && (armOrResult?.runtime === r || armOrResult?.harness === r)) ?? DEFAULT_RUNTIME;
 const isUsdRuntime = (runtime) => USD_RUNTIMES.includes(runtime);
+// The descriptor for a runtime id; an unknown id gets the default runtime's, as runtimeOf does.
+const descriptorOf = (runtime) => DESCRIPTORS.find((d) => d.id === runtime) ?? DEFAULT_DESCRIPTOR;
+const costUnitOf = (runtime) => descriptorOf(runtime).costUnit;
+// Descriptors whose `supports[key]` is true, in display order.
+const supporting = (key) => DESCRIPTORS.filter((d) => d.supports[key]);
+const notSupporting = (key) => DESCRIPTORS.filter((d) => !d.supports[key]);
+// "a", "a and b", "a, b and c"
+const joinNames = (names) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`);
 
 // kiro-cli --agent-engine value -> the `konductor install --harness` value whose agents that engine loads.
 const KIRO_INSTALL_HARNESS = { v2: 'kiro-cli-v2', v3: 'kiro-v3' };
@@ -25,4 +34,4 @@ function kiroInstallHarness(agentEngine = DEFAULT_ENGINE) {
   return harness;
 }
 
-module.exports = { runtimeOf, isUsdRuntime, RUNTIMES, USD_RUNTIMES, AGENT_ENGINES, DEFAULT_ENGINE, kiroInstallHarness };
+module.exports = { runtimeOf, isUsdRuntime, descriptorOf, costUnitOf, supporting, notSupporting, joinNames, DEFAULT_RUNTIME, RUNTIMES, USD_RUNTIMES, AGENT_ENGINES, DEFAULT_ENGINE, kiroInstallHarness };
