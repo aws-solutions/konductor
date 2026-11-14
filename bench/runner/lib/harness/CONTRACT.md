@@ -145,7 +145,7 @@ Each of these must be edited by hand when a runtime is added. The registry work 
 
 - Done. `runner/lib/run-cmd.js`: flag legality (`flags.own`, `flags.refused`, `supports.runCreditLimit`, `supports.multiTurn`, `supports.agentEngine`, `supports.prepareOnly`, `costUnit`) reads the descriptor. Still by runtime name, because each arm needs its own binary, credentials and run-config record: `:100` (`isUsdRuntime` for the summary unit), `:195-196` (`isOc`, `isCc`), `:211` (Claude Code credential check), `:257-259`, `:269`, `:278-282`, `:314-321`, `:353-355`, `:381-390`, `:423-425`.
 - Done. `runner/lib/stop-watch.js`: reads `streamFormat`. `opencode-json` gets the opencode reader (capability tools `skill` and `task` are still literal there); every other format is read as kiro-cli updates.
-- Next step. `runner/lib/trace.js`: `:236`, `:240`, `:326-329`, `:335-336` (refusal from `supports.trace`; timeline and skill-listing note per runtime).
+- Done. `runner/lib/trace.js`: the refusal (`supports.trace`), the timeline reader (`streamFormat`), the missing-data notes and the skill listing (`trace`) read the descriptor. Left: `claudeTimeline` writes `engine: 'claude-code'` into its start entry (`:172`), and a stream format other than `claude-stream-json` is read by `kiroTimeline`.
 - Next step. `runner/lib/result.js:64`: cost unit, already behind `isUsdRuntime`; switch to `costUnit` when the others move.
 - Next step. `judge/bundle.js:49-50`: how the final text is extracted per runtime.
 - Next step. `runner/lib/arms.js` `KNOWN_ARMS` and the `listArms` condition text; `report/aggregate.js:312`, `report/skills.js:165`, `report/factorial.js:60`, `cap/cli.js:328`, `cap/cli.js:567` (arm prefix literals; use `armPrefix`).

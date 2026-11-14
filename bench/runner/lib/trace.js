@@ -11,7 +11,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { parseStream, toolNameOf, isV3Call, skillsCallOf, mcpInputOf, subagentTargets, SUBAGENT_TOOL } = require('./stream.js');
-const { runtimeOf } = require('./harness/runtime.js');
+const { runtimeOf, descriptorOf, supporting, joinNames } = require('./harness/runtime.js');
 const claude = require('./harness/claude-code-parse.js');
 const skills = require('./skills.js');
 
@@ -229,17 +229,15 @@ function sessionFilesOf(runDir) {
 }
 
 // What the saved files cannot show, stated from what is actually in the run directory.
-function missingOf({ result, runDir, harness }) {
+function missingOf({ result, runDir, desc }) {
   const missing = [];
   const files = sessionFilesOf(runDir);
   const partial = (result?.flags || []).includes('transcriptPartial') || result?.transcriptPartial === true;
-  if (harness === 'kiro-cli') {
+  if (desc.trace.sessionFiles) {
     if (!files.length) missing.push('no session files were saved (no session/ directory), so the model prompts, the system prompt and the per-session message log are not available; this trace comes from stream.jsonl alone');
     else if (partial) missing.push(`session files were saved (${files.length}) but the transcript is flagged partial: a session's own messages.jsonl or .jsonl is missing`);
-    missing.push('stream.jsonl has no timestamps per event; time is only known per turn');
-  } else if (harness === 'claude-code') {
-    missing.push('stream.jsonl has no per-event timestamps; time is only known for the whole run');
   }
+  if (desc.trace.timeNote) missing.push(desc.trace.timeNote);
   return { partial, sessionFiles: files, missing };
 }
 
@@ -314,6 +312,9 @@ function failedSkillSplit(result) {
   return split && Object.values(split).some((n) => n > 0) ? split : null;
 }
 
+// The timeline reader for each stream format. A format with none is read as kiro-cli updates, as before the descriptors.
+const TIMELINES = { 'claude-stream-json': claudeTimeline };
+
 /**
  * The trace of one run directory (the one holding result.json and stream.jsonl).
  * opts.instructions adds inferred pointers to instruction text; opts.repoRoot says where the arm's commit can be read.
@@ -324,16 +325,17 @@ function buildTrace(runDir, { instructions = false, repoRoot = null } = {}) {
   const streamText = readText(path.join(runDir, 'stream.jsonl'));
   if (streamText === null) throw new Error(`${runDir} has no stream.jsonl`);
   const harness = runtimeOf(result);
-  if (harness === 'opencode') throw new Error('trace reads kiro-cli and Claude Code streams; this run is an opencode run');
+  const desc = descriptorOf(harness);
+  if (!desc.supports.trace) throw new Error(`trace reads ${joinNames(supporting('trace').map((d) => d.proseName))} streams; this run is ${/^[aeiou]/i.test(desc.proseName) ? 'an' : 'a'} ${desc.proseName} run`);
   const { events } = parseStream(streamText);
-  const entries = harness === 'claude-code' ? claudeTimeline(events) : kiroTimeline(events);
+  const entries = (TIMELINES[desc.streamFormat] ?? kiroTimeline)(events);
   const command = readText(path.join(runDir, 'command.txt'));
   // The prompt is the longest quoted argument of the saved command line.
   const promptArg = command ? [...command.split('\n')[0].matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => { try { return JSON.parse(`"${m[1]}"`); } catch { return m[1]; } }).sort((a, b) => b.length - a.length)[0] ?? null : null;
   const entry = entryAgentOf(result, installed);
   const loaded = entries.filter((e) => e.kind === 'skill-load' && !e.deferred && !e.failed && e.status !== 'failed' && (e.result == null || e.result.length > 0)).map((e) => e.input.name).filter(Boolean);
-  const filter = harness === 'kiro-cli' ? skillFilterOf(installed) : null;
-  const listedNote = harness === 'claude-code'
+  const filter = desc.trace.skillsListing === 'agent-filter' ? skillFilterOf(installed) : null;
+  const listedNote = desc.trace.skillsListing === 'slash-commands'
     ? `${(entries.find((e) => e.kind === 'start')?.slashCommands || []).length} slash commands in the session init (skills are offered by name)`
     : filter ? `${filter.length} skills in the installed agent's filter` : 'unknown (no installed-agent.json in the run directory)';
   const sources = instructions ? instructionSources({ runDir, result, installed, entry, repoRoot }) : null;
@@ -358,7 +360,7 @@ function buildTrace(runDir, { instructions = false, repoRoot = null } = {}) {
       costUsd: result?.costUsd ?? entries.find((e) => e.kind === 'final')?.costUsd ?? null,
       status: result?.status ?? null,
       flags: result?.flags ?? [],
-      transcript: missingOf({ result, runDir, harness }),
+      transcript: missingOf({ result, runDir, desc }),
       filesWritten: filesWritten(entries),
       instructionSources: sources ? sources.map((s) => s.label) : null,
     },
