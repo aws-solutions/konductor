@@ -6,7 +6,7 @@ const { resultFields, capInvocationOf } = require('./skills.js');
 const { aggregateHidden, aggregateRegression, aggregateGroup } = require('./check-matcher.js');
 const { autonomyFields } = require('./autonomy.js');
 const { provenanceOf } = require('./runconfig.js');
-const { kiroInstallHarness, isUsdRuntime } = require('./harness/runtime.js');
+const { kiroInstallHarness, costUnitOf, DEFAULT_RUNTIME } = require('./harness/runtime.js');
 const { isComparableMode } = require('./isolate.js');
 const { oracleResult } = require('./oracle.js');
 
@@ -52,7 +52,7 @@ function streamFields(agg, orch = null) {
  * agg: aggregateStream output (null if the run died before any parsing).
  * session: summarizeSessionJson of the parent session, or null.
  * transcript: {chars, bytes, partial}, summed over the parent and subagent sessions.
- * usage: opencode only, {tokens, costUsd, modelCalls, sessions} summed over the parent and all subagent sessions.
+ * usage: USD runtimes only (costUnit usd), {tokens, costUsd, modelCalls, sessions} summed over the parent and all subagent sessions.
  * skills: {extraction, info} from the harness (see skills.js), or null.
  * orch: spawns, depth, review flow and phase documents (see orch-metrics.js), or null.
  * conv: the autonomy conversation (see autonomy.newConversation), for tasks with an autonomy block.
@@ -60,8 +60,8 @@ function streamFields(agg, orch = null) {
  *   isolation, homeTripwireHits, inFlightAtStart, creditsSessionTotal}.
  */
 function buildResult({ arm, task, replicate, config, exec, agg, session, usage = null, skills = null, orch = null, checks, transcript, env, meta = {}, conv = null }) {
-  const runtime = arm.runtime ?? 'kiro-cli';
-  const oc = isUsdRuntime(runtime);
+  const runtime = arm.runtime ?? DEFAULT_RUNTIME;
+  const usd = costUnitOf(runtime) === 'usd';
   const flags = [...(meta.flags || [])];
   let status = classifyStatus({
     timedOut: exec.timedOut,
@@ -93,7 +93,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
   const launchFailure = meta.launchFailure ?? null;
   // A timeout is censored even when runFinished was seen: the kill can land before a late turn's metering event.
   const censored = agentStarted && !authFailure && !launchFailure && (status === 'timeout' || (status === 'error' && !finished));
-  const creditsCensored = censored && !oc;
+  const creditsCensored = censored && !usd;
 
   return {
     armId: arm.id,
@@ -102,7 +102,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     commitSha: arm.commitSha,
     ...provenanceOf(arm),
     harness: runtime,
-    installHarness: oc || arm.vanilla || !config.agentEngine ? arm.harness : kiroInstallHarness(config.agentEngine),
+    installHarness: usd || arm.vanilla || !config.agentEngine ? arm.harness : kiroInstallHarness(config.agentEngine),
     harnessVersion: env?.harnessVersion ?? env?.kiroCliVersion ?? null,
     model: config.model,
     effort: config.effort,
@@ -121,17 +121,17 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     creditsCharged: null,
     creditsSessionTotal: meta.creditsSessionTotal ?? null,
     ...(meta.creditLimit != null ? { creditLimit: meta.creditLimit, creditOvershoot: meta.creditOvershoot ?? null } : {}),
-    modelCalls: oc
+    modelCalls: usd
       ? (usage ? { meteringEntries: usage.modelCalls, totalRequestCount: usage.modelCalls } : null)
       : agg
         ? { meteringEntries: fromStream.meteringEntries, totalRequestCount: session?.totalRequestCount ?? null }
         : null,
     tokens: usage?.tokens ?? null,
     costUsd: usage?.costUsd ?? null,
-    costCensored: oc ? censored : null,
+    costCensored: usd ? censored : null,
     costUsdCharged: null,
     sessionsRolledUp: usage?.sessions ?? null,
-    region: oc ? env?.region ?? null : null,
+    region: usd ? env?.region ?? null : null,
     toolCalls: fromStream.toolCalls,
     workToolCalls: fromStream.workToolCalls,
     toolNames: fromStream.toolNames,
@@ -140,7 +140,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     contextUsagePercentage: agg?.contextUsagePercentage ?? null,
     transcriptBytes: transcript?.bytes ?? null,
     transcriptPartial: transcript ? Boolean(transcript.partial) : null,
-    estTokens: oc
+    estTokens: usd
       ? (usage ? { value: usage.tokens.total, isEstimate: false } : null)
       : transcript?.chars == null ? null : { value: Math.round(transcript.chars / 4), isEstimate: true },
     finalText: agg?.finalText ?? null,
@@ -193,7 +193,7 @@ function errorResult({ arm, task, replicate, config, env, message, meta, conv = 
 }
 
 function skippedResult({ arm, task, replicate, config, env, reason = 'budget reached' }) {
-  return { ...errorResult({ arm, task, replicate, config, env, message: reason }), status: 'budget_skipped', creditsCensored: false, creditsLowerBound: null, ...(isUsdRuntime(arm.runtime) ? { costCensored: false } : {}) };
+  return { ...errorResult({ arm, task, replicate, config, env, message: reason }), status: 'budget_skipped', creditsCensored: false, creditsLowerBound: null, ...(costUnitOf(arm.runtime) === 'usd' ? { costCensored: false } : {}) };
 }
 
 function validateResult(result) {
