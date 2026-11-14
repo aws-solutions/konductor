@@ -43,7 +43,7 @@ function moveLive(src, dest, tampered) {
 // which is masked from the agent; the runner opens them before the child starts and the child inherits the
 // descriptors. On macOS sandbox-exec denies even fstat on a descriptor whose file is under a masked path, and the
 // v3 engine's node checks its stdio descriptors at startup and aborts on that failure. With `stdioDir` (see
-// liveStdioDir: outside the agent-writable scratch root) the files are written there
+// liveStdioDir: outside the agent-writable scratch root and frozen by the profile) the files are written there
 // and moved to their final paths when the child exits.
 function liveStdioPath(finalPath, stdioDir) {
   return stdioDir ? path.join(stdioDir, path.basename(finalPath)) : finalPath;
@@ -142,10 +142,10 @@ function snapshotWorkspace(cwd, dest) {
 }
 
 // A real task also hides the host copies of its project and the package caches. Its checks run with no network.
-function makeIso(ctx, arm, scratchRoot, task, { offline = false } = {}) {
+function makeIso(ctx, arm, scratchRoot, task, { offline = false, frozenDirs = [] } = {}) {
   const extra = task?.real ? real.hidePaths(task, { cache: ctx.realCache }) : [];
   return makeIsolation({
-    mode: ctx.isolation.mode, scratchRoot, hide: [...(ctx.hide || []), ...extra], mask: ctx.mask || [], keyRoots: ctx.keyRoots || [], keep: harnessFor(arm).keepPaths(ctx), offline,
+    mode: ctx.isolation.mode, scratchRoot, hide: [...(ctx.hide || []), ...extra], mask: ctx.mask || [], keyRoots: ctx.keyRoots || [], keep: harnessFor(arm).keepPaths(ctx), frozenDirs, offline,
   });
 }
 
@@ -375,7 +375,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
     }
 
     if (!result) {
-      const iso = makeIso(ctx, arm, runRoot, task);
+      const iso = makeIso(ctx, arm, runRoot, task, { frozenDirs: stdioDir ? [stdioDir] : [] });
       const tripwire = createTripwire({ markerPath: path.join(runRoot, '.marker'), ...ctx.tripwire });
       try {
         const tmpdir = path.join(runRoot, 'tmp');

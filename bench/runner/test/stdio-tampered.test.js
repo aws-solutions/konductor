@@ -65,7 +65,7 @@ test('executeRun (sandbox-exec path) sets stdioTampered and infraError, lists th
     fs.writeFileSync(canary, CANARY);
     // Only the sandbox-exec path keeps a live stdio directory. A stand-in sandbox-exec drops the profile and runs the
     // command, so the macOS wiring runs here. The agent runs in <run root>/work; the live files sit in the sibling
-    // <run root>-stdio.
+    // <run root>-stdio, which a real profile would freeze (see liveStdioDir).
     fs.writeFileSync(path.join(bin, 'sandbox-exec'), '#!/bin/sh\nshift 2\nexec "$@"\n', { mode: 0o755 });
     fs.renameSync(real, path.join(bin, 'kiro-real'));
     fs.writeFileSync(real, `#!/bin/sh\nd="../../$(basename "$(cd .. && pwd)")-stdio"\nif [ -d "$d" ]; then rm -f "$d/stderr.txt"; ln -s '${canary}' "$d/stderr.txt"; fi\nexec "$(dirname "$0")/kiro-real" "$@"\n`, { mode: 0o755 });

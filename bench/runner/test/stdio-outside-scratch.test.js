@@ -13,7 +13,7 @@ const { tmp, makeBench } = require('./helpers.js');
 const { makeFakeKiro } = require('./fake-kiro.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
-const { liveStdioDir, probeUnshare } = require('../lib/isolate.js');
+const { liveStdioDir, makeIsolation, probeUnshare } = require('../lib/isolate.js');
 
 const ARM = { id: 'vanilla', label: 'vanilla', ref: null, commitSha: null, harness: 'none', agent: null, vanilla: true };
 
@@ -105,4 +105,35 @@ test('liveStdioDir: only sandbox-exec gets one, as a sibling of the run root and
   const d = liveStdioDir('sandbox-exec', '/s/r-abc');
   assert.equal(d, '/s/r-abc-stdio');
   assert.ok(!d.startsWith('/s/r-abc/'));
+});
+
+test('sandbox-exec profile freezes the stdio directory after the scratch allow, and only that directory', () => {
+  const root = tmp();
+  try {
+    const runRoot = path.join(root, 'r-abc');
+    const stdio = liveStdioDir('sandbox-exec', runRoot);
+    fs.mkdirSync(runRoot); fs.mkdirSync(stdio);
+    const { profile } = makeIsolation({ mode: 'sandbox-exec', scratchRoot: runRoot, frozenDirs: [stdio] });
+    const real = fs.realpathSync(stdio);
+    const allow = profile.indexOf(`(allow file-write*\n  (subpath ${JSON.stringify(fs.realpathSync(runRoot))})`);
+    const deny = profile.indexOf(`(deny file-write*\n  (subpath ${JSON.stringify(real)})\n)`);
+    assert.ok(allow >= 0, 'scratch allow present');
+    assert.ok(deny > allow, 'the freeze comes after the scratch allow (the last matching rule wins)');
+    assert.equal(profile.split(JSON.stringify(real)).length - 1, 1, 'the directory is named once');
+    assert.ok(!/deny file-read[^\n]*\n\s*\(subpath "[^"]*-stdio"/.test(profile), 'the directory stays readable: fstat on the inherited descriptor must work');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('sandbox-exec profile without frozen directories has no extra deny', () => {
+  const root = tmp();
+  try {
+    const runRoot = path.join(root, 'r-abc');
+    fs.mkdirSync(runRoot);
+    const withNone = makeIsolation({ mode: 'sandbox-exec', scratchRoot: runRoot }).profile;
+    assert.ok(!withNone.includes('-stdio'));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
