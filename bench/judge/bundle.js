@@ -41,13 +41,16 @@ function readText(file) {
 }
 
 // By stream format. kiro-acp: the runFinished event's text. opencode-json: the last assistant text event of the parent
-// session. claude-stream-json: the last result line's text, else the last assistant text of the main session.
+// session. claude-stream-json: the last result line's text, else (also when that text is blank) the last assistant text
+// of the main session.
 const FINAL_TEXT = {
   'kiro-acp': (events) => aggregateStream(events).finalText,
   'opencode-json': (events) => aggregateEvents(events).lastText,
   'claude-stream-json': (events) => {
     const a = claudeParse.aggregateEvents(events);
-    return a.finalText ?? a.lastText;
+    const blank = (t) => typeof t !== 'string' || !t.trim();
+    if (!blank(a.finalText)) return a.finalText;
+    return blank(a.lastText) ? a.finalText ?? a.lastText : a.lastText;
   },
 };
 

@@ -2,8 +2,9 @@
 'use strict';
 
 // finalTextOf picks the text the judge sees from stream.jsonl, and the rule differs per runtime: kiro-cli reads the
-// runFinished text, opencode the last assistant text, Claude Code the last result line's text, else the last main-session
-// assistant text. Pinned per runtime so the descriptor that now selects the rule cannot change which text is judged.
+// runFinished text, opencode the last assistant text, Claude Code the last result line's text, else (or when that is
+// blank) the last main-session assistant text. Pinned per runtime so the descriptor that now selects the rule cannot
+// change which text is judged.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,6 +32,10 @@ const CC = [
 ];
 const CC_NO_RESULT = CC.slice(0, 2);
 const CC_EMPTY_RESULT = [CC[0], CC[1], { ...CC[2], result: '' }];
+const CC_BLANK_RESULT = [CC[0], CC[1], { ...CC[2], result: ' \n\t ' }];
+const CC_BOTH_EMPTY = [CC[0], { type: 'assistant', message: { content: [{ type: 'text', text: '' }] } }, { ...CC[2], result: '' }];
+const CC_BLANK_BOTH = [CC[0], { type: 'assistant', message: { content: [{ type: 'text', text: ' ' }] } }, { ...CC[2], result: '  ' }];
+const CC_EMPTY_NO_TEXT = [CC[0], { ...CC[2], result: '' }];
 
 function textOf(stream, result) {
   const root = tmp();
@@ -54,12 +59,21 @@ test('opencode: the last assistant text, with or without a finishing step; found
   }
 });
 
-test('Claude Code: the result line text, an empty result stays empty, and without a result the last main-session text', () => {
+test('Claude Code: the result line text, and without a result the last main-session text', () => {
   for (const result of [{ harness: 'claude-code' }, { runtime: 'claude-code' }]) {
     assert.equal(textOf(CC, result), 'claude result text');
-    assert.equal(textOf(CC_EMPTY_RESULT, result), '');
     assert.equal(textOf(CC_NO_RESULT, result), 'claude assistant text');
   }
+});
+
+test('Claude Code: an empty or whitespace-only result falls back to the last assistant text; with no text anywhere the result is kept', () => {
+  for (const result of [{ harness: 'claude-code' }, { runtime: 'claude-code' }]) {
+    assert.equal(textOf(CC_EMPTY_RESULT, result), 'claude assistant text');
+    assert.equal(textOf(CC_BLANK_RESULT, result), 'claude assistant text');
+    assert.equal(textOf(CC_BOTH_EMPTY, result), '');
+    assert.equal(textOf(CC_EMPTY_NO_TEXT, result), '');
+  }
+  assert.equal(textOf(CC_BLANK_BOTH, { harness: 'claude-code' }), '  ', 'a blank assistant text does not replace the result');
 });
 
 test('each runtime reads only its own stream shape: foreign events give no text', () => {
