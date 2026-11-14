@@ -52,7 +52,7 @@
 #   MODEL, ENGINE, PROFILE, SEED, REPS, TASKS_PER_SKILL, MAX_SECTIONS, BUDGET_USD, WAVE_BUDGET_CREDITS
 #   SCREEN      1 (default) shares wave 1 between skills that enter through the same agent: one control and A/A, a delete arm per skill. 0 gives each skill its own wave 1
 #   MIN_FREE_GB [20], MIN_FREE_GB_TMPFS [same as MIN_FREE_GB]: free space needed on the results filesystem
-#   Test-only: BENCH_PROC_PATTERN, NO_KIRO_CHECK, NO_OPENCODE_CHECK, MIN_FREE_GB, SCRATCH_PARENT, OTHER_PIDFILES, CLI_JS, BENCH_DIR
+#   Test-only: BENCH_PROC_PATTERN, INSTALL_PROC_PATTERN, NO_KIRO_CHECK, NO_OPENCODE_CHECK, MIN_FREE_GB, SCRATCH_PARENT, OTHER_PIDFILES, CLI_JS, BENCH_DIR
 #
 # ISOLATION: do not run konductor install or update, switch branches, or edit bench/ in REPO while this runs. Every
 #   bench.js call runs with a scratch HOME and a TMPDIR whose path has no "bench" in it; both are removed afterwards.
@@ -75,6 +75,7 @@ PIDFILE=$STATE_DIR/skill-bench.pid
 STUDYFILE=$STATE_DIR/skill-bench.study
 OTHER_PIDFILES=${OTHER_PIDFILES:-"real-pilot.pid judging.pid"}
 BENCH_PROC_PATTERN=${BENCH_PROC_PATTERN:-'bench/runner/bench\.js'}
+INSTALL_PROC_PATTERN=${INSTALL_PROC_PATTERN:-'konductor[^ ]* (install|update)'}
 CREDS=${CREDS:-${SKILL_BENCH_CREDS:-}}
 CREDS_EXPIRY_UTC=${CREDS_EXPIRY_UTC:-}
 REAL_HOME=$(getent passwd "$(id -un)" | cut -d: -f6)
@@ -179,7 +180,7 @@ preflight() {
   procs=$(bench_procs)
   [ -z "$procs" ] && pf ok "no bench.js process is running" || pf FAIL "another bench study is active (bench.js is running): $(echo "$procs" | head -3 | tr '\n' ';')"
   if [ "${SB_CHILD:-0}" != 1 ] && daemon_pid >/dev/null; then pf FAIL "run-skill-bench is already running (pid $(daemon_pid))"; else pf ok "no run-skill-bench daemon"; fi
-  pgrep -af 'konductor[^ ]* (install|update)' 2>/dev/null | grep -v pgrep >/dev/null && pf FAIL "a konductor install or update is running" || pf ok "no konductor install or update running"
+  pgrep -af "$INSTALL_PROC_PATTERN" 2>/dev/null | grep -v pgrep >/dev/null && pf FAIL "a konductor install or update is running" || pf ok "no konductor install or update running"
 
   # credentials: the path only is checked, the contents are never read or printed
   local lvl; lvl=$(cred_level)

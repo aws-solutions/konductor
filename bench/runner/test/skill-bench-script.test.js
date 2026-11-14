@@ -26,7 +26,7 @@ function sandbox() {
   fs.writeFileSync(creds, 'placeholder');
   const base = {
     PATH: process.env.PATH, HOME: home, TMPDIR: tmp, STATE_DIR: state, RESULTS: results, REPO: e.repo, BENCH_DIR: e.bench, BASE_REF: 'v0', CREDS: creds,
-    BENCH_PROC_PATTERN: 'no-such-bench-process-pattern', NO_KIRO_CHECK: '1', NO_OPENCODE_CHECK: '1', MIN_FREE_GB: '0', SCRATCH_PARENT: tmp,
+    BENCH_PROC_PATTERN: 'no-such-bench-process-pattern', INSTALL_PROC_PATTERN: 'no-such-install-process-pattern', NO_KIRO_CHECK: '1', NO_OPENCODE_CHECK: '1', MIN_FREE_GB: '0', SCRATCH_PARENT: tmp,
     RUNS_GLOBS: '', EXPOSURE_RUNS: withRuns(e, { tasks: ['rev-one', 'hid-one'] }), CLI_JS: path.join(REPO, 'bench', 'runner', 'bench.js'),
   };
   const run = (args, over = {}) => spawnSync('bash', [SCRIPT, ...args], { env: { ...base, ...over }, encoding: 'utf8', cwd: e.root });
@@ -90,6 +90,20 @@ test('it refuses while any bench.js process matches the process pattern', () => 
     const r = s.run(['--preflight'], { BENCH_PROC_PATTERN: 'fake-bench-marker-xyz' });
     assert.notEqual(r.status, 0);
     assert.match(r.stdout + r.stderr, /another bench study is active/i);
+  } finally { p.kill(); s.done(); }
+});
+
+test('it refuses while a konductor install or update runs, and a host install the sandbox does not pin is ignored', () => {
+  const s = sandbox();
+  const marker = `kd-fake-install-${process.pid}-${Date.now()}`;
+  const p = spawn('bash', ['-c', 'exec -a "$1" sleep 60', 'x', `/opt/x/${marker}/konductor install --harness claude`], { stdio: 'ignore' });
+  try {
+    const hit = s.run(['--preflight'], { INSTALL_PROC_PATTERN: marker });
+    assert.notEqual(hit.status, 0);
+    assert.match(hit.stdout, /a konductor install or update is running/);
+    const pinned = s.run(['--preflight']);
+    assert.equal(pinned.status, 0, pinned.stdout + pinned.stderr);
+    assert.match(pinned.stdout, /no konductor install or update running/);
   } finally { p.kill(); s.done(); }
 });
 
