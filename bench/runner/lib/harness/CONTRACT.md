@@ -143,7 +143,7 @@ All of these are read by `buildResult` (through `streamFields`) or by classifica
 
 Each of these must be edited by hand when a runtime is added. The registry work moves them onto the descriptor in steps. "Next step" marks the switches the following piece migrates; "later" marks the rest. Line numbers are at the time of writing.
 
-- Next step. `runner/lib/run-cmd.js`: `:60` and `:114` (`r !== 'kiro-cli'`), `:188` (Claude Code only flags), `:191-192` (`isOc`, `isCc`), `:193-195` (cost unit and budget flag), `:197-201` (flags refused for Claude Code, from `supports.stopOn`, `supports.effort`), `:202-204` (multi-turn, from `supports.multiTurn`), `:215` (`--run-credit-limit`, from `supports.runCreditLimit`), `:99` (summary unit, from `costUnit`).
+- Done. `runner/lib/run-cmd.js`: flag legality (`flags.own`, `flags.refused`, `supports.runCreditLimit`, `supports.multiTurn`, `supports.agentEngine`, `supports.prepareOnly`, `costUnit`) reads the descriptor. Still by runtime name, because each arm needs its own binary, credentials and run-config record: `:100` (`isUsdRuntime` for the summary unit), `:195-196` (`isOc`, `isCc`), `:211` (Claude Code credential check), `:257-259`, `:269`, `:278-282`, `:314-321`, `:353-355`, `:381-390`, `:423-425`.
 - Next step. `runner/lib/stop-watch.js:27`: `--stop-on` treats `opencode` specially and everything else as kiro.
 - Next step. `runner/lib/trace.js`: `:236`, `:240`, `:326-329`, `:335-336` (refusal from `supports.trace`; timeline and skill-listing note per runtime).
 - Next step. `runner/lib/result.js:64`: cost unit, already behind `isUsdRuntime`; switch to `costUnit` when the others move.
