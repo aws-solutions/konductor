@@ -101,6 +101,7 @@ function rubricSection(L, { run, row, task }) {
   L('4. RUBRIC');
   const recs = (run.judgments?.rubric || []).filter((x) => x.armId === row.arm && x.taskId === row.task && x.replicate === row.rep);
   const rubric = task?.rubric || [];
+  if (!recs.length && row.rubricCountedAsFailure) { L('   kept out of judging for an integrity reason: counted as a failure, 0 on every item'); return; }
   if (!recs.length) { L('   no rubric records for this run (not judged): component dropped from the score'); return; }
   for (const item of rubric) {
     L(`   ${item.id} (weight ${item.weight})`);

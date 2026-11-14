@@ -202,6 +202,21 @@ A run is a clean pass when its status is success, there is no infrastructure err
 
 **Judge agreement.** The scorecard shows how far the judges agree with each other (within-one agreement of 0.9 or more and exact agreement of 0.6 or more pass). It also shows the share of quotes the judges could not back with evidence. Human calibration is a separate step: `cap review` writes a page for a person to rate a sample, `cap review-import` scores the ratings, and a kappa of 0.6 or more passes. See [Calibration](README.md#calibration).
 
+**Runs kept out of judging.** Some runs are not sent to the judges. For new studies the rubric number treats them in one of two ways, by reason:
+
+| Reason | Class | In the main rubric number |
+| --- | --- | --- |
+| credsUnscrubbed | integrity | counted as a failure (0 on every rubric item) |
+| stdioTampered | integrity | counted as a failure |
+| usageDbTampered | integrity | counted as a failure |
+| infraError | gap | left out |
+| no workspace | gap | left out |
+| budget_skipped | gap | left out, the run never executed |
+
+Reports of new studies show both numbers side by side, always, so the table keeps its shape: `rubric (excluded runs = 0)` is the main number, `rubric (judged runs only)` is the mean over judged runs, and `excluded runs (counted as 0)` is how many integrity runs sit between them. `report.json` carries them per arm and scope as `rubricAll`, `rubricJudged` and `excludedCount`; `rubricJudged` equals the number older reports gave. The score rows behind the verdict, the quality score and `contrast` use the main number; `compare` reports both and labels them. The diligence scorecard is unchanged: judge coverage still counts these runs as unjudged.
+
+A study follows this policy when its `judgments.json` has `"rubricPolicy": "excluded-as-failures"`. The judge writes it when it creates the file. A file made before that has no stamp and keeps the older rule, excluded runs are gaps; such a report renders as it always did, plus the line `legacy: excluded runs are gaps`. Judging more into an unstamped file does not stamp it, and `report --run DIR,DIR` over a mix of stamped and unstamped directories is treated as legacy. `compare` refuses to compare a legacy study with a stamped one unless you pass `--force`. The class of each reason is defined once, in `judge/exclusion.js` (`exclusionClass(run)` in `judge/run.js` applies it to a run).
+
 **Interim tables.** To look at a study while it runs, point `report` at the finished cells with `--run DIR,DIR` and an `--out`. Several directories are merged read-only. `report --detail quick` gives one page. `contrast --run DIR --base vanilla` gives each arm against a base, by task class.
 
 ---

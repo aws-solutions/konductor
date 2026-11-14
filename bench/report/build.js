@@ -181,6 +181,7 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
   blocks.push(D.h(2, 'Scores'));
   blocks.push(headlineTable(scores, arms, unit));
   blocks.push(D.note('Quality is the weighted mean of the components a run has (hidden tests, checks, rubric), renormalised; reliability is 100 minus the share of timed-out, errored, infra-error and model-mismatch runs; the cost ratio is the arm over the base. Below 3 runs a score is anecdotal. Formulas: `bench/README.md`.'));
+  if (report.rubricPolicy) blocks.push(D.note('Rubric policy: a run kept out of judging for an integrity reason (credsUnscrubbed, stdioTampered, usageDbTampered) scores 0 on the rubric component of quality, so it counts as a failure there. Runs left out for infrastructure reasons stay gaps. The tables below show the judged-runs-only rubric beside the main number.'));
 
   // Cost vs quality
   const pts = arms.map((a) => {

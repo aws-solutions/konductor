@@ -220,3 +220,40 @@ test('a study judged by the new code reports the integrity run as a failure end 
     assert.equal(c.rubricAll.mean, c.rubricJudged.mean / 2);
   } finally { rm(f.root); }
 });
+
+test('the full report page carries the policy: the main/judged columns and a note when stamped, the legacy line when not', () => {
+  const { generateRunReport } = require('../../report/generate.js');
+  const root = tmp();
+  try {
+    for (const [name, stamp] of [['legacy', null], ['stamped', STAMP]]) {
+      const s = buildStudy(root, name, { stamp });
+      const out = path.join(root, `out-${name}`);
+      generateRunReport({ run: loadRun(s.dir), tasks: loadTasks(s.bench), baseline: 'vanilla', out, detail: 'full', format: 'md', defaultDir: out });
+      const md = fs.readFileSync(path.join(out, 'report.md'), 'utf8');
+      const json = JSON.parse(fs.readFileSync(path.join(out, 'report.json'), 'utf8'));
+      if (stamp) {
+        assert.match(md, /Rubric policy: a run kept out of judging for an integrity reason/);
+        assert.match(md, /rubric \(judged runs only\), scored \(raw\)/);
+        assert.ok(!md.includes('legacy: excluded runs are gaps'));
+        assert.equal(JSON.stringify(json).includes('"rubricAll"'), true);
+      } else {
+        assert.equal(md.split('legacy: excluded runs are gaps').length, 2);
+        assert.ok(!md.includes('judged runs only'));
+        assert.equal(JSON.stringify(json).includes('rubricAll'), false);
+      }
+    }
+  } finally { rm(root); }
+});
+
+test('explain says an integrity-excluded run counts as a failure in a stamped study, and keeps the old wording in a legacy one', () => {
+  const { explainRuns } = require('../../report/explain.js');
+  const root = tmp();
+  try {
+    const legacy = buildStudy(root, 'legacy', { stamp: null });
+    const st = buildStudy(root, 'stamped', { stamp: STAMP });
+    const filter = { arm: 'v1', rep: 3 };
+    const text = (s) => explainRuns({ dir: s.dir, tasks: loadTasks(s.bench), filter });
+    assert.match(text(st), /kept out of judging for an integrity reason: counted as a failure, 0 on every item/);
+    assert.match(text(legacy), /no rubric records for this run \(not judged\): component dropped from the score/);
+  } finally { rm(root); }
+});
