@@ -33,3 +33,19 @@ for (const [platform, rel] of [['darwin', 'Library/Application Support/kiro-cli'
     }
   });
 }
+
+test('removeAuthCopy does not delete through a data folder the agent replaced with a link', () => {
+  const root = tmp();
+  try {
+    const real = path.join(root, 'real-kiro-data');
+    fs.mkdirSync(real, { recursive: true });
+    fs.writeFileSync(path.join(real, 'data.sqlite3'), 'REAL_LOGIN');
+    const home = path.join(root, 'home');
+    fs.mkdirSync(path.join(home, '.local/share'), { recursive: true });
+    fs.symlinkSync(real, path.join(home, '.local/share/kiro-cli'));
+    removeAuthCopy(home, 'linux');
+    assert.equal(fs.readFileSync(path.join(real, 'data.sqlite3'), 'utf8'), 'REAL_LOGIN');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

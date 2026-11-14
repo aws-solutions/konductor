@@ -16,7 +16,7 @@ const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
 const { writeArmConfig } = require('../arm-config.js');
 const { orchMetricsOfRunDir } = require('../orch-metrics.js');
-const { copyPlainFile } = require('../safe-copy.js');
+const { copyPlainFile, assertPlainPath } = require('../safe-copy.js');
 const { scrubTreeDetailed, redactHostPaths } = require('../hygiene.js');
 const { secretLiterals } = require('../scrub.js');
 
@@ -41,22 +41,37 @@ function kiroArgs({ arm, task, config, resume = null }) {
   return args;
 }
 
-// Copies regular files and directories. A symlink could lead outside the session directory and a socket or FIFO
-// can block or throw, so those are skipped and listed rather than followed.
-function copyTree(srcDir, destDir, rel, out) {
+// Copies regular files and directories below `srcRel` (relative to `home`) into destDir. A symlink could lead outside
+// the session directory and a socket or FIFO can block or throw, so those are skipped and listed rather than followed.
+// Leaves go through copyPlainFile, which re-checks every path part. `rel` is the name shown in the skipped list.
+function copyTree(home, srcRel, destDir, rel, out) {
   fs.mkdirSync(destDir, { recursive: true });
-  for (const name of fs.readdirSync(srcDir)) {
-    const src = path.join(srcDir, name);
+  for (const name of fs.readdirSync(path.join(home, srcRel))) {
+    const srcPath = path.join(srcRel, name);
     const relPath = path.join(rel, name);
     try {
-      const st = fs.lstatSync(src);
+      const st = fs.lstatSync(path.join(home, srcPath));
       if (st.isSymbolicLink()) out.skipped.push({ path: relPath, reason: 'symlink' });
-      else if (st.isDirectory()) copyTree(src, path.join(destDir, name), relPath, out);
-      else if (st.isFile()) { fs.copyFileSync(src, path.join(destDir, name)); out.copied.push(relPath); }
-      else out.skipped.push({ path: relPath, reason: 'special file' });
+      else if (st.isDirectory()) copyTree(home, srcPath, path.join(destDir, name), relPath, out);
+      else if (st.isFile()) {
+        if (copyPlainFile(home, srcPath, path.join(destDir, name)) === false) out.skipped.push({ path: relPath, reason: 'vanished' });
+        else out.copied.push(relPath);
+      } else out.skipped.push({ path: relPath, reason: 'special file' });
     } catch (e) {
       out.skipped.push({ path: relPath, reason: `copy failed: ${e.code || e.message}` });
     }
+  }
+}
+
+// True when `rel` below `home` is a directory and no part of the path is a link. The agent controls these names, so a
+// link here could point at the real user's sessions. Absent is silent; a link or a non-directory is listed as skipped.
+function isPlainDir(home, rel, out) {
+  try {
+    assertPlainPath(home, rel, { last: 'dir' });
+    return true;
+  } catch (e) {
+    if (e.code !== 'ENOENT') out.skipped.push({ path: rel, reason: /symlink/.test(e.message) ? 'symlink' : e.code ? `copy failed: ${e.code}` : 'not a directory' });
+    return false;
   }
 }
 
@@ -66,19 +81,18 @@ function copyTree(srcDir, destDir, rel, out) {
 const V3_SESSION_DIR = /^sess_[0-9A-Za-z-]+$/;
 
 function copySessions(home, destDir) {
-  const root = path.join(home, '.kiro/sessions');
+  const rootRel = path.join('.kiro', 'sessions');
   const out = { copied: [], skipped: [] };
-  if (!fs.existsSync(root)) return out;
-  const cli = path.join(root, 'cli');
-  if (fs.existsSync(cli)) copyTree(cli, destDir, '', out);
-  for (const workspace of safeReaddir(root)) {
+  if (!isPlainDir(home, rootRel, out)) return out;
+  const cliRel = path.join(rootRel, 'cli');
+  if (isPlainDir(home, cliRel, out)) copyTree(home, cliRel, destDir, '', out);
+  for (const workspace of safeReaddir(path.join(home, rootRel))) {
     if (workspace === 'cli') continue;
-    const wsDir = path.join(root, workspace);
-    if (!isRealDir(wsDir, out, workspace)) continue;
-    for (const name of safeReaddir(wsDir)) {
+    const wsRel = path.join(rootRel, workspace);
+    if (!isRealDir(path.join(home, wsRel), out, workspace)) continue;
+    for (const name of safeReaddir(path.join(home, wsRel))) {
       if (!V3_SESSION_DIR.test(name)) continue;
-      const src = path.join(wsDir, name);
-      if (isRealDir(src, out, path.join(workspace, name))) copyTree(src, path.join(destDir, name), name, out);
+      if (isRealDir(path.join(home, wsRel, name), out, path.join(workspace, name))) copyTree(home, path.join(wsRel, name), path.join(destDir, name), name, out);
     }
   }
   return out;

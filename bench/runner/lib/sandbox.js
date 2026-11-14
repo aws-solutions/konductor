@@ -12,6 +12,7 @@ const armSource = require('./arm-source.js');
 const { kiroInstallHarness } = require('./harness/runtime.js');
 const { realHomes } = require('./isolate.js');
 const { tryMark } = require('./owned.js');
+const { assertPlainPath } = require('./safe-copy.js');
 
 function run(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...opts });
@@ -198,7 +199,10 @@ function copyAuthDb(src, home, platform = process.platform) {
 }
 
 function removeAuthCopy(home, platform = process.platform) {
-  fs.rmSync(path.join(kiroDataDir(home, platform), 'data.sqlite3'), { force: true });
+  const dir = kiroDataDir(home, platform);
+  // The agent can swap a folder of its HOME for a link to the real user's data directory; never delete through one.
+  try { assertPlainPath(home, path.relative(home, dir), { last: 'dir' }); } catch { return; }
+  fs.rmSync(path.join(dir, 'data.sqlite3'), { force: true });
 }
 
 // The answer key is judge-only; the agent must never find it in its working directory.

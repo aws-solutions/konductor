@@ -230,6 +230,83 @@ test('a v3 workspace directory that is a symlink is skipped and not followed', (
   }
 });
 
+// The agent owns these names in its scratch HOME. A link to the real user's sessions must never be read.
+function hostSessions(root) {
+  const host = path.join(root, 'host-sessions');
+  fs.mkdirSync(path.join(host, 'cli'), { recursive: true });
+  fs.writeFileSync(path.join(host, 'cli/abc.jsonl'), 'HOST_PRIVATE');
+  return host;
+}
+
+test('a ~/.kiro/sessions that is a symlink to another folder copies nothing and is listed as skipped', () => {
+  const root = tmp();
+  try {
+    const host = hostSessions(root);
+    const home = path.join(root, 'home');
+    fs.mkdirSync(path.join(home, '.kiro'), { recursive: true });
+    fs.symlinkSync(host, path.join(home, '.kiro/sessions'));
+    const dest = path.join(root, 'out/session');
+    const r = copySessions(home, dest);
+    assert.deepEqual(r.copied, []);
+    assert.equal(fs.existsSync(dest) ? allFiles(dest).length : 0, 0);
+    assert.deepEqual(r.skipped.map((s) => [s.path, s.reason]), [[path.join('.kiro', 'sessions'), 'symlink']]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a ~/.kiro/sessions/cli that is a symlink is not copied, but a real v3 workspace beside it still is', () => {
+  const root = tmp();
+  try {
+    const host = hostSessions(root);
+    const { home } = v3Home(root);
+    fs.symlinkSync(path.join(host, 'cli'), path.join(home, '.kiro/sessions/cli'));
+    const dest = path.join(root, 'out/session');
+    const r = copySessions(home, dest);
+    assert.equal(allFiles(dest).includes('abc.jsonl'), false);
+    assert.equal(allFiles(dest).includes('sess_abc-123'), true);
+    assert.deepEqual(r.skipped.map((s) => [s.path, s.reason]), [[path.join('.kiro', 'sessions', 'cli'), 'symlink']]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a ~/.kiro that is a symlink to the real user folder copies nothing', () => {
+  const root = tmp();
+  try {
+    const realKiro = path.join(root, 'real-kiro');
+    fs.mkdirSync(path.join(realKiro, 'sessions/cli'), { recursive: true });
+    fs.writeFileSync(path.join(realKiro, 'sessions/cli/abc.jsonl'), 'HOST_PRIVATE');
+    const home = path.join(root, 'home');
+    fs.mkdirSync(home, { recursive: true });
+    fs.symlinkSync(realKiro, path.join(home, '.kiro'));
+    const dest = path.join(root, 'out/session');
+    const r = copySessions(home, dest);
+    assert.deepEqual(r.copied, []);
+    assert.equal(fs.existsSync(dest), false);
+    assert.deepEqual(r.skipped.map((s) => s.reason), ['symlink']);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a normal tree is copied in full and nothing is listed as skipped', () => {
+  const root = tmp();
+  try {
+    const { home, dir } = sessionHome(root);
+    fs.writeFileSync(path.join(dir, 'abc.jsonl'), 'line\n');
+    fs.mkdirSync(path.join(dir, 'abc'));
+    fs.writeFileSync(path.join(dir, 'abc/out.txt'), 'nested');
+    const dest = path.join(root, 'out/session');
+    const r = copySessions(home, dest);
+    assert.deepEqual(r.copied.sort(), ['abc.jsonl', path.join('abc', 'out.txt')]);
+    assert.deepEqual(r.skipped, []);
+    assert.equal(fs.readFileSync(path.join(dest, 'abc/out.txt'), 'utf8'), 'nested');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('the transcript of a v3 session is its messages plus its sub-execution files, and is partial only without messages', () => {
   const root = tmp();
   try {

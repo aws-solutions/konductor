@@ -294,6 +294,30 @@ test('cleanupRun removes only the directory of this run', () => {
   }
 });
 
+test('cleanupRun does not delete through a link the agent planted in the run temp dir', () => {
+  const root = tmp();
+  try {
+    const cwd = path.join(root, 'r-a', 'work');
+    fs.mkdirSync(cwd, { recursive: true });
+    const uid = 4242;
+    const host = path.join(root, 'host-tmp');
+    fs.mkdirSync(path.join(host, cc.slugOf(cwd)), { recursive: true });
+    fs.writeFileSync(path.join(host, cc.slugOf(cwd), 'keep.txt'), 'HOST');
+    const runTmp = path.join(root, 'r-a', 'tmp');
+    fs.mkdirSync(runTmp, { recursive: true });
+    fs.symlinkSync(host, path.join(runTmp, `claude-${uid}`));
+    assert.deepEqual(cc.cleanupRun({ cwd, tmpdir: runTmp, tmpBases: [], uid }), []);
+    assert.equal(fs.readFileSync(path.join(host, cc.slugOf(cwd), 'keep.txt'), 'utf8'), 'HOST');
+    const linkedTmp = path.join(root, 'r-a', 'tmp-linked');
+    fs.symlinkSync(host, linkedTmp);
+    fs.mkdirSync(path.join(host, `claude-${uid}`, cc.slugOf(cwd)), { recursive: true });
+    assert.deepEqual(cc.cleanupRun({ cwd, tmpdir: linkedTmp, tmpBases: [], uid }), []);
+    assert.equal(fs.existsSync(path.join(host, `claude-${uid}`, cc.slugOf(cwd))), true);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('vanilla run: result fields, command, environment, rules, cleanup and no credentials on disk', async () => {
   const s = setup('vanilla-success');
   try {
