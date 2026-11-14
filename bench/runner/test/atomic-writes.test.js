@@ -25,7 +25,7 @@ function crashOnTemp(t, name) {
   });
 }
 
-test('writeAtomic keeps the previous file and leaves no temp file when the write fails midway', (t) => {
+test('writeAtomic keeps the previous file and leaves no temp file when the write fails partway', (t) => {
   const dir = tmp();
   try {
     const file = path.join(dir, 'result.json');
