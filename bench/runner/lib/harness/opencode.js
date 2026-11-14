@@ -14,6 +14,7 @@ const { ALLOW } = require('../env.js');
 const { translateAll } = require('./opencode-translate.js');
 const { aggregateEvents, queryRollup, totalTokens, zeroTokens } = require('./opencode-parse.js');
 const { installCredentials, removeCredentials, readProfile } = require('./opencode-creds.js');
+const { prepareQueryDir } = require('./opencode-query.js');
 const { scrubTreeDetailed } = require('../hygiene.js');
 const { secretLiterals } = require('../scrub.js');
 const skills = require('../skills.js');
@@ -154,8 +155,16 @@ function buildCommand({ arm, task, config, ctx, cwd, resume = null }) {
   return { file: ctx.opencode.bin, args, display: `opencode ${args.map((a) => JSON.stringify(a)).join(' ')}` };
 }
 
-function dbRunner(bin, runEnv) {
-  return (sql) => JSON.parse(execFileSync(bin, ['db', sql, '--format', 'json'], { env: runEnv, encoding: 'utf8', input: '', timeout: 60000, maxBuffer: 64 * 1024 * 1024, stdio: ['pipe', 'pipe', 'ignore'] }));
+function dbRunner(bin, { env: queryEnv, cwd }) {
+  return (sql) => JSON.parse(execFileSync(bin, ['db', sql, '--format', 'json'], { env: queryEnv, cwd, encoding: 'utf8', input: '', timeout: 60000, maxBuffer: 64 * 1024 * 1024, stdio: ['pipe', 'pipe', 'ignore'] }));
+}
+
+// The post-run query never sees the scratch HOME: it gets a fresh config, a copy of the database files and a
+// minimal environment (see opencode-query.js). Only the fixed offline switches are taken from the run env.
+function queryDir({ outDir, home, tmpdir, arm, ctx, config }) {
+  const { set } = envSetup({ arm, config, ctx, home, tmpdir });
+  const flags = Object.fromEntries(Object.entries(set).filter(([k]) => /^OPENCODE_(DISABLE_|PURE$)/.test(k)));
+  return prepareQueryDir({ outDir, home, dataHome: set.XDG_DATA_HOME, config: configJson({ konductor: !arm.vanilla }), flags });
 }
 
 // What the runner needs to know after one turn: how it ended and what the agent said last.
@@ -175,9 +184,13 @@ function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config }) {
   acc.transcript = { bytes: Buffer.byteLength(streamText), chars: streamText.length, partial: false };
 
   let rollup = null;
+  let q = null;
   try {
-    rollup = queryRollup(dbRunner(ctx.opencode.bin, env({ arm, config, ctx, home, tmpdir })), a.sessionId);
-  } catch { /* flagged below */ }
+    q = queryDir({ outDir, home, tmpdir, arm, ctx, config });
+    rollup = queryRollup(dbRunner(ctx.opencode.bin, q), a.sessionId);
+  } catch { /* flagged below */ } finally {
+    if (q) q.cleanup();
+  }
   const flags = acc.meta.flags;
   if (!rollup) flags.push('usageUnavailable');
   else {
@@ -280,5 +293,5 @@ const keepPaths = (ctx) => [ctx.opencode?.bin, ctx.rgBin].filter(Boolean);
 module.exports = {
   id, meta, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize, secrets,
-  resolveOpencode, resolveRipgrep, variantOf, zeroTokens,
+  resolveOpencode, resolveRipgrep, variantOf, zeroTokens, configJson,
 };

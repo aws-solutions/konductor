@@ -17,6 +17,16 @@ if (args[0] === 'debug') { if (cfg.debugFails) { console.error('config invalid')
 if (args[0] === 'db') {
   const sql = args[1];
   const rows = JSON.parse(fs.readFileSync(cfg.rowsFile, 'utf8'));
+  if (cfg.dir) {
+    const cfgFile = path.join(process.env.XDG_CONFIG_HOME || '', 'opencode', 'opencode.json');
+    const dataDir = path.join(process.env.XDG_DATA_HOME || '', 'opencode');
+    const read = (f) => { try { return fs.readFileSync(f, 'utf8'); } catch { return null; } };
+    fs.writeFileSync(path.join(cfg.dir, 'db-started.json'), JSON.stringify({
+      cwd: process.cwd(), cwdEntries: fs.readdirSync(process.cwd()), env: process.env,
+      configFile: cfgFile, config: read(cfgFile),
+      data: fs.existsSync(dataDir) ? Object.fromEntries(fs.readdirSync(dataDir).sort().map((n) => [n, read(path.join(dataDir, n))])) : null,
+    }));
+  }
   if (cfg.dbFails) process.exit(1);
   console.log(JSON.stringify(/from session/.test(sql) ? rows.sessions : /from message/.test(sql) ? rows.messages : rows.tools));
   process.exit(0);
