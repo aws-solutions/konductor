@@ -269,6 +269,18 @@ Exit codes of `run`: 0 ok, 1 error, 2 bad arguments, 3 credit guard stop, 4 isol
 **Charged and observed.** Observed credits are what the stream metered. Charged credits are what the ledger counts. They match for a finished run. For a censored run the charge is an estimate (above), and the report says how many runs it covers.
 Kiro engine v3 meters only at the end of a turn, so a killed v3 run has no observed spend at all.
 
+### What the sandbox does not hide
+
+The sandbox hides credentials, answer keys, hidden tests, partial and reference solutions, stubs and the output directory. An agent can still read the following. Reads leave no trace, so the tripwire does not report them. Checked on Linux with the mount namespace; the macOS profile uses the same path lists and was not run for this check.
+
+| Readable by the agent | Why it matters | What to do |
+| --- | --- | --- |
+| The Konductor checkout the bench runs from (skills, agents, `AGENTS.md`, this guide) | A vanilla agent that searches the disk can find Konductor skill text, so the arms are not cleanly apart. | Pass `--hide <checkout>` (or set `BENCH_HIDE_EXTRA`). The checkout must not hold the output directory, the scratch directory, the cache or a tool on `PATH`, because everything under a hidden path disappears. The run record lists it under `isolation.hide`. |
+| `bench/tasks/*.json` (check patterns and rubric items) | Any agent can read how it is graded. Only `hidden`, `partials`, `solutions` and `stubs` under `bench/tasks` are masked, and a test pins that the task files stay readable. | Covered by `--hide <checkout>` when the bench runs from that checkout. Masking `bench/tasks` as a whole is safe for the runner (everything under it is read on the host) but changes that test and what existing studies could see, so it is a decision for the maintainers. |
+| The arm cache (default `/tmp/b-cache`, `--cache`) | It holds every arm's exported source and build. A Konductor arm must read its own entry, because the installed agent files point into it, so the whole cache cannot be hidden. A vanilla agent can read the Konductor entries. | No flag covers this yet. Recommended change: for each run, hide every cache entry except the one the arm uses. Until then, treat a vanilla-versus-Konductor result as measured with a readable cache and say so. |
+
+**Mounts below the home or `/tmp`.** The namespace makes the home, `/tmp`, `/var/tmp` and `/dev/shm` read-only by remounting the top mount. A separate mount below one of them stays writable inside the namespace (reproduced with a tmpfs under a read-only `/tmp` subtree). `findmnt -R /tmp` and `findmnt -R "$HOME"` list such mounts; an NFS or cloud-desktop home often has some. If the list is not empty, treat host files under those mounts as writable by the agent. `sandbox-exec` on macOS denies writes by path, so submounts there should be covered (not run).
+
 ---
 
 ## Supported agent runtimes

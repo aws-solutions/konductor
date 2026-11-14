@@ -16,6 +16,7 @@ const FILES = [
   'scripts/run-after-capability.sh',
   'scripts/run-judging.sh',
   'scripts/monitor.sh',
+  'scripts/state-dir.sh',
   'scripts/real-pilot-tasks.txt',
   'RUNBOOK.md',
   'runner/test/pipeline-scripts-hygiene.test.js',

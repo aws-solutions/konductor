@@ -37,7 +37,7 @@
 #   CHANGED_SKILLS  passed to the orchestrator-pass report as --changed-skills   [unset]
 #   BUDGET_USD  per-cell budget cap passed to --budget-usd    [15]
 #   CONCURRENCY judge calls in flight per cell                [2]
-#   STATE_DIR   where judging.log, judging.pid, judging-summary.txt live [/tmp/konductor-bench]
+#   STATE_DIR   where judging.log, judging.pid, judging-summary.txt live [per-user dir, see state-dir.sh]
 #   Optional checks: EXPECT_RUNS (result.json files per cell), EXPECT_CALLS (judge calls per cell, shown in --status),
 #   REQUIRED_COMMIT (must be an ancestor of HEAD), REQUIRED_BRANCH, CREDS_EXPIRY_UTC (a hint, e.g. 2026-01-01T00:00:00Z).
 #   MIN_FREE_MB [2048], SCRATCH_PARENT [/tmp] (its path must not contain the word "bench").
@@ -66,7 +66,8 @@ CLI_JS=${CLI_JS:-$REPO/bench/runner/bench.js}
 SMOKE=${SMOKE:-}
 BUDGET_USD=${BUDGET_USD:-15}
 CONCURRENCY=${CONCURRENCY:-2}
-STATE_DIR=${STATE_DIR:-/tmp/konductor-bench}
+. "$(dirname "$SELF")/state-dir.sh"
+STATE_DIR=$(bench_state_dir "${STATE_DIR:-}") || exit 1
 EXPECT_RUNS=${EXPECT_RUNS:-}
 EXPECT_CALLS=${EXPECT_CALLS:-}
 REQUIRED_COMMIT=${REQUIRED_COMMIT:-}

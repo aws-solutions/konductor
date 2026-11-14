@@ -188,7 +188,14 @@ function hideTargets(homes, hide, masks) {
     for (const d of [...HIDE_IN_HOME, ...hide]) targets.push(path.isAbsolute(d) ? d : path.join(h, d));
     for (const f of MASK_IN_HOME) targets.push(path.join(h, f));
   }
-  return uniq([...targets, ...masks]);
+  return withoutNested(uniq([...targets, ...masks]));
+}
+
+// A target inside another one is already hidden with it, and mounting over a path the parent tmpfs removed aborts
+// the setup script. Needed when --hide names a tree (the checkout) that also holds bench fixtures and tasks.
+function withoutNested(targets) {
+  const abs = targets.map((t) => path.resolve(t));
+  return targets.filter((t, i) => !abs.some((p, j) => j !== i && abs[i] !== p && inside(abs[i], p)));
 }
 
 const sbq = (s) => `"${String(s).replace(/[\\"]/g, '\\$&')}"`;

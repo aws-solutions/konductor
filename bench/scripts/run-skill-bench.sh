@@ -37,7 +37,7 @@
 # ENVIRONMENT OVERRIDES (defaults in brackets)
 #   REPO        checkout to run from                 [the checkout this script sits in]
 #   BASE_REF    git ref the skills are read from     [test/orchestrator-all]
-#   STATE_DIR   pid, log and study pointer           [/tmp/konductor-bench]
+#   STATE_DIR   pid, log and study pointer           [per-user dir, see state-dir.sh]
 #   RESULTS     where study directories go           [STATE_DIR/results]
 #   CREDS       scoped AWS credentials file for the opencode judge (path only is used; its contents are never read)
 #               [unset: a real launch refuses; a dry run warns]
@@ -64,7 +64,8 @@ set -u -o pipefail
 SELF=$(readlink -f "${BASH_SOURCE[0]}")
 DEFAULT_REPO=$(cd "$(dirname "$SELF")/../.." 2>/dev/null && pwd)
 REPO=${REPO:-$DEFAULT_REPO}
-STATE_DIR=${STATE_DIR:-/tmp/konductor-bench}
+. "$(dirname "$SELF")/state-dir.sh"
+STATE_DIR=$(bench_state_dir "${STATE_DIR:-}") || exit 1
 RESULTS=${RESULTS:-$STATE_DIR/results}
 BENCH_DIR=${BENCH_DIR:-$REPO/bench}
 CLI_JS=${CLI_JS:-$REPO/bench/runner/bench.js}
