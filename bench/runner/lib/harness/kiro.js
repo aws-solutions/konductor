@@ -16,6 +16,7 @@ const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
 const { writeArmConfig } = require('../arm-config.js');
 const { orchMetricsOfRunDir } = require('../orch-metrics.js');
+const { copyPlainFile } = require('../safe-copy.js');
 const { scrubTreeDetailed, redactHostPaths } = require('../hygiene.js');
 const { secretLiterals } = require('../scrub.js');
 
@@ -250,8 +251,7 @@ function orchMetrics(outDir) {
 
 // The file saved is the entry agent's own: its skill filter is what the skill load-rate math counts as offered to the run.
 function collectArtifacts(home, outDir, { arm } = {}) {
-  const agentJson = path.join(home, '.kiro/agents', `${arm?.agent ?? 'konductor'}.json`);
-  if (fs.existsSync(agentJson)) fs.copyFileSync(agentJson, path.join(outDir, 'installed-agent.json'));
+  copyPlainFile(home, path.join('.kiro', 'agents', `${arm?.agent ?? 'konductor'}.json`), path.join(outDir, 'installed-agent.json'));
 }
 
 module.exports = {

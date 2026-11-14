@@ -17,6 +17,7 @@ const { secretLiterals } = require('../scrub.js');
 const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
 const { orchMetrics: computeOrchMetrics } = require('../orch-metrics.js');
+const { copyPlainFile } = require('../safe-copy.js');
 const parse = require('./claude-code-parse.js');
 
 const id = 'claude-code';
@@ -366,8 +367,7 @@ function orchMetrics(outDir) {
 
 function collectArtifacts(home, outDir) {
   for (const [rel, name] of [['.claude/settings.json', 'installed-settings.json']]) {
-    const f = path.join(home, rel);
-    if (fs.existsSync(f)) fs.copyFileSync(f, path.join(outDir, name));
+    copyPlainFile(home, rel, path.join(outDir, name));
   }
 }
 

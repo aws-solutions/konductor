@@ -171,7 +171,7 @@ test('copyData: a missing data directory copies nothing, a non-regular entry or 
     assert.throws(() => copyData({ home, dataHome, destDataHome: path.join(root, 'd2'), maxBytes: 12 }), /exceed/);
 
     fs.mkdirSync(path.join(dataHome, 'opencode', 'opencode.db-wal'));
-    assert.throws(() => copyData({ home, dataHome, destDataHome: path.join(root, 'd3') }), /not a regular file/);
+    assert.throws(() => copyData({ home, dataHome, destDataHome: path.join(root, 'd3') }), /plain file|regular file/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -186,6 +186,36 @@ test('prepareQueryDir removes its directory when the copy fails', () => {
     write(path.join(home, '.local', 'share', 'opencode', 'opencode.db'), '0123456789');
     assert.throws(() => prepareQueryDir({ outDir: out, home, dataHome: path.join(home, '.local', 'share'), config: {}, maxBytes: 3 }), /exceed/);
     assert.deepEqual(fs.readdirSync(out), []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('collectArtifacts copies the installed config but refuses a symlink the agent put in its place', () => {
+  const root = tmp();
+  try {
+    const home = path.join(root, 'home');
+    const out = path.join(root, 'out');
+    fs.mkdirSync(out);
+    write(path.join(home, '.config', 'opencode', 'opencode.json'), '{"ok":true}');
+    oc.collectArtifacts(home, out);
+    assert.equal(fs.readFileSync(path.join(out, 'installed-config.json'), 'utf8'), '{"ok":true}');
+
+    const secret = path.join(root, 'host-secret');
+    write(secret, 'HOST-SECRET');
+    fs.rmSync(path.join(home, '.config', 'opencode', 'opencode.json'));
+    fs.symlinkSync(secret, path.join(home, '.config', 'opencode', 'opencode.json'));
+    fs.rmSync(path.join(out, 'installed-config.json'));
+    assert.throws(() => oc.collectArtifacts(home, out), /symlink/);
+    assert.equal(fs.existsSync(path.join(out, 'installed-config.json')), false);
+
+    fs.rmSync(path.join(home, '.config'), { recursive: true });
+    fs.symlinkSync(root, path.join(home, '.config'));
+    assert.throws(() => oc.collectArtifacts(home, out), /symlink/, 'a linked parent directory is refused too');
+
+    fs.rmSync(path.join(home, '.config'));
+    oc.collectArtifacts(home, out);
+    assert.equal(fs.existsSync(path.join(out, 'installed-config.json')), false, 'a missing config is not an error');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

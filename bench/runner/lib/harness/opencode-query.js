@@ -8,57 +8,20 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { copyPlainFile, assertPlainPath } = require('../safe-copy.js');
 
 const MAX_COPY_BYTES = 512 * 1024 * 1024;
 const PASS = ['PATH', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TZ', 'USER', 'LOGNAME'];
 // opencode.db, its -wal and -shm files, and the same names for a non-default release channel.
 const DB_FILE = /^opencode(-[\w.]+)?\.db(-wal|-shm)?$/;
-const CHUNK = 1024 * 1024;
 
-// Each component of `target` below `home` must be a real directory the runner can see, never a link.
-function assertPlainDirs(home, target) {
-  let cur = home;
-  for (const part of path.relative(home, target).split(path.sep).filter(Boolean)) {
-    cur = path.join(cur, part);
-    const st = fs.lstatSync(cur);
-    if (!st.isDirectory()) throw new Error(`${cur} is not a plain directory`);
-  }
-}
-
-// Copies one regular file without following a link. Returns the bytes written.
-function copyRegular(src, dest, budget) {
-  const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0);
-  const from = fs.openSync(src, flags);
-  try {
-    const st = fs.fstatSync(from);
-    if (!st.isFile()) throw new Error(`${src} is not a regular file`);
-    if (st.size > budget) throw new Error(`database copy would exceed ${budget} bytes`);
-    const to = fs.openSync(dest, 'wx', 0o600);
-    try {
-      const buf = Buffer.allocUnsafe(Math.min(CHUNK, Math.max(1, st.size)));
-      let total = 0;
-      for (;;) {
-        const n = fs.readSync(from, buf, 0, buf.length, null);
-        if (n === 0) break;
-        total += n;
-        if (total > budget) throw new Error(`database copy would exceed ${budget} bytes`);
-        fs.writeSync(to, buf, 0, n);
-      }
-      return total;
-    } finally {
-      fs.closeSync(to);
-    }
-  } finally {
-    fs.closeSync(from);
-  }
-}
-
-// Copies the opencode database files from the scratch data home into `destDataHome`. A link, a non-regular
-// file or too many bytes is an error. A missing data directory copies nothing.
+// Copies the opencode database files from the scratch data home into `destDataHome`. A link anywhere on the
+// path, a non-regular file or too many bytes is an error. A missing data directory copies nothing.
 function copyData({ home, dataHome, destDataHome, maxBytes = MAX_COPY_BYTES }) {
   const src = path.join(dataHome, 'opencode');
+  const relDir = path.relative(home, src);
   try {
-    assertPlainDirs(home, src);
+    assertPlainPath(home, relDir, { last: 'dir' });
   } catch (e) {
     if (e.code === 'ENOENT') return 0;
     throw e;
@@ -67,9 +30,7 @@ function copyData({ home, dataHome, destDataHome, maxBytes = MAX_COPY_BYTES }) {
   fs.mkdirSync(dest, { recursive: true, mode: 0o700 });
   let total = 0;
   for (const name of fs.readdirSync(src).filter((n) => DB_FILE.test(n)).sort()) {
-    const st = fs.lstatSync(path.join(src, name));
-    if (!st.isFile()) throw new Error(`refusing ${name}: not a regular file`);
-    total += copyRegular(path.join(src, name), path.join(dest, name), maxBytes - total);
+    total += copyPlainFile(home, path.join(relDir, name), path.join(dest, name), { maxBytes: maxBytes - total });
   }
   return total;
 }

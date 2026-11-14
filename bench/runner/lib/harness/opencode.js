@@ -15,6 +15,7 @@ const { translateAll } = require('./opencode-translate.js');
 const { aggregateEvents, queryRollup, totalTokens, zeroTokens } = require('./opencode-parse.js');
 const { installCredentials, removeCredentials, readProfile } = require('./opencode-creds.js');
 const { prepareQueryDir } = require('./opencode-query.js');
+const { copyPlainFile } = require('../safe-copy.js');
 const { scrubTreeDetailed } = require('../hygiene.js');
 const { secretLiterals } = require('../scrub.js');
 const skills = require('../skills.js');
@@ -236,8 +237,7 @@ function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config }) {
 }
 
 function collectArtifacts(home, outDir) {
-  const cfg = path.join(home, '.config', 'opencode', 'opencode.json');
-  if (fs.existsSync(cfg)) fs.copyFileSync(cfg, path.join(outDir, 'installed-config.json'));
+  copyPlainFile(home, path.join('.config', 'opencode', 'opencode.json'), path.join(outDir, 'installed-config.json'));
 }
 
 // A model can print files in its HOME, so exact secret values are scrubbed from every output.
