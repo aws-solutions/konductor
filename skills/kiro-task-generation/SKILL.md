@@ -88,11 +88,9 @@ flowchart TD
   "waves": [
     {"id": 0, "tasks": ["1"]},
     {"id": 1, "tasks": ["2.1"]},
-    {"id": 2, "tasks": ["2.2"]},
-    {"id": 3, "tasks": ["3"]},
-    {"id": 4, "tasks": ["4.1"]},
-    {"id": 5, "tasks": ["4.2"]},
-    {"id": 6, "tasks": ["5"]}
+    {"id": 2, "tasks": ["2.2", "4.1"]},
+    {"id": 3, "tasks": ["3", "4.2"]},
+    {"id": 4, "tasks": ["5"]}
   ]
 }
 ```
@@ -143,10 +141,11 @@ Wave rules:
 
 - Wave entries are **leaf** task ids, as strings: a sub-task (`"2.1"`) or a top-level task without sub-tasks (`"1"`, a checkpoint such as `"3"`). A parent that has sub-tasks never appears itself
 - Every leaf task, optional ones included, appears in exactly one wave
-- A task sits in a later wave than every **required** leaf it uses: the leaves of the tasks its top-level task depends on in the flowchart, and the earlier sub-tasks of its own parent. When unsure whether it uses one, wait for every required leaf of those tasks. It does not wait for optional leaves, since a run can skip them, or for a checkpoint itself: through a checkpoint, it waits for the required leaves of the tasks that checkpoint checks. Kiro's own waves start a stage's first sub-task alongside the previous stage's optional tests, before the checkpoint between them
-- An optional leaf sits in an earlier wave than the next checkpoint after its parent, so the checkpoint checks it when it runs
+- One rule places every leaf. A leaf's **required predecessors** are the required leaves of the tasks its own top-level task depends on in the flowchart, plus the required earlier sub-tasks of its own parent; where that set holds a checkpoint, swap the checkpoint for its own required predecessors. Then `wave(t) = 1 + max(wave(p))` over the required predecessors of `t`, and `0` for a leaf that has none. An optional leaf takes its wave by this same rule, and no leaf counts an optional leaf among its predecessors, since a run can skip it
+- A checkpoint takes the later of the wave that rule gives it and one past the last optional leaf of the tasks it checks, so each of those optional leaves is in an earlier wave and the checkpoint checks whichever of them ran
+- Because a leaf waits on a checkpoint's required predecessors rather than on the checkpoint's own wave, a stage's first sub-task can share a wave with the previous stage's optional tests, or run before the checkpoint between the two stages. Kiro's waves do the same
 - Tasks in one wave are independent; Kiro runs each wave's tasks concurrently
-- A checkpoint gets a wave after every leaf of the tasks it checks
+- Kiro tolerates a looser placement in its own tasks.md: it puts a task one wave after the single piece of code that task exercises, rather than after every required predecessor the rule names, and it runs that file without complaint. Emit the stricter form above
 
 ### Bugfix specs
 
@@ -175,7 +174,7 @@ When the spec has `bugfix.md` instead of `requirements.md`, follow the bugfix ta
 4. Map each acceptance criterion to implementation tasks, and each correctness property to one test task
 5. Order tasks by dependency (foundation → core → polish), add checkpoints, then build the dependency graph and the waves from that order
 6. Write tasks.md to `{spec_dir}/tasks.md`
-7. Check it: every cited criterion and property exists, every property has a test task, and every leaf task id appears in exactly one wave. `grep -n '^ *- \[ \]' tasks.md` lists the tasks to compare with the waves
+7. Check it: every cited criterion and property exists, every property has a test task, and every leaf task id appears in exactly one wave, the wave the wave rule gives it. `grep -n '^ *- \[ \]' tasks.md` lists the tasks to compare with the waves
 8. Present to user for approval. If user requests changes, revise and re-present (max 2 cycles). If the user said not to ask questions, skip approval: state your assumptions in the final message and finish.
 
 ## Quality Gate
@@ -183,7 +182,7 @@ When the spec has `bugfix.md` instead of `requirements.md`, follow the bugfix ta
 **CRITICAL (must fix):**
 
 - Tasks have circular dependencies
-- In a feature spec, `## Task Dependency Graph` missing, or its `waves` JSON is invalid, omits a leaf task, lists one twice, lists a parent task, puts a task in the same or an earlier wave than a required leaf it uses, or puts an optional leaf in the same or a later wave than the next checkpoint
+- In a feature spec, `## Task Dependency Graph` missing, or its `waves` JSON is invalid, omits a leaf task, lists one twice, lists a parent task, or puts a leaf in a wave other than the one the wave rule gives it
 - An implementation or test task without its requirement reference (checkpoints are exempt)
 - A reference to an acceptance criterion or property that does not exist
 - tasks.md written anywhere other than `{spec_dir}`
