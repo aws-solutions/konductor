@@ -257,3 +257,16 @@ test('explain says an integrity-excluded run counts as a failure in a stamped st
     assert.match(text(legacy), /no rubric records for this run \(not judged\): component dropped from the score/);
   } finally { rm(root); }
 });
+
+test('compare of a judged study with an unjudged one does not add a rubric policy line to the refusal', () => {
+  const root = tmp();
+  try {
+    const judged = buildStudy(root, 'judged', { stamp: STAMP });
+    const plainBench = makeBench(path.join(root, 'plain-bench'));
+    const plain = makeRun(path.join(root, 'plain'), plainBench, DEFAULT_RUNS);
+    const r = compareRuns({ baseDir: plain, headDir: judged.dir, benchDir: judged.bench });
+    assert.equal(r.exitCode, 2);
+    assert.ok(r.refusals.some((x) => x.startsWith('judge set differs')));
+    assert.ok(!r.refusals.some((x) => x.startsWith('rubric policy')));
+  } finally { rm(root); }
+});

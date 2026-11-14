@@ -83,7 +83,7 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack, quoteR
     const q = excluded ? null : qualityOfRun(n, weights);
     const spawns = spawnsOf(result);
     return {
-      task: r.task, rep: r.rep, outcome: r.outcome, excluded, quality: q ? q.score : null, hasRubric: r.rubric !== null,
+      task: r.task, rep: r.rep, outcome: r.outcome, excluded, quality: q ? q.score : null, hasRubric: r.rubric !== null && !r.rubricCountedAsFailure,
       cost: fin(r.credits) ? r.credits : null, censored: Boolean(r.censored), wallMs: r.wall, spawns: fin(spawns) ? spawns : null,
       timeout: r.outcome === 'timeout', zeroFilled: n.zeroFilled, model: result.claudeCode?.canonicalModel ?? result.model ?? null,
     };

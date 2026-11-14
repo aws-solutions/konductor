@@ -63,7 +63,8 @@ function refusalsFor(base, head) {
     contentHash: 'task/fixture/suite content hash', harnessVersion: `${a.harness} version`, isolation: 'isolation mode',
     agentEngine: 'agent engine', rubricPolicy: 'rubric policy',
   };
-  return Object.keys(labels).filter((k) => a[k] !== b[k]).map((k) => `${labels[k]} differs: base "${a[k] || 'none'}" vs head "${b[k] || 'none'}"`);
+  // A study with no judgments has no policy to compare; the judge-set line already refuses that pairing.
+  return Object.keys(labels).filter((k) => a[k] !== b[k] && !(k === 'rubricPolicy' && (!a[k] || !b[k]))).map((k) => `${labels[k]} differs: base "${a[k] || 'none'}" vs head "${b[k] || 'none'}"`);
 }
 
 function statFor(metric, values) {
