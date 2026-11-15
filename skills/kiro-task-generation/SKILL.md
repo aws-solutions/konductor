@@ -11,7 +11,7 @@ tags: [skill, kiro, specs, tasks, implementation-plan, spec-driven-development]
 
 Produces `{spec_dir}/tasks.md` — a structured implementation task list for Kiro IDE's spec-driven development workflow. Each task is a coding task designed for a code-generation LLM to execute one at a time, with explicit references back to requirements.md.
 
-`spec_dir` (optional): path where spec artifacts are written. Defaults to `.kiro/specs/{feature-name}/` if not provided — the same location Kiro IDE itself writes specs to, so this skill behaves identically whether invoked standalone in any Kiro project or as part of a larger workflow. A caller that keeps its artifacts elsewhere passes its own `spec_dir`, and this skill MUST read and write there instead.
+`spec_dir` (optional): where spec artifacts live. Defaults to `.kiro/specs/{feature-name}/`; when the caller passes one, this skill MUST read and write there instead.
 
 This skill is the final step in the Kiro spec workflow, after `kiro-requirements-generation` produces requirements.md and `kiro-design-generation` produces design.md.
 
