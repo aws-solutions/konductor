@@ -21,7 +21,7 @@ const { writeAtomic } = require('../runner/lib/owned.js');
 const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
 const { mergeRecords, addSpend } = require('./merge.js');
 const { loadObserved, estimateFromObserved } = require('./observed-cost.js');
-const { EXCLUSION_CLASS, RUBRIC_POLICY, exclusionClassOfReason } = require('./exclusion.js');
+const { EXCLUSION_CLASS, SCRUB_CAUSE_CLASS, RUBRIC_POLICY, exclusionClassOfRun, exclusionClassOfReason } = require('./exclusion.js');
 
 const runKey = (r) => `${r.armId}|${r.taskId}|${r.replicate}`;
 
@@ -40,7 +40,7 @@ function notJudgedReason(r) {
 /** 'integrity' | 'gap' | null for a loaded run. A budget-skipped run never ran, so it is a gap. */
 function exclusionClass(r) {
   if (r.result.status === 'budget_skipped') return 'gap';
-  return exclusionClassOfReason(notJudgedReason(r));
+  return exclusionClassOfRun(notJudgedReason(r), r.result);
 }
 
 // One judged answer: call, validate, retry once with a short correction on a bad reply.
@@ -350,4 +350,4 @@ function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJud
   return out;
 }
 
-module.exports = { runJudging, planJudging, estimateSpend, judgeOnce, notJudgedReason, exclusionClass, exclusionClassOfReason, EXCLUSION_CLASS, RUBRIC_POLICY, runKey };
+module.exports = { runJudging, planJudging, estimateSpend, judgeOnce, notJudgedReason, exclusionClass, exclusionClassOfRun, exclusionClassOfReason, EXCLUSION_CLASS, SCRUB_CAUSE_CLASS, RUBRIC_POLICY, runKey };

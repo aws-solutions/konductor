@@ -3,7 +3,7 @@
 
 const { renderSkillsMarkdown } = require('./skills.js');
 const { externalFetchCell } = require('../runner/lib/contamination.js');
-const { EXCLUSION_CLASS } = require('../judge/exclusion.js');
+const { exclusionTable } = require('../judge/exclusion.js');
 
 const pct = (v) => (v === null || v === undefined ? 'n/a' : `${(v * 100).toFixed(0)}%`);
 const f = (v, d = 2) => (v === null || v === undefined ? 'n/a' : Number(v).toFixed(d));
@@ -36,7 +36,7 @@ function rubricCells(report, c) {
 
 // How each reason a run is kept out of judging counts in a stamped study.
 const exclusionRows = () => [
-  ...Object.entries(EXCLUSION_CLASS).map(([reason, cls]) => [reason, cls, cls === 'integrity' ? 'counted as 0' : 'left out']),
+  ...exclusionTable().map(([reason, cls]) => [reason, cls, cls === 'integrity' ? 'counted as 0' : 'left out']),
   ['budget_skipped', 'gap', 'not executed, left out'],
 ];
 
@@ -44,7 +44,7 @@ function rubricPolicyNote(report) {
   if (!report.judging) return [];
   if (!report.rubricPolicy) return ['legacy: excluded runs are gaps', ''];
   return [
-    'Rubric policy: runs kept out of judging for an integrity reason count as failures (0 on every rubric item) in the main rubric number. The judged-runs-only number leaves them out. Runs left out for a reason that is not the agent\'s doing stay gaps in both.',
+    'Rubric policy: runs kept out of judging for an integrity reason count as failures (0 on every rubric item) in the main rubric number. The judged-runs-only number leaves them out. Runs left out for a reason that is not the agent\'s doing stay gaps in both, among them a credential scrub failure whose cause is not evidence of tampering.',
     '',
     table(['reason', 'class', 'in the main rubric number'], exclusionRows()),
     '',
@@ -227,7 +227,7 @@ function renderMarkdown(report) {
       out.push(`Left out of every score and tally (${report.judging.stale.length} record(s)): judged against an earlier version of the rubric, answer key or prompt. They are still in judgments.json. Re-run the judge command to refresh them.`, '');
     }
     if (report.judging.notJudged.length) {
-      out.push(`Not judged (${report.judging.notJudged.length}): ${report.judging.notJudged.map((x) => `${x.armId}/${x.taskId}/#${x.replicate} (${x.reason}${x.exclusionClass ? `, ${x.exclusionClass}` : ''})`).join(', ')}`, '');
+      out.push(`Not judged (${report.judging.notJudged.length}): ${report.judging.notJudged.map((x) => `${x.armId}/${x.taskId}/#${x.replicate} (${x.reasonLabel ?? x.reason}${x.exclusionClass ? `, ${x.exclusionClass}` : ''})`).join(', ')}`, '');
     }
   }
   if (report.skills) out.push(renderSkillsMarkdown(report.skills), '');

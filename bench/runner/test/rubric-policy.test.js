@@ -27,7 +27,7 @@ test('a study without the policy stamp renders as before, plus one legacy line',
 });
 
 const STAMP = 'excluded-as-failures';
-const { buildStudy, DEFAULT_RUNS } = require('./rubric-policy-fixture.js');
+const { buildStudy, DEFAULT_RUNS, LINKED } = require('./rubric-policy-fixture.js');
 const { makeBench, makeRun } = require('./helpers.js');
 const { loadRun, loadRuns } = require('../../report/load.js');
 const { loadTasks } = require('../lib/tasks.js');
@@ -50,14 +50,14 @@ test('the policy stamp value is shared by the judge and the report', () => {
 });
 
 test('exclusion classes: integrity reasons count as failures, the rest are gaps', () => {
-  assert.deepEqual(EXCLUSION_CLASS, { credsUnscrubbed: 'integrity', stdioTampered: 'integrity', usageDbTampered: 'integrity', infraError: 'gap', 'no workspace': 'gap' });
+  assert.deepEqual(EXCLUSION_CLASS, { credsUnscrubbed: 'by-cause', stdioTampered: 'integrity', usageDbTampered: 'integrity', infraError: 'gap', 'no workspace': 'gap' });
   assert.equal(exclusionClassOfReason(null), null);
   assert.equal(exclusionClassOfReason('something else'), null);
   const root = tmp();
   try {
     const bench = makeBench(path.join(root, 'bench'));
     const dir = makeRun(path.join(root, 'run'), bench, [
-      { arm: 'a', rep: 1 }, { arm: 'a', rep: 2, flags: ['credsUnscrubbed'] }, { arm: 'a', rep: 3, flags: ['stdioTampered'] }, { arm: 'a', rep: 4, flags: ['usageDbTampered'] },
+      { arm: 'a', rep: 1 }, { arm: 'a', rep: 2, flags: ['credsUnscrubbed'], unscrubbedFiles: [LINKED] }, { arm: 'a', rep: 3, flags: ['stdioTampered'] }, { arm: 'a', rep: 4, flags: ['usageDbTampered'] },
       { arm: 'a', rep: 5, status: 'error', infraError: 'x' }, { arm: 'a', rep: 6, status: 'budget_skipped' }, { arm: 'a', rep: 7, flags: ['snapshotFailed'] },
     ]);
     const byRep = Object.fromEntries(loadRun(dir).runs.map((r) => [r.replicate, exclusionClass(r)]));
@@ -101,15 +101,16 @@ test('stamped: the table has the main column, the judged-only column and the exc
     assert.match(s.md, /\| v1 \| 4 \|.*\| mean 0\.44 \(raw 0\.44\) over 4 run\(s\) \| j1 0\.88 \(raw 0\.88\)<br>j2 0\.88 \(raw 0\.88\)<br>mean 0\.88 \(raw 0\.88\) \| 2 \|/);
     assert.match(s.md, /\| vanilla \| 4 \|.*\| mean 0\.75 \(raw 0\.75\) over 3 run\(s\) \|.*\| 0 \|/);
     assert.ok(!s.md.includes('legacy: excluded runs are gaps'));
-    assert.match(s.md, /\| credsUnscrubbed \| integrity \| counted as 0 \|/);
+    assert.match(s.md, /\| credsUnscrubbed \[link\] \| integrity \| counted as 0 \|/);
+    assert.match(s.md, /\| credsUnscrubbed \[unwritable\] \| gap \| left out \|/);
     assert.match(s.md, /\| infraError \| gap \| left out \|/);
     assert.match(s.md, /\| budget_skipped \| gap \|/);
-    assert.match(s.md, /Not judged \(3\): vanilla\/t1\/#4 \(infraError, gap\), v1\/t1\/#3 \(credsUnscrubbed, integrity\), v1\/t1\/#4 \(usageDbTampered, integrity\)/);
+    assert.match(s.md, /Not judged \(3\): vanilla\/t1\/#4 \(infraError, gap\), v1\/t1\/#3 \(credsUnscrubbed \[link\], integrity\), v1\/t1\/#4 \(usageDbTampered, integrity\)/);
   } finally { rm(s.root); }
 });
 
 test('stamped: an arm whose runs were all excluded scores 0 in the main number and has no judged-only number', () => {
-  const runs = [{ arm: 'vanilla', rep: 1 }, { arm: 'vanilla', rep: 2 }, { arm: 'v1', rep: 1, flags: ['stdioTampered'] }, { arm: 'v1', rep: 2, flags: ['credsUnscrubbed'] }];
+  const runs = [{ arm: 'vanilla', rep: 1 }, { arm: 'vanilla', rep: 2 }, { arm: 'v1', rep: 1, flags: ['stdioTampered'] }, { arm: 'v1', rep: 2, flags: ['credsUnscrubbed'], unscrubbedFiles: [LINKED] }];
   const notJudged = [{ armId: 'v1', taskId: 't1', replicate: 1, reason: 'stdioTampered' }, { armId: 'v1', taskId: 't1', replicate: 2, reason: 'credsUnscrubbed' }];
   const s = stamped({ runs, notJudged, scores: { vanilla: { 1: 1, 2: 1 } } });
   try {

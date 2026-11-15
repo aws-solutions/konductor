@@ -21,6 +21,38 @@ const CHUNK_BYTES = 1024 * 1024;
 // as unscrubbed instead. A literal secret can be longer, so the overlap takes the larger of the two.
 const SHAPE_MAX_BYTES = 64 * 1024;
 
+// Why a file could not be scrubbed, as a short class kept on each unscrubbed entry. The judge decides per class whether the run
+// counts against the agent (see judge/exclusion.js).
+//   link        a link or non-regular file stood where a plain file was listed (ELOOP, ENXIO, EISDIR, ENOTDIR, ENODEV)
+//   unreadable  a file or directory was listed but reading it was refused (EACCES, EPERM): its permissions or owner changed
+//   unwritable  the file was read but could not be rewritten (read-only copy, read-only filesystem)
+//   too-large   a secret-like run longer than the held-back window, so the file cannot be scrubbed in chunks
+//   error       anything else: I/O errors, vanished files, a directory listing that failed for another reason, unexpected exceptions
+const SCRUB_CAUSES = ['link', 'unreadable', 'unwritable', 'too-large', 'error'];
+const LINK_CODES = new Set(['ELOOP', 'ENXIO', 'EISDIR', 'ENOTDIR', 'ENODEV']);
+const DENIED_CODES = new Set(['EACCES', 'EPERM']);
+// Errors a second attempt can clear.
+const TRANSIENT_CODES = new Set(['EIO', 'EAGAIN', 'EMFILE', 'ENFILE', 'EBUSY', 'EINTR', 'ETXTBSY', 'ENOMEM', 'ENOENT']);
+
+/** Runs fn and marks an error it throws with the step that failed, so a refused write is told from a refused read. */
+function phased(phase, fn) {
+  try { return fn(); } catch (e) {
+    if (e && typeof e === 'object' && !e.scrubPhase) e.scrubPhase = phase;
+    throw e;
+  }
+}
+
+/** One of SCRUB_CAUSES for an error thrown while scrubbing a file. */
+function scrubCauseOf(err) {
+  if (err?.scrubCause) return err.scrubCause;
+  if (LINK_CODES.has(err?.code)) return 'link';
+  if (DENIED_CODES.has(err?.code)) return err.scrubPhase === 'write' ? 'unwritable' : 'unreadable';
+  if (err?.code === 'EROFS') return 'unwritable';
+  return 'error';
+}
+
+const isRetryable = (err) => scrubCauseOf(err) === 'error' && TRANSIENT_CODES.has(err?.code) && err.scrubPhase !== 'write';
+
 /** Bytes kept back between chunks: any secret that starts before the held-back region ends inside the window, plus one byte for a trailing \b or greedy stop. */
 const overlapFor = (literals) => Math.max(SHAPE_MAX_BYTES, ...literals.map((l) => Buffer.byteLength(l))) + 1;
 
@@ -125,12 +157,12 @@ function scrubLargeFile(file, st, { live, shapes, chunkBytes }) {
   const apply = shapes ? (t) => scrubString(t, live) : literalsOnly(live);
   const overlap = overlapFor(live);
   const tmp = path.join(path.dirname(file), `.${path.basename(file)}.scrub-${process.pid}-${Date.now().toString(36)}.tmp`);
-  const src = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+  const src = phased('read', () => fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW));
   let dst = null;
   let renamed = false;
   try {
-    dst = fs.openSync(tmp, 'wx', st.mode & 0o7777);
-    fs.fchmodSync(dst, st.mode & 0o7777);
+    dst = phased('write', () => fs.openSync(tmp, 'wx', st.mode & 0o7777));
+    phased('write', () => fs.fchmodSync(dst, st.mode & 0o7777));
     const buf = Buffer.alloc(chunkBytes);
     let pending = '';
     let changed = false;
@@ -143,7 +175,7 @@ function scrubLargeFile(file, st, { live, shapes, chunkBytes }) {
       const window = pending + buf.toString('latin1', 0, n);
       if (window.length <= overlap) { pending = window; continue; }
       const cut = safeCut(secretSpans(window, live, shapes), window.length - overlap);
-      if (window.length - cut > 2 * overlap) throw new Error(`a secret-like run longer than ${overlap} bytes`);
+      if (window.length - cut > 2 * overlap) throw Object.assign(new Error(`a secret-like run longer than ${overlap} bytes`), { scrubCause: 'too-large' });
       emit(window.slice(0, cut));
       pending = window.slice(cut);
     }
@@ -151,7 +183,7 @@ function scrubLargeFile(file, st, { live, shapes, chunkBytes }) {
     fs.closeSync(dst);
     dst = null;
     if (changed) {
-      fs.renameSync(tmp, file);
+      phased('write', () => fs.renameSync(tmp, file));
       renamed = true;
     }
     return changed;
@@ -162,13 +194,21 @@ function scrubLargeFile(file, st, { live, shapes, chunkBytes }) {
   }
 }
 
+/** Lists a directory; a transient failure is tried once more. */
+function readdirOnce(dir) {
+  try { return fs.readdirSync(dir, { withFileTypes: true }); } catch (e) {
+    if (!TRANSIENT_CODES.has(e.code)) throw e;
+    return fs.readdirSync(dir, { withFileTypes: true });
+  }
+}
+
 /**
  * Yields what is under dir: {path, file: true, size} for each regular file, {path, skipped} for a symlink or another kind of
  * entry (never followed or opened), and {path, unreadable} for a directory that cannot be listed.
  */
 function* walkTree(dir) {
   let ents;
-  try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { yield { path: dir, unreadable: e.code || e.message }; return; }
+  try { ents = readdirOnce(dir); } catch (e) { yield { path: dir, unreadable: e.code || e.message }; return; }
   for (const e of ents) {
     const p = path.join(dir, e.name);
     if (e.isDirectory()) { yield* walkTree(p); continue; }
@@ -185,29 +225,32 @@ function* walkTree(dir) {
 /**
  * Replaces each literal with <redacted> in every file under dir; with `shapes`, credential-shaped text too (see scrub.js).
  * Files over MAX_BYTES are scrubbed in chunks. Symlinks and other non-regular entries are not followed or opened; they are
- * listed in `skipped`. A file or directory that cannot be scrubbed is listed in `unscrubbed` with the reason, and the walk
- * goes on with the rest.
- * Returns {scrubbed: files rewritten, files: regular files seen, unscrubbed: [{file, reason}], skipped: [{file, reason}]}.
+ * listed in `skipped`. A file or directory that cannot be scrubbed is listed in `unscrubbed`, and the walk goes on with the
+ * rest. `reason` is one of SCRUB_CAUSES and `detail` the error code or message.
+ * Returns {scrubbed: files rewritten, files: regular files seen, unscrubbed: [{file, reason, detail}], skipped: [{file, reason}]}.
  */
 function scrubTreeDetailed(dir, literals, { shapes = false, chunkBytes = CHUNK_BYTES } = {}) {
   const live = literals.filter(Boolean);
   const out = { scrubbed: 0, files: 0, unscrubbed: [], skipped: [] };
+  // True when the file was rewritten. A failure that looks transient is tried once more before it is reported.
+  const scrubFile = (w) => {
+    if (w.size > MAX_BYTES) return scrubLargeFile(w.path, w.st, { live, shapes, chunkBytes });
+    const text = phased('read', () => fs.readFileSync(w.path, 'latin1'));
+    const next = shapes ? scrubString(text, live) : literalsOnly(live)(text);
+    if (next === text) return false;
+    phased('write', () => fs.writeFileSync(w.path, next, 'latin1'));
+    return true;
+  };
   for (const w of walkTree(dir)) {
     if (w.skipped) { out.skipped.push({ file: w.path, reason: w.skipped }); continue; }
-    if (w.unreadable) { out.unscrubbed.push({ file: w.path, reason: `cannot read: ${w.unreadable}` }); continue; }
+    if (w.unreadable) { out.unscrubbed.push({ file: w.path, reason: DENIED_CODES.has(w.unreadable) ? 'unreadable' : 'error', detail: `cannot read: ${w.unreadable}` }); continue; }
     out.files++;
     try {
-      if (w.size > MAX_BYTES) {
-        if (scrubLargeFile(w.path, w.st, { live, shapes, chunkBytes })) out.scrubbed++;
-        continue;
-      }
-      const text = fs.readFileSync(w.path, 'latin1');
-      const next = shapes ? scrubString(text, live) : literalsOnly(live)(text);
-      if (next === text) continue;
-      fs.writeFileSync(w.path, next, 'latin1');
-      out.scrubbed++;
+      let rewritten;
+      try { rewritten = scrubFile(w); } catch (e) { if (!isRetryable(e)) throw e; rewritten = scrubFile(w); }
+      if (rewritten) out.scrubbed++;
     } catch (e) {
-      out.unscrubbed.push({ file: w.path, reason: e.code || e.message });
+      out.unscrubbed.push({ file: w.path, reason: scrubCauseOf(e), detail: e.code || e.message });
     }
   }
   return out;
@@ -248,4 +291,4 @@ function redactHostPaths(dir, rules = hostPathRules()) {
   return n;
 }
 
-module.exports = { scanTree, scrubTree, scrubTreeDetailed, redactHostPaths, hostPathRules, PATTERNS, MAX_BYTES, CHUNK_BYTES, SHAPE_MAX_BYTES, overlapFor };
+module.exports = { scanTree, scrubTree, scrubTreeDetailed, scrubCauseOf, SCRUB_CAUSES, redactHostPaths, hostPathRules, PATTERNS, MAX_BYTES, CHUNK_BYTES, SHAPE_MAX_BYTES, overlapFor };

@@ -6,7 +6,7 @@ const { summarizeSkills, rowsFromResults } = require('./skills.js');
 const { rubricScore } = require('../judge/score.js');
 const { taskRevision } = require('../judge/revision.js');
 const { MIN_RECALL, fetchUnchecked } = require('../runner/lib/contamination.js');
-const { RUBRIC_POLICY, exclusionClassOfReason } = require('../judge/exclusion.js');
+const { RUBRIC_POLICY, exclusionClassOfRun, reasonLabel } = require('../judge/exclusion.js');
 
 const CLASS_ORDER = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'complex', 'real', 'autonomy'];
 const MIN_REPLICATES = 3;
@@ -158,10 +158,11 @@ function contaminationSummary(executed) {
 }
 
 // Executed runs kept out of judging for an integrity reason that no judge scored. A stamped study counts each as a failure.
+// The class can depend on the run (a scrub failure is classed by its cause), so it is read from the run's result.
+const keyOf = (x) => `${x.armId}|${x.taskId}|${x.replicate}`;
 function integrityExcluded(executed, notJudged, judges, rubricIdx) {
-  const key = (x) => `${x.armId}|${x.taskId}|${x.replicate}`;
-  const keys = new Set(notJudged.filter((x) => exclusionClassOfReason(x.reason) === 'integrity').map(key));
-  return executed.filter((e) => keys.has(key(e)) && !judges.some((j) => typeof rubricIdx.get(`${j}|${key(e)}`)?.score === 'number'));
+  const reasons = new Map(notJudged.map((x) => [keyOf(x), x.reason]));
+  return executed.filter((e) => exclusionClassOfRun(reasons.get(keyOf(e)), e.result) === 'integrity' && !judges.some((j) => typeof rubricIdx.get(`${j}|${keyOf(e)}`)?.score === 'number'));
 }
 
 function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagreeScore, notJudged = [], stamped = false, basis = BASIS['kiro-cli'], rawScoreOf = (rec) => rec.scoreRaw ?? rec.score, noQuestionTasks = new Set() }) {
@@ -212,6 +213,7 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
 
   let rubric = null;
   let rubricPolicyCell = null;
+  const byKey = new Map(executed.map((e) => [keyOf(e), e]));
   const flags = [];
   if (judges.length) {
     const byJudge = {};
@@ -250,6 +252,7 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
     series.rubricScore = perRun;
     if (stamped) {
       const zeros = integrityExcluded(executed, notJudged, judges, rubricIdx).map(() => 0);
+      const scrubGaps = notJudged.filter((x) => x.reason === 'credsUnscrubbed' && exclusionClassOfRun(x.reason, byKey.get(keyOf(x))?.result) === 'gap');
       const all = [...perRun, ...zeros];
       series.rubricScore = all;
       series.rubricScoreJudged = perRun;
@@ -257,6 +260,7 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
         rubricAll: { n: all.length, mean: avg(all), meanRaw: avg([...perRunRaw, ...zeros]) },
         rubricJudged: { n: perRun.length, mean: avg(perRun), meanRaw: avg(perRunRaw) },
         excludedCount: zeros.length,
+        scrubGapCount: scrubGaps.length,
       };
     }
     if (rubric.disagreement.meanAbsDiff !== null && rubric.disagreement.meanAbsDiff > disagreeScore) {
@@ -282,7 +286,8 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
   if (oracleRuns.length) flags.push(`ORACLE: ${oracleRuns.length} of ${n} run(s) had the expected skill bodies (${[...new Set(oracleRuns.flatMap((e) => e.result.oracle.skills))].sort().join(', ')}) put in the prompt; they are not comparable with normal runs, so never pool them with normal runs or use them for a platform verdict`);
   if (n - counts.good > 0) flags.push(`${n - counts.good} of ${n} run(s) were not clean passes (${OUTCOMES.slice(1).filter((o) => counts[o]).map((o) => `${counts[o]} ${o}`).join(', ')}); efficiency medians use the ${counts.good} clean pass(es) only, the failure rates and credits per successful run include all`);
   const skippedJudge = notJudged.length;
-  if (skippedJudge) flags.push(`${skippedJudge} run(s) not judged (${[...new Set(notJudged.map((x) => x.reason))].join(', ')}); they have no rubric or pairwise result${rubricPolicyCell?.excludedCount ? `; ${rubricPolicyCell.excludedCount} of them count as failures (0) in the main rubric score` : ''}`);
+  const reasonOf = (x) => (stamped && byKey.has(keyOf(x)) ? reasonLabel(x.reason, byKey.get(keyOf(x)).result) : x.reason);
+  if (skippedJudge) flags.push(`${skippedJudge} run(s) not judged (${[...new Set(notJudged.map(reasonOf))].join(', ')}); they have no rubric or pairwise result${rubricPolicyCell?.excludedCount ? `; ${rubricPolicyCell.excludedCount} of them count as failures (0) in the main rubric score` : ''}${rubricPolicyCell?.scrubGapCount ? `; ${rubricPolicyCell.scrubGapCount} had a credential scrub failure that is not evidence of misbehavior, so they are left out of the rubric mean (a gap)` : ''}`);
 
   const cell = {
     n, skipped: entries.length - n, byStatus, counts, rates,
@@ -363,7 +368,7 @@ function buildReport({ run, tasks, baseline = defaultBaseline(run), disagreeScor
     costUnit: basis.unit,
     run: { dir: run.dir, suite: run.config.suite ?? null, model: run.config.model ?? run.runs[0].result.model, effort: run.config.effort ?? run.runs[0].result.effort, taskIds: run.config.taskIds ?? [...new Set(run.runs.map((r) => r.taskId))].sort(), kiroCliVersion: run.runs[0].result.kiroCliVersion ?? null, harnessVersion: run.config.harnessVersion ?? run.runs[0].result.harnessVersion ?? run.runs[0].result.kiroCliVersion ?? null },
     baseline, judges, scopes: ['overall', ...classes], arms: {},
-    judging: j ? judgingSummary(j, isStale, stale) : null,
+    judging: j ? judgingSummary(j, isStale, stale, new Map(run.runs.map((r) => [keyOf(r), r.result]))) : null,
     checksRecheck: recheckSummary(run.runs),
   };
   if (stamped) report.rubricPolicy = RUBRIC_POLICY;
@@ -394,10 +399,10 @@ function rawFromCriteria(rec, task) {
   return rubricScore(task.rubric, rec.criteria.map((c) => ({ id: c.id, verdict: c.verdictRaw ?? c.judgeVerdict ?? c.verdict })));
 }
 
-function judgingSummary(j, isStale, stale) {
+function judgingSummary(j, isStale, stale, resultByKey = new Map()) {
   const backends = j.backends ?? [j.backend ?? 'kiro'];
   const out = {
-    byJudge: {}, positionInconsistent: 0, spentCredits: j.spentCredits ?? null, spentUsd: j.spentUsd ?? null, panel: j.panel ?? null, notJudged: j.rubricPolicy === RUBRIC_POLICY ? (j.notJudged || []).map((x) => ({ ...x, exclusionClass: exclusionClassOfReason(x.reason) })) : j.notJudged || [], stale,
+    byJudge: {}, positionInconsistent: 0, spentCredits: j.spentCredits ?? null, spentUsd: j.spentUsd ?? null, panel: j.panel ?? null, notJudged: j.rubricPolicy === RUBRIC_POLICY ? (j.notJudged || []).map((x) => ({ ...x, exclusionClass: exclusionClassOfRun(x.reason, resultByKey.get(keyOf(x))), ...(reasonLabel(x.reason, resultByKey.get(keyOf(x))) !== x.reason ? { reasonLabel: reasonLabel(x.reason, resultByKey.get(keyOf(x))) } : {}) })) : j.notJudged || [], stale,
     backend: backends.length > 1 ? 'mixed' : backends[0], backends, backendInfo: j.backendInfo ?? null,
   };
   for (const judge of j.judges) {

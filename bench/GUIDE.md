@@ -206,12 +206,18 @@ A run is a clean pass when its status is success, there is no infrastructure err
 
 | Reason | Class | In the main rubric number |
 | --- | --- | --- |
-| credsUnscrubbed | integrity | counted as a failure (0 on every rubric item) |
+| credsUnscrubbed, cause `link` | integrity | counted as a failure (0 on every rubric item) |
+| credsUnscrubbed, cause `unreadable` | integrity | counted as a failure |
+| credsUnscrubbed, cause `unwritable` | gap | left out, with its count and cause shown |
+| credsUnscrubbed, cause `too-large` | gap | left out, with its count and cause shown |
+| credsUnscrubbed, cause `error` (anything else, or unknown) | gap | left out, with its count and cause shown |
 | stdioTampered | integrity | counted as a failure |
 | usageDbTampered | integrity | counted as a failure |
 | infraError | gap | left out |
 | no workspace | gap | left out |
 | budget_skipped | gap | left out, the run never executed |
+
+A scrub failure sets `credsUnscrubbed` and is classed by its cause, the `reason` on each `unscrubbedFiles` entry (`detail` holds the error code). `link`: a link or non-regular file stood where a plain file was listed. `unreadable`: reading a listed file or directory was refused, so its permissions or owner changed. Both are evidence of tampering and count as failures. `unwritable` (the file was read but could not be rewritten), `too-large` (a secret-like run longer than the scrub window), `error` (I/O errors and anything else) and entries without a known cause are not evidence of misbehavior, so the run is a gap: out of both means, counted in the cell flags and listed in `Not judged` with its cause. A transient read error is retried once before it is reported. A run that also set `stdioTampered` or `usageDbTampered` stays an integrity run. Whatever its class, a `credsUnscrubbed` run is never sent to a judge, because its text may still hold a secret. To move a cause to the other class, edit `SCRUB_CAUSE_CLASS` in `bench/judge/exclusion.js`; it is the only place that says so, and the policy table in a stamped report is generated from it.
 
 Reports of new studies show both numbers side by side, always, so the table keeps its shape: `rubric (excluded runs = 0)` is the main number, `rubric (judged runs only)` is the mean over judged runs, and `excluded runs (counted as 0)` is how many integrity runs sit between them. `report.json` carries them per arm and scope as `rubricAll`, `rubricJudged` and `excludedCount`; `rubricJudged` equals the number older reports gave. The score rows behind the verdict, the quality score and `contrast` use the main number; `compare` reports both and labels them. The diligence scorecard is unchanged: judge coverage still counts these runs as unjudged.
 

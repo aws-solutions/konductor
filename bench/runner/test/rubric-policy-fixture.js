@@ -14,11 +14,14 @@ const JUDGES = ['j1', 'j2'];
 // arm -> rep -> score the judges give; a rep with no score is not judged.
 const DEFAULT_SCORES = { vanilla: { 1: 0.5, 2: 0.75, 3: 1 }, v1: { 1: 1, 2: 0.75 } };
 
+// A scrub failure whose cause is evidence of tampering: a link stood where the harness listed a plain file.
+const LINKED = { file: 'out.txt', reason: 'link', detail: 'ELOOP' };
+
 const DEFAULT_RUNS = [
   { arm: 'vanilla', rep: 1 }, { arm: 'vanilla', rep: 2 }, { arm: 'vanilla', rep: 3 },
   { arm: 'vanilla', rep: 4, status: 'error', infraError: 'post-processing failed: x' },
   { arm: 'v1', rep: 1 }, { arm: 'v1', rep: 2 },
-  { arm: 'v1', rep: 3, flags: ['credsUnscrubbed'] },
+  { arm: 'v1', rep: 3, flags: ['credsUnscrubbed'], unscrubbedFiles: [LINKED] },
   { arm: 'v1', rep: 4, flags: ['usageDbTampered'] },
 ];
 
@@ -49,15 +52,15 @@ function buildStudy(root, name, { stamp = null, scores = DEFAULT_SCORES, runs = 
 }
 
 /** Everything the legacy snapshot holds: the report JSON and markdown, the compare text and the verdict sentences. */
-function renderAll(root, { stamp = null } = {}) {
+function renderAll(root, { stamp = null, runs = DEFAULT_RUNS } = {}) {
   const { buildReport } = require('../../report/aggregate.js');
   const { renderMarkdown } = require('../../report/render.js');
   const { loadRun } = require('../../report/load.js');
   const { loadTasks } = require('../../runner/lib/tasks.js');
   const { compareRuns, formatCompare } = require('../../report/compare.js');
   const { buildVerdict } = require('../../report/verdict.js');
-  const head = buildStudy(root, 'head', { stamp });
-  const base = buildStudy(root, 'base', { stamp, scores: { vanilla: { 1: 0.25, 2: 0.5, 3: 0.75 }, v1: { 1: 0.5, 2: 0.5 } } });
+  const head = buildStudy(root, 'head', { stamp, runs });
+  const base = buildStudy(root, 'base', { stamp, runs, scores: { vanilla: { 1: 0.25, 2: 0.5, 3: 0.75 }, v1: { 1: 0.5, 2: 0.5 } } });
   const norm = (text) => text.split(root).join('<ROOT>');
   const r = buildReport({ run: loadRun(head.dir), tasks: loadTasks(head.bench), baseline: 'vanilla' });
   const compare = compareRuns({ baseDir: base.dir, headDir: head.dir, benchDir: head.bench, minRel: 0.01 });
@@ -70,4 +73,4 @@ function renderAll(root, { stamp = null } = {}) {
   };
 }
 
-module.exports = { buildStudy, renderAll, DEFAULT_SCORES, DEFAULT_RUNS, DEFAULT_NOT_JUDGED, JUDGES, tmp };
+module.exports = { buildStudy, renderAll, LINKED, DEFAULT_SCORES, DEFAULT_RUNS, DEFAULT_NOT_JUDGED, JUDGES, tmp };

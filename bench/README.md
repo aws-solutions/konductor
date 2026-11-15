@@ -414,8 +414,9 @@ node bench/runner/bench.js run --suite lite --arms oc-vanilla,oc-v1.2.0,oc-main 
   `AWS_PROFILE`/`AWS_REGION=us-east-1` are set, the real `~/.aws` and the file itself are hidden in the namespace, and
   the copy is deleted when the agent exits and on any signal. Exact secret values are scrubbed from outputs
   (`credsRedacted`); `env.json` lists names only. Files of any size are scrubbed (large ones in chunks), symlinks are not
-  followed, and a file that cannot be scrubbed sets `credsUnscrubbed`, lists it in `unscrubbedFiles`, and keeps the run out of
-  judging (`not judged ... credsUnscrubbed`).
+  followed, and a file that cannot be scrubbed sets `credsUnscrubbed`, lists it in `unscrubbedFiles` with a cause class (`reason`:
+  `link`, `unreadable`, `unwritable`, `too-large` or `error`, plus the error code as `detail`), and keeps the run out of
+  judging (`not judged ... credsUnscrubbed`). A transient read error is retried once first.
 - Usage comes from the session database (`opencode db`), summed over the parent and every subagent session
   (stream and export carry the parent only). `tokens.total` = input + output + cache read + cache write;
   `costUsd` is list price (2 / 10 / 0.1 / 2.5 USD per M tokens for in / out / cache read / cache write on Sonnet 5.5).
@@ -779,7 +780,7 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   - **The quality-pack pass is always strict.** Its prompt asks for exact text and its own quote checks (including quotes from the answer key) were built for it, so it does not use the lenient rule. Its tables say "quality pack quotes: strict". `judge --criteria-pack` refuses `--quote-match`.
   - **`judge --run DIR --rescore-quotes`** still works for old judgments: it matches the stored quotes again with no model call, applies the tightened rule, and writes `judgments-lenient.json` beside `judgments.json` (which it never changes), then prints the share of verdicts lowered per judge and the mean rubric per arm before and after. Reports no longer read that file. `--quote-match strict` with it only checks that the strict rule reproduces the stored values.
 - Runs with `credsUnscrubbed`, `stdioTampered`, `usageDbTampered`, `infraError` or no kept workspace are not judged; they are listed in `notJudged`.
-- `judgments.json` of a new study carries `"rubricPolicy": "excluded-as-failures"`: in the rubric mean of its reports, runs not judged for `credsUnscrubbed`, `stdioTampered` or `usageDbTampered` count as failures (0), and `infraError`, no kept workspace and budget-skipped runs stay gaps. Reports show the judged-runs-only mean beside it. Older judgments have no stamp, keep the gap rule and report with the line `legacy: excluded runs are gaps`. See `GUIDE.md`, "Runs kept out of judging".
+- `judgments.json` of a new study carries `"rubricPolicy": "excluded-as-failures"`: in the rubric mean of its reports, runs not judged for `stdioTampered`, `usageDbTampered` or a `credsUnscrubbed` whose cause is a link or a refused read count as failures (0), and `infraError`, no kept workspace, budget-skipped runs and a `credsUnscrubbed` with any other cause stay gaps. Reports show the judged-runs-only mean beside it. Older judgments have no stamp, keep the gap rule and report with the line `legacy: excluded runs are gaps`. See `GUIDE.md`, "Runs kept out of judging".
 - Replies must be strict JSON; one retry, then `judgeError` is recorded. Results are cached by hash of
   (judge, prompt) in `<out>/judge/cache`. `spentCredits` and `spentByJudge` add up over invocations;
   a cached call costs 0 and keeps its original latency with `cached: true`. Only a reply that passes the same check

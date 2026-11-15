@@ -20,6 +20,7 @@ const { makeCreditMeter } = require('./credit-watch.js');
 const { makeStopWatcher } = require('./stop-watch.js');
 const { describeChange } = require('./isolation-gates.js');
 const { secretLiterals, scrubDeep } = require('./scrub.js');
+const { SCRUB_CAUSES } = require('./hygiene.js');
 const { writeAtomic } = require('./owned.js');
 const { classifyAuthFailure } = require('./auth-failure.js');
 const { classifyLaunchFailure } = require('./launch-failure.js');
@@ -328,13 +329,20 @@ function failOnLeak(result, leak) {
 
 // The scrub of the run's output files. A harness may return a bare count (nothing left unscrubbed) or {scrubbed, unscrubbed}.
 // A throw is recorded as an unscrubbed output directory: a run whose scrub did not finish must not be judged.
+// `reason` is one of hygiene.SCRUB_CAUSES; free text from a harness that does not classify becomes 'error' with the text as detail.
+function unscrubbedEntry(outDir, u) {
+  const known = SCRUB_CAUSES.includes(u.reason);
+  const detail = known ? u.detail : u.detail ?? u.reason;
+  return { file: path.relative(outDir, u.file) || '.', reason: known ? u.reason : 'error', ...(detail === undefined ? {} : { detail: String(detail) }) };
+}
+
 function finalizeOutput(harness, outDir, ctx) {
   try {
     const r = harness.finalize(outDir, ctx);
     if (typeof r === 'number') return { scrubbed: r, unscrubbed: [] };
-    return { scrubbed: r?.scrubbed ?? 0, unscrubbed: (r?.unscrubbed ?? []).map((u) => ({ file: path.relative(outDir, u.file) || '.', reason: String(u.reason) })) };
+    return { scrubbed: r?.scrubbed ?? 0, unscrubbed: (r?.unscrubbed ?? []).map((u) => unscrubbedEntry(outDir, u)) };
   } catch (e) {
-    return { scrubbed: 0, unscrubbed: [{ file: '.', reason: `scrub failed: ${e.message}` }] };
+    return { scrubbed: 0, unscrubbed: [{ file: '.', reason: 'error', detail: `scrub failed: ${e.message}` }] };
   }
 }
 

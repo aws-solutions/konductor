@@ -159,10 +159,11 @@
         "required": ["file", "reason"],
         "properties": {
           "file": { "type": "string" },
-          "reason": { "type": "string" }
+          "reason": { "type": "string" },
+          "detail": { "type": "string" }
         }
       },
-      "description": "Present when the flag credsUnscrubbed is set: output files (relative to the run directory) the credential scrub could not process, with the reason. A run with this flag is not judged."
+      "description": "Present when the flag credsUnscrubbed is set: output files (relative to the run directory) the credential scrub could not process. reason is the cause class (link: a link or non-regular file stood where a plain file was listed; unreadable: opening it for reading was refused; unwritable: it could not be rewritten; too-large: a secret-like run longer than the scrub window; error: anything else); detail is the error code or message. A run with this flag is not judged. Runs written before reason became a class carry free text there."
     },
     "tamperedFiles": {
       "type": "array",

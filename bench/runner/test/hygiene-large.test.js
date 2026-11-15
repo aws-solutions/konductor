@@ -105,7 +105,8 @@ test('a file that cannot be scrubbed is listed with its reason, and the rest of 
   assert.equal(r.scrubbed, 1);
   assert.equal(r.unscrubbed.length, 1);
   assert.equal(path.basename(r.unscrubbed[0].file), 'a-locked.txt');
-  assert.match(r.unscrubbed[0].reason, /EACCES/);
+  assert.equal(r.unscrubbed[0].reason, 'unreadable');
+  assert.match(r.unscrubbed[0].detail, /EACCES/);
   assert.equal(fs.readFileSync(path.join(dir, 'b-open.txt'), 'utf8'), 'key <redacted>\n');
 });
 
@@ -119,6 +120,7 @@ test('a directory that cannot be listed is listed as unscrubbed', { skip: proces
   const hits = scanTree(dir);
   fs.chmodSync(sub, 0o700);
   assert.deepEqual(r.unscrubbed.map((u) => path.basename(u.file)), ['closed']);
+  assert.equal(r.unscrubbed[0].reason, 'unreadable');
   assert.deepEqual(hits, [{ file: sub, pattern: 'unreadable file' }]);
 });
 
@@ -131,7 +133,8 @@ test('a secret-like run longer than the held-back window fails closed: the file 
   const r = scrubTreeDetailed(dir, [], { shapes: true });
   assert.equal(r.scrubbed, 0);
   assert.equal(r.unscrubbed.length, 1);
-  assert.match(r.unscrubbed[0].reason, /longer than/);
+  assert.equal(r.unscrubbed[0].reason, 'too-large');
+  assert.match(r.unscrubbed[0].detail, /longer than/);
   assert.ok(fs.readFileSync(file).equals(before));
   assert.deepEqual(fs.readdirSync(dir), ['blob.txt']);
 });

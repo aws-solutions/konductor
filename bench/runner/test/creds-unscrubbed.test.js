@@ -99,14 +99,15 @@ test('executeRun sets credsUnscrubbed and lists the file when the scrub could no
   });
   assert.ok(result.flags.includes('credsUnscrubbed'));
   assert.deepEqual(saved.unscrubbedFiles.map((u) => u.file), ['transcript.txt']);
-  assert.match(saved.unscrubbedFiles[0].reason, /EACCES/);
+  assert.equal(saved.unscrubbedFiles[0].reason, 'unreadable');
+  assert.match(saved.unscrubbedFiles[0].detail, /EACCES/);
   assert.ok(!/schema:/.test(saved.error ?? ''), saved.error);
 });
 
 test('executeRun sets credsUnscrubbed when finalize throws instead of dropping the error', async () => {
   const { result, saved } = await runWith(() => { throw new Error('boom'); });
   assert.ok(result.flags.includes('credsUnscrubbed'));
-  assert.deepEqual(saved.unscrubbedFiles, [{ file: '.', reason: 'scrub failed: boom' }]);
+  assert.deepEqual(saved.unscrubbedFiles, [{ file: '.', reason: 'error', detail: 'scrub failed: boom' }]);
 });
 
 test('executeRun leaves credsUnscrubbed off when every file was scrubbed', async () => {
