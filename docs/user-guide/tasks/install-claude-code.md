@@ -214,11 +214,11 @@ the upstream source of truth for the package (`mcp-proxy-for-aws-cli`) and args.
 its own `aws-mcp` server key rather than the toolkit README's `aws` key, for continuity with
 AWS's own getting-started docs, OAuth commands, and existing configs.
 
-**AWS documentation lookups:** `konductor`, `k-architect` and `k-developer` request the whole
-`aws-mcp`
+**AWS documentation lookups:** `k-architect` and `k-developer` request the whole `aws-mcp`
 server via the `mcp__aws-mcp__*` glob, so every tool it exposes is granted, including the
-AWS-API-acting ones (see Tool grant below). Each agent's rendered `.md` file carries an
-`mcpServers:` entry (built from `dependencies.mcpRegistry`, filtered to just this server,
+AWS-API-acting ones (see Tool grant below). `konductor` requests only three read-only tools:
+`aws___retrieve_skill`, `aws___search_documentation` and `aws___read_documentation`. Each
+agent's rendered `.md` file carries an `mcpServers:` entry (built from `dependencies.mcpRegistry`, filtered to just this server,
 launched via `uvx mcp-proxy-for-aws-cli==1.7.0`), so this `konductor install --harness claude`
 install launches the server itself. No separate MCP server configuration is needed. This is also
 true if you installed via the [Claude Code plugin marketplace](install-claude-plugin-marketplace.md)
@@ -230,13 +230,12 @@ service documentation and skills still come from the managed endpoint at request
 and configure AWS credentials (`~/.aws/credentials` or environment variables) so the agent has
 something to authenticate with; it degrades gracefully if credentials are absent.
 
-**Tool grant: the whole server.** `konductor`, `k-architect` and `k-developer` grant every tool
-the server
-exposes: the five AWS knowledge/documentation tools (`aws___search_documentation`,
+**Tool grant: the whole server for `k-architect` and `k-developer`.** These two grant every tool
+the server exposes: the five AWS knowledge/documentation tools (`aws___search_documentation`,
 `aws___retrieve_skill`, `aws___read_documentation`, `aws___list_regions`,
 `aws___get_regional_availability`) and the three AWS-API-acting tools (`aws___run_script`,
 which runs sandboxed Python with AWS API access; `aws___get_presigned_url`; `aws___get_tasks`).
-Once a tool call runs, it uses your own IAM credentials. Use the `aws:ViaAWSMCPService`
+`konductor` gets none of the AWS-API-acting tools on Claude Code. Once a tool call runs, it uses your own IAM credentials. Use the `aws:ViaAWSMCPService`
 (boolean) and `aws:CalledViaAWSMCP` (string, `aws-mcp.amazonaws.com` for this server) global IAM
 condition keys to scope or audit what an agent can do through the MCP server specifically; see
 [Understanding IAM for managed AWS MCP servers](https://aws.amazon.com/blogs/security/understanding-iam-for-managed-aws-mcp-servers/).

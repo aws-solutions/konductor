@@ -294,6 +294,9 @@ not per individual commit.
     `dynamodb-validation` is removed; `dynamodb-design`'s gate reviews a finished design. Custom
     agent specs that declare it must drop it: `konductor synth` rejects a spec that names a skill
     that does not exist.
+  - `find-aws-skills` now loads for any AWS service guidance, even when a local skill covers part
+    of the task, and `architecture-advisor`, `kiro-design-generation` and `system-design-patterns`
+    load `dynamodb-design` and apply its quality gate before designing DynamoDB keys and indexes.
   - `infra-validation` runs the server's `aws-cloudformation`, `aws-cdk` and
     `aws-well-architected-review` checks (cfn-lint, cfn-guard, cdk-nag, a pillar review)
     read-only and rates their findings CRITICAL, IMPORTANT or SUGGESTION. It runs `cdk synth`
@@ -313,11 +316,11 @@ not per individual commit.
   - `cost-estimation` prices through Price List API calls on the AWS MCP server, guided by
     `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server. With a
     shell, it prices DynamoDB with the `amazon-dynamodb` cost calculator, fetched from the
-    server and run locally. When the server is available it requires a Price List lookup for
+    server, shown to the user and run locally only after the user confirms. When the server is available it requires a Price List lookup for
     each line item and labels any figure it did not look up "recalled, unverified".
   - `policy-validation` checks the API Gateway `SecurityPolicy` property, treats the KMS key
-    rotation period as configurable, uses the Security Hub CSPM name, and can run IAM Access
-    Analyzer policy validation.
+    rotation period as configurable, uses the Security Hub CSPM name, and, when the user asks,
+    runs IAM Access Analyzer `ValidatePolicy` in the user's AWS account.
   - `konductor` declares `aws-mcp` and `find-aws-skills`, like `k-architect` and `k-developer`,
     so it can run `infra-validation`'s AWS checks. On Kiro CLI the three agents pre-approve only the server's
     read-only documentation, skill and Region tools. On Claude Code `konductor` is granted only
