@@ -70,8 +70,8 @@ Turning a business ask into something an engineer can build.
 | `user-story-writing` | Creates user stories with INVEST principles, epics, and acceptance criteria, from validated requirements or a rough ask. Scales to MVP (10-15), Production (20-30), or full scope (30-40 stories). | You need stories, epics or acceptance criteria, or want to turn a feature idea into backlog items. No requirements doc is needed. | `k-product-manager`, `konductor` |
 | `task-decomposition` | Splits stories and a system design into independent features that individual engineers can build with minimal overlap. | The HLD is done and you need to parallelise the work across people. | `k-developer`, `k-product-manager`, `k-tpm` |
 | `sprint-planning` | Task hierarchy, story-point sizing, capacity tracking, sprint workflow. Its Asana reference drives the same workflow through Asana. | You are planning a sprint or sizing work. For Asana, it needs an Asana MCP server (opt-in). | `k-product-manager`, `k-tpm` |
-| `decision-research` | Research patterns for gathering context before deciding and verifying artifact claims: prior art, alternatives, trade-offs, evidence base, assumption challenges. | A decision needs evidence rather than opinion. | `k-architect`, `k-product-manager` |
-| `document-formats` | Reads and writes `.docx` via pandoc. | Your requirements arrived as a Word document. | `k-product-manager`, `k-quality-assurance`, `k-researcher`, `k-tpm` |
+| `decision-research` | Research patterns for gathering context before deciding, and for surfacing prior art an artifact missed: prior art, alternatives, trade-offs, evidence base, assumption challenges. | A decision needs evidence rather than opinion. | `k-architect`, `k-product-manager` |
+| `docx-conversion` | Converts `.docx` files to and from Markdown with pandoc. | Your requirements arrived as a Word document. | `k-product-manager`, `k-quality-assurance`, `k-researcher`, `k-tpm` |
 
 ---
 
@@ -120,11 +120,11 @@ Checking a design before anyone builds it.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `design-evaluation` | Evaluates a complete design package for production readiness across 10 dimensions. | The final gate before implementation. Wants all artifacts present — design, threat model, API specs, data models, diagrams, IAM. | `k-architect`, `konductor` |
+| `design-evaluation` | Evaluates a design package, or a single design doc, for production readiness across 10 dimensions (8 scored, 2 report sections). | The final gate before implementation. Lists any missing artifacts (system design, threat model, API specs, data models, diagrams, IAM) and scores what is present; use `single-document` scope for one doc. | `k-architect`, `konductor` |
 | `design-quality-check` | Scores a design doc for writing quality, structural completeness, and KISS/YAGNI compliance. Detects filler, hedging, unsupported claims, passive voice, circular reasoning. | The doc is complete but reads badly, or you suspect padding. | `k-architect` |
-| `doc-accuracy-analyzer` | Six-step verification of a technical document against primary sources: extracts claims, investigates each, classifies, reports. | You need to know which claims in a document are actually true. | `k-architect` |
-| `aws-service-validator` | Validates AWS service and feature claims against live AWS documentation. Catches hallucinated AWS assertions. | Any design that names AWS services. This is the anti-hallucination gate. | `k-architect` |
-| `adversarial-design-review` | Reviews design sections from an adversarial stance, classifying CRITICAL / IMPORTANT / MINOR. Path B fallback when no devil's-advocate subagent is installed. | You want the design attacked and have no separate adversarial agent available. | `k-architect` |
+| `doc-accuracy-analyzer` | The entry point for fact-checking a technical document: extracts claims, routes AWS claims to `aws-service-validator`, checks the rest against primary sources, reports. | You need to know which claims in a document are actually true. | `k-architect`, `k-product-manager` |
+| `aws-service-validator` | Validates AWS feature, limit, pricing, and Region claims against live AWS documentation. Called by `doc-accuracy-analyzer`, or run directly on a list of AWS claims. | Any design that names AWS services. This is the anti-hallucination gate. | `k-architect` |
+| `adversarial-design-review` | Reviews design sections from an adversarial stance, classifying CRITICAL / IMPORTANT / SUGGESTION. Path B fallback when no devil's-advocate subagent is installed. | You want the design attacked and have no separate adversarial agent available. | `k-architect` |
 | `humanize-writing` | Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. | Writing or editing prose, or a draft reads machine-written. | all 11. On Claude Code, `k-architect`, `k-developer`, `k-product-manager` and `k-tpm` preload it when they run as subagents. Otherwise, and on Kiro CLI, it loads on demand |
 
 ---
@@ -173,10 +173,10 @@ Writing and reviewing code.
 | `adversarial-code-review-pass-integrity` | One parallel pass, scoped to data integrity: multi-item mutations, atomicity, ordering, idempotency. | Same: run in a session the coordinator spawns, not called on its own. | `k-architect`, `k-developer` |
 | `adversarial-code-review-pass-schema` | One parallel pass, scoped to schema and contract: API/schema/type changes, backward compatibility, validation completeness. | Same: run in a session the coordinator spawns, not called on its own. | `k-architect`, `k-developer` |
 | `historical-issues-registry` | Loads prior review state for a pull request, then filters new findings that duplicate ones already fixed or already declined by a human reviewer. | Reviewing a second or third revision of the same change, to stop the same comment reappearing. | `k-architect` |
-| `asdlc-code-simplifier` | Simplifies code for clarity and consistency without changing behaviour. | Recently modified code is correct but hard to read. | `k-developer` |
-| `asdlc-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer` |
+| `k-code-simplifier` | Simplifies code for clarity and consistency without changing behaviour. | Recently modified code is correct but hard to read. | `k-developer` |
+| `k-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer` |
 | `git-workflow` | Atomic commits, branch management, history operations. | Committing, branching, or searching history. | `k-developer` |
-| `git-merge` | Branch merges — feature into mainline, dev into mainline, release merges. | Merging anything. Declared only by the two multiplexer orchestrators. | `konductor-cmux-orchestrator`, `konductor-mux-orchestrator` |
+| `git-merge` | Branch merges into the default branch, release merges, merge conflicts. | Merging locally; use `code-review` when merges go through PRs. Declared only by the two multiplexer orchestrators. | `konductor-cmux-orchestrator`, `konductor-mux-orchestrator` |
 | `find-aws-skills` | Discovers additional AWS skills from the AWS MCP server for tasks the bundled skills do not cover. | Your task involves an AWS service and nothing bundled matches. | `k-developer` |
 | `agents-md-authoring` | Creates and maintains AGENTS.md files that bootstrap agent context. Covers the agents.md standard, the context-loading block, and the CLAUDE.md bridge. | Onboarding a repo for agents, or your conventions have drifted from what agents are told. | `k-developer`, `konductor` |
 
@@ -250,7 +250,7 @@ Useful when deciding which agent to talk to directly.
 | `k-architect` | 38 |
 | `k-developer` | 27 |
 | `konductor` | 24 |
-| `k-product-manager` | 15 |
+| `k-product-manager` | 16 |
 | `k-tpm` | 14 |
 | `k-quality-assurance` | 12 |
 | `konductor-cmux-orchestrator` | 10 |

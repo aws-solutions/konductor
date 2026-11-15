@@ -13,7 +13,7 @@ When this skill is activated, apply the following directly:
 
 Extract NFRs from the provided system design document across these categories:
 
-- Performance: response time targets (p50, p99), throughput (requests/second)
+- Performance: response time targets (p50, p99) and throughput (requests/second), per operation type (read vs write)
 - Availability: uptime target (e.g., 99.9%), RTO, RPO
 - Security: authentication method, encryption standards, compliance requirements
 - Scalability: min/max instance counts, scale trigger thresholds

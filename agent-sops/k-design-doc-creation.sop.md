@@ -63,9 +63,9 @@ Run automated quality gates against the draft. This phase requires no user inter
 
 **Constraints:**
 
-- You MUST run the `doc-accuracy-analyzer` skill to verify all technical claims against the codebase. Flag any INCORRECT or UNVERIFIED findings in the draft with inline `> ⚠️` callouts.
+- You MUST run the `doc-accuracy-analyzer` skill to verify all technical claims against primary sources. It routes AWS feature, limit, pricing, and Region claims to `aws-service-validator`. Flag any INCORRECT, OVERSTATED, or UNVERIFIED findings in the draft with inline `> ⚠️` callouts.
 - You MUST NOT block doc creation on UNVERIFIED claims — mark them and proceed.
-- You MUST run the `aws-service-validator` skill against all AWS service and feature claims in the draft. For each claim, call `aws___search_documentation` and `aws___read_documentation` (aws-mcp) to confirm or deny the assertion; call `aws___get_regional_availability` for any regional availability claim. Classify each claim as CONFIRMED, UNVERIFIED, or INCORRECT. Flag INCORRECT claims with `> ⚠️ INCORRECT: <correction>` callouts and UNVERIFIED claims with `> ⚠️ UNVERIFIED: <what was searched>` callouts. Write the full validation report to `validation_output_dir/<name>-aws-validation.md`.
+- `doc-accuracy-analyzer` routes AWS claims to `aws-service-validator`; do not run the validator again. Pass `validation_output_dir/<name>-aws-validation.md` as the report path, and keep the analyzer's rows if it reports a fallback. Flag INCORRECT claims with `> ⚠️ INCORRECT: <correction>` callouts and UNVERIFIED claims with `> ⚠️ UNVERIFIED: <what was searched>` callouts.
 - You MUST NOT block doc creation on UNVERIFIED AWS claims — mark them and proceed.
 - You MUST run the `trade-off-evaluator` skill for every significant design decision that has multiple options. Score each option 1–5 across cost, latency, complexity, scalability, and operability. Embed the scored table in the relevant ADR's Alternatives section and write the full trade-off report to `validation_output_dir/<name>-tradeoffs.md`.
 - You MUST run the `adr-generator` skill to verify every Phase 2 ADR is embedded under the `## Architecture Decision Records` section. Do NOT regenerate ADRs already created in Phase 2 — enrich them only (the `trade-off-evaluator` bullet above owns score embedding).
@@ -79,11 +79,11 @@ Challenge every major design decision before presenting the doc to the engineer.
 
 **Constraints:**
 
-- You MUST apply the `adversarial-design-review` skill to challenge every major architectural decision, trade-off, and AWS service choice, classifying each finding as CRITICAL, IMPORTANT, or MINOR.
+- You MUST apply the `adversarial-design-review` skill to challenge every major architectural decision, trade-off, and AWS service choice, classifying each finding as CRITICAL, IMPORTANT, or SUGGESTION.
 - You MUST run up to 5 adversarial rounds.
 - After round 2: if any finding is classified CRITICAL (architectural), You MUST stop the loop immediately, present the finding to the engineer, and ask whether to redesign or override.
 - You MUST apply corrections from each round and re-run the `design-doc-guidelines` maker-checker before the next round.
-- You MUST exit the loop early when: 0 CRITICAL findings, 0 IMPORTANT findings, and fewer than 3 MINOR findings.
+- You MUST exit the loop early when: 0 CRITICAL findings, 0 IMPORTANT findings, and fewer than 3 SUGGESTION findings.
 - If the exit condition is not met after 5 rounds, You MUST present the remaining issues to the engineer for manual resolution before proceeding to Phase 5.
 - You MUST NOT silently discard findings — every finding must either be fixed or explicitly noted as "engineer override".
 
@@ -96,7 +96,7 @@ Produce the final artifact and present it to the engineer.
 **Constraints:**
 
 - You MUST apply all corrections from Phases 3 and 4 before writing the final file.
-- You MUST run the `design-evaluation` skill to compute a confidence score: average of the 10 design-evaluation dimension scores (1–5 each). A section scoring below 3 MUST be flagged for revision.
+- You MUST run the `design-evaluation` skill with package scope `single-document` to compute a confidence score: average of the 8 scored design-evaluation dimensions (1 to 5 each). High-level assessment (#2) and actionable recommendations (#10) are unscored report sections and stay out of the average. A section scoring below 3 MUST be flagged for revision.
 - You MUST write the final document to `output_path`.
 - You MUST present to the engineer: the output path, the confidence score (overall average + any sections below 3), and a one-line summary of any remaining open issues from Phase 4.
 - You MUST NOT present the full document inline — reference the file path.
@@ -108,8 +108,8 @@ Produce the final artifact and present it to the engineer.
 The document is ready for principal engineer review when all of the following are true:
 
 - `design-doc-guidelines` maker-checker: **0 CRITICAL findings**
-- `doc-accuracy-analyzer`: **0 INCORRECT findings** (UNVERIFIED is acceptable with callouts)
-- Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR findings**
+- `doc-accuracy-analyzer`: **0 INCORRECT findings**, each corrected in the text, and every OVERSTATED finding corrected or flagged (UNVERIFIED is acceptable with callouts)
+- Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION findings**
 - `design-evaluation` confidence score: **≥ 3.0 average** across all sections
 
 If any condition is not met, the SOP MUST NOT present the doc as ready for principal engineer review. Present remaining issues to the engineer and ask: "Fix these before submission? [y/n]"

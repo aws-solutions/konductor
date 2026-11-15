@@ -22,7 +22,7 @@ _PE_REVIEW = ''',
       { name: "k-principal-engineer-design-review", file: "agent-sops/k-principal-engineer-design-review.sop.md", owner: "k-architect",
         what: "Runs a pre-submission quality gate on a design document before it goes to a Principal Engineer. It combines slop detection, an architecture-principles evaluation, and an adversarial review loop, so the most common human review comments are already resolved by the time a person opens the document.",
         when: "A design document is finished and about to be sent for human review.",
-        get: "A findings report at output_file covering the slop/quality gate, the architecture-principles evaluation, and every adversarial round, ordered CRITICAL → IMPORTANT → MINOR.",
+        get: "A findings report at output_file covering the slop/quality gate, the architecture-principles evaluation, and every adversarial round, ordered CRITICAL → IMPORTANT → SUGGESTION.",
         prompt: "Run the k-principal-engineer-design-review SOP. doc_input: docs/design/rate-limiting.md",
         params: [param("doc_input", true, "— a path to the design document, or the document content itself"), param("output_file", false, "<doc-name>-principal-engineer-review.md beside the input doc, or docs/design/principal-engineer-review.md when invoked without a path")],
         flowCaption: "k-principal-engineer-design-review: two gates, then a bounded adversarial loop.",
@@ -36,9 +36,9 @@ _PE_REVIEW = ''',
         ],
         know: [
           { title: "Step 1 is a hard gate.", body: " The quality score is 1-5, and a score below 3 STOPS the SOP outright \u2014 it presents the issues and asks for a revision rather than proceeding to step 2." },
-          { title: "The adversarial loop is bounded at 5 rounds.", body: " It exits early when 0 CRITICAL, 0 IMPORTANT and fewer than 3 MINOR findings remain. Hitting round 5 without converging exits with the outstanding findings rather than looping forever." },
+          { title: "The adversarial loop is bounded at 5 rounds.", body: " It exits early when 0 CRITICAL, 0 IMPORTANT and fewer than 3 SUGGESTION findings remain. Hitting round 5 without converging exits with the outstanding findings rather than looping forever." },
           { title: "One finding can end the loop early.", body: " Any CRITICAL ARCHITECTURAL finding still present after round 2 stops the loop immediately and forces the FUNDAMENTAL REDESIGN REQUIRED verdict. A CRITICAL FACTUAL finding does not \u2014 a wrong technical claim is correctable by revision, so it yields REVISIONS NEEDED instead." },
-          { title: "The report is headed by a verdict.", body: " PE-READY (quality score at least 3, 0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR), REVISIONS NEEDED, or FUNDAMENTAL REDESIGN REQUIRED. These strings are user-visible." },
+          { title: "The report is headed by a verdict.", body: " PE-READY (quality score at least 3, 0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION), REVISIONS NEEDED, or FUNDAMENTAL REDESIGN REQUIRED. These strings are user-visible." },
           { title: "Three skills do the work:", body: " design-quality-check for the slop and quality gate, design-evaluation for architecture principles, and adversarial-design-review for the loop, with argumentation-reference checking the reasoning for fallacies." },
           { title: "It reviews one document, not a directory.", body: " For a set of design artifacts — system design, threat model, API specs, data models — use k-existing-design-review." }
         ] }'''
@@ -714,7 +714,7 @@ SOP_EDITS += [
     # delegation from availableAgents plus each spec's Agent(...) tool.
     ("roster row: PM skills",
      "No SOPs — skill-driven. 16 skills: user-story-writing",
-     "No SOPs — skill-driven. 15 skills: user-story-writing"),
+     "No SOPs — skill-driven. 16 skills: user-story-writing"),
     ("roster row: researcher skills",
      "No SOPs — skill-driven. 7 skills: external-research",
      "No SOPs — skill-driven. 8 skills: external-research"),
@@ -1285,4 +1285,38 @@ SOP_EDITS += [
     ("agents: mux section declares @builtin, synth strips it on v2",
      'paras: ["konductor-mux-orchestrator and konductor-cmux-orchestrator have no subagent tool and no Agent(...) tool. Their Kiro CLI tools are [\\"@builtin\\", \\"read\\", \\"shell\\", \\"todo\\"], and shell is how they work:',
      'paras: ["konductor-mux-orchestrator and konductor-cmux-orchestrator have no subagent tool and no Agent(...) tool. Their specs declare [\\"@builtin\\", \\"read\\", \\"shell\\", \\"todo\\"] for Kiro CLI; on Kiro CLI v2 synth replaces that @builtin with the same explicit built-in list a specialist gets, so only konductor holds subagent on Kiro CLI v2. Shell is how they work:'),
+]
+
+SOP_EDITS += [
+    # ---- design SOP: OVERSTATED doc-accuracy findings are flagged and gate readiness ----
+    ("design use case: checklist gates OVERSTATED",
+     "0 INCORRECT</strong>, each corrected in the text (UNVERIFIED is acceptable with callouts)",
+     "0 INCORRECT</strong>, each corrected in the text, and every OVERSTATED finding corrected or flagged "
+     "(UNVERIFIED is acceptable with callouts)"),
+    ("design SOP: gate row gates OVERSTATED",
+     "{ k: \"doc-accuracy-analyzer\", v: \"0 INCORRECT findings, each corrected in the text (UNVERIFIED is acceptable with callouts)\" },",
+     "{ k: \"doc-accuracy-analyzer\", v: \"0 INCORRECT findings, each corrected in the text, and every OVERSTATED "
+     "finding corrected or flagged (UNVERIFIED is acceptable with callouts)\" },"),
+    ("design use case: Phase 3 is two passes and flags OVERSTATED",
+     "Three automated passes, with no user interaction permitted. doc-accuracy-analyzer checks every technical "
+     "claim against primary sources and routes AWS claims to aws-service-validator. INCORRECT and UNVERIFIED "
+     "findings get inline callouts but do not stop the phase; Phase 5 corrects the INCORRECT ones. "
+     "aws-service-validator checks every AWS service and feature claim against live AWS documentation, "
+     "classifying each CONFIRMED / UNVERIFIED / INCORRECT.",
+     "Two automated passes, with no user interaction permitted. doc-accuracy-analyzer checks every technical "
+     "claim against primary sources and routes AWS service and feature claims to aws-service-validator, which "
+     "checks them against live AWS documentation and classifies each CONFIRMED / UNVERIFIED / INCORRECT. "
+     "INCORRECT, OVERSTATED, and UNVERIFIED findings get inline callouts but do not stop the phase; Phase 5 "
+     "corrects the INCORRECT ones."),
+    ("design SOP: Phase 3 node routes AWS claims and flags OVERSTATED",
+     "doc-accuracy-analyzer verifies claims against the codebase, flagging INCORRECT / UNVERIFIED inline. "
+     "aws-service-validator checks every AWS claim via aws-mcp (CONFIRMED / UNVERIFIED / INCORRECT) and writes "
+     "the validation report.",
+     "doc-accuracy-analyzer verifies claims against primary sources, flagging INCORRECT / OVERSTATED / UNVERIFIED "
+     "inline, and routes AWS claims to aws-service-validator, which checks them via aws-mcp (CONFIRMED / "
+     "UNVERIFIED / INCORRECT) and writes the validation report."),
+    ("design SOP: OVERSTATED blocks until corrected or flagged",
+     "mark UNVERIFIED claims with a callout and proceed. Only INCORRECT findings are treated as blocking.",
+     "mark UNVERIFIED claims with a callout and proceed. INCORRECT findings block until the text is corrected, "
+     "and OVERSTATED findings block until they are corrected or flagged."),
 ]
