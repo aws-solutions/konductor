@@ -112,6 +112,22 @@ not per individual commit.
   longer claims a fixed 3-year log retention. `policy-validation` now also checks SOC 2, and its
   report uses one per-framework template. `smithy-validation` loads its example review only when
   writing a report.
+- `cost-estimation` moved its REVIEW workflow (checking an existing estimate) into
+  `references/review-workflow.md`. The skill opens it only when the user picks REVIEW.
+- `cost-estimation` moved its CREATE workflow out of `SKILL.md`. The setup reply, context
+  gathering and clarifying questions are in `references/create-context.md`, which the skill opens
+  when the user picks CREATE. The pricing research, scenarios, growth modeling, optimization and
+  report steps are in `references/create-analysis.md`, which it opens once the context is
+  confirmed.
+- `architecture-diagram-generation` keeps its XML templates, icon styles and common patterns in
+  `references/drawio-templates.md` and loads them only when generating the XML. Its repeated
+  introduction is now one overview.
+- `e2e-test-strategy` keeps its Stage 9 report template in `references/report-template.md` and
+  opens it only when writing the report.
+- `architecture-diagram-generation` now targets plain draw.io (diagrams.net) XML and drops the
+  rules that served one draw.io-based tool. It places S3 with the regional services, since each
+  bucket lives in one region, and treats AWS WAF as global only for CloudFront-scoped web ACLs.
+  A Lambda function with VPC config is drawn in its subnets.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
@@ -247,6 +263,13 @@ not per individual commit.
 
 ### Fixed
 
+- Skill bodies no longer contradict themselves or the codebase. `backend-development` and
+  `backend-review` keep a facade, factory or repository layering only when the codebase already
+  uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes
+  TDD's RED phase to code changes, and `asdlc-code-simplifier` runs the tests before and after
+  and reports each change with its reason. The full deliberation panel run is defined once, in
+  `deliberation-panel`; `socratic-elicitation` keeps a short inline offer that points to it.
+  Repeated paragraphs and tables are cut from several skills.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
@@ -289,6 +312,12 @@ not per individual commit.
   pricing. `program-planning` and `playwright-test-implementation` no longer point at SOP steps
   that are missing when the skill runs alone. `cmux-dispatch`, `design-doc-guidelines` and
   `external-research` drop terms that do not apply in this repo.
+- `git-merge` shows the merge log and diff and asks before pushing to the default branch, and
+  only when the repo merges locally; otherwise, or if the user declines, it opens a PR. Tagging
+  and branch cleanup wait for a successful push. `git-workflow` now merges the default branch in
+  before a PR instead of rebasing, matching `git-merge`.
+- `cmux-dispatch` and `mux-dispatch` no longer claim every task, and say that Claude Code panes
+  skip permission prompts, so dispatch only tasks you would approve unattended.
 
 ### Security
 
