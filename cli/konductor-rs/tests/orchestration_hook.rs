@@ -498,6 +498,76 @@ fn only_the_nearest_install_prints() {
     std::fs::remove_dir_all(&home).ok();
 }
 
+/// A home and a project Claude install; the project owns `konductor`
+/// for the home hook fired in the project.
+fn claude_home_and_project(name: &str) -> (PathBuf, PathBuf) {
+    let home = scratch_dir(name);
+    let claude_flags = ["--harness", "claude", "--no-telemetry"];
+    install_with(&home, &home, &["konductor"], &claude_flags);
+    let project = home.join("workspace/project");
+    std::fs::create_dir_all(&project).unwrap();
+    install_with(&home, &project, &["konductor"], &claude_flags);
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+    (home, project)
+}
+
+/// The owner under the home is shown as `~/...`, as the other fallback
+/// lines show it.
+fn assert_shadowed_fallback(stdout: &str, owner_under_home: &str) {
+    let expected = format!(
+        "Orchestration: auto (fallback: the install at ~/{0} owns the konductor session but its \
+         session-start hook is not wired for claude; run konductor update in ~/{0})\n",
+        owner_under_home
+    );
+    assert_eq!(stdout, expected);
+}
+
+/// A teammate's clone carries the project install but not its
+/// git-excluded `.claude/settings.local.json`: the home hook is the only
+/// one that fires, and it must say why the mode is dropped.
+#[test]
+fn a_shadowed_hook_prints_a_fallback_when_the_owner_hook_is_missing() {
+    let (home, project) = claude_home_and_project("shadowed-missing-home");
+    let home_arg = home.display().to_string();
+    let payload = claude_payload(Some("konductor"), "startup");
+    let args = ["--install-root", &home_arg, "--harness", "claude"];
+
+    assert_eq!(fire(&home, &project, &args, &[], &payload), "");
+
+    std::fs::remove_file(project.join(".claude/settings.local.json")).unwrap();
+    assert_shadowed_fallback(
+        &fire(&home, &project, &args, &[], &payload),
+        "workspace/project",
+    );
+    std::fs::remove_dir_all(&home).ok();
+}
+
+/// A committed project hook file carrying another user's absolute
+/// `--install-root` is wired, but not for this install.
+#[test]
+fn a_shadowed_hook_prints_a_fallback_when_the_owner_hook_reads_another_install() {
+    let (home, project) = claude_home_and_project("shadowed-elsewhere-home");
+    let home_arg = home.display().to_string();
+    let payload = claude_payload(Some("konductor"), "startup");
+    let args = ["--install-root", &home_arg, "--harness", "claude"];
+
+    let settings = project.join(".claude/settings.local.json");
+    let text = std::fs::read_to_string(&settings).unwrap();
+    let elsewhere = home.join("elsewhere/project");
+    let rewritten = text.replace(
+        &project.display().to_string(),
+        &elsewhere.display().to_string(),
+    );
+    assert_ne!(rewritten, text);
+    std::fs::write(&settings, rewritten).unwrap();
+
+    assert_shadowed_fallback(
+        &fire(&home, &project, &args, &[], &payload),
+        "workspace/project",
+    );
+    std::fs::remove_dir_all(&home).ok();
+}
+
 #[test]
 fn a_claude_resume_under_auto_prints_the_auto_line() {
     let home = scratch_dir("resume-home");

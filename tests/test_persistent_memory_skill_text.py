@@ -61,17 +61,60 @@ def test_reading_memory_points_at_writing_memory_for_the_validator_path():
 
 def test_validator_lookup_fence_carries_no_write_line():
     """Reading Memory and step 1 paste the step 3 lookup to resolve the
-    validator. With `$PROPOSED_CONTENT` unset, a write line in that same fence
-    replaces the memory file with an empty one and exits 0."""
+    validator; the write line lives in its own fence."""
     writing = RAW.split("## Writing Memory")[1].split("## Configuration")[0]
     fences = re.findall(r"```bash\n(.*?)```", writing, flags=re.DOTALL)
-    lookup, write = fences[0], fences[1]
+    lookup = fences[0]
     assert 'VALIDATOR=""' in lookup, lookup
     assert "memory-validator.sh not found" in lookup, lookup
     assert '| bash "$VALIDATOR"' not in lookup, lookup
-    assert write.strip() == 'printf \'%s\' "$PROPOSED_CONTENT" | bash "$VALIDATOR" ".konductor/memory/MEMORY.md"', write
     step_1 = writing.split("1. ")[1].split("2. ")[0]
     assert "its lookup fence only" in step_1, step_1
+
+
+def test_write_fence_takes_its_target_from_a_variable():
+    """A write line hard-coded to MEMORY.md replaces MEMORY.md with USER.md
+    content when the agent updates USER.md, and an unset `$PROPOSED_CONTENT`
+    used to empty the file with exit 0."""
+    writing = RAW.split("## Writing Memory")[1].split("## Configuration")[0]
+    write = re.findall(r"```bash\n(.*?)```", writing, flags=re.DOTALL)[1]
+    lines = [line for line in write.strip().splitlines() if not line.lstrip().startswith("#")]
+    assert len(lines) == 2, write
+    assignment, write_line = lines
+    assert assignment.startswith('TARGET=".konductor/memory/MEMORY.md"'), assignment
+    assert "# or .konductor/memory/USER.md" in assignment, assignment
+    assert write_line.strip() == 'printf \'%s\' "$PROPOSED_CONTENT" | bash "$VALIDATOR" "$TARGET"', write_line
+    assert 'bash "$VALIDATOR" ".konductor/memory/MEMORY.md"' not in RAW
+    writing_text = " ".join(writing.split())
+    assert "in one shell call" in writing_text, writing_text
+    assert "`--clear`" in writing_text, writing_text
+    assert "`--clear <target>`" not in writing_text, writing_text
+    assert "replaces the file with an empty one and exits 0" not in writing_text
+
+
+def test_removing_the_last_entry_names_the_clear_flag():
+    """Deleting the only entry pipes empty content, which the validator
+    refuses without `--clear`; the Remove an entry step should say so."""
+    remove = RAW.split("### Remove an entry")[1].split("### ")[0]
+    assert "`--clear`" in remove, remove
+
+
+def test_clear_command_redirects_stdin():
+    """The validator reads stdin even with `--clear`, so the inline command
+    must give it empty input instead of waiting on an open terminal."""
+    remove = RAW.split("### Remove an entry")[1].split("### ")[0]
+    assert '`bash "$VALIDATOR" --clear "$TARGET" < /dev/null`' in remove, remove
+
+
+def test_failed_write_steps_do_not_point_at_clear():
+    """Retrying an empty-content refusal with `--clear` while the variable is
+    still unset empties the file with exit 0, so only Remove an entry names it."""
+    writing = RAW.split("## Writing Memory")[1].split("### Add an entry")[0]
+    assert "--clear" not in writing, writing
+    step_5 = " ".join(writing.split("5. ")[1].split())
+    assert "rebuild `$PROPOSED_CONTENT` and run the lookup and the write in one shell call" in step_5, step_5
+    sections = RAW.split("### ")
+    assert [s.split("\n")[0] for s in sections if "--clear" in s] == ["Remove an entry"]
 
 
 def test_gitignore_bootstrap_targets_the_git_root():
@@ -82,3 +125,12 @@ def test_gitignore_bootstrap_targets_the_git_root():
     assert "grep -qxF '.konductor/memory/' \"$ROOT/.gitignore\"" in RAW
     assert ">> \"$ROOT/.gitignore\"" in RAW
     assert ">> .gitignore" not in RAW
+
+
+def test_gitignore_bootstrap_never_glues_onto_the_last_line():
+    """Appending to a `.gitignore` with no trailing newline turns
+    `node_modules/` into `node_modules/.konductor/memory/`, which ignores
+    neither path."""
+    assert '[ -z "$(tail -c1 "$ROOT/.gitignore")" ] || printf \'\\n\'' in RAW
+    assert "printf '.konductor/memory/\\n'" in RAW
+    assert "adds a newline first when the file does not end in one" in TEXT
