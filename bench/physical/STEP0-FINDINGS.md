@@ -48,3 +48,17 @@ Runs were not inside bench's sandbox, because `unshare` is blocked on this host 
 | 8.2: pin the MCP protocol version from the capture | `2025-11-25`. v3 also sends `server/discover` first |
 | 13.2: `connect()` on a read-only mount is allowed | Confirmed |
 | 8.5: exit 3 under `--require-mcp-startup` | Confirmed |
+
+## Notes from building steps 1 to 3
+
+| Topic | Finding |
+|---|---|
+| Stream match | Owner decision after step 0: match by the multiset of (tool, canonical args). The gateway logs `args_sha256` on every `call`; `runner/lib/plant/stream-match.js` pairs them |
+| Stream arguments | Engine v2 adds `__tool_use_purpose` to `rawInput`; the server never receives it. The stream side drops it before hashing |
+| Canonical args across languages | Sorted keys, no spaces, UTF-8 kept. Python and Node agree on the shared vectors (`fixtures/canonical-args.json`). A float such as `700.0` prints `700.0` in Python and `700` in Node; such calls are always bad arguments, so they can only show as a mismatch on a call that was refused anyway |
+| Built-in tool names | In the agent file, `fs_read`, `fs_write`, `execute_bash`, `glob` and `grep` load; the model sees them as `read`, `write`, `shell`, `glob`, `grep`. No `subagent` without `@builtin` (checked with a real run) |
+| `python3 -I -m plant_gateway` (7.2) | `-I` puts neither the cwd nor the script dir on `sys.path`, so `-m` finds nothing. `gateway/start.py` adds the two gateway paths itself and keeps `-I` |
+| `server/discover` | Answered `-32601` before the initialize check, so a v3 client can fall back as in the capture |
+| `cedarpy` | 4.8.7 installs from a wheel into a Python 3.9 venv. `validate_policies` and `is_authorized` work on a stub schema and policy (`test/test_cedar_spike.py`, skipped where cedarpy is missing) |
+| Duplicate open ids (8.2) | Every request is answered in the same loop turn, so an id is never open twice on one connection; that row cannot occur and is not coded |
+| Thin parts | One fixed rule (deny `open_guard` while the speed sensor reads above 0). `request_approval` answers `pending` with no record; approvals, Cedar and test mode come in step 4. No nested pid namespace walk yet (step 7) |
