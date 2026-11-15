@@ -294,6 +294,9 @@ not per individual commit.
     `dynamodb-validation` is removed; `dynamodb-design`'s gate reviews a finished design. Custom
     agent specs that declare it must drop it: `konductor synth` rejects a spec that names a skill
     that does not exist.
+  - `find-aws-skills` now loads for any AWS service guidance, even when a local skill covers part
+    of the task, and `architecture-advisor`, `kiro-design-generation` and `system-design-patterns`
+    load `dynamodb-design` and apply its quality gate before designing DynamoDB keys and indexes.
   - `infra-validation` runs the server's `aws-cloudformation`, `aws-cdk` and
     `aws-well-architected-review` checks (cfn-lint, cfn-guard, cdk-nag, a pillar review)
     read-only and rates their findings CRITICAL, IMPORTANT or SUGGESTION. It runs `cdk synth`
@@ -313,11 +316,11 @@ not per individual commit.
   - `cost-estimation` prices through Price List API calls on the AWS MCP server, guided by
     `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server. With a
     shell, it prices DynamoDB with the `amazon-dynamodb` cost calculator, fetched from the
-    server and run locally. When the server is available it requires a Price List lookup for
+    server, shown to the user and run locally only after the user confirms. When the server is available it requires a Price List lookup for
     each line item and labels any figure it did not look up "recalled, unverified".
   - `policy-validation` checks the API Gateway `SecurityPolicy` property, treats the KMS key
-    rotation period as configurable, uses the Security Hub CSPM name, and can run IAM Access
-    Analyzer policy validation.
+    rotation period as configurable, uses the Security Hub CSPM name, and, when the user asks,
+    runs IAM Access Analyzer `ValidatePolicy` in the user's AWS account.
   - `konductor` declares `aws-mcp` and `find-aws-skills`, like `k-architect` and `k-developer`,
     so it can run `infra-validation`'s AWS checks. On Kiro CLI the three agents pre-approve only the server's
     read-only documentation, skill and Region tools. On Claude Code `konductor` is granted only
@@ -373,7 +376,15 @@ not per individual commit.
   `smithy diff --mode git`, `@readonly` and `@idempotent` as behavior traits, member renames as
   breaking even with `@jsonName`, and IDL 2.1 needing Smithy 1.75.0 or later. The example
   review puts `@sensitive` on a target shape, since the trait cannot apply to members, and the
-  file-organization reference drops its 1.51.0 version pins.
+  file-organization reference repins the example to 1.75.0 and adds `$schema`.
+- The Smithy skills say `$version: "2"` resolves to IDL 2.1 on Smithy 1.75.0 or later.
+- The Smithy skills treat `@paginated` `items` as recommended, not required, and let
+  operations inherit `@paginated` settings from the service.
+- The Smithy skills accept any string as a service `version`; a date is only a convention.
+- `smithy-modeling` adds a resource lifecycle example, a `GetUserInput` with a required
+  `@httpLabel` member, and says mixins pass their traits to the shapes that use them.
+- The file-organization reference's documentation validator checks operations only, and the
+  guide calls its file naming a convention and a doc comment plus `@documentation` redundant.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent

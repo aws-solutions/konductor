@@ -137,7 +137,7 @@ metadata validators = [
 
 ## Build configuration
 
-Point `smithy-build.json` at the model directory. Pin the Maven dependencies to the current release from the [Smithy releases page](https://github.com/smithy-lang/smithy/releases), and use the same version for every `software.amazon.smithy` artifact. IDL 2.1 needs 1.75.0 or later. The example pins 1.74.1, the newest release on Maven Central when this guide was checked, which does not read IDL 2.1. The `$schema` key lets editors validate the file:
+Point `smithy-build.json` at the model directory. Pin the Maven dependencies to the current release from the [Smithy releases page](https://github.com/smithy-lang/smithy/releases), with the same version for every artifact. IDL 2.1 needs 1.75.0 or later. The `$schema` key lets editors validate the file:
 
 ```json
 {
@@ -146,8 +146,8 @@ Point `smithy-build.json` at the model directory. Pin the Maven dependencies to 
   "sources": ["model"],
   "maven": {
     "dependencies": [
-      "software.amazon.smithy:smithy-aws-traits:1.74.1",
-      "software.amazon.smithy:smithy-openapi:1.74.1"
+      "software.amazon.smithy:smithy-aws-traits:1.75.0",
+      "software.amazon.smithy:smithy-openapi:1.75.0"
     ]
   },
   "plugins": {

@@ -67,7 +67,7 @@ Use this skill when:
 
 ### 6. Pagination Support
 
-- Apply `@paginated` to list operations, naming `inputToken`, `outputToken`, `pageSize`, and `items` (the output list or map being paged)
+- Apply `@paginated` to list operations, naming `inputToken`, `outputToken`, and `pageSize`. Also name `items` (the output list or map being paged); Smithy does not require it, but clients use it
 - The `inputToken` member must not be `@required`; `pageSize` should not be either
 - Only one list or map per operation can be paginated
 - When every list operation pages the same way, put the shared settings in a `@paginated` trait on the service; operations inherit them and set only what differs, usually `items`
@@ -85,7 +85,7 @@ When given requirements or specifications:
 
 ## Output Format
 
-Use `$version: "2"` by default. IDL 2.1 adds inline list and map declarations, tagged string literals (`#re`, `#b`, `#hex`, `#timestamp`), and a member index shorthand that is sugar for the `@idx` trait, and needs Smithy 1.75.0 or later. Set `$version: "2.1"` only when the model uses one of those and the whole toolchain is on 1.75.0 or later.
+Use `$version: "2"` by default. IDL 2.1 adds inline list and map declarations, tagged string literals (`#re`, `#b`, `#hex`, `#timestamp`), and a member index shorthand that is sugar for the `@idx` trait, and needs Smithy 1.75.0 or later. On 1.75.0 or later, `$version: "2"` resolves to 2.1 and already accepts that syntax. Set `$version: "2.1"` when the model uses it, to document the minimum version.
 
 If step 2 found 10 or more operations, the model will pass 500 lines, or other services share its types, open `references/file-organization.md` (relative to this file) before writing files and split the model the way it shows. Otherwise write one file in this shape. `aws.protocols#restJson1` comes from the `software.amazon.smithy:smithy-aws-traits` package, so the model needs a `smithy-build.json` that lists it (see Deliverables) or `smithy validate` can't resolve the trait:
 
@@ -259,7 +259,7 @@ A mixin passes its traits, documentation included, to every shape that uses it. 
 Model a resource when its operations share an identifier. Read and list operations must be `@readonly`; put and delete must be `@idempotent`.
 
 ```smithy
-resource User {
+resource UserResource {
     identifiers: { userId: String }
     create: CreateUser
     read: GetUser
@@ -269,7 +269,7 @@ resource User {
 }
 ```
 
-Bind it with `resources: [User]` on the service and leave these operations out of the service's `operations` list, since an operation can be bound only once. Instance operations (read, update, delete) bind every identifier as a `@required` input member. Collection operations (create, list) leave the resource's own identifier out.
+Bind it with `resources: [UserResource]` on the service and leave these operations out of the service's `operations` list, since an operation can be bound only once. Instance operations (read, update, delete) bind every identifier as a `@required` input member. Collection operations (create, list) leave the resource's own identifier out.
 
 ### Common Errors
 

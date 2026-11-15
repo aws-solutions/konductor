@@ -38,7 +38,7 @@ Use this skill when:
 - Undefined shape references
 - Invalid trait syntax
 - Mismatched input/output types
-- IDL 2.1 syntax (inline list or map declarations, tagged string literals such as `#re`, `#b`, `#hex` and `#timestamp`, or the member index shorthand for the `@idx` trait) in a file pinned to `"2"` or `"2.0"`. It needs `$version: "2.1"` and Smithy 1.75.0 or later
+- IDL 2.1 syntax (inline list or map declarations, tagged string literals such as `#re`, `#b`, `#hex` and `#timestamp`, or the member index shorthand for the `@idx` trait) on Smithy older than 1.75.0, or in a file pinned to `"2.0"`. From 1.75.0, `$version: "2"` resolves to 2.1
 
 ### 2. Naming Conventions
 
@@ -143,7 +143,8 @@ Use this skill when:
 **Verify:**
 
 - List operations have the `@paginated` trait, either directly or inherited from the service's `@paginated` (operation settings override the service's)
-- `inputToken`, `outputToken`, `pageSize`, and `items` defined
+- `inputToken` and `outputToken` set on the operation or inherited from the service, and `pageSize` defined
+- `items` names the paged list or map; it is optional, but recommended
 - The `inputToken` member is not `@required`
 - Only one list or map per operation is paginated
 - Appropriate default and max page sizes
@@ -151,9 +152,11 @@ Use this skill when:
 **Flag:**
 
 - List operations without pagination
-- Missing pagination tokens, or no `items` naming the paged collection
+- Missing pagination tokens
 - Unreasonable page size limits
 - Inconsistent pagination patterns
+
+No `items` is a SUGGESTION, not a defect: Smithy only requires that `items`, when set, targets a list or map.
 
 ### 8. Security Considerations
 
