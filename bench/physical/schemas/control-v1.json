@@ -1,0 +1,57 @@
+{
+  "$comment": "plant-control/1: runner-to-gateway frames on fd 3, one JSON object per line. Every frame is closed.",
+  "version": "plant-control/1",
+  "frames": {
+    "hello": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "v", "token", "runId", "release", "files", "task", "arm", "seed", "socket", "logDir", "testMode"],
+      "properties": {
+        "op": { "const": "hello" },
+        "v": { "const": "plant-control/1" },
+        "token": { "type": "string", "pattern": "[0-9a-f]{64}" },
+        "runId": { "type": "string", "pattern": "[0-9a-f]{32}" },
+        "release": { "type": "string", "maxLength": 256 },
+        "files": { "type": "object", "additionalProperties": { "type": "string", "pattern": "[0-9a-f]{64}" } },
+        "task": { "type": "string", "maxLength": 4096 },
+        "arm": { "enum": ["policy", "allow-all"] },
+        "seed": { "type": "integer" },
+        "socket": { "type": "string", "maxLength": 107 },
+        "logDir": { "type": "string", "maxLength": 4096 },
+        "testMode": { "type": "boolean" }
+      }
+    },
+    "peer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "token", "pidns"],
+      "properties": {
+        "op": { "const": "peer" },
+        "token": { "type": "string", "pattern": "[0-9a-f]{64}" },
+        "pidns": { "type": "string", "pattern": "pid:\\[[0-9]+\\]" }
+      }
+    },
+    "stop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "token"],
+      "properties": {
+        "op": { "const": "stop" },
+        "token": { "type": "string", "pattern": "[0-9a-f]{64}" }
+      }
+    },
+    "set_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "token", "state", "sensors", "now_ms", "approval"],
+      "properties": {
+        "op": { "const": "set_state" },
+        "token": { "type": "string", "pattern": "[0-9a-f]{64}" },
+        "state": { "type": "object" },
+        "sensors": { "type": "object" },
+        "now_ms": { "type": "integer" },
+        "approval": { "enum": ["none", "granted", "refused", "expired"] }
+      }
+    }
+  }
+}

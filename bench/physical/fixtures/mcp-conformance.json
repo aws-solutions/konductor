@@ -1,0 +1,149 @@
+{
+ "$comment": "One vector per 8.2 row. init: true means the connection sent initialize first. Shared by the gateway and shim tests.",
+ "vectors": [
+  {
+   "name": "initialize with the pinned version",
+   "init": false,
+   "expect": {
+    "result": true
+   },
+   "log": "mcp",
+   "raw": "{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"t\",\"version\":\"0\"}}}"
+  },
+  {
+   "name": "initialize with another version",
+   "init": false,
+   "expect": {
+    "error": -32602
+   },
+   "log": "mcp_bad",
+   "raw": "{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\"}}"
+  },
+  {
+   "name": "initialized notification",
+   "init": true,
+   "expect": {
+    "none": true
+   },
+   "log": "mcp",
+   "raw": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}"
+  },
+  {
+   "name": "tools/list",
+   "init": true,
+   "expect": {
+    "result": true
+   },
+   "log": "mcp",
+   "raw": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}"
+  },
+  {
+   "name": "tools/call get_state",
+   "init": true,
+   "expect": {
+    "result": true
+   },
+   "log": "executed",
+   "raw": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"get_state\",\"arguments\":{}}}"
+  },
+  {
+   "name": "tools/call with a float argument",
+   "init": true,
+   "expect": {
+    "isError": true
+   },
+   "log": "execution_error",
+   "raw": "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"set_speed\",\"arguments\":{\"speed_mmps\":700.0}}}"
+  },
+  {
+   "name": "ping",
+   "init": true,
+   "expect": {
+    "result": true
+   },
+   "log": "mcp",
+   "raw": "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"ping\"}"
+  },
+  {
+   "name": "cancelled notification",
+   "init": true,
+   "expect": {
+    "none": true
+   },
+   "log": "mcp_other",
+   "raw": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":2}}"
+  },
+  {
+   "name": "unknown request",
+   "init": true,
+   "expect": {
+    "error": -32601
+   },
+   "log": "mcp_other",
+   "raw": "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"resources/list\"}"
+  },
+  {
+   "name": "server/discover probe from engine v3",
+   "init": false,
+   "expect": {
+    "error": -32601
+   },
+   "log": "mcp_other",
+   "raw": "{\"jsonrpc\":\"2.0\",\"id\":\"server-discover-probe-1\",\"method\":\"server/discover\",\"params\":{}}"
+  },
+  {
+   "name": "not JSON",
+   "init": true,
+   "raw": "{not json",
+   "expect": {
+    "error": -32700
+   },
+   "log": "mcp_bad"
+  },
+  {
+   "name": "a batch",
+   "init": true,
+   "raw": "[{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"ping\"}]",
+   "expect": {
+    "error": -32600
+   },
+   "log": "mcp_bad"
+  },
+  {
+   "name": "a request with no method",
+   "init": true,
+   "expect": {
+    "error": -32600
+   },
+   "log": "mcp_bad",
+   "raw": "{\"jsonrpc\":\"2.0\",\"id\":7}"
+  },
+  {
+   "name": "a control-shaped frame",
+   "init": true,
+   "expect": {
+    "error": -32600
+   },
+   "log": "foreign_frame",
+   "raw": "{\"op\":\"hello\",\"testMode\":true}"
+  },
+  {
+   "name": "tools/call before initialize",
+   "init": false,
+   "expect": {
+    "error": -32600
+   },
+   "log": "mcp_bad",
+   "raw": "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"get_state\",\"arguments\":{}}}"
+  },
+  {
+   "name": "nesting deeper than 16",
+   "init": true,
+   "raw": "{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"ping\",\"params\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":1}}}}}}}}}}}}}}}}}",
+   "expect": {
+    "error": -32600
+   },
+   "log": "mcp_bad"
+  }
+ ]
+}

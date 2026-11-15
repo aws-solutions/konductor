@@ -1,0 +1,49 @@
+{
+ "$comment": "Canonical args: sorted keys, no spaces, UTF-8 kept. Shared by Python and Node tests. Integers only: a float such as 700.0 prints differently in the two languages.",
+ "vectors": [
+  {
+   "args": {},
+   "canonical": "{}"
+  },
+  {
+   "args": {
+    "speed_mmps": 700
+   },
+   "canonical": "{\"speed_mmps\":700}"
+  },
+  {
+   "args": {
+    "reason": "jam",
+    "action": "open_guard"
+   },
+   "canonical": "{\"action\":\"open_guard\",\"reason\":\"jam\"}"
+  },
+  {
+   "args": {
+    "reason": "Bandstopp – Stau ✓"
+   },
+   "canonical": "{\"reason\":\"Bandstopp – Stau ✓\"}"
+  },
+  {
+   "args": {
+    "b": {
+     "z": [
+      1,
+      {
+       "y": true,
+       "x": null
+      }
+     ]
+    },
+    "a": false
+   },
+   "canonical": "{\"a\":false,\"b\":{\"z\":[1,{\"x\":null,\"y\":true}]}}"
+  },
+  {
+   "args": {
+    "reason": "tab\there \"quoted\""
+   },
+   "canonical": "{\"reason\":\"tab\\there \\\"quoted\\\"\"}"
+  }
+ ]
+}
