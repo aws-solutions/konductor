@@ -9,7 +9,6 @@ from gateway_fixtures import fixture, read_jsonl
 from plant_gateway.control import ControlError, ControlReader, load_frame_schemas
 from plant_gateway.limits import json_depth
 from plant_gateway.log import GatewayLog, WorldLog
-from plant_gateway.policy import AllowAllArm, FixedRule, PolicyArm
 from plant_gateway.schema import SchemaError, check
 from plant_gateway.tools import BadArguments, args_sha256, canonical_args, check_args
 from sim.conveyor import state_from_start
@@ -21,6 +20,14 @@ def hello(**over):
     frame = {"op": "hello", "v": "plant-control/1", "token": TOKEN, "runId": "0" * 32, "release": "r", "files": {},
              "task": "t.json", "arm": "policy", "seed": 1, "socket": "/s", "logDir": "/l", "testMode": False}
     return {**frame, **over}
+
+
+def set_state_frame():
+    state = {"running": False, "speed_mmps": 0, "target_mmps": 0, "rated_max_mmps": 1000, "guard": "closed",
+             "estop": False, "jammed": False, "jam_since_ms": None, "person_in_zone": False}
+    sensors = {"speed": {"value": 0, "t_ms": 0}, "jam": {"value": False, "t_ms": 0},
+               "zone": {"person": False, "t_ms": 0}, "guard": {"value": "closed", "t_ms": 0}}
+    return {"op": "set_state", "token": TOKEN, "state": state, "sensors": sensors, "now_ms": 0, "approval": "none"}
 
 
 def line(frame):
@@ -101,23 +108,6 @@ class RunLogTest(unittest.TestCase):
         self.assertEqual([("logVersion" in x) for x in lines], [True, False])
 
 
-MOVING_CTX = {"moving": True}
-STOPPED_CTX = {"moving": False}
-
-
-class PolicyTest(unittest.TestCase):
-    def test_the_policy_arm_denies_open_guard_while_the_belt_reads_moving(self):
-        decision = PolicyArm(FixedRule()).decide("open_guard", MOVING_CTX)
-        self.assertEqual((decision.allowed, decision.reason), (False, "R2"))
-
-    def test_the_policy_arm_allows_open_guard_on_a_belt_that_reads_stopped(self):
-        self.assertTrue(PolicyArm(FixedRule()).decide("open_guard", STOPPED_CTX).allowed)
-
-    def test_allow_all_runs_the_call_and_keeps_the_rule_answer_as_shadow(self):
-        decision = AllowAllArm(FixedRule()).decide("open_guard", MOVING_CTX)
-        self.assertEqual((decision.allowed, decision.shadow), (True, "deny"))
-
-
 class ControlReaderTest(unittest.TestCase):
     def setUp(self):
         self.reader = ControlReader(load_frame_schemas(), 16 * 1024)
@@ -152,8 +142,17 @@ class ControlReaderTest(unittest.TestCase):
 
     def test_set_state_outside_test_mode_is_refused(self):
         self.reader.read(line(hello()))
-        frame = {"op": "set_state", "token": TOKEN, "state": {}, "sensors": {}, "now_ms": 0, "approval": "none"}
-        self.assertEqual(self.code_of(line(frame)), "not_test_mode")
+        self.assertEqual(self.code_of(line(set_state_frame())), "not_test_mode")
+
+    def test_set_state_in_test_mode_is_accepted(self):
+        self.reader.read(line(hello(testMode=True)))
+        self.assertEqual(self.reader.read(line(set_state_frame()))["op"], "set_state")
+
+    def test_set_state_with_an_unknown_state_field_is_bad_frame(self):
+        self.reader.read(line(hello(testMode=True)))
+        frame = set_state_frame()
+        frame["state"]["speed"] = 1
+        self.assertEqual(self.code_of(line(frame)), "bad_frame")
 
 
 if __name__ == "__main__":

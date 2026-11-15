@@ -2,144 +2,133 @@
 import hashlib
 import json
 import os
-import select
-import socket
-import subprocess
 import sys
 import tempfile
-import time
 import unittest
 
-from gateway_fixtures import MOVING, read_jsonl
-import _paths
+import _paths  # noqa: F401
+from gateway_client import GatewayProcess, JsonLines
+from gateway_fixtures import MOVING, read_jsonl, write_stub_release
 
-START = os.path.join(_paths.PHYSICAL, "gateway", "start.py")
-TOKEN = "c" * 64
+try:
+    import cedarpy
+except ImportError:
+    cedarpy = None
+
+STATE = {"running": False, "speed_mmps": 0, "target_mmps": 0, "rated_max_mmps": 1000, "guard": "closed",
+         "estop": False, "jammed": False, "jam_since_ms": None, "person_in_zone": False}
+SENSORS = {"speed": {"value": 0, "t_ms": 0}, "jam": {"value": False, "t_ms": 0},
+           "zone": {"person": False, "t_ms": 0}, "guard": {"value": "closed", "t_ms": 0}}
 INIT = {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2025-11-25"}}
 
 
-def own_pidns():
-    return os.readlink("/proc/self/ns/pid")
+class GatewayRun(GatewayProcess):
+    """A gateway on a fresh temp dir with a moving-belt task. `task_hash` replaces the task's listed hash."""
 
-
-class LineSocket:
-    """Newline-framed JSON over `sock`, with a read deadline of `timeout` seconds."""
-
-    def __init__(self, sock, timeout=5.0):
-        self.sock = sock
-        self.timeout = timeout
-        self.buf = b""
-
-    def send(self, obj):
-        self.sock.sendall((json.dumps(obj) + "\n").encode())
-
-    def read(self):
-        deadline = time.monotonic() + self.timeout
-        while b"\n" not in self.buf:
-            left = deadline - time.monotonic()
-            if left <= 0 or not select.select([self.sock], [], [], left)[0]:
-                raise TimeoutError("no line")
-            chunk = self.sock.recv(65536)
-            if not chunk:
-                raise EOFError("closed")
-            self.buf += chunk
-        line, self.buf = self.buf.split(b"\n", 1)
-        return json.loads(line)
-
-    def read_op(self, op):
-        while True:
-            frame = self.read()
-            if frame.get("op") == op:
-                return frame
-
-
-class GatewayRun:
-    """A real gateway process on temp paths. `task_hash` overrides the task file hash sent in hello."""
-
-    def __init__(self, arm="policy", task_hash=None, hello_extra=None):
+    def __init__(self, arm="policy", task_hash=None, hello_extra=None, files=(), test_mode=False, hashes=None):
         self.dir = tempfile.TemporaryDirectory(prefix="gw")
-        self.socket_path = os.path.join(self.dir.name, "gw.sock")
         task = os.path.join(self.dir.name, "task.json")
-        data = json.dumps({"environment": {"start": MOVING}}).encode()
-        with open(task, "wb") as f:
-            f.write(data)
-        ours, theirs = socket.socketpair()
-        self.proc = subprocess.Popen([sys.executable, "-I", START, "--control-fd", str(theirs.fileno())],
-                                     pass_fds=[theirs.fileno()], env={})
-        theirs.close()
-        self.control = LineSocket(ours)
-        self.hello = {
-            "op": "hello", "v": "plant-control/1", "token": TOKEN, "runId": "1" * 32, "release": "test-only",
-            "files": {task: task_hash or hashlib.sha256(data).hexdigest()}, "task": task, "arm": arm, "seed": 3,
-            "socket": self.socket_path, "logDir": self.dir.name, "testMode": False, **(hello_extra or {}),
-        }
-        self.clients = []
-        self.control.send(self.hello)
-
-    def connect(self):
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.connect(self.socket_path)
-        self.clients.append(sock)
-        return LineSocket(sock)
-
-    def peer(self, pidns=None):
-        self.control.send({"op": "peer", "token": TOKEN, "pidns": pidns or own_pidns()})
-
-    def mcp_client(self):
-        client = self.connect()
-        client.send(INIT)
-        client.read()
-        return client
-
-    def stop(self):
-        self.control.send({"op": "stop", "token": TOKEN})
-        return self.control.read_op("final")
+        with open(task, "w") as f:
+            json.dump({"environment": {"start": MOVING}}, f)
+        listed = {**(hashes or {}), **({task: task_hash} if task_hash else {})}
+        super().__init__(task, self.dir.name, files=files, arm=arm, test_mode=test_mode, python=sys.executable,
+                         hello_extra=hello_extra, hashes=listed)
 
     def log(self, name):
         return read_jsonl(os.path.join(self.dir.name, name))
 
     def close(self):
-        if self.proc.poll() is None:
-            self.proc.kill()
-        self.proc.wait()
-        for sock in self.clients + [self.control.sock]:
-            sock.close()
+        super().close()
         self.dir.cleanup()
 
 
 class StartupTest(unittest.TestCase):
     def test_ready_names_the_policy_hash_and_simulator_version(self):
         run = GatewayRun()
-        ready = run.control.read_op("ready")
+        ready = run.ready()
         self.assertEqual((ready["v"], ready["seq"], ready["simVersion"]), ("plant-control/1", 0, "1"))
         self.assertEqual(len(ready["policySha256"]), 64)
         run.close()
 
     def test_a_task_file_whose_hash_differs_is_policy_invalid(self):
         run = GatewayRun(task_hash="0" * 64)
-        self.assertEqual(run.control.read_op("error")["code"], "policy_invalid")
+        self.assertEqual(run.ready()["code"], "policy_invalid")
         self.assertEqual(run.proc.wait(5), 3)
         run.close()
 
     def test_a_hello_with_an_unknown_field_is_refused(self):
         run = GatewayRun(hello_extra={"debug": True})
-        self.assertEqual(run.control.read_op("error")["code"], "bad_frame")
+        self.assertEqual(run.ready()["code"], "bad_frame")
         self.assertEqual(run.proc.wait(5), 2)
         run.close()
 
     def test_core_dumps_are_off(self):
         run = GatewayRun()
-        run.control.read_op("ready")
+        run.ready()
         with open(f"/proc/{run.proc.pid}/limits") as f:
             core = next(line for line in f if line.startswith("Max core file size"))
         self.assertEqual(core.split()[4:6], ["0", "0"])
         run.close()
 
 
+def stub_release(root):
+    write_stub_release(root, [])
+    return [os.path.join(root, rel) for rel in ("policy/plant.cedar", "policy/plant.cedarschema", "sensor-limits.json")]
+
+
+class PolicyLoadTest(unittest.TestCase):
+    def setUp(self):
+        self.release = tempfile.TemporaryDirectory()
+        self.files = stub_release(os.path.join(self.release.name, "r"))
+
+    def tearDown(self):
+        self.release.cleanup()
+
+    def test_a_policy_file_whose_hash_differs_is_policy_invalid(self):
+        run = GatewayRun(files=self.files, hashes={self.files[0]: "0" * 64})
+        ready = run.ready()
+        self.assertEqual((ready["code"], ready["detail"].endswith("does not match its hash")), ("policy_invalid", True))
+        run.close()
+
+    @unittest.skipIf(cedarpy is None, "cedarpy is not installed in this Python")
+    def test_ready_names_the_hash_of_the_loaded_policy(self):
+        run = GatewayRun(files=self.files)
+        with open(self.files[0], "rb") as f:
+            self.assertEqual(run.ready()["policySha256"], hashlib.sha256(f.read()).hexdigest())
+        run.close()
+
+    @unittest.skipIf(cedarpy is None, "cedarpy is not installed in this Python")
+    def test_a_policy_that_fails_schema_validation_exits_policy_invalid(self):
+        with open(self.files[0], "a") as f:
+            f.write("permit (principal, action, resource) when { context.nope };\n")
+        run = GatewayRun(files=self.files)
+        self.assertEqual(run.ready()["code"], "policy_invalid")
+        self.assertEqual(run.proc.wait(5), 3)
+        run.close()
+
+
+class TestModeTest(unittest.TestCase):
+    def test_set_state_in_a_normal_run_is_refused_with_not_test_mode(self):
+        run = GatewayRun()
+        run.ready()
+        run.set_state(STATE, SENSORS, 0, "none")
+        self.assertEqual(run.control.read_op("error", "state_set")["code"], "not_test_mode")
+        run.close()
+
+    def test_set_state_in_test_mode_is_applied_and_acknowledged(self):
+        run = GatewayRun(test_mode=True)
+        run.ready()
+        run.set_state(STATE, SENSORS, 4000, "none")
+        self.assertEqual(run.control.read_op("error", "state_set"), {"op": "state_set", "now_ms": 4000})
+        run.stop()
+        self.assertTrue(run.log("gateway.jsonl")[0]["testMode"])
+        run.close()
+
+
 class RunTest(unittest.TestCase):
     def setUp(self):
         self.run = GatewayRun()
-        self.run.control.read_op("ready")
+        self.run.ready()
 
     def tearDown(self):
         self.run.close()
@@ -153,7 +142,7 @@ class RunTest(unittest.TestCase):
         client = self.run.connect()
         client.send(INIT)
         with self.assertRaises(TimeoutError):
-            LineSocket(client.sock, timeout=0.5).read()
+            JsonLines(client.sock, timeout=0.5).read()
         self.run.peer()
         self.assertEqual(client.read()["result"]["protocolVersion"], "2025-11-25")
 

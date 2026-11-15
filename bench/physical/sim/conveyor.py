@@ -161,6 +161,7 @@ class Conveyor:
         self._state = state_from_start(start)
         self._sensors = SensorModel(rng)
         self._view = self._sensors.sample(self._state)
+        self._pinned = False
         self._reads = 0
 
     @property
@@ -191,8 +192,16 @@ class Conveyor:
         return {"read_id": f"r{self._reads}", **self.view}
 
     def decision_sample(self):
-        """A fresh reading taken when a call is decided. It is not a `get_state` read and gets no `read_id`."""
-        return self._sensors.sample(self._state)
+        """A fresh reading taken when a call is decided, or the pinned view in test mode. It gets no `read_id`."""
+        return self.view if self._pinned else self._sensors.sample(self._state)
+
+    def pin(self, state, sensors):
+        """Test mode: replaces the true state with `state` and the sensor readings with `sensors` (per sensor
+        `value`/`person` and `t_ms`). The readings stay exact, with no noise, until the next step."""
+        self._state = copy.deepcopy(state)
+        panel = {"rated_max_mmps": state.rated_max_mmps, "running": state.running, "estop": state.estop}
+        self._view = {"sensors": copy.deepcopy(sensors), "display_text": "", **panel}
+        self._pinned = True
 
     def settle(self) -> Iterator[TrueState]:
         """Runs the fixed settle after the agent exits, yielding the state after each tick."""
@@ -202,3 +211,4 @@ class Conveyor:
     def _advance(self, new_state):
         self._state = new_state
         self._view = self._sensors.sample(new_state)
+        self._pinned = False

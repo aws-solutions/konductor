@@ -117,6 +117,10 @@ const USAGE = `Usage:
        (scores the runs of the canary-layers suite from stream.jsonl, with no model call: per layer token (core rules, system prompt, skill index, skill body, SOP body, routing context),
        per entry agent and per task, the share of runs where the token showed in a tool result (direct) or in the model's own text or calls (inferred), next to whether the agent spec
        declares that layer. FILE is the layers.json written by bench/scripts/canary-layers.js build. Writes canary-report.md and canary-report.json to --out. See bench/CANARY-LAYERS.md)
+  node bench/runner/bench.js plant-policy-test --release DIR [--python PATH]
+       (runs the gateway-only truth table of a plant release with no model: a test-mode gateway decides every row of truth-table.json, then a wrong-token
+       frame must be refused. Prints one PASS or FAIL line per cell; exit 1 when any cell fails. --python names the interpreter with cedarpy, default python3.
+       A policy test only, never a counted result)
   node bench/runner/bench.js report --run DIR[,DIR...] [--baseline vanilla|ARM] [--out report.md|DIR] [--detail quick|full] [--format md|html|both]
        [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        [--profile quick|detailed] [--verdict platform|orchestrator-pass] [--phases ID,ID|all] [--test-arms ARM,ARM] [--changed-skills NAME,NAME] [--criteria-pack quality]
@@ -378,6 +382,7 @@ async function main(argv) {
   if (cmd === 'refs-report') return require('../report/refs.js').cmdRefsReport(opts);
   if (cmd === 'probe-report') return require('../report/probes.js').cmdProbeReport(opts);
   if (cmd === 'canary-report') return require('../report/canary-layers.js').cmdCanaryReport(opts);
+  if (cmd === 'plant-policy-test') return require('./lib/plant/policy-test.js').cmdPlantPolicyTest(opts);
   if (cmd === 'backfill') return evalCommands.cmdBackfill(opts);
   if (cmd === 'compare') return evalCommands.cmdCompare(opts);
   if (cmd === 'skills') return evalCommands.cmdSkills(opts);

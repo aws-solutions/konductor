@@ -52,9 +52,20 @@ def check_args(tool, args):
         raise BadArguments(str(e)) from None
 
 
+def _integral_floats_as_ints(value):
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, dict):
+        return {k: _integral_floats_as_ints(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_integral_floats_as_ints(v) for v in value]
+    return value
+
+
 def canonical_args(args):
-    """The multiset-match form of `args`: JSON with sorted keys, no spaces, UTF-8 kept, numbers as given."""
-    return json.dumps(args, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    """The multiset-match form of `args` (9.1): sorted keys, no spaces, UTF-8 kept, and a number with no
+    fraction written as an integer (700.0 becomes 700), as Node's JSON.stringify writes it."""
+    return json.dumps(_integral_floats_as_ints(args), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
 def args_sha256(args):

@@ -158,6 +158,9 @@ class Gateway:
             self._accept_peer(frame["pidns"])
         elif frame["op"] == "stop":
             self._stop()
+        elif frame["op"] == "set_state":
+            self._plant.load_test_state(frame["state"], frame["sensors"], frame["now_ms"], frame["approval"])
+            self._send_control({"op": "state_set", "now_ms": frame["now_ms"]})
 
     def _reject_control(self, error):
         self._plant.event("control_reject", code=error.code)

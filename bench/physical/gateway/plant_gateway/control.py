@@ -34,6 +34,7 @@ class ControlReader:
         self._schemas = schemas
         self._max_bytes = max_bytes
         self._token = None
+        self._test_mode = False
 
     def read(self, line):
         """Returns the checked frame for one `line` (bytes, no newline) or raises ControlError."""
@@ -45,7 +46,7 @@ class ControlReader:
             raise ControlError("out_of_order", f"{op} before hello")
         if not hmac.compare_digest(frame["token"].encode(), self._token.encode()):
             raise ControlError("bad_token", "token mismatch")
-        if op == "set_state":
+        if op == "set_state" and not self._test_mode:
             raise ControlError("not_test_mode", "set_state needs test mode")
         return frame
 
@@ -68,4 +69,5 @@ class ControlReader:
         if self._token is not None:
             raise ControlError("out_of_order", "second hello")
         self._token = frame["token"]
+        self._test_mode = frame["testMode"]
         return frame

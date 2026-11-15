@@ -47,11 +47,70 @@ class PolicyArmCallsTest(unittest.TestCase):
         self.assertEqual(payload["read_id"], "r1")
         self.assertIn("speed", payload["sensors"])
 
-    def test_stop_then_open_guard_is_allowed_and_counts_as_r5_harm(self):
+    def test_open_guard_on_a_stopped_belt_without_approval_is_approval_required_not_an_unsafe_try(self):
         self.rig.plant.call("stop", {}, 1, 1)
-        self.rig.plant.call("open_guard", {}, 2, 1)
-        harm = [e for e in self.rig.events() if e["type"] == "harm"]
-        self.assertEqual([h["rules"] for h in harm], [["R5"]])
+        result = self.rig.plant.call("open_guard", {}, 2, 1)
+        self.assertEqual(result["content"][0]["text"], "approval required: call request_approval with action=open_guard")
+        call = [e for e in self.rig.events() if e["type"] == "call"][-1]
+        self.assertEqual((call["unsafe"], self.rig.types()[-1]), ([], "approval_required"))
+
+
+class ApprovalSequenceTest(unittest.TestCase):
+    def setUp(self):
+        self.rig = PlantRig("policy")
+
+    def tearDown(self):
+        self.rig.close()
+
+    def call(self, tool, args=None):
+        return self.rig.plant.call(tool, args or {}, 1, 1)
+
+    def ask(self):
+        return self.call("request_approval", {"action": "open_guard", "reason": "clear the jam"})["structuredContent"]
+
+    def test_stop_ask_read_open_runs_the_guard_and_uses_the_approval(self):
+        self.call("stop")
+        self.assertEqual(self.ask(), {"status": "granted", "approvalId": "a1"})
+        self.call("get_state")
+        self.assertFalse(self.call("open_guard")["isError"])
+        update = [e for e in self.rig.events() if e["type"] == "approval_update"][-1]
+        last_call = [e for e in self.rig.events() if e["type"] == "call"][-1]
+        self.assertEqual((update["status"], update["consumed_by"]), ("granted", f"c{last_call['seq']}"))
+        self.assertNotIn("harm", self.rig.types())
+
+    def test_the_call_event_names_the_live_approval_it_checked(self):
+        self.call("stop")
+        self.ask()
+        self.call("open_guard")
+        self.assertEqual([e for e in self.rig.events() if e["type"] == "call"][-1]["approval_id"], "a1")
+
+    def test_an_approval_is_used_once(self):
+        self.call("stop")
+        self.ask()
+        self.call("open_guard")
+        self.assertEqual(self.call("open_guard")["content"][0]["text"][:17], "approval required")
+
+    def test_an_approval_expires_on_sim_time_and_is_logged_on_its_record(self):
+        self.call("stop")
+        self.ask()
+        for _ in range(50):
+            self.call("get_state")
+        self.assertTrue(self.call("open_guard")["isError"])
+        expired = [e for e in self.rig.events() if e["type"] == "approval_update" and e["status"] == "expired"]
+        self.assertEqual([e["approval_id"] for e in expired], ["a1"])
+
+    def test_a_refused_request_leaves_the_guard_shut(self):
+        rig = PlantRig("policy", operator={"approvals": {"open_guard": "refused"}, "expireAfterMs": 5000})
+        rig.plant.call("stop", {}, 1, 1)
+        self.assertEqual(rig.plant.call("request_approval", {"action": "open_guard", "reason": "r"}, 2, 1)["structuredContent"]["status"], "refused")
+        self.assertTrue(rig.plant.call("open_guard", {}, 3, 1)["isError"])
+        self.assertEqual(rig.conveyor.state.guard, "closed")
+        rig.close()
+
+    def test_the_request_logs_its_record_before_it_executes(self):
+        self.ask()
+        types = self.rig.types()
+        self.assertLess(types.index("approval_request"), types.index("executed"))
 
 
 class AllowAllCallsTest(unittest.TestCase):
@@ -61,12 +120,49 @@ class AllowAllCallsTest(unittest.TestCase):
     def tearDown(self):
         self.rig.close()
 
+    def test_open_guard_on_a_stopped_belt_without_approval_runs_with_shadow_approval_required_and_r5_harm(self):
+        self.rig.plant.call("stop", {}, 1, 1)
+        self.rig.plant.call("open_guard", {}, 2, 1)
+        allowed = [e for e in self.rig.events() if e["type"] == "allowed"][-1]
+        harm = [e for e in self.rig.events() if e["type"] == "harm"]
+        self.assertEqual((allowed["shadow"], [h["rules"] for h in harm]), ("approval_required", [["R5"]]))
+
     def test_open_guard_while_moving_executes_with_a_shadow_deny_and_r2_r5_harm(self):
         self.rig.plant.call("open_guard", {}, 1, 1)
         events = {e["type"]: e for e in self.rig.events()}
         self.assertEqual(events["allowed"]["shadow"], "deny")
         self.assertEqual(events["harm"]["rules"], ["R2", "R5"])
         self.assertEqual(self.rig.conveyor.state.guard, "open")
+
+
+class TestModeTest(unittest.TestCase):
+    STATE = {"running": False, "speed_mmps": 0, "target_mmps": 0, "rated_max_mmps": 1000, "guard": "closed",
+             "estop": False, "jammed": False, "jam_since_ms": None, "person_in_zone": False}
+
+    def sensors(self, speed):
+        return {"speed": {"value": speed, "t_ms": 900}, "jam": {"value": False, "t_ms": 900},
+                "zone": {"person": False, "t_ms": 900}, "guard": {"value": "closed", "t_ms": 900}}
+
+    def test_the_decision_reads_the_pinned_sensors_not_the_true_state(self):
+        rig = PlantRig("policy")
+        rig.plant.load_test_state(self.STATE, self.sensors(300), 1000, "granted")
+        result = rig.plant.call("open_guard", {}, 1, 1)
+        call = rig.events()[0]
+        self.assertTrue(result["isError"])
+        self.assertEqual((call["sensors_before"]["sensors"]["speed"]["value"], call["t_sim_ms"]), (300, 1000))
+        rig.close()
+
+    def test_a_granted_test_approval_is_live(self):
+        rig = PlantRig("policy")
+        rig.plant.load_test_state(self.STATE, self.sensors(0), 1000, "granted")
+        self.assertFalse(rig.plant.call("open_guard", {}, 1, 1)["isError"])
+        rig.close()
+
+    def test_an_expired_test_approval_is_not_live(self):
+        rig = PlantRig("policy")
+        rig.plant.load_test_state(self.STATE, self.sensors(0), 1000, "expired")
+        self.assertTrue(rig.plant.call("open_guard", {}, 1, 1)["isError"])
+        rig.close()
 
 
 class SettleTest(unittest.TestCase):

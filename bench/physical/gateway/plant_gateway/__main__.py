@@ -12,20 +12,20 @@ import time
 
 from sim.conveyor import SIM_VERSION, Conveyor
 
+from .approval import ApprovalBook
 from .control import ControlError, ControlReader, load_frame_schemas
 from .limits import Limits, apply_own_rlimits
 from .log import LOG_VERSION, GatewayLog, WorldLog
 from .peer import peer_pidns
 from .plant import PlantSession
-from .policy import ARMS, FixedRule
+from .policy import ARMS, CedarPolicy, FixedRule, PolicyInvalid, SensorLimits
 from .server import Gateway, bind_listener, frame_bytes
 
 CONTROL_VERSION = "plant-control/1"
 EXIT_BAD_HELLO, EXIT_POLICY_INVALID = 2, 3
 
 
-class PolicyInvalid(Exception):
-    """A file the gateway loads is missing from `hello.files` or its SHA-256 differs."""
+POLICY_FILE, SCHEMA_FILE, LIMITS_FILE = "plant.cedar", "plant.cedarschema", "sensor-limits.json"
 
 
 def read_first_line(control, max_bytes):
@@ -39,9 +39,8 @@ def read_first_line(control, max_bytes):
     return bytes(data.split(b"\n", 1)[0])
 
 
-def load_task(hello):
-    """The task's `environment` block, read from `hello.task` after its SHA-256 matches `hello.files`."""
-    path = hello["task"]
+def read_listed(hello, path):
+    """The bytes of `path` after its SHA-256 matches `hello.files`. Raises PolicyInvalid otherwise."""
     expected = hello["files"].get(path)
     if expected is None:
         raise PolicyInvalid(f"{path} is not listed in hello.files")
@@ -49,7 +48,29 @@ def load_task(hello):
         data = f.read()
     if hashlib.sha256(data).hexdigest() != expected:
         raise PolicyInvalid(f"{path} does not match its hash")
-    return json.loads(data)["environment"]
+    return data
+
+
+def listed_by_name(hello, name):
+    """The path in `hello.files` whose file name is `name`, or None."""
+    return next((p for p in hello["files"] if os.path.basename(p) == name), None)
+
+
+def load_rule(hello):
+    """`(rule, SensorLimits)` for the run: the Cedar policy when hello lists `plant.cedar`, else the fixed rule.
+
+    A Cedar policy needs its schema and sensor limits listed too; each file is hash-checked before use.
+    """
+    policy_path = listed_by_name(hello, POLICY_FILE)
+    if policy_path is None:
+        return FixedRule(), SensorLimits({})
+    schema_path, limits_path = listed_by_name(hello, SCHEMA_FILE), listed_by_name(hello, LIMITS_FILE)
+    if schema_path is None or limits_path is None:
+        raise PolicyInvalid(f"{POLICY_FILE} needs {SCHEMA_FILE} and {LIMITS_FILE} in hello.files")
+    policy, schema, limits = (read_listed(hello, p) for p in (policy_path, schema_path, limits_path))
+    import cedarpy
+
+    return CedarPolicy(policy.decode(), schema.decode(), cedarpy), SensorLimits(json.loads(limits))
 
 
 def wall_clock():
@@ -57,18 +78,20 @@ def wall_clock():
     return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds")
 
 
-def start_run(hello, environment, arm):
-    """Opens both logs in `hello.logDir`, builds the simulator and the plant session, and writes the startup lines."""
+def start_run(hello, environment, rule, sensor_limits):
+    """Opens both logs in `hello.logDir`, builds the simulator and the plant session for `rule` and
+    `sensor_limits`, and writes the startup lines."""
     glog = GatewayLog(os.path.join(hello["logDir"], "gateway.jsonl"), hello["runId"], wall_clock)
     wlog = WorldLog(os.path.join(hello["logDir"], "world.jsonl"), hello["runId"], wall_clock)
     conveyor = Conveyor(environment["start"], random.Random(hello["seed"]))
     glog.event(
         "startup", 0, logVersion=LOG_VERSION, release=hello["release"], arm=hello["arm"], task=hello["task"],
-        variant=environment.get("probe", {}).get("variant"), seed=hello["seed"], policySha256=FixedRule.sha256,
+        variant=environment.get("probe", {}).get("variant"), seed=hello["seed"], policySha256=rule.sha256,
         simVersion=SIM_VERSION, testMode=hello["testMode"], tokenOk=True,
     )
     wlog.snapshot("tick", conveyor.state, conveyor.view)
-    return glog, wlog, PlantSession(conveyor, arm, glog, wlog)
+    approvals = ApprovalBook(environment.get("operator", {}))
+    return glog, wlog, PlantSession(conveyor, rule, ARMS[hello["arm"]](), approvals, sensor_limits, glog, wlog)
 
 
 def main(argv):
@@ -84,16 +107,17 @@ def main(argv):
         hello = reader.read(read_first_line(control, limits.control_frame_bytes))
         if hello["op"] != "hello":
             raise ControlError("out_of_order", "the first frame must be hello")
-        environment = load_task(hello)
+        environment = json.loads(read_listed(hello, hello["task"]))["environment"]
+        rule, sensor_limits = load_rule(hello)
     except ControlError as e:
         control.sendall(frame_bytes({"op": "error", "code": e.code, "detail": str(e)}))
         return EXIT_BAD_HELLO
-    except (PolicyInvalid, OSError, ValueError, KeyError) as e:
+    except (PolicyInvalid, ImportError, OSError, ValueError, KeyError) as e:
         control.sendall(frame_bytes({"op": "error", "code": "policy_invalid", "detail": str(e)}))
         return EXIT_POLICY_INVALID
-    glog, wlog, plant = start_run(hello, environment, ARMS[hello["arm"]](FixedRule()))
+    glog, wlog, plant = start_run(hello, environment, rule, sensor_limits)
     listener = bind_listener(hello["socket"])
-    control.sendall(frame_bytes({"op": "ready", "v": CONTROL_VERSION, "seq": 0, "policySha256": FixedRule.sha256, "simVersion": SIM_VERSION}))
+    control.sendall(frame_bytes({"op": "ready", "v": CONTROL_VERSION, "seq": 0, "policySha256": rule.sha256, "simVersion": SIM_VERSION}))
     gateway = Gateway(control, reader, listener, plant, glog, wlog, limits, time.monotonic, peer_pidns)
     code = gateway.run()
     os.unlink(hello["socket"])

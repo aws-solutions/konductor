@@ -5,52 +5,274 @@
     "hello": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["op", "v", "token", "runId", "release", "files", "task", "arm", "seed", "socket", "logDir", "testMode"],
+      "required": [
+        "op",
+        "v",
+        "token",
+        "runId",
+        "release",
+        "files",
+        "task",
+        "arm",
+        "seed",
+        "socket",
+        "logDir",
+        "testMode"
+      ],
       "properties": {
-        "op": { "const": "hello" },
-        "v": { "const": "plant-control/1" },
-        "token": { "type": "string", "pattern": "[0-9a-f]{64}" },
-        "runId": { "type": "string", "pattern": "[0-9a-f]{32}" },
-        "release": { "type": "string", "maxLength": 256 },
-        "files": { "type": "object", "additionalProperties": { "type": "string", "pattern": "[0-9a-f]{64}" } },
-        "task": { "type": "string", "maxLength": 4096 },
-        "arm": { "enum": ["policy", "allow-all"] },
-        "seed": { "type": "integer" },
-        "socket": { "type": "string", "maxLength": 107 },
-        "logDir": { "type": "string", "maxLength": 4096 },
-        "testMode": { "type": "boolean" }
+        "op": {
+          "const": "hello"
+        },
+        "v": {
+          "const": "plant-control/1"
+        },
+        "token": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "[0-9a-f]{32}"
+        },
+        "release": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "[0-9a-f]{64}"
+          }
+        },
+        "task": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "arm": {
+          "enum": [
+            "policy",
+            "allow-all"
+          ]
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "socket": {
+          "type": "string",
+          "maxLength": 107
+        },
+        "logDir": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "testMode": {
+          "type": "boolean"
+        }
       }
     },
     "peer": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["op", "token", "pidns"],
+      "required": [
+        "op",
+        "token",
+        "pidns"
+      ],
       "properties": {
-        "op": { "const": "peer" },
-        "token": { "type": "string", "pattern": "[0-9a-f]{64}" },
-        "pidns": { "type": "string", "pattern": "pid:\\[[0-9]+\\]" }
+        "op": {
+          "const": "peer"
+        },
+        "token": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "pidns": {
+          "type": "string",
+          "pattern": "pid:\\[[0-9]+\\]"
+        }
       }
     },
     "stop": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["op", "token"],
+      "required": [
+        "op",
+        "token"
+      ],
       "properties": {
-        "op": { "const": "stop" },
-        "token": { "type": "string", "pattern": "[0-9a-f]{64}" }
+        "op": {
+          "const": "stop"
+        },
+        "token": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        }
       }
     },
     "set_state": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["op", "token", "state", "sensors", "now_ms", "approval"],
+      "required": [
+        "op",
+        "token",
+        "state",
+        "sensors",
+        "now_ms",
+        "approval"
+      ],
       "properties": {
-        "op": { "const": "set_state" },
-        "token": { "type": "string", "pattern": "[0-9a-f]{64}" },
-        "state": { "type": "object" },
-        "sensors": { "type": "object" },
-        "now_ms": { "type": "integer" },
-        "approval": { "enum": ["none", "granted", "refused", "expired"] }
+        "op": {
+          "const": "set_state"
+        },
+        "token": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "state": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "running",
+            "speed_mmps",
+            "target_mmps",
+            "rated_max_mmps",
+            "guard",
+            "estop",
+            "jammed",
+            "jam_since_ms",
+            "person_in_zone"
+          ],
+          "properties": {
+            "running": {
+              "type": "boolean"
+            },
+            "speed_mmps": {
+              "type": "integer"
+            },
+            "target_mmps": {
+              "type": "integer"
+            },
+            "rated_max_mmps": {
+              "type": "integer"
+            },
+            "guard": {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            },
+            "estop": {
+              "type": "boolean"
+            },
+            "jammed": {
+              "type": "boolean"
+            },
+            "jam_since_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "person_in_zone": {
+              "type": "boolean"
+            }
+          }
+        },
+        "sensors": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "speed",
+            "jam",
+            "zone",
+            "guard"
+          ],
+          "properties": {
+            "speed": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "t_ms"
+              ],
+              "properties": {
+                "value": {
+                  "type": "integer"
+                },
+                "t_ms": {
+                  "type": "integer"
+                }
+              }
+            },
+            "jam": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "t_ms"
+              ],
+              "properties": {
+                "value": {
+                  "type": "boolean"
+                },
+                "t_ms": {
+                  "type": "integer"
+                }
+              }
+            },
+            "zone": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "person",
+                "t_ms"
+              ],
+              "properties": {
+                "person": {
+                  "type": [
+                    "boolean",
+                    "integer"
+                  ]
+                },
+                "t_ms": {
+                  "type": "integer"
+                }
+              }
+            },
+            "guard": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "t_ms"
+              ],
+              "properties": {
+                "value": {
+                  "enum": [
+                    "open",
+                    "closed"
+                  ]
+                },
+                "t_ms": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "now_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "approval": {
+          "enum": [
+            "none",
+            "granted",
+            "refused",
+            "expired"
+          ]
+        }
       }
     }
   }

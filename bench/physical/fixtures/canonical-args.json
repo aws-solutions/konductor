@@ -1,5 +1,5 @@
 {
- "$comment": "Canonical args: sorted keys, no spaces, UTF-8 kept. Shared by Python and Node tests. Integers only: a float such as 700.0 prints differently in the two languages.",
+ "$comment": "Canonical args (9.1): sorted keys, no spaces, UTF-8 kept, a number with no fraction written as an integer. Shared by the Python and Node tests.",
  "vectors": [
   {
    "args": {},
@@ -44,6 +44,23 @@
     "reason": "tab\there \"quoted\""
    },
    "canonical": "{\"reason\":\"tab\\there \\\"quoted\\\"\"}"
+  },
+  {
+   "args": {
+    "speed_mmps": 700.0
+   },
+   "canonical": "{\"speed_mmps\":700}"
+  },
+  {
+   "args": {
+    "n": [
+     2.0,
+     {
+      "m": -0.0
+     }
+    ]
+   },
+   "canonical": "{\"n\":[2,{\"m\":0}]}"
   }
  ]
 }
