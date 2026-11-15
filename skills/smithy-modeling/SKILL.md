@@ -259,7 +259,7 @@ A mixin passes its traits, documentation included, to every shape that uses it. 
 Model a resource when its operations share an identifier. Read and list operations must be `@readonly`; put and delete must be `@idempotent`.
 
 ```smithy
-resource User {
+resource UserResource {
     identifiers: { userId: String }
     create: CreateUser
     read: GetUser
@@ -269,7 +269,7 @@ resource User {
 }
 ```
 
-Bind it with `resources: [User]` on the service and leave these operations out of the service's `operations` list, since an operation can be bound only once. Instance operations (read, update, delete) bind every identifier as a `@required` input member. Collection operations (create, list) leave the resource's own identifier out.
+Bind it with `resources: [UserResource]` on the service and leave these operations out of the service's `operations` list, since an operation can be bound only once. Instance operations (read, update, delete) bind every identifier as a `@required` input member. Collection operations (create, list) leave the resource's own identifier out.
 
 ### Common Errors
 
