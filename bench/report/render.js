@@ -34,6 +34,12 @@ function rubricCells(report, c) {
   return [`mean ${f(c.rubricAll.mean)} (raw ${f(c.rubricAll.meanRaw)}) over ${c.rubricAll.n} run(s)`, rubricCell(c), String(c.excludedCount)];
 }
 
+// Stamped studies also show how much each arm wrote, since longer output is not better: mean final-text characters and
+// mean bytes of the files the runs created or changed.
+const lengthHeads = (report) => (report.rubricPolicy ? ['mean final text, characters', 'mean artifact size, bytes of files created or changed'] : []);
+const meanLengthCell = (m) => (m && m.n ? `${Math.round(m.mean)} (n=${m.n})` : 'n/a');
+const lengthCells = (report, c) => (report.rubricPolicy ? [meanLengthCell(c.length?.finalChars), meanLengthCell(c.length?.artifactBytes)] : []);
+
 // How each reason a run is kept out of judging counts in a stamped study.
 const exclusionRows = () => [
   ...exclusionTable().map(([reason, cls]) => [reason, cls, cls === 'integrity' ? 'counted as 0' : 'left out']),
@@ -47,6 +53,8 @@ function rubricPolicyNote(report) {
     'Rubric policy: runs kept out of judging for an integrity reason count as failures (0 on every rubric item) in the main rubric number. The judged-runs-only number leaves them out. Runs left out for a reason that is not the agent\'s doing stay gaps in both, among them a credential scrub failure whose cause is not evidence of tampering.',
     '',
     table(['reason', 'class', 'in the main rubric number'], exclusionRows()),
+    '',
+    'Output length: final text is counted in characters from result.json; artifact size is the bytes of the files the run created or changed in its workspace (full size of a changed file, seed files that are unchanged left out). Both are means over the runs that recorded them, shown with their count; n/a means no run did. Longer output is not better. The diligence scorecard warns when an arm differs from the baseline arm by more than 1.5x either way.',
     '',
   ];
 }
@@ -148,7 +156,7 @@ function scopeSection(report, scope) {
   const quality = arms.map((a) => {
     const c = report.arms[a][scope];
     const st = `${c.byStatus.success}/${c.byStatus.timeout}/${c.byStatus.error}${c.skipped ? ` +${c.skipped} skipped` : ''}`;
-    return withHidden([a, c.n, st, pct(c.successRate), pct(c.checkPassRate), pct(c.askedUserRate), ...rubricCells(report, c), pairCell(c), `${f(c.credits.perSuccessfulRun)}<br>${costNote(c)}`], c, arms, report, scope);
+    return withHidden([a, c.n, st, pct(c.successRate), pct(c.checkPassRate), pct(c.askedUserRate), ...rubricCells(report, c), ...lengthCells(report, c), pairCell(c), `${f(c.credits.perSuccessfulRun)}<br>${costNote(c)}`], c, arms, report, scope);
   });
   const eff = arms.map((a) => {
     const c = report.arms[a][scope];
@@ -157,7 +165,7 @@ function scopeSection(report, scope) {
   });
   return [
     `### ${scope}`,
-    table(qHead(['arm', 'n', 'ok/timeout/error', 'success', 'pass', 'asked user', ...rubricHeads(report), `win/tie/loss vs ${report.baseline}`, 'credits per successful run'], report, arms, scope), quality),
+    table(qHead(['arm', 'n', 'ok/timeout/error', 'success', 'pass', 'asked user', ...rubricHeads(report), ...lengthHeads(report), `win/tie/loss vs ${report.baseline}`, 'credits per successful run'], report, arms, scope), quality),
     '',
     table(['arm', 'clean passes in medians', 'credits', 'modelCalls', 'toolCalls', 'subagentCalls', 'wallClock s', 'estTokens (estimate)'], eff),
     ...[contaminationSection(report, scope, arms)].filter(Boolean).flatMap((x) => ['', x]),
@@ -170,7 +178,7 @@ function scopeSectionOpencode(report, scope) {
   const quality = arms.map((a) => {
     const c = report.arms[a][scope];
     const st = `${c.byStatus.success}/${c.byStatus.timeout}/${c.byStatus.error}${c.skipped ? ` +${c.skipped} skipped` : ''}`;
-    return withHidden([a, c.n, st, pct(c.successRate), pct(c.checkPassRate), pct(c.askedUserRate), ...rubricCells(report, c), pairCell(c), `${f(c.cost.perSuccessfulRun, 3)}<br>${costNote(c)}`], c, arms, report, scope);
+    return withHidden([a, c.n, st, pct(c.successRate), pct(c.checkPassRate), pct(c.askedUserRate), ...rubricCells(report, c), ...lengthCells(report, c), pairCell(c), `${f(c.cost.perSuccessfulRun, 3)}<br>${costNote(c)}`], c, arms, report, scope);
   });
   const eff = arms.map((a) => {
     const c = report.arms[a][scope];
@@ -179,7 +187,7 @@ function scopeSectionOpencode(report, scope) {
   });
   return [
     `### ${scope}`,
-    table(qHead(['arm', 'n', 'ok/timeout/error', 'success', 'pass', 'asked user', ...rubricHeads(report), `win/tie/loss vs ${report.baseline}`, 'USD per successful run'], report, arms, scope), quality),
+    table(qHead(['arm', 'n', 'ok/timeout/error', 'success', 'pass', 'asked user', ...rubricHeads(report), ...lengthHeads(report), `win/tie/loss vs ${report.baseline}`, 'USD per successful run'], report, arms, scope), quality),
     '',
     table(['arm', 'clean passes in medians', 'USD (list price)', 'tokens (input + output + cache read + cache write)', 'modelCalls', 'toolCalls', 'subagentCalls', 'wallClock s'], eff),
     ...[contaminationSection(report, scope, arms)].filter(Boolean).flatMap((x) => ['', x]),

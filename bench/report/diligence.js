@@ -12,6 +12,7 @@ const { qualityOfRun, DEFAULT_WEIGHTS } = require('./scores.js');
 const { checksRevision } = require('../runner/lib/recheck.js');
 const { prefixIdentity } = require('./aa-identity.js');
 const { viewJudgments } = require('../judge/views.js');
+const { LENGTH_RATIO_WARN, lengthOutliers, describeOutliers } = require('./length.js');
 
 const THRESHOLDS = {
   replicatesPass: 3, replicatesFail: 2,
@@ -198,6 +199,8 @@ function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, we
     provenance: provenanceOf(run, cfgs),
     taskValidation: cfg.taskValidation && typeof cfg.taskValidation.ok === 'boolean' ? cfg.taskValidation : null,
     hasDifferentModels: new Set(cfgs.map((c) => c.model).filter(Boolean)).size > 1,
+    // Only a study that follows the rubric policy carries length figures, so an older report keeps the facts it always had.
+    ...(report?.rubricPolicy ? { length: { reference: baseline, outliers: lengthOutliers(Object.fromEntries(Object.entries(report.arms).filter(([, scopes]) => scopes.overall).map(([arm, scopes]) => [arm, scopes.overall])), baseline) } } : {}),
   };
 }
 
@@ -305,6 +308,11 @@ function evaluate(f, t = THRESHOLDS) {
     add(C('drift', 'Same-day drift (A/A spread vs delta)', false, okCost && okQ && okDay ? 'PASS' : 'WARN',
       `A/A cost spread ${a.costSpread === null ? 'n/a' : pct(a.costSpread)}, quality spread ${a.qualitySpread === null ? 'n/a' : `${a.qualitySpread.toFixed(1)} pts`}; largest delta vs base ${a.largestDelta.arms ? `${pct(a.largestDelta.cost)} cost, ${a.largestDelta.quality.toFixed(1)} pts` : 'n/a'}; A/A runs span ${a.spanHours === null ? 'n/a' : `${a.spanHours.toFixed(1)} h`}`,
       `cost spread <= ${pct(t.aaCostRel)}, quality spread <= ${t.aaQualityPts} points, runs within ${t.sameDayHours} h`));
+  }
+
+  // Present only when an arm is far from the baseline arm: a PASS row would add a line to every stamped report.
+  if (f.length?.outliers.length) {
+    add(C('length', 'Output length vs the baseline arm', false, 'WARN', describeOutliers(f.length.outliers, f.length.reference), `mean final text characters and mean artifact bytes within ${LENGTH_RATIO_WARN}x of ${f.length.reference}`));
   }
 
   const pv = f.provenance;

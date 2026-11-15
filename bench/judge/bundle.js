@@ -151,4 +151,4 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals 
   return { text, fired, meta, changed: changed.map((f) => f.rel), deleted, files };
 }
 
-module.exports = { buildBundle, finalTextOf };
+module.exports = { buildBundle, finalTextOf, walk };

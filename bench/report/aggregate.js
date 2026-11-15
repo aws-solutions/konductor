@@ -7,6 +7,7 @@ const { rubricScore } = require('../judge/score.js');
 const { taskRevision } = require('../judge/revision.js');
 const { MIN_RECALL, fetchUnchecked } = require('../runner/lib/contamination.js');
 const { RUBRIC_POLICY, exclusionClassOfRun, reasonLabel } = require('../judge/exclusion.js');
+const { lengthOf, summarizeLength } = require('./length.js');
 
 const CLASS_ORDER = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'complex', 'real', 'autonomy'];
 const MIN_REPLICATES = 3;
@@ -165,7 +166,7 @@ function integrityExcluded(executed, notJudged, judges, rubricIdx) {
   return executed.filter((e) => exclusionClassOfRun(reasons.get(keyOf(e)), e.result) === 'integrity' && !judges.some((j) => typeof rubricIdx.get(`${j}|${keyOf(e)}`)?.score === 'number'));
 }
 
-function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagreeScore, notJudged = [], stamped = false, basis = BASIS['kiro-cli'], rawScoreOf = (rec) => rec.scoreRaw ?? rec.score, noQuestionTasks = new Set() }) {
+function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagreeScore, notJudged = [], stamped = false, lengthByKey = null, basis = BASIS['kiro-cli'], rawScoreOf = (rec) => rec.scoreRaw ?? rec.score, noQuestionTasks = new Set() }) {
   const charged = basis.charged;
   const executed = entries.filter((e) => e.result.status !== 'budget_skipped');
   const n = executed.length;
@@ -213,6 +214,7 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
 
   let rubric = null;
   let rubricPolicyCell = null;
+  const lengthPoints = [];
   const byKey = new Map(executed.map((e) => [keyOf(e), e]));
   const flags = [];
   if (judges.length) {
@@ -236,7 +238,11 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
           gotRaw.push(raw); rawByJudge[j].push(raw);
         }
       }
-      if (got.length) { perRun.push(mean(got)); perRunRaw.push(mean(gotRaw)); }
+      if (got.length) {
+        perRun.push(mean(got)); perRunRaw.push(mean(gotRaw));
+        const bytes = lengthByKey?.get(keyOf(e))?.artifactBytes;
+        if (typeof bytes === 'number') lengthPoints.push({ task: e.taskId, x: bytes, y: mean(got) });
+      }
       if (got.length > 1) diffs.push(Math.max(...got) - Math.min(...got));
     }
     for (const j of judges) {
@@ -256,6 +262,7 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
       const all = [...perRun, ...zeros];
       series.rubricScore = all;
       series.rubricScoreJudged = perRun;
+      series.lengthPoints = lengthPoints;
       rubricPolicyCell = {
         rubricAll: { n: all.length, mean: avg(all), meanRaw: avg([...perRunRaw, ...zeros]) },
         rubricJudged: { n: perRun.length, mean: avg(perRun), meanRaw: avg(perRunRaw) },
@@ -317,6 +324,7 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
   if (autonomy) cell.autonomy = autonomy;
   if (basis.unit === 'credits') cell.cost = cell.credits;
   if (rubricPolicyCell) Object.assign(cell, rubricPolicyCell);
+  if (stamped && lengthByKey) cell.length = summarizeLength(executed.map((e) => lengthByKey.get(keyOf(e))).filter(Boolean));
   return { cell, series };
 }
 
@@ -373,6 +381,8 @@ function buildReport({ run, tasks, baseline = defaultBaseline(run), disagreeScor
   };
   if (stamped) report.rubricPolicy = RUBRIC_POLICY;
   const series = {};
+  // Output length is read from the run directories only for a stamped study, so an older report is not touched.
+  const lengthByKey = stamped ? new Map(run.runs.filter((r) => r.result.status !== 'budget_skipped').map((r) => [keyOf(r), lengthOf(r, tasks.get(r.taskId))])) : null;
   for (const arm of arms) {
     report.arms[arm] = {};
     series[arm] = {};
@@ -380,7 +390,7 @@ function buildReport({ run, tasks, baseline = defaultBaseline(run), disagreeScor
       const entries = run.runs.filter((r) => r.armId === arm && (scope === 'overall' || classOf(r.taskId) === scope));
       if (!entries.length) continue;
       const pairRecords = j ? j.pairwise.filter((r) => !isStale(r) && r.armId === arm && (scope === 'overall' || classOf(r.taskId) === scope)) : null;
-      const built = buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline: arm === baseline, disagreeScore, basis, rawScoreOf, noQuestionTasks, stamped, notJudged: (j?.notJudged || []).filter((x) => x.armId === arm && (scope === 'overall' || classOf(x.taskId) === scope)) });
+      const built = buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline: arm === baseline, disagreeScore, basis, rawScoreOf, noQuestionTasks, stamped, lengthByKey, notJudged: (j?.notJudged || []).filter((x) => x.armId === arm && (scope === 'overall' || classOf(x.taskId) === scope)) });
       report.arms[arm][scope] = built.cell;
       series[arm][scope] = built.series;
     }

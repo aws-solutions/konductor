@@ -9,6 +9,7 @@ const { buildReport, outcomeOf, OUTCOMES, CLASS_ORDER, BASIS } = require('./aggr
 const { MIN_RECALL, fetchUnchecked } = require('../runner/lib/contamination.js');
 const { requireTasks } = require('../runner/lib/tasks.js');
 const { enrichOrch, phaseTotals } = require('./orch.js');
+const { correlationLine } = require('./length.js');
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 // Autonomy figures exist only on runs of a task with an autonomy block; the others report null and drop out of the mean.
@@ -184,7 +185,11 @@ function contrastRun({ run, tasks, base, heads, minRel = 0.15, rule = 'both', by
       if (!baseEntries.length && !headEntries.length) continue;
       const rubric = (arm) => series[arm]?.[scope]?.rubricScore ?? [];
       const cell = buildCell({ spec: specs, baseEntries, headEntries, base: baseArm, head, basis, rubric, opts });
-      if (built.rubricPolicy) cell.rubricPolicy = built.rubricPolicy;
+      if (built.rubricPolicy) {
+        cell.rubricPolicy = built.rubricPolicy;
+        const line = correlationLine([...(series[baseArm]?.[scope]?.lengthPoints ?? []), ...(series[head]?.[scope]?.lengthPoints ?? [])]);
+        if (line) cell.lengthCorrelation = line;
+      }
       cells[head][scope] = cell;
       const n = Math.min(cell.outcomes.base.n, cell.outcomes.head.n);
       if (n < MIN_RUNS_FOR_CI) anecdotal.push({ head, scope, n, kind: 'runs' });
@@ -267,6 +272,7 @@ function renderContrast(c) {
     for (const [scope, cell] of Object.entries(c.cells[head])) {
       out.push(`### ${scope}`, '', tableFor(cell), '');
       out.push(outcomeLine(c.base, cell.outcomes.base), outcomeLine(head, cell.outcomes.head), '');
+      if (cell.lengthCorrelation) out.push(cell.lengthCorrelation, '');
       for (const n of cell.notes) out.push(`Note: ${n}`);
       if (cell.notes.length) out.push('');
       for (const a of c.anecdotal.filter((x) => x.head === head && x.scope === scope)) {

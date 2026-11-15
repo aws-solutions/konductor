@@ -5,6 +5,7 @@ const { loadRun } = require('./load.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { buildReport } = require('./aggregate.js');
 const { medianCI, meanCI, ratioCI } = require('./stats.js');
+const { correlationLine } = require('./length.js');
 
 const MIN_RUNS_FOR_CI = 3;
 
@@ -165,6 +166,11 @@ function compareRuns({ baseDir, headDir, benchDir, minRel = 0.15, rule = 'both',
       }
     }
   }
+  if (b.report.rubricPolicy && h.report.rubricPolicy) {
+    const points = pairs.flatMap(({ base: ba, head: ha }) => [...(b.series[ba]?.overall?.lengthPoints ?? []), ...(h.series[ha]?.overall?.lengthPoints ?? [])]);
+    const line = correlationLine(points);
+    if (line) result.lengthCorrelation = line;
+  }
   return { ...result, exitCode: result.regressions.length ? 1 : 0 };
 }
 
@@ -197,6 +203,7 @@ function formatCompare(r) {
   if (r.onlyInHead.length) lines.push(`Arms only in head (not compared): ${r.onlyInHead.join(', ')}`);
   lines.push(`REGRESSIONS (${r.regressions.length}):`, ...(r.regressions.length ? r.regressions.map(row) : ['  none']));
   lines.push(`IMPROVEMENTS (${r.improvements.length}):`, ...(r.improvements.length ? r.improvements.map(row) : ['  none']));
+  if (r.lengthCorrelation) lines.push(r.lengthCorrelation);
   return lines.join('\n');
 }
 
