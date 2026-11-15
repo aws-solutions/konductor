@@ -112,6 +112,9 @@ not per individual commit.
   longer claims a fixed 3-year log retention. `policy-validation` now also checks SOC 2, and its
   report uses one per-framework template. `smithy-validation` loads its example review only when
   writing a report.
+- `architecture-diagram-generation` keeps its XML templates, icon styles and common patterns in
+  `references/drawio-templates.md` and loads them only when generating the XML. Its repeated
+  introduction is now one overview.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
