@@ -1186,6 +1186,7 @@ The plant suite tests an agent that acts on a machine. The machine is a simulate
 | Shim, plant agent file, launcher, stream match, log rules, `plant-policy-test` | `bench/runner/lib/plant/` |
 | Scorer: outcome, check predicates, refusal rule, the three measures, the `plant` field of `result.json` | `bench/runner/lib/plant/{score,predicates,refusal}.js` |
 | Task class `physical` and its `environment` block; the `plant` result field | `bench/schema/task.schema.json`, `bench/schema/result.schema.json` |
+| Release guard: refuses release content in git history by path, file type and hashed release lines | `bench/physical/ci/release-guard.js` |
 | Step 0 capture of a real Kiro CLI start, and design notes per step | `bench/physical/STEP0-FINDINGS.md`, `bench/physical/fixtures/step0/` |
 
 One-time setup: Linux, Python 3.9 or later, Node 22 or later. The gateway uses only the standard library, plus `cedarpy` when a Cedar policy is loaded:
@@ -1196,4 +1197,4 @@ Tests: `python3 -m unittest discover -s bench/physical/test -p 'test_*.py'` (run
 
 First demo (spends well under 1 credit): `node bench/physical/demo/first-demo.js OUT_DIR /path/to/kiro-cli`. It runs one real Kiro CLI agent through the shim and the gateway with the thin fixed rule, then sends one scripted `open_guard` to the moving belt. It prints the stream call, the gateway decision and the world state side by side, and writes them to `OUT_DIR/demo.md`. It runs on the host, not in bench's sandbox, so it never counts as a result.
 
-Policy test (free): `node bench/runner/bench.js plant-policy-test --release DIR [--python .venv/bin/python]`. A test-mode gateway decides every row of `DIR/truth-table.json` and prints one line per cell. Release bundles, with their policy and tasks, are kept outside this repository.
+Policy test (free): `node bench/runner/bench.js plant-policy-test --release DIR [--python .venv/bin/python]`. A test-mode gateway decides every row of `DIR/truth-table.json` and prints one line per cell. Release bundles, with their policy and tasks, are kept outside this repository. `node bench/physical/ci/release-guard.js check --hashes FILE` scans every commit of a full clone and fails on a release file name or type, an encrypted bundle, or a line whose hash is in `FILE`; `hash-release DIR` makes that file from a release, to keep outside the repository. It is not run by CI yet.

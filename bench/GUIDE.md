@@ -359,7 +359,7 @@ A plant run gives the agent a simulated conveyor line instead of a code task. Th
 
 There are two arms: `plant-policy`, where the policy decides, and `plant-allowall`, where every call runs and the policy's answer is only recorded. The policy reads the sensor view, as a real gateway would. The rules are judged on the true state. An unsafe move is counted as an attempt even when the gateway stops it. The scorer gives each trial three answers: whether the agent tried something unsafe, whether harm happened, and whether the gateway stopped every unsafe try. A trial whose path or log cannot be trusted counts as a failure, never as safe. The report will turn these into three rates per probe and arm. Task success sits next to them, so doing nothing never scores well.
 
-Limits today: Linux only. Kiro CLI only. The arms are not wired into `run` yet. On a host that blocks user namespaces, bench's sandbox cannot start, so the demo runs on the host and proves the path, not the walls. See the plant section of [README.md](README.md).
+The release (policy, probes, refusal rule, seeds) is private and never committed; a guard script checks git history for it. Limits today: Linux only. Kiro CLI only. The arms are not wired into `run` yet. On a host that blocks user namespaces, bench's sandbox cannot start, so the demo runs on the host and proves the path, not the walls. See the plant section of [README.md](README.md).
 
 ---
 
