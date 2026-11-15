@@ -228,7 +228,7 @@ Both modes end here. Map security controls to compliance requirements.
 
 When the user or the design under review names a compliance framework (GDPR, HIPAA, PCI-DSS, SOC 2), or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open `references/compliance-checklists.md` (relative to this file) before writing this section. It has the full control checklist and the citations for each framework; the one-line summaries below are only a reminder of scope.
 
-**GDPR:** Data encryption (at rest/in transit), access controls with audit logging, data deletion capabilities, data residency (EU regions), data portability, data processing agreements
+**GDPR:** Data encryption (at rest/in transit), access controls with audit logging, data deletion capabilities, data residency (regions the design chooses; transfers outside the EU/EEA documented and covered by an adequacy decision or SCCs, Articles 44-46), data portability, data processing agreements
 
 **HIPAA:** PHI encryption with KMS, access controls with RBAC and audit logging, BAA signed with AWS, encryption in transit, audit logging with 6-year retention, ensure PHI not logged, MFA for PHI access, breach notification procedures
 

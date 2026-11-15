@@ -15,6 +15,14 @@ pub(crate) fn is_specialist(agent_name: &str) -> bool {
     !is_orchestrator(agent_name)
 }
 
+/// Only `konductor` keeps the v2 engine's spawn tools. The mux and cmux
+/// orchestrators dispatch through shell panes and never call `subagent`,
+/// so the v2 transformer gives them the same explicit built-in list as a
+/// specialist.
+pub(crate) fn holds_kiro_v2_spawn_tools(agent_name: &str) -> bool {
+    agent_name == "konductor"
+}
+
 /// Kiro's permission capability for spawning; also the v3 tool tag.
 pub(crate) const SUBAGENT_CAPABILITY: &str = "subagent";
 
@@ -30,6 +38,19 @@ pub(crate) fn is_kiro_spawn_tool(id_or_tag: &str) -> bool {
         || id_or_tag
             .strip_prefix(SUBAGENT_CAPABILITY)
             .is_some_and(|rest| rest.starts_with('/'))
+}
+
+/// True for `{"availableAgents": [], "trustedAgents": []}`, the list every
+/// specialist carries. It is not a grant, and it is not a block on Kiro CLI
+/// v2 either: the v2 `subagent` tool stays in `@builtin`; #149 removes the
+/// tool. A missing list or any named agent is a grant.
+pub(crate) fn is_empty_subagent_target_list(settings: &serde_json::Value) -> bool {
+    ["availableAgents", "trustedAgents"].iter().all(|key| {
+        settings
+            .get(key)
+            .and_then(serde_json::Value::as_array)
+            .is_some_and(Vec::is_empty)
+    })
 }
 
 /// v3 built-ins a specialist must not hold even under `--trust-all-tools`.
@@ -69,6 +90,14 @@ mod tests {
     }
 
     #[test]
+    fn only_konductor_holds_kiro_v2_spawn_tools() {
+        assert!(holds_kiro_v2_spawn_tools("konductor"));
+        assert!(!holds_kiro_v2_spawn_tools("konductor-mux-orchestrator"));
+        assert!(!holds_kiro_v2_spawn_tools("konductor-cmux-orchestrator"));
+        assert!(!holds_kiro_v2_spawn_tools("k-architect"));
+    }
+
+    #[test]
     fn is_kiro_spawn_tool_matches_ids_and_scoped_tags() {
         for id in KIRO_SPAWN_TOOL_IDS {
             assert!(is_kiro_spawn_tool(id), "{id}");
@@ -87,6 +116,21 @@ mod tests {
             "subagent_x",
         ] {
             assert!(!is_kiro_spawn_tool(id), "{id}");
+        }
+    }
+
+    #[test]
+    fn is_empty_subagent_target_list_needs_both_lists_empty() {
+        assert!(is_empty_subagent_target_list(&serde_json::json!({
+            "availableAgents": [], "trustedAgents": []
+        })));
+        for settings in [
+            serde_json::json!({}),
+            serde_json::json!({"availableAgents": []}),
+            serde_json::json!({"availableAgents": ["k-developer"], "trustedAgents": []}),
+            serde_json::json!({"availableAgents": [], "trustedAgents": ["k-developer"]}),
+        ] {
+            assert!(!is_empty_subagent_target_list(&settings), "{settings}");
         }
     }
 
