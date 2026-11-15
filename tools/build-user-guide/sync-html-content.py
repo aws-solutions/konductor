@@ -69,6 +69,8 @@ EDITS = [
      "Registers the 11 agents, 81 skills, 19 SOPs, the core rules, and the orchestrator routing rules"),
     ("reference count row", '{ k: "Count", v: "75 skills · 13 SOPs" }',
      '{ k: "Count", v: "81 skills · 19 SOPs" }'),
+    ("faq: skills row", '{ k: "Skills — 75", v: "On-demand knowledge modules" }',
+     '{ k: "Skills — 81", v: "On-demand knowledge modules" }'),
     ("concepts SOP blurb", "<div>13 SOPs that encode multi-step procedures",
      "<div>19 SOPs that encode multi-step procedures"),
     ("SOP count (concepts)",
@@ -259,6 +261,10 @@ EDITS = [
     ("reference roster note",
      "Every agent runs claude-sonnet-5.5. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",
      "Every agent runs claude-sonnet-5.5 on Kiro CLI and claude-sonnet-5-5 on Claude Code. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",),
+    # ---- git-merge targets the default branch and defers to PRs -------------
+    ("skills catalog: git-merge row",
+     '"k":"git-merge","v":"Branch merges — feature into mainline, dev into mainline, release merges. — REACH FOR IT: Merging anything.',
+     '"k":"git-merge","v":"Branch merges into the default branch, release merges, merge conflicts. — REACH FOR IT: Merging locally; use code-review when merges go through PRs.'),
     # ---- humanize-writing is declared by every agent, preloaded by four -----
     ("skills catalog: humanize-writing row",
      '"k":"humanize-writing","v":"Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. — REACH FOR IT: Writing or editing prose, or a draft reads machine-written. · DECLARED BY: architect, developer, product-manager, tpm preload it; every other agent loads it on demand"',
