@@ -247,6 +247,21 @@ not per individual commit.
 
 ### Fixed
 
+- Design and planning skills no longer contradict themselves or point at sections that don't
+  exist. The design review skills and their SOPs call the lowest finding tier SUGGESTION, as the
+  other checkers do. `design-evaluation` lists missing artifacts before it scores and its gate
+  items map to its 10 dimensions, which both design review SOPs and the user guide now use.
+  Eight of them are scored. The high-level assessment and the recommendations are unscored
+  report sections, so a SOP's confidence score averages only the eight.
+  Missing artifacts are listed apart from findings and carry no severity, and the PE review and
+  design-doc SOPs evaluate a single document without asking for the rest of a package, so a
+  one-doc review can reach PE-READY.
+  `plan-review` has a SHIP IT template and star rules that don't overlap, and
+  `trade-off-evaluator` writes to the caller's output directory or reports inline. The
+  `external-research` AWS example states a checked fact instead of a wrong one.
+  `program-decision-docs` treats fewer than 2 options, counting do nothing, as CRITICAL.
+  `non-functional-requirements` asks for targets per operation type. `design-evaluation` does
+  not prompt when a SOP runs it. `trade-off-evaluator` writes no file standalone unless asked.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent

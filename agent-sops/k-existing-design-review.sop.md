@@ -38,12 +38,12 @@ Scan the design directory and identify which artifacts are present.
   - `*.drawio.xml` or `architecture-diagram*` — architecture diagrams
 - You MUST report which artifacts were found and which are missing
 - You SHOULD warn if critical artifacts (system design, threat model) are missing
-- You MUST NOT proceed to evaluation if system-design.md is missing
+- You MUST NOT proceed to evaluation if system-design.md is missing. This differs from `design-evaluation`, which lists missing artifacts and scores what is present, because every dimension this SOP scores is judged against the system design
 
 **Expected Output:**
 
 - List of found artifacts with file paths
-- List of missing artifacts with severity (critical/optional)
+- List of missing artifacts (required/optional)
 
 ### 2. Confirm Scope with User
 
@@ -77,23 +77,13 @@ Apply the design-evaluation skill to evaluate all artifacts across 10 dimensions
 **Constraints:**
 
 - You MUST use the `design-evaluation` skill for this step
-- You MUST evaluate across all 10 dimensions:
-  1. Template adherence and completeness
-  2. Scalability and performance
-  3. Security and threat coverage
-  4. Maintainability and code quality
-  5. Resilience and fault tolerance
-  6. Testability
-  7. Operational readiness
-  8. Cost optimization
-  9. API design quality
-  10. Data model quality
-- You MUST assign a numeric score of 1–5 for each dimension; a dimension scoring below 3 MUST be flagged for revision
+- You MUST evaluate all 10 dimensions defined in `design-evaluation` Step 1
+- You MUST assign a numeric score of 1-5 for each of the 8 scored dimensions; a dimension scoring below 3 MUST be flagged for revision. High-level assessment (#2) and actionable recommendations (#10) are unscored report sections
 - You MUST identify CRITICAL issues (block implementation) vs IMPORTANT issues (should fix) vs SUGGESTIONS
 
 **Expected Output:**
 
-- Scores for all 10 dimensions
+- Scores for the 8 scored dimensions, plus the high-level assessment and actionable recommendations
 - List of CRITICAL, IMPORTANT, and SUGGESTION findings
 
 ### 5. Generate Review Report
@@ -113,8 +103,14 @@ Write the consolidated review report to the output file.
   ## Executive Summary
   [2-3 sentences: overall readiness, critical blockers]
 
+  ## Not Provided
+  [Missing artifacts; not findings, no severity]
+
+  ## High-Level Assessment
+  [Strengths, weaknesses, overall soundness; unscored]
+
   ## Dimension Scores
-  [Table: dimension | score | key finding]
+  [Table of the 8 scored dimensions: dimension | score | key finding]
 
   ## Critical Issues (Must Fix Before Implementation)
   [Numbered list with specific file/section references]
@@ -124,6 +120,9 @@ Write the consolidated review report to the output file.
 
   ## Suggestions
   [Numbered list]
+
+  ## Actionable Recommendations
+  [Concrete steps; unscored]
 
   ## Recommendation
   [READY FOR IMPLEMENTATION / NOT READY — reason]
@@ -184,7 +183,7 @@ Artifacts found:
 ✅ smithy-model/
 ✅ dynamodb-table-design.md
 
-Proceeding with review. Note: the Security and threat coverage dimension will be limited.
+Proceeding with review. Note: the Security dimension is capped at 3 without a threat model.
 Consider generating a threat model first using the k-architect agent with the threat-modeling skill.
 ```
 
