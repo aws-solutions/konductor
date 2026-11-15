@@ -313,7 +313,7 @@ not per individual commit.
   - `cost-estimation` prices through Price List API calls on the AWS MCP server, guided by
     `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server. With a
     shell, it prices DynamoDB with the `amazon-dynamodb` cost calculator, fetched from the
-    server and run locally. When the server is available it requires a Price List lookup for
+    server, shown to the user and run locally only after the user confirms. When the server is available it requires a Price List lookup for
     each line item and labels any figure it did not look up "recalled, unverified".
   - `policy-validation` checks the API Gateway `SecurityPolicy` property, treats the KMS key
     rotation period as configurable, uses the Security Hub CSPM name, and can run IAM Access
