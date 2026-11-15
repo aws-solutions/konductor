@@ -1282,6 +1282,8 @@ fn installed_kiro_v2_specialists_get_no_spawn_tool() {
     let agents_dir = repo_root.join("agents");
     std::fs::create_dir_all(&agents_dir).unwrap();
     seed_spawning_agent_spec(&agents_dir, "k-example");
+    seed_spawning_agent_spec(&agents_dir, "konductor-mux-orchestrator");
+    seed_spawning_agent_spec(&agents_dir, "konductor-cmux-orchestrator");
     seed_spawning_agent_spec(&agents_dir, "konductor");
     seed_skill_source(&repo_root);
 
@@ -1303,12 +1305,23 @@ fn installed_kiro_v2_specialists_get_no_spawn_tool() {
         let path = target_dir.join(format!(".kiro/agents/{name}.json"));
         serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap()
     };
-    let specialist = read_kiro("k-example");
-    let tools = specialist["tools"].as_array().unwrap();
-    assert!(!tools.contains(&serde_json::json!("@builtin")));
-    assert!(!tools.contains(&serde_json::json!("subagent")));
-    assert!(tools.contains(&serde_json::json!("fs_read")));
-    assert!(specialist["toolsSettings"].get("subagent").is_none());
+    // The mux and cmux orchestrators dispatch through shell panes, so on
+    // v2 they lose `subagent` the same way a specialist does.
+    for name in [
+        "k-example",
+        "konductor-mux-orchestrator",
+        "konductor-cmux-orchestrator",
+    ] {
+        let stripped = read_kiro(name);
+        let tools = stripped["tools"].as_array().unwrap();
+        assert!(!tools.contains(&serde_json::json!("@builtin")), "{name}");
+        assert!(!tools.contains(&serde_json::json!("subagent")), "{name}");
+        assert!(tools.contains(&serde_json::json!("fs_read")), "{name}");
+        assert!(
+            stripped["toolsSettings"].get("subagent").is_none(),
+            "{name}"
+        );
+    }
 
     let orchestrator = read_kiro("konductor");
     assert_eq!(

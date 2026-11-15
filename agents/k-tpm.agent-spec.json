@@ -43,6 +43,12 @@
         "fs_read",
         "fs_write"
       ],
+      "toolsSettings": {
+        "subagent": {
+          "availableAgents": [],
+          "trustedAgents": []
+        }
+      },
       "hooks": {},
       "mcpServers": {},
       "resources": [

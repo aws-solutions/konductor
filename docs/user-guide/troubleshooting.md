@@ -370,6 +370,11 @@ konductor doctor
   `.konductor/config.yml` value is ignored; `doctor` reports it.
 - Installed as the Claude Code plugin? The plugin does not wire the hook, so coordinator mode is not available there. `konductor doctor` and `konductor update` apply to CLI installs only.
 - A missing hook or rules file: run `konductor update`.
+- `Orchestration: auto (fallback: the install at <path> owns the konductor session but its session-start hook
+  is not wired ...)`: a nearer Konductor install owns the session and its own hook is missing for this
+  harness. Run `konductor update` in the path the line names. `konductor doctor` under `coordinator` runs the
+  same persona load as the hook, so it reports an over-budget digest as `failed` and an install root
+  outside your home that is not a git checkout root as `warn`.
 - `doctor` passes but the line still does not arrive: check that the session runs the `konductor`
   agent of the install `doctor` checked, then check the harness. Kiro CLI v3 and Claude Code
   installed with `konductor install` are supported. Kiro CLI v2 is not; its hook is wired but untested, so use v3 or Claude Code for

@@ -23,6 +23,12 @@
       "welcomeMessage": "I interpret media that raw-text tools can't read — PDFs, images, and diagrams. Give me a file and tell me what to extract or describe.",
       "tools": ["@builtin"],
       "allowedTools": ["fs_read", "web_fetch"],
+      "toolsSettings": {
+        "subagent": {
+          "availableAgents": [],
+          "trustedAgents": []
+        }
+      },
       "hooks": {},
       "mcpServers": {},
       "resources": [

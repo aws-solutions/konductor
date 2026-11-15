@@ -41,18 +41,42 @@ def test_bundle_states_any_runtime():
     assert "cannot run the adversarial review in any runtime" in _read("docs/site/user-guide.html")
 
 
-def test_docs_say_konductor_declares_subagent_not_has_it():
-    """On Kiro CLI v2 the mux orchestrators keep `@builtin`, which carries `subagent`,
-    so only `konductor` declares the tool; "has" would claim more than the config does."""
+def test_docs_say_only_konductor_holds_subagent_on_kiro_v2():
+    """Synth gives the mux orchestrators the specialists' explicit v2 built-in list, so
+    `konductor` is the one agent whose Kiro CLI v2 config carries `subagent`; the earlier
+    "declares ... reach it only through `@builtin`" hedge is gone with the `@builtin`."""
     for rel in ("docs/user-guide/agents.md", "docs/user-guide/use-cases/review-code-and-tests.md"):
-        text = _read(rel)
-        assert "declares `subagent`" in text, rel
-        assert "reach it only through `@builtin`" in text, rel
+        text = _flat(_read(rel))
+        assert "holds `subagent` on Kiro CLI v2" in text, rel
+        assert "declares `subagent`" not in text, rel
+        assert "reach it only through `@builtin`" not in text, rel
         assert "has `subagent`" not in text, rel
     for rel in ("docs/site/user-guide.html", "docs/index.html"):
-        page = re.sub(r"<code[^>]*>|</code>", "", _read(rel))
-        assert "Only konductor declares subagent" in page, rel
+        # The bundle stores the page JSON-encoded, so `</code>` is `<\u002Fcode>`.
+        page = re.sub(r"<code[^>]*>|<(?:/|\\u002F)code>", "", _read(rel))
+        assert "Only konductor holds subagent on Kiro CLI v2" in page, rel
+        assert "only konductor holds subagent on Kiro CLI v2; the mux orchestrators" in page, rel
+        assert "7 agents have subagent" not in page, rel
+        assert "Only konductor declares subagent" not in page, rel
         assert "only konductor does." not in page, rel
+
+
+def test_mux_rows_say_the_v2_list_matches_a_specialist():
+    """The mux rows scope their claim to v2: on Kiro CLI v3 synth leaves their `@builtin`
+    (and its `run_workflow`) in place, so the specialist row's unscoped "**nothing**" would
+    overclaim there."""
+    agents = _flat(_read("docs/user-guide/agents.md"))
+    cell = "no `subagent` tool (on v2, the same explicit built-in list as a specialist)"
+    for name in ("konductor-mux-orchestrator", "konductor-cmux-orchestrator"):
+        assert f"| `{name}` | {cell}" in agents, name
+        assert f"| `{name}` | **nothing**" not in agents, name
+    assert "| every `k-*` specialist | **nothing** | **nothing** |" in agents
+    assert "on Kiro CLI v2 synth replaces that `@builtin`" in agents
+    for rel in ("docs/site/user-guide.html", "docs/index.html"):
+        page = _read(rel)
+        assert "no subagent tool (on v2, the same explicit built-in list as a specialist)" in page, rel
+        assert "nothing: no subagent tool" not in page, rel
+        assert "synth replaces that @builtin with the same explicit built-in list" in page, rel
 
 
 def test_docs_name_the_checked_kiro_versions():

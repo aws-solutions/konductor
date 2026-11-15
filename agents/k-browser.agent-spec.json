@@ -53,7 +53,12 @@
         "@playwright-mcp/browser_press_key",
         "@playwright-mcp/browser_close"
       ],
-      "toolsSettings": {},
+      "toolsSettings": {
+        "subagent": {
+          "availableAgents": [],
+          "trustedAgents": []
+        }
+      },
       "hooks": {},
       "resources": [
         "file://AGENTS.md",
