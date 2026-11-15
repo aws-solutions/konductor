@@ -26,7 +26,7 @@ use super::path_safety::{
     reject_unsafe_sop_name,
 };
 use super::skill_index;
-use super::spawn_policy::{is_kiro_spawn_tool, is_specialist, SUBAGENT_CAPABILITY};
+use super::spawn_policy::{holds_kiro_v2_spawn_tools, is_kiro_spawn_tool, SUBAGENT_CAPABILITY};
 use super::staging::stage_content_type;
 use super::HarnessTransformer;
 
@@ -202,7 +202,7 @@ fn render_agent_file<'a>(
     let mut tools = kiro.tools.clone();
     let mut allowed_tools = kiro.allowed_tools.clone();
     let mut tools_settings = kiro.tools_settings.clone();
-    if is_specialist(name) {
+    if !holds_kiro_v2_spawn_tools(name) {
         let servers: Vec<&str> = kiro.mcp_servers.keys().map(String::as_str).collect();
         tools = strip_specialist_spawn_tools(&tools, &servers);
         allowed_tools.retain(|id| !is_kiro_spawn_tool(id));
@@ -237,8 +237,10 @@ fn render_agent_file<'a>(
 /// `shell`). v2 ignores `excludedTools`, and
 /// `toolsSettings.subagent.availableAgents` does not remove the tool (an
 /// empty list allows every agent; a non-matching list still lists
-/// `subagent`), so a specialist gets this explicit list in place of
-/// `@builtin`.
+/// `subagent`), so every agent except `konductor` gets this explicit list
+/// in place of `@builtin`. The name keeps "specialist" to match its sibling
+/// `SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH`, which the docs pin test reads
+/// by name.
 const SPECIALIST_BUILTIN_TOOLS: [&str; 13] = [
     "fs_read",
     "fs_write",
@@ -257,15 +259,15 @@ const SPECIALIST_BUILTIN_TOOLS: [&str; 13] = [
 
 /// kiro-cli versions whose v2 engine listed exactly `SPECIALIST_BUILTIN_TOOLS`
 /// plus `subagent` under `/tools`. Re-probe on a release that changes the
-/// built-ins; the docs quote this list (tests/test_spawn_docs_text.py).
-#[allow(dead_code)] // read by the docs pin test, not by synth
+/// built-ins; the docs quote this list (tests/test_spawn_docs_text.py) and
+/// the Kiro CLI v2 install summary prints it (`install::checked_kiro_versions_line`).
 pub(crate) const SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH: [&str; 2] = ["2.36.0", "3.0.0"];
 
 /// Drops every spawn-tool alias and expands `@builtin` to
 /// `SPECIALIST_BUILTIN_TOOLS`, keeping the other entries in order and
-/// each id once. `*` grants every tool, `subagent` included, so it
-/// expands to the same list plus `@<server>` for each of the spec's MCP
-/// servers.
+/// each id once, for every agent except `konductor`. `*` grants every
+/// tool, `subagent` included, so it expands to the same list plus
+/// `@<server>` for each of the spec's MCP servers.
 fn strip_specialist_spawn_tools(tools: &[String], mcp_servers: &[&str]) -> Vec<String> {
     let builtins = || SPECIALIST_BUILTIN_TOOLS.iter().map(|t| t.to_string());
     let mut stripped: Vec<String> = Vec::new();
@@ -745,7 +747,7 @@ mod tests {
             resources: vec!["file://AGENTS.md".to_string()],
             welcome_message: None,
         };
-        // An orchestrator: specialists lose `subagent` and `@builtin` here.
+        // `konductor`: every other agent loses `subagent` and `@builtin` here.
         let agent = agent_with_kiro("konductor", kiro);
         let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
         let file =
@@ -797,6 +799,56 @@ mod tests {
         assert_eq!(
             file.tools_settings,
             serde_json::json!({"shell": {"autoAllowReadonly": true}})
+        );
+    }
+
+    /// The mux and cmux orchestrators dispatch through shell panes, so on v2
+    /// they get the specialists' explicit built-in list: `@builtin` expands
+    /// without `subagent`, the other entries keep their order, and no
+    /// `toolsSettings.subagent` survives. `konductor` alone keeps both.
+    #[test]
+    fn render_agent_file_strips_subagent_from_the_mux_orchestrators_but_not_konductor() {
+        let kiro = || KiroCliConfig {
+            tools: vec![
+                "@builtin".to_string(),
+                "read".to_string(),
+                "shell".to_string(),
+                "todo".to_string(),
+            ],
+            allowed_tools: vec!["fs_read".to_string(), "shell".to_string()],
+            tools_settings: serde_json::json!({"subagent": {"trustedAgents": ["k-developer"]}}),
+            ..KiroCliConfig::default()
+        };
+        let mut expected: Vec<String> = SPECIALIST_BUILTIN_TOOLS
+            .iter()
+            .map(|t| t.to_string())
+            .collect();
+        expected.extend(["read", "shell", "todo"].map(str::to_string));
+
+        for name in ["konductor-mux-orchestrator", "konductor-cmux-orchestrator"] {
+            let agent = agent_with_kiro(name, kiro());
+            let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
+            let file =
+                render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new())
+                    .unwrap();
+            assert_eq!(file.tools, expected, "{name}");
+            assert!(!file.tools.iter().any(|t| t == "subagent"), "{name}");
+            assert_eq!(
+                file.allowed_tools,
+                &["fs_read".to_string(), "shell".to_string()],
+                "{name}"
+            );
+            assert!(file.tools_settings.get("subagent").is_none(), "{name}");
+        }
+
+        let agent = agent_with_kiro("konductor", kiro());
+        let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
+        let file =
+            render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
+        assert_eq!(file.tools, &["@builtin", "read", "shell", "todo"]);
+        assert_eq!(
+            file.tools_settings["subagent"]["trustedAgents"],
+            serde_json::json!(["k-developer"])
         );
     }
 

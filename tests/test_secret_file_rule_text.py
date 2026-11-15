@@ -29,6 +29,12 @@ def test_rule_12_is_one_line_with_the_credentials_file_carve_out():
     assert "never echo their values" in lines[0]
 
 
+def test_rule_12_takes_the_user_naming_directly_or_from_a_brief():
+    line = _rule_12_lines()[0]
+    assert "a specialist takes that from the user directly or from a brief that says the user named it" in line
+    assert "only from a brief" not in line
+
+
 def test_light_ui_testing_states_provenance_in_step_2_and_step_6_briefs():
     sop = _read("agent-sops/k-light-ui-testing.sop.md")
     assert sop.count(BRIEF_SENTENCE) == 2

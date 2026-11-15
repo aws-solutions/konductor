@@ -79,9 +79,30 @@ def test_note_routes_the_write_back_by_the_direct_work_rules():
 
 def test_note_sets_the_verdict_once_the_pass_is_complete():
     note = step_6()
+    assert "when the adversarial report's `Passes run:` line names no `MISSING` pass, replace this report's `Adversarial pass:` line" in note
     assert "when this report's `Verdict:` line reads `PENDING ADVERSARIAL PASS`, set it by the Step 7 rule" in note
     assert "`NEEDS FIXES` if the adversarial report lists any CRITICAL or IMPORTANT finding, otherwise `READY FOR CR`" in note
-    assert "is open, in this report or in a completed adversarial report" in step_7()
+    assert "is open, in this report or in the adversarial report, complete or incomplete" in step_7()
+
+
+def test_missing_pass_never_reads_ready_for_cr():
+    """An all-MISSING adversarial report has zero findings; without this guard the note
+    wrote READY FOR CR and k-full-sdlc step 8 recorded the feature APPROVED."""
+    incomplete = "`Adversarial pass: incomplete (<path>; <passes> MISSING)`"
+    note = step_6()
+    assert (
+        f"when it names a `MISSING` pass, write {incomplete} and set the verdict to `NEEDS FIXES` "
+        "if the adversarial report lists any CRITICAL or IMPORTANT finding, otherwise leave the verdict as it stands"
+    ) in note
+    assert "(`NEEDS FIXES` stays, `PENDING ADVERSARIAL PASS` stays)" in note
+    assert "incomplete (<path>; <passes> MISSING)" in step_7()
+    assert "`PENDING ADVERSARIAL PASS` while it has not run or is incomplete" in step_7()
+    assert "`READY FOR CR` never appears while the pass has not run or a pass is MISSING" in step_7()
+    sdlc = (Path(__file__).resolve().parent.parent / "agent-sops" / "k-full-sdlc.sop.md").read_text()
+    assert (
+        "an `Adversarial pass: incomplete` line keeps it PENDING unless an open CRITICAL or IMPORTANT "
+        "finding set `NEEDS FIXES`"
+    ) in sdlc
 
 
 def test_frontend_only_skips_with_its_own_state():

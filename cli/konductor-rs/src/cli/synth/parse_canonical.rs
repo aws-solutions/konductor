@@ -19,7 +19,8 @@ use crate::cli::synth::model::{AuxiliaryFile, CanonicalModel, ContextDef, SkillD
 use crate::cli::synth::parser::{self, ParseError};
 use crate::cli::synth::path_safety::case_insensitive_fold_key;
 use crate::cli::synth::spawn_policy::{
-    is_claude_spawn_tool, is_kiro_spawn_tool, is_specialist, SUBAGENT_CAPABILITY,
+    is_claude_spawn_tool, is_empty_subagent_target_list, is_kiro_spawn_tool, is_specialist,
+    SUBAGENT_CAPABILITY,
 };
 
 /// Auxiliary files above this size are rejected before being read into memory.
@@ -322,7 +323,9 @@ fn check_skill_scope_consistency(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
 
 /// Warns, one line per specialist (non-orchestrator) agent, when its spec grants a spawn
 /// tool that the harness transformers strip from its output, so the spec
-/// and the synthed config cannot disagree unnoticed.
+/// and the synthed config cannot disagree unnoticed. An empty
+/// `toolsSettings.subagent` target list is not a grant. It is not a block on
+/// Kiro CLI v2 either; #149 removes the tool.
 fn check_specialist_spawn_grants(agents: &[parser::ParsedAgentSpec]) -> Vec<String> {
     let mut warnings = Vec::new();
     for agent in agents.iter().filter(|agent| is_specialist(&agent.name)) {
@@ -340,7 +343,11 @@ fn check_specialist_spawn_grants(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
                     .filter(|id| is_kiro_spawn_tool(id))
                     .cloned(),
             );
-            if kiro.tools_settings.get(SUBAGENT_CAPABILITY).is_some() {
+            if kiro
+                .tools_settings
+                .get(SUBAGENT_CAPABILITY)
+                .is_some_and(|settings| !is_empty_subagent_target_list(settings))
+            {
                 grants.push(format!("toolsSettings.{SUBAGENT_CAPABILITY}"));
             }
         }
@@ -1246,6 +1253,23 @@ mod tests {
             r#"{"kiroCli":{"tools":["@builtin"]},"claudeCli":{"tools":["Read","Bash"]}}"#,
         );
         assert!(check_specialist_spawn_grants(&[orchestrator, specialist]).is_empty());
+    }
+
+    #[test]
+    fn check_specialist_spawn_grants_accepts_an_empty_subagent_target_list() {
+        let blocked = agent_spec_with_client_config(
+            "k-example",
+            r#"{"kiroCli":{"tools":["@builtin"],"toolsSettings":{"subagent":{"availableAgents":[],"trustedAgents":[]}}}}"#,
+        );
+        assert!(check_specialist_spawn_grants(&[blocked]).is_empty());
+
+        let granted = agent_spec_with_client_config(
+            "k-example",
+            r#"{"kiroCli":{"tools":["@builtin"],"toolsSettings":{"subagent":{"availableAgents":["k-developer"],"trustedAgents":[]}}}}"#,
+        );
+        let warnings = check_specialist_spawn_grants(&[granted]);
+        assert_eq!(warnings.len(), 1, "got: {warnings:?}");
+        assert!(warnings[0].contains("toolsSettings.subagent"));
     }
 
     /// Clean case: every `skill://` resource entry's name already

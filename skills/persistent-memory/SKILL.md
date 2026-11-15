@@ -54,11 +54,13 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
    ```
 
    Then write, with `$PROPOSED_CONTENT` holding the full file content from step 2.
-   Run this line only when writing: with the variable unset it replaces the file
-   with an empty one and exits 0.
+   Run the lookup fence and this fence in one shell call: tool shells do not keep
+   variables between calls. With `$PROPOSED_CONTENT` unset the validator refuses
+   the write when the file has entries.
 
    ```bash
-   printf '%s' "$PROPOSED_CONTENT" | bash "$VALIDATOR" ".konductor/memory/MEMORY.md"
+   TARGET=".konductor/memory/MEMORY.md"   # or .konductor/memory/USER.md: the file step 1 checked
+   printf '%s' "$PROPOSED_CONTENT" | bash "$VALIDATOR" "$TARGET"
    ```
 
    Trust order, first match wins:
@@ -75,10 +77,10 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
 
    A repo is searched only if it has `.konductor/manifest` or a `.claude-plugin/marketplace.json` that names `konductor`.
 
-   The validator writes only to `<root>/.konductor/memory/MEMORY.md` or `USER.md` as a regular file. It exits 1 if `.konductor`, `.konductor/memory`, or the target is a symlink, if the target exists but is not a regular file, or if the target resolves anywhere else. `--check-path <target>` runs only those checks, for reads: it reads no stdin and creates nothing. Do not work around that; report it.
+   The validator writes only to `<root>/.konductor/memory/MEMORY.md` or `USER.md` as a regular file. It exits 1 if `.konductor`, `.konductor/memory`, or the target is a symlink, if the target exists but is not a regular file, or if the target resolves anywhere else. `--check-path <target>` runs only those checks, for reads: it reads no stdin and creates nothing. It also exits 1 when the proposed content is empty and the target still has entries, and writes nothing. That almost always means `$PROPOSED_CONTENT` was lost between shell calls.
 
 4. **Exit 0** → write succeeded (validator performs atomic write).
-5. **Exit 1** → read stderr for reason, adjust and retry once, or skip if unresolvable.
+5. **Exit 1** → read stderr for reason, adjust and retry once, or skip if unresolvable. If it refused empty content, rebuild `$PROPOSED_CONTENT` and run the lookup and the write in one shell call.
 
 **Missing validator:** If nothing matches, the snippet exits 1. Fail closed: do not write, log the error, and continue the session normally.
 
@@ -92,17 +94,19 @@ Checked re-read (step 1) → replace the matching bullet line in place → pipe 
 
 ### Remove an entry
 
-Checked re-read (step 1) → delete the matching bullet line → pipe full content through validator.
+Checked re-read (step 1) → delete the matching bullet line → pipe full content through validator. Deleting the last entry leaves the content empty, so that write needs `--clear` before the target: `bash "$VALIDATOR" --clear "$TARGET" < /dev/null`.
 
 ### First-session bootstrap
 
 If `.konductor/memory/` doesn't exist, pass initial content through the validator as normal. Do not create the directory yourself: the validator creates it after its symlink check, and a `mkdir` through a symlinked `.konductor` would create it somewhere else.
 
-- On first write, if `.konductor/memory/` is not in the project root's `.gitignore`, add it there (the validator writes memory at the git root, so the ignore must sit there too) so each clone keeps its own memory by default. A project that wants shared memory removes the line; trust does not depend on it. Skip this if `.gitignore` is a symlink: git does not read a symlinked `.gitignore`, and the append would write to wherever it points.
+- On first write, if `.konductor/memory/` is not in the project root's `.gitignore`, add it there (the validator writes memory at the git root, so the ignore must sit there too) so each clone keeps its own memory by default. A project that wants shared memory removes the line; trust does not depend on it. Skip this if `.gitignore` is a symlink: git does not read a symlinked `.gitignore`, and the append would write to wherever it points. The snippet adds a newline first when the file does not end in one.
 
   ```bash
   ROOT="$(git --no-pager -c core.fsmonitor= rev-parse --show-toplevel 2>/dev/null || pwd -P)"
-  [ -L "$ROOT/.gitignore" ] || grep -qxF '.konductor/memory/' "$ROOT/.gitignore" 2>/dev/null || printf '.konductor/memory/\n' >> "$ROOT/.gitignore"
+  if ! [ -L "$ROOT/.gitignore" ] && ! grep -qxF '.konductor/memory/' "$ROOT/.gitignore" 2>/dev/null; then
+    { [ ! -s "$ROOT/.gitignore" ] || [ -z "$(tail -c1 "$ROOT/.gitignore")" ] || printf '\n'; printf '.konductor/memory/\n'; } >> "$ROOT/.gitignore"
+  fi
   ```
 
 ## Configuration
