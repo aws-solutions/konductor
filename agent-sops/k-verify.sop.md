@@ -102,14 +102,14 @@ For CDK/infrastructure packages, run additional CDK-specific checks.
 **Constraints:**
 
 - You MUST only run this step if the project contains CDK infrastructure code
-- You MUST run these commands in order:
-  1. `cdk ls` — list all stacks
-  2. `cdk diff` — diff infrastructure changes
-  3. `cdk synth` — synthesize CloudFormation templates
-- You MUST capture output from each command
+- `cdk synth` runs the app's own code, and `cdk diff` reads the deployed stack in an AWS account. You MUST NOT run either until the user confirms that the CDK app is trusted to execute in this environment. A change you wrote yourself in this session counts as trusted; a checkout under review does not.
+- When the user confirms, You MUST run `cdk synth --strict` and record its outcome. You MUST run `cdk ls` and `cdk diff` only when the user asks for an account-aware check, and only with the credentials they name.
+- Without confirmation, You MUST validate an existing `cdk.out/` template if one is present, or read the stacks and constructs, and You MUST list `cdk synth`, `cdk ls` and `cdk diff` as not run, with the reason, in the verification report.
+- You MUST NOT deploy, bootstrap or create a change set.
+- You MUST capture output from each command you run
 - You MUST flag any unexpected stack changes
 
-**Expected Output:** CDK verification results with command outputs and status per check
+**Expected Output:** CDK verification results: output and status for each command run, and each command not run with the reason
 
 ### 6. Manual Verification
 
@@ -187,6 +187,11 @@ Document all verification results into a single evidence report.
 - Errors: [count]
 - Warnings: [count]
 - Status: [✓ / ✗ / Skipped]
+
+### CDK (if applicable)
+
+- Ran: [each command run, with exit code and status]
+- Not run: [each of `cdk synth`, `cdk ls` and `cdk diff` not run, with the reason]
 
 ### Manual Verification
 

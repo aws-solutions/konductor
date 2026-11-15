@@ -285,6 +285,7 @@ not per individual commit.
   pricing. `program-planning` and `playwright-test-implementation` no longer point at SOP steps
   that are missing when the skill runs alone. `cmux-dispatch`, `design-doc-guidelines` and
   `external-research` drop terms that do not apply in this repo.
+- `k-verify` no longer runs `cdk synth` or `cdk diff` on an untrusted checkout without asking.
 
 ### Security
 

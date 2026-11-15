@@ -270,7 +270,7 @@ flowchart TD
     G3 -->|"Errors present"| Stop3["STOP — fix lint errors<br/>(warnings are acceptable)"]
     G3 -->|"None"| S5{"CDK code<br/>present?"}
 
-    S5 -->|Yes| CDK["5. cdk ls → cdk diff → cdk synth<br/>flag unexpected stack changes"]
+    S5 -->|Yes| CDK["5. CDK checks, once you confirm<br/>the app is trusted: cdk synth --strict<br/>cdk ls + cdk diff only on request<br/>flag unexpected stack changes"]
     S5 -->|No| S6
     CDK --> S6["6. Manual verification<br/>what was tested, steps, observed<br/>— cannot be skipped"]
 
@@ -316,6 +316,13 @@ project-specific.
 - **The final checklist is all-or-nothing.** Seven items: success criteria met, build passes,
   tests pass, lint passes, manual verification complete, no regressions, documentation updated
   if applicable. Any failure means the task is not complete.
+- **CDK commands wait for your confirmation.** `cdk synth` runs the app's own code and `cdk diff`
+  reads the deployed stack, so the SOP runs neither until you confirm the CDK app is trusted to
+  run where the agent is working. A change the agent wrote in the same session counts as trusted;
+  a checkout under review does not. Once you confirm, it runs `cdk synth --strict`, and it runs
+  `cdk ls` and `cdk diff` only when you ask for an account-aware check, with the credentials you
+  name. Without confirmation it validates an existing `cdk.out/` template or reads the stacks,
+  and reports all three commands as not run. It never deploys, bootstraps or creates a change set.
 
 ---
 

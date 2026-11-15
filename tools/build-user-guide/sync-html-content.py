@@ -505,6 +505,13 @@ EDITS = [
     ("usecases: adversarial review agent card",
      "Adversarial security review</div><div style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--lav)\">k-architect</div>",
      "Adversarial security review</div><div style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--lav)\">konductor</div>"),
+    ("k-verify flow: CDK step waits for trust",
+     '"Only if CDK code is present: cdk ls → cdk diff → cdk synth, flagging unexpected stack changes."',
+     '"Only if CDK code is present, and only once you confirm the app is trusted: cdk synth --strict, then cdk ls and cdk diff only on request, flagging unexpected stack changes."'),
+    ("k-verify know: CDK trust gate",
+     '{ title: "The final checklist is all-or-nothing.", body: "Seven items: success criteria met, build passes, tests pass, lint passes, manual verification complete, no regressions, documentation updated if applicable. Any failure means the task is not complete." }',
+     '{ title: "The final checklist is all-or-nothing.", body: "Seven items: success criteria met, build passes, tests pass, lint passes, manual verification complete, no regressions, documentation updated if applicable. Any failure means the task is not complete." },\n'
+     '          { title: "CDK commands wait for your confirmation.", body: "cdk synth runs the app\'s own code and cdk diff reads the deployed stack, so the SOP runs neither until you confirm the CDK app is trusted to run where the agent is working. A change the agent wrote in the same session counts as trusted; a checkout under review does not. Once you confirm, it runs cdk synth --strict, and it runs cdk ls and cdk diff only when you ask for an account-aware check, with the credentials you name. Without confirmation it validates an existing cdk.out/ template or reads the stacks, and reports all three commands as not run. It never deploys, bootstraps or creates a change set." }'),
 ]
 
 # Per-agent roster figures, verified against agents/*.agent-spec.json.
