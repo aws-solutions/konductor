@@ -316,8 +316,8 @@ not per individual commit.
     server, shown to the user and run locally only after the user confirms. When the server is available it requires a Price List lookup for
     each line item and labels any figure it did not look up "recalled, unverified".
   - `policy-validation` checks the API Gateway `SecurityPolicy` property, treats the KMS key
-    rotation period as configurable, uses the Security Hub CSPM name, and can run IAM Access
-    Analyzer policy validation.
+    rotation period as configurable, uses the Security Hub CSPM name, and, when the user asks,
+    runs IAM Access Analyzer `ValidatePolicy` in the user's AWS account.
   - `konductor` declares `aws-mcp` and `find-aws-skills`, like `k-architect` and `k-developer`,
     so it can run `infra-validation`'s AWS checks. On Kiro CLI the three agents pre-approve only the server's
     read-only documentation, skill and Region tools. On Claude Code `konductor` is granted only

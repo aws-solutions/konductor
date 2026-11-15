@@ -386,7 +386,7 @@ Check for:
 - Calculate security impact score for each issue
 - Estimate remediation effort
 - Collect evidence for each finding
-- Optional, when AWS credentials are available: run IAM Access Analyzer policy validation on each IAM policy document through `aws___run_script`, calling the read-only `accessanalyzer` operation `ValidatePolicy` with `policyType` `IDENTITY_POLICY` or `RESOURCE_POLICY`. Without the AWS MCP server, use the AWS CLI (`aws accessanalyzer validate-policy --policy-type IDENTITY_POLICY --policy-document file://policy.json`). It needs `access-analyzer:ValidatePolicy` permission. Map its security warnings and errors into this skill's severities; if it cannot run, say so and continue with the manual checks
+- Only when the user asks for it: run IAM Access Analyzer policy validation on each IAM policy document through `aws___run_script`, calling the read-only `accessanalyzer` operation `ValidatePolicy` with `policyType` `IDENTITY_POLICY` or `RESOURCE_POLICY`. Without the AWS MCP server, use the AWS CLI (`aws accessanalyzer validate-policy --policy-type IDENTITY_POLICY --policy-document file://policy.json`). It needs `access-analyzer:ValidatePolicy` permission. Map its security warnings and errors into this skill's severities; if it cannot run, say so and continue with the manual checks. The call runs in the user's AWS account with their credentials, so by default the manual checks are the whole validation
 
 ### STEP 3: Generate Findings
 
