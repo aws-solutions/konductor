@@ -38,7 +38,7 @@ Use this skill when:
 - Undefined shape references
 - Invalid trait syntax
 - Mismatched input/output types
-- IDL 2.1 syntax (inline list or map declarations, tagged string literals such as `#re`, `#b`, `#hex` and `#timestamp`, or the member index shorthand for the `@idx` trait) in a file pinned to `"2"` or `"2.0"`. It needs `$version: "2.1"` and Smithy 1.75.0 or later
+- IDL 2.1 syntax (inline list or map declarations, tagged string literals such as `#re`, `#b`, `#hex` and `#timestamp`, or the member index shorthand for the `@idx` trait) on Smithy older than 1.75.0, or in a file pinned to `"2.0"`. From 1.75.0, `$version: "2"` resolves to 2.1
 
 ### 2. Naming Conventions
 
