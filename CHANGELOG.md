@@ -112,6 +112,22 @@ not per individual commit.
   longer claims a fixed 3-year log retention. `policy-validation` now also checks SOC 2, and its
   report uses one per-framework template. `smithy-validation` loads its example review only when
   writing a report.
+- `cost-estimation` moved its REVIEW workflow (checking an existing estimate) into
+  `references/review-workflow.md`. The skill opens it only when the user picks REVIEW.
+- `cost-estimation` moved its CREATE workflow out of `SKILL.md`. The setup reply, context
+  gathering and clarifying questions are in `references/create-context.md`, which the skill opens
+  when the user picks CREATE. The pricing research, scenarios, growth modeling, optimization and
+  report steps are in `references/create-analysis.md`, which it opens once the context is
+  confirmed.
+- `architecture-diagram-generation` keeps its XML templates, icon styles and common patterns in
+  `references/drawio-templates.md` and loads them only when generating the XML. Its repeated
+  introduction is now one overview.
+- `e2e-test-strategy` keeps its Stage 9 report template in `references/report-template.md` and
+  opens it only when writing the report.
+- `architecture-diagram-generation` now targets plain draw.io (diagrams.net) XML and drops the
+  rules that served one draw.io-based tool. It places S3 with the regional services, since each
+  bucket lives in one region, and treats AWS WAF as global only for CloudFront-scoped web ACLs.
+  A Lambda function with VPC config is drawn in its subnets.
 - Three skills are renamed and their old names are removed: `asdlc-aspect-review` is now
   `k-aspect-review`, `asdlc-code-simplifier` is now `k-code-simplifier`, and `document-formats`
   is now `docx-conversion`, whose description names `.docx`. Custom agent specs must use the
@@ -245,6 +261,10 @@ not per individual commit.
   section to the design document, and points follow-up work at konductor skills instead of
   prompts that don't exist. Its S3 Intelligent-Tiering advice now targets data with unknown or
   changing access patterns, not infrequently accessed data.
+- Fact-checking starts at `doc-accuracy-analyzer`. It routes AWS feature, limit, pricing and
+  Region claims to `aws-service-validator`, rates findings CRITICAL, IMPORTANT or SUGGESTION,
+  and states when a document passes. When checking an artifact, `decision-research` now adds only
+  prior art and missing context. `k-product-manager` gains `doc-accuracy-analyzer`.
 
 ### Fixed
 

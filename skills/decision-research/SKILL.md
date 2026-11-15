@@ -1,6 +1,6 @@
 ---
 name: decision-research
-description: 'Use before drafting an ADR or other decision record, to find prior decisions, alternatives and evidence. Also use as a verification step after rubric-based quality checks (Maker-Checker Pattern) to validate an artifact''s factual claims.'
+description: 'Use before drafting an ADR or other decision record, to find prior decisions, alternatives and evidence. Also use after rubric-based quality checks (Maker-Checker Pattern) to surface prior art and missing context an artifact overlooks.'
 ---
 
 # Decision Research
@@ -36,40 +36,7 @@ find . -name "*.config.*"       # Find configuration files
 
 ### Phase 1b: Extract Slack Discussion Context
 
-When the user provides Slack thread URLs or asks to search Slack for prior discussions:
-
-**Reading a specific thread:**
-
-- Use your Slack MCP integration's thread-replies tool with the Slack URL to read the full conversation
-- Use your Slack MCP integration's user-lookup tool to resolve Slack user IDs to real names — never use raw IDs in findings
-- Use your Slack MCP integration's channel-info tool to get channel name and context
-
-**Searching for related discussions:**
-
-- Use `search` with topic keywords to find relevant Slack conversations
-- Combine with channel filters (e.g., `in:#architecture-reviews`) for precision
-- Read the top results via your Slack MCP integration's thread-replies tool for full context
-
-**What to extract from threads:**
-
-- The core question or problem being discussed
-- Each participant's position and their reasoning
-- Arguments for and against each position (with attribution)
-- Constraints or requirements mentioned
-- Consensus points and unresolved tensions
-- Links or references shared in the thread
-- Timeline context (when was this discussed, is it still relevant?)
-
-**Mapping thread content to research output:**
-
-| Thread element        | Maps to                                     |
-| --------------------- | ------------------------------------------- |
-| Participants          | Deciders / stakeholders                     |
-| Positions taken       | Alternatives (with evidence from arguments) |
-| Consensus points      | Proposed recommendation                     |
-| Unresolved tensions   | Key trade-offs to address                   |
-| Constraints mentioned | Constraints section                         |
-| Links shared          | Sources                                     |
+Open `references/slack.md` (relative to this file) when the user gives Slack thread URLs or asks you to search Slack for prior discussion. It covers reading a thread, searching for related ones, what to extract, and how thread content maps to the research output.
 
 ### Phase 2: Find Prior Decisions
 
@@ -213,25 +180,15 @@ MUST guard against these biases when challenging assumptions, forcing source-bac
 
 5. **Missing data** — Presenting incomplete data as if it is complete. Always note what you could not find and what assumptions you are making.
 
-## Artifact Verification Mode
+## Verifying an Existing Artifact
 
-When used as a verification step after rubric-based quality checks (Maker-Checker Pattern), focus research on validating the artifact's claims rather than exploring alternatives.
+To verify claims in an existing artifact, use `doc-accuracy-analyzer`.
 
-### What to Verify
+This skill adds the prior-art angle that a claim check misses. When an artifact makes landscape claims ("no existing solution", "no team has built this", "customers need X"), run Phases 2 and 3 against them and report, skipping empty categories:
 
-- Factual claims ("no existing solution", "customers need X", "this will reduce latency by Y%")
-- Assumptions ("the current architecture can't support X")
-- Competitive/landscape assertions ("no team has built this")
-- Technical claims ("DynamoDB can handle this access pattern")
+1. **Missing Context**: prior art, adjacent work, or existing solutions the author may not know about
+2. **Strengthening Suggestions**: evidence that supports the artifact but was not cited
+3. **Alternative Perspectives**: different approaches found in sources worth considering
+4. **Open Questions**: claims you could neither confirm nor refute, which need human input
 
-### Verification Output
-
-Present findings in these categories (skip empty ones):
-
-1. **Factual Corrections** — Claims contradicted by evidence (with source links)
-2. **Missing Context** — Relevant prior art, adjacent work, or existing solutions the author may not know about
-3. **Strengthening Suggestions** — Evidence that supports the artifact but was not cited
-4. **Alternative Perspectives** — Different approaches found in sources worth considering
-5. **Open Questions** — Claims that could not be verified or refuted — need human input
-
-End with: strongest aspect of the artifact + single most important improvement.
+End with the artifact's strongest aspect and the single most important improvement.
