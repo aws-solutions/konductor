@@ -361,7 +361,15 @@ not per individual commit.
   `smithy diff --mode git`, `@readonly` and `@idempotent` as behavior traits, member renames as
   breaking even with `@jsonName`, and IDL 2.1 needing Smithy 1.75.0 or later. The example
   review puts `@sensitive` on a target shape, since the trait cannot apply to members, and the
-  file-organization reference drops its 1.51.0 version pins.
+  file-organization reference repins the example to 1.75.0 and adds `$schema`.
+- The Smithy skills say `$version: "2"` resolves to IDL 2.1 on Smithy 1.75.0 or later.
+- The Smithy skills treat `@paginated` `items` as recommended, not required, and let
+  operations inherit `@paginated` settings from the service.
+- The Smithy skills accept any string as a service `version`; a date is only a convention.
+- `smithy-modeling` adds a resource lifecycle example, a `GetUserInput` with a required
+  `@httpLabel` member, and says mixins pass their traits to the shapes that use them.
+- The file-organization reference's documentation validator checks operations only, and the
+  guide calls its file naming a convention and a doc comment plus `@documentation` redundant.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
