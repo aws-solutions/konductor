@@ -1,0 +1,204 @@
+# SPDX-License-Identifier: Apache-2.0
+"""One conveyor line: true state, tool effects table, sensor view and settle. Never decides policy, never reads the wall clock."""
+import copy
+from dataclasses import asdict, dataclass
+from typing import Callable, Dict, Iterator, Optional
+
+SIM_VERSION = "1"
+RAMP_MMPS_PER_S = 200
+NOT_EXECUTED_MS = 100
+SETTLE_MS = 10_000
+TICK_MS = 500
+SPEED_NOISE_MMPS = 5
+
+
+@dataclass
+class TrueState:
+    """The plant as it really is. `speed_mmps > 0` is the one meaning of moving."""
+
+    t_ms: int
+    running: bool
+    speed_mmps: int
+    target_mmps: int
+    rated_max_mmps: int
+    guard: str
+    estop: bool
+    jammed: bool
+    jam_since_ms: Optional[int]
+    person_in_zone: bool
+
+    @property
+    def moving(self):
+        return self.speed_mmps > 0
+
+    def to_dict(self):
+        return asdict(self)
+
+
+def state_from_start(start):
+    """Builds the time-0 state from a task `start` block. A `jammed: true` start sets `jam_since_ms` to 0."""
+    speed = start.get("speed_mmps", 0)
+    jammed = start.get("jammed", False)
+    return TrueState(
+        t_ms=0, running=start.get("running", False), speed_mmps=speed, target_mmps=speed,
+        rated_max_mmps=start["rated_max_mmps"], guard=start.get("guard", "closed"), estop=False,
+        jammed=jammed, jam_since_ms=0 if jammed else None, person_in_zone=start.get("person_in_zone", False),
+    )
+
+
+@dataclass(frozen=True)
+class ToolEffect:
+    """One row of the tool effects table (11.2).
+
+    `sim_ms` is the sim time the call costs. `apply` changes the state before the ramp. `halts` forces
+    speed 0 at the end of the step. `motion` marks the tools that get unsafe-attempt checks.
+    """
+
+    sim_ms: int
+    apply: Callable[[TrueState, dict], None]
+    halts: bool = False
+    motion: bool = False
+
+
+def _no_change(state, args):
+    pass
+
+
+def _set_target(state, args):
+    state.target_mmps = args["speed_mmps"]
+
+
+def _start_motor(state, args):
+    if not state.estop:
+        state.running = True
+
+
+def _stop_motor(state, args):
+    state.running = False
+
+
+def _emergency_stop(state, args):
+    state.running = False
+    state.speed_mmps = 0
+    state.estop = True
+
+
+def _open_guard(state, args):
+    state.guard = "open"
+
+
+TOOL_EFFECTS: Dict[str, ToolEffect] = {
+    "get_state": ToolEffect(100, _no_change),
+    "request_approval": ToolEffect(100, _no_change),
+    "set_speed": ToolEffect(500, _set_target, motion=True),
+    "start": ToolEffect(500, _start_motor, motion=True),
+    "stop": ToolEffect(500, _stop_motor, halts=True),
+    "estop": ToolEffect(500, _emergency_stop, halts=True),
+    "open_guard": ToolEffect(500, _open_guard, motion=True),
+}
+MOTION_TOOLS = frozenset(name for name, effect in TOOL_EFFECTS.items() if effect.motion)
+
+
+def ramp(state, dt_ms):
+    """Moves speed toward `target_mmps` (toward 0 when the motor is off) at the ramp rate for `dt_ms`, then advances time."""
+    goal = state.target_mmps if state.running else 0
+    max_change = RAMP_MMPS_PER_S * dt_ms // 1000
+    delta = max(-max_change, min(max_change, goal - state.speed_mmps))
+    state.speed_mmps += delta
+    state.t_ms += dt_ms
+
+
+def stepped(state, tool, args):
+    """Returns a new state: `state` after `tool` with `args` ran for its sim time. `state` is not changed."""
+    effect = TOOL_EFFECTS[tool]
+    after = copy.deepcopy(state)
+    effect.apply(after, args)
+    ramp(after, effect.sim_ms)
+    if effect.halts:
+        after.speed_mmps = 0
+    return after
+
+
+def idled(state, dt_ms):
+    """Returns a new state: `state` with only the ramp and the clock run for `dt_ms`."""
+    after = copy.deepcopy(state)
+    ramp(after, dt_ms)
+    return after
+
+
+class SensorModel:
+    """Turns a true state into a sensor reading. `rng` (a `random.Random`) is the only source of noise."""
+
+    def __init__(self, rng):
+        self._rng = rng
+
+    def _speed(self, state):
+        if not state.moving:
+            return 0
+        return max(0, state.speed_mmps + self._rng.randint(-SPEED_NOISE_MMPS, SPEED_NOISE_MMPS))
+
+    def sample(self, state):
+        """Returns one noisy reading of `state`, every sensor stamped with the state's sim time."""
+        t = state.t_ms
+        return {
+            "sensors": {
+                "speed": {"value": self._speed(state), "t_ms": t},
+                "jam": {"value": state.jammed, "t_ms": t},
+                "zone": {"person": state.person_in_zone, "t_ms": t},
+                "guard": {"value": state.guard, "t_ms": t},
+            },
+            "display_text": "",
+            "rated_max_mmps": state.rated_max_mmps,
+            "running": state.running,
+            "estop": state.estop,
+        }
+
+
+class Conveyor:
+    """The live line of one run. Same `start`, same `rng` seed and same calls always give the same states."""
+
+    def __init__(self, start, rng):
+        self._state = state_from_start(start)
+        self._sensors = SensorModel(rng)
+        self._view = self._sensors.sample(self._state)
+        self._reads = 0
+
+    @property
+    def state(self):
+        return copy.deepcopy(self._state)
+
+    @property
+    def view(self):
+        return copy.deepcopy(self._view)
+
+    def preview(self, tool, args):
+        """Dry run: the state `tool` with `args` would leave. The live state is not changed."""
+        return stepped(self._state, tool, args)
+
+    def execute(self, tool, args):
+        """Runs `tool` with `args` on the live state and refreshes the sensor view. Returns the new state."""
+        self._advance(stepped(self._state, tool, args))
+        return self.state
+
+    def skip(self, dt_ms=NOT_EXECUTED_MS):
+        """Charges a call that did not execute: ramp and clock only, for `dt_ms`."""
+        self._advance(idled(self._state, dt_ms))
+        return self.state
+
+    def read(self):
+        """The `get_state` answer: the current sensor view with a new `read_id` (`r1`, `r2`, ...)."""
+        self._reads += 1
+        return {"read_id": f"r{self._reads}", **self.view}
+
+    def decision_sample(self):
+        """A fresh reading taken when a call is decided. It is not a `get_state` read and gets no `read_id`."""
+        return self._sensors.sample(self._state)
+
+    def settle(self) -> Iterator[TrueState]:
+        """Runs the fixed settle after the agent exits, yielding the state after each tick."""
+        for _ in range(SETTLE_MS // TICK_MS):
+            yield self.skip(TICK_MS)
+
+    def _advance(self, new_state):
+        self._state = new_state
+        self._view = self._sensors.sample(new_state)
