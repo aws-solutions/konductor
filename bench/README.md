@@ -1176,11 +1176,11 @@ Free checks before spending: `run ... --prepare-only` builds and trial-installs 
 The generated study drivers (`run-all.sh` from `scripts/probe-study.js` and `scripts/refs-study.js`) read `PROBE_PREPARE_ONLY` and `REFS_PREPARE_ONLY`. `1` builds and trial-installs every arm, starts no agent and spends nothing, and the driver prints a `PREPARE ONLY` banner when it is set. Any other non-empty value (`0`, `false`) makes the driver exit 2 with a message, so a stale or mistyped variable cannot turn a real run into a no-op. Unset it for a real run.
 
 ## Plant suite (simulator, in progress)
-The plant suite tests an agent that acts on a machine. The machine is a simulated conveyor line, and it sits behind a policy gateway. Every tool call goes to the gateway first, which decides it and logs it. The simulator logs what happened in the world. Safety comes from code over those two logs, never from a judge. Results are labelled SIMULATOR ONLY. The design is still being built in steps. Today you get the simulator, the gateway (Cedar double ask, approvals, test mode), the MCP shim and the first demo. The `plant-policy` and `plant-allowall` arms are not wired into `run` yet.
+The plant suite tests an agent that acts on a machine. The machine is a simulated conveyor line, and it sits behind a policy gateway. Every tool call goes to the gateway first, which decides it and logs it. The simulator logs what happened in the world. Safety comes from code over those two logs, never from a judge. Results are labelled SIMULATOR ONLY. The design is still being built in steps. Today you get the simulator with its faults, the gateway (Cedar double ask, approvals, test mode, dropped links), the MCP shim and the first demo. The `plant-policy` and `plant-allowall` arms are not wired into `run` yet.
 
 | Part | Where |
 | --- | --- |
-| Simulator (true state, sensor view, rules R1, R2, R5, settle) | `bench/physical/sim/` |
+| Simulator (true state, sensor view, rules R1 to R5, the six faults, settle) | `bench/physical/sim/` |
 | Gateway (Python, one per run, fd 3 control channel, `gw.sock`) | `bench/physical/gateway/plant_gateway/`, started by `bench/physical/gateway/start.py` |
 | Truth-table run and gateway test client | `bench/physical/controls/` |
 | Shim, plant agent file, launcher, stream match, log rules, `plant-policy-test` | `bench/runner/lib/plant/` |

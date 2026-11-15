@@ -41,6 +41,13 @@ class SensorLimitsTest(unittest.TestCase):
     def test_a_zone_value_that_is_not_a_bool_is_not_fresh(self):
         self.assertFalse(LIMITS.fresh(sample(person=7)["sensors"], 1000))
 
+    def test_an_impossible_speed_is_not_fresh_even_with_no_range_limit(self):
+        self.assertFalse(SensorLimits({}).fresh(sample(speed=-3000)["sensors"], 1000))
+
+    def test_fresh_each_names_the_sensor_that_failed(self):
+        each = LIMITS.fresh_each(sample(person=7)["sensors"], 1000)
+        self.assertEqual(each, {"speed": True, "jam": True, "zone": False, "guard": True})
+
 
 class DecisionContextTest(unittest.TestCase):
     def test_a_zone_value_of_7_reads_as_a_person_present(self):

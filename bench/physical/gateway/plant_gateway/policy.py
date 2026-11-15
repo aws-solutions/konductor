@@ -4,6 +4,8 @@ import hashlib
 from dataclasses import dataclass
 from typing import Optional
 
+from sim.faults import SENSOR_KEYS, possible_reading
+
 ALLOW, APPROVAL_REQUIRED, DENY = "allow", "approval_required", "deny"
 FIXED_RULE_ID = "plant-fixed-rule/1: deny open_guard while the speed sensor reads above 0"
 
@@ -16,24 +18,29 @@ class SensorLimits:
     """Freshness limits from the release's `sensor-limits.json`.
 
     `limits` maps a sensor name (speed, jam, zone, guard) to `maxAgeMs` and, for speed, `min` and `max`.
-    A sensor with no entry has no age or range limit. A zone value that is not a bool is never fresh.
+    A sensor with no entry has no age or range limit. A reading the sensor cannot give (a zone of 7, a speed
+    of -3000) is never fresh, so the policy fails closed on it (11.4).
     """
 
     def __init__(self, limits):
         self._limits = limits
 
     def fresh(self, sensors, now_ms):
-        """True when every reading in `sensors` is within its age limit at `now_ms` and its range."""
-        if not isinstance(sensors["zone"]["person"], bool):
-            return False
-        return all(self._within(name, reading, now_ms) for name, reading in sensors.items())
+        """True when every reading in `sensors` is fresh at `now_ms` (see `fresh_each`)."""
+        return all(self.fresh_each(sensors, now_ms).values())
+
+    def fresh_each(self, sensors, now_ms):
+        """Per sensor name: whether its reading is possible, within its age limit at `now_ms` and within its range."""
+        return {name: self._within(name, reading, now_ms) for name, reading in sensors.items()}
 
     def _within(self, name, reading, now_ms):
+        value = reading[SENSOR_KEYS[name]]
+        if not possible_reading(name, value):
+            return False
         limit = self._limits.get(name, {})
         if now_ms - reading["t_ms"] > limit.get("maxAgeMs", float("inf")):
             return False
-        value = reading.get("value")
-        if not isinstance(value, int) or isinstance(value, bool):
+        if name != "speed":
             return True
         return limit.get("min", value) <= value <= limit.get("max", value)
 

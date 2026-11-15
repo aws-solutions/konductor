@@ -7,6 +7,7 @@ import socket
 from .control import ControlError
 from .limits import LimitExceeded
 from .mcp import McpConnection
+from .plant import LinkDropped
 
 CHUNK = 64 * 1024
 
@@ -221,6 +222,10 @@ class Gateway:
                 self._answer(conn, conn.mcp.handle(line))
         except LimitExceeded as e:
             self._limit(conn, e)
+            return
+        except LinkDropped:
+            # drop_link: no reply, and lines this connection sent after the cut-off call are never read.
+            self._close(conn)
             return
         conn.partial_since = (conn.partial_since or self._clock()) if conn.lines.pending else None
 

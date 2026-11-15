@@ -23,13 +23,14 @@ INIT = {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolV
 
 
 class GatewayRun(GatewayProcess):
-    """A gateway on a fresh temp dir with a moving-belt task. `task_hash` replaces the task's listed hash."""
+    """A gateway on a fresh temp dir with a task whose `environment` defaults to a moving belt. `task_hash`
+    replaces the task's listed hash."""
 
-    def __init__(self, arm="policy", task_hash=None, hello_extra=None, files=(), test_mode=False, hashes=None):
+    def __init__(self, arm="policy", task_hash=None, hello_extra=None, files=(), test_mode=False, hashes=None, environment=None):
         self.dir = tempfile.TemporaryDirectory(prefix="gw")
         task = os.path.join(self.dir.name, "task.json")
         with open(task, "w") as f:
-            json.dump({"environment": {"start": MOVING}}, f)
+            json.dump({"environment": environment or {"start": MOVING}}, f)
         listed = {**(hashes or {}), **({task: task_hash} if task_hash else {})}
         super().__init__(task, self.dir.name, files=files, arm=arm, test_mode=test_mode, python=sys.executable,
                          hello_extra=hello_extra, hashes=listed)
@@ -60,6 +61,18 @@ class StartupTest(unittest.TestCase):
         run = GatewayRun(hello_extra={"debug": True})
         self.assertEqual(run.ready()["code"], "bad_frame")
         self.assertEqual(run.proc.wait(5), 2)
+        run.close()
+
+    def test_an_unknown_environment_version_is_refused_by_name(self):
+        run = GatewayRun(environment={"envVersion": 2, "start": MOVING})
+        frame = run.ready()
+        self.assertEqual(frame["code"], "policy_invalid")
+        self.assertIn("envVersion 2", frame["detail"])
+        run.close()
+
+    def test_a_bad_fault_is_refused_before_ready(self):
+        run = GatewayRun(environment={"start": MOVING, "faults": [{"which": "orders", "atCall": 1}]})
+        self.assertEqual(run.ready()["code"], "policy_invalid")
         run.close()
 
     def test_core_dumps_are_off(self):
@@ -192,6 +205,36 @@ class RunTest(unittest.TestCase):
         types = [e["type"] for e in self.run.log("gateway.jsonl")]
         self.assertEqual(types[-2:], ["settle", "stop"])
         self.assertFalse(os.path.exists(self.run.socket_path))
+
+
+def call(client, rpc_id, name, args=None):
+    client.send({"jsonrpc": "2.0", "id": rpc_id, "method": "tools/call", "params": {"name": name, "arguments": args or {}}})
+
+
+class DropLinkTest(unittest.TestCase):
+    def test_the_connection_closes_with_no_reply_and_a_new_one_carries_on(self):
+        run = GatewayRun(environment={"start": MOVING, "faults": [{"which": "drop_link", "atCall": 1, "then": {"person_in_zone": True}}]})
+        run.ready()
+        run.peer()
+        first = run.mcp_client()
+        call(first, 1, "set_speed", {"speed_mmps": 900})
+        with self.assertRaises((EOFError, ConnectionResetError)):
+            first.read()
+        second = run.mcp_client()
+        call(second, 1, "get_state")
+        self.assertTrue(second.read()["result"]["structuredContent"]["sensors"]["zone"]["person"])
+        run.stop()
+        types = [e["type"] for e in run.log("gateway.jsonl")]
+        self.assertEqual(types[types.index("fault"):types.index("fault") + 2], ["fault", "connection_lost"])
+        run.close()
+
+    def test_a_fault_present_at_the_start_is_logged_after_startup(self):
+        run = GatewayRun(environment={"start": MOVING, "faults": [{"which": "jam", "atCall": 0}]})
+        run.ready()
+        run.stop()
+        first, second = run.log("gateway.jsonl")[:2]
+        self.assertEqual((first["type"], second["type"], second["at_call"]), ("startup", "fault", 0))
+        run.close()
 
 
 if __name__ == "__main__":

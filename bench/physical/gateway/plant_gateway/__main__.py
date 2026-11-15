@@ -11,6 +11,7 @@ import sys
 import time
 
 from sim.conveyor import SIM_VERSION, Conveyor
+from sim.faults import FaultError, read_faults
 
 from .approval import ApprovalBook
 from .control import ControlError, ControlReader, load_frame_schemas
@@ -23,6 +24,7 @@ from .server import Gateway, bind_listener, frame_bytes
 
 CONTROL_VERSION = "plant-control/1"
 EXIT_BAD_HELLO, EXIT_POLICY_INVALID = 2, 3
+ENV_VERSION = 1
 
 
 POLICY_FILE, SCHEMA_FILE, LIMITS_FILE = "plant.cedar", "plant.cedarschema", "sensor-limits.json"
@@ -73,17 +75,30 @@ def load_rule(hello):
     return CedarPolicy(policy.decode(), schema.decode(), cedarpy), SensorLimits(json.loads(limits))
 
 
+def read_environment(task_bytes):
+    """The task's `environment` block. Raises PolicyInvalid on an `envVersion` this gateway does not know (8.7)."""
+    environment = json.loads(task_bytes)["environment"]
+    version = environment.get("envVersion", ENV_VERSION)
+    if version != ENV_VERSION:
+        raise PolicyInvalid(f"environment envVersion {version} is unknown; this gateway reads {ENV_VERSION}")
+    return environment
+
+
 def wall_clock():
     """UTC time as ISO text, for the information-only `t_wall` field."""
     return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds")
 
 
-def start_run(hello, environment, rule, sensor_limits):
-    """Opens both logs in `hello.logDir`, builds the simulator and the plant session for `rule` and
-    `sensor_limits`, and writes the startup lines."""
+def build_conveyor(hello, environment):
+    """The run's simulator: the task's start state and faults, noise seeded by `hello.seed`. Raises FaultError."""
+    return Conveyor(environment["start"], random.Random(hello["seed"]), read_faults(environment.get("faults", [])))
+
+
+def start_run(hello, environment, conveyor, rule, sensor_limits):
+    """Opens both logs in `hello.logDir`, builds the plant session on `conveyor` for `rule` and `sensor_limits`,
+    and writes the startup lines and the faults present at the start."""
     glog = GatewayLog(os.path.join(hello["logDir"], "gateway.jsonl"), hello["runId"], wall_clock)
     wlog = WorldLog(os.path.join(hello["logDir"], "world.jsonl"), hello["runId"], wall_clock)
-    conveyor = Conveyor(environment["start"], random.Random(hello["seed"]))
     glog.event(
         "startup", 0, logVersion=LOG_VERSION, release=hello["release"], arm=hello["arm"], task=hello["task"],
         variant=environment.get("probe", {}).get("variant"), seed=hello["seed"], policySha256=rule.sha256,
@@ -91,7 +106,9 @@ def start_run(hello, environment, rule, sensor_limits):
     )
     wlog.snapshot("tick", conveyor.state, conveyor.view)
     approvals = ApprovalBook(environment.get("operator", {}))
-    return glog, wlog, PlantSession(conveyor, rule, ARMS[hello["arm"]](), approvals, sensor_limits, glog, wlog)
+    plant = PlantSession(conveyor, rule, ARMS[hello["arm"]](), approvals, sensor_limits, glog, wlog)
+    plant.log_start_faults()
+    return glog, wlog, plant
 
 
 def main(argv):
@@ -107,15 +124,16 @@ def main(argv):
         hello = reader.read(read_first_line(control, limits.control_frame_bytes))
         if hello["op"] != "hello":
             raise ControlError("out_of_order", "the first frame must be hello")
-        environment = json.loads(read_listed(hello, hello["task"]))["environment"]
+        environment = read_environment(read_listed(hello, hello["task"]))
+        conveyor = build_conveyor(hello, environment)
         rule, sensor_limits = load_rule(hello)
     except ControlError as e:
         control.sendall(frame_bytes({"op": "error", "code": e.code, "detail": str(e)}))
         return EXIT_BAD_HELLO
-    except (PolicyInvalid, ImportError, OSError, ValueError, KeyError) as e:
+    except (PolicyInvalid, FaultError, ImportError, OSError, ValueError, KeyError) as e:
         control.sendall(frame_bytes({"op": "error", "code": "policy_invalid", "detail": str(e)}))
         return EXIT_POLICY_INVALID
-    glog, wlog, plant = start_run(hello, environment, rule, sensor_limits)
+    glog, wlog, plant = start_run(hello, environment, conveyor, rule, sensor_limits)
     listener = bind_listener(hello["socket"])
     control.sendall(frame_bytes({"op": "ready", "v": CONTROL_VERSION, "seq": 0, "policySha256": rule.sha256, "simVersion": SIM_VERSION}))
     gateway = Gateway(control, reader, listener, plant, glog, wlog, limits, time.monotonic, peer_pidns)

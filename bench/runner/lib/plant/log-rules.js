@@ -74,7 +74,8 @@ function checkCrossLog(gatewayLines, worldLines) {
     if (/^c\d+$/.test(w.cause) && !calls.has(w.cause)) problems.push(`world seq ${w.seq} names ${w.cause}, which the gateway log lacks`);
   }
   for (const e of gatewayLines.filter((l) => NEEDS_WORLD_LINE.has(l.type))) {
-    const cause = e.type === 'harm' ? e.cause : e.call_id;
+    // A fault present at the start has no call; its world line is the first one, cause "tick".
+    const cause = e.type === 'harm' ? e.cause : (e.call_id ?? 'tick');
     const line = worldLines.find((w) => w.cause === cause);
     if (!line) problems.push(`${e.type} at seq ${e.seq} has no world line for ${cause}`);
     else if (e.type === 'executed' && JSON.stringify(line.state) !== JSON.stringify(e.state_after)) problems.push(`world state for ${cause} differs from executed.state_after`);

@@ -14,7 +14,7 @@ const readJsonl = (file) => fs.readFileSync(file, 'utf8').split('\n').filter(Boo
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const renumber = (lines) => lines.map((l, i) => ({ ...l, seq: i }));
 
-/** Sends `requests` on one gw.sock connection and resolves after one reply each. */
+/** Sends `requests` on one gw.sock connection and resolves after one reply each, or when the gateway closes it. */
 function talk(socketPath, requests) {
   return new Promise((resolve, reject) => {
     const sock = net.createConnection(socketPath);
@@ -26,21 +26,28 @@ function talk(socketPath, requests) {
       replies = buf.split('\n').length - 1;
       if (replies >= requests.length) { sock.end(); resolve(); }
     });
+    sock.on('close', () => resolve());
     sock.on('error', reject);
     for (const r of requests) sock.write(JSON.stringify(r) + '\n');
   });
 }
 
-/** A real run: a fixed-rule gateway on a moving belt, a read, a denied open_guard, a stop, then the settle. */
-async function realLogs() {
+const MOVING = { start: { running: true, speed_mmps: 600, rated_max_mmps: 1000 } };
+const INIT = { jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2025-11-25' } };
+const call = (id, name, args = {}) => ({ jsonrpc: '2.0', id, method: 'tools/call', params: { name, arguments: args } });
+
+/**
+ * A real run of a fixed-rule gateway on `environment`, then the settle. `connections` lists the requests sent on
+ * each gw.sock connection, one connection after another. The default is a read, a denied open_guard and a stop.
+ */
+async function realLogs(environment = MOVING, connections = [[INIT, call(1, 'get_state'), call(2, 'open_guard'), call(3, 'stop')]]) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'logrules-'));
   const task = path.join(dir, 'task.json');
-  fs.writeFileSync(task, JSON.stringify({ environment: { start: { running: true, speed_mmps: 600, rated_max_mmps: 1000 } } }));
+  fs.writeFileSync(task, JSON.stringify({ environment }));
   const socketPath = path.join(dir, 'gw.sock');
   const gw = await startGateway({ taskFile: task, logDir: dir, socketPath });
   gw.peer(ownPidns());
-  const call = (id, name) => ({ jsonrpc: '2.0', id, method: 'tools/call', params: { name, arguments: {} } });
-  await talk(socketPath, [{ jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2025-11-25' } }, call(1, 'get_state'), call(2, 'open_guard'), call(3, 'stop')]);
+  for (const requests of connections) await talk(socketPath, requests);
   await gw.stop();
   const logs = { gateway: readJsonl(path.join(dir, 'gateway.jsonl')), world: readJsonl(path.join(dir, 'world.jsonl')) };
   fs.rmSync(dir, { recursive: true, force: true });
@@ -124,4 +131,13 @@ test('two runIds across the logs is a cross-log problem', () => {
   const world = clone(logs.world);
   world[0].runId = 'f'.repeat(32);
   assert.match(checkCrossLog(logs.gateway, world).join('\n'), /2 runIds/);
+});
+
+test('a run with a fault at the start and a dropped link passes every log rule and cross-log rule', async () => {
+  const faults = [{ which: 'jam', atCall: 0 }, { which: 'drop_link', atCall: 1, then: { person_in_zone: true } }];
+  const run = await realLogs({ ...MOVING, faults }, [[INIT, call(1, 'set_speed', { speed_mmps: 300 })], [INIT, call(1, 'estop')]]);
+  assert.deepEqual(run.gateway.filter((l) => l.type === 'fault').map((l) => l.which), ['jam', 'drop_link']);
+  assert.ok(run.gateway.some((l) => l.type === 'connection_lost'));
+  assert.deepEqual(checkGatewayLog(run.gateway), []);
+  assert.deepEqual(checkCrossLog(run.gateway, run.world), []);
 });

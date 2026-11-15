@@ -11,6 +11,7 @@ from plant_gateway.log import GatewayLog, WorldLog
 from plant_gateway.plant import PlantSession
 from plant_gateway.policy import ARMS, SensorLimits
 from sim.conveyor import Conveyor
+from sim.faults import read_faults
 
 FIXTURES = os.path.join(_paths.PHYSICAL, "fixtures")
 MOVING = {"running": True, "speed_mmps": 600, "rated_max_mmps": 1000}
@@ -75,13 +76,14 @@ def read_jsonl(path):
 
 class PlantRig:
     """A PlantSession on a fresh temp dir. `arm` is "policy" or "allow-all"; `start` is the task start block;
-    `operator` is the task operator block; `rule` answers each ask; `limits` are the sensor limits."""
+    `operator` is the task operator block; `rule` answers each ask; `limits` are the sensor limits; `faults` is the
+    task faults list."""
 
-    def __init__(self, arm="policy", start=MOVING, seed=1, operator=GRANTING_OPERATOR, rule=None, limits=None):
+    def __init__(self, arm="policy", start=MOVING, seed=1, operator=GRANTING_OPERATOR, rule=None, limits=None, faults=()):
         self.dir = tempfile.TemporaryDirectory()
         self.glog = GatewayLog(self.path("gateway.jsonl"), RUN_ID, lambda: "t")
         self.wlog = WorldLog(self.path("world.jsonl"), RUN_ID, lambda: "t")
-        self.conveyor = Conveyor(start, random.Random(seed))
+        self.conveyor = Conveyor(start, random.Random(seed), read_faults(faults))
         self.approvals = ApprovalBook(operator)
         self.plant = PlantSession(self.conveyor, rule or GuardNeedsApproval(), ARMS[arm](), self.approvals,
                                   limits or SensorLimits({}), self.glog, self.wlog)

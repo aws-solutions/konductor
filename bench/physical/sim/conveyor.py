@@ -4,6 +4,8 @@ import copy
 from dataclasses import asdict, dataclass
 from typing import Callable, Dict, Iterator, Optional
 
+from .faults import DROP_LINK, FaultError, FaultPlan, apply_state_change
+
 SIM_VERSION = "1"
 RAMP_MMPS_PER_S = 200
 NOT_EXECUTED_MS = 100
@@ -119,6 +121,14 @@ def stepped(state, tool, args):
     return after
 
 
+def partly_stepped(state, tool, args, ran_ms):
+    """Returns a new state: `state` after `tool` with `args` was cut off `ran_ms` into its step. `state` is not changed."""
+    after = copy.deepcopy(state)
+    TOOL_EFFECTS[tool].apply(after, args)
+    ramp(after, ran_ms)
+    return after
+
+
 def idled(state, dt_ms):
     """Returns a new state: `state` with only the ramp and the clock run for `dt_ms`."""
     after = copy.deepcopy(state)
@@ -154,13 +164,26 @@ class SensorModel:
         }
 
 
-class Conveyor:
-    """The live line of one run. Same `start`, same `rng` seed and same calls always give the same states."""
+MOTION_STEP_MS = min(TOOL_EFFECTS[name].sim_ms for name in MOTION_TOOLS)
 
-    def __init__(self, start, rng):
+
+class Conveyor:
+    """The live line of one run. Same `start`, same `rng` seed, same `faults` and same calls always give the same states.
+
+    `faults` is the Fault list of the task (`sim.faults.read_faults`). Those with `atCall: 0` fire here and are kept in
+    `start_faults`. Raises FaultError when a drop_link would run a whole step or more.
+    """
+
+    def __init__(self, start, rng, faults=()):
+        for fault in faults:
+            if fault.which == DROP_LINK and fault.spec.get("partialMs", 0) >= MOTION_STEP_MS:
+                raise FaultError(f"drop_link partialMs must be under {MOTION_STEP_MS}")
         self._state = state_from_start(start)
         self._sensors = SensorModel(rng)
-        self._view = self._sensors.sample(self._state)
+        self._plan = FaultPlan(faults)
+        self._call_n = 0
+        self.start_faults = self._plan.fire(0, self._state)
+        self._view = self._sample(self._state)
         self._pinned = False
         self._reads = 0
 
@@ -172,6 +195,11 @@ class Conveyor:
     def view(self):
         return copy.deepcopy(self._view)
 
+    def begin_call(self):
+        """Counts one arriving call and fires the faults due on it. Returns the fired faults."""
+        self._call_n += 1
+        return self._plan.fire(self._call_n, self._state)
+
     def preview(self, tool, args):
         """Dry run: the state `tool` with `args` would leave. The live state is not changed."""
         return stepped(self._state, tool, args)
@@ -181,19 +209,35 @@ class Conveyor:
         self._advance(stepped(self._state, tool, args))
         return self.state
 
+    def drop_due(self, tool):
+        """For an executing motion `tool`, the drop_link fault due on it, else None. Each call counts once."""
+        return self._plan.drop_on_motion() if tool in MOTION_TOOLS else None
+
+    def execute_cut_off(self, tool, args, fault):
+        """Runs `tool` with `args` for drop_link `fault`: `partialMs` of the step (default half), then the fault's
+        optional `then` change to the true state. Returns `(state, partial)`, where `partial` says what ran."""
+        ran_ms = fault.spec.get("partialMs", TOOL_EFFECTS[tool].sim_ms // 2)
+        after = partly_stepped(self._state, tool, args, ran_ms)
+        then = fault.spec.get("then")
+        if then:
+            apply_state_change(after, then)
+        self._advance(after)
+        return self.state, {"ran_ms": ran_ms, "of_ms": TOOL_EFFECTS[tool].sim_ms, "then": then}
+
     def skip(self, dt_ms=NOT_EXECUTED_MS):
         """Charges a call that did not execute: ramp and clock only, for `dt_ms`."""
         self._advance(idled(self._state, dt_ms))
         return self.state
 
     def read(self):
-        """The `get_state` answer: the current sensor view with a new `read_id` (`r1`, `r2`, ...)."""
+        """The `get_state` answer: a reading taken now, with a new `read_id` (`r1`, `r2`, ...). It is also the
+        decision-time sample of that call."""
         self._reads += 1
-        return {"read_id": f"r{self._reads}", **self.view}
+        return {"read_id": f"r{self._reads}", **self.decision_sample()}
 
     def decision_sample(self):
-        """A fresh reading taken when a call is decided, or the pinned view in test mode. It gets no `read_id`."""
-        return self.view if self._pinned else self._sensors.sample(self._state)
+        """A fresh reading taken when a call is decided, with active sensor faults, or the pinned view in test mode."""
+        return self.view if self._pinned else self._sample(self._state)
 
     def pin(self, state, sensors):
         """Test mode: replaces the true state with `state` and the sensor readings with `sensors` (per sensor
@@ -208,7 +252,10 @@ class Conveyor:
         for _ in range(SETTLE_MS // TICK_MS):
             yield self.skip(TICK_MS)
 
+    def _sample(self, state):
+        return self._plan.overlay(self._sensors.sample(state), self._call_n)
+
     def _advance(self, new_state):
         self._state = new_state
-        self._view = self._sensors.sample(new_state)
+        self._view = self._sample(new_state)
         self._pinned = False
