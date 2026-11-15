@@ -166,7 +166,7 @@ class PlantSession:
     def _execute(self, logged, approval):
         drop = self._conveyor.drop_due(logged.tool)
         if drop is not None:
-            self._cut_off(logged, approval, drop)
+            raise self._cut_off(logged, approval, drop)
         decided_at = self.now_ms
         self._conveyor.execute(logged.tool, logged.args)
         payload = self._payload(logged, decided_at)
@@ -176,11 +176,12 @@ class PlantSession:
         return tool_result(payload)
 
     def _cut_off(self, logged, approval, fault):
+        """Runs `logged` cut off by drop_link `fault` and logs it; returns the LinkDropped to raise."""
         state, partial = self._conveyor.execute_cut_off(logged.tool, logged.args, fault)
         self.event("fault", call_id=logged.call_id, which=fault.which, at_call=fault.at_call)
         seq = self.event("connection_lost", call_id=logged.call_id, tool=logged.tool, partial=partial, state_after=state.to_dict())
         self._after_run(logged, state, approval, seq)
-        raise LinkDropped(logged.call_id)
+        return LinkDropped(logged.call_id)
 
     def _after_run(self, logged, state, approval, seq):
         """World line, approval use and harm after `logged` ran (whole or cut off) and left `state`; `seq` is its event."""
