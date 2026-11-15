@@ -1107,6 +1107,380 @@
     "comparable": {
       "type": "boolean"
     },
+    "plant": {
+      "type": "object",
+      "required": [
+        "label",
+        "schemaVersion",
+        "release",
+        "manifestSha256",
+        "keyId",
+        "arm",
+        "comparable",
+        "probe",
+        "variant",
+        "heldBack",
+        "seed",
+        "runState",
+        "started",
+        "firstToolCall",
+        "gateway",
+        "counts",
+        "safety",
+        "behaviour",
+        "unsafeAttempt",
+        "harmfulExecution",
+        "gatewayStopped",
+        "taskSuccess",
+        "refusalBy",
+        "countedAsFailure",
+        "verdictMeasure",
+        "exclusionPolicy",
+        "flags",
+        "logs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "enum": [
+            "simulator only"
+          ]
+        },
+        "schemaVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "release": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "manifestSha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "keyId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "arm": {
+          "enum": [
+            "policy",
+            "allow-all"
+          ]
+        },
+        "comparable": {
+          "type": "boolean"
+        },
+        "probe": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "variant": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "heldBack": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "runState": {
+          "enum": [
+            "launch_failure",
+            "infra_incomplete",
+            "complete"
+          ]
+        },
+        "started": {
+          "type": "boolean"
+        },
+        "firstToolCall": {
+          "type": "boolean"
+        },
+        "gateway": {
+          "type": "object",
+          "required": [
+            "ready",
+            "handshake",
+            "heartbeatGaps",
+            "seqOk",
+            "lastSeq",
+            "pathOk",
+            "logRulesOk",
+            "crossLogOk",
+            "runningHashOk"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "ready": {
+              "type": "boolean"
+            },
+            "handshake": {
+              "type": "boolean"
+            },
+            "heartbeatGaps": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "seqOk": {
+              "type": "boolean"
+            },
+            "lastSeq": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "pathOk": {
+              "type": "boolean"
+            },
+            "logRulesOk": {
+              "type": "boolean"
+            },
+            "crossLogOk": {
+              "type": "boolean"
+            },
+            "runningHashOk": {
+              "type": "boolean"
+            }
+          }
+        },
+        "counts": {
+          "type": "object",
+          "required": [
+            "calls",
+            "unsafeCalls",
+            "denied",
+            "approvalRequired",
+            "procedureAsks",
+            "approvalGranted",
+            "approvalRefused",
+            "approvalExpired",
+            "allowed",
+            "shadowDenied",
+            "shadowApprovalRequired",
+            "executed",
+            "executionError",
+            "connectionLost",
+            "harmful",
+            "settleHarm",
+            "needlessBlocks",
+            "mismatches"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unsafeCalls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "denied": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "approvalRequired": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "procedureAsks": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "approvalGranted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "approvalRefused": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "approvalExpired": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "allowed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "shadowDenied": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "shadowApprovalRequired": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "executed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "executionError": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "connectionLost": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "harmful": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "settleHarm": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "needlessBlocks": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "mismatches": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "safety": {
+          "enum": [
+            "safe",
+            "unsafe",
+            null
+          ]
+        },
+        "behaviour": {
+          "enum": [
+            "handled",
+            "refused",
+            "no_action",
+            null
+          ]
+        },
+        "unsafeAttempt": {
+          "type": "boolean"
+        },
+        "harmfulExecution": {
+          "type": "boolean"
+        },
+        "gatewayStopped": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "taskSuccess": {
+          "type": "boolean"
+        },
+        "refusalBy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "countedAsFailure": {
+          "enum": [
+            "stream_mismatch",
+            "log_invalid",
+            "gateway_lost",
+            "integrity",
+            "limit",
+            null
+          ]
+        },
+        "verdictMeasure": {
+          "enum": [
+            "agent_attempt",
+            "end_to_end",
+            null
+          ]
+        },
+        "exclusionPolicy": {
+          "enum": [
+            "plant-failure-v1"
+          ]
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "plantGatewayStart",
+              "plantStartup",
+              "plantGatewayLost",
+              "plantPathLost",
+              "plantLimit",
+              "plantForeignConn",
+              "plantLogIntegrity",
+              "plantLogInvalid",
+              "plantLogScrubbed",
+              "plantPolicyGap"
+            ]
+          }
+        },
+        "logs": {
+          "type": "object",
+          "required": [
+            "gateway",
+            "world"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "gateway": {
+              "type": "object",
+              "required": [
+                "lines",
+                "sha256"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "lines": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            },
+            "world": {
+              "type": "object",
+              "required": [
+                "lines",
+                "sha256"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "lines": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            }
+          }
+        }
+      },
+      "description": "Plant runs only (bench/physical): the safety outcome scored from the gateway and world logs by runner/lib/plant/score.js. schemaVersion is the field's major version; a reader refuses one it does not know."
+    },
     "source": {
       "type": [
         "string",

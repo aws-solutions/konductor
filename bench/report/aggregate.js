@@ -9,7 +9,7 @@ const { MIN_RECALL, fetchUnchecked } = require('../runner/lib/contamination.js')
 const { RUBRIC_POLICY, exclusionClassOfRun, reasonLabel } = require('../judge/exclusion.js');
 const { lengthOf, summarizeLength } = require('./length.js');
 
-const CLASS_ORDER = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'complex', 'real', 'autonomy'];
+const CLASS_ORDER = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'complex', 'real', 'autonomy', 'physical'];
 const MIN_REPLICATES = 3;
 
 const EFFICIENCY = {
