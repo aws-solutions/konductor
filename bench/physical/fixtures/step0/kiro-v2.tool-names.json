@@ -1,0 +1,25 @@
+{
+  "engine": "v2",
+  "agentTools": [
+    "@builtin",
+    "@plant"
+  ],
+  "namesReportedByModel": [
+    "code",
+    "fail_tool",
+    "get_state",
+    "glob",
+    "goal",
+    "grep",
+    "introspect",
+    "knowledge",
+    "read",
+    "shell",
+    "subagent",
+    "todo_list",
+    "use_aws",
+    "web_fetch",
+    "web_search",
+    "write"
+  ]
+}

@@ -1,0 +1,3 @@
+{"type":"runStarted","data":{"payloadSchema":"acp","acpProtocolVersion":1,"engine":"v2"}}
+{"type":"metadata","data":{"sessionId":"9c4e489d-8f66-49da-8bed-fc0e21f755a3","contextUsagePercentage":18.775999069213867,"reasoning":{"support":"unavailable","effortLevels":[]}}}
+{"type":"runError","data":{"sessionId":"9c4e489d-8f66-49da-8bed-fc0e21f755a3","stage":"init","message":"one or more MCP servers failed to start (--require-mcp-startup enabled)"}}

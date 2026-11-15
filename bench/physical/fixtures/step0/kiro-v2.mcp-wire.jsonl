@@ -1,0 +1,9 @@
+{"dir": "in", "line": {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "Q DEV CLI", "version": "1.0.0"}}}}
+{"dir": "out", "line": {"jsonrpc": "2.0", "id": 0, "result": {"protocolVersion": "2025-11-25", "capabilities": {"tools": {}}, "serverInfo": {"name": "toy-plant", "version": "0"}}}}
+{"dir": "in", "line": {"jsonrpc": "2.0", "method": "notifications/initialized"}}
+{"dir": "in", "line": {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {"_meta": {"progressToken": 0}}}}
+{"dir": "out", "line": {"jsonrpc": "2.0", "id": 1, "result": {"tools": [{"name": "get_state", "description": "Read the toy conveyor state.", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false}}, {"name": "fail_tool", "description": "Always fails (step 0 capture).", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false}}]}}}
+{"dir": "in", "line": {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"_meta": {"progressToken": 1}, "name": "get_state", "arguments": {}}}}
+{"dir": "out", "line": {"jsonrpc": "2.0", "id": 2, "result": {"content": [{"type": "text", "text": "{\"running\": true, \"speed_mmps\": 600, \"guard\": \"closed\", \"rpc_id_seen\": 2}"}], "isError": false}}}
+{"dir": "in", "line": {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"_meta": {"progressToken": 2}, "name": "fail_tool", "arguments": {}}}}
+{"dir": "out", "line": {"jsonrpc": "2.0", "id": 3, "error": {"code": -32000, "message": "toy failure"}}}

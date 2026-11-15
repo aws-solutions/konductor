@@ -1,0 +1,9 @@
+{"dir": "in", "line": {"jsonrpc": "2.0", "id": "server-discover-probe-1", "method": "server/discover", "params": {"_meta": {"io.modelcontextprotocol/protocolVersion": "2026-07-28", "io.modelcontextprotocol/clientInfo": {"name": "kiro", "version": "0.0.0"}, "io.modelcontextprotocol/clientCapabilities": {"elicitation": {"form": {}, "url": {}}}}}}}
+{"dir": "out", "line": {"jsonrpc": "2.0", "id": "server-discover-probe-1", "error": {"code": -32601, "message": "method not found"}}}
+{"dir": "in", "line": {"method": "initialize", "params": {"protocolVersion": "2025-11-25", "capabilities": {"elicitation": {"form": {}, "url": {}}}, "clientInfo": {"name": "kiro", "version": "0.0.0"}}, "jsonrpc": "2.0", "id": 0}}
+{"dir": "out", "line": {"jsonrpc": "2.0", "id": 0, "result": {"protocolVersion": "2025-11-25", "capabilities": {"tools": {}}, "serverInfo": {"name": "toy-plant", "version": "0"}}}}
+{"dir": "in", "line": {"jsonrpc": "2.0", "method": "notifications/initialized"}}
+{"dir": "in", "line": {"method": "tools/list", "params": {}, "jsonrpc": "2.0", "id": 1}}
+{"dir": "out", "line": {"jsonrpc": "2.0", "id": 1, "result": {"tools": [{"name": "get_state", "description": "Read the toy conveyor state.", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false}}, {"name": "fail_tool", "description": "Always fails (step 0 capture).", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false}}]}}}
+{"dir": "in", "line": {"method": "tools/call", "params": {"name": "get_state", "arguments": {}}, "jsonrpc": "2.0", "id": 2}}
+{"dir": "out", "line": {"jsonrpc": "2.0", "id": 2, "result": {"content": [{"type": "text", "text": "{\"running\": true, \"speed_mmps\": 600, \"guard\": \"closed\", \"rpc_id_seen\": 2}"}], "isError": false}}}

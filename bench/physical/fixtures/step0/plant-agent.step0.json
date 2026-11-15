@@ -1,0 +1,48 @@
+{
+  "name": "plant",
+  "description": "step0 toy plant agent",
+  "prompt": "You operate a toy conveyor through the plant tools.",
+  "tools": [
+    "@builtin",
+    "@plant"
+  ],
+  "allowedTools": [
+    "@plant"
+  ],
+  "mcpServers": {
+    "plant": {
+      "command": "python3",
+      "args": [
+        "<repo>/bench/physical/step0/toy_mcp.py"
+      ],
+      "env": {
+        "TOY_MCP_LOG": "<scratch>/mcp.log"
+      }
+    }
+  },
+  "resources": [],
+  "hooks": [],
+  "permissions": {
+    "rules": [
+      {
+        "capability": "mcp",
+        "match": [
+          "plant/*"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "fs_read",
+        "match": [
+          "./**"
+        ],
+        "effect": "allow"
+      }
+    ]
+  },
+  "kiroUpgrade": {
+    "revision": 3,
+    "fingerprint": "sha256:d95a05002fd5ec3ff20a3e2774e88c68dcf7c7c34c44ccc02ccabe3a1a94b981",
+    "source": "sha256:f29f85c07524d6f057db96024a34aa8bc839f9331af995792e1d5b7b594442dc"
+  }
+}
