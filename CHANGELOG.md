@@ -112,6 +112,13 @@ not per individual commit.
   longer claims a fixed 3-year log retention. `policy-validation` now also checks SOC 2, and its
   report uses one per-framework template. `smithy-validation` loads its example review only when
   writing a report.
+- `cost-estimation` moved its REVIEW workflow (checking an existing estimate) into
+  `references/review-workflow.md`. The skill opens it only when the user picks REVIEW.
+- `cost-estimation` moved its CREATE workflow out of `SKILL.md`. The setup reply, context
+  gathering and clarifying questions are in `references/create-context.md`, which the skill opens
+  when the user picks CREATE. The pricing research, scenarios, growth modeling, optimization and
+  report steps are in `references/create-analysis.md`, which it opens once the context is
+  confirmed.
 - `architecture-diagram-generation` keeps its XML templates, icon styles and common patterns in
   `references/drawio-templates.md` and loads them only when generating the XML. Its repeated
   introduction is now one overview.
