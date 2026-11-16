@@ -934,6 +934,7 @@ test('launch.js and job.js take the one table of flags that lib/launch.js keeps'
   // A flag the options of resolveJobRequest read has an entry, so a request option cannot be unreachable.
   assert.deepEqual(Object.values(launchLib.VALUE_FLAGS).sort(), [
     'config',
+    'ladder',
     'maxUsd',
     'root',
     'run',

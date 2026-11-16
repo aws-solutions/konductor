@@ -107,6 +107,7 @@ test('exit codes: done and dry run 0, refused 1, partial 3, and one code per sto
     ledger: 6,
     security: 7,
     model: 8,
+    systemic: 9,
     setup: 10,
   };
   assert.deepEqual({ ...job.STOP_EXIT_CODES }, expected);
@@ -116,7 +117,7 @@ test('exit codes: done and dry run 0, refused 1, partial 3, and one code per sto
       code,
     );
   assert.ok(!Object.values(job.STOP_EXIT_CODES).includes(2));
-  assert.equal(new Set(Object.values(job.STOP_EXIT_CODES)).size, 6);
+  assert.equal(new Set(Object.values(job.STOP_EXIT_CODES)).size, 7);
   assert.throws(
     () => job.exitCodeFor({ status: 'stopped', stop: { kind: 'other' } }),
     /unknown result/,

@@ -20,7 +20,9 @@
  *     (child-env.js, no profile: the job resolves its own AWS profile from the settings). No credential is read,
  *     exported or written by the launcher; the job exports fresh credentials before every subject run.
  *
- * Jobs that can be launched (JOBS): `pairs`, the subject runs (pairs.js).
+ * Jobs that can be launched (JOBS): `pairs`, the subject runs (pairs.js), and `checklists`, the request-only
+ * checklists of reading A (checklist-job.js), which also takes a dose ladder (--ladder) whose item names --skills may
+ * name.
  */
 'use strict';
 
@@ -36,6 +38,7 @@ const {
   parseSkillSelection,
 } = require('./cli-args');
 const { loadConfig, ConfigError } = require('./config');
+const { itemNames, loadLadder, validateLadder } = require('./dose-ladder');
 const jobDir = require('./job-dir');
 const { REPO_ROOT, createLayout } = require('./layout');
 const { listSkills } = require('./skills');
@@ -43,10 +46,15 @@ const { listSkills } = require('./skills');
 /** The script every job runs in: `node scripts/bench/job.js <job> ...`. Its path is how a live job is recognised. */
 const JOB_SCRIPT = path.join(__dirname, '..', 'job.js');
 
-/** The jobs the launcher can start, with what each one does. */
+/** The jobs the launcher can start, with what each one does. `ladder`: the job also takes --ladder <file>. */
 const JOBS = Object.freeze({
   pairs: Object.freeze({
     summary: 'subject runs with and without the skill (paid)',
+    ladder: false,
+  }),
+  checklists: Object.freeze({
+    summary: 'request-only checklists for reading A (paid)',
+    ladder: true,
   }),
 });
 
@@ -60,10 +68,12 @@ class LaunchRefusedError extends Error {
 
 /**
  * Checks the options of a job command and returns the request:
- *   { job, skills, layout, config, maxUsdText, configFile }
- * `options` holds the text of the flags: skills, run, maxUsd, config, root. `skills` comes back sorted and without
- * repeats. Throws UsageError for anything that is not acceptable. Shared by the launcher and the job itself, so the
- * job accepts exactly what the launcher accepted.
+ *   { job, skills, layout, config, maxUsdText, configFile, ladder, ladderFile }
+ * `options` holds the text of the flags: skills, run, maxUsd, config, root, ladder. `ladder` (a job whose JOBS row has
+ * `ladder` set) is a dose ladder file that passes its audit; it comes back parsed as `ladder`, with its absolute path as
+ * `ladderFile`, both null without the flag. `skills` comes back sorted and without repeats. Throws UsageError for
+ * anything that is not acceptable. Shared by the launcher and the job itself, so the job accepts exactly what the
+ * launcher accepted.
  */
 function resolveJobRequest(job, options = {}) {
   if (!job)
@@ -103,12 +113,16 @@ function resolveJobRequest(job, options = {}) {
   }
   if (!options.skills)
     throw new UsageError('--skills is required: name the skills to run');
+  const { ladder, ladderFile } = readLadderOption(job, options.ladder);
   const names = parseSkillSelection(options.skills);
-  const knownSkills = listSkills(layout.skillsDir);
+  const knownSkills = [
+    ...listSkills(layout.skillsDir),
+    ...(ladder ? itemNames(ladder) : []),
+  ];
   const unknownSkills = names.filter((name) => !knownSkills.includes(name));
   if (unknownSkills.length)
     throw new UsageError(
-      `unknown skill(s) in --skills: ${unknownSkills.join(', ')} (no skills/<name>/SKILL.md under ${layout.root})`,
+      `unknown skill(s) in --skills: ${unknownSkills.join(', ')} (no skills/<name>/SKILL.md under ${layout.root}${ladder ? ', and not an item of the dose ladder' : ''})`,
     );
   try {
     jobDir.jobKey(names);
@@ -124,6 +138,8 @@ function resolveJobRequest(job, options = {}) {
     config,
     maxUsdText: maxUsd === undefined ? undefined : options.maxUsd,
     configFile,
+    ladder,
+    ladderFile,
   };
 }
 
@@ -134,6 +150,7 @@ const VALUE_FLAGS = Object.freeze({
   '--max-usd': 'maxUsd',
   '--config': 'config',
   '--root': 'root',
+  '--ladder': 'ladder',
 });
 const BOOL_FLAGS = Object.freeze({
   '--dry-run': 'dryRun',
@@ -160,6 +177,29 @@ function parseJobCommand(argv) {
   return { job, options, request: resolveJobRequest(job, options) };
 }
 
+/**
+ * The --ladder option: { ladder, ladderFile } for a job that takes one (JOBS[job].ladder), or nulls without it.
+ * The file must read as JSON and pass the dose ladder's audit, so the job is given only item names that exist.
+ */
+function readLadderOption(job, value) {
+  if (value === undefined) return { ladder: null, ladderFile: null };
+  if (!JOBS[job].ladder)
+    throw new UsageError(`--ladder is not an option of the ${job} job`);
+  const ladderFile = path.resolve(value);
+  let ladder;
+  try {
+    ladder = loadLadder(ladderFile);
+  } catch (error) {
+    throw new UsageError(`--ladder: ${error.message}`);
+  }
+  const audit = validateLadder(ladder);
+  if (!audit.ok)
+    throw new UsageError(
+      `--ladder ${ladderFile} fails the dose ladder audit: ${audit.problems.slice(0, 3).join('; ')}`,
+    );
+  return { ladder, ladderFile };
+}
+
 /** Why a launch stops at a pid file whose process is alive but cannot be checked (job-dir.js PROCESS_UNVERIFIED). */
 function unverifiedMessage(record) {
   return `pid ${record.pid} (${path.basename(record.file)}) is alive but its command line cannot be read, so it cannot be told whether it is the job; nothing was started. Remove ${record.file} if that process is not the job`;
@@ -179,6 +219,7 @@ function jobArguments(request, { dryRun }) {
       ? []
       : ['--max-usd', request.maxUsdText]),
     ...(request.configFile ? ['--config', request.configFile] : []),
+    ...(request.ladderFile ? ['--ladder', request.ladderFile] : []),
     ...(dryRun ? ['--dry-run'] : []),
   ];
 }
