@@ -38,7 +38,7 @@ function setup() {
   fs.writeFileSync(path.join(release, 'refusal-rule.json'), '{}');
   fs.writeFileSync(path.join(release, 'analysis-plan.md'), 'handledFloor: 0.5\n');
   const fields = path.join(base, 'fields.json');
-  fs.writeFileSync(fields, JSON.stringify({ seeds: { [TASK_ID]: 7 }, versions: { kiroCli: { version: '1.0.0', sha256: 'a'.repeat(64) } } }));
+  fs.writeFileSync(fields, JSON.stringify({ seeds: { [TASK_ID]: 7 }, versions: { kiroCli: { version: '1.0.0', sha256: 'a'.repeat(64), engine: 'v3' } } }));
   return { keyDir, keys, release, fields, privateKey: path.join(keyDir, 'private.pem'), publicKey: path.join(keyDir, 'public.pem') };
 }
 

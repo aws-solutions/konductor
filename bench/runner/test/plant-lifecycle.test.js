@@ -127,12 +127,12 @@ test('intake works on a read-only copy, and a later change to the original does 
 
 // ---- suite preflight ----
 
-test('a plant suite is refused above --parallel 1, with a non-plant arm, or on agent engine v3', () => {
+test('a plant suite is refused above --parallel 1 or with a non-plant arm, and runs on either agent engine', () => {
   const r = rig();
   try {
     assert.throws(() => suiteOf(r, { parallel: 2 }), /one trial at a time/);
     assert.throws(() => suiteOf(r, { arms: [resolveArm('plant-policy', r.repo), resolveArm('vanilla', r.repo)] }), /plant arms only/);
-    assert.throws(() => suiteOf(r, { ctx: { scratchDir: r.scratch, config: { ...CONFIG, agentEngine: 'v3' }, isolation: { mode: 'none' } } }), /engine v2/);
+    for (const agentEngine of ['v2', 'v3']) suiteOf(r, { ctx: { scratchDir: r.scratch, config: { ...CONFIG, agentEngine }, isolation: { mode: 'none' } } }).dispose();
   } finally { r.cleanup(); }
 });
 
@@ -156,12 +156,21 @@ test('a counted plant suite needs the pinned Kiro CLI, the Cedar files and an ou
       parallel: 1, outDir: rr.out, ctx: { scratchDir: rr.scratch, config: CONFIG, isolation: { mode: 'none' }, kiroBin }, repo: rr.repo, keys: rr.release.keys, home: rr.home, versionOfBin,
     });
     assert.throws(counted(r), /versions.kiroCli/);
-    const pin = { kiroCli: { version: 'kiro-cli 9.9.9', sha256: crypto.createHash('sha256').update(fs.readFileSync(kiroBin)).digest('hex') } };
+    const sha256 = crypto.createHash('sha256').update(fs.readFileSync(kiroBin)).digest('hex');
+    const noEngine = rig({ manifest: { versions: { kiroCli: { version: 'kiro-cli 9.9.9', sha256 } } } });
+    try {
+      assert.throws(counted(noEngine), /version, SHA-256 and engine/);
+    } finally { noEngine.cleanup(); }
+    const pin = { kiroCli: { version: 'kiro-cli 9.9.9', sha256, engine: 'v2' } };
     const pinned = rig({ manifest: { versions: pin } });
     try {
       assert.throws(counted(pinned, () => 'kiro-cli 9.9.8'), /is not the pinned/);
       assert.throws(counted(pinned), /needs the Cedar files/);
     } finally { pinned.cleanup(); }
+    const v3 = rig({ manifest: { versions: { kiroCli: { ...pin.kiroCli, engine: 'v3' } } } });
+    try {
+      assert.throws(counted(v3), /pins agent engine v3; --agent-engine v2 is refused/);
+    } finally { v3.cleanup(); }
     const cedar = rig({ manifest: { versions: pin }, files: { 'policy/plant.cedar': 'stub', 'policy/plant.cedarschema': 'stub', 'sensor-limits.json': '{}' } });
     try {
       assert.throws(counted(cedar), /same filesystem as scratch/);

@@ -15,6 +15,7 @@ const { checkManifest, sha256Hex, ReleaseRefused, PINNED_KEYS, MANIFEST_FILE, SI
 const { DEADLINES } = require('./gateway-proc.js');
 const { loadRefusalRule } = require('./refusal.js');
 const { readEnvironment } = require('./score.js');
+const { AGENT_ENGINES } = require('../harness/runtime.js');
 
 const POLICY_FILES = ['policy/plant.cedar', 'policy/plant.cedarschema', 'sensor-limits.json'];
 const REFUSAL_RULE = 'refusal-rule.json';
@@ -119,23 +120,28 @@ function refuseInside(what, p, roots) {
   }
 }
 
-/** Throws ReleaseRefused unless the suite's arms are all plant arms, its tasks all plant tasks, and it runs one trial at a time on engine v2. */
-function checkSuiteShape({ arms, tasks, parallel, agentEngine }) {
+/** Throws ReleaseRefused unless the suite's arms are all plant arms, its tasks all plant tasks, and it runs one trial at a time. */
+function checkSuiteShape({ arms, tasks, parallel }) {
   const other = arms.filter((a) => !a.plant).map((a) => a.id);
   if (other.length) throw new ReleaseRefused(`a plant suite runs plant arms only; also given: ${other.join(', ')}`);
   const notPlant = tasks.filter((t) => !t.environment).map((t) => t.id);
   if (notPlant.length) throw new ReleaseRefused(`plant arms run plant tasks only; ${notPlant.join(', ')} has no environment block`);
   if (parallel !== 1) throw new ReleaseRefused(`a plant suite runs one trial at a time (SR-23); --parallel ${parallel} is refused`);
-  if (agentEngine !== 'v2') throw new ReleaseRefused(`plant arms are pinned to agent engine v2 (NFR-9); --agent-engine ${agentEngine} is refused`);
 }
 
-/** Throws ReleaseRefused unless the Kiro CLI at `kiroBin` has the version and SHA-256 the manifest pins (NFR-11). */
-function checkKiroPin(kiroBin, manifest, versionOfBin) {
+/**
+ * Throws ReleaseRefused unless the Kiro CLI at `kiroBin` has the version and SHA-256 the manifest pins (NFR-11), and
+ * `agentEngine` is the engine the release pins. A release pins one exact build, never a range.
+ */
+function checkKiroPin(kiroBin, manifest, versionOfBin, agentEngine) {
   const pin = manifest.versions?.kiroCli;
-  if (!pin?.version || !pin?.sha256) throw new ReleaseRefused('manifest versions.kiroCli must name the Kiro CLI version and SHA-256');
+  if (!pin?.version || !pin?.sha256 || !AGENT_ENGINES.includes(pin?.engine)) {
+    throw new ReleaseRefused(`manifest versions.kiroCli must name the Kiro CLI version, SHA-256 and engine (${AGENT_ENGINES.join(' or ')})`);
+  }
   const sha = sha256File(fs.realpathSync(kiroBin));
   const version = versionOfBin(kiroBin);
   if (sha !== pin.sha256 || version !== pin.version) throw new ReleaseRefused(`Kiro CLI ${kiroBin} (${version}, ${sha}) is not the pinned ${pin.version} (${pin.sha256})`);
+  if (agentEngine !== pin.engine) throw new ReleaseRefused(`the release pins agent engine ${pin.engine}; --agent-engine ${agentEngine} is refused`);
 }
 
 /** Throws ReleaseRefused when the out dir shares a filesystem with scratch or home (NFR-12, counted suites). */
@@ -184,7 +190,7 @@ function gatewayFilesOf(release) {
  * the runner-private dir is made), `home`, `versionOfBin`, `deadlines`, `makeToken` and `readListeners`.
  */
 function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, keys = PINNED_KEYS, privateParent = os.tmpdir(), home = os.homedir(), versionOfBin = versionOf, deadlines = DEADLINES, makeToken, readListeners }) {
-  checkSuiteShape({ arms, tasks, parallel, agentEngine: ctx.config.agentEngine });
+  checkSuiteShape({ arms, tasks, parallel });
   const dir = opts['plant-release'];
   const expectedSha256 = opts['plant-release-sha256'];
   if (!dir || dir === true || !fs.existsSync(dir)) throw new ReleaseRefused('plant arms need --plant-release DIR (an unpacked release)');
@@ -202,7 +208,7 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
     release = intakeRelease({ dir, expectedSha256, privateRoot, keys });
     const counted = !opts['kiro-bin'];
     if (counted) {
-      checkKiroPin(ctx.kiroBin, release.manifest, versionOfBin);
+      checkKiroPin(ctx.kiroBin, release.manifest, versionOfBin, ctx.config.agentEngine);
       const missing = POLICY_FILES.filter((rel) => !release.sha256Of(rel));
       if (missing.length) throw new ReleaseRefused(`a counted plant suite needs the Cedar files; the release lacks ${missing.join(', ')}`);
       checkOutFilesystem(outDir, { scratch: ctx.scratchDir, home });

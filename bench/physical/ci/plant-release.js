@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { intakeRelease, discardRelease, oddFileReason } = require('../../runner/lib/plant/intake.js');
+const { AGENT_ENGINES } = require('../../runner/lib/harness/runtime.js');
 const { keyIdOf, sha256Hex, ReleaseRefused, MANIFEST_FILE, SIGNATURE_FILE } = require('../../runner/lib/plant/manifest.js');
 
 const PINNED_KEYS_FILE = path.join(__dirname, '../../runner/lib/plant/pinned-keys.json');
@@ -153,7 +154,7 @@ function missingFor({ releaseId, fields, paths }) {
   if (!releaseId) missing.push('--release-id (the release name, for example plant-r1)');
   for (const need of [REFUSAL_RULE, ANALYSIS_PLAN]) if (!paths.includes(need)) missing.push(`${need} in the release`);
   const kiro = fields.versions?.kiroCli;
-  if (!kiro?.version || !kiro?.sha256) missing.push('versions.kiroCli {version, sha256} in the --fields file');
+  if (!kiro?.version || !kiro?.sha256 || !AGENT_ENGINES.includes(kiro?.engine)) missing.push(`versions.kiroCli {version, sha256, engine} in the --fields file (engine ${AGENT_ENGINES.join(' or ')})`);
   const taskIds = paths.map((p) => TASK_FILE.exec(p)?.[1]).filter(Boolean);
   if (!taskIds.length) missing.push('tasks/<id>.json in the release');
   const unseeded = taskIds.filter((id) => !Number.isInteger(fields.seeds?.[id]));

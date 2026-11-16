@@ -226,3 +226,14 @@ Runs were not inside bench's sandbox, because `unshare` is blocked on this host 
 | Odd files | `sign` refuses a link, hard link or special file with the same test intake uses (`oddFileReason`, now exported). `sign` lists every file in the folder, so the folder must hold only release files; a draft folder with notes or scripts needs them removed first |
 | Verify | Hashes `manifest.json` as the expected SHA-256 (the signature and the pinned key are the real check), then runs `intakeRelease` on a throwaway copy and deletes it. It does not check the Kiro CLI pin or the Cedar files; `preparePlantSuite` does that at a real run. `--keys FILE` points `pin`, `revoke` and `verify` at another pinned list, which is how the dry run avoids pinning a throwaway key in the repo |
 | Leak | `revoke --key-id`, new `keygen`, `pin`, re-sign; the old release is burned. Written in README and GUIDE |
+
+## Engine v3 for plant arms (2026-11-16, owner pilot build kiro-cli 3.3.0)
+
+The owner decided that plant arms must run on engine v3. This overrides the design doc's NFR-9, which pins plant arms to engine v2. The design doc itself is not edited; this table records the change.
+
+| Topic | Decision |
+|---|---|
+| Changed doc claim | NFR-9 "plant arms are pinned to engine v2" no longer holds. Plant arms run on `--agent-engine v2` or `v3`. The intake refusal of v3 is gone |
+| Does a release pin the engine | Yes. `versions.kiroCli` is now `{version, sha256, engine}`, and a counted suite is refused unless `--agent-engine` equals `engine`. The same binary behaves differently on the two engines (handshake, stream shape, tool names), so the engine is part of what a result was measured on. `plant-release.js sign` refuses a `--fields` file without `engine` (`v2` or `v3`). A release made before this change has no `engine` and is refused at a counted run; cut a new release |
+| Exact pin | One build per release: the first line of `kiro-cli --version` and the SHA-256 of the binary. Never a range. A newer build means a new release |
+| Control suites | Unchanged: no Kiro CLI pin, so either engine runs |
