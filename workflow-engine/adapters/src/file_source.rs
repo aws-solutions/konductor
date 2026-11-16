@@ -46,6 +46,21 @@ impl Skip {
     }
 }
 
+/// Why a workflow file could not be written.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WriteError {
+    /// An exclusive write found the file there.
+    Exists,
+    /// Anything else. The text is for a log, never for a client, because it can hold a path.
+    Other(String),
+}
+
+impl WriteError {
+    fn io(error: std::io::Error) -> WriteError {
+        WriteError::Other(error.to_string())
+    }
+}
+
 /// One folder of workflows, such as `<repo>/.konductor/workflows`.
 #[derive(Debug, Clone)]
 pub struct FileSource {
@@ -72,6 +87,93 @@ impl FileSource {
             return Ok(None);
         }
         self.read_below(&[&format!("{name}.yml")])
+    }
+
+    /// Writes the bytes of workflow `name` as one step: a new file in the same folder, flushed, then moved into place.
+    /// With `exclusive` the file must not exist, and an existing one, even one made a moment ago, is
+    /// [`WriteError::Exists`]. Without it the file is replaced. The bytes are written as they are given. The folder is
+    /// made if it is missing, and a link or a file in the way of it is refused.
+    pub fn write_workflow(
+        &self,
+        name: &str,
+        bytes: &[u8],
+        exclusive: bool,
+    ) -> Result<(), WriteError> {
+        if !is_name(name) {
+            return Err(WriteError::Other("not a workflow name".to_string()));
+        }
+        let mut folder = self.base.clone();
+        for step in &self.folder {
+            folder.push(step);
+            match fs::create_dir(&folder) {
+                Ok(()) => {}
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                    let meta = fs::symlink_metadata(&folder).map_err(WriteError::io)?;
+                    if !meta.is_dir() {
+                        return Err(WriteError::Other(
+                            "a folder is a link or a file".to_string(),
+                        ));
+                    }
+                }
+                Err(e) => return Err(WriteError::io(e)),
+            }
+        }
+        let path = folder.join(format!("{name}.yml"));
+        if fs::symlink_metadata(&path).is_ok_and(|m| !m.is_file()) {
+            return Err(WriteError::Other(
+                "the file is a link or not a regular file".to_string(),
+            ));
+        }
+        // A replaced file keeps the permissions it had, and its temporary file has them from the first byte. A new file
+        // gets the default of the process, which is what an editor would give it.
+        let old_mode = fs::metadata(&path).ok().map(|m| m.permissions());
+        let mut written = None;
+        for _ in 0..16 {
+            let temp = crate::run_store::temp_path(&path);
+            let mut options = OpenOptions::new();
+            options.write(true).create_new(true);
+            #[cfg(unix)]
+            if let Some(mode) = &old_mode {
+                use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+                options.mode(mode.mode() & 0o777);
+            }
+            match options.open(&temp) {
+                Ok(file) => {
+                    written = Some((file, temp));
+                    break;
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+                Err(e) => return Err(WriteError::io(e)),
+            }
+        }
+        let (mut file, temp) =
+            written.ok_or_else(|| WriteError::Other("no free temporary name".to_string()))?;
+        let done = (|| {
+            use std::io::Write;
+            file.write_all(bytes)?;
+            if let Some(mode) = old_mode {
+                file.set_permissions(mode)?;
+            }
+            file.sync_all()?;
+            // A hard link fails when the name exists, so a file made after the caller looked is not replaced.
+            if exclusive {
+                fs::hard_link(&temp, &path)
+            } else {
+                fs::rename(&temp, &path)
+            }
+        })();
+        let _ = if exclusive || done.is_err() {
+            fs::remove_file(&temp)
+        } else {
+            Ok(())
+        };
+        match done {
+            Ok(()) => Ok(()),
+            Err(e) if exclusive && e.kind() == std::io::ErrorKind::AlreadyExists => {
+                Err(WriteError::Exists)
+            }
+            Err(e) => Err(WriteError::io(e)),
+        }
     }
 
     fn read_below(&self, components: &[&str]) -> Result<Option<Vec<u8>>, Skip> {
