@@ -12,6 +12,8 @@ const { parseStream } = require('../lib/stream.js');
 const PHYSICAL = path.join(__dirname, '..', '..', 'physical');
 const CANONICAL = JSON.parse(fs.readFileSync(path.join(PHYSICAL, 'fixtures', 'canonical-args.json'), 'utf8')).vectors;
 const STEP0_STREAM = fs.readFileSync(path.join(PHYSICAL, 'fixtures', 'step0', 'kiro-v2.plant.stream.jsonl'), 'utf8');
+const STEP0_V3_STREAM = fs.readFileSync(path.join(PHYSICAL, 'fixtures', 'step0', 'kiro-v3.plant.stream.trimmed.jsonl'), 'utf8');
+const toolCall = (update) => ({ type: 'sessionUpdate', data: { update: { sessionUpdate: 'tool_call', ...update } } });
 
 const call = (tool, args, id) => ({ toolCallId: id, callId: id, tool, argsSha256: argsSha256(args) });
 
@@ -26,6 +28,39 @@ test('the engine v2 purpose field is dropped from stream arguments', () => {
 test('plant calls are read from a real engine v2 stream with their tool names', () => {
   const calls = plantCallsInStream(parseStream(STEP0_STREAM).events);
   assert.deepEqual(calls.map((c) => [c.tool, c.argsSha256]), [['get_state', argsSha256({})], ['fail_tool', argsSha256({})]]);
+});
+
+test('plant calls are read from a real engine v3 stream; its Tool Load of tool::plant::get_state is not a call', () => {
+  const calls = plantCallsInStream(parseStream(STEP0_V3_STREAM).events);
+  assert.deepEqual(calls.map((c) => [c.toolCallId, c.tool, c.argsSha256, c.engine]), [['toolu_bdrk_01X6hDGXkVqkwFehJHcrCW6M', 'get_state', argsSha256({}), 'v3']]);
+});
+
+test('each engine shape is read, or kept as an unreadable plant call, or left out when it is not a plant call', () => {
+  const cases = [
+    { why: 'v2 plant call', u: { title: 'Running: @plant/stop', rawInput: {}, _meta: { kiro: { toolName: 'stop', mcpServerName: 'plant' } } }, want: 'stop' },
+    { why: 'v2 call on another server', u: { title: 'Running: @other/stop', rawInput: {}, _meta: { kiro: { toolName: 'stop', mcpServerName: 'other' } } }, want: undefined },
+    { why: 'v2 built-in', u: { title: 'Reading', rawInput: {}, _meta: { kiro: { toolName: 'fs_read' } } }, want: undefined },
+    { why: 'v3 titled call with serverName', u: { title: '@plant/stop', rawInput: {}, _meta: { kiro: { serverName: 'plant' } } }, want: 'stop' },
+    { why: 'v3 titled call without serverName', u: { title: '@plant/stop', rawInput: {} }, want: 'stop' },
+    { why: 'v3 deferred Tool Call', u: { title: 'Tool Call', rawInput: { tool_id: 'tool::plant::stop', arguments: {} } }, want: 'stop' },
+    { why: 'v3 Tool Load of a plant tool', u: { title: 'Tool Load', rawInput: { id: 'tool::plant::stop' }, _meta: { kiro: { toolOrigin: 'default' } } }, want: undefined },
+    { why: 'v3 call on another server', u: { title: '@other/stop', rawInput: {}, _meta: { kiro: { serverName: 'other' } } }, want: undefined },
+    { why: 'v3 built-in', u: { title: 'Read File', rawInput: { path: 'x' } }, want: undefined },
+    { why: 'v3 plant call with an unreadable title', u: { title: 'Plant thing', rawInput: {}, _meta: { kiro: { serverName: 'plant' } } }, want: null },
+    { why: 'v3 plant call with no title', u: { rawInput: {}, _meta: { kiro: { serverName: 'plant' } } }, want: null },
+    { why: 'v3 plant serverName on another server title', u: { title: '@other/stop', rawInput: {}, _meta: { kiro: { serverName: 'plant' } } }, want: null },
+  ];
+  for (const c of cases) {
+    const calls = plantCallsInStream([toolCall({ toolCallId: 't', ...c.u })]);
+    if (c.want === undefined) assert.deepEqual(calls, [], c.why);
+    else assert.deepEqual(calls.map((x) => x.tool), [c.want], c.why);
+  }
+});
+
+test('a plant call whose tool cannot be read is a stream-only mismatch, never a pair', () => {
+  const stream = plantCallsInStream([toolCall({ toolCallId: 't1', title: 'Plant thing', rawInput: {}, _meta: { kiro: { serverName: 'plant' } } })]);
+  const result = matchCalls(stream, [call('get_state', {}, 'c0')]);
+  assert.deepEqual([result.pairs.length, result.streamOnly.map((c) => c.toolCallId), result.gatewayOnly.length], [0, ['t1'], 1]);
 });
 
 test('gateway calls take their call_id from seq and their key from args_sha256', () => {

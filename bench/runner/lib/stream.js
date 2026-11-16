@@ -395,4 +395,4 @@ function sessionModels(session) {
   return (session?.session_state?.conversation_metadata?.user_turn_metadatas || []).map((t) => t.model ?? null);
 }
 
-module.exports = { toolNameOf, isV3Call, mcpToolNameOf, skillsCallOf, skillResourceCallOf, skillActivationOf, mcpInputOf, subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };
+module.exports = { toolNameOf, isV3Call, mcpCallOf, mcpToolNameOf, skillsCallOf, skillResourceCallOf, skillActivationOf, mcpInputOf, subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };

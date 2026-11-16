@@ -6,13 +6,47 @@
 
 const { argsSha256, streamArgs } = require('./canonical.js');
 const { SERVER_NAME } = require('./agent-file.js');
+const { isV3Call, mcpCallOf } = require('../stream.js');
 
-/** Plant tool calls in parsed stream `events`: `{toolCallId, tool, argsSha256}` in stream order. */
+/**
+ * How each engine names a plant call in a `tool_call` update. `isPlant` says the call went to the plant server;
+ * `tool` reads its tool name, or null when it cannot be read. Engine v2 names both in `_meta.kiro`. Engine v3 titles
+ * the call `@plant/<tool>` (or wraps a deferred call as `Tool Call` with `tool::plant::<tool>`), and may also say
+ * `_meta.kiro.serverName`. A v3 `Tool Load` of `tool::plant::<tool>` only loads a schema and is not a plant call.
+ */
+const ENGINES = [
+  {
+    engine: 'v2',
+    is: (u) => !isV3Call(u),
+    isPlant: (u) => u._meta.kiro.mcpServerName === SERVER_NAME,
+    tool: (u) => u._meta.kiro.toolName,
+    args: (u) => streamArgs(u.rawInput),
+  },
+  {
+    engine: 'v3',
+    is: isV3Call,
+    isPlant: (u) => u._meta?.kiro?.serverName === SERVER_NAME || mcpCallOf(u)?.server === SERVER_NAME,
+    tool: (u) => {
+      const mcp = mcpCallOf(u);
+      return mcp?.server === SERVER_NAME ? mcp.tool : null;
+    },
+    args: (u) => streamArgs(u.rawInput),
+  },
+];
+
+/**
+ * Plant tool calls in parsed stream `events`: `{toolCallId, tool, argsSha256, engine}` in stream order. A plant-server
+ * call whose tool cannot be read keeps `tool: null`, so it never pairs with a gateway call and stays a mismatch.
+ */
 function plantCallsInStream(events) {
-  return events
-    .map((e) => e?.data?.update)
-    .filter((u) => u?.sessionUpdate === 'tool_call' && u._meta?.kiro?.mcpServerName === SERVER_NAME)
-    .map((u) => ({ toolCallId: u.toolCallId, tool: u._meta.kiro.toolName, argsSha256: argsSha256(streamArgs(u.rawInput)) }));
+  const calls = [];
+  for (const u of events.map((e) => e?.data?.update)) {
+    if (u?.sessionUpdate !== 'tool_call') continue;
+    const reader = ENGINES.find((r) => r.is(u));
+    if (!reader.isPlant(u)) continue;
+    calls.push({ toolCallId: u.toolCallId, tool: reader.tool(u) ?? null, argsSha256: argsSha256(reader.args(u)), engine: reader.engine });
+  }
+  return calls;
 }
 
 /** Gateway `call` events from parsed gateway log `lines`: `{callId, tool, argsSha256}` in log order. */
