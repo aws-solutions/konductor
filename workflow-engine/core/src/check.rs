@@ -211,7 +211,10 @@ impl<'a> Checker<'a> {
                     honored.insert(key, entry);
                 }
                 KeyStatus::Later(slice) => {
-                    let message = format!("`{}` is not supported yet.", display_path(prefix, key));
+                    let message = format!(
+                        "`{}` is not supported by this build.",
+                        display_path(prefix, key)
+                    );
                     let problem =
                         Problem::new(Code::NotSupportedByThisBuild, &at, entry.key.span, message)
                             .with_slice(slice);
@@ -355,8 +358,7 @@ impl<'a> Checker<'a> {
             &child(&[], "format"),
             entry.value_span(),
             message,
-        )
-        .with_suggestion("konductor/1");
+        );
         self.problems.push(problem);
         None
     }
@@ -377,7 +379,7 @@ impl<'a> Checker<'a> {
 
     fn read_version(&mut self, entry: Option<&Entry>, root: &Map) -> Option<String> {
         let Some(entry) = entry else {
-            self.missing(root, &[], "version", Some("version: 0.1.0"));
+            self.missing(root, &[], "version", None);
             return None;
         };
         let at = child(&[], "version");
@@ -392,7 +394,7 @@ impl<'a> Checker<'a> {
         if is_semver(&scalar.text) {
             return Some(scalar.text.clone());
         }
-        let message = "`version` must be three numbers separated by dots, such as `0.1.0`.";
+        let message = "`version` must be three numbers joined by dots, as in `0.1.0`.";
         let problem = Problem::new(Code::InvalidValue, &at, entry.value_span(), message)
             .with_suggestion("0.1.0");
         self.problems.push(problem);
@@ -486,7 +488,14 @@ impl<'a> Checker<'a> {
         let mut complete = true;
         for (index, item) in list.items.iter().enumerate() {
             let item_at = child_index(at, index);
-            let Some(map) = self.mapping_at(item, &item_at, "A check must be a mapping.") else {
+            // A check that is not a mapping is a value of the wrong kind. `NOT_A_MAPPING` is for the root and a stage.
+            let Node::Map(map) = item else {
+                self.report(
+                    Code::WrongType,
+                    &item_at,
+                    item.span(),
+                    "A check must be a mapping.",
+                );
                 complete = false;
                 continue;
             };
