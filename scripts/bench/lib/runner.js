@@ -20,9 +20,10 @@
  *                    With any grant beyond Skill alone, everything else that would need approval is denied
  *                    (permission mode dontAsk).
  *   maxBudgetUsd     USD cap of one subject run (claude --max-budget-usd): above 0, at most MAX_BUDGET_USD_LIMIT and
- *                    written in plain decimal notation; DEFAULT_MAX_BUDGET_USD when absent. The cap is not tied to
- *                    the spend ledger's reservation for the call: a run that costs more than it reserved is charged
- *                    what Claude Code reports, up to this cap, so a spend limit can be passed by the difference.
+ *                    written in plain decimal notation; DEFAULT_MAX_BUDGET_USD when absent. The subject runner reserves
+ *                    the larger of this cap and the call's p90 in the spend ledger (claude-run.js subjectRun), so a run
+ *                    that reaches its cap is covered by its reservation. A run that Claude Code reports above the
+ *                    cap is still charged in full.
  *   extends          name of another profile whose fields this one starts from (one level only)
  *   id               the profile's name, a safe name; profile() sets it from the table key
  *
