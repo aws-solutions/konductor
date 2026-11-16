@@ -17,7 +17,7 @@ Compares implementation code against existing test suites to identify missing te
 
 **Not for:** writing tests (use `cypress-test-implementation` or `playwright-test-implementation`) or analyzing a single file.
 
-**Lightweight fallback (Coverage mode only, and not when a calling SOP drives the run):** for one module or one PR, skip Stages 3 and 8. Still run Stage 0 and write the report file, with a short table of the uncovered behaviours and their severity in place of the per-stage sections. A fallback report has no distribution analysis, so it is not a full input for `e2e-test-strategy`.
+**Lightweight fallback (Coverage mode only, and not when a calling SOP drives the run):** for one module or one PR, skip Stages 3 and 8. Run Stage 5 only if the module has NFRs, and Stage 6 only if it has integration points. Still run Stage 0 and write the report file. One short table of the uncovered behaviours and their severity replaces the report sections that Stages 4 to 7 define. A fallback report has no distribution analysis, so it is not a full input for `e2e-test-strategy`.
 
 ## Usage
 
@@ -70,7 +70,7 @@ Follow stages sequentially based on selected mode:
 
 **Mode Branching:**
 
-- **Coverage**: Stages 0, 1, 2, 3, 4, 5, 6, 7, 8 → Report (lightweight fallback: Stages 0, 1, 2, 4, 5, 6, 7 → Report, see Scope and fallback)
+- **Coverage**: Stages 0, 1, 2, 3, 4, 5, 6, 7, 8 → Report (lightweight fallback: Stages 0, 1, 2, 4, 7, plus 5 and 6 when they apply → Report, see Scope and fallback)
 - **Readiness**: Stages 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 → Report
 
 ---
@@ -669,7 +669,7 @@ After completing mode-specific stages, finalize the consolidated report:
 
 **Executive Summary:** Overall coverage, readiness status (if applicable), critical gaps count, manual tests required.
 
-**Validation Results:** Include completed stages based on mode (Coverage: 0, 1, 2, 3, 4, 5, 6, 7, 8, or 0, 1, 2, 4, 5, 6, 7 on the lightweight fallback | Readiness: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10).
+**Validation Results:** Include completed stages based on mode (Coverage: 0, 1, 2, 3, 4, 5, 6, 7, 8, or 0, 1, 2, 4, 7, plus 5 and 6 when they apply, on the lightweight fallback | Readiness: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10).
 
 **Consolidated Recommendations:** Critical actions (must fix), warnings (should fix), manual testing requirements, quality improvements.
 
