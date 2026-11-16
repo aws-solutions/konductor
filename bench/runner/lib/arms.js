@@ -5,6 +5,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const source = require('./arm-source.js');
 const { DESCRIPTORS } = require('./harness/descriptors.js');
+const { AGENT_NAME: PLANT_AGENT } = require('./plant/agent-file.js');
 
 const MAIN_LABEL = 'main-unreleased';
 // Runtimes other than kiro-cli are selected by an arm-id prefix; the prefixes live in the harness descriptors.
@@ -13,6 +14,10 @@ const prefixOf = (runtime) => DESCRIPTORS.find((d) => d.id === runtime).armPrefi
 const OC_PREFIX = prefixOf('opencode');
 const CC_PREFIX = prefixOf('claude-code');
 const prefixedRuntime = (spec) => PREFIXED.find((d) => spec.startsWith(d.armPrefix));
+// The plant arms (FR-9) by external id, with the arm name the gateway and result.json use. Kiro CLI only.
+const PLANT_ARMS = Object.freeze({ 'plant-policy': 'policy', 'plant-allowall': 'allow-all' });
+const isPlantArm = (spec) => Object.hasOwn(PLANT_ARMS, spec);
+const PLANT_ONLY_KIRO = 'plant arms run on kiro-cli only';
 const KNOWN_ARMS = ['vanilla', 'v1.0.0', 'v1.1.0', 'v1.2.0', 'main', 'oc-vanilla', 'oc-v1.2.0', 'oc-main', 'cc-vanilla', 'cc-main'];
 
 function git(repo, args) {
@@ -59,8 +64,10 @@ const TAG_NAME_RE = /^v\d+\.\d+\.\d+$/;
  */
 function parseArmSpec(spec) {
   const d = prefixedRuntime(spec);
+  if (d && isPlantArm(spec.slice(d.armPrefix.length))) throw new Error(`arm "${spec}": ${PLANT_ONLY_KIRO}`);
   if (d) return { ...parseArmSpec(spec.slice(d.armPrefix.length)), [d.armPrefix.slice(0, -1)]: true };
   if (spec === 'vanilla') return { kind: 'vanilla', name: 'vanilla' };
+  if (isPlantArm(spec)) return { kind: 'plant', name: spec, plantArm: PLANT_ARMS[spec] };
   const eq = spec.indexOf('=');
   if (eq === -1) {
     if (spec === 'main') return { kind: 'main', name: 'main' };
@@ -69,7 +76,7 @@ function parseArmSpec(spec) {
   }
   const name = spec.slice(0, eq);
   const ref = spec.slice(eq + 1);
-  if (name === 'vanilla' || name === 'main') throw new Error(`arm name "${name}" is reserved`);
+  if (name === 'vanilla' || name === 'main' || isPlantArm(name)) throw new Error(`arm name "${name}" is reserved`);
   if (TAG_NAME_RE.test(name)) {
     if (ref !== name) throw new Error(`arm name "${name}" is reserved for the release tag of that name (use ${name} or ${name}=${name}); pick another name for ref "${ref}"`);
     return { kind: 'git', name, ref, bare: true };
@@ -128,6 +135,7 @@ function withProvenance(base, repo) {
 // the same condition run through opencode instead of kiro-cli (runtime 'opencode').
 function resolveArm(spec, repo) {
   const d = prefixedRuntime(spec);
+  if (d && isPlantArm(spec.slice(d.armPrefix.length))) throw new Error(`arm "${spec}": ${PLANT_ONLY_KIRO}`);
   if (d) {
     const base = resolveArm(spec.slice(d.armPrefix.length), repo);
     return { ...base, id: `${d.armPrefix}${base.id}`, label: `${d.armPrefix}${base.label}`, runtime: d.id, harness: base.vanilla ? 'none' : 'claude' };
@@ -135,6 +143,10 @@ function resolveArm(spec, repo) {
   const parsed = parseArmSpec(spec);
   if (parsed.kind === 'vanilla') {
     return { id: 'vanilla', label: 'vanilla', ref: null, commitSha: null, source: null, dirty: null, contentHash: null, harness: 'none', runtime: 'kiro-cli', agent: null, vanilla: true, warnings: [] };
+  }
+  // A plant arm installs nothing of konductor, so it takes the vanilla install path; `plant` marks the gateway run.
+  if (parsed.kind === 'plant') {
+    return { id: parsed.name, label: parsed.name, ref: null, commitSha: null, source: null, dirty: null, contentHash: null, harness: 'plant', runtime: 'kiro-cli', agent: PLANT_AGENT, vanilla: true, plant: { arm: parsed.plantArm }, warnings: [] };
   }
   const base = parsed.kind === 'main' ? resolveMain(repo) : parsed.kind === 'dir' ? { ...dirArm(parsed, repo), source: 'dir' } : gitArm(parsed, repo);
   return { ...withProvenance(base, repo), harness: 'kiro-cli-v2', runtime: 'kiro-cli', agent: 'konductor', vanilla: false };
@@ -177,7 +189,8 @@ const ARM_SYNTAX = [
   '                      resolved in --repo-root without fetching; built from `git archive`, a dirty tree never leaks',
   '  name=dir:<path>     a working-tree directory (a worktree or checkout), snapshot of tracked and untracked',
   '                      files that are not ignored; label name@<hash12>, recorded as dirty',
-  '  name: [a-z0-9][a-z0-9._-]{0,40}; vanilla, main and vX.Y.Z are reserved. A bare ref (feat/x) is refused.',
+  '  plant-policy | plant-allowall    plant arms on the simulated conveyor (kiro-cli only, never with oc- or cc-)',
+  '  name: [a-z0-9][a-z0-9._-]{0,40}; vanilla, main, vX.Y.Z and the plant arm names are reserved. A bare ref (feat/x) is refused.',
   '  A ref that is not local is never fetched; run `git fetch origin pull/<n>/head:pr-<n>` yourself, then pr-<n>=pr-<n>.',
 ].join('\n');
 
@@ -203,4 +216,4 @@ function formatArmRows(arms) {
   return rows.map((r) => r.map((c, i) => c.padEnd(w[i])).join('  ').trimEnd()).join('\n');
 }
 
-module.exports = { resolveArm, resolveArms, parseArmSpec, resolveMain, listArms, formatArmRows, ARM_SYNTAX, KNOWN_ARMS, MAIN_LABEL, OC_PREFIX, CC_PREFIX };
+module.exports = { resolveArm, resolveArms, parseArmSpec, resolveMain, listArms, formatArmRows, ARM_SYNTAX, KNOWN_ARMS, PLANT_ARMS, MAIN_LABEL, OC_PREFIX, CC_PREFIX };

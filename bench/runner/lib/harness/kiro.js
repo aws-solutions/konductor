@@ -34,8 +34,8 @@ function kiroArgs({ arm, task, config, resume = null }) {
     '--output-format', 'stream-json',
   ];
   if (arm.agent) args.push('--agent', arm.agent);
-  // Exit 3 instead of running without the skills server.
-  if (!arm.vanilla) args.push('--require-mcp-startup');
+  // Exit 3 instead of running without the skills server, or without the plant shim.
+  if (!arm.vanilla || arm.plant) args.push('--require-mcp-startup');
   if (resume) args.push(...(resume.sessionId ? ['--resume-id', resume.sessionId] : ['--resume']));
   args.push(resume ? resume.prompt : promptFor(arm, task));
   return args;

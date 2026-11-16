@@ -43,4 +43,14 @@ function classifyLaunchFailure({ agg, exec, texts = [] }) {
   return null;
 }
 
-module.exports = { MAX_LAUNCH_WALL_MS, LAUNCH_PATTERNS, launchFailureText, classifyLaunchFailure };
+// Kiro CLI with --require-mcp-startup exits 3 when an MCP server did not start (STEP0-FINDINGS.md). Under a plant arm that
+// server is the plant shim, so the run never reached the gateway: launch failure `plantStartup` (8.5).
+const MCP_STARTUP_EXIT = 3;
+
+/** A `plantStartup` message when a plant run's Kiro CLI exited 3 without starting a turn, else null. No wall-clock bound: the MCP start may take its own timeout. */
+function classifyPlantStartup({ agg, exec }) {
+  if (!exec || exec.timedOut || exec.exitCode !== MCP_STARTUP_EXIT || !neverStartedTurn(agg)) return null;
+  return 'plantStartup: kiro-cli exit 3, the plant MCP server did not start';
+}
+
+module.exports = { MAX_LAUNCH_WALL_MS, LAUNCH_PATTERNS, launchFailureText, classifyLaunchFailure, classifyPlantStartup };
