@@ -46,3 +46,10 @@ browser-output/
 # see generated/claude-plugin/README.md.
 generated/claude-plugin/agents/
 generated/claude-plugin/skills/
+
+# Skill benchmark run output: answers, checklists, judgments, the spend
+# ledger and reports (scripts/bench/lib/layout.js). Committed baselines live
+# in bench/baselines/ and are not ignored.
+bench/out/
+# Personal benchmark settings. Copy bench/config.example.json to start one.
+bench/config.json
