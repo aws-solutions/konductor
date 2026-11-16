@@ -53,7 +53,7 @@
 
 use fs2::FileExt;
 use std::fs::{File, OpenOptions};
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -131,10 +131,23 @@ impl std::error::Error for ConfigLockError {}
 /// state worth inspecting outside tests.
 #[derive(Debug)]
 pub struct ConfigLockGuard {
-    // Never read directly -- kept alive purely so the OS-level advisory
-    // lock associated with this file descriptor stays held until this
-    // guard (and thus the file) drops.
+    // Kept alive so the OS-level advisory lock on this file descriptor
+    // stays held until the guard drops.
     _file: File,
+    path: PathBuf,
+}
+
+impl ConfigLockGuard {
+    /// Unlinks the lock file while this guard still holds the lock.
+    /// Safe against concurrent acquirers: `acquire_named` re-checks,
+    /// after locking, that the path still names the inode it locked, and
+    /// reopens when it does not. A missing file is not an error.
+    pub fn remove_file_while_held(&self) -> std::io::Result<()> {
+        match std::fs::remove_file(&self.path) {
+            Err(err) if err.kind() != std::io::ErrorKind::NotFound => Err(err),
+            _ => Ok(()),
+        }
+    }
 }
 
 /// Acquires an exclusive advisory lock on `<konductor_dir>/.config.lock`,
@@ -169,43 +182,61 @@ pub fn acquire_named(dir: &Path, file_name: &str) -> Result<ConfigLockGuard, Con
         source,
     })?;
 
-    let file = OpenOptions::new()
-        .create(true)
-        .truncate(false)
-        .write(true)
-        .open(&lock_path)
-        .map_err(|source| ConfigLockError::Unavailable {
-            path: lock_path.clone(),
-            source,
-        })?;
-
-    // Explicit, deterministic permissions regardless of umask -- see
-    // the "Explicit file permissions" module note above. Idempotent (a
-    // no-op in effect) if the lock file already existed with different
-    // permissions from a prior run.
-    file.set_permissions(std::fs::Permissions::from_mode(LOCK_FILE_MODE))
-        .map_err(|source| ConfigLockError::Unavailable {
-            path: lock_path.clone(),
-            source,
-        })?;
-
     let deadline = Instant::now() + DEFAULT_TIMEOUT;
     loop {
-        match file.try_lock_exclusive() {
-            Ok(()) => return Ok(ConfigLockGuard { _file: file }),
-            Err(err) if is_lock_contended(&err) => {
-                if Instant::now() >= deadline {
-                    return Err(ConfigLockError::Contended { path: lock_path });
+        let file = OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .write(true)
+            .open(&lock_path)
+            .map_err(|source| ConfigLockError::Unavailable {
+                path: lock_path.clone(),
+                source,
+            })?;
+
+        // Explicit, deterministic permissions regardless of umask -- see
+        // the "Explicit file permissions" module note above. Idempotent
+        // if the lock file already existed with different permissions.
+        file.set_permissions(std::fs::Permissions::from_mode(LOCK_FILE_MODE))
+            .map_err(|source| ConfigLockError::Unavailable {
+                path: lock_path.clone(),
+                source,
+            })?;
+
+        loop {
+            match file.try_lock_exclusive() {
+                Ok(()) => break,
+                Err(err) if is_lock_contended(&err) => {
+                    if Instant::now() >= deadline {
+                        return Err(ConfigLockError::Contended { path: lock_path });
+                    }
+                    std::thread::sleep(RETRY_INTERVAL);
                 }
-                std::thread::sleep(RETRY_INTERVAL);
-            }
-            Err(source) => {
-                return Err(ConfigLockError::Unavailable {
-                    path: lock_path,
-                    source,
-                })
+                Err(source) => {
+                    return Err(ConfigLockError::Unavailable {
+                        path: lock_path,
+                        source,
+                    })
+                }
             }
         }
+
+        // The holder we waited on may have unlinked the file (see
+        // `remove_file_while_held`). A lock on an unlinked inode excludes
+        // nobody, so retry on the file now at the path.
+        if path_names_open_file(&lock_path, &file) {
+            return Ok(ConfigLockGuard {
+                _file: file,
+                path: lock_path,
+            });
+        }
+    }
+}
+
+fn path_names_open_file(path: &Path, file: &File) -> bool {
+    match (std::fs::metadata(path), file.metadata()) {
+        (Ok(on_disk), Ok(open)) => on_disk.dev() == open.dev() && on_disk.ino() == open.ino(),
+        _ => false,
     }
 }
 
@@ -235,6 +266,35 @@ mod tests {
         ));
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    /// A waiter blocked on a lock file the holder then unlinks must end up
+    /// holding the lock on the recreated file, not on the dead inode.
+    #[test]
+    fn waiter_reopens_after_the_holder_unlinks_the_lock_file() {
+        let dir = scratch_dir("unlink-race");
+        let holder = acquire_named(&dir, ".x.lock").expect("holder");
+        let waiter_dir = dir.clone();
+        let waiter = std::thread::spawn(move || acquire_named(&waiter_dir, ".x.lock"));
+        std::thread::sleep(Duration::from_millis(200));
+        holder.remove_file_while_held().expect("unlink");
+        drop(holder);
+        let waiter = waiter.join().unwrap().expect("waiter acquires");
+        assert!(
+            dir.join(".x.lock").is_file(),
+            "waiter must recreate the file"
+        );
+        let third = acquire_named(&dir, ".x.lock").expect_err("waiter's lock must exclude");
+        assert!(matches!(third, ConfigLockError::Contended { .. }));
+        drop(waiter);
+    }
+
+    #[test]
+    fn remove_file_while_held_tolerates_an_already_missing_file() {
+        let dir = scratch_dir("unlink-missing");
+        let guard = acquire_named(&dir, ".x.lock").expect("lock");
+        guard.remove_file_while_held().expect("first");
+        guard.remove_file_while_held().expect("second");
     }
 
     /// `acquire_named` locks a caller-chosen file name, independent of

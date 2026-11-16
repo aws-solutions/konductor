@@ -25,7 +25,7 @@ path = "src/lib.rs"
 async = ["tokio"]
 
 [dependencies]
-# `identity` module only. Not exact-pinned, unlike every other
+# `identity` and `install_info` modules. Not exact-pinned, unlike every other
 # dependency in this repo's convention -- this crate is a path
 # dependency of both cli/konductor-rs (own Cargo.lock, no `[workspace]`
 # of its own, resolves serde to =1.0.228) and mcp/lib/skill-lookup-core

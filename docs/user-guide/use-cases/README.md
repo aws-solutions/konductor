@@ -35,7 +35,8 @@ yet, start with the [Quick Start](../quick-start.md).
 
 Once you are in a session, every page below shows two ways in:
 
-- **Through the orchestrator** — describe what you want in plain language and let it route.
+- **Through the orchestrator** — describe what you want in plain language; `konductor` does it or
+  spawns the agent that declares the SOP.
 - **Direct to the owning agent** — faster when you already know which SOP you want.
 
 ---

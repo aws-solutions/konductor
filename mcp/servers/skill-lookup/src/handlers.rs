@@ -337,7 +337,7 @@ pub(crate) struct SkillLookupServer {
     pub(crate) sops: SopIndex,
     /// In-process tool-call counters, shared with
     /// the periodic flush task spawned in `main.rs`. `None` when
-    /// `--telemetry off` was passed -- structural opt-out: the
+    /// telemetry is off for this process -- structural opt-out: the
     /// increment call is simply skipped, never invoked-then-discarded.
     pub(crate) tool_call_counters: Option<skill_lookup_core::telemetry::ToolCallCounters>,
     /// Session-state signal for `initialize`: `false` until the first
@@ -791,7 +791,7 @@ impl ServerHandler for SkillLookupServer {
         // only -- take the lock, bump one entry, release the lock; no
         // `.await` held across the critical section, no network call, no
         // process spawn on this hot path. Structurally skipped when
-        // `--telemetry off`: `tool_call_counters` is `None`, so the
+        // telemetry is off: `tool_call_counters` is `None`, so the
         // increment call is never invoked.
         if let Some(counters) = &self.tool_call_counters {
             record_tool_call(counters, tool_name, args, &result);

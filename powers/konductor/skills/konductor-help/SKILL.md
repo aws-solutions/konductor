@@ -21,7 +21,7 @@ Do not present these entries as normal user commands:
 
 - `metrics` is a stub.
 - `config` is withheld from normal installations.
-- `__telemetry-hook` is internal.
+- `__telemetry-hook` and `__orchestration-hook` are internal.
 
 ## Diagnose an install
 

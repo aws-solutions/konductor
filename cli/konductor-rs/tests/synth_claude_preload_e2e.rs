@@ -199,7 +199,7 @@ fn synth_warns_when_a_fixture_agent_exceeds_the_byte_budget() {
 }
 
 #[test]
-fn synth_fails_and_names_dropped_skills_past_the_name_cap() {
+fn synth_warns_and_names_dropped_skills_past_the_name_cap() {
     let dir = repo_copy("wide");
     let mut skill_names: Vec<String> = std::fs::read_dir(dir.join("skills"))
         .unwrap()
@@ -211,15 +211,8 @@ fn synth_fails_and_names_dropped_skills_past_the_name_cap() {
     skill_names.truncate(33);
     assert_eq!(skill_names.len(), 33, "repo needs at least 33 skills");
     write_fixture_agent(&dir, "k-fixture-wide", &skill_names);
-    let sink = telemetry_test_sink::TelemetrySink::start();
-    let from = dir.display().to_string();
-    let output = run_konductor(&dir, &sink, &["synth", "--from", from.as_str()]);
+    let output = synth(&dir, &[]);
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert_eq!(
-        output.status.code(),
-        Some(64),
-        "expected EX_USAGE; stderr: {stderr}"
-    );
     assert!(
         stderr.contains(&format!("1 would be dropped: {}", skill_names[32])),
         "got: {stderr}"

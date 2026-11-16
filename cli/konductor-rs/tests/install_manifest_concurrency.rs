@@ -1061,3 +1061,191 @@ fn concurrent_installs_of_different_harnesses_never_leave_a_torn_install_info() 
     std::fs::remove_dir_all(&target_dir).ok();
     std::fs::remove_dir_all(&repo).ok();
 }
+
+/// A plain install into an opted-out target must never create
+/// `install-info.json`, even when two installs of different harnesses
+/// race. The per-target install lock makes the "tracked, no record"
+/// check and the record write one critical section.
+#[test]
+fn concurrent_plain_installs_into_an_opted_out_target_never_create_a_record() {
+    let sink = std::sync::Arc::new(telemetry_test_sink::TelemetrySink::start());
+    for i in 0..ITERATIONS {
+        let repo = seed_dual_strategy_repo(&format!("opted-out-{i}"));
+        let repo_local = repo.display().to_string();
+        let target_dir = scratch_dir(&format!("opted-out-target-{i}"));
+        let target = target_dir.display().to_string();
+
+        let opt_out = run_konductor(
+            &target_dir,
+            &sink,
+            &[
+                CMD_INSTALL,
+                "--from",
+                &repo_local,
+                "--target",
+                &target,
+                "--harness",
+                "kiro-cli-v2",
+                "--no-telemetry",
+            ],
+        );
+        assert!(
+            opt_out.status.success(),
+            "round {i}: opt-out install failed"
+        );
+
+        let handles: Vec<_> = ["claude", "kiro-cli-v2"]
+            .into_iter()
+            .map(|harness| {
+                let (dir, sink, local, target) = (
+                    target_dir.clone(),
+                    sink.clone(),
+                    repo_local.clone(),
+                    target.clone(),
+                );
+                std::thread::spawn(move || {
+                    run_konductor(
+                        &dir,
+                        &sink,
+                        &[
+                            CMD_INSTALL,
+                            "--from",
+                            &local,
+                            "--target",
+                            &target,
+                            "--harness",
+                            harness,
+                        ],
+                    )
+                })
+            })
+            .collect();
+        for handle in handles {
+            let output = handle.join().expect("installer thread must not panic");
+            assert!(
+                output.status.success(),
+                "round {i}: plain install must exit 0: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+
+        assert!(
+            !target_dir
+                .join(KONDUCTOR_DIR_NAME)
+                .join(INSTALL_INFO_FILE_NAME)
+                .exists(),
+            "round {i}: a racing plain install created a record on an opted-out target"
+        );
+
+        std::fs::remove_dir_all(&target_dir).ok();
+        std::fs::remove_dir_all(&repo).ok();
+    }
+}
+
+/// A plain reinstall racing the uninstall of the same, only harness must
+/// land as one serial order. Uninstall first: the install is a first
+/// install, so manifest, record and install lock all exist. Install
+/// first: the uninstall removes all three. Anything else is a torn state,
+/// including an install that ran on an inode the uninstall unlinked.
+#[test]
+fn install_racing_the_last_harness_uninstall_lands_as_one_serial_order() {
+    const INSTALL_LOCK_FILE_NAME: &str = ".install.lock";
+    let sink = std::sync::Arc::new(telemetry_test_sink::TelemetrySink::start());
+    let (mut installed_last, mut uninstalled_last) = (0, 0);
+    for i in 0..ITERATIONS {
+        let repo = seed_dual_strategy_repo(&format!("lock-race-{i}"));
+        let repo_local = repo.display().to_string();
+        let target_dir = scratch_dir(&format!("lock-race-target-{i}"));
+        let target = target_dir.display().to_string();
+
+        let first = run_konductor(
+            &target_dir,
+            &sink,
+            &[
+                CMD_INSTALL,
+                "--from",
+                &repo_local,
+                "--target",
+                &target,
+                "--harness",
+                "kiro-cli-v2",
+            ],
+        );
+        assert!(first.status.success(), "round {i}: setup install failed");
+
+        let spawn = |args: Vec<String>| {
+            let (dir, sink) = (target_dir.clone(), sink.clone());
+            std::thread::spawn(move || {
+                let args: Vec<&str> = args.iter().map(String::as_str).collect();
+                run_konductor(&dir, &sink, &args)
+            })
+        };
+        let install = spawn(
+            [
+                CMD_INSTALL,
+                "--from",
+                &repo_local,
+                "--target",
+                &target,
+                "--harness",
+                "kiro-cli-v2",
+            ]
+            .map(String::from)
+            .to_vec(),
+        );
+        let uninstall = spawn(
+            [
+                CMD_UNINSTALL,
+                "--target",
+                &target,
+                "--harness",
+                "kiro-cli-v2",
+            ]
+            .map(String::from)
+            .to_vec(),
+        );
+        let install = install.join().expect("install thread");
+        let uninstall = uninstall.join().expect("uninstall thread");
+        for (name, output) in [("install", &install), ("uninstall", &uninstall)] {
+            assert!(
+                output.status.success(),
+                "round {i}: {name} failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+
+        let konductor_dir = target_dir.join(KONDUCTOR_DIR_NAME);
+        let manifest = konductor_dir.join(MANIFEST_FILE_NAME).exists();
+        let record = konductor_dir.join(INSTALL_INFO_FILE_NAME).exists();
+        let lock = konductor_dir.join(INSTALL_LOCK_FILE_NAME).exists();
+        match (manifest, record, lock) {
+            (true, true, true) => installed_last += 1,
+            (false, false, false) => uninstalled_last += 1,
+            state => panic!("round {i}: torn state (manifest, record, lock) = {state:?}"),
+        }
+
+        // The next install must still work and be excluded by its lock.
+        let again = run_konductor(
+            &target_dir,
+            &sink,
+            &[
+                CMD_INSTALL,
+                "--from",
+                &repo_local,
+                "--target",
+                &target,
+                "--harness",
+                "claude",
+            ],
+        );
+        assert!(
+            again.status.success(),
+            "round {i}: follow-up install failed"
+        );
+        assert!(konductor_dir.join(INSTALL_LOCK_FILE_NAME).is_file());
+
+        std::fs::remove_dir_all(&target_dir).ok();
+        std::fs::remove_dir_all(&repo).ok();
+    }
+    eprintln!("race outcomes: install-last={installed_last} uninstall-last={uninstalled_last}");
+}
