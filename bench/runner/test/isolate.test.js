@@ -332,3 +332,52 @@ test('an ssh-agent dir that vanishes or refuses the mount does not abort the iso
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+test('readOnly and exposeOnly add their mounts after the scratch bind, and the script is valid shell', () => {
+  const scratch = mkScratch('scr-');
+  const parent = mkScratch('sock-');
+  const own = path.join(parent, 's-a');
+  const plant = path.join(scratch, 'plant');
+  fs.mkdirSync(own);
+  fs.mkdirSync(plant);
+  const { script } = makeIsolation({ mode: 'unshare', scratchRoot: scratch, readOnly: [plant], exposeOnly: [{ parent, child: own }] });
+  const lines = script.split('\n');
+  const at = (re) => lines.findIndex((l) => re.test(l));
+  assert.ok(at(/^mount --bind .*remount,rw,bind/) < at(/^ro '.*plant'$/), 'plant dir goes read-only after scratch is made writable');
+  assert.ok(at(/^ro '.*plant'$/) >= 0 && at(/^mount -t tmpfs tmpfs '.*sock-/) >= 0);
+  assert.match(script, /mount -c --bind \/proc\/\$\$\/fd\/9 '.*s-a' && mount -o remount,ro,bind '.*s-a'/);
+  assert.equal(spawnSync('sh', ['-n', '-c', script]).status, 0);
+});
+
+test('exposeOnly refuses a child that is not inside its parent', () => {
+  const scratch = mkScratch('scr-');
+  const [a, b] = [mkScratch('a-'), mkScratch('b-')];
+  assert.throws(() => makeIsolation({ mode: 'unshare', scratchRoot: scratch, exposeOnly: [{ parent: a, child: b }] }), /not inside/);
+  assert.throws(() => makeIsolation({ mode: 'unshare', scratchRoot: scratch, exposeOnly: [{ parent: a, child: a }] }), /not inside/);
+});
+
+test('without readOnly and exposeOnly the script has neither of their mounts', () => {
+  const { script } = makeIsolation({ mode: 'unshare', scratchRoot: mkScratch('scr-') });
+  assert.doesNotMatch(script, /exec 9</);
+});
+
+test('the isolation lists the masks that exist, for the wall prober', () => {
+  const scratch = mkScratch('scr-', '/tmp');
+  const home = mkScratch('home-', '/tmp');
+  fs.mkdirSync(path.join(home, '.ssh'));
+  const { masked } = makeIsolation({ mode: 'unshare', scratchRoot: scratch, home });
+  assert.ok(masked.includes(path.join(fs.realpathSync(home), '.ssh')));
+  assert.ok(!masked.includes(path.join(fs.realpathSync(home), '.aws')), 'a mask target that does not exist is not listed');
+});
+
+test('inside the namespace the plant dir in scratch is read-only and only the exposed socket root shows', { skip: probe.ok ? false : skip }, () => {
+  const scratch = mkScratch('scr-');
+  const parent = mkScratch('sock-');
+  const [a, b] = ['s-a', 's-b'].map((n) => path.join(parent, n));
+  const plant = path.join(scratch, 'plant');
+  [a, b, plant].forEach((d) => fs.mkdirSync(d));
+  const iso = makeIsolation({ mode: 'unshare', scratchRoot: scratch, readOnly: [plant], exposeOnly: [{ parent, child: b }] });
+  const w = iso.wrap('sh', ['-c', `touch ${scratch}/ok || exit 10; touch ${plant}/x 2>/dev/null && exit 11; touch ${b}/x 2>/dev/null && exit 12; test "$(ls ${parent})" = s-b || exit 13`]);
+  const r = spawnSync(w.file, w.args, { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+});

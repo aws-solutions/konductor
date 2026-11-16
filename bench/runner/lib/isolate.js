@@ -250,10 +250,25 @@ function softMaskLine(p) {
   return `if [ -e ${shq(p)} ]; then ${mount} || echo ${shq(`bench: could not hide ${p}`)} >&2; fi`;
 }
 
-function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees, softMasks = [], offline = false }) {
+// Empties `parent` (a tmpfs) and puts `child`, a directory inside it, back read-only. The child is held open on fd 9
+// first, because the tmpfs hides its path; -c stops `mount` resolving /proc/<pid>/fd/9 back to that hidden path.
+function exposeOnlyLines({ parent, child }) {
+  return [
+    `exec 9< ${shq(child)}`,
+    `mount -t tmpfs tmpfs ${shq(parent)}`,
+    `mkdir ${shq(child)}`,
+    `mount -c --bind /proc/$$/fd/9 ${shq(child)} && mount -o remount,ro,bind ${shq(child)}`,
+    'exec 9<&-',
+  ];
+}
+
+function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees, readOnly = [], exposeOnly = [], softMasks = [], offline = false }) {
   const lines = ['set -e', 'ro() { mount --rbind "$1" "$1" && mount -o remount,ro,bind "$1"; }'];
   for (const d of [...homes, ...systemDirs, ...readOnlyTrees]) lines.push(`ro ${shq(d)}`);
   lines.push(`mount --bind ${shq(scratchRoot)} ${shq(scratchRoot)} && mount -o remount,rw,bind ${shq(scratchRoot)}`);
+  // After the scratch rw bind, so a directory inside scratch (the plant dir) ends up read-only.
+  for (const d of readOnly) lines.push(`ro ${shq(d)}`);
+  for (const e of exposeOnly) lines.push(...exposeOnlyLines(e));
   const soft = softMasks.map(resolveTarget);
   for (const t of hideTargets(homes, hide, masks)) {
     const line = soft.includes(t) ? softMaskLine(t) : maskLine(t);
@@ -274,8 +289,11 @@ function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTree
  * directory); every answer key under `mask` or `keyRoots` is blanked as well. `keep` lists
  * paths that must stay visible (the agent binary). `frozenDirs` lists directories the command can read but not change
  * (sandbox-exec only; the live stdout and stderr files, see liveStdioDir). `offline` also gives the command an empty network namespace.
+ * `readOnly` lists directories (the plant dir) that stay readable but cannot be changed, even inside scratch. `exposeOnly` is
+ * `[{parent, child}]`: `parent` is emptied and only `child`, inside it, shows again, read-only (a run's socket root among
+ * its siblings). Both are namespace mode only, which is the only mode plant runs are comparable in.
  */
-function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [], keyRoots = [], keep = [], frozenDirs = [], socketDirs, sshTmp, offline = false, defaultHide = defaultHideOn() }) {
+function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [], keyRoots = [], keep = [], frozenDirs = [], readOnly = [], exposeOnly = [], socketDirs, sshTmp, offline = false, defaultHide = defaultHideOn() }) {
   if (mode !== 'unshare' && mode !== SANDBOX_BIN) return { mode: 'none', wrap: (file, args) => ({ file, args }) };
   const hide = defaultHide ? uniq([...HIDE_CREDENTIALS_IN_HOME, ...extraHide]) : extraHide;
   const scratch = fs.realpathSync(scratchRoot);
@@ -305,10 +323,16 @@ function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [
     const profile = buildProfile({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees: sbReadOnly, frozenDirs: frozen, offline });
     return { mode, profile, flaggedInHome: sandboxFlaggedInHome(homes), wrap: (file, args) => ({ file: SANDBOX_BIN, args: ['-p', profile, file, ...args] }) };
   }
-  const script = buildScript({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees, softMasks: sshDirs, offline });
+  const realChild = ({ parent, child }) => {
+    const [p, c] = [fs.realpathSync(parent), fs.realpathSync(child)];
+    if (!inside(c, p) || c === p) throw new Error(`exposeOnly: ${child} is not inside ${parent}`);
+    return { parent: p, child: c };
+  };
+  const script = buildScript({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees, readOnly: readOnly.map((d) => fs.realpathSync(d)), exposeOnly: exposeOnly.map(realChild), softMasks: sshDirs, offline });
   return {
     mode,
     script,
+    masked: hideTargets(homes, hide, masks).filter((t) => statOrNull(t)),
     wrap: (file, args) => ({ file: 'unshare', args: [...UNSHARE_FLAGS, ...(offline ? ['--net'] : []), 'sh', '-c', script, 'sh', file, ...args] }),
   };
 }

@@ -217,7 +217,7 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
       gatewayFiles: gatewayFilesOf(release),
       policySha256: release.sha256Of(POLICY_FILES[0]),
       refusalRule: loadRefusalRule(release.fileOf(REFUSAL_RULE)),
-      mask: [privateRoot],
+      mask: [release.root],
       dispose: () => removePrivateRoot(privateRoot, release.root),
     };
   } catch (e) {

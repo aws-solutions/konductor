@@ -234,12 +234,12 @@ test('a plant task must be the release copy of itself, with a seed', () => {
   } finally { r2.cleanup(); }
 });
 
-test('the preflight points the task fixture at the release copy, and masks the runner-private dir', () => {
+test('the preflight points the task fixture at the release copy, and masks the release copy, not the socket dir', () => {
   const r = rig();
   try {
     const suite = suiteOf(r);
     assert.ok(r.tasks.get(TASK_ID).fixtureDir.startsWith(suite.release.root));
-    assert.deepEqual(suite.mask, [suite.privateRoot]);
+    assert.deepEqual(suite.mask, [suite.release.root]);
     assert.equal(suite.counted, false);
     assert.equal(suite.comparable, false);
     suite.dispose();
