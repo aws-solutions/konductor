@@ -933,6 +933,30 @@ test('a call that throws before it starts is not retried; a fatal throw stops th
   });
 });
 
+test('a fatal stop carries what was written and spent before it', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const jobs = plan(dir, [makeSet([makeTask(0), makeTask(1), makeTask(2)])]);
+    let calls = 0;
+    await assert.rejects(
+      run(
+        jobs,
+        async (job) => {
+          calls += 1;
+          if (calls === 1) return okResult(reply(job.input.item_count));
+          throw new SpendStopError('over the cap', 'max_usd');
+        },
+        { concurrency: 1 },
+      ),
+      (error) =>
+        error instanceof SpendStopError &&
+        error.partial.usd === 0.01 &&
+        error.partial.written.length === 1 &&
+        error.partial.written[0] === jobs[0].task_id &&
+        error.partial.copied.length === 0,
+    );
+  });
+});
+
 test('a credential error in a failed call or a thrown error stops the job and writes nothing for that call', async () => {
   await helpers.withTmpAsync(async (dir) => {
     const jobs = plan(dir, [makeSet([makeTask(1), makeTask(2)])]);
