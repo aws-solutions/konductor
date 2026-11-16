@@ -78,6 +78,8 @@ const request = (method, params) => new Promise((resolve) => { const id = nextId
     if (call.inStream !== false) streamCall(call.tool, call.args, i++);
     if (call.inGateway !== false) await request('tools/call', { name: call.tool, arguments: call.args });
   }
+  if (cfg.overLongLine) shim.stdin.write('x'.repeat(65 * 1024) + '\n');
+  if (cfg.hold) { setTimeout(() => {}, 60000); return; }
   ev('metadata', { sessionId: 's1', turnDurationMs: 100, meteringUsage: [{ value: 0.5, unit: 'credit' }] });
   ev('runFinished', { sessionId: 's1', status: 'success', stopReason: 'end_turn', finalText: cfg.finalText || 'done', finalTextTruncated: false });
   shim.stdin.end();
@@ -85,7 +87,7 @@ const request = (method, params) => new Promise((resolve) => { const id = nextId
 })();
 `;
 
-/** Writes the fake `kiro-cli` into `binDir` with `config`: `dir` (probe dir), `calls` ([{tool, args, inStream, inGateway}]), `finalText`, `exit3`, `stopGateway`, `dump`. Returns its path. */
+/** Writes the fake `kiro-cli` into `binDir` with `config`: `dir` (probe dir), `calls` ([{tool, args, inStream, inGateway}]), `finalText`, `exit3`, `stopGateway`, `dump`, `overLongLine` (sends a line over the gateway's line limit after the calls) and `hold` (never finishes after the calls). Returns its path. */
 function makeFakePlantKiro(binDir, config) {
   fs.mkdirSync(binDir, { recursive: true });
   const file = path.join(binDir, 'kiro-cli');

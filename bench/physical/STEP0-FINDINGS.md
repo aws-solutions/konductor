@@ -147,3 +147,9 @@ Runs were not inside bench's sandbox, because `unshare` is blocked on this host 
 | Cgroup | `systemd-run --user --scope -p MemoryMax=4G -p TasksMax=1024 -p CPUQuota=200%` wraps the sandbox command when a probe scope starts (proposed values). When it does not, the run config's `plant.cgroup` says `missing: <reason>`, and `not checked` without namespace isolation |
 | Disk fill | The prober's disk-fill row writes 64 MiB into scratch (bounded, so it cannot hurt a run host) and checks the gateway still answers. The full-disk case stays the out-dir filesystem check |
 | Not changed | `tasks.js` needed no change. `--hide <checkout>` was already the documented way; it is now enforced. Real-repo cache and arm cache are untouched (13.4) |
+
+## Decisions made in the code-review fixes
+
+| Topic | Decision |
+|---|---|
+| Terminal violations (M1) | The gateway sends an `hb` at once when a trial-ending limit is first hit or a foreign peer is closed, so the runner need not wait for the next 1 s tick. `hb` carries `limitHit` (as before) and a new sticky `foreignConn`. `hb` is gateway-to-runner, so `control-v1.json` is unchanged. `PlantRun.poll()` returns `plantForeignConn` or `plantLimit` from the last `hb`, and `spawnWithTimeout` kills the agent. The flags still come from the log events, as before. The nested-namespace path is tested with the injected peer lookup (Python) and with a stubbed gateway (Node); a real nested namespace cannot be made here |

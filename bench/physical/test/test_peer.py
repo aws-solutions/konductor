@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """The peer check (SR-4): the nested pid namespace walk with an injected kernel, and how the gateway treats each peer."""
+import json
 import os
 import socket
 import subprocess
@@ -135,6 +136,15 @@ class GatewayPeerTest(unittest.TestCase):
     def logged(self, type_):
         return [e for e in self.rig.events() if e["type"] == type_]
 
+    def heartbeats_sent(self):
+        """The `hb` frames the gateway has put on the control socket so far."""
+        self.runner_end.settimeout(0.2)
+        try:
+            data = self.runner_end.recv(65536)
+        except socket.timeout:
+            return []
+        return [json.loads(line) for line in data.splitlines()]
+
     def test_a_peer_in_the_sandbox_namespace_is_served(self):
         client = self.connect_as(20, self.SANDBOX)
         self.assertEqual(self.logged("limit") + self.logged("foreign_conn"), [])
@@ -146,6 +156,16 @@ class GatewayPeerTest(unittest.TestCase):
         self.assertEqual([e["which"] for e in self.logged("limit")], ["nested_pidns"])
         self.assertEqual(self.gateway.limit_hit, "nested_pidns")
         self.assertEqual(self.logged("foreign_conn"), [])
+
+    def test_a_nested_peer_is_reported_in_a_heartbeat_at_once_not_at_the_next_tick(self):
+        self.connect_as(21, "pid:[3]")
+        hb = self.heartbeats_sent()[-1]
+        self.assertEqual((hb["op"], hb["limitHit"], hb["foreignConn"]), ("hb", "nested_pidns", False))
+
+    def test_a_foreign_peer_is_reported_in_a_heartbeat_at_once_and_it_stays_reported(self):
+        self.connect_as(22, "pid:[9]")
+        hb = self.heartbeats_sent()[-1]
+        self.assertEqual((hb["limitHit"], hb["foreignConn"]), (None, True))
 
     def test_a_peer_from_outside_the_sandbox_is_closed_as_foreign_and_is_not_a_limit(self):
         client = self.connect_as(22, "pid:[9]")

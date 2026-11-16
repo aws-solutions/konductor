@@ -55,6 +55,14 @@ function firstChild(pid) {
   return null;
 }
 
+/** The stop decision for the first limit or foreign peer the gateway's `heartbeats` report, or null. A foreign peer wins. */
+function terminalViolation(heartbeats) {
+  const last = heartbeats.at(-1);
+  if (last?.foreignConn) return { reason: 'plantForeignConn', detail: 'a foreign connection reached gw.sock' };
+  if (last?.limitHit) return { reason: 'plantLimit', detail: `gateway limit ${last.limitHit}` };
+  return null;
+}
+
 /** One plant run: made by openPlantRun, driven by run-one.js. */
 class PlantRun {
   constructor({ suite, arm, task, plantDir, socketRoot, logDir, gateway }) {
@@ -82,13 +90,18 @@ class PlantRun {
       .catch(() => { /* no peer: the held connection times out and Kiro CLI exits 3, a plantStartup */ });
   }
 
-  /** A stop decision `{reason, detail}` when the gateway is lost or no tools/list came in time, else null. */
+  /**
+   * A stop decision `{reason, detail}` when the gateway is lost, has reported a trial-ending limit or a foreign peer
+   * (its `hb` frames carry both, and it sends one at once), or no tools/list came in time; else null.
+   */
   poll() {
     const lost = this.gateway.lostReason();
     if (lost) {
       this.lost = lost;
       return { reason: 'plantGatewayLost', detail: lost };
     }
+    const terminal = terminalViolation(this.gateway.heartbeats());
+    if (terminal) return terminal;
     if (this.spawnAt === null || this.toolsListed || Date.now() - this.spawnAt <= this.suite.deadlines.toolsListMs) return null;
     this.toolsListed = jsonLines(readOr(this.logPath('gateway'), '')).some((l) => l.type === 'mcp' && l.method === 'tools/list');
     if (this.toolsListed) return null;
@@ -268,4 +281,4 @@ async function runPlantCell(execute, args) {
   }
 }
 
-module.exports = { openPlantRun, runPlantCell, readHostListeners, sandboxPidns, PlantSuiteStop, MAX_RERUNS };
+module.exports = { openPlantRun, runPlantCell, readHostListeners, sandboxPidns, PlantSuiteStop, PlantRun, MAX_RERUNS };

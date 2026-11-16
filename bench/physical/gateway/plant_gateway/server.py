@@ -93,6 +93,7 @@ class Gateway:
         self._hb_n = 0
         self._next_hb = clock()
         self.limit_hit = None
+        self.foreign_seen = False
         self.stopped = False
         self.control_lost = False
         for sock in (control, listener):
@@ -199,6 +200,8 @@ class Gateway:
             return
         if conn.pidns != self._pidns:
             self._plant.event("foreign_conn", conn=conn.id, peer_pid=conn.pid, peer_pidns=conn.pidns)
+            self.foreign_seen = True
+            self._heartbeat()
             self._close(conn)
             return
         conn.mcp = McpConnection(self._plant, conn.id, self._limits)
@@ -261,6 +264,7 @@ class Gateway:
         self._plant.event("limit", which=error.which, conn=conn.id)
         if error.ends_trial and self.limit_hit is None:
             self.limit_hit = error.which
+            self._heartbeat()
         self._close(conn)
 
     def _close(self, conn):
@@ -280,10 +284,12 @@ class Gateway:
             self._next_hb = now + 1.0
 
     def _heartbeat(self):
+        """Sends an `hb`. Also sent at once on a trial-ending limit or a foreign peer, so the runner stops the agent without waiting for the next tick."""
         self._hb_n += 1
         self._send_control({
             "op": "hb", "n": self._hb_n, "lastSeq": self._glog.last_seq, "lastProgress": self._plant.last_progress,
             "logSha256": self._log_hashes(), "limitHit": self.limit_hit,
+            "foreignConn": self.foreign_seen,
         })
 
     def _log_hashes(self):

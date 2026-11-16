@@ -22,7 +22,7 @@ const { classifyPlantStartup } = require('../lib/launch-failure.js');
 const { checkManifest, ReleaseRefused } = require('../lib/plant/manifest.js');
 const { intakeRelease, preparePlantSuite } = require('../lib/plant/intake.js');
 const { GatewayProcess, gatewayCommand, runningHashProblems, DEADLINES } = require('../lib/plant/gateway-proc.js');
-const { runPlantCell, sandboxPidns, PlantSuiteStop } = require('../lib/plant/lifecycle.js');
+const { runPlantCell, sandboxPidns, PlantSuiteStop, PlantRun } = require('../lib/plant/lifecycle.js');
 
 const FAST = { ...DEADLINES, readyMs: 8000, heartbeatLossMs: 2500, finalMs: 5000 };
 const CONFIG = { model: 'claude-sonnet-5.5', effort: 'high', agentEngine: 'v2' };
@@ -408,6 +408,85 @@ test('a new host listener between trials stops the plant suite before the next t
 test('a foreign connection stops the plant suite', async () => {
   const ctx = { plant: { readListeners: () => [] } };
   await assert.rejects(runPlantCell(async () => ({ plant: { runState: 'complete', flags: ['plantForeignConn'] } }), { ctx, outDir: '/x' }), /foreign connection/);
+});
+
+// ---- terminal gateway violations stop the agent at once (SR-4, SR-16) ----
+
+const HELD_LIMIT_MS = 15000;
+const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
+
+/**
+ * Runs the cells `cellCount` times over one rig as a suite would: each cell is a trial whose agent stays open for 60 s
+ * after `fake` does its part. Stops at the first PlantSuiteStop. Resolves with the results, the stop (or null), how
+ * many trials started, the first agent's pid, the first trial's out dir and the time taken.
+ */
+async function heldCells(r, fake, cellCount = 1) {
+  const { args } = await plantRun(r, { hold: true, ...fake });
+  const results = [];
+  let started = 0;
+  let stop = null;
+  const begun = Date.now();
+  for (let cell = 1; cell <= cellCount && !stop; cell++) {
+    const outDir = cell === 1 ? args.outDir : `${args.outDir}-${cell}`;
+    try {
+      results.push(await runPlantCell((a) => { started++; return executeRun(a); }, { ...args, outDir }));
+    } catch (e) {
+      if (!(e instanceof PlantSuiteStop)) throw e;
+      stop = e;
+    }
+  }
+  const agent = JSON.parse(fs.readFileSync(path.join(r.probe, 'started.json'), 'utf8')).pid;
+  return { results, stop, started, agent, outDir: args.outDir, ms: Date.now() - begun };
+}
+
+test('a line over the limit ends the trial at once: the held agent is killed and the trial is plantLimit', async () => {
+  const r = rig();
+  try {
+    const { results, ms, agent } = await heldCells(r, { calls: STOP_CALLS, overLongLine: true });
+    assert.ok(ms < HELD_LIMIT_MS, `the agent was stopped, not left to its 60 s hold (took ${ms} ms)`);
+    assert.equal(alive(agent), false);
+    assert.ok(results[0].plant.flags.includes('plantLimit'));
+    assert.match(results[0].error, /stopped early: plantLimit/);
+  } finally { r.cleanup(); }
+});
+
+test('a call over the limit ends the trial at once: the held agent is killed and the trial is plantLimit', async () => {
+  const r = rig();
+  try {
+    const flood = Array.from({ length: 2001 }, () => ({ tool: 'get_state', args: {}, inStream: false }));
+    const { results, ms, agent, outDir } = await heldCells(r, { calls: flood });
+    assert.ok(ms < 60000, `the agent was stopped, not left to its 60 s hold (took ${ms} ms)`);
+    assert.equal(alive(agent), false);
+    assert.ok(results[0].plant.flags.includes('plantLimit'));
+    assert.ok(readJsonl(path.join(outDir, 'plant', 'gateway.jsonl')).some((l) => l.type === 'limit' && l.which === 'calls'));
+  } finally { r.cleanup(); }
+});
+
+test('a foreign connection ends the trial at once, and the suite stops: no later cell starts', async () => {
+  const r = rig();
+  const realPeer = GatewayProcess.prototype.peer;
+  // The shim's own connection becomes the stranger: the gateway is told the sandbox is in another pid namespace.
+  GatewayProcess.prototype.peer = function foreignPeer() { realPeer.call(this, 'pid:[1]'); };
+  try {
+    const { stop, started, ms, agent, outDir } = await heldCells(r, { calls: STOP_CALLS }, 2);
+    assert.ok(stop, 'the suite stopped');
+    assert.match(stop.message, /foreign connection/);
+    assert.equal(started, 1, 'the second cell never started');
+    assert.ok(ms < HELD_LIMIT_MS, `the agent was stopped, not left to its 60 s hold (took ${ms} ms)`);
+    assert.equal(alive(agent), false);
+    assert.ok(readJsonl(path.join(outDir, 'plant', 'gateway.jsonl')).some((l) => l.type === 'foreign_conn'));
+  } finally {
+    GatewayProcess.prototype.peer = realPeer;
+    r.cleanup();
+  }
+});
+
+test('a nested pid namespace peer is a plantLimit stop: the run polls the gateway\'s heartbeat', () => {
+  const nested = { op: 'hb', limitHit: 'nested_pidns', foreignConn: false };
+  const run = new PlantRun({ suite: { deadlines: FAST }, gateway: { lostReason: () => null, heartbeats: () => [{ op: 'hb', limitHit: null, foreignConn: false }, nested] } });
+  assert.deepEqual(run.poll(), { reason: 'plantLimit', detail: 'gateway limit nested_pidns' });
+  run.gateway.heartbeats = () => [{ op: 'hb', limitHit: null, foreignConn: false }];
+  assert.equal(run.poll(), null);
 });
 
 test('under unshare the peer is the pid namespace of the sandbox, not the runner', { skip: unshareBlocked && 'user namespaces are blocked on this host (unshare --user fails), so bench\'s sandbox cannot start' }, async () => {
