@@ -1,0 +1,8 @@
+{
+  "name": "k-developer",
+  "config": {
+    "description": "Kitchen helper agent. Tidies shopping lists with shell-snippet.",
+    "systemPrompt": "# Kitchen helper\n\nYou help a home cook keep short kitchen records.\n\n## Skills Available\n\n- **shell-snippet**: Tidies a kitchen shopping list."
+  },
+  "dependencies": { "skills": { "skillNames": ["shell-snippet"] } }
+}

@@ -79,6 +79,27 @@ function listBelow(dir, prefix = '') {
 }
 
 /**
+ * Sets the file `relativePath` of `dir` aside and returns the new relative name, `<relativePath>~quarantined-<time>`.
+ * The new file (mode 0600) holds `redactCopy(text)`, `text` being what the file holds, and the original is removed, so
+ * no copy of the value stays on disk. The copy is written before the original is removed, and 'wx' never overwrites a
+ * file that is there. The sweep and the subject runner both quarantine through this function, so a later sweep
+ * recognizes the name either way; the caller decides what `redactCopy` removes.
+ */
+function quarantineFile(
+  dir,
+  relativePath,
+  { text, redactCopy, now = Date.now },
+) {
+  const name = `${relativePath}${QUARANTINE_MARK}${new Date(now()).toISOString().replace(/[:.]/g, '-')}`;
+  fs.writeFileSync(path.join(dir, name), redactCopy(text), {
+    mode: 0o600,
+    flag: 'wx',
+  });
+  fs.unlinkSync(path.join(dir, relativePath));
+  return name;
+}
+
+/**
  * { clean, missing, scanned, hits: [{ file, found, quarantined? }], flagged: [{ file, found }], examples: [{ file, found }],
  * quarantined: [file], skipped, skippedReasons: [{ file, reason }] } for the folder `dir` (relative file names).
  * `quarantined` lists the files an earlier sweep set aside; the sweep is not clean while there is one. `literals` is
@@ -152,15 +173,12 @@ function sweepRun(
       result.examples.push({ file: relativePath, found: example });
     if (!Object.keys(stop).length) continue;
     const hit = { file: relativePath, found: stop };
-    if (quarantine) {
-      hit.quarantined = `${relativePath}${QUARANTINE_MARK}${new Date(now()).toISOString().replace(/[:.]/g, '-')}`;
-      // The copy is written before the original is removed, and 'wx' never overwrites a file that is there.
-      fs.writeFileSync(path.join(dir, hit.quarantined), redactCopy(text), {
-        mode: 0o600,
-        flag: 'wx',
+    if (quarantine)
+      hit.quarantined = quarantineFile(dir, relativePath, {
+        text,
+        redactCopy,
+        now,
       });
-      fs.unlinkSync(file);
-    }
     result.hits.push(hit);
   }
   result.clean =
@@ -220,6 +238,7 @@ function warningNote(result) {
 module.exports = {
   MAX_FILE_BYTES,
   QUARANTINE_MARK,
+  quarantineFile,
   sweepRun,
   securityNote,
   warningNote,

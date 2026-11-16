@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 const {
+  quarantineFile,
   sweepRun,
   securityNote,
   warningNote,
@@ -16,6 +17,7 @@ const {
 const {
   newCanary,
   KNOWN_EXAMPLES,
+  createRedactor,
 } = require('../../../scripts/bench/lib/redact');
 const { createLayout } = require('../../../scripts/bench/lib/layout');
 const {
@@ -241,6 +243,48 @@ test('quarantine writes a redacted copy with the time and removes the original; 
     assert.equal(
       fs.readFileSync(path.join(dir, 'answers/t1.json'), 'utf8'),
       'fine',
+    );
+  });
+});
+
+test('quarantineFile is the one way a file is set aside: the copy is private and redacted, the original is gone, and a later sweep lists the name', () => {
+  helpers.withTmp((dir) => {
+    writeTree(dir, { 'answers/log.txt': `a ${HANDED} b` });
+    const redactCopy = createRedactor({
+      literals: [HANDED],
+      maxChars: Infinity,
+    });
+    const name = quarantineFile(dir, 'answers/log.txt', {
+      text: fs.readFileSync(path.join(dir, 'answers/log.txt'), 'utf8'),
+      redactCopy: (text) => redactCopy(`${text}!`),
+      now: () => Date.parse('2026-01-15T10:00:00Z'),
+    });
+    assert.equal(name, 'answers/log.txt~quarantined-2026-01-15T10-00-00-000Z');
+    assert.equal(fs.existsSync(path.join(dir, 'answers/log.txt')), false);
+    assert.equal(
+      fs.readFileSync(path.join(dir, name), 'utf8'),
+      'a [REDACTED] b!',
+    );
+    assert.equal(fs.statSync(path.join(dir, name)).mode & 0o777, 0o600);
+    const later = sweepRun(dir, { literals: [HANDED] });
+    assert.deepEqual(
+      [later.clean, later.quarantined, later.scanned],
+      [false, [name], 0],
+    );
+    // A second copy under the same name is refused, and the original stays.
+    writeTree(dir, { 'answers/log.txt': 'again' });
+    assert.throws(
+      () =>
+        quarantineFile(dir, 'answers/log.txt', {
+          text: 'again',
+          redactCopy: (text) => text,
+          now: () => Date.parse('2026-01-15T10:00:00Z'),
+        }),
+      { code: 'EEXIST' },
+    );
+    assert.equal(
+      fs.readFileSync(path.join(dir, 'answers/log.txt'), 'utf8'),
+      'again',
     );
   });
 });
