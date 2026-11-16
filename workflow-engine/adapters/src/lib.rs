@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 pub mod agent_catalog;
+pub mod canvas;
 pub mod claude_harness;
 pub mod clock;
 pub mod fake_harness;

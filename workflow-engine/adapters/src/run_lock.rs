@@ -58,6 +58,38 @@ impl FileRunLock {
     pub fn path(&self) -> &Path {
         &self.path
     }
+
+    /// Whether another process holds the lock now, without taking it or writing a record. A project with no
+    /// `.konductor/runs/` has no run, so it is free.
+    pub fn peek(project_root: &Path) -> Result<Peek, PortError> {
+        let lock = FileRunLock::new(project_root);
+        if !project_root.join(RUNS_DIR).is_dir() {
+            return Ok(Peek::Free);
+        }
+        let claim = open_lock_file(&lock.claim)?;
+        match claim.try_lock() {
+            Ok(()) => {}
+            Err(TryLockError::WouldBlock) => return Ok(Peek::Held(None)),
+            Err(TryLockError::Error(e)) => return Err(io_error("could not lock", &lock.claim, e)),
+        }
+        let file = open_lock_file(&lock.path)?;
+        match file.try_lock_shared() {
+            Ok(()) => {
+                let _ = file.unlock();
+                Ok(Peek::Free)
+            }
+            Err(TryLockError::WouldBlock) => Ok(Peek::Held(read_record(&file))),
+            Err(TryLockError::Error(e)) => Err(io_error("could not lock", &lock.path, e)),
+        }
+    }
+}
+
+/// What [`FileRunLock::peek`] found.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Peek {
+    Free,
+    /// Another process holds it. `Some` is its record, and `None` means the record could not be read.
+    Held(Option<LockRecord>),
 }
 
 impl RunLock for FileRunLock {
