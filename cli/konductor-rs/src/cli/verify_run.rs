@@ -142,6 +142,7 @@ fn check(
         gate_map: &gate_map,
         policy: &policy,
         evidence_exists: &evidence_exists,
+        evidence_root: &root,
         allow_running,
         pinned_max_fix_cycles,
     };

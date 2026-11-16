@@ -73,7 +73,9 @@
 #   result    a check-threshold boundary records the highest severity word
 #             still open and not overridden, or `none`; an approval boundary
 #             records `approved`
-#   evidence  the file the gate judged, relative to the project root
+#   evidence  the file the gate judged, relative to the --root the SOP
+#             passes to `konductor verify-run` (k-full-sdlc passes its
+#             output_dir)
 #   checker   who decided: the reviewing agent, or `user` for an approval
 #   override  check-threshold only: the engineer's override note, when one
 #             was given

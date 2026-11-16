@@ -7,6 +7,7 @@
 // gate map, a severity policy and an evidence check.
 
 use std::collections::BTreeMap;
+use std::path::Path;
 
 use serde_yaml::Value;
 
@@ -186,9 +187,11 @@ pub(crate) struct EvalContext<'a> {
     pub(crate) session_prefix: &'a str,
     pub(crate) gate_map: &'a GateMap,
     pub(crate) policy: &'a SeverityPolicy,
-    /// True when a recorded evidence path names a regular file inside the
-    /// project root.
+    /// True when a recorded evidence path names a regular file inside
+    /// `evidence_root`.
     pub(crate) evidence_exists: &'a dyn Fn(&str) -> bool,
+    /// The root evidence paths are resolved against, named when one is missing.
+    pub(crate) evidence_root: &'a Path,
     pub(crate) allow_running: bool,
     /// The fix-cycle budget the caller pinned, kept outside the session file. `None` trusts the recorded cap.
     pub(crate) pinned_max_fix_cycles: Option<u64>,
@@ -653,7 +656,10 @@ fn check_boundaries(session: &Session, sop: &GatedSop, ctx: &EvalContext<'_>, re
                 Fact::Text(path) => report.fire(
                     EXIT_VERIFY_FAILED,
                     ReasonCode::EvidenceMissing,
-                    format!("{label}: {evidence_key} '{path}' is not a file in the project"),
+                    format!(
+                        "{label}: {evidence_key} '{path}' is not a file inside the root '{}'",
+                        ctx.evidence_root.display()
+                    ),
                 ),
                 Fact::Absent => report.fire(
                     EXIT_VERIFY_FAILED,
@@ -1145,6 +1151,7 @@ phases:
             gate_map: &gate_map,
             policy: &policy,
             evidence_exists: evidence,
+            evidence_root: Path::new("/project"),
             allow_running,
             pinned_max_fix_cycles: None,
         };
@@ -1554,6 +1561,7 @@ phases:
             gate_map: &gate_map,
             policy: &policy,
             evidence_exists: &allow_all_evidence,
+            evidence_root: Path::new("/project"),
             allow_running,
             pinned_max_fix_cycles: pinned,
         };
@@ -2099,6 +2107,7 @@ phases:
             gate_map: &gate_map,
             policy: &policy,
             evidence_exists: &allow_all_evidence,
+            evidence_root: Path::new("/project"),
             allow_running: false,
             pinned_max_fix_cycles: None,
         };
@@ -2141,6 +2150,7 @@ phases:
             gate_map: &gate_map,
             policy: &policy,
             evidence_exists: &allow_all_evidence,
+            evidence_root: Path::new("/project"),
             allow_running: false,
             pinned_max_fix_cycles: None,
         };
