@@ -344,12 +344,18 @@ pub(crate) struct ClaudePreload {
     pub names: Vec<String>,
 }
 
+/// The names Claude Code reads from a `clientConfig.claudeCli.skills`
+/// list: repeats removed, first occurrence wins.
+pub(crate) fn distinct_preload_names(preload: &[String]) -> indexmap::IndexSet<&str> {
+    preload.iter().map(String::as_str).collect()
+}
+
 /// Measures `preload` against the rendered SKILL.md of each named skill.
 /// Only SKILL.md is counted because Claude Code never injects auxiliary
 /// files. A skill that fails to render counts as 0 bytes: the same synth
 /// fails with the real error when it writes skills.
 pub(crate) fn claude_preload(preload: &[String], defs: &[SkillDef]) -> ClaudePreload {
-    let distinct: indexmap::IndexSet<&str> = preload.iter().map(String::as_str).collect();
+    let distinct = distinct_preload_names(preload);
     let bytes = distinct
         .iter()
         .filter_map(|name| defs.iter().find(|skill| skill.name == *name))
@@ -437,9 +443,10 @@ fn check_claude_skill_tool_grant(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
         if tools.iter().any(|tool| tool == "Skill") {
             continue;
         }
+        let preloaded = distinct_preload_names(&claude_cli.skills);
         let on_demand: indexmap::IndexSet<&str> =
             skill_names_from_dependencies(&agent.dependencies.skills)
-                .filter(|name| !claude_cli.skills.iter().any(|p| p == name))
+                .filter(|name| !preloaded.contains(name))
                 .collect();
         if on_demand.is_empty() {
             continue;

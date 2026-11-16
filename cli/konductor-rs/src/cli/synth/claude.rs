@@ -24,6 +24,7 @@ use super::kiro_cli_v2::SOP_SCOPES_SIDECAR_FILE;
 use super::model::CanonicalModel;
 #[cfg(test)]
 use super::model::{AuxiliaryFile, ContextDef, SkillDef, SopDef};
+use super::parse_canonical::distinct_preload_names;
 use super::parser::{ClaudeCliConfig, McpServerDef};
 use super::path_safety::reject_unsafe_agent_name;
 use super::spawn_policy::{is_claude_spawn_tool, is_specialist, CLAUDE_SPAWN_TOOLS};
@@ -508,12 +509,9 @@ fn render_agent_md(
     let merged_mcp_servers = merge_mcp_servers(mcp_registry, &claude.mcp_servers);
     // Ship the same distinct list the preload lint measures, so its name
     // cap counts exactly what Claude Code reads.
-    let preload_names: Vec<String> = claude
-        .skills
-        .iter()
-        .cloned()
-        .collect::<indexmap::IndexSet<String>>()
+    let preload_names: Vec<String> = distinct_preload_names(&claude.skills)
         .into_iter()
+        .map(str::to_string)
         .collect();
     let specialist = is_specialist(name);
     let tools: Option<Vec<String>> = claude.tools.as_ref().map(|tools| {
@@ -564,10 +562,11 @@ fn render_agent_md(
 /// preload, so a spawned subagent knows what it can load. `None` when
 /// every declared skill is preloaded.
 fn render_on_demand_skills_block(declared: &[&str], preloaded: &[String]) -> Option<String> {
+    let preloaded = distinct_preload_names(preloaded);
     let on_demand: indexmap::IndexSet<&str> = declared
         .iter()
         .copied()
-        .filter(|name| !preloaded.iter().any(|p| p == name))
+        .filter(|name| !preloaded.contains(name))
         .collect();
     if on_demand.is_empty() {
         return None;
