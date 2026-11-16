@@ -6,7 +6,7 @@
 
 const { argsSha256, streamArgs } = require('./canonical.js');
 const { SERVER_NAME } = require('./agent-file.js');
-const { isV3Call, mcpCallOf } = require('../stream.js');
+const { isV3Call, mcpCallOf, mcpInputOf } = require('../stream.js');
 
 /**
  * How each engine names a plant call in a `tool_call` update. `isPlant` says the call went to the plant server;
@@ -30,7 +30,8 @@ const ENGINES = [
       const mcp = mcpCallOf(u);
       return mcp?.server === SERVER_NAME ? mcp.tool : null;
     },
-    args: (u) => streamArgs(u.rawInput),
+    // A titled call's rawInput is the arguments as sent; a deferred `Tool Call` wraps them as {tool_id, arguments}.
+    args: (u) => streamArgs(mcpInputOf(u.rawInput)),
   },
 ];
 

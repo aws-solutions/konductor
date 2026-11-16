@@ -21,7 +21,7 @@ function argsSha256(args) {
   return crypto.createHash('sha256').update(canonicalArgs(args), 'utf8').digest('hex');
 }
 
-/** The arguments the agent sent, from a stream `rawInput`: engine v2 adds a purpose field the server never sees. */
+/** The arguments the agent sent, from a stream `rawInput`: engine v2 adds a purpose field the server never sees; engine v3 adds nothing. */
 function streamArgs(rawInput) {
   const { [PURPOSE_FIELD]: _purpose, ...args } = rawInput || {};
   return args;

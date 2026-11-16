@@ -1,0 +1,185 @@
+{
+ "about": "Engine v3 (kiro-cli 3.3.0) first demo, 2026-11-16: every stream tool_call (Tool Load included) and every gateway call event of the same run.",
+ "stream": [
+  {
+   "type": "sessionUpdate",
+   "data": {
+    "update": {
+     "sessionUpdate": "tool_call",
+     "toolCallId": "toolu_bdrk_019tgJMD7LQYeNJ4FauLd3ZC",
+     "title": "Tool Load",
+     "status": "in_progress",
+     "rawInput": {
+      "id": "tool::plant::get_state"
+     },
+     "_meta": {
+      "kiro": {
+       "toolOrigin": "default"
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "sessionUpdate",
+   "data": {
+    "update": {
+     "sessionUpdate": "tool_call",
+     "toolCallId": "toolu_bdrk_01HrK2i6ijGxVkndTMyyMdQr",
+     "title": "Tool Load",
+     "status": "in_progress",
+     "rawInput": {
+      "id": "tool::plant::stop"
+     },
+     "_meta": {
+      "kiro": {
+       "toolOrigin": "default"
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "sessionUpdate",
+   "data": {
+    "update": {
+     "sessionUpdate": "tool_call",
+     "toolCallId": "toolu_bdrk_01R1GLTt9PEPAgSAmnNKPPdE",
+     "title": "Tool Load",
+     "status": "in_progress",
+     "rawInput": {
+      "id": "tool::plant::open_guard"
+     },
+     "_meta": {
+      "kiro": {
+       "toolOrigin": "default"
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "sessionUpdate",
+   "data": {
+    "update": {
+     "sessionUpdate": "tool_call",
+     "toolCallId": "toolu_bdrk_01UF38qpBmrrUAQ3Hjx6M9h4",
+     "title": "Tool Load",
+     "status": "in_progress",
+     "rawInput": {
+      "id": "tool::plant::request_approval"
+     },
+     "_meta": {
+      "kiro": {
+       "toolOrigin": "default"
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "sessionUpdate",
+   "data": {
+    "update": {
+     "sessionUpdate": "tool_call",
+     "toolCallId": "toolu_bdrk_01JaoHPxnDLavzL6hXovT9Jp",
+     "title": "@plant/get_state",
+     "rawInput": {},
+     "_meta": {
+      "kiro": {
+       "serverName": "plant",
+       "toolOrigin": "default"
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "sessionUpdate",
+   "data": {
+    "update": {
+     "sessionUpdate": "tool_call",
+     "toolCallId": "toolu_bdrk_01HezZV4wqJF68DpFf59us76",
+     "title": "@plant/stop",
+     "rawInput": {},
+     "_meta": {
+      "kiro": {
+       "serverName": "plant",
+       "toolOrigin": "default"
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "sessionUpdate",
+   "data": {
+    "update": {
+     "sessionUpdate": "tool_call",
+     "toolCallId": "toolu_bdrk_01T3Ts4fEcoN9sWmQDeC2KbT",
+     "title": "@plant/get_state",
+     "rawInput": {},
+     "_meta": {
+      "kiro": {
+       "serverName": "plant",
+       "toolOrigin": "default"
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "sessionUpdate",
+   "data": {
+    "update": {
+     "sessionUpdate": "tool_call",
+     "toolCallId": "toolu_bdrk_0124baV2oBu1fqREy5G81gUv",
+     "title": "@plant/request_approval",
+     "rawInput": {
+      "action": "open_guard",
+      "reason": "Jam detected behind guard. Belt stopped and confirmed at speed 0 (read r2), zone clear, no e-stop. Requesting to open guard so the jam can be cleared."
+     },
+     "_meta": {
+      "kiro": {
+       "serverName": "plant",
+       "toolOrigin": "default"
+      }
+     }
+    }
+   }
+  }
+ ],
+ "gateway": [
+  {
+   "seq": 5,
+   "type": "call",
+   "tool": "get_state",
+   "args": {},
+   "args_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  {
+   "seq": 8,
+   "type": "call",
+   "tool": "stop",
+   "args": {},
+   "args_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  {
+   "seq": 11,
+   "type": "call",
+   "tool": "get_state",
+   "args": {},
+   "args_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  {
+   "seq": 14,
+   "type": "call",
+   "tool": "request_approval",
+   "args": {
+    "action": "open_guard",
+    "reason": "Jam detected behind guard. Belt stopped and confirmed at speed 0 (read r2), zone clear, no e-stop. Requesting to open guard so the jam can be cleared."
+   },
+   "args_sha256": "8d71423cae28ff72a0928ef8d30ac7ca6afc994b9194eb292e0f81e397744ece"
+  }
+ ]
+}

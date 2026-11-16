@@ -13,6 +13,7 @@ const PHYSICAL = path.join(__dirname, '..', '..', 'physical');
 const CANONICAL = JSON.parse(fs.readFileSync(path.join(PHYSICAL, 'fixtures', 'canonical-args.json'), 'utf8')).vectors;
 const STEP0_STREAM = fs.readFileSync(path.join(PHYSICAL, 'fixtures', 'step0', 'kiro-v2.plant.stream.jsonl'), 'utf8');
 const STEP0_V3_STREAM = fs.readFileSync(path.join(PHYSICAL, 'fixtures', 'step0', 'kiro-v3.plant.stream.trimmed.jsonl'), 'utf8');
+const V3_CALLS = JSON.parse(fs.readFileSync(path.join(PHYSICAL, 'fixtures', 'step0', 'kiro-v3.plant-calls.json'), 'utf8'));
 const toolCall = (update) => ({ type: 'sessionUpdate', data: { update: { sessionUpdate: 'tool_call', ...update } } });
 
 const call = (tool, args, id) => ({ toolCallId: id, callId: id, tool, argsSha256: argsSha256(args) });
@@ -61,6 +62,34 @@ test('a plant call whose tool cannot be read is a stream-only mismatch, never a 
   const stream = plantCallsInStream([toolCall({ toolCallId: 't1', title: 'Plant thing', rawInput: {}, _meta: { kiro: { serverName: 'plant' } } })]);
   const result = matchCalls(stream, [call('get_state', {}, 'c0')]);
   assert.deepEqual([result.pairs.length, result.streamOnly.map((c) => c.toolCallId), result.gatewayOnly.length], [0, ['t1'], 1]);
+});
+
+test('the canonical args hash of every stream call equals the gateway args_sha256 on a real engine v3 run, arguments included', () => {
+  const stream = plantCallsInStream(V3_CALLS.stream);
+  const gateway = plantCallsInGatewayLog(V3_CALLS.gateway);
+  assert.equal(V3_CALLS.stream.length, 8);
+  assert.deepEqual(stream.map((c) => c.tool), ['get_state', 'stop', 'get_state', 'request_approval']);
+  assert.ok(Object.keys(V3_CALLS.gateway[3].args).length > 0);
+  for (const g of V3_CALLS.gateway) assert.equal(argsSha256(g.args), g.args_sha256);
+  const result = matchCalls(stream, gateway);
+  assert.deepEqual([result.pairs.length, result.streamOnly.length, result.gatewayOnly.length], [4, 0, 0]);
+});
+
+test('arguments hash to the gateway value on both engines: v2 drops its purpose field, v3 unwraps a deferred call', () => {
+  // args_sha256 values computed by the Python gateway (plant_gateway.tools.args_sha256).
+  const gatewayHash = {
+    speed: '4a6ba92cb96b01e48571d9e7742eaad0a3c92cb93efe1cbe50c3d2a53448b19f',
+    approval: 'ce736f4f8edf5e9c5020f452b7591dfc5f31e292e298d4f2180111c01537a90f',
+  };
+  const approval = { reason: 'jam \u00fc', action: 'open_guard' };
+  const cases = [
+    { why: 'v2 with purpose', u: { title: 'Running: @plant/set_speed', rawInput: { speed_mmps: 300, __tool_use_purpose: 'slow' }, _meta: { kiro: { toolName: 'set_speed', mcpServerName: 'plant' } } }, want: gatewayHash.speed },
+    { why: 'v2 keys in another order', u: { title: 'Running: @plant/request_approval', rawInput: { __tool_use_purpose: 'ask', ...approval }, _meta: { kiro: { toolName: 'request_approval', mcpServerName: 'plant' } } }, want: gatewayHash.approval },
+    { why: 'v3 titled', u: { title: '@plant/set_speed', rawInput: { speed_mmps: 300 }, _meta: { kiro: { serverName: 'plant' } } }, want: gatewayHash.speed },
+    { why: 'v3 titled, 300.0', u: { title: '@plant/set_speed', rawInput: JSON.parse('{"speed_mmps":300.0}'), _meta: { kiro: { serverName: 'plant' } } }, want: gatewayHash.speed },
+    { why: 'v3 deferred Tool Call', u: { title: 'Tool Call', rawInput: { tool_id: 'tool::plant::request_approval', arguments: approval } }, want: gatewayHash.approval },
+  ];
+  for (const c of cases) assert.deepEqual(plantCallsInStream([toolCall({ toolCallId: 't', ...c.u })]).map((x) => x.argsSha256), [c.want], c.why);
 });
 
 test('gateway calls take their call_id from seq and their key from args_sha256', () => {
