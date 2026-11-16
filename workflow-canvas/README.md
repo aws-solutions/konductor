@@ -59,6 +59,7 @@ npm run api:lint    # Only the API contract test
 npm run stub        # The stub API on http://127.0.0.1:5174
 npm run test:stub   # Only the stub API tests
 npm run test:e2e    # Playwright, headless Chromium, against the stub or WC_API_TARGET
+scripts/e2e-real.sh <konductor>  # Playwright against `flow view` with a stand-in kiro-cli (see below)
 npm run screenshots # Regenerate e2e/screenshots/*.png
 ```
 
@@ -295,6 +296,15 @@ the `stage_fields` answer of the workflow view (4). Without the variable all 812
 same folder, so a difference between the two loaders fails a test. Every diagnostic code has a case. To add one,
 write the `.yml`, run `UPDATE_CORPUS=1 cargo test -p workflow-adapters --test corpus` in `workflow-engine/`, and
 check that the stub agrees.
+
+`scripts/e2e-real.sh <path to konductor>` runs the whole functional project against the real server. It makes a
+temporary project with the sample workflow and Kiro agent files, puts a stand-in `kiro-cli` first on the `PATH` (it
+waits two seconds and reports success, so a stage shows `Running`), trusts the workflow, starts
+`flow view hello --harness kiro-cli`, and runs Playwright with `WC_API_TARGET` and `WC_LAUNCH_CODE` set from the
+printed address, inside the 60 seconds that the code lasts. The e2e tests read the launch code from `WC_LAUNCH_CODE`
+and fall back to the stub's own code. The same tests run with `--harness fake` against a server started with
+`KONDUCTOR_LAUNCH_CODE`, but six of them then fail on purpose: they assert the harness `kiro-cli` and a stage that is
+`Running`, and the fake harness reports `fake` and finishes at once.
 
 The `editing` project (`e2e/editing`) saves over the root workflow, so it runs
 only against the stub. With `WC_API_TARGET` set it is left out of the project
