@@ -65,6 +65,8 @@ use crate::cli::flow_interrupt;
 use crate::cli::output::{self, status, ColorMode};
 use crate::cli::FlowAction;
 
+mod view;
+
 /// A run halted: a stage was blocked. Also any failure while a run is under way, such as a state file that cannot be
 /// written, which is the CLI's "halted (runtime error)".
 const EXIT_HALTED: u8 = 1;
@@ -192,6 +194,24 @@ pub(crate) fn dispatch_flow(action: FlowAction, cwd: &Path, json: bool, color: C
             };
             run_workflow(&context, &name, &args, &mut ports, out, err)
         }
+        FlowAction::View {
+            name,
+            harness,
+            fake_script,
+        } => view::view(
+            view::Args {
+                name,
+                harness,
+                fake_script,
+                fake_script_env: std::env::var_os(FAKE_SCRIPT_ENV),
+            },
+            cwd,
+            home.as_deref(),
+            json,
+            color,
+            out,
+            err,
+        ),
         FlowAction::Trust { name, yes, revoke } => {
             // The record is keyed by the repository root, so `flow trust` finds the root the way `flow run` does,
             // including the refusal of a root that is the home folder: no record is kept for it.
@@ -680,38 +700,20 @@ fn run_workflow(
         );
     }
     let mut run = started.run;
-    let mut inner: Box<dyn Harness + '_> = match script {
-        Some(script) => Box::new(FakeHarness::new(script, Rc::clone(&clock))),
-        None => {
-            // Checked above, so nothing is replaced.
-            let cwd = context.project_root.to_string_lossy();
-            let prefix = output::error_prefix(context.color, "konductor flow:");
-            // One line on standard error when a session does not end well. It is not part of the run state.
-            let note = Box::new(move |line: &str| {
-                let _ = writeln!(std::io::stderr(), "{prefix} {line}");
-            });
-            match &choice {
-                HarnessChoice::Claude => Box::new(ClaudeHarness::new(
-                    &mut launcher,
-                    &claude_catalog,
-                    claude_program
-                        .as_deref()
-                        .expect("checked above: claude was found"),
-                    &cwd,
-                    note,
-                )),
-                _ => Box::new(KiroHarness::new(
-                    &mut launcher,
-                    &kiro_catalog,
-                    kiro_program
-                        .as_deref()
-                        .expect("checked above: kiro-cli was found"),
-                    &cwd,
-                    note,
-                )),
-            }
-        }
-    };
+    let mut inner = build_harness(
+        &choice,
+        script,
+        &clock,
+        &mut launcher,
+        &kiro_catalog,
+        &claude_catalog,
+        Programs {
+            kiro: kiro_program.as_deref(),
+            claude: claude_program.as_deref(),
+        },
+        context.project_root,
+        context.color,
+    );
     // The confirmation covers what was on disk when it was given. The runner reads the tool configuration files again
     // before each session, so an edit made while the summary was on screen, or by an earlier stage, does not run under
     // the old confirmation. A file that can no longer be read in full counts as a change. The gate has refused a run
@@ -763,6 +765,56 @@ fn deadline_note(group: &ProcessGroup) -> String {
     group.deadline_ms.map_or_else(String::new, |ms| {
         format!(" (its time limit ends at {})", format_timestamp(ms))
     })
+}
+
+/// The programs of the real harnesses, as found in the absolute folders of `PATH`. Only the one a run uses is read.
+struct Programs<'a> {
+    kiro: Option<&'a str>,
+    claude: Option<&'a str>,
+}
+
+/// The harness of a run. `script` is the loaded fake script, which only the `fake` harness has. A real harness starts
+/// its sessions in `project_root` and says on standard error when one does not end well. The caller has checked that
+/// the program of a real harness was found.
+#[allow(clippy::too_many_arguments)]
+fn build_harness<'a>(
+    choice: &HarnessChoice,
+    script: Option<Script>,
+    clock: &Rc<SimulatedClock>,
+    launcher: &'a mut SystemLauncher,
+    kiro_catalog: &'a FileAgentCatalog,
+    claude_catalog: &'a FileAgentCatalog,
+    programs: Programs<'_>,
+    project_root: &Path,
+    color: ColorMode,
+) -> Box<dyn Harness + 'a> {
+    match script {
+        Some(script) => Box::new(FakeHarness::new(script, Rc::clone(clock))),
+        None => {
+            let cwd = project_root.to_string_lossy();
+            let prefix = output::error_prefix(color, "konductor flow:");
+            // One line on standard error when a session does not end well. It is not part of the run state.
+            let note = Box::new(move |line: &str| {
+                let _ = writeln!(std::io::stderr(), "{prefix} {line}");
+            });
+            match choice {
+                HarnessChoice::Claude => Box::new(ClaudeHarness::new(
+                    launcher,
+                    claude_catalog,
+                    programs.claude.expect("checked above: claude was found"),
+                    &cwd,
+                    note,
+                )),
+                _ => Box::new(KiroHarness::new(
+                    launcher,
+                    kiro_catalog,
+                    programs.kiro.expect("checked above: kiro-cli was found"),
+                    &cwd,
+                    note,
+                )),
+            }
+        }
+    }
 }
 
 /// `stage plan: passed`, or `stage plan: blocked (RESULT_MISSING)`.
