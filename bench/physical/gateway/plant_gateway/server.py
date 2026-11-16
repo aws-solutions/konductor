@@ -46,11 +46,12 @@ class LineBuffer:
 class Connection:
     """One accepted gw.sock connection. `held` stays true until the peer check passes."""
 
-    def __init__(self, sock, conn_id, pid, pidns, now, max_line):
+    def __init__(self, sock, conn_id, pid, pidns, now, max_line, ancestors=()):
         self.sock = sock
         self.id = conn_id
         self.pid = pid
         self.pidns = pidns
+        self.ancestors = ancestors
         self.accepted_at = now
         self.partial_since = None
         self.lines = LineBuffer(max_line)
@@ -68,10 +69,11 @@ class Gateway:
 
     `control` is the fd 3 socket and `reader` checks its frames. `listener` is the bound gw.sock. `plant`
     runs calls and logs; `glog`/`wlog` are the logs whose running hashes go in `hb` and `final`. `limits` holds
-    every bound; `clock` is a monotonic seconds function; `peer_of` maps an accepted socket to `(pid, pidns)`.
+    every bound; `clock` is a monotonic seconds function; `peer_of` maps an accepted socket to `(pid, pidns)`;
+    `ancestors_of` maps a peer pid to the pid namespaces above its own (default: none, so no peer counts as nested).
     """
 
-    def __init__(self, control, reader, listener, plant, glog, wlog, limits, clock, peer_of):
+    def __init__(self, control, reader, listener, plant, glog, wlog, limits, clock, peer_of, ancestors_of=None):
         self._control = control
         self._reader = reader
         self._control_lines = LineBuffer(limits.control_frame_bytes)
@@ -82,6 +84,7 @@ class Gateway:
         self._limits = limits
         self._clock = clock
         self._peer_of = peer_of
+        self._ancestors_of = ancestors_of or (lambda pid: ())
         self._selector = selectors.DefaultSelector()
         self._conns = {}
         self._accepted = 0
@@ -176,7 +179,8 @@ class Gateway:
             return
         self._accepted += 1
         pid, pidns = self._peer_of(sock)
-        conn = Connection(sock, self._accepted, pid, pidns, self._clock(), self._limits.line_bytes)
+        ancestors = self._ancestors_of(pid) if pidns is not None else ()
+        conn = Connection(sock, self._accepted, pid, pidns, self._clock(), self._limits.line_bytes, ancestors)
         self._conns[sock] = conn
         self._selector.register(sock, selectors.EVENT_READ)
         if self._pidns is not None:
@@ -189,6 +193,10 @@ class Gateway:
                 self._check_peer(conn)
 
     def _check_peer(self, conn):
+        """A peer in the sandbox's own namespace is served. One nested inside it ends this trial (SR-4); any other is foreign."""
+        if conn.pidns != self._pidns and self._pidns in conn.ancestors:
+            self._limit(conn, LimitExceeded("nested_pidns"))
+            return
         if conn.pidns != self._pidns:
             self._plant.event("foreign_conn", conn=conn.id, peer_pid=conn.pid, peer_pidns=conn.pidns)
             self._close(conn)

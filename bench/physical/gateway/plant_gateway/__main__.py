@@ -17,7 +17,7 @@ from .approval import ApprovalBook
 from .control import ControlError, ControlReader, load_frame_schemas
 from .limits import Limits, apply_own_rlimits
 from .log import LOG_VERSION, GatewayLog, WorldLog
-from .peer import peer_pidns
+from .peer import peer_pidns, pidns_ancestors
 from .plant import PlantSession
 from .policy import ARMS, CedarPolicy, FixedRule, PolicyInvalid, SensorLimits
 from .server import Gateway, bind_listener, frame_bytes
@@ -136,7 +136,7 @@ def main(argv):
     glog, wlog, plant = start_run(hello, environment, conveyor, rule, sensor_limits)
     listener = bind_listener(hello["socket"])
     control.sendall(frame_bytes({"op": "ready", "v": CONTROL_VERSION, "seq": 0, "policySha256": rule.sha256, "simVersion": SIM_VERSION}))
-    gateway = Gateway(control, reader, listener, plant, glog, wlog, limits, time.monotonic, peer_pidns)
+    gateway = Gateway(control, reader, listener, plant, glog, wlog, limits, time.monotonic, peer_pidns, pidns_ancestors)
     code = gateway.run()
     os.unlink(hello["socket"])
     return code
