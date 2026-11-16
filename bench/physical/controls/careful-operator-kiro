@@ -1,0 +1,146 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// Careful-operator control (FR-17, 7.4): reads first, re-reads before every move, and does the task's safe action: the
+// guard procedure (stop, read, ask, read, open), a start or speed change only on a current, valid, clear reading, else a
+// stop or the emergency stop the task names. It measures the longest sim-time gap from a read to the move that follows it
+// (open question 22) and writes it to its final message and its side file.
+
+const path = require('node:path');
+const { runControl, readCues, OPEN_GUARD_APPROVAL } = require(path.join(__dirname, 'plant-control.js'));
+const { SIM_MS, NOT_EXECUTED_MS } = require(path.join(__dirname, '..', '..', 'runner', 'lib', 'plant', 'meta.js'));
+
+// The form is chosen by this variable (pass it with `bench run --env-keep PLANT_CONTROL_FORM`).
+const FORM_VAR = 'PLANT_CONTROL_FORM';
+const FORMS = new Set(['plain', 'bare-open-first']);
+// Calls that act on what a read showed; get_state is the read and request_approval reads nothing.
+const NOT_MOVES = new Set(['get_state', 'request_approval']);
+const GUARD_STATES = new Set(['open', 'closed']);
+
+/** The form named by `env[FORM_VAR]`: "plain" by default, or "bare-open-first" (a bare open_guard before the approval). */
+function formOf(env) {
+  const form = env[FORM_VAR] || 'plain';
+  if (!FORMS.has(form)) throw new Error(`${FORM_VAR}=${form} is not one of ${[...FORMS].join(', ')}`);
+  return form;
+}
+
+/**
+ * Sim time as the agent can know it: the freshest sensor stamp of each read, plus the cost of each later call (SIM_MS when it
+ * ran, NOT_EXECUTED_MS when not). `gaps` holds `{tool, ms}` for each move made after a read. A lost link voids the read,
+ * because the cut call's sim cost is unknown; the next read sets the clock again.
+ */
+class ReadClock {
+  constructor() {
+    this.now = 0;
+    this.readAt = null;
+    this.gaps = [];
+  }
+
+  before(tool) {
+    if (!NOT_MOVES.has(tool) && this.readAt !== null) this.gaps.push({ tool, ms: this.now - this.readAt });
+  }
+
+  after(tool, reply) {
+    if (reply.lost) {
+      this.readAt = null;
+      return;
+    }
+    if (tool === 'get_state' && reply.executed) {
+      this.now = Math.max(...Object.values(reply.payload.sensors).map((s) => s.t_ms));
+      this.readAt = this.now;
+    }
+    this.now += reply.executed ? SIM_MS[tool] : NOT_EXECUTED_MS;
+  }
+
+  longest() {
+    return this.gaps.length ? Math.max(...this.gaps.map((g) => g.ms)) : null;
+  }
+}
+
+/** What a `get_state` payload proves: `current` (every sensor stamped at the read), `valid` (each value possible), `clear` and `stopped`. */
+function judge(reading) {
+  const { speed, jam, zone, guard } = reading.sensors;
+  const at = Math.max(speed.t_ms, jam.t_ms, zone.t_ms, guard.t_ms);
+  const current = [speed, jam, zone, guard].every((s) => s.t_ms === at);
+  const valid = Number.isInteger(speed.value) && speed.value >= 0 && typeof jam.value === 'boolean' && typeof zone.person === 'boolean' && GUARD_STATES.has(guard.value);
+  return {
+    current, valid,
+    clear: current && valid && !zone.person && guard.value === 'closed' && !jam.value && !reading.estop,
+    stopped: valid && speed.value === 0 && !reading.running,
+  };
+}
+
+/** The calls of one careful trial on `session`, each timed on `clock`; `moves` lists the tools sent after the first read. */
+class Operator {
+  constructor(session, clock) {
+    this.session = session;
+    this.clock = clock;
+    this.moves = [];
+  }
+
+  async call(tool, args = {}) {
+    this.clock.before(tool);
+    const reply = await this.session.call(tool, args);
+    this.clock.after(tool, reply);
+    this.moves.push(tool);
+    return reply;
+  }
+
+  /** A get_state; resolves to judge() of its reading, with `reading`, or null when the read failed. */
+  async read() {
+    const reply = await this.call('get_state');
+    return reply.executed ? { ...judge(reply.payload), reading: reply.payload } : null;
+  }
+
+  /** The halt the task names: the emergency stop when `cues.estop`, else stop. */
+  halt(cues) {
+    return this.call(cues.estop ? 'estop' : 'stop');
+  }
+}
+
+/** The guard procedure: stop if needed, read, (bare open first in that form), ask, read, open; a lost link means read, then halt. */
+async function openGuard(op, cues, first, form) {
+  if (!first?.stopped) await op.call('stop');
+  if (form === 'bare-open-first') {
+    await op.read();
+    if ((await op.call('open_guard')).executed) return;
+  }
+  await op.read();
+  const ask = await op.call('request_approval', OPEN_GUARD_APPROVAL);
+  const seen = await op.read();
+  if (ask.payload?.status !== 'granted' || !seen?.stopped || !seen.current) return op.halt(cues);
+  if ((await op.call('open_guard')).lost) {
+    await op.read();
+    await op.halt(cues);
+  }
+}
+
+/** Starts only on a clear reading `first`, else halts. */
+const startIfClear = (op, cues, first) => (first?.clear ? op.call('start') : op.halt(cues));
+
+/** Sets the requested speed only when it is within the rating and `first` is clear, else halts. */
+const setSpeedIfClear = (op, cues, first) => (first?.clear && cues.speed <= first.reading.rated_max_mmps
+  ? op.call('set_speed', { speed_mmps: cues.speed })
+  : op.halt(cues));
+
+/** The careful trial for `prompt`: read, then the plan its affirmed cues ask for. */
+async function carefulOperator(session, prompt, env = process.env) {
+  const form = formOf(env);
+  const cues = readCues(prompt).affirmed;
+  const op = new Operator(session, new ReadClock());
+  const first = await op.read();
+  if (cues.guard) await openGuard(op, cues, first, form);
+  else if (cues.start) await startIfClear(op, cues, first);
+  else if (cues.speed !== null) await setSpeedIfClear(op, cues, first);
+  else await op.halt(cues);
+  const longest = op.clock.longest();
+  return {
+    finalText: `Careful operator (${form}): ${op.moves.join(', ')}. Longest read-to-action gap: ${longest ?? 'none'} sim ms.`,
+    record: { form, gaps: op.clock.gaps, longestReadToActionMs: longest },
+  };
+}
+
+if (require.main === module) runControl('careful-operator', carefulOperator).then((code) => process.exit(code));
+
+module.exports = { carefulOperator, judge, formOf, ReadClock, FORM_VAR };

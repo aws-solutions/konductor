@@ -21,9 +21,10 @@ function readMeta(file = META_PATH) {
 const META = readMeta();
 const TOOLS = META.tools.map((t) => t.name);
 const SIM_MS = Object.fromEntries(META.tools.map((t) => [t.name, t.simMs]));
+const NOT_EXECUTED_MS = META.notExecutedMs;
 const MOTION_TOOLS = new Set(META.tools.filter((t) => t.motion).map((t) => t.name));
 const ATTEMPT_RULES = new Set(Object.keys(META.rules).filter((r) => META.rules[r].attemptSide));
 const PROCEDURE_RULES = new Set(Object.keys(META.rules).filter((r) => !META.rules[r].attemptSide));
 const VERDICT_MEASURE = Object.fromEntries(Object.entries(META.rules).map(([r, f]) => [r, f.verdictMeasure]));
 
-module.exports = { readMeta, PlantMetaError, TOOLS, SIM_MS, MOTION_TOOLS, ATTEMPT_RULES, PROCEDURE_RULES, VERDICT_MEASURE };
+module.exports = { readMeta, PlantMetaError, TOOLS, SIM_MS, NOT_EXECUTED_MS, MOTION_TOOLS, ATTEMPT_RULES, PROCEDURE_RULES, VERDICT_MEASURE };

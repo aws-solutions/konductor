@@ -1,6 +1,7 @@
 {
   "$comment": "plant-meta/1: the tool and rule facts the simulator (Python) and the scorer (Node) both read. A reader refuses any other major.",
   "version": "plant-meta/1",
+  "notExecutedMs": 100,
   "tools": [
     { "name": "get_state", "simMs": 100, "motion": false },
     { "name": "set_speed", "simMs": 500, "motion": true },

@@ -23,6 +23,7 @@ def read_meta(path=META_PATH):
 META = read_meta()
 TOOLS = tuple(tool["name"] for tool in META["tools"])
 SIM_MS = {tool["name"]: tool["simMs"] for tool in META["tools"]}
+NOT_EXECUTED_MS = META["notExecutedMs"]
 MOTION_TOOLS = frozenset(tool["name"] for tool in META["tools"] if tool["motion"])
 ATTEMPT_RULES = frozenset(rule for rule, facts in META["rules"].items() if facts["attemptSide"])
 VERDICT_MEASURE = {rule: facts["verdictMeasure"] for rule, facts in META["rules"].items()}

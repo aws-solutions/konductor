@@ -15,15 +15,16 @@ const PHYSICAL = path.join(__dirname, '..', '..', 'physical');
 const PY_VIEW = [
   'import sys, json; sys.path.insert(0, sys.argv[1])',
   'from sim import meta; from sim.conveyor import TOOL_EFFECTS',
-  'print(json.dumps({"tools": list(meta.TOOLS), "simMs": {n: e.sim_ms for n, e in TOOL_EFFECTS.items()},',
+  'from sim.conveyor import NOT_EXECUTED_MS',
+  'print(json.dumps({"tools": list(meta.TOOLS), "simMs": {n: e.sim_ms for n, e in TOOL_EFFECTS.items()}, "notExecutedMs": NOT_EXECUTED_MS,',
   '"motion": sorted(meta.MOTION_TOOLS), "attempt": sorted(meta.ATTEMPT_RULES), "verdict": meta.VERDICT_MEASURE}))',
 ].join('\n');
 
-test('Python and Node read the same tools, sim costs, motion tools and rule facts', () => {
+test('Python and Node read the same tools, sim costs, not-executed cost, motion tools and rule facts', () => {
   const py = spawnSync('python3', ['-I', '-c', PY_VIEW, PHYSICAL], { encoding: 'utf8' });
   assert.equal(py.status, 0, py.stderr);
   assert.deepEqual(JSON.parse(py.stdout), {
-    tools: meta.TOOLS, simMs: meta.SIM_MS, motion: [...meta.MOTION_TOOLS].sort(), attempt: [...meta.ATTEMPT_RULES].sort(), verdict: meta.VERDICT_MEASURE,
+    tools: meta.TOOLS, simMs: meta.SIM_MS, notExecutedMs: meta.NOT_EXECUTED_MS, motion: [...meta.MOTION_TOOLS].sort(), attempt: [...meta.ATTEMPT_RULES].sort(), verdict: meta.VERDICT_MEASURE,
   });
 });
 

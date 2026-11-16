@@ -11,72 +11,19 @@ const fs = require('node:fs');
 const net = require('node:net');
 const path = require('node:path');
 const { spawnSync, spawn } = require('node:child_process');
-const { tmp, makeBench } = require('./helpers.js');
 const { makeFakePlantKiro } = require('./fake-plant-kiro.js');
-const { writeRelease, makeKey, TASK_ID } = require('./plant-release-fixture.js');
+const { makeKey, TASK_ID } = require('./plant-release-fixture.js');
 const { executeRun, kiroArgs } = require('../lib/run-one.js');
-const { loadTasks } = require('../lib/tasks.js');
 const { validateResult } = require('../lib/result.js');
 const { resolveArm, parseArmSpec } = require('../lib/arms.js');
 const { classifyPlantStartup } = require('../lib/launch-failure.js');
 const { checkManifest, ReleaseRefused } = require('../lib/plant/manifest.js');
 const { intakeRelease, preparePlantSuite } = require('../lib/plant/intake.js');
-const { GatewayProcess, gatewayCommand, runningHashProblems, DEADLINES } = require('../lib/plant/gateway-proc.js');
+const { GatewayProcess, gatewayCommand, runningHashProblems } = require('../lib/plant/gateway-proc.js');
 const { runPlantCell, sandboxPidns, PlantSuiteStop, PlantRun } = require('../lib/plant/lifecycle.js');
+const { rig, suiteOf, plantRun, readJsonl, FAST, CONFIG } = require('./plant-run-rig.js');
 
-const FAST = { ...DEADLINES, readyMs: 8000, heartbeatLossMs: 2500, finalMs: 5000 };
-const CONFIG = { model: 'claude-sonnet-5.5', effort: 'high', agentEngine: 'v2' };
 const unshareBlocked = spawnSync('unshare', ['--user', '--map-root-user', 'true']).status !== 0;
-
-/** A run root with a bench dir, a signed stub release, its tasks loaded, and dirs for scratch, out and repo. */
-function rig(releaseOpts = {}) {
-  const root = tmp();
-  const bench = makeBench(path.join(root, 'bench'));
-  const release = writeRelease(path.join(root, 'release'), releaseOpts);
-  const dirs = Object.fromEntries(['scratch', 'out', 'repo', 'probe', 'home'].map((d) => [d, path.join(root, d)]));
-  for (const d of Object.values(dirs)) fs.mkdirSync(d);
-  const tasks = loadTasks(bench, { extraDirs: [path.join(release.dir, 'tasks')] });
-  const suites = [];
-  const cleanup = () => {
-    for (const s of suites) s.dispose();
-    chmodTree(root);
-    fs.rmSync(root, { recursive: true, force: true });
-  };
-  return { root, bench, release, tasks, suites, ...dirs, cleanup };
-}
-
-function chmodTree(dir) {
-  try { fs.chmodSync(dir, 0o700); } catch { return; }
-  for (const e of fs.readdirSync(dir, { withFileTypes: true })) if (e.isDirectory()) chmodTree(path.join(dir, e.name));
-}
-
-/** The suite preflight for rig `r`. `opts` and `more` replace flags and arguments. */
-function suiteOf(r, { opts = {}, ...more } = {}) {
-  const suite = preparePlantSuite({
-    opts: { 'plant-release': r.release.dir, 'plant-release-sha256': r.release.sha256, 'kiro-bin': path.join(r.root, 'bin', 'kiro-cli'), ...opts },
-    arms: [resolveArm('plant-policy', r.repo)], tasks: [r.tasks.get(TASK_ID)], parallel: 1, outDir: r.out,
-    ctx: { scratchDir: r.scratch, config: CONFIG, isolation: { mode: 'none' } }, repo: r.repo, keys: r.release.keys, home: r.home, deadlines: FAST, ...more,
-  });
-  r.suites.push(suite);
-  return suite;
-}
-
-/** Runs one plant trial of `arm` with a fake Kiro CLI configured by `fake`; `suiteMore` reaches preparePlantSuite. */
-async function plantRun(r, fake, { arm = 'plant-policy', suiteMore = {} } = {}) {
-  const kiroBin = makeFakePlantKiro(path.join(r.root, 'bin'), { dir: r.probe, ...fake });
-  const authDb = path.join(r.root, 'data.sqlite3');
-  fs.writeFileSync(authDb, 'fake-auth');
-  const suite = suiteOf(r, suiteMore);
-  const ctx = {
-    config: CONFIG, scratchDir: r.scratch, authDb, envKeep: [], envInfo: { kiroCliVersion: 'fake', modelListSnapshotPath: null }, kiroBin,
-    isolation: { mode: 'none' }, tripwire: { roots: [{ dir: r.probe, depth: 1 }], extraExcludes: [], absExclude: [r.scratch, r.out] }, plant: suite,
-  };
-  const outDir = path.join(r.out, arm, TASK_ID, '1');
-  const args = { arm: resolveArm(arm, r.repo), task: r.tasks.get(TASK_ID), replicate: 1, ctx, prepared: null, outDir, inFlightAtStart: 0 };
-  return { args, suite, outDir, run: () => executeRun(args) };
-}
-
-const readJsonl = (file) => fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
 const STOP_CALLS = [{ tool: 'get_state', args: {} }, { tool: 'stop', args: {} }];
 
 // ---- arms ----

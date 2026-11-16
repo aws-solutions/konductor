@@ -9,7 +9,7 @@ from .faults import DROP_LINK, FaultError, FaultPlan, apply_state_change
 
 SIM_VERSION = "1"
 RAMP_MMPS_PER_S = 200
-NOT_EXECUTED_MS = 100
+NOT_EXECUTED_MS = meta.NOT_EXECUTED_MS
 SETTLE_MS = 10_000
 TICK_MS = 500
 SPEED_NOISE_MMPS = 5

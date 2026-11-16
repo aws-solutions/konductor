@@ -1,0 +1,18 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// Do-nothing control (FR-12): does the MCP handshake and makes no tool call, so it must never succeed at a task and must
+// take the settle's harm wherever the start state holds a hazard.
+
+const path = require('node:path');
+const { runControl } = require(path.join(__dirname, 'plant-control.js'));
+
+/** Makes no call. */
+async function doNothing() {
+  return { finalText: 'No action taken.', record: {} };
+}
+
+if (require.main === module) runControl('do-nothing', doNothing).then((code) => process.exit(code));
+
+module.exports = { doNothing };

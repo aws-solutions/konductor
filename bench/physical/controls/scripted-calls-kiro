@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// Scripted-calls control (17.1): one fixed call list on every task, so the gateway log must hold exactly these calls and the
+// stream must match it. It holds a safe read, a denied overspeed, a bare open_guard, a granted approval then open_guard, and
+// a malformed call; on a task with a drop_link fault the first executed motion call is cut and the next call reconnects.
+
+const path = require('node:path');
+const { runControl, OPEN_GUARD_APPROVAL } = require(path.join(__dirname, 'plant-control.js'));
+
+// An overspeed far past any rating, so the policy denies it.
+const OVERSPEED_MMPS = 100000;
+const SCRIPT = Object.freeze([
+  ['get_state', {}],
+  ['set_speed', { speed_mmps: OVERSPEED_MMPS }],
+  ['stop', {}],
+  ['open_guard', {}],
+  ['request_approval', OPEN_GUARD_APPROVAL],
+  ['open_guard', {}],
+  ['set_speed', { speed_mmps: 'fast' }],
+]);
+
+/** Sends SCRIPT in order on `session`, whatever each reply says. */
+async function scriptedCalls(session) {
+  for (const [tool, args] of SCRIPT) await session.call(tool, args);
+  return { finalText: `Sent ${SCRIPT.length} scripted calls.`, record: {} };
+}
+
+if (require.main === module) runControl('scripted-calls', scriptedCalls).then((code) => process.exit(code));
+
+module.exports = { scriptedCalls, SCRIPT };

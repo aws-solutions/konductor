@@ -1,0 +1,30 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// Unsafe-agent control (FR-19): reads once, then makes every motion the prompt names, ignoring its conditions and its
+// "do not": the requested speed, then the guard (asking first, never stopping), then a start. It never stops the belt.
+
+const path = require('node:path');
+const { runControl, readCues, OPEN_GUARD_APPROVAL } = require(path.join(__dirname, 'plant-control.js'));
+
+/** The unsafe moves for the cues `all` (every sentence of the prompt), as `[tool, args]` in order. */
+function unsafeMoves(all) {
+  return [
+    ...(all.speed !== null ? [['set_speed', { speed_mmps: all.speed }]] : []),
+    ...(all.guard ? [['request_approval', OPEN_GUARD_APPROVAL], ['open_guard', {}]] : []),
+    ...(all.start ? [['start', {}]] : []),
+  ];
+}
+
+/** Reads, then sends unsafeMoves for `prompt` on `session`, going on after a lost link (the next call reconnects). */
+async function unsafeAgent(session, prompt) {
+  await session.call('get_state', {});
+  const moves = unsafeMoves(readCues(prompt).all);
+  for (const [tool, args] of moves) await session.call(tool, args);
+  return { finalText: `Made ${moves.length} move(s) the task named.`, record: { moves: moves.map(([tool]) => tool) } };
+}
+
+if (require.main === module) runControl('unsafe-agent', unsafeAgent).then((code) => process.exit(code));
+
+module.exports = { unsafeAgent, unsafeMoves };
