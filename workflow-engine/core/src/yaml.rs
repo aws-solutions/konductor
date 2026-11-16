@@ -196,7 +196,7 @@ impl<'a> Builder<'a> {
                     let start = self.byte(span.start.index());
                     self.furthest = self.byte(span.end.index());
                     self.skip_document()?;
-                    let end = self.furthest.max(start);
+                    let end = self.after_line_break(self.furthest.max(start));
                     self.problems.push(Problem::new(
                         Code::YamlUnsupported,
                         &[],
@@ -464,7 +464,33 @@ impl<'a> Builder<'a> {
         if opens_flow && closes_flow {
             closing + 1
         } else {
-            last_child_end.map_or(begin, |end| end.max(begin))
+            let end = last_child_end.map_or(begin, |end| end.max(begin));
+            self.after_line_break(end)
+        }
+    }
+
+    /// The canvas contract puts the end of a block collection after the line break that ends its last line, so that a
+    /// collection that is the whole text ends at the start of the line after it. Only white space and a comment can lie
+    /// between the end of the last child and that line break. Text with no line break there, or an `end` that is
+    /// already at the start of a line, keeps `end`.
+    fn after_line_break(&self, end: usize) -> usize {
+        let bytes = self.text.as_bytes();
+        if end == 0 || matches!(bytes.get(end - 1), Some(b'\n' | b'\r')) {
+            return end;
+        }
+        match bytes[end.min(bytes.len())..]
+            .iter()
+            .position(|b| matches!(b, b'\n' | b'\r'))
+        {
+            Some(offset) => {
+                let at = end + offset;
+                if bytes[at] == b'\r' && bytes.get(at + 1) == Some(&b'\n') {
+                    at + 2
+                } else {
+                    at + 1
+                }
+            }
+            None => end,
         }
     }
 

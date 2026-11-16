@@ -195,8 +195,8 @@ fn yaml_unsupported_for_a_second_document() {
     let d = only(&checked);
     assert_eq!(d.code, Code::YamlUnsupported);
     assert_eq!(d.message, "Only one YAML document is allowed.");
-    // From its `---` line to the end of its content.
-    assert_eq!(place(d), (8, 1, 9, 12));
+    // From its `---` line to the end of its content, which is the start of the line after its last line.
+    assert_eq!(place(d), (8, 1, 10, 1));
 }
 
 #[test]
@@ -449,7 +449,8 @@ fn missing_key_is_reported_at_the_enclosing_mapping() {
     let d = only(&checked);
     assert_eq!(d.path, "");
     assert_eq!((d.line, d.column), (1, 1));
-    assert_eq!(d.end_line, 6);
+    // The end is the first place after the mapping, which is the start of the line after its last line.
+    assert_eq!((d.end_line, d.end_column), (7, 1));
 }
 
 // --- WRONG_TYPE ------------------------------------------------------------------------------------------------------
@@ -829,7 +830,8 @@ fn unsupported_format_for_any_value_but_konductor_1() {
         let d = only(&checked);
         assert_eq!(d.code, Code::UnsupportedFormat, "{format}");
         assert_eq!(d.path, "format");
-        assert_eq!(d.suggestion.as_deref(), Some("konductor/1"));
+        // The canvas contract gives a suggestion for a missing `format` only.
+        assert_eq!(d.suggestion, None);
     }
 }
 
@@ -880,7 +882,10 @@ fn not_supported_by_this_build_carries_the_slice() {
     assert_eq!(d.code, Code::NotSupportedByThisBuild);
     assert_eq!(d.path, "stages.plan.outputs");
     assert_eq!(d.slice.map(|s| s.to_string()).as_deref(), Some("2"));
-    assert_eq!(d.message, "`stages[].outputs` is not supported yet.");
+    assert_eq!(
+        d.message,
+        "`stages[].outputs` is not supported by this build. Slice 2 adds it."
+    );
     assert_eq!((d.line, d.column), (8, 5));
 }
 
@@ -891,7 +896,11 @@ fn the_string_form_of_intent_is_not_supported_and_carries_its_slice() {
     assert_eq!(d.code, Code::NotSupportedByThisBuild);
     assert_eq!(d.path, "intent");
     assert_eq!(d.slice.map(|s| s.to_string()).as_deref(), Some("13"));
-    assert!(d.message.contains("not supported yet"), "{}", d.message);
+    assert!(
+        d.message.contains("not supported yet") && d.message.ends_with("Slice 13 adds it."),
+        "{}",
+        d.message
+    );
     assert_eq!((d.line, d.column), (3, 9));
 }
 
@@ -1075,7 +1084,11 @@ fn a_template_reference_in_an_inline_prompt_is_not_supported_and_reported_at_the
     assert_eq!(d.slice.map(|s| s.to_string()).as_deref(), Some("2"));
     assert_eq!((d.line, d.column, d.end_column), (8, 18, 28));
     assert!(!d.message.contains("slice"), "{}", d.message);
-    assert!(d.message.contains("not supported yet"), "{}", d.message);
+    assert!(
+        d.message.contains("not supported yet") && d.message.ends_with("Slice 2 adds it."),
+        "{}",
+        d.message
+    );
 }
 
 #[test]
