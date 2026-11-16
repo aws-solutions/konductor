@@ -303,7 +303,7 @@ impl HarnessTransformer for ClaudeTransformer {
         let base_dir = output_root.join(self.name());
 
         stage_content_type(&base_dir, AGENTS_CONTENT_TYPE_DIR, |staging_dir| {
-            let skill_names: HashSet<&str> = model.skills.iter().map(|s| s.name.as_str()).collect();
+            let packaged: HashSet<&str> = model.skills.iter().map(|s| s.name.as_str()).collect();
             for agent in &model.agents {
                 let Some(claude) = &agent.client_config.claude_cli else {
                     continue;
@@ -317,11 +317,13 @@ impl HarnessTransformer for ClaudeTransformer {
                     claude,
                     &agent.dependencies.context.context_names,
                     &model.context,
-                    &skill_names,
-                    &super::parse_canonical::skill_names_from_dependencies(
-                        &agent.dependencies.skills,
-                    )
-                    .collect::<Vec<_>>(),
+                    AgentSkills {
+                        packaged: &packaged,
+                        declared: &super::parse_canonical::skill_names_from_dependencies(
+                            &agent.dependencies.skills,
+                        )
+                        .collect::<Vec<_>>(),
+                    },
                     &agent.dependencies.mcp_registry,
                 )?;
                 write_agent_file(staging_dir, &agent.name, &rendered)?;
@@ -440,6 +442,14 @@ fn is_date(part: &str) -> bool {
     part.len() == 8 && part.bytes().all(|b| b.is_ascii_digit())
 }
 
+/// The skill names `render_agent_md` needs for one agent.
+struct AgentSkills<'a> {
+    /// Every packaged skill's name.
+    packaged: &'a HashSet<&'a str>,
+    /// The agent's `dependencies.skills.skillNames`, in declared order.
+    declared: &'a [&'a str],
+}
+
 /// Renders one agent's YAML frontmatter + system prompt body. The body
 /// starts as the verbatim `system_prompt` text with no inserted heading
 /// (see module docstring), then has each of `context_names`' matching
@@ -447,7 +457,7 @@ fn is_date(part: &str) -> bool {
 /// `append_context_blocks` -- see that function's own doc comment for
 /// the exact marker convention.
 ///
-/// `skill_names` (every packaged skill's name) validates each
+/// `skills.packaged` (every packaged skill's name) validates each
 /// `claude.skills` entry before rendering: without this, a renamed,
 /// removed, or typo'd skill name would synth successfully and ship a
 /// `skills:` entry pointing at nothing under `dist/claude/skills/`,
@@ -469,26 +479,24 @@ fn is_date(part: &str) -> bool {
 /// precedence rule) before rendering, so the frontmatter's `mcpServers:`
 /// key reflects both sources rather than only the Claude-specific one.
 ///
-/// `declared_skills` is the agent's `dependencies.skills.skillNames` in
+/// `skills.declared` is the agent's `dependencies.skills.skillNames` in
 /// declared order; the ones not in `claude.skills` are listed in a
 /// trailing block (see `render_on_demand_skills_block`).
 ///
 /// For a specialist (any agent that is not a `konductor*` orchestrator), spawn
 /// tools are dropped from `tools` and `disallowedTools` denies them, whether or
 /// not a `tools` list exists.
-#[allow(clippy::too_many_arguments)]
 fn render_agent_md(
     name: &str,
     config: &super::parser::AgentConfig,
     claude: &ClaudeCliConfig,
     context_names: &[String],
     context_defs: &[super::model::ContextDef],
-    skill_names: &HashSet<&str>,
-    declared_skills: &[&str],
+    skills: AgentSkills<'_>,
     mcp_registry: &BTreeMap<String, McpServerDef>,
 ) -> Result<String, String> {
     for skill_name in &claude.skills {
-        if !skill_names.contains(skill_name.as_str()) {
+        if !skills.packaged.contains(skill_name.as_str()) {
             return Err(format!(
                 "agent '{name}' declares claudeCli skill '{skill_name}', but no skill named \
                  '{skill_name}' exists under skills/"
@@ -538,7 +546,7 @@ fn render_agent_md(
     // materialization's own spacing, rather than an extra one from the
     // source prompt's own trailing newline. With neither, the body is
     // exactly `system_prompt`, unmodified.
-    let on_demand_block = render_on_demand_skills_block(declared_skills, &claude.skills);
+    let on_demand_block = render_on_demand_skills_block(skills.declared, &claude.skills);
     let mut body = config.system_prompt.clone();
     if !context_names.is_empty() || on_demand_block.is_some() {
         let trimmed_len = body.trim_end().len();
@@ -718,8 +726,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &skill_names,
-            &[],
+            AgentSkills {
+                packaged: &skill_names,
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -772,8 +782,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -811,8 +823,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -842,8 +856,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -930,8 +946,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -984,8 +1002,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1019,8 +1039,10 @@ mod tests {
             agent.client_config.claude_cli.as_ref().unwrap(),
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1108,8 +1130,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1165,8 +1189,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1204,8 +1230,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1263,8 +1291,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &mcp_registry,
         )
         .unwrap();
@@ -1340,8 +1370,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &mcp_registry,
         )
         .unwrap();
@@ -1401,8 +1433,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &mcp_registry,
         )
         .unwrap();
@@ -1436,8 +1470,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1502,8 +1538,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         );
         let err = match result {
@@ -1696,8 +1734,10 @@ mod tests {
             claude_cfg,
             &context_names,
             &context_defs,
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1742,8 +1782,10 @@ mod tests {
             claude_cfg,
             &context_names,
             &context_defs,
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1773,8 +1815,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1797,8 +1841,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &skill_names,
-            &[],
+            AgentSkills {
+                packaged: &skill_names,
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1856,8 +1902,10 @@ mod tests {
             claude_cfg,
             &context_names,
             &context_defs,
-            &HashSet::new(),
-            &["backend-review"],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &["backend-review"],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1882,8 +1930,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &["backend-review"],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &["backend-review"],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1905,8 +1955,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
@@ -2349,8 +2401,10 @@ mod tests {
             claude_cfg,
             &[],
             &[],
-            &HashSet::new(),
-            &[],
+            AgentSkills {
+                packaged: &HashSet::new(),
+                declared: &[],
+            },
             &BTreeMap::new(),
         )
         .unwrap();
