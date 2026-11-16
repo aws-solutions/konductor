@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
+import { NODE_HEIGHT } from '../graph';
 import { RADIUS } from '../theme/tokens';
 
 /** The width of the line around a node, in pixels. */
 export const BORDER_WIDTH = 2;
 /** The corner radius of a card. */
 export const CARD_RADIUS = parseFloat(RADIUS.control);
+/** The corner radius of each kind of node. The End node is a pill. */
+export const NODE_RADIUS = {
+  intent: CARD_RADIUS,
+  stage: CARD_RADIUS,
+  end: NODE_HEIGHT.end / 2,
+} as const;
 
 /** The clear space between a focused node and its focus ring. */
 export const FOCUS_GAP = 2;
@@ -14,7 +21,7 @@ export const FOCUS_WIDTH = 3;
 /**
  * The size of a run order port: a dot on the middle of the top edge where run
  * order arrives, and one on the bottom edge where it leaves. `canvas.css`
- * draws it at this size.
+ * draws it at this size, as `--wf-port-dot-size`.
  */
 export const PORT_DOT_SIZE = 10;
 
