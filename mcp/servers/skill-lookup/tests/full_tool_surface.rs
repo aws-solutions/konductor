@@ -691,30 +691,33 @@ async fn list_tools_and_list_prompts_omit_the_meta_field_entirely() {
     })
     .await;
 
-    with_probe_server("list-meta-absent-tools", |mut stdin, mut reader| async move {
-        complete_handshake(&mut stdin, &mut reader).await;
+    with_probe_server(
+        "list-meta-absent-tools",
+        |mut stdin, mut reader| async move {
+            complete_handshake(&mut stdin, &mut reader).await;
 
-        write_message(
-            &mut stdin,
-            &serde_json::json!({
-                "jsonrpc": "2.0",
-                "id": 2,
-                "method": "tools/list"
-            }),
-        )
-        .await;
-        let response = read_json_line(&mut reader).await;
-        let result = response
-            .get("result")
-            .unwrap_or_else(|| panic!("expected tools/list to succeed: {response:?}"));
-        assert!(
-            result.get("_meta").is_none(),
-            "expected no '_meta' key on ListToolsResult (with_all_items sets meta: None, \
+            write_message(
+                &mut stdin,
+                &serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/list"
+                }),
+            )
+            .await;
+            let response = read_json_line(&mut reader).await;
+            let result = response
+                .get("result")
+                .unwrap_or_else(|| panic!("expected tools/list to succeed: {response:?}"));
+            assert!(
+                result.get("_meta").is_none(),
+                "expected no '_meta' key on ListToolsResult (with_all_items sets meta: None, \
              which skip_serializing_if omits from the wire), got: {result:?}"
-        );
+            );
 
-        drop(stdin);
-    })
+            drop(stdin);
+        },
+    )
     .await;
 }
 

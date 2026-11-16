@@ -151,7 +151,7 @@ bash "<CMUX_DISPATCH_DIR>/cmux-dispatch.sh" \
           [OR: Work directly on branch <branch> in this shared working tree
           — no worktree for this task.]
           Implement the feature; commit and push the branch you're on; open
-          a draft CR to mainline."
+          a draft PR to main."
 ```
 
 **Read-only agents** (research, investigation, review) need no worktree

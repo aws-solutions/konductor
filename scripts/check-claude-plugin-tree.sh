@@ -11,7 +11,7 @@ set -euo pipefail
 PLUGIN_DIR="${1:?usage: check-claude-plugin-tree.sh <plugin-dir>}"
 [ -d "$PLUGIN_DIR" ] || { echo "check-claude-plugin-tree.sh: '$PLUGIN_DIR' is not a directory" >&2; exit 1; }
 
-ALLOWED=".claude-plugin .mcp.json LICENSE.txt README.md agents docs hooks skills"
+ALLOWED=".claude-plugin .mcp.json LICENSE.txt NOTICE.txt README.md agents docs hooks skills"
 
 unexpected=()
 for entry in "$PLUGIN_DIR"/* "$PLUGIN_DIR"/.[!.]* "$PLUGIN_DIR"/..?*; do

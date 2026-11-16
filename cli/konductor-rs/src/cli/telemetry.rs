@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// telemetry — usage-analytics telemetry.
+// telemetry - usage-analytics telemetry.
 //
 // identity: legacy per-project telemetry-id.json, no longer read for
 // reporting; uninstall still removes it. instance: machine-scoped

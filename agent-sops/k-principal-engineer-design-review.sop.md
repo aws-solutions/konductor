@@ -1,5 +1,10 @@
 # Principal Engineer Design Review
 
+Orchestration: strict (phase-gated SOP)
+Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it, or the SOP's own round-cap rule says to proceed; record which.
+
+Recorded gates are the stops this SOP names; where the run keeps a session file, record their gate facts there.
+
 ## Overview
 
 This SOP runs a pre-submission quality gate on a design document before it goes to a Principal Engineer for review. It combines slop detection, architecture principles evaluation, and an adversarial review loop to eliminate the most common review comments before the human reviewer sees the document.

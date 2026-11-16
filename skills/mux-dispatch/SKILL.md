@@ -24,7 +24,7 @@ Use this skill when:
 
 - User asks to delegate, spawn, or run a task in a separate pane with a specific agent
 - Running on Linux or any platform with tmux or zellij
-- **NEVER** use `use_subagent` when a multiplexer is available — always use this skill instead
+- Prefer a pane over an in-process subagent when tmux/zellij is running, because the user can watch and correct the pane
 
 **You MUST immediately run the dispatch script without pre-checking the environment.** The script handles all validation and exits with a clear error if anything is missing.
 
