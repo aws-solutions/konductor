@@ -50,6 +50,14 @@ test('the fixed paths, with run data under bench/out/<run-id> and the ledger out
       'bench/out/r1/checklists/s/b1/t-1.json',
     ],
     [
+      RUN_LAYOUT.subjectRunDir('s', 'b1', 't-1', 'with'),
+      'bench/out/r1/raw/s/b1/t-1.with',
+    ],
+    [
+      RUN_LAYOUT.subjectRunDir('s', 'b1', 't-1', 'without'),
+      'bench/out/r1/raw/s/b1/t-1.without',
+    ],
+    [
       RUN_LAYOUT.judgmentFile('items', 's', 'b1', 't-1', 'xai', 'with'),
       'bench/out/r1/judgments/items/s/b1/t-1.xai.with.json',
     ],
@@ -147,6 +155,21 @@ const NAME_POSITIONS = [
     'task id',
     /unsafe task id/,
     (layout, name) => layout.checklistFile('s', 'b1', name),
+  ],
+  [
+    'skill',
+    /unsafe skill/,
+    (layout, name) => layout.subjectRunDir(name, 'b1', 't', 'with'),
+  ],
+  [
+    'batch',
+    /unsafe batch/,
+    (layout, name) => layout.subjectRunDir('s', name, 't', 'with'),
+  ],
+  [
+    'task id',
+    /unsafe task id/,
+    (layout, name) => layout.subjectRunDir('s', 'b1', name, 'without'),
   ],
   [
     'skill',
@@ -396,6 +419,10 @@ test('every refusal is a LayoutError, so a caller can tell it from a bug', () =>
 test('an arm or scale outside the known values is refused', () => {
   assert.throws(
     () => RUN_LAYOUT.answerFile('s', 'b1', 't', 'both'),
+    /arm must be one of with, without/,
+  );
+  assert.throws(
+    () => RUN_LAYOUT.subjectRunDir('s', 'b1', 't', 'with2'),
     /arm must be one of with, without/,
   );
   assert.throws(
