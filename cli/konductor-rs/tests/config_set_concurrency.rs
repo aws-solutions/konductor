@@ -107,6 +107,11 @@ fn concurrent_config_set_multiprocess_no_lost_updates() {
         String::from_utf8_lossy(&init_output.stderr)
     );
 
+    let seeded_path = dir.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME);
+    let mut seeded = std::fs::read_to_string(&seeded_path).expect("config.yml must exist");
+    seeded.push_str("telemetry:\n  enabled: false\nunknown_scalar: kept\n");
+    std::fs::write(&seeded_path, seeded).expect("seeding extra keys must succeed");
+
     // Mirrors the review's reported 60-process / 2-key reproduction: 15
     // writers per key (kept smaller than 60 to keep CI time reasonable
     // while still exercising real contention), alternating value so the
@@ -163,6 +168,20 @@ fn concurrent_config_set_multiprocess_no_lost_updates() {
     let parsed: serde_yaml::Value = serde_yaml::from_str(&raw)
         .expect("config.yml must remain valid YAML after concurrent writes");
 
+    assert_eq!(
+        parsed
+            .get("telemetry")
+            .and_then(|t| t.get("enabled"))
+            .and_then(|v| v.as_bool()),
+        Some(false),
+        "the telemetry block must survive concurrent writers"
+    );
+    assert_eq!(
+        parsed.get("unknown_scalar").and_then(|v| v.as_str()),
+        Some("kept"),
+        "an unknown scalar must survive concurrent writers"
+    );
+
     let severity = parsed
         .get("default_severity")
         .and_then(|v| v.as_str())
@@ -209,7 +228,7 @@ fn concurrent_config_set_multiprocess_no_lost_updates() {
 /// THIS test process while a REAL subprocess attempts `config set`. The
 /// subprocess must give up within its bounded wait and exit
 /// EXIT_USAGE_ERROR (64) with a clear message -- never hang, and never
-/// exit 2 (reserved for the unresolved-CRITICAL-gate signal).
+/// exit 2 (reserved for the unresolved-finding signal).
 #[test]
 fn config_set_exits_usage_error_when_lock_is_held_by_another_process() {
     use fs2::FileExt;
@@ -253,7 +272,7 @@ fn config_set_exits_usage_error_when_lock_is_held_by_another_process() {
     );
     assert_ne!(
         exit_code, 2,
-        "lock-contention must never exit code 2 (reserved for the unresolved-CRITICAL-gate signal)"
+        "lock-contention must never exit code 2 (reserved for the unresolved-finding signal)"
     );
     let stderr = String::from_utf8_lossy(&result.stderr).to_lowercase();
     assert!(

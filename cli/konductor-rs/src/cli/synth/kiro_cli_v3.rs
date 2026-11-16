@@ -86,6 +86,9 @@ use super::parse_canonical::skill_names_from_dependencies;
 use super::parser::KiroCliConfig;
 use super::path_safety::reject_unsafe_agent_name;
 use super::skill_index;
+use super::spawn_policy::{
+    is_kiro_spawn_tool, is_specialist, KIRO_V3_SPECIALIST_EXCLUDED_TOOLS, SUBAGENT_CAPABILITY,
+};
 use super::staging::stage_content_type;
 use super::HarnessTransformer;
 
@@ -97,15 +100,16 @@ use super::HarnessTransformer;
 /// unified permissions block"), replaced by `permissions`.
 ///
 /// V3-only fields the agent-config page's New Fields Reference Table
-/// documents (`excludedTools`, `includeMcpJson`, `includePowers`) are
-/// deliberately NOT emitted here: the source agent-spec schema
-/// (`KiroCliConfig`) has no corresponding field to derive them from
-/// today, and inventing a default would violate the "implement only
-/// what's confirmed" contract this module is built under. A future
-/// agent-spec schema change adding one of these would need a
-/// corresponding `KiroCliConfig` field and a matching addition here, not
-/// a fabricated default. This mirrors the existing project stance already
-/// on record for these three fields.
+/// documents (`includeMcpJson`, `includePowers`) are deliberately NOT
+/// emitted here: the source agent-spec schema (`KiroCliConfig`) has no
+/// corresponding field to derive them from today, and inventing a default
+/// would violate the "implement only what's confirmed" contract this
+/// module is built under. A future agent-spec schema change adding one of
+/// these would need a corresponding `KiroCliConfig` field and a matching
+/// addition here, not a fabricated default.
+///
+/// `excludedTools` is emitted for specialists only, with the fixed
+/// `KIRO_V3_SPECIALIST_EXCLUDED_TOOLS` list (see `spawn_policy`).
 ///
 /// `welcomeMessage` is emitted when the source spec's `clientConfig.kiroCli`
 /// supplies it (`KiroCliConfig::welcome_message`), and omitted when absent.
@@ -121,6 +125,8 @@ struct KiroV3AgentFile<'a> {
     #[serde(rename = "welcomeMessage", skip_serializing_if = "Option::is_none")]
     welcome_message: Option<&'a str>,
     tools: Vec<String>,
+    #[serde(rename = "excludedTools", skip_serializing_if = "Vec::is_empty")]
+    excluded_tools: Vec<&'static str>,
     permissions: PermissionsBlock,
     #[serde(rename = "mcpServers")]
     mcp_servers: serde_json::Value,
@@ -1227,8 +1233,14 @@ fn render_agent_file<'a>(
         resources.push(format!("file://{CONTEXT_CONTENT_TYPE_DIR}/{context_name}"));
     }
 
-    let tools = kiro.tools.iter().map(|id| map_tool_tag(id)).collect();
-    let rules = derive_permission_rules(&kiro.tools_settings, &kiro.allowed_tools);
+    let mut tools: Vec<String> = kiro.tools.iter().map(|id| map_tool_tag(id)).collect();
+    let mut rules = derive_permission_rules(&kiro.tools_settings, &kiro.allowed_tools);
+    let mut excluded_tools = Vec::new();
+    if is_specialist(name) {
+        tools.retain(|tag| !is_kiro_spawn_tool(tag));
+        rules.retain(|rule| rule.capability != SUBAGENT_CAPABILITY);
+        excluded_tools = KIRO_V3_SPECIALIST_EXCLUDED_TOOLS.to_vec();
+    }
 
     Ok(KiroV3AgentFile {
         name,
@@ -1237,6 +1249,7 @@ fn render_agent_file<'a>(
         model: &config.model,
         welcome_message: kiro.welcome_message.as_deref(),
         tools,
+        excluded_tools,
         permissions: PermissionsBlock { rules },
         mcp_servers,
         hooks: convert_hooks_for_v3(&kiro.hooks),
@@ -1336,6 +1349,7 @@ mod tests {
     use crate::cli::synth::parser::{
         AgentConfig, AgentDependencies, ClientConfig, ParsedAgentSpec,
     };
+    use crate::cli::synth::spawn_policy::KIRO_SPAWN_TOOL_IDS;
 
     fn agent_with_kiro(name: &str, kiro: KiroCliConfig) -> ParsedAgentSpec {
         ParsedAgentSpec {
@@ -1414,6 +1428,18 @@ mod tests {
         assert_eq!(map_tool_tag("todo"), "todo_list");
         assert_eq!(map_tool_tag("task"), "todo_list");
         assert_eq!(map_tool_tag("agent_crew"), "subagent");
+    }
+
+    #[test]
+    fn spawn_policy_ids_and_rename_table_agree() {
+        for (id, tag) in TOOL_ID_TO_TAG {
+            if *tag == SUBAGENT_CAPABILITY {
+                assert!(is_kiro_spawn_tool(id), "{id} renames to the subagent tag");
+            }
+        }
+        for id in KIRO_SPAWN_TOOL_IDS {
+            assert_eq!(map_tool_tag(id), SUBAGENT_CAPABILITY, "{id}");
+        }
     }
 
     /// Unconfirmed entries (already-current tags, collection markers,
@@ -1990,6 +2016,57 @@ mod tests {
             "expected one subagent rule, got: {rules:?}"
         );
         assert_eq!(subagent_rules[0].r#match, vec!["reviewer-agent"]);
+    }
+
+    fn kiro_with_spawn_grant() -> KiroCliConfig {
+        KiroCliConfig {
+            tools: vec!["@builtin".to_string(), "use_subagent".to_string()],
+            allowed_tools: vec!["fs_read".to_string(), "subagent".to_string()],
+            tools_settings: serde_json::json!({
+                "subagent": {"trustedAgents": ["k-developer"]}
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn render_agent_file_strips_spawn_grants_from_specialist() {
+        let agent = agent_with_kiro("k-example", kiro_with_spawn_grant());
+        let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
+        let file =
+            render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
+
+        assert_eq!(file.tools, vec!["@builtin"]);
+        assert!(
+            file.permissions
+                .rules
+                .iter()
+                .all(|r| r.capability != "subagent"),
+            "specialist kept a subagent rule: {:?}",
+            file.permissions.rules
+        );
+        let json = serde_json::to_value(&file).unwrap();
+        assert_eq!(
+            json["excludedTools"],
+            serde_json::json!(["invoke_sub_agent", "run_workflow"])
+        );
+    }
+
+    #[test]
+    fn render_agent_file_keeps_spawn_grants_for_orchestrator() {
+        let agent = agent_with_kiro("konductor", kiro_with_spawn_grant());
+        let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
+        let file =
+            render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
+
+        assert_eq!(file.tools, vec!["@builtin", "subagent"]);
+        assert!(file
+            .permissions
+            .rules
+            .iter()
+            .any(|r| r.capability == "subagent" && r.r#match == vec!["k-developer"]));
+        let json = serde_json::to_value(&file).unwrap();
+        assert!(json.get("excludedTools").is_none());
     }
 
     /// A `toolsSettings` entry that only produces a DENY rule for a

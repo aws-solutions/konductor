@@ -1,7 +1,7 @@
 ---
 name: app-discovery
 version: 1.0.0
-description: Navigates a deployed web application, discovers all pages and interactive elements, and produces a structured discovery report. Loads dom-inspection to extract form validation rules, error selectors, and conditional visibility. Used as input to k-light-ui-testing and k-e2e-test-generation workflows.
+description: Navigates a deployed web application, discovers all pages and interactive elements, and produces a structured discovery report. Use when a test plan or spec needs a map of a live web app's pages, controls and form rules, or the user asks to crawl an app before writing E2E tests. Loads dom-inspection to extract form validation rules, error selectors, and conditional visibility. Used as input to k-light-ui-testing and k-e2e-test-generation workflows.
 tags: [discovery, browser, dom, testing, playwright, app-inspection]
 ---
 
@@ -28,7 +28,7 @@ Load this skill into `k-browser`. It depends on `dom-inspection` — ensure that
 
 If `credentials_file` is empty or absent, skip this phase (the app requires no authentication).
 
-If `credentials_file` is non-empty, read it first to obtain credentials before navigating, then perform login using the selectors from the login page. Choose the flow that matches the app's sign-in behavior:
+If `credentials_file` is non-empty, read it first to obtain `test_url`, `user_name` and `password` (the SOP's brief says the user supplied it; never echo the values) before navigating, then perform login using the selectors from the login page. Choose the flow that matches the app's sign-in behavior:
 
 #### Flow A: Redirect-based sign-in (e.g. Cognito Hosted UI, OAuth/SSO, SAML IdP)
 
@@ -87,7 +87,7 @@ For every form on each page, apply the `dom-inspection` skill:
 - Capture error message selectors and exact error text
 - Identify conditional field visibility and cross-field business rules
 
-See `skills/dom-inspection/SKILL.md` for the full inspection protocol and output schema.
+See `skills/dom-inspection/SKILL.md` for the Inspection Protocol and the Report Schema.
 
 ### Phase 6: Cleanup
 
@@ -119,7 +119,7 @@ Produce a discovery report with this structure:
 | ... | ... | ... | ... | ... | ... |
 
 **Forms:**
-{dom-inspection output per form — see dom-inspection skill for schema}
+{dom-inspection output per form, using the Report Schema in dom-inspection's SKILL.md}
 
 **Failed paths:** {list of URLs or actions that failed, with reason}
 ```

@@ -182,15 +182,30 @@ fn plan_context_files(
     target_dir: &Path,
     prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
+    plan_context_files_into(
+        harness_dir,
+        target_dir,
+        KIRO_DESTINATION_ROOT,
+        prior_manifest,
+    )
+}
+
+/// Plans what `install_context_into` copies under `destination_root`.
+pub(in crate::cli::install) fn plan_context_files_into(
+    harness_dir: &Path,
+    target_dir: &Path,
+    destination_root: &str,
+    prior_manifest: Option<&StrategyManifest>,
+) -> Result<Vec<PlannedFile>, String> {
     let source_dir = harness_dir.join(CONTEXT_CONTENT_TYPE_DIR);
     let entries = list_agent_files_like(&source_dir)?;
     let destination = target_dir
-        .join(KIRO_DESTINATION_ROOT)
+        .join(destination_root)
         .join(CONTEXT_CONTENT_TYPE_DIR);
     let mut plan = Vec::with_capacity(entries.len());
     for file_name in entries {
         let manifest_path =
-            content_manifest_path(KIRO_DESTINATION_ROOT, CONTEXT_CONTENT_TYPE_DIR, &file_name);
+            content_manifest_path(destination_root, CONTEXT_CONTENT_TYPE_DIR, &file_name);
         let provenance = classify_provenance(
             &destination.join(&file_name),
             &manifest_path,

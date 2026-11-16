@@ -36,9 +36,11 @@ right specialist, checks what comes back, and sends it back for fixes when it fa
 
 - 🎼 **One request, the whole lifecycle.** Requirements, design, code, tests and docs, without
   hand-carrying artifacts between chats.
-- ✅ **Every deliverable gets checked.** Work passes a maker-checker gate, and failed checks
-  go back for up to two fix cycles.
-- 🧠 **Expertise built in.** 82 skills and 19 step-by-step workflows (SOPs) cover threat models,
+- ✅ **Every phase gets checked.** Code, and documents a later phase implements or you ask to have
+  reviewed, pass one fresh reviewer; a standalone design, plan or requirements document passes its
+  checker skill; a one-file change of at most 50 lines passes by build, test and lint, reported with the diff stat. Anything touching auth, secrets,
+  data or infrastructure, and every threat model, gets the reviewer. Failed checks get one fix and one re-review.
+- 🧠 **Expertise built in.** 81 skills and 19 step-by-step workflows (SOPs) cover threat models,
   IAM policies, DynamoDB design, code review, E2E testing and more.
 - 🪶 **No infrastructure.** Agents are configuration (prompts, skills, SOPs) that your Kiro or
   Claude Code runtime runs directly. No servers, no extra accounts.
@@ -79,7 +81,9 @@ at the end. Piping a script to `bash` runs code you haven't read; to check it fi
 [what the install script does](#what-the-install-script-does) below.
 Using the Claude Code plugin marketplace instead? Run `/plugin marketplace add aws-solutions/konductor`,
 then `/plugin install konductor@konductor`
-([details](docs/user-guide/tasks/install-claude-plugin-marketplace.md)).
+([details](docs/user-guide/tasks/install-claude-plugin-marketplace.md)). Plugin agents and SOPs use
+the `konductor:` prefix. Either Claude Code install needs agent-teams mode and tool permissions
+([setup](docs/user-guide/tasks/install-claude-code.md#2-enable-agent-teams-mode)).
 Using Kiro IDE? [Install via a Kiro Power](#install-via-kiro-power).
 
 **2. Start the orchestrator:**
@@ -87,6 +91,7 @@ Using Kiro IDE? [Install via a Kiro Power](#install-via-kiro-power).
 ```bash
 kiro-cli chat --agent konductor     # Kiro CLI
 claude --agent konductor            # Claude Code
+claude --agent konductor:konductor  # Claude Code plugin
 ```
 
 **3. Ask for something real:**
@@ -231,12 +236,15 @@ for the full fallback chain.
 
 ## Meet the team
 
-`konductor` is where you start. It never writes code itself: it delegates, verifies, and re-delegates
-when a quality gate fails (up to two fix cycles).
+`konductor` is where you start. It does the work in your session and brings in one fresh specialist
+reviewer at each phase gate; it spawns a specialist to do work only for a tool, skill or SOP it lacks
+or for parallel work on disjoint files. A failed review gets one fix and one re-review; a CRITICAL or IMPORTANT finding still open after that is reported to you. On Kiro CLI it trusts only reads, so
+each write and shell command asks you first; widen `allowedTools` in your agent config if you want
+fewer prompts.
 
 | Agent | What it does |
 | --- | --- |
-| `konductor` | Coordinates every specialist across the lifecycle, tracks progress and enforces quality gates |
+| `konductor` | Takes a request through the lifecycle, tracks progress and enforces review gates |
 | `konductor-mux-orchestrator` | Same job, with specialists running in parallel tmux or zellij panes (auto-detected) |
 | `konductor-cmux-orchestrator` | Same job, with specialists in parallel [cmux](https://github.com/manaflow-ai/cmux) surfaces |
 | `k-product-manager` | User stories, requirements summaries and decision research, validated before handoff |
@@ -259,6 +267,53 @@ only in a workspace and with AWS credentials you are willing to let an agent act
 `konductor`, Claude Code specialists follow your `~/.claude/settings.json`; on Kiro CLI,
 `k-developer`, `k-architect` and `k-quality-assurance` already run shell commands without asking.
 See [What each agent can do to your machine](docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine).
+
+### Orchestration mode
+
+`konductor` runs in one of two modes. `auto`, the default, is the single-writer shape described
+above. `coordinator` makes `konductor` read-only: it hands every change to a specialist and checks
+the result, the way the mux and cmux orchestrators work. There is no command for this setting; edit
+your user config by hand:
+
+```yaml
+# ~/.konductor/config.yml
+orchestration:
+  mode: coordinator   # or auto (the default)
+```
+
+Only this file is read. A value in a project's `.konductor/config.yml` is ignored, and
+`konductor doctor` reports it. The value is case-sensitive. A change applies from the next
+`konductor` session without a reinstall, and it stays until you edit the file again: `install` and
+`update` never change it.
+
+`install` wires a session-start hook for `konductor`, also under `--no-telemetry`. Under
+`coordinator` the hook tells `konductor` to read the installed coordinator routing rules
+(`k-orchestrator-routing-rules.md`) before it does anything else. The hook acts only for the install that wired it; see [where the hook may point](cli/README.md#orchestration-mode). Under `auto`, or with no setting,
+the hook injects nothing and the session costs nothing extra, except that on a Claude Code resume or
+compact it prints `Orchestration: auto`, so a session that changed mode sees the change. The hook never fails a session: if
+it recognises a `konductor` session but cannot apply `coordinator`, it prints one fallback line
+and the session runs as `auto`.
+
+The first reply of every `konductor` session states the mode once, and the reply after a Claude Code
+resume or compact states it again when the mode changed:
+
+| Reply | Meaning |
+| --- | --- |
+| `Orchestration: coordinator` | The coordinator rules are in effect |
+| `Orchestration: auto (default)` | `auto` by setting or by default. With `coordinator` set, no hook output arrived: run `konductor doctor`, then see [Troubleshooting](docs/user-guide/troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator) |
+| `Orchestration: auto (fallback: <reason>)` | The hook could not apply `coordinator`, for example `orchestration.mode is "Coordinator"; expected auto or coordinator`. Fix what the reason names |
+| `Orchestration: auto` | The mode changed to `auto` since the session started (Claude Code resume or compact) |
+
+Run `konductor doctor` to check the value and that the hook is wired. To test the hook itself, set
+`coordinator`, start a session, look for `Orchestration: coordinator`, then set the mode back; an
+explicit `auto` injects nothing at session start, so it cannot serve as the test.
+
+| Harness | Coordinator mode |
+| --- | --- |
+| Kiro CLI v3 | Supported. It may not re-inject the rules after `/compact`: if a `coordinator` session starts writing files itself after a compaction, start a new session |
+| Claude Code (`konductor install`) | Supported. The hook is wired to run again on `/clear`, `/compact` and resume, so the rules come back (tested on resume only) |
+| Claude Code plugin (marketplace) | Not available. The plugin does not wire the hook, so a plugin session always runs as `auto` and its first reply reads `Orchestration: auto (default)` |
+| Kiro CLI v2 | Not supported. `install` wires the hook into `konductor`'s `agentSpawn` hooks, as it does for telemetry, but delivery on v2 is untested. The first reply shows whether it arrived: if not, it reads `Orchestration: auto (default)` and the session runs as `auto` |
 
 ---
 
@@ -305,7 +360,7 @@ doesn't work, and `/prompts` lists what's available.
 | `skip_phases`         | no       | none              | Comma-separated: `elicitation`, `codebase-analysis`, `requirements`, `design`, `design-review`, `feature-splitting`, `specs`, `implementation`, `code-review`, `testing`, `documentation` |
 | `output_dir`          | no       | `.konductor/`     | |
 | `elicitation_depth`   | no       | `standard`        | `quick`, `standard` or `deep` |
-| `max_fix_cycles`      | no       | `2`               | |
+| `max_fix_cycles`      | no       | `2`               | Stored when the session starts; on resume a different value asks you to keep the stored one or approve the change |
 | `deployed_url`        | no       | none              | Used only by the UI/functional test phase |
 | `credentials_file`    | no       | none              | Same phase |
 | `feature_isolation`   | no       | `branch`          | `branch` or `worktree` |
@@ -321,7 +376,7 @@ More walkthroughs: [understand a codebase](docs/user-guide/use-cases/understand-
 
 ## What's inside
 
-### 🧠 82 skills
+### 🧠 81 skills
 
 Skills are packaged expertise the agents load when they need it. For Claude Code, every skill in an
 agent's `skills:` frontmatter is injected in full at session start; other skills load on demand
@@ -330,7 +385,7 @@ agent's `skills:` frontmatter is injected in full at session start; other skills
 | Area | Count | Examples |
 | --- | ---: | --- |
 | Architecture & design | 22 | `system-design-patterns`, `threat-modeling`, `dynamodb-design`, `iam-policy-design`, `smithy-modeling`, `cost-estimation`, `adr-generator` |
-| Planning & tracking | 14 | `user-story-writing`, `task-decomposition`, `sprint-planning`, `risk-management`, `program-planning`, `progress-tracking` |
+| Planning & tracking | 13 | `user-story-writing`, `task-decomposition`, `sprint-planning`, `risk-management`, `program-planning`, `progress-tracking` |
 | Development & review | 14 | `backend-development`, `frontend-development`, `infra-validation`, `code-review`, `git-workflow`, `adversarial-code-review` |
 | Orchestration & delegation | 13 | `delegation-protocol`, `sdlc-navigator`, `pre-planning-analysis`, `persistent-memory`, `workspace-skills`, `mux-dispatch` |
 | Testing & QA | 8 | `test-coverage-analysis`, `e2e-test-strategy`, `cypress-test-implementation`, `security-test-generation` |
@@ -342,8 +397,8 @@ Browse them all in the [skills catalog](docs/user-guide/skills.md).
 
 ### 📜 19 SOPs
 
-SOPs are repeatable, multi-step workflows. Run them as `/agent-sop:<name>` in Kiro CLI or
-`/sop-<name>` in Claude Code.
+SOPs are repeatable, multi-step workflows. Run them as `/agent-sop:<name>` in Kiro CLI,
+`/sop-<name>` in Claude Code, or `/konductor:sop-<name>` from the Claude Code plugin.
 
 | Plan & verify | Design | Build & review | Test |
 | --- | --- | --- | --- |
@@ -359,7 +414,15 @@ Each one is explained, with a flowchart, in [SOP workflows](docs/user-guide/sop-
 ### 💾 Persistent memory
 
 Agents with the `persistent-memory` skill keep a small scratchpad across sessions, with no setup.
-The directory is created on first write and added to `.gitignore`.
+The directory is created on first write and added to `.gitignore` by default; remove the ignore
+to share memory with your team. Agents treat these files like AGENTS.md, and shared memory
+carries agent-written entries to every clone, so review memory diffs as you would AGENTS.md
+changes. The validator requires an `[origin:agent]` or `[origin:user]` tag on each new line;
+agents follow only untagged and `[origin:user]` entries, which were written by hand or at your
+request. Upgrading with a committed memory file: untagged lines were data before and are
+instructions now; list them with
+`grep -vE '^\s*-\s*(\[[0-9-]+\]\s*)?\[origin:' .konductor/memory/*.md` and tag agent-written
+ones `[origin:agent]`.
 
 | File | Holds |
 | --- | --- |
@@ -403,14 +466,14 @@ Everything else is bring-your-own:
 ## Project layout
 
 The [source repository](https://github.com/aws-solutions/konductor) has the layout below. The Claude
-Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/`, its manifests, the README,
-`LICENSE.txt` and `NOTICE.txt`.
+Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/telemetry-schema.json`, its manifests,
+the README, `LICENSE.txt` and `NOTICE.txt`.
 
 ```text
 konductor/
 ├── agents/        11 agent specs (*.agent-spec.json)
 ├── agent-sops/    19 SOPs (*.sop.md)
-├── skills/        82 skills (skills/<name>/SKILL.md)
+├── skills/        81 skills (skills/<name>/SKILL.md)
 ├── context/       Context loaded at agent startup (core rules for every agent, orchestrator routing rules)
 ├── cli/           The konductor CLI (Rust)
 ├── mcp/           The skill-lookup MCP server
