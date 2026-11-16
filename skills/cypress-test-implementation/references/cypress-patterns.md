@@ -222,7 +222,7 @@ Used by Stage 8 to score each implemented test.
 
 # Example project layout
 
-Used by Stage 3 when the project has no `cypress/` directory yet.
+Used by Stage 3 whenever it recommends a Cypress structure.
 
 ```
 cypress/
