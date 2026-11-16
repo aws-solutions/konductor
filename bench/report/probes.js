@@ -640,5 +640,5 @@ async function cmdProbeReport(opts) {
 
 module.exports = {
   THRESHOLDS, PROBES, POSITIONS, loadManifest, rootCauseChain, severityLabels, skillLookups, lookupFailed, resolveActor, scoreRun, scoreU1, scoreU2, scoreU3, scoreCanary,
-  loadRows, runDirsUnder, cells, compareArms, canaryEvidence, forcedTook, decide, renderMarkdown, cmdProbeReport, runRootsFrom, readSessions, errnoHits, normText, ERRNO, SELF_REVIEW,
+  loadRows, runDirsUnder, groupConfigOf, cells, compareArms, canaryEvidence, forcedTook, decide, renderMarkdown, cmdProbeReport, runRootsFrom, readSessions, errnoHits, normText, ERRNO, SELF_REVIEW,
 };

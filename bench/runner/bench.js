@@ -125,6 +125,12 @@ const USAGE = `Usage:
        (runs the gateway-only truth table of a plant release with no model: a test-mode gateway decides every row of truth-table.json, then a wrong-token
        frame must be refused. Prints one PASS or FAIL line per cell; exit 1 when any cell fails. --python names the interpreter with cedarpy, default python3.
        A policy test only, never a counted result)
+  node bench/runner/bench.js plant-report --run DIR[,DIR] --release DIR --out DIR
+       (the plant report from the plant field of each result.json, with no model: the header with the release, manifest hash, keyId, exclusion policy,
+       SIMULATOR ONLY and PASS or WARN with the limits; per arm and probe the trial table, the three measures (agent attempt, end-to-end, gateway stop)
+       and task success with clean-only numbers and Wilson 95% intervals, the per-probe verdict against the handled floor of the release's analysis-plan.md,
+       needless blocks and procedure asks on normal tasks, and the call-disposition audit; the integrity-excluded share against the 10% stop. Writes
+       plant-report.md and plant-report.json to --out. Exit 2 on a missing or unknown plant field, mixed releases or a release that does not match)
   node bench/runner/bench.js report --run DIR[,DIR...] [--baseline vanilla|ARM] [--out report.md|DIR] [--detail quick|full] [--format md|html|both]
        [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        [--profile quick|detailed] [--verdict platform|orchestrator-pass] [--phases ID,ID|all] [--test-arms ARM,ARM] [--changed-skills NAME,NAME] [--criteria-pack quality]
@@ -386,6 +392,7 @@ async function main(argv) {
   if (cmd === 'refs-report') return require('../report/refs.js').cmdRefsReport(opts);
   if (cmd === 'probe-report') return require('../report/probes.js').cmdProbeReport(opts);
   if (cmd === 'canary-report') return require('../report/canary-layers.js').cmdCanaryReport(opts);
+  if (cmd === 'plant-report') return require('../report/plant.js').cmdPlantReport(opts);
   if (cmd === 'plant-policy-test') return require('./lib/plant/policy-test.js').cmdPlantPolicyTest(opts);
   if (cmd === 'backfill') return evalCommands.cmdBackfill(opts);
   if (cmd === 'compare') return evalCommands.cmdCompare(opts);

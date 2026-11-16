@@ -251,4 +251,4 @@ function judgeBackendLine(jg) {
   return `Judge backend: opencode (opencode ${i.opencodeVersion ?? 'unknown'}, ${i.region ?? 'unknown region'}, system prompt sha256 ${String(i.systemPromptSha256 ?? '').slice(0, 12)}). Bedrock models: ${models}.`;
 }
 
-module.exports = { renderMarkdown };
+module.exports = { renderMarkdown, table };
