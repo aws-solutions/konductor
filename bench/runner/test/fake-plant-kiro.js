@@ -54,6 +54,16 @@ function filesUnder(dir, out = {}) {
   return out;
 }
 
+// The gateway of this run only: the process holding a socket bound to this run's gw.sock (from /proc/net/unix). Other
+// gateways on the host, such as another test file's, are never touched.
+function ownGatewayPids(socketPath) {
+  const inodes = new Set(fs.readFileSync('/proc/net/unix', 'utf8').split('\n').slice(1)
+    .map((l) => l.trim().split(/\s+/)).filter((f) => f[7] === socketPath).map((f) => 'socket:[' + f[6] + ']'));
+  return gatewayProcs().map((p) => p.pid).filter((pid) => {
+    try { return fs.readdirSync('/proc/' + pid + '/fd').some((fd) => inodes.has(fs.readlinkSync('/proc/' + pid + '/fd/' + fd))); } catch { return false; }
+  });
+}
+
 if (cfg.exit3) { ev('runError', { stage: 'init', message: 'MCP server plant failed to start' }); process.exit(3); }
 const agent = JSON.parse(fs.readFileSync(path.join(process.env.HOME, '.kiro/agents/plant.json'), 'utf8'));
 const server = agent.mcpServers.plant;
@@ -94,7 +104,9 @@ const request = (method, params) => new Promise((resolve) => { const id = nextId
   ev('runStarted', { engine });
   if (cfg.dump) probe('dump.json', { argv: process.argv, env: process.env, procs: gatewayProcs(), files: filesUnder(path.dirname(process.env.HOME)) });
   if (cfg.stopGateway) {
-    for (const p of gatewayProcs()) process.kill(p.pid, 'SIGSTOP');
+    const own = ownGatewayPids(server.args[1]);
+    probe('stopped.json', own);
+    for (const pid of own) process.kill(pid, 'SIGSTOP');
     setTimeout(() => {}, 60000);
     return;
   }

@@ -272,17 +272,19 @@ async function realRun(start, requests, arm = 'policy') {
   fs.writeFileSync(task, JSON.stringify({ environment: { ...environment(), start } }));
   const socketPath = path.join(dir, 'gw.sock');
   const gw = await startGateway({ taskFile: task, logDir: dir, socketPath, arm });
-  gw.peer(ownPidns());
-  await new Promise((resolve, reject) => {
-    const sock = net.createConnection(socketPath);
-    let replies = 0;
-    sock.setEncoding('utf8');
-    sock.on('data', (chunk) => { replies += chunk.split('\n').length - 1; if (replies >= requests.length) sock.end(); });
-    sock.on('close', resolve);
-    sock.on('error', reject);
-    for (const r of requests) sock.write(JSON.stringify(r) + '\n');
-  });
-  await gw.stop();
+  try {
+    gw.peer(ownPidns());
+    await new Promise((resolve, reject) => {
+      const sock = net.createConnection(socketPath);
+      let replies = 0;
+      sock.setEncoding('utf8');
+      sock.on('data', (chunk) => { replies += chunk.split('\n').length - 1; if (replies >= requests.length) sock.end(); });
+      sock.on('close', resolve);
+      sock.on('error', reject);
+      for (const r of requests) sock.write(JSON.stringify(r) + '\n');
+    });
+    await gw.stop();
+  } finally { gw.kill(); }
   const texts = { gatewayText: fs.readFileSync(path.join(dir, 'gateway.jsonl'), 'utf8'), worldText: fs.readFileSync(path.join(dir, 'world.jsonl'), 'utf8') };
   fs.rmSync(dir, { recursive: true, force: true });
   return texts;

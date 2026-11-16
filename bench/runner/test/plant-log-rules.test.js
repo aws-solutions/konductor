@@ -46,9 +46,11 @@ async function realLogs(environment = MOVING, connections = [[INIT, call(1, 'get
   fs.writeFileSync(task, JSON.stringify({ environment }));
   const socketPath = path.join(dir, 'gw.sock');
   const gw = await startGateway({ taskFile: task, logDir: dir, socketPath });
-  gw.peer(ownPidns());
-  for (const requests of connections) await talk(socketPath, requests);
-  await gw.stop();
+  try {
+    gw.peer(ownPidns());
+    for (const requests of connections) await talk(socketPath, requests);
+    await gw.stop();
+  } finally { gw.kill(); }
   const logs = { gateway: readJsonl(path.join(dir, 'gateway.jsonl')), world: readJsonl(path.join(dir, 'world.jsonl')) };
   fs.rmSync(dir, { recursive: true, force: true });
   return logs;

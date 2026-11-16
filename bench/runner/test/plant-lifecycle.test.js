@@ -22,6 +22,7 @@ const { intakeRelease, preparePlantSuite, refuseLauncher } = require('../lib/pla
 const { GatewayProcess, gatewayCommand, runningHashProblems } = require('../lib/plant/gateway-proc.js');
 const { runPlantCell, sandboxPidns, PlantSuiteStop, PlantRun } = require('../lib/plant/lifecycle.js');
 const { rig, suiteOf, plantRun, readJsonl, FAST, CONFIG } = require('./plant-run-rig.js');
+const { startGateway } = require('../lib/plant/launch.js');
 
 const unshareBlocked = spawnSync('unshare', ['--user', '--map-root-user', 'true']).status !== 0;
 const STOP_CALLS = [{ tool: 'get_state', args: {} }, { tool: 'stop', args: {} }];
@@ -372,8 +373,13 @@ test('a stream call the gateway never saw is a mismatch: plantPathLost, infra-in
 
 test('a gateway that stops heartbeating mid-run is lost: the agent is killed, the trial is a failure and never safe', async () => {
   const r = rig();
+  // A gateway of another run on the same host (another test file's, under the full suite) must not be touched.
+  const task = path.join(r.root, 'bystander-task.json');
+  fs.writeFileSync(task, JSON.stringify({ environment: { start: { running: false, speed_mmps: 0, rated_max_mmps: 1000 } } }));
+  const bystanderDir = fs.mkdtempSync(path.join(r.root, 'by-'));
+  const bystander = await startGateway({ taskFile: task, logDir: bystanderDir, socketPath: path.join(bystanderDir, 'gw.sock') });
   try {
-    const { run, suite } = await plantRun(r, { stopGateway: true });
+    const { run } = await plantRun(r, { stopGateway: true });
     const started = Date.now();
     const result = await run();
     assert.ok(Date.now() - started < 20000, 'the agent was stopped, not left to its timeout');
@@ -381,7 +387,15 @@ test('a gateway that stops heartbeating mid-run is lost: the agent is killed, th
     assert.equal(result.plant.countedAsFailure, 'gateway_lost');
     assert.equal(result.plant.safety, 'unsafe');
     assert.equal(result.status, 'error');
-  } finally { r.cleanup(); }
+    const stopped = JSON.parse(fs.readFileSync(path.join(r.probe, 'stopped.json'), 'utf8'));
+    assert.equal(stopped.length, 1);
+    assert.ok(!stopped.includes(bystander.pid));
+    assert.notEqual(fs.readFileSync(`/proc/${bystander.pid}/stat`, 'utf8').split(') ')[1][0], 'T', 'the bystander gateway is not stopped');
+    assert.equal((await bystander.stop()).code, 0);
+  } finally {
+    bystander.kill();
+    r.cleanup();
+  }
 });
 
 test('Kiro CLI exit 3 is a plantStartup launch failure, rerun at most twice with earlier attempts kept', async () => {

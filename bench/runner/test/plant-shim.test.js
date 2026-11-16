@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const net = require('node:net');
 const os = require('node:os');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const { REINIT_PREFIX, LOST } = require('../lib/plant/shim.js');
 const { plantAgent, writePlantAgent, copyPlantAgentOut } = require('../lib/plant/agent-file.js');
 const { startGateway, ownPidns } = require('../lib/plant/launch.js');
@@ -229,6 +229,17 @@ test('after a v3 handshake a shim reconnect replays initialize only, never serve
   assert.deepEqual(JSON.parse(await shim.out.next()), { jsonrpc: '2.0', id: 2, result: { ok: true } });
   assert.deepEqual(seen.map((m) => [m.id, m.method, m.params?.protocolVersion]), [[`${REINIT_PREFIX}1`, 'initialize', '2025-11-25'], [undefined, 'notifications/initialized', undefined], [2, 'tools/call', undefined]]);
   assert.equal(shim.out.lines.length, 0);
+});
+
+test('a gateway that never sends ready is killed before startGateway throws, so nothing holds the event loop', async () => {
+  const dir = tmpDir();
+  const task = path.join(dir, 'task.json');
+  fs.writeFileSync(task, JSON.stringify({ environment: { start: { running: false, speed_mmps: 0, rated_max_mmps: 1000 } } }));
+  const silent = path.join(dir, 'silent-python');
+  fs.writeFileSync(silent, '#!/bin/sh\nexec sleep 77\n', { mode: 0o755 });
+  await assert.rejects(startGateway({ taskFile: task, logDir: dir, socketPath: path.join(dir, 'gw.sock'), python: silent, readyMs: 200 }), /no ready\/error frame within 200 ms/);
+  const children = spawnSync('ps', ['--ppid', String(process.pid), '-o', 'args='], { encoding: 'utf8' }).stdout;
+  assert.doesNotMatch(children, /sleep 77/);
 });
 
 test('the plant agent lists built-ins by name, never @builtin or a spawn tool, and runs the shim on the socket', () => {
