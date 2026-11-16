@@ -16,8 +16,9 @@ name: Validate PR
 
 on:
   pull_request:
-    # The stacked verify-run/gate PRs target feat/sop-gates-* branches, not main.
-    branches: [main, 'feat/sop-gates-*']
+    # The stacked verify-run/gate PRs target feat/sop-gates-* branches, and the
+    # skill-benchmark PRs target feat/skill-benchmark, not main.
+    branches: [main, 'feat/sop-gates-*', 'feat/skill-benchmark']
     types: [opened, edited, reopened, synchronize]
 
 permissions:
