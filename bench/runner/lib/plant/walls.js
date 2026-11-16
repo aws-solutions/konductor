@@ -142,53 +142,83 @@ function releaseAllowlist(release) {
  * `suite` is preparePlantSuite's result; `hide`-and-mask facts come from `iso.masked`. Returns `{results, problems}`:
  * `problems` lists every prober row that did not hold and every host-side fact that changed (sentinel, shim, socket).
  */
-async function runWallProber({ suite, scratch, outDir, makeIso, realHome = realHomes()[0] }) {
-  const rig = fs.mkdtempSync(path.join(scratch, 'wall-'));
-  const home = path.join(rig, 'home');
-  const plantDir = path.join(rig, 'plant');
-  const own = fs.mkdtempSync(path.join(suite.socketParent, 's-'));
-  const sibling = fs.mkdtempSync(path.join(suite.socketParent, 's-'));
-  const sentinelDir = fs.mkdtempSync(path.join(outDir, 'wall-sentinel-'));
-  const stubs = [];
+async function runWallProber(options) {
+  const rig = { dirs: [], stubs: [], root: null, plantDir: null };
   try {
-    fs.mkdirSync(plantDir);
-    const shim = path.join(plantDir, 'shim.js');
-    fs.copyFileSync(SHIM_FILE, shim);
-    const proberCopy = path.join(rig, 'wall-prober-kiro');
-    fs.copyFileSync(PROBER_FILE, proberCopy);
-    const sockets = [path.join(own, 'gw.sock'), path.join(sibling, 'gw.sock')];
-    for (const s of sockets) stubs.push(await listenStub(s));
-    writePlantAgent(home, { shimPath: shim, socketPath: sockets[0], nodeBin: process.execPath });
-    const sentinel = path.join(sentinelDir, 'gateway.jsonl');
-    fs.writeFileSync(sentinel, 'sentinel\n');
-    const before = { shim: sha256File(shim), sentinel: sha256File(sentinel), sibling: fs.statSync(sockets[1]).ino };
-    fs.chmodSync(shim, 0o444);
-    fs.chmodSync(plantDir, 0o555);
-    const iso = makeIso(rig, { plantDir, socketRoot: own });
-    const masked = iso.masked || [];
-    const config = {
-      maskedPaths: masked, siblingSockets: [sockets[1]], outSentinel: sentinel, realHome, homeAliases: [os.homedir()],
-      homeCaches: ['.cache', '.npm', '.local/share'].map((d) => path.join(realHome, d)), scratch: rig, gateway: false,
-      writableAllowed: [rig, ...masked], allow: releaseAllowlist(suite.release),
-    };
-    fs.writeFileSync(path.join(home, '.kiro', 'wall-prober.json'), JSON.stringify(config));
-    const w = iso.wrap(process.execPath, [proberCopy]);
-    const env = { PATH: process.env.PATH, HOME: home, TMPDIR: path.join(rig, 'tmp'), WALL_PROBER_CONFIG: path.join(home, '.kiro', 'wall-prober.json') };
-    fs.mkdirSync(env.TMPDIR);
-    const out = await collect(spawn(w.file, w.args, { env, stdio: ['ignore', 'pipe', 'inherit'] }), PROBER_TIMEOUT_MS);
-    const results = parseProberOutput(out.stdout);
-    const problems = failedRows(results).map((r) => `${r.row}: ${r.detail}`);
-    if (sha256File(shim) !== before.shim) problems.push('the shim copy changed');
-    if (sha256File(sentinel) !== before.sentinel) problems.push('the out dir sentinel changed');
-    if (stubs[1].connections > 0) problems.push('the sibling socket was connected to');
-    if (fs.statSync(sockets[1]).ino !== before.sibling) problems.push('the sibling socket was replaced');
-    return { results, problems };
+    await createWallRig(rig, options);
+    const results = parseProberOutput(await executeWallProber(rig));
+    return { results, problems: verifyWallRig(rig, results) };
   } finally {
-    for (const s of stubs) s.server.close();
-    for (const d of [plantDir, rig]) fs.chmodSync(d, 0o700);
-    fs.rmSync(rig, { recursive: true, force: true });
-    for (const d of [own, sibling, sentinelDir]) fs.rmSync(d, { recursive: true, force: true });
+    disposeWallRig(rig);
   }
+}
+
+/** Makes a temp dir under `parent` that `disposeWallRig` removes, even when a later step of the rig's setup throws. */
+function rigDir(rig, parent, prefix) {
+  const dir = fs.mkdtempSync(path.join(parent, prefix));
+  rig.dirs.push(dir);
+  return dir;
+}
+
+/**
+ * Builds the prober's rig into `rig`: dirs, the shim and prober copies, the stub sockets, the agent file, the prober
+ * config and the isolation. `suite`, `scratch`, `outDir`, `makeIso` and `realHome` are runWallProber's. Sets `rig.root`,
+ * `plantDir`, `shim`, `sockets`, `sentinel`, `before` (hashes and inode taken before the run), `proberCopy`, `iso` and `env`.
+ */
+async function createWallRig(rig, { suite, scratch, outDir, makeIso, realHome = realHomes()[0] }) {
+  rig.root = rigDir(rig, scratch, 'wall-');
+  const home = path.join(rig.root, 'home');
+  const own = rigDir(rig, suite.socketParent, 's-');
+  const sibling = rigDir(rig, suite.socketParent, 's-');
+  const sentinelDir = rigDir(rig, outDir, 'wall-sentinel-');
+  rig.plantDir = path.join(rig.root, 'plant');
+  fs.mkdirSync(rig.plantDir);
+  rig.shim = path.join(rig.plantDir, 'shim.js');
+  fs.copyFileSync(SHIM_FILE, rig.shim);
+  rig.proberCopy = path.join(rig.root, 'wall-prober-kiro');
+  fs.copyFileSync(PROBER_FILE, rig.proberCopy);
+  rig.sockets = [path.join(own, 'gw.sock'), path.join(sibling, 'gw.sock')];
+  for (const socket of rig.sockets) rig.stubs.push(await listenStub(socket));
+  writePlantAgent(home, { shimPath: rig.shim, socketPath: rig.sockets[0], nodeBin: process.execPath });
+  rig.sentinel = path.join(sentinelDir, 'gateway.jsonl');
+  fs.writeFileSync(rig.sentinel, 'sentinel\n');
+  rig.before = { shim: sha256File(rig.shim), sentinel: sha256File(rig.sentinel), sibling: fs.statSync(rig.sockets[1]).ino };
+  fs.chmodSync(rig.shim, 0o444);
+  fs.chmodSync(rig.plantDir, 0o555);
+  rig.iso = makeIso(rig.root, { plantDir: rig.plantDir, socketRoot: own });
+  const masked = rig.iso.masked || [];
+  const configFile = path.join(home, '.kiro', 'wall-prober.json');
+  fs.writeFileSync(configFile, JSON.stringify({
+    maskedPaths: masked, siblingSockets: [rig.sockets[1]], outSentinel: rig.sentinel, realHome, homeAliases: [os.homedir()],
+    homeCaches: ['.cache', '.npm', '.local/share'].map((d) => path.join(realHome, d)), scratch: rig.root, gateway: false,
+    writableAllowed: [rig.root, ...masked], allow: releaseAllowlist(suite.release),
+  }));
+  rig.env = { PATH: process.env.PATH, HOME: home, TMPDIR: path.join(rig.root, 'tmp'), WALL_PROBER_CONFIG: configFile };
+  fs.mkdirSync(rig.env.TMPDIR);
+}
+
+/** Runs the prober as the agent inside `rig`'s isolation and resolves with its stdout. */
+async function executeWallProber(rig) {
+  const w = rig.iso.wrap(process.execPath, [rig.proberCopy]);
+  const out = await collect(spawn(w.file, w.args, { env: rig.env, stdio: ['ignore', 'pipe', 'inherit'] }), PROBER_TIMEOUT_MS);
+  return out.stdout;
+}
+
+/** Every row of `results` that failed, plus each host-side fact of `rig` that changed during the run. */
+function verifyWallRig(rig, results) {
+  const problems = failedRows(results).map((r) => `${r.row}: ${r.detail}`);
+  if (sha256File(rig.shim) !== rig.before.shim) problems.push('the shim copy changed');
+  if (sha256File(rig.sentinel) !== rig.before.sentinel) problems.push('the out dir sentinel changed');
+  if (rig.stubs[1].connections > 0) problems.push('the sibling socket was connected to');
+  if (fs.statSync(rig.sockets[1]).ino !== rig.before.sibling) problems.push('the sibling socket was replaced');
+  return problems;
+}
+
+/** Closes the stub sockets and removes every dir `rig` made; safe on a rig whose setup stopped part way. */
+function disposeWallRig(rig) {
+  for (const stub of rig.stubs) stub.server.close();
+  for (const dir of [rig.plantDir, rig.root]) if (dir && fs.existsSync(dir)) fs.chmodSync(dir, 0o700);
+  for (const dir of rig.dirs) fs.rmSync(dir, { recursive: true, force: true });
 }
 
 /**
