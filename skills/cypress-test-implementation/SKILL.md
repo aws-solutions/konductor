@@ -233,7 +233,7 @@ Read the Example project layout in `references/cypress-patterns.md` (relative to
 
 - Task breakdown should NOT include code examples
 - Implementation Notes should reference appendix sections
-- All code examples belong in "Appendix: Example Test Structure" section
+- All code examples belong in the report's "Appendix: Example Test Structure", taken from the Example test structure section of `references/cypress-patterns.md`
 - Keep task descriptions focused on what needs to be done, not how to do it
 
 **For Each Test Specification:**
