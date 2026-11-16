@@ -17,5 +17,14 @@
     "writer": 0.01375
   },
   "aws_profile": null,
-  "aws_region": "us-west-2"
+  "aws_region": "us-west-2",
+  "judge_timeout_ms": 240000,
+  "judge_timeout_ms_by_seat": {
+    "xai": 720000
+  },
+  "judge_max_output_tokens": 9000,
+  "judge_max_output_tokens_by_seat": {
+    "openai": 5000,
+    "xai": 37500
+  }
 }

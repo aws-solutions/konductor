@@ -123,10 +123,34 @@ test('plan writes nothing, and its sources use no network, process or AWS module
     );
     assert.deepEqual(fs.readdirSync(dir, { recursive: true }).sort(), before);
   });
+  // The sources of `plan` are bench.js and every local module it loads, followed through their requires. The
+  // judge client (lib/opencode.js) and its spawn helper start processes by design; plan must never load them.
+  const planSources = new Set();
+  const pending = [BENCH_JS];
+  while (pending.length) {
+    const file = pending.pop();
+    if (planSources.has(file)) continue;
+    planSources.add(file);
+    const text = fs.readFileSync(file, 'utf8');
+    for (const [, relative] of text.matchAll(
+      /require\(['"](\.{1,2}\/[^'"]+)['"]\)/g,
+    ))
+      pending.push(require.resolve(path.resolve(path.dirname(file), relative)));
+  }
   const lib = path.join(path.dirname(BENCH_JS), 'lib');
+  assert.ok(planSources.has(path.join(lib, 'plan.js')));
+  assert.ok(planSources.has(path.join(lib, 'ledger.js')));
+  const spawningModules = new Set(
+    ['opencode.js', 'proc.js'].map((fileName) => path.join(lib, fileName)),
+  );
+  for (const file of spawningModules)
+    assert.ok(!planSources.has(file), `plan must not load ${file}`);
   for (const file of [
     BENCH_JS,
-    ...fs.readdirSync(lib).map((fileName) => path.join(lib, fileName)),
+    ...fs
+      .readdirSync(lib)
+      .map((fileName) => path.join(lib, fileName))
+      .filter((file) => !spawningModules.has(file)),
   ]) {
     const text = fs.readFileSync(file, 'utf8');
     assert.doesNotMatch(
@@ -256,6 +280,8 @@ test('the settings drive the plan: model prices and judge seats; each answer is 
       subject: 'no-history-subject',
       judges: { anthropic: 'no-history-judge', openai: null, xai: null },
     },
+    judge_timeout_ms_by_seat: { xai: null },
+    judge_max_output_tokens_by_seat: { openai: null, xai: null },
   });
   assert.deepEqual(
     [
@@ -270,6 +296,8 @@ test('the settings drive the plan: model prices and judge seats; each answer is 
   const priced = planFor(ROOT, {
     estimate_usd_per_call: { subject: 0, judge: 0, writer: 0 },
     models: { judges: { openai: null, xai: null } },
+    judge_timeout_ms_by_seat: { xai: null },
+    judge_max_output_tokens_by_seat: { openai: null, xai: null },
   });
   // 10 x 0.06693 + 18 x 0.0478 + 4 x 0.02586 = 1.63314
   assert.equal(priced.pending_usd, 1.63);

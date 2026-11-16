@@ -16,6 +16,7 @@ const {
   defaultProfile,
   costFor,
   callCost,
+  tokenPrices,
 } = require('../../../scripts/bench/lib/cost-profile');
 const { rubricWriterModel } = require('../../../scripts/bench/lib/config');
 const helpers = require('./helpers');
@@ -276,5 +277,99 @@ test('a broken committed profile stops plan with exit 64 and names the file', ()
     assert.match(result.stderr, /^error: /);
     assert.ok(result.stderr.includes(brokenFile), result.stderr);
     assert.match(result.stderr, /not a usable cost profile/);
+  });
+});
+
+test('token prices: the committed profile prices the three judges and the writer, and the figures are pinned', () => {
+  const profile = defaultProfile();
+  assert.deepEqual(
+    profile.entries.map((item) => [
+      item.kind,
+      item.model,
+      item.inputUsdPerMTok,
+      item.outputUsdPerMTok,
+    ]),
+    [
+      ['subject', 'claude-sonnet-5-5', undefined, undefined],
+      ['judge', 'us.anthropic.claude-opus-5-5', 5.5, 22],
+      ['judge', 'us.openai.gpt-6.1-terra', 1.375, 5.5],
+      ['judge', 'us.xai.grok-4.7', 2.2, 6.6],
+      ['writer', 'us.anthropic.claude-opus-5-5', 5.5, 22],
+    ],
+  );
+  assert.match(profile.provenance, /Token prices \(inputUsdPerMTok/);
+});
+
+test('tokenPrices: the entry of the kind, else any entry of the model, else null', () => {
+  const profile = profileWith([
+    entry({
+      kind: 'judge',
+      model: 'm',
+      inputUsdPerMTok: 3,
+      outputUsdPerMTok: 15,
+    }),
+    entry({
+      kind: 'writer',
+      model: 'm',
+      inputUsdPerMTok: 4,
+      outputUsdPerMTok: 20,
+    }),
+    entry({ kind: 'subject', model: 'unpriced' }),
+    entry({ kind: 'judge', model: 'unpriced' }),
+    entry({
+      kind: 'judge',
+      model: 'judge-only',
+      inputUsdPerMTok: 1,
+      outputUsdPerMTok: 2,
+    }),
+  ]);
+  assert.deepEqual(tokenPrices(profile, 'judge', 'm'), {
+    inputUsdPerMTok: 3,
+    outputUsdPerMTok: 15,
+  });
+  assert.deepEqual(tokenPrices(profile, 'writer', 'm'), {
+    inputUsdPerMTok: 4,
+    outputUsdPerMTok: 20,
+  });
+  // A writer call of a model that only has a judge entry is priced like its judge.
+  assert.deepEqual(tokenPrices(profile, 'writer', 'judge-only'), {
+    inputUsdPerMTok: 1,
+    outputUsdPerMTok: 2,
+  });
+  assert.equal(tokenPrices(profile, 'judge', 'unpriced'), null);
+  assert.equal(tokenPrices(profile, 'judge', 'nobody'), null);
+  assert.equal(tokenPrices(profile, 'judge', 'constructor'), null);
+});
+
+test('token prices are validated: both or neither, each a number above 0, none on a "*" entry', () => {
+  helpers.withTmp((dir) => {
+    const file = path.join(dir, 'profile.json');
+    const refuses = (overrides, pattern) => {
+      helpers.write(file, profileWith([entry(overrides)]));
+      assert.throws(() => loadProfile(file), pattern);
+    };
+    const priced = { inputUsdPerMTok: 3, outputUsdPerMTok: 15 };
+    helpers.write(file, profileWith([entry(priced)]));
+    assert.equal(loadProfile(file).entries[0].outputUsdPerMTok, 15);
+    for (const field of ['inputUsdPerMTok', 'outputUsdPerMTok'])
+      for (const value of [0, -1, Infinity, '3', null])
+        refuses(
+          { ...priced, [field]: value },
+          new RegExp(
+            `entries\\[0\\]\\.${field}: must be a finite number above 0`,
+          ),
+        );
+    refuses(
+      { inputUsdPerMTok: 3 },
+      /entries\[0\]: inputUsdPerMTok and outputUsdPerMTok go together; set both or neither/,
+    );
+    refuses(
+      { outputUsdPerMTok: 3 },
+      /entries\[0\]: inputUsdPerMTok and outputUsdPerMTok go together/,
+    );
+    refuses(
+      { model: '*', ...priced },
+      /entries\[0\]: token prices are not allowed on a "\*" entry/,
+    );
   });
 });

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "measuredOn": "2026-11-11",
   "unit": "usd",
-  "provenance": "Cost per call measured over 16,667 calls of an earlier version of this benchmark, run from 2026-11-02 to 2026-11-11 on Amazon Bedrock. Subject runs went through Claude Code, judge and checklist writer calls through OpenCode. Failed calls are kept because they cost money. Costs are the ones each CLI reported, except where an entry says cliReportsLow: OpenCode reported about 0.0009 USD per call for GPT-6.1 Terra, so those calls are priced from their token counts at the Bedrock model card rate for the us. profile with a prompt under 272K tokens (USD per 1M tokens: input 1.10, cache write 1.375, cache read 0.055, output 5.50). In that study the reported total ran about 9% below the AWS bill. Judge calls then showed the judge two answers at once; a judge call now shows one, so the judge figures are high.",
+  "provenance": "Cost per call measured over 16,667 calls of an earlier version of this benchmark, run from 2026-11-02 to 2026-11-11 on Amazon Bedrock. Subject runs went through Claude Code, judge and checklist writer calls through OpenCode. Failed calls are kept because they cost money. Costs are the ones each CLI reported, except where an entry says cliReportsLow: OpenCode reported about 0.0009 USD per call for GPT-6.1 Terra, so those calls are priced from their token counts at the Bedrock model card rate for the us. profile with a prompt under 272K tokens (USD per 1M tokens: input 1.10, cache write 1.375, cache read 0.055, output 5.50). In that study the reported total ran about 9% below the AWS bill. Judge calls then showed the judge two answers at once; a judge call now shows one, so the judge figures are high. Token prices (inputUsdPerMTok, outputUsdPerMTok, USD per 1M tokens) are fitted to the costs the CLIs reported for the judge and writer calls of four paid runs (trim-1, strict-1, ship-16, ship-35): every call fits to within 0.00001 USD (for GPT-6.1 Terra, whose CLI reports low, the 59 calls with a reported cost, which agree with the model card rates above). inputUsdPerMTok is the highest rate an input token was billed at (the cache-write rate for Claude Opus 5.5 and GPT-6.1 Terra, the plain input rate for Grok 4.7). They price the ceiling of a call with a cap on its reply.",
   "lookup": "exact (kind, model), then (kind, \"*\"). kind is subject, judge or writer. With no entry, estimate_usd_per_call is used.",
   "entries": [
     {
@@ -23,7 +23,9 @@
       "mean": 0.0478,
       "median": 0.04565,
       "p90": 0.07183,
-      "cliReportsLow": false
+      "cliReportsLow": false,
+      "inputUsdPerMTok": 5.5,
+      "outputUsdPerMTok": 22
     },
     {
       "kind": "judge",
@@ -33,7 +35,9 @@
       "mean": 0.01336,
       "median": 0.01258,
       "p90": 0.02052,
-      "cliReportsLow": true
+      "cliReportsLow": true,
+      "inputUsdPerMTok": 1.375,
+      "outputUsdPerMTok": 5.5
     },
     {
       "kind": "judge",
@@ -43,7 +47,9 @@
       "mean": 0.05061,
       "median": 0.04538,
       "p90": 0.09822,
-      "cliReportsLow": false
+      "cliReportsLow": false,
+      "inputUsdPerMTok": 2.2,
+      "outputUsdPerMTok": 6.6
     },
     {
       "kind": "writer",
@@ -53,7 +59,9 @@
       "mean": 0.02586,
       "median": 0.02408,
       "p90": 0.03746,
-      "cliReportsLow": false
+      "cliReportsLow": false,
+      "inputUsdPerMTok": 5.5,
+      "outputUsdPerMTok": 22
     }
   ]
 }

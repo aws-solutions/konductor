@@ -452,3 +452,48 @@ test('bench.js cost-profile --out writes a temp file and renames it, so a failed
     );
   });
 });
+
+test('rebuildProfile: a measured entry keeps the token prices of its model; a model with none stays without', () => {
+  helpers.withTmp((dir) => {
+    const ledgerFile = path.join(dir, 'ledger.jsonl');
+    const opus = 'us.anthropic.claude-opus-5-5';
+    helpers.writeLedger(ledgerFile, [
+      ...series('j', 20, { kind: 'judge', model: opus }),
+      // A kind the profile has no entry for yet, of a priced model: priced like the model's other entries.
+      ...series('p', 20, { kind: 'subject', model: opus }),
+      ...series('n', 20, { kind: 'judge', model: 'unpriced-model' }),
+    ]);
+    const { profile, rebuilt } = rebuildProfile({
+      ledgerFile,
+      current: defaultProfile(),
+      today: TODAY,
+    });
+    assert.ok(rebuilt.includes(`judge ${opus}`));
+    const entryOf = (kind, model) =>
+      profile.entries.find(
+        (entry) => entry.kind === kind && entry.model === model,
+      );
+    // Measured now, so its numbers are the ledger's and its prices are still the profile's.
+    assert.equal(entryOf('judge', opus).calls, 20);
+    assert.deepEqual(
+      [
+        entryOf('judge', opus).inputUsdPerMTok,
+        entryOf('judge', opus).outputUsdPerMTok,
+      ],
+      [5.5, 22],
+    );
+    assert.deepEqual(
+      [
+        entryOf('subject', opus).inputUsdPerMTok,
+        entryOf('subject', opus).outputUsdPerMTok,
+      ],
+      [5.5, 22],
+    );
+    assert.ok(!('inputUsdPerMTok' in entryOf('judge', 'unpriced-model')));
+    // An entry kept as it was keeps its prices too, and the whole profile is valid.
+    assert.equal(entryOf('judge', 'us.xai.grok-4.7').outputUsdPerMTok, 6.6);
+    const out = path.join(dir, 'out.json');
+    helpers.write(out, profile);
+    assert.doesNotThrow(() => loadProfile(out));
+  });
+});
