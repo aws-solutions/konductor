@@ -66,8 +66,7 @@ not per individual commit.
 ### Changed
 
 - Claude Code subagents now preload 1 to 4 skills each (90 KB in total, down from 1.8 MB); the rest
-  load on demand. `konductor synth` warns when an agent's preload passes 32 KiB and fails when it
-  passes 32 names.
+  load on demand.
 - `konductor` does the work itself, commits only when you ask, and spawns one fresh `k-*` reviewer per phase gate (next bullet);
   it spawns a specialist only for a tool, access, skill or SOP it lacks, for parallel work on disjoint files, or when an SOP says so;
   an SOP `konductor` does not declare is run by the specialist that declares it. Parallel parts reach your branch only after
