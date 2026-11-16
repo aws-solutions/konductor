@@ -60,7 +60,7 @@ const USAGE = `Usage:
        (--auth-db is the kiro-cli auth database each run's scratch HOME gets a copy of, default the standard location under HOME)
        (--arm-prefix puts the text of FILE (at most 90000 bytes) in front of the task prompt of that arm; run-config records its sha256 and size.
        --arm-agent starts that arm in AGENT instead of its default agent. --arm-config writes keys into that arm's scratch ~/.konductor/config.yml after the
-       install, for example --arm-config orch-coord=orchestration.mode=coordinator (orchestration.mode takes auto or coordinator; vanilla refuses it; run-config
+       install, for example --arm-config orch-coord=orchestration.mode=coordinator (orchestration.mode takes auto or coordinator and applies to the konductor entry agent only; vanilla and opencode arms refuse the flag; run-config
        and result.json record it). --stop-on kills the run at the first skills-server call, subagent call
        or end of turn (first-capability), or at the first get_skill, subagent call or end of turn (first-load); the run is flagged earlyStopped and
        has no metered credits (kiro-cli meters at the end of a turn), so its cost is unobserved. --max-tool-calls stops after that many tool calls whatever they are)

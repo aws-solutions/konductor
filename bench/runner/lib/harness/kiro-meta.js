@@ -10,7 +10,7 @@ module.exports = Object.freeze({
   armPrefix: '',
   costUnit: 'credits',
   streamFormat: 'kiro-acp',
-  supports: Object.freeze({ trace: true, stopOn: true, effort: true, runCreditLimit: true, multiTurn: true, capCommands: true, skillStudy: true, agentEngine: true, prepareOnly: true }),
+  supports: Object.freeze({ trace: true, stopOn: true, effort: true, runCreditLimit: true, multiTurn: true, capCommands: true, skillStudy: true, agentEngine: true, prepareOnly: true, armConfig: true }),
   flags: Object.freeze({ own: Object.freeze([]), refused: Object.freeze({}), perRunCapFlag: null }),
   multiTurnNote: null,
   trace: Object.freeze({

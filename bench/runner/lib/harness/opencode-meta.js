@@ -9,7 +9,7 @@ module.exports = Object.freeze({
   armPrefix: 'oc-',
   costUnit: 'usd',
   streamFormat: 'opencode-json',
-  supports: Object.freeze({ trace: false, stopOn: true, effort: true, runCreditLimit: false, multiTurn: true, capCommands: true, skillStudy: false, agentEngine: false, prepareOnly: false }),
+  supports: Object.freeze({ trace: false, stopOn: true, effort: true, runCreditLimit: false, multiTurn: true, capCommands: true, skillStudy: false, agentEngine: false, prepareOnly: false, armConfig: false }),
   flags: Object.freeze({ own: Object.freeze([]), refused: Object.freeze({}), perRunCapFlag: null }),
   multiTurnNote: null,
   trace: Object.freeze({ sessionFiles: false, timeNote: null, skillsListing: null }),

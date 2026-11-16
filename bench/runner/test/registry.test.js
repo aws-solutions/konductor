@@ -14,7 +14,7 @@ const { FLAGS } = require('../lib/cli-flags.js');
 const { parseArmSpec, resolveArm, OC_PREFIX, CC_PREFIX } = require('../lib/arms.js');
 
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'schema', 'result.schema.json'), 'utf8'));
-const SUPPORTS = ['trace', 'stopOn', 'effort', 'runCreditLimit', 'multiTurn', 'capCommands', 'skillStudy', 'agentEngine', 'prepareOnly'];
+const SUPPORTS = ['trace', 'stopOn', 'effort', 'runCreditLimit', 'multiTurn', 'capCommands', 'skillStudy', 'agentEngine', 'prepareOnly', 'armConfig'];
 const FIELDS = ['id', 'label', 'proseName', 'armPrefix', 'costUnit', 'streamFormat', 'supports', 'flags', 'multiTurnNote', 'trace'];
 const STREAM_FORMATS = ['kiro-acp', 'opencode-json', 'claude-stream-json'];
 const CONTRACT = fs.readFileSync(path.join(__dirname, '..', 'lib', 'harness', 'CONTRACT.md'), 'utf8');
