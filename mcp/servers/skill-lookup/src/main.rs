@@ -102,12 +102,12 @@ async fn main() -> std::process::ExitCode {
 
     // Telemetry: resolve the cached identity once,
     // before the flush task is spawned -- never per flush. Structural
-    // opt-out: `--telemetry off` OR the fleet-wide `KONDUCTOR_TELEMETRY=off`
-    // env var means
+    // opt-out: `--telemetry off`, no valid `--install-info` record, OR the
+    // fleet-wide `KONDUCTOR_TELEMETRY=off` env var means
     // `tool_call_counters` stays `None` and the flush task is never
     // started at all -- checked alongside the CLI flag here, not only inside
     // `resolve_endpoint`'s own later, per-flush check.
-    let tool_call_counters = match cli.telemetry {
+    let tool_call_counters = match cli.effective_telemetry() {
         cli::TelemetryMode::On if skill_lookup_core::telemetry::fleet_opted_out() => None,
         cli::TelemetryMode::On => {
             skill_lookup_core::telemetry::init_identity(&skills_dir_paths);
