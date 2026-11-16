@@ -1,0 +1,99 @@
+{
+  "format_version": 1,
+  "skill": "adversarial-code-review",
+  "batch": "rules-b3",
+  "generated_at": "2026-11-09T01:45:49.549Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "60203277da9dc6d0191fd5c7f18dc799e06c7c67a3643913ee4b0881009ee341",
+  "scenarios": [
+    {
+      "id": "adversarial-code-review-rules-1",
+      "title": "Order cancel handler leaks exceptions and splits writes",
+      "target_section": "Security",
+      "prompt": "Can you take a hard look at this PR before I merge? It's our order-cancellation Lambda (Python, DynamoDB). Tests pass and lint is clean, I just want a second pair of eyes.\n\n```diff\n+++ b/orders/cancel.py\n+import json, logging, traceback\n+import boto3\n+\n+log = logging.getLogger()\n+ddb = boto3.client(\"dynamodb\")\n+\n+def handler(event, context):\n+    try:\n+        body = json.loads(event[\"body\"])\n+        order_id = body[\"orderId\"]\n+        ddb.update_item(\n+            TableName=\"orders-prod-v2\",\n+            Key={\"pk\": {\"S\": f\"ORDER#{order_id}\"}},\n+            UpdateExpression=\"SET #s = :c\",\n+            ExpressionAttributeNames={\"#s\": \"status\"},\n+            ExpressionAttributeValues={\":c\": {\"S\": \"CANCELLED\"}},\n+        )\n+        ddb.update_item(\n+            TableName=\"inventory-prod\",\n+            Key={\"pk\": {\"S\": f\"SKU#{body['sku']}\"}},\n+            UpdateExpression=\"ADD stock :n\",\n+            ExpressionAttributeValues={\":n\": {\"N\": str(body[\"qty\"])}},\n+        )\n+        return {\"statusCode\": 200, \"body\": json.dumps({\"ok\": True})}\n+    except Exception as e:\n+        return {\n+            \"statusCode\": 500,\n+            \"body\": json.dumps({\"error\": str(e), \"trace\": traceback.format_exc()}),\n+        }\n```",
+      "rubric": [
+        "Calls out that the 500 response returns str(e) and the formatted traceback to the caller, treats it as something that must be fixed before merge, and recommends a generic error message with the details only logged server-side.",
+        "Points out that the order status update and the inventory restock are two separate update_item calls, so a failure between them leaves a cancelled order without restored stock, and recommends a single transaction (e.g. transact_write_items).",
+        "Notes that body[\"sku\"] and body[\"qty\"] are only read after the order has already been marked cancelled, so missing or bad fields cause a half-applied cancel, and recommends validating all inputs before the first write.",
+        "Observes that the cancel path mutates two tables and asks for a specific test that exercises the write (for example a failure of the second update or a successful cancel verifying both items).",
+        "Each issue cites the place in cancel.py it concerns, explains the concrete risk, and gives a specific code-level fix rather than general advice.",
+        "Findings are presented with the must-block issues (traceback leak, split write) before the should-fix ones and any optional notes."
+      ],
+      "why_skill_matters": "A short Lambda that returns traceback text, performs two sequential writes to separate tables, and reads sku/qty after the first write. Makes information disclosure, non-atomic writes, and validate-after-act matter, plus missing write tests."
+    },
+    {
+      "id": "adversarial-code-review-rules-2",
+      "title": "Profile save with plain put and logged body",
+      "target_section": "Data Integrity",
+      "prompt": "Quick sanity check on this Node change please. Settings page lets users edit their team profile, and several admins can edit the same team at once. I swapped the old field-by-field update for a single save. Anything that worries you?\n\n```diff\n+++ b/src/teamProfile.js\n+const { DynamoDBClient } = require(\"@aws-sdk/client-dynamodb\");\n+const { DynamoDBDocumentClient, PutCommand } = require(\"@aws-sdk/lib-dynamodb\");\n+const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));\n+\n+exports.saveTeamProfile = async (req, res) => {\n+  logger.info(\"saving team profile\", { body: req.body });\n+  const profile = {\n+    teamId: req.params.teamId,\n+    name: req.body.name,\n+    billingEmail: req.body.billingEmail,\n+    apiKeyHint: req.body.apiKeyHint,\n+    members: req.body.members,\n+    updatedBy: req.user.id,\n+  };\n+  await client.send(new PutCommand({ TableName: process.env.TEAMS_TABLE, Item: profile }));\n+  res.json(profile);\n+};\n```\n\nNo tests added, the old ones only check the GET.",
+      "rubric": [
+        "Identifies that PutCommand replaces the entire team item with no condition or version check, so two admins saving at once silently overwrite each other, and recommends a conditional write or a version attribute that rejects stale saves.",
+        "Flags the logger.info call that dumps req.body, which here includes billingEmail and apiKeyHint, and suggests logging only non-sensitive fields such as teamId and user id.",
+        "Notes that the new save path has no test, since existing tests only cover the GET, and asks for a test of the write such as a concurrent or repeated save.",
+        "Each issue names the relevant line or statement in teamProfile.js, states what can go wrong, and gives a concrete replacement or change.",
+        "The overwrite problem is listed ahead of the logging and test-coverage points, with the groups visibly separated."
+      ],
+      "why_skill_matters": "Single unconditional Put on a shared record with explicit concurrent-admin context, plus body logging at info and a no-test note. Triggers overwrite, payload logging, and untested write."
+    },
+    {
+      "id": "adversarial-code-review-rules-4",
+      "title": "New admin export endpoint, wiring unclear",
+      "target_section": "Schema / Validation",
+      "prompt": "Hey, I'm about to submit this and want a last check. We added an admin-only CSV export of user data. I only touched the files below; the router and the serverless config weren't changed in this PR because \"they're generated\". Our other admin endpoints all go through `requireRole('admin')` in the middleware chain.\n\n```diff\n+++ b/src/handlers/exportUsers.ts\n+export const exportUsers = async (event: APIGatewayProxyEvent) => {\n+  const filter = event.queryStringParameters?.filter ?? \"\";\n+  const rows = await db.scan({\n+    TableName: USERS_TABLE,\n+    FilterExpression: filter ? `contains(email, :f)` : undefined,\n+    ExpressionAttributeValues: filter ? { \":f\": filter } : undefined,\n+  }).promise();\n+  const csv = rows.Items!.map(u => `${u.email},${u.profile.phone},${u.profile.address.city}`).join(\"\\n\");\n+  return { statusCode: 200, headers: { \"Content-Type\": \"text/csv\" }, body: csv };\n+};\n+++ b/test/exportUsers.test.ts\n+it(\"returns csv for a filter\", async () => {\n+  mockScan.mockResolvedValue({ Items: [{ email: \"a@x.com\", profile: { phone: \"1\", address: { city: \"Oslo\" } } }] });\n+  const res = await exportUsers(fakeEvent({ filter: \"a@\" }));\n+  expect(res.statusCode).toBe(200);\n+});\n```",
+      "rubric": [
+        "Points out that the diff adds exportUsers but nothing registers it in the router or applies requireRole('admin'), so the endpoint is either unreachable or, if wired elsewhere without it, exposes all user data without admin protection, and asks for the wiring and role check to be confirmed or added.",
+        "Flags u.profile.phone and u.profile.address.city being read with no check that profile or address exists, so one user missing those fields makes the whole export throw, and suggests optional chaining or defaults.",
+        "Notes that any exception here would surface unmapped to the caller and recommends a mapped generic error; or flags that the export returns bulk personal data with no handling of errors at all.",
+        "Does not accept the \"generated config\" claim as reason to skip wiring, and treats the existing admin middleware convention as something this handler must reuse.",
+        "Each finding names the specific statement in exportUsers.ts, explains the risk, and gives a concrete change."
+      ],
+      "why_skill_matters": "The handler is missing from the diff's wiring and the user's comment lulls toward trusting generated config. Nested profile access is unguarded. Subtle because wiring is an absence."
+    },
+    {
+      "id": "adversarial-code-review-rules-5",
+      "title": "Money transfer between wallets",
+      "target_section": "Review Checklist",
+      "prompt": "We're a small fintech, this is the internal wallet transfer function (Python/boto3). Reviewer before me said \"LGTM, nice and readable\". I'm not so sure. Can you go through it as if you wanted to stop it shipping? Our repo has `db_utils.transact(items)` that wraps transact_write_items with retry, fwiw.\n\n```python\ndef transfer(src, dst, amount, db):\n    amount = Decimal(amount)\n    src_item = db.get_item(Key={\"walletId\": src})[\"Item\"]\n    if src_item[\"balance\"] < amount:\n        raise InsufficientFunds()\n    db.update_item(\n        Key={\"walletId\": src},\n        UpdateExpression=\"SET balance = :b\",\n        ExpressionAttributeValues={\":b\": src_item[\"balance\"] - amount},\n    )\n    dst_item = db.get_item(Key={\"walletId\": dst})[\"Item\"]\n    db.update_item(\n        Key={\"walletId\": dst},\n        UpdateExpression=\"SET balance = :b\",\n        ExpressionAttributeValues={\":b\": dst_item[\"balance\"] + amount},\n    )\n    logger.info(\"transfer done %s\", {\"src\": src, \"dst\": dst, \"amount\": str(amount)})\n```\n\nTests: there's one for InsufficientFunds only.",
+      "rubric": [
+        "Flags that debiting src and crediting dst are separate calls, so a crash after the debit loses money, and recommends doing both in one transaction.",
+        "Flags that balances are read, computed in Python and written back with SET balance = :b without a condition, so concurrent transfers can overwrite each other and create or lose money, and proposes a conditional update or an atomic add with a balance check.",
+        "Recommends using the existing db_utils.transact helper rather than a hand-built sequence of calls.",
+        "Points out that the only test covers InsufficientFunds, so the successful debit and credit path is not exercised, and asks for a test of it.",
+        "Notes that [\"Item\"] is indexed directly after get_item, which fails with a KeyError when the wallet does not exist, and suggests checking for it.",
+        "Each point refers to the specific lines of transfer, explains the money-loss scenario, and gives a concrete fix."
+      ],
+      "why_skill_matters": "Classic read-modify-write across two items with no transaction or condition, a helper named in the request, and a test only on the failure branch. Triggers atomicity, overwrite, reimplementation, test coverage and missing Item guard."
+    },
+    {
+      "id": "adversarial-code-review-rules-7",
+      "title": "Report job with one buried token decode",
+      "target_section": "Codebase Awareness",
+      "prompt": "Can you review this Java service change? It's mostly a refactor of how we fetch audit events for the compliance dashboard: renamed methods, moved constants, and some tidying. I've already had two people approve on style. Most of the diff is mechanical, so skim what you need to.\n\n```diff\n+++ b/audit/AuditQueryService.java\n-    private static final int PAGE = 50;\n+    private static final int PAGE_SIZE = 50;\n@@\n-    public Page<Event> fetch(String tenant, String cursor) {\n+    public Page<Event> fetchEvents(String tenant, String cursor) {\n+        Map<String, AttributeValue> startKey = null;\n+        if (cursor != null) {\n+            String decoded = new String(Base64.getUrlDecoder().decode(cursor));\n+            String[] parts = decoded.split(\"\\\\|\");\n+            startKey = Map.of(\n+                \"tenantId\", AttributeValue.fromS(parts[0]),\n+                \"eventTs\", AttributeValue.fromS(parts[1]));\n+        }\n+        QueryRequest req = QueryRequest.builder()\n+            .tableName(AUDIT_TABLE)\n+            .keyConditionExpression(\"tenantId = :t\")\n+            .expressionAttributeValues(Map.of(\":t\", AttributeValue.fromS(tenant)))\n+            .limit(PAGE_SIZE)\n+            .exclusiveStartKey(startKey)\n+            .build();\n+        return toPage(client.query(req));\n     }\n@@\n-    private static final String TABLE = \"audit_events\";\n+    private static final String AUDIT_TABLE = \"audit_events\";\n```\n\nAlso FYI we have `CursorCodec.decode(String)` in common-utils that checks a signature, used by the other services.",
+      "rubric": [
+        "Identifies that the cursor is base64-decoded, split and its parts placed directly into exclusiveStartKey with no validation, and that parts[0] can name a different tenant than the tenant argument, so a caller could read another tenant's audit events; recommends validating or binding the key to the tenant before the query.",
+        "Says the inline decode duplicates what CursorCodec.decode already does with signature checking, and recommends using it.",
+        "Notes parts[1] is accessed without checking the split produced two elements, so a short cursor causes an index error, and suggests a length check.",
+        "The review does not stop at the renames; it gives specific findings tied to the cursor decoding lines in fetchEvents with a risk and a concrete fix.",
+        "The cursor injection issue is placed in a more severe group than the minor items, with groups separated."
+      ],
+      "why_skill_matters": "Diff framed as a mechanical refactor, with the real issue being new cursor handling embedded in it and a mentioned shared codec. Subtle: the security problem hides in a refactor and the tenant bypass requires reasoning."
+    },
+    {
+      "id": "adversarial-code-review-rules-8",
+      "title": "New batch delivery handler with stack trace in API error",
+      "target_section": "Generator Mode (Maker)",
+      "prompt": "I'm the maker on this one and need a rough list of everything wrong before the checker pass, noise is fine. It's a brand new TypeScript handler that marks a bunch of shipments as delivered and returns errors to our partner API. The route entry in serverless.yml and the partner authorizer config aren't part of this PR, I planned to do those in a follow-up.\n\n```diff\n+++ b/src/shipments/markDelivered.ts\n+export async function markDelivered(req: Request, res: Response) {\n+  const ids: string[] = req.body.shipmentIds;\n+  const done: string[] = [];\n+  try {\n+    for (const id of ids) {\n+      await ddb.send(new UpdateItemCommand({\n+        TableName: \"shipments\",\n+        Key: { id: { S: id } },\n+        UpdateExpression: \"SET #st = :d, deliveredAt = :t\",\n+        ExpressionAttributeNames: { \"#st\": \"status\" },\n+        ExpressionAttributeValues: { \":d\": { S: \"DELIVERED\" }, \":t\": { S: new Date().toISOString() } },\n+      }));\n+      done.push(id);\n+    }\n+    res.json({ updated: done });\n+  } catch (err: any) {\n+    res.status(500).json({ message: err.message, stack: err.stack, table: \"shipments\", done });\n+  }\n+}\n```\n\nNo test files changed.",
+      "rubric": [
+        "Flags that the 500 response includes err.message, err.stack and the internal table name, to be fixed before release, and recommends a generic mapped error with details logged server-side.",
+        "Flags that the loop updates shipments one by one, so a failure midway leaves some marked delivered and others not, and recommends a transaction or an atomic batch (noting the per-transaction item limit or chunking).",
+        "Flags that the update has no condition, so a shipment already cancelled or returned, or being changed concurrently, can be flipped to DELIVERED, and proposes a condition on the current status.",
+        "States that no test covers this write path and asks for a test, such as a mid-batch failure.",
+        "Notes that req.body.shipmentIds is used without checking it is a non-empty array of valid ids before any write begins, and suggests validating first.",
+        "Points out that markDelivered is not yet connected to a route or the partner authorizer, so once exposed it could be reachable without authentication or never reachable, and asks that the wiring and auth be added or confirmed before approval.",
+        "Each item names the specific code in markDelivered.ts, the risk it creates, and a concrete fix, not a general remark."
+      ],
+      "why_skill_matters": "A new batch handler with unconditional per-item updates and an error body leaking stack and table. The user admits route and authorizer config are deferred. Makes disclosure, partial write, unconditional overwrite, missing tests, input validation, and wiring gap matter."
+    }
+  ]
+}

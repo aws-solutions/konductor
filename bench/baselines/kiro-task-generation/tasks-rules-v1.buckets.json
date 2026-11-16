@@ -1,0 +1,329 @@
+{
+  "format_version": 1,
+  "skill": "kiro-task-generation",
+  "batch": "rules-v1",
+  "rules": {
+    "kiro-task-generation-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-task-generation-r02": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    },
+    "kiro-task-generation-r03": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "kiro-task-generation-r04": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "kiro-task-generation-r05": {
+      "class": "generic",
+      "kept": false,
+      "bucket": "guard"
+    },
+    "kiro-task-generation-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-task-generation-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-task-generation-r08": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "kiro-task-generation-r09": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    },
+    "kiro-task-generation-r10": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    },
+    "kiro-task-generation-r11": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    },
+    "kiro-task-generation-r12": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    }
+  },
+  "scenarios": {
+    "kiro-task-generation-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r12"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r04"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r08"
+      },
+      "8": {
+        "bucket": "format",
+        "rule_id": "kiro-task-generation-r09"
+      }
+    },
+    "kiro-task-generation-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r07"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r04"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r08"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "kiro-task-generation-r10"
+      }
+    },
+    "kiro-task-generation-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r07"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r04"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r08"
+      },
+      "8": {
+        "bucket": "format",
+        "rule_id": "kiro-task-generation-r11"
+      }
+    },
+    "kiro-task-generation-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r12"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r07"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r04"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "kiro-task-generation-r02"
+      }
+    },
+    "kiro-task-generation-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r07"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r04"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r08"
+      },
+      "8": {
+        "bucket": "format",
+        "rule_id": "kiro-task-generation-r09"
+      }
+    },
+    "kiro-task-generation-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r12"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r07"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r04"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "kiro-task-generation-r10"
+      }
+    },
+    "kiro-task-generation-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r07"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r04"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r08"
+      },
+      "8": {
+        "bucket": "format",
+        "rule_id": "kiro-task-generation-r11"
+      }
+    },
+    "kiro-task-generation-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r12"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-task-generation-r01"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r04"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "kiro-task-generation-r08"
+      },
+      "8": {
+        "bucket": "format",
+        "rule_id": "kiro-task-generation-r02"
+      }
+    }
+  }
+}

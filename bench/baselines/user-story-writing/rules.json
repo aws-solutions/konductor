@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "user-story-writing",
+  "skill_md_sha256": "ed027bd06c8825c1e78f34cc44ef5e3ecc06f5d53f4d95355a3caa953924677c",
+  "request_context": "A request to turn business requirements or product documentation into development-ready agile work items, with epics, user stories and testable acceptance criteria.",
+  "rules": [
+    {
+      "id": "user-story-writing-r01",
+      "source_quote": "Acceptance criteria describe implementation details instead of observable behavior",
+      "class": "useful",
+      "outcome": "Acceptance criteria describe what a user or tester can observe happening, and do not prescribe technical implementation such as specific databases, frameworks, endpoints or code structure.",
+      "why": "Implementation-laden criteria over-specify the solution, constrain the developers and cannot be verified from the user's point of view.",
+      "scenario_hint": "Requirements for a feature where technical specifics are tempting to include in criteria, such as search, export or notifications."
+    },
+    {
+      "id": "user-story-writing-r02",
+      "source_quote": "Missing error conditions and edge cases in acceptance criteria",
+      "class": "useful",
+      "outcome": "Acceptance criteria cover failure and boundary situations, such as invalid input, empty results, permission problems or service errors, in addition to the successful path.",
+      "why": "Stories with only happy-path criteria leave failure behavior undefined and cause rework and defects later.",
+      "scenario_hint": "Requirements for a feature with user input or external dependencies, such as a payment or upload flow."
+    },
+    {
+      "id": "user-story-writing-r03",
+      "source_quote": "Stories are too large to complete in one sprint (1-5 days)",
+      "class": "useful",
+      "outcome": "Each story is small enough to be completed by a team within a single sprint, roughly one to five days of work, and large or complex capabilities are split into several stories rather than kept as one.",
+      "why": "Oversized stories cannot be estimated or finished within an iteration and hide risk.",
+      "scenario_hint": "A broad requirement such as a complete checkout or reporting module that could be written as one big story."
+    },
+    {
+      "id": "user-story-writing-r04",
+      "source_quote": "Personas are generic (\"user\", \"admin\") instead of specific",
+      "class": "useful",
+      "outcome": "Each story names a specific, meaningful persona with a role and context (for example a particular kind of reviewer or engineer) instead of a bare generic 'user' or 'admin'.",
+      "why": "Generic personas hide whose need is being met and weaken the value statement.",
+      "scenario_hint": "Requirements document that mentions only 'users' and 'admins' without further detail."
+    },
+    {
+      "id": "user-story-writing-r05",
+      "source_quote": "Acceptance criteria use vague terms (\"fast\", \"easy\") instead of measurable outcomes",
+      "class": "useful",
+      "outcome": "Acceptance criteria express quality expectations as measurable thresholds, such as a response time in seconds or a number of steps, rather than words like fast, easy or intuitive.",
+      "why": "Vague wording cannot be tested, so teams disagree about whether a story is done.",
+      "scenario_hint": "Requirements that say the feature must be fast, simple or user friendly."
+    },
+    {
+      "id": "user-story-writing-r06",
+      "source_quote": "Separate different filtering, sorting, and display criteria into distinct stories",
+      "class": "useful",
+      "outcome": "Distinct capabilities such as filtering by different attributes, sorting and display options are written as separate stories, each focused on one capability, rather than bundled together.",
+      "why": "Bundled stories are harder to estimate, test and deliver incrementally.",
+      "scenario_hint": "Requirement for a list or table view with several filters, sort options and display modes."
+    },
+    {
+      "id": "user-story-writing-r07",
+      "source_quote": "Stories are not independent (circular dependencies between stories)",
+      "class": "useful",
+      "outcome": "Stories can be built and delivered without circular dependencies on each other, and any real dependency or assumption between stories is called out explicitly.",
+      "why": "Circular or hidden dependencies block sprint planning and delivery.",
+      "scenario_hint": "Requirements with tightly coupled features, such as account creation, login and profile management."
+    },
+    {
+      "id": "user-story-writing-r08",
+      "source_quote": "Identify specific information gaps",
+      "class": "useful",
+      "outcome": "When the source requirements are ambiguous or incomplete, the answer names the specific gaps, states reasonable assumptions, and asks targeted clarifying questions instead of silently inventing details.",
+      "why": "Silent guesses on missing information produce stories that misrepresent what the business wants.",
+      "scenario_hint": "A short or vague requirement description lacking details about users, rules or limits."
+    },
+    {
+      "id": "user-story-writing-r09",
+      "source_quote": "Stories missing performance or scale requirements where applicable",
+      "class": "useful",
+      "outcome": "Where relevant, stories include performance, volume or scale expectations, such as expected load or maximum response time, stated in measurable terms.",
+      "why": "Omitted non-functional needs surface late as costly defects.",
+      "scenario_hint": "Requirements for a high-traffic or data-heavy feature such as search over large catalogs."
+    },
+    {
+      "id": "user-story-writing-r10",
+      "source_quote": "Trace requirements back to their source location in the document for reference",
+      "class": "generic",
+      "outcome": "Stories and epics can be traced back to the section or item of the supplied document or business objective they came from.",
+      "why": "Without traceability reviewers cannot check that all requirements were covered.",
+      "scenario_hint": "Any request to convert an uploaded requirements document into stories."
+    },
+    {
+      "id": "user-story-writing-r11",
+      "source_quote": "MVP produces 10-15 stories for fastest path to value. Production produces 20-30 stories for full feature set. Full scope produces 30-40 stories including edge cases.",
+      "class": "useful",
+      "outcome": "The number of stories matches the requested scope: roughly 10 to 15 for a minimum viable product, 20 to 30 for a production release and 30 to 40 for full scope with edge cases.",
+      "why": "A story count far off the requested scope gives the team too little or too much work to plan.",
+      "scenario_hint": "Request that specifies an MVP, production or full scope delivery."
+    },
+    {
+      "id": "user-story-writing-r12",
+      "source_quote": "User stories follow \"As a [persona], I want [action] so that [benefit]\" with 3-8 testable acceptance criteria per story.",
+      "class": "style",
+      "outcome": "Each story has a short title, a one-sentence description naming who wants what and why, in the familiar role-goal-benefit form, and a bulleted list of three to eight acceptance criteria.",
+      "why": "",
+      "scenario_hint": "Any request to write user stories from requirements."
+    }
+  ]
+}

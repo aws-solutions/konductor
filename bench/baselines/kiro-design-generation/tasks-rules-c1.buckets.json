@@ -1,0 +1,295 @@
+{
+  "format_version": 1,
+  "skill": "kiro-design-generation",
+  "batch": "rules-c1",
+  "rules": {
+    "kiro-design-generation-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-design-generation-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-design-generation-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-design-generation-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-design-generation-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-design-generation-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-design-generation-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-design-generation-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-design-generation-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-design-generation-r10": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "kiro-design-generation-r11": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    },
+    "kiro-design-generation-r12": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "kiro-design-generation-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r05"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r08"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "kiro-design-generation-r10"
+      },
+      "8": {
+        "bucket": "format",
+        "rule_id": "kiro-design-generation-r11"
+      }
+    },
+    "kiro-design-generation-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r03"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r07"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "kiro-design-generation-r10"
+      }
+    },
+    "kiro-design-generation-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r03"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r09"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "kiro-design-generation-r10"
+      },
+      "8": {
+        "bucket": "format",
+        "rule_id": "kiro-design-generation-r12"
+      }
+    },
+    "kiro-design-generation-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r06"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r08"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "kiro-design-generation-r10"
+      }
+    },
+    "kiro-design-generation-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r03"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r08"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "kiro-design-generation-r10"
+      }
+    },
+    "kiro-design-generation-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r09"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r06"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "kiro-design-generation-r10"
+      },
+      "8": {
+        "bucket": "format",
+        "rule_id": "kiro-design-generation-r11"
+      }
+    },
+    "kiro-design-generation-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r06"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r07"
+      },
+      "7": {
+        "bucket": "value",
+        "rule_id": "kiro-design-generation-r04"
+      },
+      "8": {
+        "bucket": "guard",
+        "rule_id": "kiro-design-generation-r10"
+      }
+    }
+  }
+}

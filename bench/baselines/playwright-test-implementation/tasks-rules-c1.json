@@ -1,0 +1,131 @@
+{
+  "format_version": 1,
+  "skill": "playwright-test-implementation",
+  "batch": "rules-c1",
+  "generated_at": "2026-11-09T04:09:12.215Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "b33c0339f9f498332b92b897fe79a37b6dec18e84e7b00be5001a5a35d1fea95",
+  "scenarios": [
+    {
+      "id": "playwright-test-implementation-rules-1",
+      "title": "Clinic scheduling app with credentials pasted in",
+      "target_section": "Step 2: Set up the authenticated session (`global-setup.ts` + `storageState`)",
+      "prompt": "I'm building browser tests for our clinic scheduling web app (React + Vite). I haven't installed any browser-test tooling yet; the dependencies are just react, react-dom and vite. After you sign in you land on /schedule, and from there there are four more pages: /patients, /appointments, /billing and /reports. I want one test per page that just checks the page title shows up.\n\nLogin form is a plain username + password form at /login with a \"Sign in\" button. For testing I use this account:\n\nusername: nurse.test@clinicdemo.io\npassword: Winter-Blue-42!\n\nPlease write the whole thing so I can run it right now, config and setup included. The site runs locally on http://localhost:4200.",
+      "rubric": [
+        "The nurse.test@clinicdemo.io username and the Winter-Blue-42! password do not appear in any written setup or test code; they are read from environment variables instead.",
+        "Sign-in on /login is done once in a setup step before the suite, and the tests for /schedule, /patients, /appointments, /billing and /reports reuse the saved session rather than logging in inside each test.",
+        "The setup waits for the /schedule destination (or an element only shown when signed in) before saving the session.",
+        "The configuration sets http://localhost:4200 as the base address explicitly so the tests can navigate with relative paths such as /patients.",
+        "The answer excludes the saved-session file from version control and says it contains live session tokens.",
+        "The folder that will hold the saved session is created (or noted as needing to exist) before the setup writes to it.",
+        "Because only react, react-dom and vite are listed, the answer tells the user to add the test framework themselves and to run the separate browser download step, rather than assuming it is installed."
+      ],
+      "why_skill_matters": "The user pastes a real-looking account and wants something runnable immediately, tempting hardcoding. Five pages behind login make session reuse matter, a saved session file raises ignore and folder concerns, and the dependency list shows no test framework."
+    },
+    {
+      "id": "playwright-test-implementation-rules-2",
+      "title": "Okta-hosted sign-in for an HR portal",
+      "target_section": "Step 2: Set up the authenticated session (`global-setup.ts` + `storageState`)",
+      "prompt": "Our HR portal (https://hr.northwind-internal.com) bounces you to our Okta tenant at https://northwind.okta.com to sign in and then redirects back to the portal, landing on /my/overview. I have to write the browser test setup so the rest of the team can write tests for the leave-request and payslip pages without logging in every time.\n\nI tried recording a login with the codegen tool and the generated script keeps timing out with something about the locator resolving to 2 elements on the Okta page. I also tried waiting for the URL to match anything at all (a wildcard) and sometimes the saved login turns out to be the Okta login page, not the portal.\n\nCredentials come from our CI secrets as OKTA_USER and OKTA_PASS. Write me the setup script and the config bits. Where should the saved login live? I was going to drop it in a new `.auth` folder.",
+      "rubric": [
+        "The Okta username, password and submit locators are restricted to visible elements, with a hidden duplicate form given as the cause of the \"2 elements\" timeout.",
+        "The wait before saving uses the portal's /my/overview address or an element shown only when signed in, and explains why a match-anything wait can save the Okta page instead.",
+        "The new .auth folder is created (or noted as needing to exist) before the setup writes the session into it.",
+        "The .auth folder or its session file is excluded from version control because it holds live session tokens.",
+        "Credentials are read from the OKTA_USER and OKTA_PASS environment variables, not written into the code.",
+        "The configuration sets the portal address https://hr.northwind-internal.com as base address explicitly, so tests can use relative paths."
+      ],
+      "why_skill_matters": "A hosted identity provider with a hidden duplicate form, a user who already tried a match-anything wait, and a new folder for the session."
+    },
+    {
+      "id": "playwright-test-implementation-rules-3",
+      "title": "Login page tests alongside a reused session",
+      "target_section": "Step 5: Opt out of the global session for login-flow specs",
+      "prompt": "We have a Playwright setup for our warehouse inventory tool. A setup script signs in once, and the config applies that saved login (kept at .session/user.json) to every test, with the base address set to http://inventory.local:8080. One existing spec, tests/stock.spec.ts, opens /stock and checks that the \"Stock\" title is visible.\n\nNow I need a new spec file, tests/login.spec.ts, with three tests: wrong password shows \"Invalid credentials\", empty username shows \"Username is required\", and a correct login lands on /stock. The login form has fields with placeholders \"Username\" and \"Password\" and a button named \"Log in\". Real creds come from env, USER_NAME and USER_PASS. Just give me that spec file.",
+      "rubric": [
+        "The login spec starts with an explicitly empty saved session so the tests see the login form instead of being already signed in to /stock.",
+        "Fields are located by their \"Username\" and \"Password\" placeholders and the button by its role and the name \"Log in\", not by structural CSS paths.",
+        "The correct-login test reads USER_NAME and USER_PASS from the environment rather than writing values in the file.",
+        "The successful-login test waits for a concrete sign of arrival such as the /stock address or a stock-page element before finishing.",
+        "The tests rely on the existing base address and navigate with relative paths such as /login."
+      ],
+      "why_skill_matters": "The existing setup applies a saved login to all tests, which would silently skip the login form; nothing in the request mentions opting out."
+    },
+    {
+      "id": "playwright-test-implementation-rules-4",
+      "title": "Three Delete buttons on a documents page",
+      "target_section": "Step 3: Pick selectors using this fallback chain, in order",
+      "prompt": "Need help with flaky tests. Our Documents page has a toolbar (with \"Delete selected\"), a grid of documents where each row has a \"Delete\" button, and a confirmation dialog that pops up with its own \"Delete\" and \"Cancel\" buttons. Elements have test ids: `docs-toolbar`, `docs-grid`, `confirm-dialog`. Rows are `tr` elements. The site address is in my env var DOCS_URL and right now I type the full address in each test.\n\nCurrent test:\n\n```ts\ntest('delete a document', async ({ page }) => {\n  // opens process.env.DOCS_URL + '/documents' (full address typed here)\n  await page.fill('#user', 'admin');\n  await page.fill('#pw', 'admin123');\n  await page.click('button.login');\n  await page.click('div > div:nth-child(3) > table tr:nth-child(2) > td:last-child button');\n  await page.click('.modal-footer button.red');\n  await page.isVisible('.toast');\n});\n```\n\nIt breaks whenever design changes the layout. Also there's a second test where I want to delete the first document in the list, whichever it is, and it logs in the same way. Rewrite both tests so they're stable.",
+      "rubric": [
+        "The row Delete button is located inside the docs-grid test id and the confirming Delete inside the confirm-dialog test id, by role and name, so the toolbar's and other buttons named Delete cannot be matched.",
+        "The nth-child and class-based CSS paths in the existing test are replaced with test-id or role-based locators.",
+        "The repeated login with admin credentials is moved into one setup step whose saved session both tests reuse.",
+        "The base address is set once in the configuration from DOCS_URL, and the tests use relative paths like /documents.",
+        "The literal admin and admin123 values are not kept in the rewritten code; they come from the environment.",
+        "The test that deletes the first document has a nearby comment saying that several rows match and why taking the first is correct."
+      ],
+      "why_skill_matters": "Three Delete controls and brittle CSS, a login with literal credentials repeated per test, and a full address typed each time. The \"first document\" test needs an explained choice of the first match."
+    },
+    {
+      "id": "playwright-test-implementation-rules-5",
+      "title": "Bakery site with no test framework yet",
+      "target_section": "Prerequisites",
+      "prompt": "Hi, I run a small bakery ordering site (Vue). My repo has a package with only \"vue\", \"vite\" and \"pinia\" in it. I've never done browser tests. I want to test that a customer can log in at /signin (email + password fields, a \"Continue\" button) and then see their order history at /orders. The dev server runs at http://localhost:5173 and I have a test customer whose email and password I keep in my shell as BAKERY_EMAIL and BAKERY_PASS.\n\nPlease just do whatever is needed and write me the test for the order history page, plus anything that makes login happen only once if there'll be more tests later.",
+      "rubric": [
+        "The answer tells the user the commands to add the test framework to the project and to download browser binaries as a separate step, rather than assuming it is present.",
+        "Login at /signin happens once in a setup step and its saved session is reused by the /orders test.",
+        "The configuration sets http://localhost:5173 as base address explicitly.",
+        "The folder the saved session is written into is created or noted as required.",
+        "BAKERY_EMAIL and BAKERY_PASS are read from the environment and not written into code.",
+        "The saved session file is excluded from version control, with the reason that it holds live login tokens."
+      ],
+      "why_skill_matters": "Dependencies show no test framework; the user says \"do whatever is needed\", tempting a silent install or an assumption it exists."
+    },
+    {
+      "id": "playwright-test-implementation-rules-6",
+      "title": "Review of an existing flaky setup script",
+      "target_section": "Quality Gate",
+      "prompt": "Can you review this browser-test setup and spec from our travel booking app before I merge? Tell me what's wrong and what to fix.\n\nThe setup script launches a browser, opens https://trips.example.com, then does:\n\n```ts\nawait p.fill('#email', 'qa@trips.example.com');\nawait p.fill('#pw', 'T3stPass!2026');\nawait p.click('button.btn-primary');\n```\n\nIt then waits for the URL to equal exactly https://trips.example.com, saves the logged-in session to auth/session.json, and closes the browser.\n\nThe spec opens the full address https://trips.example.com/bookings and then does:\n\n```ts\ntest('shows bookings', async ({ page }) => {\n  await page.click('div.card >> nth=0');\n});\n```\n\nThe login redirects to /home after submit. The `auth` folder is already in the repo and has a couple of other files in it. The config points the saved login at auth/session.json for all tests and has no other address settings.",
+      "rubric": [
+        "The review flags the email qa@trips.example.com and the password T3stPass!2026 hardcoded in the setup script and says to read them from the environment.",
+        "The review flags that waiting for the bare site address is wrong because login redirects to /home, and recommends waiting for /home or a signed-in element.",
+        "The review says the auth folder holding session.json must be excluded from version control because it holds live session tokens.",
+        "The review notes the config has no explicit base address, so tests use full URLs, and suggests setting it.",
+        "The review flags the raw CSS locators (#email, button.btn-primary, div.card) and suggests test ids or role, label or placeholder locators.",
+        "The review asks for an explanatory comment where the spec takes the first matching card."
+      ],
+      "why_skill_matters": "A review request with hardcoded credentials, a base-address wait despite a redirect, a committed session folder, and CSS locators; the \"folder already in the repo\" clause pulls toward missing the ignore issue."
+    },
+    {
+      "id": "playwright-test-implementation-rules-7",
+      "title": "Cognito sign-in with login and feature tests",
+      "target_section": "Step 5: Opt out of the global session for login-flow specs",
+      "prompt": "Our analytics dashboard uses a Cognito hosted sign-in page (on auth.metricsly.example), returns to https://app.metricsly.example/home after login. I need Playwright tests: (1) a \"failed login\" test that enters a wrong password and checks the error banner text \"Incorrect username or password\", (2) a test that the /reports page shows a chart with test id `revenue-chart`.\n\nBoth should run in one suite. Creds are in env as COGNITO_USER and COGNITO_PASS. Please write the config, the setup and both tests. Don't want to be logging in for the reports test every time it runs, there'll be more like it.",
+      "rubric": [
+        "The failed-login test uses an explicitly empty saved session so it reaches the Cognito sign-in page, while the reports test uses the saved session.",
+        "Cognito username, password and submit locators are limited to visible elements to avoid the hidden duplicate form.",
+        "Sign-in is done once in a setup step and the reports test reuses the saved session.",
+        "The setup waits for the /home address on app.metricsly.example or a signed-in element before saving.",
+        "COGNITO_USER and COGNITO_PASS are read from the environment, with no literal credentials.",
+        "The configuration sets https://app.metricsly.example as the base address explicitly."
+      ],
+      "why_skill_matters": "Hosted Cognito page with both a login-flow test and a feature test in the same suite, so one needs the session and one must not have it."
+    },
+    {
+      "id": "playwright-test-implementation-rules-8",
+      "title": "Storing logins under a new folder for a school portal",
+      "target_section": "Step 2: Set up the authenticated session (`global-setup.ts` + `storageState`)",
+      "prompt": "quick one. school parent portal, we sign in at /parent-login (inputs with placeholders \"Parent email\" and \"Password\", button \"Enter\"). After that it goes through a short redirect and finishes on /children. I want the logged-in state kept at `e2e/.state/parent.json` — that `e2e/.state` directory doesn't exist yet, and I don't want teammates accidentally pushing it. Site URL is in the env var PORTAL_URL. Please give me the setup file and the config. Also one test that /children shows a card with test id `child-card`.\n\nEnv vars for the login are PARENT_EMAIL and PARENT_PASS.",
+      "rubric": [
+        "The e2e/.state directory is created (or noted as needing to exist) before the setup writes parent.json.",
+        "e2e/.state is excluded from version control and the answer explains the file holds live session tokens, not only that teammates might push it.",
+        "The configuration reads PORTAL_URL as the base address explicitly, and the test navigates with a relative path to /children.",
+        "The setup waits for /children (or an element only visible once signed in) before saving, since sign-in goes through a redirect.",
+        "Inputs are found by the \"Parent email\" and \"Password\" placeholders, the button by role and name \"Enter\", and the card by its child-card test id.",
+        "PARENT_EMAIL and PARENT_PASS come from the environment and no literal values are written."
+      ],
+      "why_skill_matters": "A nonexistent folder, an explicit wish to keep it out of git, a base address in an env var, and a redirect before the landing page."
+    }
+  ]
+}

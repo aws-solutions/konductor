@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "program-planning",
+  "skill_md_sha256": "cdbbf2ed3ab24192807b542d70ce58380595274e7bda03844dbfaf786e0444e0",
+  "request_context": "A request to build a program plan for a new or existing multi-team initiative, covering schedule, milestones, dependencies, staffing and risks.",
+  "rules": [
+    {
+      "id": "program-planning-r01",
+      "source_quote": "exit criteria (measurable)",
+      "class": "useful",
+      "outcome": "Every milestone has a concrete, measurable condition for being considered done, not a vague statement like 'design complete', along with a named owning team and target date.",
+      "why": "Milestones without verifiable completion conditions cannot be tracked and lead to disputes about whether a phase is finished.",
+      "scenario_hint": "Request to plan a program with several phases and milestones."
+    },
+    {
+      "id": "program-planning-r02",
+      "source_quote": "Milestones mark phase transitions — not individual task completion.",
+      "class": "useful",
+      "outcome": "Milestones represent transitions between phases of the program rather than individual tasks; fine-grained work items are kept separate from the milestone list.",
+      "why": "Treating tasks as milestones clutters the plan and hides the real phase gates.",
+      "scenario_hint": "Request to plan a program where the user lists many small tasks."
+    },
+    {
+      "id": "program-planning-r03",
+      "source_quote": "Classify dependencies as: internal (within program), cross-team (other teams), external (vendors/partners).",
+      "class": "useful",
+      "outcome": "Each dependency is identified as within the program, on another team, or on an outside vendor or partner, and states the kind of ordering (finish before start, or start together), any lead or lag time, and how risky a delay would be.",
+      "why": "Without classification and risk, external and cross-team couplings go unmanaged and surprise the schedule.",
+      "scenario_hint": "Request to plan a program that relies on other teams or vendors."
+    },
+    {
+      "id": "program-planning-r04",
+      "source_quote": "Circular dependencies in the dependency map",
+      "class": "generic",
+      "outcome": "The dependencies contain no cycles; no milestone depends, directly or indirectly, on itself.",
+      "why": "A circular dependency makes the schedule impossible to compute or execute.",
+      "scenario_hint": "Any request to produce a program plan with dependencies."
+    },
+    {
+      "id": "program-planning-r05",
+      "source_quote": "The longest sequence of dependent milestones determining minimum program duration.",
+      "class": "useful",
+      "outcome": "The plan identifies the longest chain of dependent milestones, lists it in order, and that chain is consistent with the dependencies and durations given.",
+      "why": "A missing or wrong longest chain means the team protects the wrong milestones and misjudges the finish date.",
+      "scenario_hint": "Request to plan a program with a mix of sequential and parallel workstreams."
+    },
+    {
+      "id": "program-planning-r06",
+      "source_quote": "Identify float (slack) for non-critical milestones. Flag milestones with zero float as critical path items.",
+      "class": "useful",
+      "outcome": "Milestones off the longest chain are given an amount of slack, and those with no slack are explicitly called out as schedule-critical.",
+      "why": "Readers cannot tell which delays threaten the end date without slack figures.",
+      "scenario_hint": "Request to plan or replan a program with parallel workstreams."
+    },
+    {
+      "id": "program-planning-r07",
+      "source_quote": "End date earlier than critical path minimum duration",
+      "class": "useful",
+      "outcome": "The stated end date is not earlier than the minimum duration of the longest dependent chain; if the requested deadline is infeasible, the plan says so and shows the gap or options.",
+      "why": "Accepting an impossible deadline produces a plan that is doomed from the start.",
+      "scenario_hint": "Request to fit a program into a fixed or aggressive deadline."
+    },
+    {
+      "id": "program-planning-r08",
+      "source_quote": "XS (1-2d), S (3-5d), M (1-2w), L (3-4w), XL (5-8w).",
+      "class": "useful",
+      "outcome": "Relative effort sizes are converted into calendar duration ranges using consistent conversions (roughly 1-2 days for the smallest up to 5-8 weeks for the largest) rather than single-point guesses.",
+      "why": "Unconverted or inconsistent sizes give unreliable timelines.",
+      "scenario_hint": "Request to plan a program from sized work items."
+    },
+    {
+      "id": "program-planning-r09",
+      "source_quote": "40% for novel, complex, unfamiliar, or otherwise uncertain work",
+      "class": "useful",
+      "outcome": "Estimates include a contingency allowance, with a smaller one for well-understood work and a larger one (about double) for novel, complex or uncertain work; no work is left with zero contingency.",
+      "why": "Unbuffered estimates systematically underrun and cause slipped dates.",
+      "scenario_hint": "Request to plan a program mixing routine and novel work."
+    },
+    {
+      "id": "program-planning-r10",
+      "source_quote": "Account for holidays, on-call rotations, and team availability.",
+      "class": "useful",
+      "outcome": "The schedule accounts for holidays, on-call duty and reduced team availability within the planned period, adjusting durations or dates accordingly.",
+      "why": "Ignoring calendar realities makes dates optimistic.",
+      "scenario_hint": "Request to plan a program spanning holiday periods or involving on-call teams."
+    },
+    {
+      "id": "program-planning-r11",
+      "source_quote": "Resource over-allocation (>100% utilization)",
+      "class": "generic",
+      "outcome": "People and teams are mapped to workstreams with utilization percentages, and nobody is assigned more than their full capacity; any overload is flagged or resolved.",
+      "why": "Over-allocated staff cause hidden delays and burnout.",
+      "scenario_hint": "Any request to plan a program with a named team."
+    },
+    {
+      "id": "program-planning-r12",
+      "source_quote": "ASCII table showing milestones across weeks/months with `[====]` bars and `|` for dependencies",
+      "class": "style",
+      "outcome": "The plan includes a text-based timeline chart showing each milestone as a bar across weeks or months, with marks indicating dependencies.",
+      "why": "",
+      "scenario_hint": "Any request to produce a program plan."
+    }
+  ]
+}

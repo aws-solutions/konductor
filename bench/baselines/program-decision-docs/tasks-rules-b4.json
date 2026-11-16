@@ -1,0 +1,115 @@
+{
+  "format_version": 1,
+  "skill": "program-decision-docs",
+  "batch": "rules-b4",
+  "generated_at": "2026-11-09T09:53:06.421Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "7e219968969e3c3439013404a49135d498d4b97e4f26ddba6f779b59d308cde1",
+  "scenarios": [
+    {
+      "id": "program-decision-docs-rules-1",
+      "title": "Payments gateway migration choice",
+      "target_section": "Options Analysis",
+      "prompt": "Need a decision write-up for our steering group on the card payments gateway. Our current vendor (PayFlow) contract ends 31 March 2027 and they've said renewal will be +22% per year. We've got two alternatives on the table: move to Stripe (Eng estimates about 4 months of work, PCI scope shrinks, but we'd have a risky cutover during Q1 which is peak for us), or move to Adyen (about 6 months, better international coverage which Sales wants for the EMEA launch, but our team has never used it). Budget for this is around $400k. Finance wants an answer by end of November so they can plan FY27. Please write it up so the group can pick one. I haven't decided which I favour.",
+      "rubric": [
+        "Includes an option of staying on PayFlow (renewing at the +22% price or keeping things as is) that is analysed alongside Stripe and Adyen and used as the comparison baseline.",
+        "Stripe, Adyen and the stay-on-PayFlow option each have a description, listed advantages and disadvantages, a rough size for effort, and a risk rating; none is missing anything.",
+        "States what occurs if nothing is chosen (the PayFlow contract ends 31 March 2027 / renewal at +22%), why an answer is needed now (Finance FY27 planning by end of November) and the $400k budget constraint.",
+        "Analyses between two and five options in total, not a long list of extra vendors.",
+        "Does not invent a decision maker or decision date as though the choice were already made; either leaves them to be filled in or clearly marks them as pending."
+      ],
+      "why_skill_matters": "A vendor choice with a contract expiry and a budget. Two alternatives are named; the do-nothing option is only implied by the renewal price. Makes baseline, consequence of inaction, option completeness and option count matter."
+    },
+    {
+      "id": "program-decision-docs-rules-2",
+      "title": "Weighted scoring for data platform tooling",
+      "target_section": "Weighted Evaluation Matrix",
+      "prompt": "Hey, I'm the TPM for the data platform program. We need to choose how to handle orchestration for our pipelines. Options we've discussed: (A) upgrade our self-hosted Airflow 2 to the latest version, (B) move to Dagster Cloud, (C) move to the managed Airflow service from our cloud provider. I want a scored comparison I can show leadership. Criteria I care about: cost (very important), migration risk (very important), team familiarity, scalability, and vendor lock-in. Cost and migration risk should each count for about a quarter, familiarity 20, scalability 15, lock-in 10... actually I'm not sure that adds up, sort it out. My gut says Dagster is the best technically but it's the most disruptive. Give me numbers and a recommendation.",
+      "rubric": [
+        "The weights for cost, migration risk, familiarity, scalability and lock-in are corrected or confirmed so they total exactly the whole (the stated 25/25/20/15/10 sums to 95 and is noticed and fixed or flagged).",
+        "Each of the three orchestration options gets a score on every one of the five criteria on one fixed small numeric scale, and a weighted total per option is shown.",
+        "The recommended option matches the highest weighted total, or, if the user's preference for Dagster is chosen despite a lower score, the answer states the overriding reason.",
+        "Includes an option of leaving the current self-hosted Airflow as is, scored too, in addition to the upgrade and the two migrations.",
+        "Keeps the analysis to no more than five options.",
+        "Any record of the outcome leaves decision maker and date as placeholders or pending rather than invented names."
+      ],
+      "why_skill_matters": "The weights given add to 95, so the arithmetic matters. Scoring and ranking need consistency with the user's gut feeling for Dagster. Do-nothing is not named."
+    },
+    {
+      "id": "program-decision-docs-rules-3",
+      "title": "Hospital scheduling rollout, decision made",
+      "target_section": "Decision Record",
+      "prompt": "Please write up the nurse scheduling rollout decision for the program file. Here are my notes from Friday's meeting (Nov 6):\n\n- Options were: big-bang go-live across all 4 hospitals in January, phased rollout starting with St. Mary's in January then others by June, or delay the whole thing to Q3.\n- Dr. Okafor (CMO) made the call: phased rollout.\n- Priya from nursing ops pushed hard for the delay, said staff aren't trained and she thinks we'll see overtime errors. Didn't convince the group.\n- Reason: big-bang too risky after the pilot's 3 timetable conflicts, delay costs us the $180k vendor discount that expires Dec 31.\n- Compliance (Hana) wants union consultation completed before any go-live. IT (Marcus) just needs to be told.\n- If the pilot at St. Mary's shows more than 5 scheduling errors a month we should rethink.\n\nFormat it nicely.",
+      "rubric": [
+        "Records Dr. Okafor as decision maker, 6 November as the date, phased rollout as the selected option with the pilot-conflict and discount rationale, and notes Priya's dissent for the delay.",
+        "States the reconsideration trigger (more than 5 scheduling errors a month at St. Mary's) and also gives a calendar date by which the decision is reviewed regardless; if no date was supplied, proposes one or flags it as needed.",
+        "Identifies stakeholders by role: Okafor decides, Hana (compliance) consulted, Marcus (IT) informed, and says who is driving the process or flags that no driver was named.",
+        "Includes the delay/keep-current-state alternative as an analysed option next to big-bang and phased.",
+        "Background states the Dec 31 vendor discount expiry as the reason for urgency and the union consultation requirement as a constraint.",
+        "Opens with a title and a status showing the decision is made."
+      ],
+      "why_skill_matters": "A decision already made, with dissent, trigger, deadline and roles scattered in notes. A review date is absent from the notes."
+    },
+    {
+      "id": "program-decision-docs-rules-4",
+      "title": "Mobile app rewrite versus incremental fixes",
+      "target_section": "Options Analysis",
+      "prompt": "Context: we run a consumer fitness app, 1.2M MAU, iOS and Android native apps with a lot of legacy code. Product wants a full rewrite in React Native. Engineering lead thinks that's insane and wants to just keep patching. The CTO asked me to put something in front of the exec team next week. Things people have floated in the last few threads:\n\n1. Full rewrite in React Native (12-14 months, whole mobile team)\n2. Rewrite in Flutter (similar, 12-14 months)\n3. Rewrite in Kotlin Multiplatform (10-12 months)\n4. Incrementally replace the worst 5 screens with React Native over 6 months\n5. Hire a contractor agency to rebuild it (cost unknown)\n6. Wrap the web app in a webview\n7. Pause feature work for 3 months and pay down tech debt in native code\n8. Just keep patching, crash rate is currently 1.8% sessions and trending up 0.2 pt per quarter\n\nPlease produce the decision document. Exec team has about 10 minutes.",
+      "rubric": [
+        "Narrows the eight floated ideas to at most five options in the document, with a brief reason for what was dropped or merged, rather than analysing all eight.",
+        "Keeps the keep-patching idea (crash rate 1.8% and rising 0.2 pt per quarter) as the baseline option analysed against the others.",
+        "Every retained option has a description, advantages, disadvantages, an effort size and a risk rating, including the rewrite and the incremental screen replacement.",
+        "Explains what happens if nothing is decided (crash rate keeps climbing) and what prompts a decision now, noting any constraint that is unknown rather than inventing it.",
+        "Leaves decision maker and date as pending or flagged for the CTO/exec team, not as an already-made decision."
+      ],
+      "why_skill_matters": "Eight candidate approaches are pasted, tempting a sprawling comparison. The do-nothing is item 8 among them. Requires narrowing to five or fewer while keeping the baseline."
+    },
+    {
+      "id": "program-decision-docs-rules-6",
+      "title": "Quick note on choosing a CI provider",
+      "target_section": "Decision Context",
+      "prompt": "We're a 15-person startup. GitHub Actions bills have gone up and builds are slow (avg 24 min). Options I'm looking at: self-host runners on our own AWS account, switch to CircleCI, or buildkite with our own agents. Budget is tight, roughly $1,500/month max for CI. Our one DevOps person, Lena, would have to run whatever we pick. Our CTO Dev signs off on spend over $500/mo, and the engineers should be told once chosen. I need to decide by the end of this month because the annual GitHub plan renews on Dec 1. Write me a decision doc.",
+      "rubric": [
+        "Background explains that the GitHub plan renews on Dec 1 if nothing is decided, why the end-of-month deadline exists, and the $1,500/month ceiling.",
+        "Includes staying on GitHub Actions as is as an analysed baseline alongside self-hosted runners, CircleCI and Buildkite.",
+        "Names Dev (CTO) as approver, Lena as consulted or doing the work, the engineers as informed, and the requester as driver.",
+        "Each option has advantages, disadvantages, an effort size and a risk rating, e.g. the burden on Lena for self-hosted runners.",
+        "Presents no fewer than two and no more than five options.",
+        "Does not record a choice, approver sign-off or decision date as already made; these stay pending for Dev's approval.",
+        "Opens with a title and a status marking it as a draft or under review."
+      ],
+      "why_skill_matters": "A small, informal request with a renewal deadline, roles named and no do-nothing option listed."
+    },
+    {
+      "id": "program-decision-docs-rules-7",
+      "title": "Review a rough decision draft",
+      "target_section": "Quality Gate",
+      "prompt": "Can you review this decision doc draft from my colleague before it goes to the VP and tell me what's wrong with it?\n\n**Title:** ERP module upgrade path\n**Status:** Under Review\n\n**Context:** Finance ERP v9 goes out of support in June 2027. We need to move.\n\n**Options:**\n1. Upgrade in place to v12: pros: cheapest, familiar. cons: downtime of 3 weekends. Effort M, Risk Medium.\n2. Move to cloud ERP: pros: no more patching. cons: expensive, data migration. Effort XL, Risk High.\n\n**Evaluation:** Cost 40, Time 30, Risk 20, Capability 20. Upgrade scores 4,4,3,4. Cloud scores 2,2,2,3. Totals: Upgrade 3.7 (wait, need to recompute), Cloud 2.2.\n\n**Recommendation:** Move to cloud ERP because it's strategic.\n\n**Decision:** Approved. \n\nFix whatever needs fixing.",
+      "rubric": [
+        "Points out that the weights 40/30/20/20 sum to 110, not the whole, and corrects them or asks for them to be fixed.",
+        "Points out that the recommendation of cloud ERP contradicts the totals, where the upgrade scores higher, and that \"strategic\" is not a sufficient stated reason.",
+        "Points out that no option of keeping v9 or taking no action is included, and adds one.",
+        "Points out or adds the missing detail on what happens if nothing is decided (v9 loses support in June 2027) and constraints such as budget.",
+        "Notes that no conditions or review date for reconsidering the decision are given and proposes some.",
+        "Flags that \"Approved\" lacks who approved it and when, and does not make up a name or date."
+      ],
+      "why_skill_matters": "A flawed draft with several defects: weights sum to 110, a recommendation that contradicts totals, no baseline, vague approval. The user asks for review."
+    },
+    {
+      "id": "program-decision-docs-rules-8",
+      "title": "Warehouse automation with meeting minutes",
+      "target_section": "Decision Context",
+      "prompt": "Minutes from today's ops steering call, can you turn this into a formal decision doc? I'm the program manager (Sam Reyes).\n\n\"Present: Sam, Tomoko (VP Ops), Barry (Finance), Elena (Safety), Chidi (IT). Discussion went long. Tomoko opened by saying the Reno warehouse picking error rate is 3.1% and customers are complaining. Barry said we have $900k in the FY27 capex pool and it needs to be committed by Jan 15 or it's reallocated to the Dallas project. Chidi described two ways forward: goods-to-person robots (about $850k, 7 months, needs WMS upgrade) or pick-to-light with a smaller WMS patch (about $420k, 3 months, less gain, maybe error rate down to 2%). Elena said the robots would need a safety recertification, which she thinks adds 2 months and is the part she's least sure about. Tomoko leans robots but didn't commit. Barry said he can't see approving anything without Elena's sign-off on safety. Sam to circulate a doc and we reconvene Nov 20 to decide.\"",
+      "rubric": [
+        "Explains that if nothing is committed by Jan 15 the $900k is reallocated to Dallas, and gives the 3.1% error rate as the trigger and the safety recertification as a constraint.",
+        "Assigns roles: Sam as driver, Tomoko as the decision maker or approver, Barry and Elena as consulted (Elena with a sign-off condition), Chidi as contributor or informed.",
+        "Includes an option of making no change at Reno (and letting the money be reallocated), analysed with the two Chidi proposals.",
+        "Robots, pick-to-light and no-change each have a description, advantages, disadvantages, effort size and risk rating, with the robot safety recertification uncertainty reflected in its risk.",
+        "Leaves the final outcome pending, as the group reconvenes on Nov 20, and does not record robots as chosen.",
+        "Opens with a title and a status showing the decision is not yet taken (draft or under review)."
+      ],
+      "why_skill_matters": "Messy minutes where nothing has been decided yet, with the consequence of inaction buried in the finance remark and a lean not to be mistaken for a decision. Roles are implicit."
+    }
+  ]
+}

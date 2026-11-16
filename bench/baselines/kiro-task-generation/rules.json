@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "kiro-task-generation",
+  "skill_md_sha256": "93fa212e6d428b5ae763b27ad57f822795f6ea18db7275f109792dd37e7f3b3c",
+  "request_context": "A request to turn an approved feature requirements document and design into an ordered list of implementation tasks for a coding agent to execute.",
+  "rules": [
+    {
+      "id": "kiro-task-generation-r01",
+      "source_quote": "every task must link to at least one requirement",
+      "class": "useful",
+      "outcome": "Each task says which requirement or requirements it serves.",
+      "why": "Reviewers can trace every piece of work back to a need and spot work nobody asked for.",
+      "scenario_hint": "Requirements document with many numbered items and a design that adds extra components."
+    },
+    {
+      "id": "kiro-task-generation-r02",
+      "source_quote": "Requirement references: `_Requirements: X.Y_` linking back to requirements.md",
+      "class": "style",
+      "outcome": "Requirement links sit in the same place and look the same in every task.",
+      "why": "",
+      "scenario_hint": "Any request to produce an implementation task list."
+    },
+    {
+      "id": "kiro-task-generation-r03",
+      "source_quote": "Tasks are ONLY coding tasks — no deployment, documentation, or user testing",
+      "class": "useful",
+      "outcome": "The plan contains only work that is done by writing or changing code; deployment, writing documentation and manual user testing are left out.",
+      "why": "Every item can be handed to a coding agent and finished without human steps.",
+      "scenario_hint": "Feature spec mentions a rollout, user docs or a pilot with real users."
+    },
+    {
+      "id": "kiro-task-generation-r04",
+      "source_quote": "Each task builds incrementally on previous tasks",
+      "class": "generic",
+      "outcome": "Each task builds on earlier ones, and no task depends on something that comes after it.",
+      "why": "The list can be executed top to bottom without getting stuck.",
+      "scenario_hint": "Design with several interdependent components."
+    },
+    {
+      "id": "kiro-task-generation-r05",
+      "source_quote": "Order tasks by dependency (foundation → core → polish)",
+      "class": "generic",
+      "outcome": "Shared structure and interfaces come first, the main feature logic next, and error handling and edge cases last.",
+      "why": "A working main path exists early and hardening builds on it.",
+      "scenario_hint": "Design that includes validation, error cases and a core data model."
+    },
+    {
+      "id": "kiro-task-generation-r06",
+      "source_quote": "Map each requirement to implementation tasks",
+      "class": "useful",
+      "outcome": "Every requirement in the input is covered by at least one task; none is silently dropped.",
+      "why": "Coverage gaps show up in the plan instead of during testing.",
+      "scenario_hint": "Requirements include easily overlooked items such as error handling or permissions."
+    },
+    {
+      "id": "kiro-task-generation-r07",
+      "source_quote": "Tasks too large (should be completable by an LLM in one pass)",
+      "class": "useful",
+      "outcome": "Each task is small enough to be implemented and checked in a single focused pass.",
+      "why": "Large tasks make automated execution unreliable and hard to review.",
+      "scenario_hint": "Large feature that tempts a plan with a few huge steps."
+    },
+    {
+      "id": "kiro-task-generation-r08",
+      "source_quote": "clear objective, sub-bullets with details",
+      "class": "generic",
+      "outcome": "Each task has a clear objective plus specific details on what to create or change.",
+      "why": "The executor knows what 'done' looks like.",
+      "scenario_hint": "Any request to produce an implementation task list."
+    },
+    {
+      "id": "kiro-task-generation-r09",
+      "source_quote": "Numbered checkbox list: `- [ ] N.` for top-level, `- [ ] N.M` for sub-tasks",
+      "class": "style",
+      "outcome": "Tasks are numbered and each has a checkbox that can be ticked off.",
+      "why": "",
+      "scenario_hint": "Any request to produce an implementation task list."
+    },
+    {
+      "id": "kiro-task-generation-r10",
+      "source_quote": "Max 2 levels of hierarchy (top-level + one sub-level)",
+      "class": "style",
+      "outcome": "The plan nests at most two levels: top-level tasks with sub-tasks beneath them.",
+      "why": "",
+      "scenario_hint": "Any request to produce an implementation task list."
+    },
+    {
+      "id": "kiro-task-generation-r11",
+      "source_quote": "Sub-tasks indented 2 spaces under their parent",
+      "class": "style",
+      "outcome": "Sub-tasks are visibly nested beneath their parent task.",
+      "why": "",
+      "scenario_hint": "Any request to produce an implementation task list."
+    },
+    {
+      "id": "kiro-task-generation-r12",
+      "source_quote": "tasks.md written anywhere other than `{spec_dir}`",
+      "class": "useful",
+      "outcome": "The plan is saved to the location the request names for the feature's spec files and nowhere else.",
+      "why": "Teammates and tooling look for the plan in one agreed place.",
+      "scenario_hint": "Request names a folder where the feature's requirements and design already live."
+    }
+  ]
+}
