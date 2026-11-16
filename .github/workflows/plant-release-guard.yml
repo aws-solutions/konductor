@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Plant release guard: fails when plant release content (the private policy, probes,
+# truth table, seeds) appears anywhere in this repository's git history -- by path, by
+# file type, by an encrypted bundle header, or by a line whose hash is in the private
+# release-line hash file. The steps live in bench/physical/ci/run-release-guard.sh so
+# they are tested by bench/runner/test/plant-release-guard-ci.test.js.
+#
+# The hash file is never committed. It comes from the PLANT_RELEASE_HASHES repository
+# secret, is written to a mode-600 file under $RUNNER_TEMP for the one step, and is
+# removed when the step ends. Fork PRs never get repository secrets: a fork PR that
+# touches bench/physical or bench/runner/lib/plant fails closed and must be rerun from a
+# branch in this repository. A change to other bench/ files without the secret runs the
+# path, type and header checks only.
+#
+# Triggers on `pull_request`, NOT `pull_request_target`, for the same reason as
+# validate-pr.yml: the job runs PR-head code, so it must never get a write token.
+name: Plant release guard
+
+on:
+  pull_request:
+    paths: ['bench/**']
+  push:
+    paths: ['bench/**']
+
+permissions:
+  contents: read
+
+jobs:
+  plant-release-guard:
+    name: Plant release guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        with:
+          # The guard reads every commit; run-release-guard.sh fails on a shallow clone.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node
+        # release-guard.js and bench need Node 22 or later (bench/README.md).
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Scan the full history for plant release content
+        # GUARD_BASE decides whether plant code changed: the PR base on pull_request, the
+        # 'before' SHA on push (all zeros on a new branch, which counts as a plant change).
+        env:
+          PLANT_RELEASE_HASHES: ${{ secrets.PLANT_RELEASE_HASHES }}
+          GUARD_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: bash bench/physical/ci/run-release-guard.sh
