@@ -1,0 +1,118 @@
+{
+  "format_version": 1,
+  "skill": "user-story-writing",
+  "batch": "rules-c2",
+  "generated_at": "2026-11-09T04:43:36.588Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "00888b04f449d1e842c63fb8abf7133b8437a73cedc46ab0db858dc48e8c9d36",
+  "scenarios": [
+    {
+      "id": "user-story-writing-rules-1",
+      "title": "Library e-book lending app stories",
+      "target_section": "Execution",
+      "prompt": "I run product for a small public library network app. We want members to borrow e-books from their phone. Here's what the director gave me:\n\n\"Members sign in with their library card number and PIN. They can borrow up to 5 e-books at a time for 21 days. If a book is already out, they can join a waitlist and get an email when it's ready. Borrowed books should download quickly so people can read offline. Members can return early. Our catalog has about 60,000 e-book titles, and the vendor's lending service is sometimes down for maintenance on Sunday nights.\"\n\nPlease turn this into user stories I can hand to the dev team for the first release. Keep it to what's in there.",
+      "rubric": [
+        "Stories cover failure and boundary cases from the brief, such as a wrong card number or PIN, trying to borrow a sixth book, or the lending vendor being unavailable on Sunday night.",
+        "The \"download quickly\" expectation is turned into a measurable threshold (for example a stated time for a typical e-book on a stated connection) or is flagged as needing a number from the director.",
+        "Borrowing, waitlisting, returning and offline download are separate stories rather than one large \"borrow e-books\" story.",
+        "The answer names missing details, such as PIN reset or lockout rules, how long a waitlist hold lasts, or the waitlist size limit, and states assumptions or asks about them.",
+        "Catalog scale of about 60,000 titles is reflected in a measurable expectation, such as how fast browsing or searching the catalog responds.",
+        "Stories point back to the part of the director's text they come from, such as the 5-book limit, 21-day term or waitlist email.",
+        "Each story has a short title, a one-sentence role-goal-benefit description, and a list of three to eight acceptance criteria."
+      ],
+      "why_skill_matters": "A short brief with a vague \"quickly\" word, a hard limit of 5 books, a vendor outage, and a catalog size. It makes error cases, measurable quality, splitting, gaps and scale matter."
+    },
+    {
+      "id": "user-story-writing-rules-2",
+      "title": "Warehouse pick list screen",
+      "target_section": "Core Concepts",
+      "prompt": "Writing stories for the pick-list screen in our warehouse handheld app. Pickers see all open orders for their zone in a list. What the ops lead asked for:\n\n- filter by aisle (A to M)\n- filter by order priority (standard, rush, same-day)\n- filter by whether the item is heavy (over 15 kg)\n- sort by due time, by aisle, or by number of items\n- toggle between a compact view (order number only) and a detailed view (order number, items, bin locations, photos)\n- zones can have up to 800 open orders at peak, and scrolling and filtering must feel snappy on the old Zebra handhelds we still use\n\nPickers are mostly seasonal staff with gloves on, so tapping must be easy. Can you write this up as stories for the sprint? We have 2 devs.",
+      "rubric": [
+        "Aisle filter, priority filter, heavy-item filter, each sort option set and the compact/detailed toggle are separate stories rather than one combined \"filter and sort\" story.",
+        "The 800-order peak and the old handhelds lead to measurable expectations, such as a maximum time to filter or sort 800 orders on the Zebra devices.",
+        "\"Snappy\" and \"easy\" tapping are replaced with measurable thresholds, such as a response time in seconds or minimum tap target size, or flagged as needing numbers.",
+        "Criteria cover empty results, such as a filter combination matching no orders, or an order with no photo in the detailed view.",
+        "Criteria describe what the picker sees and does and do not name implementation such as list virtualization, local caching or specific frameworks.",
+        "Stories can be traced to the matching bullet in the ops lead's list."
+      ],
+      "why_skill_matters": "A list view with several filters, sorts and display modes, a volume figure, and vague \"snappy\" and \"easy\" words. It makes splitting, scale, measurability, edge cases and observable criteria matter."
+    },
+    {
+      "id": "user-story-writing-rules-3",
+      "title": "Subscription box pause and skip",
+      "target_section": "Quality Gate",
+      "prompt": "Pasting a ticket from our subscription meal-box product. Need stories out of it, nothing fancy.\n\nTICKET CX-2291: Customers want more control over their weekly box.\n1. Customer can skip a single upcoming week. Skips must be set before the Tuesday 9am cutoff for that week's delivery.\n2. Customer can pause the whole subscription for 1 to 8 weeks. While paused, no charges.\n3. Customer can resume early. Resuming re-enables charging from the next billing date.\n4. Skipped weeks extend nothing; the promo discount (first 4 boxes at 30% off) counts only delivered boxes, so a skip doesn't use up a promo box.\n5. Support agents can do all of the above on a customer's behalf.\n6. Needs the new billing service, which isn't released yet. Resume depends on pause being done, pause depends on skip rules.\n\nAlso the pause and skip calendar and the resume button should be on the same screen so skip needs the calendar from pause, etc.",
+      "rubric": [
+        "The answer notices that the stated chain (skip needs pause's calendar, pause needs skip rules, resume needs pause) is circular or tightly coupled and resolves it, for example by splitting out the shared calendar as its own story, or states the dependency order explicitly.",
+        "Criteria cover boundary cases, such as a skip attempted after Tuesday 9am, a pause of 0 or 9 weeks, resuming when not paused, or a failed charge on resume.",
+        "Customer skip, pause, resume and the agent-on-behalf capability are separate stories rather than one large subscription-control story.",
+        "The answer flags unspecified points, such as the time zone for the Tuesday cutoff, what happens to an already-packed box, or what the agent can override, and states assumptions or asks.",
+        "Criteria avoid naming the billing service internals and describe customer-visible results, such as what the customer is charged and sees.",
+        "Stories reference the ticket item number they come from, such as item 4 for the promo rule."
+      ],
+      "why_skill_matters": "A ticket with a circular dependency hidden in the closing sentence and the final item, plus a promo rule, a cutoff and an unreleased service. It makes dependency handling, boundary cases, splitting and gaps matter."
+    },
+    {
+      "id": "user-story-writing-rules-4",
+      "title": "Telehealth video visit joining",
+      "target_section": "Execution",
+      "prompt": "We're a small telehealth startup. Patients get a text link and join a video visit with a doctor from their phone browser, no app install. Doctor sees a waiting room list of patients. Some visits are with an interpreter added as a third person. Video has to be reliable and clear, and the whole join process should be simple. We expect about 200 visits a day now, growing to 2,000 within a year. We store nothing about the call itself, only that it happened and for how long.\n\nCan you give me an MVP set of stories? I'm going to read them to our two contract devs on Monday so keep it tight.",
+      "rubric": [
+        "\"Reliable,\" \"clear\" and \"simple\" are given measurable thresholds, such as a number of taps or seconds to join, or maximum dropped-call rate, or are flagged as needing numbers.",
+        "The 200 to 2,000 visits per day growth is turned into a stated scale expectation, such as concurrent visits supported.",
+        "Criteria cover failures, such as an expired or reused link, camera or microphone permission denied, a dropped connection, or a doctor not arriving.",
+        "The answer names gaps, such as how long a link stays valid, identity check for the patient, consent, and interpreter scheduling, and asks or assumes.",
+        "Join, waiting room, video call and interpreter addition are separate stories small enough for a sprint with two devs.",
+        "Stories link back to the founder's statements, such as the text link, the waiting room, or the no-call-storage remark.",
+        "Each story has a short title, a role-goal-benefit sentence and three to eight criteria."
+      ],
+      "why_skill_matters": "A short product description with vague quality words, a volume range and several capabilities. It makes measurability, scale, failure cases, gaps and splitting matter."
+    },
+    {
+      "id": "user-story-writing-rules-5",
+      "title": "Teacher gradebook import from spreadsheet",
+      "target_section": "Usage",
+      "prompt": "Here's our requirements sheet for the gradebook import feature (pasted as rows):\n\nRow 1 | Teacher uploads a CSV of grades for a class | Must | Max 40 students per class\nRow 2 | Column mapping: teacher matches CSV columns to assignments | Must |\nRow 3 | Preview before saving, showing what will change | Must |\nRow 4 | Overwrite existing grades only if teacher confirms | Should | Highlight changed cells\nRow 5 | Import report listing rows that failed | Should |\nRow 6 | Teachers can undo the last import | Could | Within 24 hours\nRow 7 | Parents get notified when a grade changes | Won't (v1) |\nRow 8 | Whole-school import by the registrar | Could | Up to 1,200 students, must finish while the registrar waits\n\nPlease make stories from it. Use the priorities to decide what goes in the first release and tell me what you left out.",
+      "rubric": [
+        "Criteria cover bad input, such as a malformed CSV, a student not on the roster, a non-numeric grade, a duplicate row, or a file with more than 40 students.",
+        "Row 8's 1,200-student import is given a measurable time or volume expectation, or the answer flags that \"while the registrar waits\" needs a number.",
+        "Vague wording such as \"highlight changed cells\" or \"preview\" is turned into observable, checkable results, and \"must finish while the registrar waits\" gets a threshold or a question.",
+        "The answer points out missing details, such as accepted CSV format and encoding, grade scale, or what undo does to grades changed since, and states assumptions or asks.",
+        "Upload, column mapping, preview, overwrite confirmation, failure report and undo each get their own story rather than one big import story.",
+        "Stories cite the sheet row they come from, and the answer says that row 7 is left out of v1."
+      ],
+      "why_skill_matters": "A spreadsheet of prioritized rows with one scale-heavy row and some vague phrases. It makes edge cases, scale, measurability, gaps and splitting matter, with traceability to rows."
+    },
+    {
+      "id": "user-story-writing-rules-6",
+      "title": "Invoice approval with a hidden permission clause",
+      "target_section": "Core Concepts",
+      "prompt": "Our finance team wants an invoice approval flow in our procurement tool. Writing it up quickly. Here's the process doc excerpt:\n\n\"Invoices arrive by email and are captured into the tool by the AP clerk. The clerk assigns a cost center. The approver for that cost center gets a task and can approve or reject with a reason. Approved invoices are queued for the Friday payment run. Approvers see all invoices in their queue and can sort by amount or due date. Invoices over 10,000 EUR need a second approver from a different department, and nobody may approve an invoice they entered or one for their own cost center budget if they are also the requester. Approvers can delegate while on leave. Payment run files go to the bank over the existing banking connection.\"\n\nGive me a production-level set of stories from this.",
+      "rubric": [
+        "Criteria cover permission and boundary cases, such as someone trying to approve their own entry, an invoice of exactly 10,000 EUR, no eligible second approver, or a rejected invoice without a reason.",
+        "The answer flags unspecified points, such as the approval deadline before Friday, the delegate's own approval limits, duplicate invoices, and the currency handling, and states assumptions or asks.",
+        "Sorting by amount and sorting by due date are separate stories, and the queue display is not bundled with approve/reject.",
+        "Dependencies, such as second approval requiring first approval or delegation requiring the approver role, are stated, and no pair of stories needs each other to be delivered.",
+        "Criteria for the payment run describe the observable result, such as the invoice showing as paid or queued, and do not prescribe file formats or bank interfaces.",
+        "Stories trace to the sentence of the process excerpt they come from, including the segregation-of-duties clause."
+      ],
+      "why_skill_matters": "A process excerpt where one sentence hides a conflict-of-interest rule and a second-approver threshold, and which also lists sorting options and a bank connection. It makes permission edge cases, gaps, separate sorts, dependencies and implementation avoidance matter."
+    },
+    {
+      "id": "user-story-writing-rules-8",
+      "title": "Event ticket search and export for a festival",
+      "target_section": "Execution",
+      "prompt": "We run a music festival ticketing site. For the next sale (about 50,000 tickets, going live at noon, last year 20,000 people hit the site in the first minute) we want:\n\n1. Search events by artist name, with suggestions as you type.\n2. After purchase, buyers can export their tickets as a PDF and add them to their phone wallet.\n3. Email confirmation after purchase, plus a reminder 24 hours before the gate opens.\n4. Buyers can transfer a ticket to a friend by email.\n\nOur dev lead already said we'll use Elasticsearch for the search, Redis for the queue and SendGrid for email, so put that in the stories so the devs don't have to hunt for it. Also the search must be fast.",
+      "rubric": [
+        "Acceptance criteria describe what buyers see and get, and the named tools (Elasticsearch, Redis, SendGrid) are kept out of the criteria, perhaps noted separately as team context.",
+        "The 20,000 people in the first minute and 50,000 tickets are turned into measurable expectations, such as search response time and supported concurrent users at noon.",
+        "\"Fast\" search and \"as you type\" suggestions get a measurable threshold, such as a response time in milliseconds or seconds, or a question about the target.",
+        "Criteria cover failures, such as no artist matching, a failed email send, an invalid recipient email for transfer, or transferring an already-transferred ticket.",
+        "Search, suggestions, PDF export, wallet add, confirmation email, reminder and transfer are split into separate stories.",
+        "Stories refer to the numbered request item they come from."
+      ],
+      "why_skill_matters": "A request with a traffic spike, a vague \"fast\", and an explicit push to put tool names into the stories. It makes implementation avoidance, scale, measurability, edge cases and splitting matter."
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "format_version": 1,
+  "skill": "kiro-requirements-generation",
+  "batch": "rules-c1",
+  "generated_at": "2026-11-09T04:08:48.838Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "9f5aff5470dd2c69a64d6410c9d8bd53064353bf1d471b486bc39622ad6fe93d",
+  "scenarios": [
+    {
+      "id": "kiro-requirements-generation-rules-1",
+      "title": "Class waitlist with vague speed and load notes",
+      "target_section": "Step 6: Validate",
+      "prompt": "We're adding a waitlist to our fitness studio app and I need the requirements write-up for it before we start design. Approved stories below.\n\nStory 1: As a member, I want to join the waitlist for a class that is full, so that I get a spot if somebody cancels.\nGiven a class has no free spots, when I tap \"Join waitlist\", then I'm added to the waitlist.\n\nStory 2: As a member, I want to be notified when a spot opens up, so that I can claim it before someone else does.\nGiven I'm first on the waitlist, when another member cancels, then I get a push notification.\n\nNotes from the product call:\n- The schedule page should load fast, nobody likes waiting.\n- It needs to support many members at once, especially Monday 6pm when everyone books.\n- Notifications should go out quickly.\n\nPlease write it all up in full.",
+      "rubric": [
+        "The \"load fast\", \"many members\" and \"quickly\" notes become concrete figures, such as a page load time limit, a number of simultaneous members at the Monday 6pm peak, and a notification delivery time.",
+        "Figures that did not come from the stories or call notes are labelled as assumptions or proposals for the team to confirm, not presented as agreed facts.",
+        "Covers cases the stories skip, for example a member joining a waitlist they are already on, a class that gets cancelled, or a notified member who does not claim the spot in time.",
+        "Both member stories keep their original role, capability and benefit (joining the waitlist for a full class; claiming a freed spot before someone else) without being reworded into different goals.",
+        "Criteria for the waitlist and notification each pair a clear condition with a result a tester can observe, such as the member appearing on the list or a notification arriving.",
+        "The write-up starts with a short overview saying the waitlist feature is for studio members and that it comes from the two approved stories."
+      ],
+      "why_skill_matters": "The call notes contain three vague quality statements (fast, many, quickly) that must be turned into numbers and flagged as assumptions. The two stories only describe the happy path, so edge cases matter. The stories must also be preserved and the output needs an opening overview."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-2",
+      "title": "Ebook lending with only happy-path stories",
+      "target_section": "Step 4: Convert Each Story to EARS",
+      "prompt": "Public library here, we're building ebook lending for our patron app. Can you turn these into proper requirements for the dev team? Three stories, all signed off.\n\n1. As a patron, I want to borrow an ebook with my library card, so that I can read it on my phone without visiting a branch.\nGiven I'm logged in and a copy is available, when I press Borrow, then the book appears in my loans for 21 days.\n\n2. As a patron, I want to renew a loan, so that I can finish a book I haven't completed.\nGiven I have a loan, when I press Renew, then the due date moves 14 days later.\n\n3. As a patron, I want to place a hold on a book that is out, so that I get it when it's returned.\nGiven all copies are on loan, when I press Place hold, then I'm added to the hold queue.\n\nThat's all the stories we have for now. We license a fixed number of copies per title, so two people can end up wanting the last copy.",
+      "rubric": [
+        "Covers failure and boundary cases not in the stories, such as two patrons borrowing the last licensed copy at the same moment, a patron who is not logged in, or a card that has expired.",
+        "Addresses limits around renewal or holds, such as renewing when another patron has a hold, or placing a hold on a book already on loan to the same patron.",
+        "The borrow, renew and hold stories each end up as their own requirement, and none of the three is missing.",
+        "Each requirement keeps its story's patron wording: borrowing from the phone without a branch visit, finishing a book, getting a held title on return.",
+        "The 21-day loan, 14-day extension and hold queue entry are stated as checkable results, not general phrases like \"handle loans properly\"."
+      ],
+      "why_skill_matters": "Three stories describe only successful flows, and the user mentions a shared-copy scenario. A good answer adds failure, boundary and concurrency cases while mapping every story to a requirement and preserving the story text."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-3",
+      "title": "Delivery address check against a geocoding vendor",
+      "target_section": "Quality Gate",
+      "prompt": "Need requirements written up for the \"schedule a delivery\" part of our furniture store checkout. Here's what product gave me, copy-pasted from the ticket:\n\nStory A: As a customer, I want to enter my delivery address and see if we deliver there, so that I don't pay for something that can't be shipped.\nGiven I am on the delivery step, when I submit my address, then I see the available delivery days.\n\nStory B: As a customer, I want to pick a delivery day and time window, so that I can be home when the sofa arrives.\nGiven delivery days are displayed, when I choose a window, then it is reserved for me and shown on my order summary.\n\nStory C: As a dispatcher, I want to see the day's confirmed deliveries grouped by zone, so that I can plan routes.\nGiven deliveries are confirmed, when I open the dispatch screen, then I see them grouped by zone.\n\nDev notes (ignore if not useful): addresses get validated against GeoLocate's API, saved into the `delivery_addresses` Postgres table, and the confirmed slot is pushed onto a RabbitMQ queue for the courier sync. GeoLocate allows around 5 requests a second on our plan.",
+      "rubric": [
+        "The address-submission requirement states what happens when the address is invalid or incomplete, and what happens when the GeoLocate lookup fails, times out or is rate limited, with a customer-visible outcome.",
+        "Criteria do not name Postgres, the `delivery_addresses` table or RabbitMQ; the behaviour is expressed as what a customer or dispatcher can observe.",
+        "Stories A, B and C each produce one requirement, including the dispatcher grouping-by-zone story.",
+        "The window-selection requirement covers the case where the chosen time window is no longer available or is taken by another customer when the customer confirms.",
+        "Criteria give testable conditions and results, for example which message a customer sees for an undeliverable address, rather than just \"validate the address\"."
+      ],
+      "why_skill_matters": "The stories look straightforward, but the dev notes mention a third-party address lookup and internal technology choices. A careful answer adds failure handling for the lookup and bad input and keeps storage and queue details out of the criteria, while still mapping all three stories."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-4",
+      "title": "Invoice export picked out of a two-feature paste",
+      "target_section": "Step 2: Confirm Feature Scope",
+      "prompt": "I pasted our whole sprint's stories below but I only need the requirements write-up for Invoice Export right now. Calendar sync is a different team's thing and will get written up later. Also tell me where the file should live, we haven't picked a path.\n\nS1 (Invoice Export): As a bookkeeper, I want to export invoices for a date range as CSV, so that I can import them into our accounting package.\nGiven I'm on the invoices page, when I choose a range and press Export, then a CSV downloads.\n\nS2 (Calendar Sync): As a project manager, I want my project deadlines to appear in my Google Calendar, so that I don't miss them.\nGiven I've connected my calendar, when a deadline is created, then an event is added.\n\nS3 (Invoice Export): As a bookkeeper, I want to export invoices as PDFs in one zip file, so that I can email them to auditors.\nGiven I've selected invoices, when I press Download PDFs, then a zip is created.\n\nS4 (Calendar Sync): As a project manager, I want to disconnect my calendar, so that the app stops writing to it.\nGiven my calendar is connected, when I press Disconnect, then syncing stops.\n\nS5 (Invoice Export): As an account owner, I want a monthly export emailed automatically, so that I don't have to remember to run it.\nGiven monthly export is turned on, then the export is emailed on the 1st.",
+      "rubric": [
+        "The calendar stories S2 and S4 are not turned into requirements for the invoice write-up; they are left out or only noted as belonging to a separate one.",
+        "S1, S3 and S5 each become their own requirement, and all three are present.",
+        "Adds cases the stories skip, such as a date range with no invoices, a very large range or selection, or a failed email delivery for the monthly export.",
+        "Export criteria state checkable results, such as the file type delivered or the day of the month the email is sent.",
+        "The proposed location is a folder whose name is lowercase and hyphen-separated and derived from the feature, such as invoice-export, with the file inside it."
+      ],
+      "why_skill_matters": "The user mixes five stories from two features and asks for one. A good answer filters to Invoice Export, covers all three of its stories, adds edge cases, and picks a sensible folder name since none was given."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-5",
+      "title": "Payroll reports from a rambling founder email",
+      "target_section": "Step 6: Validate",
+      "prompt": "Forwarding an email from our founder, Dana, about the payroll reports module. Can you turn it into proper requirements for the team? The two stories in it are approved.\n\n\"Hi all, so the thing we keep hearing from our small-business customers is that month-end is painful. Story one is basically: As an accountant, I want to generate a payroll summary report for a pay period, so that I can reconcile it against the bank statement. When I pick a pay period and hit Generate, they get a report with each employee's gross pay, deductions and net pay. Story two: As a business owner, I want to download that report as PDF or spreadsheet, so that I can share it with my advisor. If I pick a format and click Download, it should download in that format. Oh and a few things, I don't want to forget them: reports should come out in a reasonable time, we need to handle our bigger clients too since a few of them have lots of staff, and obviously it all needs to be secure because it's salary data. Also only people with the right access should see it. Thanks! Dana\"",
+      "rubric": [
+        "\"Reasonable time\" and \"bigger clients with lots of staff\" are replaced with specific figures, such as a generation time limit and an employee count the report must handle.",
+        "Those figures, and the meaning of \"secure\" for salary data, are marked as assumptions to confirm with Dana because the email gave no numbers.",
+        "Covers cases beyond the happy path, such as a pay period with no payroll records, a user without access trying to open the report, or a failed generation of a large report.",
+        "The accountant story (reconcile against the bank statement) and the owner story (share with an advisor) keep their roles and benefits.",
+        "The access rule and the report contents (gross pay, deductions, net pay per employee) are stated so a tester can check them."
+      ],
+      "why_skill_matters": "The requirements are buried in prose, with vague qualities (reasonable time, bigger clients, secure) mixed in near the end. A careful answer finds them, makes them measurable, flags the invented figures, adds failure and access cases, and keeps both stories."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-6",
+      "title": "Lab equipment reservations",
+      "target_section": "Step 4: Convert Each Story to EARS",
+      "prompt": "University imaging lab. We're replacing the paper sign-up sheet for the confocal microscope and the plate reader with a booking tool. Please write requirements for the dev contractor from these approved stories:\n\n(1) As a researcher, I want to reserve an instrument for a time slot, so that nobody else is using it during my experiment.\nGiven the slot is free, when I submit a reservation, then it is confirmed.\n\n(2) As a researcher, I want to edit or cancel my reservation, so that other people can use the slot if my plans change.\nGiven I own a reservation, when I cancel it, then the slot becomes free.\n\n(3) As a lab manager, I want to block out slots for maintenance, so that nobody books an instrument while it's being serviced.\nGiven I'm a lab manager, when I create a maintenance block, then the slots are unavailable for booking.\n\nFor context, people often edit reservations while a colleague is booking the same instrument, and some experiments run overnight.",
+      "rubric": [
+        "Includes simultaneous-change cases, such as two researchers submitting the same slot at once, or a reservation being edited while another is being created for the same instrument.",
+        "Includes boundary or conflict cases, such as a reservation spanning midnight, a booking overlapping a maintenance block, or a block created over an existing reservation.",
+        "All three stories (reserve, edit/cancel, maintenance block) end up in requirements, with the manager story kept separate from the researcher stories.",
+        "The researcher and lab manager roles and their stated benefits (no one else using the instrument; slot freed for others; no booking during service) are preserved.",
+        "Each criterion names the condition and a visible result, such as the slot status or the message a researcher sees when a slot is taken."
+      ],
+      "why_skill_matters": "The stories show only success. The user hints at concurrent edits and overnight runs, so the answer should add concurrency and boundary cases while keeping every story intact and separate."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-7",
+      "title": "Smart thermostat schedules with tech asides",
+      "target_section": "Acceptance Criteria",
+      "prompt": "hey, can you write up the requirements for the weekly schedule feature on our smart thermostat? we're a tiny hardware startup so keep it practical. stories:\n\n- As a homeowner, I want to set a heating schedule per weekday, so that the house is warm when I wake up and I don't waste energy while I'm out.\n  Given I'm in the schedule screen, when I save a schedule, then the thermostat follows it.\n- As a homeowner, I want the thermostat to keep working when the wifi drops, so that I'm not cold because of my router.\n  Given the wifi is down, then the schedule keeps running.\n- As a homeowner, I want schedule changes from my phone to show up on the device quickly, so that I don't stand there waiting.\n  Given the phone app is connected, when I change a schedule, then the device updates.\n\nsome context from the firmware guys: schedules are stored in SQLite on the device and synced over MQTT with the cloud. the display should respond instantly and the device must run for a long time offline without issues.",
+      "rubric": [
+        "Criteria do not mention SQLite or MQTT; storage and sync are described as visible behaviour such as the schedule persisting or the device showing the new schedule.",
+        "\"Quickly\", \"instantly\" and \"a long time offline\" become numbers, for example a sync delay in seconds, a display response time and a number of days offline.",
+        "Numbers not given by the user or the firmware team are flagged as proposals to confirm.",
+        "Adds cases the stories skip, such as overlapping or conflicting schedule entries, the wifi returning with a changed schedule waiting in the cloud, or a power loss while saving.",
+        "The offline requirement states what the thermostat does and what the homeowner can observe, so it is checkable."
+      ],
+      "why_skill_matters": "The firmware note mixes in implementation technologies and vague qualities (instantly, long time, quickly). The answer should keep technology out of the criteria, quantify the vague terms, flag guesses, and add edge cases."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-8",
+      "title": "Ticket transfer with email provider, seat editor set aside",
+      "target_section": "Step 2: Confirm Feature Scope",
+      "prompt": "We run an events ticketing site. I want the requirements write-up for ticket transfers only. The seat map editor stories are for next quarter, so leave them for their own write-up. Everything below is approved.\n\nTransfer 1: As a ticket holder, I want to send a ticket to a friend by entering their email address, so that they can attend in my place.\nGiven I own a valid ticket, when I enter an email and confirm, then my friend gets an email with a link to claim it.\n\nTransfer 2: As a recipient, I want to claim a transferred ticket through the emailed link, so that the ticket is in my account.\nGiven I received the link, when I open it and log in, then the ticket is added to my account.\n\nTransfer 3: As a ticket holder, I want to cancel a transfer that hasn't been claimed, so that I can fix a wrong email address.\nGiven a transfer is pending, when I cancel it, then the ticket returns to me.\n\nSeat map 1: As an organiser, I want to drag seats onto a venue floor plan, so that I can build the layout quickly.\n\nSeat map 2: As an organiser, I want to mark seats as accessible, so that buyers can filter for them.\n\nEmails go out through our email provider (Mailroute). Sometimes it is slow or down.",
+      "rubric": [
+        "The two organiser seat map stories do not become requirements in this write-up; they are left out or noted as belonging to a separate one.",
+        "The transfer requirement states what happens when the email address is invalid and when Mailroute fails or is slow, for example the holder is told, the ticket stays with the holder, and a retry occurs.",
+        "The claim requirement states what happens with an expired, already claimed or cancelled link.",
+        "Transfer 1, 2 and 3 each yield one requirement, and all three appear.",
+        "Criteria give a checkable result, such as a specific message or ticket ownership state, rather than \"handle errors\"."
+      ],
+      "why_skill_matters": "Stories for two features are pasted and one is requested. The transfer flow involves user-typed emails and an unreliable outside provider, so error handling needs explicit coverage, and every transfer story needs a requirement."
+    }
+  ]
+}

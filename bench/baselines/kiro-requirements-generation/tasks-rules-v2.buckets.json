@@ -1,0 +1,301 @@
+{
+  "format_version": 1,
+  "skill": "kiro-requirements-generation",
+  "batch": "rules-v2",
+  "rules": {
+    "kiro-requirements-generation-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-requirements-generation-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-requirements-generation-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-requirements-generation-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-requirements-generation-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-requirements-generation-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-requirements-generation-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "kiro-requirements-generation-r08": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "kiro-requirements-generation-r09": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    },
+    "kiro-requirements-generation-r10": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    },
+    "kiro-requirements-generation-r11": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    },
+    "kiro-requirements-generation-r12": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "kiro-requirements-generation-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r05"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "kiro-requirements-generation-r08"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "kiro-requirements-generation-r12"
+      }
+    },
+    "kiro-requirements-generation-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r04"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-requirements-generation-r08"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "kiro-requirements-generation-r11"
+      }
+    },
+    "kiro-requirements-generation-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r02"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r02"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-requirements-generation-r08"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "kiro-requirements-generation-r11"
+      }
+    },
+    "kiro-requirements-generation-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-requirements-generation-r08"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "kiro-requirements-generation-r10"
+      }
+    },
+    "kiro-requirements-generation-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r03"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "kiro-requirements-generation-r08"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "kiro-requirements-generation-r09"
+      }
+    },
+    "kiro-requirements-generation-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r02"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-requirements-generation-r08"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "kiro-requirements-generation-r12"
+      }
+    },
+    "kiro-requirements-generation-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r03"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r05"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-requirements-generation-r08"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "kiro-requirements-generation-r09"
+      }
+    },
+    "kiro-requirements-generation-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "kiro-requirements-generation-r05"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "kiro-requirements-generation-r08"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "kiro-requirements-generation-r10"
+      }
+    }
+  }
+}

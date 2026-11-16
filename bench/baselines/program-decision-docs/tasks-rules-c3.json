@@ -1,0 +1,103 @@
+{
+  "format_version": 1,
+  "skill": "program-decision-docs",
+  "batch": "rules-c3",
+  "generated_at": "2026-11-10T09:23:46.669Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "7e219968969e3c3439013404a49135d498d4b97e4f26ddba6f779b59d308cde1",
+  "scenarios": [
+    {
+      "id": "program-decision-docs-rules-1",
+      "title": "Hospital lab LIMS vendor choice with a licence deadline",
+      "target_section": "Decision Context",
+      "prompt": "I run the clinical lab modernization program at a regional hospital group (6 sites). Our current lab information system, LabCore 7, goes out of vendor support on 31 March 2027. The vendor has said that after that date they won't ship security patches, and our compliance officer says running unpatched systems holding patient results would breach our accreditation terms at the next audit in May 2027.\n\nTwo real candidates:\n1. Upgrade to LabCore 9 (same vendor). Roughly $1.4M, 7 months, minimal retraining, but still a monolith and the vendor roadmap is vague.\n2. Move to a cloud LIMS from a new vendor (Helix LIMS). Roughly $2.6M over 12 months, better integrations with the EHR, but our 3 lab informatics staff have never run it and cutover risk is real.\n\nThe CFO has capped capital spend for the lab at $2.0M this fiscal year; opex is more flexible. Contract signature with either vendor needs to happen by 15 January to hold pricing. Dr. Amara Osei (CMIO) will decide. Lab director Tomas Reyes and IT security are consulted; finance and the site managers just need to be told.\n\nPlease write this up as a decision document for Dr. Osei. I haven't decided anything yet, I want your recommendation.",
+      "rubric": [
+        "Includes an explicit option of staying on LabCore 7 unchanged past 31 March 2027, with its own advantages, drawbacks and consequences (e.g. unpatched systems, May 2027 audit exposure), used as the comparison baseline.",
+        "States that if no decision is made by 15 January pricing lapses and the system falls out of support on 31 March 2027, leading to accreditation breach at the May audit, and cites the $2.0M capital cap as a constraint.",
+        "LabCore 9 and Helix LIMS each have a description, pros, cons, a rough size for effort and a risk rating, using the facts given (cost, months, retraining, cutover risk).",
+        "Identifies Dr. Osei as decision maker, Tomas Reyes and IT security as consulted, finance and site managers as informed, and names or flags who drives the document.",
+        "Analyses between two and five options in total, not a single option and not an extended list.",
+        "Does not fabricate a made decision: the decision record is left pending/unfilled or clearly marked as a recommendation, with no invented decision date or dissent.",
+        "Opens with a title and a status marking it as a draft or under review rather than decided."
+      ],
+      "why_skill_matters": "A not-yet-decided hospital decision with a hard deadline, constraint and named roles. Makes baseline option, default outcome, option attributes, DACI roles and option count matter; the guard checks the record isn't invented."
+    },
+    {
+      "id": "program-decision-docs-rules-2",
+      "title": "Scoring three CRM routes with given weights",
+      "target_section": "Weighted Evaluation Matrix",
+      "prompt": "Need the decision doc for our sales ops steering group on CRM. We've been through this for weeks so here's what we have, just put it together properly.\n\nOptions: (A) stay on the in-house Access/Excel-based tracker, (B) buy Salesforce, (C) buy HubSpot.\n\nCriteria and my proposed weights: total cost 30, time to go live 20, reporting quality 25, integration with billing 15, admin effort 15.\n\nScores I gave (1 to 5):\n- cost: A 5, B 2, C 3\n- time to live: A 5, B 2, C 4\n- reporting: A 1, B 5, C 4\n- billing integration: A 1, B 4, C 3\n- admin effort: A 2, B 2, C 4\n\nDecision maker is VP Sales Dana Whitfield. Sales ops lead Piotr is running it. Finance is consulted, regional sales managers informed. We want to decide at the 2 December steering meeting; contract renewal for the old tracker's hosting runs out 31 January.\n\nI think Salesforce is the obvious choice because everyone knows it, so recommend that.",
+      "rubric": [
+        "Notices that the proposed weights (30, 20, 25, 15, 15) add up to 105, not the full total, and corrects them or flags the problem rather than silently using them.",
+        "Shows weighted totals per option computed from the supplied 1-5 scores so the ranking can be checked, with arithmetic consistent with whatever weights are used.",
+        "Does not simply recommend Salesforce: if the totals favour HubSpot (or another option), either recommends that option or explicitly states the overriding factors for departing from the scores.",
+        "Treats the current Access/Excel tracker as an analysed baseline option and mentions the hosting renewal expiring 31 January as part of what happens by default.",
+        "Names Dana Whitfield as decider, Piotr as driving the process, finance as consulted and regional managers as informed.",
+        "Does not record a final decision, date or dissent as already made; the decision is pending the 2 December meeting."
+      ],
+      "why_skill_matters": "Weights sum to 105 and the user's preferred option likely loses on the scores. With weights as given: A 320, B 315, C 375 (before rescaling). HubSpot is highest. Makes weights, totals and recommendation consistency matter."
+    },
+    {
+      "id": "program-decision-docs-rules-4",
+      "title": "Too many options for a warehouse robotics pilot",
+      "target_section": "Options Analysis",
+      "prompt": "Our logistics program has to pick how to handle peak-season picking at the Rotterdam DC from next August. Our ops team brainstormed this list and I need to give the COO (Sven Aalders) a decision doc, and he hates long documents.\n\nIdeas on the whiteboard:\n1. Hire 120 seasonal pickers like every year\n2. Lease 40 autonomous mobile robots (AMRs) from a vendor, ~€900k for the season\n3. Buy 40 AMRs outright, ~€3.1M\n4. Extend shifts to 24/7 with existing staff plus overtime\n5. Outsource peak overflow to a 3PL in Venlo\n6. Install a goods-to-person system (~€6M, 18 months, won't be ready for next August)\n7. Pilot drone inventory scanning\n8. Ask customers to accept slower delivery in peak\n\nLast peak we missed our 98% on-time target by 6 points and paid ~€700k in SLA penalties. Budget approved so far for peak labour/automation: €1.5M. Vendor needs a signed lease by 28 February for August delivery. Warehouse manager Ingrid de Vries and HR are consulted, the CFO is informed.\n\nGive me the doc with a recommendation.",
+      "rubric": [
+        "Narrows the eight brainstormed ideas to at most five analysed options, and explains briefly which were dropped (e.g. the goods-to-person system cannot be ready by August).",
+        "Includes a do-nothing/repeat-last-year style baseline option whose consequence (missing 98% target, ~€700k penalties) is spelled out.",
+        "States the 28 February lease deadline, the €1.5M budget and the default outcome if nothing is chosen.",
+        "Every retained option has description, pros, cons, an effort size and a risk rating, grounded in the stated costs.",
+        "Scores the retained options on stated criteria with a small numeric scale and shows weighted totals leading to the recommendation.",
+        "Leaves the decision record pending for Sven Aalders rather than stating he already decided."
+      ],
+      "why_skill_matters": "Eight ideas must be narrowed to a manageable set, with a deadline and budget cap. Makes option count, baseline, default outcome, option attributes and scoring matter."
+    },
+    {
+      "id": "program-decision-docs-rules-5",
+      "title": "Core banking vendor renewal with expiring assumptions",
+      "target_section": "Decision Record",
+      "prompt": "Please turn the following into the decision write-up for the core banking program file. It's already settled, so this is for the record. I'm pasting the email thread summary.\n\nThread summary (Nov 2026):\n- Program sponsor Ghazal Haddad (CTO) approved on 4 Nov to stay with the incumbent core vendor on a 3-year renewal instead of starting the replacement RFP now. Alternatives discussed: (i) 3-year renewal with incumbent, (ii) start RFP now for replacement go-live 2029, (iii) 1-year renewal bridging while we run a discovery.\n- Reasons: RFP team capacity is committed to the payments-hub program until Q3 2027; the renewal price is locked at a 4% uplift only if signed by 20 Dec.\n- Assumptions: payments-hub finishes by Q3 2027; incumbent keeps its API roadmap; regulator doesn't change the operational resilience rules (a consultation is open until March 2027).\n- Risk lead Ben Okafor wasn't convinced, saying a 3-year lock-in limits leverage. Noted by Ghazal.\n- Compliance (Yuki) was consulted. Board secretary to be informed.\n- The 3-year renewal costs about €5.4M total; the 1-year bridge ~€1.9M; the RFP route ~€2.2M for the first year in project costs on top of the renewal anyway.\n\nWrite it up as a formal decision doc.",
+      "rubric": [
+        "Turns the listed assumptions (payments-hub finish Q3 2027, incumbent API roadmap, regulator consultation closing March 2027) into reconsideration triggers and sets a firm review date.",
+        "Identifies Ghazal Haddad as approver, Yuki (compliance) as consulted, the board secretary as informed, and indicates who drives the document.",
+        "Analyses a do-nothing/default alternative (e.g. letting the contract lapse or not renewing by 20 Dec) or explicitly frames one of the options as the baseline, with its consequences.",
+        "The three alternatives each have pros, cons, effort size and risk rating, using the euro costs given.",
+        "Records Ghazal Haddad, 4 November 2026, the 3-year renewal and rationale, and Ben Okafor's dissent about lock-in.",
+        "Titled and shows the status as decided."
+      ],
+      "why_skill_matters": "Decision already made; assumptions sit in the thread and no review date was given, and a no-action baseline is not among the three alternatives named."
+    },
+    {
+      "id": "program-decision-docs-rules-6",
+      "title": "Scoring support-desk outsourcing, favourite loses",
+      "target_section": "Weighted Evaluation Matrix",
+      "prompt": "Hi. IT service program, need a decision doc on our L1 support desk. Options we've scoped:\n- Keep the in-house desk as is (12 FTE, €780k/yr, 71% first-contact resolution)\n- Outsource to a nearshore provider in Lisbon (€610k/yr, they promise 78% FCR, 4 months transition)\n- Hybrid: keep 5 FTE in-house for VIP and security tickets, outsource the rest (€690k/yr, 6 months)\n\nWeights we agreed in the workshop: cost 35%, service quality 30%, transition risk 20%, staff impact 15%.\n\nMy scores (1-5):\ncost: in-house 2, outsource 5, hybrid 4\nquality: in-house 3, outsource 3, hybrid 4\ntransition risk: in-house 5, outsource 2, hybrid 3\nstaff impact: in-house 5, outsource 1, hybrid 3\n\nHonestly I feel the hybrid is the sensible one but let the numbers speak. Decision is for the IT director, Callum Reeve, at the 15 Dec meeting; HR consulted; the service-desk team lead informed. Current outsourcing quote is valid until 20 January.",
+      "rubric": [
+        "Calculates a weighted total for each of the three options from the given weights and scores and shows them (in-house 3.35, outsource 3.20, hybrid 3.65).",
+        "Recommendation matches the highest weighted score, or if it deviates, states explicit overriding factors; hybrid should come out on top and be recommended consistently.",
+        "Weights of 35, 30, 20 and 15 are shown as summing to the whole and used consistently in the arithmetic.",
+        "Treats keeping the current in-house desk as the baseline option and evaluates it against the others.",
+        "Identifies Callum Reeve as decider, HR consulted, service-desk team lead informed, and a driver for the process.",
+        "Leaves the decision record undecided pending 15 December, with no invented date or dissent."
+      ],
+      "why_skill_matters": "Fully specified weights and scores that produce a clear winner; checks arithmetic, consistency, baseline and roles. Control-like."
+    },
+    {
+      "id": "program-decision-docs-rules-7",
+      "title": "Quick decision on legacy ERP interface sunset",
+      "target_section": "Options Analysis",
+      "prompt": "Short one. We're sunsetting a SOAP interface between the old ERP and the supplier portal. 40 suppliers still use it, 9 of them heavily. The ERP team says the SOAP endpoint will be switched off when the ERP v4 upgrade completes on 30 June 2027, with or without a replacement.\n\nI need the program decision doc about what to do. Rough ideas:\n- Build a REST replacement: ~3 months, 2 devs, low technical risk but supplier onboarding is messy\n- Buy an integration platform subscription (~$60k/yr) that exposes both\n- Force suppliers to move to the web portal manual upload\n\nProgram manager Ruth owns this; ERP director Kwame Adjei signs off. Supplier management is consulted, procurement informed. No budget figure agreed yet, someone said maybe up to $120k. Please give me the doc and a recommendation, and keep it reasonably short.",
+      "rubric": [
+        "Includes an explicit leave-things-alone option (do not replace the interface, let it switch off on 30 June 2027) with its impact on the 40 suppliers, particularly the 9 heavy users.",
+        "States that the SOAP endpoint goes off at the ERP v4 upgrade on 30 June 2027 whether or not there is a replacement, and flags the unagreed budget (up to $120k) as a constraint.",
+        "Each option has pros, cons, an effort size and a risk rating; the REST option reflects the 3 months/2 devs/low technical risk and the integration platform reflects $60k/yr.",
+        "Names Kwame Adjei as the approver, Ruth as driver, supplier management consulted and procurement informed.",
+        "Keeps the number of analysed options to no more than five and at least two.",
+        "Does not present Kwame Adjei as having already decided; the decision record is pending or marked as a recommendation, with no invented date or dissent.",
+        "Opens with a title and a draft or under-review status."
+      ],
+      "why_skill_matters": "Short informal request with three listed options that exclude a baseline, plus a forced default from the upgrade. Tests baseline, default outcome, attributes, roles, count; the guard checks nothing is invented as decided."
+    }
+  ]
+}

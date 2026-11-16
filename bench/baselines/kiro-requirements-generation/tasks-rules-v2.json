@@ -1,0 +1,137 @@
+{
+  "format_version": 1,
+  "skill": "kiro-requirements-generation",
+  "batch": "rules-v2",
+  "generated_at": "2026-11-08T09:30:00.000Z",
+  "model": "hand-authored-outcome",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "9f5aff5470dd2c69a64d6410c9d8bd53064353bf1d471b486bc39622ad6fe93d",
+  "scenarios": [
+    {
+      "id": "kiro-requirements-generation-rules-1",
+      "title": "Requirements for password reset by email",
+      "target_section": "Introduction",
+      "prompt": "Here are the four user stories we approved for account recovery. Please write the requirements for them so the design team can take over. Emails are sent through an outside email provider.\n\nStory 1\nAs a registered user who forgot my password, I want to request a reset link by email, so that I can get back into my account without calling support.\nDone when: I enter my email address on the sign-in page, an email with a reset link reaches me if there is an account for that address, and the link can be used one time.\n\nStory 2\nAs a registered user, I want the reset link to stop working after a while, so that an old email in my inbox cannot be used by someone else.\nDone when: a link that is too old is refused, and so is a link that was already used.\n\nStory 3\nAs a registered user, I want to choose a new password that is strong, so that my account stays safe.\nDone when: the new password is checked against our password rules, I type it twice, and I am signed in once it is saved.\n\nStory 4\nAs a support agent, I want to see when a reset was requested for a customer, so that I can tell whether a customer who says they never got an email really asked for one.\nDone when: the customer record shows the latest requests with date and time.",
+      "rubric": [
+        "Gives \"after a while\" a measurable lifetime for the reset link and marks that figure as an assumption to confirm, because the stories did not supply it.",
+        "Says what happens and what the user is shown when the entered email address has no account, and when the email provider fails to send.",
+        "Each requirement keeps its story's role, wish and benefit, for example the support agent's reason about a customer who says they never got an email.",
+        "There is one requirement for each of the four stories; the support agent story is neither dropped nor merged into the others.",
+        "Each criterion gives a tester something to observe, not a bare quality such as \"strong\", \"safe\" or \"easy\".",
+        "Opens with a few sentences on what the feature is for and who mainly uses it, and says it came from the four stories."
+      ],
+      "why_skill_matters": "Four short stories with vague words (\"after a while\", \"strong\", \"latest requests\") and an outside email provider. The requirements have to turn the vague words into numbers and say which are assumptions (r01), say what happens for an unknown address and a send failure (r03), keep each story's role, wish and benefit (r04) and keep one requirement per story with none dropped (r05)."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-2",
+      "title": "Requirements for claim attachments with a virus scan",
+      "target_section": "Feature Naming",
+      "prompt": "We're adding attachments to claims in the policyholder portal. The stories below are approved. Please write the requirements for the design team. The feature is called claim attachments.\n\n1. As a policyholder, I want to attach photos and PDF files to my claim, so that the adjuster can see the damage without asking me to send emails.\nDone when: I choose one or more files, they upload, and they appear on my claim.\n\n2. As a policyholder, I want a clear sign that each file arrived, so that I don't upload it a second time.\nDone when: every file shows as received or as failed.\n\n3. As an adjuster, I want to open an attachment only after it has been checked for viruses, so that I don't put malware on my machine.\nDone when: the upload function stores a new file in a quarantine bucket, calls the outside virus scanning service with it, and moves it to the claims bucket only when the scanner says it is clean. The adjuster's screen reads only from the claims bucket.\n\n4. As a claims manager, I want to see how many files each claim has, so that I can spot claims with missing evidence.\nDone when: the claim list has a files column.\n\nThe scanner is run by a vendor and we call it over the internet. Policyholders use phones and laptops.",
+      "rubric": [
+        "Says what the policyholder sees when a file is of a type that is not accepted or is too large.",
+        "Says what happens to the file, and what the policyholder and adjuster see, when the virus scanning service is unreachable or slow.",
+        "Adds at least two cases the stories do not mention, such as choosing no file, two files with the same name, or a claim with no files.",
+        "No criterion names a bucket, a function or other storage or code; the check-before-open rule is stated as what the adjuster can and cannot open.",
+        "Each requirement keeps its story's role, wish and benefit, for example the adjuster's reason about malware.",
+        "Each criterion pairs a condition with an observable result, so \"a clear sign\" becomes something that is shown.",
+        "Says the requirements are saved in a per-feature folder whose name is short, lowercase and hyphen-separated, derived from \"claim attachments\"."
+      ],
+      "why_skill_matters": "A feature that takes uploads from users and depends on an outside scanner, with a story written partly as a build recipe (quarantine bucket, upload function). The requirements have to say what happens for a bad file and for a scanner failure (r03), add cases the stories leave out (r02), state the check-before-open rule as behaviour and not as buckets (r07) and keep each story's wording (r04)."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-3",
+      "title": "Requirements for appointment booking from a mixed backlog",
+      "target_section": "Step 2: Confirm Feature Scope",
+      "prompt": "This is the current backlog for the clinic app. Every story on it is approved. I need the requirements for appointment booking; the design team starts on that this week.\n\nB1 [Booking] As a patient, I want to see the free appointment slots for a doctor, so that I can pick a time that suits me.\nDone when: I choose a doctor and a date and I see the free slots.\n\nB2 [Booking] As a patient, I want to book a slot, so that the time is kept for me.\nDone when: I confirm a slot and I get a confirmation on screen and by email.\n\nB3 [Booking] As a patient, I want to cancel or move my appointment, so that the clinic can offer my slot to someone else.\nDone when: I can cancel or move it up to the day before.\n\nB4 [Booking] As a receptionist, I want to book an appointment for a patient who phones in, so that patients without the app can still use the clinic.\nDone when: I search for the patient and book a slot for them.\n\nB5 [Reminders] As a patient, I want a text message the day before my appointment, so that I do not forget it.\nDone when: the text goes out the day before.\n\nB6 [Payments] As a patient, I want to pay the consultation fee online, so that I do not need to pay at the desk.\nDone when: I pay by card and receive a receipt.\n\nB7 [Doctor view] As a doctor, I want to see my day's appointments in one list, so that I can prepare.\nDone when: the list shows time and patient name.",
+      "rubric": [
+        "The reminder, payment and doctor view stories (B5, B6, B7) do not become requirements; they are left out or noted as belonging to separate documents.",
+        "The four booking stories (B1 to B4) each end up in a requirement, and each requirement comes from one story.",
+        "Each requirement keeps its story's role, wish and benefit, for example the receptionist's reason about patients without the app.",
+        "Covers two patients trying to book the same slot at the same time, with a stated outcome for each.",
+        "Covers a doctor and date with no free slots, and an attempt to cancel after the cut-off, with what the patient sees.",
+        "Each criterion pairs a condition with an observable result.",
+        "Says the requirements are saved in a per-feature folder whose name is short, lowercase and hyphen-separated, derived from \"appointment booking\"."
+      ],
+      "why_skill_matters": "A backlog of seven stories from four areas where only four belong to the feature, one of them (the receptionist) with a different role. The requirements have to leave the other areas out (r06), cover all four booking stories one to one (r05) with their wording (r04), and add the collision and empty cases the stories leave out (r02)."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-4",
+      "title": "Requirements for an order status API from stories with build notes",
+      "target_section": "Step 4: Convert Each Story to EARS",
+      "prompt": "Partner developers will use a new order status API. Our product manager wrote the stories below and engineering added technical notes under each. Please turn them into the requirements for the design team.\n\n1. As a partner developer, I want to look up an order's status by its ID, so that I can tell my customers where their order is.\nDone when: GET /v1/orders/{id} returns the status from the Postgres table orders_v2, with the result cached in Redis, and the answer comes back fast.\n\n2. As a partner developer, I want to list my orders for a date range, so that I can reconcile my day.\nDone when: the query runs on the partner_id index of orders_v2 and returns many orders per page.\n\n3. As a partner developer, I want to be told when one of my orders changes status, so that I do not have to keep asking.\nDone when: a worker reads the order-status-changed Kafka topic and posts the change to the URL I registered.\n\n4. As a partner admin, I want my API key to be secure, so that nobody else can read my orders.\nDone when: keys are stored hashed with bcrypt and are sent in the X-Api-Key header on every request.",
+      "rubric": [
+        "No criterion names a database, cache, message topic or hashing method; each describes what a partner can observe or a tester can check.",
+        "Replaces \"fast\" in story 1 and \"many orders per page\" in story 2 with measurable values, such as a response time and a page size.",
+        "Marks the values it introduced as assumptions to confirm, because the stories did not give them.",
+        "There are four requirements, one per story, and none is dropped or merged.",
+        "Says what the worker does when the partner's registered URL does not answer or refuses the change.",
+        "Each criterion pairs a condition with an observable result, so \"secure\" becomes something that can be checked.",
+        "Each criterion follows one shape: an optional leading condition, then the required response."
+      ],
+      "why_skill_matters": "Stories whose \"done when\" lines are build recipes (a Postgres table, Redis, a Kafka topic, bcrypt) and which use vague words (\"fast\", \"many\", \"secure\"). The requirements have to describe what a partner can see and not the build (r07), put numbers on the vague words (r01) and mark them as assumptions, keep one requirement per story (r05) and say what happens when the partner's URL fails (r03)."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-5",
+      "title": "Requirements for message search with a stray story",
+      "target_section": "Step 6: Validate",
+      "prompt": "I need the requirements for message search in our team chat app. These are the stories we agreed in planning. Please write the requirements for the design team.\n\nS1 As a team member, I want to search past messages by keyword, so that I can find what was decided.\nDone when: results appear fast and the most relevant come first.\n\nS2 As a team member, I want to filter results by channel and by person, so that I can narrow down the many results I get.\nDone when: both filters can be used together.\n\nS3 As a team admin, I want search to respect private channels, so that confidential conversations stay secure.\nDone when: a member only finds messages from channels they belong to.\n\nS4 As a team member, I want to be notified quickly when someone mentions me, so that I can reply in time.\nDone when: a mention produces a notification on my phone.",
+      "rubric": [
+        "Replaces \"fast\" in S1 and \"many results\" in S2 with measurable values, such as a response time and a result count.",
+        "Marks every figure it chose as an assumption to confirm, because the stories supplied none.",
+        "The mention notification story (S4) does not become a requirement of the search; it is left out or noted as belonging to a separate document.",
+        "Says what the user sees when the search text is empty or too long.",
+        "Each criterion pairs a condition with an observable result, so \"respect private channels\" becomes something that can be checked.",
+        "Each criterion states the required behaviour as a firm obligation using the word \"shall\"."
+      ],
+      "why_skill_matters": "Three of the four stories are about search and one is about notifications; all four use vague words (\"fast\", \"many\", \"secure\", \"quickly\"). The requirements have to leave the notification story out (r06), turn the vague words into figures and mark the figures as assumptions to confirm (r01), and say what happens for an empty or oversized search text (r03)."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-6",
+      "title": "Requirements for shared shopping lists from closely related stories",
+      "target_section": "Format Rules",
+      "prompt": "Please write the requirements for shared shopping lists in our grocery app. The first five stories are approved for this feature. The sixth came from the recipe work and was discussed in the same meeting.\n\n1. As a shopper, I want to add an item to my list, so that I remember to buy it.\nDone when: I type a name and it appears at the bottom of the list.\n\n2. As a shopper, I want to change the name or quantity of an item, so that the list stays correct.\nDone when: I edit the item and the change is saved.\n\n3. As a shopper, I want to remove an item, so that the list does not fill up with things I no longer need.\nDone when: I delete the item and it is gone.\n\n4. As a family member on a shared list, I want to tick off an item when I have bought it, so that nobody else buys it twice.\nDone when: a ticked item shows as bought for everyone on the list.\n\n5. As the owner of a list, I want to invite family members by email, so that we can shop from the same list.\nDone when: they get an invitation, accept it and see the list.\n\n6. As a shopper, I want recipe ideas based on what is on my list, so that I can plan meals.\nDone when: the list screen shows three recipes that use items from the list.\n\nFamily members use the list from their own phones, often at the same time.",
+      "rubric": [
+        "Each requirement comes from one story: adding, changing and removing an item are three separate requirements, not one combined requirement for managing items.",
+        "Each requirement keeps the role, wish and benefit of its own story, so that the benefit of tick-off (\"nobody else buys it twice\") stays with the tick-off requirement.",
+        "The recipe story (6) does not become a requirement of the shared list; it is left out or noted as belonging to a separate document.",
+        "Covers two family members ticking off or editing the same item at the same moment, with a stated result.",
+        "Says what happens when an item name is empty or when an invitation goes to an invalid email address.",
+        "Each criterion pairs a condition with an observable result.",
+        "Opens with a few sentences on what the feature is for and who mainly uses it, and says which stories it came from."
+      ],
+      "why_skill_matters": "Three of the stories (add, change, remove) are so close that they invite one combined requirement, which breaks the one-story-per-requirement link and loses each story's own benefit. A sixth story belongs to the recipe work. The requirements have to keep each story as its own requirement (r05, r04), leave the recipe story out (r06), cover simultaneous editing by family members (r02) and invalid input (r03)."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-7",
+      "title": "Requirements for shift swaps between employees",
+      "target_section": "Quality Gate",
+      "prompt": "Our retail staff app needs shift swaps. These three stories are approved. Please write the requirements for the design team.\n\n1. As an employee, I want to ask a colleague to take one of my shifts, so that I can attend an appointment without losing pay.\nDone when: I choose one of my upcoming shifts and a colleague, and send the request.\n\n2. As an employee, I want to accept or decline a swap a colleague asks me for, so that I only take shifts I can work.\nDone when: I see the request, I answer it, and the person who asked is told my answer in good time.\n\n3. As a store manager, I want to approve or reject accepted swaps, so that the shop is never short of staff.\nDone when: I see the accepted swaps, I approve or reject each one, and an approved swap changes the roster entry for both people.",
+      "rubric": [
+        "Adds cases the stories do not mention, such as the colleague already working at that time or two requests for the same shift at once, each with a stated outcome.",
+        "Covers the empty cases: an employee with no upcoming shifts and a manager with no swaps waiting.",
+        "Gives \"in good time\" a measurable time limit and marks that limit as an assumption to confirm.",
+        "Says what happens when a request names a colleague who cannot be found or a shift that has already passed.",
+        "There are three requirements, one for each story.",
+        "Each criterion pairs a condition with an observable result.",
+        "Each criterion states the required behaviour as a firm obligation using the word \"shall\"."
+      ],
+      "why_skill_matters": "Three happy-path stories with one vague phrase (\"in good time\"). The requirements have to add the clashes and empty states the stories skip (r02), give the vague phrase a figure and flag it as an assumption (r01), say what happens on bad input (r03) and keep one requirement per story (r05)."
+    },
+    {
+      "id": "kiro-requirements-generation-rules-8",
+      "title": "Requirements for online returns with a payment provider",
+      "target_section": "Conversion Guidelines",
+      "prompt": "Here are the approved stories for online returns. The refund goes through our payment provider. Please write the requirements for the design team.\n\n1. As a customer, I want to start a return for an order I received, so that I do not have to phone the shop.\nDone when: I pick the order and the items, give a reason, and the return is created if the order is less than 30 days old.\n\n2. As a customer, I want a prepaid return label by email, so that sending the parcel costs me nothing.\nDone when: an email with the label as a PDF reaches me after I start a return.\n\n3. As a customer, I want to be refunded to my original payment method once the warehouse has received my parcel, so that I get my money back without asking.\nDone when: the returns service calls the payment provider's RefundAPI v2 with the original payment id and writes the result to the returns table.\n\n4. As a support agent, I want to allow a return after the 30 days for a customer, so that I can fix cases where the shop was at fault.\nDone when: I can open the order and approve a late return with a note.",
+      "rubric": [
+        "Says what happens to the refund, and what the customer is told, when the payment provider fails or times out.",
+        "Says what happens when a customer starts a return for an order older than 30 days or for items that are not in the order.",
+        "No criterion names the provider's interface or version, the returns table or the PDF format; each is stated as what a customer or tester can see.",
+        "Each requirement keeps its story's role, wish and benefit, for example the support agent's reason about cases where the shop was at fault.",
+        "There are four requirements, one per story, including the support agent's.",
+        "Each criterion pairs a condition with an observable result.",
+        "Each criterion follows one shape: an optional leading condition, then the required response."
+      ],
+      "why_skill_matters": "A returns flow with an outside payment provider, a time limit on input and one story that carries a build recipe (the provider's interface name, the returns table). The requirements have to cover the provider failure and the out-of-window input (r03), keep the build names out of the criteria (r07), keep each story's wording (r04) and one requirement per story (r05)."
+    }
+  ]
+}

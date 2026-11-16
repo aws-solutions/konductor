@@ -1,0 +1,117 @@
+{
+  "format_version": 1,
+  "skill": "program-planning",
+  "batch": "rules-c3",
+  "generated_at": "2026-11-10T09:23:51.030Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "ec36bc6fc4ddee7768349c86b8e6c2b7d02010d692863766a1ec51c6bc30b70d",
+  "scenarios": [
+    {
+      "id": "program-planning-rules-1",
+      "title": "Brewery taproom opening with sized tasks",
+      "target_section": "Timeline Estimation",
+      "prompt": "We're opening a second taproom for our brewery and I need a schedule I can show our investors. Target opening is Saturday, May 16, 2027. Today is Nov 10, 2026. Team: me (ops lead), Dana (construction liaison, 3 days a week), Pri (marketing), and our head brewer Tomas who can give maybe a fifth of his time.\n\nHere's what we've sized (T-shirt sizes from our last build-out):\n\n- Lease signed and landlord handover of the shell: S (we've done leases before)\n- Architect drawings and city permit application: L (new city, never dealt with their permit office)\n- Permit approval from the city: XL, can't start until the application is in\n- Construction/build-out: XL, can't start until permit is approved\n- Install brewing/serving equipment (taps, glycol chiller, kegerator): M, after build-out\n- Hire and train 8 staff: M, can start once build-out is half done\n- Liquor license transfer: L (state agency, we've never done a second location)\n- Brand/menu/launch marketing: M, can run alongside build-out\n- Health inspection and final sign-off: S, after equipment install\n\nCan you lay out when each of these lands and whether May 16 is realistic?",
+      "rubric": [
+        "Gives each sized item (lease S, permit application L, permit approval XL, build-out XL, equipment M, hiring M, liquor license L, marketing M, inspection S) a range of calendar time rather than one fixed number.",
+        "Pads the permit application, permit approval, and liquor license (new to the city/agency) by a noticeably larger margin than the lease or inspection work, and no item is left with zero padding.",
+        "Compares the sum of the sequential chain (lease through permit, build-out, equipment, inspection) against the window to May 16, 2027 and states clearly whether the date is feasible or by how much it is missed.",
+        "Identifies the sequence lease/drawings → permit approval → build-out → equipment → inspection as the longest chain, listed in order, with the liquor license and marketing treated as parallel.",
+        "States that liquor license, marketing, or hiring have slack relative to the main chain and names the sequential items as having none.",
+        "Does not load Tomas (about a fifth of his time) or Dana (3 days a week) beyond their stated availability in any allocation or duration assumption."
+      ],
+      "why_skill_matters": "Sized items with dependencies and a fixed opening date. Mixes familiar work (lease) and novel work (permits in a new city, second-location license). The XL chain probably overruns the six-month window once padded. Makes size conversion, differential padding, feasibility, and longest chain matter."
+    },
+    {
+      "id": "program-planning-rules-2",
+      "title": "Fintech API sunset with many small tickets",
+      "target_section": "Milestone Definition",
+      "prompt": "Need to put together a plan for deprecating our v1 public API and moving ~300 customers to v2. Eng manager dumped this list on me, can you turn it into a plan? We want v1 off by end of Q2 2027.\n\n- write migration guide\n- add deprecation header to v1 responses\n- fix pagination bug in v2 /orders\n- email all customers about sunset\n- build usage dashboard for v1 calls per customer\n- update SDKs (python, node, java)\n- set up office hours for customers\n- rename 'acct_id' to 'account_id' in v2 docs\n- get legal to approve sunset notice wording\n- migrate top 20 enterprise customers (hand-held)\n- migrate long tail (280 customers, self-serve)\n- brownout test: turn v1 off for 1 hour\n- final shutdown of v1\n- write v1 archive docs\n- add rate limit to v1 to push people to move\n\nOwners: platform team (4 eng), dev-rel (2 people), customer success (3 people), legal (external counsel, slow).",
+      "rubric": [
+        "Groups the fifteen items into a handful of phase-level checkpoints (e.g. notice/readiness, enterprise migration, long-tail migration, brownout, shutdown) instead of listing each ticket such as the docs rename or pagination fix as its own checkpoint.",
+        "Each checkpoint has a verifiable completion condition tied to this program, such as a count or percentage of the 300 customers migrated, v1 traffic level, or legal sign-off received, rather than \"migration done\".",
+        "Flags that legal sign-off by external counsel is an outside dependency that must finish before the customer email goes out, and rates the risk of its delay.",
+        "Identifies a sequential chain such as legal approval → notice → migration → brownout → shutdown as the one driving the end date.",
+        "The ordering has no loops; for example the brownout does not precede the notice it depends on, and shutdown is last.",
+        "Does not ignore availability; mentions end-of-quarter, holidays, or team capacity affecting the migration window before the Q2 2027 deadline."
+      ],
+      "why_skill_matters": "A flat list of small tasks mixed with big ones. Tests whether the answer separates phase-level checkpoints from tasks, gives them measurable conditions, handles the outside counsel dependency, and finds the driving chain."
+    },
+    {
+      "id": "program-planning-rules-3",
+      "title": "Stadium concession POS rollout around the season",
+      "target_section": "Dependency Mapping",
+      "prompt": "I run IT for a minor-league baseball club. We're replacing the concession point-of-sale at our stadium before opening day on April 9, 2027. Here are my notes from the vendor call and internal meetings, messy, sorry:\n\n- Vendor (Tillable Systems) ships 40 terminals; they quote 10 weeks from PO. PO needs board approval, board meets Dec 14.\n- Network cabling for the concourse stands is by the city's facilities dept, they only work on the stadium when the grounds crew isn't doing field prep, which starts Mar 1. Cabling is about 4 weeks of work.\n- Terminals can't be configured until they arrive; config is about 2 weeks, my 2 IT staff.\n- Menu/price loading can start as soon as config starts, 1 week, done by the food & beverage manager.\n- Staff training for ~120 seasonal vendors, 1 week, can only happen after menu loaded and once seasonal staff are hired (hiring in mid-March).\n- Test event: the club has a preseason exhibition on Mar 27 that we'd like to use as a live test, needs terminals live.\n- Payment processor certification, handled by the vendor, takes 3 weeks and has to be done before any live sale.\n- Winter: our 2 IT staff are out Dec 23 - Jan 3, and the city is closed those days too.\n\nCan you map out the dependencies and give me a plan?",
+      "rubric": [
+        "Classifies each dependency by who owns it (e.g. board approval and city cabling as other parties, vendor delivery and processor certification as outside vendor, config to menu to training as within the project) and states its ordering type and any lag.",
+        "Assigns a delay risk to each dependency and calls out the board meeting on Dec 14, the city cabling window, or vendor delivery as high risk.",
+        "Notes that the Mar 27 exhibition test event is not achievable (or is at risk) given the chain from the Dec 14 PO through 10 weeks delivery, config, certification and training, and says what has to give or shows the gap.",
+        "Accounts for the Dec 23 - Jan 3 closure of IT staff and city when placing dates, or for the grounds-crew window starting Mar 1 limiting cabling.",
+        "Names the longest chain through PO, delivery, configuration, certification, and training to opening day and lists it in order.",
+        "No milestone is shown depending on something that itself depends on it (e.g. training is not a prerequisite for menu loading)."
+      ],
+      "why_skill_matters": "Messy notes with an easily overlooked constraint: the city cabling is limited by a Mar 1 grounds window, and the closure falls inside the delivery period. Vendor, city, and internal dependencies are mixed. Tests classification, risk, end-date feasibility, and holidays."
+    },
+    {
+      "id": "program-planning-rules-4",
+      "title": "Replan of a slipping lab instrument qualification",
+      "target_section": "Critical Path",
+      "prompt": "Our pharma QC lab is replacing two HPLC instruments, and I'm taking over the program from someone who left. The current plan says we finish April 30, 2027. Here's what I inherited:\n\nA. Site prep (power and bench rework): 3 weeks, starts Jan 11\nB. Instrument delivery: vendor says 8 weeks from PO, PO placed Nov 16\nC. Installation qualification (IQ): 1 week, after B and A\nD. Operational qualification (OQ): 3 weeks, after C\nE. Method transfer of 12 assays: 6 weeks, after D\nF. Performance qualification (PQ): 2 weeks, after D\nG. SOP drafting and approval: 5 weeks, can start any time, must finish before PQ starts\nH. Analyst training: 2 weeks, after OQ, before E\nI. Final QA release: 1 week, after E, F and H\n\nNot sure the end date still works and which of these I can let slip a bit. What should I watch most closely?",
+      "rubric": [
+        "Names the longest chain by working through the durations: delivery B (8 wks) in parallel with site prep A, then IQ, OQ, training H, method transfer E, then QA release I, listed in that order.",
+        "Gives a slack figure for the off-chain items such as site prep A, SOP drafting G, and PQ F, and flags the on-chain items as having none.",
+        "States the earliest finish computed from the dependencies (roughly early April or just before, plus any contingency) and whether April 30 holds, or by how many weeks it is missed or tight.",
+        "Applies some contingency to the durations, and more to the uncertain items such as method transfer of 12 assays or vendor delivery than to simple items like IQ.",
+        "The ordering respects the notes: training H lies between OQ and method transfer E, and PQ F follows both OQ and SOP completion G, with no loops.",
+        "Identifies delivery B as an outside vendor dependency and gives it a delay risk rating."
+      ],
+      "why_skill_matters": "A fully specified network with durations and a given end date, where the useful answer depends on computing the longest chain and slack. Makes longest chain, slack, feasibility, contingency, and vendor dependency matter."
+    },
+    {
+      "id": "program-planning-rules-6",
+      "title": "Data center cooling retrofit with on-call crew",
+      "target_section": "Timeline Estimation",
+      "prompt": "We're retrofitting cooling in our colo data center (adding hot-aisle containment and swapping 6 CRAC units). Facilities director wants it all finished by Feb 26, 2027 so it's done before the spring workload ramp. Today is Nov 10, 2026.\n\nDraft of what I have:\n\n1. Design and airflow modeling (CFD) - M\n2. Procure containment panels - M (supplier lead time quoted by sales as \"about two weeks\")\n3. Procure 6 CRAC units - L\n4. Containment install (done aisle by aisle, no downtime) - L, needs 1 and 2\n5. CRAC swap, one unit at a time, each requires a maintenance window - XL, needs 1 and 3\n6. Commissioning and load test - S, needs 4 and 5\n\nTeam: the facilities crew of 4 does both installs. They run the on-call rotation for the data center, and per the rota only 2 of the 4 are free for project work in any given week. Also our change-freeze policy: no maintenance windows from Dec 15 through Jan 5 (year-end processing). The CRAC swap needs windows.\n\nCan you give me a timeline?",
+      "rubric": [
+        "Treats the crew as having only half its people available for project work because of the on-call rotation, and lengthens or reschedules the installs accordingly.",
+        "Places no CRAC swap work in the Dec 15 - Jan 5 freeze and shows how that shifts the dates.",
+        "Gives each sized item (design M, panels M, CRAC procurement L, containment L, swap XL, commissioning S) a range of weeks or days, not a single number.",
+        "Applies padding to every item, with extra padding on the CRAC swap or CFD design because they are complex, and additional caution on the sales-quoted two-week panel lead time.",
+        "Says whether Feb 26, 2027 is feasible given the chain and reduced crew, and shows the gap or the options if it is not.",
+        "Commissioning is last and nothing in the sequence depends on something that comes after it."
+      ],
+      "why_skill_matters": "Hidden constraints: only 2 of 4 crew available because of on-call and a change freeze inside the window. Tests whether availability changes the schedule, plus size conversion, padding, and feasibility."
+    },
+    {
+      "id": "program-planning-rules-7",
+      "title": "University course platform migration, replan with two vendors",
+      "target_section": "Dependency Mapping",
+      "prompt": "I'm the TPM for our university's move from the old LMS to a new one. Kickoff was Sep 2026, go-live is for the start of fall term, Aug 24, 2027. We're in a replan because the new vendor slipped their SSO integration. Status below.\n\nWorkstreams and where they stand:\n1. SSO integration (new LMS vendor builds, our identity team tests): vendor now says delivery Mar 15, 2027. Identity team needs 3 weeks to test after.\n2. Gradebook integration with the student information system (SIS vendor, Banner-style, has a change freeze Jun 1 - Jul 15 each year): our dev team builds 8 weeks, needs SSO test finished first.\n3. Course content migration, 4,200 courses: starts anytime, run by the instructional design team (6 people), estimate 5 months. Can't be finished until the gradebook mapping rules are final.\n4. Faculty training, ~900 faculty: 10 weeks, starts after at least half of the courses are migrated.\n5. Pilot with 3 departments: 6 weeks, needs SSO and gradebook working, and must finish before faculty training is declared complete.\n6. Helpdesk readiness: 4 weeks, after training begins.\n\nWhich dependencies am I most exposed on, and does August 24 still hold?",
+      "rubric": [
+        "Labels each dependency as internal, another university team, or outside vendor (e.g. SSO build as outside LMS vendor, SIS freeze as outside SIS vendor, pilot as internal) and says whether it is finish-before-start or can overlap.",
+        "Rates the delay risk for each dependency and names the SSO delivery slip and the SIS freeze Jun 1 - Jul 15 as most exposed.",
+        "Names the longest chain (SSO delivery → SSO test → gradebook → pilot → training completion, or the content migration route if longer) in order, consistent with the stated durations.",
+        "Gives slack for non-critical items such as helpdesk readiness, and calls out zero-slack items.",
+        "Concludes whether Aug 24, 2027 holds by adding the durations from Mar 15, including the freeze window, and states the margin or shortfall.",
+        "Does not create a loop: content migration finishing depends on gradebook rules, and gradebook depends on SSO; none of these then depend back on migration."
+      ],
+      "why_skill_matters": "A replan with outside vendor slip and a vendor freeze, mixed internal and external dependencies, and a stated end date. Tests classification, risk, longest chain, slack, and feasibility."
+    },
+    {
+      "id": "program-planning-rules-8",
+      "title": "Solo founder shipping a hardware product",
+      "target_section": "Core Concepts",
+      "prompt": "Plan help please. I'm a solo founder (plus one contract firmware engineer, 15 hrs/week, and a part-time ops person, 10 hrs/week) launching a smart pet feeder. I've promised retail partner PetBarn that units will be on their shelves Oct 1, 2027. Today is Nov 10, 2026.\n\nPhases I figure: \n- Industrial design finalized (M)\n- Firmware v1 (XL, new Bluetooth + wifi stack, we've never done it)\n- Prototype build and testing round 1 and 2 (L each, rounds in sequence, round 1 needs ID and early firmware)\n- FCC/UL certification (XL, lab is booked 3 months out, can't start until prototypes pass round 2)\n- Tooling and mass production, 5,000 units (XL, tooling can begin after round 2; production waits for certification)\n- Shipping from factory to the US (S by air, but I'd use sea at 5 weeks)\n- Retailer packaging and compliance docs (S, anytime)\n\nPlus the small stuff I keep jotting down: pick a logo font, order sample pet food for testing, register the domain, write the quick-start card, set up a shared drive.\n\nI'll do everything else myself. What does the schedule look like?",
+      "rubric": [
+        "Names the main chain (design/firmware → prototype rounds → certification → production → shipping) in order and shows it drives the end date.",
+        "Compares the summed chain, including the certification lab's 3-month wait, with the Oct 1, 2027 PetBarn date and states plainly whether it holds, with the gap or trade-offs (air freight, parallel tooling) if not.",
+        "Uses a heavier allowance for firmware (a stack never done before) and certification than for packaging docs or design, with none at zero.",
+        "Converts the sizes into ranges, such as XL as roughly 5 to 8 weeks, rather than single values.",
+        "Marks packaging and compliance docs, and perhaps tooling start, as having slack, and treats the chain items as zero slack.",
+        "Treats the phases as the schedule's checkpoints and keeps the small jottings (logo font, sample food, domain, quick-start card, shared drive) as minor tasks, not as checkpoints.",
+        "Keeps the contract engineer to 15 hrs/week and ops to 10 hrs/week, and flags that the founder's own load is also high or over capacity."
+      ],
+      "why_skill_matters": "Solo founder hardware plan with a fixed retail date, a novel firmware stack, a lab queue, and a few trivial jottings mixed in. Tests chain, feasibility, differential padding, size conversion, slack, checkpoint granularity, and capacity."
+    }
+  ]
+}

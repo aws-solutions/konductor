@@ -1,0 +1,259 @@
+{
+  "format_version": 1,
+  "skill": "user-story-writing",
+  "batch": "rules-c2",
+  "rules": {
+    "user-story-writing-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "user-story-writing-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "user-story-writing-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "user-story-writing-r04": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "user-story-writing-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "user-story-writing-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "user-story-writing-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "user-story-writing-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "user-story-writing-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "user-story-writing-r10": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "user-story-writing-r11": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "user-story-writing-r12": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "user-story-writing-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r09"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "user-story-writing-r10"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "user-story-writing-r12"
+      }
+    },
+    "user-story-writing-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r02"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r01"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "user-story-writing-r10"
+      }
+    },
+    "user-story-writing-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r01"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "user-story-writing-r10"
+      }
+    },
+    "user-story-writing-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "user-story-writing-r10"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "user-story-writing-r12"
+      }
+    },
+    "user-story-writing-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "user-story-writing-r10"
+      }
+    },
+    "user-story-writing-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r08"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r01"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "user-story-writing-r10"
+      }
+    },
+    "user-story-writing-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r02"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "user-story-writing-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "user-story-writing-r10"
+      }
+    }
+  }
+}
