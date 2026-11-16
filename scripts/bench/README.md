@@ -84,6 +84,7 @@ scripts/bench/controls/<control>/            its baseline: rules.json, tasks-<ba
 scripts/bench/controls/dose-ladder-v1.json   the dose ladder
 bench/config.json                            the settings (git-ignored), see Settings
 bench/exclusions.json                        tasks left out of reading A
+bench/baselines/MANIFEST.json                the SHA-256 of every baseline file (see Manifest)
 bench/baselines/<skill>/rules.json           frozen rules
 bench/baselines/<skill>/tasks-<batch>.json   frozen tasks, one file per batch
 bench/baselines/<skill>/tasks-<batch>.buckets.json
@@ -101,7 +102,7 @@ Everything under `bench/out/` is git-ignored. Baselines are committed. A small v
 
 Names that become file names (skill, batch, task id, seat, run id) are checked so none can point outside its folder. A skill name is lowercase letters, digits and `-`, up to 128 characters, and a batch name is the same. A task id or run id starts with a letter or digit, then letters, digits, `.`, `_` and `-`, up to 128 characters, with no `..`. The run ids `ledger.jsonl` and `ledger.jsonl.lock` are not allowed, in any letter case, because `bench/out/ledger.jsonl` is the spend ledger and `bench/out/ledger.jsonl.lock` is its lock file. Two task ids in one task file (or in one batch of the exclusions file) that differ only in case, such as `T1` and `t1`, are refused with both ids named, because macOS and Windows file systems would give them one file. A seat name is lowercase letters, digits, `_` and `-`, starting with a letter or digit, up to 64 characters. It has no `.`: a judgment file is named `<task>.<seat>.<arm>.json`, and with no `.` in the seat, two different pairs of task and seat can never share a file. It has no capitals, because macOS and Windows file systems ignore case and seats `A` and `a` would overwrite each other's file. A seat name in `models.judges` that breaks these rules is refused with the setting named.
 
-All four baseline and exclusion files are JSON with `"format_version": 1`. Rules, tasks and buckets are written by a model and then frozen; `bench/exclusions.json` is written by a person. A reader refuses an unknown version, a missing field, a field of the wrong type and an extra field, so a typo cannot pass quietly. `plan` names the file and the field for every problem it finds.
+All five baseline, manifest and exclusion files are JSON with `"format_version": 1`. Rules, tasks and buckets are written by a model and then frozen; `bench/exclusions.json` is written by a person; `MANIFEST.json` is written by `baseline-manifest.js`. A reader refuses an unknown version, a missing field, a field of the wrong type and an extra field, so a typo cannot pass quietly. `plan` names the file and the field for every problem it finds.
 
 Files are read as UTF-8. A leading byte order mark, which some Windows editors add, is ignored. A key that appears twice in one object is an error that names the key, where it is and the line, because a JSON reader keeps only the last one and the earlier record would be dropped without a word. This applies to every JSON file `plan` reads, including `bench/config.json`.
 
@@ -249,6 +250,42 @@ Optional. Lists tasks left out of reading A.
 | `scales`  | Exactly `["outcome"]`. `items` is refused.             | A task may leave reading A, never reading B.                                                 |
 | `reason`  | 20 to 500 characters.                                  | Lets a reader see later why the task was left out. It is printed in reports, so it is short. |
 | `date`    | A real date written `YYYY-MM-DD`.                      | Records when the decision was made.                                                          |
+
+### Manifest: `bench/baselines/MANIFEST.json`
+
+The hash of every file under `bench/baselines/`, so a change to a frozen baseline shows as a changed hash in review.
+
+```json
+{
+  "format_version": 1,
+  "files": {
+    "brew-log/rules.json": "<64 lowercase hex characters>",
+    "brew-log/tasks-b1.json": "<64 lowercase hex characters>",
+    "brew-log/tasks-b1.buckets.json": "<64 lowercase hex characters>"
+  }
+}
+```
+
+Each key is `<skill>/rules.json`, `<skill>/tasks-<batch>.json` or `<skill>/tasks-<batch>.buckets.json`, and each value is the SHA-256 of that file's bytes. Write it after a baseline changes, and check it before a baseline is committed:
+
+```
+node scripts/bench/baseline-manifest.js write
+node scripts/bench/baseline-manifest.js check
+```
+
+`check` finds, and names the file of:
+
+| Finding                                                 | What it means                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A file the manifest lacks, or one it lists that is gone | The manifest and the folder disagree.                                                                                                                                                                                                                                                                                        |
+| A hash that differs                                     | The file changed since `write`. Run `write` only for a change you meant.                                                                                                                                                                                                                                                     |
+| A file that is not a baseline file                      | Only the three file names above may be in a skill folder, and only skill folders and `MANIFEST.json` may be in `bench/baselines/`.                                                                                                                                                                                           |
+| Credential-shaped text                                  | A match of the redactor's patterns (redact.js: AWS key id, secret key and token shapes, a Bedrock key, a `Bearer` value of 20 or more characters, the run canary) or of a private key header, a GitHub, Slack or Google key or a JWT. The documented AWS example keys pass, and prose that only names a kind of secret does. |
+| A home-directory path                                   | A path into a user's home folder, in the macOS, Linux or Windows form.                                                                                                                                                                                                                                                       |
+| A 12-digit number                                       | Anything but the AWS documentation account ids `123456789012`, `111122223333` and `444455556666`. A run of digits inside a longer word, such as a hash, is not counted.                                                                                                                                                      |
+| A skill that fails its formats                          | The same checks `plan` makes of the skill's files, and one problem for a skill whose `SKILL.md` is gone.                                                                                                                                                                                                                     |
+
+Each file is read as its bytes and as the strings and keys a reader sees, so a JSON escape such as `\n` in front of a number or `\u0041` in a key id does not hide it, and neither does a UTF-8 byte order mark at the start of the file (the bench's JSON reader drops it, and so does the scan). A finding never prints the text it matched, except the last four digits of a 12-digit number, so it can be found; the messages of the format check, which quote the value they refuse, go through the redactor and mask a 12-digit number the same way. The manifest covers `bench/baselines/` only: the control baseline under `scripts/bench/controls/` is reviewed as a plain file. A stale rules or tasks file is a warning, not a problem: `plan` reports it, and a refreshed baseline fixes it. Exit codes are the driver's: 0 clean, 1 a problem found, 64 usage error, 66 a file or folder is missing, 70 a bug in the benchmark, 74 I/O error. On a branch that has no `bench/baselines/` folder yet, `check` exits 66.
 
 ## Running `plan`
 
