@@ -57,6 +57,11 @@ not per individual commit.
   this shell's PATH, is reported as warn, not as missing. Under `coordinator` it runs the same
   persona load the session-start hook runs, so a digest over the hook's output budget is
   `failed`, and an install root outside the home that is not a git checkout root is `warn`.
+- `synth` warns when an agent's Claude Code skill preload (`clientConfig.claudeCli.skills`) is over
+  32 KiB or 32 names, and names the skills Claude Code would drop. `-v` prints one
+  `claude preload:` line per agent, and `synth --json` adds a `claude_preload` array. Each Claude
+  Code agent file ends with a "Skills you can load" block listing its declared skills that are not
+  preloaded; `synth` warns when such an agent's `tools` list lacks `Skill`.
 
 ### Changed
 
