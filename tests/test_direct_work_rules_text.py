@@ -228,3 +228,24 @@ def test_direct_work_treats_a_skill_miss_as_the_signal_to_spawn():
     direct = (ROOT / "context" / "k-direct-work.md").read_text(encoding="utf-8")
     assert "that miss is the answer" in direct
     assert direct.index(SOP_CLAUSE) < direct.index("spawn a specialist in two cases only")
+
+
+FILTER_CHECK = "git --no-pager -c core.fsmonitor= config --local --includes --get-regexp '^filter\\.'"
+
+
+def _read_only_shell_row():
+    text = (ROOT / "context" / "k-orchestrator-routing-rules.md").read_text(encoding="utf-8")
+    return next(line for line in text.splitlines() if line.startswith("| Read-only shell commands"))
+
+
+def test_read_only_git_skips_working_tree_reads_when_a_filter_driver_is_set():
+    row = _read_only_shell_row()
+    assert "a `filter.<driver>` with its `clean` or `process` program" in row
+    assert "`git config --local --includes --get-regexp '^filter\\.'`" in row
+    assert (
+        "before `git status`, `git diff` against the working tree (including `--stat` and `HEAD`), "
+        "or `git blame`, run `" + FILTER_CHECK + "`"
+    ) in row
+    assert "use `git diff --cached`, `git log`, `git show`, and the file tools instead" in row
+    assert "tell the user the repository config defines a filter driver" in row
+    assert "the only `-c` allowed" in row
