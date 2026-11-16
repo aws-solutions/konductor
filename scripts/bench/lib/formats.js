@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Validators for the four skill-benchmark file formats:
+ * Validators for the five skill-benchmark file formats:
  *
  *   validateRules      rules.json
  *   validateTasks      tasks-<batch>.json
  *   validateBuckets    tasks-<batch>.buckets.json
  *   validateExclusions bench/exclusions.json
+ *   validateManifest   bench/baselines/MANIFEST.json
  *
  * Every validator takes parsed JSON and returns { errors, warnings }: both are arrays of
  * strings, and a file is accepted when `errors` is empty. A reader rejects an unknown
@@ -599,6 +600,20 @@ const validateExclusions = makeValidator(
   },
 );
 
+// ---- the manifest of the committed baseline files ---------------------------------------------
+
+// Every key is the path of one baseline file below bench/baselines/, and nothing else is a key.
+const MANIFEST_KEY =
+  /^[a-z0-9][a-z0-9-]{0,127}\/(?:rules|tasks-[a-z0-9][a-z0-9-]{0,127}(?:\.buckets)?)\.json$/;
+
+const validateManifest = makeValidator({
+  files: createRecordCheck(
+    checkSha256Hex,
+    MANIFEST_KEY,
+    'must be <skill>/rules.json, <skill>/tasks-<batch>.json or <skill>/tasks-<batch>.buckets.json',
+  ),
+});
+
 // ---- reading a file ---------------------------------------------------------------------------
 
 const VALIDATORS = Object.freeze({
@@ -606,6 +621,7 @@ const VALIDATORS = Object.freeze({
   tasks: validateTasks,
   buckets: validateBuckets,
   exclusions: validateExclusions,
+  manifest: validateManifest,
 });
 
 class FormatError extends Error {
@@ -620,7 +636,7 @@ class FormatError extends Error {
 }
 
 /**
- * Parses `file` and checks it as `kind` ('rules', 'tasks', 'buckets' or 'exclusions'). Bad content throws
+ * Parses `file` and checks it as `kind` ('rules', 'tasks', 'buckets', 'exclusions' or 'manifest'). Bad content throws
  * FormatError; a file that cannot be read throws the system error from `fs`, with `path` set.
  */
 function loadChecked(kind, file, context = {}) {
@@ -647,5 +663,7 @@ module.exports = {
   validateTasks,
   validateBuckets,
   validateExclusions,
+  validateManifest,
+  MANIFEST_KEY,
   loadChecked,
 };
