@@ -10,7 +10,7 @@ problem statement into a document meant to survive principal-engineer review. A 
 [`k-existing-design-review`](../sop-workflows/design.md#k-existing-design-review), evaluates design
 artifacts that already exist. A third, [`k-principal-engineer-design-review`](../sop-workflows/design.md#k-principal-engineer-design-review),
 gates a finished document before a human reviewer sees it. All three are owned by
-**`k-architect`**, which carries 38 of the package's 82 skills — the largest share of any agent.
+**`k-architect`**, which carries 38 of the package's 81 skills — the largest share of any agent.
 
 **Read this before you pick one.** `k-existing-design-review` is explicitly deprecated for authoring;
 its own header says so:
@@ -54,7 +54,9 @@ These patterns are matched **literally**. A file named `design.md` will not fill
 
 ## How to invoke
 
-Through the orchestrator, which routes design requests to `k-architect`:
+Through the orchestrator. `konductor` spawns `k-architect`, which declares these SOPs, to run them;
+a design step inside a task it owns, `konductor` writes itself. The mux and cmux orchestrators route
+every design request to `k-architect`:
 
 ```text
 Design a system for X

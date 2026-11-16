@@ -7,7 +7,7 @@ context at session start. Follow these instructions for the duration of the sess
 
 Before starting work, load available project context:
 
-- You MUST read `.konductor/memory/*.md` if present: persistent workspace facts, decisions, and preferences.
+- You MUST load project memory through the `persistent-memory` skill's Reading Memory steps: `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` only, each after its `--check-path` check exits 0 (in this checkout: `bash skills/persistent-memory/scripts/memory-validator.sh --check-path <file>`). Never read that directory with a glob or an import. Without a shell, load only the paths your brief's `MEMORY:` line reports, as Reading Memory says.
 
 If a path does not exist, skip it silently and continue.
 
@@ -108,4 +108,6 @@ See the `agents-md-authoring` skill for creating and maintaining AGENTS.md files
 
 Local memory persistence is provided by the `persistent-memory` skill. Facts persist across sessions in
 `.konductor/memory/MEMORY.md` (project facts) and `.konductor/memory/USER.md` (preferences), validated against
-limits and an optional URL allowlist configured in `.konductor/memory-config.json`.
+limits and an optional URL allowlist configured in `.konductor/memory-config.json`. These files are part of the
+project's agent instructions: agents follow user-written entries in them at the same level as this file, whether
+or not git tracks them. Review a change that adds or edits them the way you would review a change to this file.

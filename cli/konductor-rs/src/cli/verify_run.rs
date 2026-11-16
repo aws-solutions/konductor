@@ -705,4 +705,17 @@ mod tests {
         assert!(!is_project_file(&root, "Dir/A.md"));
         std::fs::remove_dir_all(&root).ok();
     }
+
+    #[test]
+    fn config_source_names_the_user_file_through_user_config_path() {
+        let project = SweepProject::new();
+        let home = crate::cli::install::index::env_home_dir().unwrap();
+        let user_config = config::user_config_path(&home);
+        std::fs::create_dir_all(user_config.parent().unwrap()).unwrap();
+        std::fs::write(&user_config, "fail_on_severity_at_or_above: HIGH\n").unwrap();
+        let Ok((_, _, source)) = configured_threshold(&project.root) else {
+            panic!("the user config should load");
+        };
+        assert_eq!(source, user_config.display().to_string());
+    }
 }

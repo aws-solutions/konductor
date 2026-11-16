@@ -77,6 +77,11 @@ jobs:
         # and agent-sops/ disagree. Needs python3 and PyYAML (installed above).
         run: make sop-orchestration-check
 
+      - name: Check gate facts in phase-gated SOP text (make sop-gate-facts-check)
+        # Fails when a gated SOP's text and its gate boundaries in
+        # cli/gate-config/sop-orchestration.yml disagree. Needs PyYAML.
+        run: make sop-gate-facts-check
+
       - name: Require a CHANGELOG.md entry alongside any VERSION bump
         # CHANGELOG.md's own convention (entries consolidated per release,
         # not per commit) is otherwise unenforced -- a PR could bump VERSION
@@ -104,11 +109,25 @@ jobs:
             scripts/validate-version-semver.sh "$RAW_VERSION"
           fi
 
+      - name: Check every crate, lockfile and CHANGELOG.md match VERSION
+        # Runs on every PR, not only VERSION bumps, so a crate or lockfile left
+        # behind by an earlier bump is caught too.
+        run: make version-check
+
       - name: Run the skill shell tests (make test-skills-sh)
         run: make test-skills-sh
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+
+      - name: Check NOTICE.txt lists every shipped third-party crate
+        # generate-notice.js pins cargo to cli/konductor-rs's rust-version, so
+        # install that toolchain first.
+        run: |
+          set -e
+          RUST_VERSION="$(sed -n 's/^rust-version = "\(.*\)"/\1/p' cli/konductor-rs/Cargo.toml)"
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          make notice-check
 
       - name: Build konductor and run synth (produces dist/)
         run: make synth
@@ -128,6 +147,9 @@ jobs:
 
       - name: Run the Python test suite (make test-py)
         # After synth so the tests that need build/cli/konductor run instead of skipping.
+        # KONDUCTOR_REQUIRE_FULL_BIN makes a missing binary or capability fail them.
+        env:
+          KONDUCTOR_REQUIRE_FULL_BIN: "1"
         run: make test-py
 
       - name: Run the Rust tests for cli, mcp and shared
