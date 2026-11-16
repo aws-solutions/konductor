@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "INVALID_VALUE",
+      "column": 9,
+      "end_column": 11,
+      "end_line": 6,
+      "file": "stages-empty.yml",
+      "line": 6,
+      "path": "stages",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

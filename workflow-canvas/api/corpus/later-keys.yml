@@ -1,0 +1,11 @@
+format: konductor/1
+name: later-keys
+version: 0.1.0
+intent:
+  outcome: Say hello
+stages:
+  - name: write
+    agent: k-developer
+    outputs:
+      plan: PLAN.md
+    parallel: true

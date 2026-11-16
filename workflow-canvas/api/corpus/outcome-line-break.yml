@@ -1,0 +1,8 @@
+format: konductor/1
+name: outcome-line-break
+version: 0.1.0
+intent:
+  outcome: "one\ntwo"
+stages:
+  - name: write
+    agent: k-developer

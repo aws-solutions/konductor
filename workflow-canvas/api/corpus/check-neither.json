@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "INVALID_VALUE",
+      "column": 7,
+      "end_column": 1,
+      "end_line": 8,
+      "file": "check-neither.yml",
+      "line": 7,
+      "path": "intent.accept[0]",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

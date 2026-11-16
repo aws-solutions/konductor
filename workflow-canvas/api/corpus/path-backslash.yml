@@ -1,0 +1,11 @@
+format: konductor/1
+name: path-backslash
+version: 0.1.0
+intent:
+  outcome: Say hello
+  accept:
+    - id: a
+      file: a\b
+stages:
+  - name: write
+    agent: k-developer

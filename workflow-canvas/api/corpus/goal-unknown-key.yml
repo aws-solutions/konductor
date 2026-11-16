@@ -1,0 +1,11 @@
+format: konductor/1
+name: goal-unknown-key
+version: 0.1.0
+intent:
+  outcome: Say hello
+params:
+  goal:
+    label: x
+stages:
+  - name: write
+    agent: k-developer

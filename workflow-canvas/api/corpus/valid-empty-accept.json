@@ -1,0 +1,25 @@
+{
+  "diagnostics": [],
+  "errors": 0,
+  "view": {
+    "format": "konductor/1",
+    "intent": {
+      "accept": [],
+      "outcome": "Nothing to accept"
+    },
+    "name": "valid-empty-accept",
+    "params": {},
+    "stages": [
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "only",
+        "range": {
+          "end_line": 10,
+          "line": 9
+        }
+      }
+    ],
+    "version": "0.1.0"
+  }
+}

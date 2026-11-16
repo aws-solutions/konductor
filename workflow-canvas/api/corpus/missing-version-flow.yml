@@ -1,0 +1,1 @@
+{format: konductor/1, name: missing-version-flow, intent: {outcome: Say hello}, stages: [{name: write, agent: k-developer}]}

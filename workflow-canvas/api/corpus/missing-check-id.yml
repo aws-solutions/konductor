@@ -1,0 +1,10 @@
+format: konductor/1
+name: missing-check-id
+version: 0.1.0
+intent:
+  outcome: Say hello
+  accept:
+    - file: README.md
+stages:
+  - name: write
+    agent: k-developer

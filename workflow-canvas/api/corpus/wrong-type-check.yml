@@ -1,0 +1,10 @@
+format: konductor/1
+name: wrong-type-check
+version: 0.1.0
+intent:
+  outcome: Say hello
+  accept:
+    - readme
+stages:
+  - name: write
+    agent: k-developer

@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "UNKNOWN_KEY",
+      "column": 1,
+      "end_column": 12,
+      "end_line": 4,
+      "file": "unknown-key-description.yml",
+      "line": 4,
+      "path": "description",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

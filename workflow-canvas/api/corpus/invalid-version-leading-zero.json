@@ -1,0 +1,17 @@
+{
+  "diagnostics": [
+    {
+      "code": "INVALID_VALUE",
+      "column": 10,
+      "end_column": 16,
+      "end_line": 3,
+      "file": "invalid-version-leading-zero.yml",
+      "line": 3,
+      "path": "version",
+      "severity": "error",
+      "suggestion": "0.1.0"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

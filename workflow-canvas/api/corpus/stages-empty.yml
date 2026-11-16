@@ -1,0 +1,6 @@
+format: konductor/1
+name: stages-empty
+version: 0.1.0
+intent:
+  outcome: Say hello
+stages: []

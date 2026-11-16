@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "INVALID_VALUE",
+      "column": 13,
+      "end_column": 32782,
+      "end_line": 9,
+      "file": "prompt-too-long.yml",
+      "line": 9,
+      "path": "stages.write.prompt",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

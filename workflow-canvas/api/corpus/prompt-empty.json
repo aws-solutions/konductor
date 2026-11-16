@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "INVALID_VALUE",
+      "column": 13,
+      "end_column": 15,
+      "end_line": 9,
+      "file": "prompt-empty.yml",
+      "line": 9,
+      "path": "stages.write.prompt",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

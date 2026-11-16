@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Format, lint and test for workflow-engine/ and the CLI in cli/, which builds on the
-# engine crates. Runs only when one of those folders (or this workflow) changes. The
+# engine crates. Runs only when one of those folders, workflow-canvas/api/ (the shared
+# corpus that the engine's tests read) or this workflow changes. The
 # integration/** and engine/** targets cover stacked PRs, where a PR's base is another
 # feature branch rather than main.
 #
@@ -22,6 +23,7 @@ on:
     paths:
       - 'workflow-engine/**'
       - 'cli/**'
+      - 'workflow-canvas/api/**'
       - '.github/workflows/workflow-engine.yml'
 
 permissions:

@@ -1,0 +1,11 @@
+format: konductor/1
+name: param-slice-2
+version: 0.1.0
+intent:
+  outcome: Say hello
+params:
+  topic:
+    default: x
+stages:
+  - name: write
+    agent: k-developer

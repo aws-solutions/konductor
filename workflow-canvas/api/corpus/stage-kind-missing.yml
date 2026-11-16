@@ -1,0 +1,7 @@
+format: konductor/1
+name: stage-kind-missing
+version: 0.1.0
+intent:
+  outcome: Say hello
+stages:
+  - name: write

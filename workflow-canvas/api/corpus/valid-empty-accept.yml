@@ -1,0 +1,10 @@
+format: konductor/1
+name: valid-empty-accept
+version: 0.1.0
+intent:
+  outcome: Nothing to accept
+  accept: []
+params: {}
+stages:
+  - name: only
+    agent: k-developer

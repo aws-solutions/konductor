@@ -1,0 +1,45 @@
+{
+  "diagnostics": [],
+  "errors": 0,
+  "view": {
+    "format": "konductor/1",
+    "intent": {
+      "accept": [
+        {
+          "file": "README.md",
+          "id": "readme-exists"
+        }
+      ],
+      "outcome": "Add a greeting to the README"
+    },
+    "name": "valid-full",
+    "params": {
+      "goal": {
+        "default": "Add a greeting",
+        "description": "What to do."
+      }
+    },
+    "stages": [
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "draft",
+        "prompt": "Write it.",
+        "range": {
+          "end_line": 15,
+          "line": 13
+        }
+      },
+      {
+        "agent": "k-quality-assurance",
+        "kind": "agent",
+        "name": "review",
+        "range": {
+          "end_line": 17,
+          "line": 16
+        }
+      }
+    ],
+    "version": "1.2.3"
+  }
+}

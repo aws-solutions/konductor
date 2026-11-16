@@ -1,0 +1,10 @@
+format: konductor/1
+name: duplicate-unknown-key
+version: 0.1.0
+owner: me
+intent:
+  outcome: Say hello
+owner: you
+stages:
+  - name: write
+    agent: k-developer

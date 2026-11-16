@@ -1,0 +1,5 @@
+format: konductor/1
+name: missing-stages
+version: 0.1.0
+intent:
+  outcome: Say hello

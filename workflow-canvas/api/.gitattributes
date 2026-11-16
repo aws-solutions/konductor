@@ -1,0 +1,2 @@
+# The corpus holds files with deliberate byte sequences, such as CRLF and a byte order mark. Git keeps them as they are.
+corpus/* -text

@@ -1,0 +1,10 @@
+format: konductor/1
+name: duplicate-key
+version: 0.1.0
+intent:
+  outcome: Say hello
+intent:
+  outcome: Say goodbye
+stages:
+  - name: write
+    agent: k-developer

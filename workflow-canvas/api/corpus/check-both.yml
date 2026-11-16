@@ -1,0 +1,12 @@
+format: konductor/1
+name: check-both
+version: 0.1.0
+intent:
+  outcome: Say hello
+  accept:
+    - id: a
+      file: A.md
+      run: [ls]
+stages:
+  - name: write
+    agent: k-developer
