@@ -292,6 +292,28 @@ def test_unbackticked_gate_fact_key_does_not_count(tmp_path):
     assert "does not name `gate_one_result`" in result.stderr
 
 
+@pytest.mark.parametrize(
+    "fence",
+    [
+        "```text\nout/\n  design/\n```",
+        "```text\nrun `konductor verify-run` here\n```",
+        "~~~\na lone ` backtick\n~~~",
+    ],
+    ids=["plain-fence", "fence-with-inline-code", "tilde-fence-with-lone-backtick"],
+)
+def test_fenced_block_ahead_of_the_keys_does_not_hide_them(tmp_path, fence):
+    result = run_check(tree_with_gate_facts(tmp_path, sop_note=fence + "\n\n" + ONE_KEYS))
+    assert result.returncode == 0, result.stderr
+
+
+def test_keys_named_only_inside_a_fenced_block_do_not_count(tmp_path):
+    root = tree_with_gate_facts(tmp_path, sop_note="```text\n" + ONE_KEYS + "\n```")
+    result = run_check(root)
+    assert result.returncode == 1
+    for key in ("gate_one_result", "gate_one_evidence", "gate_one_checker"):
+        assert f"missing-gate-fact: gated 'alpha-gated' does not name `{key}` for boundary 'one'" in result.stderr
+
+
 def test_check_threshold_boundary_also_needs_its_override_key(tmp_path):
     root = tree_with_gate_facts(tmp_path, kind="check-threshold")
     result = run_check(root)

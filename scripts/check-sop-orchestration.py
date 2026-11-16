@@ -201,11 +201,35 @@ def required_gate_facts(facts, boundary):
     return [facts[name].replace(PHASE_PLACEHOLDER, boundary["phase"]) for name in names]
 
 
+FENCE_OPEN = re.compile(r" {0,3}(`{3,}|~{3,})(.*)")
+
+
+def without_fenced_blocks(text):
+    """`text` with its fenced code blocks removed, so a backtick inside one
+    cannot pair with a backtick outside it. A fence opens with up to 3 spaces
+    and 3 or more backticks or tildes, and closes at a run of the same
+    character at least as long; an unclosed fence runs to the end."""
+    kept, closer = [], None
+    for line in text.splitlines():
+        if closer is not None:
+            if closer.fullmatch(line):
+                closer = None
+            continue
+        opened = FENCE_OPEN.fullmatch(line)
+        if opened and not (opened[1][0] == "`" and "`" in opened[2]):
+            fence = opened[1]
+            closer = re.compile(rf" {{0,3}}{re.escape(fence[0])}{{{len(fence)},}}[ \t]*")
+            continue
+        kept.append(line)
+    return "\n".join(kept)
+
+
 def check_gate_facts(root, gated, facts):
-    """Every gated SOP with boundaries must name, in backticks, each key it
-    records for them, and a SOP that names the fix-cycle cap key must say it
-    records it as `run.data.<key>`. Entries already reported as malformed are
-    skipped, and so is a SOP that cannot be read."""
+    """Every gated SOP with boundaries must name, in backticks outside fenced
+    code blocks, each key it records for them, and a SOP that names the
+    fix-cycle cap key must say it records it as `run.data.<key>`. Entries
+    already reported as malformed are skipped, and so is a SOP that cannot be
+    read."""
     errors = []
     cap = facts["fix_cycle_cap"]
     for name in sorted(gated):
@@ -215,7 +239,7 @@ def check_gate_facts(root, gated, facts):
             text = (root / sop).read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
-        named = set(re.findall(r"`([^`]+)`", text))
+        named = set(re.findall(r"`([^`]+)`", without_fenced_blocks(text)))
         if isinstance(entry, dict) and "boundaries" in entry and boundary_problem(entry["boundaries"]) is None:
             for boundary in entry["boundaries"]:
                 for key in required_gate_facts(facts, boundary):
