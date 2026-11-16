@@ -1,0 +1,8 @@
+format: konductor/1
+name: invalid-stage-name
+version: 0.1.0
+intent:
+  outcome: Say hello
+stages:
+  - name: Write
+    agent: k-developer

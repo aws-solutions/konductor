@@ -1,0 +1,9 @@
+format: konductor/1
+name: valid-brace-text
+version: 0.1.0
+intent:
+  outcome: Braces that are not references
+stages:
+  - name: only
+    agent: k-developer
+    prompt: "Use {braces} and {a.b.c} and { a.b } as plain text."

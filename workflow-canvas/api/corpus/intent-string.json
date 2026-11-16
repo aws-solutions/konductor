@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "NOT_SUPPORTED_BY_THIS_BUILD",
+      "column": 9,
+      "end_column": 18,
+      "end_line": 4,
+      "file": "intent-string.yml",
+      "line": 4,
+      "path": "intent",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

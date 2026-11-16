@@ -1,0 +1,27 @@
+{
+  "diagnostics": [
+    {
+      "code": "MISSING_KEY",
+      "column": 1,
+      "end_column": 1,
+      "end_line": 9,
+      "file": "unknown-key-near.yml",
+      "line": 1,
+      "path": "",
+      "severity": "error"
+    },
+    {
+      "code": "UNKNOWN_KEY",
+      "column": 1,
+      "end_column": 8,
+      "end_line": 3,
+      "file": "unknown-key-near.yml",
+      "line": 3,
+      "path": "verison",
+      "severity": "error",
+      "suggestion": "version"
+    }
+  ],
+  "errors": 2,
+  "view": null
+}

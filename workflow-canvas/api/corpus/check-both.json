@@ -1,0 +1,26 @@
+{
+  "diagnostics": [
+    {
+      "code": "INVALID_VALUE",
+      "column": 7,
+      "end_column": 1,
+      "end_line": 10,
+      "file": "check-both.yml",
+      "line": 7,
+      "path": "intent.accept[0]",
+      "severity": "error"
+    },
+    {
+      "code": "NOT_SUPPORTED_BY_THIS_BUILD",
+      "column": 7,
+      "end_column": 10,
+      "end_line": 9,
+      "file": "check-both.yml",
+      "line": 9,
+      "path": "intent.accept[0].run",
+      "severity": "error"
+    }
+  ],
+  "errors": 2,
+  "view": null
+}

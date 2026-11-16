@@ -1,0 +1,11 @@
+format: konductor/1
+name: path-absolute
+version: 0.1.0
+intent:
+  outcome: Say hello
+  accept:
+    - id: a
+      file: /etc/passwd
+stages:
+  - name: write
+    agent: k-developer

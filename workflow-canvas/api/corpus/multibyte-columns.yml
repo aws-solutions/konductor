@@ -1,0 +1,7 @@
+format: konductor/1
+name: multibyte-columns
+version: 0.1.0
+intent: {outcome: "héllo wörld 日本", owner: me}
+stages:
+  - name: write
+    agent: k-developer

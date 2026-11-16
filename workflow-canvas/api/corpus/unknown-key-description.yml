@@ -1,0 +1,9 @@
+format: konductor/1
+name: unknown-key-description
+version: 0.1.0
+description: Not a key of the workflow.
+intent:
+  outcome: Say hello
+stages:
+  - name: write
+    agent: k-developer

@@ -1,0 +1,1 @@
+{format: konductor/1, name: wrong-type-params-flow, version: 0.1.0, intent: {outcome: Say hello}, params: [goal], stages: [{name: write, agent: k-developer}]}

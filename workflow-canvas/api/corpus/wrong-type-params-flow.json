@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "WRONG_TYPE",
+      "column": 107,
+      "end_column": 113,
+      "end_line": 1,
+      "file": "wrong-type-params-flow.yml",
+      "line": 1,
+      "path": "params",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

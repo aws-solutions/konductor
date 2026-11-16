@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "INVALID_VALUE",
+      "column": 12,
+      "end_column": 313,
+      "end_line": 5,
+      "file": "outcome-too-long.yml",
+      "line": 5,
+      "path": "intent.outcome",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

@@ -1,0 +1,9 @@
+format: konductor/1
+name: no-final-newline
+version: 0.1.0
+intent:
+  outcome: Say hello
+owner: me
+stages:
+  - name: write
+    agent: k-developer

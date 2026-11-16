@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "UNSUPPORTED_FORMAT",
+      "column": 9,
+      "end_column": 20,
+      "end_line": 1,
+      "file": "unsupported-format.yml",
+      "line": 1,
+      "path": "format",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

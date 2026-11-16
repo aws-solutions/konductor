@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "WRONG_TYPE",
+      "column": 3,
+      "end_column": 1,
+      "end_line": 8,
+      "file": "wrong-type-params-list.yml",
+      "line": 7,
+      "path": "params",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

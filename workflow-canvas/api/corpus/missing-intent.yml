@@ -1,0 +1,6 @@
+format: konductor/1
+name: missing-intent
+version: 0.1.0
+stages:
+  - name: write
+    agent: k-developer

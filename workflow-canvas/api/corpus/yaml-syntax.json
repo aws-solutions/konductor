@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "YAML_SYNTAX",
+      "column": 1,
+      "end_column": 1,
+      "end_line": 2,
+      "file": "yaml-syntax.yml",
+      "line": 2,
+      "path": "",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

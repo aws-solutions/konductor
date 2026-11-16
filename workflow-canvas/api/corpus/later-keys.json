@@ -1,0 +1,26 @@
+{
+  "diagnostics": [
+    {
+      "code": "NOT_SUPPORTED_BY_THIS_BUILD",
+      "column": 5,
+      "end_column": 12,
+      "end_line": 9,
+      "file": "later-keys.yml",
+      "line": 9,
+      "path": "stages.write.outputs",
+      "severity": "error"
+    },
+    {
+      "code": "NOT_SUPPORTED_BY_THIS_BUILD",
+      "column": 5,
+      "end_column": 13,
+      "end_line": 11,
+      "file": "later-keys.yml",
+      "line": 11,
+      "path": "stages.write.parallel",
+      "severity": "error"
+    }
+  ],
+  "errors": 2,
+  "view": null
+}

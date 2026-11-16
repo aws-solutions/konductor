@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "DUPLICATE_STAGE",
+      "column": 11,
+      "end_column": 16,
+      "end_line": 9,
+      "file": "duplicate-stage.yml",
+      "line": 9,
+      "path": "stages[1].name",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

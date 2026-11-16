@@ -1,0 +1,46 @@
+{
+  "diagnostics": [
+    {
+      "code": "UNKNOWN_KEY",
+      "column": 1,
+      "end_column": 5,
+      "end_line": 6,
+      "file": "distinct-keys.yml",
+      "line": 6,
+      "path": "True",
+      "severity": "error"
+    },
+    {
+      "code": "UNKNOWN_KEY",
+      "column": 1,
+      "end_column": 5,
+      "end_line": 7,
+      "file": "distinct-keys.yml",
+      "line": 7,
+      "path": "true",
+      "severity": "error"
+    },
+    {
+      "code": "UNKNOWN_KEY",
+      "column": 1,
+      "end_column": 4,
+      "end_line": 8,
+      "file": "distinct-keys.yml",
+      "line": 8,
+      "path": "1.0",
+      "severity": "error"
+    },
+    {
+      "code": "UNKNOWN_KEY",
+      "column": 1,
+      "end_column": 2,
+      "end_line": 9,
+      "file": "distinct-keys.yml",
+      "line": 9,
+      "path": "1",
+      "severity": "error"
+    }
+  ],
+  "errors": 4,
+  "view": null
+}

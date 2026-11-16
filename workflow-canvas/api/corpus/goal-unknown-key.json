@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "UNKNOWN_KEY",
+      "column": 5,
+      "end_column": 10,
+      "end_line": 8,
+      "file": "goal-unknown-key.yml",
+      "line": 8,
+      "path": "params.goal.label",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

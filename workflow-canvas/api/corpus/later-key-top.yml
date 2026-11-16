@@ -1,0 +1,9 @@
+format: konductor/1
+name: later-key-top
+version: 0.1.0
+targets: [a]
+intent:
+  outcome: Say hello
+stages:
+  - name: write
+    agent: k-developer

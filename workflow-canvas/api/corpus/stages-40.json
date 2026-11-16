@@ -1,0 +1,374 @@
+{
+  "diagnostics": [],
+  "errors": 0,
+  "view": {
+    "format": "konductor/1",
+    "intent": {
+      "outcome": "Say hello"
+    },
+    "name": "stages-40",
+    "stages": [
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s0",
+        "range": {
+          "end_line": 8,
+          "line": 7
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s1",
+        "range": {
+          "end_line": 10,
+          "line": 9
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s2",
+        "range": {
+          "end_line": 12,
+          "line": 11
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s3",
+        "range": {
+          "end_line": 14,
+          "line": 13
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s4",
+        "range": {
+          "end_line": 16,
+          "line": 15
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s5",
+        "range": {
+          "end_line": 18,
+          "line": 17
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s6",
+        "range": {
+          "end_line": 20,
+          "line": 19
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s7",
+        "range": {
+          "end_line": 22,
+          "line": 21
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s8",
+        "range": {
+          "end_line": 24,
+          "line": 23
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s9",
+        "range": {
+          "end_line": 26,
+          "line": 25
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s10",
+        "range": {
+          "end_line": 28,
+          "line": 27
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s11",
+        "range": {
+          "end_line": 30,
+          "line": 29
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s12",
+        "range": {
+          "end_line": 32,
+          "line": 31
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s13",
+        "range": {
+          "end_line": 34,
+          "line": 33
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s14",
+        "range": {
+          "end_line": 36,
+          "line": 35
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s15",
+        "range": {
+          "end_line": 38,
+          "line": 37
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s16",
+        "range": {
+          "end_line": 40,
+          "line": 39
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s17",
+        "range": {
+          "end_line": 42,
+          "line": 41
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s18",
+        "range": {
+          "end_line": 44,
+          "line": 43
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s19",
+        "range": {
+          "end_line": 46,
+          "line": 45
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s20",
+        "range": {
+          "end_line": 48,
+          "line": 47
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s21",
+        "range": {
+          "end_line": 50,
+          "line": 49
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s22",
+        "range": {
+          "end_line": 52,
+          "line": 51
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s23",
+        "range": {
+          "end_line": 54,
+          "line": 53
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s24",
+        "range": {
+          "end_line": 56,
+          "line": 55
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s25",
+        "range": {
+          "end_line": 58,
+          "line": 57
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s26",
+        "range": {
+          "end_line": 60,
+          "line": 59
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s27",
+        "range": {
+          "end_line": 62,
+          "line": 61
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s28",
+        "range": {
+          "end_line": 64,
+          "line": 63
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s29",
+        "range": {
+          "end_line": 66,
+          "line": 65
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s30",
+        "range": {
+          "end_line": 68,
+          "line": 67
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s31",
+        "range": {
+          "end_line": 70,
+          "line": 69
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s32",
+        "range": {
+          "end_line": 72,
+          "line": 71
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s33",
+        "range": {
+          "end_line": 74,
+          "line": 73
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s34",
+        "range": {
+          "end_line": 76,
+          "line": 75
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s35",
+        "range": {
+          "end_line": 78,
+          "line": 77
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s36",
+        "range": {
+          "end_line": 80,
+          "line": 79
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s37",
+        "range": {
+          "end_line": 82,
+          "line": 81
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s38",
+        "range": {
+          "end_line": 84,
+          "line": 83
+        }
+      },
+      {
+        "agent": "k-developer",
+        "kind": "agent",
+        "name": "s39",
+        "range": {
+          "end_line": 86,
+          "line": 85
+        }
+      }
+    ],
+    "version": "0.1.0"
+  }
+}

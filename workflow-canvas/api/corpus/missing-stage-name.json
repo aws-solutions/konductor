@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "MISSING_KEY",
+      "column": 5,
+      "end_column": 1,
+      "end_line": 8,
+      "file": "missing-stage-name.yml",
+      "line": 7,
+      "path": "stages[0]",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}

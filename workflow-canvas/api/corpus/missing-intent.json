@@ -1,0 +1,16 @@
+{
+  "diagnostics": [
+    {
+      "code": "MISSING_KEY",
+      "column": 1,
+      "end_column": 1,
+      "end_line": 7,
+      "file": "missing-intent.yml",
+      "line": 1,
+      "path": "",
+      "severity": "error"
+    }
+  ],
+  "errors": 1,
+  "view": null
+}
