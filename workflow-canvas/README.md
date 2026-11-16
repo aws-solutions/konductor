@@ -86,8 +86,9 @@ that make a text invalid, the list of diagnostic codes, how a file that is not
 a plain file is handled, and what a run does stage by stage. A client follows a
 run by polling `GET /api/runs/{id}`. The session response also says which
 server it is: `konductor_version`, the `capabilities` it supports (the
-`operationId` of each operation) and its `limits` (text bytes, stages, outcome,
-prompt and goal lengths). The page does not read these yet. The format itself is described in
+`operationId` of each operation, which is not renamed within an API major
+version) and its `limits` (text bytes, stages, outcome, prompt and goal
+lengths). The page does not read these yet. The format itself is described in
 [`docs/design/workflows-spec.md`](../docs/design/workflows-spec.md).
 
 A run uses the `kiro-cli` or `claude` harness, or `fake` in tests. A stage
@@ -120,7 +121,8 @@ know, and requests with a field the contract does not name are refused.
   a key points at that key, the counts of a check add up, and a run's stages
   follow its status;
 - checks that the session example lists every `operationId` as a capability
-  and reports the limits that the rest of the file states;
+  and reports the limits that the rest of the file states, and that the six
+  `operationId`s of the first release are still there, so a rename fails;
 - checks the format rules that a schema can hold: a version is `X.Y.Z`, a path
   follows the specification's path rule (no empty, `.` or `..` segment, no `\`,
   no drive letter, no control character), and a check has exactly one of `file`

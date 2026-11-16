@@ -65,6 +65,16 @@ const HTTP_METHODS = ['get', 'put', 'post', 'patch', 'delete'];
 const VERSION_HEADER = 'X-Konductor-Api';
 
 // The first release has these six operations and no others.
+// A client picks what to call by these ids, so renaming one breaks it.
+const STABLE_OPERATION_IDS = [
+  'createSession',
+  'getWorkflow',
+  'saveWorkflow',
+  'checkWorkflow',
+  'startRun',
+  'getRun',
+];
+
 const MVP_OPERATIONS = [
   'POST /api/session createSession',
   'GET /api/workflow getWorkflow',
@@ -966,7 +976,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.2.0');
+      expect(info.version).toBe('1.2.1');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1004,6 +1014,32 @@ describe('workflow canvas API contract', () => {
       expect([...session().capabilities].sort()).toEqual([...ids].sort());
     });
 
+    it('keeps the operationId of every operation of the first release', () => {
+      const ids = listOperations(spec).map(
+        ({ operation }) => operation.operationId,
+      );
+      expect(ids).toEqual(expect.arrayContaining(STABLE_OPERATION_IDS));
+      expect(session().capabilities).toEqual(
+        expect.arrayContaining(STABLE_OPERATION_IDS),
+      );
+    });
+
+    it('says that an operationId is not renamed within a major version', () => {
+      const capabilities = property('SessionResponse', 'capabilities');
+      expect(words(capabilities['description'] as string)).toMatch(
+        /Each `operationId` is part of the wire contract and is not renamed within an API major version/,
+      );
+    });
+
+    it('accepts every operationId as a capability', () => {
+      const items = property('SessionResponse', 'capabilities')['items'] as {
+        pattern: string;
+      };
+      for (const id of STABLE_OPERATION_IDS) {
+        expect(id).toMatch(new RegExp(items.pattern));
+      }
+    });
+
     it('reports the limits that the rest of the document states', () => {
       const { limits } = session();
       const runParams = property('RunRequest', 'params')[
@@ -1035,6 +1071,12 @@ describe('workflow canvas API contract', () => {
     it('says that version 1.2.0 only adds to the session response', () => {
       expect(words(spec.info.description)).toMatch(
         /Version 1\.2\.0 only adds: the session response gains `konductor_version`, `capabilities` and `limits`/,
+      );
+    });
+
+    it('says that version 1.2.1 adds and removes nothing', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.2\.1 adds nothing and removes nothing/,
       );
     });
   });
