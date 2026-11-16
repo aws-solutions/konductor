@@ -11,13 +11,14 @@
  * failed), mean, median and p90 (nearest rank), each amount rounded to AMOUNT_DECIMALS. A group with fewer, an
  * entry of the current profile that the ledger has no calls for, and the entry of a model the current profile marks
  * `cliReportsLow` (for the same kind first, else for the same model) keep the current profile's entry. A measured
- * entry has `cliReportsLow` false. With no entry measured, the profile keeps the current `measuredOn` and provenance.
+ * entry has `cliReportsLow` false and keeps the token prices the current profile has for its model: the ledger holds
+ * costs, not prices. With no entry measured, the profile keeps the current `measuredOn` and provenance.
  */
 'use strict';
 
 const path = require('path');
 const { readLedgerRows } = require('./ledger');
-const { CALL_KINDS, SCHEMA_VERSION } = require('./cost-profile');
+const { CALL_KINDS, SCHEMA_VERSION, tokenPrices } = require('./cost-profile');
 
 /** The fewest calls a (kind, model) group needs before its measured figures replace the current entry. */
 const MIN_CALLS = 20;
@@ -107,7 +108,10 @@ function rebuildProfile({ ledgerFile, current, today }) {
     const reportsLow = currentReportsLow(current, kind, model);
     if (group.length >= MIN_CALLS && !reportsLow) {
       rebuilt.push(`${kind} ${model}`);
-      return measuredEntry(kind, model, group, false);
+      return {
+        ...measuredEntry(kind, model, group, false),
+        ...tokenPrices(current, kind, model),
+      };
     }
     if (fallback) kept.push(`${kind} ${model}`);
     return fallback ? { ...fallback } : null;
