@@ -231,6 +231,8 @@ def test_direct_work_treats_a_skill_miss_as_the_signal_to_spawn():
 
 
 FILTER_CHECK = "git --no-pager -c core.fsmonitor= config --local --includes --get-regexp '^filter\\.'"
+EXTENSION_CHECK = "git --no-pager -c core.fsmonitor= config --local --type=bool --get extensions.worktreeConfig"
+WORKTREE_FILTER_CHECK = "git --no-pager -c core.fsmonitor= config --worktree --includes --get-regexp '^filter\\.'"
 
 
 def _read_only_shell_row():
@@ -242,10 +244,17 @@ def test_read_only_git_skips_working_tree_reads_when_a_filter_driver_is_set():
     row = _read_only_shell_row()
     assert "a `filter.<driver>` with its `clean` or `process` program" in row
     assert "`git config --local --includes --get-regexp '^filter\\.'`" in row
+    assert "`git config --local --type=bool --get extensions.worktreeConfig`" in row
+    assert "`git config --worktree --includes --get-regexp '^filter\\.'`" in row
     assert (
         "before `git status`, `git diff` against the working tree (including `--stat` and `HEAD`), "
-        "or `git blame`, run `" + FILTER_CHECK + "`"
+        "or `git blame`, run `" + FILTER_CHECK + "` and `" + EXTENSION_CHECK + "`, "
+        "and only if the second prints `true`, `" + WORKTREE_FILTER_CHECK + "`"
+    ) in row
+    assert (
+        "If a filter read prints anything, or the extension read prints anything other than "
+        "`true` or `false` (an error included), do not run those three"
     ) in row
     assert "use `git diff --cached`, `git log`, `git show`, and the file tools instead" in row
-    assert "tell the user the repository config defines a filter driver" in row
+    assert "tell the user the repository config defines a filter driver or could not be checked" in row
     assert "the only `-c` allowed" in row

@@ -312,9 +312,11 @@ not per individual commit.
   --no-textconv --submodule=short` (and `--no-show-signature` on `log` and `show`). These forms
   stop repository config from running a program through `core.fsmonitor`, `core.pager`,
   `diff.external`, a textconv driver, signature checks or a submodule diff. No flag stops a
-  `filter.<driver>`, so when local repository config defines one, orchestrators skip `git status`,
-  working-tree `git diff` and `git blame`, use `git diff --cached`, `git log`, `git show` and the
-  file tools instead, and tell the user why.
+  `filter.<driver>`, so orchestrators skip `git status`, working-tree `git diff` and `git blame`
+  when `.git/config` or a file it includes defines one, or when `extensions.worktreeConfig` is true
+  in `.git/config` and the worktree's `config.worktree` (or a file it includes) defines one. They
+  also skip them when `extensions.worktreeConfig` holds a value that is not a boolean. They use
+  `git diff --cached`, `git log`, `git show` and the file tools instead, and tell the user why.
 - The orchestrator routing rules list memory and skill capture as direct work, matching what
   Memory & Skill Reflexes ask for.
 - Core rule 12's example search that skips `.env` files keeps `.env.example` in its results.
