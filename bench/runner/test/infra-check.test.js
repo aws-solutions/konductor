@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { infraFailure } = require('../lib/infra-check.js');
+const { infraFailure, studyInfraCheck, CONTROL_SUITE_SHORT_RUN_NOTE } = require('../lib/infra-check.js');
 
 const r = (status, wallClockMs) => ({ status, wallClockMs });
 
@@ -48,4 +48,28 @@ test('BENCH_TEST_MODE lifts the one-second floor but errored runs still count as
     if (before === undefined) delete process.env.BENCH_TEST_MODE; else process.env.BENCH_TEST_MODE = before;
   }
   assert.equal(infraFailure([r('success', 5)]).quick, 1);
+});
+
+const QUICK = [r('success', 40), r('success', 80)];
+
+test('a plant control suite with sub-second trials passes the check and records why', () => {
+  assert.deepEqual(studyInfraCheck(QUICK, { counted: false }), { infra: null, skipped: CONTROL_SUITE_SHORT_RUN_NOTE });
+  assert.match(CONTROL_SUITE_SHORT_RUN_NOTE, /^control suite: short-run check skipped/);
+});
+
+test('a counted plant suite with the same timing still fails the check', () => {
+  const { infra, skipped } = studyInfraCheck(QUICK, { counted: true });
+  assert.equal(infra.quick, 2);
+  assert.equal(skipped, null);
+});
+
+test('a non-plant suite is checked as before', () => {
+  assert.equal(studyInfraCheck(QUICK, null).infra.quick, 2);
+  assert.equal(studyInfraCheck(QUICK, null).skipped, null);
+});
+
+test('the driver logs the skip reason and writes it to summary.json', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'lib', 'run-cmd.js'), 'utf8');
+  assert.match(src, /studyInfraCheck\(results, plantSuite\)/);
+  assert.match(src, /infraCheckSkipped/);
 });

@@ -192,4 +192,12 @@ Runs were not inside bench's sandbox, because `unshare` is blocked on this host 
 | Isolation in the report | The header limits name each suite's isolation mode, and `--isolate none` makes it WARN |
 | Test rig | `rig`, `suiteOf` and `plantRun` moved from `plant-lifecycle.test.js` to `test/plant-run-rig.js`, with `kiroBin`, `taskId` and `envKeep` options, so the control tests run a real trial without copying them |
 | Stub tests | The stub release has no Cedar policy, so its fixed rule allows `open_guard` on a stopped belt without using the approval: the careful operator scores handled there, with R5 harm. The control tests assert that, not zero harm. Zero harm needs a Cedar policy, which only a release has |
-| Exit code of a control suite | Every control trial finishes in well under a second, so `bench run` ends with exit 5 ("finished in under 1000 ms, treat as infrastructure failure"). The results are written and scored as usual. Left as is |
+| Exit code of a control suite | Every control trial finishes in well under a second, so `bench run` ended with exit 5 ("finished in under 1000 ms, treat as infrastructure failure"). Fixed in step 10, see below |
+
+## Decisions made in step 10 (exit code of control suites)
+
+| Topic | Decision |
+|---|---|
+| The check | `infraFailure` in `runner/lib/infra-check.js`: a study whose every run errored or ended in under 1000 ms is called an infrastructure failure, and `run-cmd.js` sets exit 5. It guards real suites against an agent that never ran |
+| Rule | `studyInfraCheck(results, plantSuite)` skips the check only when the prepared plant suite has `counted: false`, which is a suite with `--kiro-bin` (step 6). Counted plant suites and non-plant suites call `infraFailure` unchanged |
+| Record | The skip is logged as `control suite: short-run check skipped (fake controls finish in under a second by design)` and written to `summary.json` as `infraCheckSkipped`. No new flag, no silent bypass. The sensor age check is not touched |

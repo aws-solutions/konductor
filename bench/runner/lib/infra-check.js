@@ -18,4 +18,17 @@ function infraFailure(results, minMs = minRealRunMs()) {
   return { runs: ran.length, errored, quick, reason: `all ${ran.length} run(s) errored (${errored}) or finished in under ${minMs} ms (${quick}); treat the study as an infrastructure failure, not a result` };
 }
 
-module.exports = { infraFailure, MIN_REAL_RUN_MS };
+// A plant control suite runs fake agents that finish in milliseconds by design, so the check is skipped for it and this reason is logged and written to summary.json.
+const CONTROL_SUITE_SHORT_RUN_NOTE = 'control suite: short-run check skipped (fake controls finish in under a second by design)';
+
+/**
+ * The study's infra verdict as `{ infra, skipped }`. `plantSuite` is the prepared plant suite or null: only a suite with
+ * `counted: false` (a plant control suite, made by --kiro-bin) skips the check, with `skipped` holding the reason to log;
+ * every other study, including a counted plant suite, gets `infraFailure` and `skipped: null`.
+ */
+function studyInfraCheck(results, plantSuite) {
+  if (plantSuite && !plantSuite.counted) return { infra: null, skipped: CONTROL_SUITE_SHORT_RUN_NOTE };
+  return { infra: infraFailure(results), skipped: null };
+}
+
+module.exports = { infraFailure, studyInfraCheck, MIN_REAL_RUN_MS, CONTROL_SUITE_SHORT_RUN_NOTE };
