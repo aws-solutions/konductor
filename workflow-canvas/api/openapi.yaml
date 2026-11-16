@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.2.0
+  version: 1.2.1
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -27,7 +27,10 @@ info:
     1 and `info.version` moves from 1.0.0 to 1.1.0: there is no client of 1.0.0
     to break, so there is no reason to start a second major version. Version
     1.2.0 only adds: the session response gains `konductor_version`,
-    `capabilities` and `limits`.
+    `capabilities` and `limits`. Version 1.2.1 adds nothing and removes
+    nothing: it says that an `operationId` is not renamed, and it widens the
+    pattern of a capability, which a client already treats as a value it may
+    not know.
 
     **Conventions**
 
@@ -1767,12 +1770,14 @@ components:
           uniqueItems: true
           items:
             type: string
-            pattern: '^[a-z][A-Za-z]*$'
+            pattern: '^[A-Za-z][A-Za-z0-9_]*$'
           description: |
             The `operationId` of every operation this server supports, in any
-            order. A server of this version lists all six. A later server may
-            list operations this document does not have, and a client ignores
-            the ones it does not know.
+            order. Each `operationId` is part of the wire contract and is not
+            renamed within an API major version. A server of this version
+            lists every operation in this document. A later server may list
+            operations this document does not have, and a client ignores the
+            ones it does not know.
         limits:
           $ref: '#/components/schemas/SessionLimits'
     SessionLimits:
