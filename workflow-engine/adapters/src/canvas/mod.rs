@@ -68,6 +68,8 @@ pub enum StartRefusal {
         error: String,
         fix: String,
     },
+    /// The inputs of the run break a limit, such as a prompt over its size. The text says which.
+    BadParams(String),
     /// The run state could not be written. The text is for standard error and never for the client.
     Storage(String),
 }

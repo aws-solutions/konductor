@@ -398,6 +398,7 @@ pub fn start_run(shared: &Shared, body: &Body) -> Result<Reply, ApiError> {
                 .message(error)
                 .with("fix", Json::Str(fix)))
         }
+        Err(StartRefusal::BadParams(message)) => Err(ApiError::new("bad_params").message(message)),
         Err(StartRefusal::Storage(why)) => Err(io_error(why)),
     }
 }
