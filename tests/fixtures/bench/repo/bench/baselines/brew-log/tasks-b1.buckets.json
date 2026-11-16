@@ -1,0 +1,50 @@
+{
+  "format_version": 1,
+  "skill": "brew-log",
+  "batch": "b1",
+  "rules": {
+    "brew-log-r01": { "class": "useful", "kept": true, "bucket": "value" },
+    "brew-log-r02": { "class": "useful", "kept": true, "bucket": "value" },
+    "brew-log-r03": { "class": "style", "kept": true, "bucket": "format" },
+    "brew-log-r04": { "class": "generic", "kept": true, "bucket": "guard" },
+    "brew-log-r05": { "class": "useful", "kept": true, "bucket": "value" },
+    "brew-log-r06": { "class": "style", "kept": false, "bucket": "format" }
+  },
+  "scenarios": {
+    "brew-log-rules-1": {
+      "1": { "bucket": "value", "rule_id": "brew-log-r01" },
+      "2": { "bucket": "value", "rule_id": "brew-log-r02" },
+      "3": { "bucket": "format", "rule_id": "brew-log-r03" },
+      "4": { "bucket": "guard", "rule_id": "brew-log-r04" },
+      "5": { "bucket": "value", "rule_id": "brew-log-r05" }
+    },
+    "brew-log-rules-2": {
+      "1": { "bucket": "value", "rule_id": "brew-log-r01" },
+      "2": { "bucket": "value", "rule_id": "brew-log-r02" },
+      "3": { "bucket": "format", "rule_id": "brew-log-r03" },
+      "4": { "bucket": "guard", "rule_id": "brew-log-r04" },
+      "5": { "bucket": "value", "rule_id": "brew-log-r05" }
+    },
+    "brew-log-rules-3": {
+      "1": { "bucket": "value", "rule_id": "brew-log-r01" },
+      "2": { "bucket": "value", "rule_id": "brew-log-r02" },
+      "3": { "bucket": "format", "rule_id": "brew-log-r03" },
+      "4": { "bucket": "guard", "rule_id": "brew-log-r04" },
+      "5": { "bucket": "value", "rule_id": "brew-log-r05" }
+    },
+    "brew-log-rules-4": {
+      "1": { "bucket": "value", "rule_id": "brew-log-r01" },
+      "2": { "bucket": "value", "rule_id": "brew-log-r02" },
+      "3": { "bucket": "format", "rule_id": "brew-log-r03" },
+      "4": { "bucket": "guard", "rule_id": "brew-log-r04" },
+      "5": { "bucket": "value", "rule_id": "brew-log-r05" }
+    },
+    "brew-log-rules-5": {
+      "1": { "bucket": "value", "rule_id": "brew-log-r01" },
+      "2": { "bucket": "value", "rule_id": "brew-log-r02" },
+      "3": { "bucket": "format", "rule_id": "brew-log-r03" },
+      "4": { "bucket": "guard", "rule_id": "brew-log-r04" },
+      "5": { "bucket": "value", "rule_id": "brew-log-r05" }
+    }
+  }
+}

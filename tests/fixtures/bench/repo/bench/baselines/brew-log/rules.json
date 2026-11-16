@@ -1,0 +1,56 @@
+{
+  "format_version": 1,
+  "skill": "brew-log",
+  "skill_md_sha256": "6f94d20c23927a93d5874852d39b87de91e20e7ab6aaedf54108857d6d4506a1",
+  "request_context": "A request to write a short log entry for a tea or coffee brew, given the facts of that brew.",
+  "rules": [
+    {
+      "id": "brew-log-r01",
+      "source_quote": "Open with the water temperature and the steep time.",
+      "class": "useful",
+      "outcome": "The entry begins with the water temperature and the steep time, ahead of any other detail.",
+      "why": "Temperature and time are what a later reader needs to repeat the brew.",
+      "scenario_hint": "A brew where the temperature and the time were both written down by the requester."
+    },
+    {
+      "id": "brew-log-r02",
+      "source_quote": "Name the tea or coffee and the amount used.",
+      "class": "useful",
+      "outcome": "The entry names the tea or coffee brewed and states how much of it was used.",
+      "why": "Without the name and the amount the entry cannot be compared with another brew.",
+      "scenario_hint": "A brew where the requester gives a product name and a weight or a spoon count."
+    },
+    {
+      "id": "brew-log-r03",
+      "source_quote": "Keep the entry to three sentences or fewer.",
+      "class": "style",
+      "outcome": "The entry has no more than three sentences.",
+      "why": "A short log is easy to scan, and a long one is not read.",
+      "scenario_hint": "Any brew where the requester supplies more facts than fit in three sentences."
+    },
+    {
+      "id": "brew-log-r04",
+      "source_quote": "Define any abbreviation the first time it appears.",
+      "class": "generic",
+      "outcome": "Each abbreviation in the entry is spelled out the first time it is used.",
+      "why": "A reader who does not know the abbreviation cannot use the entry.",
+      "scenario_hint": "A brew where the requester uses shorthand such as tsp, gaiwan or TDS."
+    },
+    {
+      "id": "brew-log-r05",
+      "source_quote": "Say what to change the next time.",
+      "class": "useful",
+      "outcome": "The entry ends with one concrete change to try on the next brew.",
+      "why": "A log that only records the past does not help the next brew.",
+      "scenario_hint": "A brew the requester found too bitter, too weak or otherwise off."
+    },
+    {
+      "id": "brew-log-r06",
+      "source_quote": "Write the date as year, month, day.",
+      "class": "style",
+      "outcome": "The date in the entry is written year first, then month, then day.",
+      "why": "Year-first dates sort correctly in a list of entries.",
+      "scenario_hint": "A brew where the requester gives a date."
+    }
+  ]
+}
