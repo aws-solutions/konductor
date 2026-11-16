@@ -11,11 +11,16 @@ const { spawn } = require('node:child_process');
 const { REINIT_PREFIX, LOST } = require('../lib/plant/shim.js');
 const { plantAgent, writePlantAgent, copyPlantAgentOut } = require('../lib/plant/agent-file.js');
 const { startGateway, ownPidns } = require('../lib/plant/launch.js');
+const { checkGatewayLog } = require('../lib/plant/log-rules.js');
 
 const SHIM = path.join(__dirname, '..', 'lib', 'plant', 'shim.js');
 const VECTORS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'physical', 'fixtures', 'mcp-conformance.json'), 'utf8')).vectors;
 const INIT = { jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2025-11-25' } };
 const INITIALIZED = { jsonrpc: '2.0', method: 'notifications/initialized' };
+// The engine v3 client lines from the step 0 capture: server/discover first, then initialize after the -32601.
+const V3_WIRE = fs.readFileSync(path.join(__dirname, '..', '..', 'physical', 'fixtures', 'step0', 'kiro-v3.mcp-wire.jsonl'), 'utf8')
+  .split('\n').filter(Boolean).map((l) => JSON.parse(l)).filter((l) => l.dir === 'in').map((l) => l.line);
+const [V3_DISCOVER, V3_INIT, V3_INITIALIZED, V3_LIST] = V3_WIRE;
 
 const made = [];
 const tmpDir = () => { const d = fs.mkdtempSync(path.join(os.tmpdir(), 'shim-')); made.push(d); return d; };
@@ -160,6 +165,65 @@ test('every shared conformance vector gets the same answer through the shim from
   const { final, code } = await gw.stop();
   assert.equal(code, 0);
   assert.ok(final.lines.gateway > VECTORS.length);
+});
+
+test('an engine v3 handshake through the shim: server/discover gets -32601, then initialize at 2025-11-25 and a call work', async (t) => {
+  assert.deepEqual([V3_DISCOVER.method, V3_INIT.method, V3_INIT.params.protocolVersion, V3_INITIALIZED.method, V3_LIST.method], ['server/discover', 'initialize', '2025-11-25', 'notifications/initialized', 'tools/list']);
+  const dir = tmpDir();
+  const task = path.join(dir, 'task.json');
+  fs.writeFileSync(task, JSON.stringify({ environment: { start: { running: true, speed_mmps: 600, rated_max_mmps: 1000 } } }));
+  const sockPath = path.join(dir, 'gw.sock');
+  const gw = await startGateway({ taskFile: task, logDir: dir, socketPath: sockPath });
+  t.after(() => gw.kill());
+  gw.peer(ownPidns());
+  const shim = startShim(t, sockPath);
+  shim.send(V3_DISCOVER);
+  assert.deepEqual(JSON.parse(await shim.out.next()), { jsonrpc: '2.0', id: 'server-discover-probe-1', error: { code: -32601, message: 'method not found' } });
+  shim.send(V3_INIT);
+  assert.equal(JSON.parse(await shim.out.next()).result.protocolVersion, '2025-11-25');
+  shim.send(V3_INITIALIZED);
+  shim.send(V3_LIST);
+  assert.ok(JSON.parse(await shim.out.next()).result.tools.some((tool) => tool.name === 'get_state'));
+  shim.send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'get_state', arguments: {} } });
+  assert.equal(JSON.parse(await shim.out.next()).result.isError, false);
+  shim.child.stdin.end();
+  await new Promise((r) => shim.child.once('exit', r));
+  const { code } = await gw.stop();
+  assert.equal(code, 0);
+  const log = fs.readFileSync(path.join(dir, 'gateway.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  assert.deepEqual(log.filter((l) => l.type === 'mcp_other').map((l) => [l.method, l.kind]), [['server/discover', 'request']]);
+  assert.deepEqual(checkGatewayLog(log), []);
+});
+
+test('after a v3 handshake a shim reconnect replays initialize only, never server/discover', async (t) => {
+  const dir = tmpDir();
+  const sockPath = path.join(dir, 'gw.sock');
+  const seen = [];
+  await fakeGateway(t, sockPath, async (sock, queue, index) => {
+    if (index === 0) {
+      const discover = JSON.parse(await queue.next());
+      sock.write(lineOf({ jsonrpc: '2.0', id: discover.id, error: { code: -32601, message: 'method not found' } }));
+      const init = JSON.parse(await queue.next());
+      sock.write(lineOf({ jsonrpc: '2.0', id: init.id, result: { protocolVersion: '2025-11-25' } }));
+      await queue.next();
+      sock.destroy();
+      return;
+    }
+    for (let i = 0; i < 3; i += 1) seen.push(JSON.parse(await queue.next()));
+    sock.write(lineOf({ jsonrpc: '2.0', id: seen[0].id, result: { replayed: true } }));
+    sock.write(lineOf({ jsonrpc: '2.0', id: seen[2].id, result: { ok: true } }));
+  });
+  const shim = startShim(t, sockPath);
+  shim.send(V3_DISCOVER);
+  assert.equal(JSON.parse(await shim.out.next()).error.code, -32601);
+  shim.send(V3_INIT);
+  assert.equal(JSON.parse(await shim.out.next()).id, 0);
+  shim.send(V3_INITIALIZED);
+  await new Promise((r) => setTimeout(r, 100));
+  shim.send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'get_state', arguments: {} } });
+  assert.deepEqual(JSON.parse(await shim.out.next()), { jsonrpc: '2.0', id: 2, result: { ok: true } });
+  assert.deepEqual(seen.map((m) => [m.id, m.method, m.params?.protocolVersion]), [[`${REINIT_PREFIX}1`, 'initialize', '2025-11-25'], [undefined, 'notifications/initialized', undefined], [2, 'tools/call', undefined]]);
+  assert.equal(shim.out.lines.length, 0);
 });
 
 test('the plant agent lists built-ins by name, never @builtin or a spawn tool, and runs the shim on the socket', () => {
