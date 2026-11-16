@@ -107,7 +107,7 @@ def test_bundle_reference_block_counts_konductor_skills_as_24():
         body = (ROOT / rel).read_text(encoding="utf-8")
         assert "konductor skills (24)" in body, rel
         assert "konductor skills (22)" not in body, rel
-        assert "Kiro CLI has the other 23 plus humanize-writing" in body, rel
+        assert "claude-teams-behavior, which is Claude Code only and not one of the 24" in body, rel
 
 
 def test_maker_side_checks_have_triggers_in_direct_work():
