@@ -1,0 +1,128 @@
+{
+  "format_version": 1,
+  "skill": "historical-issues-registry",
+  "batch": "rules-c4",
+  "generated_at": "2026-11-10T09:38:06.646Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "568812d845e17bd41a6245abef2ac660967fa890246e9e786f80b95e34302769",
+  "scenarios": [
+    {
+      "id": "historical-issues-registry-rules-1",
+      "title": "Inventory API regression after CSV import rewrite",
+      "target_section": "Output",
+      "prompt": "We're on revision 4 of the warehouse inventory API review and I need the automated findings cleaned up against what happened on earlier revisions before I post. Here's the old comment history and the new findings.\n\nOLD COMMENTS\n- T-101 (rev 1) src/inventory/import/csv_loader.py:88 \"Security: unvalidated pagination token passed straight to the cursor decoder\". Resolved, author replied \"fixed in a1f9c3, now signed and checked\".\n- T-102 (rev 2) src/inventory/stock/update.py:140 \"Data Integrity: unconditional overwrite of on-hand quantity\". Author replied \"this is intentional, the nightly job is the source of truth\". Reviewer dana.k replied \"agreed, nightly job wins, fine to leave\". Resolved.\n- T-103 (rev 3) src/inventory/api/export.py:30 \"Schema/Contract: missing field in export envelope\". Unresolved, no replies.\n\nNEW FINDINGS (rev 4)\nA. src/inventory/import/csv_loader.py:91 \"Security: unvalidated pagination token handed to cursor decoder\" (the rewrite dropped the signature check)\nB. src/inventory/stock/update.py:144 \"Data Integrity: unconditional overwrite of on-hand quantity\"\nC. src/inventory/api/export.py:33 \"Schema/Contract: missing field in export envelope\"\nD. src/inventory/api/auth.py:12 \"Security: token lifetime not capped\"\n\nTell me for each one whether it goes into the report, with any label it should carry, and what I should say about the ones you drop.",
+      "rubric": [
+        "Keeps finding A (pagination token in csv_loader) in the report and describes it as having regressed after the earlier fix, not as a duplicate to drop.",
+        "Removes finding B (on-hand quantity overwrite) because a second reviewer, dana.k, agreed with the author that it can stay.",
+        "For the dropped finding B, names T-102 as the earlier thread it matched, gives the reason it was dropped, and states that one finding was dropped in total.",
+        "Keeps finding C (export envelope) and labels it as carried over from revision 3, the revision of T-103.",
+        "Passes finding D (token lifetime in auth.py) through as new, since nothing in the old comments matches it.",
+        "Does not drop any finding on a loose or uncertain resemblance; the only finding removed is the one with a clearly settled earlier decision."
+      ],
+      "why_skill_matters": "Four findings cover each outcome: a fixed-then-reintroduced defect, a decision endorsed by a non-author reviewer, an open thread, and an unmatched new item. Line shifts are small. Makes regression, suppression, logging, carry-over and no-match handling matter."
+    },
+    {
+      "id": "historical-issues-registry-rules-2",
+      "title": "Moved config loader with a vague old comment",
+      "target_section": "Matching Protocol",
+      "prompt": "Reviewing a Go service, rev 7. The team lead moved things around so I'm not sure the bot's new findings line up with the old ones. Please sort out which new ones are repeats.\n\nOld comments (all on rev 5 unless noted):\n1. pkg/config/loader.go lines 200-215: \"Data Integrity: missing guard on map write\" — rejected, author argued, reviewer priya replied \"yes, map is only touched under the init lock, drop it\".\n2. pkg/config/loader.go line 40: \"Security: hardcoded fallback credentials in default profile\" — author argued, priya agreed, resolved.\n3. pkg/config/loader.go line 120: \"Schema/Contract: missing guard\" — unresolved, no replies.\n\nNew findings, rev 7. The file is now internal/settings/loader.go:\nX. line 228: \"Data Integrity: missing guard on map write\"\nY. line 41: \"Security: hardcoded fallback credentials in default profile\"\nZ. line 170: \"Data Integrity: missing guard on map write\"\nW. line 125: \"Schema/Contract: missing guard around optional section\"\n\nWhich are repeats to drop, which to keep, and why?",
+      "rubric": [
+        "Treats X (moved to internal/settings/loader.go, line 228 versus old range 200-215) as the same issue as old comment 1, since the file move and line shift are within tolerance.",
+        "Treats Z (line 170, about 30 lines before the old range start of 200) as too far away to be a repeat of old comment 1, and keeps it.",
+        "Drops X and Y as already rejected with a second reviewer's agreement.",
+        "Does not treat W (\"missing guard around optional section\") as a repeat of old comment 3 (\"missing guard\") merely because the wording overlaps; the old phrase is too short and generic for that.",
+        "Explains that a repeat needs the file, a nearby line and the same kind of defect to agree together, and applies that to each of the four.",
+        "Where a call is borderline, it keeps the finding rather than dropping it."
+      ],
+      "why_skill_matters": "File renamed, lines shifted just inside and clearly outside tolerance, and a two-word generic phrase versus a longer one. Makes path and line tolerance, short-phrase exactness and the three-part match matter."
+    },
+    {
+      "id": "historical-issues-registry-rules-3",
+      "title": "Same thread in two exports, state changed",
+      "target_section": "Filter phase",
+      "prompt": "Mobile backend review, now on revision 6. Our tool exports comment history once per revision, so I pasted the rev 4 and rev 5 exports. Same comments appear in both. Please run the new findings against this and tell me what to post.\n\n--- export rev 4 ---\nid c-77 | app/sync/queue.kt:310 | \"Data Integrity: unconditional overwrite of pending queue\" | state: unresolved | posted rev 3\nid c-81 | app/sync/queue.kt:55 | \"Security: unvalidated deep link target\" | state: unresolved | posted rev 4\n--- export rev 5 ---\nid c-77 | app/sync/queue.kt:310 | \"Data Integrity: unconditional overwrite of pending queue\" | state: resolved | author: \"won't fix, queue is rebuilt anyway\" | reviewer sam.o: \"ok, acknowledged, keeping as-is\" | posted rev 3\nid c-81 | app/sync/queue.kt:55 | \"Security: unvalidated deep link target\" | state: resolved | author: \"fixed in 9d2e\" | posted rev 4\n\n--- new findings rev 6 ---\n1. app/sync/queue.kt:312 \"Data Integrity: unconditional overwrite of pending queue\"\n2. app/sync/queue.kt:57 \"Security: unvalidated deep link target\"\n3. app/sync/queue.kt:200 \"Data Integrity: unconditional overwrite of pending queue\" (different method, same wording)",
+      "rubric": [
+        "Treats c-77 as a single earlier decision in its latest state (resolved with sam.o's acknowledgement), not as one open and one closed decision.",
+        "Treats c-81 as a single earlier decision in its latest state (fixed), not as both an open and a fixed entry.",
+        "Drops finding 1 because the latest state of c-77 is a reviewer-acknowledged keep-as-is.",
+        "Keeps finding 2 and flags it as a regression of the fix for c-81.",
+        "Treats finding 3 at line 200, far from line 310, as not matching c-77 and keeps it as new.",
+        "Does not drop finding 2 or 3 on any doubt about the history."
+      ],
+      "why_skill_matters": "The same two threads appear in two exports with different states. A naive pass sees conflicting matches (open vs closed) and either keeps everything or drops everything. Treating each thread once at its latest state resolves it; line 200 is a distant lookalike."
+    },
+    {
+      "id": "historical-issues-registry-rules-4",
+      "title": "Mixed matches for one finding on a data pipeline",
+      "target_section": "Filter phase",
+      "prompt": "Data pipeline repo, review on rev 9. One of the bot's new findings seems to sit on top of several old comments and I don't want to spam the author. Old threads in etl/transform/dedupe.py:\n\n- th-12, rev 2, line 75: \"Data Integrity: silent truncation of decimal precision\" — author said not an issue, reviewer luca.v agreed, resolved.\n- th-19, rev 5, line 82: \"Data Integrity: silent truncation of decimal precision\" — resolved, author: \"fixed with Decimal quantize in 3be1\".\n- th-23, rev 7, line 90: \"Data Integrity: silent truncation of decimal precision\" — open, no replies.\n- th-30, line 77, no revision recorded by the old tool: \"Data Integrity: silent truncation of decimal precision\" — open, no replies.\n\nNew finding on rev 9: etl/transform/dedupe.py:84 \"Data Integrity: silent truncation of decimal precision\".\n\nSeparately, new finding 2: etl/transform/dedupe.py:300 \"Security: path traversal in staging filename\" has no history.\n\nWhat do I do with each, and if there's a label, what exactly should it say?",
+      "rubric": [
+        "Keeps the decimal truncation finding in the report even though th-12 was rejected, because other matching threads were fixed or left open.",
+        "Frames the kept finding as a regression of the th-19 fix rather than a plain carry-over, since a fixed match and open matches are both present.",
+        "The label cites revision 7 (th-23) as the highest known revision among the matches that drive it, and does not use th-30's missing revision or an invented number.",
+        "States which old threads (th-12, th-19, th-23, th-30) it matched, with their states, as the reason the finding was not dropped.",
+        "Passes the path traversal finding through as new, with no label.",
+        "Does not drop the main finding on the strength of th-12 alone."
+      ],
+      "why_skill_matters": "One finding hits four distinct threads with disagreeing outcomes and one missing revision. The old rejection tempts suppression. Fixed plus open means regression wording, and the label needs the highest known number among the matches."
+    },
+    {
+      "id": "historical-issues-registry-rules-5",
+      "title": "Open comments on a legacy tool with no revision data",
+      "target_section": "Load phase",
+      "prompt": "We review on an old on-prem tool that never records which revision a comment was made on. I exported the unresolved comments below. The new automated findings come from the latest pass. Can you tell me which to post and with what notes?\n\nOpen comments:\n- C9: billing/invoice/render.java:210 \"Schema/Contract: missing currency field in invoice payload\" (no replies)\n- C14: billing/invoice/render.java:402 \"Security: unescaped customer name in template\" (author replied \"will look\", nobody else)\n\nNew findings:\n1. billing/invoice/render.java:215 \"Schema/Contract: missing currency field in invoice payload\"\n2. billing/invoice/render.java:405 \"Security: unescaped customer name in template\"\n3. billing/invoice/render.java:50 \"Security: unescaped customer name in template\"",
+      "rubric": [
+        "Keeps finding 1 and notes it was already raised earlier and not addressed, without giving any specific revision number.",
+        "Keeps finding 2 and notes it is a carry-over of C14 without inventing a revision number, since the tool records none.",
+        "Treats finding 3 (line 50, far from line 402) as a new issue, not a carry-over of C14.",
+        "Treats findings 1 and 2 as the same as C9 and C14 despite the line shifts of 5 and 3.",
+        "Nothing is removed from the report."
+      ],
+      "why_skill_matters": "No revision data forces generic wording; small line shifts and one distant lookalike test tolerance."
+    },
+    {
+      "id": "historical-issues-registry-rules-6",
+      "title": "Author-only dismissal on a security finding",
+      "target_section": "Resolution classification",
+      "prompt": "Quick sanity check before I post. On our payments webhook PR, rev 3, the bot has these new findings. The author of the PR (jo) has been closing threads themselves and I want to make sure nothing legit gets hidden.\n\nHistory:\n- w-1 rev 1 webhook/verify.ts:64 \"Security: signature comparison not constant time\" — jo replied \"timing attack is not realistic here, won't fix\". Marked resolved. No other replies.\n- w-2 rev 2 webhook/retry.ts:120 \"Data Integrity: unconditional overwrite of retry counter\" — jo replied \"not needed\". Reviewer ines replied \"agreed, counter is reset by the scheduler anyway\". Resolved.\n- w-3 rev 2 webhook/retry.ts:30 \"Schema/Contract: missing event version field\" — resolved, no reply.\n\nNew findings:\n1. webhook/verify.ts:66 \"Security: signature comparison not constant time\"\n2. webhook/retry.ts:122 \"Data Integrity: unconditional overwrite of retry counter\"\n3. webhook/retry.ts:31 \"Schema/Contract: missing event version field\"",
+      "rubric": [
+        "Keeps finding 1, because w-1 was dismissed only by jo with no reply from another person.",
+        "Drops finding 2, since ines concurred that the counter overwrite is fine.",
+        "Keeps finding 3 and flags it as a regression of an earlier fix, since w-3 was resolved without objection.",
+        "Says finding 2 was dropped because of w-2 and reports one drop in total.",
+        "Does not drop finding 1 on the strength of the resolved mark."
+      ],
+      "why_skill_matters": "Author-only dismissal on a security item sits beside one properly endorsed rejection and a silent resolve."
+    },
+    {
+      "id": "historical-issues-registry-rules-7",
+      "title": "Open threads plus an old rejection, one revision unknown",
+      "target_section": "Quality Gate",
+      "prompt": "Rev 8 of the notification service review. A new finding lands on several old comments and I need the right label. All in src/notify/dispatch.rs, all with the same text \"Data Integrity: duplicate delivery on retry without idempotency key\":\n\n- n-2: posted rev 1, line 144, author argued, reviewer tomas replied \"fair, retries are deduped upstream\", resolved\n- n-4: posted rev 2, line 140, unresolved\n- n-9: posted rev 4, line 150, unresolved\n- n-11: revision not recorded, line 146, unresolved\n- n-9 also shows up again in the rev 6 fetch, still unresolved, still posted rev 4.\n\nNew finding: src/notify/dispatch.rs:148 \"Data Integrity: duplicate delivery on retry without idempotency key\".\n\nShould it be posted, and what exact label should it carry? Also is it one match or several?",
+      "rubric": [
+        "Keeps the finding even though n-2 was rejected with tomas's agreement, because other matched threads are still open.",
+        "Labels the kept finding as carried over from an earlier revision, since the open threads were never addressed.",
+        "Label cites revision 4 as the highest known revision, not 2, not 6 and not an invented number, ignoring n-11's missing revision.",
+        "Counts n-9 once despite its two appearances, giving four distinct earlier threads in total.",
+        "Explains which threads were matched, with their states, as the basis for the decision.",
+        "Does not drop the finding."
+      ],
+      "why_skill_matters": "Several open threads, one with unknown revision, one duplicated fetch and one properly rejected thread; tests unanimity, the highest-integer rule and deduping."
+    },
+    {
+      "id": "historical-issues-registry-rules-8",
+      "title": "Murky dashboard history with a short generic phrase",
+      "target_section": "Resolution classification",
+      "prompt": "Cleaning up findings for rev 5 of a React dashboard review. Some of the old threads are murky, so tell me what you'd do rather than guess for me. The PR author is ravi.\n\nOld:\n- d-3 rev 2, src/charts/Tooltip.tsx:77 \"Security: unsanitized html in tooltip label\". Resolved; ravi wrote \"hmm maybe, see later\"; reviewer kim wrote \"👍\". No commit named.\n- d-5 rev 3, src/charts/Legend.tsx:20 \"Data Integrity: unconditional overwrite of series colors\". Resolved; only reply is ravi: \"won't fix, colors are cosmetic\".\n- d-6 rev 3, src/charts/Grid.tsx:44 \"Data Integrity: overwrite\". Resolved by ravi's reply naming commit 5ac1.\n\nNew findings:\n1. src/charts/Tooltip.tsx:80 \"Security: unsanitized html in tooltip label\"\n2. src/charts/Legend.tsx:22 \"Data Integrity: unconditional overwrite of series colors\"\n3. src/charts/Axis.tsx:15 \"Schema/Contract: missing tick format option\"\n4. src/charts/Grid.tsx:46 \"Data Integrity: unconditional overwrite of grid theme\"",
+      "rubric": [
+        "Keeps finding 2, because d-5 was dismissed only by ravi, the author, with nobody else weighing in.",
+        "Does not treat finding 4 (\"unconditional overwrite of grid theme\") as a repeat of d-6 (\"overwrite\") on partial wording overlap, since the old phrase is a single generic word; finding 4 stays in the report.",
+        "Keeps finding 3 as new because there is no matching history.",
+        "Does not drop finding 1 on the basis of a thumbs-up and an unclear author reply, and says the unclear d-3 outcome leads to keeping it.",
+        "Removes nothing from the report in this set."
+      ],
+      "why_skill_matters": "An ambiguous thread, an author-only dismissal and a one-word generic old phrase against a longer new one all pull toward dropping findings; each should be kept."
+    }
+  ]
+}

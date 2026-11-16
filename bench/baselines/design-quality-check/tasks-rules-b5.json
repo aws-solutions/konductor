@@ -1,0 +1,131 @@
+{
+  "format_version": 1,
+  "skill": "design-quality-check",
+  "batch": "rules-b5",
+  "generated_at": "2026-11-09T21:40:50.729Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "0c81e509e2044d9e53dce4b513325b834c6a7d32a436eafe39da8126f14b44f5",
+  "scenarios": [
+    {
+      "id": "design-quality-check-rules-1",
+      "title": "Notification redesign doc with no needs or decisions section",
+      "target_section": "Steps",
+      "prompt": "Can you look over this design doc before I send it to the architecture group? Tell me if it's ready.\n\n# Notification Fan-out Redesign\n\n## Context\nOur push notification sender is a single cron job on one box. During promos it falls behind by up to an hour. Support tickets about late notifications doubled last quarter.\n\n## Proposed Approach\nReplace the cron job with an SQS-backed worker pool on ECS. Producers enqueue messages and workers pull them and call the push provider.\n\n## How It Works\nProducers write each notification to the queue. Workers (autoscaled between 2 and 20) pull batches of 10, call FCM and APNs, and write delivery status to DynamoDB. See diagram: fanout-flow.png.\n\n## Rollout\nWeek 1: build the workers. Week 2: shadow traffic against the cron job. Week 3: cut over and delete the cron job.\n\n## Expected Impact\nThis will cut delivery latency by 40% and keep infrastructure costs under $100/month.",
+      "rubric": [
+        "Says the document never states what the notification system must satisfy (no needs or goals section) and treats that as a significant gap despite the doc reading cleanly.",
+        "Says the document records no decision, for example why SQS plus ECS was chosen over alternatives, and names the absent decision records as a significant issue.",
+        "Flags the claim of 40% lower delivery latency and the claim of costs under $100/month as lacking any measurement or source, and suggests adding load-test data or a cost estimate.",
+        "Gives a low overall score (the bottom of the scale or one above it) consistent with several significant issues including absent parts, and does not give a middle or high score.",
+        "States the doc should not advance to the next review yet and needs revision or a rewrite before submission.",
+        "Each issue raised points to where in this doc it occurs (for example the Expected Impact part) and offers a concrete fix rather than only a complaint."
+      ],
+      "why_skill_matters": "A short, readable doc that omits any needs section and any decision record, and ends with two unsourced numeric promises. It makes missing parts, unsupported numbers, the score and the gate matter together."
+    },
+    {
+      "id": "design-quality-check-rules-2",
+      "title": "CSV ingest design that adds Kafka and an SDK",
+      "target_section": "Steps",
+      "prompt": "Reviewing a teammate's design for our vendor data load. I think something's off but can't put my finger on it. Thoughts on quality? Paste below.\n\n# Vendor Feed Ingestion\n\n## Background\nThree partner vendors each drop one CSV (about 5,000 rows) into an S3 bucket nightly. Analysts need the data in Postgres by 7am.\n\n## Requirements\n- Load all three files nightly.\n- Reject malformed rows and report them by email.\n- Finish before 7am.\n\n## Solution Overview\nVendor files are announced to a Kafka cluster, consumed by a stream processor, and written to Postgres. We also build a pluggable connector SDK with a registry so other teams can add new source types (APIs, SFTP, databases) later.\n\n## How It Works\nS3 event -> Kafka topic per vendor -> stream processor -> Postgres. See diagram ingest.svg.\n\n## Implementation Plan\n1. Stand up a three-broker Kafka cluster.\n2. Write the stream processor.\n3. Build the connector SDK and registry.\n4. Migrate the three vendors.\n\n## Decisions\n**ADR-1: Messaging layer.** We chose Kafka because it is the best choice for data ingestion.",
+      "rubric": [
+        "Flags the Kafka decision as circular, since it only says Kafka is the best choice for ingestion, and says what real reasoning is needed (alternatives considered, data volume, operational cost).",
+        "Flags the pluggable connector SDK and registry for APIs, SFTP and databases as unrequired, since the requirements only cover three nightly CSV loads, and asks for a requirement or a simpler design.",
+        "Questions a three-broker Kafka cluster for roughly 15,000 rows a night and suggests a simpler option such as a scheduled job or direct load.",
+        "Gives an overall score no higher than the middle value, consistent with at least two significant issues, and does not give a top or near-top score.",
+        "Says whether the doc may proceed, in a way consistent with the score it gave (advance with revision notes at the middle value, blocked below it).",
+        "Each issue names the section where it appears and proposes a specific change."
+      ],
+      "why_skill_matters": "Complete structure, but the decision is circular and the design adds an SDK and heavy infrastructure far beyond what the stated requirements need."
+    },
+    {
+      "id": "design-quality-check-rules-3",
+      "title": "Key rotation doc padded with filler",
+      "target_section": "Verification",
+      "prompt": "Here's my design doc for the API key rotation tool. My manager says my writing is wordy. Is it ok to go to review, and what should I tighten?\n\n# API Key Rotation Tool\n\n## Problem\nKeys for our internal services are rotated by hand every few months, and it is worth noting that two outages last year came from expired keys.\n\n## Requirements\n- Rotate keys on a schedule.\n- Notify consuming services.\n- Keep an audit log.\n\n## Solution Overview\nA small CLI runs from cron and rotates keys held in Vault. Needless to say, it might potentially also be run by hand.\n\n## How It Works\nKeys are read from Vault. The expiry is checked. A new key is generated. The old key is revoked after a grace period. Consumers are notified. The event is written to the audit log. See diagram rotation-flow.png.\n\n## Implementation Plan\nIn order to keep this small, the work is one CLI, one cron entry, and one Slack webhook. Delivery is somewhat quick, roughly two sprints.\n\n## Decisions\n**ADR-1: Vault as the store.** We already run Vault, it supports key versioning, and it keeps secrets out of config files. As mentioned above, rotation is scheduled by cron because it is already on the host.",
+      "rubric": [
+        "Identifies the padding phrases (\"worth noting\", \"needless to say\", \"in order to\", \"as mentioned above\") and the vague hedges (\"might potentially\", \"somewhat\"), and gives a tighter rewording for them.",
+        "Treats these wording problems as minor issues, not as reasons to reject the doc.",
+        "Notes that the How It Works section is written almost entirely in passive sentences with no actor (read, checked, generated, revoked, notified) and suggests active rewording such as \"the CLI reads...\".",
+        "Gives the middle score, since there are more than three minor issues and no significant ones, and does not give a top score or a low one.",
+        "Says the doc can move on to the next review with revision notes.",
+        "Each wording issue is placed in a named section and paired with a replacement phrase or sentence."
+      ],
+      "why_skill_matters": "A structurally complete doc with sound decisions but many wordy phrases, hedges and one passive-heavy section: only minor issues, so the score and gate hinge on counting them correctly."
+    },
+    {
+      "id": "design-quality-check-rules-4",
+      "title": "Passive-voice pipeline doc without decision records",
+      "target_section": "When to Use",
+      "prompt": "Quick sanity check on the analytics export design before Thursday's review. Casual tone is fine.\n\n# Nightly Analytics Export\n\n## Background\nFinance needs yesterday's orders in the warehouse each morning. Today an analyst runs a query by hand and emails a spreadsheet.\n\n## Requirements\n- Export orders daily without manual steps.\n- Store files in a format the warehouse can load directly.\n- Keep 90 days of history.\n\n## Solution Overview\nA scheduled job extracts orders from the replica and writes Parquet files to a bucket that the warehouse reads from.\n\n## How It Works\nThe orders are pulled from the replica. Duplicates are removed. The records are converted to Parquet. The files are partitioned by date. Old partitions are deleted after 90 days. Failures are reported to the on-call channel. See diagram export.png.\n\n## Implementation Plan\nWeek 1: write the job. Week 2: backfill 90 days. Week 3: turn off the manual process.\n\nWe settled on Parquet over CSV and on reading from the replica rather than the primary, and the team is happy with both.",
+      "rubric": [
+        "Points out that decisions were made (Parquet over CSV, replica over primary) but no recorded decision section exists, and names it as a significant issue.",
+        "Flags the How It Works section as dominated by passive sentences with no named actor and suggests active versions such as \"the job removes duplicates\".",
+        "Gives the middle score, consistent with one significant issue plus a minor one, and not a top score despite the doc being short and mostly good.",
+        "Says the doc may advance to the next review but with revisions, such as adding the decision records.",
+        "Each issue gives its place in the doc and a concrete fix, for example drafting the reasons for choosing Parquet over CSV."
+      ],
+      "why_skill_matters": "Everything is present except a place for decisions, which are mentioned only in a closing aside. One section is passive. Makes the absent decision record, the passive section and a middle score matter."
+    },
+    {
+      "id": "design-quality-check-rules-5",
+      "title": "Idempotency doc with honest range and a buried cost claim",
+      "target_section": "Pitfalls",
+      "prompt": "I wrote this up for our payments-adjacent API and I'm a bit paranoid about it getting torn apart at review. Give it an honest grade, don't pad it. It's deliberately short.\n\n# Idempotency Keys for the Refund API\n\n## Background\nClients retry refund calls on timeouts and we have issued duplicate refunds twice this year.\n\n## Requirements\n- A repeated refund request with the same key must not create a second refund.\n- Keys must be remembered for 24 hours.\n\n## Solution Overview\nClients send an idempotency key header. We store the key and the response in DynamoDB with a 24 hour TTL and return the stored response on repeats. An idempotency key is defined as a unique value that is supplied by the client for each logical request.\n\n## How It Works\nThe handler checks DynamoDB with a conditional write. On a new key it processes the refund and stores the result; on a repeat it returns the stored result. The first call after an idle period usually takes an extra 100–500ms, which is acceptable for refunds, and the whole thing should run for under $20/month at our volume. See diagram idempotency-flow.png.\n\n## Implementation Plan\nAdd the header check to the existing handler, create the table, ship behind a flag, then enable for all clients.\n\n## Decisions\n**ADR-1: DynamoDB for key storage.** Access is single-key lookup, TTL is built in, and we already operate DynamoDB for other services.",
+      "rubric": [
+        "Spots the unsupported cost statement \"under $20/month at our volume\" tucked into the How It Works section and asks for a cost estimate or supporting numbers.",
+        "Does not flag the \"100–500ms\" extra first-call delay range as vague hedging or as an unsupported claim.",
+        "Does not flag the passive definition of an idempotency key, and does not ask for a source link on the qualitative DynamoDB rationale.",
+        "Does not mark the document down for being short, and acknowledges that all expected parts are present.",
+        "Gives the middle score, consistent with exactly one significant issue (the cost claim) and few or no minor ones, not a top score and not a low one.",
+        "States that the doc can proceed to the next review, with the cost point to fix.",
+        "The cost issue is located in a named section and comes with a concrete way to resolve it."
+      ],
+      "why_skill_matters": "A short complete doc with legitimate things that look flaggable (a usual range, a formal passive definition, qualitative rationale) and one real unsupported cost number in the middle of a sentence about first-call delay."
+    },
+    {
+      "id": "design-quality-check-rules-6",
+      "title": "Polished infra doc with a buried extra phase",
+      "target_section": "Steps",
+      "prompt": "Our platform lead asked me to get this into shape for review. It reads well to me and I think it's close. Can you check it over properly? Full text:\n\n# Internal Deploy Dashboard\n\n## Background\nEngineers on our 15-person team in one office currently check deploy status by reading CI logs. Finding out what is live in staging or production takes several minutes and is error prone.\n\n## Requirements\n- Show the current version of each of our 6 services in staging and production.\n- Update within a minute of a deploy.\n- Be reachable from the office network only.\n\n## Solution Overview\nA small web app reads deploy events from our CI system and renders a status table. It runs as one container in our existing cluster in the single region we use today.\n\n## How It Works\nThe CI pipeline posts a deploy event to the app after each release. The app stores the latest event per service and environment in SQLite and serves a page that refreshes every 30 seconds. See diagram dashboard-flow.png.\n\n## Implementation Plan\n- Phase 1: build the event endpoint and the status page.\n- Phase 2: add network restriction and deploy the container.\n- Phase 3: add multi-region active-active replication and a tenant abstraction layer so that other companies could be onboarded as customers later.\n\n## Decisions\n**ADR-1: SQLite for storage.** Only the latest event per service and environment is kept, which is about 12 rows, and a file on a mounted volume needs no extra service to run.\n\n**ADR-2: Terraform for provisioning.** We selected Terraform because Terraform is the right tool for infrastructure.",
+      "rubric": [
+        "Flags Phase 3 (multi-region active-active replication and a tenant layer for other companies) as unrequired, since the requirements describe one office, 15 engineers and 6 services, and asks for removal or a requirement that justifies it.",
+        "Flags ADR-2 as circular, since Terraform is justified only by being the right tool, and says what reasons should replace it (existing team usage, state management, alternatives considered).",
+        "Does not flag ADR-1 (SQLite) as circular, since it gives concrete reasons.",
+        "Gives the middle score, consistent with two significant issues and nothing else serious, not a top score.",
+        "States the doc may advance to the next review with revision notes, since the score is at the gate.",
+        "Each issue gives its location (such as Phase 3 or ADR-2) and a specific suggested change."
+      ],
+      "why_skill_matters": "A well-written, complete doc whose polish hides two real problems: a speculative final phase and a circular second decision record placed beside a good one."
+    },
+    {
+      "id": "design-quality-check-rules-7",
+      "title": "Short clean build-cache doc with one wordy phrase",
+      "target_section": "Pitfalls",
+      "prompt": "Small design doc for a build cache. I kept it brief on purpose. Is this good to go to review or do I need to pad it out?\n\n# Remote Build Cache\n\n## Problem\nClean CI builds of the monorepo take about 18 minutes, according to the CI dashboard (ci.example.internal/dash/builds). Most of the time goes to compiling unchanged modules.\n\n## Requirements\n- Reuse build outputs across CI runs.\n- Never serve outputs from a different compiler version.\n\n## Solution Overview\nEnable Gradle's remote build cache backed by an S3 bucket. CI writes entries; developer machines read only.\n\n## How It Works\nGradle computes a cache key from inputs, including the compiler version, and looks it up in S3. A cache hit restores the output; a miss runs the task and uploads the result. A cache key is defined as a hash that is derived from a task's inputs. Restores typically take 2–5 seconds per module. See diagram cache-flow.png.\n\n## Implementation Plan\n1. Create the bucket with a 14 day lifecycle rule.\n2. Configure Gradle in the CI image.\n3. In order to protect the cache, give only CI write credentials.\n\n## Decisions\n**ADR-1: Remote cache over faster CI machines.** Faster machines would speed every task equally, but would not skip unchanged work, and they cost more per hour. The remote cache skips unchanged modules at the price of one bucket.",
+      "rubric": [
+        "Does not penalise the document for being brief, and recognises that all expected parts are present.",
+        "Does not flag the \"typically 2–5 seconds\" range or the passive cache key definition as hedging or passive overuse.",
+        "Notices the single \"in order to\" phrase in step 3 as a minor wording issue and offers the shorter \"To protect the cache\".",
+        "Gives a score one below the top, because only one minor issue was found, and not a top score if it reports that issue.",
+        "Says the doc is ready to go to review, possibly with a note on the small wording fix.",
+        "Any issue reported is placed in a named part of the doc and comes with a concrete replacement."
+      ],
+      "why_skill_matters": "A brief doc that is complete and sourced (dashboard link for the 18 minutes), with an honest range and a formal definition that look like traps, and exactly one minor filler phrase. A careful reviewer should advise sending it on, without padding."
+    },
+    {
+      "id": "design-quality-check-rules-8",
+      "title": "Caching layer doc full of unsupported numbers",
+      "target_section": "Rubric",
+      "prompt": "ok so this is my design for adding a cache in front of the product catalog API. be brutal, would this survive review? i wrote it fast\n\n# Catalog Cache\n\n## Background\nCatalog API is slow on busy days and the database is getting hammered.\n\n## Requirements\n- Cut load on the catalog database.\n- Keep prices at most 60 seconds stale.\n\n## Solution Overview\nPut Redis in front of the catalog API. This could potentially bring p99 latency down to 20ms, and the setup should be somewhat easy to operate.\n\n## How It Works\nReads check Redis first, fall back to the database on a miss, and fill the cache with a 60 second TTL. The cluster handles 50k requests per second without trouble. See diagram catalog-cache.png.\n\n## Implementation Plan\nDay 1: provision Redis. Day 2: add the read-through code. Day 3: roll out to 10% of traffic, then everyone.\n\n## Decisions\n**ADR-1: Cache technology.** We chose Redis because Redis is the best cache.",
+      "rubric": [
+        "Flags the 20ms p99 latency claim and the 50k requests per second claim as unmeasured and unsourced, and asks for load test results or a published measurement link for each.",
+        "Flags ADR-1 (\"Redis because Redis is the best cache\") as circular and says what reasoning to add, such as comparison with Memcached or an in-process cache.",
+        "Identifies the hedges \"could potentially\" and \"somewhat\" in the Solution Overview as vague wording, treats them as minor, and offers firmer phrasing.",
+        "Gives the lower score (one above the lowest), consistent with three significant issues and no absent sections, and not the lowest score.",
+        "States that the doc should not advance until revised, since three significant issues put it below the passing level.",
+        "Every issue is tied to a named section and carries a concrete fix, not only a complaint."
+      ],
+      "why_skill_matters": "A casual, fully structured doc with two unsupported numeric claims, one circular decision and some hedging. Makes the count of significant issues, the score just below passing and the blocking verdict matter, with no absent parts to push the score lower."
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "format_version": 1,
+  "skill": "task-decomposition",
+  "batch": "rules-c4",
+  "generated_at": "2026-11-10T09:37:26.029Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "908e4856a68faa8839ded2d16154ebb77092d6baf37bdebc256d26812fa04ea9",
+  "scenarios": [
+    {
+      "id": "task-decomposition-rules-1",
+      "title": "Telehealth clinic app split across three engineers",
+      "target_section": "Output Format",
+      "prompt": "We're building a telehealth app for a small clinic chain and I have three engineers free for the next six weeks. Can you break this down into implementation tasks?\n\nDesign summary: React Native patient app, Node API, Postgres, Twilio for video, Stripe for copays.\n\nStories:\n1. Patient registers and verifies their phone number.\n2. Patient searches providers by specialty and sees open slots.\n3. Patient books or cancels a slot.\n4. Provider sets weekly availability.\n5. Patient and provider join a video visit.\n6. Patient pays the copay before the visit.\n7. Provider writes visit notes after the call.\n8. Patient gets a reminder SMS 24h before the visit.\n9. Clinic admin views a daily visit report.",
+      "rubric": [
+        "The work is divided into slices a person can own end to end (for example booking, video visit, copay payment), not into database, API and app-screen layers.",
+        "All nine stories are placed somewhere, including the less obvious ones: visit notes, the 24h reminder SMS and the admin daily report.",
+        "Each slice says what it consumes and what it exposes; for example booking provides the appointment (time, patient, provider) that the video visit, copay and reminder slices use.",
+        "The appointment record that booking, video visit, copay, reminder and report all rely on is named as a common contract to settle up front, with those slices listed as its users.",
+        "The answer shows how each slice can be checked without the others being finished, for example testing the video visit against a stubbed appointment.",
+        "The split is offered as a proposal and the user is asked to confirm or adjust it, for example moving slices between the three engineers.",
+        "Each slice has its own section with scope, mapped stories, components, dependencies and an owner or TBD, followed by a separate list of shared interfaces."
+      ],
+      "why_skill_matters": "A plain nine-story telehealth app with a layered tech stack that invites a database, API and app breakdown. It makes vertical slicing, full story coverage, clear boundaries and a shared appointment contract matter, plus the proposal and testability guards and the output layout."
+    },
+    {
+      "id": "task-decomposition-rules-3",
+      "title": "Nonprofit donor platform with buried cross-cutting stories",
+      "target_section": "Execution",
+      "prompt": "I volunteer as tech lead for a nonprofit and we have 4 part-time devs. Here are the stories from our planning session. Please break the project down into tasks we can hand out:\n\n1. Donor makes a one-time donation by card.\n2. Donor sets up a monthly recurring gift.\n3. Donor gets an emailed tax receipt.\n4. Staff send a newsletter to donors who opted in.\n5. Volunteers sign up for shifts.\n6. Staff see a dashboard of totals by campaign.\n7. Donor can update their profile and email preferences.\n8. Every change to a donor record is logged with who and when.\n9. Donors can download or delete all their data on request.\n10. All public pages meet accessibility AA.\n\nTech: Rails monolith, one Postgres. The donor table is where everything hangs off: donations, recurring gifts, newsletter opt-ins and volunteer sign-ups all reference it. Stripe for payments.",
+      "rubric": [
+        "Stories 8 (change log), 9 (data export/deletion) and 10 (accessibility) are each assigned to a specific piece of work, not left as general notes.",
+        "Because donations, recurring gifts, newsletters and volunteer sign-ups all use the donor table, the answer proposes a dedicated first piece of work that settles the donor record, rather than letting each track change it.",
+        "Work is split by donor-facing capability (for example giving, newsletters, volunteering), not by database, backend and frontend layers.",
+        "At least the donor-record piece states what it exposes to the other pieces, such as lookup, update and opt-in flags.",
+        "The answer presents the split for the user's confirmation or adjustment and does not treat it as final."
+      ],
+      "why_skill_matters": "Ten stories where the last three are cross-cutting and easy to drop, plus one core table that four tracks reference. It makes story coverage and a shared-data-model piece matter."
+    },
+    {
+      "id": "task-decomposition-rules-4",
+      "title": "Warehouse rollout with one nine-week item and tiny ones",
+      "target_section": "Splitting Criteria",
+      "prompt": "Our warehouse management rollout. Team: 3 engineers, one of them junior. Rough estimates from the planning meeting:\n\n- Inventory sync with the legacy ERP (two-way: stock levels, purchase orders, returns, across 3 ERP modules): 9 weeks\n- Receiving and put-away screens for handheld scanners: 2 weeks\n- Pick-list generation and wave planning: 3 weeks\n- Shipping label printing config (change the printer driver setting and add one label template): 1 day\n- Low-stock email alert: 2 days\n- Cycle-count mode: 4 days\n- Supervisor admin role: 1 day\n\nPick lists need the stock levels that the ERP sync maintains, and receiving writes stock levels too.\n\nCan you decompose this into work packages for the three of us?",
+      "rubric": [
+        "The 9-week ERP sync is not left as one package for one person; it is cut into pieces of about two weeks or less (for example stock levels, purchase orders, returns).",
+        "The 1-to-4-day items (label config, low-stock alert, cycle count, supervisor role) are grouped with related work rather than each given to someone as its own package.",
+        "Stock levels, which sync, receiving and pick lists all touch, are identified as a common contract or data owner to be settled up front, with those three named.",
+        "Suggests a sequence for the three engineers that puts the stock-level contract first and shows which packages must wait for it.",
+        "The pick-list and receiving packages state what they read from or write to stock levels.",
+        "Packages are described so they can be checked independently, for example pick lists against a stubbed stock table."
+      ],
+      "why_skill_matters": "The estimates contain one oversized area and several trivial items, and the closing note exposes a shared stock entity. It makes sizing, shared contracts and ordering matter."
+    },
+    {
+      "id": "task-decomposition-rules-5",
+      "title": "Library lending app built around the patron record",
+      "target_section": "Quality Gate",
+      "prompt": "I'm the only senior dev at a county library system and I've got two contractors. We're building a new ebook and audiobook lending app. Everything runs off the patron record (card number, status, borrow limit, current loans). The holds queue, loans and renewals, lapsed-access tracking, reading lists, and monthly circulation reports all read or update it. The vendor is OverDrive, whose API handles the catalog and checkout. The mobile apps already exist, we're just adding screens.\n\nSplit this up for the three of us please. We start Monday and the grant demo is in 8 weeks.",
+      "rubric": [
+        "Proposes a dedicated first piece of work that defines the patron record (fields, status, borrow limit, loans) so that holds, loans, lapsed access, reading lists and reports do not each change it.",
+        "Lists which pieces (holds, loans/renewals, lapsed access, reading lists, reports) depend on the patron record and how, rather than saying only that they share it.",
+        "Pieces are lending capabilities someone can own whole (such as holds or loans/renewals), not data, API and screen layers.",
+        "Gives an order that fits three people and the 8-week demo, with the patron record settled first and the dependent pieces afterwards.",
+        "The answer asks the user to confirm or adjust the proposed split."
+      ],
+      "why_skill_matters": "One central entity feeds five areas, with a small team and a fixed demo date. It makes the shared-data-model piece, shared-contract listing, vertical splitting and ordering matter."
+    },
+    {
+      "id": "task-decomposition-rules-6",
+      "title": "Game event system with a hidden call-back loop",
+      "target_section": "Quality Gate",
+      "prompt": "yo, we're a 6 person mobile game studio, shipping a seasonal event system and I want everybody to own a chunk. rough design below, bit stream of consciousness sorry\n\nQuest service stores the event quests and player progress. When a player finishes a quest it asks Inventory to grant the reward. Inventory holds currencies and items, and when it grants event-limited items it checks with Quest whether the player's event tier is unlocked, so it calls back into quest progress. Leaderboard ranks players by event points (reads quest progress). Shop has event bundles bought with premium currency (reads and writes Inventory). Push notifications announce event start and end. Live-ops admin tool lets designers configure quests and rewards.\n\nPeople: 2 on backend, 1 Unity client, 1 tools, 2 QA/data. Can you split this into tasks?",
+      "rubric": [
+        "Spots that Quest and Inventory call each other (reward grant one way, tier-unlock check the other) and resolves it by merging them or extracting a shared contract, so neither waits on the other.",
+        "States concretely what crosses the Quest/Inventory boundary, such as a reward-grant request and a tier-unlocked lookup.",
+        "Inventory, used by quests, shop and rewards, and quest progress, used by leaderboard and inventory, are named as common contracts to define first, with their users listed.",
+        "Pieces are event capabilities (quests and rewards, shop bundles, leaderboard and so on) rather than a split by role such as client, backend and tools.",
+        "The answer says how each piece can be checked on its own, for example the leaderboard against sample progress data."
+      ],
+      "why_skill_matters": "The Quest/Inventory loop is mentioned in a single clause, and the list of roles pulls toward splitting by role. It makes cycle detection, boundaries, shared contracts and vertical splitting matter."
+    },
+    {
+      "id": "task-decomposition-rules-7",
+      "title": "Insurance claims rewrite with a layered design doc",
+      "target_section": "Usage",
+      "prompt": "Break the claims intake rewrite down into implementation tasks. Our architect's design doc is organized as: database schema, REST API, adjuster web UI, document upload, notifications.\n\nStories:\n1. Policyholder files a claim with photos.\n2. Policyholder tracks claim status.\n3. Adjuster reviews a claim and requests more info.\n4. Adjuster approves or denies with a reason.\n5. Payout is sent to the policyholder's bank account.\n6. Fraud flag is raised when the same VIN appears in claims within 30 days.\n7. Policyholder can appeal a denial.\n8. Monthly regulatory report of open and closed claims.\n9. Support agents can view a claim read-only.\n\nWe have 5 engineers and 10 weeks. Rough effort: the bank payout integration is about 5 weeks by itself, the regulatory report is 2 days, and the read-only support view is 2 days.",
+      "rubric": [
+        "Work is divided into claim capabilities (such as filing, adjuster review/decision, payout, fraud) that one person owns end to end, not into the design doc's schema, API, UI and upload layers.",
+        "Stories 6 (fraud flag), 7 (appeal), 8 (regulatory report) and 9 (support view) each land in a named piece of work.",
+        "The roughly 5-week bank payout integration is divided so that no single person holds more than about two weeks of it.",
+        "The 2-day regulatory report and 2-day support view are combined with related work instead of each standing alone.",
+        "Each piece is described so it can be checked without the others being done, for example payout against a mocked approved claim.",
+        "Each piece has its own section with scope, stories, components, dependencies and an owner or TBD, then a separate list of shared interfaces."
+      ],
+      "why_skill_matters": "A design doc laid out by technical layer, nine stories, and effort notes with one big and two tiny items. It makes vertical splitting, story coverage and sizing matter."
+    },
+    {
+      "id": "task-decomposition-rules-8",
+      "title": "Language app offline mode with staggered staffing",
+      "target_section": "Shared Interfaces",
+      "prompt": "We're adding offline mode and a few other things to our language learning app. 2 engineers start Monday and 3 more join in week 4. Design:\n\n- Lessons are downloaded as packs. A sync layer queues progress (XP, streaks, completed exercises) while offline and reconciles it with the server on reconnect.\n- Streaks and XP show on the profile, the leaderboard and the daily-goal notifications, all reading the same progress records.\n- Speech-practice exercises use the on-device recognizer and send their scores into the progress records.\n- Subscriptions: free users get 5 lessons offline, premium users unlimited.\n\nDraft our task breakdown please. I'd like it to be something I can paste into Jira.",
+      "rubric": [
+        "Tasks are user-facing capabilities (offline lesson packs, streaks and leaderboard, speech practice, subscription limits) rather than client, server and sync layers.",
+        "The progress records read or written by sync, profile, leaderboard, notifications and speech practice are identified as a common contract to define up front, with those users named.",
+        "The sync piece states what it takes in (queued offline progress) and what it produces (reconciled server records).",
+        "Order reflects the staffing: the progress contract and sync interface are settled in the first weeks by the two starters, so the three who join in week 4 can start on independent pieces.",
+        "Pieces can be verified independently, for example the leaderboard against sample progress records."
+      ],
+      "why_skill_matters": "A shared progress record feeds five consumers and staffing is staggered. It makes shared contracts, boundaries, ordering and vertical splitting matter, with a Jira-pasteable request."
+    }
+  ]
+}

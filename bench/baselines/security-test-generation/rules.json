@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "security-test-generation",
+  "skill_md_sha256": "f5b935eb57ab07f324bbd64df382a8cada64d1ade061f77fddf199870157be14",
+  "request_context": "A request to produce a security test plan for a software service, organized by security area and application layer, so a team can implement security tests.",
+  "rules": [
+    {
+      "id": "security-test-generation-r01",
+      "source_quote": "Authentication bypass tests not included",
+      "class": "useful",
+      "outcome": "The plan includes tests that try to bypass authentication, such as missing, forged, expired or tampered credentials and tokens, and expects those attempts to be rejected.",
+      "why": "Without bypass tests, the most damaging class of flaw (unauthenticated access) goes unverified.",
+      "scenario_hint": "Request for security test coverage of a service with login and token-based access."
+    },
+    {
+      "id": "security-test-generation-r02",
+      "source_quote": "SQL/NoSQL injection tests missing for all data inputs",
+      "class": "useful",
+      "outcome": "The plan includes SQL and NoSQL injection tests that cover every input that reaches a data store, not just a few sample fields.",
+      "why": "Injection flaws hide in whichever input was left untested.",
+      "scenario_hint": "Service with several endpoints accepting user input stored in a database."
+    },
+    {
+      "id": "security-test-generation-r03",
+      "source_quote": "Authorization tests missing (horizontal and vertical privilege escalation)",
+      "class": "useful",
+      "outcome": "The plan includes authorization tests for both horizontal escalation (accessing another user's data) and vertical escalation (a normal user performing admin actions).",
+      "why": "Missing either direction leaves broken access control undetected.",
+      "scenario_hint": "Multi-user service with roles and per-user resources."
+    },
+    {
+      "id": "security-test-generation-r04",
+      "source_quote": "No tests for sensitive data exposure in logs or error messages",
+      "class": "useful",
+      "outcome": "The plan includes tests checking that logs, error responses and stack traces do not leak sensitive data, internal details or credentials.",
+      "why": "Information leakage through errors and logs is common and goes unnoticed without explicit tests.",
+      "scenario_hint": "Service that handles PII or secrets and returns error responses."
+    },
+    {
+      "id": "security-test-generation-r05",
+      "source_quote": "Infrastructure security tests not included (S3 public access, security group rules)",
+      "class": "useful",
+      "outcome": "The plan includes infrastructure checks such as publicly accessible storage buckets, overly open network access rules, and overly broad permission policies.",
+      "why": "Misconfigured cloud resources can expose data regardless of how secure the application code is.",
+      "scenario_hint": "Cloud-hosted service using object storage, network rules and IAM roles."
+    },
+    {
+      "id": "security-test-generation-r06",
+      "source_quote": "OWASP Top 10 not fully covered",
+      "class": "useful",
+      "outcome": "The plan maps its tests to the OWASP Top 10 risks so that every risk category is covered or explicitly noted as not applicable.",
+      "why": "Gaps in the standard risk list leave known vulnerability classes untested.",
+      "scenario_hint": "Request for comprehensive security test coverage of a web service."
+    },
+    {
+      "id": "security-test-generation-r07",
+      "source_quote": "Test order: Positive tests → Negative tests → Edge cases (optional)",
+      "class": "useful",
+      "outcome": "Within each area, tests are sequenced from valid-behavior checks, to rejection of malicious or invalid input, to optional edge cases such as expired tokens, boundary values and concurrent sessions.",
+      "why": "Without a defined sequence, the plan may skip either the working baseline or the attack cases.",
+      "scenario_hint": "Plan with test cases for an authentication or input-handling area."
+    },
+    {
+      "id": "security-test-generation-r08",
+      "source_quote": "Ask: \"Fix these issues? [y/n]\"",
+      "class": "useful",
+      "outcome": "The plan is self-reviewed for gaps before delivery; any gaps found are listed ordered from critical to optional, and the user is asked whether to fix them (unless running unattended, where findings are just reported).",
+      "why": "Unreported gaps leave the user trusting incomplete coverage.",
+      "scenario_hint": "Finished test plan that still has missing coverage areas."
+    },
+    {
+      "id": "security-test-generation-r09",
+      "source_quote": "Unless `scope_confirmed=true`, ask: \"What is the primary technology stack for your application?\"",
+      "class": "useful",
+      "outcome": "When the caller says no human is available or answers should not be requested, the assistant does not ask clarifying questions; it detects or defaults the stack and approach and states its assumptions in the answer.",
+      "why": "Questions in an unattended or parallel run block the run with nobody to answer.",
+      "scenario_hint": "Automated request for a test plan that states no one can answer questions."
+    },
+    {
+      "id": "security-test-generation-r10",
+      "source_quote": "Always include as Task 1:",
+      "class": "generic",
+      "outcome": "The plan starts with a preparatory step to review security fundamentals (OWASP Top 10, cloud security documentation, the project's threat model and API specs where they exist, and the test framework in use).",
+      "why": "Testers who skip the background write shallow tests.",
+      "scenario_hint": "Any request to generate a security test plan."
+    },
+    {
+      "id": "security-test-generation-r11",
+      "source_quote": "Continue with source code analysis",
+      "class": "generic",
+      "outcome": "When design documents such as a threat model or API spec are missing, the assistant says so and proceeds using the code or the information available instead of stopping.",
+      "why": "Stopping on missing documents leaves the user with no plan at all.",
+      "scenario_hint": "Project lacking a threat model or API specification."
+    },
+    {
+      "id": "security-test-generation-r12",
+      "source_quote": "Order by dependency and criticality:",
+      "class": "style",
+      "outcome": "Security areas are numbered and ordered with authentication and authorization first, then injection prevention, then rate limiting and endpoint protection, then encryption and data handling, then session handling, then error handling, and infrastructure last.",
+      "why": "",
+      "scenario_hint": "Any request to generate a security test plan."
+    }
+  ]
+}

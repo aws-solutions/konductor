@@ -1,0 +1,114 @@
+{
+  "format_version": 1,
+  "skill": "risk-management",
+  "batch": "rules-b4",
+  "generated_at": "2026-11-09T09:53:50.050Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "92151fdf2fc40676756d307cba6d3b266e663f5c154126bd7c9fc19a865e2341",
+  "scenarios": [
+    {
+      "id": "risk-management-rules-1",
+      "title": "Kickoff worries for a warehouse system rollout",
+      "target_section": "Core Concepts",
+      "prompt": "We kick off the warehouse management system replacement next week (12 sites, go-live target end of March). I jotted down what's worrying people. Can you turn this into something I can take to the kickoff and tell me how serious each one is?\n\n- Vendor says their barcode scanner firmware will ship in January, but they've slipped twice before. If it slips we'd probably lose about 3 weeks on the pilot site.\n- Two of the 12 sites have old network gear; upgrading it might add a week or so at those sites if the survey finds problems. Survey hasn't happened yet.\n- Our integration lead might get pulled onto the finance migration. Nobody has said it will happen, but it's been floated.\n- Union consultation at the Leeds site could force us to cut the night-shift automation scope.\n- Users might not like the new handheld UI. Probably a few days of extra training at most.\n- We're assuming the ERP team's API will support batch updates. Haven't checked.\n\nKeep it practical, I'm not a risk person.",
+      "rubric": [
+        "Gives each of the five uncertain events (scanner firmware, network gear, integration lead, Leeds consultation, handheld UI) both a likelihood and a consequence rating plus an overall priority; none is left without one.",
+        "Rates the scanner firmware slip as high consequence because the stated 3-week loss exceeds two weeks, and the handheld UI training as low consequence because it is only a few days.",
+        "Rates the network gear risk as medium consequence given the roughly one-week slip, and explains ratings with explicit likelihood or consequence ranges rather than gut feel.",
+        "Treats the ERP batch-update API belief as an assumption separate from the risks and proposes a concrete way to confirm it (for example asking the ERP team or testing the API) before it is relied on.",
+        "The most serious risks (firmware slip, Leeds scope cut) each get a response labelled as avoiding, reducing, transferring, or accepting with a contingency.",
+        "Ends with a short summary of the most serious risks, one line each, stating where their mitigation stands."
+      ],
+      "why_skill_matters": "A kickoff list mixes risks with an unchecked assumption. Stated slips of 3 weeks, about 1 week, and a few days map to different consequence levels. It makes r01, r03, r09, r04 and r11 matter."
+    },
+    {
+      "id": "risk-management-rules-2",
+      "title": "Payment outage that already happened",
+      "target_section": "Quality Gate",
+      "prompt": "Following last Tuesday's incident, I need to update our program tracker for the checkout rebuild. Here's where things stand:\n\n1. The payment gateway sandbox went down for 4 days and we lost testing time. This has already happened; we're now about 1 week behind on payment test completion. Dana's team is \"looking into it\". No date set.\n2. We depend on the fraud-scoring team delivering their v2 API by 15 Dec. If they don't, we can't ship the checkout flow. No one has discussed what we'd do then.\n3. Possible risk: the card-network certification could take longer than the 2 weeks we budgeted. Last time it took 3 weeks.\n4. Another issue: the mobile team found the tokenisation library crashes on older Android. Nobody has picked that up yet.\n\nPlease write up the tracker entries and tell me if anything is missing or weak in what I've got.",
+      "rubric": [
+        "Flags that the sandbox outage has no due date for resolution and that the Android tokenisation crash has neither an owner nor a due date, and supplies or requests both.",
+        "Flags that the fraud-scoring v2 API dependency has no fallback and proposes a concrete one (for example a rules-based interim scorer or a phased launch without it).",
+        "Rates the card certification possibility with both likelihood and consequence, using the 2 versus 3 week history.",
+        "Gives the mitigation entries a responsible person and a condition that would trigger the fallback (such as the API not delivered by a date before 15 Dec).",
+        "Includes a brief top-risks summary with one line each and the mitigation status."
+      ],
+      "why_skill_matters": "Contains an issue without a due date, an issue with no owner, and a dependency with no contingency, plus an unrated risk. Makes r06, r07, r01, r05 matter."
+    },
+    {
+      "id": "risk-management-rules-3",
+      "title": "Slide for the director on a data center move",
+      "target_section": "Escalation Criteria",
+      "prompt": "I run the data center exit program. Director review is Thursday and I want to know what, if anything, I should be pushing upward vs. handling myself. Current state:\n\n- Storage array migration: was medium risk, now the vendor says their engineers are booked out until after our cutover window. Likelihood of missing the window is now very high, and it would push us back at least 4 weeks.\n- Network cutover plan: mitigation was to rehearse twice. First rehearsal failed on DNS. Second one scheduled next Friday.\n- Legacy billing app decommission: owner Priya, was due 31 Oct, still not done, no update.\n- Colo contract with the new facility: we need the power upgrade finished by their side by 20 Jan. Their account manager is vague.\n- Staff retention: a couple of engineers are interviewing elsewhere, probably low impact.\n\nWho do I go to and in what order? And what do I say?",
+      "rubric": [
+        "Says the storage array migration should be escalated because it has reached the top priority level (very likely and over 2 weeks of slip).",
+        "Identifies the failed DNS rehearsal as a mitigation that has failed, and the overdue billing decommission (due 31 Oct) as a past-due issue, as further escalation grounds.",
+        "Names the escalation chain in order from program manager through program lead and director up to VP.",
+        "Notes the colo power upgrade dependency is at risk and asks for or proposes a fallback if it is not done by 20 Jan.",
+        "Gives the retention risk and the others a likelihood, consequence and overall priority, and keeps retention below the escalation line.",
+        "Gives a concise one-line-each summary of the top risks with mitigation status for the director."
+      ],
+      "why_skill_matters": "Several items hit different escalation triggers; one low item should not be escalated. Matters for r08, r07, r01, r11."
+    },
+    {
+      "id": "risk-management-rules-4",
+      "title": "Setting up a living risk register for a mobile app team",
+      "target_section": "Output Format",
+      "prompt": "Our team of 9 is building a consumer fitness app, launching in June. We've never tracked risks properly. I've got these on my mind:\n\n1. Apple review might reject our HealthKit usage. We estimate maybe a 50/50 chance, and a rejection would cost us roughly 10 days.\n2. Our backend contractor leaves in April; we'd lose some knowledge, workaround is pairing sessions.\n3. Push notification provider pricing could rise; would be absorbed in budget.\n4. The designer has been sick; if it continues, assets slip by under a week.\n\nI'd like to set this up so we actually keep on top of it for the next 6 months, not just write it once. What should the process look like and what goes in the register today?",
+      "rubric": [
+        "Proposes review frequencies that get more frequent with priority, from weekly for the top level to every two weeks, monthly and quarterly for lower ones.",
+        "Rates all four items with likelihood, consequence and a combined priority.",
+        "Places the HealthKit rejection at medium likelihood (50%) with medium consequence (10 days is between one and two weeks) and the designer item at low consequence (under a week).",
+        "Each response names a person responsible and a condition that would trigger it, such as the contractor handover not complete by a date in April.",
+        "Includes a short summary of the most serious items with one line each and mitigation state."
+      ],
+      "why_skill_matters": "Ongoing tracking request with numeric hints. Makes r10, r01, r03, r05 matter."
+    },
+    {
+      "id": "risk-management-rules-5",
+      "title": "Long standup notes hide a missing owner",
+      "target_section": "Quality Gate",
+      "prompt": "Can you clean up our RAID entries from this week's program sync for the ERP consolidation? Notes below, pasted as typed.\n\nMon sync, attendees: Tom, Aisha, Raul, Mei, Jonas.\nOpening: general update on milestones. Finance close mapping finished for EMEA, APAC at 60%. Aisha says the chart of accounts review went fine. Tom reminded everyone that the sandbox refresh is monthly.\nRisks discussed: data conversion for APAC might fail the first trial load because legacy codes are inconsistent; Raul thinks it's likely (more than likely than not, say 80%) and would cost 2-3 weeks of rework. Mitigation: Raul to run a cleansing pass; trigger if error rate >5% on the dry run. \nDependencies: the tax engine vendor must deliver the VAT patch by 30 Nov. Mei owns the relationship. Fallback: none discussed.\nIssues: the user access matrix is wrong for 40 users and testing is blocked for the AP team. Mei mentioned it. Due date: 20 Nov. Jonas said \"somebody should look at it.\"\nAssumptions: SSO will be ready by UAT. Mei will check with IT once they respond.\nAOB: Tom is on leave 24-28 Nov. Lunch order.\n\nGive me the clean log.",
+      "rubric": [
+        "Notes that the user access matrix issue has no real owner (only \"somebody should look at it\") and assigns or asks for a named one, keeping the 20 Nov due date.",
+        "Notes that the VAT patch dependency (30 Nov) has no fallback and proposes one.",
+        "Rates the APAC data conversion as high likelihood and high consequence, citing the 80% and 2-3 weeks.",
+        "Lists the SSO readiness belief as an assumption with a confirmation step and date, rather than leaving \"will check once they respond\" open ended.",
+        "Keeps Raul's cleansing pass as the response with the 5% error-rate trigger.",
+        "Provides a short summary of the most serious items, one line each, with mitigation status."
+      ],
+      "why_skill_matters": "Buried gaps: unowned issue disguised by a due date, dependency without fallback, vague assumption validation. Matters for r06, r07, r03, r09, r05."
+    },
+    {
+      "id": "risk-management-rules-6",
+      "title": "Construction fit-out with a supplier clause",
+      "target_section": "Mitigation Strategies",
+      "prompt": "I'm the PM on a hospital outpatient wing fit-out. Handover to the clinical team is 6 April. Please help me decide how to respond to the following and write it up for my steering group.\n\nBackground: we are on week 14 of 30. Plasterboard and ceiling works are on track. The M&E subcontractor is fine. Cost is within 2% of budget. The snagging process has been agreed with the client. We hold weekly site meetings on Thursdays. Fire door certification is the one thing I keep thinking about: the specialist door supplier's contract says delivery within 12 weeks of order, but their last two projects with us came in at 16 and 17 weeks, and the order went in 8 weeks ago. If doors arrive late, the fire inspection can't happen, and the wing can't open. We could pay for an expedite fee, find a second supplier, or just wait and hope. Their contract has a late-delivery penalty of 0.5% per week, which doesn't come close to our cost of a month's delay.\n\nAlso, the lift installer wants access in March. The lift is fine, just flagging.",
+      "rubric": [
+        "Chooses a clearly named response type for the door delay (reduce it via expedite or second supplier, transfer, avoid, or accept with a contingency) rather than leaving the options open.",
+        "Names who is responsible for the door response and a condition that triggers it, such as doors not shipped by a certain week given 16-17 week history.",
+        "Rates the door delay as high likelihood (history of 16-17 vs 12 weeks) and high consequence (wing cannot open, over 2 weeks).",
+        "Treats the supplier delivery as a dependency and gives a fallback if the doors are not delivered, such as a second supplier.",
+        "Points out that the contractual penalty of 0.5% a week does not offset the impact, so transferring to the supplier is not an adequate response by itself.",
+        "Gives a short top-risks summary, one line each, with mitigation status."
+      ],
+      "why_skill_matters": "A long background hides the key risk; the penalty clause tempts a wrong \"transfer\" choice. Matters for r04, r05, r03, r07, r01."
+    },
+    {
+      "id": "risk-management-rules-8",
+      "title": "Board-ready summary after a cloud security program slip",
+      "target_section": "Usage",
+      "prompt": "I need to brief our VP on the zero-trust rollout on Friday. Here is my current state and I'd like a proper risk write-up for it.\n\nProgram: zero-trust access for 6,000 staff, deadline 30 Jan for the regulatory audit.\n- Identity provider migration is 3 weeks behind. It already happened; Kofi owns it and promised a recovery plan by 14 Nov.\n- Endpoint agent rollout depends on the device management team finishing their enrolment tooling by 5 Dec. They've said \"should be fine.\"\n- We assume the legacy VPN can run in parallel until 30 Jan. Never confirmed with networking.\n- Possible: the audit firm may bring forward the audit date by a month. Rumour only, perhaps 25% chance. It would effectively cut scope of what we can show.\n- Possible: a key architect resigns. 20% chance, 2 week slip.\n\nDirectors have asked what is on fire and what happens if things go badly. Tell me what to say and who needs to hear what.",
+      "rubric": [
+        "States which of the items should go upward (e.g. the 3-week identity delay as an overdue issue or a top-priority risk) and gives the chain from program manager through program lead and director to VP.",
+        "Treats the identity provider delay as a materialised issue with Kofi as owner and 14 Nov as due date, and confirms both are recorded.",
+        "Flags that the device enrolment dependency (5 Dec) has only \"should be fine\" and no fallback, and proposes one.",
+        "Identifies the VPN parallel-run belief as an unvalidated assumption and proposes confirming it with networking, with a date.",
+        "Rates the audit-date rumour as low likelihood (25%) but high consequence, and the architect resignation as low likelihood with medium consequence.",
+        "Provides a one-line-per-risk summary of the five most serious items with mitigation status for the VP."
+      ],
+      "why_skill_matters": "A VP briefing with an issue, a weak dependency, an unconfirmed assumption, and rated risks. Matters for r08, r06, r07, r09, r03."
+    }
+  ]
+}

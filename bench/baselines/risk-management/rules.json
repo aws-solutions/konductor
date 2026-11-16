@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "risk-management",
+  "skill_md_sha256": "5bfe42a7802e4ce5107b50eca601f3e84ea1ce379482075ca98725752ef8b55a",
+  "request_context": "A request to identify, assess and document the risks, assumptions, issues and dependencies of a program, with mitigation plans, owners and escalation, so that the team and leadership can track them.",
+  "rules": [
+    {
+      "id": "risk-management-r01",
+      "source_quote": "Risk without probability or impact score",
+      "class": "useful",
+      "outcome": "Every listed risk is given both a likelihood rating and a consequence rating, and a combined priority derived from the two, so no risk is left unrated.",
+      "why": "Unrated risks cannot be prioritised and leave leadership blind to what matters most.",
+      "scenario_hint": "Request to assess a set of newly identified program risks."
+    },
+    {
+      "id": "risk-management-r02",
+      "source_quote": "Combined score determines priority: H×H = Critical, H×M or M×H = High, H×L or L×H or M×M = Medium, all others = Low.",
+      "class": "useful",
+      "outcome": "Combined priority follows a consistent matrix: high likelihood with high impact is the top level, high with medium is the second level, high with low or medium with medium is the middle level, and everything else is lowest.",
+      "why": "Inconsistent prioritisation leads to wrong focus and unreliable reporting.",
+      "scenario_hint": "Request to score several risks with differing likelihood and impact combinations."
+    },
+    {
+      "id": "risk-management-r03",
+      "source_quote": "Probability** (High >70%, Medium 30-70%, Low <30%) and **Impact** (High: schedule slip >2w or scope cut, Medium: 1-2w slip or workaround needed, Low: <1w slip, absorbed)",
+      "class": "useful",
+      "outcome": "Likelihood and impact ratings are tied to stated thresholds: likelihood by percentage bands and impact by schedule slip of more than two weeks or scope cuts, one to two weeks or a workaround, and under a week.",
+      "why": "Ratings without shared thresholds are subjective and cannot be compared across risks or reviewers.",
+      "scenario_hint": "Request to rate a risk such as a vendor delay with a stated expected slip."
+    },
+    {
+      "id": "risk-management-r04",
+      "source_quote": "No mitigation strategy for High or Critical risks",
+      "class": "useful",
+      "outcome": "Every high or top-priority risk has a response plan that is explicitly one of: eliminate the cause, reduce likelihood or impact, transfer to another party, or accept with a contingency.",
+      "why": "Serious risks without a response plan go unaddressed until they become issues.",
+      "scenario_hint": "Request to document a high-severity risk and decide how to respond."
+    },
+    {
+      "id": "risk-management-r05",
+      "source_quote": "Every mitigation has an owner and a trigger condition.",
+      "class": "useful",
+      "outcome": "Each mitigation names a responsible person and a condition that signals when it should be activated.",
+      "why": "Without an owner and trigger, mitigations are never executed at the right moment.",
+      "scenario_hint": "Request to produce mitigation plans for program risks."
+    },
+    {
+      "id": "risk-management-r06",
+      "source_quote": "Issue without owner or due date",
+      "class": "useful",
+      "outcome": "Every problem that has already materialised has a named owner and a due date for resolution.",
+      "why": "Unowned or undated problems drift and slip the schedule.",
+      "scenario_hint": "Request to log a risk that has now happened and needs resolving."
+    },
+    {
+      "id": "risk-management-r07",
+      "source_quote": "Dependency with no contingency if unmet",
+      "class": "useful",
+      "outcome": "Each external dependency comes with a fallback plan describing what happens if it is not met.",
+      "why": "An unmet dependency with no fallback can stall the program.",
+      "scenario_hint": "Request to log dependencies on other teams or vendors."
+    },
+    {
+      "id": "risk-management-r08",
+      "source_quote": "Escalate when: risk score increases to Critical, mitigation fails, issue unresolved past due date, or dependency at risk of not being met.",
+      "class": "useful",
+      "outcome": "The answer states when to escalate (top-level priority reached, mitigation failing, overdue problem, dependency endangered) and the chain of people to escalate through, from the program manager up to executive level.",
+      "why": "Without clear escalation triggers and path, serious problems reach decision makers too late.",
+      "scenario_hint": "Request to prepare risks for leadership escalation."
+    },
+    {
+      "id": "risk-management-r09",
+      "source_quote": "Assumptions not validated or missing validation plan",
+      "class": "useful",
+      "outcome": "Assumptions are listed separately from risks and each has a way or plan to confirm it is true.",
+      "why": "Unvalidated assumptions silently turn into risks or issues.",
+      "scenario_hint": "Request for an initial assessment at program kickoff."
+    },
+    {
+      "id": "risk-management-r10",
+      "source_quote": "Critical (weekly), High (bi-weekly), Medium (monthly), Low (quarterly)",
+      "class": "useful",
+      "outcome": "The answer recommends how often risks are reviewed, with more frequent review for higher priority levels: weekly for the top, every two weeks, monthly, and quarterly for the lowest.",
+      "why": "Without a review rhythm, risk ratings go stale.",
+      "scenario_hint": "Request to set up ongoing tracking of program risks."
+    },
+    {
+      "id": "risk-management-r11",
+      "source_quote": "**Top 5 Risks Summary** — one-liner per risk with mitigation status for executive reporting",
+      "class": "generic",
+      "outcome": "The answer includes a brief executive summary of the five most serious risks, one line each, with the state of their mitigation.",
+      "why": "Executives need a quick view of the biggest exposures and what is being done.",
+      "scenario_hint": "Any request to document or report program risks."
+    },
+    {
+      "id": "risk-management-r12",
+      "source_quote": "**Risk Heat Map** — 3×3 grid (Probability vs Impact) with risk IDs plotted",
+      "class": "style",
+      "outcome": "The answer includes a three-by-three grid of likelihood against impact with each risk's identifier placed in its cell.",
+      "why": "",
+      "scenario_hint": "Any request to assess and document program risks."
+    }
+  ]
+}

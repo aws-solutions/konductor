@@ -1,0 +1,115 @@
+{
+  "format_version": 1,
+  "skill": "sprint-planning",
+  "batch": "rules-c3",
+  "generated_at": "2026-11-10T09:24:07.407Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "7b4af7243d4fe2d9d2d4fe34ae47e7ee2f185fe803e4523d890f53d88aca6ad8",
+  "scenarios": [
+    {
+      "id": "sprint-planning-rules-1",
+      "title": "Mobile app launch checklist from a loose list",
+      "target_section": "Session Start",
+      "prompt": "Hi! I run a tiny 3-person team building a recipe app and we've never done formal sprints before, but my cofounder says we should start. Here's the stuff floating around in our heads, can you help me turn it into a first sprint in our tracker?\n\n- fix the crash when you open a recipe with no photo\n- update the privacy policy link in settings\n- add \"favorite\" button to recipe cards (needs API field + UI)\n- write unit tests for the ingredient parser\n- bump the Android target SDK version in the build config\n- investigate why search is slow on long ingredient lists and fix it\n\nI don't really know how many points we can do or how long a sprint should be. Just start going through them please.",
+      "rubric": [
+        "Before sorting the recipe-app items, states the assumed sprint size, length and what one point equals in working days, and asks the user to confirm or change them since they gave none.",
+        "Each of the six listed items (crash fix, privacy link, favorite button, parser tests, SDK bump, slow search) is given an explicit item type, with the loosely stated ones treated as ordinary tasks.",
+        "Warns that the load is getting close to the sprint's limit once the running total approaches it, before it is exceeded.",
+        "Sizes the SDK bump and privacy link as the smallest values and the favorite button (API plus UI) or search investigation higher, using only the 1, 2, 3, 5, 8 scale.",
+        "After each item is added, shows a line with points used, total capacity, and points remaining.",
+        "Records each estimate as a separate estimate value on the item rather than writing the points inside the item's description text."
+      ],
+      "why_skill_matters": "The user gives a loose list and no sprint parameters, so the assistant must propose and confirm them, type every item, keep estimates out of descriptions, and track capacity as items accumulate."
+    },
+    {
+      "id": "sprint-planning-rules-2",
+      "title": "Data warehouse migration ticket pasted in",
+      "target_section": "Story Point Sizing",
+      "prompt": "Sprint is our usual 10 points over two weeks, one point a day. I'm the only data engineer. Here's the ticket from our head of analytics:\n\n\"DATA-412: Migrate the reporting warehouse from the legacy Postgres cluster to Snowflake. Scope: 140 tables, 3 nightly ETL services (orders, inventory, marketing attribution) must be repointed and validated, the BI dashboards in Looker need new connections, and finance wants a parallel run for a week with reconciliation reports. Cutover must keep the 6am refresh SLA.\"\n\nAlso two small things: rotate the service account key for the inventory ETL, and fix the typo in the runbook for the nightly job.\n\nPut together what I should commit to this sprint and create the items in the tracker.",
+      "rubric": [
+        "Flags the Postgres-to-Snowflake migration as too large for one item and proposes splitting it into smaller pieces such as per-service ETL repointing, dashboard reconnection, and the parallel-run reconciliation.",
+        "Does not put the whole migration (a multi-sprint container) into this sprint; only the small executable pieces and the key rotation and runbook fix are assigned.",
+        "Presents the migration as a parent with its split pieces nested beneath it, with the parent created first.",
+        "Gives estimates as a dedicated estimate on each item rather than within description text.",
+        "Sizes the key rotation and runbook typo at the low end (1 or 2) and keeps any migration-related estimate to the 1, 2, 3, 5, 8 scale.",
+        "Shows a used/capacity/remaining points line after each item is added."
+      ],
+      "why_skill_matters": "A huge migration ticket plus two tiny items tests splitting, parent-child structure, not sprint-assigning the container, and estimate placement."
+    },
+    {
+      "id": "sprint-planning-rules-3",
+      "title": "Subtle: checkout task with subtasks near the limit",
+      "target_section": "Capacity Tracking",
+      "prompt": "Planning for our payments squad. Normal sprint: 10 points, 2 weeks, 1 pt = 1 day.\n\nAlready committed: \n- \"Add Apple Pay to checkout\" (Task, 5 pts). It has three subtasks that I already created under it: backend token endpoint (2), iOS button + flow (2), QA on sandbox (1).\n- \"Update webhook retry config\" (Task, 1 pt)\n\nNow I want to add these:\n- \"Refund status API field\" (Task, 2 pts)\n- \"Fix rounding bug in tax display\" (Task, 1 pt)\n\nWalk me through adding them one at a time and tell me where we stand.",
+      "rubric": [
+        "Treats the three Apple Pay subtasks (token endpoint, iOS flow, sandbox QA) as already included with their parent and does not add their 5 points on top, so the starting total is 6 rather than 11.",
+        "Warns that the sprint is nearing its limit once the refund field or tax fix brings the total to 8 or 9 of 10.",
+        "Keeps every added item as an explicit ordinary task type rather than leaving it untyped.",
+        "If the total goes above 10 it states clearly that capacity is exceeded and by how many points; otherwise it correctly reports 9 of 10 with 1 remaining and does not claim an overrun.",
+        "After each of the two additions, shows a line with used, capacity, and remaining points."
+      ],
+      "why_skill_matters": "The nested subtasks tempt double-counting (5+5+1=11), which would make the sprint look overloaded; correct counting gives 6, then 8, then 9."
+    },
+    {
+      "id": "sprint-planning-rules-4",
+      "title": "Product goal broken into hierarchy for a logistics team",
+      "target_section": "Task Hierarchy",
+      "prompt": "Our ops director set this year's goal: \"Cut late deliveries by 30%\". Under that I think we have one initiative, \"Better route planning\", and within it an epic \"Dynamic re-routing\" that's probably 3 or 4 months of work. First story in the epic is \"Dispatcher sees live traffic delays\", and I want tasks for it: pull in the traffic feed API, build the delay overlay on the dispatcher map, and write alerts for delays over 15 minutes.\n\nSet all of that up in the tracker and get the first sprint going. We're on the standard 10 point, two week cadence with one point per day.",
+      "rubric": [
+        "Creates the goal first, then the initiative, epic, story, and tasks in that order, each nested under its parent.",
+        "Leaves the goal, initiative, epic and story out of the sprint, assigning only the three tasks (traffic feed, overlay, alerts).",
+        "Gives each created item a clear explicit type, with the three work items typed as tasks.",
+        "Puts the estimate for each of the three tasks in a separate estimate field rather than in their descriptions.",
+        "Sizes the traffic feed integration, the map overlay and the alerts with values from 1, 2, 3, 5, 8 that reflect their relative scope.",
+        "Shows used/capacity/remaining after each task is added."
+      ],
+      "why_skill_matters": "A full hierarchy with a multi-month epic checks parent-first creation and that only tasks go into the sprint."
+    },
+    {
+      "id": "sprint-planning-rules-6",
+      "title": "Game studio sprint with parameters stated oddly",
+      "target_section": "Session Start",
+      "prompt": "yo, we're a small indie studio making a farming sim. new to this agile thing. Our producer said \"just plan a sprint\" and left for vacation lol.\n\nBacklog stuff:\n- Rework the crop growth system so seasons affect yield (touches save data, UI tooltips, and balancing)\n- Fix the typo in the tutorial dialogue\n- Add controller rebinding menu\n- Update the Steam store page text\n\nCan you plan it for us and make it ready for the tracker? I have no idea what a normal sprint looks like.",
+      "rubric": [
+        "Opens by stating an assumed sprint capacity, length, and the working-day value of a point, and asks the studio to confirm or adjust them since the producer gave none.",
+        "Gives each of the four backlog items an explicit type, treating plain ones as ordinary tasks.",
+        "Records the estimates as separate estimate values rather than text in the description of each item.",
+        "Warns once the running total approaches the sprint capacity.",
+        "Sizes the tutorial typo and Steam text at the bottom of the scale and the crop growth rework near the top, using 1, 2, 3, 5, 8 only.",
+        "After each added item, shows points used, capacity, and remaining."
+      ],
+      "why_skill_matters": "The user explicitly doesn't know the parameters, so the assistant must offer and confirm them, then type and estimate items."
+    },
+    {
+      "id": "sprint-planning-rules-7",
+      "title": "Security audit findings turned into work",
+      "target_section": "Instructions",
+      "prompt": "We just got our pen-test report back and I need to turn the findings into sprint work. Our sprint is 10 pts, 2 weeks, 1pt=1 day (that's our standard). I'm the sole backend dev.\n\nFindings:\n1. Session cookies missing Secure flag (config change)\n2. Password reset tokens don't expire. Need to add expiry, a cleanup job, and tests.\n3. Admin API has no rate limiting. Need a limiter across the 4 admin services plus monitoring dashboards.\n4. Outdated TLS config on the legacy load balancer (just a config update)\n5. Full rewrite of the auth system to use OIDC across all internal services; auditors want it by Q2.\n\nCreate the tracker items and tell me what goes in this sprint. Group them sensibly under whatever makes sense.",
+      "rubric": [
+        "Flags the full OIDC auth rewrite across all internal services as too large and proposes breaking it into smaller pieces.",
+        "Creates a higher-level item (such as a security remediation epic or auditor-driven container) before the findings placed beneath it, with nesting explicit.",
+        "Leaves the OIDC rewrite and any grouping container unassigned to the sprint, assigning only the small findings and executable pieces.",
+        "Keeps estimates in a dedicated estimate field instead of in descriptions.",
+        "Warns when the total nears 10 points.",
+        "Sizes the Secure cookie flag and TLS config at the bottom (1) and the rate limiter or token expiry above them, within the 1, 2, 3, 5, 8 scale."
+      ],
+      "why_skill_matters": "Mixed findings including a huge rewrite with a Q2 deadline test splitting, grouping under a parent, and sprint assignment of only executable items."
+    },
+    {
+      "id": "sprint-planning-rules-8",
+      "title": "Nonprofit event sprint with a parent task and subtasks",
+      "target_section": "Task Hierarchy",
+      "prompt": "I coordinate volunteer tech for a nonprofit. Our \"sprints\" are 2 weeks, we can do 10 points, a point is a day of work. We're planning the fundraising gala website.\n\nTask: \"Build donation page\" with subtasks: payment form integration, thank-you email template, mobile layout fix. I estimated the whole page at 4 points.\n\nOther tasks: \"Set up event RSVP form\" (2 pts) and \"Write gala FAQ copy\" (1 pt), \"Connect the mailing list to the RSVP form\" (2 pts).\n\nAdd it all to the sprint one by one so I can see where we are.",
+      "rubric": [
+        "Counts the donation page at its own 4 points with its three subtasks treated as already included, not adding separate points for payment form, email template and mobile layout.",
+        "Presents the donation page parent before its three subtasks, with each nested under it.",
+        "Gives the donation page, its subtasks and the three other items an explicit type, with ordinary work as tasks and the nested pieces as subtasks.",
+        "Warns as the total approaches 10 points (9 of 10 after the last item).",
+        "Does not claim the sprint is over capacity; the correct total of 9 of 10 is reported with 1 remaining.",
+        "After each item is added, shows used, capacity, and remaining points."
+      ],
+      "why_skill_matters": "Parent task with subtasks and a total of 9 tests hierarchy and single counting."
+    }
+  ]
+}

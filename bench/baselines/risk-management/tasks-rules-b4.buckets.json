@@ -1,0 +1,243 @@
+{
+  "format_version": 1,
+  "skill": "risk-management",
+  "batch": "rules-b4",
+  "rules": {
+    "risk-management-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "risk-management-r02": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "risk-management-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "risk-management-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "risk-management-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "risk-management-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "risk-management-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "risk-management-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "risk-management-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "risk-management-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "risk-management-r11": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "risk-management-r12": {
+      "class": "style",
+      "kept": false,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "risk-management-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "risk-management-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "risk-management-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "risk-management-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "risk-management-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "risk-management-r04"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "risk-management-r11"
+      }
+    },
+    "risk-management-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "risk-management-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "risk-management-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "risk-management-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "risk-management-r05"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "risk-management-r11"
+      }
+    },
+    "risk-management-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "risk-management-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "risk-management-r08"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "risk-management-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "risk-management-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "risk-management-r01"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "risk-management-r11"
+      }
+    },
+    "risk-management-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "risk-management-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "risk-management-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "risk-management-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "risk-management-r05"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "risk-management-r11"
+      }
+    },
+    "risk-management-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "risk-management-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "risk-management-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "risk-management-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "risk-management-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "risk-management-r05"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "risk-management-r11"
+      }
+    },
+    "risk-management-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "risk-management-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "risk-management-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "risk-management-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "risk-management-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "risk-management-r01"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "risk-management-r11"
+      }
+    },
+    "risk-management-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "risk-management-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "risk-management-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "risk-management-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "risk-management-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "risk-management-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "risk-management-r11"
+      }
+    }
+  }
+}
