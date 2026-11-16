@@ -65,12 +65,20 @@ jobs:
         # The working tree is the PR's test merge commit, so it already holds any
         # slimming that landed on the base branch, and OLD could be base.sha or
         # the merge-base. The merge-base is used to match the dist/ and CHANGELOG
-        # steps.
+        # steps. The checker also comes from the merge-base when it exists there,
+        # so a PR cannot weaken the ratchet it is judged by.
         run: |
           set -e
           MERGE_BASE="$(git merge-base "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")"
           if git show "${MERGE_BASE}:tests/skill-quality-baseline.json" > /tmp/base-baseline.json 2>/dev/null; then
-            python3 tests/skill_quality.py --check-ratchet /tmp/base-baseline.json
+            # The checker reads the new baseline from its own directory.
+            RATCHET_DIR="$(mktemp -d)"
+            mkdir "${RATCHET_DIR}/tests"
+            cp tests/skill-quality-baseline.json "${RATCHET_DIR}/tests/"
+            if ! git show "${MERGE_BASE}:tests/skill_quality.py" > "${RATCHET_DIR}/tests/skill_quality.py" 2>/dev/null; then
+              cp tests/skill_quality.py "${RATCHET_DIR}/tests/"
+            fi
+            python3 "${RATCHET_DIR}/tests/skill_quality.py" --check-ratchet /tmp/base-baseline.json
           else
             echo "notice: no baseline at the merge-base; skipping ratchet diff" >&2
           fi
