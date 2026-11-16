@@ -90,7 +90,7 @@ Include at the top of the report file and update as stages complete:
 **Last Updated:** [TIMESTAMP]
 ```
 
-On the lightweight fallback, replace the Test distribution and Pattern analysis items with `- [x] Test distribution analyzed: skipped (lightweight fallback)` and `- [x] Pattern analysis complete: skipped (lightweight fallback)`.
+On the lightweight fallback, replace the Test distribution and Pattern analysis items with `- [x] Test distribution analyzed: skipped (lightweight fallback)` and `- [x] Pattern analysis complete: skipped (lightweight fallback)`. Mark the Non-functional and Integration items the same way when Stage 5 or 6 does not apply.
 
 **Report Structure:**
 
@@ -100,6 +100,7 @@ TEST GAP ANALYSIS REPORT
 ═══════════════════════════════════════════════════
 
 Analysis Date: [CURRENT_DATE] | Mode: [mode] | Features: [N]
+Report type: [full | lightweight fallback]
 
 ## EXECUTIVE SUMMARY
 
@@ -164,6 +165,7 @@ Next Steps:
 
 **Generated:** [CURRENT_DATE]
 **Mode:** Coverage Analysis
+**Report type:** [full | lightweight fallback]
 **Features Analyzed:** [N]
 
 ## Executive Summary

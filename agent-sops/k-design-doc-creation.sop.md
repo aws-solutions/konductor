@@ -1,5 +1,10 @@
 # Design Doc Creation
 
+Orchestration: strict (phase-gated SOP)
+Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it, or the SOP's own round-cap rule says to proceed; record which.
+
+Recorded gates are the stops this SOP names; where the run keeps a session file, record their gate facts there.
+
 ## Overview
 
 This SOP guides the architect through a five-phase workflow to produce a design document ready for principal engineer review from user stories or a problem statement. It applies Socratic requirements elicitation, outside-in structure enforcement, automated quality gates, and an adversarial review loop before presenting the final artifact.

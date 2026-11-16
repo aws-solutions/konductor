@@ -1,6 +1,6 @@
 ---
 name: e2e-test-strategy
-description: Generates a prioritized E2E test strategy from test gap analysis and user stories. Use after coverage analysis to plan E2E tests. Produces a test matrix organized by priority (P0-P3) with execution approach and framework recommendations.
+description: 'Plans E2E tests from a gap analysis and user stories as a P0-P3 matrix. Use when asked which end-to-end tests to write first, to plan E2E coverage for a release, or to turn a coverage gap report into a prioritized test plan.'
 version: 1.0.0
 tags: [skill, e2e-testing, test-strategy, quality-assurance, planning]
 ---
@@ -50,13 +50,13 @@ Analyze test gap analysis output, Phase 1 user stories, Phase 2 architecture des
 
 ## Prerequisites
 
-If a calling SOP supplied paths for any artifact below, or for the output file, You MUST use those values and skip the corresponding prompt. Ask only for what the caller did not supply — a caller that keeps its artifacts under its own output directory already knows where they are.
+If a calling SOP supplied paths for any artifact below, or for the output file, You MUST use those values and skip the corresponding prompt. Ask only for what the caller did not supply.
 
 Required artifacts:
 
 1. **Test Gap Analysis**: Output from Test Gap Analyzer (Checker) prompt
    - Location: `testing-quality-assurance/outputs/test-gap-analysis.md`
-   - Contains: Coverage analysis, identified gaps, testing philosophy, distribution analysis
+   - Contains: Coverage analysis, identified gaps, testing philosophy, distribution analysis (none if its Report type is `lightweight fallback`: ask for a full run first)
 
 2. **Phase 1 - Requirements & Planning**: User stories with acceptance criteria
    - Location: `requirements-planning/outputs/user-stories.md`

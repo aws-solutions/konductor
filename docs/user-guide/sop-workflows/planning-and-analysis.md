@@ -217,7 +217,7 @@ Any one of these triggers a recommendation to consult `k-architect`:
   escalation with specific questions.
 - **Execution context matters.** The SOP notes its steps run shell commands and may write files;
   an agent without those tools delegates them to specialists per its routing rules. This is why
-  the read-only orchestrator can still run it.
+  the read-only mux and cmux orchestrators can still run it.
 
 ---
 
