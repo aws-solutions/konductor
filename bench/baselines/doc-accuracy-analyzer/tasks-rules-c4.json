@@ -1,0 +1,131 @@
+{
+  "format_version": 1,
+  "skill": "doc-accuracy-analyzer",
+  "batch": "rules-c4",
+  "generated_at": "2026-11-10T09:37:06.616Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "b8683f2c943f552626ad08a8b4614617659a05172d801028ae9c4548401ab71e",
+  "scenarios": [
+    {
+      "id": "doc-accuracy-analyzer-rules-1",
+      "title": "Event bus design claiming existing connector only needs config",
+      "target_section": "Step 1: Extract Verifiable Claims",
+      "prompt": "I'm about to send the \"Order Events to Warehouse\" design to my staff engineer. Can you check the facts in the excerpt below? I'm a bit nervous because I wrote parts of it from memory.\n\n---\n**3. Approach**\n\nWe will publish order-created events to Amazon EventBridge and have the warehouse system consume them. Our existing `warehouse-sync` Lambda already handles inventory updates for the legacy SQS path, so supporting the new event flow requires only configuration: we just add an EventBridge rule targeting it.\n\nEventBridge delivers events in order, so the warehouse never sees an \"order-updated\" before its \"order-created\". Custom event payloads can be up to 1 MB, which comfortably fits our largest orders (about 600 KB with line items). We expect about 4,000 events/sec at peak, and EventBridge scales to that without any quota changes. Using an event bus here is the standard pattern for decoupling order systems.\n\nFailed deliveries are retried automatically, so we don't need a dead-letter queue.\n---\n\nThanks!",
+      "rubric": [
+        "Treats the statement that the existing warehouse-sync Lambda needs only an EventBridge rule as a high-risk claim and says the Lambda's input format (SQS message vs EventBridge event envelope) must be checked rather than assuming it works.",
+        "Pulls out checkable statements across several kinds: ordering guarantee, 1 MB payload size, 4,000 events/sec with no quota change, retry/no-DLQ, and the \"standard pattern\" appeal, not only one or two.",
+        "Gives each claim a distinct verdict, with the ordering claim and the 1 MB payload claim (EventBridge's limit is 256 KB) judged as contradicted and ranked above weaker issues such as a missing qualifier.",
+        "For the wrong claims (ordering, payload size), quotes the original sentence, supplies replacement wording, and names the source for the correction.",
+        "Notes that EventBridge quotas such as event size and put-events throughput may change or be adjustable and should be confirmed against the current quotas page.",
+        "Opens with a count of total claims checked and how many fall into each verdict category."
+      ],
+      "why_skill_matters": "The excerpt mixes an \"already built, only config\" claim with wrong EventBridge facts (ordering, 256 KB limit), throughput, and a best-practice appeal. It makes the high-risk reuse claim, broad extraction, verdicts, corrections and limits-change matter."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-2",
+      "title": "Caching proposal leaning on reputation",
+      "target_section": "Guidelines",
+      "prompt": "Quick fact check on this paragraph from our product-catalog caching proposal before review. Our tech lead wrote it and honestly it all sounds right to me.\n\n\"Everyone knows Redis outperforms Memcached for read-heavy workloads, so we are choosing ElastiCache for Redis. Cache-aside is the industry best practice for catalog data and everybody uses it. ElastiCache supports Multi-AZ automatic failover with replicas, and a single node type we plan to use (cache.r6g.large) provides 13.07 GiB of memory. We expect a 95% hit rate, based on how similar sites perform. Our Java service already uses a shared CacheClient wrapper that handles stampede protection, so the integration is trivial.\"\n\nPlease tell me what holds up and what doesn't.",
+      "rubric": [
+        "Does not accept the \"everyone knows\" Redis-over-Memcached superiority or \"industry best practice / everybody uses it\" for cache-aside as confirmed; marks them as unconfirmed unless a concrete source is given.",
+        "Says the claim that the CacheClient wrapper handles stampede protection needs a file path or commit to be treated as confirmed, and does not call it confirmed from the paragraph alone.",
+        "For the Multi-AZ failover and the cache.r6g.large memory figure, points to the official AWS ElastiCache documentation page as the needed source, with a link or a named docs page.",
+        "Judges the 95% hit rate \"based on similar sites\" against an independent source or measurement rather than the doc's own assertion, and says what evidence would be needed.",
+        "Separates the verdicts: e.g. instance memory as confirmed, hit rate and best-practice as lacking a source, rather than one blanket judgement.",
+        "Starts with the total number of claims checked and how many sit in each verdict category."
+      ],
+      "why_skill_matters": "Reputation-based reasoning, an unreferenced code wrapper claim, a service feature claim and an unsupported projected figure. Makes unconfirmed handling, code evidence, citation and verdict separation matter."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-3",
+      "title": "Cross-account log pipeline with assumed capability",
+      "target_section": "Step 4: Assess Approach Feasibility",
+      "prompt": "Here's the flow section of our security-logging design. Anything wrong before I put it in front of the platform group?\n\n\"Flow: Application logs land in CloudWatch Logs in each of our 14 workload accounts. A subscription filter on each log group sends records to a Kinesis Data Firehose stream in the central security account. Firehose converts the records to Parquet and writes them to S3, where Athena queries them. Because Firehose can read from CloudWatch Logs subscriptions, the cross-account piece just works with no extra setup. Firehose will decompress the gzip-compressed CloudWatch payloads automatically, so Athena sees plain JSON events. Retention in the central bucket is set to 7 years via S3 Object Lock, which keeps costs low since Glacier is cheap.\"\n\nThanks, keep it short if you can.",
+      "rubric": [
+        "Walks the flow from log group through subscription filter, cross-account delivery, Firehose, Parquet conversion, S3 and Athena, and flags the cross-account \"just works\" step as an assumption needing a destination/permissions setup rather than a confirmed capability.",
+        "Checks the gzip auto-decompression and Parquet conversion claims against what vendor documentation says (CloudWatch subscription data is base64/gzip, and decompression requires configuration or a Lambda transform) rather than accepting the doc's statement.",
+        "Singles out the \"just works with no extra setup\" statement as a high-risk claim and does not accept it at face value.",
+        "Distinguishes verdicts: the cross-account and decompression claims as contradicted or exaggerated, and the Object Lock/Glacier cost remark as unsupported or missing a qualifier (Object Lock does not itself move data to Glacier).",
+        "Opens with total claims examined and counts per verdict category."
+      ],
+      "why_skill_matters": "The feasibility problems are embedded in a single flow paragraph where each step looks plausible; the end-to-end trace reveals assumed capabilities. Makes the walkthrough, source checking and verdicts matter."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-4",
+      "title": "Edge delivery doc with region and pricing claims",
+      "target_section": "Step 2: Investigate Each Claim",
+      "prompt": "Reviewer on my video-platform doc wrote \"please verify infra claims\". Here are the paragraphs:\n\n\"We will run transcoding on AWS Elemental MediaConvert in af-south-1 (Cape Town) so that African viewers get low latency. MediaConvert's on-demand rate for 1080p AVC output is $0.015 per minute, so our estimated 200,000 minutes per month will cost about $3,000. CloudFront has a limit of 25 distributions per account, which is plenty for our 6 tenants. Origin Shield is included at no extra charge with every distribution.\"\n\nCan you go through them and tell me what's safe to keep and what to change? I don't have time to look every one up myself.",
+      "rubric": [
+        "Evaluates the af-south-1 availability, the per-minute price and the CloudFront distribution limit against vendor sources rather than repeating the doc's wording, and states what the source says for each.",
+        "Notes that the distribution limit and prices change over time and that figures should be confirmed against current official docs or the pricing page.",
+        "Attaches an official AWS documentation page or link (regional availability for MediaConvert, CloudFront quotas, Origin Shield pricing) to the service claims.",
+        "For any claim judged wrong or inflated (e.g. Origin Shield \"no extra charge\", the 25-distribution limit, the $3,000 arithmetic of 200,000 × $0.015), quotes the original sentence and offers corrected wording with a source.",
+        "Pulls out each checkable item: region availability, unit price, monthly cost arithmetic, distribution quota, Origin Shield pricing.",
+        "States up front how many claims were checked and how many land in each verdict category."
+      ],
+      "why_skill_matters": "Infra claims (region, price, quota, pricing inclusion) plus a cost computation. Makes primary-source checking, citation, change-over-time, extraction and correction matter."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-5",
+      "title": "Reviewer-flagged retry and idempotency claims with code pasted",
+      "target_section": "Step 2: Investigate Each Claim",
+      "prompt": "A reviewer flagged two sentences in my design doc as \"not true as far as I can tell\". The doc says:\n\n1. \"The `SubmissionClient` already retries failed calls with exponential backoff, so the new bulk-upload feature inherits resilience for free.\"\n2. \"All writes through `SubmissionClient` are idempotent.\"\n\nHere is the actual class from our repo (services/upload/submission_client.py):\n\n```python\nclass SubmissionClient:\n    def __init__(self, http, timeout=10):\n        self.http = http\n        self.timeout = timeout\n\n    def submit(self, payload):\n        resp = self.http.post(\"/submissions\", json=payload, timeout=self.timeout)\n        resp.raise_for_status()\n        return resp.json()\n\n    def submit_batch(self, items):\n        return [self.submit(i) for i in items]\n```\n\nAlso the doc says the HTTP session `http` is a standard requests.Session. Can you assess the claims?",
+      "rubric": [
+        "Cites services/upload/submission_client.py and the specific methods (submit, submit_batch) as the evidence, concluding no retry or backoff logic exists in that class.",
+        "Treats \"already retries... inherits resilience for free\" as a reuse claim that is contradicted by the code, and warns the bulk feature cannot rely on it.",
+        "Judges the idempotency claim against the code and notes that a plain POST with no idempotency key gives no such guarantee, and that the Session claim cannot be confirmed from this file because the construction of http is not shown.",
+        "Gives original text and replacement wording for the retry and idempotency sentences, referencing the file as the source.",
+        "Ranks the contradicted retry claim as more serious than the unconfirmable Session claim, giving them distinct verdicts.",
+        "Begins with the number of claims examined and the count per verdict."
+      ],
+      "why_skill_matters": "Code claims with real code pasted; some contradicted, one unconfirmable from the snippet. Makes code-evidence citation, reuse scrutiny, source checking, corrections and verdict ranking matter."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-6",
+      "title": "Long ML platform doc with one buried quota claim",
+      "target_section": "Step 3: Classify Findings",
+      "prompt": "Please do a fact check of this section from our \"Feature Store Rollout\" doc. Most of it is background, so don't go overboard.\n\n\"Teams today compute features in notebooks and in nightly Spark jobs. Data scientists complained in the Q2 survey that features were inconsistent across models. The platform team owns the ingestion library and the on-call rotation. The proposal is to introduce a shared feature store with an offline store in S3 and an online store for low-latency lookups. Training jobs will read point-in-time correct features, which prevents leakage. Our model-serving team has asked for this since last year, and it aligns with the roadmap. For online serving we will use SageMaker Feature Store, which supports up to 40,000 feature groups per account for our needs, and each record can be 350 KB. The migration will take two quarters and is staffed by four engineers. Adoption is expected by all 30 teams within a year.\"\n\nThanks.",
+      "rubric": [
+        "Finds the checkable claims buried in background text: the feature group count, the 350 KB record size, point-in-time leakage prevention, and doesn't treat the whole passage as narrative with nothing to check.",
+        "Flags that the feature group limit and record size are service quotas to confirm against current SageMaker documentation, noting the figures may have changed or be adjustable.",
+        "Checks the quota claims against vendor sources and says what the source states (e.g. record size limit 350 KB; feature groups per account default is far lower than 40,000) instead of accepting the doc.",
+        "Assigns separate verdicts, treating a contradicted quota as more serious than an unsourced adoption or staffing estimate or a missing qualifier.",
+        "Notes that \"prevents leakage\" and the adoption expectation are asserted without a concrete source and does not mark them confirmed.",
+        "Opens with a total count of claims and a tally per verdict."
+      ],
+      "why_skill_matters": "Narrative text hides a couple of verifiable limits. The user's \"don't go overboard\" pulls toward a light touch. Makes extraction, current-docs checking and verdict classification matter."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-7",
+      "title": "Terraform module reuse claim in platform doc",
+      "target_section": "Step 5: Suggest Corrections",
+      "prompt": "I need the corrected wording, not just a list of complaints. Our platform doc says:\n\n\"Provisioning a new tenant database is already built: the `rds-tenant` Terraform module in infra/modules/rds-tenant supports Aurora PostgreSQL with Multi-AZ, so onboarding a new tenant requires only setting variables. Aurora supports up to 128 TiB of storage per cluster volume, well above our 20 TiB forecast.\"\n\nModule variables.tf, for reference:\n\n```hcl\nvariable \"name\" {}\nvariable \"instance_class\" { default = \"db.t3.medium\" }\nvariable \"engine\" { default = \"postgres\" }\nvariable \"multi_az\" { default = false }\nvariable \"allocated_storage\" { default = 100 }\n```\n\nPlease check it and give me text I can paste into the doc.",
+      "rubric": [
+        "Challenges the \"already built... requires only setting variables\" claim, noting the module's engine default is plain postgres and uses allocated_storage, which suggests an RDS instance rather than an Aurora cluster, so variables alone may not be enough.",
+        "Points to infra/modules/rds-tenant and variables.tf as the evidence, and says that the resource definitions (e.g. main.tf) must be inspected to confirm Aurora and Multi-AZ support.",
+        "Provides paste-ready replacement text for the module claim, quoting the original and naming the source (the module file or Aurora docs) behind the fix.",
+        "Backs the 128 TiB Aurora storage statement with a pointer to the official AWS Aurora documentation page.",
+        "Marks the module claim as contradicted or unconfirmed and the 128 TiB claim as confirmed (or confirmed with a note), with different verdicts.",
+        "Opens with a count of claims checked and the number per verdict."
+      ],
+      "why_skill_matters": "A reuse claim backed by a partially contradicting snippet and a service limit claim; the user wants paste-ready corrections. Makes reuse scrutiny, code evidence, corrections, citation, verdicts matter."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-8",
+      "title": "Mobile push design with mixed accuracy and assumed integration",
+      "target_section": "6-Step Workflow",
+      "prompt": "Before our design review tomorrow, run a full accuracy pass on the push-notification section below. Tell me the worst problems first.\n\n\"Users will receive push notifications via Amazon SNS mobile push. SNS supports sending to APNs and FCM, which covers iOS and Android. Our `device-registry` service already stores device tokens, so we only need to point it at SNS platform endpoints. When a token is invalidated by Apple, SNS automatically deletes the endpoint and our registry is updated to match. Messages can be up to 256 KB. We send roughly 2 million pushes per hour, which SNS handles trivially. Targeting by user segment will use SNS topic filtering, which is the recommended way to segment audiences at scale.\"\n\nAssume the doc is for a 5-million-user consumer app.",
+      "rubric": [
+        "Traces the token-invalidated flow step by step and flags that SNS disabling (not deleting) the endpoint and notifying the registry is an assumed capability, since no mechanism links the SNS event back to device-registry.",
+        "Flags \"device-registry already stores device tokens, so we only need to point it at SNS\" as high-risk and says its storage schema and endpoint creation logic must be verified.",
+        "Backs SNS support for APNs/FCM and message size with an official AWS SNS documentation reference, noting the push payload limit differs by platform (e.g. 4 KB for APNs-style limits rather than 256 KB).",
+        "Treats \"the recommended way to segment audiences at scale\" as unconfirmed unless an AWS source is found, and does not accept it as established.",
+        "Ranks contradicted claims (auto-deletion, 256 KB for push) above weaker issues, and gives each claim its own verdict.",
+        "Opens with the total number of claims checked and how many fall into each verdict category.",
+        "Orders findings from most serious to least, and for each shows the claim, its verdict, the evidence and a fix."
+      ],
+      "why_skill_matters": "Mixed correct and wrong claims, a reuse claim, a best-practice appeal and an assumed automated sync flow. Makes tracing, reuse scrutiny, citation, unconfirmed handling and severity ordering matter."
+    }
+  ]
+}

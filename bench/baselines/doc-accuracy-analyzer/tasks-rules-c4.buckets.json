@@ -1,0 +1,277 @@
+{
+  "format_version": 1,
+  "skill": "doc-accuracy-analyzer",
+  "batch": "rules-c4",
+  "rules": {
+    "doc-accuracy-analyzer-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "doc-accuracy-analyzer-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "doc-accuracy-analyzer-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "doc-accuracy-analyzer-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "doc-accuracy-analyzer-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "doc-accuracy-analyzer-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "doc-accuracy-analyzer-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "doc-accuracy-analyzer-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "doc-accuracy-analyzer-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "doc-accuracy-analyzer-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "doc-accuracy-analyzer-r11": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "doc-accuracy-analyzer-r12": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "doc-accuracy-analyzer-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r10"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r05"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "doc-accuracy-analyzer-r11"
+      }
+    },
+    "doc-accuracy-analyzer-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r03"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r08"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "doc-accuracy-analyzer-r11"
+      }
+    },
+    "doc-accuracy-analyzer-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r08"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "doc-accuracy-analyzer-r11"
+      }
+    },
+    "doc-accuracy-analyzer-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r10"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r02"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "doc-accuracy-analyzer-r11"
+      }
+    },
+    "doc-accuracy-analyzer-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r10"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r08"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "doc-accuracy-analyzer-r11"
+      }
+    },
+    "doc-accuracy-analyzer-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r04"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "doc-accuracy-analyzer-r11"
+      }
+    },
+    "doc-accuracy-analyzer-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r10"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r08"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "doc-accuracy-analyzer-r11"
+      }
+    },
+    "doc-accuracy-analyzer-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "doc-accuracy-analyzer-r08"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "doc-accuracy-analyzer-r11"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "doc-accuracy-analyzer-r12"
+      }
+    }
+  }
+}

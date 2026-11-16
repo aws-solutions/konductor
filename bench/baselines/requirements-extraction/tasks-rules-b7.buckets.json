@@ -1,0 +1,275 @@
+{
+  "format_version": 1,
+  "skill": "requirements-extraction",
+  "batch": "rules-b7",
+  "rules": {
+    "requirements-extraction-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "requirements-extraction-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "requirements-extraction-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "requirements-extraction-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "requirements-extraction-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "requirements-extraction-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "requirements-extraction-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "requirements-extraction-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "requirements-extraction-r09": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "requirements-extraction-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "requirements-extraction-r11": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    },
+    "requirements-extraction-r12": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    }
+  },
+  "scenarios": {
+    "requirements-extraction-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r05"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r12"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "requirements-extraction-r09"
+      },
+      "8": {
+        "bucket": "format",
+        "rule_id": "requirements-extraction-r11"
+      }
+    },
+    "requirements-extraction-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r02"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r07"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "requirements-extraction-r09"
+      }
+    },
+    "requirements-extraction-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r08"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r02"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r10"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r12"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "requirements-extraction-r09"
+      },
+      "8": {
+        "bucket": "format",
+        "rule_id": "requirements-extraction-r11"
+      }
+    },
+    "requirements-extraction-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r12"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "requirements-extraction-r09"
+      }
+    },
+    "requirements-extraction-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r02"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r01"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "requirements-extraction-r09"
+      }
+    },
+    "requirements-extraction-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r12"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r02"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "requirements-extraction-r09"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "requirements-extraction-r11"
+      }
+    },
+    "requirements-extraction-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r10"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "requirements-extraction-r12"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "requirements-extraction-r09"
+      }
+    }
+  }
+}

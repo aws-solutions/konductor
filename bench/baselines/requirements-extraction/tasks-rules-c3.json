@@ -1,0 +1,131 @@
+{
+  "format_version": 1,
+  "skill": "requirements-extraction",
+  "batch": "rules-c3",
+  "generated_at": "2026-11-10T09:24:27.187Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "ae3f57783014d287eb5712c4efbd4922b1038c99a070b00ff416688c445f66c4",
+  "scenarios": [
+    {
+      "id": "requirements-extraction-rules-1",
+      "title": "Pet insurance claims brief in launch-announcement style",
+      "target_section": "Extraction Rules",
+      "prompt": "Our architect starts Monday and I have to give her clean inputs: a doc on the business side, a doc covering the requirements rolled up, and another with the key stories. Source is below. Please cut the fluff.\n\nPAWSURE INSTANT CLAIMS: Requirements v3\n\n\"Pet parents deserve peace of mind, not paperwork!\" says Dana Ortiz, a thrilled beta customer. \"I got paid before I left the parking lot!\" PawSure is revolutionizing pet insurance with the most delightful claims experience on the planet.\n\nThe problem: at mid-size pet insurers, adjusters take 9 days on average to settle a claim, and 31% of claims need a phone call because information is missing.\n\nWho buys: head of claims at insurers with 50k-200k active policies. Who uses it: about 14 adjusters per insurer, plus pet owners on mobile web. Expect around 120,000 claims a year per insurer, each with 1-6 invoice images.\n\nGoals: settle 70% of claims in under 48 hours; cut manual touches per claim by 40%; save roughly $1.8M a year in handling cost per insurer.\n\nWhy we win: invoice OCR at 95% field accuracy (nobody else comes close!) and the only product with direct payout to vet clinics.\n\nDeployment: multi-tenant SaaS, we run it on Azure. Launch 3 March 2027.\n\nStories\nEpic 1 Submit a claim\n1.1 As an owner I upload a photo of the vet invoice and fields are extracted in under 8 seconds.\n1.2 As an owner I see claim status updates.\n1.3 As an owner I can save a draft.\nEpic 2 Adjudicate\n2.1 As an adjuster I see an auto-approve recommendation with a confidence score; claims under $500 with confidence above 0.92 auto-approve.\n2.2 As an adjuster I can override a decision, and the reason is logged.\n2.3 As an adjuster I filter my queue by age and amount.\nEpic 3 Pay\n3.1 As a clinic I receive payout by ACH within 1 business day of approval.",
+      "rubric": [
+        "The answer presents three distinct documents (business background, consolidated requirements, key stories), and the stories document is present and not cut short.",
+        "The original figures survive: 9 days and 31% for the problem, 70% in under 48 hours, 40% fewer manual touches, $1.8M savings, 95% OCR accuracy, 8-second extraction, $500 / 0.92 auto-approve threshold, 1 business day payout.",
+        "The beta customer's quote, the \"revolutionizing\" and \"delightful\" wording and the \"nobody else comes close\" claims are absent; the differentiators appear as plain facts (95% OCR accuracy, direct clinic payout).",
+        "The business document covers the insurer buyers (50k-200k policies), the ~14 adjusters plus pet owners, ~120,000 claims per year, Azure-hosted multi-tenant SaaS, and the 3 March 2027 launch.",
+        "The documents condense the source into distilled statements rather than reproducing the brief paragraph by paragraph, and use the same terms (claim, adjuster, clinic) throughout.",
+        "Azure hosting, multi-tenant SaaS delivery and ACH payout integration with clinics are recorded as constraints or integrations in the requirements document."
+      ],
+      "why_skill_matters": "A hype-heavy brief with a customer quote, hard numbers and a short story list. It makes the three-document requirement, number preservation, marketing removal and business-context coverage matter."
+    },
+    {
+      "id": "requirements-extraction-rules-2",
+      "title": "Freight load board with scattered security clauses",
+      "target_section": "Security Requirements",
+      "prompt": "Need design inputs for our architect from the notes below (business background, a requirements roll-up, and the key stories with what they mean for the design). Don't pad it, the architect hates long docs.\n\nLoadLink: freight load board for brokers and carriers\n\nOverview: brokers post loads, carriers search and book. 2,000 brokers online at peak, about 50,000 open loads at any time. Search results must come back in under 1.2 seconds. Uptime target 99.9%. Launch Q2 2027. Hosted on GCP.\n\nLogin: brokers sign in through their company Okta; carriers use email + TOTP.\n\nEpic A: Load posting\nA1 Broker posts a load (origin, destination, weight, rate). Rate edits are recorded.\nA2 Broker clones a previous load.\nA3 Broker bulk-uploads up to 500 loads by CSV; processing finishes within 60 seconds.\nA4 Broker adds a favorite-carrier list.\nA5 Broker sets a post-expiry time.\nA6 Broker exports a load report as PDF.\nEpic B: Carrier onboarding and booking\nB1 Carrier uploads insurance certificate and CDL scan. Documents are stored encrypted with AES-256 and only compliance staff can open them.\nB2 Carrier searches loads by lane, equipment and date.\nB3 Carrier books a load; two carriers must never both book the same load.\nB4 Carrier gets push alerts for new loads on saved lanes within 30 seconds.\nB5 Carrier rates a broker.\nB6 Compliance staff review rate-change history: the log is kept for 7 years and cannot be edited.\n\nMisc notes from legal call: EU carrier accounts and their documents must stay in the EU region. All traffic TLS 1.2 or higher. Brokers can't see other brokers' rates.",
+      "rubric": [
+        "Security content from different places is all carried over: Okta SSO for brokers, email + TOTP for carriers, AES-256 for stored carrier documents with compliance-only access, TLS 1.2+, EU data staying in the EU region, the 7-year non-editable rate-change log, and brokers unable to see other brokers' rates.",
+        "Stated figures remain exact: under 1.2 seconds search, 99.9% uptime, 2,000 concurrent brokers, 50,000 open loads, 500-load CSV in 60 seconds, alerts within 30 seconds.",
+        "Within each of the two epics, only a handful of the six stories are kept (no more than five), favouring ones like document storage, double-booking prevention, bulk upload and rate-change auditing over minor ones like PDF export or favorite lists.",
+        "GCP hosting and the EU-region placement are listed as deployment constraints.",
+        "The output is a condensed extraction, not a restatement of every line of the notes."
+      ],
+      "why_skill_matters": "Security statements are spread across stories, a legal aside and the overview, and the user asks for brevity, which pulls toward dropping them. Also tests selecting stories and keeping figures."
+    },
+    {
+      "id": "requirements-extraction-rules-3",
+      "title": "University admissions portal pilot versus full rollout",
+      "target_section": "Scale",
+      "prompt": "Writing up the admissions portal project for the architect. I need three things from the text below: a short business background, a requirements summary, and a key-stories piece. Thanks!\n\nNorthgate University Applicant Portal\n\nProblem: paper and email applications mean staff re-key data; each application takes an admissions officer about 25 minutes to process and errors run at 6%.\n\nPilot (Spring 2027): two faculties (Engineering and Nursing), around 1,500 applicants, about 40 staff users, up to 150 applicants online at once. The pilot can run without the payment gateway: application fees will be waived and marked manually. Transcript verification is manual in the pilot.\n\nFull rollout (Fall 2028): all 11 faculties, 38,000 applicants per cycle, 400 staff, and on deadline day we expect up to 3,000 applicants online at once. Payment through the provincial gateway is required. Transcripts are verified through the national credentials API.\n\nTargets: processing time down to 8 minutes, errors under 1%, pages load in under 2 seconds at the 95th percentile.\n\nTech: university mandates Azure and .NET for backend; PostgreSQL preferred; REST API; React front end. Mobile app deferred until after Fall 2028. Single sign-on through the campus identity provider for staff; applicants register with email verification. Monitoring through the university's existing Datadog.\n\nStories\n1. Applicant completes a multi-page form and can resume later.\n2. Applicant uploads up to 10 documents, 20 MB each.\n3. Officer reviews applications in a queue and flags missing documents.\n4. Applicant pays the application fee online (rollout only).\n5. System verifies a transcript through the credentials API (rollout only).",
+      "rubric": [
+        "Pilot and full-rollout scale are given separately: ~1,500 applicants, ~40 staff, 150 concurrent for the pilot versus 38,000 applicants, 400 staff, 3,000 concurrent on deadline day for Fall 2028.",
+        "Pilot shortcuts are called out as accepted simplifications: no payment gateway with fees waived, and manual transcript verification, with the mobile app deferred past Fall 2028.",
+        "Targets keep their numbers: 25 minutes down to 8, 6% errors down to under 1%, 2 seconds at the 95th percentile, 10 documents of 20 MB.",
+        "Azure, .NET, PostgreSQL, REST, React, campus identity provider SSO, Datadog monitoring, the provincial payment gateway and national credentials API all appear as constraints or integrations.",
+        "The three outputs are condensed and use consistent vocabulary for pilot, rollout, applicant and officer.",
+        "All three requested documents are delivered separately."
+      ],
+      "why_skill_matters": "A source with an explicit two-phase scale split and a handful of deferred features, plus a technology mandate. Makes scale separation, simplifications, constraints and number retention matter."
+    },
+    {
+      "id": "requirements-extraction-rules-4",
+      "title": "Restaurant POS with many stories across three epics",
+      "target_section": "Epic [N]: [Epic Name] ([X] Stories)",
+      "prompt": "Here's the story list for our restaurant POS rebuild. The architect wants the stories that actually drive the design, and what they imply for the data, APIs, security and performance side. Also give me the business and requirements summaries so she has everything in one go. Short background: BistroFlow serves independent restaurants, 1 to 15 locations each, aim for 1,200 locations in year one, tablets in-store with flaky wifi, cloud hosted on AWS, ship September 2027.\n\nEpic 1 Ordering\n1.1 Server enters an order on a tablet; it must work offline for up to 4 hours and sync later.\n1.2 Server splits a check by seat or by item.\n1.3 Server applies a comp with manager PIN.\n1.4 Kitchen display receives the ticket in under 2 seconds.\n1.5 Server changes table color theme.\n1.6 Server adds a course-firing instruction.\n1.7 Server prints a pre-bill.\nEpic 2 Payments\n2.1 Guest pays by card on a terminal; card data never touches our servers (the processor handles it).\n2.2 Tip adjustment after authorization until end of day.\n2.3 Refund by manager within 30 days.\n2.4 Guest receives emailed receipt.\n2.5 Daily settlement report per location, ready by 6am local.\n2.6 Gift cards.\nEpic 3 Back office\n3.1 Owner sees sales across all locations, data no more than 5 minutes old.\n3.2 Owner edits the menu and price changes reach every tablet within 1 minute.\n3.3 Inventory counts.\n3.4 Staff schedule export.\n3.5 Owner views audit trail of voids and comps.\n3.6 Owner changes receipt footer text.\n3.7 Tax rules per jurisdiction.",
+      "rubric": [
+        "Each of the three epics is trimmed to 3-5 stories that shape the design, e.g. offline ordering, kitchen ticket latency, card handling, menu propagation, multi-location reporting, while trivial ones (table color theme, receipt footer text, pre-bill printing) are left out.",
+        "The answer closes the story selection with design implications: data entities and access patterns (orders, checks, menu, audit trail), API needs such as offline sync, security flows such as manager PIN and processor-held card data, and performance or caching needs.",
+        "Figures are retained: 4 hours offline, under 2 seconds kitchen ticket, 30 days refund, 6am settlement, 5 minutes data freshness, 1 minute menu push, 1,200 locations.",
+        "Three separate deliverables (business background, requirements summary, stories extract) are all present.",
+        "Content is condensed rather than re-listing all 20 stories with their original wording.",
+        "Business background mentions independent restaurants with 1-15 locations, a 1,200-location year-one goal, AWS hosting, and the September 2027 ship date."
+      ],
+      "why_skill_matters": "Three epics with many stories of uneven importance; the user asks for implications. Tests story selection, implications synthesis, number preservation and the third document."
+    },
+    {
+      "id": "requirements-extraction-rules-5",
+      "title": "Water meter IoT brief with fuzzy targets",
+      "target_section": "Quality Gate",
+      "prompt": "Municipal water utility project. I have to hand the architect design inputs (business background, requirements summary, key stories) and I'd also like you to tell me honestly what's weak or missing in what I gave you before I send it. Source:\n\nAquaTrack smart metering for the city of Brindle\n\nToday meter readers walk routes monthly; 14% of bills are estimated and leak detection takes weeks. City wants 85,000 smart meters reporting hourly readings, cutting estimated bills to under 2%.\n\nDashboard for customers should be \"snappy\". Alerts for leaks should be \"near real-time\". The system must be \"highly available\". Needs to \"scale as we add neighbourhoods\", first phase covers 12,000 meters.\n\nCity IT requires everything in the city's existing Azure tenant, using Event Hubs for ingestion and Grafana for monitoring. Billing system is SAP; nightly export of usage.\n\nStories\n1. Meter sends hourly reading; late or missing readings flagged after 3 hours.\n2. Customer views daily and hourly usage for the past 13 months.\n3. Utility analyst receives a leak alert when night-time flow stays above threshold for 4 hours.\n4. Billing clerk triggers an export for a billing cycle.\nGo-live is \"before summer 2028\". Customer login: not discussed yet.",
+      "rubric": [
+        "The answer reviews its own output for gaps and names the concrete weak spots: \"snappy\", \"near real-time\" and \"highly available\" with no numbers, \"scale as we add neighbourhoods\" with no growth figure, customer authentication not defined, and an imprecise go-live date.",
+        "Findings are ordered by seriousness, with vague or missing performance, scale and security points ahead of lesser items such as asking the architect to clarify ambiguous wording.",
+        "The answer ends by asking whether the user wants the identified issues fixed.",
+        "The real numbers stay as stated: 85,000 meters, hourly readings, 14% estimated bills down to under 2%, 3-hour late flag, 13 months of history, 4-hour leak condition.",
+        "Azure city tenant, Event Hubs, Grafana and the SAP nightly usage export are captured as constraints and integrations.",
+        "The three documents are short extractions with consistent terminology, not a copy of the brief.",
+        "The first phase of 12,000 meters is distinguished from the 85,000-meter full target."
+      ],
+      "why_skill_matters": "The brief has deliberately vague performance words and a missing security topic. The user asks for an honest weakness report, making a prioritized self-review and closing question matter alongside number retention and constraints."
+    },
+    {
+      "id": "requirements-extraction-rules-6",
+      "title": "Senior ride service quick notes",
+      "target_section": "File 1: business-context.md",
+      "prompt": "quick one. architect needs inputs for \"GoodRide\" tomorrow. notes below, can you turn them into three docs, business context, requirements, key stories\n\n- ride booking for seniors 70+, phone call or app, family can book on their behalf\n- problem: seniors in rural counties miss ~1 in 5 medical appointments for lack of transport (county health dept figure)\n- buyer: county health departments; riders: seniors, drivers (volunteers + paid), dispatchers\n- start with 3 counties, ~900 riders, 60 drivers; plan 25 counties, 15,000 riders by 2029\n- goal: cut missed appointments by a third in pilot counties, cost per ride under $14\n- different from Uber etc: dispatcher can phone-book, wheelchair vehicles, no surge pricing\n- pilot starts 1 April 2027, run by us on AWS\n- stories: senior books by phone via dispatcher; family member books and gets SMS confirmation; driver accepts a ride and sees pickup in under 5 sec; dispatcher reassigns a ride when driver cancels within 10 min; admin exports monthly ride report for county",
+      "rubric": [
+        "Three separate documents are given: business context, requirements, and key stories; none is skipped despite the short notes.",
+        "The business context covers county health departments as buyers, seniors/drivers/dispatchers as users, the missed-appointment problem, objectives, differentiators (phone booking, wheelchair vehicles, no surge pricing), AWS operation by the team, and a 1 April 2027 start.",
+        "Figures are kept exactly: about 1 in 5 missed appointments, cut by a third, under $14 per ride, under 5 seconds, 10-minute reassignment window.",
+        "Pilot scale (3 counties, ~900 riders, 60 drivers) is stated separately from the 2029 target (25 counties, 15,000 riders).",
+        "The documents are compact and consistent, not padded beyond what the notes contain."
+      ],
+      "why_skill_matters": "Terse casual notes with all the pieces of a business case in bullets. Tests that all three documents come out, business context completeness, figure retention and the pilot versus future split."
+    },
+    {
+      "id": "requirements-extraction-rules-7",
+      "title": "Crop-drone analytics with buried pilot sizing",
+      "target_section": "Technical Constraints",
+      "prompt": "Architect starts on SkyField soon. Please produce the business context, a consolidated requirements doc and the key stories from this write-up. We're in a hurry so don't ask me anything, just do your best.\n\nSkyField Crop Health Analytics: Requirements\n\nSkyField turns drone imagery into field-level crop health maps for growers. Growers upload flight imagery from their own drones (typically 400-900 images per flight, about 12 GB) and receive a stress map. Agronomy advisors then annotate and share maps with growers.\n\nToday an advisor spends about 3 hours per field turning imagery into a report; the aim is to reduce that to 20 minutes with a map ready within 30 minutes of upload. Accuracy of stress classification must be at least 90% against advisor-labelled ground truth. We think growers will love how simple this is.\n\nFor the first season we will run with 3 farms and about 40 flights a week, with a team of 5 advisors; the platform is expected to grow to 600 farms and roughly 2,500 flights a week once advisor networks join, and 120 advisors using it daily. Field boundary files and yield data are commercially sensitive and must only be visible to the owning grower and their assigned advisor. Data stays in the Canadian region because of provincial grain-board rules. Offline mobile field-notes are deferred until season two, and the first season will use manual advisor assignment rather than the automatic matching engine.\n\nTech: Google Cloud only (the company has a committed-spend deal); Python services; PostgreSQL with PostGIS; GPU batch jobs for image processing; REST API; web app built in React.\n\nStories: 1) Grower uploads a flight and tracks processing progress. 2) System generates a stress map and notifies the grower. 3) Advisor annotates zones and shares the map. 4) Grower compares two dates for the same field.",
+      "rubric": [
+        "Season-one sizing (3 farms, ~40 flights a week, 5 advisors) is stated separately from the growth target (600 farms, ~2,500 flights a week, 120 daily advisors), even though both sit in one paragraph.",
+        "Season-one simplifications are named: manual advisor assignment instead of automatic matching, and offline mobile field-notes deferred to season two.",
+        "Access limited to the owning grower and assigned advisor for boundary and yield data, and Canadian data residency tied to provincial grain-board rules, are in the requirements.",
+        "Google Cloud only, Python, PostgreSQL with PostGIS, GPU batch processing, REST and React are recorded as technical constraints.",
+        "Numbers are preserved: 3 hours down to 20 minutes, map within 30 minutes, 90% accuracy, 400-900 images and ~12 GB per flight.",
+        "The three documents are condensed and use the same wording for flight, map, grower and advisor.",
+        "The sentence about growers loving the simplicity is not carried over as a requirement or objective."
+      ],
+      "why_skill_matters": "The pilot-versus-growth sizing and the deferrals are tucked into one dense paragraph, near security text and promotional sentence. Tests scale split, simplifications, security/residency, constraints and number retention."
+    },
+    {
+      "id": "requirements-extraction-rules-8",
+      "title": "Payroll startup brief with testimonial and strong security rules",
+      "target_section": "Architecture Implications",
+      "prompt": "I run product at a payroll startup and the architect begins design next week. From the text below I need (1) the business background, (2) the requirements consolidated, (3) the key stories with what they mean for the architecture. After that, tell me what you think is still missing or shaky before I send.\n\nPayPilot: payroll for small businesses\n\n\"PayPilot cut our payroll day from a full afternoon to ten minutes. It's like magic!\" - Priya N., bakery owner and our favorite early user.\n\nPayPilot is the friendliest payroll product ever built. Small businesses with 5 to 50 employees lose about 6 hours every pay cycle on payroll. Goal: reduce that to under 30 minutes, reach 4,000 paying companies in 18 months, keep monthly churn under 2%.\n\nSecurity: employee SSNs and bank details are encrypted at the field level with keys in a managed KMS; all stored data is encrypted, and TLS 1.3 is required for all traffic. Employers sign in with password + MFA; employees through magic link. Employer admins can run payroll, employees see only their own payslips. SOC 2 Type II is needed within 12 months of launch. Every payroll run and every change to bank details is audit logged; records retained for 7 years. Data stays in the US.\n\nRuns on AWS, Node.js backend, PostgreSQL, REST. Launch 15 January 2027. Payments via ACH through a banking partner; tax filing through a tax API.\n\nStories\n1. Admin reviews and approves a payroll run; a run for 50 employees calculates in under 10 seconds.\n2. Employee views payslip history for the past 7 years.\n3. Admin changes an employee's bank account; the change triggers a verification step and a notification to the employee.\n4. System submits quarterly tax filings via the tax API with retries on failure.",
+      "rubric": [
+        "All security and compliance items are carried over: field-level encryption of SSNs and bank details with KMS keys, TLS 1.3 and encryption of stored data, password + MFA for employers and magic link for employees, role limits on payslips, SOC 2 Type II within 12 months, audit logging of runs and bank changes, 7-year retention, US-only data.",
+        "The Priya N. quote, \"like magic\" and \"friendliest payroll product ever built\" are dropped while the underlying problem (about 6 hours per pay cycle) is kept in plain terms.",
+        "The stories part ends with design implications: data entities (payroll runs, employees, bank accounts, audit records), API needs, authentication and authorization flows including the verification step on bank changes, and performance needs such as the 10-second calculation and retry handling.",
+        "The answer lists gaps and shaky points after the documents, with the most serious first (for instance no uptime target, no stated peak load or data volume, no failure expectation for ACH) and softer clarifications last.",
+        "The documents are distilled rather than a copy of the brief and keep consistent terms (employer admin, employee, payroll run).",
+        "Targets keep original numbers: 6 hours to under 30 minutes, 4,000 companies in 18 months, churn under 2%, 5-50 employees, under 10 seconds for 50 employees."
+      ],
+      "why_skill_matters": "A short promotional brief wrapped around dense security and compliance content, with stories that have clear technical implications. User asks for an honest gaps review. Makes security retention, marketing removal, implications and review matter."
+    }
+  ]
+}

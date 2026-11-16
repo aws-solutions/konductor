@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "design-doc-guidelines",
+  "skill_md_sha256": "80471752d19ec1b1ea267a9572d29135caf43c6c53af9f00419ab392d79faa1e",
+  "request_context": "A request to write, review, or restructure an engineering design document, proposal, or technical spec so that a mixed audience of product, management and engineering readers can follow and approve it.",
+  "rules": [
+    {
+      "id": "design-doc-guidelines-r01",
+      "source_quote": "Problem stated in first 10 lines with concrete examples?",
+      "class": "useful",
+      "outcome": "The document opens with the problem within its first few lines, illustrated by concrete examples of the pain (for instance time lost per session) rather than abstract statements.",
+      "why": "Abstract pain does not convince readers, and burying the problem makes them skim before they know why the work matters.",
+      "scenario_hint": "Draft or review of a design doc whose opening is abstract or starts with the solution."
+    },
+    {
+      "id": "design-doc-guidelines-r02",
+      "source_quote": "Tool-first framing: \"Here's what the tool does\" instead of \"Here's the problem, and here's how the tool solves it...\"",
+      "class": "useful",
+      "outcome": "Each feature is explained in terms of the problem it solves for users, not as a description of what the tool does.",
+      "why": "Tool-first descriptions leave readers unable to see why the feature is needed.",
+      "scenario_hint": "Review of a doc that lists what a tool does feature by feature."
+    },
+    {
+      "id": "design-doc-guidelines-r03",
+      "source_quote": "Feature-listing in Decision Requested: \"approve Feature 1\" instead of \"approve so agents retain context\"",
+      "class": "useful",
+      "outcome": "The approval being requested is phrased as the user-facing outcomes approvers are agreeing to, not as a list of feature names.",
+      "why": "Approvers cannot judge value from feature names and may approve something without knowing what changes for users.",
+      "scenario_hint": "Doc whose approval request reads like a list of features."
+    },
+    {
+      "id": "design-doc-guidelines-r04",
+      "source_quote": "Mixing implementation spec into design sections (bash scripts, frontmatter schemas, regex rules)",
+      "class": "useful",
+      "outcome": "Scripts, schemas, regex rules and similar low-level detail are moved out of the design explanation into a clearly labeled section that readers can skip, leaving the design sections at the conceptual level.",
+      "why": "Low-level detail in the design narrative loses non-engineer readers and hides the actual design.",
+      "scenario_hint": "Doc whose design sections include code snippets, config schemas or regex."
+    },
+    {
+      "id": "design-doc-guidelines-r05",
+      "source_quote": "Can a reviewer understand the full approach in 10 minutes (reading §1-3 only)?",
+      "class": "useful",
+      "outcome": "The problem, solution overview and requested decision are self-contained, so a reviewer can grasp the whole approach and what is being approved without reading the detailed sections.",
+      "why": "If the approach only makes sense after reading everything, reviewers skim and approve blindly or stall.",
+      "scenario_hint": "Restructuring a long doc so busy reviewers can decide quickly."
+    },
+    {
+      "id": "design-doc-guidelines-r06",
+      "source_quote": "Trace the actual control flow: who invokes whom? An arrow means \"triggers\" or \"sends data to.\"",
+      "class": "useful",
+      "outcome": "Diagrams are checked against real runtime behavior: arrows show who triggers whom or where data goes, two paths that start the same system converge instead of feeding each other, and results come back via the component that generated them. Any arrow that does not match actual behavior is flagged or corrected.",
+      "why": "A clean-looking but wrong diagram misleads reviewers about how the system works.",
+      "scenario_hint": "Review of a doc with an architecture or sequence diagram whose arrows look arbitrary."
+    },
+    {
+      "id": "design-doc-guidelines-r07",
+      "source_quote": "If you can't trace the claim to an implementation file or tool behavior, it's probably wrong.",
+      "class": "useful",
+      "outcome": "Factual claims about system behavior (what stops, what dispatches, how many items load) are checked against the actual implementation, and unsupported or incorrect claims are called out or corrected.",
+      "why": "Confident but false statements undermine the doc and lead to wrong decisions.",
+      "scenario_hint": "Doc containing statements about how an existing system behaves that may be wrong."
+    },
+    {
+      "id": "design-doc-guidelines-r08",
+      "source_quote": "Every data flow that crosses a boundary needs a threat entry:",
+      "class": "useful",
+      "outcome": "Each data flow that crosses a trust boundary (local to shared storage, shared to local, user to agent, agent to filesystem) has a threat described with mitigations and the residual risk, including explicitly accepted risks.",
+      "why": "Unlisted boundary crossings leave leaks and poisoning risks unexamined and undocumented.",
+      "scenario_hint": "Design for a system that syncs data between local and shared stores or takes instructions that drive an agent."
+    },
+    {
+      "id": "design-doc-guidelines-r09",
+      "source_quote": "Over-hedging: \"may potentially possibly,\" \"it could be argued that,\" \"in some cases it might be the case that.\"",
+      "class": "useful",
+      "outcome": "Filler openers, stacked transitions, buzzwords, marketing tone and piled-up hedges are removed. Claims are stated directly, real uncertainty is noted plainly, and vague claims are replaced with specific numbers or examples.",
+      "why": "Padded, hedged, promotional prose carries no information and costs readers trust.",
+      "scenario_hint": "Tightening a draft full of generic or machine-sounding phrasing."
+    },
+    {
+      "id": "design-doc-guidelines-r10",
+      "source_quote": "When a design spans multiple features, use an anchor doc + per-feature sub-documents:",
+      "class": "useful",
+      "outcome": "For a multi-feature design, shared architecture and component definitions live once in a top-level document, and each feature document refers to those components by name and adds only what is new, without redefining them.",
+      "why": "Copied component descriptions drift apart and contradict each other.",
+      "scenario_hint": "Proposal covering several related features that share components."
+    },
+    {
+      "id": "design-doc-guidelines-r11",
+      "source_quote": "After renaming any file or config field:",
+      "class": "useful",
+      "outcome": "After a rename, the answer calls for searching the whole repository for the old name, including companion docs, guides, scripts, templates, ignore files and changelog, and fixing stale references.",
+      "why": "Stale references to old names silently break links and mislead readers.",
+      "scenario_hint": "Renaming a file or config field referenced by several documents."
+    },
+    {
+      "id": "design-doc-guidelines-r12",
+      "source_quote": "Handle jargon with a budget, not a ban.",
+      "class": "generic",
+      "outcome": "Acronyms and technical terms are expanded or defined the first time they appear, and the opening sections for general readers avoid unexplained jargon.",
+      "why": "Readers outside engineering stop reading when they hit undefined terms.",
+      "scenario_hint": "Any request to write or review a design doc for a mixed audience."
+    }
+  ]
+}

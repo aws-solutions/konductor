@@ -1,0 +1,129 @@
+{
+  "format_version": 1,
+  "skill": "frontend-development",
+  "batch": "rules-c4",
+  "generated_at": "2026-11-10T09:38:04.870Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "602f78ccfa0d7b3ea292226ebcc32df8422f29ac3d4717b026e33b014989dfed",
+  "scenarios": [
+    {
+      "id": "frontend-development-rules-1",
+      "title": "Stock adjustment panel built from plain elements",
+      "target_section": "Cloudscape Compliance",
+      "prompt": "hey, our warehouse app has this little panel for adjusting stock counts and it looks off next to the rest of the console, which is all Cloudscape. can you bring it in line? the form wiring (register, handleSubmit) is set up above this and works fine, don't worry about it\n\n```tsx\nreturn (\n  <div style={{ padding: 16, border: '1px solid #ccc' }}>\n    <span style={{ fontWeight: 'bold', fontSize: 18 }}>Adjust stock: {sku}</span>\n    <div style={{ marginTop: 12 }}>Current on hand: {current}</div>\n    <div style={{ marginTop: 12 }}>\n      <label>New quantity</label>\n      <input type=\"number\" {...register('qty')} />\n    </div>\n    <div style={{ marginTop: 12 }}>\n      <button onClick={handleSubmit(onSubmit)}>Save</button>\n      <button style={{ marginLeft: 8 }} onClick={onCancel}>Cancel</button>\n    </div>\n  </div>\n);\n```\n\nthanks!",
+      "rubric": [
+        "The plain wrapper elements, the span holding the \"Adjust stock\" title, the native number input and the two native buttons are all replaced with design-system components (or each is flagged for replacement).",
+        "All the inline style objects (the padded bordered wrapper, the bold 18px title, the marginTop and marginLeft values) are removed, with the bold title and bordered look reached through component props or a design-system container instead.",
+        "The repeated 12px vertical gaps and the 8px gap between Save and Cancel are produced by the design system's spacing component, not by margin or padding.",
+        "The \"New quantity\" label and input are tied together through a design-system labelled field wrapper rather than a bare native label next to an input.",
+        "The `register('qty')` binding, the `handleSubmit(onSubmit)` call on Save, the `onCancel` handler and the displayed sku and current-on-hand values are all kept, and the form wiring is not rewritten.",
+        "The change is given with a file path, the issue with line numbers, the exact replacement code, a way to verify it, and what else might be affected."
+      ],
+      "why_skill_matters": "The panel is made entirely of plain divs, a span, a native input and native buttons, with inline styles and manual margins. It makes the component-only, no-inline-style and spacing rules matter, while the user's remark about the working wiring tests restraint."
+    },
+    {
+      "id": "frontend-development-rules-2",
+      "title": "Campaign budget check implemented as a data transform",
+      "target_section": "Form Patterns",
+      "prompt": "Our ad campaign form (react-hook-form + zod) has a bug: the \"max budget must be at least min budget\" error shows up weirdly, sometimes only after the other field errors are fixed. Here's the schema and the submit handler. We also have `CAMPAIGN_NAME_MIN` (3) and `CAMPAIGN_NAME_MAX` (60) exported from `constraints/campaign.ts`, in case that matters.\n\n```ts\nexport const campaignSchema = z\n  .object({\n    name: z\n      .string()\n      .min(3, 'Name must be at least 3 characters')\n      .max(60, 'Name must be at most 60 characters'),\n    budgetMin: z.coerce.number().positive(),\n    budgetMax: z.coerce.number().positive(),\n  })\n  .transform((v, ctx) => {\n    if (v.budgetMax < v.budgetMin) {\n      ctx.addIssue({\n        code: 'custom',\n        path: ['budgetMax'],\n        message: 'Max budget must be at least min budget',\n      });\n      return z.NEVER;\n    }\n    return v;\n  });\n\nconst onSubmit = async (data: CampaignForm) => {\n  if (data.name.toLowerCase().includes('test')) {\n    setError('name', { message: 'Name cannot contain \"test\"' });\n    return;\n  }\n  await createCampaign(data);\n};\n```\n\nPlease fix it. Keep the wording of the existing budget message.",
+      "rubric": [
+        "The budgetMax-versus-budgetMin comparison is rewritten as a refinement on the object schema that reports on the budgetMax path, and the transform that returns z.NEVER is removed (the answer explains the transform is the cause of the odd error timing).",
+        "The name length messages are built from CAMPAIGN_NAME_MIN and CAMPAIGN_NAME_MAX (and those constants drive min/max) instead of the literal 3 and 60.",
+        "The rule that the name must not contain \"test\" is moved from the submit handler into the schema, so the handler only calls createCampaign.",
+        "Any refinement for the budget comparison keeps the message \"Max budget must be at least min budget\" unchanged.",
+        "The z.coerce.number().positive() rules on both budget fields and the createCampaign call are left as they are; no new fields or unrelated rules are added."
+      ],
+      "why_skill_matters": "The cross-field budget check lives in a transform that exits early, and the name rules use literals even though constants exist. A rule on the name is also hidden in the submit handler."
+    },
+    {
+      "id": "frontend-development-rules-3",
+      "title": "Leave requests list full of any",
+      "target_section": "Type Safety",
+      "prompt": "CI now fails on no-explicit-any for our HR leave list component. Can you sort out the typing properly? The `LeaveRequest` interface is already in `types/leave.ts`: `{ id: string; employeeId: string; employee: string; days: number; status: 'pending' | 'approved' | 'rejected'; reason?: string }`.\n\n```tsx\ntype Props = { items: any[]; onApprove: (r: any) => void };\n\nexport const LeaveList = ({ items, onApprove }: Props) => {\n  const handleFilter = (e: any) => onFilterChange(e.detail.filteringText);\n\n  return (\n    <Table\n      items={items}\n      filter={<TextFilter filteringText=\"\" onChange={handleFilter} />}\n      columnDefinitions={[\n        {\n          id: 'employee',\n          header: 'Employee',\n          cell: (item: any) => <a href={`/employees/${item.employeeId}`}>{item.employee}</a>,\n        },\n        {\n          id: 'status',\n          header: 'Status',\n          cell: (item: any) => (\n            <span style={{ color: item.status === 'rejected' ? 'red' : 'inherit' }}>{item.status}</span>\n          ),\n        },\n        {\n          id: 'actions',\n          header: 'Actions',\n          cell: (item: any) => <Button onClick={() => onApprove(item)}>Approve</Button>,\n        },\n      ]}\n    />\n  );\n};\n```",
+      "rubric": [
+        "The `any[]` items prop and the `any` parameter of onApprove are changed to use LeaveRequest, and every cell renderer's `item: any` becomes LeaveRequest.",
+        "The `e: any` in handleFilter gets a concrete event type for the text filter's change event (for example the design system's non-cancelable custom event with a filtering text detail) rather than any.",
+        "The native anchor to /employees/{employeeId} is replaced with the design system's link component, or it is flagged.",
+        "The inline red color on the status span is removed and the colouring is achieved with a design-system component such as a status indicator or Box color prop.",
+        "The span around the status text is replaced by a design-system component rather than being left as a native span.",
+        "The three cell renderers keep their ids, text and behaviour (employee link target, status text, Approve calling onApprove with the item), and no sorting, pagination or other features are added."
+      ],
+      "why_skill_matters": "The request is about removing any, but the same snippet holds a native anchor and a span with an inline red colour. The assistant has to type the code and also notice the compliance problems on the way."
+    },
+    {
+      "id": "frontend-development-rules-4",
+      "title": "Quote wizard step passing form methods down",
+      "target_section": "Form Architecture",
+      "prompt": "Insurance quote wizard, step 2 (vehicle details). Lint is failing with no-explicit-any on these three components, can you fix the typing? Values type is `QuoteForm` (already defined, with `vehicle.plate` and `vehicle.year` inside).\n\n```tsx\nexport function Step2({ methods }: { methods: any }) {\n  return (\n    <Container header={<Header>Vehicle</Header>}>\n      <VehicleSection\n        register={methods.register}\n        errors={methods.formState.errors}\n        control={methods.control}\n      />\n    </Container>\n  );\n}\n\nfunction VehicleSection({ register, errors, control }: any) {\n  return (\n    <Box>\n      <PlateField register={register} errors={errors} />\n      <YearField control={control} errors={errors} />\n    </Box>\n  );\n}\n\nfunction PlateField({ register, errors }: any) {\n  return (\n    <Box>\n      <Input {...register('vehicle.plate')} invalid={!!errors.vehicle?.plate} />\n      <Box color=\"text-status-error\">{errors.vehicle?.plate?.message}</Box>\n    </Box>\n  );\n}\n```\n\nIn the parent wizard page the form hook is called with just the zod resolver, nothing else, and then `<Step2 methods={methods} />` is rendered. YearField is similar to PlateField so I left it out.",
+      "rubric": [
+        "VehicleSection and PlateField (and by extension YearField) obtain register, errors and control from the form's shared context instead of receiving them as props, so the props are dropped from those components.",
+        "The `any` annotations on Step2, VehicleSection and PlateField are all gone, with no new any introduced (for example by typing the shared context loosely).",
+        "The form hook call in the parent wizard page is given QuoteForm as an explicit type parameter, so the context and error paths such as vehicle.plate are typed.",
+        "The answer says the parent page needs to wrap the steps in the form's context provider (or equivalent) for the child components to work, and Step2 no longer needs the methods prop.",
+        "Field names (vehicle.plate, vehicle.year), the plate input and the way the error text is shown stay the same; no unrelated components are touched.",
+        "The change is given with a file path, the issue with line numbers, the exact replacement code, a way to verify it, and what else might be affected."
+      ],
+      "why_skill_matters": "The request only asks for lint-level typing. The code shows props drilled through two layers, so the best fix removes the drilling rather than typing every pass-through prop. An answer that only types the props satisfies the literal request but misses the structural issue."
+    },
+    {
+      "id": "frontend-development-rules-5",
+      "title": "Add an export button to a toolbar built with plain elements",
+      "target_section": "Core Principles",
+      "prompt": "Small ask, we're in a release freeze so please don't restructure anything. On our billing reports page, add an \"Export CSV\" button next to Refresh that calls `onExport`. Just match what's there.\n\n```tsx\n<div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 0' }}>\n  <button className=\"refresh-btn\" onClick={onRefresh}>Refresh</button>\n  <a href=\"/help/exports\" style={{ marginLeft: 12 }}>What is exported?</a>\n</div>\n```\n\nI'd like to just paste your snippet in and be done.",
+      "rubric": [
+        "The new Export CSV control is a design-system button component calling onExport, not another native button element copied from the Refresh pattern.",
+        "The gap between Refresh, Export CSV and the help link is made through the design system's spacing component (horizontal layout), not a new margin or padding.",
+        "The new code adds no inline style, and the answer points out that the existing flex/padding/marginLeft inline styles in the toolbar are against the project's norms (or replaces them).",
+        "The answer flags that the existing wrapper, Refresh button and \"What is exported?\" anchor are native elements that should be the design system's equivalents, even if it only suggests that as a follow-up.",
+        "The Refresh onClick={onRefresh}, its label, and the help link's destination /help/exports are preserved, and no other features or files are changed."
+      ],
+      "why_skill_matters": "The user asks for a tiny change and says to match the surroundings, but the surroundings are native elements and inline styles. The assistant has to avoid copying that pattern and still respect the freeze, which makes restraint and compliance pull against each other."
+    },
+    {
+      "id": "frontend-development-rules-6",
+      "title": "Refund form with validation scattered in the submit function",
+      "target_section": "Form Patterns",
+      "prompt": "Refund dialog for support agents. Works but the code reviewer hates it. Can you clean up the validation and typing? Constants already exist in `constants/refund.ts`: `REFUND_REASON_MIN = 10`, `REFUND_REASON_MAX = 300`. The form hook call (react-hook-form, no resolver at all right now) has no type argument. `Order` type is in `types/order.ts` and has `id`, `total`.\n\n```tsx\nexport function RefundForm({ order, onDone }: { order: any; onDone: () => void }) {\n  // ...form hook called here, untyped\n  const submit = async (data: any) => {\n    if (!data.reason || data.reason.length < 10) {\n      setError('reason', { message: 'Reason must be at least 10 characters' });\n      return;\n    }\n    if (data.reason.length > 300) {\n      setError('reason', { message: 'Reason must be under 300 characters' });\n      return;\n    }\n    if (Number(data.amount) <= 0) {\n      setError('amount', { message: 'Amount must be positive' });\n      return;\n    }\n    if (Number(data.amount) > order.total) {\n      setError('amount', { message: 'Refund cannot exceed order total' });\n      return;\n    }\n    await api.refund(order.id, data);\n    onDone();\n  };\n  // JSX omitted\n}\n```",
+      "rubric": [
+        "The four checks (reason too short, reason too long, amount not positive, amount above order total) are moved out of submit into a zod schema wired through a resolver, leaving submit with just api.refund and onDone.",
+        "The reason length rules and messages use REFUND_REASON_MIN and REFUND_REASON_MAX instead of literal 10 and 300.",
+        "`order: any` becomes Order, and `data: any` is replaced by a type inferred from the schema (or equivalent), with the form hook call given that type explicitly.",
+        "The \"cannot exceed order total\" limit is handled in a schema built with access to order.total (for example a schema factory or refinement), and the answer does not drop that check.",
+        "The existing user-facing messages for amount (\"Amount must be positive\", \"Refund cannot exceed order total\") and the api.refund(order.id, data) call are kept; JSX is not rewritten."
+      ],
+      "why_skill_matters": "Validation lives in if statements inside the handler, literals duplicate existing constants, and any types are on the order and data. The order-total limit depends on a runtime prop, a detail that is easy to lose when moving checks into a schema."
+    },
+    {
+      "id": "frontend-development-rules-7",
+      "title": "Build a ticket escalation form from scratch",
+      "target_section": "Implementation Standards",
+      "prompt": "Need a new \"Escalate ticket\" form for the support console (React, TypeScript, Cloudscape, react-hook-form, zod). Fields:\n\n- Reason: free text, required, must respect our shared limits `ESCALATION_REASON_MIN` (20) and `ESCALATION_REASON_MAX` (500) from `constraints/ticket.ts`\n- Escalate to: select of agents; must be a different agent than the ticket's current assignee (`ticket.assigneeId`)\n- Opened on / Respond by: two date inputs; respond-by has to be after opened-on\n- Priority: select, required (low / normal / high / urgent)\n\nSubmit calls `escalateTicket(ticketId, values)`. Props are `{ ticket: Ticket; agents: Agent[]; onDone: () => void }`. Give me the full component plus schema. Keep it simple, no extras like attachments or autosave.",
+      "rubric": [
+        "All the field rules (reason required and length-bound, priority required, escalate-to required) live in a zod schema connected through a resolver, with no if-based validation in the submit function.",
+        "The respond-by-after-opened-on rule and the escalate-to-differs-from-current-assignee rule are written as refinements on the schema, attaching the error to the relevant field, not as transforms.",
+        "The reason's length rules and messages use ESCALATION_REASON_MIN and ESCALATION_REASON_MAX instead of typed-in 20 and 500.",
+        "The component's markup is built only from design-system components (container, labelled fields, select, date input, textarea, button) with no plain div, span, input or button.",
+        "Vertical spacing between the fields and between the action buttons uses the design system's spacing component and no margin or padding.",
+        "The form has only the four requested fields and submits via escalateTicket(ticketId, values) and onDone; no attachments, autosave or other extras are added."
+      ],
+      "why_skill_matters": "A new form with two cross-field rules, shared constants, and a requirement for a Cloudscape-only layout. Several conventions matter together, and the \"no extras\" instruction tests restraint."
+    },
+    {
+      "id": "frontend-development-rules-8",
+      "title": "Review of an API tokens form diff",
+      "target_section": "Quality Gate",
+      "prompt": "Can you review this diff for our \"Create API token\" page before I merge? Tell me what you'd change. The form hook is created in `TokenForm` with a zod resolver and the type `TokenValues`.\n\n```tsx\n+export function TokenForm() {\n+  const methods = useRhfForm({ resolver: zodResolver(tokenSchema) });\n+  return (\n+    <Form onSubmit={methods.handleSubmit(onCreate)}>\n+      <ScopesSection register={methods.register} errors={methods.formState.errors} />\n+      <div style={{ marginTop: 16 }}>\n+        <span style={{ color: '#d91515' }}>Tokens are shown only once.</span>\n+      </div>\n+      <a href=\"/docs/tokens\">Token docs</a>\n+    </Form>\n+  );\n+}\n+\n+function ScopesSection({ register, errors }: { register: any; errors: any }) {\n+  return (\n+    <Container header={<Header>Scopes</Header>}>\n+      <ScopeRow name=\"read\" register={register} errors={errors} />\n+      <ScopeRow name=\"write\" register={register} errors={errors} />\n+    </Container>\n+  );\n+}\n+\n+function ScopeRow({ name, register, errors }: { name: string; register: any; errors: any }) {\n+  return (\n+    <Checkbox {...register(`scopes.${name}`)}>\n+      {name} {errors.scopes?.[name]?.message}\n+    </Checkbox>\n+  );\n+}\n```",
+      "rubric": [
+        "Flags that register and errors are passed through ScopesSection into ScopeRow as props and recommends reading them from the form's shared context in those components.",
+        "Flags the `any` types on register and errors in ScopesSection and ScopeRow as something that must be fixed before approval, and notes that the form hook call in TokenForm has no explicit TokenValues type argument.",
+        "Flags the plain div, the span with the \"Tokens are shown only once.\" text and the native anchor to /docs/tokens, and names the design-system replacements (Box, Link or similar).",
+        "Flags the inline style objects (marginTop 16 and the red #d91515 colour) and suggests using component props or design-system colour options instead.",
+        "Suggests replacing the marginTop: 16 gap with the design system's spacing component.",
+        "The review stays on this diff's issues (the form's structure, types and elements) without proposing unrelated redesigns such as new scopes, new pages or a different form library.",
+        "Each recommended change gives a file path, the issue with line numbers, the exact code change, how to verify it, and what else might be affected."
+      ],
+      "why_skill_matters": "A diff packs a drilled-prop child form section, any types on its props, an untyped form hook, a native wrapper, span and anchor, and an inline style with manual margin. It is a broad review to see which problems are found and how they are prioritised."
+    }
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "format_version": 1,
+  "skill": "sprint-planning",
+  "batch": "rules-b4",
+  "generated_at": "2026-11-09T09:54:41.176Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "7b4af7243d4fe2d9d2d4fe34ae47e7ee2f185fe803e4523d890f53d88aca6ad8",
+  "scenarios": [
+    {
+      "id": "sprint-planning-rules-1",
+      "title": "New sprint from a loose ticket list",
+      "target_section": "Session Start",
+      "prompt": "hey, we're kicking off a new sprint on Monday and I need to get our backlog into the tracker. Here are the tickets the PM sent over, no levels or anything, just a list:\n\n- Bump the timeout in the payments config from 30s to 45s\n- Fix typo in the onboarding runbook\n- Add a \"preferred_language\" field to the user profile API\n- Write unit tests for the invoice formatter\n- Add an endpoint to export invoices as CSV, with tests\n\nCan you help me plan the sprint and get these set up as items?",
+      "rubric": [
+        "Before laying out the plan, states an assumed sprint capacity, length and what one point equals in days, and asks the user to confirm or change them since none were given.",
+        "Each of the five tickets (timeout bump, runbook typo, preferred_language field, invoice formatter tests, CSV export endpoint) is given an explicit item type, ordinary task where no level is evident, rather than left untyped.",
+        "Gives each ticket's point estimate as a separate estimate value on the item, not embedded in the description text.",
+        "Warns that the sprint is close to full once the running total nears the stated capacity, before it is reached.",
+        "The timeout bump and runbook typo are sized at the bottom of the scale (1), and the CSV export endpoint with tests sits higher (around 3), using only values from 1, 2, 3, 5, 8.",
+        "After each ticket is added, a line shows points used, total capacity and points remaining."
+      ],
+      "why_skill_matters": "A bare list of tickets with no sprint parameters or levels. It makes the assistant confirm parameters, type each item, keep estimates out of descriptions, and warn as the total nears capacity."
+    },
+    {
+      "id": "sprint-planning-rules-2",
+      "title": "Goal broken into epics, stories, tasks",
+      "target_section": "Task Hierarchy",
+      "prompt": "We have a goal this half: \"Self-serve billing for SMB customers\". I've sketched it out below and want it all created in our Jira-ish tool so I can start assigning work.\n\nInitiative: Billing modernization\n  Epic: Customer billing portal (will take about 3 sprints)\n    Story: Customers can view past invoices\n      - Build invoice list API endpoint with tests\n      - Build invoice list page\n    Story: Customers can update card on file\n      - Integrate card form with payment provider\n      - Add webhook handler for card updates\n\nSprint capacity is 10 points, two weeks, a point is a day. The next sprint starts tomorrow. Tell me what to create, in what order, and what goes into the sprint.",
+      "rubric": [
+        "Lays out creation so the goal and initiative come first, then the epic, then the two stories, then the four work items, each explicitly placed under its parent.",
+        "Puts only the four small work items into the coming sprint and leaves the initiative, the three-sprint portal epic and the two stories unassigned.",
+        "Each created item, including the goal and the containers, carries an explicit type, not left blank.",
+        "Gives estimates for the four work items as a dedicated estimate value per item rather than in their descriptions.",
+        "Warns when the planned points get near the 10-point capacity, or states clearly how far under it the plan stays.",
+        "If the four items together exceed ten points, says so and gives the overage amount."
+      ],
+      "why_skill_matters": "A full hierarchy with a multi-sprint epic. Tests parent-first creation, sprint assignment limited to executable items, typing and estimate placement."
+    },
+    {
+      "id": "sprint-planning-rules-3",
+      "title": "Task with subtasks counted once",
+      "target_section": "Task Hierarchy",
+      "prompt": "Planning our sprint (10 pts, 2 weeks, 1 pt = 1 day, that's our normal). I have one task, \"Add audit logging to admin actions\", with three subtasks under it:\n a) Add log schema and migration\n b) Hook logging into the admin controllers\n c) Add a log viewer filter in the admin UI\n\nPlus two separate tasks: \"Upgrade the linting config\" and \"Update the on-call runbook for the new alerts\".\n\nI'll add the audit logging task first, then the other two. Please add them to the sprint one by one and keep me posted on how full we are. I'd estimate the audit task overall at about 5 points, subtasks are just pieces of that.",
+      "rubric": [
+        "Treats the three audit logging subtasks as already in the sprint with their parent and counts the audit work once at about 5 points, not adding the subtasks on top.",
+        "Records the 5-point estimate as a dedicated estimate value on the item, not in its description.",
+        "Every item, including the three subtasks, is given an explicit type (task or subtask), not left blank.",
+        "Tells the user the load is nearing capacity once the total passes most of the ten points, before it is hit.",
+        "Sizes the linting config and runbook update at small values (1 or 2) from the 1, 2, 3, 5, 8 scale.",
+        "After each of the three tasks is added, a line shows used points, the 10 capacity and remaining points."
+      ],
+      "why_skill_matters": "User adds a parent task with subtasks and says subtasks are pieces of it. The trap is double-counting or re-adding them."
+    },
+    {
+      "id": "sprint-planning-rules-4",
+      "title": "Migration ticket in a planning chat",
+      "target_section": "Story Point Sizing",
+      "prompt": "Need help sizing something for next sprint. Capacity is the usual 10 points over 2 weeks, one point a day. Our ticket:\n\n\"Migrate the order and inventory services from the old Postgres cluster to the new managed one. Needs schema changes in both services, a dual-write phase, a data backfill for 40M rows, updates to the reporting service that reads from both, and a cutover with rollback plan.\"\n\nAlso in the pile: \"Fix wrong currency symbol on the receipt email\" and \"Add rate limit headers to the public API responses\".\n\nWhat would you point each at, and what goes in the sprint? I want to enter them in the tracker after.",
+      "rubric": [
+        "Says the Postgres migration across order, inventory and reporting is too big for one item and proposes splitting it into smaller pieces such as schema changes, dual-write, backfill and cutover.",
+        "Warns that the sprint would be full or overrun if the migration were taken whole alongside the other two.",
+        "Presents estimates as a dedicated estimate value for each item rather than written into the descriptions.",
+        "Each of the three tickets, and any pieces the migration is split into, is given an explicit type, ordinary task by default.",
+        "Sizes the currency symbol fix at 1 and the rate limit headers at 2 or 3, with the migration at the top of the scale (8), all from the 1, 2, 3, 5, 8 scale.",
+        "If the migration at 8 plus the other two exceeds ten, says so and states by how many points."
+      ],
+      "why_skill_matters": "A huge migration next to two small fixes. Tests flagging oversize and splitting, plus capacity messages and estimate placement."
+    },
+    {
+      "id": "sprint-planning-rules-5",
+      "title": "Overloaded sprint from planning notes",
+      "target_section": "Capacity Tracking",
+      "prompt": "Team of one dev this sprint (me), usual 2 weeks, 10 points, 1 pt = 1 day. Pasting my planning notes, please slot them in order and tell me how it looks:\n\n1. Add a \"last_login\" field to the account API (small)\n2. New feature: saved searches, API + UI (big)\n3. Refactor the notification module (medium) — subtasks: split out email templates, move the queue consumer, add tests\n4. Update the deploy runbook (small)\n5. Investigate and fix the flaky checkout test (medium)\n\nI'm going to go through them in this order, so tell me where things stand as we go. The refactor's subtasks are just parts of it, so I figure it's one chunk of work.",
+      "rubric": [
+        "Warns before the limit is crossed that the plan is getting close to the 10-point capacity as items are added.",
+        "Counts the notification refactor once, with its three subtasks coming along inside it, and does not add separate points for the subtasks.",
+        "Each of the five items and the three refactor subtasks has an explicit type, ordinary task where no level is given.",
+        "Estimates for the items appear as separate estimate values, not inside description text.",
+        "States that the five items together exceed ten points and by how many points.",
+        "last_login and runbook sit at 1 or 2, notification refactor and flaky test at 3, saved searches at 5, all from the 1, 2, 3, 5, 8 scale."
+      ],
+      "why_skill_matters": "Notes sum to more than capacity (about 1+5+3+1+3=13) and include a task with subtasks that must not be double-counted. Tests early warning, overage reporting and single counting."
+    },
+    {
+      "id": "sprint-planning-rules-6",
+      "title": "Sprint with epic buried in meeting notes",
+      "target_section": "Task Hierarchy",
+      "prompt": "Pasting notes from today's grooming, can you turn this into a sprint for the team? Sprint starts Monday.\n\n\"...ok so Priya said the search relevance work is basically the whole quarter, it's the big theme, we'll chip away at it over the next several sprints. For this sprint specifically the pieces are: tune the synonym list (small, config mostly), add a test suite for the ranking function, and write an A/B toggle for the new ranker with tests. Also unrelated, Dmitri wants the 404 page copy fixed, trivial. Oh and the search relevance thing needs a parent in the tracker so people can find it, whoever creates it please make sure it's set up properly...\"\n\nWe haven't done capacity yet for this one, I think last sprint was 10.",
+      "rubric": [
+        "Creates the quarter-long search relevance theme as a container and leaves it out of the sprint, assigning only the synonym, ranking tests, A/B toggle and 404 copy items.",
+        "Creates the search relevance parent before the synonym, ranking tests and A/B toggle items and shows those three nested under it.",
+        "Says it is assuming ten points, two weeks and one point per day, and asks the user to confirm since last sprint's capacity was only a guess.",
+        "The search relevance parent and each work item has an explicit type, with the parent not left blank.",
+        "The 404 copy fix and synonym tuning are sized at 1, ranking tests at 2, and the A/B toggle with tests at 3, from the 1, 2, 3, 5, 8 scale."
+      ],
+      "why_skill_matters": "The quarter-long theme is mentioned in one clause inside a long quote. The user hints it needs a parent. Tests keeping it unassigned, creating it first, and confirming the guessed capacity."
+    },
+    {
+      "id": "sprint-planning-rules-7",
+      "title": "Rollover plus new work",
+      "target_section": "Usage",
+      "prompt": "Last sprint didn't go great. Two things carried over: \"Add pagination to the orders list API\" (about 3 points of work left) and \"Fix broken image upload on Safari\" (1 point). New this sprint: \"Integrate with the shipping provider's tracking API, plus tracking page in the UI and status emails\" and \"Write unit tests for the coupon validator\". Capacity this time is 8 points because someone is out two days, two weeks otherwise, a point is a day. Can you plan the sprint and create the items?",
+      "rubric": [
+        "Flags the shipping tracking integration with UI page and emails as too large for one item and proposes splitting it.",
+        "Warns about nearing the 8-point capacity as items are added, before it is reached.",
+        "Every item to be created, including the carried-over ones, has an explicit type, ordinary task by default.",
+        "Estimates go in a dedicated estimate value per item rather than in description text.",
+        "If carryover plus the new work totals more than 8, says so and by how many points.",
+        "After each item is added, a line shows used points, the capacity of 8 and remaining points."
+      ],
+      "why_skill_matters": "Rollover plus an oversized integration and non-default capacity."
+    },
+    {
+      "id": "sprint-planning-rules-8",
+      "title": "Quick sizing of a design doc into tasks",
+      "target_section": "Instructions",
+      "prompt": "Here's a short design doc blurb, can you break it into a sprint backlog and tell me how much fits? We're a small mobile team.\n\n\"Feature: Dark mode. Epic spans about two sprints. Work: (1) define color tokens and update the theme config, (2) update the settings screen with a theme toggle and persist the choice, with tests, (3) audit and fix the 12 screens with hardcoded colors, (4) update the design system docs page, (5) release notes entry.\"\n\nCreate it in the tracker so I can start tomorrow.",
+      "rubric": [
+        "Before planning, states assumed capacity, sprint length and point-to-day ratio and asks the user to confirm, since none were given.",
+        "Creates the dark mode parent before the five work items and places each of them under it.",
+        "Leaves the dark mode epic that spans two sprints out of the sprint and assigns only the five work items.",
+        "The epic and each of the five work items has an explicit type.",
+        "Each item's points appear as a dedicated estimate value, not written into its description.",
+        "Release notes entry is sized at 1, the theme toggle with persistence and tests at about 3, using only values from 1, 2, 3, 5, 8."
+      ],
+      "why_skill_matters": "A design doc with an epic and five items, no parameters given. Tests confirming parameters, hierarchy, sprint assignment and estimate placement."
+    }
+  ]
+}

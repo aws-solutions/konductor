@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "frontend-development",
+  "skill_md_sha256": "e81185ed3e21ce254f80e8c66cfd97482fb9d06108f0492095e35ce953fffd02",
+  "request_context": "A request to implement or review changes to a React and TypeScript web application built with a component design system, such as fixing type issues, form handling, or extracting components.",
+  "rules": [
+    {
+      "id": "frontend-development-r01",
+      "source_quote": "No native HTML elements in UI code.",
+      "class": "useful",
+      "outcome": "UI code uses only the design system's components for layout, text, inputs, buttons and links; raw HTML elements such as generic containers, inline text wrappers, native inputs, buttons or anchors are replaced or flagged.",
+      "why": "Native elements break visual consistency, theming and accessibility guarantees of the design system.",
+      "scenario_hint": "Component that renders its layout with plain div, span, input or button elements."
+    },
+    {
+      "id": "frontend-development-r02",
+      "source_quote": "No inline styles (`style={{}}`)",
+      "class": "useful",
+      "outcome": "Inline style attributes are removed or flagged, and spacing and appearance are achieved through design system components and props instead.",
+      "why": "Inline styles bypass the design system and produce inconsistent, hard-to-theme UI.",
+      "scenario_hint": "Component that sets margins, colors or widths with inline style objects."
+    },
+    {
+      "id": "frontend-development-r03",
+      "source_quote": "`SpaceBetween` for spacing — not margin/padding",
+      "class": "useful",
+      "outcome": "Spacing between elements uses the design system's spacing component rather than custom margin or padding.",
+      "why": "Custom spacing drifts from the design system's spacing scale and looks inconsistent.",
+      "scenario_hint": "Layout code that separates sibling elements with manual margin or padding."
+    },
+    {
+      "id": "frontend-development-r04",
+      "source_quote": "React Hook Form manages form state (not `useState`).",
+      "class": "useful",
+      "outcome": "Form field values and state are managed by a form library rather than by individual local state hooks, and any local-state form handling is replaced or flagged as a serious problem.",
+      "why": "Hand-rolled state per field leads to scattered, inconsistent validation and re-render problems.",
+      "scenario_hint": "Form component that tracks each field's value with separate local state variables."
+    },
+    {
+      "id": "frontend-development-r05",
+      "source_quote": "Zod handles validation (not manual checks).",
+      "class": "useful",
+      "outcome": "Validation rules are expressed in a declarative schema, not in hand-written conditional checks scattered through handlers.",
+      "why": "Manual checks duplicate logic and diverge from the schema and error messages.",
+      "scenario_hint": "Form that validates inputs with if statements inside a submit handler."
+    },
+    {
+      "id": "frontend-development-r06",
+      "source_quote": "Use `.refine()` for cross-field validation, not `.transform()`",
+      "class": "useful",
+      "outcome": "Validation that depends on several fields is written as a refinement check on the schema rather than by transforming the data, and misuse of transforms for this purpose is flagged.",
+      "why": "Transforms mutate data rather than reporting validation errors, so cross-field rules fail silently or give wrong errors.",
+      "scenario_hint": "Schema where a password confirmation or date range must match across two fields."
+    },
+    {
+      "id": "frontend-development-r07",
+      "source_quote": "Form sub-components use `useFormContext` — no prop drilling",
+      "class": "useful",
+      "outcome": "Nested form sections read the form through shared context rather than receiving form methods or values through multiple layers of props.",
+      "why": "Prop drilling couples components tightly and makes extracted sections hard to reuse.",
+      "scenario_hint": "Extracting a form section into a child component that needs register and errors."
+    },
+    {
+      "id": "frontend-development-r08",
+      "source_quote": "Use constraint constants for validation messages — not hardcoded strings",
+      "class": "useful",
+      "outcome": "Validation messages and limits reference shared named constants rather than literal strings or numbers typed into the schema.",
+      "why": "Hardcoded messages drift out of sync with the actual constraints.",
+      "scenario_hint": "Schema with literal error messages containing length limits."
+    },
+    {
+      "id": "frontend-development-r09",
+      "source_quote": "No `any` types in production code",
+      "class": "useful",
+      "outcome": "Uses of the any type in production code are replaced with precise types, and the form hook call carries an explicit type parameter; remaining any usages are flagged as blocking.",
+      "why": "any disables type checking and hides bugs the compiler would catch.",
+      "scenario_hint": "Code with any-typed props, handlers or form hooks needing type safety fixes."
+    },
+    {
+      "id": "frontend-development-r10",
+      "source_quote": "Make minimal changes — only fix the specific issue.",
+      "class": "generic",
+      "outcome": "The change is limited to the requested issue, without unrelated refactors, and keeps existing behavior and patterns intact.",
+      "why": "Unrelated edits increase review burden and risk regressions.",
+      "scenario_hint": "Any request to fix a specific issue in a frontend codebase."
+    },
+    {
+      "id": "frontend-development-r11",
+      "source_quote": "Memoize event handlers with `useCallback`",
+      "class": "useful",
+      "outcome": "Event handlers passed to child components are memoized, and unmemoized ones are reported as should-fix, and array index access gets defensive checks.",
+      "why": "Unstable handler identities cause needless re-renders, and unchecked indexing can crash at runtime.",
+      "scenario_hint": "Component defining inline handlers passed to children and indexing into arrays."
+    },
+    {
+      "id": "frontend-development-r12",
+      "source_quote": "For each change, provide:",
+      "class": "style",
+      "outcome": "Each change gives the file path, the issue with line numbers, the exact code change, how to verify it, and what else might be affected.",
+      "why": "",
+      "scenario_hint": "Any request to implement or review a frontend code change."
+    }
+  ]
+}
