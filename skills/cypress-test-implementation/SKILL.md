@@ -272,7 +272,7 @@ Read `references/task-breakdown.md` when generating the task list and roadmap (i
 
 `references/cypress-patterns.md` holds the eight Cypress best practices and four anti-patterns, with good and bad code examples.
 
-Read `references/cypress-patterns.md` when writing or reviewing test code; it holds the Cypress patterns and a full example spec.
+Read `references/cypress-patterns.md` before documenting the practices; it holds the Cypress patterns and a full example spec.
 
 **Output:** `✅ Best Practices Documented: 8 patterns | 4 anti-patterns | Ready for implementation`
 
