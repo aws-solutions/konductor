@@ -171,7 +171,7 @@ test('every flag in the usage text is accepted, and every accepted flag is in th
   for (const b of blocks) {
     const m = b.match(/^ {2}node bench\/runner\/bench\.js (calibrate (?:export|score)|cap (?:list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review-import|review|criteria|forced-prefix)|[a-z0-9-]+)/);
     const key = m[1];
-    const flags = new Set([...b.matchAll(/--([a-z][a-z-]*)/g)].map((x) => x[1]).filter((f) => f !== 'help'));
+    const flags = new Set([...b.matchAll(/--([a-z][a-z0-9-]*)/g)].map((x) => x[1]).filter((f) => f !== 'help'));
     documented[key] = new Set([...(documented[key] || []), ...flags]);
   }
   for (const [key, flags] of Object.entries(documented)) {

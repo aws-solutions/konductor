@@ -7,6 +7,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { FrameReader } = require('./gateway-proc.js');
 
 const PHYSICAL = path.join(__dirname, '..', '..', '..', 'physical');
 const GATEWAY_START = path.join(PHYSICAL, 'gateway', 'start.py');
@@ -14,42 +15,6 @@ const READY_MS = 10000;
 const FINAL_MS = 15000;
 
 const sha256File = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-
-/** Reads newline-delimited JSON frames from `stream`, keeping every frame and waking waiters by `op`. */
-class FrameReader {
-  constructor(stream) {
-    this.frames = [];
-    this.waiters = [];
-    let buf = '';
-    stream.setEncoding('utf8');
-    stream.on('data', (chunk) => {
-      buf += chunk;
-      let at;
-      while ((at = buf.indexOf('\n')) >= 0) {
-        this.push(JSON.parse(buf.slice(0, at)));
-        buf = buf.slice(at + 1);
-      }
-    });
-  }
-
-  push(frame) {
-    this.frames.push(frame);
-    this.waiters = this.waiters.filter((w) => (w.ops.includes(frame.op) ? (w.resolve(frame), false) : true));
-  }
-
-  /** Resolves with the first unread frame whose op is in `ops` (an op name or a list), or rejects after `ms`. */
-  next(ops, ms) {
-    const wanted = [].concat(ops);
-    const take = (f) => Object.assign(f, { taken: true });
-    const seen = this.frames.find((f) => wanted.includes(f.op) && !f.taken);
-    if (seen) return Promise.resolve(take(seen));
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`no ${wanted.join('/')} frame within ${ms} ms`)), ms);
-      this.waiters.push({ ops: wanted, resolve: (f) => { clearTimeout(timer); resolve(take(f)); } });
-    });
-  }
-
-}
 
 /**
  * Spawns a gateway and waits for `ready`.

@@ -13,6 +13,7 @@ const { describeChange, judgeBatch, GATE_FILE } = require('./isolation-gates.js'
 const { DEFAULT_MAX_AUTH_FAILURES } = require('./auth-failure.js');
 const { DEFAULT_CHECK_EVERY_MS } = require('./login-check.js');
 const { writeAtomic } = require('./owned.js');
+const { runPlantCell } = require('./plant/lifecycle.js');
 
 const DEFAULT_CENSORED_FLOOR = 1.0;
 
@@ -267,7 +268,8 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
       const inFlightAtStart = active;
       active++;
       try {
-        r = await executeRun({ arm, task, replicate, ctx, prepared: prepared.get(arm.id), outDir: dir, inFlightAtStart });
+        const args = { arm, task, replicate, ctx, prepared: prepared.get(arm.id), outDir: dir, inFlightAtStart };
+        r = await (arm.plant ? runPlantCell(executeRun, args) : executeRun(args));
       } finally {
         active--;
       }

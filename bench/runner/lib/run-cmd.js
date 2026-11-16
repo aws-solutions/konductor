@@ -33,6 +33,7 @@ const { ensureOwnedDir, writeAtomic } = require('./owned.js');
 const { infraFailure } = require('./infra-check.js');
 const { maxAuthFailuresOf, AUTH_EXIT_CODE } = require('./auth-failure.js');
 const { makeLoginCheck } = require('./login-check.js');
+const { preparePlantSuite } = require('./plant/intake.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -288,6 +289,7 @@ async function cmdRun(opts, deps = {}) {
     writeAtomic(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, state, { interrupted: signal }), null, 2) + '\n');
   };
   const removeHandlers = procs.installSignalHandlers({ flush, log });
+  let plantSuite = null;
 
   try {
     const kiro = isUsd ? null : opts['kiro-bin'] ? { bin: path.resolve(opts['kiro-bin']), shim: null } : sandbox.resolveKiroCli();
@@ -340,6 +342,12 @@ async function cmdRun(opts, deps = {}) {
     ctx.stopOn = stopOn;
     ctx.maxToolCalls = maxToolCalls;
     ctx.keyRoots = [benchDir];
+    if (arms.some((a) => a.plant)) {
+      plantSuite = preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo: REPO, ...deps.plant });
+      ctx.plant = plantSuite;
+      ctx.mask.push(...plantSuite.mask);
+      log(`plant release ${plantSuite.release.manifest.release} (manifest ${plantSuite.release.manifestSha256.slice(0, 12)}, key ${plantSuite.release.keyId.slice(0, 12)}), ${plantSuite.counted ? 'counted' : 'control'} suite`);
+    }
     ctx.tripwire = {
       roots: [
         { dir: home, depth: opts['tripwire-depth'] ? intOpt(opts['tripwire-depth'], 'tripwire-depth') : 3, exclude: DEFAULT_EXCLUDES },
@@ -398,6 +406,7 @@ async function cmdRun(opts, deps = {}) {
         kiroEnabledFeatures: process.env.KIRO_ENABLED_FEATURES ?? null,
         agentEnginesAvailable: rc.availableEngines(),
       }),
+      ...(plantSuite ? { plant: { release: plantSuite.release.manifest.release, manifestSha256: plantSuite.release.manifestSha256, keyId: plantSuite.release.keyId, counted: plantSuite.counted, comparable: plantSuite.comparable } } : {}),
       ...rc.benchGit(REPO),
       contentHash: rc.hashTree(benchDir, ['tasks', 'fixtures', 'suites', 'real']),
       ...(suitesDir ? { suitesDir, suiteFile: suiteFile(opts.suite, benchDir, suitesDir) } : {}),
@@ -469,6 +478,7 @@ async function cmdRun(opts, deps = {}) {
     }
   } finally {
     removeHandlers();
+    plantSuite?.dispose();
     await new Promise((r) => setTimeout(r, 500));
     procs.removeAllScratch();
   }

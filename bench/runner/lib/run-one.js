@@ -25,6 +25,7 @@ const { writeAtomic } = require('./owned.js');
 const { classifyAuthFailure } = require('./auth-failure.js');
 const { classifyLaunchFailure } = require('./launch-failure.js');
 const { moveFile, UntrustedFileError } = require('./move-file.js');
+const { openPlantRun } = require('./plant/lifecycle.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
@@ -53,7 +54,8 @@ function liveStdioPath(finalPath, stdioDir) {
 
 // Spawns in its own process group so a timeout kills child tools too. The group is
 // registered so a runner interrupted by a signal can kill it.
-function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPath, stdinPath = null, stdioDir = null, creditLimit = null, creditPollMs = 1000, stop = null }) {
+// `onSpawn(pid)` is called once the child exists (a plant run sends the gateway its peer then).
+function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPath, stdinPath = null, stdioDir = null, creditLimit = null, creditPollMs = 1000, stop = null, onSpawn = null }) {
   return new Promise((resolve) => {
     const liveOut = liveStdioPath(stdoutPath, stdioDir);
     const liveErr = liveStdioPath(stderrPath, stdioDir);
@@ -89,6 +91,7 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
     }
     closeFds();
     if (child.pid) procs.trackGroup(child.pid);
+    if (child.pid && onSpawn) onSpawn(child.pid);
     const kill = (sig) => { try { process.kill(-child.pid, sig); } catch { /* already gone */ } };
     const finish = (result) => {
       if (child.pid) procs.untrackGroup(child.pid);
@@ -241,7 +244,7 @@ function concatTurnFiles(outDir, base, name, turns) {
  * copy is still there). The task timeout is one budget for all turns. Every turn goes through the same isolation.
  * Fills `conv` as it goes; returns the combined exec record.
  */
-async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir = null, conv, startedAt }) {
+async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir = null, conv, startedAt, plantRun = null }) {
   const multi = Boolean(task.autonomy);
   const deadline = Date.now() + task.timeoutSec * 1000;
   const execs = [];
@@ -266,11 +269,13 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
       const w = iso.wrap(cmd.file, cmd.args);
       const stdoutPath = path.join(outDir, streamFile(multi, turn));
       // The stop watcher reads the stream while the child runs, so it follows the live file.
-      const stop = ctx.stopOn || ctx.maxToolCalls ? makeStopWatcher(liveStdioPath(stdoutPath, stdioDir), { runtime: harness.id, stopOn: ctx.stopOn ?? 'end_turn', maxToolCalls: ctx.maxToolCalls ?? null }) : null;
+      const benchStop = ctx.stopOn || ctx.maxToolCalls ? makeStopWatcher(liveStdioPath(stdoutPath, stdioDir), { runtime: harness.id, stopOn: ctx.stopOn ?? 'end_turn', maxToolCalls: ctx.maxToolCalls ?? null }) : null;
+      const stop = plantRun ? plantRun.watcher(benchStop) : benchStop;
       const exec = await spawnWithTimeout(w.file, w.args, {
         cwd, env, timeoutMs: Math.max(1, remaining),
         stdoutPath, stderrPath: path.join(outDir, stderrFile(multi, turn)), stdioDir,
         creditLimit: ctx.runCreditLimit == null ? null : Math.max(0, ctx.runCreditLimit - spent), creditPollMs: ctx.creditPollMs, stop,
+        onSpawn: plantRun ? (pid) => plantRun.onSpawn(pid) : null,
       });
       spent += exec.credits ?? 0;
       if (exec.stopped?.reason === 'end_turn') {
@@ -355,6 +360,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
   let runRoot = null;
   let stdioDir = null;
   let home = null;
+  let plantRun = null;
   const installsWindow = ctx.installsGate ? ctx.installsGate.begin() : null;
   try {
     fs.mkdirSync(outDir, { recursive: true });
@@ -379,6 +385,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       if (leaked) throw new Error(`answer key present in the agent working directory: ${leaked}`);
       fs.mkdirSync(path.join(runRoot, 'tmp'), { recursive: true });
       if (stdioDir) fs.mkdirSync(stdioDir, { mode: 0o700 });
+      if (arm.plant) plantRun = await openPlantRun({ suite: ctx.plant, arm, task, runRoot, home, cwd, outDir });
     } catch (e) {
       meta.infraError = e.message;
       result = errorResult({ ...base, message: `setup failed: ${e.message}`, meta });
@@ -391,12 +398,16 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
         const tmpdir = path.join(runRoot, 'tmp');
         const env = harness.env({ arm, config, ctx, home, tmpdir });
         tripwire.start();
-        meta.agentStarted = true;
-        exec = await runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir, conv, startedAt: new Date().toISOString() });
+        if (plantRun?.startError) exec = plantRun.unstartedExec();
+        else {
+          meta.agentStarted = true;
+          exec = await runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir, conv, startedAt: new Date().toISOString(), plantRun });
+        }
       } catch (e) {
         meta.infraError = e.message;
         exec = { timedOut: false, exitCode: null, wallClockMs: null, error: e.message };
       }
+      if (plantRun) await plantRun.finish();
       harness.removeCredentials(home);
       if (exec?.tamperedFiles?.length) {
         meta.flags.push('stdioTampered');
@@ -425,6 +436,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       else if (exec?.creditOvershoot > 0) meta.flags.push('creditLimitExceeded');
       if (exec?.creditLimit != null) { meta.creditLimit = exec.creditLimit; meta.creditOvershoot = exec.creditOvershoot ?? null; }
       if (exec?.stopped) meta.flags.push('earlyStopped');
+      plantRun?.scoreInto(meta, { agg: acc.agg, exec, outDir });
       if (harness.finalize) {
         const fin = finalizeOutput(harness, outDir, ctx);
         if (fin.scrubbed > 0) meta.flags.push('credsRedacted');
@@ -433,11 +445,13 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
           meta.unscrubbed = fin.unscrubbed;
         }
       }
+      plantRun?.rescoreAfterScrub(meta);
       result = buildResult({ ...base, exec, agg: acc.agg, session: acc.session, usage: acc.usage ?? null, skills: acc.skills ?? null, orch: acc.orch ?? null, checks: acc.checks, transcript: acc.transcript, meta, conv });
     }
   }
 
   if (runRoot) {
+    plantRun?.dispose();
     if (home) harness.removeCredentials(home);
     if (harness.cleanupRun) {
       const tmpdir = path.join(runRoot, 'tmp');

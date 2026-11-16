@@ -34,6 +34,7 @@ const USAGE = `Usage:
        [--extra-tasks DIR,DIR] [--suites-dir DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
        [--arm-config name=key.path=value[;key.path=value],...] [--oracle-skills [ARM,ARM]] [--oracle-manifest FILE]
        [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed] [--max-auth-failures N] [--timeout-sec N]
+       [--plant-release DIR --plant-release-sha256 HEX] [--plant-python PATH]
        (--profile quick runs 1 to 3 replicates (default 2) and labels a result under 3 runs anecdotal. --profile detailed runs at least 5 replicates (default 5),
        adds an A/A arm (the first konductor arm repeated at its exact commit), judges with the graded mode as well, and writes calibration-sample.json and .md
        to the results directory. Without --profile the suite defaults apply and no arm is added. Credits are tracked per run in credit-ledger.jsonl; with no
@@ -47,6 +48,9 @@ const USAGE = `Usage:
        The plan line, run-config.json (timeoutSecOverride, timeoutSecByTask) and summary.json show it)
        (--agent-engine is the kiro-cli engine, default v2; v3 installs each arm for the kiro-v3 harness)
        (--prepare-only builds and trial-installs every arm, prints the preflight table and exits before any agent run)
+       (--plant-release DIR and --plant-release-sha256 HEX are required by the plant-policy and plant-allowall arms: the signed release is copied
+       to a runner-private dir and checked there; --plant-python is the interpreter that runs the gateway, default python3. A plant suite runs
+       plant arms and plant tasks only, at --parallel 1; without --kiro-bin it is counted and the Kiro CLI must match the release pin)
        (--extra-tasks loads tasks from DIR/<id>.json with DIR/fixtures and DIR/hidden; DIR is hidden from the agent like tasks/hidden)
        (--suites-dir DIR looks for the suite file DIR/<suite>.json first and then in <bench-dir>/suites, so a generated skilleval-* suite needs no file in the checkout)
        (--run-credit-limit X: on engine v2 the run is killed at the poll once its metered credits pass X and is recorded as censored. On v3 credits

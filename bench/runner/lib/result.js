@@ -57,7 +57,7 @@ function streamFields(agg, orch = null) {
  * orch: spawns, depth, review flow and phase documents (see orch-metrics.js), or null.
  * conv: the autonomy conversation (see autonomy.newConversation), for tasks with an autonomy block.
  * meta: runner-side facts {agentStarted, flags, infraError, runError, modelNormalized, rewrittenAgents, mcpSha256,
- *   isolation, homeTripwireHits, inFlightAtStart, creditsSessionTotal}.
+ *   isolation, homeTripwireHits, inFlightAtStart, creditsSessionTotal, plant (the scored plant field of a plant run)}.
  */
 function buildResult({ arm, task, replicate, config, exec, agg, session, usage = null, skills = null, orch = null, checks, transcript, env, meta = {}, conv = null }) {
   const runtime = arm.runtime ?? DEFAULT_RUNTIME;
@@ -181,6 +181,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     ...(meta.unscrubbed?.length ? { unscrubbedFiles: meta.unscrubbed } : {}),
     ...(meta.tamperedFiles?.length ? { tamperedFiles: meta.tamperedFiles } : {}),
     ...(meta.usageUnavailableReason ? { usageUnavailableReason: meta.usageUnavailableReason } : {}),
+    ...(meta.plant ? { plant: meta.plant } : {}),
     ...(autonomyFields({ task, conv, checks: checks || [], finalText: agg?.finalText ?? null, aggregateGroup }) ?? {}),
   };
 }
