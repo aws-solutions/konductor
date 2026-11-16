@@ -55,6 +55,7 @@ test('the example holds the expected default settings', () => {
       writer: 0.01375,
     },
     runner_profile: 'legacy',
+    subject_concurrency: 6,
   });
 });
 
@@ -523,6 +524,16 @@ const REFUSED = [
     /runner_profile: must be one of legacy, natural, got "natural-tools"/,
   ],
   [{ runner_profile: null }, /runner_profile: must be one of legacy, natural/],
+  [
+    { subject_concurrency: 0 },
+    /subject_concurrency: must be a whole number from 1 to 32/,
+  ],
+  [
+    { subject_concurrency: 33 },
+    /subject_concurrency: must be a whole number from 1 to 32/,
+  ],
+  [{ subject_concurrency: 2.5 }, /subject_concurrency: must be a whole number/],
+  [{ subject_concurrency: '4' }, /subject_concurrency: must be a whole number/],
   [
     { stop_usd: 100, hard_cap_usd: 150 },
     /stop_usd: replaced by total_cap_usd[\s\S]*hard_cap_usd: replaced by total_cap_usd/,

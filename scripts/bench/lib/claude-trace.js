@@ -2,7 +2,8 @@
 /**
  * Reader for a Claude Code `--output-format stream-json` trace: newline-delimited JSON events.
  *
- *   system/init  the tools Claude Code actually loaded for the session (`tools`), read as `available_tools`.
+ *   system/init  the tools Claude Code actually loaded for the session (`tools`), read as `available_tools`, and
+ *                the CLI version (`claude_code_version`), read as `cli_version` (null when the event has none).
  *   assistant    the model's turns. Each content block is either text or a tool_use (a tool call). A tool_use of
  *                the `Skill` tool is how a skill load shows: Claude Code has a dedicated tool for it.
  *   user         tool results arrive inside a later `user` event's content array, each a tool_result block that
@@ -19,7 +20,7 @@
  * caller can tell. A line that is not JSON is skipped. A tool result that names no known call is ignored.
  *
  * Returned record:
- *   { runtime: 'claude-code', session_id, model_id, available_tools: string[] | null, models_used: string[],
+ *   { runtime: 'claude-code', session_id, cli_version, model_id, available_tools: string[] | null, models_used: string[],
  *     tool_calls: [{ tool_name, raw_tool_name, arguments, status, result }], response_text,
  *     usage: { input_tokens, output_tokens, cache_read_tokens, cache_write_tokens } | null, cost_usd,
  *     result_seen, result_is_error, permission_denials: string[], errors: [{ message, raw }] }
@@ -43,6 +44,7 @@ function readClaudeCodeTrace(rawTrace) {
   const record = {
     runtime: 'claude-code',
     session_id: null,
+    cli_version: null,
     model_id: null,
     available_tools: null,
     models_used: [],
@@ -76,6 +78,11 @@ function readClaudeCodeTrace(rawTrace) {
         record.available_tools = event.tools.map((tool) => String(tool));
       if (typeof event.session_id === 'string')
         record.session_id = event.session_id;
+      if (
+        typeof event.claude_code_version === 'string' &&
+        event.claude_code_version
+      )
+        record.cli_version = event.claude_code_version;
       continue;
     }
 

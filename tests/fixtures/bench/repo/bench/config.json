@@ -27,5 +27,6 @@
     "openai": 5000,
     "xai": 37500
   },
-  "runner_profile": "legacy"
+  "runner_profile": "legacy",
+  "subject_concurrency": 6
 }
