@@ -26,6 +26,7 @@ const { classifyAuthFailure } = require('./auth-failure.js');
 const { classifyLaunchFailure } = require('./launch-failure.js');
 const { moveFile, UntrustedFileError } = require('./move-file.js');
 const { openPlantRun } = require('./plant/lifecycle.js');
+const { plantWalls, withCgroup } = require('./plant/walls.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
@@ -147,11 +148,14 @@ function snapshotWorkspace(cwd, dest) {
 }
 
 // A real task also hides the host copies of its project and the package caches. Its checks run with no network.
-function makeIso(ctx, arm, scratchRoot, task, { offline = false, frozenDirs = [] } = {}) {
+// A plant run (`plantRun`) also gets its plant dir read-only and only its own socket root, and runs in the cgroup scope when the host has one.
+function makeIso(ctx, arm, scratchRoot, task, { offline = false, frozenDirs = [], plantRun = null } = {}) {
   const extra = task?.real ? real.hidePaths(task, { cache: ctx.realCache }) : [];
-  return makeIsolation({
+  const iso = makeIsolation({
     mode: ctx.isolation.mode, scratchRoot, hide: [...(ctx.hide || []), ...extra], mask: ctx.mask || [], keyRoots: ctx.keyRoots || [], keep: harnessFor(arm).keepPaths(ctx), frozenDirs, offline,
+    ...(plantRun ? plantWalls(ctx.plant, plantRun) : {}),
   });
+  return withCgroup(iso, ctx.cgroup);
 }
 
 // Reads the stream and the final tree of a real run: fetches made by the agent and verbatim use of the upstream fix.
@@ -392,7 +396,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
     }
 
     if (!result) {
-      const iso = makeIso(ctx, arm, runRoot, task, { frozenDirs: stdioDir ? [stdioDir] : [] });
+      const iso = makeIso(ctx, arm, runRoot, task, { frozenDirs: stdioDir ? [stdioDir] : [], plantRun });
       const tripwire = createTripwire({ markerPath: path.join(runRoot, '.marker'), ...ctx.tripwire });
       try {
         const tmpdir = path.join(runRoot, 'tmp');

@@ -1,0 +1,457 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// Fake kiro-cli for the wall prober (13.2, 13.5): inside the real sandbox it makes each scripted break attempt and prints
+// one JSON line per row. Every attempt must fail. Never starts the shim and never leaves a file it made behind.
+// One self-contained file, so it can be copied into a sandbox that hides the checkout.
+
+const fs = require('node:fs');
+const net = require('node:net');
+const os = require('node:os');
+const path = require('node:path');
+const { spawn, spawnSync } = require('node:child_process');
+
+/** The 13.5 boundaries by id, for the checklist. B-3 is checked by the runner before any sandbox starts. */
+const BOUNDARIES = Object.freeze({
+  'B-1': 'Filesystem sockets across runs',
+  'B-2': 'Descriptor passing across runs',
+  'B-3': 'Scratch masking',
+  'B-4': 'Nested pid namespace',
+  'B-5': 'Resource bombs',
+  'B-6': 'Network allowlist',
+  'B-7': 'Visible pids',
+  'B-8': 'Writable paths',
+});
+
+const REPLY_WAIT_MS = 2000;
+const CPU_BURN_MS = 3000;
+const DISK_FILL_BYTES = 64 * 1024 * 1024;
+const SHARED_DIRS = ['/tmp', '/var/tmp', '/dev/shm'];
+const WRITE_WALK_ROOTS = ['/', '/var', '/opt', '/srv', '/mnt', '/media', '/home', ...SHARED_DIRS];
+const ZERO_CAPS = /^(CapInh|CapPrm|CapEff|CapBnd|CapAmb):\s*0+$/;
+const LISTENING_FLAG = 0x10000;
+
+// ---- pure parsers (unit-tested on sample text) ----
+
+/** Text of a /proc/net/{tcp,udp} address `HEXIP:HEXPORT` (`v6` for tcp6 and udp6) as `ip:port`, `[ip]:port` for v6. */
+function decodeInetAddress(field, v6) {
+  const [ip, port] = field.split(':');
+  const portNumber = parseInt(port, 16);
+  if (!v6) return `${ip.match(/../g).reverse().map((h) => parseInt(h, 16)).join('.')}:${portNumber}`;
+  const bytes = ip.match(/.{8}/g).flatMap((w) => w.match(/../g).reverse());
+  if (bytes.every((b) => b === '00')) return `[::]:${portNumber}`;
+  if (bytes.slice(0, 15).every((b) => b === '00') && bytes[15] === '01') return `[::1]:${portNumber}`;
+  if (bytes.slice(0, 10).every((b) => b === '00') && bytes[10] === 'ff' && bytes[11] === 'ff') {
+    return `${bytes.slice(12).map((h) => parseInt(h, 16)).join('.')}:${portNumber}`;
+  }
+  return `[${bytes.join('').match(/.{4}/g).join(':')}]:${portNumber}`;
+}
+
+/** True for an `ip:port` text on loopback or the wildcard address, which the agent can reach through loopback. */
+const isLoopbackOrWildcard = (address) => /^(127\.|0\.0\.0\.0:|\[::1?\]:)/.test(address);
+
+/**
+ * The listeners in the text of a /proc/net table, as `ip:port`. `kind` is "tcp" (state LISTEN) or "udp" (bound,
+ * not connected); `v6` is true for the tcp6 and udp6 tables.
+ */
+function inetListeners(text, kind, v6) {
+  const want = kind === 'tcp' ? '0A' : '07';
+  return text.split('\n').slice(1).map((l) => l.trim().split(/\s+/)).filter((f) => f[3] === want).map((f) => decodeInetAddress(f[1], v6));
+}
+
+/** The named sockets in /proc/net/unix text: `{path, abstract, listening}`. Unnamed sockets are left out. */
+function unixSockets(text) {
+  return text.split('\n').slice(1).map((l) => l.trim().split(/\s+/)).filter((f) => f.length >= 8)
+    .map((f) => ({ path: f[7], abstract: f[7].startsWith('@'), listening: (parseInt(f[3], 16) & LISTENING_FLAG) !== 0 }));
+}
+
+/** `ip:53` entries (tcp and udp) for each loopback nameserver in resolv.conf `text`: the host's DNS stub (13.5, B-6). */
+function dnsStubEntries(text) {
+  const stubs = text.split('\n').map((l) => l.trim().match(/^nameserver\s+(127\.\S+|::1)$/)).filter(Boolean).map((m) => (m[1] === '::1' ? '[::1]:53' : `${m[1]}:53`));
+  return { tcp: stubs, udp: stubs };
+}
+
+/**
+ * Parses an allowlist file: one entry per line, `KIND VALUE REASON`, `#` starts a comment. KIND is `tcp` or `udp`
+ * (VALUE `ip:port`), `abstract` (VALUE the socket name with its `@`), `path` (a filesystem socket) or `writable` (a
+ * directory the agent may write). A line with no reason is refused, because an entry must say why it is there (13.5).
+ * Returns `{tcp, udp, abstract, path, writable}` as arrays.
+ */
+function parseAllowlist(text) {
+  const allow = { tcp: [], udp: [], abstract: [], path: [], writable: [] };
+  text.split('\n').forEach((raw, i) => {
+    const line = raw.replace(/#.*/, '').trim();
+    if (!line) return;
+    const [kind, value, ...reason] = line.split(/\s+/);
+    if (!Object.hasOwn(allow, kind)) throw new Error(`allowlist line ${i + 1}: unknown kind "${kind}"`);
+    if (!value || reason.length === 0) throw new Error(`allowlist line ${i + 1}: needs "${kind} VALUE REASON"`);
+    allow[kind].push(value);
+  });
+  return allow;
+}
+
+const unescapeMount = (s) => s.replace(/\\([0-7]{3})/g, (_, o) => String.fromCharCode(parseInt(o, 8)));
+
+/** The mounts of /proc/self/mountinfo text as `{target, options, fstype}`; `options` is the per-mount list. */
+function parseMountinfo(text) {
+  return text.split('\n').filter(Boolean).map((line) => {
+    const f = line.split(' ');
+    return { target: unescapeMount(f[4]), options: f[5].split(','), fstype: f[f.indexOf('-') + 1] };
+  });
+}
+
+/** Targets of the writable mounts in mountinfo `text`. */
+const writableMounts = (text) => parseMountinfo(text).filter((m) => m.options.includes('rw')).map((m) => m.target);
+
+const insideDir = (child, parent) => child === parent || child.startsWith(parent.replace(/\/$/, '') + '/');
+
+/**
+ * Submounts below any of `roots` that are writable, from `findmnt -R -rn -o TARGET,OPTIONS` text. A root itself is not
+ * a submount. `ignore` lists targets that are meant to be writable (the run's scratch root, the tmpfs masks).
+ */
+function writableSubmounts(findmntText, roots, ignore = []) {
+  const found = [];
+  for (const line of findmntText.split('\n').filter(Boolean)) {
+    const [rawTarget, options = ''] = line.split(' ');
+    const target = rawTarget.replace(/\\x([0-9a-f]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+    const below = roots.some((r) => insideDir(target, r) && target !== r);
+    if (below && options.split(',').includes('rw') && !ignore.some((i) => insideDir(target, i))) found.push(target);
+  }
+  return found;
+}
+
+/**
+ * What the default-deny pass (SR-20) finds that is not allowed. `seen` holds what the agent can see: `writable` (paths it
+ * can write), `tcp`, `udp` (loopback or wildcard listeners as `ip:port`), `unix` (from unixSockets, with `reachable` set
+ * for a filesystem socket it can connect to) and `foreignPids`. `allow` is `{tcp, udp, abstract, path}`;
+ * `writableAllowed` lists directories that may be writable. Returns `[{kind, item}]`, empty when the pass is clean.
+ */
+function defaultDenyFindings(seen, allow, writableAllowed) {
+  const findings = [];
+  const add = (kind, items) => items.forEach((item) => findings.push({ kind, item }));
+  add('writable', seen.writable.filter((p) => !writableAllowed.some((a) => insideDir(p, a))));
+  add('tcp', seen.tcp.filter((a) => !allow.tcp.includes(a)));
+  add('udp', seen.udp.filter((a) => !allow.udp.includes(a)));
+  add('abstract', seen.unix.filter((s) => s.abstract && !allow.abstract.includes(s.path)).map((s) => s.path));
+  add('path', seen.unix.filter((s) => !s.abstract && s.reachable && !allow.path.includes(s.path)).map((s) => s.path));
+  add('pid', seen.foreignPids.map(String));
+  return findings;
+}
+
+// ---- the sandbox as the agent sees it ----
+
+/** What the agent can do here. Each method returns true when the action worked and never throws. Rows call only these. */
+class Host {
+  constructor(proc = '/proc') {
+    this.proc = proc;
+  }
+
+  worked(fn) {
+    try { fn(); return true; } catch { return false; }
+  }
+
+  /** True when `file` can be created (it is removed again). */
+  wrote(file) {
+    return this.worked(() => { fs.writeFileSync(file, 'x', { flag: 'wx' }); fs.unlinkSync(file); });
+  }
+
+  appended(file) { return this.worked(() => fs.appendFileSync(file, 'x')); }
+
+  chmodded(file) { return this.worked(() => fs.chmodSync(file, 0o666)); }
+
+  unlinked(file) { return this.worked(() => fs.unlinkSync(file)); }
+
+  /** The names in directory `dir`, or `['<content>']` for a file with bytes, or `[]` for an empty or unreadable one. */
+  entries(dir) {
+    try {
+      if (fs.statSync(dir).isDirectory()) return fs.readdirSync(dir);
+      return fs.readFileSync(dir).length ? ['<content>'] : [];
+    } catch { return []; }
+  }
+
+  readText(file) {
+    try { return fs.readFileSync(file, 'utf8'); } catch { return null; }
+  }
+
+  /** True when a Unix socket can be bound at `file` (it is closed and removed again). */
+  bound(file) {
+    return new Promise((resolve) => {
+      const server = net.createServer();
+      server.once('error', () => resolve(false));
+      server.listen(file, () => server.close(() => { this.unlinked(file); resolve(true); }));
+    });
+  }
+
+  /** True when `connect()` to `socket` works. */
+  connected(socket) {
+    return this.exchange(socket, null).then((r) => r.connected);
+  }
+
+  /** True when `socket` answers an MCP `tools/list` within the wait. */
+  answered(socket) {
+    return this.exchange(socket, '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n').then((r) => r.replied);
+  }
+
+  /** Connects to `socket`, sends `line` if given, and resolves `{connected, replied}` after a reply, a close or the wait. */
+  exchange(socket, line) {
+    return new Promise((resolve) => {
+      const out = { connected: false, replied: false };
+      const conn = net.createConnection(socket);
+      const done = () => { clearTimeout(timer); conn.destroy(); resolve(out); };
+      const timer = setTimeout(done, REPLY_WAIT_MS);
+      conn.once('connect', () => { out.connected = true; if (line) conn.write(line); else done(); });
+      conn.once('data', () => { out.replied = true; done(); });
+      conn.once('error', done);
+      conn.once('close', done);
+    });
+  }
+
+  /** `{status, stdout}` of the command, with no shell. A command that cannot start has status null. */
+  run(cmd, args, timeout = 10000) {
+    const r = spawnSync(cmd, args, { encoding: 'utf8', timeout });
+    return { status: r.status, stdout: r.stdout || '' };
+  }
+
+  /** Burns every core for `ms` and resolves when the burners are gone. */
+  async burnCpu(ms) {
+    const burners = os.cpus().map(() => spawn(process.execPath, ['-e', 'for (;;);'], { stdio: 'ignore' }));
+    await new Promise((r) => setTimeout(r, ms));
+    burners.forEach((b) => b.kill('SIGKILL'));
+  }
+
+  /** Writes `bytes` of zeros to `file` and returns true when all of them were written; the file is removed. */
+  filled(file, bytes) {
+    const ok = this.worked(() => fs.writeFileSync(file, Buffer.alloc(bytes)));
+    this.worked(() => fs.unlinkSync(file));
+    return ok;
+  }
+
+  capabilityLines() {
+    return (this.readText(`${this.proc}/self/status`) || '').split('\n').filter((l) => /^(Cap|NoNewPrivs)/.test(l));
+  }
+
+  /** `ip:port` of the loopback and wildcard listeners of one kind ("tcp" or "udp"), from /proc/net. */
+  listeners(kind) {
+    const read = (table, v6) => inetListeners(this.readText(`${this.proc}/net/${table}`) || '', kind, v6).filter(isLoopbackOrWildcard);
+    return [...read(kind, false), ...read(`${kind}6`, true)];
+  }
+
+  unixSockets() {
+    return unixSockets(this.readText(`${this.proc}/net/unix`) || '');
+  }
+
+  linkOf(file) {
+    try { return fs.readlinkSync(file); } catch { return null; }
+  }
+
+  /** The visible pids whose pid namespace is not this process's own. */
+  foreignPids() {
+    const own = this.linkOf(`${this.proc}/self/ns/pid`);
+    return this.entries(this.proc).filter((n) => /^\d+$/.test(n)).filter((p) => this.linkOf(`${this.proc}/${p}/ns/pid`) !== own);
+  }
+
+  /** Directories at most two levels below each walk root (and `extraRoots`) that this process can write. */
+  writableDirs(extraRoots) {
+    const found = new Set();
+    const writable = (d) => { try { fs.accessSync(d, fs.constants.W_OK); return true; } catch { return false; } };
+    const subdirs = (d) => { try { return fs.readdirSync(d, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => path.join(d, e.name)); } catch { return []; } };
+    for (const root of [...WRITE_WALK_ROOTS, ...extraRoots]) {
+      for (const d of [root, ...subdirs(root)]) if (writable(d)) found.add(d);
+      for (const d of subdirs(root)) for (const c of subdirs(d)) if (writable(c)) found.add(c);
+    }
+    return [...found];
+  }
+
+  /** True when `file` is a Unix socket this process may connect to. */
+  reachableSocket(file) {
+    try { fs.accessSync(file, fs.constants.R_OK | fs.constants.W_OK); return fs.statSync(file).isSocket(); } catch { return false; }
+  }
+}
+
+// ---- rows ----
+
+const held = (detail = 'every attempt failed') => ({ held: true, detail });
+const broke = (detail) => ({ held: false, detail });
+
+/** Makes each `[name, attempt]`; the row holds when none worked. An attempt returns true (or resolves true) when it worked. */
+async function tried(attempts) {
+  const worked = [];
+  for (const [name, attempt] of attempts) if (await attempt()) worked.push(name);
+  return worked.length ? broke(`worked: ${worked.join(', ')}`) : held();
+}
+
+/** A node one-liner for the nested namespace: connect, send a request, print REPLY if anything came back. */
+const NESTED_CONNECT = `const c = require('net').createConnection(process.argv[1]);
+let got = false;
+c.on('connect', () => c.write('{"jsonrpc":"2.0","id":1,"method":"tools/list"}\\n'));
+c.on('data', () => { got = true; });
+c.on('close', () => { console.log(got ? 'REPLY' : 'CLOSED'); process.exit(0); });
+c.on('error', () => { console.log('CLOSED'); process.exit(0); });
+setTimeout(() => { console.log(got ? 'REPLY' : 'CLOSED'); process.exit(0); }, ${REPLY_WAIT_MS});`;
+
+const probeFile = (dir) => path.join(dir, '.wall-probe');
+
+/**
+ * The break attempts. `id` names the row; `boundary` lists the 13.5 items it supports; `sr` the requirement; `gateway` is
+ * true for a row that needs the live gateway behind gw.sock; `run(cfg, host)` makes the attempts and returns
+ * `{held, detail}`: held is false when an attempt worked. See `loadConfig` for `cfg`.
+ */
+const ROWS = [
+  { id: 'plant-dir-read-only', boundary: [], sr: 'SR-5', gateway: false, run: (cfg, host) => tried([
+    ['create a file in the plant dir', () => host.wrote(probeFile(cfg.plantDir))],
+    ['append to the shim', () => host.appended(cfg.shimPath)],
+    ['chmod the shim', () => host.chmodded(cfg.shimPath)],
+    ['delete the shim', () => host.unlinked(cfg.shimPath)],
+  ]) },
+  { id: 'socket-root-read-only', boundary: ['B-1'], sr: 'SR-5', gateway: false, run: (cfg, host) => tried([
+    ['delete gw.sock', () => host.unlinked(cfg.socketPath)],
+    ['create a file in the socket root', () => host.wrote(probeFile(cfg.socketRoot))],
+    ['bind a fake socket in the socket root', () => host.bound(path.join(cfg.socketRoot, 'fake.sock'))],
+  ]) },
+  // The one row that must work: connect() on a read-only mount is allowed, and a refusal here would mean the path is broken.
+  { id: 'socket-connect-works', boundary: [], sr: 'SR-1', gateway: false, run: async (cfg, host) => ((await host.answered(cfg.socketPath)) ? held('gw.sock answered tools/list') : broke('gw.sock did not answer')) },
+  // A sibling is another run's socket path, `<parent>/s-XXXX/gw.sock`. Its directory must not even be listed.
+  { id: 'sibling-socket-hidden', boundary: ['B-1'], sr: 'SR-4', gateway: false, run: (cfg, host) => tried((cfg.siblingSockets || []).flatMap((socket) => {
+    const dir = path.dirname(socket);
+    return [
+      [`list ${dir}`, () => host.entries(path.dirname(dir)).includes(path.basename(dir))],
+      [`connect ${socket}`, () => host.connected(socket)],
+      [`bind ${socket}`, () => host.bound(socket)],
+    ];
+  })) },
+  { id: 'masked-paths-empty', boundary: [], sr: 'SR-2', gateway: false, run: (cfg, host) => tried((cfg.maskedPaths || []).map((p) => [`${p} shows content`, () => host.entries(p).length > 0])) },
+  // A mask is a throwaway tmpfs, so a write into it is lost, not refused. The runner checks that the real file is unchanged.
+  { id: 'out-dir-hidden', boundary: ['B-8'], sr: 'SR-19', gateway: false, run: (cfg, host) => tried(!cfg.outSentinel ? [] : [
+    ['read the out dir log', () => (host.readText(cfg.outSentinel) || '').length > 0],
+    ['append to the out dir log', () => host.appended(cfg.outSentinel)],
+    ['delete the out dir log', () => host.unlinked(cfg.outSentinel)],
+  ]) },
+  { id: 'home-and-caches-read-only', boundary: ['B-8'], sr: 'NFR-12', gateway: false, run: (cfg, host) => tried(
+    [cfg.realHome, ...(cfg.homeAliases || []), ...(cfg.homeCaches || [])].filter(Boolean).map((d) => [`write ${d}`, () => host.wrote(probeFile(d))])) },
+  { id: 'shared-dirs-read-only', boundary: ['B-2'], sr: 'SR-23', gateway: false, run: (cfg, host) => tried(SHARED_DIRS.map((d) => [`write ${d}`, () => host.wrote(probeFile(d))])) },
+  { id: 'capabilities-dropped', boundary: [], sr: 'SR-20', gateway: false, run: async (cfg, host) => {
+    const lines = host.capabilityLines();
+    const set = lines.filter((l) => /^Cap/.test(l) && !ZERO_CAPS.test(l));
+    const noNewPrivs = lines.some((l) => /^NoNewPrivs:\s*1$/.test(l));
+    return set.length || !noNewPrivs ? broke(`${set.join('; ')}${noNewPrivs ? '' : ' NoNewPrivs not set'}`) : held('all capability sets empty, no_new_privs set');
+  } },
+  { id: 'umount-remount-bind-refused', boundary: [], sr: 'SR-20', gateway: false, run: (cfg, host) => {
+    const target = (cfg.maskedPaths || [])[0] || cfg.plantDir;
+    return tried([
+      ['umount a mask', () => host.run('umount', [target]).status === 0],
+      ['remount the plant dir read-write', () => host.run('mount', ['-o', 'remount,rw', cfg.plantDir]).status === 0],
+      ['bind over a mask', () => host.run('mount', ['--bind', '/dev/null', target]).status === 0],
+    ]);
+  } },
+  { id: 'nested-unshare-keeps-masks-hidden', boundary: [], sr: 'SR-20', gateway: false, run: async (cfg, host) => {
+    const target = (cfg.maskedPaths || []).find((p) => fs.existsSync(p));
+    if (!target) return held('no mask to try');
+    const r = host.run('unshare', ['--user', '--map-root-user', '--mount', 'sh', '-c', `umount '${target}' 2>/dev/null; ls -A '${target}'`]);
+    return r.stdout.trim() ? broke(`nested namespace shows: ${r.stdout.trim().split('\n')[0]}`) : held(r.status === null ? 'nested unshare could not start' : 'mask still hides its content');
+  } },
+  { id: 'visible-pids-own-only', boundary: ['B-7'], sr: 'SR-6', gateway: false, run: async (cfg, host) => {
+    const foreign = host.foreignPids();
+    return foreign.length ? broke(`pids from another namespace: ${foreign.slice(0, 5).join(', ')}`) : held('only this sandbox\'s pids');
+  } },
+  { id: 'default-deny-writable-paths', boundary: ['B-8'], sr: 'SR-20', gateway: false, run: async (cfg, host) => {
+    const seen = host.writableDirs([cfg.realHome].filter(Boolean));
+    const found = defaultDenyFindings({ writable: seen, tcp: [], udp: [], unix: [], foreignPids: [] }, cfg.allow, cfg.writableAllowed || []);
+    return found.length ? broke(found.map((f) => f.item).slice(0, 8).join(', ')) : held(`${seen.length} writable dirs, all allowed`);
+  } },
+  { id: 'default-deny-writable-submounts', boundary: ['B-8'], sr: 'SR-12', gateway: false, run: async (cfg, host) => {
+    const roots = [cfg.realHome, ...SHARED_DIRS].filter(Boolean);
+    const text = host.run('findmnt', ['-R', '-rn', '-o', 'TARGET,OPTIONS']).stdout;
+    const writable = writableSubmounts(text, roots, cfg.writableAllowed || []);
+    return writable.length ? broke(`writable submounts: ${writable.join(', ')}`) : held();
+  } },
+  { id: 'default-deny-loopback-listeners', boundary: ['B-6'], sr: 'SR-20', gateway: false, run: async (cfg, host) => {
+    const found = defaultDenyFindings({ writable: [], tcp: host.listeners('tcp'), udp: host.listeners('udp'), unix: [], foreignPids: [] }, cfg.allow, []);
+    return found.length ? broke(found.map((f) => `${f.kind} ${f.item}`).join(', ')) : held('no loopback or wildcard listener outside the allowlist');
+  } },
+  { id: 'default-deny-unix-sockets', boundary: ['B-6'], sr: 'SR-20', gateway: false, run: async (cfg, host) => {
+    const unix = host.unixSockets().map((s) => ({ ...s, reachable: !s.abstract && s.listening && host.reachableSocket(s.path) }));
+    const found = defaultDenyFindings({ writable: [], tcp: [], udp: [], unix, foreignPids: [] }, cfg.allow, []);
+    return found.length ? broke(found.map((f) => `${f.kind} ${f.item}`).join(', ')) : held('no abstract or reachable filesystem socket outside the allowlist');
+  } },
+  { id: 'nested-pidns-connect-closed', boundary: ['B-4'], sr: 'SR-4', gateway: true, run: async (cfg, host) => {
+    const r = host.run('unshare', ['--user', '--map-root-user', '--pid', '--fork', process.execPath, '-e', NESTED_CONNECT, cfg.socketPath]);
+    if (r.status !== 0) return held('nested unshare refused');
+    return r.stdout.includes('REPLY') ? broke('a peer in a nested pid namespace was answered') : held('connection closed with no reply');
+  } },
+  { id: 'cpu-burn-gateway-answers', boundary: ['B-5'], sr: 'NFR-12', gateway: true, run: async (cfg, host) => {
+    const burn = host.burnCpu(CPU_BURN_MS);
+    const answered = await host.answered(cfg.socketPath);
+    await burn;
+    return answered ? held('gateway answered during the burn') : broke('gateway did not answer during the burn');
+  } },
+  // Shortcut: the fill is bounded (64 MiB by default) so it cannot hurt the run host; a real full disk is the out-dir
+  // filesystem check's job (NFR-12). Upgrade when a run host has a quota to test against.
+  { id: 'disk-fill-gateway-answers', boundary: ['B-5'], sr: 'NFR-12', gateway: true, run: async (cfg, host) => {
+    const bytes = cfg.diskFillBytes || DISK_FILL_BYTES;
+    host.filled(path.join(cfg.scratch || os.tmpdir(), '.wall-fill'), bytes);
+    return (await host.answered(cfg.socketPath)) ? held(`gateway answered after a ${bytes} byte write`) : broke('gateway did not answer after the disk fill');
+  } },
+];
+
+/**
+ * Runs `rows` against `cfg` with `host` and returns `{row, boundary, sr, held, detail}` per row. A gateway row with
+ * `cfg.gateway === false` is `held: null` (not run). An exception in a row counts as not held: a row that cannot
+ * run must not pass.
+ */
+async function runRows(rows, cfg, host) {
+  const results = [];
+  for (const row of rows) {
+    const base = { row: row.id, boundary: row.boundary, sr: row.sr };
+    if (row.gateway && cfg.gateway === false) {
+      results.push({ ...base, held: null, detail: 'needs a live gateway' });
+      continue;
+    }
+    try {
+      results.push({ ...base, ...(await row.run(cfg, host)) });
+    } catch (e) {
+      results.push({ ...base, held: false, detail: `row failed to run: ${e.message}` });
+    }
+  }
+  return results;
+}
+
+/**
+ * The prober's settings. From the plant agent file under `home` (the shim and socket paths) and, when present, the JSON
+ * file `configPath` (maskedPaths, siblingSockets, outSentinel, realHome, homeAliases, homeCaches, scratch, writableAllowed,
+ * allow, gateway, diskFillBytes). `allow` always lists the DNS stub from `resolvConf` and the run's own gw.sock.
+ */
+function loadConfig(home, configPath, resolvConf = '') {
+  const agent = JSON.parse(fs.readFileSync(path.join(home, '.kiro', 'agents', 'plant.json'), 'utf8'));
+  const [shimPath, socketPath] = agent.mcpServers.plant.args;
+  const extra = configPath && fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, 'utf8')) : {};
+  const stub = dnsStubEntries(resolvConf);
+  const allow = {
+    tcp: [...stub.tcp, ...(extra.allow?.tcp || [])], udp: [...stub.udp, ...(extra.allow?.udp || [])],
+    abstract: extra.allow?.abstract || [], path: [socketPath, ...(extra.allow?.path || [])],
+  };
+  const writableAllowed = [...(extra.writableAllowed || []), ...(extra.allow?.writable || [])];
+  return { plantDir: path.dirname(shimPath), shimPath, socketPath, socketRoot: path.dirname(socketPath), scratch: path.dirname(home), ...extra, allow, writableAllowed };
+}
+
+async function main(argv) {
+  if (argv[0] === '--version') {
+    console.log('kiro-cli wall-prober');
+    return 0;
+  }
+  const home = process.env.HOME;
+  const configPath = process.env.WALL_PROBER_CONFIG || path.join(home, '.kiro', 'wall-prober.json');
+  const resolv = fs.existsSync('/etc/resolv.conf') ? fs.readFileSync('/etc/resolv.conf', 'utf8') : '';
+  const results = await runRows(ROWS, loadConfig(home, configPath, resolv), new Host());
+  for (const r of results) console.log(JSON.stringify(r));
+  const broken = results.filter((r) => r.held === false);
+  console.log(JSON.stringify({ row: 'summary', held: broken.length === 0, broken: broken.map((r) => r.row), notRun: results.filter((r) => r.held === null).map((r) => r.row) }));
+  return broken.length ? 1 : 0;
+}
+
+module.exports = {
+  BOUNDARIES, ROWS, Host, runRows, loadConfig, decodeInetAddress, inetListeners, unixSockets, dnsStubEntries, parseAllowlist,
+  parseMountinfo, writableMounts, writableSubmounts, defaultDenyFindings, isLoopbackOrWildcard,
+};
+
+if (require.main === module) main(process.argv.slice(2)).then((code) => process.exit(code));

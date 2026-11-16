@@ -34,6 +34,8 @@ const { infraFailure } = require('./infra-check.js');
 const { maxAuthFailuresOf, AUTH_EXIT_CODE } = require('./auth-failure.js');
 const { makeLoginCheck } = require('./login-check.js');
 const { preparePlantSuite } = require('./plant/intake.js');
+const { preflightWalls } = require('./plant/walls.js');
+const { makeIso } = require('./run-one.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -346,6 +348,12 @@ async function cmdRun(opts, deps = {}) {
       plantSuite = preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo: REPO, ...deps.plant });
       ctx.plant = plantSuite;
       ctx.mask.push(...plantSuite.mask);
+      if (isolation.mode === 'unshare') {
+        const walls = await preflightWalls({ ctx, suite: plantSuite, repo: REPO, outDir, makeIso: (root, plantRun) => makeIso(ctx, arms[0], root, null, { plantRun }) });
+        ctx.cgroup = walls.cgroup;
+        plantSuite.walls = walls;
+        log(`plant walls: prober passed; ${walls.checklist.map((c) => `${c.id} ${c.state}`).join(', ')}; cgroup ${walls.cgroup.ok ? walls.cgroup.caps : `missing (${walls.cgroup.reason})`}`);
+      }
       log(`plant release ${plantSuite.release.manifest.release} (manifest ${plantSuite.release.manifestSha256.slice(0, 12)}, key ${plantSuite.release.keyId.slice(0, 12)}), ${plantSuite.counted ? 'counted' : 'control'} suite`);
     }
     ctx.tripwire = {
@@ -406,7 +414,7 @@ async function cmdRun(opts, deps = {}) {
         kiroEnabledFeatures: process.env.KIRO_ENABLED_FEATURES ?? null,
         agentEnginesAvailable: rc.availableEngines(),
       }),
-      ...(plantSuite ? { plant: { release: plantSuite.release.manifest.release, manifestSha256: plantSuite.release.manifestSha256, keyId: plantSuite.release.keyId, counted: plantSuite.counted, comparable: plantSuite.comparable } } : {}),
+      ...(plantSuite ? { plant: { release: plantSuite.release.manifest.release, manifestSha256: plantSuite.release.manifestSha256, keyId: plantSuite.release.keyId, counted: plantSuite.counted, comparable: plantSuite.comparable, cgroup: ctx.cgroup ? (ctx.cgroup.ok ? ctx.cgroup.caps : `missing: ${ctx.cgroup.reason}`) : 'not checked (no namespace isolation)', boundaryChecklist: plantSuite.walls?.checklist ?? null } } : {}),
       ...rc.benchGit(REPO),
       contentHash: rc.hashTree(benchDir, ['tasks', 'fixtures', 'suites', 'real']),
       ...(suitesDir ? { suitesDir, suiteFile: suiteFile(opts.suite, benchDir, suitesDir) } : {}),
