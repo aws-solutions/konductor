@@ -50,6 +50,9 @@ use crate::cli::output::{self, ColorMode};
 
 /// The environment variable that names the folder of the built page.
 const CANVAS_DIR_ENV: &str = "KONDUCTOR_CANVAS_DIR";
+/// The launch code for the browser tests. It is read only with the `fake` harness, which is for tests, so a real
+/// session always gets a code from the random source.
+const TEST_LAUNCH_CODE_ENV: &str = "KONDUCTOR_LAUNCH_CODE";
 /// How long a live run gets to end its session after the server is told to stop.
 const STOP_GRACE: Duration = Duration::from_secs(20);
 
@@ -218,14 +221,20 @@ pub(super) fn view(
         None => ask_to_trust(&context, &choice, &name, &checked, &found),
     }
 
-    let Ok(launch_code) = new_secret() else {
-        return fail(
-            "No random source could be read.",
-            EXIT_RECORD,
-            &context,
-            out,
-            err,
-        );
+    let test_code = std::env::var(TEST_LAUNCH_CODE_ENV)
+        .ok()
+        .filter(|code| !code.is_empty() && matches!(choice, HarnessChoice::Fake { .. }));
+    let launch_code = match test_code.map_or_else(new_secret, Ok) {
+        Ok(code) => code,
+        Err(_) => {
+            return fail(
+                "No random source could be read.",
+                EXIT_RECORD,
+                &context,
+                out,
+                err,
+            )
+        }
     };
     // Set by the first Ctrl+C, terminate signal or hangup. The loop below ends the server on it, and the launcher of a
     // live run ends that run's session on it, as the launcher of `flow run` does.
