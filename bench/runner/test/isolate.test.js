@@ -346,6 +346,7 @@ test('readOnly and exposeOnly add their mounts after the scratch bind, and the s
   assert.ok(at(/^mount --bind .*remount,rw,bind/) < at(/^ro '.*plant'$/), 'plant dir goes read-only after scratch is made writable');
   assert.ok(at(/^ro '.*plant'$/) >= 0 && at(/^mount -t tmpfs tmpfs '.*sock-/) >= 0);
   assert.match(script, /mount -c --bind \/proc\/\$\$\/fd\/9 '.*s-a' && mount -o remount,ro,bind '.*s-a'/);
+  assert.ok(at(/^mount -o remount,ro,bind '.*sock-[^']*'$/) > at(/s-a' && mount -o remount,ro,bind/), 'the emptied parent goes read-only after the child is back, so it holds no writable submount');
   assert.equal(spawnSync('sh', ['-n', '-c', script]).status, 0);
 });
 
@@ -368,6 +369,11 @@ test('the isolation lists the masks that exist, for the wall prober', () => {
   const { masked } = makeIsolation({ mode: 'unshare', scratchRoot: scratch, home });
   assert.ok(masked.includes(path.join(fs.realpathSync(home), '.ssh')));
   assert.ok(!masked.includes(path.join(fs.realpathSync(home), '.aws')), 'a mask target that does not exist is not listed');
+});
+
+test('the host\'s POSIX message queue dir is masked when it exists, because the sandbox shares the IPC namespace', { skip: fs.existsSync('/dev/mqueue') ? false : '/dev/mqueue is absent on this host' }, () => {
+  const { masked } = makeIsolation({ mode: 'unshare', scratchRoot: mkScratch('scr-') });
+  assert.ok(masked.includes(fs.realpathSync('/dev/mqueue')));
 });
 
 test('inside the namespace the plant dir in scratch is read-only and only the exposed socket root shows', { skip: probe.ok ? false : skip }, () => {

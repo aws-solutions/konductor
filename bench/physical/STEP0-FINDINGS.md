@@ -201,3 +201,14 @@ Runs were not inside bench's sandbox, because `unshare` is blocked on this host 
 | The check | `infraFailure` in `runner/lib/infra-check.js`: a study whose every run errored or ended in under 1000 ms is called an infrastructure failure, and `run-cmd.js` sets exit 5. It guards real suites against an agent that never ran |
 | Rule | `studyInfraCheck(results, plantSuite)` skips the check only when the prepared plant suite has `counted: false`, which is a suite with `--kiro-bin` (step 6). Counted plant suites and non-plant suites call `infraFailure` unchanged |
 | Record | The skip is logged as `control suite: short-run check skipped (fake controls finish in under a second by design)` and written to `summary.json` as `infraCheckSkipped`. No new flag, no silent bypass. The sensor age check is not touched |
+
+## Decisions made after the first real-host run of the walls (Amazon Linux 2023, kernel 6.18, sshd and chronyd running)
+
+| Topic | Decision |
+|---|---|
+| Result | `plant-walls.test.js` and `isolate.test.js`: 51 tests, 50 passed, 1 failed (the real-sandbox prober test, 5 rows). `test_peer.py`: 14 of 14 passed, including `RealKernelTest` |
+| Question 21 | Answered: `NS_GET_PARENT` walks a nested pid namespace on a real kernel, so a nested peer is told apart from a foreign one |
+| `out-dir-hidden` (test setup) | The test's `makeIso` did not mask the out dir, while `run-cmd` does (`maskPaths` puts `outDir` in `ctx.mask`, and the out dir lies outside scratch, so the mask is kept). The test now passes `mask: [out]`. Not a wall gap: the real runner masks the out dir |
+| `default-deny-writable-paths`, `-submounts` (real gap) | `exposeOnly` left the emptied socket parent as a writable tmpfs inside the sandbox. The real runner has the same layout (`<tmpdir>/kplant-*/sock`), so the real preflight would have refused every suite. The parent is now remounted read-only after the child is back. The test's dir was not an artifact |
+| `/dev/mqueue` (real gap) | POSIX message queues are shared through the host's IPC namespace, which the sandbox does not unshare. The sandbox now masks `/dev/mqueue` (empty tmpfs, listed in `masked`, so the prober allows its writable mask). An allowlist entry would have left host queues reachable |
+| Loopback listeners and unix sockets (noisy host) | Not wall gaps. The sandbox test assumed a quiet host. It now feeds a generated allowlist of the host's current listeners and sockets, so anything new still fails. The real preflight still refuses a noisy host unless the release's `network-allowlist.txt` names the entries (13.5) |

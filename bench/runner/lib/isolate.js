@@ -75,6 +75,8 @@ const LAUNCHD_SOCKET_RE = '^(/System/Volumes/Data)?/private/var/run/com\\.apple\
 const DATA_VOLUME = '/System/Volumes/Data';
 const RO_SYSTEM_DIRS = ['/tmp', '/var/tmp', '/dev/shm'];
 const SOCKET_DIRS = ['/run', '/var/run'];
+// POSIX message queues are shared by every process in the host's IPC namespace, which the sandbox does not unshare.
+const IPC_DIRS = ['/dev/mqueue'];
 const SOCKET_RE = /docker|containerd|podman|crio|buildkit/i;
 const TREE_BASES = ['/', '/var', '/opt', '/srv', '/mnt', '/media'];
 const SYSTEM_TOPS = new Set(['bin', 'boot', 'dev', 'etc', 'home', 'lib', 'lib32', 'lib64', 'lost+found', 'proc', 'root', 'run', 'sbin', 'snap', 'sys', 'tmp', 'usr', 'var', 'opt', 'srv', 'mnt', 'media']);
@@ -252,12 +254,14 @@ function softMaskLine(p) {
 
 // Empties `parent` (a tmpfs) and puts `child`, a directory inside it, back read-only. The child is held open on fd 9
 // first, because the tmpfs hides its path; -c stops `mount` resolving /proc/<pid>/fd/9 back to that hidden path.
+// The parent itself then goes read-only, so the agent cannot make files or sockets beside the child.
 function exposeOnlyLines({ parent, child }) {
   return [
     `exec 9< ${shq(child)}`,
     `mount -t tmpfs tmpfs ${shq(parent)}`,
     `mkdir ${shq(child)}`,
     `mount -c --bind /proc/$$/fd/9 ${shq(child)} && mount -o remount,ro,bind ${shq(child)}`,
+    `mount -o remount,ro,bind ${shq(parent)}`,
     'exec 9<&-',
   ];
 }
@@ -313,7 +317,7 @@ function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [
   }
 
   const sshDirs = sshAgentDirs(sshTmp);
-  const tmpMasks = [...runtimeSockets(socketDirs), ...sshDirs, runtimeDir(), ...hidden].filter(Boolean);
+  const tmpMasks = [...runtimeSockets(socketDirs), ...sshDirs, runtimeDir(), ...realDirs(IPC_DIRS), ...hidden].filter(Boolean);
   const dirMasks = mask.map((m) => realOrNull(m)).filter((m) => m && !inside(scratch, m) && !inside(m, scratch));
   const keys = uniq([...mask, ...keyRoots].flatMap((m) => findAnswerKeys(m))).filter((k) => !dirMasks.some((d) => inside(k, d)));
   const masks = uniq([...tmpMasks, ...dirMasks, ...keys]).filter((m) => !inside(scratch, m));

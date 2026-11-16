@@ -255,22 +255,39 @@ test('the CPU-burn and disk-fill rows pass against a socket that keeps answering
 
 // ---- skipped: need the real sandbox ----
 
-/** A suite stand-in with a runner-private socket parent, and an isolation maker with the plant walls. */
+/**
+ * An allowlist file naming every listener and socket this host has right now, as a stand-in for the 13.5 allowlist on a
+ * host that is not quiet (sshd, chronyd, systemd). Anything the agent finds beyond these still fails the default-deny rows.
+ */
+function noisyHostAllowlist(dir) {
+  const host = new prober.Host();
+  const sockets = host.unixSockets().filter((s) => !/\s/.test(s.path));
+  const entries = [
+    ...host.listeners('tcp').map((a) => `tcp ${a}`), ...host.listeners('udp').map((a) => `udp ${a}`),
+    ...sockets.filter((s) => s.abstract).map((s) => `abstract ${s.path}`),
+    ...sockets.filter((s) => !s.abstract).map((s) => `path ${s.path}`),
+  ];
+  const file = path.join(dir, 'network-allowlist.txt');
+  fs.writeFileSync(file, entries.map((e) => `${e} test host is not quiet\n`).join(''));
+  return file;
+}
+
+/** A suite stand-in with a runner-private socket parent, and an isolation maker that masks the out dir as run-cmd does. */
 function sandboxRig() {
   const root = tmp();
   const socketParent = path.join(root, 'sock');
-  fs.mkdirSync(socketParent);
-  const suite = { socketParent, release: { sha256Of: () => null } };
-  const makeIso = (scratchRoot, plantRun) => makeIsolation({ mode: 'unshare', scratchRoot, ...walls.plantWalls(suite, plantRun) });
-  return { root, suite, makeIso };
+  const out = path.join(root, 'out');
+  [socketParent, out].forEach((d) => fs.mkdirSync(d));
+  const allowlist = noisyHostAllowlist(root);
+  const suite = { socketParent, release: { sha256Of: () => 'x', fileOf: () => allowlist } };
+  const makeIso = (scratchRoot, plantRun) => makeIsolation({ mode: 'unshare', scratchRoot, mask: [out], ...walls.plantWalls(suite, plantRun) });
+  return { root, out, suite, makeIso };
 }
 
 test('inside the real sandbox every prober row that needs no gateway holds', { skip: needsSandbox }, async () => {
-  const { root, suite, makeIso } = sandboxRig();
+  const { root, out, suite, makeIso } = sandboxRig();
   const scratch = path.join(root, 'scratch');
-  const out = path.join(root, 'out');
   fs.mkdirSync(scratch);
-  fs.mkdirSync(out);
   const run = await walls.runWallProber({ suite, scratch, outDir: out, makeIso });
   assert.deepEqual(run.problems, []);
 });
