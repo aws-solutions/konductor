@@ -35,6 +35,10 @@ export function ModeSwitch<Id extends string>({
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
+    // Alt+Left is browser Back and Cmd or Ctrl with an arrow, Home or End
+    // moves the caret or scrolls, so a modified key is left to the browser.
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+      return;
     const index = views.findIndex((view) => view.id === active);
     const target = {
       ArrowLeft: index - 1,
