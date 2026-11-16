@@ -269,6 +269,11 @@ def main() -> int:
             if "Skills" not in header or "Model" not in header:
                 continue
             i_agent, i_model, i_skills = 0, header.index("Model"), header.index("Skills")
+            # The preload column is the Claude Code subagent preload,
+            # clientConfig.claudeCli.skills, a subset of what the agent declares.
+            i_pre = next((header.index(h) for h in header if h.startswith("Preloaded")), None)
+            if i_pre is None:
+                fail(f"{page}: roster table has no Preloaded column")
             for row in rows:
                 name = strip_md(row[i_agent])
                 if name not in specs or len(row) <= max(i_model, i_skills):
@@ -277,9 +282,6 @@ def main() -> int:
                 want_n = len(specs[name]["skill_names"])
                 if row[i_skills] != str(want_n):
                     fail(f"{page}: {name} Skills column says {row[i_skills]!r}, spec declares {want_n}")
-                # The preload column is the Claude Code subagent preload,
-                # clientConfig.claudeCli.skills, a subset of what the agent declares.
-                i_pre = next((header.index(h) for h in header if h.startswith("Preloaded")), None)
                 if i_pre is not None and len(row) > i_pre:
                     want_pre = len(specs[name]["claude_skills"])
                     if row[i_pre] != str(want_pre):
