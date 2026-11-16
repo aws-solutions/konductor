@@ -212,3 +212,17 @@ Runs were not inside bench's sandbox, because `unshare` is blocked on this host 
 | `default-deny-writable-paths`, `-submounts` (real gap) | `exposeOnly` left the emptied socket parent as a writable tmpfs inside the sandbox. The real runner has the same layout (`<tmpdir>/kplant-*/sock`), so the real preflight would have refused every suite. The parent is now remounted read-only after the child is back. The test's dir was not an artifact |
 | `/dev/mqueue` (real gap) | POSIX message queues are shared through the host's IPC namespace, which the sandbox does not unshare. The sandbox now masks `/dev/mqueue` (empty tmpfs, listed in `masked`, so the prober allows its writable mask). An allowlist entry would have left host queues reachable |
 | Loopback listeners and unix sockets (noisy host) | Not wall gaps. The sandbox test assumed a quiet host. It now feeds a generated allowlist of the host's current listeners and sockets, so anything new still fails. The real preflight still refuses a noisy host unless the release's `network-allowlist.txt` names the entries (13.5) |
+
+
+## Release signing tool (custodian)
+
+| Topic | Decision |
+|---|---|
+| Where it lives | `bench/physical/ci/plant-release.js`, beside `release-guard.js` (its `hash-release` is the other custodian tool). It is not a `bench.js` command, so the CLI table and `cli-args.test.js` do not change. It uses `node:crypto` only and calls the runner's own `intakeRelease` for `verify` |
+| Pinned list | Moved out of `manifest.js` into the checked file `runner/lib/plant/pinned-keys.json` (`[{keyId, publicKey, status}]`), so `pin` and `revoke` edit data, never source. `manifest.js` reads it with `require`; `keyId` in the file is for people, the runner still derives the id from `publicKey` |
+| Key files | `keygen --out DIR` writes `private.pem` (mode 600) and `public.pem` into `DIR` (mode 700). It refuses a `DIR` with a `.git` in it or in any parent folder, and an existing `private.pem`. Suggested `DIR`: `~/.plant-release-key` |
+| Private material | `pin` refuses any text containing `PRIVATE KEY` and any key that is not Ed25519. `sign` refuses a key file readable by group or others, as ssh does |
+| Manifest fields | `sign` computes `manifestVersion` 1, `formats` `{}`, `keyId`, `files` (sorted, SHA-256 each), `maxParallel` 1, `analysisPlanSha256` (from `analysis-plan.md`) and `exclusionPolicy` `plant-failure-v1`. The owner supplies `--release-id` and a `--fields` JSON with `seeds` and `versions.kiroCli`; any other field in it (`model`, `window`, ...) is copied through. A `--fields` file that sets a computed field is refused. `sign` fails with the full list of what is missing, including `refusal-rule.json`, `analysis-plan.md` and a task with no seed |
+| Odd files | `sign` refuses a link, hard link or special file with the same test intake uses (`oddFileReason`, now exported). `sign` lists every file in the folder, so the folder must hold only release files; a draft folder with notes or scripts needs them removed first |
+| Verify | Hashes `manifest.json` as the expected SHA-256 (the signature and the pinned key are the real check), then runs `intakeRelease` on a throwaway copy and deletes it. It does not check the Kiro CLI pin or the Cedar files; `preparePlantSuite` does that at a real run. `--keys FILE` points `pin`, `revoke` and `verify` at another pinned list, which is how the dry run avoids pinning a throwaway key in the repo |
+| Leak | `revoke --key-id`, new `keygen`, `pin`, re-sign; the old release is burned. Written in README and GUIDE |

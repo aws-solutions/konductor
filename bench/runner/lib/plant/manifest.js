@@ -9,8 +9,9 @@ const MANIFEST_FILE = 'manifest.json';
 const SIGNATURE_FILE = 'manifest.json.sig';
 const MANIFEST_VERSION = 1;
 const HEX64 = /^[0-9a-f]{64}$/;
-// shortcut: no release key exists yet, so every real intake is refused; step 8 adds the custodian's key here.
-const PINNED_KEYS = Object.freeze([]);
+// The pinned keys, `[{keyId, publicKey, status}]`, live in pinned-keys.json; `plant-release.js pin` edits that file.
+// shortcut: the list is empty until the custodian pins the release key, so every real intake is refused until then.
+const PINNED_KEYS = Object.freeze(require('./pinned-keys.json'));
 
 class ReleaseRefused extends Error {}
 
