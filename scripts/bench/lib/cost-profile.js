@@ -6,9 +6,15 @@
  *
  * Lookup for a call of `kind` (subject, judge or writer) and `model`: the exact (kind, model) entry, else the
  * (kind, "*") entry, else `estimate_usd_per_call[kind]` as the mean and that times ESTIMATE_P90_FACTOR as the p90.
- * `plan` checks the p90 total against the limits and the ledger reserves each call's p90, so a run is refused before
+ * `plan` checks the p90 total against the limits and the ledger reserves each call's p90 (a judge or checklist call
+ * with token prices below: its ceiling), so a run is refused before
  * it starts rather than stopped in the middle. An entry with `cliReportsLow: true` is a model whose CLI reports less
  * than the call cost; the ledger charges it at least its mean.
+ *
+ * An entry may also carry the model's token prices, `inputUsdPerMTok` and `outputUsdPerMTok` (USD per million tokens,
+ * both or neither). `inputUsdPerMTok` is the highest rate an input token is billed at (the cache-write rate where one
+ * applies), so an input estimate priced with it is not low. A call with a ceiling on its reply (opencode.js) reserves
+ * its token estimate at these prices; a model with no prices is reserved at its p90 instead. `tokenPrices` reads them.
  *
  * A profile that is broken is an error that names the file, never a silent fallback to the estimates.
  */
@@ -38,12 +44,14 @@ const COST_SOURCES = Object.freeze({
 });
 const STAT_FIELDS = ['mean', 'median', 'p90'];
 const COUNT_FIELDS = ['calls', 'failed'];
+const PRICE_FIELDS = ['inputUsdPerMTok', 'outputUsdPerMTok'];
 const ENTRY_FIELDS = [
   'kind',
   'model',
   ...COUNT_FIELDS,
   ...STAT_FIELDS,
   'cliReportsLow',
+  ...PRICE_FIELDS,
 ];
 /** The only currency the amounts may be in. */
 const UNIT = 'usd';
@@ -91,6 +99,20 @@ function entryProblems(entry, index, seen) {
       problems.push(`${where}.${field}: must be a whole number, 0 or more`);
   if ('cliReportsLow' in entry && typeof entry.cliReportsLow !== 'boolean')
     problems.push(`${where}.cliReportsLow: must be true or false`);
+  for (const field of PRICE_FIELDS)
+    if (field in entry && !(isAmount(entry[field]) && entry[field] > 0))
+      problems.push(`${where}.${field}: must be a finite number above 0`);
+  if (
+    PRICE_FIELDS.some((field) => field in entry) &&
+    !PRICE_FIELDS.every((field) => field in entry)
+  )
+    problems.push(
+      `${where}: ${PRICE_FIELDS.join(' and ')} go together; set both or neither`,
+    );
+  if (entry.model === ANY_MODEL && PRICE_FIELDS.some((field) => field in entry))
+    problems.push(
+      `${where}: token prices are not allowed on a "${ANY_MODEL}" entry; they belong to one model`,
+    );
   // A "*" entry prices every model of its kind that has no entry, so a floor there would charge them all.
   if (entry.model === ANY_MODEL && entry.cliReportsLow === true)
     problems.push(
@@ -196,6 +218,26 @@ function costFor(profile, kind, model, estimates) {
   };
 }
 
+/**
+ * The token prices of a model, { inputUsdPerMTok, outputUsdPerMTok }, from its entry for `kind`, else from any other
+ * entry of the same model (a checklist writer is priced like the judge of the same model). null when the profile has
+ * no prices for the model: the caller then has no per-token ceiling to reserve.
+ */
+function tokenPrices(profile, kind, model) {
+  const priced = (entry) =>
+    entry.model === model && PRICE_FIELDS.every((field) => field in entry);
+  const entry =
+    profile.entries.find(
+      (candidate) => candidate.kind === kind && priced(candidate),
+    ) || profile.entries.find(priced);
+  return entry
+    ? {
+        inputUsdPerMTok: entry.inputUsdPerMTok,
+        outputUsdPerMTok: entry.outputUsdPerMTok,
+      }
+    : null;
+}
+
 /** costFor with the settings' estimates as the fallback, against the committed profile unless `profile` is given. */
 const callCost = (config, kind, model, profile = defaultProfile()) =>
   costFor(profile, kind, model, config.estimate_usd_per_call);
@@ -213,4 +255,5 @@ module.exports = {
   defaultProfile,
   costFor,
   callCost,
+  tokenPrices,
 };
