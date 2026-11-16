@@ -72,9 +72,6 @@ not per individual commit.
   `skills/test-coverage-analysis/references/` (SKILL.md 69.3 KB to 30.3 KB). It also gains a
   scope section and a shorter Coverage-mode path for one module or one PR, and drops the
   compatibility and roadmap lists.
-- `dynamodb-validation` moved its validation framework, finding templates, and report template into
-  `skills/dynamodb-validation/references/` (SKILL.md 64.7 KB to 13.5 KB). It also gains a scope
-  section and a shorter path for a single table with no GSIs that still runs the Quality Gate.
 - `cypress-test-implementation` moved its task breakdown, Cypress patterns, and report templates into
   `skills/cypress-test-implementation/references/` (SKILL.md 53.9 KB to 19.4 KB). It also gains a
   scope section and a short path that writes the specs directly for one or two flows, and its

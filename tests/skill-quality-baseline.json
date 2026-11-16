@@ -8,6 +8,10 @@
       "bytes": 75539,
       "lines": 2195
     },
+    "dynamodb-validation": {
+      "bytes": 64678,
+      "lines": 1903
+    },
     "e2e-test-strategy": {
       "bytes": 46224,
       "lines": 1595
