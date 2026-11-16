@@ -167,7 +167,7 @@ test('every shared conformance vector gets the same answer through the shim from
   assert.ok(final.lines.gateway > VECTORS.length);
 });
 
-test('an engine v3 handshake through the shim: server/discover gets -32601, then initialize at 2025-11-25 and a call work', async (t) => {
+test('an engine v3 handshake through the shim: server/discover gets -32601, then initialize at 2025-11-25 on a new server process and a call work', async (t) => {
   assert.deepEqual([V3_DISCOVER.method, V3_INIT.method, V3_INIT.params.protocolVersion, V3_INITIALIZED.method, V3_LIST.method], ['server/discover', 'initialize', '2025-11-25', 'notifications/initialized', 'tools/list']);
   const dir = tmpDir();
   const task = path.join(dir, 'task.json');
@@ -176,9 +176,13 @@ test('an engine v3 handshake through the shim: server/discover gets -32601, then
   const gw = await startGateway({ taskFile: task, logDir: dir, socketPath: sockPath });
   t.after(() => gw.kill());
   gw.peer(ownPidns());
+  // A real v3 run probes with server/discover on one server process, then starts a new one for initialize.
+  const probe = startShim(t, sockPath);
+  probe.send(V3_DISCOVER);
+  assert.deepEqual(JSON.parse(await probe.out.next()), { jsonrpc: '2.0', id: 'server-discover-probe-1', error: { code: -32601, message: 'method not found' } });
+  probe.child.stdin.end();
+  await new Promise((r) => probe.child.once('exit', r));
   const shim = startShim(t, sockPath);
-  shim.send(V3_DISCOVER);
-  assert.deepEqual(JSON.parse(await shim.out.next()), { jsonrpc: '2.0', id: 'server-discover-probe-1', error: { code: -32601, message: 'method not found' } });
   shim.send(V3_INIT);
   assert.equal(JSON.parse(await shim.out.next()).result.protocolVersion, '2025-11-25');
   shim.send(V3_INITIALIZED);
@@ -191,7 +195,8 @@ test('an engine v3 handshake through the shim: server/discover gets -32601, then
   const { code } = await gw.stop();
   assert.equal(code, 0);
   const log = fs.readFileSync(path.join(dir, 'gateway.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
-  assert.deepEqual(log.filter((l) => l.type === 'mcp_other').map((l) => [l.method, l.kind]), [['server/discover', 'request']]);
+  assert.deepEqual(log.filter((l) => l.type === 'mcp_other').map((l) => [l.conn, l.method, l.kind]), [[1, 'server/discover', 'request']]);
+  assert.equal(log.find((l) => l.type === 'mcp' && l.method === 'initialize').conn, 2);
   assert.deepEqual(checkGatewayLog(log), []);
 });
 
