@@ -3,6 +3,8 @@
 import hashlib
 import json
 
+from sim.meta import TOOLS
+
 from .schema import SchemaError, check
 
 EMPTY = {"type": "object", "properties": {}, "additionalProperties": False}
@@ -23,6 +25,9 @@ TOOL_SCHEMAS = {
         "properties": {"action": {"enum": ["open_guard"]}, "reason": {"type": "string", "maxLength": 512}},
     },
 }
+
+if tuple(TOOL_SCHEMAS) != TOOLS:
+    raise ImportError(f"tool schemas {tuple(TOOL_SCHEMAS)} differ from the shared metadata tools {TOOLS}")
 
 DESCRIPTIONS = {
     "get_state": "Read the line's sensors and panel.",

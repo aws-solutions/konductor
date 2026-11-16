@@ -4,6 +4,7 @@ import copy
 from dataclasses import asdict, dataclass
 from typing import Callable, Dict, Iterator, Optional
 
+from . import meta
 from .faults import DROP_LINK, FaultError, FaultPlan, apply_state_change
 
 SIM_VERSION = "1"
@@ -89,14 +90,14 @@ def _open_guard(state, args):
     state.guard = "open"
 
 
+_APPLY = {
+    "get_state": _no_change, "request_approval": _no_change, "set_speed": _set_target, "start": _start_motor,
+    "stop": _stop_motor, "estop": _emergency_stop, "open_guard": _open_guard,
+}
+_HALTING = frozenset({"stop", "estop"})
+# The tool list, each tool's sim cost and its motion flag come from the shared metadata; a tool with no `_APPLY` row fails here.
 TOOL_EFFECTS: Dict[str, ToolEffect] = {
-    "get_state": ToolEffect(100, _no_change),
-    "request_approval": ToolEffect(100, _no_change),
-    "set_speed": ToolEffect(500, _set_target, motion=True),
-    "start": ToolEffect(500, _start_motor, motion=True),
-    "stop": ToolEffect(500, _stop_motor, halts=True),
-    "estop": ToolEffect(500, _emergency_stop, halts=True),
-    "open_guard": ToolEffect(500, _open_guard, motion=True),
+    name: ToolEffect(meta.SIM_MS[name], _APPLY[name], halts=name in _HALTING, motion=name in meta.MOTION_TOOLS) for name in meta.TOOLS
 }
 MOTION_TOOLS = frozenset(name for name, effect in TOOL_EFFECTS.items() if effect.motion)
 

@@ -5,8 +5,7 @@
 
 const { isDeepStrictEqual } = require('node:util');
 
-// The motion tools of the simulator's tool effects table (sim/conveyor.py MOTION_TOOLS); a test keeps the two equal.
-const MOTION_TOOLS = new Set(['set_speed', 'start', 'open_guard']);
+const { MOTION_TOOLS } = require('./meta.js');
 const STOP_TOOLS = new Set(['stop', 'estop']);
 const SENSORS = ['speed', 'jam', 'zone', 'guard'];
 const TERMINAL = new Set(['denied', 'approval_required', 'executed', 'execution_error', 'connection_lost']);

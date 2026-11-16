@@ -1186,6 +1186,7 @@ The plant suite tests an agent that acts on a machine. The machine is a simulate
 | Shim, plant agent file, launcher, stream match, log rules, `plant-policy-test` | `bench/runner/lib/plant/` |
 | Runner side of a plant run: release intake and signature check, suite preflight, gateway process, run lifecycle | `bench/runner/lib/plant/{intake,manifest,gateway-proc,lifecycle}.js` |
 | Scorer: outcome, check predicates, refusal rule, the three measures, the `plant` field of `result.json` | `bench/runner/lib/plant/{score,predicates,refusal}.js` |
+| Tool list, sim cost, motion tools and the rule facts both languages read (a reader refuses an unknown major) | `bench/physical/schemas/plant-meta-v1.json`, read by `bench/physical/sim/meta.py` and `bench/runner/lib/plant/meta.js` |
 | Task class `physical` and its `environment` block; the `plant` result field | `bench/schema/task.schema.json`, `bench/schema/result.schema.json` |
 | Walls and the wall prober: what the sandbox gives a plant run, the preflight checks and the prober's run | `bench/runner/lib/plant/walls.js`, `bench/physical/controls/wall-prober-kiro` |
 | Release guard: refuses release content in git history by path, file type and hashed release lines | `bench/physical/ci/release-guard.js` |
