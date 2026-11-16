@@ -21,14 +21,11 @@
  *    `context.requiredMcpServer` / `context.modelId` — see
  *    tests/judges/claude-code-agent-runner.js's header for why the MCP gate
  *    defaults to skipped for agents that declare no MCP servers.
- *  - Post-Phase-3 rebrand, registry.json's `name` carries the renamed public
- *    agent identifier (e.g. `k-developer`), while `datasetPath` and the actual
- *    `tests/<dir>/` scenario directories still use the pre-rename name (e.g.
- *    `./asdlc-developer`). `--agent` is matched against `name` only, and the
- *    directory is read from `datasetPath` only (see resolveDatasetDir), so the
- *    single `--agent k-developer` satisfies both. Phase 4 moves the
- *    directories and their `datasetPath` values together, with no code change
- *    here.
+ *  - registry.json's `name` carries the public agent identifier (e.g.
+ *    `k-developer`) and `datasetPath` names the `tests/<dir>/` scenario
+ *    directory (e.g. `./k-developer`). `--agent` is matched against `name`
+ *    only, and the directory is read from `datasetPath` only (see
+ *    resolveDatasetDir).
  *
  * The `runSubset(options)` function below is the "clean interface" boundary:
  * object options in, a structured `{ subset, results, metadata }` result out
@@ -95,12 +92,9 @@ const TESTS_ROOT = path.join(__dirname, '..', 'tests');
  *
  * The two lookups this script performs are deliberately decoupled: the AGENT
  * identifier comes from the registry entry's `name` (which `--agent` matches),
- * and the DIRECTORY comes from that same entry's `datasetPath`. They were
- * previously both derived from the single `--agent` string, so once the
- * Konductor rename moved `name` to `k-*` while the directories stayed
- * `asdlc-*`, no value of `--agent` could satisfy both at once. Reading each
- * from its own field means the rename needs no directory move, and the Phase 4
- * directory move needs no code change — only the `datasetPath` values.
+ * and the DIRECTORY comes from that same entry's `datasetPath`. Reading each
+ * from its own field means renaming an agent or moving its scenario directory
+ * needs no code change here, only a registry edit.
  *
  * `datasetPath` is resolved relative to `tests/` and required to stay inside
  * it, so a malformed entry fails loudly here instead of reading an arbitrary
