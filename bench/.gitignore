@@ -1,1 +1,16 @@
 results/
+
+# Plant release files (bench/physical/ci/release-guard.js refuses them in history). Each team keeps its own
+# signed release outside the repo; these rules stop one being added by accident.
+# The public stubs, fixtures and schemas use other names; plant-release-guard-ci.test.js fails if a tracked file matches.
+**/policy/plant.cedar
+plant.cedarschema
+sensor-limits.json
+truth-table.json
+refusal-rule.json
+analysis-plan.md
+manifest.json
+manifest.json.sig
+plant-release*/
+# The real-task suite manifest, not a release file.
+!/real/manifest.json

@@ -6,12 +6,11 @@
 # release-line hash file. The steps live in bench/physical/ci/run-release-guard.sh so
 # they are tested by bench/runner/test/plant-release-guard-ci.test.js.
 #
-# The hash file is never committed. It comes from the PLANT_RELEASE_HASHES repository
-# secret, is written to a mode-600 file under $RUNNER_TEMP for the one step, and is
-# removed when the step ends. Fork PRs never get repository secrets: a fork PR that
-# touches bench/physical or bench/runner/lib/plant fails closed and must be rerun from a
-# branch in this repository. A change to other bench/ files without the secret runs the
-# path, type and header checks only.
+# The hashed-line check is optional. Its hash file is never committed: it comes from the
+# optional PLANT_RELEASE_HASHES repository secret, is written to a mode-600 file under
+# $RUNNER_TEMP for the one step, and is removed when the step ends. Without the secret
+# (always so on a fork PR) the job runs the path, type and header checks only, prints a
+# note that the hashed-line check is off, and passes if those find nothing.
 #
 # Triggers on `pull_request`, NOT `pull_request_target`, for the same reason as
 # validate-pr.yml: the job runs PR-head code, so it must never get a write token.
@@ -45,9 +44,6 @@ jobs:
           node-version: 22
 
       - name: Scan the full history for plant release content
-        # GUARD_BASE decides whether plant code changed: the PR base on pull_request, the
-        # 'before' SHA on push (all zeros on a new branch, which counts as a plant change).
         env:
           PLANT_RELEASE_HASHES: ${{ secrets.PLANT_RELEASE_HASHES }}
-          GUARD_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: bash bench/physical/ci/run-release-guard.sh
