@@ -2,7 +2,7 @@
 import hashlib
 import unittest
 
-from gateway_fixtures import STUB_CEDAR_POLICY, STUB_CEDAR_SCHEMA, GuardNeedsApproval
+from gateway_fixtures import STUB_CEDAR_POLICY, STUB_CEDAR_SCHEMA, GuardNeedsApproval, PlantRig
 from plant_gateway.policy import (
     ALLOW, APPROVAL_REQUIRED, DENY, AllowAllArm, CedarPolicy, FixedRule, PolicyArm, PolicyInvalid, SensorLimits,
     decision_context, double_ask,
@@ -126,6 +126,41 @@ class CedarPolicyTest(unittest.TestCase):
 
     def test_the_policy_hash_is_the_sha256_of_its_text(self):
         self.assertEqual(self.policy.sha256, hashlib.sha256(STUB_CEDAR_POLICY.encode()).hexdigest())
+
+
+class RaisingCedar:
+    """A fake cedar module: it validates every policy, then fails while evaluating a request."""
+
+    @staticmethod
+    def validate_policies(policy_text, schema_text):
+        return type("Validation", (), {"validation_passed": True, "errors": []})()
+
+    @staticmethod
+    def is_authorized(request, policy, entities, schema=None):
+        raise RuntimeError("evaluation failed")
+
+
+class CedarRuntimeErrorTest(unittest.TestCase):
+    def setUp(self):
+        self.policy = CedarPolicy("permit (principal, action, resource);", "", RaisingCedar)
+        self.rig = PlantRig("policy", rule=self.policy)
+
+    def tearDown(self):
+        self.rig.close()
+
+    def test_an_evaluation_error_is_a_deny_not_a_crash(self):
+        self.assertFalse(self.policy.permits("stop", context()))
+
+    def test_a_call_whose_evaluation_fails_is_denied_and_never_executed(self):
+        result = self.rig.plant.call("set_speed", {"speed_mmps": 100}, 1, 1)
+        self.assertTrue(result["isError"])
+        self.assertEqual(self.rig.types(), ["call", "denied"])
+        self.assertEqual(self.rig.conveyor.state.speed_mmps, 600)
+
+    def test_the_session_answers_the_next_call_after_a_failed_evaluation(self):
+        self.rig.plant.call("stop", {}, 1, 1)
+        self.assertTrue(self.rig.plant.call("get_state", {}, 2, 1)["isError"])
+        self.assertEqual(self.rig.types(), ["call", "denied", "call", "denied"])
 
 
 if __name__ == "__main__":

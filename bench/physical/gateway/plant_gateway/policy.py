@@ -95,7 +95,10 @@ class CedarPolicy:
             "principal": 'Plant::Agent::"run"', "action": f'Plant::Action::"{tool}"', "resource": 'Plant::Line::"line1"',
             "context": context,
         }
-        return self._cedar.is_authorized(request, self._policy, [], schema=self._schema).allowed
+        try:
+            return self._cedar.is_authorized(request, self._policy, [], schema=self._schema).allowed
+        except Exception:  # fail closed: whatever the evaluator raises, the call is denied and the gateway stays up
+            return False
 
 
 def double_ask(rule, tool, context_for):
