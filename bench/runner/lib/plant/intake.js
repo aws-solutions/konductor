@@ -20,6 +20,8 @@ const { AGENT_ENGINES } = require('../harness/runtime.js');
 const POLICY_FILES = ['policy/plant.cedar', 'policy/plant.cedarschema', 'sensor-limits.json'];
 const REFUSAL_RULE = 'refusal-rule.json';
 const SOCKET_PATH_MAX = 107;
+// What a toolbox shim on PATH (for example ~/.toolbox/bin/kiro-cli) resolves to.
+const TOOLBOX_EXEC = 'toolbox-exec';
 // The socket root is `<parent>/s-XXXXXX` and the socket `gw.sock` inside it.
 const SOCKET_SUFFIX_BYTES = '/s-XXXXXX/gw.sock'.length;
 
@@ -130,6 +132,21 @@ function checkSuiteShape({ arms, tasks, parallel }) {
 }
 
 /**
+ * Throws ReleaseRefused when `kiroBin` is a launcher rather than the Kiro CLI binary: a toolbox shim (a link to
+ * `toolbox-exec`, the same file for every toolbox tool) or the `sandbox/kiro-cli` wrapper script. Hashing either would
+ * pin the launcher, not the build that runs.
+ */
+function refuseLauncher(kiroBin) {
+  const real = fs.realpathSync(kiroBin);
+  const fix = 'pass the real binary with --kiro-bin, for example ~/.toolbox/tools/kiro-cli/<version>/kiro-cli';
+  if (path.basename(real) === TOOLBOX_EXEC) throw new ReleaseRefused(`${kiroBin} is a toolbox shim (it resolves to ${real}), not the Kiro CLI binary; ${fix}`);
+  const sibling = path.join(path.dirname(real), '..', 'kiro-cli');
+  if (path.basename(path.dirname(real)) === 'sandbox' && fs.existsSync(sibling)) {
+    throw new ReleaseRefused(`${kiroBin} is the sandbox wrapper ${real}, not the Kiro CLI binary; pass --kiro-bin ${fs.realpathSync(sibling)}`);
+  }
+}
+
+/**
  * Throws ReleaseRefused unless the Kiro CLI at `kiroBin` has the version and SHA-256 the manifest pins (NFR-11), and
  * `agentEngine` is the engine the release pins. A release pins one exact build, never a range.
  */
@@ -138,10 +155,24 @@ function checkKiroPin(kiroBin, manifest, versionOfBin, agentEngine) {
   if (!pin?.version || !pin?.sha256 || !AGENT_ENGINES.includes(pin?.engine)) {
     throw new ReleaseRefused(`manifest versions.kiroCli must name the Kiro CLI version, SHA-256 and engine (${AGENT_ENGINES.join(' or ')})`);
   }
+  refuseLauncher(kiroBin);
   const sha = sha256File(fs.realpathSync(kiroBin));
   const version = versionOfBin(kiroBin);
   if (sha !== pin.sha256 || version !== pin.version) throw new ReleaseRefused(`Kiro CLI ${kiroBin} (${version}, ${sha}) is not the pinned ${pin.version} (${pin.sha256})`);
   if (agentEngine !== pin.engine) throw new ReleaseRefused(`the release pins agent engine ${pin.engine}; --agent-engine ${agentEngine} is refused`);
+}
+
+/**
+ * True when the suite is counted. Without --kiro-bin it always is, and the Kiro CLI found on PATH must pass the pin.
+ * With --kiro-bin it is counted only when that binary reports the pinned version (then it must pass the whole pin, so
+ * a wrong build of that version is refused, not run as a control); any other --kiro-bin is a control.
+ */
+function isCountedSuite(opts, kiroBin, manifest, versionOfBin) {
+  if (!opts['kiro-bin']) return true;
+  const pinned = manifest.versions?.kiroCli?.version;
+  if (!pinned) return false;
+  refuseLauncher(kiroBin);
+  return versionOfBin(kiroBin) === pinned;
 }
 
 /** Throws ReleaseRefused when the out dir shares a filesystem with scratch or home (NFR-12, counted suites). */
@@ -186,7 +217,8 @@ function gatewayFilesOf(release) {
  * `opts` holds the run flags (--plant-release, --plant-release-sha256, --plant-python, --kiro-bin); `arms`, `tasks` and
  * `parallel` are the resolved run; `outDir` the run's out dir; `ctx` the run context (scratchDir, kiroBin, config,
  * isolation); `repo` the repository root. A suite with --kiro-bin is a control suite: no Kiro CLI pin, no Cedar files and
- * no out-dir filesystem check, and its trials are never comparable. Seams: `keys` (pinned keys), `privateParent` (where
+ * no out-dir filesystem check, and its trials are never comparable, unless that binary reports the pinned version
+ * (see isCountedSuite). Seams: `keys` (pinned keys), `privateParent` (where
  * the runner-private dir is made), `home`, `versionOfBin`, `deadlines`, `makeToken` and `readListeners`.
  */
 function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, keys = PINNED_KEYS, privateParent = os.tmpdir(), home = os.homedir(), versionOfBin = versionOf, deadlines = DEADLINES, makeToken, readListeners }) {
@@ -206,7 +238,7 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
     fs.mkdirSync(socketParent, { mode: 0o700 });
     if (Buffer.byteLength(socketParent) + SOCKET_SUFFIX_BYTES > SOCKET_PATH_MAX) throw new ReleaseRefused(`socket paths under ${socketParent} would pass ${SOCKET_PATH_MAX} bytes`);
     release = intakeRelease({ dir, expectedSha256, privateRoot, keys });
-    const counted = !opts['kiro-bin'];
+    const counted = isCountedSuite(opts, ctx.kiroBin, release.manifest, versionOfBin);
     if (counted) {
       checkKiroPin(ctx.kiroBin, release.manifest, versionOfBin, ctx.config.agentEngine);
       const missing = POLICY_FILES.filter((rel) => !release.sha256Of(rel));
@@ -238,4 +270,4 @@ function removePrivateRoot(privateRoot, releaseRoot) {
   fs.rmSync(privateRoot, { recursive: true, force: true });
 }
 
-module.exports = { oddFileReason, intakeRelease, discardRelease, preparePlantSuite, refuseInside, setModes, ReleaseRefused };
+module.exports = { oddFileReason, refuseLauncher, intakeRelease, discardRelease, preparePlantSuite, refuseInside, setModes, ReleaseRefused };

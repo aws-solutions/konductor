@@ -18,7 +18,7 @@ const { validateResult } = require('../lib/result.js');
 const { resolveArm, parseArmSpec } = require('../lib/arms.js');
 const { classifyPlantStartup } = require('../lib/launch-failure.js');
 const { checkManifest, ReleaseRefused } = require('../lib/plant/manifest.js');
-const { intakeRelease, preparePlantSuite } = require('../lib/plant/intake.js');
+const { intakeRelease, preparePlantSuite, refuseLauncher } = require('../lib/plant/intake.js');
 const { GatewayProcess, gatewayCommand, runningHashProblems } = require('../lib/plant/gateway-proc.js');
 const { runPlantCell, sandboxPidns, PlantSuiteStop, PlantRun } = require('../lib/plant/lifecycle.js');
 const { rig, suiteOf, plantRun, readJsonl, FAST, CONFIG } = require('./plant-run-rig.js');
@@ -175,6 +175,36 @@ test('a counted plant suite needs the pinned Kiro CLI, the Cedar files and an ou
     try {
       assert.throws(counted(cedar), /same filesystem as scratch/);
     } finally { cedar.cleanup(); }
+  } finally { r.cleanup(); }
+});
+
+test('the pin refuses a toolbox shim and the sandbox wrapper, naming the real binary to pass with --kiro-bin', () => {
+  const r = rig();
+  try {
+    const exec = path.join(r.root, 'toolbox', '1.0', 'toolbox-exec');
+    fs.mkdirSync(path.dirname(exec), { recursive: true });
+    fs.writeFileSync(exec, '#!/bin/sh\n', { mode: 0o755 });
+    const shim = path.join(r.root, 'tbin', 'kiro-cli');
+    fs.mkdirSync(path.dirname(shim));
+    fs.symlinkSync(exec, shim);
+    assert.throws(() => refuseLauncher(shim), /toolbox shim .*toolbox-exec.*--kiro-bin/);
+    const real = path.join(r.root, 'tools', 'kiro-cli', '3.3.0', 'kiro-cli');
+    const wrapper = path.join(path.dirname(real), 'sandbox', 'kiro-cli');
+    fs.mkdirSync(path.dirname(wrapper), { recursive: true });
+    fs.writeFileSync(real, 'binary', { mode: 0o755 });
+    fs.writeFileSync(wrapper, '#!/bin/bash\n', { mode: 0o755 });
+    assert.throws(() => refuseLauncher(wrapper), new RegExp(`sandbox wrapper .*--kiro-bin ${fs.realpathSync(real)}`));
+    refuseLauncher(real);
+    const sha256 = crypto.createHash('sha256').update('binary').digest('hex');
+    const pinned = rig({ manifest: { versions: { kiroCli: { version: 'kiro-cli 3.3.0', sha256, engine: 'v3' } } } });
+    try {
+      const v3 = { scratchDir: pinned.scratch, config: { ...CONFIG, agentEngine: 'v3' }, isolation: { mode: 'none' } };
+      const prep = (kiroBin, versionOfBin) => () => suiteOf(pinned, { opts: { 'kiro-bin': kiroBin }, ctx: { ...v3, kiroBin }, versionOfBin });
+      assert.throws(prep(shim, () => 'kiro-cli 3.3.0'), /toolbox shim/);
+      // --kiro-bin naming the pinned version makes the suite counted, so the next refusal is the counted one.
+      assert.throws(prep(real, () => 'kiro-cli 3.3.0'), /needs the Cedar files/);
+      assert.equal(prep(real, () => 'kiro-cli careful-operator')().counted, false);
+    } finally { pinned.cleanup(); }
   } finally { r.cleanup(); }
 });
 
