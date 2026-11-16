@@ -314,7 +314,9 @@ konductor synth: /path/to/agents/broken.agent-spec.json: invalid JSON: key must 
 - On Kiro CLI v2 and v3, synth appends a `## Your skills` block to each agent's `prompt`. It lists
   the agent's declared skills with a rule for when to load one. Skills whose description starts
   "MUST USE for every" (today only `constraints`) are left out, since they claim every task.
-  Claude Code output is unchanged.
+- On Claude Code, each agent file ends with a `## Skills you can load` block instead. It lists the
+  agent's declared skills that are not in its `clientConfig.claudeCli.skills` preload, to be
+  loaded with the `Skill` tool.
 
 ---
 
