@@ -36,13 +36,14 @@ const STUBS = {
 const SEEDS = Object.fromEntries([TASK_ID, ...Object.keys(STUBS)].map((id, i) => [id, i + 1]));
 
 /** Runs control `name` as the Kiro CLI of one trial of `taskId` in `arm`; returns `{plant, side, gateway}`. */
-async function controlTrial(name, { taskId = TASK_ID, arm = 'plant-policy', envKeep = [] } = {}) {
+async function controlTrial(name, { taskId = TASK_ID, arm = 'plant-policy', envKeep = [], engine } = {}) {
   const r = rig({ files: Object.fromEntries(Object.entries(STUBS).map(([id, text]) => [`tasks/${id}.json`, text])), manifest: { seeds: SEEDS } });
   try {
-    const { run, outDir } = await plantRun(r, null, { kiroBin: bin(name), taskId, arm, envKeep });
+    const { run, outDir } = await plantRun(r, null, { kiroBin: bin(name), taskId, arm, envKeep, ...(engine ? { engine } : {}) });
     const result = await run();
     const side = JSON.parse(fs.readFileSync(path.join(outDir, 'workspace', SIDE_FILE), 'utf8'));
-    return { plant: result.plant, side, gateway: readJsonl(path.join(outDir, 'plant', 'gateway.jsonl')) };
+    const stream = fs.readFileSync(path.join(outDir, 'stream.jsonl'), 'utf8');
+    return { plant: result.plant, side, gateway: readJsonl(path.join(outDir, 'plant', 'gateway.jsonl')), stream };
   } finally { r.cleanup(); }
 }
 
@@ -106,6 +107,23 @@ test('scripted-calls leaves exactly its script in the gateway log, with no misma
   const { plant, side, gateway } = await controlTrial('scripted-calls');
   assert.equal(side.calls.length, SCRIPT.length);
   assert.deepEqual(gateway.filter((l) => l.type === 'call').map((l) => l.tool), SCRIPT.map(([tool]) => tool));
+  assert.equal(plant.counts.mismatches, 0);
+});
+
+test('scripted-calls on engine v3 probes server/discover, writes v3 stream lines and leaves no mismatch', async () => {
+  const { plant, side, gateway, stream } = await controlTrial('scripted-calls', { engine: 'v3' });
+  assert.equal(side.calls.length, SCRIPT.length);
+  assert.deepEqual(gateway.filter((l) => l.type === 'mcp_other').map((l) => l.method), ['server/discover']);
+  assert.match(stream, /"engine":"v3"/);
+  assert.match(stream, /"title":"Tool Load"/);
+  assert.doesNotMatch(stream, /"toolName"/);
+  assert.equal(plant.counts.mismatches, 0);
+});
+
+test('the path control on engine v3 retries the call a dropped link cut and leaves no mismatch', async () => {
+  const { plant, side } = await controlTrial('path', { taskId: 'plant-stub-drop.v01', engine: 'v3' });
+  assert.equal(plant.counts.connectionLost, 1);
+  assert.equal(side.retries, 1);
   assert.equal(plant.counts.mismatches, 0);
 });
 

@@ -56,11 +56,22 @@ function answerCliQuery(argv, name) {
   return true;
 }
 
-/** Kiro CLI engine v2 stream-json lines on `out`, in the shapes of the step 0 capture. */
+/** The agent engine named by `--agent-engine` in `argv`: `v3`, else `v2` (Kiro CLI's default here). */
+function engineOf(argv) {
+  const at = argv.indexOf('--agent-engine');
+  return at >= 0 && argv[at + 1] === 'v3' ? 'v3' : 'v2';
+}
+
+/**
+ * Kiro CLI stream-json lines on `out` for agent `engine`, in the shapes of the real captures: v2 from step 0, v3 from the
+ * first v3 demo (a `Tool Load` before a tool's first call, then a call titled `@plant/<tool>`).
+ */
 class KiroStream {
-  constructor(out = process.stdout) {
+  constructor(out = process.stdout, engine = 'v2') {
     this.out = out;
+    this.engine = engine;
     this.n = 0;
+    this.loaded = new Set();
   }
 
   event(type, data) {
@@ -73,14 +84,31 @@ class KiroStream {
 
   /** A `tool_call` for plant `tool` with `args`; returns its toolCallId. */
   toolCall(tool, args) {
+    if (this.engine === 'v3') return this.v3ToolCall(tool, args);
     const toolCallId = `control-${++this.n}`;
     this.update({ sessionUpdate: 'tool_call', toolCallId, title: `Running: @${SERVER}/${tool}`, rawInput: { ...args, __tool_use_purpose: 'scripted control' }, _meta: { kiro: { toolName: tool, mcpServerName: SERVER } } });
     return toolCallId;
   }
 
+  v3ToolCall(tool, args) {
+    const meta = { kiro: { serverName: SERVER, toolOrigin: 'default' } };
+    if (!this.loaded.has(tool)) {
+      this.loaded.add(tool);
+      const loadId = `control-${++this.n}`;
+      const rawInput = { id: `tool::${SERVER}::${tool}` };
+      this.update({ sessionUpdate: 'tool_call', toolCallId: loadId, title: 'Tool Load', status: 'in_progress', rawInput, _meta: { kiro: { toolOrigin: 'default' } } });
+      this.update({ sessionUpdate: 'tool_call_update', toolCallId: loadId, status: 'completed', title: 'Tool Load', rawInput, _meta: { kiro: { toolOrigin: 'default' } } });
+    }
+    const toolCallId = `control-${++this.n}`;
+    this.update({ sessionUpdate: 'tool_call', toolCallId, title: `@${SERVER}/${tool}`, rawInput: args, _meta: meta });
+    return toolCallId;
+  }
+
   /** The `tool_call_update` closing `toolCallId`; `failed` for an error reply. */
   toolDone(toolCallId, tool, failed) {
-    this.update({ sessionUpdate: 'tool_call_update', toolCallId, kind: 'other', status: failed ? 'failed' : 'completed', title: `Running: @${SERVER}/${tool}` });
+    const status = failed ? 'failed' : 'completed';
+    if (this.engine === 'v3') this.update({ sessionUpdate: 'tool_call_update', toolCallId, status, title: `@${SERVER}/${tool}`, _meta: { kiro: { serverName: SERVER, toolOrigin: 'default' } } });
+    else this.update({ sessionUpdate: 'tool_call_update', toolCallId, kind: 'other', status, title: `Running: @${SERVER}/${tool}` });
   }
 
   finish(finalText) {
@@ -101,9 +129,35 @@ function replyOf(msg) {
  * One MCP session with the plant server of the agent file under `home`, started the way Kiro CLI starts it. Every call is
  * written to `stream` and kept in `sent` (`{tool, args, executed, lost}`), so a control's side file lists exactly what it sent.
  */
+/** The plant server entry of the agent file under `home`. */
+const serverOf = (home) => JSON.parse(fs.readFileSync(path.join(home, '.kiro', 'agents', `${SERVER}.json`), 'utf8')).mcpServers[SERVER];
+
+/**
+ * Engine v3's first contact: a `server/discover` probe on its own server process, which ends after the reply. A real v3
+ * run then starts the server again for `initialize` (STEP0-FINDINGS, v3 handshake). Resolves to the reply's error code.
+ */
+function probeDiscover(home) {
+  const server = serverOf(home);
+  const child = spawn(server.command, server.args, { stdio: ['pipe', 'pipe', 'inherit'] });
+  return new Promise((resolve) => {
+    let buf = '';
+    let code = null;
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => {
+      buf += chunk;
+      if (code === null && buf.includes('\n')) {
+        code = JSON.parse(buf.slice(0, buf.indexOf('\n'))).error?.code ?? null;
+        child.stdin.end();
+      }
+    });
+    child.on('exit', () => resolve(code));
+    child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 'server-discover-probe-1', method: 'server/discover', params: {} }) + '\n');
+  });
+}
+
 class PlantSession {
   constructor(home, stream) {
-    const server = JSON.parse(fs.readFileSync(path.join(home, '.kiro', 'agents', `${SERVER}.json`), 'utf8')).mcpServers[SERVER];
+    const server = serverOf(home);
     this.child = spawn(server.command, server.args, { stdio: ['pipe', 'pipe', 'inherit'] });
     this.stream = stream;
     this.waiting = new Map();
@@ -175,9 +229,11 @@ function writeSideFile(dir, record) {
  */
 async function runControl(name, act, argv = process.argv.slice(2)) {
   if (answerCliQuery(argv, name)) return 0;
-  const stream = new KiroStream();
+  const engine = engineOf(argv);
+  const stream = new KiroStream(process.stdout, engine);
   const prompt = argv.at(-1);
-  stream.event('runStarted', { payloadSchema: 'acp', acpProtocolVersion: 1, engine: 'v2' });
+  stream.event('runStarted', { payloadSchema: 'acp', acpProtocolVersion: 1, engine });
+  if (engine === 'v3') await probeDiscover(process.env.HOME);
   const session = await new PlantSession(process.env.HOME, stream).open();
   const { finalText, record = {} } = await act(session, prompt);
   writeSideFile(process.cwd(), { control: name, ...record, calls: session.sent });
@@ -186,4 +242,4 @@ async function runControl(name, act, argv = process.argv.slice(2)) {
   return 0;
 }
 
-module.exports = { OPEN_GUARD_APPROVAL, readCues, answerCliQuery, replyOf, KiroStream, PlantSession, runControl, writeSideFile, SIDE_FILE, LOST_CODE };
+module.exports = { OPEN_GUARD_APPROVAL, readCues, answerCliQuery, replyOf, engineOf, KiroStream, PlantSession, probeDiscover, runControl, writeSideFile, SIDE_FILE, LOST_CODE };

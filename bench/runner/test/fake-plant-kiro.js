@@ -3,7 +3,8 @@
 
 // Builds a stand-in `kiro-cli` for plant runs (a node script), in the pattern of fake-kiro.js. It reads the plant agent
 // file, starts the shim it names, does the MCP handshake and the calls in fake-plant-kiro.config.json, and writes a
-// stream in the engine v2 shape. Test data only.
+// stream in the shape of the engine named by --agent-engine (v2 by default; v3 also probes server/discover on its own
+// shim first, as a real v3 run does). Test data only.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -18,7 +19,17 @@ if (args[0] === '--version') { console.log('kiro-cli 9.9.9'); process.exit(0); }
 const probe = (name, value) => fs.writeFileSync(path.join(cfg.dir, name), JSON.stringify(value));
 probe('started.json', { pid: process.pid, args });
 const ev = (type, data) => console.log(JSON.stringify({ type, data }));
-const streamCall = (tool, input, i) => ev('sessionUpdate', { sessionId: 's1', update: { sessionUpdate: 'tool_call', toolCallId: 'fake-' + i, title: 'Running: @plant/' + tool, rawInput: input, _meta: { kiro: { toolName: tool, mcpServerName: 'plant' } } } });
+const engine = args.includes('--agent-engine') && args[args.indexOf('--agent-engine') + 1] === 'v3' ? 'v3' : 'v2';
+const update = (u) => ev('sessionUpdate', { sessionId: 's1', update: { sessionUpdate: 'tool_call', ...u } });
+// v3: a Tool Load first (not a call), then '@plant/<tool>'; a deferred call is wrapped as Tool Call, an unreadable one has no '@plant/' title.
+function streamCall(call, i) {
+  const { tool, args: input } = call;
+  if (engine === 'v2') return update({ toolCallId: 'fake-' + i, title: 'Running: @plant/' + tool, rawInput: input, _meta: { kiro: { toolName: tool, mcpServerName: 'plant' } } });
+  update({ toolCallId: 'fake-load-' + i, title: 'Tool Load', status: 'in_progress', rawInput: { id: 'tool::plant::' + tool }, _meta: { kiro: { toolOrigin: 'default' } } });
+  const meta = { kiro: { serverName: 'plant', toolOrigin: 'default' } };
+  if (call.deferred) return update({ toolCallId: 'fake-' + i, title: 'Tool Call', rawInput: { tool_id: 'tool::plant::' + tool, arguments: input }, _meta: meta });
+  update({ toolCallId: 'fake-' + i, title: call.unreadable ? 'Plant call' : '@plant/' + tool, rawInput: input, _meta: meta });
+}
 
 // Every process whose command line runs the gateway: its argv and env, as /proc shows them to the host.
 function gatewayProcs() {
@@ -46,27 +57,41 @@ function filesUnder(dir, out = {}) {
 if (cfg.exit3) { ev('runError', { stage: 'init', message: 'MCP server plant failed to start' }); process.exit(3); }
 const agent = JSON.parse(fs.readFileSync(path.join(process.env.HOME, '.kiro/agents/plant.json'), 'utf8'));
 const server = agent.mcpServers.plant;
-const shim = spawn(server.command, server.args, { stdio: ['pipe', 'pipe', 'inherit'] });
+// The v3 probe: server/discover on a shim of its own, which ends after the -32601.
+const discover = () => new Promise((resolve) => {
+  const probeShim = spawn(server.command, server.args, { stdio: ['pipe', 'pipe', 'inherit'] });
+  let reply = '';
+  probeShim.stdout.setEncoding('utf8');
+  probeShim.stdout.on('data', (chunk) => { reply += chunk; if (reply.includes('\n')) probeShim.stdin.end(); });
+  probeShim.on('exit', () => { probe('discover.json', JSON.parse(reply.split('\n')[0])); resolve(); });
+  probeShim.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 'server-discover-probe-1', method: 'server/discover', params: {} }) + '\n');
+});
+let shim;
 let buf = '';
 const waiting = new Map();
-shim.stdout.setEncoding('utf8');
-shim.stdout.on('data', (chunk) => {
-  buf += chunk;
-  let at;
-  while ((at = buf.indexOf('\n')) >= 0) {
-    const msg = JSON.parse(buf.slice(0, at));
-    buf = buf.slice(at + 1);
-    if (waiting.has(msg.id)) { waiting.get(msg.id)(msg); waiting.delete(msg.id); }
-  }
-});
+function startShim() {
+  shim = spawn(server.command, server.args, { stdio: ['pipe', 'pipe', 'inherit'] });
+  shim.stdout.setEncoding('utf8');
+  shim.stdout.on('data', (chunk) => {
+    buf += chunk;
+    let at;
+    while ((at = buf.indexOf('\n')) >= 0) {
+      const msg = JSON.parse(buf.slice(0, at));
+      buf = buf.slice(at + 1);
+      if (waiting.has(msg.id)) { waiting.get(msg.id)(msg); waiting.delete(msg.id); }
+    }
+  });
+}
 let nextId = 0;
 const request = (method, params) => new Promise((resolve) => { const id = nextId++; waiting.set(id, resolve); shim.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n'); });
 
 (async () => {
+  if (engine === 'v3') await discover();
+  startShim();
   await request('initialize', { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'fake-plant-kiro', version: '0' } });
   shim.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
   await request('tools/list', {});
-  ev('runStarted', { engine: 'v2' });
+  ev('runStarted', { engine });
   if (cfg.dump) probe('dump.json', { argv: process.argv, env: process.env, procs: gatewayProcs(), files: filesUnder(path.dirname(process.env.HOME)) });
   if (cfg.stopGateway) {
     for (const p of gatewayProcs()) process.kill(p.pid, 'SIGSTOP');
@@ -75,7 +100,7 @@ const request = (method, params) => new Promise((resolve) => { const id = nextId
   }
   let i = 0;
   for (const call of cfg.calls || []) {
-    if (call.inStream !== false) streamCall(call.tool, call.args, i++);
+    if (call.inStream !== false) streamCall(call, i++);
     if (call.inGateway !== false) await request('tools/call', { name: call.tool, arguments: call.args });
   }
   if (cfg.overLongLine) shim.stdin.write('x'.repeat(65 * 1024) + '\n');
@@ -87,7 +112,7 @@ const request = (method, params) => new Promise((resolve) => { const id = nextId
 })();
 `;
 
-/** Writes the fake `kiro-cli` into `binDir` with `config`: `dir` (probe dir), `calls` ([{tool, args, inStream, inGateway}]), `finalText`, `exit3`, `stopGateway`, `dump`, `overLongLine` (sends a line over the gateway's line limit after the calls) and `hold` (never finishes after the calls). Returns its path. */
+/** Writes the fake `kiro-cli` into `binDir` with `config`: `dir` (probe dir), `calls` ([{tool, args, inStream, inGateway, deferred, unreadable}]; the last two shape a v3 stream line), `finalText`, `exit3`, `stopGateway`, `dump`, `overLongLine` (sends a line over the gateway's line limit after the calls) and `hold` (never finishes after the calls). Returns its path. */
 function makeFakePlantKiro(binDir, config) {
   fs.mkdirSync(binDir, { recursive: true });
   const file = path.join(binDir, 'kiro-cli');

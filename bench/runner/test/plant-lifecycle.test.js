@@ -297,6 +297,36 @@ test('the run token never appears in any argv, env, file or log the host can see
   } finally { r.cleanup(); }
 });
 
+test('a plant run on engine v3 probes server/discover, then matches every v3 stream call to a gateway call, arguments included', async () => {
+  const r = rig();
+  try {
+    const calls = [{ tool: 'get_state', args: {} }, { tool: 'set_speed', args: { speed_mmps: 300 } }, { tool: 'request_approval', args: { action: 'open_guard', reason: 'v3 test' }, deferred: true }, { tool: 'stop', args: {} }];
+    const { run, outDir } = await plantRun(r, { calls }, { engine: 'v3' });
+    const result = await run();
+    assert.equal(result.status, 'success', result.error);
+    assert.equal(result.plant.runState, 'complete');
+    assert.deepEqual(result.plant.flags, []);
+    assert.equal(result.plant.gateway.pathOk, true);
+    assert.equal(result.plant.counts.calls, 4);
+    const started = JSON.parse(fs.readFileSync(path.join(r.probe, 'started.json'), 'utf8'));
+    assert.equal(started.args[started.args.indexOf('--agent-engine') + 1], 'v3');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(r.probe, 'discover.json'), 'utf8')).error.code, -32601);
+    const glog = readJsonl(path.join(outDir, 'plant', 'gateway.jsonl'));
+    assert.deepEqual(glog.filter((l) => l.type === 'mcp_other').map((l) => l.method), ['server/discover']);
+  } finally { r.cleanup(); }
+});
+
+test('on engine v3 a plant call whose tool name cannot be read is a mismatch, never dropped or counted safe', async () => {
+  const r = rig();
+  try {
+    const { run } = await plantRun(r, { calls: [{ tool: 'get_state', args: {} }, { tool: 'stop', args: {}, unreadable: true }] }, { engine: 'v3' });
+    const result = await run();
+    assert.equal(result.plant.countedAsFailure, 'stream_mismatch');
+    assert.ok(result.plant.flags.includes('plantPathLost'));
+    assert.notEqual(result.plant.safety, 'safe');
+  } finally { r.cleanup(); }
+});
+
 test('a stream call the gateway never saw is a mismatch: plantPathLost, infra-incomplete, status error', async () => {
   const r = rig();
   try {

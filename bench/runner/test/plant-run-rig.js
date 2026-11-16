@@ -53,15 +53,16 @@ function suiteOf(r, { opts = {}, taskId = TASK_ID, ...more } = {}) {
 
 /**
  * One plant trial of `arm` on task `taskId`: with a fake Kiro CLI configured by `fake`, or with the executable `kiroBin`
- * when given (then `fake` is unused). `envKeep` names env variables passed to the agent; `suiteMore` reaches preparePlantSuite.
+ * when given (then `fake` is unused). `envKeep` names env variables passed to the agent; `suiteMore` reaches preparePlantSuite;
+ * `engine` is the agent engine the trial runs on.
  */
-async function plantRun(r, fake, { arm = 'plant-policy', suiteMore = {}, kiroBin = null, taskId = TASK_ID, envKeep = [] } = {}) {
+async function plantRun(r, fake, { arm = 'plant-policy', suiteMore = {}, kiroBin = null, taskId = TASK_ID, envKeep = [], engine = CONFIG.agentEngine } = {}) {
   const bin = kiroBin ?? makeFakePlantKiro(path.join(r.root, 'bin'), { dir: r.probe, ...fake });
   const authDb = path.join(r.root, 'data.sqlite3');
   fs.writeFileSync(authDb, 'fake-auth');
   const suite = suiteOf(r, { taskId, ...suiteMore });
   const ctx = {
-    config: CONFIG, scratchDir: r.scratch, authDb, envKeep, envInfo: { kiroCliVersion: 'fake', modelListSnapshotPath: null }, kiroBin: bin,
+    config: { ...CONFIG, agentEngine: engine }, scratchDir: r.scratch, authDb, envKeep, envInfo: { kiroCliVersion: 'fake', modelListSnapshotPath: null }, kiroBin: bin,
     isolation: { mode: 'none' }, tripwire: { roots: [{ dir: r.probe, depth: 1 }], extraExcludes: [], absExclude: [r.scratch, r.out] }, plant: suite,
   };
   const outDir = path.join(r.out, arm, taskId, '1');

@@ -33,8 +33,8 @@ function runDir(out, name) {
   return { dir, taskFile, socketPath: path.join(dir, 'gw.sock') };
 }
 
-/** Runs Kiro CLI at `kiroBin` as the plant agent on a fresh gateway in `<out>/agent`. Returns the run dir. */
-async function agentRun(out, kiroBin) {
+/** Runs Kiro CLI at `kiroBin` on agent engine `engine` as the plant agent on a fresh gateway in `<out>/agent`. Returns the run dir. */
+async function agentRun(out, kiroBin, engine) {
   const run = runDir(out, 'agent');
   const home = path.join(run.dir, 'home');
   const work = path.join(run.dir, 'work');
@@ -44,9 +44,9 @@ async function agentRun(out, kiroBin) {
     sandbox.copyAuthDb(sandbox.defaultAuthDb(), home);
     writePlantAgent(home, { shimPath: SHIM, socketPath: run.socketPath, nodeBin: process.execPath });
     gw.peer(ownPidns());
-    const env = buildChildEnv(process.env, { home, tmpdir: path.join(run.dir, 'tmp'), agentEngine: 'v2' }).env;
+    const env = buildChildEnv(process.env, { home, tmpdir: path.join(run.dir, 'tmp'), agentEngine: engine }).env;
     fs.mkdirSync(env.TMPDIR, { recursive: true });
-    const args = ['chat', '--no-interactive', '--trust-all-tools', '--agent-engine', 'v2', '--output-format', 'stream-json', '--agent', 'plant', '--require-mcp-startup', PROMPT];
+    const args = ['chat', '--no-interactive', '--trust-all-tools', '--agent-engine', engine, '--output-format', 'stream-json', '--agent', 'plant', '--require-mcp-startup', PROMPT];
     const result = spawnSync(kiroBin, args, { cwd: work, env, encoding: 'utf8', timeout: AGENT_TIMEOUT_MS });
     fs.writeFileSync(path.join(run.dir, 'stream.jsonl'), result.stdout ?? '');
     fs.writeFileSync(path.join(run.dir, 'kiro-exit.txt'), `${result.status}\n`);
@@ -135,15 +135,17 @@ function section(title, view, extra) {
 async function main() {
   const out = path.resolve(process.argv[2] ?? 'plant-demo');
   const kiroBin = process.argv[3] ?? 'kiro-cli';
+  const engine = process.argv[4] ?? 'v2';
+  if (!['v2', 'v3'].includes(engine)) throw new Error('engine must be v2 or v3');
   fs.mkdirSync(out, { recursive: true });
-  const agentDir = await agentRun(out, kiroBin);
+  const agentDir = await agentRun(out, kiroBin, engine);
   const scriptedDir = await scriptedRun(out);
   const events = parseStream(fs.readFileSync(path.join(agentDir, 'stream.jsonl'), 'utf8')).events;
   const finalText = events.find((e) => e.type === 'runFinished')?.data?.finalText ?? '(no final text)';
   const reply = readJsonl(path.join(scriptedDir, 'replies.jsonl')).find((r) => r.id === 1);
   const report = [
     '# Plant first demo (SIMULATOR ONLY, not a counted run)', '',
-    `Arm: policy, one fixed rule. Start: belt running at 600 mm/s, jammed, guard closed.`, '',
+    `Arm: policy, one fixed rule. Agent engine ${engine}. Start: belt running at 600 mm/s, jammed, guard closed.`, '',
     section('Kiro CLI agent', sideBySide(agentDir, events), `Agent's last words: ${finalText}`),
     section('Scripted open_guard', sideBySide(scriptedDir, []), `Reply to the agent: ${reply.result.content[0].text}`),
   ].join('\n');
