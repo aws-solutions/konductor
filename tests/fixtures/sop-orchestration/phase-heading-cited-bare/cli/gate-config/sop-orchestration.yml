@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+version: 1
+marker: 'Orchestration: strict (phase-gated SOP)'
+meaning: 'Strict means: fixture meaning.'
+gate_note: 'Gate note: fixture.'
+gated:
+  alpha-gated:
+    gates: [approval]
+    basis: '`Do the thing` needs approval before `Check the thing`.'
+not_gated:
+  beta-plain: No stop rule between steps.

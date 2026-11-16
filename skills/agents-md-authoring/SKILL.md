@@ -29,7 +29,8 @@ To make agents load steering/memory/skills, use **instructions** inside AGENTS.m
 
 1. **Kiro:** the agent spec must list `"file://AGENTS.md"` in `clientConfig.kiroCli.resources`.
 2. **Claude Code:** the repo must have a `CLAUDE.md` containing `@AGENTS.md` (import) so Claude Code loads
-   AGENTS.md content. Chain further imports there if needed (e.g., `@.konductor/memory/MEMORY.md`).
+   AGENTS.md content. Chain further imports there if needed. Do not import `.konductor/memory/` files: an
+   import reads through a symlink and skips the `persistent-memory` skill's checked read.
 
 ## Required structure
 
@@ -41,7 +42,7 @@ Author AGENTS.md with these sections, adapted to the project as follows: infer w
 4. **Setup & Commands** — build, test, install commands
 5. **Code Style & Conventions** — formatting, naming, language rules; if a `.kiro/steering/*.md` file already documents these, reference it (`See .kiro/steering/<file>.md`) rather than duplicating its content
 6. **Testing** — how to run tests
-7. **Workflow** — git/PR/CR conventions
+7. **Workflow** — git and pull request conventions
 8. **Domain Knowledge** (optional) — durable project-specific facts
 
 ## Context-loading instruction block (always include)
@@ -55,18 +56,20 @@ agent loads adjacent context via its own file-read tools:
 Before starting work, load available project context:
 
 - You MUST read `.kiro/steering/**/*.md` if present — workspace steering rules.
-- You MUST read `<workspace>/memory/*.md` if present — persistent facts and preferences.
-- Workspace-specific skills may exist at `.kiro/skills/**/ws-*.md` — be aware and load when relevant.
+- You MUST load `<workspace>/memory/MEMORY.md` and `<workspace>/memory/USER.md` only through the `persistent-memory` skill's Reading Memory steps (its `--check-path` check first); never read that directory with a glob or an import. If that skill is not available to you, skip memory and say so; without a shell, load only the paths your brief's `MEMORY:` line reports, as Reading Memory says.
+- Workspace-specific skills may exist at `.kiro/skills/ws-*/SKILL.md` — be aware and load when relevant.
 
 If a path does not exist, skip it silently and continue.
 ```
 
-Replace `<workspace>` with the project root (e.g., `.konductor`), so `<workspace>/memory/*.md` -> `.konductor/memory/*.md`.
+Replace `<workspace>` with the workspace state directory (`.konductor`), so `<workspace>/memory/MEMORY.md` -> `.konductor/memory/MEMORY.md`.
 
 ## Rules
 
 - AGENTS.md is **developer-written instructions**, NOT agent memory. Do not dump session memory or
   timestamped facts here — that belongs in the memory files. Promote only durable, reviewed learnings.
+- Memory files rank with AGENTS.md, so a committed memory file deserves the same review as an AGENTS.md
+  edit.
 - Keep it concise and scannable — bullets and short sections, not prose.
 - For public packages, keep content generic — no internal tools, domains, or credentials.
 - When asked to edit `CLAUDE.md`, edit `AGENTS.md` instead (CLAUDE.md should just `@AGENTS.md`).

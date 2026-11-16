@@ -23,7 +23,7 @@ konductor uninstall --dry-run
 ```text
 Would remove Konductor 1.0.0 from Kiro CLI:
   agents          11
-  skills          82
+  skills          81
   SOPs            19
   context files    2
 
@@ -45,6 +45,8 @@ konductor uninstall
 ```text
 Removed. Project files under .konductor/ were left in place.
 ```
+
+The removal includes the session-start hook that install wired for `konductor`: the Kiro CLI v3 hooks document, the `agentSpawn` entry in the Kiro CLI v2 agent file, or the `SessionStart` block in the Claude Code hooks settings file. Your `orchestration` setting in `~/.konductor/config.yml` stays.
 
 Exit code `0`. `uninstall` removes every path listed in that target's `.konductor/manifest`,
 the manifest itself, any now-empty directories under the managed destinations, and the
@@ -178,6 +180,8 @@ For reference, so you can confirm nothing is left behind:
 | Location | Created by | Removed by |
 | --- | --- | --- |
 | Runtime agent directories | `konductor install` | `konductor uninstall` |
+| Session-start hook: `.kiro/hooks/konductor-orchestration-hooks.json` (Kiro CLI v3), the `agentSpawn` entry in `.kiro/agents/konductor.json` (Kiro CLI v2), the `SessionStart` block in the Claude Code hooks settings file | `konductor install` | `konductor uninstall` |
+| `.konductor/context/` under the install target (Claude Code installs only; `.konductor/memory/` is kept) | `konductor install` | `konductor uninstall` |
 | `<project>/.konductor/config.yml` | `konductor init` | you, manually |
 | `<project>/dist/` | `konductor synth` | you, manually — gitignored |
 | `~/.konductor/logs/konductor.log` | every CLI invocation | you, manually |

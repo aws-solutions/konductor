@@ -1,9 +1,6 @@
 {
   "_comment": "Shrink-only ratchet read by tests/test_skill_quality.py. An entry is the exact measured value of a dimension that is over its threshold. Lower or delete an entry when you slim a skill; never raise one; never add one for an existing skill unless the threshold above was lowered in the same change. Renaming a skill adds an entry, so bring a renamed skill under every threshold first. Regenerate with: python3 tests/skill_quality.py --print-baseline",
   "skills": {
-    "cost-estimation": {
-      "lines": 667
-    },
     "cypress-test-implementation": {
       "bytes": 53895,
       "lines": 1944
@@ -13,42 +10,30 @@
       "lines": 1903
     },
     "e2e-test-strategy": {
-      "bytes": 46255,
+      "bytes": 46244,
       "lines": 1595
     },
     "humanize-writing": {
-      "bytes": 38522,
-      "lines": 567
+      "bytes": 38158,
+      "lines": 561
     },
     "iam-policy-design": {
-      "bytes": 39567,
-      "lines": 969
+      "bytes": 37071,
+      "lines": 933
     },
     "infra-validation": {
       "bytes": 49149,
       "lines": 1346
     },
     "policy-validation": {
-      "bytes": 36839,
-      "lines": 968
+      "bytes": 34231,
+      "lines": 906
     },
     "security-test-generation": {
-      "lines": 736
-    },
-    "smithy-modeling": {
-      "lines": 603
-    },
-    "smithy-validation": {
-      "lines": 574
-    },
-    "sop-state-management": {
-      "bytes": 32890
+      "lines": 615
     },
     "test-coverage-analysis": {
       "lines": 740
-    },
-    "ui-text-validation": {
-      "lines": 570
     }
   },
   "thresholds": {

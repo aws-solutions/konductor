@@ -18,6 +18,10 @@ use serde_json::Value;
 use crate::cli::synth::model::{AuxiliaryFile, CanonicalModel, ContextDef, SkillDef, SopDef};
 use crate::cli::synth::parser::{self, ParseError};
 use crate::cli::synth::path_safety::case_insensitive_fold_key;
+use crate::cli::synth::spawn_policy::{
+    is_claude_spawn_tool, is_empty_subagent_target_list, is_kiro_spawn_tool, is_specialist,
+    SUBAGENT_CAPABILITY,
+};
 
 /// Auxiliary files above this size are rejected before being read into memory.
 const MAX_AUXILIARY_FILE_BYTES: u64 = 1024 * 1024;
@@ -75,9 +79,11 @@ pub fn parse_canonical(source_dir: &Path) -> Result<CanonicalModel, ParseError> 
 
     check_dangling_context_references(&agents, &context)?;
     check_dangling_skill_references(&agents, &skills)?;
-    check_claude_preload_name_cap(&agents, &skills)?;
     check_dangling_sop_references(&agents, &sops)?;
     for warning in check_skill_scope_consistency(&agents) {
+        eprintln!("konductor: warning: {warning}");
+    }
+    for warning in check_specialist_spawn_grants(&agents) {
         eprintln!("konductor: warning: {warning}");
     }
     for warning in check_claude_preload_budget(&agents, &skills) {
@@ -338,12 +344,18 @@ pub(crate) struct ClaudePreload {
     pub names: Vec<String>,
 }
 
+/// The names Claude Code reads from a `clientConfig.claudeCli.skills`
+/// list: repeats removed, first occurrence wins.
+pub(crate) fn distinct_preload_names(preload: &[String]) -> indexmap::IndexSet<&str> {
+    preload.iter().map(String::as_str).collect()
+}
+
 /// Measures `preload` against the rendered SKILL.md of each named skill.
 /// Only SKILL.md is counted because Claude Code never injects auxiliary
 /// files. A skill that fails to render counts as 0 bytes: the same synth
 /// fails with the real error when it writes skills.
 pub(crate) fn claude_preload(preload: &[String], defs: &[SkillDef]) -> ClaudePreload {
-    let distinct: indexmap::IndexSet<&str> = preload.iter().map(String::as_str).collect();
+    let distinct = distinct_preload_names(preload);
     let bytes = distinct
         .iter()
         .filter_map(|name| defs.iter().find(|skill| skill.name == *name))
@@ -368,44 +380,9 @@ pub(crate) fn group_thousands(n: usize) -> String {
     out
 }
 
-/// Fails when an agent's `clientConfig.claudeCli.skills` lists more
-/// distinct names than Claude Code preloads. An error, not a warning:
-/// Claude Code silently drops the names past the cap, so the agent
-/// would start without skills its author declared.
-fn check_claude_preload_name_cap(
-    agents: &[parser::ParsedAgentSpec],
-    skills: &[SkillDef],
-) -> Result<(), ParseError> {
-    for agent in agents {
-        let Some(claude_cli) = &agent.client_config.claude_cli else {
-            continue;
-        };
-        let preload = claude_preload(&claude_cli.skills, skills);
-        if preload.names.len() <= CLAUDE_PRELOAD_NAME_CAP {
-            continue;
-        }
-        let dropped = &preload.names[CLAUDE_PRELOAD_NAME_CAP..];
-        return Err(ParseError {
-            file: format!("agents/{}.agent-spec.json", agent.name),
-            field: Some("clientConfig.claudeCli.skills".to_string()),
-            reason: format!(
-                "agent '{}' preloads {} clientConfig.claudeCli.skills, over Claude Code's \
-                 cap of {CLAUDE_PRELOAD_NAME_CAP} names; {} would be dropped: {}. \
-                 Move skills not needed at the first turn to \
-                 dependencies.skills.skillNames only; they stay loadable with the Skill tool.",
-                agent.name,
-                preload.names.len(),
-                dropped.len(),
-                dropped.join(", ")
-            ),
-        });
-    }
-    Ok(())
-}
-
 /// Warns, one line per agent, when an agent's `clientConfig.claudeCli.skills`
-/// exceeds the preload byte budget. A warning, not an error: the budget is
-/// a cost policy, `doctor` also runs this parse, and downstream packages
+/// exceeds the preload byte budget or Claude Code's name cap. A warning,
+/// not an error: `doctor` also runs this parse, and downstream packages
 /// that extend these agents should not break on a CLI upgrade.
 fn check_claude_preload_budget(
     agents: &[parser::ParsedAgentSpec],
@@ -417,17 +394,35 @@ fn check_claude_preload_budget(
             continue;
         };
         let preload = claude_preload(&claude_cli.skills, skills);
-        if preload.bytes <= CLAUDE_PRELOAD_BUDGET_BYTES {
+        let over_budget = preload.bytes > CLAUDE_PRELOAD_BUDGET_BYTES;
+        let over_cap = preload.names.len() > CLAUDE_PRELOAD_NAME_CAP;
+        if !over_budget && !over_cap {
             continue;
+        }
+        let mut limits = Vec::new();
+        if over_budget {
+            limits.push(format!(
+                "budget {} B",
+                group_thousands(CLAUDE_PRELOAD_BUDGET_BYTES)
+            ));
+        }
+        if over_cap {
+            let dropped = &preload.names[CLAUDE_PRELOAD_NAME_CAP..];
+            limits.push(format!(
+                "cap {CLAUDE_PRELOAD_NAME_CAP} names, {} would be dropped: {}",
+                dropped.len(),
+                dropped.join(", ")
+            ));
         }
         warnings.push(format!(
             "agent '{}' preloads {} B across {} skill(s) in clientConfig.claudeCli.skills on \
-             Claude Code (budget {} B). Move skills not needed at the first turn to \
-             dependencies.skills.skillNames only; they stay loadable with the Skill tool.",
+             Claude Code ({}). \
+             Move skills not needed at the first turn to dependencies.skills.skillNames only; \
+             they stay loadable with the Skill tool.",
             agent.name,
             group_thousands(preload.bytes),
             preload.names.len(),
-            group_thousands(CLAUDE_PRELOAD_BUDGET_BYTES)
+            limits.join("; ")
         ));
     }
     warnings
@@ -448,9 +443,10 @@ fn check_claude_skill_tool_grant(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
         if tools.iter().any(|tool| tool == "Skill") {
             continue;
         }
+        let preloaded = distinct_preload_names(&claude_cli.skills);
         let on_demand: indexmap::IndexSet<&str> =
             skill_names_from_dependencies(&agent.dependencies.skills)
-                .filter(|name| !claude_cli.skills.iter().any(|p| p == name))
+                .filter(|name| !preloaded.contains(name))
                 .collect();
         if on_demand.is_empty() {
             continue;
@@ -463,6 +459,51 @@ fn check_claude_skill_tool_grant(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
             on_demand.len(),
             on_demand.iter().copied().collect::<Vec<_>>().join(", ")
         ));
+    }
+    warnings
+}
+
+/// Warns, one line per specialist (non-orchestrator) agent, when its spec grants a spawn
+/// tool that the harness transformers strip from its output, so the spec
+/// and the synthed config cannot disagree unnoticed. An empty
+/// `toolsSettings.subagent` target list is not a grant. It is not a block on
+/// Kiro CLI v2 either; #149 removes the tool.
+fn check_specialist_spawn_grants(agents: &[parser::ParsedAgentSpec]) -> Vec<String> {
+    let mut warnings = Vec::new();
+    for agent in agents.iter().filter(|agent| is_specialist(&agent.name)) {
+        let mut grants = Vec::new();
+        if let Some(kiro) = &agent.client_config.kiro_cli {
+            grants.extend(
+                kiro.tools
+                    .iter()
+                    .filter(|id| is_kiro_spawn_tool(id))
+                    .cloned(),
+            );
+            grants.extend(
+                kiro.allowed_tools
+                    .iter()
+                    .filter(|id| is_kiro_spawn_tool(id))
+                    .cloned(),
+            );
+            if kiro
+                .tools_settings
+                .get(SUBAGENT_CAPABILITY)
+                .is_some_and(|settings| !is_empty_subagent_target_list(settings))
+            {
+                grants.push(format!("toolsSettings.{SUBAGENT_CAPABILITY}"));
+            }
+        }
+        if let Some(claude) = &agent.client_config.claude_cli {
+            let tools = claude.tools.iter().flatten();
+            grants.extend(tools.filter(|tool| is_claude_spawn_tool(tool)).cloned());
+        }
+        if !grants.is_empty() {
+            warnings.push(format!(
+                "agent '{}' is a specialist (not one of the three orchestrators) but its spec grants spawn tools {grants:?}; \
+                 specialists must not spawn, so remove them from the spec",
+                agent.name
+            ));
+        }
     }
     warnings
 }
@@ -1309,6 +1350,70 @@ mod tests {
         parser::parse_agent_spec_str(&content, "agents/test.agent-spec.json").unwrap()
     }
 
+    fn agent_spec_with_client_config(
+        name: &str,
+        client_config_json: &str,
+    ) -> parser::ParsedAgentSpec {
+        let content = format!(
+            r#"{{"schemaVersion":"1","name":"{name}","config":{{"description":"d","systemPrompt":"s","model":"m"}},"clientConfig":{client_config_json}}}"#
+        );
+        parser::parse_agent_spec_str(&content, "agents/test.agent-spec.json").unwrap()
+    }
+
+    #[test]
+    fn check_specialist_spawn_grants_warns_on_each_stripped_grant() {
+        let agent = agent_spec_with_client_config(
+            "k-example",
+            r#"{"kiroCli":{"tools":["@builtin","use_subagent"],"allowedTools":["subagent"],"toolsSettings":{"subagent":{}}},"claudeCli":{"tools":["Read","Agent(k-developer)","Task"]}}"#,
+        );
+        let warnings = check_specialist_spawn_grants(&[agent]);
+        assert_eq!(warnings.len(), 1, "got: {warnings:?}");
+        for expected in [
+            "k-example",
+            "use_subagent",
+            "\"subagent\"",
+            "toolsSettings.subagent",
+            "Agent(k-developer)",
+            "Task",
+        ] {
+            assert!(
+                warnings[0].contains(expected),
+                "missing {expected}: {}",
+                warnings[0]
+            );
+        }
+    }
+
+    #[test]
+    fn check_specialist_spawn_grants_ignores_orchestrators_and_clean_specialists() {
+        let orchestrator = agent_spec_with_client_config(
+            "konductor",
+            r#"{"kiroCli":{"tools":["@builtin","subagent"]},"claudeCli":{"tools":["Agent(k-developer)"]}}"#,
+        );
+        let specialist = agent_spec_with_client_config(
+            "k-example",
+            r#"{"kiroCli":{"tools":["@builtin"]},"claudeCli":{"tools":["Read","Bash"]}}"#,
+        );
+        assert!(check_specialist_spawn_grants(&[orchestrator, specialist]).is_empty());
+    }
+
+    #[test]
+    fn check_specialist_spawn_grants_accepts_an_empty_subagent_target_list() {
+        let blocked = agent_spec_with_client_config(
+            "k-example",
+            r#"{"kiroCli":{"tools":["@builtin"],"toolsSettings":{"subagent":{"availableAgents":[],"trustedAgents":[]}}}}"#,
+        );
+        assert!(check_specialist_spawn_grants(&[blocked]).is_empty());
+
+        let granted = agent_spec_with_client_config(
+            "k-example",
+            r#"{"kiroCli":{"tools":["@builtin"],"toolsSettings":{"subagent":{"availableAgents":["k-developer"],"trustedAgents":[]}}}}"#,
+        );
+        let warnings = check_specialist_spawn_grants(&[granted]);
+        assert_eq!(warnings.len(), 1, "got: {warnings:?}");
+        assert!(warnings[0].contains("toolsSettings.subagent"));
+    }
+
     /// Clean case: every `skill://` resource entry's name already
     /// appears in `skillNames` -- resources are a subset of skillNames,
     /// so no warning is produced.
@@ -1441,7 +1546,7 @@ mod tests {
     }
 
     #[test]
-    fn claude_preload_name_cap_names_over_bytes_under_errors_and_names_dropped() {
+    fn claude_preload_budget_names_over_bytes_under_warns_on_cap_only() {
         let skill_names = names("s", 33);
         let skills: Vec<SkillDef> = skill_names
             .iter()
@@ -1449,27 +1554,18 @@ mod tests {
             .collect();
         let refs: Vec<&str> = skill_names.iter().map(String::as_str).collect();
         let agent = agent_spec_with_claude_cli_skills("k-wide", &refs);
-        let warnings = check_claude_preload_budget(std::slice::from_ref(&agent), &skills);
-        assert!(warnings.is_empty(), "got: {warnings:?}");
-        let err = check_claude_preload_name_cap(&[agent], &skills).unwrap_err();
-        assert_eq!(err.file, "agents/k-wide.agent-spec.json");
-        assert_eq!(err.field.as_deref(), Some("clientConfig.claudeCli.skills"));
+        let warnings = check_claude_preload_budget(&[agent], &skills);
+        assert_eq!(warnings.len(), 1, "got: {warnings:?}");
         assert!(
-            err.reason
-                .contains("agent 'k-wide' preloads 33 clientConfig.claudeCli.skills"),
+            warnings[0].contains("(cap 32 names, 1 would be dropped: s33)"),
             "got: {}",
-            err.reason
+            warnings[0]
         );
-        assert!(
-            err.reason
-                .contains("cap of 32 names; 1 would be dropped: s33."),
-            "got: {}",
-            err.reason
-        );
+        assert!(!warnings[0].contains("budget"));
     }
 
     #[test]
-    fn claude_preload_name_cap_both_over_errors_on_the_cap() {
+    fn claude_preload_budget_both_over_reports_both_limits() {
         let skill_names = names("s", 34);
         let skills: Vec<SkillDef> = skill_names
             .iter()
@@ -1477,24 +1573,13 @@ mod tests {
             .collect();
         let refs: Vec<&str> = skill_names.iter().map(String::as_str).collect();
         let agent = agent_spec_with_claude_cli_skills("k-both", &refs);
-        let err = check_claude_preload_name_cap(&[agent], &skills).unwrap_err();
+        let warnings = check_claude_preload_budget(&[agent], &skills);
+        assert_eq!(warnings.len(), 1, "got: {warnings:?}");
         assert!(
-            err.reason.contains("2 would be dropped: s33, s34."),
+            warnings[0].contains("(budget 32,768 B; cap 32 names, 2 would be dropped: s33, s34)"),
             "got: {}",
-            err.reason
+            warnings[0]
         );
-    }
-
-    #[test]
-    fn claude_preload_name_cap_allows_exactly_the_cap() {
-        let skill_names = names("s", 32);
-        let skills: Vec<SkillDef> = skill_names
-            .iter()
-            .map(|n| skill_of_rendered_len(n, 30))
-            .collect();
-        let refs: Vec<&str> = skill_names.iter().map(String::as_str).collect();
-        let agent = agent_spec_with_claude_cli_skills("k-at-cap", &refs);
-        assert!(check_claude_preload_name_cap(&[agent], &skills).is_ok());
     }
 
     #[test]
@@ -1518,9 +1603,8 @@ mod tests {
             .iter()
             .map(|n| skill_of_rendered_len(n, 5_000))
             .collect();
-        let warnings = check_claude_preload_budget(std::slice::from_ref(&agent), &skills);
+        let warnings = check_claude_preload_budget(&[agent], &skills);
         assert!(warnings.is_empty(), "got: {warnings:?}");
-        assert!(check_claude_preload_name_cap(&[agent], &skills).is_ok());
     }
 
     fn agent_spec_with_claude_tools(

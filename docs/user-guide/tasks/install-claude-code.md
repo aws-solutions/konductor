@@ -29,6 +29,10 @@ konductor install --harness claude
 
 On success it reports a per-content-type count: agents, skills, SOPs, and context files. Two more settings are required before teammates can run.
 
+Install also wires a session-start hook for `konductor`, a `SessionStart` block in the Claude Code hooks settings file, which `orchestration.mode: coordinator` relies on. `uninstall` removes it.
+
+Install also copies the context files to `.konductor/context/` under the install target, where the hook reads the routing rules and the coordinator digest. No agent loads them from there, and `uninstall` removes them.
+
 Agent files land in `~/.claude/agents/`:
 
 ```bash
@@ -176,7 +180,7 @@ Then in a session:
 
 - [ ] `claude --agent konductor` starts without an "agent not
       found" error.
-- [ ] A task needing implementation causes a **specialist to spawn**, visible in your session.
+- [ ] A task needing implementation has `konductor` edit files itself and spawn a **`k-*` reviewer** when the phase closes, visible in your session.
 - [ ] The specialist can actually read and edit files, rather than silently doing nothing.
 
 If the first works but the second does not, revisit setting 1. If the second works but the third
