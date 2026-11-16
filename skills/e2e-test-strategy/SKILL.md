@@ -57,6 +57,7 @@ Required artifacts:
 1. **Test Gap Analysis**: Output from Test Gap Analyzer (Checker) prompt
    - Location: `testing-quality-assurance/outputs/test-gap-analysis.md`
    - Contains: Coverage analysis, identified gaps, testing philosophy, distribution analysis
+   - If its header gives `lightweight fallback` as the Report type, it has no distribution analysis: ask for a full `test-coverage-analysis` run before you continue
 
 2. **Phase 1 - Requirements & Planning**: User stories with acceptance criteria
    - Location: `requirements-planning/outputs/user-stories.md`

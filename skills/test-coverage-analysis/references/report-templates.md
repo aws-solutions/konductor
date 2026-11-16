@@ -100,6 +100,7 @@ TEST GAP ANALYSIS REPORT
 ═══════════════════════════════════════════════════
 
 Analysis Date: [CURRENT_DATE] | Mode: [mode] | Features: [N]
+Report type: [full | lightweight fallback]
 
 ## EXECUTIVE SUMMARY
 
@@ -164,6 +165,7 @@ Next Steps:
 
 **Generated:** [CURRENT_DATE]
 **Mode:** Coverage Analysis
+**Report type:** [full | lightweight fallback]
 **Features Analyzed:** [N]
 
 ## Executive Summary
