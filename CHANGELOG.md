@@ -301,9 +301,8 @@ not per individual commit.
   `external-research` drop terms that do not apply in this repo.
 - `konductor config set` keeps an existing `config.yml`'s permission bits and refuses a symlinked
   `.konductor/` or `config.yml` instead of writing through it.
-- `k-full-sdlc` now records the gate facts `konductor verify-run` checks, under keys listed once in
-  the `gate_facts` block of `sop-orchestration.yml`, and records `run.data.max_fix_cycles`, so a run
-  with a raised budget is no longer judged against the default of 2.
+- The session keys for gate facts and the fix-cycle cap are listed once, in the `gate_facts` block
+  of `sop-orchestration.yml`, and `konductor verify-run` reads them from there.
   `make sop-orchestration-check` fails when a gated SOP stops naming its boundaries' keys. A key
   named only inside a fenced code block does not count.
 - `verify-run`'s `CONFIG_SOURCE` line now comes from the same config read as the threshold.
@@ -318,7 +317,7 @@ not per individual commit.
   file tools instead, and tell the user why.
 - The orchestrator routing rules list memory and skill capture as direct work, matching what
   Memory & Skill Reflexes ask for.
-- The routing rules' example search that skips `.env` files keeps `.env.example` in its results.
+- Core rule 12's example search that skips `.env` files keeps `.env.example` in its results.
 - `persistent-memory` allows removing an untagged entry when the user asks, as the agent prompts do.
 - `verify-run` rejects a misspelled key in `sop-orchestration.yml`, such as `boundries`, instead of
   reading it as a SOP with no gate boundaries.
