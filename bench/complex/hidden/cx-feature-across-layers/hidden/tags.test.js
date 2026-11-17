@@ -9,8 +9,14 @@ const { spawnSync } = require('node:child_process');
 
 const CLI = path.resolve(__dirname, '..', 'src', 'cli.js');
 
+// Every dir setup makes, removed once the file's tests are done.
+const dirs = [];
+test.after(() => { for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true }); });
+
+/** A fresh notes file in its own temp dir, with a `cli` runner bound to it and a `read` of its JSON. */
 function setup(initial) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-hidden-'));
+  dirs.push(dir);
   const file = path.join(dir, 'n.json');
   if (initial !== undefined) fs.writeFileSync(file, typeof initial === 'string' ? initial : JSON.stringify(initial));
   const cli = (...args) => {
