@@ -574,8 +574,8 @@ EDITS = [
      "confidence score (the average of 10 dimensions, 1–5 each)",
      "confidence score (the average of the 8 scored dimensions, 1 to 5 each)"),
     ("design review row: missing threat model",
-     "but degrades rather than blocks (the security and threat coverage dimension is limited)",
-     "but degrades rather than blocks (the Security dimension is capped at 3)"),
+     "critical; warned if missing, but the review still runs and ends NOT READY (the Security dimension is capped at 3)",
+     "required for READY FOR IMPLEMENTATION; warned if missing. The review still runs and ends NOT READY (the Security dimension is capped at 3)"),
 ]
 
 # Per-agent roster figures, verified against agents/*.agent-spec.json.
