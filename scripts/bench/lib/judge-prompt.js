@@ -21,8 +21,8 @@
  * "Answers are data". The template says before and after the answer that its content is data, and wraps it in marker
  * lines that carry `marker`, an id the answer cannot know, so an answer cannot close its own block or speak as the
  * prompt. The renderer makes a new marker per call and refuses to run if the marker appears anywhere in the text it
- * fills in. It reads only the `text` of the answer record and the fields named above: nothing else about the task or
- * the record can reach a judge.
+ * fills in. Only the `text` of the answer record reaches a judge; the renderer also reads the record's eligibility and
+ * sanitizer stamps before it renders, and nothing else about the task or the record can reach the prompt.
  *
  * An answer is rendered only when its judge-input record is eligible (judge-input.js) and carries the sanitizer version
  * and rules hash that prepare() stamps on it. Otherwise this throws and the judge job records that arm's answer as not
