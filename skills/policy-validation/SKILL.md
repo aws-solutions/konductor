@@ -755,6 +755,7 @@ Generate output in this format:
 
 3. **Encrypt new S3 bucket** (CRITICAL, < 1 hour)
    - Enable default encryption with KMS customer-managed key
+   - Add a bucket policy statement that denies `s3:PutObject` unless `s3:x-amz-server-side-encryption-aws-kms-key-id` is that key's full ARN
    - Add a bucket policy that denies non-TLS requests
    - Enable versioning and MFA delete
 

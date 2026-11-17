@@ -371,7 +371,9 @@ not per individual commit.
   not prompt when a SOP runs it. `trade-off-evaluator` writes no file standalone unless asked.
 - `infra-validation` and `policy-validation` no longer flag an S3 bucket or DynamoDB table as
   unencrypted for lacking an encryption setting, since both encrypt at rest by default. They
-  flag them only when the data needs SSE-KMS or a customer managed key.
+  flag them only when the data needs SSE-KMS or a customer managed key. For a customer managed
+  key, `iam-policy-design` adds a bucket policy statement that denies `s3:PutObject` under any
+  other key, and `policy-validation` asks for one; only the deny on unencrypted uploads is gone.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
