@@ -64,7 +64,10 @@ function setup() {
   return s;
 }
 
-const BASE = (s) => ['--out', s.out, '--tasks', 't1,t2', '--konductor-ref', 'HEAD', '--claude-bin', s.claude, '--auth-db', s.authDb];
+// The commit HEAD names when this file loads, not 'HEAD' itself: a resume test runs the script twice, and a commit made in
+// the checkout between the two runs would read as a changed --konductor-ref and be refused.
+const REF = spawnSync('git', ['-C', path.dirname(SCRIPT), 'rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
+const BASE = (s) => ['--out', s.out, '--tasks', 't1,t2', '--konductor-ref', REF, '--claude-bin', s.claude, '--auth-db', s.authDb];
 const FULL = (s) => [...BASE(s), '--profile', 'good', '--budget-usd', '10', '--kiro-credit-limit', '15'];
 
 function run(s, args, env = {}) {
