@@ -65,13 +65,14 @@ npm run screenshots # Regenerate e2e/screenshots/*.png
 ## API contract
 
 `api/openapi.yaml` is the OpenAPI 3.1 description of the HTTP API that the
-canvas calls. It covers six operations:
+canvas calls. It covers these operations:
 
 | Method and path      | `operationId`   | What it does                            |
 | -------------------- | --------------- | --------------------------------------- |
 | `POST /api/session`  | `createSession` | Exchange the launch code for a token    |
 | `GET /api/workflow`  | `getWorkflow`   | Load a workflow                         |
 | `PUT /api/workflow`  | `saveWorkflow`  | Save a workflow                         |
+| `GET /api/agents`    | `listAgents`    | List the agents a stage may name        |
 | `POST /api/validate` | `checkWorkflow` | Check workflow text and report problems |
 | `POST /api/run`      | `startRun`      | Start a run                             |
 | `GET /api/runs/{id}` | `getRun`        | Get the status of a run                 |
@@ -111,7 +112,7 @@ know, and requests with a field the contract does not name are refused.
 
 - parses the file and validates it against the OpenAPI 3.1 specification,
   including that every `$ref` resolves;
-- checks that the operations are exactly the six above, that each has an
+- checks that the operations are exactly the ones above, that each has an
   `operationId` and a `summary`, that every request and response body has an
   example, and that every response declares the `X-Konductor-Api` header;
 - checks that every error response uses the one `Error` schema, that each error
@@ -125,8 +126,8 @@ know, and requests with a field the contract does not name are refused.
   a key points at that key, the counts of a check add up, and a run's stages
   follow its status;
 - checks that the session example lists every `operationId` as a capability
-  and reports the limits that the rest of the file states, and that the six
-  `operationId`s of the first release are still there, so a rename fails;
+  and reports the limits that the rest of the file states, and that each pinned
+  `operationId` is still there, so a rename fails;
 - checks the format rules that a schema can hold: a version is `X.Y.Z`, a path
   follows the specification's path rule (no empty, `.` or `..` segment, no `\`,
   no drive letter, no control character), and a check has exactly one of `file`
@@ -136,7 +137,7 @@ CI runs it on each pull request, and `npm test` includes it.
 
 ## Stub API
 
-`stub-api/` serves the six calls of `api/openapi.yaml` from memory, so the UI
+`stub-api/` serves the calls of `api/openapi.yaml` from memory, so the UI
 and the real backend can be built against the same contract. It is a local
 development and test stub with no real auth: the launch code and the session
 token only exercise the session flow. It listens on `127.0.0.1` only and keeps
@@ -170,7 +171,8 @@ and the stub that Playwright starts always follow the contract.
 The data covers the first release: a workflow of the keys that slice 1 of the
 format reads, and the `kiro-cli` harness. It is a `hello` workflow with a
 `draft` stage (`k-developer`) and a `review` stage (`k-quality-assurance`). A
-saved change lasts until the stub stops. The stub reads no files, so for a
+saved change lasts until the stub stops. `GET /api/agents` lists the same
+eight agents that the Designer offers. The stub reads no files, so for a
 `prompt_file` it checks only the path rules: it accepts a path to a file that
 does not exist. A run is faked and calls no agent: its stages run for 3 seconds
 each, one after the other, and all of them pass. It runs one run at a time and

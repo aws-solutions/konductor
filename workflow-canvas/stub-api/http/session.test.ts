@@ -31,6 +31,7 @@ describe('POST /api/session', () => {
         'checkWorkflow',
         'startRun',
         'getRun',
+        'listAgents',
       ],
       limits: {
         text_bytes: 262_144,

@@ -6,6 +6,7 @@ import {
   MAX_TEXT_BYTES,
   RUN_ID_PATTERN,
 } from './contract.ts';
+import { AGENTS, type Agent } from './agents.ts';
 import { ApiError, badName } from './errors.ts';
 import type {
   CheckResult,
@@ -137,6 +138,10 @@ export class WorkflowApi {
       );
     }
     return { run_id: this.runs.start(this.root, stageNames, this.planOfRun()) };
+  }
+
+  listAgents(): { agents: Agent[] } {
+    return { agents: [...AGENTS] };
   }
 
   getRun(runId: string): Run {
