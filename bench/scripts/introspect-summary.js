@@ -33,10 +33,17 @@ function rowOf(runDir, root, rebuild) {
   const file = path.join(runDir, 'introspect', 'timeline.json');
   let r;
   if (rebuild || !fs.existsSync(file)) { const { trace, ...rest } = writeReport(runDir); r = rest; } else r = JSON.parse(fs.readFileSync(file, 'utf8'));
+  return rowFromReport(r, { run: path.relative(root, runDir), timeline: path.relative(root, path.join(runDir, 'introspect', 'timeline.md')) });
+}
+
+/** One summary row from report data. `run` and `timeline` are the paths the row shows, relative to the summary. */
+function rowFromReport(r, { run, timeline }) {
   const sum = (k) => (r.requests.some((q) => q[k] != null) ? r.requests.reduce((s, q) => s + (q[k] ?? 0), 0) : null);
   const w = r.probe?.collectorWatch;
+  const t = r.skills.totals ?? null;
+  const pre = (r.subagents || []).filter((c) => c.preloads?.expected);
   return {
-    run: path.relative(root, runDir), arm: r.run.arm, task: r.run.task, rep: r.run.replicate, harness: r.run.harness,
+    run, arm: r.run.arm, task: r.run.task, rep: r.run.replicate, harness: r.run.harness,
     status: r.outcome.status, wallS: r.outcome.wallClockMs != null ? r.outcome.wallClockMs / 1000 : null, costUsd: r.outcome.costUsd, credits: r.outcome.credits,
     checks: r.outcome.checks != null ? `${r.outcome.checksPassed}/${r.outcome.checks}` : null,
     requests: r.requests.length, modelMs: sum('latencyMs'), input: sum('input'), output: sum('output'), cacheRead: sum('cacheRead'), cacheWrite: sum('cacheWrite'),
@@ -45,7 +52,13 @@ function rowOf(runDir, root, rebuild) {
     loadedNames: r.skills.loaded,
     hooks: r.hooks.length, hookInstructions: r.first?.hookInstructions?.length ?? null, delegations: r.subagents.length,
     collectorClean: w ? (w.available ? Boolean(w.clean) : null) : null,
-    timeline: path.relative(root, path.join(runDir, 'introspect', 'timeline.md')),
+    rootLoads: t?.rootLoads ?? null, childLoads: t?.childLoads ?? null, refused: t?.refused ?? null, failedCalls: t?.failed ?? null,
+    childRefusedOrFailed: t?.childRefusedOrFailed ?? null,
+    // Claude Code only: one per (child, frontmatter skill), and the bytes of those skill files.
+    preloads: r.run.harness === 'claude-code' ? pre.reduce((n, c) => n + c.preloads.expected.length, 0) : null,
+    preloadBytes: r.run.harness === 'claude-code' ? pre.reduce((n, c) => n + c.preloads.expected.reduce((m, x) => m + (x.bytes ?? 0), 0), 0) : null,
+    childrenLinked: (r.subagents || []).filter((c) => c.transcript).length,
+    timeline,
   };
 }
 
@@ -72,6 +85,19 @@ function render(rows) {
     const cost = mean(g.map((r) => r.costUsd));
     L.push(`| ${g[0].arm} | ${g[0].task} | ${g.length} | ${f(mean(g.map((r) => r.wallS)))} | ${cost != null ? `$${cost.toFixed(3)}` : f(mean(g.map((r) => r.credits)), 3)} | ${f(mean(g.map((r) => r.requests)))} | ${f(mean(g.map((r) => (r.modelMs != null ? r.modelMs / 1000 : null))))} | ${f(mean(g.map((r) => r.firstRequestTokens)), 0)} | ${f(mean(g.map((r) => r.skillsListed)), 0)} | ${f(mean(g.map((r) => r.skillsLoaded)))} | ${[...new Set(g.flatMap((r) => r.loadedNames))].join(', ') || 'none'} |`);
   }
+  L.push('');
+  L.push('## Skill use by scope, per arm');
+  L.push('');
+  L.push('Counts summed over the arm\'s runs. A preload is one frontmatter skill in one Claude Code sub-agent spawn; kiro-cli has no preload record. Refused is a skill call the engine refused (deferred tool); failed is any other failed skill call.');
+  L.push('');
+  L.push('| arm | runs | root loads | child loads | preloads | preload bytes | refused | failed | child refused/failed | refs | delegations | linked |');
+  L.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+  const arms = new Map();
+  for (const r of rows) { if (!arms.has(r.arm)) arms.set(r.arm, []); arms.get(r.arm).push(r); }
+  const tot = (g, k) => (g.some((r) => typeof r[k] === 'number') ? g.reduce((n, r) => n + (r[k] ?? 0), 0) : null);
+  for (const [arm, g] of arms) {
+    L.push(`| ${arm} | ${g.length} | ${f(tot(g, 'rootLoads'))} | ${f(tot(g, 'childLoads'))} | ${f(tot(g, 'preloads'))} | ${f(tot(g, 'preloadBytes'))} | ${f(tot(g, 'refused'))} | ${f(tot(g, 'failedCalls'))} | ${f(tot(g, 'childRefusedOrFailed'))} | ${f(tot(g, 'referenceReads'))} | ${f(tot(g, 'delegations'))} | ${f(tot(g, 'childrenLinked'))} |`);
+  }
   return `${L.join('\n')}\n`;
 }
 
@@ -88,4 +114,4 @@ function main(argv) {
 
 if (require.main === module) main(process.argv);
 
-module.exports = { findRuns, rowOf, render };
+module.exports = { findRuns, rowOf, rowFromReport, render };
