@@ -128,6 +128,11 @@ const USAGE = `Usage:
        (scores the runs of the canary-layers suite from stream.jsonl, with no model call: per layer token (core rules, system prompt, skill index, skill body, SOP body, routing context),
        per entry agent and per task, the share of runs where the token showed in a tool result (direct) or in the model's own text or calls (inferred), next to whether the agent spec
        declares that layer. FILE is the layers.json written by bench/scripts/canary-layers.js build. Writes canary-report.md and canary-report.json to --out. See bench/CANARY-LAYERS.md)
+  node bench/runner/bench.js plant-trace --run TRIAL_DIR [--vs TRIAL_DIR] --out FILE.html
+       (one static HTML page for a plant trial, with no model and no network: a timeline with one row per tool call and the time per step, rows coloured allowed,
+       blocked or unsafe attempt from the gateway log, the plant state after each call, a click-through detail with the call, arguments and the gateway's reason,
+       tokens per step where the stream records them, and the stream-to-gateway mismatches. TRIAL_DIR holds result.json, stream.jsonl and plant/gateway.jsonl
+       and plant/world.jsonl. With --vs the two trials sit side by side, lined up by step. Exit 2 on a missing file or an unknown stream format)
   node bench/runner/bench.js plant-policy-test --release DIR [--python PATH]
        (runs the gateway-only truth table of a plant release with no model: a test-mode gateway decides every row of truth-table.json, then a wrong-token
        frame must be refused. Prints one PASS or FAIL line per cell; exit 1 when any cell fails. --python names the interpreter with cedarpy, default python3.
@@ -402,6 +407,7 @@ async function main(argv) {
   if (cmd === 'probe-report') return require('../report/probes.js').cmdProbeReport(opts);
   if (cmd === 'canary-report') return require('../report/canary-layers.js').cmdCanaryReport(opts);
   if (cmd === 'plant-report') return require('../report/plant.js').cmdPlantReport(opts);
+  if (cmd === 'plant-trace') return require('../report/plant-trace/index.js').cmdPlantTrace(opts);
   if (cmd === 'plant-policy-test') return require('./lib/plant/policy-test.js').cmdPlantPolicyTest(opts);
   if (cmd === 'backfill') return evalCommands.cmdBackfill(opts);
   if (cmd === 'compare') return evalCommands.cmdCompare(opts);
