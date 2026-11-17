@@ -1,0 +1,5 @@
+{
+  "cache": { "ttlMs": 60000, "maxEntries": 1000 },
+  "supplier": { "maxInFlight": 4 },
+  "retry": { "attempts": 3, "backoffMs": [50, 100] }
+}

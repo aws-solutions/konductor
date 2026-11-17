@@ -24,8 +24,12 @@ By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, ch
 | Diagrams in design documents | design documents | a diagram line and the prose line it must match |
 | Operability and rollout of design | design documents | an alarm with no operator action, a rollout step with no undo |
 | Guide quality | guides | a sentence that is wrong about the code, a term the reader cannot know |
+| Concurrency in code | changed code of a task that names concurrent calls | the read, wait and write of shared state with no lock, a promise no one awaits or catches, a wait with no timeout |
+| Extensibility | changed code of a task that says a new case comes later | one line from each file that lists every case by name |
+| Non-functional requirements in code | changed code of a task whose design names targets | the cache, limit, retry or index line together with the target it serves |
+| Enterprise patterns | changed code of a task whose answer key asks for one | the line that crosses the boundary the Pattern key names |
 
-`bench/criteria/quality-pack.json` holds 79 criteria. Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
+`bench/criteria/quality-pack.json` holds 88 criteria. Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
 
 ### Criteria
 
@@ -110,6 +114,37 @@ By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, ch
 | guide-troubleshooting | Guide quality | guide | 2 | judge | Does the guide cover what goes wrong: a failing step, an error, a wrong result or a case that surprises the reader? |
 | guide-scannability | Guide quality | guide | 1 | judge | Can a reader find a section from its heading and take in each block at a glance? |
 | guide-consistent-terms | Guide quality | guide | 2 | judge | Does the guide call each thing by one name, the same name the code or the task uses? |
+| conc-shared-state | Concurrency in code | concurrency | 3 | judge | Is every update of state that concurrent calls share made as one atomic step? |
+| conc-async-errors | Concurrency in code | concurrency | 2 | judge | Does every promise or callback the change starts have an owner for its failure? |
+| conc-timeout-cancel | Concurrency in code | concurrency | 2 | judge | Does every wait on another party have a timeout or a cancel path that also frees what the wait held? |
+| ext-one-place | Extensibility | extension | 3 | judge | How many existing files must be edited to add one more case of the kind the task names? |
+| ext-closed-core | Extensibility | extension | 2 | judge | Does the code that uses the cases call them through one contract without naming any case? |
+| code-nfr-mechanism | Non-functional requirements in code | nfr-code | 3 | judge | For each non-functional target the task or design names, does the code use the mechanism named for it? |
+| code-nfr-bounded | Non-functional requirements in code | nfr-code | 2 | judge | Is every cache, queue, retry and concurrency limit in the change bounded by a named number? |
+| mod-pattern-missing | Modularity and design patterns | pattern-key | 2 | judge | Does the change use each pattern the answer key names under Pattern key, or an equivalent the key accepts? |
+| ent-pattern-applied | Enterprise patterns | enterprise-pattern | 2 | judge | Does the change use the enterprise pattern the Pattern key asks for, at the boundary the key names? |
+
+## Code-quality criteria for concurrency, extension, targets and patterns
+
+These nine criteria rate code against a need the task states. Code with no such need has nothing to rate, so each criterion applies to one artifact type that a task must declare in `taskArtifacts`: `concurrency`, `extension`, `nfr-code`, `pattern-key` or `enterprise-pattern`. The five types are `declaredOnly`, and they read the changed product code with the same 8-line floor as `code`. Any other task gets n/a with the reason, for example "the task does not ask for concurrent code".
+
+- Concurrency (`conc-*`) counts reads of shared state that wait before they write, promises with no owner for their failure, and waits with no timeout or cancel path.
+- Extensibility (`ext-*`) counts the existing files that list every case by name, which is the number of files the next case edits. `ext-closed-core` asks whether the core code branches on a case name.
+- Targets in code (`code-nfr-*`) ties each target in the task or design to its mechanism and number. `des-nfr-addressed` asks the same of a design document; these ask it of the code.
+- Pattern fit works both ways. `mod-pattern-fit` is unchanged and still punishes extra abstraction on any code. `mod-pattern-missing` punishes a pattern the change needed and left out.
+- Enterprise patterns (`ent-pattern-applied`) covers a repository, a unit of work, an anti-corruption layer and similar. It is judged only when the task's answer key asks for one.
+
+`mod-pattern-missing` and `ent-pattern-applied` are judged only against the task's answer key, never by taste. The fixture's `.bench-answer-key.md` holds a `## Pattern key` section with `- needed:` lines (and `- accepted:` equivalents) for `pattern-key`, and an `- enterprise:` line for `enterprise-pattern`. The task validator fails a task that declares a type and has no such line (`patternKeyProblems` in `judge/pack/load.js`). Both criteria, and `code-nfr-mechanism`, take two quotes: the code line, then the Pattern key or design line it is checked against.
+
+Three hard tasks need these criteria, and each has hidden tests that measure the same thing without a judge.
+
+| Task | Declares | Hidden tests | What the hidden tests measure |
+|---|---|---|---|
+| `hard-seat-holds` | code, tests, concurrency | 13 | 200 calls at once on 10 seats, one user at once, declined charges under load, a charge that never settles, an abort while paying, a failing notifier with no unhandled rejection |
+| `hard-export-formats` | code, tests, extension, pattern-key | 14 | TSV behaviour, plus the hidden extension step: the number of existing source files that name every format, at most 2 and at most 1 |
+| `hard-catalog-limits` | code, tests, nfr-code, enterprise-pattern | 14 | supplier calls over 1000 lookups, expiry and eviction, at most 4 calls in flight, retry waits, work per category listing over 10,000 items, supplier field names read in one module |
+
+The hidden extension step counts files and does not run a second agent turn: a file whose code names every format is a file the next format must edit. A file that keeps the list in a plain loop over a copy, or hides the names in a computed string, is not caught. The NFR-4 test counts snapshot reads and array visits; a plain index loop over a copy is not counted.
 
 The diagram criteria read the design document as a whole, fenced blocks included. A view is needed when the content calls for it:
 
@@ -253,6 +288,16 @@ Without `--criteria-pack`, every command behaves and writes exactly as before.
 No pack score has been compared with a person's rating. Until that happens, treat dimension scores as a way to find where arms differ, not as a measure.
 
 `calibrate export --run RUN --criteria-pack quality` adds a `pack` block to each sampled item in `sheet.json` and `sheet.md`: the criteria a judge was asked, their three anchors, the quote rule, the agent's diff, and empty `labels`. It also lists the criteria scored by a program or as absent, so a person does not rate those. After labeling, `calibrate score --labels sheet.json --criteria-pack quality` reports judge versus human agreement and kappa per judge and per dimension. No rating is filled in by the tool.
+
+New criteria have no run to sample yet. `calibrate export-reference` builds a blind sheet from the bench's own trees instead: the reference solution and each partial solution of the named tasks, laid over the fixture. It calls no model and runs no agent.
+
+```
+node bench/runner/bench.js calibrate export-reference --out DIR --seed 7 \
+  --tasks hard-seat-holds,hard-export-formats,hard-catalog-limits \
+  --criteria conc-shared-state,conc-async-errors,conc-timeout-cancel,ext-one-place,ext-closed-core,code-nfr-mechanism,code-nfr-bounded,mod-pattern-missing,ent-pattern-applied,mod-pattern-fit
+```
+
+It writes 9 items (3 trees per task) with each tree's diff, the task, the answer key, the criteria that apply and empty labels. `key.json` says which tree each item is. The partial solutions carry no comment that names them, so the diff does not give the tree away. Comparing a judge with these labels needs a judge pass over the same trees. No command does that yet, and it spends credits, so it needs the owner's approval first. At the panel of three judges it is 27 pack calls (9 items, 3 judges). At the observed cost per call in `profiles/judge-cost-observed.json` that is about 4 to 8 credits on the kiro backend (0.16 credits per call, 0.29 at p90), or about 0.25 USD on opencode.
 
 `cap review` (the side-by-side page) is not extended. Its ratings file, import and scoring are built around the task rubric ids, and adding pack ids there would either be dropped silently on import or mix with the rubric score. Use `calibrate export` for pack ratings.
 

@@ -352,6 +352,8 @@ const USAGE = `Usage:
   node bench/runner/bench.js calibrate export --run DIR [--n 25] [--seed S] [--out DIR] [--bench-dir DIR]
        [--max-file-chars N] [--max-bundle-chars N] [--redact-file FILE] [--criteria-pack quality]
        (--criteria-pack adds the quality-pack criteria of each sampled output to sheet.json and sheet.md for a person to rate)
+  node bench/runner/bench.js calibrate export-reference --tasks ID,ID --criteria ID,ID --out DIR [--seed S] [--bench-dir DIR]
+       (free, no model call: a blind sheet of the named pack criteria over each task's reference and partial solutions laid on its fixture)
   node bench/runner/bench.js calibrate score --labels FILE [--key FILE] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X] [--save FILE] [--criteria-pack quality]
   node bench/runner/bench.js list-arms [--arms a,b,c] [--repo-root DIR]
 

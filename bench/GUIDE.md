@@ -273,6 +273,8 @@ node bench/runner/bench.js run --suite cap --extra-tasks DIR --tasks guide-title
 
 The example above, with a copy of `tasks/solutions/simple-add-function/` as its reference solution, passes the validator. The full format, the check types and the rules for hidden-test tasks are in [README-tasks.md](README-tasks.md).
 
+A task can also ask the quality pack to rate concurrency, extensibility, targets in code or a design pattern. List the type for the task id under `taskArtifacts` in `criteria/quality-pack.json` (`concurrency`, `extension`, `nfr-code`, `pattern-key` or `enterprise-pattern`). For the two pattern types, add a `## Pattern key` section to the answer key with `- needed:` lines, plus an `- enterprise:` line for an enterprise pattern. The validator fails the task without them. `hard-seat-holds`, `hard-export-formats` and `hard-catalog-limits` are worked examples.
+
 ---
 
 ## Run a long study safely

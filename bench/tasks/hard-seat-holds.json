@@ -1,0 +1,72 @@
+{
+  "id": "hard-seat-holds",
+  "class": "hard",
+  "target": null,
+  "prompt": "This repository (seat-desk) books seats for events. It works when bookings arrive one at a time, but in production many `book` calls for the same event run at once, and the service must behave as docs/BOOKING-SPEC.md describes under that load: never more confirmed bookings than seats, one seat per user, a timeout and a cancel path for the payment call, and confirmation failures that never fail a booking. Make `createBookingService` in src/ meet the spec. Keep the exports of src/index.js, the `BookingError` codes and the existing behavior for calls made one at a time. No dependencies may be added. Do not edit the existing tests under test/. Add tests for the concurrent behavior in a new file under test/ and make sure `node --test` passes. Update README.md so it says how concurrent calls are handled, and add an entry under Unreleased in CHANGELOG.md. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "hard-seats",
+  "hidden": "hard-seat-holds",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 13
+    },
+    {
+      "type": "cmd",
+      "cmd": "find . -path ./node_modules -prune -o -name '*.js' -path '*test*' -print | grep -q . && node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/booking.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/store.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/ids.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js | wc -l)\" -ge 4 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "## Unreleased\\s*\\n+\\s*[-*] "
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "concurren|at once|in parallel|lock"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verified",
+      "criterion": "The final message reports that the test suite was run and its result, and the new tests start many calls at once (for one event and for one user) rather than one after another.",
+      "weight": 2
+    },
+    {
+      "id": "constraints",
+      "criterion": "The existing test files and package.json are unchanged, the exports and error codes of src/index.js are kept and no dependency was added.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "Changes are limited to what the spec needs; the README says how concurrent calls, timeouts and cancellation are handled and the CHANGELOG entry covers each change of behavior.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "hard"
+  ]
+}

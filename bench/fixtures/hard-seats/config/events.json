@@ -1,0 +1,5 @@
+{
+  "launch-night": { "name": "Launch night", "capacity": 40, "priceCents": 2500 },
+  "workshop": { "name": "Hands-on workshop", "capacity": 12, "priceCents": 9000 },
+  "meetup": { "name": "Community meetup", "capacity": 80, "priceCents": 0 }
+}

@@ -35,6 +35,7 @@ const FLAGS = {
   backfill: ['run', 'write', 'credits', 'skills', 'bench-dir', 'repo-root', 'extra-tasks'],
   skills: ['run', 'bench-dir', 'repo-root', 'json', 'extra-tasks'],
   'calibrate export': ['run', 'n', 'seed', 'out', 'bench-dir', 'max-file-chars', 'max-bundle-chars', 'redact-file', 'criteria-pack'],
+  'calibrate export-reference': ['tasks', 'criteria', 'out', 'seed', 'bench-dir'],
   'calibrate score': ['labels', 'key', 'kappa-min', 'agreement-min', 'spearman-min', 'save', 'criteria-pack'],
   'list-arms': ['arms', 'repo-root'],
   gc: ['root', 'older-than', 'kind', 'keep-last', 'apply', 'json', 'protect-file', 'protect', 'adopt'],
@@ -74,7 +75,7 @@ const FLAGS = {
 };
 
 // Commands whose first word selects the sub-command and therefore the flag table.
-const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select'] };
+const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune', 'select'] };
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([

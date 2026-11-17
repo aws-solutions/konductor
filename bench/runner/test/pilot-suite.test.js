@@ -50,7 +50,7 @@ test('the lite, full, hard, real and autonomy suites contain what they contained
   assert.deepEqual(ids('lite'), ['simple-fix-failing-test', 'simple-explain-file', 'orch-input-validation', 'review-inventory-security', 'design-hold-service']);
   assert.equal(ids('full').length, 24);
   assert.ok(!ids('full').some((id) => id.startsWith('real-') || id.startsWith('autonomy-') || id.startsWith('hard-')));
-  assert.equal(ids('hard').length, 6);
+  assert.equal(ids('hard').length, 9);
   assert.equal(ids('real').length, 8);
   assert.equal(ids('autonomy').length, 6);
   for (const n of ['lite', 'full', 'hard', 'real', 'autonomy']) assert.ok(!ids(n).includes('pilot'));

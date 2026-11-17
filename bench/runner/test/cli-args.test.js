@@ -160,7 +160,7 @@ test('calibrate takes exactly one subcommand; the flags of the other subcommand 
     assert.equal(wrong2.status, 2);
     const none = s.cli(['calibrate']);
     assert.notEqual(none.status, 0);
-    assert.match(none.stderr, /export or score/);
+    assert.match(none.stderr, /export, export-reference or score/);
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
 });
 
@@ -169,7 +169,7 @@ test('every flag in the usage text is accepted, and every accepted flag is in th
   const blocks = usage.split(/\n(?=  node bench\/runner\/bench\.js )/).filter((b) => b.startsWith('  node bench/runner/bench.js '));
   const documented = {};
   for (const b of blocks) {
-    const m = b.match(/^ {2}node bench\/runner\/bench\.js (calibrate (?:export|score)|cap (?:list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review-import|review|criteria|forced-prefix|keep-prune|select)|[a-z0-9-]+)/);
+    const m = b.match(/^ {2}node bench\/runner\/bench\.js (calibrate (?:export-reference|export|score)|cap (?:list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review-import|review|criteria|forced-prefix|keep-prune|select)|[a-z0-9-]+)/);
     const key = m[1];
     const flags = new Set([...b.matchAll(/--([a-z][a-z0-9-]*)/g)].map((x) => x[1]).filter((f) => f !== 'help'));
     documented[key] = new Set([...(documented[key] || []), ...flags]);

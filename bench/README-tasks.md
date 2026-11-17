@@ -151,6 +151,11 @@ never names hidden tests, grading, agents, skills or reviewers.
 - Add one: write the fixture (answer key included), `tasks/<id>.json` with a `tests` check, a `fixture_unchanged` check
   per existing test file and 3 process-quality rubric criteria, `hidden/<id>/hidden/*.test.js`, `solutions/<id>/`, two
   partials, then list the id in `suites/hard.json` and run the validator.
+- Three hard tasks exist for the code-quality criteria of the quality pack. Each declares its pack types in `taskArtifacts`.
+  - `hard-seat-holds` (fixture `hard-seats`): seat booking under calls at once. 13 hidden tests: 200 calls on 10 seats, one user at once, timeout, abort, a failing notifier.
+  - `hard-export-formats` (fixture `hard-exports`): add TSV so the next format edits one file. 14 hidden tests, two of them the hidden extension step (files that name every format, at most 2 and at most 1).
+  - `hard-catalog-limits` (fixture `hard-catalog`): meet four design targets and an anti-corruption layer. 14 hidden tests that count supplier calls, calls in flight, waits and listing work.
+  - Partial solutions keep no comment that names them, because `calibrate export-reference` shows their diffs to raters blind.
 
 ## Complex tasks
 

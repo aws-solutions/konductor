@@ -25,6 +25,7 @@ const { DEFAULT_QUOTE_RULE, RULE_TEXT } = require('../judge/quote.js');
 const { loadPack } = require('../judge/pack/index.js');
 const { runPackJudging, describePackPlan, FILE } = require('../judge/packrun.js');
 const { exportSheet, scoreLabels, scorePackLabels, formatCalibration, formatPackCalibration } = require('../judge/calibrate.js');
+const { exportReferenceSheet } = require('../judge/calibrate-reference.js');
 const { loadRun, loadRuns } = require('../report/load.js');
 const { generateRunReport, generateContrast, useScoringQuoteRule } = require('../report/generate.js');
 const { generateVerdict, KINDS } = require('../report/verdictgen.js');
@@ -552,6 +553,10 @@ function cmdCalibrate(opts) {
       limits: limitsOf(opts), explicitLimits: explicitLimitsOf(opts), redactions: loadRedactions(opts['redact-file']), outDir: opts.out, criteriaPack: packOf(opts),
     });
     console.log(`wrote ${r.n} item(s) to ${r.dir} (sheet.json, sheet.md, key.json). Label sheet.json, then run: calibrate score --labels ${r.sheetPath}`);
+  } else if (sub === 'export-reference') {
+    const list = (name) => String(need(opts, name)).split(',').map((s) => s.trim()).filter(Boolean);
+    const r = exportReferenceSheet({ benchDir: benchDirOf(opts), taskIds: list('tasks'), criteriaIds: list('criteria'), outDir: need(opts, 'out'), seed: seedOf(opts) });
+    console.log(`wrote ${r.n} item(s) to ${r.dir} (sheet.json, sheet.md, key.json). No model was called.`);
   } else if (sub === 'score') {
     const t = DEFAULTS.thresholds;
     const score = opts['criteria-pack'] === undefined ? scoreLabels : scorePackLabels;
@@ -569,7 +574,7 @@ function cmdCalibrate(opts) {
       console.log(`wrote ${path.resolve(opts.save)}`);
     }
   } else {
-    throw new Error('calibrate takes export or score');
+    throw new Error('calibrate takes export, export-reference or score');
   }
 }
 

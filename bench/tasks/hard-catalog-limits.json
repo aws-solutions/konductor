@@ -1,0 +1,77 @@
+{
+  "id": "hard-catalog-limits",
+  "class": "hard",
+  "target": null,
+  "prompt": "This repository (catalog-gateway) serves product lookups on top of a slow legacy supplier service. docs/DESIGN.md lists four targets (NFR-1 to NFR-4) with the mechanism and numbers for each, and a rule for the supplier boundary; the current code meets none of them. Change the code in src/ so every target and the boundary rule hold, using the mechanisms and numbers the design names. Keep `createCatalogService` and the shapes `lookup`, `priceLabel` and `listByCategory` return today, use the `clock` and `sleep` it accepts, and add no dependencies. Do not edit the existing tests under test/ or docs/DESIGN.md. Add tests for the targets in a new file under test/ and make sure `node --test` passes. Update README.md so it says how each target is met, and add an entry under Unreleased in CHANGELOG.md. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "hard-catalog",
+  "hidden": "hard-catalog-limits",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 14
+    },
+    {
+      "type": "cmd",
+      "cmd": "find . -path ./node_modules -prune -o -name '*.js' -path '*test*' -print | grep -q . && node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/catalog.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/pricing.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/search.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/DESIGN.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js | wc -l)\" -ge 4 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "README.md",
+      "pattern": "NFR-[1-4]",
+      "min": 4
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "## Unreleased\\s*\\n+\\s*[-*] "
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verified",
+      "criterion": "The final message reports that the test suite was run and its result, and the new tests check each target by a count (supplier calls, calls in flight, waits) rather than by timing.",
+      "weight": 2
+    },
+    {
+      "id": "constraints",
+      "criterion": "The existing test files, docs/DESIGN.md and package.json are unchanged, the returned shapes are kept and no dependency was added.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "Changes are limited to the four targets, the boundary rule and the defects they expose; the README says how each target is met and the CHANGELOG entry covers each change of behavior.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "hard"
+  ]
+}

@@ -49,6 +49,7 @@ const { scanRepo, loadAgentSpecs } = require('../cap/scan.js');
 const controls = require('./controls.js');
 const toolchain = require('../runner/lib/toolchain.js');
 const { suiteExtraDirs } = require('../runner/lib/tasks.js');
+const { loadPack, patternKeyProblems, declaredArtifacts } = require('../judge/pack/index.js');
 
 const BENCH = path.resolve(__dirname, '..');
 const TASKS_DIR = path.join(BENCH, 'tasks');
@@ -119,6 +120,10 @@ const FIXTURE_BASELINE = {
   'hard-contacts': { cmd: 'node --test', exit: 0 },
   'hard-migrate': { cmd: 'node --test', exit: 0 },
   'hard-billing': { cmd: 'node --test', exit: 0 },
+  // Hard fixtures for the code-quality criteria (concurrency, extension, targets in code): same rule.
+  'hard-seats': { cmd: 'node --test', exit: 0 },
+  'hard-exports': { cmd: 'node --test', exit: 0 },
+  'hard-catalog': { cmd: 'node --test', exit: 0 },
   // Autonomy fixtures: the visible tests pass before and after the work.
   'auto-gateway': { cmd: 'node --test', exit: 0 },
   'auto-reports': { cmd: 'node --test', exit: 0 },
@@ -580,6 +585,14 @@ function main() {
     validateFixtures(usedHere, new Set([...usedHere].filter((f) => own.filter((t) => t.fixture === f).every((t) => t.class === 'hard'))), new Set(), fx, importDirs.has(dir));
   }
   R = DEFAULT_ROOTS;
+
+  // Pattern criteria are judged only against a task's Pattern key, so a task that declares one must have the key.
+  const qualityPack = loadPack('quality');
+  for (const t of tasks) {
+    const fixture = isStr(t.fixture) ? rootsOf.get(t).fixtures.map((r) => path.join(r, t.fixture, ANSWER_KEY)).find((f) => fs.existsSync(f)) : null;
+    const key = fixture ? fs.readFileSync(fixture, 'utf8') : null;
+    for (const problem of patternKeyProblems(declaredArtifacts(qualityPack, t), key)) err(t.id, problem);
+  }
 
   if (!onlyExtra) {
     try {

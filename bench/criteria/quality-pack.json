@@ -14,7 +14,12 @@
     "requirements": "A requirements document: numbered requirements with acceptance checks, non-functional requirements, assumptions and open questions.",
     "plan": "A work breakdown or implementation plan: tasks, dependencies, done checks and risks. It is a plan, not an implementation.",
     "delegation": "The owner (role or agent) named for each task of a plan. Declared only by a task that asks for assignments.",
-    "change": "Any change to product or test code, of any size. Judged for discipline, not for structure."
+    "change": "Any change to product or test code, of any size. Judged for discipline, not for structure.",
+    "concurrency": "Product code the task says runs under concurrent calls. Declared only by a task that names the concurrency in its prompt or spec.",
+    "extension": "Product code the task says must take a new case later (a format, a rule, a plugin). Declared only by a task that asks for it.",
+    "nfr-code": "Product code that must meet the non-functional targets the task or its design document names. Declared only by such a task.",
+    "pattern-key": "Product code of a task whose answer key names, under Pattern key, the design patterns the change needs. Declared only by such a task.",
+    "enterprise-pattern": "Product code of a task whose answer key asks, under Pattern key, for an enterprise pattern (repository, unit of work, anti-corruption layer or similar). Declared only by such a task."
   },
   "minAddedCodeLines": 8,
   "taskArtifacts": {
@@ -52,10 +57,32 @@
     ],
     "rc-agents-md": [
       "guide"
+    ],
+    "hard-seat-holds": [
+      "code",
+      "tests",
+      "concurrency"
+    ],
+    "hard-export-formats": [
+      "code",
+      "tests",
+      "extension",
+      "pattern-key"
+    ],
+    "hard-catalog-limits": [
+      "code",
+      "tests",
+      "nfr-code",
+      "enterprise-pattern"
     ]
   },
   "declaredOnly": [
-    "delegation"
+    "delegation",
+    "concurrency",
+    "extension",
+    "nfr-code",
+    "pattern-key",
+    "enterprise-pattern"
   ],
   "dimensions": [
     {
@@ -121,6 +148,22 @@
     {
       "id": "guide-quality",
       "label": "Guide quality"
+    },
+    {
+      "id": "concurrency",
+      "label": "Concurrency in code"
+    },
+    {
+      "id": "extensibility",
+      "label": "Extensibility"
+    },
+    {
+      "id": "nfr-code",
+      "label": "Non-functional requirements in code"
+    },
+    {
+      "id": "enterprise-patterns",
+      "label": "Enterprise patterns"
     }
   ],
   "criteria": [
@@ -1600,6 +1643,168 @@
       "evidence": {
         "minQuotes": 2,
         "quote": "Two quotes separated by ' @@ ': the two sentences that use different names for the same thing (fail or partial), or the first and the last use of one term (pass)."
+      }
+    },
+    {
+      "id": "conc-shared-state",
+      "dimension": "concurrency",
+      "appliesTo": [
+        "concurrency"
+      ],
+      "weight": 3,
+      "question": "Is every update of state that concurrent calls share made as one atomic step?",
+      "levels": {
+        "fail": "2 or more places read shared state, wait (an await, a callback or a timer) and then write a value computed from the earlier read, with no lock, queue or compare-and-set around them.",
+        "partial": "1 such read, wait and write remains, or a lock exists and 1 path writes the shared state outside it.",
+        "pass": "Every read and write of shared state that spans a wait sits inside one lock, queue or compare-and-set, or the update is a single synchronous step with no wait inside it."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The read, the wait and the write of the unguarded update (fail or partial), or the lock or queue that guards it (pass)."
+      }
+    },
+    {
+      "id": "conc-async-errors",
+      "dimension": "concurrency",
+      "appliesTo": [
+        "concurrency"
+      ],
+      "weight": 2,
+      "question": "Does every promise or callback the change starts have an owner for its failure?",
+      "levels": {
+        "fail": "2 or more promises are started with no await, return or catch, or a callback can throw where no caller sees it.",
+        "partial": "1 promise or callback has no owner for its failure, or a catch drops the error with no count, log line or rethrow.",
+        "pass": "Every promise the change starts is awaited, returned or caught, and each catch rethrows, records or counts the error with its cause."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The promise with no owner (fail or partial), or the catch that records the failure (pass)."
+      }
+    },
+    {
+      "id": "conc-timeout-cancel",
+      "dimension": "concurrency",
+      "appliesTo": [
+        "concurrency"
+      ],
+      "weight": 2,
+      "question": "Does every wait on another party have a timeout or a cancel path that also frees what the wait held?",
+      "levels": {
+        "fail": "2 or more waits on another party (a call, a lock, a queue) have neither a timeout nor a cancel signal.",
+        "partial": "1 such wait has neither, or a timeout or cancel exists and leaves a held seat, lock, timer or listener in place.",
+        "pass": "Every wait on another party has a timeout or a cancel signal, the signal reaches the callee, and the timer, listener and held resource are released on success, failure, timeout and cancel."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The wait with no timeout or the resource left held (fail or partial), or the line that releases it on timeout or cancel (pass)."
+      }
+    },
+    {
+      "id": "ext-one-place",
+      "dimension": "extensibility",
+      "appliesTo": [
+        "extension"
+      ],
+      "weight": 3,
+      "question": "How many existing files must be edited to add one more case of the kind the task names?",
+      "levels": {
+        "fail": "3 or more existing files list the cases by name (a switch, an if chain, a map or a list), so a new case edits each of them.",
+        "partial": "2 existing files list the cases by name.",
+        "pass": "Adding a case edits at most 1 existing file (one registry entry), or none when a new file is found on its own."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "One line from each file that lists the cases by name (fail or partial), or the registry line or the discovery code (pass)."
+      }
+    },
+    {
+      "id": "ext-closed-core",
+      "dimension": "extensibility",
+      "appliesTo": [
+        "extension"
+      ],
+      "weight": 2,
+      "question": "Does the code that uses the cases call them through one contract without naming any case?",
+      "levels": {
+        "fail": "The core code branches on the case name in 2 or more places.",
+        "partial": "The core code branches on the case name in 1 place, or 1 case is handled outside the contract the other cases share.",
+        "pass": "The core code looks a case up by its name once and calls it through a contract every case meets (an object, a function or a table entry), and no core line names a single case."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The core line that names a case (fail or partial), or the lookup and the contract call (pass)."
+      }
+    },
+    {
+      "id": "code-nfr-mechanism",
+      "dimension": "nfr-code",
+      "appliesTo": [
+        "nfr-code"
+      ],
+      "weight": 3,
+      "question": "For each non-functional target the task or design names, does the code use the mechanism named for it?",
+      "levels": {
+        "fail": "2 or more targets in the task, design or answer key have no mechanism in the code (cache, index, queue, concurrency limit or retry), or use one that cannot meet the number.",
+        "partial": "1 target has no mechanism, or 1 mechanism exists and misses the number the design gives (a TTL, a size, an attempt count or a limit).",
+        "pass": "Every target the task, design or answer key names has the mechanism the design names in the code, set to the number the design gives."
+      },
+      "evidence": {
+        "minQuotes": 2,
+        "quote": "The code line of the mechanism, then the target it serves from the design or answer key."
+      }
+    },
+    {
+      "id": "code-nfr-bounded",
+      "dimension": "nfr-code",
+      "appliesTo": [
+        "nfr-code"
+      ],
+      "weight": 2,
+      "question": "Is every cache, queue, retry and concurrency limit in the change bounded by a named number?",
+      "levels": {
+        "fail": "2 or more such mechanisms have no bound (a cache with no size or expiry, a retry with no maximum, a queue or fan-out with no length or limit).",
+        "partial": "1 mechanism has no bound, or a bound is an inline literal that differs from the design number.",
+        "pass": "Every cache, queue, retry and limit has a bound held in a named constant or config value that matches the design."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The mechanism with no bound (fail or partial), or the named bound (pass)."
+      }
+    },
+    {
+      "id": "mod-pattern-missing",
+      "dimension": "modularity",
+      "appliesTo": [
+        "pattern-key"
+      ],
+      "weight": 2,
+      "question": "Does the change use each pattern the answer key names under Pattern key, or an equivalent the key accepts?",
+      "levels": {
+        "fail": "The change uses none of the patterns the Pattern key names, and the logic such a pattern would hold is written out in 2 or more places.",
+        "partial": "The change uses some of the patterns the Pattern key names and not all, or uses one in part so that 1 place still holds logic the pattern should own.",
+        "pass": "Every pattern the Pattern key names, or an equivalent it lists as accepted, is present in the change and holds all the logic the key assigns to it."
+      },
+      "evidence": {
+        "minQuotes": 2,
+        "quote": "The code line that holds or lacks the pattern, then the Pattern key line it is checked against."
+      }
+    },
+    {
+      "id": "ent-pattern-applied",
+      "dimension": "enterprise-patterns",
+      "appliesTo": [
+        "enterprise-pattern"
+      ],
+      "weight": 2,
+      "question": "Does the change use the enterprise pattern the Pattern key asks for, at the boundary the key names?",
+      "levels": {
+        "fail": "The pattern is absent, and 3 or more modules on the inner side of the boundary use the outer model directly (its field names, its calls or its transactions).",
+        "partial": "The pattern exists and 1 or 2 modules on the inner side still use the outer model directly.",
+        "pass": "One module holds the pattern at the boundary the key names, and no other module uses the outer model directly."
+      },
+      "evidence": {
+        "minQuotes": 2,
+        "quote": "The code line that crosses the boundary or holds the pattern, then the Pattern key line it is checked against."
       }
     }
   ],

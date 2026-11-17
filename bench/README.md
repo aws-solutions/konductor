@@ -75,7 +75,7 @@ Run these from the repository root. Add `--budget-credits N` to any `run` to sto
 | --- | --- | --- |
 | lite | `node bench/runner/bench.js run --suite lite --budget-credits 100 --out $OUT/lite` | vanilla, v1.2.0 and main, 1 replicate. One pass cost about 61 credits (n=1) |
 | full | `node bench/runner/bench.js run --suite full --budget-credits N --out $OUT/full` | all five arms, 3 replicates; no observed cost on file |
-| hard | `node bench/runner/bench.js run --suite hard --budget-credits N --out $OUT/hard` | six tasks scored by hidden tests, 3 arms, 3 replicates |
+| hard | `node bench/runner/bench.js run --suite hard --budget-credits N --out $OUT/hard` | nine tasks scored by hidden tests, 3 arms, 3 replicates |
 | real | `node bench/real/fetch.js` once, then `node bench/runner/bench.js run --suite real --budget-credits N --out $OUT/real` | pinned public projects scored by their own tests; the fetch is the only networked step. About 121 credits or more per pass |
 | autonomy | `node bench/runner/bench.js run --suite autonomy --budget-credits 400 --out $OUT/autonomy` | a scripted user answers questions; see [Autonomy tier](#autonomy-tier) |
 | pilot | `node bench/runner/bench.js pr-plan --ref opt-a=REF --suite pilot --budget-credits 150`, then the `run --suite pilot` line it prints | 8 tasks, 1 replicate, for trying one option arm against a release |
@@ -348,7 +348,7 @@ starting an agent). The engine is recorded as `agentEngine` in `run-config.json`
 
 ## Suites and arms
 - lite: vanilla, v1.2.0, main; 1 replicate, `--parallel 1` (wall-clock comparisons need 1). full: all
-  five arms, 3 replicates. hard: six tasks with hidden acceptance tests, three arms, 3 replicates, `--parallel 1`.
+  five arms, 3 replicates. hard: nine tasks with hidden acceptance tests, three arms, 3 replicates, `--parallel 1`.
   `run --suite hard` scores each run by the share of hidden tests passed; the report shows it as
   "hidden tests passed" (mean fraction, and how many runs pass all) beside "pass". See `bench/README-tasks.md`.
   Hidden tests, partial solutions, solutions and fixtures are masked in the agent's namespace.
@@ -859,6 +859,7 @@ The task rubrics check that a run did what its task asked. The quality pack adds
 - To make the pack part of the quality score, pass a scoring file that weights it: `report --run DIR --criteria-pack quality --scoring bench/profiles/scoring-quality.json` (hidden 0.4, checks 0.16, rubric 0.24, pack 0.2). Each run gets one pack score, the mean over every criterion that applied to it, so a one-line fix and a design document are scored on the same scale. A run where nothing applied is scored on the other components. The report then refuses any run without a current pack judgment instead of leaving it out. A scoring file with a pack weight is refused by every other command, and `profiles/scoring.json` is unchanged, so earlier numbers stay comparable.
 - The "Quality dimensions" section also has a "Process signals" table. It shows spawns per run, runs that delegated, distinct agents, whether an assumptions section was written (in a document, in the final message) and whether the run ended on a question. They are read from the recorded results, not judged, and not scored.
 - No sample has been rated yet. Read the scores as a way to see where arms differ, not as a measure.
+- Code-quality criteria for concurrency, extensibility, non-functional targets in code, a missing pattern and enterprise patterns apply only to a task that declares them in `taskArtifacts`. The pattern criteria are judged only against the `## Pattern key` of the task's answer key. Three hard tasks need them and measure the same thing with hidden tests: `hard-seat-holds` (calls at once), `hard-export-formats` (files the next format edits) and `hard-catalog-limits` (cache, limit, retry and index counts). See [QUALITY-PACK.md](QUALITY-PACK.md).
 - A weighted pack needs a current pack judgment for every run, so `report` stops when one was made against another pack or task revision. `report --allow-stale-pack` (plain report only) scores those runs from the stale judgments instead. The report then opens with a note and `report.json` carries a `packStale` list, each run labelled "stale pack revision <rev>". Without the flag the check is unchanged, and the verdict pages never take it. Rejudging with `judge --criteria-pack quality` is still the way to get comparable numbers.
 - `report --verdict platform|orchestrator-pass --criteria-pack quality --scoring profiles/scoring-quality-fractional.json` scores every run with the pack included, so the paired intervals, the A/A noise floor and the call use the pack-weighted number. Every run needs a current pack judgment, the scoring file must weight the pack, and without the flag nothing changes.
 
@@ -867,6 +868,9 @@ The task rubrics check that a run did what its task asked. The quality pack adds
 then `calibrate score` prints judge-vs-human and judge-vs-judge agreement, Cohen's kappa and Spearman
 with PASS or WARN (defaults 0.6, 0.7, 0.6; `--kappa-min`, `--agreement-min`, `--spearman-min`). Under
 about 30 criterion pairs is indicative only.
+
+`calibrate export-reference --tasks ID,ID --criteria ID,ID --out DIR` writes the same kind of blind sheet for pack criteria that no run
+has reached yet. Its items are each task's reference and partial solutions laid over the fixture, and it calls no model.
 
 `cap review --run DIR` is the same check with the outputs side by side. It writes `DIR/calibration/review/review.html`, one static file
 with the data, style and script inline: it loads nothing, opens no port and needs no server (a Content-Security-Policy allows only its own

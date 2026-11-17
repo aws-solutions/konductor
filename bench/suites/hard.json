@@ -5,7 +5,10 @@
     "hard-invoice-refactor",
     "hard-contacts-rename",
     "hard-migrate-orders",
-    "hard-billing-reconcile"
+    "hard-billing-reconcile",
+    "hard-seat-holds",
+    "hard-export-formats",
+    "hard-catalog-limits"
   ],
   "arms": [
     "vanilla",

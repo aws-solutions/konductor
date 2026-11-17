@@ -35,8 +35,11 @@ test('every criterion of the earlier pack keeps its text, weight, evidence rule 
   }
 });
 
+// Types are only added at the end (the code-quality types), so the earlier entries keep their text and order.
+const EARLIER = { artifactTypes: (v) => Object.fromEntries(Object.entries(v).slice(0, 12)), declaredOnly: (v) => v.slice(0, 1) };
+
 test('the counted-criteria lists, artifact types and earlier dimensions are unchanged', () => {
-  for (const [key, sha] of Object.entries(frozen.data)) assert.equal(fingerprint(pack[key]), sha, key);
+  for (const [key, sha] of Object.entries(frozen.data)) assert.equal(fingerprint((EARLIER[key] || ((v) => v))(pack[key])), sha, key);
   assert.equal(fingerprint(pack.dimensions.slice(0, 13)), frozen.dimensions, 'the first 13 dimensions keep their ids, labels and order');
 });
 

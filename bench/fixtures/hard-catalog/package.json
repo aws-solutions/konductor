@@ -1,0 +1,10 @@
+{
+  "name": "catalog-gateway",
+  "version": "0.6.0",
+  "private": true,
+  "description": "Product lookups on top of the supplier's legacy item service",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

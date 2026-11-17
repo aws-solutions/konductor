@@ -125,4 +125,18 @@ function packRevision(pack) {
   return crypto.createHash('sha256').update(JSON.stringify(rest)).digest('hex').slice(0, 12);
 }
 
-module.exports = { PACK_DIR, LEVELS, VAGUE, validatePack, loadPack, packRevision };
+/**
+ * Problems with the Pattern key a task's answer key must hold for its declared pattern types. `declared` is the task's
+ * artifact types; `answerKey` the text of the fixture's answer key (null when there is none). A task that declares
+ * `pattern-key` needs a `## Pattern key` section with a `- needed:` line, and one that declares `enterprise-pattern` a
+ * `- enterprise:` line there, because those criteria are judged only against the key and never by taste.
+ */
+function patternKeyProblems(declared, answerKey) {
+  const wants = [['pattern-key', 'needed'], ['enterprise-pattern', 'enterprise']].filter(([t]) => declared.includes(t));
+  if (!wants.length) return [];
+  const section = String(answerKey ?? '').split(/^## /m).find((s) => /^Pattern key\s*$/m.test(s.split('\n')[0]));
+  if (!section) return [`declares ${wants.map(([t]) => t).join(' and ')} but the answer key has no "## Pattern key" section`];
+  return wants.filter(([, label]) => !new RegExp(`^- ${label}: \\S`, 'm').test(section)).map(([t, label]) => `declares ${t} but its Pattern key has no "- ${label}:" line`);
+}
+
+module.exports = { PACK_DIR, LEVELS, VAGUE, validatePack, loadPack, packRevision, patternKeyProblems };

@@ -1,0 +1,13 @@
+{
+  "name": "report-export",
+  "version": "1.2.0",
+  "private": true,
+  "description": "Exports report rows as CSV or JSON",
+  "main": "src/index.js",
+  "bin": {
+    "report-export": "bin/export.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

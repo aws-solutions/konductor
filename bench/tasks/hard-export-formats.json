@@ -1,0 +1,72 @@
+{
+  "id": "hard-export-formats",
+  "class": "hard",
+  "target": null,
+  "prompt": "This repository (report-export) exports report rows as CSV or JSON from the library and the command line. Add the TSV format described under \"tsv (planned)\" in docs/FORMATS.md, everywhere CSV and JSON work today: `exportReport`, `contentTypeFor`, `fileNameFor` and `--format` on the command line. Also export `listFormats()` from src/index.js, returning the name of every format, and make every unknown format error name the formats that exist. XML and NDJSON come next, and each later format should touch as few existing files as possible, so structure the change for that. The CSV and JSON output must stay byte for byte the same and no dependencies may be added. Do not edit the existing tests under test/. Add tests for TSV in a new file under test/ and make sure `node --test` passes. Update the README format table, say there how to add a format, and add an entry under Unreleased in CHANGELOG.md. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "hard-exports",
+  "hidden": "hard-export-formats",
+  "timeoutSec": 900,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 14
+    },
+    {
+      "type": "cmd",
+      "cmd": "find . -path ./node_modules -prune -o -name '*.js' -path '*test*' -print | grep -q . && node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/render.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/filename.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/cli.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js | wc -l)\" -ge 4 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "^\\|\\s*tsv\\s*\\|"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "## Unreleased\\s*\\n+\\s*[-*] .*tsv"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verified",
+      "criterion": "The final message reports that the test suite was run and its result, and the new tests cover the TSV escapes and an empty value, not only a plain row.",
+      "weight": 2
+    },
+    {
+      "id": "constraints",
+      "criterion": "The existing test files and package.json are unchanged, CSV and JSON output is unchanged and no dependency was added.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "Changes are limited to TSV, listFormats, the error messages and what the stated next formats need; the README table and the how-to-add text match the code, and the CHANGELOG entry covers each change.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "hard"
+  ]
+}

@@ -1,0 +1,5 @@
+[
+  { "region": "north", "total": 120, "note": "includes, returns" },
+  { "region": "south", "total": 80, "note": null },
+  { "region": "east", "total": 95 }
+]
