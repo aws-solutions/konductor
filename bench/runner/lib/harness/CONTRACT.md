@@ -22,7 +22,7 @@ This file lists what the runner calls. It is derived from the call sites in `run
 | `prepareArm(arm, ctx)` | the arm and run context | `prepared` object. Must be cached by arm id and content so a repeat call is cheap. Today: `{ exportDir, bin, mcpSha256, cached, ... }` | `orchestrate.prepareAll` (skipped for vanilla arms) |
 | `trialInstall(prepared, ctx)` | the prepared arm | array of agent names whose model was pinned (stored as `prepared.rewrittenAgents`). Should set `prepared.skillInfo` for skill accounting. Must throw if the arm cannot install or load | `orchestrate.prepareAll`, before any credit is spent |
 | `installInto(home, { arm, prepared, ctx, config, outDir })` | scratch HOME and the run | `meta` object merged into the run's meta (`rewrittenAgents`, `modelNormalized`, and runtime extras such as `installedAgents`). Writes `install.log` into `outDir` when it has something to log | `run-one.executeRun` |
-| `buildCommand({ arm, task, config, ctx, cwd, resume })` | `resume` is `null` or `{ sessionId, prompt }` for the next turn of an autonomy task | `{ file, args, display }`. `file` is an executable path, `display` is the line written to `command.txt` | `run-one.runTurns` |
+| `buildCommand({ arm, task, config, ctx, cwd, resume })` | `resume` is `null` or `{ sessionId, prompt }` for the next turn of an autonomy task | `{ file, args, display, stdin? }`. `file` is an executable path, `display` is the line written to `command.txt`. `stdin`, when set, is the prompt text: the runner writes it to `<outDir>/prompt.txt` (`prompt-<turn>.txt` for a multi-turn task) and gives that file to the agent as stdin, so the prompt is not in argv (see below) | `run-one.runTurns` |
 | `env({ arm, config, ctx, home, tmpdir })` | as listed | plain object, the complete environment of the agent process (an allowlist, not a copy of `process.env`) | `run-one.executeRun` |
 | `removeCredentials(home)` | scratch HOME | nothing. Deletes any credential copy. Must not throw if there is none | `run-one.executeRun` (after the agent exits, and again in cleanup) |
 | `keepPaths(ctx)` | run context | array of absolute paths that must stay visible inside the isolation namespace (the agent binary and its helpers) | `run-one.makeIso` |
@@ -40,6 +40,17 @@ This file lists what the runner calls. It is derived from the call sites in `run
 | `secrets(ctx)` | run context | array of secret strings that are scrubbed from `result.json` before it is written | `run-one.executeRun`: `harness.secrets ? harness.secrets(ctx) : []` |
 | `cleanupRun({ cwd, tmpdir, tmpBases })` | run paths | whatever `describeCleanup` accepts. Removes agent state that escapes the scratch HOME (Claude Code writes under the temp dir) | `run-one.executeRun`: `if (harness.cleanupRun)` |
 | `describeCleanup(removed, tmpdir)` | the value `cleanupRun` returned | a record stored as `result.claudeCode.tmpCleanup` | `run-one.executeRun`, only when `cleanupRun` exists and the result has a `claudeCode` block. Required if `cleanupRun` is defined |
+
+## The prompt and argv
+
+An agent that runs `pkill -f <pattern>` matches every process whose command line contains the pattern, its own harness process included. When the prompt is in argv and names task paths, a `pkill -f` on a module the task mentions kills the agent CLI and ends the run. So a harness passes the prompt on stdin when its CLI reads it from there:
+
+| Harness | Prompt | Why |
+| --- | --- | --- |
+| `claude-code` | stdin | `claude -p` with no prompt argument reads the prompt from stdin (`claude --help`: "useful for pipes") |
+| `kiro-cli` | argv | `kiro-cli chat --help` documents the prompt only as the `[INPUT]` argument. It mentions piped stdin only for engine selection, and reading the prompt from stdin has not been checked against the real binary without a paid run. Until it is, the prompt stays in argv and a `pkill -f` on task text can still kill kiro-cli |
+| `opencode` | argv | not checked against the opencode CLI; `opencode run` takes the message as arguments |
+| `strands` | argv | plant arms only, on the scripted fake model; `display` hides the prompt |
 
 ## Host steps after the run
 

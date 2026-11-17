@@ -174,7 +174,8 @@ test('buildCommand: the verified launch shape, tool list last, no max-turns, bud
   const config = { model: MODEL, canonicalModel: CANON };
   const van = cc.buildCommand({ arm: CC_VANILLA, task: { prompt: 'do it' }, config, ctx });
   assert.equal(van.file, '/x/claude');
-  assert.deepEqual(van.args, ['-p', 'do it', '--output-format', 'stream-json', '--verbose', '--model', MODEL, '--max-budget-usd', '1.5', '--permission-mode', 'acceptEdits', '--allowedTools', 'Bash', 'Edit', 'Write', 'Read']);
+  assert.equal(van.stdin, 'do it');
+  assert.deepEqual(van.args, ['-p', '--output-format', 'stream-json', '--verbose', '--model', MODEL, '--max-budget-usd', '1.5', '--permission-mode', 'acceptEdits', '--allowedTools', 'Bash', 'Edit', 'Write', 'Read']);
   const kon = cc.buildCommand({ arm: CC_KONDUCTOR, task: { prompt: 'do it' }, config, ctx });
   assert.ok(kon.args.includes('--include-hook-events'));
   assert.deepEqual(kon.args.slice(kon.args.indexOf('--agent'), kon.args.indexOf('--agent') + 2), ['--agent', 'konductor']);
@@ -184,6 +185,17 @@ test('buildCommand: the verified launch shape, tool list last, no max-turns, bud
   assert.equal(noHooks.args.includes('--include-hook-events'), false);
   assert.equal(noHooks.args[noHooks.args.indexOf('--max-budget-usd') + 1], String(cc.DEFAULT_RUN_BUDGET_USD));
   assert.throws(() => cc.buildCommand({ arm: CC_VANILLA, task: { prompt: 'p' }, config, ctx, resume: { prompt: 'x' } }), /not supported/);
+});
+
+test('buildCommand keeps the task text out of argv, so pkill -f on a task path cannot match the claude process', () => {
+  const ctx = { claude: { bin: '/x/claude', supportsHookEvents: true } };
+  const prompt = 'The parser in src/markdown_it/cli/parse.py hangs; run python -m markdown_it.cli.parse docs/big.md to see it.';
+  for (const arm of [CC_VANILLA, CC_KONDUCTOR]) {
+    const cmd = cc.buildCommand({ arm, task: { prompt }, config: { model: MODEL, canonicalModel: CANON }, ctx });
+    assert.equal(cmd.stdin, prompt);
+    const argv = [cmd.file, ...cmd.args].join(' ');
+    for (const needle of ['markdown_it', 'cli/parse', 'docs/big.md']) assert.equal(argv.includes(needle), false, needle);
+  }
 });
 
 test('env: export-mode credentials only, no profile variables, telemetry off, scratch HOME and config dir', () => {
@@ -348,6 +360,9 @@ test('vanilla run: result fields, command, environment, rules, cleanup and no cr
     assert.match(st.cwd, /scratch\/r-[^/]+\/work$/);
     assert.equal(st.stdinIsTty, false);
     assert.equal(st.args[0], '-p');
+    assert.equal(st.stdin, s.task.prompt, 'the prompt arrives on stdin');
+    assert.equal(st.args.includes(s.task.prompt), false, 'and is not in argv');
+    assert.equal(fs.readFileSync(path.join(s.outDir, 'prompt.txt'), 'utf8'), s.task.prompt);
     assert.equal(st.args.includes('--agent'), false);
     assert.equal(st.args[st.args.indexOf('--max-budget-usd') + 1], '0.75');
     assert.equal(st.configDir, path.join(st.home, '.claude'));

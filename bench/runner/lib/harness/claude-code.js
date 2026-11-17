@@ -161,10 +161,12 @@ const env = (o) => envSetup(o).env;
 
 // ---- Command ----
 
+// The prompt goes on stdin (`claude -p` reads it there when no prompt argument is given), not in argv: an agent that
+// runs `pkill -f <text from its task>` would otherwise match, and kill, its own claude process.
 function buildCommand({ arm, task, config, ctx, resume = null }) {
   if (resume) throw new Error('multi-turn (autonomy) tasks are not supported on the Claude Code harness yet; the resume flags have not been verified');
   const args = [
-    '-p', promptFor(arm, task),
+    '-p',
     '--output-format', 'stream-json', '--verbose',
     '--model', config.model,
     '--max-budget-usd', String(ctx.runBudgetUsd ?? DEFAULT_RUN_BUDGET_USD),
@@ -174,7 +176,7 @@ function buildCommand({ arm, task, config, ctx, resume = null }) {
   if (!arm.vanilla && ctx.claude?.supportsHookEvents) args.push('--include-hook-events');
   // Last: the tool list is variadic.
   args.push('--allowedTools', ...ALLOWED_TOOLS);
-  return { file: ctx.claude.bin, args, display: `claude ${args.map((a) => JSON.stringify(a)).join(' ')}` };
+  return { file: ctx.claude.bin, args, stdin: promptFor(arm, task), display: `claude ${args.map((a) => JSON.stringify(a)).join(' ')} < prompt.txt` };
 }
 
 // ---- Arm ----
