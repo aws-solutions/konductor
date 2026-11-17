@@ -153,8 +153,8 @@ function RunPanel({
 function UnsavedNote() {
   return (
     <Alert type="info" data-testid="unsaved-note">
-      The Designer has changes that are not saved. A run uses the saved
-      workflow, which is the one drawn here.
+      Design has changes that are not saved. A run uses the saved workflow,
+      which is the one drawn here.
     </Alert>
   );
 }

@@ -111,7 +111,7 @@ test('hides the dots at rest and shows them on hover, focus and select', async (
 
   await canvas.page.mouse.move(0, 0);
   await expect(canvas.outPort(review)).toHaveCSS('opacity', '0');
-  await canvas.tab('Designer').focus();
+  await canvas.tab('Design').focus();
   await canvas.tabToNextNode();
   await expect(canvas.outPort('node-intent')).toHaveCSS('opacity', '1');
 });
@@ -255,8 +255,8 @@ test('removes the launch code from the address', async ({ canvas }) => {
 test('keeps the graph when the tabs are switched', async ({ canvas }) => {
   await canvas.expectWorkflowDrawn();
 
-  await canvas.selectTab('Execution');
-  await canvas.selectTab('Designer');
+  await canvas.selectTab('Run');
+  await canvas.selectTab('Design');
 
   await canvas.expectWorkflowDrawn();
 });
@@ -286,7 +286,7 @@ test('does not let a node be dragged', async ({ canvas }) => {
 
 test('reaches each node with the Tab key and names it', async ({ canvas }) => {
   await canvas.expectWorkflowDrawn();
-  await canvas.tab('Designer').focus();
+  await canvas.tab('Design').focus();
 
   for (const name of NODE_NAMES) {
     await canvas.tabToNextNode();
@@ -303,7 +303,7 @@ test('draws the focus ring in the node, in place of the outline of the browser',
   canvas,
 }) => {
   await canvas.expectWorkflowDrawn();
-  await canvas.tab('Designer').focus();
+  await canvas.tab('Design').focus();
 
   await canvas.tabToNextNode();
   const focused = canvas.page.locator('.react-flow__node:focus');
