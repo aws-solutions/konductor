@@ -118,7 +118,7 @@ test('a stale judgment is refused, never read, until it is made again with rejud
   const base = pilot();
   const args = { depth: 'quick', subject: base, provider: stub, seats, store, subjectModel: STUB_SUBJECT_MODEL };
   assert.equal(kp.checkSubject(args).A.judgments.stale, 0);
-  const edited = { ...base, skill: { ...base.skill, text: `${base.skill.text}\nOne more line.\n` } };
+  const edited = { ...base, skill: { ...base.skill, text: `${base.skill.text}\nAlso write \`extra-mark\`.\n` } };
   const stale = kp.checkSubject({ ...args, subject: edited });
   assert.ok(stale.A.judgments.stale > 0);
   assert.equal(stale.A.tasks_counted, 0);
@@ -219,6 +219,17 @@ test('cap decide on a full fake study writes a schema-valid record per call, its
       assert.equal(record.signoff.by, null);
     }
   } finally { s.e.done(); }
+});
+
+test('SR-26: a judge call carries the seat, the checklist and the answer, never the arm or the skill name', () => {
+  const calls = [];
+  const recording = { ...stub, judge: (input) => { calls.push(input); return stub.judge(input); } };
+  kp.checkSubject({ subject: loadConvention(), depth: 'deep', provider: recording, seats, store: kp.judgmentStore(null), subjectModel: STUB_SUBJECT_MODEL, replicates: 2 });
+  assert.ok(calls.length > 0);
+  for (const c of calls) {
+    assert.deepEqual(Object.keys(c).sort(), ['answer', 'checklist', 'seat', 'taskId']);
+    assert.equal(c.answer.includes('convention-control'), false);
+  }
 });
 
 test('every copied module names Michael Lin, its pull request and commit on line 2, and the rule dates are his', () => {

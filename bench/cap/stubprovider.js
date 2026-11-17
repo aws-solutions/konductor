@@ -7,8 +7,8 @@
  * real code.
  *
  *   subject   answers from the request alone. Every arm covers the request (FULL_ANSWER_MARK). An arm that has the
- *             skill loaded (`with`, and `aa`, its A/A repeat in a deep check) also follows the skill: it appends the
- *             skill's text, so the skill's literal conventions appear in the answer. `without` never loads it.
+ *             skill loaded (`with`, and `aa`, its A/A repeat in a deep check) also follows the skill: it adds the
+ *             skill's backticked literals (its conventions), never its name. `without` never loads it.
  *   writer    the request-only checklist (reading A): the rubric when it is given one (the dose ladder's writer is
  *             given its rubric, as in his checklist job), else `count` generic items about the request.
  *   judges    one label per item: MET, PARTIAL or MISSING. An item that quotes literals in backticks is MET when the
@@ -80,7 +80,10 @@ function createStubProvider({ ladder = null } = {}) {
     const loaded = Boolean(skill) && LOADING_ARMS.has(arm);
     const tag = hashOf(request, String(replicate)).slice(0, 8);
     const body = `Reply ${tag}: ${FULL_ANSWER_MARK}, with the figures it gives and a short check at the end.`;
-    return { text: loaded ? `${body}\n\n${skill.text}` : body, loaded, model, version: STUB_VERSION };
+    // Following the skill shows as its literal conventions in the answer, never as its name or text, so no arm or
+    // skill text reaches a judge (SR-26).
+    const follows = loaded ? literalsOf(skill.text).filter((l) => !l.includes(skill.name)) : [];
+    return { text: follows.length ? `${body}\n\n${follows.join('\n')}` : body, loaded, model, version: STUB_VERSION };
   }
 
   /** The request-only checklist: `rubric` as given, or `count` generic items. */
