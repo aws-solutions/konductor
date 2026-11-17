@@ -62,7 +62,7 @@ function capabilitiesOf(routes: Route[]): string[] {
   );
 }
 
-/** The six operations of the contract, on the paths it gives them. */
+/** The operations of the contract, on the paths it gives them. */
 export function buildRoutes(api: WorkflowApi, session: SessionGate): Route[] {
   const routes: Route[] = [
     {
@@ -133,6 +133,16 @@ export function buildRoutes(api: WorkflowApi, session: SessionGate): Route[] {
           id: 'getRun',
           secured: true,
           handle: ({ params }) => ok({ run: api.getRun(params[0] ?? '') }),
+        },
+      },
+    },
+    {
+      pattern: /^\/api\/agents$/,
+      operations: {
+        GET: {
+          id: 'listAgents',
+          secured: true,
+          handle: () => ok(api.listAgents()),
         },
       },
     },

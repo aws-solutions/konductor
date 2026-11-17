@@ -64,7 +64,6 @@ const SPEC_FILE = fileURLToPath(new URL('./openapi.yaml', import.meta.url));
 const HTTP_METHODS = ['get', 'put', 'post', 'patch', 'delete'];
 const VERSION_HEADER = 'X-Konductor-Api';
 
-// The first release has these six operations and no others.
 // A client picks what to call by these ids, so renaming one breaks it.
 const STABLE_OPERATION_IDS = [
   'createSession',
@@ -73,12 +72,15 @@ const STABLE_OPERATION_IDS = [
   'checkWorkflow',
   'startRun',
   'getRun',
+  'listAgents',
 ];
 
-const MVP_OPERATIONS = [
+// This version has these operations and no others.
+const OPERATIONS = [
   'POST /api/session createSession',
   'GET /api/workflow getWorkflow',
   'PUT /api/workflow saveWorkflow',
+  'GET /api/agents listAgents',
   'POST /api/validate checkWorkflow',
   'POST /api/run startRun',
   'GET /api/runs/{id} getRun',
@@ -488,12 +490,12 @@ describe('workflow canvas API contract', () => {
       expect(spec.openapi).toMatch(/^3\.1\./);
     });
 
-    it('has the six operations of the first release and no others', () => {
+    it('has the operations of this version and no others', () => {
       const found = listOperations(spec).map(
         ({ method, path, operation }) =>
           `${method} ${path} ${operation.operationId}`,
       );
-      expect(found).toEqual(MVP_OPERATIONS);
+      expect(found).toEqual(OPERATIONS);
     });
 
     it('gives every operation an operationId and a summary', () => {
@@ -1001,6 +1003,12 @@ describe('workflow canvas API contract', () => {
       );
     });
 
+    it('says that version 1.4.0 only adds the list of agents', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.4\.0 only adds: the operation `listAgents`/,
+      );
+    });
+
     it('says that version 1.3.0 only adds the kind and the lines of a stage', () => {
       expect(words(spec.info.description)).toMatch(
         /Version 1\.3\.0 only adds: each stage of a view gains `kind` and `range`/,
@@ -1019,7 +1027,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.3.0');
+      expect(info.version).toBe('1.4.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1057,7 +1065,7 @@ describe('workflow canvas API contract', () => {
       expect([...session().capabilities].sort()).toEqual([...ids].sort());
     });
 
-    it('keeps the operationId of every operation of the first release', () => {
+    it('keeps the operationId of every pinned operation', () => {
       const ids = listOperations(spec).map(
         ({ operation }) => operation.operationId,
       );
@@ -1121,6 +1129,17 @@ describe('workflow canvas API contract', () => {
       expect(words(spec.info.description)).toMatch(
         /Version 1\.2\.1 adds nothing and removes nothing/,
       );
+    });
+  });
+
+  describe('the agents', () => {
+    it('lists the agents in the order of their ids, each once', () => {
+      const { agents } = jsonBodyOf(spec, 'GET /api/agents', '200').example as {
+        agents: { id: string }[];
+      };
+      const ids = agents.map((agent) => agent.id);
+      expect(ids.length).toBeGreaterThan(0);
+      expect(ids).toEqual([...new Set(ids)].sort());
     });
   });
 
