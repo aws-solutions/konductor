@@ -24,8 +24,11 @@ function lookup(data, backend, judge, kind) {
 }
 
 /**
- * Low (mean) and high (p90) totals for `units` ([{ judge, kind, live }]) on `backend`. High is every call at its own p90, an
- * upper bound; it is null when an entry used has no p90. Returns null when the data has nothing for the backend.
+ * Low (mean) and high (p90) totals for `units` ([{ judge, kind, live, promptChars? }]) on `backend`. High is every call at its own
+ * p90, an upper bound; it is null when an entry used has no p90. Returns null when the data has nothing for the backend.
+ * Spend grows with the prompt, so a unit that gives `promptChars` (the summed length of its live prompts) and an entry with a
+ * `perUnit` line is priced from that line; the flat mean, measured on smaller prompts, priced one 624-run study of long
+ * real-repository prompts at about a third of what it cost. The line includes the re-ask after a bad reply.
  */
 function estimateFromObserved(data, backend, units) {
   if (!data) return null;
@@ -38,6 +41,13 @@ function estimateFromObserved(data, backend, units) {
     const e = lookup(data, backend, u.judge, u.kind);
     if (!e) return null;
     used.add(e);
+    const line = e.perUnit && typeof u.promptChars === 'number' ? e.perUnit : null;
+    if (line) {
+      const mean = line.fixed * u.live + line.perKChar * (u.promptChars / 1000);
+      low += mean;
+      high += mean * line.highRatio;
+      continue;
+    }
     low += e.mean * u.live;
     if (typeof e.p90 === 'number') high += e.p90 * u.live; else spread = false;
   }

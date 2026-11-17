@@ -205,7 +205,10 @@ function planJudging(o) {
     if (Buffer.byteLength(prompt) > maxPromptBytes) { tooLarge++; continue; }
     const accept = (text) => { const parsed = parseJsonReply(text); return parsed.ok && check(parsed.value).ok; };
     if (hasCachedReply(cacheDir, { model: u.judge, prompt, salt, accept })) cached++;
-    else liveBy.set(`${u.judge}|${kind}`, { judge: u.judge, kind, live: (liveBy.get(`${u.judge}|${kind}`)?.live ?? 0) + 1 });
+    else {
+      const was = liveBy.get(`${u.judge}|${kind}`);
+      liveBy.set(`${u.judge}|${kind}`, { judge: u.judge, kind, live: (was?.live ?? 0) + 1, promptChars: (was?.promptChars ?? 0) + prompt.length });
+    }
   }
   const calls = p.units.length;
   return {
