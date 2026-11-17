@@ -17,7 +17,7 @@ Breaks down an E2E test strategy into Cypress implementation tasks with a phased
 
 **Not for:** choosing what to test (use `e2e-test-strategy`) or Playwright projects (use `playwright-test-implementation`).
 
-**Lightweight fallback:** for one or two flows, write the spec files directly using `references/cypress-patterns.md`; skip the task breakdown, roadmap, and traceability matrix. Still check the specs you write against the Quality Gate's CRITICAL items about test code (hardcoded `cy.wait()` timeouts, shared state between tests), and state any that apply.
+**Lightweight fallback (Initial mode only, or when the caller explicitly asked for spec files rather than a plan):** for one or two flows, write the spec files directly using `references/cypress-patterns.md`; skip the task breakdown, roadmap, and traceability matrix. Progress and Final have no fallback: their deliverable is the progress or traceability report, not new spec files, so a request to track or verify an existing implementation runs its full stage set. Still check the specs you write against the Quality Gate's CRITICAL items about test code (hardcoded `cy.wait()` timeouts, shared state between tests), and state any that apply.
 
 ## Usage
 
@@ -78,9 +78,9 @@ Follow stages sequentially based on selected mode:
 
 **Mode Branching:**
 
-- **Initial**: Stages 1, 2, 3, 4, 5, 6 → Report
-- **Progress**: Stages 1, 2, 7 → Report
-- **Final**: Stages 1, 2, 3, 4, 5, 6, 8, 9 → Report
+- **Initial**: Stages 1, 2, 3, 4, 5, 6 → Report (lightweight fallback: write the spec files instead, see Scope and fallback)
+- **Progress**: Stages 1, 2, 7 → Report (always the full set; the fallback does not apply, so Stage 7 is never skipped for being a small suite)
+- **Final**: Stages 1, 2, 3, 4, 5, 6, 8, 9 → Report (always the full set; the fallback does not apply, so Stage 9's traceability matrix is never skipped for being a small suite)
 
 ---
 
