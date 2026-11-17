@@ -9,8 +9,8 @@ import type { WorkflowCanvasPage } from '../support/workflow-canvas-page';
 // reach the state they save: they regenerate the PNGs that PR descriptions
 // embed.
 test('capture the Designer tab', async ({ canvas }) => {
-  await canvas.selectTab('Designer');
-  await canvas.expectTabLoaded('Designer');
+  await canvas.selectTab('Design');
+  await canvas.expectTabLoaded('Design');
 
   await saveFullPageScreenshot(canvas.page, 'designer-tab');
 });
@@ -18,7 +18,7 @@ test('capture the Designer tab', async ({ canvas }) => {
 // The Designer tab in the dark mode, switched with the button like a person would.
 test('capture the Designer tab in the dark mode', async ({ canvas }) => {
   await canvas.switchTheme();
-  await canvas.expectTabLoaded('Designer');
+  await canvas.expectTabLoaded('Design');
 
   await saveFullPageScreenshot(canvas.page, 'designer-tab-dark');
 });
@@ -33,8 +33,8 @@ async function leaveRunButton(canvas: WorkflowCanvasPage): Promise<void> {
 
 // The Execution tab before a run, drawn from the stub.
 test('capture the Execution tab before a run', async ({ canvas }) => {
-  await canvas.selectTab('Execution');
-  await canvas.expectTabLoaded('Execution');
+  await canvas.selectTab('Run');
+  await canvas.expectTabLoaded('Run');
 
   await saveFullPageScreenshot(canvas.page, 'execution-tab-idle');
 });
@@ -48,8 +48,8 @@ test('capture the Execution tab while the first stage runs', async ({
     canvas.page,
     runReply('running', ['running', 'pending']),
   );
-  await canvas.selectTab('Execution');
-  await canvas.expectTabLoaded('Execution');
+  await canvas.selectTab('Run');
+  await canvas.expectTabLoaded('Run');
 
   await canvas.runButton.click();
   await canvas.expectBadges(['Done', 'Running', 'Queued', 'Queued']);
@@ -60,8 +60,8 @@ test('capture the Execution tab while the first stage runs', async ({
 
 test('capture the Execution tab after the run passed', async ({ canvas }) => {
   await answerRunsWith(canvas.page, runReply('passed', ['passed', 'passed']));
-  await canvas.selectTab('Execution');
-  await canvas.expectTabLoaded('Execution');
+  await canvas.selectTab('Run');
+  await canvas.expectTabLoaded('Run');
 
   await canvas.runButton.click();
   await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
@@ -79,8 +79,8 @@ test('capture the Execution tab in the dark mode during a run', async ({
     runReply('running', ['running', 'pending']),
   );
   await canvas.switchTheme();
-  await canvas.selectTab('Execution');
-  await canvas.expectTabLoaded('Execution');
+  await canvas.selectTab('Run');
+  await canvas.expectTabLoaded('Run');
 
   await canvas.runButton.click();
   await canvas.expectBadges(['Done', 'Running', 'Queued', 'Queued']);

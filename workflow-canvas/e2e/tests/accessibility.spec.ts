@@ -39,8 +39,8 @@ for (const [name, reply] of RUN_STATES) {
     canvas,
   }) => {
     await answerRunsWith(canvas.page, reply);
-    await canvas.selectTab('Execution');
-    await canvas.expectTabLoaded('Execution');
+    await canvas.selectTab('Run');
+    await canvas.expectTabLoaded('Run');
 
     await canvas.runButton.click();
     await canvas.badge('node-end').waitFor();
@@ -54,8 +54,8 @@ test('Execution tab has no axe violations with a failed stage in the dark mode',
 }) => {
   await answerRunsWith(canvas.page, runReply('halted', ['blocked', 'pending']));
   await canvas.switchTheme();
-  await canvas.selectTab('Execution');
-  await canvas.expectTabLoaded('Execution');
+  await canvas.selectTab('Run');
+  await canvas.expectTabLoaded('Run');
 
   await canvas.runButton.click();
   await canvas.badge('node-end').waitFor();
@@ -70,8 +70,8 @@ test('Execution tab has no axe violations with the error of the API shown', asyn
     error: 'kiro-cli is not installed.',
     code: 'harness_unavailable',
   });
-  await canvas.selectTab('Execution');
-  await canvas.expectTabLoaded('Execution');
+  await canvas.selectTab('Run');
+  await canvas.expectTabLoaded('Run');
 
   await canvas.runButton.click();
   await canvas.runError.waitFor();
@@ -82,8 +82,8 @@ test('Execution tab has no axe violations with the error of the API shown', asyn
 test('Execution tab has no axe violations with a goal that cannot be run', async ({
   canvas,
 }) => {
-  await canvas.selectTab('Execution');
-  await canvas.expectTabLoaded('Execution');
+  await canvas.selectTab('Run');
+  await canvas.expectTabLoaded('Run');
 
   await canvas.goal.fill('');
   await canvas.page.getByText('Enter a goal to run.').first().waitFor();
