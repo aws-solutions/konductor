@@ -28,7 +28,12 @@
  *
  * MCP tools are never granted: the flags keep --strict-mcp-config and pass no MCP config, and `mcp` names are
  * refused here. A Bash grant needs a Bash(...) rule that names a command: bare Bash and a rule made only of
- * wildcards (such as Bash(*)) are refused, whatever the case of the tool name.
+ * wildcards (such as Bash(*)) are refused, whatever the case of the tool name, and so is a rule whose command is
+ * an interpreter, a shell or a network tool (UNSAFE_BASH_COMMANDS: sh, bash, node, python, curl, env, xargs and the
+ * rest), because those run anything. This is a guard against the obvious mistakes, not a sandbox. It does not check
+ * what a prefix rule such as Bash(git:*) lets the command do through its own flags and subcommands, and it reads
+ * the first word of the rule only (a path to a program is reduced to its file name). Every Bash grant is the
+ * author's to narrow and review; no shipped profile has one.
  *
  * Only two profiles ship, both with `Skill` as the only tool: `legacy` (explicit load instruction, the default)
  * and `natural` (no load instruction). A profile that grants file tools needs the isolation test against the
@@ -80,6 +85,30 @@ const PROFILE_FIELDS = new Set([
 ]);
 const DEFAULT_KEY = '__default__';
 
+/**
+ * Commands a Bash rule may not start with: shells and interpreters run any program or script, and curl and wget
+ * reach the network, so a rule with one of them as its command grants more than the rule seems to. `env`, `xargs`,
+ * `eval` and `exec` start another command from their arguments. A version suffix (python3, python3.12) counts as
+ * the same command.
+ */
+const UNSAFE_BASH_COMMANDS = Object.freeze([
+  'sh',
+  'bash',
+  'zsh',
+  'node',
+  'python',
+  'python3',
+  'perl',
+  'ruby',
+  'curl',
+  'wget',
+  'env',
+  'xargs',
+  'eval',
+  'exec',
+]);
+const VERSIONED_COMMAND = /^(python|perl|ruby|node)[\d.]*$/;
+
 const isBash = (tool) => tool.toLowerCase() === 'bash';
 /** True for a Bash(...) rule whose specifier is more than wildcards, colons and spaces, so it names a command. */
 const namesACommand = (rule) => {
@@ -90,6 +119,21 @@ const namesACommand = (rule) => {
     match[2] &&
     /[^\s*:?]/.test(match[2].slice(1, -1)),
   );
+};
+/**
+ * The command of a Bash(...) rule when it is one of UNSAFE_BASH_COMMANDS, else null. The command is the first word of the
+ * specifier (up to a space or a colon), reduced to its file name and lower-cased: `Bash(/bin/sh:*)` is `sh`.
+ */
+const unsafeBashCommand = (rule) => {
+  const match = RULE.exec(rule);
+  if (!match || !isBash(match[1]) || !match[2]) return null;
+  const first = match[2].slice(1, -1).trim().split(/[\s:]/)[0];
+  const command = path.posix.basename(first).toLowerCase();
+  const family = VERSIONED_COMMAND.exec(command);
+  return UNSAFE_BASH_COMMANDS.includes(command) ||
+    (family && UNSAFE_BASH_COMMANDS.includes(family[1]))
+    ? command
+    : null;
 };
 
 const isPlainObject = (value) =>
@@ -130,7 +174,8 @@ function tableProblems(name, table) {
 /**
  * Problems with a profile spec; empty when it is usable. A grant can never widen what `tools` allows and never
  * names an MCP tool. Bash is usable only with a Bash(...) rule that names a command, so a rule that allows every
- * command (Bash(*)) is refused like bare Bash.
+ * command (Bash(*)) is refused like bare Bash, and a rule whose command is a shell, an interpreter or a network
+ * tool (UNSAFE_BASH_COMMANDS) is refused as well. A rule that passes still decides only by its first word.
  */
 function specProblems(spec) {
   if (!isPlainObject(spec)) return ['runner spec must be an object'];
@@ -219,6 +264,10 @@ function specProblems(spec) {
       else if (isBash(match[1]) && !namesACommand(rule))
         problems.push(
           `allowedTools.${key}: ${rule} allows every command; a Bash rule must name a command`,
+        );
+      else if (unsafeBashCommand(rule))
+        problems.push(
+          `allowedTools.${key}: ${rule} starts with ${unsafeBashCommand(rule)}, which can run any program or reach the network; name a narrower command`,
         );
     }
     if (tools.some(isBash) && !allowed.some(namesACommand))
@@ -433,6 +482,7 @@ module.exports = {
   DEFAULT_PROFILE,
   DEFAULT_MAX_BUDGET_USD,
   MAX_BUDGET_USD_LIMIT,
+  UNSAFE_BASH_COMMANDS,
   PROFILES,
   LOAD_MODES,
   specProblems,

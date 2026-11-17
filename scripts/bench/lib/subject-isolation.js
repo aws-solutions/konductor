@@ -35,7 +35,7 @@ const SUBJECT_ENV_NAMES = Object.freeze([
   'PATH',
   'HOME',
 ]);
-/** Folders under a home folder that hold credentials or tool settings. */
+/** Folders under a home folder (a path of one or more names) that hold credentials or tool settings. */
 const DENIED_HOME_FOLDERS = Object.freeze([
   '.aws',
   '.ssh',
@@ -44,12 +44,19 @@ const DENIED_HOME_FOLDERS = Object.freeze([
   '.docker',
   '.kube',
   '.claude',
+  '.m2',
+  '.cargo',
+  '.azure',
+  '.local/share',
 ]);
 /** Files directly under a home folder that hold credentials. */
 const DENIED_HOME_FILES = Object.freeze([
   '.netrc',
   '.npmrc',
   '.git-credentials',
+  '.claude.json',
+  '.pypirc',
+  '.pgpass',
 ]);
 /** The Claude Code tool kinds a permission rule names: Read covers reading tools, Edit covers writing tools. */
 const DENIED_TOOL_KINDS = Object.freeze(['Read', 'Edit']);
@@ -186,8 +193,10 @@ function absoluteRulePath(target) {
  * The --settings object of a subject run. Deny rules name the DENIED_HOME_FOLDERS and DENIED_HOME_FILES (as `~/`
  * paths, which Claude Code resolves against the child's HOME, and at the real home folder) and the repository
  * root, for both reading and editing tools. The two `block...OutsideWorkingDirectories` keys keep file tools in
- * the working directory. Neither key has been verified against the current Claude Code CLI; check both before a
- * profile grants file tools. A path with a character that has a meaning in a rule (`()*?[]{}`) is refused,
+ * the working directory. The live isolation test (opt in with BENCH_LIVE_ISOLATION=1, with the subject runner)
+ * ran against Claude Code 2.1.322: the CLI accepted these settings and reported Skill as its only tool. That run
+ * grants Skill alone, so it does not exercise a file tool; check that a deny rule blocks a read, and that the two
+ * keys confine a file tool, before a profile grants file tools. A path with a character that has a meaning in a rule (`()*?[]{}`) is refused,
  * because the rule would match something else.
  *   userHome  the real home folder (default os.homedir())
  *   repoRoot  the repository root (default: this checkout)

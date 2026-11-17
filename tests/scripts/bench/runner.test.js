@@ -19,6 +19,7 @@ const {
 
 const {
   specProblems,
+  UNSAFE_BASH_COMMANDS,
   profile,
   profileIds,
   forSkill,
@@ -200,7 +201,7 @@ test('specProblems refuses MCP tools, bare Bash, a Bash grant with no narrowing 
     specProblems({
       ...ok,
       tools: { default: ['Skill', 'Bash'] },
-      allowedTools: { default: ['Bash(python3 scripts/check.py:*)'] },
+      allowedTools: { default: ['Bash(git diff:*)'] },
     }),
     [],
   );
@@ -662,11 +663,11 @@ test('the load mode decides whether the with arm gets the load instruction', () 
 test('profileSha256 is pinned, so a change to what it hashes shows as a deliberate edit', () => {
   assert.equal(
     forSkill('brew-log', 'legacy').profileSha256,
-    '74d72a237dbaa21c792d940bc9ceacbdcfaeb79205a9183b100550f44ee20694',
+    'a88083f9b57eee664f9869e02b3d6c77dee3aaf690df36e4d6258296c310fad7',
   );
   assert.equal(
     forSkill('brew-log', 'natural').profileSha256,
-    '8e578aa02263b03fb9b3f0487b2ac768660c849f24a1f290eba3ec1dff274017',
+    '210886ec8c8c1e3961b1154b78f8a4c95dacd9c8e32b30ff6727c34ec9abdf5e',
   );
 });
 
@@ -709,4 +710,95 @@ test('the digest does not depend on this machine: the deny rules in it use fixed
   } finally {
     process.env.HOME = saved;
   }
+});
+
+test('specProblems refuses a Bash rule whose command is a shell, an interpreter or a network tool', () => {
+  const problems = (rule) =>
+    specProblems({
+      loadMode: 'natural',
+      tools: { default: ['Skill', 'Bash'] },
+      allowedTools: { default: [rule] },
+    });
+  assert.deepEqual(
+    [...UNSAFE_BASH_COMMANDS],
+    [
+      'sh',
+      'bash',
+      'zsh',
+      'node',
+      'python',
+      'python3',
+      'perl',
+      'ruby',
+      'curl',
+      'wget',
+      'env',
+      'xargs',
+      'eval',
+      'exec',
+    ],
+  );
+  assert.ok(Object.isFrozen(UNSAFE_BASH_COMMANDS));
+  for (const command of UNSAFE_BASH_COMMANDS)
+    for (const rule of [
+      `Bash(${command}:*)`,
+      `Bash(${command} -c:*)`,
+      `Bash(${command} some-file)`,
+      `Bash(${command.toUpperCase()}:*)`,
+      `Bash( ${command} :*)`,
+      `Bash(/usr/bin/${command}:*)`,
+      `bash(${command}:*)`,
+    ])
+      assert.match(
+        problems(rule).join(' | '),
+        new RegExp(
+          `allowedTools\\.default: .* starts with ${command}, which can run any program or reach the network`,
+        ),
+        rule,
+      );
+  // The two the guard is asked about first.
+  assert.equal(problems('Bash(sh:*)').length, 1);
+  assert.equal(problems('Bash(curl:*)').length, 1);
+  // A version suffix is the same command.
+  for (const rule of [
+    'Bash(python3.12:*)',
+    'Bash(python2:*)',
+    'Bash(node18:*)',
+    'Bash(perl5.38:*)',
+    'Bash(ruby3.2 x.rb)',
+  ])
+    assert.equal(problems(rule).length, 1, rule);
+  // Another command that merely starts with the same letters, or has the word later, is allowed.
+  for (const rule of [
+    'Bash(git diff:*)',
+    'Bash(git status)',
+    'Bash(shasum:*)',
+    'Bash(shellcheck:*)',
+    'Bash(nodemon:*)',
+    'Bash(pythonista:*)',
+    'Bash(rubocop:*)',
+    'Bash(ls -la:*)',
+    'Bash(grep sh:*)',
+  ])
+    assert.deepEqual(problems(rule), [], rule);
+  // One unsafe rule among good ones is still refused, and the other rule is not blamed.
+  const mixed = specProblems({
+    loadMode: 'natural',
+    tools: { default: ['Skill', 'Bash'] },
+    allowedTools: { default: ['Bash(git diff:*)', 'Bash(sh:*)'] },
+  });
+  assert.equal(mixed.length, 1);
+  assert.match(mixed[0], /Bash\(sh:\*\) starts with sh/);
+  // The same check applies per skill.
+  assert.match(
+    specProblems({
+      loadMode: 'natural',
+      tools: {
+        default: ['Skill'],
+        bySkill: { 'web-skill': ['Skill', 'Bash'] },
+      },
+      allowedTools: { bySkill: { 'web-skill': ['Bash(curl:*)'] } },
+    }).join(' | '),
+    /allowedTools\.web-skill: Bash\(curl:\*\) starts with curl/,
+  );
 });

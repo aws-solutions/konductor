@@ -311,8 +311,19 @@ test('subjectSettings denies reads and edits of the credential folders and files
     '.docker',
     '.kube',
     '.claude',
+    '.m2',
+    '.cargo',
+    '.azure',
+    '.local/share',
   ];
-  const files = ['.netrc', '.npmrc', '.git-credentials'];
+  const files = [
+    '.netrc',
+    '.npmrc',
+    '.git-credentials',
+    '.claude.json',
+    '.pypirc',
+    '.pgpass',
+  ];
   assert.deepEqual(isolation.DENIED_HOME_FOLDERS, folders);
   assert.deepEqual(isolation.DENIED_HOME_FILES, files);
   const expectedTargets = [
@@ -333,6 +344,65 @@ test('subjectSettings denies reads and edits of the credential folders and files
   assert.equal(permissions.blockReadsOutsideWorkingDirectories, true);
   assert.equal(permissions.blockWritesOutsideWorkingDirectories, true);
   assert.deepEqual(Object.keys(subjectSettings()), ['permissions']);
+});
+
+// The credential paths of a home folder that a subject must never read or edit. A path missing from the deny rules fails
+// here by name; add a new one to this list when a tool that keeps credentials under the home folder is added to the
+// machines the benchmark runs on.
+const CREDENTIAL_FOLDERS = [
+  '.aws',
+  '.ssh',
+  '.config',
+  '.gnupg',
+  '.docker',
+  '.kube',
+  '.claude',
+  '.m2',
+  '.cargo',
+  '.azure',
+  '.local/share',
+];
+const CREDENTIAL_FILES = [
+  '.netrc',
+  '.npmrc',
+  '.git-credentials',
+  '.claude.json',
+  '.pypirc',
+  '.pgpass',
+];
+
+test('every known credential path of a home folder is denied for reading and editing, under HOME and at the real path', () => {
+  const userHome = path.join(os.tmpdir(), 'fixture-user-home');
+  const { deny } = subjectSettings({
+    userHome,
+    repoRoot: path.join(os.tmpdir(), 'fixture-repo'),
+  }).permissions;
+  const missing = [];
+  for (const kind of ['Read', 'Edit']) {
+    for (const folder of CREDENTIAL_FOLDERS)
+      for (const rule of [
+        `${kind}(~/${folder}/**)`,
+        `${kind}(/${path.join(userHome, folder)}/**)`,
+      ])
+        if (!deny.includes(rule)) missing.push(rule);
+    for (const file of CREDENTIAL_FILES)
+      for (const rule of [
+        `${kind}(~/${file})`,
+        `${kind}(/${path.join(userHome, file)})`,
+      ])
+        if (!deny.includes(rule)) missing.push(rule);
+  }
+  assert.deepEqual(missing, [], 'credential paths with no deny rule');
+  // A file is denied as a file and a folder as a folder: a folder rule on a file, or the reverse, matches nothing.
+  assert.deepEqual([...isolation.DENIED_HOME_FOLDERS], CREDENTIAL_FOLDERS);
+  assert.deepEqual([...isolation.DENIED_HOME_FILES], CREDENTIAL_FILES);
+  for (const file of CREDENTIAL_FILES)
+    assert.ok(!deny.some((rule) => rule.includes(`${file}/**`)), file);
+  for (const folder of CREDENTIAL_FOLDERS)
+    assert.ok(!deny.some((rule) => rule.endsWith(`~/${folder})`)), folder);
+  // A nested folder keeps its own path: the rule is for ~/.local/share, not for ~/.local.
+  assert.ok(deny.includes('Read(~/.local/share/**)'));
+  assert.ok(!deny.some((rule) => /~\/\.local\/\*\*/.test(rule)));
 });
 
 test('subjectSettings defaults to the real home folder and this checkout', () => {
