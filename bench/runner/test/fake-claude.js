@@ -38,8 +38,14 @@ fs.writeFileSync(path.join(cfg.dir, 'made-' + process.pid + '.json'), JSON.strin
 if (cfg.sleepSec) { setTimeout(() => {}, cfg.sleepSec * 1000); return; }
 fs.writeFileSync(path.join(process.cwd(), 'hello.txt'), cfg.helloText || 'hello\\n');
 if (cfg.leak) console.log(JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'x', content: process.env.AWS_SECRET_ACCESS_KEY + ' ' + process.env.AWS_SESSION_TOKEN }] }, parent_tool_use_id: null }));
-process.stdout.write(fs.readFileSync(cfg.streamFile, 'utf8'));
-process.exit(cfg.exitCode || 0);
+const finish = () => { process.stdout.write(fs.readFileSync(cfg.streamFile, 'utf8')); process.exit(cfg.exitCode || 0); };
+// With otlpLogsFile set and an OTLP logs endpoint in the environment, posts that file's JSON body there first.
+const endpoint = process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT;
+if (cfg.otlpLogsFile && endpoint) {
+  const req = require('http').request(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' } }, (res) => { res.resume(); res.on('end', finish); });
+  req.on('error', finish);
+  req.end(fs.readFileSync(cfg.otlpLogsFile));
+} else finish();
 `;
 
 const stub = () => `#!/bin/sh\nexec '${process.execPath}' "$(dirname "$0")/fake-claude.js" "$@"\n# the real binary carries the --include-hook-events flag text; the stub does too so the harness detects it\n`;

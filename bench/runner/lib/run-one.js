@@ -27,6 +27,8 @@ const { classifyLaunchFailure } = require('./launch-failure.js');
 const { moveFile, UntrustedFileError } = require('./move-file.js');
 const { openPlantRun } = require('./plant/lifecycle.js');
 const { plantWalls, withCgroup } = require('./plant/walls.js');
+const introspect = require('./introspect/index.js');
+const introspectReport = require('./introspect/report.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
@@ -398,9 +400,14 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
     if (!result) {
       const iso = makeIso(ctx, arm, runRoot, task, { frozenDirs: stdioDir ? [stdioDir] : [], plantRun });
       const tripwire = createTripwire({ markerPath: path.join(runRoot, '.marker'), ...ctx.tripwire });
+      let probe = null;
       try {
         const tmpdir = path.join(runRoot, 'tmp');
-        const env = harness.env({ arm, config, ctx, home, tmpdir });
+        let env = harness.env({ arm, config, ctx, home, tmpdir });
+        if (ctx.introspect) {
+          probe = await introspect.startProbe({ harnessId: harness.id, outDir, runRoot, home, deps: ctx.introspectDeps ?? {} });
+          env = probe.apply(env);
+        }
         tripwire.start();
         if (plantRun?.startError) exec = plantRun.unstartedExec();
         else {
@@ -413,6 +420,10 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       }
       if (plantRun) await plantRun.finish();
       harness.removeCredentials(home);
+      if (probe) {
+        meta.flags.push('introspect');
+        try { await probe.afterExit(); } catch (e) { meta.flags.push('introspectFailed'); process.stderr.write(`[bench] introspect: ${e.message}\n`); }
+      }
       if (exec?.tamperedFiles?.length) {
         meta.flags.push('stdioTampered');
         meta.tamperedFiles = exec.tamperedFiles;
@@ -476,6 +487,9 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
     fs.mkdirSync(outDir, { recursive: true });
     writeAtomic(path.join(outDir, 'result.json'), JSON.stringify(result, null, 2) + '\n');
   } catch { /* the caller still gets the result object */ }
+  if (ctx.introspect) {
+    try { introspectReport.writeReport(outDir); } catch (e) { process.stderr.write(`[bench] introspect report: ${e.message}\n`); }
+  }
   return result;
 }
 

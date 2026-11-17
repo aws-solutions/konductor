@@ -36,6 +36,7 @@ const { makeLoginCheck } = require('./login-check.js');
 const { preparePlantSuite } = require('./plant/intake.js');
 const { preflightWalls } = require('./plant/walls.js');
 const { makeIso } = require('./run-one.js');
+const { runConfigRecord: introspectRunConfig } = require('./introspect/index.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -247,6 +248,7 @@ async function cmdRun(opts, deps = {}) {
   if (opts['no-default-hide']) { process.env.BENCH_NO_DEFAULT_HIDE = '1'; log('--no-default-hide: the credential paths added to the default hide set stay readable'); }
   const isolation = resolveIsolation(isolate);
   log(`isolation: ${isolation.mode} (${isolation.reason})`);
+  if (opts.introspect) log('--introspect: every run records its model requests, tool calls and hooks under <run>/introspect (mode 0700); these runs are diagnostic, not comparable');
   if (!isComparableMode(isolation.mode)) log('warning: no OS isolation. These runs are recorded as not comparable and no verdict will count them.');
   if (parallel > 1) log(`warning: --parallel ${parallel} shares one account; wall-clock comparisons need --parallel 1`);
 
@@ -311,6 +313,7 @@ async function cmdRun(opts, deps = {}) {
       kiroBin: kiro?.bin, repo: REPO, cacheDir, realCache, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb, config, envKeep,
       envInfo: null,
       installsGate: createInstallsGate(),
+      ...(opts.introspect ? { introspect: true } : {}),
     };
     log(`isolation gate: hashing ${ctx.installsGate.dirs.join(', ')} before and after each run and the batch`);
     const batchWindow = ctx.installsGate.begin();
@@ -428,6 +431,7 @@ async function cmdRun(opts, deps = {}) {
         },
       } : {}),
       tools: rc.toolVersions(),
+      ...(opts.introspect ? { introspect: introspectRunConfig(runtimes[0]) } : {}),
       interpreters,
       toolchainCheck,
       startedAt: new Date().toISOString(),
