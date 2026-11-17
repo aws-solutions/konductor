@@ -2,13 +2,14 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.3.0
+  version: 1.4.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
   description: |
     The HTTP API that the workflow canvas calls to open a session, load, save
-    and check a workflow file, and start and follow a run. The local stub
+    and check a workflow file, list the agents a stage may name, and start and
+    follow a run. The local stub
     server and the real backend will both implement this document.
 
     This version covers the first release of the workflow format. A file has a
@@ -31,7 +32,7 @@ info:
     nothing: it says that an `operationId` is not renamed, and it widens the
     pattern of a capability, which a client already treats as a value it may
     not know. Version 1.3.0 only adds: each stage of a view gains `kind` and
-    `range`.
+    `range`. Version 1.4.0 only adds: the operation `listAgents`.
 
     **Conventions**
 
@@ -446,6 +447,7 @@ paths:
                   - checkWorkflow
                   - startRun
                   - getRun
+                  - listAgents
                 limits:
                   text_bytes: 262144
                   stages: 40
@@ -721,6 +723,55 @@ paths:
           $ref: '#/components/responses/TooLarge'
         '422':
           $ref: '#/components/responses/InvalidWorkflow'
+        '500':
+          $ref: '#/components/responses/StorageFailure'
+  /api/agents:
+    get:
+      operationId: listAgents
+      summary: List the agents a stage may name
+      description: |
+        Returns the agents that a stage's `agent` may name, each with a short
+        line that says what it is for, so a client can offer them without a
+        list of its own. The list is the specialist agents of Konductor, in
+        the order of their ids. An orchestrator agent is not listed, because
+        a stage cannot use one. This version does not look up whether an
+        agent exists (see **Workflow text**), so a stage may still name an id
+        that is not on the list, and a client keeps such an id as it is.
+      tags: [Workflow]
+      responses:
+        '200':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The agents.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentList'
+              example:
+                agents:
+                  - id: k-architect
+                    summary: System designs, API specs and data models
+                  - id: k-browser
+                    summary: Browser automation with Playwright
+                  - id: k-developer
+                    summary: Backend and frontend code, code review
+                  - id: k-media-analyzer
+                    summary: PDFs, images and diagrams
+                  - id: k-product-manager
+                    summary: User stories and requirements
+                  - id: k-quality-assurance
+                    summary: Test coverage and test strategy
+                  - id: k-researcher
+                    summary: External docs, web and AWS documentation
+                  - id: k-tpm
+                    summary: Program plans and status reports
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedGet'
         '500':
           $ref: '#/components/responses/StorageFailure'
   /api/validate:
@@ -1942,6 +1993,29 @@ components:
               minLength: 1
               maxLength: 2048
               description: What the run should achieve, at most 2048 characters. Every stage is given it.
+    Agent:
+      type: object
+      required: [id, summary]
+      description: An agent that a stage may name.
+      properties:
+        id:
+          $ref: '#/components/schemas/Name'
+          description: The id to write as the `agent` of a stage.
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: One line for a person that says what the agent is for.
+    AgentList:
+      type: object
+      required: [agents]
+      properties:
+        agents:
+          type: array
+          uniqueItems: true
+          description: The agents, in the order of their ids.
+          items:
+            $ref: '#/components/schemas/Agent'
     RunStarted:
       type: object
       required: [run_id]
