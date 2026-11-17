@@ -26,7 +26,7 @@ const cleanup = require('./lib/cleanup-cmd.js');
 
 const USAGE = `Usage:
   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe|canary-layers [--arms a,b,c] [--tasks id,id]
-       [--replicates N] [--replicate-offset N] [--parallel N] [--budget-credits X] [--out DIR]
+       [--replicates N] [--replicate-offset N] [--resume [--resume-errors]] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--gate-strict] [--allow-partial] [--allow-arm-drift] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
@@ -42,7 +42,9 @@ const USAGE = `Usage:
        (--replicate-offset N numbers the replicates N+1 to N+replicates, to add runs to an out dir that already holds replicates 1 to N. The default 0 numbers them from 1.
        A run writes over any result.json already at a planned path and prints a warning with the count of cells it will overwrite.
        Every arm ref is resolved to a commit once, when the command starts; run-config.json and each result.json record it. A command refuses an --out
-       that already holds results of the same arm id at another commit (main after a fetch, say) unless --allow-arm-drift is given)
+       that already holds results of the same arm id at another commit (main after a fetch, say) unless --allow-arm-drift is given.
+       --resume with the --out of an earlier run plans the same cells and runs only those with no result.json or a budget_skipped one, keeping every
+       other result; --resume-errors also runs again the cells whose result is an error. Pass the arms, tasks and replicates of the earlier command)
        (--max-auth-failures N stops the chunk after N consecutive runs that could not log in (no turn ran, "Not logged in", "Authentication failed" or "token already expired"), default 3,
        or the BENCH_MAX_AUTH_FAILURES variable; remaining cells are skipped and the command exits 6. Such a run is charged 0 and marked infra, never a timeout.
        Runs whose agent binary could not be launched (exit 127, no such file) count toward the same limit)

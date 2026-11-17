@@ -264,6 +264,9 @@ async function cmdRun(opts, deps = {}) {
   for (const a of arms) for (const w of a.warnings) log(`warning: arm ${a.id}: ${w}`);
 
   const outDir = path.resolve(opts.out || path.join(REPO, 'bench', 'results', new Date().toISOString().replace(/[:.]/g, '-')));
+  const resume = opts.resume ? { errors: Boolean(opts['resume-errors']) } : null;
+  if (opts['resume-errors'] && !resume) throw new Error('--resume-errors needs --resume');
+  if (resume && (!opts.out || !fs.existsSync(path.join(outDir, 'run-config.json')))) throw new Error(`--resume needs --out DIR of an earlier run (no run-config.json in ${outDir})`);
   const armDrift = pinConflicts(outDir, arms);
   if (armDrift.length && !opts['allow-arm-drift']) throw new Error(describeConflicts(armDrift, outDir));
   for (const c of armDrift) log(`warning: --allow-arm-drift: arm ${c.armId} was ${c.recorded.slice(0, 12)} in earlier results of this --out and is ${c.now.slice(0, 12)} now`);
@@ -428,6 +431,7 @@ async function cmdRun(opts, deps = {}) {
       ...config, ...ctx.envInfo,
       isolation: { ...isolation, ...describeHide(isolation.mode, ctx.hide), mask: ctx.mask }, comparable: isComparableMode(isolation.mode), tripwire: { depth: ctx.tripwire.roots[0].depth, excludes: [...DEFAULT_EXCLUDES, ...tripExtra], roots: ctx.tripwire.roots.map((r) => r.dir) },
       arms: rc.armRecords(arms, prepared, errors),
+      resume,
       armDrift: armDrift.length ? armDrift.map((c) => ({ armId: c.armId, recorded: c.recorded, now: c.now, kind: c.kind })) : null,
       originMain: mainArm ? { originMainSha: mainArm.originMainSha, localMainSha: mainArm.localMainSha, behindOrigin: mainArm.behindOrigin, usedRef: mainArm.ref } : null,
       modelNormalized: arms.some((a) => !a.vanilla),
@@ -495,7 +499,7 @@ async function cmdRun(opts, deps = {}) {
     log(`out=${outDir}`);
     const { results, observed, charged, studyLine, guard, authStop } = await runAll({
       tasks, arms, prepared, prepErrors: errors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log,
-      costOf: isUsd ? USD : CREDITS, unit, gateStrict: Boolean(opts['gate-strict']), replicateOffset, maxAuthFailures, loginCheck,
+      costOf: isUsd ? USD : CREDITS, unit, gateStrict: Boolean(opts['gate-strict']), replicateOffset, resume, maxAuthFailures, loginCheck,
     });
     const judged = judgeBatch({ gate: batchWindow.end(), results, strict: Boolean(opts['gate-strict']), window: { from: batchFrom, to: new Date().toISOString() } });
     const gate = judged.gate;
