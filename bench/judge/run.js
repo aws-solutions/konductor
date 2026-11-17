@@ -254,8 +254,10 @@ async function runJudging(o) {
     log(`judged ${u.kind} ${u.judge} ${runKey(u.run)}${u.order ? ` order ${u.order}` : ''}: ${out.error ? `ERROR ${out.error}` : 'ok'}; ${study.line()}`);
     return out;
   };
-  const onSkip = () => ({ error: `budget reached (${study.stopReason() ?? (usdMode ? `$${budgetUsd}` : `${budgetCredits} credits`)})`, calls: [], parseFailures: 0 });
-  const outs = await runPool(units, concurrency, worker, () => study.shouldStop(), onSkip);
+  // A caller that stopped (the opencode backend after repeated credential failures) ends the pass the way a budget does.
+  const callerStop = () => o.caller?.stopReason?.() ?? null;
+  const onSkip = () => ({ error: callerStop() ?? `budget reached (${study.stopReason() ?? (usdMode ? `$${budgetUsd}` : `${budgetCredits} credits`)})`, calls: [], parseFailures: 0 });
+  const outs = await runPool(units, concurrency, worker, () => study.shouldStop() || Boolean(callerStop()), onSkip);
 
   const rubric = [];
   const pairs = new Map();

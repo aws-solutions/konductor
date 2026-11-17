@@ -14,6 +14,7 @@ const oc = require('../runner/lib/harness/opencode.js');
 const { aggregateEvents, rollUp, SQL } = require('../runner/lib/harness/opencode-parse.js');
 const { installCredentials, removeCredentials, readProfile } = require('../runner/lib/harness/opencode-creds.js');
 const { JUDGE_SYSTEM_PROMPT, systemPromptSha256, opencodeModel } = require('./backends.js');
+const { writeCredentials } = require('./aws-creds.js');
 
 // A caller is async ({model, prompt}) => {text, credits, usd, tokens, latencyMs, error?}. `model` is the logical panel id.
 
@@ -51,13 +52,23 @@ function cacheSaltOf(model) {
   return `opencode\n${systemPromptSha256()}\n${m.bedrockId}\n${m.temperature === null ? 'no-temperature' : `temperature-${m.temperature}`}`;
 }
 
+// Credentials come from a shared-credentials file (read again for every call, so a file rewritten in place is picked up), or
+// from `credentials`, a provider made by makeExportedCredentials (aws-creds.js) that refreshes them itself. After
+// `maxAuthFailures` calls in a row whose credentials Bedrock rejected, the caller stops: `stopReason()` says why, and every
+// later call returns that error without starting opencode, so the pass ends instead of spending its remaining calls on errors.
 function makeOpencodeCaller({
-  bin, credsFile, awsProfile = 'bench', region = 'us-east-1', timeoutMs, version = null, sha256 = null, scratchRoot = os.tmpdir(), rawDir = null,
-  maxAttempts = 6, backoffMs = 2000, maxBackoffMs = 60000, sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
+  bin, credsFile = null, credentials = null, awsProfile = 'bench', region = 'us-east-1', timeoutMs, version = null, sha256 = null, scratchRoot = os.tmpdir(), rawDir = null,
+  maxAttempts = 6, backoffMs = 2000, maxBackoffMs = 60000, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), maxAuthFailures = 3,
 }) {
-  const { secrets } = readProfile(credsFile, awsProfile);
+  if (Boolean(credsFile) === Boolean(credentials)) throw new Error('the opencode judge caller takes a credentials file or a credentials provider, not both or neither');
+  const firstSecrets = credsFile ? readProfile(credsFile, awsProfile).secrets : [];
+  // A file rewritten during the pass holds new values, so both the first and the current ones are scrubbed.
+  const fileSecrets = () => { try { return [...firstSecrets, ...readProfile(credsFile, awsProfile).secrets]; } catch { return firstSecrets; } };
+  const secrets = () => (credentials ? credentials.secrets() : fileSecrets());
   const opencodeVersion = version ?? sandbox.versionOf(bin);
-  const scrub = (text) => secrets.filter((s) => s && s.length >= 4).reduce((t, s) => t.split(s).join('<redacted>'), String(text)).replace(/\b(?:AKIA|ASIA)[A-Z0-9]{12,}\b/g, '<redacted>');
+  const scrub = (text) => secrets().filter((s) => s && s.length >= 4).reduce((t, s) => t.split(s).join('<redacted>'), String(text)).replace(/\b(?:AKIA|ASIA)[A-Z0-9]{12,}\b/g, '<redacted>');
+  let authFailures = 0;
+  let stopped = null;
 
   function keepRaw(model, prompt, outPath, errPath) {
     if (!rawDir) return;
@@ -82,7 +93,11 @@ function makeOpencodeCaller({
     const errPath = path.join(root, 'stderr.txt');
     try {
       fs.writeFileSync(path.join(home, '.config', 'opencode', 'opencode.json'), `${JSON.stringify(configJson(m, { region, profile: awsProfile }), null, 2)}\n`);
-      installCredentials({ credsFile, profile: awsProfile, home, region });
+      if (credentials) {
+        let creds;
+        try { creds = await credentials.current(); } catch (e) { return { text: '', credits: 0, latencyMs: 0, error: `no usable AWS credentials: ${scrub(e.message)}`, auth: true }; }
+        writeCredentials({ home, profile: awsProfile, region, creds });
+      } else installCredentials({ credsFile, profile: awsProfile, home, region });
       fs.writeFileSync(promptPath, prompt);
       const { env } = oc.envSetup({ arm: { vanilla: true }, config: {}, ctx: { awsProfile }, home, tmpdir });
       env.AWS_REGION = region;
@@ -120,6 +135,7 @@ function makeOpencodeCaller({
   }
 
   const caller = async ({ model, prompt }) => {
+    if (stopped) return { text: '', credits: 0, latencyMs: 0, error: stopped };
     let m;
     try { m = opencodeModel(model); } catch (e) { return { text: '', credits: 0, latencyMs: 0, error: e.message }; }
     let retries = 0;
@@ -135,10 +151,15 @@ function makeOpencodeCaller({
       retries++;
       await sleep(Math.min(maxBackoffMs, backoffMs * 2 ** i));
     }
-    const { throttled: wasThrottled, ...result } = last;
+    const { throttled: wasThrottled, auth, ...result } = last;
     if (wasThrottled) result.error = `throttled by Bedrock after ${maxAttempts} attempts: ${result.error}`;
+    if (auth || /^Bedrock credentials were rejected/.test(result.error ?? '')) {
+      authFailures++;
+      if (authFailures >= maxAuthFailures && !stopped) stopped = `judging stopped: ${authFailures} calls in a row failed on their AWS credentials (last: ${result.error})`;
+    } else if (!result.error) authFailures = 0;
     return { ...result, latencyMs, retries, throttled };
   };
+  caller.stopReason = () => stopped;
 
   caller.info = {
     backend: 'opencode', opencodeVersion, binarySha256: sha256, region, awsProfile, systemPrompt: JUDGE_SYSTEM_PROMPT, systemPromptSha256: systemPromptSha256(),

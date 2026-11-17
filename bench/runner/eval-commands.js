@@ -14,6 +14,7 @@ const procs = require('./lib/procs.js');
 const { loadRedactions } = require('../judge/redact.js');
 const { makeKiroCaller, makeCmdCaller } = require('../judge/model.js');
 const { makeOpencodeCaller } = require('../judge/opencode.js');
+const { makeExportedCredentials, awsExport } = require('../judge/aws-creds.js');
 const { BACKENDS, DEFAULT_BACKEND, checkOpencodeJudges } = require('../judge/backends.js');
 const oc = require('./lib/harness/opencode.js');
 const { readProfile } = require('./lib/harness/opencode-creds.js');
@@ -118,16 +119,23 @@ function resolveJudges({ cliJudges, suiteJudges, subjectModel = null, allowSmall
 
 const flagValue = (opts, name) => (opts[name] !== undefined && opts[name] !== true ? String(opts[name]) : null);
 
-// The opencode backend: one `opencode run` per judge call on Bedrock, tools off, credentials from a shared-credentials file.
-function makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir }) {
-  const credsFile = path.resolve(need(opts, 'aws-creds-file'));
+// The opencode backend: one `opencode run` per judge call on Bedrock, tools off, credentials from a shared-credentials file
+// (--aws-creds-file) or from `aws configure export-credentials` (--aws-export-profile), refreshed during the pass.
+// BENCH_AWS_BIN points the export at another aws binary (tests use a fake one).
+function makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir, log = () => {} }) {
+  const exportProfile = flagValue(opts, 'aws-export-profile');
+  if (exportProfile && opts['aws-creds-file'] !== undefined) throw new Error('--aws-creds-file and --aws-export-profile cannot be used together');
+  if (exportProfile && !/^[\w.+@-]+$/.test(exportProfile)) throw new Error(`--aws-export-profile "${exportProfile}" is not a profile name`);
+  const credsFile = exportProfile ? null : path.resolve(need(opts, 'aws-creds-file'));
   const awsProfile = flagValue(opts, 'aws-profile') ?? 'bench';
   const region = flagValue(opts, 'aws-region') ?? oc.REGION;
   if (!/^[a-z]{2}(?:-[a-z]+)+-\d$/.test(region)) throw new Error(`--aws-region "${region}" is not an AWS region name`);
-  readProfile(credsFile, awsProfile);
+  if (credsFile) readProfile(credsFile, awsProfile);
+  const awsBin = process.env.BENCH_AWS_BIN || 'aws';
+  const credentials = exportProfile ? makeExportedCredentials({ profile: exportProfile, exporter: (p) => awsExport(p, { bin: awsBin }), log }) : null;
   const cacheDir = path.resolve(flagValue(opts, 'cache') ?? path.join(os.tmpdir(), 'b-cache'));
   const resolved = oc.resolveOpencode({ cacheDir, binOverride: flagValue(opts, 'opencode-bin') });
-  return makeOpencodeCaller({ bin: resolved.bin, version: resolved.version, sha256: resolved.sha256, credsFile, awsProfile, region, timeoutMs, rawDir });
+  return makeOpencodeCaller({ bin: resolved.bin, version: resolved.version, sha256: resolved.sha256, credsFile, credentials, awsProfile, region, timeoutMs, rawDir });
 }
 
 // The run and the judge panel for a judge command (rubric pass or quality pack).
@@ -170,7 +178,7 @@ function judgeCallerFor(opts, { runDir, judges }) {
   log(backendLine(opts, { backend, viaOpencode }, judges));
   let caller;
   if (viaOpencode) {
-    caller = makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir: path.join(runDir, 'judge', 'raw') });
+    caller = makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir: path.join(runDir, 'judge', 'raw'), log });
     log(`backend: opencode ${caller.info.opencodeVersion}, ${caller.info.region}, system prompt sha256 ${caller.info.systemPromptSha256.slice(0, 12)}`);
   } else if (judgeCmd) {
     caller = makeCmdCaller(String(judgeCmd), { timeoutMs });
@@ -237,6 +245,7 @@ async function cmdJudge(opts) {
       : 'credit guard: HARD STOP, this command spent past 100% of --budget-credits; calls in flight were counted, and no further call started');
     process.exitCode = 3;
   }
+  reportCallerStop(caller);
   console.log(`evidence-quote rule recorded as the default: ${RULE_TEXT[quoteRule]}; the other rule's verdicts are recorded beside it`);
   console.log(`wrote ${path.join(runDir, 'judgments.json')}`);
 }
@@ -331,7 +340,16 @@ async function cmdJudgePack(opts, { runDir, benchDir, run, judges, small }) {
     console.error(viaOpencode ? 'usd guard: HARD STOP, this command spent past 100% of --budget-usd; no further call started' : 'credit guard: HARD STOP, this command spent past 100% of --budget-credits; no further call started');
     process.exitCode = 3;
   }
+  reportCallerStop(caller);
   console.log(`wrote ${path.join(runDir, FILE)}`);
+}
+
+// A caller that stopped on repeated credential failures (opencode backend) makes the command fail, so a driver script stops.
+function reportCallerStop(caller) {
+  const why = caller.stopReason?.();
+  if (!why) return;
+  console.error(`${why}; the remaining calls were not made and are recorded as skipped`);
+  process.exitCode = 3;
 }
 
 function cmdRecheck(opts) {
