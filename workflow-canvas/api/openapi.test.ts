@@ -1035,7 +1035,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.6.0');
+      expect(info.version).toBe('1.6.1');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1310,6 +1310,28 @@ describe('workflow canvas API contract', () => {
         'get'
       ]!.parameters!.find((p) => p.name === 'wait');
       expect(wait?.schema?.['maximum']).toBe(25);
+    });
+
+    it('refuses a stage event that moves a stage to pending', () => {
+      const event = spec.components.schemas['StageStateEvent']!;
+      const valid = {
+        seq: 1,
+        run_id: '20261024-0412-a7b3c',
+        at: '2026-10-24T04:12:05Z',
+        type: 'stage_state',
+        stage: 'write',
+        status: 'running',
+      };
+      expect(valueMatchesSchema(event, valid)).toBe(true);
+      expect(valueMatchesSchema(event, { ...valid, status: 'pending' })).toBe(
+        false,
+      );
+    });
+
+    it('says that version 1.6.1 only narrows the status of a stage event', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.6\.1 adds nothing: the `status` of a `stage_state` event gets its own enum without `pending`/,
+      );
     });
 
     it('says that version 1.6.0 only adds the events of a run', () => {
