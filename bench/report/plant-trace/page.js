@@ -6,7 +6,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { esc, pill, fmtMs, fmtInt, factList } = require('./html.js');
-const { laneCells, stepDetail, stateStrip } = require('./rows.js');
+const { treeHtml, stepExtras, stateStrip } = require('./rows.js');
+const { flatCalls } = require('./tree.js');
 
 const read = (name) => fs.readFileSync(path.join(__dirname, name), 'utf8');
 // No network: nothing may load from outside the page. Inline style and script are the page's own files.
@@ -26,7 +27,7 @@ function runHeader(trace) {
   const facts = [
     pill(`${c.steps} calls`), pill(`${c.blocked} blocked`, c.blocked ? 'warn' : ''),
     pill(`${c.unsafeTries} unsafe tries`, c.unsafeTries ? 'warn' : ''), pill(`${c.unsafeRan} unsafe ran`, c.unsafeRan ? 'bad' : 'ok'),
-    pill(`${c.mismatches} mismatches`, c.mismatches ? 'bad' : 'ok'),
+    pill(`${c.mismatches} mismatches`, c.mismatches ? 'bad' : 'ok'), c.agents ? pill(`${c.agents} child agents`, 'vi') : '',
   ].join(' ');
   const rows = [
     ['task', esc(taskName(trace.task) ?? 'n/a')], ['model', esc(trace.model ?? 'n/a')], ['harness', esc(trace.harness ?? 'n/a')],
@@ -41,35 +42,34 @@ function mismatchBanner(traces) {
   if (!bad.length) return `<div class="banner ok">Stream and gateway agree. Every plant call in each agent stream pairs with one gateway call, matched on tool name and args_sha256 (not rpc_id).</div>`;
   const items = bad.map((t) => {
     const lost = t.streamOnly.map((c) => `<li>${esc(t.label)}: the stream has <b>${esc(c.tool ?? 'an unreadable tool')}</b> (${esc(c.argsSha256.slice(0, 12))}) but the gateway never saw it</li>`);
-    const miss = t.steps.filter((s) => s.gatewayOnly).map((s) => `<li>${esc(t.label)}: gateway step ${s.n} (${esc(s.tool)}) has no matching stream call</li>`);
+    const miss = flatCalls(t.steps).filter((s) => s.gatewayOnly).map((s) => `<li>${esc(t.label)}: gateway step ${s.n} (${esc(s.tool)}) has no matching stream call</li>`);
     return [...lost, ...miss].join('');
   }).join('');
   return `<div class="banner bad"><b>Stream and gateway disagree.</b> The match is on tool name and args_sha256.<ul>${items}</ul></div>`;
 }
 
-const legend = () => `<div class="legend">${pill('allowed', 'ok')} ${pill('blocked by the gateway', 'warn')} ${pill('unsafe attempt that ran', 'bad')}<span class="na">click a cell for the call, its arguments and the gateway's reason</span></div>`;
+const legend = () => `<div class="legend">${pill('allowed', 'ok')} ${pill('blocked by the gateway', 'warn')} ${pill('unsafe attempt that ran', 'bad')}<span class="na">open a step for its arguments, the gateway's reason and the plant state; "more" shows the raw records</span><span class="grow"></span><button id="expand-all" type="button">Expand all</button><button id="collapse-all" type="button">Collapse all</button></div>`;
 
-function tableHead(trace) {
+function listHead(trace) {
   const label = `tokens${trace.tokens.mode === 'not-recorded' ? ' (not recorded)' : ''}`;
-  return `<thead><tr><th>step</th><th class="lead">call</th><th>decision</th><th>time</th><th title="${esc(trace.tokens.note)}">${label}</th><th>plant after</th></tr></thead>`;
+  return `<div class="head" aria-hidden="true"><span class="n">step</span><span class="tool">call</span><span class="dec">gateway</span><span class="t">time</span><span class="tok" title="${esc(trace.tokens.note)}">${label}</span></div>`;
 }
 
-const stepRows = (trace, lane) => trace.steps.map((s) => `<tr><td class="num">${s.n}</td>${laneCells(s, lane, trace)}</tr>`).join('');
-
-function endRow(trace) {
+function endLine(trace) {
   const harm = trace.final.harm.length ? pill(`harm at settle: ${trace.final.harm.join(', ')}`, 'bad') : '';
-  return `<tr><td class="num">end</td><td class="lead" colspan="4">end of run, after the settle ${harm}</td><td>${stateStrip(trace.final.state)}</td></tr>`;
+  return `<div class="end"><span class="na">end of run, after the settle</span> ${harm} ${stateStrip(trace.final.state)}</div>`;
 }
 
 /** One run as one full-width block: its header naming the arm, then every step one below the other. `lane` is its index. */
-const runBlock = (trace, lane) => `<section class="panel run">${runHeader(trace)}<div class="scroll"><table>${tableHead(trace)}<tbody>${stepRows(trace, lane)}${endRow(trace)}</tbody></table></div></section>`;
+const runBlock = (trace, lane) => `<section class="panel run">${runHeader(trace)}<div class="steps">${listHead(trace)}${treeHtml(trace.steps, lane, trace)}${endLine(trace)}</div></section>`;
 
-const details = (traces) => traces.map((t, lane) => t.steps.map((s) => stepDetail(s, lane, t)).join('')).join('');
+const extras = (traces) => traces.map((t, lane) => flatCalls(t.steps).map((s) => stepExtras(s, lane, t)).join('')).join('');
 
 /**
- * The page for `traces`, one or two built traces (`buildTrace`). Each run is one full-width block; with two, the second
- * block sits below the first. A click opens the call's detail in a panel over the right edge. Returns the whole HTML
- * text: one file, its own CSS and script, no outside requests.
+ * The page for `traces`, one or two built traces (`buildTrace`); it reads only their JSON. Each run is one full-width
+ * block; with two, the second block sits below the first. Each step is a <details> that opens in place, so any number
+ * can be open; a child agent's steps nest under it. A step's "more" button shows its raw records in a panel over the
+ * right edge. Returns the whole HTML text: one file, its own CSS and script, no outside requests.
  */
 function renderPage(traces) {
   const title = traces.map((t) => t.label).join(' vs ');
@@ -90,7 +90,7 @@ ${legend()}
 ${traces.map(runBlock).join('\n')}
 </main>
 <aside class="panel drawer" id="drawer" hidden aria-live="polite"><button id="drawer-close" type="button">Close</button><p class="eyebrow">detail</p><div id="drawer-body"></div></aside>
-<div hidden>${details(traces)}</div>
+<div hidden>${extras(traces)}</div>
 <script>${read('client.js')}</script>
 </body>
 </html>

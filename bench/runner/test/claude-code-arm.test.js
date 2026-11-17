@@ -62,8 +62,29 @@ test('prepareArm builds once and reuses the build while the source and binary ar
     assert.equal(second.cached, true);
     assert.equal(second.cliSha256, first.cliSha256);
     assert.deepEqual(builds, ['cc-pr-105']);
-    const ready = JSON.parse(fs.readFileSync(path.join(root, 'cache', `cc-pr-105-${'a'.repeat(12)}`, '.ready'), 'utf8'));
+    const ready = JSON.parse(fs.readFileSync(path.join(sandbox.buildDirOf(ctx, 'claude', arm), '.ready'), 'utf8'));
     assert.deepEqual(Object.keys(ready).sort(), ['cliSha256', 'commitSha', 'contentHash']);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('two arms of different names on the same content share one build and one binary', () => {
+  const root = tmp();
+  try {
+    const builds = [];
+    const ctx = ctxFor(root, { builds });
+    const a = dirArm(root, 'first', 'c'.repeat(64));
+    const b = { ...a, id: 'cc-second', label: 'cc-second' };
+    const pa = cc.prepareArm(a, ctx);
+    const pb = cc.prepareArm(b, ctx);
+    assert.deepEqual(builds, ['cc-first']);
+    assert.equal(pb.cached, true);
+    assert.equal(pb.bin, pa.bin);
+    assert.equal(pb.cliSha256, pa.cliSha256);
+    assert.equal(path.basename(path.dirname(pa.bin)).includes('first'), false, 'the cache directory is not named after the arm');
+    assert.notEqual(sandbox.buildDirOf({ ...ctx, toolchainId: 'rustc 9' }, 'claude', a), sandbox.buildDirOf({ ...ctx, toolchainId: 'rustc 10' }, 'claude', a), 'a toolchain change is a new build');
+    assert.notEqual(sandbox.buildDirOf(ctx, 'claude', a), sandbox.buildDirOf(ctx, 'kiro', a), 'each harness build has its own directory');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

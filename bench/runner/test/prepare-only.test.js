@@ -94,3 +94,20 @@ test('list-arms shows the syntax, and with --arms resolves each spec against the
     assert.match(bad.stderr, /ref "nope" not found.*never fetches/s);
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
 });
+
+test('--prepare-only covers Claude Code arms without credentials or a claude binary, and mixing them with kiro-cli arms is refused', () => {
+  const s = setup();
+  fs.mkdirSync(path.join(s.root, 'home'));
+  try {
+    const van = run(s, ['--arms', 'cc-vanilla']);
+    assert.equal(van.status, 0, van.stderr);
+    assert.match(van.stdout, /cc-vanilla\s+-\s+-\s+-\s+ready/);
+    const old = run(s, ['--arms', 'cc-old=main']);
+    assert.equal(old.status, 1);
+    assert.match(old.stderr, /arm cc-old could not be prepared.*no cli\/konductor-rs\/Cargo\.toml.*predates/s);
+    const mixed = run(s, ['--arms', 'vanilla,cc-vanilla']);
+    assert.notEqual(mixed.status, 0);
+    assert.match(mixed.stderr, /prepare them apart from kiro-cli arms/);
+    assert.equal(fs.existsSync(s.out), false);
+  } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
+});

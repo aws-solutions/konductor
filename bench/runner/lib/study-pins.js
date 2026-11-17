@@ -8,6 +8,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { readRunConfigs } = require('./run-configs.js');
 
 const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 
@@ -33,7 +34,7 @@ function recordedPins(outDir, armIds) {
   };
   const wanted = new Set(armIds);
   const cfgFile = path.join(outDir, 'run-config.json');
-  for (const a of readJson(cfgFile)?.arms ?? []) if (wanted.has(a?.id)) note(a.id, a, cfgFile);
+  for (const cfg of readRunConfigs(outDir)) for (const a of cfg.arms ?? []) if (wanted.has(a?.id)) note(a.id, a, cfgFile);
   for (const armId of wanted) {
     const armDir = path.join(outDir, armId);
     for (const task of listDirs(armDir)) {

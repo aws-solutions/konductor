@@ -7,6 +7,7 @@
 
 const crypto = require('node:crypto');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const zlib = require('node:zlib');
 const { spawnSync } = require('node:child_process');
@@ -16,7 +17,13 @@ const BENCH_DIR = path.resolve(REAL_DIR, '..');
 const REPO_ROOT = path.resolve(BENCH_DIR, '..');
 const MANIFEST_FILE = path.join(REAL_DIR, 'manifest.json');
 const P2P_DIR = path.join(REAL_DIR, 'p2p');
-const DEFAULT_CACHE = '/tmp/konductor-bench/realrepos';
+// The per-user state directory the bench scripts use (scripts/state-dir.sh), so the cache survives a /tmp cleanup and
+// a run, its judge and its recheck all find it without BENCH_REAL_CACHE. The old /tmp default is still used when it
+// exists and the new one does not.
+const STATE_HOME = process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state');
+const DEFAULT_CACHE = path.join(STATE_HOME, 'konductor-bench', 'realrepos');
+const LEGACY_CACHE = '/tmp/konductor-bench/realrepos';
+const defaultCache = () => (!fs.existsSync(DEFAULT_CACHE) && fs.existsSync(LEGACY_CACHE) ? LEGACY_CACHE : DEFAULT_CACHE);
 const ANSWER_KEY = '.bench-answer-key.md';
 const SHA_RE = /^[0-9a-f]{40}$/;
 
@@ -24,7 +31,7 @@ const realOrSelf = (p) => { try { return fs.realpathSync(p); } catch { return pa
 
 // The cache holds upstream objects, including the fix. It must live outside the repository.
 function resolveCache(arg) {
-  const raw = arg || process.env.BENCH_REAL_CACHE || DEFAULT_CACHE;
+  const raw = arg || process.env.BENCH_REAL_CACHE || defaultCache();
   let dir = path.resolve(raw);
   let probe = dir;
   while (!fs.existsSync(probe) && path.dirname(probe) !== probe) probe = path.dirname(probe);

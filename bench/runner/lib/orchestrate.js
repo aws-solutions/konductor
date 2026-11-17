@@ -57,6 +57,22 @@ function existingResults(plan, outDir) {
   return plan.filter((item) => fs.existsSync(path.join(runDirOf(outDir, item), 'result.json')));
 }
 
+/**
+ * --resume: the planned cells that still need a run. A cell with no result.json runs, and so does one whose result says
+ * it never ran (budget_skipped). An errored cell runs again only with `errors`. Every other result is kept as it is.
+ */
+function resumePlan(plan, outDir, { errors = false } = {}) {
+  const todo = [];
+  let kept = 0;
+  for (const item of plan) {
+    let r = null;
+    try { r = JSON.parse(fs.readFileSync(path.join(runDirOf(outDir, item), 'result.json'), 'utf8')); } catch { /* missing or unreadable: run it */ }
+    if (!r || r.status === 'budget_skipped' || (errors && r.status === 'error')) todo.push(item);
+    else kept++;
+  }
+  return { todo, kept };
+}
+
 // Bounded worker pool. `shouldSkip(item)` is checked at launch time, so runs already
 // in flight when the budget is reached still finish and count.
 async function runPool(plan, parallel, worker, shouldSkip, onSkip) {
@@ -212,7 +228,7 @@ function preflightTable(arms, prepared, errors) {
   return rows.map((r) => r.map((c, i) => c.padEnd(w[i])).join('  ')).join('\n');
 }
 
-async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false, replicateOffset = 0, maxAuthFailures = DEFAULT_MAX_AUTH_FAILURES, loginCheck = null, loginCheckEveryMs = DEFAULT_CHECK_EVERY_MS }) {
+async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false, replicateOffset = 0, resume = null, maxAuthFailures = DEFAULT_MAX_AUTH_FAILURES, loginCheck = null, loginCheckEveryMs = DEFAULT_CHECK_EVERY_MS }) {
   const ledger = makeLedger({ budgetCredits, floor: censoredFloor, runsPerReplicate: tasks.length * arms.length, costOf });
   // The study ledger only tracks unless a budget was given; then it also stops new launches at 90% of that budget.
   const study = creditLedger ?? openLedger({ dir: outDir, budget: budgetCredits });
@@ -249,9 +265,15 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
     return guardReason !== null || ledger.shouldSkip(item);
   };
   let active = 0;
-  const plan = planRuns(tasks, arms, replicates, seed, replicateOffset);
+  let plan = planRuns(tasks, arms, replicates, seed, replicateOffset);
+  if (resume) {
+    const { todo, kept } = resumePlan(plan, outDir, resume);
+    log(`resume: ${kept} of ${plan.length} planned cell(s) already have a result and are kept; ${todo.length} to run${resume.errors ? ' (errored cells included)' : ''}`);
+    plan = todo;
+  }
   const clobbered = existingResults(plan, outDir);
-  if (clobbered.length) log(`WARNING: ${clobbered.length} of ${plan.length} planned cell(s) already have a result.json in ${outDir} and will be OVERWRITTEN. Use a new --out, or --replicate-offset N to add replicates after the existing ones.`);
+  if (clobbered.length && resume) log(`resume: ${clobbered.length} of them have a result.json that will be replaced (never ran${resume.errors ? ', or errored' : ''})`);
+  else if (clobbered.length) log(`WARNING: ${clobbered.length} of ${plan.length} planned cell(s) already have a result.json in ${outDir} and will be OVERWRITTEN. Use a new --out, or --replicate-offset N to add replicates after the existing ones.`);
   const batchWindow = ctx.installsGate ? ctx.installsGate.begin() : null;
   const batchFrom = new Date().toISOString();
 
@@ -316,5 +338,5 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
 }
 
 module.exports = {
-  CREDITS, USD, runAll, planRuns, existingResults, runPool, prepareAll, preflightTable, makeLedger, describePlan, budgetNote, LARGE_PLAN_RUNS, mulberry32, shuffle, median, resolveArm, DEFAULT_CENSORED_FLOOR,
+  CREDITS, USD, runAll, planRuns, existingResults, resumePlan, runPool, prepareAll, preflightTable, makeLedger, describePlan, budgetNote, LARGE_PLAN_RUNS, mulberry32, shuffle, median, resolveArm, DEFAULT_CENSORED_FLOOR,
 };

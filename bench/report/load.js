@@ -33,10 +33,13 @@ function loadRun(runDir) {
   if (harnesses.length > 1) throw new Error(`run directory mixes harnesses (${harnesses.join(', ')}); report each harness from its own run`);
   const cfgFile = path.join(dir, 'run-config.json');
   const judgFile = path.join(dir, 'judgments.json');
+  const config = fs.existsSync(cfgFile) ? readJson(cfgFile) : {};
+  // Real tasks read their base tree from the cache the run used; a later judge or recheck finds it from run-config.
+  if (config.real?.cache && !process.env.BENCH_REAL_CACHE) process.env.BENCH_REAL_CACHE = config.real.cache;
   return {
     dir,
     harness: harnesses[0],
-    config: fs.existsSync(cfgFile) ? readJson(cfgFile) : {},
+    config,
     runs,
     judgments: fs.existsSync(judgFile) ? readJson(judgFile) : null,
   };

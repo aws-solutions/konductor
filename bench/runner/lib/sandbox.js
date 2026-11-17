@@ -125,13 +125,28 @@ function synthArm(bin, exportDir) {
   }
 }
 
+let toolchainCache = null;
+// The compiler versions are build inputs: a toolchain upgrade between commands must not reuse a binary built by the old one.
+const toolchainId = () => (toolchainCache ??= `${versionOf('rustc') ?? 'rustc?'}|${versionOf('cargo') ?? 'cargo?'}`);
+
+/**
+ * The cache directory of an arm's build of `kind` (kiro, claude, opencode). It is keyed by what the build reads: the
+ * arm's commit or snapshot hash (its cacheKey, which a variant extends) and the toolchain, never by the arm's name, so
+ * two arms on the same content share one build and one binary.
+ */
+function buildDirOf(ctx, kind, arm) {
+  const source = arm.cacheKey ?? arm.commitSha.slice(0, 12);
+  const inputs = crypto.createHash('sha256').update(JSON.stringify({ kind, source, commitSha: arm.commitSha ?? null, contentHash: arm.contentHash ?? null, toolchain: ctx.toolchainId ?? toolchainId() })).digest('hex').slice(0, 10);
+  return path.join(ctx.cacheDir, `${kind}-${source}-${inputs}`);
+}
+
 /**
  * Exports the arm (commit or working-tree snapshot), builds its MCP server and CLI, and synthesizes dist/.
- * Cached by commit SHA, or by content hash for a directory arm; a cache hit is reused only if the MCP
+ * Cached in buildDirOf (by commit SHA, or content hash for a directory arm, plus the toolchain; shared by arms of any name); a cache hit is reused only if the MCP
  * binary still matches the sha256 recorded when it was built.
  */
 function prepareArm(arm, ctx) {
-  const dir = path.join(ctx.cacheDir, `${arm.id}-${arm.cacheKey ?? arm.commitSha.slice(0, 12)}`);
+  const dir = buildDirOf(ctx, 'kiro', arm);
   const exportDir = path.join(dir, 'src');
   const bin = path.join(dir, 'konductor');
   const mcpBin = path.join(exportDir, 'mcp/target/release/skill-lookup-mcp');
@@ -233,26 +248,78 @@ function versionOf(cmd, args = ['--version']) {
   }
 }
 
-const kiroCliVersion = () => versionOf('kiro-cli');
+/** The `--version` line of the kiro-cli at `bin` (default: the one on PATH). */
+const kiroCliVersion = (bin = 'kiro-cli') => versionOf(bin);
 
-// Some installs put a wrapper named kiro-cli on PATH (in a directory called "sandbox") that routes through
-// a sandboxing launcher. That launcher depends on the invoking user's environment and can attach extra
-// tools, so runs call the real binary next to the wrapper instead. Any other kiro-cli is used as found.
+// A toolbox shim: <root>/bin/<tool> links to toolbox-exec, one launcher shared by every toolbox tool, which picks the
+// tool's current version and runs that version's executable. The launcher can refuse to run under the bench.
+const TOOLBOX_EXEC = 'toolbox-exec';
+const NATIVE_MAGIC = ['7f454c46', 'cffaedfe', 'cefaedfe', 'cafebabe'];
+
+function readJsonFile(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
+}
+
+/** True when `file` starts with an ELF or Mach-O header, so it is a native binary and not a launcher script. */
+function isNativeBinary(file) {
+  let fd;
+  try {
+    fd = fs.openSync(file, 'r');
+    const b = Buffer.alloc(4);
+    return fs.readSync(fd, b, 0, 4, 0) === 4 && NATIVE_MAGIC.includes(b.toString('hex'));
+  } catch { return false; } finally { if (fd !== undefined) fs.closeSync(fd); }
+}
+
+/**
+ * The executable a toolbox shim at `candidate` would run, from the tool's own records: tools/<name>/info.json names
+ * the current version and tools/<name>/<version>.json its executable. Null when the layout is not there.
+ */
+function toolboxExecutable(candidate, name = 'kiro-cli') {
+  const roots = [path.dirname(path.dirname(candidate))];
+  try { roots.push(path.dirname(path.dirname(path.dirname(path.dirname(fs.realpathSync(candidate)))))); } catch { /* not resolvable */ }
+  for (const root of roots) {
+    const toolDir = path.join(root, 'tools', name);
+    const version = readJsonFile(path.join(toolDir, 'info.json'))?.CurrentVersion?.Version;
+    if (typeof version !== 'string' || !/^[\w.+-]+$/.test(version)) continue;
+    const bundle = readJsonFile(path.join(toolDir, `${version}.json`))?.Executables?.[name]?.BundlePath;
+    if (typeof bundle !== 'string' || path.isAbsolute(bundle) || bundle.split('/').includes('..')) continue;
+    const exe = path.join(toolDir, version, bundle);
+    if (fs.existsSync(exe)) return exe;
+  }
+  return null;
+}
+
+/**
+ * The kiro-cli a run uses, from PATH. Two known launchers are unwrapped to the native binary they start: a toolbox
+ * shim (a link to toolbox-exec) and the `sandbox/kiro-cli` wrapper script, which routes through a sandboxing launcher
+ * that depends on the invoking user's environment and can attach extra tools. When a known launcher does not lead
+ * to a native binary, this throws and names --kiro-bin. Any other kiro-cli is used as found.
+ */
 function resolveKiroCli(pathEnv = process.env.PATH) {
   for (const dir of (pathEnv || '').split(path.delimiter).filter(Boolean)) {
     const candidate = path.join(dir, 'kiro-cli');
     let real;
     try { real = fs.realpathSync(candidate); fs.accessSync(real, fs.constants.X_OK); } catch { continue; }
+    const shims = [];
+    if (path.basename(real) === TOOLBOX_EXEC) {
+      const exe = toolboxExecutable(candidate);
+      if (!exe) throw new Error(`${candidate} is a toolbox shim (it resolves to ${real}) and the kiro-cli it starts could not be found from the toolbox records; pass the native kiro-cli binary with --kiro-bin PATH`);
+      shims.push(real);
+      real = fs.realpathSync(exe);
+    }
     const sibling = path.join(path.dirname(real), '..', 'kiro-cli');
     if (path.basename(path.dirname(real)) === 'sandbox' && fs.existsSync(sibling)) {
-      return { bin: fs.realpathSync(sibling), shim: real };
+      shims.push(real);
+      real = fs.realpathSync(sibling);
     }
-    return { bin: real, shim: null };
+    if (!shims.length) return { bin: real, shim: null };
+    if (!isNativeBinary(real)) throw new Error(`${candidate} is a launcher (${shims.join(' -> ')}) and ${real} is not a native binary either; pass the native kiro-cli binary with --kiro-bin PATH`);
+    return { bin: real, shim: shims.join(' -> ') };
   }
-  throw new Error('kiro-cli not found on PATH');
+  throw new Error('kiro-cli not found on PATH; pass the kiro-cli binary with --kiro-bin PATH');
 }
 
 module.exports = {
   prepareArm, synthArm, installInto, runKonductor, normalizeAgentModels, emptyKiroHome, kiroDataDir, copyAuthDb, removeAuthCopy, copyFixture, findAnswerKey,
-  exportRef, exportArm, readyMatches, KIRO_REQUIRED, buildMcp, buildCli, sha256File, resolveKiroCli, makeScratchRoot, defaultAuthDb, kiroCliVersion, versionOf, run, ANSWER_KEY,
+  exportRef, exportArm, readyMatches, buildDirOf, KIRO_REQUIRED, buildMcp, buildCli, sha256File, resolveKiroCli, isNativeBinary, toolboxExecutable, makeScratchRoot, defaultAuthDb, kiroCliVersion, versionOf, run, ANSWER_KEY,
 };

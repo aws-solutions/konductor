@@ -44,7 +44,7 @@ const run = (s, args, env = {}) => spawnSync(process.execPath, [BENCH, 'run', '-
 
 const CC_ONLY = (flag) => `--${flag} applies to Claude Code (cc-) arms only`;
 const NO_ENGINE = (rt) => `--agent-engine applies to kiro-cli arms only; ${rt} arms have no agent engine`;
-const PREPARE = '--prepare-only covers kiro-cli arms; opencode, Claude Code and Strands arms need their binary and AWS credentials, so check them with a normal run';
+const PREPARE = '--prepare-only covers kiro-cli and Claude Code arms; opencode and Strands arms need their binary and AWS credentials, so check them with a normal run';
 const CC_NO = {
   effort: 'the effort level is not passed to claude, so a value would be recorded but not applied',
   'stop-on': 'the early-stop watcher reads kiro-cli and opencode events only',
@@ -70,7 +70,6 @@ const CASES = [
   ['oc-vanilla', ['--run-credit-limit', '2'], '--run-credit-limit applies to kiro-cli arms only; opencode runs are costed in USD'],
   // Claude Code arms
   ['cc-vanilla', ['--agent-engine', 'v3'], NO_ENGINE('claude-code')],
-  ['cc-vanilla', ['--prepare-only'], PREPARE],
   ['cc-vanilla', ['--budget-credits', '3'], '--budget-credits does not apply here: claude-code runs are costed in USD, use --budget-usd'],
   ...Object.entries(CC_NO).map(([flag, why]) => ['cc-vanilla', [`--${flag}`, VALUE[flag]], `--${flag} does not apply to Claude Code arms (${why})`]),
 ];

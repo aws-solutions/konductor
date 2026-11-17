@@ -39,6 +39,9 @@ const { preflightStrands } = require('./plant/strands-census.js');
 const { makeIso } = require('./run-one.js');
 const { pinConflicts, describeConflicts } = require('./study-pins.js');
 const { profileCredentials } = require('./aws-creds.js');
+const { writeRunConfig, readRunConfigs } = require('./run-configs.js');
+const { preloadSchemas } = require('./schema.js');
+const { snapshotTaskInputs } = require('./task-inputs.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -119,6 +122,11 @@ function summarize(runConfig, state, extra) {
 // and stops. It needs no kiro-cli login, creates no run directory and starts no agent, so it spends no credits.
 function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
   if (runtimes.some((r) => !descriptorOf(r).supports.prepareOnly)) throw new Error(`--prepare-only covers ${joinNames(supporting('prepareOnly').map((d) => d.proseName))} arms; ${joinNames(notSupporting('prepareOnly').map((d) => d.proseName))} arms need their binary and AWS credentials, so check them with a normal run`);
+  // Claude Code arms are built and trial-installed with their model pin check; claude itself is never started.
+  const isCc = runtimes.includes('claude-code');
+  if (isCc && runtimes.length > 1) throw new Error(`--prepare-only checks Claude Code arms against a Bedrock model id; prepare them apart from ${runtimes.filter((r) => r !== 'claude-code').join(', ')} arms`);
+  const ccModel = isCc ? opts.model || cc.DEFAULT_MODEL : null;
+  if (isCc && !cc.canonicalModel(ccModel)) throw new Error('--model needs a Bedrock model id, for example us.anthropic.claude-sonnet-5-5');
   const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
   const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
   ensureOwnedDir(cacheDir, 'cache');
@@ -129,7 +137,7 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
   try {
     const ctx = {
       repo, cacheDir, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb: null,
-      config: { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine }, envKeep: list(opts['env-keep']),
+      config: isCc ? { model: ccModel, canonicalModel: cc.canonicalModel(ccModel), effort: 'default' } : { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine }, envKeep: list(opts['env-keep']),
     };
     const { prepared, errors } = prepareAll({ arms, ctx, log, allowPartial: Boolean(opts['allow-partial']) });
     console.log(preflightTable(arms, prepared, errors));
@@ -148,6 +156,8 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
 const repoRootOf = (opts) => path.resolve(opts['repo-root'] && opts['repo-root'] !== true ? opts['repo-root'] : process.env.BENCH_REPO_ROOT || DEFAULT_REPO);
 
 async function cmdRun(opts, deps = {}) {
+  // Everything the runner reads from its own checkout later is read or hashed now, so a branch switch mid-study fails fast.
+  preloadSchemas();
   const benchDir = opts['bench-dir'] ? path.resolve(opts['bench-dir']) : BENCH_DIR;
   const suitesDir = opts['suites-dir'] && opts['suites-dir'] !== true ? path.resolve(opts['suites-dir']) : null;
   if (opts['suites-dir'] !== undefined && (!suitesDir || !fs.existsSync(suitesDir) || !fs.statSync(suitesDir).isDirectory())) throw new Error(`--suites-dir directory not found: ${suitesDir ?? '(no value)'}`);
@@ -259,6 +269,9 @@ async function cmdRun(opts, deps = {}) {
   for (const a of arms) for (const w of a.warnings) log(`warning: arm ${a.id}: ${w}`);
 
   const outDir = path.resolve(opts.out || path.join(REPO, 'bench', 'results', new Date().toISOString().replace(/[:.]/g, '-')));
+  const resume = opts.resume ? { errors: Boolean(opts['resume-errors']) } : null;
+  if (opts['resume-errors'] && !resume) throw new Error('--resume-errors needs --resume');
+  if (resume && (!opts.out || !fs.existsSync(path.join(outDir, 'run-config.json')))) throw new Error(`--resume needs --out DIR of an earlier run (no run-config.json in ${outDir})`);
   const armDrift = pinConflicts(outDir, arms);
   if (armDrift.length && !opts['allow-arm-drift']) throw new Error(describeConflicts(armDrift, outDir));
   for (const c of armDrift) log(`warning: --allow-arm-drift: arm ${c.armId} was ${c.recorded.slice(0, 12)} in earlier results of this --out and is ${c.now.slice(0, 12)} now`);
@@ -320,6 +333,7 @@ async function cmdRun(opts, deps = {}) {
       log(login.unavailable ? `warning: login check unavailable: ${login.unavailable}` : 'kiro-cli login ok');
     }
     const ctx = {
+      taskInputs: snapshotTaskInputs(tasks),
       kiroBin: kiro?.bin, repo: REPO, cacheDir, realCache, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb, config, envKeep,
       envInfo: null,
       installsGate: createInstallsGate(),
@@ -337,6 +351,9 @@ async function cmdRun(opts, deps = {}) {
     if (isCc) {
       const flagValue = (name) => (opts[name] && opts[name] !== true ? opts[name] : null);
       ctx.claude = cc.resolveClaude({ binOverride: flagValue('claude-bin') ?? undefined, toolsDir: flagValue('claude-tools-dir') ?? undefined });
+      const claudeChanged = cc.claudeChanges(readRunConfigs(outDir), ctx.claude);
+      if (claudeChanged.length && !opts['allow-claude-change']) throw new Error(cc.describeClaudeChanges(claudeChanged, ctx.claude, outDir, flagValue('claude-tools-dir')));
+      if (claudeChanged.length) log(`warning: --allow-claude-change: ${cc.describeClaudeChanges(claudeChanged, ctx.claude, outDir, flagValue('claude-tools-dir')).split('. One study')[0]}`);
       Object.assign(ctx, { region: ccRegion, runBudgetUsd, ...(ccCreds ? { awsCreds: ccCreds } : {}) });
       const credsNote = ccCreds ? `credentials from profile ${ccCreds.profile}, read again before a run when they expire within 15 minutes` : `credentials from the environment (${cc.credentialNames().join(', ')})`;
       log(`claude ${ctx.claude.version} (${ctx.claude.bin}), sha256 ${ctx.claude.sha256.slice(0, 12)}, model ${config.model} (canonical ${config.canonicalModel}), region ${ccRegion}, permission mode ${cc.PERMISSION_MODE}, per-run budget $${runBudgetUsd ?? cc.DEFAULT_RUN_BUDGET_USD}, ${credsNote}`);
@@ -400,7 +417,7 @@ async function cmdRun(opts, deps = {}) {
     } else {
       const modelListPath = path.join(outDir, 'model-list.json');
       fs.writeFileSync(modelListPath, listModels(ctx.kiroBin, authDb, scratchDir, envKeep, config.agentEngine));
-      ctx.envInfo = { kiroCliVersion: sandbox.kiroCliVersion(), modelListSnapshotPath: modelListPath };
+      ctx.envInfo = { kiroCliVersion: sandbox.kiroCliVersion(ctx.kiroBin), modelListSnapshotPath: modelListPath };
     }
 
     const interpreters = toolchain.interpreterVersions();
@@ -419,6 +436,7 @@ async function cmdRun(opts, deps = {}) {
       ...config, ...ctx.envInfo,
       isolation: { ...isolation, ...describeHide(isolation.mode, ctx.hide), mask: ctx.mask }, comparable: isComparableMode(isolation.mode), tripwire: { depth: ctx.tripwire.roots[0].depth, excludes: [...DEFAULT_EXCLUDES, ...tripExtra], roots: ctx.tripwire.roots.map((r) => r.dir) },
       arms: rc.armRecords(arms, prepared, errors),
+      resume,
       armDrift: armDrift.length ? armDrift.map((c) => ({ armId: c.armId, recorded: c.recorded, now: c.now, kind: c.kind })) : null,
       originMain: mainArm ? { originMainSha: mainArm.originMainSha, localMainSha: mainArm.localMainSha, behindOrigin: mainArm.behindOrigin, usedRef: mainArm.ref } : null,
       modelNormalized: arms.some((a) => !a.vanilla),
@@ -444,11 +462,12 @@ async function cmdRun(opts, deps = {}) {
         env: rc.envPolicy(process.env, envKeep),
         kiroBinary: { path: kiro.bin, bypassedShim: kiro.shim },
         kiroEnabledFeatures: process.env.KIRO_ENABLED_FEATURES ?? null,
-        agentEnginesAvailable: rc.availableEngines(),
+        agentEnginesAvailable: rc.availableEngines(kiro.bin),
       }),
       ...(plantSuite ? { plant: { release: plantSuite.release.manifest.release, manifestSha256: plantSuite.release.manifestSha256, keyId: plantSuite.release.keyId, control: plantSuite.control, counted: plantSuite.counted, comparable: plantSuite.comparable, notCounted: plantSuite.notCounted, hostNoise: plantSuite.hostNoise, cgroup: ctx.cgroup ? (ctx.cgroup.ok ? ctx.cgroup.caps : `missing: ${ctx.cgroup.reason}`) : 'not checked (no namespace isolation)', boundaryChecklist: plantSuite.walls?.checklist ?? null } } : {}),
       ...rc.benchGit(REPO),
       contentHash: rc.hashTree(benchDir, ['tasks', 'fixtures', 'suites', 'real']),
+      taskInputHashes: ctx.taskInputs.hashes(),
       ...(suitesDir ? { suitesDir, suiteFile: suiteFile(opts.suite, benchDir, suitesDir) } : {}),
       ...(realPins ? {
         real: {
@@ -459,12 +478,12 @@ async function cmdRun(opts, deps = {}) {
           agentNetwork: 'open (the model API needs it); fetches are flagged after the run, not blocked',
         },
       } : {}),
-      tools: rc.toolVersions(),
+      tools: rc.toolVersions({ kiroBin: kiro?.bin }),
       interpreters,
       toolchainCheck,
       startedAt: new Date().toISOString(),
     };
-    writeAtomic(path.join(outDir, 'run-config.json'), JSON.stringify(runConfig, null, 2) + '\n');
+    writeRunConfig(outDir, runConfig);
     if (variants.length) {
       fs.mkdirSync(path.join(outDir, 'variants'), { recursive: true });
       for (const v of variants) fs.writeFileSync(path.join(outDir, 'variants', `${v.variantId}.json`), JSON.stringify(v, null, 2) + '\n');
@@ -485,7 +504,7 @@ async function cmdRun(opts, deps = {}) {
     log(`out=${outDir}`);
     const { results, observed, charged, studyLine, guard, authStop } = await runAll({
       tasks, arms, prepared, prepErrors: errors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log,
-      costOf: isUsd ? USD : CREDITS, unit, gateStrict: Boolean(opts['gate-strict']), replicateOffset, maxAuthFailures, loginCheck,
+      costOf: isUsd ? USD : CREDITS, unit, gateStrict: Boolean(opts['gate-strict']), replicateOffset, resume, maxAuthFailures, loginCheck,
     });
     const judged = judgeBatch({ gate: batchWindow.end(), results, strict: Boolean(opts['gate-strict']), window: { from: batchFrom, to: new Date().toISOString() } });
     const gate = judged.gate;

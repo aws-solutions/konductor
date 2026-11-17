@@ -26,7 +26,7 @@ const cleanup = require('./lib/cleanup-cmd.js');
 
 const USAGE = `Usage:
   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe|canary-layers [--arms a,b,c] [--tasks id,id]
-       [--replicates N] [--replicate-offset N] [--parallel N] [--budget-credits X] [--out DIR]
+       [--replicates N] [--replicate-offset N] [--resume [--resume-errors]] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--gate-strict] [--allow-partial] [--allow-arm-drift] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
@@ -42,14 +42,17 @@ const USAGE = `Usage:
        (--replicate-offset N numbers the replicates N+1 to N+replicates, to add runs to an out dir that already holds replicates 1 to N. The default 0 numbers them from 1.
        A run writes over any result.json already at a planned path and prints a warning with the count of cells it will overwrite.
        Every arm ref is resolved to a commit once, when the command starts; run-config.json and each result.json record it. A command refuses an --out
-       that already holds results of the same arm id at another commit (main after a fetch, say) unless --allow-arm-drift is given)
+       that already holds results of the same arm id at another commit (main after a fetch, say) unless --allow-arm-drift is given.
+       --resume with the --out of an earlier run plans the same cells and runs only those with no result.json or a budget_skipped one, keeping every
+       other result; --resume-errors also runs again the cells whose result is an error. Pass the arms, tasks and replicates of the earlier command)
        (--max-auth-failures N stops the chunk after N consecutive runs that could not log in (no turn ran, "Not logged in", "Authentication failed" or "token already expired"), default 3,
        or the BENCH_MAX_AUTH_FAILURES variable; remaining cells are skipped and the command exits 6. Such a run is charged 0 and marked infra, never a timeout.
        Runs whose agent binary could not be launched (exit 127, no such file) count toward the same limit)
        (--timeout-sec N replaces the timeout of every selected task with N seconds (a positive integer); without it each task keeps the timeoutSec of its task file.
        The plan line, run-config.json (timeoutSecOverride, timeoutSecByTask) and summary.json show it)
        (--agent-engine is the kiro-cli engine, default v2; v3 installs each arm for the kiro-v3 harness)
-       (--prepare-only builds and trial-installs every arm, prints the preflight table and exits before any agent run)
+       (--prepare-only builds and trial-installs every arm, prints the preflight table and exits before any agent run. It covers kiro-cli and Claude Code
+       arms, one runtime at a time; a Claude Code arm gets the install, model pin and agent checks with --model, and claude itself is not started)
        (--plant-release DIR and --plant-release-sha256 HEX are required by the plant-policy and plant-allowall arms: the signed release is copied
        to a runner-private dir and checked there; --plant-python is the interpreter that runs the gateway, default python3. A plant suite runs
        plant arms and plant tasks only, at --parallel 1; without --kiro-bin it is counted and the Kiro CLI must match the release pin)
@@ -65,7 +68,7 @@ const USAGE = `Usage:
        (--auth-db is the kiro-cli auth database each run's scratch HOME gets a copy of, default the standard location under HOME)
        (--arm-prefix puts the text of FILE (at most 90000 bytes) in front of the task prompt of that arm; run-config records its sha256 and size.
        --arm-agent starts that arm in AGENT instead of its default agent. --arm-config writes keys into that arm's scratch ~/.konductor/config.yml after the
-       install, for example --arm-config orch-coord=orchestration.mode=coordinator (orchestration.mode takes auto or coordinator and applies to the konductor entry agent only; vanilla and opencode arms refuse the flag; run-config
+       install, for example --arm-config orch-coord=orchestration.mode=coordinator (orchestration.mode takes auto or coordinator and applies to the konductor entry agent only; vanilla, opencode and Strands (st-) arms refuse the flag; run-config
        and result.json record it). --stop-on kills the run at the first skills-server call, subagent call
        or end of turn (first-capability), or at the first get_skill, subagent call or end of turn (first-load); the run is flagged earlyStopped and
        has no metered credits (kiro-cli meters at the end of a turn), so its cost is unobserved. --max-tool-calls stops after that many tool calls whatever they are)
@@ -78,10 +81,12 @@ const USAGE = `Usage:
        opencode arms (oc-vanilla, oc-v1.2.0, oc-main; one harness per run):
        --aws-creds-file FILE [--aws-profile bench] [--budget-usd X] [--opencode-bin PATH] [--rg-bin PATH]
        Claude Code arms (cc-vanilla, cc-main, cc-name=<git ref>; one harness per run; the real claude binary, never a launcher script):
-       [--budget-usd X] [--run-budget-usd X] [--aws-region us-east-1] [--aws-profile NAME] (--claude-bin PATH | --claude-tools-dir DIR)
+       [--budget-usd X] [--run-budget-usd X] [--aws-region us-east-1] [--aws-profile NAME] (--claude-bin PATH | --claude-tools-dir DIR) [--allow-claude-change]
        (credentials are the AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_SESSION_TOKEN variables of the shell that starts the bench; nothing is read from a file.
        With --aws-profile NAME the runner reads them with aws configure export-credentials --profile NAME instead, at the start and again before a run
        when the cached keys have no expiry or expire within 15 minutes, and passes them to that run only; a study can then outlive one session's keys.
+       --claude-tools-dir takes the newest <version>/claude there. run-config.json records the binary's version and sha256, and a later command into the
+       same --out that resolves another binary is refused unless --allow-claude-change is given; the refusal names --claude-bin <dir>/<version>/claude to stay on it.
        --run-budget-usd is claude's own per-run cap, default 5. --effort, --stop-on, --max-tool-calls and --run-credit-limit do not apply)
   node bench/runner/bench.js judge --run DIR [--judges a,b] [--mode rubric,pairwise] [--baseline vanilla|ARM]
        [--concurrency N] [--budget-credits X] [--judge-cmd CMD] [--max-file-chars N] [--max-bundle-chars N]
@@ -132,8 +137,8 @@ const USAGE = `Usage:
        per entry agent and per task, the share of runs where the token showed in a tool result (direct) or in the model's own text or calls (inferred), next to whether the agent spec
        declares that layer. FILE is the layers.json written by bench/scripts/canary-layers.js build. Writes canary-report.md and canary-report.json to --out. See bench/CANARY-LAYERS.md)
   node bench/runner/bench.js plant-trace --run TRIAL_DIR [--vs TRIAL_DIR] --out FILE.html
-       (one static HTML page for a plant trial, with no model and no network: a timeline with one row per tool call and the time per step, rows coloured allowed,
-       blocked or unsafe attempt from the gateway log, the plant state after each call, a click-through detail with the call, arguments and the gateway's reason,
+       (one static HTML page for a plant trial, with no model and no network: one collapsible line per tool call with the time per step, coloured allowed,
+       blocked or unsafe attempt from the gateway log; open, it shows the arguments, the gateway's reason and the plant state after the call; a child agent's calls nest under it,
        tokens per step where the stream records them, and the stream-to-gateway mismatches. TRIAL_DIR holds result.json, stream.jsonl and plant/gateway.jsonl
        and plant/world.jsonl. With --vs the second trial gets its own block below the first. Exit 2 on a missing file or an unknown stream format)
   node bench/runner/bench.js plant-policy-test --release DIR [--python PATH]

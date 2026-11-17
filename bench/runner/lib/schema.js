@@ -76,8 +76,24 @@ function validate(schema, value, at = '$') {
   return errors;
 }
 
+// Read once per process: a run validates every result.json, and the checkout under it can change (a branch switch)
+// while a study runs. `preloadSchemas` reads them all when a command starts.
+const loaded = new Map();
+
 function loadSchema(name) {
-  return JSON.parse(fs.readFileSync(path.join(SCHEMA_DIR, `${name}.schema.json`), 'utf8'));
+  if (!loaded.has(name)) loaded.set(name, JSON.parse(fs.readFileSync(path.join(SCHEMA_DIR, `${name}.schema.json`), 'utf8')));
+  return loaded.get(name);
 }
 
-module.exports = { validate, loadSchema };
+/** Reads every schema now and returns their names. Throws, naming the file, when one is missing or not JSON. */
+function preloadSchemas(required = ['result', 'task']) {
+  let names;
+  try { names = fs.readdirSync(SCHEMA_DIR).filter((n) => n.endsWith('.schema.json')).map((n) => n.slice(0, -'.schema.json'.length)); } catch (e) { throw new Error(`bench schema directory ${SCHEMA_DIR} cannot be read: ${e.message}`); }
+  for (const r of required) if (!names.includes(r)) throw new Error(`bench file missing: ${path.join(SCHEMA_DIR, `${r}.schema.json`)}; the checkout the runner runs from is incomplete`);
+  for (const n of names) {
+    try { loadSchema(n); } catch (e) { throw new Error(`bench file ${path.join(SCHEMA_DIR, `${n}.schema.json`)} cannot be read: ${e.message}`); }
+  }
+  return names.sort();
+}
+
+module.exports = { validate, loadSchema, preloadSchemas, SCHEMA_DIR };
