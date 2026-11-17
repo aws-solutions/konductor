@@ -10,28 +10,28 @@ test('loads with the workflow name as the title in the main landmark', async ({
 });
 
 test('starts on the Designer tab', async ({ canvas }) => {
-  await canvas.expectTabShown('Designer');
+  await canvas.expectTabShown('Design');
 });
 
 test('switches with the arrow keys and keeps one tab stop', async ({
   canvas,
 }) => {
-  await canvas.tab('Designer').focus();
+  await canvas.tab('Design').focus();
 
   await canvas.page.keyboard.press('ArrowRight');
-  await canvas.expectTabShown('Execution');
-  await expect(canvas.tab('Execution')).toBeFocused();
+  await canvas.expectTabShown('Run');
+  await expect(canvas.tab('Run')).toBeFocused();
 
   await canvas.page.keyboard.press('ArrowLeft');
-  await canvas.expectTabShown('Designer');
-  await expect(canvas.tab('Designer')).toBeFocused();
-  await expect(canvas.tab('Execution')).toHaveAttribute('tabindex', '-1');
+  await canvas.expectTabShown('Design');
+  await expect(canvas.tab('Design')).toBeFocused();
+  await expect(canvas.tab('Run')).toHaveAttribute('tabindex', '-1');
 });
 
 test('switches from Designer to Execution and back', async ({ canvas }) => {
-  await canvas.selectTab('Execution');
-  await canvas.expectTabShown('Execution');
+  await canvas.selectTab('Run');
+  await canvas.expectTabShown('Run');
 
-  await canvas.selectTab('Designer');
-  await canvas.expectTabShown('Designer');
+  await canvas.selectTab('Design');
+  await canvas.expectTabShown('Design');
 });

@@ -30,7 +30,7 @@ not per individual commit.
 
 ### Changed
 
-- The workflow canvas shows the workflow's name as its title, with Designer and Execution as a switch in the page header.
+- The workflow canvas shows the workflow's name as its title, with Design and Run as a switch in the page header.
 - The workflow canvas announces "Ready. Press Run to start." only once a workflow has loaded.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
   may now read files, search the codebase, run read-only shell commands, and answer lookup
