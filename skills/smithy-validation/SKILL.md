@@ -218,11 +218,11 @@ When the model spans more than one file or may need splitting, open the `smithy-
 
 ### Step 1: Initial Validation
 
-Run automated checks from the project directory, where `smithy validate` picks up `smithy-build.json` and its `sources` and Maven dependencies:
+Run automated checks from the project directory and pass the model directory. This works with or without `smithy-build.json`; without one, plain `smithy validate` loads no model files and still prints SUCCESS:
 
 ```bash
-smithy validate
-smithy validate --severity NOTE   # also report NOTE events; the default floor is WARNING
+smithy validate <model-dir>
+smithy validate --severity NOTE <model-dir>   # also report NOTE events; the default floor is WARNING
 ```
 
 Review validation output for:
@@ -347,7 +347,7 @@ Open `references/example-review.md` (relative to this file) before writing the r
 
 Before approving a model:
 
-- [ ] Validates without errors: `smithy validate`
+- [ ] Validates without errors: `smithy validate <model-dir>`
 - [ ] All public shapes have documentation
 - [ ] Operations have defined errors
 - [ ] Every `@httpLabel` member is `@required`, checked for each operation
