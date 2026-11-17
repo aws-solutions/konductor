@@ -69,14 +69,14 @@ describe('App', () => {
 
   it('moves between the views with the arrow keys, Home and End', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
-    const designer = screen.getByRole('tab', { name: 'Designer' });
-    const execution = screen.getByRole('tab', { name: 'Execution' });
+    const designer = screen.getByRole('tab', { name: 'Design' });
+    const execution = screen.getByRole('tab', { name: 'Run' });
     designer.focus();
 
     fireEvent.keyDown(designer, { key: 'ArrowRight' });
     expect(execution.getAttribute('aria-selected')).toBe('true');
     expect(document.activeElement).toBe(execution);
-    expect(screen.getByRole('tabpanel', { name: 'Execution' })).toBeTruthy();
+    expect(screen.getByRole('tabpanel', { name: 'Run' })).toBeTruthy();
 
     fireEvent.keyDown(execution, { key: 'ArrowRight' });
     expect(designer.getAttribute('aria-selected')).toBe('true');
@@ -119,10 +119,10 @@ describe('App', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
 
     expect(
-      screen.getByRole('tab', { name: 'Designer' }).getAttribute('tabindex'),
+      screen.getByRole('tab', { name: 'Design' }).getAttribute('tabindex'),
     ).toBe('0');
     expect(
-      screen.getByRole('tab', { name: 'Execution' }).getAttribute('tabindex'),
+      screen.getByRole('tab', { name: 'Run' }).getAttribute('tabindex'),
     ).toBe('-1');
   });
 
@@ -130,14 +130,10 @@ describe('App', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
 
     expect(
-      screen
-        .getByRole('tab', { name: 'Designer' })
-        .getAttribute('aria-selected'),
+      screen.getByRole('tab', { name: 'Design' }).getAttribute('aria-selected'),
     ).toBe('true');
     expect(
-      screen
-        .getByRole('tab', { name: 'Execution' })
-        .getAttribute('aria-selected'),
+      screen.getByRole('tab', { name: 'Run' }).getAttribute('aria-selected'),
     ).toBe('false');
   });
 
@@ -172,9 +168,9 @@ describe('App', () => {
   it('draws the workflow with a Run button on the Execution tab', async () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
 
-    const panel = screen.getByRole('tabpanel', { name: 'Execution' });
+    const panel = screen.getByRole('tabpanel', { name: 'Run' });
     expect(await within(panel).findByTestId('node-stage-draft')).toBeTruthy();
     expect(within(panel).getByRole('button', { name: 'Run' })).toBeTruthy();
   });
@@ -183,8 +179,8 @@ describe('App', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
     await screen.findByTestId('node-end');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Designer' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }));
 
     expect(screen.getByTestId('node-end')).toBeTruthy();
     expect(screen.queryByText('Loading the workflow')).toBeNull();
@@ -280,7 +276,7 @@ describe('App and the risk of opening another workflow', () => {
       />,
     );
     await screen.findByTestId('node-end');
-    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
 
     fireEvent.click(await screen.findByRole('button', { name: 'Run' }));
 
