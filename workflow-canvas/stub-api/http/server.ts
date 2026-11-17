@@ -17,7 +17,7 @@ import { dispatch, type Dispatcher } from './dispatch.ts';
 import { errorReply, faultReply, send } from './respond.ts';
 import { buildRoutes } from './routes.ts';
 import { SessionGate } from './session.ts';
-import { newRunSuffix, newSecret, systemClock } from './system.ts';
+import { newRunSuffix, newSecret, systemClock, timerPause } from './system.ts';
 
 export interface StubOptions {
   /** `0` picks a free port. */
@@ -35,6 +35,8 @@ export interface StubOptions {
   root?: string;
   /** How a run is answered. The default is that of the fixture of the root. */
   behavior?: Behavior;
+  /** How a long poll waits. The default is a timer on the real clock. */
+  pause?: (ms: number) => Promise<void>;
 }
 
 export interface RunningStub {
@@ -69,7 +71,10 @@ export async function startStub(
     reusableLaunchCode: options.reusableLaunchCode,
   });
   const dispatcher: Dispatcher = {
-    routes: buildRoutes(api, session),
+    routes: buildRoutes(api, session, {
+      clock,
+      pause: options.pause ?? timerPause,
+    }),
     session,
     port: () => portOf(server),
   };

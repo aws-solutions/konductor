@@ -12,6 +12,7 @@ import { STAGE_FIELDS } from './fields.ts';
 import type {
   CheckResult,
   Run,
+  RunEvent,
   SaveResult,
   WorkflowDocument,
 } from './model.ts';
@@ -19,6 +20,14 @@ import type { RunPlan, RunSimulator } from './runs.ts';
 import type { Behavior } from './sample.ts';
 import type { WorkflowStore } from './store.ts';
 import { checkWorkflowText } from './validator.ts';
+
+/** An answer of `GET /api/runs/{id}/events`, and when the next event is due. */
+export interface RunEventsPage {
+  events: RunEvent[];
+  next: number;
+  finished: boolean;
+  nextAt?: number;
+}
 
 export interface WorkflowApiOptions {
   /** The one workflow that can be loaded, saved, checked and run. */
@@ -150,6 +159,29 @@ export class WorkflowApi {
     const run = RUN_ID_PATTERN.test(runId) ? this.runs.get(runId) : undefined;
     if (!run) throw new ApiError('not_found', 'There is no run with this id.');
     return run;
+  }
+
+  /**
+   * The events of a run after the `seq` given, as far as they have happened.
+   * `nextAt` says when the next one happens, for a caller that waits for it.
+   */
+  runEvents(runId: string, after: number): RunEventsPage {
+    const known = RUN_ID_PATTERN.test(runId) ? this.runs.events(runId) : null;
+    if (!known)
+      throw new ApiError('not_found', 'There is no run with this id.');
+    if (after > known.lastSeq) {
+      throw new ApiError(
+        'bad_request',
+        '`after` is past the last event of the run.',
+      );
+    }
+    const events = known.events.filter((event) => event.seq > after);
+    return {
+      events,
+      next: events.at(-1)?.seq ?? after,
+      finished: known.finished,
+      ...(known.nextAt === undefined ? {} : { nextAt: known.nextAt }),
+    };
   }
 
   private planOfRun(): RunPlan {

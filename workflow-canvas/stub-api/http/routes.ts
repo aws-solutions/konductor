@@ -13,6 +13,7 @@ import {
   readSaveRequest,
   readSessionRequest,
 } from './readers.ts';
+import { followRunEvents, readEventsQuery, type Waiter } from './run-events.ts';
 import type { SessionGate } from './session.ts';
 
 /** What a handler answers with, before it is written to the socket. */
@@ -35,7 +36,7 @@ export interface Operation {
   id: string;
   /** Whether the call needs the session token. */
   secured: boolean;
-  handle(call: Call): Reply;
+  handle(call: Call): Reply | Promise<Reply>;
 }
 
 export interface Route {
@@ -63,7 +64,11 @@ function capabilitiesOf(routes: Route[]): string[] {
 }
 
 /** The operations of the contract, on the paths it gives them. */
-export function buildRoutes(api: WorkflowApi, session: SessionGate): Route[] {
+export function buildRoutes(
+  api: WorkflowApi,
+  session: SessionGate,
+  waiter: Waiter,
+): Route[] {
   const routes: Route[] = [
     {
       pattern: /^\/api\/session$/,
@@ -133,6 +138,20 @@ export function buildRoutes(api: WorkflowApi, session: SessionGate): Route[] {
           id: 'getRun',
           secured: true,
           handle: ({ params }) => ok({ run: api.getRun(params[0] ?? '') }),
+        },
+      },
+    },
+    {
+      pattern: /^\/api\/runs\/([^/]+)\/events$/,
+      operations: {
+        GET: {
+          id: 'getRunEvents',
+          secured: true,
+          handle: async ({ params, query }) => {
+            const read = readEventsQuery(query);
+            const runId = params[0] ?? '';
+            return ok(await followRunEvents(api, runId, read, waiter));
+          },
         },
       },
     },
