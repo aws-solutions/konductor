@@ -37,10 +37,10 @@
 'use strict';
 
 const crypto = require('node:crypto');
-const fs = require('node:fs');
+const { readJsonFile } = require('./checkedjson.js');
 
-// The three helpers below stand in for his names.js, provenance.js and read-file.js. They behave the same, except that
-// a JSON file with a repeated key is read (his reader refuses it).
+// The helpers below stand in for his names.js and provenance.js; JSON is read with his checked reader (checkedjson.js),
+// so a ladder file with a repeated key is refused, as in his code.
 /** A name that may become one path segment (a task id). */
 const SAFE_SEGMENT = /^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 /** A batch name: lowercase letters, digits and "-". */
@@ -54,15 +54,6 @@ const sortKeysDeep = (value) =>
 /** The sha256 of a string as is, or of any other value as JSON with its keys sorted at every level. */
 const sha256 = (value) =>
   crypto.createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(sortKeysDeep(value))).digest('hex');
-/** Parses a JSON file; the error names the file when its text is not JSON. */
-function readJsonFile(file) {
-  const text = fs.readFileSync(file, 'utf8');
-  try {
-    return JSON.parse(text);
-  } catch (error) {
-    throw new Error(`${file} is not valid JSON: ${error.message}`);
-  }
-}
 
 /** The `kind` of every record made here: the answers are authored, not generated. */
 const FIXTURE_KIND = 'fixture';
@@ -112,7 +103,7 @@ class LadderError extends Error {
   }
 }
 
-/** Reads a ladder file. The shape is checked by validateLadder, not here, so a draft can be audited whole. */
+/** Reads a ladder file; a repeated key throws. The shape is checked by validateLadder, so a draft can be audited whole. */
 const loadLadder = (file) => readJsonFile(file);
 
 /** A ladder object as given, or the ladder in the file a string names. */
