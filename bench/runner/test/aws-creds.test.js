@@ -21,7 +21,7 @@ test('the process-format JSON gives the three variables and the expiry, and a ba
   });
   assert.equal(parseProcessCredentials(JSON.stringify({ AccessKeyId: 'AKIDFAKE0002', SecretAccessKey: 'fakeSecret0002xxxx' }), PROFILE).expiresAt, null);
   assert.throws(() => parseProcessCredentials('not json', PROFILE), /did not print JSON/);
-  assert.throws(() => parseProcessCredentials(JSON.stringify({ AccessKeyId: 'AKIDFAKE0003' }), PROFILE), (e) => !e.message.includes('AKIDFAKE0003') && /no AccessKeyId and SecretAccessKey/.test(e.message));
+  assert.throws(() => parseProcessCredentials(JSON.stringify({ AccessKeyId: 'AKIDFAKE0003' }), PROFILE), (e) => !e.message.includes('AKIDFAKE0003') && /no access key pair/.test(e.message));
 });
 
 test('the profile is read once, kept while it is valid, and read again inside 15 minutes of expiry', () => {
@@ -81,4 +81,35 @@ test('a Claude Code run gets the profile keys in its environment, replacing the 
   const rec = cc.runConfigRecord({ ctx: { claude: { bin: '/x/claude', version: '1', sha256: 'a', supportsHookEvents: false }, awsCreds }, config: { model: 'm' }, region: 'us-east-1' });
   assert.equal(rec.credentials.profile, PROFILE);
   assert.equal(JSON.stringify(rec).includes('fakeSecret0005'), false, 'run-config never holds a value');
+});
+
+test('run --aws-profile and judge --aws-export-profile share one export and one parser', async () => {
+  const { awsExport, makeExportedCredentials, parseExport, isProfileName } = require('../lib/aws-creds.js');
+  const root = tmp();
+  try {
+    const seen = path.join(root, 'seen.json');
+    const aws = path.join(root, 'aws');
+    write(aws, `#!/usr/bin/env node\nrequire('fs').writeFileSync(${JSON.stringify(seen)}, JSON.stringify({ args: process.argv.slice(2), keys: Object.keys(process.env) }));\nprocess.stdout.write(${JSON.stringify(json('AKIDFAKE0006', 'fakeSecret0006xxxx', 'fakeToken0006xxxx'))});\n`);
+    fs.chmodSync(aws, 0o755);
+    const base = { PATH: process.env.PATH, AWS_SECRET_ACCESS_KEY: 'old', AWS_DEFAULT_PROFILE: 'other', HOME: root };
+    const syncOut = exportCredentials(PROFILE, { awsBin: aws, baseEnv: base });
+    const syncSeen = JSON.parse(fs.readFileSync(seen, 'utf8'));
+    const asyncOut = await awsExport(PROFILE, { bin: aws, env: base });
+    const asyncSeen = JSON.parse(fs.readFileSync(seen, 'utf8'));
+    assert.equal(syncOut, asyncOut);
+    assert.deepEqual(asyncSeen, syncSeen, 'both paths run aws with the same arguments and the same stripped environment');
+    for (const k of ['AWS_SECRET_ACCESS_KEY', 'AWS_DEFAULT_PROFILE']) assert.equal(asyncSeen.keys.includes(k), false, k);
+    const judge = makeExportedCredentials({ profile: PROFILE, exporter: (p) => awsExport(p, { bin: aws, env: base }) });
+    const run = profileCredentials(PROFILE, { read: (p) => exportCredentials(p, { awsBin: aws, baseEnv: base }) });
+    const j = await judge.current();
+    assert.deepEqual(run.current(), { AWS_ACCESS_KEY_ID: j.accessKeyId, AWS_SECRET_ACCESS_KEY: j.secretAccessKey, AWS_SESSION_TOKEN: j.sessionToken });
+    assert.deepEqual(run.values().sort(), judge.secrets().sort());
+    assert.throws(() => parseExport(JSON.stringify({ AccessKeyId: 'A', SecretAccessKey: 'B', Expiration: 'soon' })), /expiry that is not a date/);
+    assert.equal(isProfileName('bench'), true);
+    assert.equal(isProfileName('a b'), false);
+    write(aws, '#!/bin/sh\necho "The config profile (bench) could not be found" >&2\nexit 255\n');
+    await assert.rejects(awsExport(PROFILE, { bin: aws }), /export-credentials --profile bench failed: The config profile \(bench\) could not be found/);
+    write(aws, '#!/bin/sh\necho AKIDLEAKED0001\nexit 3\n');
+    await assert.rejects(awsExport(PROFILE, { bin: aws }), (e) => /failed: exit 3/.test(e.message) && !e.message.includes('AKIDLEAKED'));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

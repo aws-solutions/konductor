@@ -14,7 +14,7 @@ const oc = require('../runner/lib/harness/opencode.js');
 const { aggregateEvents, rollUp, SQL } = require('../runner/lib/harness/opencode-parse.js');
 const { installCredentials, removeCredentials, readProfile } = require('../runner/lib/harness/opencode-creds.js');
 const { JUDGE_SYSTEM_PROMPT, systemPromptSha256, opencodeModel } = require('./backends.js');
-const { writeCredentials } = require('./aws-creds.js');
+const { writeCredentials } = require('../runner/lib/aws-creds.js');
 
 // A caller is async ({model, prompt}) => {text, credits, usd, tokens, latencyMs, error?}. `model` is the logical panel id.
 
@@ -53,7 +53,7 @@ function cacheSaltOf(model) {
 }
 
 // Credentials come from a shared-credentials file (read again for every call, so a file rewritten in place is picked up), or
-// from `credentials`, a provider made by makeExportedCredentials (aws-creds.js) that refreshes them itself. After
+// from `credentials`, a provider made by makeExportedCredentials (runner/lib/aws-creds.js) that refreshes them itself. After
 // `maxAuthFailures` calls in a row whose credentials Bedrock rejected, the caller stops: `stopReason()` says why, and every
 // later call returns that error without starting opencode, so the pass ends instead of spending its remaining calls on errors.
 function makeOpencodeCaller({

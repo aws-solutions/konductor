@@ -8,7 +8,7 @@ const path = require('node:path');
 const { tmp } = require('./helpers.js');
 const { makeFakeOpencodeJudge } = require('./fake-opencode-judge.js');
 const { sandbox, readJ } = require('./judge-backend-sandbox.js');
-const { makeExportedCredentials, parseExport, credentialsText } = require('../../judge/aws-creds.js');
+const { makeExportedCredentials, parseExport, credentialsText } = require('../lib/aws-creds.js');
 const { makeOpencodeCaller } = require('../../judge/opencode.js');
 const { checkArgs } = require('../lib/cli-flags.js');
 

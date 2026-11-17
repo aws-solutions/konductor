@@ -14,7 +14,7 @@ const procs = require('./lib/procs.js');
 const { loadRedactions } = require('../judge/redact.js');
 const { makeKiroCaller, makeCmdCaller } = require('../judge/model.js');
 const { makeOpencodeCaller } = require('../judge/opencode.js');
-const { makeExportedCredentials, awsExport } = require('../judge/aws-creds.js');
+const { makeExportedCredentials, awsExport, isProfileName } = require('./lib/aws-creds.js');
 const { BACKENDS, DEFAULT_BACKEND, checkOpencodeJudges } = require('../judge/backends.js');
 const oc = require('./lib/harness/opencode.js');
 const { readProfile } = require('./lib/harness/opencode-creds.js');
@@ -125,7 +125,7 @@ const flagValue = (opts, name) => (opts[name] !== undefined && opts[name] !== tr
 function makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir, log = () => {} }) {
   const exportProfile = flagValue(opts, 'aws-export-profile');
   if (exportProfile && opts['aws-creds-file'] !== undefined) throw new Error('--aws-creds-file and --aws-export-profile cannot be used together');
-  if (exportProfile && !/^[\w.+@-]+$/.test(exportProfile)) throw new Error(`--aws-export-profile "${exportProfile}" is not a profile name`);
+  if (exportProfile && !isProfileName(exportProfile)) throw new Error(`--aws-export-profile "${exportProfile}" is not a profile name`);
   const credsFile = exportProfile ? null : path.resolve(need(opts, 'aws-creds-file'));
   const awsProfile = flagValue(opts, 'aws-profile') ?? 'bench';
   const region = flagValue(opts, 'aws-region') ?? oc.REGION;
