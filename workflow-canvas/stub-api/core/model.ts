@@ -51,11 +51,22 @@ export interface Intent {
   accept?: Check[];
 }
 
+/** The key that names the kind of a stage. This build knows one. */
+export type StageKind = 'agent';
+
+/** The lines of the text that a stage takes up, counted from 1, both included. */
+export interface LineRange {
+  line: number;
+  end_line: number;
+}
+
 export interface Stage {
   name: string;
+  kind: StageKind;
   agent: string;
   prompt?: string;
   prompt_file?: string;
+  range: LineRange;
 }
 
 /** The parsed text: the keys of the file, with `name` filled in. */

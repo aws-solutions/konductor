@@ -10,7 +10,7 @@ import addFormats from 'ajv-formats';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { parse } from 'yaml';
+import { isMap, isSeq, LineCounter, parse, parseDocument } from 'yaml';
 
 // The subset of an OpenAPI document that these checks read, after $ref
 // pointers have been replaced by the objects they point to.
@@ -344,6 +344,27 @@ function viewAgreesWithText(view: unknown, text: string): boolean {
   );
 }
 
+// The kind and the lines of each stage of a text, worked out with the yaml
+// package and not the stub, so the examples are checked against a second reader.
+function stagePlacesOf(text: string) {
+  const counter = new LineCounter();
+  const doc = parseDocument(text, { version: '1.2', lineCounter: counter });
+  const stages = isMap(doc.contents) ? doc.contents.get('stages') : undefined;
+  if (!isSeq(stages)) return [];
+  return stages.items.map((item) => {
+    const { range } = item as { range: readonly [number, number, number] };
+    const [start, end] = range;
+    const last = text.slice(start, end).trimEnd().length + start - 1;
+    return {
+      kind: isMap(item) && item.has('agent') ? 'agent' : undefined,
+      range: {
+        line: counter.linePos(start).line,
+        end_line: counter.linePos(last).line,
+      },
+    };
+  });
+}
+
 // An example answer and the workflow text it is an answer about.
 interface TextAndAnswer {
   label: string;
@@ -666,11 +687,19 @@ describe('workflow canvas API contract', () => {
       it('has a view that is its text read as YAML, with the name filled in', () => {
         const withView = pairs.filter(({ answer }) => isRecord(answer['view']));
         for (const { label, text, answer } of withView) {
-          const read = parse(text, { version: '1.2' }) as Record<
-            string,
-            unknown
-          >;
-          expect(answer['view'], label).toEqual({ name: 'hello', ...read });
+          const read = parse(text, { version: '1.2' }) as {
+            stages: Record<string, unknown>[];
+          };
+          const places = stagePlacesOf(text);
+          const stages = read.stages.map((stage, index) => ({
+            ...stage,
+            ...places[index],
+          }));
+          expect(answer['view'], label).toEqual({
+            name: 'hello',
+            ...read,
+            stages,
+          });
         }
       });
 
@@ -964,6 +993,20 @@ describe('workflow canvas API contract', () => {
       expect(row).toMatch(/The root is level 1/);
     });
 
+    it('gives a stage of a view its kind, of the one kind this version knows', () => {
+      const kind = spec.components.schemas['StageKind']!;
+      expect(kind['enum']).toEqual(['agent']);
+      expect(spec.components.schemas['Stage']!['required']).toEqual(
+        expect.arrayContaining(['kind', 'range']),
+      );
+    });
+
+    it('says that version 1.3.0 only adds the kind and the lines of a stage', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.3\.0 only adds: each stage of a view gains `kind` and `range`/,
+      );
+    });
+
     it('says what the stub does with a prompt_file', () => {
       expect(words(spec.info.description)).toMatch(
         /The stub reads no files, so it checks the path rules of a `prompt_file` and nothing else/,
@@ -976,7 +1019,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.2.1');
+      expect(info.version).toBe('1.3.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
