@@ -404,7 +404,7 @@ async function cmdRun(opts, deps = {}) {
     } else {
       const modelListPath = path.join(outDir, 'model-list.json');
       fs.writeFileSync(modelListPath, listModels(ctx.kiroBin, authDb, scratchDir, envKeep, config.agentEngine));
-      ctx.envInfo = { kiroCliVersion: sandbox.kiroCliVersion(), modelListSnapshotPath: modelListPath };
+      ctx.envInfo = { kiroCliVersion: sandbox.kiroCliVersion(ctx.kiroBin), modelListSnapshotPath: modelListPath };
     }
 
     const interpreters = toolchain.interpreterVersions();
@@ -448,7 +448,7 @@ async function cmdRun(opts, deps = {}) {
         env: rc.envPolicy(process.env, envKeep),
         kiroBinary: { path: kiro.bin, bypassedShim: kiro.shim },
         kiroEnabledFeatures: process.env.KIRO_ENABLED_FEATURES ?? null,
-        agentEnginesAvailable: rc.availableEngines(),
+        agentEnginesAvailable: rc.availableEngines(kiro.bin),
       }),
       ...(plantSuite ? { plant: { release: plantSuite.release.manifest.release, manifestSha256: plantSuite.release.manifestSha256, keyId: plantSuite.release.keyId, control: plantSuite.control, counted: plantSuite.counted, comparable: plantSuite.comparable, notCounted: plantSuite.notCounted, hostNoise: plantSuite.hostNoise, cgroup: ctx.cgroup ? (ctx.cgroup.ok ? ctx.cgroup.caps : `missing: ${ctx.cgroup.reason}`) : 'not checked (no namespace isolation)', boundaryChecklist: plantSuite.walls?.checklist ?? null } } : {}),
       ...rc.benchGit(REPO),
@@ -463,7 +463,7 @@ async function cmdRun(opts, deps = {}) {
           agentNetwork: 'open (the model API needs it); fetches are flagged after the run, not blocked',
         },
       } : {}),
-      tools: rc.toolVersions(),
+      tools: rc.toolVersions({ kiroBin: kiro?.bin }),
       interpreters,
       toolchainCheck,
       startedAt: new Date().toISOString(),

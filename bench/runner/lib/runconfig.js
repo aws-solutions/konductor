@@ -34,10 +34,10 @@ function hashTree(root, dirs) {
   return h.digest('hex');
 }
 
-function availableEngines() {
+function availableEngines(kiroBin = 'kiro-cli') {
   let help;
   try {
-    help = execFileSync('kiro-cli', ['chat', '--help'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    help = execFileSync(kiroBin, ['chat', '--help'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   } catch {
     return null;
   }
@@ -52,12 +52,13 @@ function benchGit(repo) {
   };
 }
 
-function toolVersions() {
+// `kiroBin` is the binary the runs use; the kiro-cli on PATH can be a launcher that refuses to run under the bench.
+function toolVersions({ kiroBin } = {}) {
   return {
     node: process.version,
     rustc: sandbox.versionOf('rustc'),
     cargo: sandbox.versionOf('cargo'),
-    kiroCli: sandbox.kiroCliVersion(),
+    kiroCli: sandbox.kiroCliVersion(kiroBin),
     git: sandbox.versionOf('git'),
   };
 }
