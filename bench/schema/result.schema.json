@@ -1177,6 +1177,15 @@
         "comparable": {
           "type": "boolean"
         },
+        "counted": {
+          "type": "boolean"
+        },
+        "notCounted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "probe": {
           "type": [
             "string",

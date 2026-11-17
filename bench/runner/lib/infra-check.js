@@ -23,11 +23,11 @@ const CONTROL_SUITE_SHORT_RUN_NOTE = 'control suite: short-run check skipped (fa
 
 /**
  * The study's infra verdict as `{ infra, skipped }`. `plantSuite` is the prepared plant suite or null: only a suite with
- * `counted: false` (a plant control suite, made by --kiro-bin) skips the check, with `skipped` holding the reason to log;
- * every other study, including a counted plant suite, gets `infraFailure` and `skipped: null`.
+ * `control: true` (a plant control suite, made by --kiro-bin) skips the check, with `skipped` holding the reason to log;
+ * every other study, including a plant suite of the real Kiro CLI whether counted or not, gets `infraFailure` and `skipped: null`.
  */
 function studyInfraCheck(results, plantSuite) {
-  if (plantSuite && !plantSuite.counted) return { infra: null, skipped: CONTROL_SUITE_SHORT_RUN_NOTE };
+  if (plantSuite?.control) return { infra: null, skipped: CONTROL_SUITE_SHORT_RUN_NOTE };
   return { infra: infraFailure(results), skipped: null };
 }
 

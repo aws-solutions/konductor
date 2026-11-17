@@ -135,6 +135,22 @@ function releaseAllowlist(release) {
   return release.sha256Of(ALLOWLIST_FILE) ? prober.parseAllowlist(fs.readFileSync(release.fileOf(ALLOWLIST_FILE), 'utf8')) : prober.parseAllowlist('');
 }
 
+const readTextOr = (file) => { try { return fs.readFileSync(file, 'utf8'); } catch { return ''; } };
+
+/**
+ * The quiet-host check the runner makes itself (13.5 B-6, SR-20): each loopback or wildcard TCP or UDP listener on the
+ * host that neither the release's allowlist nor the host's DNS stub names, as `kind ip:port`; empty on a quiet host. The
+ * same listeners the prober's default-deny rows look at. `readText(file)` reads /proc and /etc/resolv.conf (a test seam).
+ */
+function hostNoise(release, readText = readTextOr) {
+  const allow = releaseAllowlist(release);
+  const stub = prober.dnsStubEntries(readText('/etc/resolv.conf'));
+  const listeners = (kind) => [[kind, false], [`${kind}6`, true]]
+    .flatMap(([table, v6]) => prober.inetListeners(readText(`/proc/net/${table}`), kind, v6)).filter(prober.isLoopbackOrWildcard);
+  const noisy = ['tcp', 'udp'].flatMap((kind) => listeners(kind).filter((a) => !allow[kind].includes(a) && !stub[kind].includes(a)).map((a) => `${kind} ${a}`));
+  return [...new Set(noisy)];
+}
+
 /**
  * Runs the wall prober once inside the real sandbox (13.5, SR-12). Builds a small plant rig in a new dir under
  * `scratch` (agent file, read-only shim copy, a stub gw.sock and a sibling socket root, an out-dir sentinel), then runs the
@@ -240,5 +256,5 @@ async function preflightWalls({ ctx, suite, repo, outDir, makeIso }) {
 
 module.exports = {
   plantWalls, detectCgroup, withCgroup, requireCheckoutHidden, requireMasksOutsideScratch, requireNoWritableSubmounts,
-  checklist, failedRows, parseProberOutput, releaseAllowlist, listenStub, runWallProber, preflightWalls, WallsRefused, CGROUP_PROPERTIES,
+  checklist, failedRows, parseProberOutput, releaseAllowlist, hostNoise, listenStub, runWallProber, preflightWalls, WallsRefused, CGROUP_PROPERTIES,
 };

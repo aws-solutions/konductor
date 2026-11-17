@@ -14,8 +14,9 @@ const { isComparableMode } = require('../isolate.js');
 const { checkManifest, sha256Hex, ReleaseRefused, PINNED_KEYS, MANIFEST_FILE, SIGNATURE_FILE } = require('./manifest.js');
 const { DEADLINES } = require('./gateway-proc.js');
 const { loadRefusalRule } = require('./refusal.js');
-const { readEnvironment } = require('./score.js');
+const { readEnvironment, NOT_COUNTED } = require('./score.js');
 const { AGENT_ENGINES } = require('../harness/runtime.js');
+const { hostNoise } = require('./walls.js');
 
 const POLICY_FILES = ['policy/plant.cedar', 'policy/plant.cedarschema', 'sensor-limits.json'];
 const REFUSAL_RULE = 'refusal-rule.json';
@@ -184,6 +185,21 @@ function checkOutFilesystem(outDir, others) {
 }
 
 /**
+ * Whether a plant suite is counted and comparable, and why not: `{counted, comparable, notCounted}`. A control suite is
+ * neither, with no reason (it is a control). Any other suite is counted only in a comparable isolation mode on Linux and on
+ * a quiet host; `noise` lists the host's listeners outside the allowlist (hostNoise). `notCounted` holds the NOT_COUNTED
+ * reasons. Comparable is the same as counted: a suite that is not counted is never comparable.
+ */
+function countingOf({ control, mode, platform = process.platform, noise = [] }) {
+  if (control) return { counted: false, comparable: false, notCounted: [] };
+  const notCounted = [
+    ...(platform === 'linux' && isComparableMode(mode) ? [] : [NOT_COUNTED.noSandbox]),
+    ...(noise.length ? [NOT_COUNTED.noisyHost] : []),
+  ];
+  return { counted: notCounted.length === 0, comparable: notCounted.length === 0, notCounted };
+}
+
+/**
  * Checks each plant task against the release copy and points its fixture at the copy. Returns `{fileOf(id), seedOf(id)}`.
  * A task must come from the release: its file `tasks/<id>.json` listed in the manifest, byte-equal to the file bench loaded
  * from --extra-tasks, its fixture under `tasks/fixtures/` and its seed in the manifest's `seeds`. Mutates `task.fixtureDir`.
@@ -216,12 +232,13 @@ function gatewayFilesOf(release) {
  *
  * `opts` holds the run flags (--plant-release, --plant-release-sha256, --plant-python, --kiro-bin); `arms`, `tasks` and
  * `parallel` are the resolved run; `outDir` the run's out dir; `ctx` the run context (scratchDir, kiroBin, config,
- * isolation); `repo` the repository root. A suite with --kiro-bin is a control suite: no Kiro CLI pin, no Cedar files and
- * no out-dir filesystem check, and its trials are never comparable, unless that binary reports the pinned version
- * (see isCountedSuite). Seams: `keys` (pinned keys), `privateParent` (where
- * the runner-private dir is made), `home`, `versionOfBin`, `deadlines`, `makeToken` and `readListeners`.
+ * isolation); `repo` the repository root. A suite with --kiro-bin is a control suite (`control: true`): no Kiro CLI pin, no
+ * Cedar files, no out-dir filesystem check and no quiet-host check, unless that binary reports the pinned version (see
+ * isCountedSuite). `counted`, `comparable` and `notCounted` come from countingOf. Seams: `keys` (pinned keys),
+ * `privateParent` (where the runner-private dir is made), `home`, `versionOfBin`, `deadlines`, `makeToken`,
+ * `readListeners` and `noiseOf(release)` (the quiet-host check, default hostNoise).
  */
-function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, keys = PINNED_KEYS, privateParent = os.tmpdir(), home = os.homedir(), versionOfBin = versionOf, deadlines = DEADLINES, makeToken, readListeners }) {
+function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, keys = PINNED_KEYS, privateParent = os.tmpdir(), home = os.homedir(), versionOfBin = versionOf, deadlines = DEADLINES, makeToken, readListeners, noiseOf = hostNoise }) {
   checkSuiteShape({ arms, tasks, parallel });
   const dir = opts['plant-release'];
   const expectedSha256 = opts['plant-release-sha256'];
@@ -238,19 +255,25 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
     fs.mkdirSync(socketParent, { mode: 0o700 });
     if (Buffer.byteLength(socketParent) + SOCKET_SUFFIX_BYTES > SOCKET_PATH_MAX) throw new ReleaseRefused(`socket paths under ${socketParent} would pass ${SOCKET_PATH_MAX} bytes`);
     release = intakeRelease({ dir, expectedSha256, privateRoot, keys });
-    const counted = isCountedSuite(opts, ctx.kiroBin, release.manifest, versionOfBin);
-    if (counted) {
+    const control = !isCountedSuite(opts, ctx.kiroBin, release.manifest, versionOfBin);
+    const comparableMode = isComparableMode(ctx.isolation.mode);
+    let noise = [];
+    if (!control) {
       checkKiroPin(ctx.kiroBin, release.manifest, versionOfBin, ctx.config.agentEngine);
       const missing = POLICY_FILES.filter((rel) => !release.sha256Of(rel));
       if (missing.length) throw new ReleaseRefused(`a counted plant suite needs the Cedar files; the release lacks ${missing.join(', ')}`);
-      // The own-filesystem rule guards a comparable suite. A suite run with --isolate none --allow-unisolated is never comparable
+      // Quiet-host check (13.5 B-6): a sandboxed suite on a noisy host is refused, as the prober would refuse it; an
+      // unsandboxed pilot is never counted anyway, so it runs and the report header says the host was noisy too (question 20).
+      noise = noiseOf(release);
+      if (noise.length && comparableMode) throw new ReleaseRefused(`a counted plant suite needs a quiet host; listeners outside the release allowlist: ${noise.join(', ')} (13.5)`);
+      // The own-filesystem rule guards a counted suite. A suite run with --isolate none --allow-unisolated is never counted
       // and the report warns on it, so it may write its out dir anywhere outside scratch, home and the repo (the pilot).
-      if (isComparableMode(ctx.isolation.mode)) checkOutFilesystem(outDir, { scratch: ctx.scratchDir, home });
+      if (comparableMode) checkOutFilesystem(outDir, { scratch: ctx.scratchDir, home });
     }
     if (!release.sha256Of(REFUSAL_RULE)) throw new ReleaseRefused(`the release lacks ${REFUSAL_RULE}`);
     return {
-      release, privateRoot, socketParent, counted, deadlines, makeToken, readListeners,
-      comparable: counted && process.platform === 'linux' && isComparableMode(ctx.isolation.mode),
+      release, privateRoot, socketParent, control, hostNoise: noise, deadlines, makeToken, readListeners,
+      ...countingOf({ control, mode: ctx.isolation.mode, noise }),
       python: opts['plant-python'] && opts['plant-python'] !== true ? opts['plant-python'] : 'python3',
       isolationMode: ctx.isolation.mode,
       tasks: bindTasks(tasks, release),
@@ -272,4 +295,4 @@ function removePrivateRoot(privateRoot, releaseRoot) {
   fs.rmSync(privateRoot, { recursive: true, force: true });
 }
 
-module.exports = { oddFileReason, refuseLauncher, intakeRelease, discardRelease, preparePlantSuite, refuseInside, setModes, ReleaseRefused };
+module.exports = { oddFileReason, refuseLauncher, intakeRelease, discardRelease, preparePlantSuite, countingOf, refuseInside, setModes, ReleaseRefused };

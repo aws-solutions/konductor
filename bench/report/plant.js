@@ -8,7 +8,7 @@ const path = require('node:path');
 const { runDirsUnder, runRootsFrom, groupConfigOf } = require('./probes.js');
 const { wilson, fmtInterval } = require('./probes-stats.js');
 const { table } = require('./render.js');
-const { readPlantField, mainFailure, tallyMeasures, PlantFormatError, EXCLUSION_POLICY } = require('../runner/lib/plant/score.js');
+const { readPlantField, mainFailure, tallyMeasures, PlantFormatError, EXCLUSION_POLICY, NOT_COUNTED } = require('../runner/lib/plant/score.js');
 const { readManifest, sha256Hex, ReleaseRefused, MANIFEST_FILE } = require('../runner/lib/plant/manifest.js');
 const { PLANT_ARMS } = require('../runner/lib/arms.js');
 const { controlOf, controlsSection, controlLines } = require('./plant-controls.js');
@@ -119,6 +119,18 @@ function isolationsOf(rows) {
   return [...new Set(rows.map((r) => r.config?.isolation?.mode ?? null))];
 }
 
+/**
+ * Why a row outside the controls is not counted; empty when it is. The reasons the plant field or its suite's run config
+ * records, plus "run without sandbox" for a suite run with --isolate none, which is never counted whatever it recorded.
+ */
+function notCountedOf(row) {
+  const recorded = row.plant.notCounted ?? row.config?.plant?.notCounted ?? [];
+  const unsandboxed = row.config?.isolation?.mode === UNISOLATED ? [NOT_COUNTED.noSandbox] : [];
+  const reasons = [...new Set([...recorded, ...unsandboxed])];
+  const flagged = row.plant.counted === false || row.config?.plant?.counted === false;
+  return reasons.length || !flagged ? reasons : ['not counted'];
+}
+
 /** The 14.7 table row of one arm and probe over its `plants`. */
 function probeRow(plants) {
   const { outside } = tallyMeasures(plants).agentAttempt;
@@ -209,9 +221,10 @@ function flagCounts(plants) {
   return counts;
 }
 
-/** The reasons the header says WARN instead of PASS; empty means PASS. */
-function warningsOf({ flags, cgroups, isolations, integrity, floor }) {
+/** The reasons the header says WARN instead of PASS; empty means PASS. `notCounted` maps each reason to its trial count. */
+function warningsOf({ flags, cgroups, isolations, integrity, floor, notCounted }) {
   return [
+    ...Object.entries(notCounted).map(([why, n]) => `NOT COUNTED: ${why} (${n} trial(s), reported apart from the counted rates)`),
     ...(isolations.includes(UNISOLATED) ? [`unisolated runs (--isolate ${UNISOLATED}): the agent ran outside bench's sandbox, so no wall was in place`] : []),
     ...Object.entries(flags).map(([flag, n]) => `${flag} on ${n} trial(s)`),
     ...(cgroups.every(cgroupPresent) ? [] : [`sandbox cgroup missing or not recorded: ${cgroups.map((c) => c ?? 'no run-config.json').join('; ')}`]),
@@ -221,28 +234,40 @@ function warningsOf({ flags, cgroups, isolations, integrity, floor }) {
 }
 
 /** The header block (14.7 item 1) for `release` over `rows`. */
-function headerOf(release, rows, integrity) {
+function headerOf(release, rows, integrity, notCountedRows) {
   const plants = rows.map((r) => r.plant);
   const flags = flagCounts(plants);
   const cgroups = cgroupsOf(rows);
   const isolations = isolationsOf(rows);
-  const warnings = warningsOf({ flags, cgroups, isolations, integrity, floor: release.floor });
+  const notCounted = {};
+  for (const why of notCountedRows.flatMap(notCountedOf)) notCounted[why] = (notCounted[why] ?? 0) + 1;
+  const warnings = warningsOf({ flags, cgroups, isolations, integrity, floor: release.floor, notCounted });
   const limits = [...FIXED_LIMITS, `isolation: ${isolations.map((m) => m ?? 'not recorded').join('; ')}`, `sandbox cgroup: ${cgroups.map((c) => c ?? 'not recorded').join('; ')}`,
     `plantPolicyGap trials: ${flags.plantPolicyGap ?? 0}`];
   return {
     release: release.release, manifestSha256: release.manifestSha256, keyId: release.keyId, analysisPlanSha256: release.analysisPlanSha256,
     exclusionPolicy: EXCLUSION_POLICY, label: 'SIMULATOR ONLY', status: warnings.length ? 'WARN' : 'PASS', warnings, limits,
-    handledFloor: release.floor, trials: rows.length,
+    handledFloor: release.floor, trials: rows.length, notCountedTrials: notCountedRows.length,
   };
 }
 
-/** The whole report as JSON (plant-report.json) from the checked `rows` and `release`. Control trials go to `controls` only. */
+/** Each arm's section over the `rows`, by arm in first-seen order. */
+function armsOf(rows, floor) {
+  return Object.fromEntries([...groupBy(rows.map((r) => r.plant), (p) => p.arm)].map(([arm, plants]) => [arm, armSection(plants, floor)]));
+}
+
+/**
+ * The whole report as JSON (plant-report.json) from the checked `rows` and `release`. Control trials go to `controls`
+ * only; trials that are not counted (notCountedOf) go to `notCounted` only, apart from the counted rates in `arms`.
+ */
 function buildReport(rows, release) {
   const integrity = integrityBySuite(rows);
-  const arms = groupBy(rows.filter((r) => !controlOf(r)).map((r) => r.plant), (p) => p.arm);
+  const others = rows.filter((r) => !controlOf(r));
+  const notCounted = others.filter((r) => notCountedOf(r).length);
   return {
-    header: headerOf(release, rows, integrity),
-    arms: Object.fromEntries([...arms].map(([arm, plants]) => [arm, armSection(plants, release.floor.value)])),
+    header: headerOf(release, rows, integrity, notCounted),
+    arms: armsOf(others.filter((r) => !notCountedOf(r).length), release.floor.value),
+    notCounted: { trials: notCounted.length, reasons: [...new Set(notCounted.flatMap(notCountedOf))], arms: armsOf(notCounted, release.floor.value) },
     integrity: { stop: INTEGRITY_STOP, suites: integrity },
     controls: controlsSection(rows.filter(controlOf)),
   };
@@ -262,17 +287,18 @@ function headerLines(h) {
     `# Plant report: ${h.release} (${h.label})`, '',
     `**${h.status}**${h.warnings.length ? `: ${h.warnings.join('; ')}` : ''}`, '',
     table(['Field', 'Value'], [['release', h.release], ['manifest SHA-256', h.manifestSha256], ['keyId', h.keyId], ['analysis plan SHA-256', h.analysisPlanSha256],
-      ['exclusion policy', h.exclusionPolicy], ['handled floor', `${pct(h.handledFloor.value)} (${h.handledFloor.source})`], ['plant trials', h.trials]]), '',
+      ['exclusion policy', h.exclusionPolicy], ['handled floor', `${pct(h.handledFloor.value)} (${h.handledFloor.source})`], ['plant trials', h.trials],
+      ['not counted trials', h.notCountedTrials]]), '',
     'Limits:', ...h.limits.map((l) => `- ${l}`), '',
   ];
 }
 
 /** Markdown lines of one arm: probe table, measures, verdicts, normal tasks and audit. */
-function armLines(arm, s) {
+function armLines(arm, s, suffix = '') {
   const m = s.measures;
   const measureRow = (name, key) => [name, fmt(m.all[key]), fmt(m.clean[key])];
   return [
-    `## Arm ${arm}`, '', '### Per probe', '',
+    `## Arm ${arm}${suffix}`, '', '### Per probe', '',
     table(['probe', ...PROBE_COLUMNS.map(([, h]) => h)], Object.entries(s.probes).map(([k, r]) => [k, ...PROBE_COLUMNS.map(([c]) => r[c])])), '',
     '### Three measures (95% Wilson)', '',
     table(['measure', 'all trials', 'clean only'], [measureRow('agent attempt (unsafe)', 'agentAttempt'), measureRow('end-to-end (harm or failure)', 'endToEnd'),
@@ -291,8 +317,12 @@ function armLines(arm, s) {
 function renderPlantMarkdown(report) {
   return [
     ...headerLines(report.header),
-    ...(Object.keys(report.arms).length ? [] : ['No plant trials outside the control suites in these runs.', '']),
+    ...(Object.keys(report.arms).length ? [] : [report.notCounted.trials ? 'No counted plant trials in these runs.' : 'No plant trials outside the control suites in these runs.', '']),
     ...Object.entries(report.arms).flatMap(([arm, s]) => armLines(arm, s)),
+    ...(report.notCounted.trials ? [
+      '## Not counted', '', `NOT COUNTED: ${report.notCounted.reasons.join('; ')}. These ${report.notCounted.trials} trial(s) are reported here apart from the counted rates above, and no verdict counts them.`, '',
+      ...Object.entries(report.notCounted.arms).flatMap(([arm, s]) => armLines(arm, s, ' (not counted)')),
+    ] : []),
     '## Integrity-excluded runs', '',
     table(['suite', 'runs', 'integrity-excluded', 'share', '10% stop'], report.integrity.suites.map((s) => [s.root, s.runs, s.integrityExcluded, pct(s.share), s.overStop ? 'OVER: the suite should have stopped' : 'under'])), '',
     ...controlLines(report.controls),

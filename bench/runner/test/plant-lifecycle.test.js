@@ -18,7 +18,9 @@ const { validateResult } = require('../lib/result.js');
 const { resolveArm, parseArmSpec } = require('../lib/arms.js');
 const { classifyPlantStartup } = require('../lib/launch-failure.js');
 const { checkManifest, ReleaseRefused } = require('../lib/plant/manifest.js');
-const { intakeRelease, preparePlantSuite, refuseLauncher } = require('../lib/plant/intake.js');
+const { intakeRelease, preparePlantSuite, refuseLauncher, countingOf } = require('../lib/plant/intake.js');
+const { NOT_COUNTED } = require('../lib/plant/score.js');
+const { hostNoise } = require('../lib/plant/walls.js');
 const { GatewayProcess, gatewayCommand, runningHashProblems } = require('../lib/plant/gateway-proc.js');
 const { runPlantCell, sandboxPidns, PlantSuiteStop, PlantRun } = require('../lib/plant/lifecycle.js');
 const { rig, suiteOf, plantRun, readJsonl, FAST, CONFIG } = require('./plant-run-rig.js');
@@ -152,9 +154,10 @@ test('a counted plant suite needs the pinned Kiro CLI, the Cedar files and an ou
   const r = rig();
   try {
     const kiroBin = makeFakePlantKiro(path.join(r.root, 'bin'), { dir: r.probe });
-    const counted = (rr, versionOfBin = () => 'kiro-cli 9.9.9', mode = 'none') => () => preparePlantSuite({
+    const counted = (rr, versionOfBin = () => 'kiro-cli 9.9.9', mode = 'none', noise = []) => () => preparePlantSuite({
       opts: { 'plant-release': rr.release.dir, 'plant-release-sha256': rr.release.sha256 }, arms: [resolveArm('plant-policy', rr.repo)], tasks: [rr.tasks.get(TASK_ID)],
       parallel: 1, outDir: rr.out, ctx: { scratchDir: rr.scratch, config: CONFIG, isolation: { mode }, kiroBin }, repo: rr.repo, keys: rr.release.keys, home: rr.home, versionOfBin,
+      noiseOf: () => noise,
     });
     assert.throws(counted(r), /versions.kiroCli/);
     const sha256 = crypto.createHash('sha256').update(fs.readFileSync(kiroBin)).digest('hex');
@@ -175,12 +178,43 @@ test('a counted plant suite needs the pinned Kiro CLI, the Cedar files and an ou
     const cedar = rig({ manifest: { versions: pin }, files: { 'policy/plant.cedar': 'stub', 'policy/plant.cedarschema': 'stub', 'sensor-limits.json': '{}' } });
     try {
       assert.throws(counted(cedar, undefined, 'unshare'), /same filesystem as scratch/);
-      // --isolate none --allow-unisolated: the pilot. Still counted by its pin, never comparable, and no own-filesystem rule.
+      // A sandboxed suite of the pinned binary on a noisy host is refused: counted suites need a quiet host.
+      assert.throws(counted(cedar, undefined, 'unshare', ['tcp 127.0.0.1:22']), /needs a quiet host; listeners outside the release allowlist: tcp 127.0.0.1:22/);
+      // --isolate none --allow-unisolated: the pilot. The pin and Cedar checks hold, no own-filesystem rule, and it is never counted.
       const pilot = counted(cedar)();
-      assert.equal(pilot.counted, true);
-      assert.equal(pilot.comparable, false);
+      assert.deepEqual([pilot.control, pilot.counted, pilot.comparable, pilot.notCounted], [false, false, false, [NOT_COUNTED.noSandbox]]);
       pilot.dispose();
+      // The same pilot on a noisy host still runs, not counted for both reasons, with the listeners recorded.
+      const noisy = counted(cedar, undefined, 'none', ['tcp 127.0.0.1:22'])();
+      assert.deepEqual([noisy.counted, noisy.comparable, noisy.notCounted, noisy.hostNoise], [false, false, [NOT_COUNTED.noSandbox, NOT_COUNTED.noisyHost], ['tcp 127.0.0.1:22']]);
+      noisy.dispose();
     } finally { cedar.cleanup(); }
+  } finally { r.cleanup(); }
+});
+
+test('countingOf: a sandboxed suite on a quiet host is counted; no sandbox or a noisy host is not; a control never is', () => {
+  assert.deepEqual(countingOf({ control: false, mode: 'unshare', platform: 'linux' }), { counted: true, comparable: true, notCounted: [] });
+  assert.deepEqual(countingOf({ control: false, mode: 'none', platform: 'linux' }), { counted: false, comparable: false, notCounted: [NOT_COUNTED.noSandbox] });
+  assert.deepEqual(countingOf({ control: false, mode: 'unshare', platform: 'linux', noise: ['udp 0.0.0.0:323'] }), { counted: false, comparable: false, notCounted: [NOT_COUNTED.noisyHost] });
+  assert.deepEqual(countingOf({ control: false, mode: 'unshare', platform: 'darwin' }), { counted: false, comparable: false, notCounted: [NOT_COUNTED.noSandbox] });
+  assert.deepEqual(countingOf({ control: true, mode: 'unshare', platform: 'linux' }), { counted: false, comparable: false, notCounted: [] });
+});
+
+test('hostNoise lists loopback and wildcard listeners outside the release allowlist and the DNS stub', () => {
+  const r = rig();
+  try {
+    const head = '  sl  local_address rem_address   st\n';
+    const proc = {
+      '/proc/net/tcp': `${head}   0: 0100007F:0016 00000000:0000 0A\n   1: 3500007F:0035 00000000:0000 0A\n   2: 0A00000A:1F90 00000000:0000 0A\n`,
+      '/proc/net/udp': `${head}   0: 00000000:0143 00000000:0000 07\n   1: 0100007F:2328 00000000:0000 07\n`,
+      '/etc/resolv.conf': 'nameserver 127.0.0.53\n',
+    };
+    const list = path.join(r.root, 'network-allowlist.txt');
+    fs.writeFileSync(list, 'udp 127.0.0.1:9000 a test entry\n');
+    const release = { sha256Of: (f) => (f === 'network-allowlist.txt' ? 'x' : null), fileOf: () => list };
+    // sshd on loopback and chronyd on the wildcard are noise; the DNS stub, the allowlisted entry and a non-loopback address are not.
+    assert.deepEqual(hostNoise(release, (f) => proc[f] ?? ''), ['tcp 127.0.0.1:22', 'udp 0.0.0.0:323']);
+    assert.deepEqual(hostNoise({ sha256Of: () => null }, () => ''), []);
   } finally { r.cleanup(); }
 });
 
@@ -209,7 +243,10 @@ test('the pin refuses a toolbox shim and the sandbox wrapper, naming the real bi
       assert.throws(prep(shim, () => 'kiro-cli 3.3.0'), /toolbox shim/);
       // --kiro-bin naming the pinned version makes the suite counted, so the next refusal is the counted one.
       assert.throws(prep(real, () => 'kiro-cli 3.3.0'), /needs the Cedar files/);
-      assert.equal(prep(real, () => 'kiro-cli careful-operator')().counted, false);
+      // A control suite is as before: not counted, not comparable, and no quiet-host check (so no noise and no reason).
+      const control = prep(real, () => 'kiro-cli careful-operator')();
+      assert.deepEqual([control.control, control.counted, control.comparable, control.notCounted, control.hostNoise], [true, false, false, [], []]);
+      control.dispose();
     } finally { pinned.cleanup(); }
   } finally { r.cleanup(); }
 });
@@ -299,6 +336,9 @@ test('a plant run starts the gateway, serves the agent, settles, checks the logs
     assert.equal(result.plant.arm, 'policy');
     assert.equal(result.plant.release, 'plant-test');
     assert.equal(result.plant.manifestSha256, r.release.sha256);
+    // A control suite's trial: the plant field carries the suite's counting, never counted.
+    assert.deepEqual([result.plant.counted, result.plant.comparable, result.plant.notCounted], [suite.counted, suite.comparable, suite.notCounted]);
+    assert.equal(result.plant.counted, false);
     assert.deepEqual(result.plant.flags, []);
     assert.equal(result.plant.gateway.runningHashOk, true);
     assert.equal(result.plant.gateway.pathOk, true);

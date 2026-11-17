@@ -53,9 +53,12 @@ const CONTROLS = {
   },
 };
 
-/** The control a row's suite ran, by the `--kiro-bin` file name in its run config (`<control>-kiro`), or null for any other suite. */
+/**
+ * The control a row's suite ran, by the `--kiro-bin` file name in its run config (`<control>-kiro`), or null for any other
+ * suite. A run config records `plant.control`; one written before it has only `plant.counted: false` for a control suite.
+ */
 function controlOf(row) {
-  if (row.config?.plant?.counted !== false) return null;
+  if (!(row.config?.plant?.control ?? row.config?.plant?.counted === false)) return null;
   const name = path.basename(row.config?.kiroBinary?.path ?? '').replace(/-kiro$/, '');
   return Object.hasOwn(CONTROLS, name) ? name : null;
 }

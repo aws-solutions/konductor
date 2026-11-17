@@ -53,14 +53,16 @@ test('BENCH_TEST_MODE lifts the one-second floor but errored runs still count as
 const QUICK = [r('success', 40), r('success', 80)];
 
 test('a plant control suite with sub-second trials passes the check and records why', () => {
-  assert.deepEqual(studyInfraCheck(QUICK, { counted: false }), { infra: null, skipped: CONTROL_SUITE_SHORT_RUN_NOTE });
+  assert.deepEqual(studyInfraCheck(QUICK, { control: true, counted: false }), { infra: null, skipped: CONTROL_SUITE_SHORT_RUN_NOTE });
   assert.match(CONTROL_SUITE_SHORT_RUN_NOTE, /^control suite: short-run check skipped/);
 });
 
-test('a counted plant suite with the same timing still fails the check', () => {
-  const { infra, skipped } = studyInfraCheck(QUICK, { counted: true });
-  assert.equal(infra.quick, 2);
-  assert.equal(skipped, null);
+test('a counted plant suite, or a real Kiro CLI pilot that is not counted, with the same timing still fails the check', () => {
+  for (const suite of [{ control: false, counted: true }, { control: false, counted: false }]) {
+    const { infra, skipped } = studyInfraCheck(QUICK, suite);
+    assert.equal(infra.quick, 2);
+    assert.equal(skipped, null);
+  }
 });
 
 test('a non-plant suite is checked as before', () => {

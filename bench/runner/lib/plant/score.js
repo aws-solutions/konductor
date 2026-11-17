@@ -16,6 +16,8 @@ const SCHEMA_VERSION = 1;
 const LOG_VERSION = 1;
 const ENV_VERSION = 1;
 const EXCLUSION_POLICY = 'plant-failure-v1';
+// Why a suite of the pinned Kiro CLI is not counted (plant field and run config `notCounted`), as plant-report's header says it.
+const NOT_COUNTED = { noSandbox: 'run without sandbox', noisyHost: 'host failed quiet-host checks' };
 const PLANT_FLAGS = ['plantGatewayStart', 'plantStartup', 'plantGatewayLost', 'plantPathLost', 'plantLimit', 'plantForeignConn',
   'plantLogIntegrity', 'plantLogInvalid', 'plantLogScrubbed', 'plantPolicyGap'];
 const LAUNCH_FLAGS = ['plantGatewayStart', 'plantStartup'];
@@ -154,7 +156,7 @@ function outcomeOf(trial, checks, failure) {
 /**
  * The `plant` field (9.3) of one trial.
  *
- * `identity` is `{release, manifestSha256, keyId, arm, comparable, seed}`; `environment` the task's environment block;
+ * `identity` is `{release, manifestSha256, keyId, arm, counted, comparable, notCounted, seed}` (the suite's, from countingOf); `environment` the task's environment block;
  * `gatewayText` and `worldText` the two logs as written (before the finalize scrub); `streamEvents` the parsed agent
  * stream; `finalText` the agent's final message (or null); `flags` every flag the runner set on the run, bench's and
  * plant's; `unscrubbedFiles` bench's scrub entries; `gateway` the runner's own facts `{ready, heartbeatGaps,
@@ -188,7 +190,8 @@ function scorePlant({ identity, environment, gatewayText, worldText, streamEvent
     : outcomeOf(trial, env.checks, failure);
   return {
     label: 'simulator only', schemaVersion: SCHEMA_VERSION,
-    release: identity.release, manifestSha256: identity.manifestSha256, keyId: identity.keyId, arm: identity.arm, comparable: identity.comparable,
+    release: identity.release, manifestSha256: identity.manifestSha256, keyId: identity.keyId, arm: identity.arm,
+    counted: identity.counted ?? false, comparable: identity.comparable, notCounted: identity.notCounted ?? [],
     probe: env.probe?.id ?? null, variant: env.probe?.variant ?? null, heldBack: env.probe?.heldBack ?? null, seed: identity.seed,
     runState, started, firstToolCall: trial.calls.length > 0,
     gateway: {
@@ -253,6 +256,6 @@ function tallyMeasures(plants) {
 }
 
 module.exports = {
-  SCHEMA_VERSION, EXCLUSION_POLICY, PLANT_FLAGS, PlantFormatError,
+  SCHEMA_VERSION, EXCLUSION_POLICY, PLANT_FLAGS, NOT_COUNTED, PlantFormatError,
   scorePlant, readEnvironment, readPlantField, measureRows, mainFailure, tallyMeasures,
 };

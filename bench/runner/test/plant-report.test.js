@@ -316,3 +316,43 @@ test('an unisolated suite makes the header WARN and names its isolation mode in 
   assert.ok(header.warnings.some((w) => /unisolated runs \(--isolate none\)/.test(w)));
   assert.ok(header.limits.includes('isolation: none'));
 }));
+
+// ---- suites of the real Kiro CLI that are not counted ----
+
+/** The run config of a suite of the pinned Kiro CLI, as run-cmd writes it from preparePlantSuite. */
+const pinnedConfig = (mode, notCounted) => ({ kiroBinary: { path: '/x/kiro-cli/3.3.0/kiro-cli' }, isolation: { mode }, plant: { control: false, counted: notCounted.length === 0, comparable: notCounted.length === 0, notCounted } });
+
+test('an unsandboxed suite of the real Kiro CLI is NOT COUNTED in the header and kept apart from the counted rates', () => withRoot((root) => {
+  const rel = fakeRelease(root);
+  const pilot = writeSuite(root, 'pilot', repeat(3, () => plant(rel, { counted: false, comparable: false, notCounted: ['run without sandbox'] })), { config: pinnedConfig('none', ['run without sandbox']) });
+  const counted = writeSuite(root, 'counted', repeat(35, () => plant(rel, { counted: true, notCounted: [] })), { config: pinnedConfig('unshare', []) });
+  const { report: rep, md } = report(root, [pilot, counted], rel.dir);
+  assert.equal(rep.header.status, 'WARN');
+  assert.match(rep.header.warnings[0], /^NOT COUNTED: run without sandbox \(3 trial\(s\)/);
+  assert.equal(rep.header.notCountedTrials, 3);
+  assert.equal(rep.arms.policy.measures.all.agentAttempt.n, 35);
+  assert.equal(rep.arms.policy.verdicts.P1.verdict, 'pass');
+  assert.equal(rep.notCounted.trials, 3);
+  assert.equal(rep.notCounted.arms.policy.measures.all.agentAttempt.n, 3);
+  assert.deepEqual(rep.controls, []);
+  assert.match(md, /\*\*WARN\*\*: NOT COUNTED: run without sandbox/);
+  assert.match(md, /## Not counted[\s\S]*## Arm policy \(not counted\)/);
+}));
+
+test('a pilot whose host failed the quiet-host checks says NOT COUNTED for that too', () => withRoot((root) => {
+  const rel = fakeRelease(root);
+  const why = ['run without sandbox', 'host failed quiet-host checks'];
+  const suite = writeSuite(root, 's', [plant(rel, { counted: false, comparable: false, notCounted: why })], { config: pinnedConfig('none', why) });
+  const { report: rep, md } = report(root, [suite], rel.dir);
+  assert.ok(rep.header.warnings.some((w) => /^NOT COUNTED: host failed quiet-host checks/.test(w)));
+  assert.deepEqual(rep.arms, {});
+  assert.deepEqual(rep.notCounted.reasons, why);
+  assert.match(md, /No counted plant trials in these runs/);
+}));
+
+test('an unisolated result with no counted field is still NOT COUNTED: no sandbox, never counted', () => withRoot((root) => {
+  const rel = fakeRelease(root);
+  const suite = writeSuite(root, 's', [plant(rel)], { config: { kiroBinary: { path: '/x/kiro-cli' }, isolation: { mode: 'none' } } });
+  const rep = report(root, [suite], rel.dir).report;
+  assert.deepEqual([rep.arms, rep.notCounted.trials, rep.notCounted.reasons], [{}, 1, ['run without sandbox']]);
+}));
