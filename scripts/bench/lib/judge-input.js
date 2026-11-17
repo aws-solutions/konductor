@@ -28,10 +28,11 @@
  * sanitizer and the scan skip fenced code, so an open fence would hide the rest of the answer from both.
  *
  * The scan is a second look. It skips fenced code for narration (a code sample about a Skill tool is example content, as
- * for the sanitizer), and keeps the patterns narrow, because every false hit costs a judgment. For narration it runs the
- * sanitizer's own check (findNarration: a sentence with a skill word and a cue word) with the request, so a sentence the
- * sanitizer dropped is a leak if it is still there, and a sentence the request guard kept is not. A pattern for a leak it
- * does not know passes.
+ * for the sanitizer). It does not look for a skill name or an agent id inside what the sanitizer's name rewrites leave
+ * alone (fenced code, URLs, paths, file names and commands), because there the name is the content and not a mention.
+ * It keeps the patterns narrow, because every false hit costs a judgment. For narration it runs the sanitizer's own check
+ * (findNarration: a sentence with a skill word and a cue word) with the request, so a sentence the sanitizer dropped is a
+ * leak if it is still there, and a sentence the request guard kept is not. A pattern for a leak it does not know passes.
  *
  * ONE PROVENANCE HASH. The provenance of a judgment (provenance.judgmentInputs) takes `sanitizerVersion` and
  * `sanitizerRulesSha256` from here, and only from here: createJudgeInput(...).provenance and sanitizerProvenance(...)
@@ -57,6 +58,7 @@ const {
   escapeRegExp,
   agentAlternation,
   fenceMap,
+  maskProtected,
 } = require('./sanitize');
 
 /** Characters of a judge-facing answer. Answers are a few thousand characters; this is room for a long one. */
@@ -84,7 +86,8 @@ function cutLength(text, limit) {
 }
 
 // The leak patterns as data, so the provenance hash covers them. Tokens are filled per call from the settings and the
-// skill. `prose` patterns skip fenced code; `all` patterns do not. An entry with a `matcher` also reports every sentence
+// skill. `prose` patterns skip fenced code; `names` patterns skip the spans the sanitizer's name rewrites leave alone
+// (fenced code, URLs, paths, file names, commands: sanitize.js PROTECTED_PATTERNS); `all` patterns skip nothing. An entry with a `matcher` also reports every sentence
 // its function accepts (LEAK_MATCHERS); the function's own words and windows are hashed through the sanitizer's spec.
 const PLUGIN_TOKEN = '__PLUGIN__';
 const SCRATCH_TOKEN = '__SCRATCH__';
@@ -99,13 +102,13 @@ const LEAK_TABLE = Object.freeze([
   },
   {
     id: 'skill-name',
-    where: 'all',
+    where: 'names',
     flags: 'i',
     source: `(?<![A-Za-z0-9-])(?:${NAMES_TOKEN})(?![A-Za-z0-9-])`,
   },
   {
     id: 'agent-id',
-    where: 'all',
+    where: 'names',
     flags: 'i',
     source: `(?<![A-Za-z0-9-])(?:${AGENTS_TOKEN})(?![A-Za-z0-9-])`,
   },
@@ -186,7 +189,11 @@ function scanLeaks(text, { skill = '', settings, request = '' } = {}) {
   const lines = String(text).split('\n');
   const { fenced } = fenceMap(lines);
   const proseLines = lines.filter((_line, i) => !fenced[i]);
-  const views = { all: String(text), prose: proseLines.join('\n') };
+  const views = {
+    all: String(text),
+    prose: proseLines.join('\n'),
+    names: maskProtected(String(text)),
+  };
   // Text the task's request holds is the user's own: the sanitizer kept it, so it is not a leak.
   const requestText = normalizeText(request).text;
   const hits = [];

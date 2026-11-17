@@ -9,6 +9,10 @@
  * content that comes from the skill itself, so this is one layer, not a guarantee. Run the redactor and the leak scan
  * after it (judge-input.js).
  *
+ * Name rewrites touch prose only. A URL, a path, a file name, a package or git command and fenced or inline code are
+ * content the answer is about, so the skill-name and agent-id rewrites leave them as they are (PROTECTED_PATTERNS); the
+ * leak scan (judge-input.js) skips the same spans. The `bench:` form is the harness's own syntax and is rewritten anywhere.
+ *
  * Every drop is counted: `removed_chars` (non-whitespace characters, by rule in `removed_by_rule`) and `removed_share`
  * of the answer, so the judge input can refuse an answer the drops emptied. A rewrite is not a removal.
  *
@@ -20,7 +24,7 @@
  */
 'use strict';
 
-const SANITIZER_VERSION = 8;
+const SANITIZER_VERSION = 9;
 /** Input over this many characters is not scanned: the answer is dropped whole (`too_long`), never cut and passed on. */
 const MAX_INPUT_CHARS = 1000000;
 
@@ -51,6 +55,50 @@ const NOT_IN_NAME = '(?<![A-Za-z0-9-])';
 const PATH_START = '(?<![\\w.~/-])/?(?:[\\w.~-]+/)*';
 const HR_NOUNS =
   'levels?|gaps?|matrix|assessment|inventory|development|training|requirements?|mix|shortage|frameworks?|taxonomy';
+
+/**
+ * SUBSTITUTIONS: what a rewrite writes and the flags the lists compile with, as data so the spec hash covers them.
+ * Each regular expression is [source, flags]. `approach_after_article` follows a captured "the ", `approach_alone` stands
+ * when there was none; `orchestrator` replaces Konductor's own name; an agent id loses `agent_prefix`; hyphens and
+ * underscores in a captured name become `word_joiner`. A removed path takes the `path_leading_space` before it, except
+ * the ids in `path_without_leading_space`.
+ */
+const SUBSTITUTIONS = Object.freeze({
+  list_flags: 'gi',
+  approach_after_article: 'approach',
+  approach_alone: 'this approach',
+  orchestrator: 'orchestrator',
+  orchestrator_match: Object.freeze(['^konductor', 'i']),
+  agent_prefix: Object.freeze(['^k-', 'i']),
+  word_separator: Object.freeze(['[-_]+', 'g']),
+  word_joiner: ' ',
+  skill_separator: '[-_]',
+  spaced_separator: '[\\s_-]+',
+  path_leading_space: '[ \\t]?',
+  path_without_leading_space: Object.freeze(['scratch-path']),
+});
+const ruleRegExp = ([source, flags]) => new RegExp(source, flags);
+
+/** The name rule ids that leave PROTECTED_PATTERNS alone: `bench:<name>` is harness syntax, never answer content. */
+const UNPROTECTED_NAME_RULES = Object.freeze(['plugin-qualified-name']);
+
+// prettier-ignore
+/**
+ * PROTECTED_PATTERNS: tokens the answer is about, as [id, source, flags], matched on one line of unfenced text. A name
+ * rewrite that overlaps one is skipped, and so is the leak scan's look for a skill name or agent id. Fenced code is
+ * protected as a whole. Inline code is protected only when it holds a command: a lone name in backticks is a mention.
+ */
+const PROTECTED_PATTERNS = Object.freeze([
+  ['url-scheme', '(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://[^\\s<>"\'`)\\]]+', 'gi'],
+  ['url-host-path', '(?<![\\w@.-])(?:[a-z0-9-]+\\.)+[a-z]{2,}(?::\\d+)?/[^\\s<>"\'`)\\]]*', 'gi'],
+  ['path-token', '(?<![^\\s`\'"()<>\\[\\]{},;|])(?=[^\\s`\'"()<>\\[\\]{},;|]*[\\w.~@-]/[\\w.~@-])[^\\s`\'"()<>\\[\\]{},;|]+', 'g'],
+  ['file-name', '(?<![\\w.-])[\\w-]+(?:\\.[\\w-]+)*\\.[A-Za-z][A-Za-z0-9]{0,9}(?![\\w-])', 'g'],
+  ['install-command', '\\b(?:npm|pnpm|yarn|pip3?|pipx|brew|cargo|gem|apt(?:-get)?)\\s+(?:install|i|add|uninstall|remove|update|upgrade)\\s+(?:--?[\\w=.-]+\\s+)*[^\\s`\'"]+', 'gi'],
+  ['npx-command', '\\bnpx\\s+(?:--?[\\w=.-]+\\s+)*[^\\s`\'"]+', 'gi'],
+  ['git-command', '\\bgit\\s+(?:checkout|switch|branch|merge|rebase|cherry-pick|diff|log|show|tag|push|pull|fetch|clone|add|commit)\\s+(?:-{1,2}[\\w=.-]+\\s+)*[^\\s`\'"]+', 'gi'],
+  ['shell-prompt-line', '^\\s*(?:>\\s*)?\\$\\s.*$', 'g'],
+  ['inline-command', '`\\s*(?:\\$\\s*)?(?:git|npm|npx|pnpm|yarn|pip3?|pipx|brew|cargo|go|node|python3?|bash|sh|zsh|cd|cat|ls|mkdir|rm|cp|mv|docker|curl|wget|make|brazil-build|brazil|aim|mwinit|kiro-cli|cr|sudo|export|echo|grep|sed|awk|find|tar)\\s[^`\\n]*`', 'g'],
+]);
 
 // prettier-ignore
 /** NAME_WORDS: names a judge must not see, as [id, action, source]. A match becomes plain words: "approach" ("the code-review skill" -> "the approach"), "words" ("bench:code-review" -> "code review", in its own case). A one-word skill name is ordinary prose, so it matches only with a label or the plugin prefix. */
@@ -105,9 +153,16 @@ const NORMALIZE_SPEC = Object.freeze({
 // splits in two and the bold title is not dropped with the sentence after it. The bound keeps the lookbehind linear.
 const SENTENCE_SPLIT = /(?<=[.!?][*_`'")\]]{0,3})\s+/;
 const TABLE_ROW = /^\s*\|/;
-// A fence opens with 3 or more backticks or tildes and closes with the same character at least as long (CommonMark).
-const FENCE_OPEN = /^\s*(`{3,}|~{3,})(.*)$/;
-const FENCE_CLOSE = /^\s*(`{3,}|~{3,})\s*$/;
+// A fence opens with 3 or more backticks or tildes, indented at most 3 spaces, and closes with the same character at least
+// as long (CommonMark). Four spaces make indented code, which is not tracked. A fence may sit in a blockquote: each `>`
+// prefix (up to 3 spaces before it, one space after) is stripped first, and the fence ends where the quote does.
+const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})(.*)$/;
+const FENCE_CLOSE = /^ {0,3}(`{3,}|~{3,})[ \t]*$/;
+const QUOTE_PREFIX = /^ {0,3}> ?/;
+
+const PROTECTED_REGEXES = PROTECTED_PATTERNS.map(
+  ([, source, flags]) => new RegExp(source, flags),
+);
 
 const escapeRegExp = (text) =>
   String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -126,23 +181,103 @@ function normalizeText(value) {
   return { text: text.normalize(NORMALIZE_SPEC.form), removed };
 }
 
-/** Which lines are fenced code: { fenced, open }. `open` is true when the text ends inside a fence that never closed. */
+/** A line without up to `limit` blockquote prefixes: { depth, rest }, `depth` being how many were stripped. */
+function splitQuote(line, limit = Infinity) {
+  let rest = line;
+  let depth = 0;
+  while (depth < limit) {
+    const prefix = rest.match(QUOTE_PREFIX);
+    if (!prefix) break;
+    rest = rest.slice(prefix[0].length);
+    depth += 1;
+  }
+  return { depth, rest };
+}
+
+/**
+ * Which lines are fenced code: { fenced, open }. `open` is true when the text ends inside a fence that never closed. A
+ * fence in a blockquote ends with the quote (a line with fewer prefixes), which closes it.
+ */
 function fenceMap(lines) {
   const fenced = [];
   let fence = null;
   for (const line of lines) {
-    const close = fence && line.match(FENCE_CLOSE);
-    const open = !fence && line.match(FENCE_OPEN);
-    fenced.push(
-      Boolean(
-        fence || (open && !(open[1][0] === '`' && open[2].includes('`'))),
-      ),
-    );
-    if (close && close[1][0] === fence[0] && close[1].length >= fence.length)
+    if (fence) {
+      const inside = splitQuote(line, fence.depth);
+      if (inside.depth >= fence.depth) {
+        fenced.push(true);
+        const close = inside.rest.match(FENCE_CLOSE);
+        if (
+          close &&
+          close[1][0] === fence.marker[0] &&
+          close[1].length >= fence.marker.length
+        )
+          fence = null;
+        continue;
+      }
       fence = null;
-    else if (open && fenced[fenced.length - 1]) fence = open[1];
+    }
+    const { depth, rest } = splitQuote(line);
+    const open = rest.match(FENCE_OPEN);
+    // An info string after a backtick fence holds no backtick: "```x```" is inline code.
+    const opens =
+      Boolean(open) && !(open[1][0] === '`' && open[2].includes('`'));
+    fenced.push(opens);
+    if (opens) fence = { marker: open[1], depth };
   }
   return { fenced, open: fence !== null };
+}
+
+/**
+ * [start, end) offsets in `text` that a name rewrite leaves alone: every fenced line, and what PROTECTED_PATTERNS match
+ * on the other lines. Sorted, and merged where they overlap or touch, so `overlapsRange` can bisect them.
+ */
+function protectedRanges(text) {
+  const lines = text.split('\n');
+  const { fenced } = fenceMap(lines);
+  const ranges = [];
+  let offset = 0;
+  lines.forEach((line, i) => {
+    if (fenced[i]) ranges.push([offset, offset + line.length]);
+    else
+      for (const regex of PROTECTED_REGEXES)
+        for (const match of line.matchAll(regex))
+          ranges.push([
+            offset + match.index,
+            offset + match.index + match[0].length,
+          ]);
+    offset += line.length + 1;
+  });
+  ranges.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const merged = [];
+  for (const range of ranges) {
+    const last = merged[merged.length - 1];
+    if (last && range[0] <= last[1]) last[1] = Math.max(last[1], range[1]);
+    else merged.push([range[0], range[1]]);
+  }
+  return merged;
+}
+
+/** Does [start, end) share a character with one of the sorted, disjoint `ranges`? Bisects, so it is O(log n). */
+function overlapsRange(ranges, start, end) {
+  let low = 0;
+  let high = ranges.length;
+  // The first range that ends after `start`.
+  while (low < high) {
+    const mid = (low + high) >> 1;
+    if (ranges[mid][1] > start) high = mid;
+    else low = mid + 1;
+  }
+  return low < ranges.length && ranges[low][0] < end;
+}
+
+/** `text` with the protected spans blanked (same length): what the leak scan reads for names. A span never holds a line break. */
+function maskProtected(text) {
+  // Offsets count UTF-16 units, so mask by unit, not by code point.
+  const units = text.split('');
+  for (const [start, end] of protectedRanges(text))
+    for (let i = start; i < end; i++) units[i] = ' ';
+  return units.join('');
 }
 
 function checkSettings(settings) {
@@ -197,15 +332,17 @@ function compileLists(skill, settings) {
       .split(/[-_\s]+/)
       .filter(Boolean)
       .map(escapeRegExp)
-      .join('[\\s_-]+'),
-    SKILL: escapeRegExp(skill).replace(/[-_]/g, '[-_]'), // underscores for hyphens name the same skill
+      .join(SUBSTITUTIONS.spaced_separator),
+    // Underscores for hyphens name the same skill.
+    SKILL: escapeRegExp(skill).replace(/[-_]/g, SUBSTITUTIONS.skill_separator),
   };
   const fill = (source) =>
     source.replace(/__([A-Z]+)__/g, (_, key) => tokens[key]);
   const usable = (source, multiWord = false) =>
     !/__SKILL__|__SPACED__/.test(source) ||
     Boolean(skill && (!multiWord || /[-_]/.test(skill)));
-  const compile = (source, flags = 'gi') => new RegExp(fill(source), flags);
+  const compile = (source, flags = SUBSTITUTIONS.list_flags) =>
+    new RegExp(fill(source), flags);
   return {
     names: NAME_WORDS.filter(([, action, source]) =>
       usable(source, action === 'words-multi'),
@@ -214,7 +351,11 @@ function compileLists(skill, settings) {
     paths: PATH_PATTERNS.filter(([, source]) => usable(source)).map(
       ([id, source]) => ({
         id,
-        regex: compile(id === 'scratch-path' ? source : `[ \\t]?(?:${source})`),
+        regex: compile(
+          SUBSTITUTIONS.path_without_leading_space.includes(id)
+            ? source
+            : `${SUBSTITUTIONS.path_leading_space}(?:${source})`,
+        ),
       }),
     ),
     skillWords: SKILL_WORDS.filter((source) => usable(source, true)).map(
@@ -307,11 +448,15 @@ function createSanitizer(overrides = {}) {
       TABLE_ROW.source,
       FENCE_OPEN.source,
       FENCE_CLOSE.source,
+      QUOTE_PREFIX.source,
     ],
     name_words: NAME_WORDS,
     skill_words: SKILL_WORDS,
     cue_words: CUE_WORDS,
     path_patterns: PATH_PATTERNS,
+    substitutions: SUBSTITUTIONS,
+    protected_patterns: PROTECTED_PATTERNS,
+    unprotected_name_rules: UNPROTECTED_NAME_RULES,
     request_guard: REQUEST_GUARD,
     settings,
   };
@@ -357,19 +502,43 @@ function createSanitizer(overrides = {}) {
       text = text.replace(regex, (match) =>
         keep(match) ? match : (count(id, match), ''),
       );
-    for (const { id, action, regex } of lists.names)
+    for (const { id, action, regex } of lists.names) {
+      // Spans of the current text, found again for each rule because the earlier rewrites moved the offsets.
+      const spans = UNPROTECTED_NAME_RULES.includes(id)
+        ? []
+        : protectedRanges(text);
       text = text.replace(regex, (...args) => {
-        if (keep(args[0])) return args[0];
+        const [matched] = args;
+        const start = args[args.length - 2];
+        if (
+          keep(matched) ||
+          overlapsRange(spans, start, start + matched.length)
+        )
+          return matched;
         count(id);
         const group = args.slice(1, -2)[0];
         if (action === 'approach')
-          return group ? `${group}approach` : 'this approach';
+          return group
+            ? `${group}${SUBSTITUTIONS.approach_after_article}`
+            : SUBSTITUTIONS.approach_alone;
         if (action === 'agent')
-          return /^konductor/i.test(group)
-            ? 'orchestrator'
-            : group.replace(/^k-/i, '').replace(/[-_]+/g, ' ').toLowerCase();
-        return group.replace(/[-_]+/g, ' ').trim();
+          return ruleRegExp(SUBSTITUTIONS.orchestrator_match).test(group)
+            ? SUBSTITUTIONS.orchestrator
+            : group
+                .replace(ruleRegExp(SUBSTITUTIONS.agent_prefix), '')
+                .replace(
+                  ruleRegExp(SUBSTITUTIONS.word_separator),
+                  SUBSTITUTIONS.word_joiner,
+                )
+                .toLowerCase();
+        return group
+          .replace(
+            ruleRegExp(SUBSTITUTIONS.word_separator),
+            SUBSTITUTIONS.word_joiner,
+          )
+          .trim();
       });
+    }
     const charsIn = countNonSpace(normalization.text);
     const removed = Math.min(
       Object.values(byRule).reduce((sum, n) => sum + n, 0),
@@ -399,6 +568,9 @@ module.exports = {
   SKILL_WORDS,
   CUE_WORDS,
   PATH_PATTERNS,
+  SUBSTITUTIONS,
+  PROTECTED_PATTERNS,
+  UNPROTECTED_NAME_RULES,
   WRAP,
   createSanitizer,
   sanitizeAnswer: createSanitizer().sanitize,
@@ -407,4 +579,7 @@ module.exports = {
   escapeRegExp,
   agentAlternation,
   fenceMap,
+  protectedRanges,
+  overlapsRange,
+  maskProtected,
 };

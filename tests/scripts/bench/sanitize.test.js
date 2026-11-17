@@ -41,7 +41,7 @@ const droppedSentences = [
 // Any edit to one changes it; then bump SANITIZER_VERSION too. judge-input.js folds the same spec into the one
 // provenance hash, so there is no second sanitizer hash to disagree with it.
 const PINNED_SPEC_HASH =
-  '890706e6374870bbe1c70a6c22091db8ef024f4be09255751ee290e110be258e';
+  'b3fae13f7093946658c8a0d54b83c2bf309dbe2ec179698a743c368726933e14';
 const hashSpec = (overrides) =>
   sha256(sanitizer.createSanitizer(overrides).spec);
 
@@ -522,8 +522,8 @@ for (const unit of [
     ));
 }
 
-test('version and spec: version 8, stable, pinned, and free of per-run values', () => {
-  assert.equal(sanitizer.SANITIZER_VERSION, 8);
+test('version and spec: version 9, stable, pinned, and free of per-run values', () => {
+  assert.equal(sanitizer.SANITIZER_VERSION, 9);
   assert.equal(hashSpec(), PINNED_SPEC_HASH);
   assert.match(hashSpec(), /^[0-9a-f]{64}$/);
   const result = sanitize('x', { skill: 'code-review' });
@@ -651,5 +651,296 @@ test('a skill name or scratch prefix with a regex character is matched as writte
   assert.equal(
     custom.sanitize('See /tmp/myXbox-subject-1/x here.', { skill: '' }).text,
     'See /tmp/myXbox-subject-1/x here.',
+  );
+});
+
+// ---- Name rewrites touch prose only: URLs, paths, file names, commands and code are the answer's own content.
+const PROSE_SKILL = 'code-review';
+const cleanFor = (text) => clean(text, PROSE_SKILL);
+const PROTECTED_CASES = [
+  [
+    'a URL',
+    'See https://github.com/aws-solutions/konductor/blob/main for the source.',
+  ],
+  [
+    'a host and path with no scheme',
+    'See github.com/aws-solutions/konductor/blob/main for the source.',
+  ],
+  [
+    'a package name in a command',
+    'Run npm install konductor-installer to set it up.',
+  ],
+  [
+    'a package name in a command inside backticks',
+    'Run `npm install konductor-installer` to set it up.',
+  ],
+  ['a git command', 'Then git checkout code-review first.'],
+  ['a path in inline code', 'Run `git checkout code-review/fix` first.'],
+  ['a path with no backticks', 'Edit docs/code-review/notes now.'],
+  ['a file name', 'Open code-review.md and k-developer.md now.'],
+  ['a shell prompt line', '$ konductor build --all\nRow 1'],
+  ['fenced code', '```sh\nkonductor build\ncat code-review/notes\n```\nRow 1'],
+  ['tilde-fenced code', '~~~\nask k-architect about code-review\n~~~\nRow 1'],
+];
+for (const [name, text] of PROTECTED_CASES) {
+  test(`name rewrites leave ${name} alone`, () => {
+    const result = sanitize(text, { skill: PROSE_SKILL });
+    assert.deepEqual([result.text, result.changes], [text, 0], text);
+  });
+}
+
+test('name rewrites still change the same names in prose, next to code that is left alone', () => {
+  assert.equal(
+    cleanFor(
+      'Ask konductor about code-review, see https://example.com/konductor and `git checkout code-review/fix`.',
+    ),
+    'Ask orchestrator about code review, see https://example.com/konductor and `git checkout code-review/fix`.',
+  );
+  assert.equal(
+    cleanFor('```\nkonductor\n```\nAsk konductor and k-developer.'),
+    '```\nkonductor\n```\nAsk orchestrator and developer.',
+  );
+  // A name alone in backticks is a mention, not code.
+  assert.equal(
+    cleanFor('Use the `code-review` skill and `konductor` daily.'),
+    'Use the approach and orchestrator daily.',
+  );
+  assert.equal(
+    cleanFor('Run npm install other-tool, then ask konductor.'),
+    'Run npm install other-tool, then ask orchestrator.',
+  );
+});
+
+test('the bench: form is harness syntax and is rewritten even where other names are left alone', () => {
+  assert.equal(
+    cleanFor('```\nbench:other-tool\n```\nSee https://x.test/bench:other-tool'),
+    '```\nother tool\n```\nSee https://x.test/other tool',
+  );
+  assert.deepEqual(sanitizer.UNPROTECTED_NAME_RULES, ['plugin-qualified-name']);
+});
+
+test('protected spans: fenced lines and pattern matches, sorted and merged within a line, and masked for the leak scan', () => {
+  const text = 'a code-review.md b\n```\nx\n```\nsee https://x.test/y';
+  const ranges = sanitizer.protectedRanges(text);
+  assert.deepEqual(
+    ranges.map(([from, to]) => text.slice(from, to)),
+    ['code-review.md', '```', 'x', '```', 'https://x.test/y'],
+  );
+  assert.equal(
+    sanitizer.maskProtected(text),
+    `a ${' '.repeat(14)} b\n   \n \n   \nsee ${' '.repeat(16)}`,
+  );
+  assert.equal(sanitizer.maskProtected('no code here'), 'no code here');
+  assert.deepEqual(sanitizer.protectedRanges(''), []);
+  for (const [id, source, flags] of sanitizer.PROTECTED_PATTERNS) {
+    assert.match(id, /^[a-z-]+$/);
+    assert.doesNotThrow(() => new RegExp(source, flags), id);
+  }
+});
+
+test('protected patterns stay linear on a long line of the shapes that start them', () => {
+  const units = ['a', 'a.', 'a-', 'a/', 'a://', 'a.a/', '`', 'git ', 'npm '];
+  for (const unit of units) {
+    const text = unit.repeat(Math.ceil(200000 / unit.length));
+    const started = process.hrtime.bigint();
+    sanitizer.protectedRanges(text);
+    const ms = Number(process.hrtime.bigint() - started) / 1e6;
+    assert.ok(ms < 2000, `${JSON.stringify(unit)} took ${ms} ms`);
+  }
+});
+
+// ---- The substitution strings and flags are spec data: changing one changes the hash.
+test('the spec holds the substitutions, and each one is what the sanitizer writes', () => {
+  const { spec } = sanitizer.createSanitizer();
+  assert.deepEqual(spec.substitutions, sanitizer.SUBSTITUTIONS);
+  assert.deepEqual(spec.protected_patterns, sanitizer.PROTECTED_PATTERNS);
+  assert.deepEqual(
+    spec.unprotected_name_rules,
+    sanitizer.UNPROTECTED_NAME_RULES,
+  );
+  assert.ok(Object.isFrozen(sanitizer.SUBSTITUTIONS));
+  const s = sanitizer.SUBSTITUTIONS;
+  // The data is the behavior: each string shows up in the output where its rule fires.
+  assert.equal(
+    cleanFor('The code-review skill helps.'),
+    `The ${s.approach_after_article} helps.`,
+  );
+  assert.equal(
+    cleanFor('code-review skill helps.'),
+    `${s.approach_alone} helps.`,
+  );
+  assert.equal(cleanFor('Ask konductor.'), `Ask ${s.orchestrator}.`);
+  assert.equal(
+    cleanFor('Ask k-quality-assurance.'),
+    `Ask quality${s.word_joiner}assurance.`,
+  );
+  assert.equal(
+    cleanFor('Open /tmp/bench-arms-q1/with/src/a.js'),
+    'Open src/a.js',
+  );
+  assert.equal(s.list_flags, 'gi');
+  assert.equal(
+    cleanFor('Read scripts/bench/x.js then'),
+    'Read then',
+    `a removed path takes the ${JSON.stringify(s.path_leading_space)} before it`,
+  );
+  assert.deepEqual(s.path_without_leading_space, ['scratch-path']);
+  // Case-insensitive lists: the flags are part of what matches.
+  assert.equal(cleanFor('Ask KONDUCTOR.'), `Ask ${s.orchestrator}.`);
+});
+
+test('changing a substitution, a flag or a protected pattern changes the spec hash', () => {
+  const { spec } = sanitizer.createSanitizer();
+  const base = sha256(spec);
+  const edits = {
+    approach_after_article: (copy) =>
+      (copy.substitutions.approach_after_article = 'method'),
+    approach_alone: (copy) =>
+      (copy.substitutions.approach_alone = 'this method'),
+    orchestrator: (copy) => (copy.substitutions.orchestrator = 'agent'),
+    orchestrator_match: (copy) =>
+      (copy.substitutions.orchestrator_match[1] = ''),
+    agent_prefix: (copy) => (copy.substitutions.agent_prefix[0] = '^kk-'),
+    word_separator: (copy) => (copy.substitutions.word_separator[1] = ''),
+    word_joiner: (copy) => (copy.substitutions.word_joiner = '_'),
+    skill_separator: (copy) => (copy.substitutions.skill_separator = '[-_.]'),
+    spaced_separator: (copy) => (copy.substitutions.spaced_separator = '\\s+'),
+    list_flags: (copy) => (copy.substitutions.list_flags = 'g'),
+    path_leading_space: (copy) => (copy.substitutions.path_leading_space = ''),
+    path_without_leading_space: (copy) =>
+      copy.substitutions.path_without_leading_space.push('x'),
+    protected_pattern: (copy) => (copy.protected_patterns[0][1] += 'x'),
+    protected_flags: (copy) => (copy.protected_patterns[0][2] = 'g'),
+    protected_order: (copy) => copy.protected_patterns.reverse(),
+    unprotected_rules: (copy) => copy.unprotected_name_rules.pop(),
+  };
+  assert.deepEqual(
+    Object.keys(edits)
+      .filter(
+        (key) =>
+          key !== 'protected_pattern' &&
+          key !== 'protected_flags' &&
+          key !== 'protected_order' &&
+          key !== 'unprotected_rules',
+      )
+      .sort(),
+    Object.keys(sanitizer.SUBSTITUTIONS).sort(),
+    'every substitution key has an edit here',
+  );
+  for (const [name, applyEdit] of Object.entries(edits)) {
+    const copy = JSON.parse(JSON.stringify(spec));
+    applyEdit(copy);
+    assert.notEqual(sha256(copy), base, `${name} left the hash unchanged`);
+  }
+});
+
+// ---- Fences: at most 3 spaces of indent, and a fence may sit in a blockquote.
+test('a fence opens with at most 3 spaces of indent; 4 spaces is indented code, which is not tracked', () => {
+  assert.deepEqual(sanitizer.fenceMap(['   ```', 'x', '```', 'y']), {
+    fenced: [true, true, true, false],
+    open: false,
+  });
+  assert.deepEqual(sanitizer.fenceMap(['    ```', 'x', 'y']), {
+    fenced: [false, false, false],
+    open: false,
+  });
+  // A line indented 4 spaces does not close a fence either.
+  assert.deepEqual(sanitizer.fenceMap(['```', 'x', '    ```', 'y']), {
+    fenced: [true, true, true, true],
+    open: true,
+  });
+  assert.deepEqual(sanitizer.fenceMap(['```', 'x', '   ```', 'y']), {
+    fenced: [true, true, true, false],
+    open: false,
+  });
+  // Narration after a 4-space "fence" is prose, so it is dropped like any other.
+  assert.equal(
+    clean('    ```\n    I loaded the skill.\n    ```\nRow 1'),
+    '    ```\n    ```\nRow 1',
+  );
+  assert.equal(
+    clean('   ```\nI loaded the skill.\n   ```\nRow 1'),
+    '   ```\nI loaded the skill.\n   ```\nRow 1',
+  );
+});
+
+test('a fence in a blockquote is fenced code, and it ends where the quote does', () => {
+  assert.deepEqual(
+    sanitizer.fenceMap(['> ```', '> I loaded the skill', '> ```', 'after']),
+    { fenced: [true, true, true, false], open: false },
+  );
+  assert.deepEqual(sanitizer.fenceMap(['> ```', '> x', 'after the quote']), {
+    fenced: [true, true, false],
+    open: false,
+  });
+  assert.deepEqual(
+    sanitizer.fenceMap(['> > ```', '> > x', '> > ```', 'z']).fenced,
+    [true, true, true, false],
+  );
+  assert.deepEqual(sanitizer.fenceMap(['>```', '>x', '>```']).fenced, [
+    true,
+    true,
+    true,
+  ]);
+  const quoted = '> ```\n> I loaded the skill\n> ```';
+  assert.equal(clean(quoted), quoted);
+  assert.equal(
+    clean(`${quoted}\nI loaded the skill.\nRow 1`),
+    `${quoted}\nRow 1`,
+  );
+  assert.equal(sanitizer.findNarration(quoted).length, 0);
+});
+
+test('protected spans: touching and nested matches merge into one, and a range test counts a shared character only', () => {
+  // `git a` ends where x.md starts; the URL holds the file name inside it.
+  assert.deepEqual(sanitizer.protectedRanges('`git a`x.md'), [[0, 11]]);
+  assert.deepEqual(sanitizer.protectedRanges('https://a.test/b.md'), [[0, 19]]);
+  assert.deepEqual(sanitizer.protectedRanges('`git a b.md`'), [[0, 12]]);
+  const ranges = [
+    [5, 10],
+    [20, 30],
+  ];
+  const overlaps = (start, end) => sanitizer.overlapsRange(ranges, start, end);
+  assert.deepEqual(
+    [
+      overlaps(0, 5),
+      overlaps(4, 6),
+      overlaps(9, 11),
+      overlaps(10, 12),
+      overlaps(10, 20),
+      overlaps(10, 21),
+      overlaps(29, 40),
+      overlaps(30, 40),
+      overlaps(6, 8),
+      overlaps(0, 100),
+    ],
+    [false, true, true, false, false, true, true, false, true, true],
+  );
+  assert.equal(sanitizer.overlapsRange([], 0, 5), false);
+});
+
+test('a name match that reaches into a protected span keeps the whole match', () => {
+  // The closing mark of the name's wrap is the backtick that opens the inline command.
+  assert.equal(cleanFor('konductor`git a` more'), 'konductor`git a` more');
+  assert.equal(
+    cleanFor('konductor `git a` more'),
+    'orchestrator `git a` more',
+    'a space between them: the name is prose',
+  );
+});
+
+test('a fence in a nested blockquote ends with its own closing line, and the line after it is prose', () => {
+  assert.deepEqual(
+    sanitizer.fenceMap(['> > ```', '> > x', '> > ```', '> > after']).fenced,
+    [true, true, true, false],
+  );
+  assert.deepEqual(
+    sanitizer.fenceMap(['> > ```', '> > x', '> > ```', '> after']).fenced,
+    [true, true, true, false],
+  );
+  // A fence opened one level deep is not ended by the line that still has that level.
+  assert.deepEqual(
+    sanitizer.fenceMap(['> ```', '> > x', '> ```', '> after']).fenced,
+    [true, true, true, false],
   );
 });

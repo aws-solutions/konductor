@@ -124,6 +124,21 @@ const LEAK_CASES = [
     ['plugin-name'],
   ],
 ];
+LEAK_CASES.push(
+  [
+    'a skill name in prose',
+    'with',
+    `Our ${SKILL} gives a plan.`,
+    ['skill-name'],
+  ],
+  ['an agent id in a blockquote', 'with', '> Ask k-developer.', ['agent-id']],
+  [
+    'a name left in prose next to a URL that holds it',
+    'with',
+    `Ask konductor, see https://github.com/aws-solutions/konductor/blob/main`,
+    ['agent-id'],
+  ],
+);
 for (const [name, arm, text, expected, skill = SKILL] of LEAK_CASES) {
   test(`leak scan, ${arm} arm: ${name}`, () =>
     assert.deepEqual(collectLeakIds(scan(text, { skill })), expected));
@@ -139,6 +154,13 @@ test('leak scan: near-misses are clean (ordinary prose, a one-word skill name, n
       SKILL,
     ],
     ['Follow the guidance in the AWS style guide.', SKILL],
+    // Names the sanitizer's rewrites leave alone are content, so the scan does not look for them there.
+    ['See https://github.com/aws-solutions/konductor/blob/main.', SKILL],
+    ['Run `npm install konductor-installer` first.', SKILL],
+    [`Edit \`${SKILL}/notes.md\` and ${SKILL}.md.`, SKILL],
+    ['```sh\nkonductor build\nk-developer run\n```', SKILL],
+    [`\`\`\`\nrun ${SKILL}\n\`\`\``, SKILL],
+    ['> ```\n> konductor build\n> ```', SKILL],
   ])
     assert.deepEqual(scan(text, { skill }), [], text);
   const [hit] = scan('see bench:some-thing here');
@@ -521,10 +543,10 @@ test('deterministic: the same stored answer gives the same result, and the input
 // Pinned: the one provenance hash, for the default options. Any change to a covered rule or setting changes it; bump
 // SANITIZER_VERSION when it does. Then update this line.
 const PINNED_PROVENANCE_HASH =
-  '72186e979c7af577504ba59e73541adb43943b671a2f88e694280bbdf5d7fe92';
+  '341c42300fa38eca413f7fcb979c2945dae80454252ce0e5c99c0b50014f1fa2';
 
-test('provenance: version 8, pinned, one value from every path, changed by the cap and the settings, not by per-run literals', () => {
-  assert.equal(defaultInput.provenance.sanitizerVersion, 8);
+test('provenance: version 9, pinned, one value from every path, changed by the cap and the settings, not by per-run literals', () => {
+  assert.equal(defaultInput.provenance.sanitizerVersion, 9);
   assert.equal(
     defaultInput.provenance.sanitizerRulesSha256,
     PINNED_PROVENANCE_HASH,
@@ -564,7 +586,7 @@ test('provenance: version 8, pinned, one value from every path, changed by the c
   const result = prepare('x');
   assert.deepEqual(
     [result.sanitizer_version, result.rules_sha256],
-    [8, PINNED_PROVENANCE_HASH],
+    [9, PINNED_PROVENANCE_HASH],
   );
 });
 
