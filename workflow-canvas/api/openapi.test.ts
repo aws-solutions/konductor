@@ -73,6 +73,7 @@ const STABLE_OPERATION_IDS = [
   'startRun',
   'getRun',
   'listAgents',
+  'getRunEvents',
 ];
 
 // This version has these operations and no others.
@@ -84,6 +85,7 @@ const OPERATIONS = [
   'POST /api/validate checkWorkflow',
   'POST /api/run startRun',
   'GET /api/runs/{id} getRun',
+  'GET /api/runs/{id}/events getRunEvents',
 ];
 
 // Each error status and the codes that may come with it.
@@ -1033,7 +1035,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.5.0');
+      expect(info.version).toBe('1.6.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1218,6 +1220,102 @@ describe('workflow canvas API contract', () => {
       const ids = agents.map((agent) => agent.id);
       expect(ids.length).toBeGreaterThan(0);
       expect(ids).toEqual([...new Set(ids)].sort());
+    });
+  });
+
+  describe('the events of a run', () => {
+    interface Event {
+      seq: number;
+      run_id: string;
+      type: string;
+      stage?: string;
+      status?: string;
+      reason?: string;
+      exit_code?: number;
+    }
+    interface Page {
+      events: Event[];
+      next: number;
+      finished: boolean;
+    }
+    const words = (text: string) => text.replace(/\s+/g, ' ');
+    const answers = () => jsonBodyOf(spec, 'GET /api/runs/{id}/events', '200');
+    const page = (name: string) =>
+      namedExample(answers(), name) as unknown as Page;
+    const pages = () =>
+      Object.keys(answers().examples ?? {}).map((name): [string, Page] => [
+        name,
+        page(name),
+      ]);
+
+    it('has events in the order of seq, of one run, with next after the last', () => {
+      for (const [name, { events, next }] of pages()) {
+        const seqs = events.map((event) => event.seq);
+        expect(seqs, name).toEqual([...seqs].sort((a, b) => a - b));
+        expect(new Set(events.map((e) => e.run_id)).size, name).toBeLessThan(2);
+        if (events.length > 0) expect(next, name).toBe(seqs.at(-1));
+      }
+    });
+
+    it('says a run is finished exactly when its run_finished has been read', () => {
+      for (const [name, { events, finished }] of pages()) {
+        if (events.some((e) => e.type === 'run_finished')) {
+          expect(finished, name).toBe(true);
+          expect(events.at(-1)?.type, name).toBe('run_finished');
+        }
+      }
+      expect(page('running').finished).toBe(false);
+    });
+
+    it('has no console line for a finished run, so a seq can be skipped', () => {
+      const { events } = page('halted');
+      expect(events.some((e) => e.type === 'console')).toBe(false);
+      const seqs = events.map((e) => e.seq);
+      expect(seqs.at(-1)! - seqs[0]! + 1).toBeGreaterThan(seqs.length);
+    });
+
+    it('gives the state of the run when its state events are applied in order', () => {
+      const run = (
+        jsonBodyOf(spec, 'GET /api/runs/{id}', '200').examples!['halted']!
+          .value as { run: Record<string, unknown> }
+      ).run;
+      const stages: Record<string, Record<string, string>> = Object.fromEntries(
+        (run['order'] as string[]).map((name) => [name, { status: 'pending' }]),
+      );
+      let status = 'running';
+      let exitCode: number | null = null;
+      for (const event of page('halted').events) {
+        if (event.type === 'stage_state') {
+          const { status: state, reason } = event;
+          stages[event.stage!] = reason
+            ? { status: state!, reason }
+            : { status: state! };
+        } else if (event.type === 'run_finished') {
+          status = event.status!;
+          exitCode = event.exit_code!;
+        }
+      }
+      expect(stages).toEqual(run['stages']);
+      expect(status).toBe(run['status']);
+      expect(exitCode).toBe(run['exit_code']);
+    });
+
+    it('keeps console lines live only, within 8192 bytes, and waits at most 25 seconds', () => {
+      const text = words(spec.info.description);
+      expect(text).toMatch(/A console line is live only/);
+      expect(text).toMatch(/at most 8192 bytes of UTF-8/);
+      expect(text).toMatch(/stores them nowhere/);
+      expect(text).toMatch(/at most 25 seconds/);
+      const wait = spec.paths['/api/runs/{id}/events']![
+        'get'
+      ]!.parameters!.find((p) => p.name === 'wait');
+      expect(wait?.schema?.['maximum']).toBe(25);
+    });
+
+    it('says that version 1.6.0 only adds the events of a run', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.6\.0 only adds: the operation `getRunEvents`/,
+      );
     });
   });
 

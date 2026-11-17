@@ -2,14 +2,14 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.5.0
+  version: 1.6.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
   description: |
     The HTTP API that the workflow canvas calls to open a session, load, save
-    and check a workflow file, list the agents a stage may name, and start and
-    follow a run. The local stub
+    and check a workflow file, list the agents a stage may name, and start a
+    run and follow its state and events. The local stub
     server and the real backend will both implement this document.
 
     This version covers the first release of the workflow format. A file has a
@@ -34,7 +34,7 @@ info:
     not know. Version 1.3.0 only adds: each stage of a view gains `kind` and
     `range`. Version 1.4.0 only adds: the operation `listAgents`.
     Version 1.5.0 only adds: the answer of `GET /api/workflow` gains
-    `stage_fields`.
+    `stage_fields`. Version 1.6.0 only adds: the operation `getRunEvents`.
 
     **Conventions**
 
@@ -233,11 +233,35 @@ info:
     which workflows need trust.
 
     **Following a run.** Poll `GET /api/runs/{id}` about once a second until
-    `status` is `passed` or `halted`. A finished run stays readable. A client
+    `status` is `passed` or `halted`, or follow `GET /api/runs/{id}/events`
+    (see **Run events**). A finished run stays readable. A client
     that does not know the `run_id`, such as a second tab, gets it from the
     409 `already_running` that `POST /api/run` answers while a run is active.
     The `run_id` is that of the active run, whichever process started it, and
     `GET /api/runs/{id}` reads it.
+
+    **Run events.** `GET /api/runs/{id}/events` returns what happened in a
+    run as an ordered list of events, each with a `seq` that goes up by one
+    from 1 within the run. A client resumes from the last `seq` it read. This
+    version has three types: `stage_state` when a stage moves to `running`,
+    `passed` or `blocked`, `console` for a line of a stage's standard output,
+    and `run_finished` when the run ends. Applied in order, the `stage_state`
+    and `run_finished` events give the same state as `GET /api/runs/{id}` at
+    the same moment.
+
+    A console line is live only. Before it leaves the server, any value that
+    looks like a secret is removed from it, as from an `error`, and it is cut
+    to at most 8192 bytes of UTF-8 at a character boundary. The server keeps
+    the lines of a run in memory while the run is active, at most the last
+    1000, and stores them nowhere. Once the run has finished, or after the
+    server restarts, its events have no console lines. So a `seq` can be
+    skipped in an answer, and a client does not take a skipped `seq` for a
+    lost event. The other events are kept as long as the run is readable.
+
+    The events are a long poll on plain JSON, like every other call, and not
+    an event stream. A call needs the session token and the same `Host` and
+    `Origin` checks as any `GET`, and the server holds at most one wait per
+    call, of at most 25 seconds.
 
     **Workflow text.** A workflow is one YAML file, `<name>.yml`. The text is
     YAML 1.2 read with the core schema. So only `true` and `false` (in the
@@ -450,6 +474,7 @@ paths:
                   - startRun
                   - getRun
                   - listAgents
+                  - getRunEvents
                 limits:
                   text_bytes: 262144
                   stages: 40
@@ -1367,6 +1392,160 @@ paths:
           $ref: '#/components/responses/MethodNotAllowedGet'
         '500':
           $ref: '#/components/responses/StorageFailure'
+  /api/runs/{id}/events:
+    get:
+      operationId: getRunEvents
+      summary: Follow the events of a run
+      description: |
+        Returns the events of a run in order, from the one after `after`, as a
+        long poll. See **Run events** for what an event is and which events a
+        server keeps.
+
+        If the run has events after `after`, or it has finished, the answer
+        comes at once. Otherwise the server waits up to `wait` seconds for the
+        next event and answers with it, or with no events when the time is
+        up. The client calls again with `after` set to `next`. A client that
+        lost its place, such as one that reloaded, starts again from `after`
+        0 and reads the state of the run from the events, or from
+        `GET /api/runs/{id}`.
+
+        The checks come in this order: the query (400 `bad_request`), the run
+        (404 `not_found`, for a malformed id as well), then `after` against
+        the run (400 `bad_request` when it is above the last `seq` the run
+        has given out).
+      tags: [Run]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The `run_id` that `POST /api/run` returned.
+          schema:
+            $ref: '#/components/schemas/RunId'
+          example: 20261024-0412-a7b3c
+        - name: after
+          in: query
+          required: false
+          description: |
+            Return the events with a `seq` above this one. It defaults to 0,
+            which is every event the server has. Given more than once, it is
+            400 `bad_request`.
+          schema:
+            type: integer
+            minimum: 0
+          example: 3
+        - name: wait
+          in: query
+          required: false
+          description: |
+            How many seconds to wait for an event, from 0 to 25. It defaults to
+            0, which answers at once. Given more than once, it is 400
+            `bad_request`.
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 25
+          example: 20
+      responses:
+        '200':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The events after `after` that have happened.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunEventsResponse'
+              examples:
+                running:
+                  summary: The first stage passed and the second has started
+                  value:
+                    events:
+                      - seq: 4
+                        run_id: 20261024-0412-a7b3c
+                        at: '2026-10-24T04:12:49Z'
+                        type: stage_state
+                        stage: write
+                        status: passed
+                      - seq: 5
+                        run_id: 20261024-0412-a7b3c
+                        at: '2026-10-24T04:12:49Z'
+                        type: stage_state
+                        stage: review
+                        status: running
+                      - seq: 6
+                        run_id: 20261024-0412-a7b3c
+                        at: '2026-10-24T04:13:02Z'
+                        type: console
+                        stage: review
+                        n: 1
+                        text: Reading README.md.
+                    next: 6
+                    finished: false
+                halted:
+                  summary: A finished run, read again from the start
+                  value:
+                    events:
+                      - seq: 1
+                        run_id: 20261024-0412-a7b3c
+                        at: '2026-10-24T04:12:05Z'
+                        type: stage_state
+                        stage: write
+                        status: running
+                      - seq: 4
+                        run_id: 20261024-0412-a7b3c
+                        at: '2026-10-24T04:12:49Z'
+                        type: stage_state
+                        stage: write
+                        status: blocked
+                        reason: RESULT_MISSING
+                      - seq: 5
+                        run_id: 20261024-0412-a7b3c
+                        at: '2026-10-24T04:12:49Z'
+                        type: run_finished
+                        status: halted
+                        exit_code: 1
+                    next: 5
+                    finished: true
+                nothingYet:
+                  summary: The wait ended with no new event
+                  value:
+                    events: []
+                    next: 6
+                    finished: false
+        '400':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: |
+            `after` or `wait` is not a whole number in range, is given more
+            than once, or `after` is above the last `seq` of the run.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: '`after` is past the last event of the run.'
+                code: bad_request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: There is no run with this id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: There is no run with this id.
+                code: not_found
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedGet'
+        '500':
+          $ref: '#/components/responses/StorageFailure'
 components:
   securitySchemes:
     bearerAuth:
@@ -2189,6 +2368,125 @@ components:
       pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'
       description: A UTC time to the whole second, ending in `Z`.
       examples: ['2026-10-24T04:12:05Z']
+    RunEventsResponse:
+      type: object
+      required: [events, next, finished]
+      properties:
+        events:
+          type: array
+          description: The events after `after`, in the order of `seq`.
+          items:
+            $ref: '#/components/schemas/RunEvent'
+        next:
+          type: integer
+          minimum: 0
+          description: |
+            The `seq` to send as `after` next time: that of the last event
+            here, or the `after` of the call when there is none.
+        finished:
+          type: boolean
+          description: |
+            True once the run is `passed` or `halted`. No event comes after
+            its `run_finished`, so a client stops calling.
+    RunEvent:
+      description: |
+        One thing that happened in a run. Every event has `seq`, `run_id`,
+        `at` and `type`. A later version may add types, and a client skips an
+        event of a type it does not know.
+      oneOf:
+        - $ref: '#/components/schemas/StageStateEvent'
+        - $ref: '#/components/schemas/ConsoleEvent'
+        - $ref: '#/components/schemas/RunFinishedEvent'
+    EventSeq:
+      type: integer
+      minimum: 1
+      description: |
+        The place of the event in its run. It goes up by one from 1, over
+        every event the run gives out, console lines included.
+    StageStateEvent:
+      type: object
+      required: [seq, run_id, at, type, stage, status]
+      description: |
+        A stage moved to a new status. A stage starts `pending`, which has no
+        event. A `blocked` stage has a `reason`, as in a run.
+      properties:
+        seq:
+          $ref: '#/components/schemas/EventSeq'
+        run_id:
+          $ref: '#/components/schemas/RunId'
+        at:
+          $ref: '#/components/schemas/Timestamp'
+        type:
+          type: string
+          const: stage_state
+        stage:
+          $ref: '#/components/schemas/StageName'
+        status:
+          $ref: '#/components/schemas/StageStatus'
+        reason:
+          $ref: '#/components/schemas/StageReason'
+      if:
+        properties:
+          status:
+            const: blocked
+      then:
+        required: [reason]
+        properties:
+          reason:
+            $ref: '#/components/schemas/StageReason'
+      else:
+        properties:
+          reason: false
+    ConsoleEvent:
+      type: object
+      required: [seq, run_id, at, type, stage, n, text]
+      description: |
+        One line of the standard output of a stage, live only (see **Run
+        events**).
+      properties:
+        seq:
+          $ref: '#/components/schemas/EventSeq'
+        run_id:
+          $ref: '#/components/schemas/RunId'
+        at:
+          $ref: '#/components/schemas/Timestamp'
+        type:
+          type: string
+          const: console
+        stage:
+          $ref: '#/components/schemas/StageName'
+        n:
+          type: integer
+          minimum: 1
+          description: The number of the line in the stage's output, from 1.
+        text:
+          type: string
+          maxLength: 8192
+          pattern: '^[^\r\n]*$'
+          description: |
+            The line, with no line break, at most 8192 bytes of UTF-8, with
+            any value that looks like a secret removed.
+    RunFinishedEvent:
+      type: object
+      required: [seq, run_id, at, type, status, exit_code]
+      description: The run ended. It is the last event of the run.
+      properties:
+        seq:
+          $ref: '#/components/schemas/EventSeq'
+        run_id:
+          $ref: '#/components/schemas/RunId'
+        at:
+          $ref: '#/components/schemas/Timestamp'
+        type:
+          type: string
+          const: run_finished
+        status:
+          type: string
+          enum: [passed, halted]
+        exit_code:
+          type: integer
+          minimum: 0
+          description: The `exit_code` of the run.
     RunStatus:
       type: string
       enum: [running, passed, halted]

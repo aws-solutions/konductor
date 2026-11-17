@@ -25,6 +25,11 @@ export async function openStub(options: StubOptions = {}): Promise<TestStub> {
     launchCode: LAUNCH_CODE,
     clock,
     runSuffix: countingSuffix(),
+    // A long poll moves the fake clock instead of waiting.
+    pause: (ms) => {
+      clock.advance(ms);
+      return Promise.resolve();
+    },
     ...options,
   });
   return { stub, clock, client: new StubClient(stub.port) };
