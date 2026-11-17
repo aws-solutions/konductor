@@ -12,11 +12,12 @@ const { DESCRIPTORS } = require('../lib/harness/descriptors.js');
 const { RUNTIMES, USD_RUNTIMES, isUsdRuntime, runtimeOf, descriptorOf, costUnitOf, supporting, notSupporting, joinNames, DEFAULT_RUNTIME } = require('../lib/harness/runtime.js');
 const { FLAGS } = require('../lib/cli-flags.js');
 const { parseArmSpec, resolveArm, OC_PREFIX, CC_PREFIX } = require('../lib/arms.js');
+const { kiroArgs } = require('../lib/harness/kiro.js');
 
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'schema', 'result.schema.json'), 'utf8'));
 const SUPPORTS = ['trace', 'stopOn', 'effort', 'runCreditLimit', 'multiTurn', 'capCommands', 'skillStudy', 'agentEngine', 'prepareOnly'];
-const FIELDS = ['id', 'label', 'proseName', 'armPrefix', 'costUnit', 'streamFormat', 'supports', 'flags', 'multiTurnNote', 'trace'];
-const STREAM_FORMATS = ['kiro-acp', 'opencode-json', 'claude-stream-json'];
+const FIELDS = ['id', 'label', 'proseName', 'armPrefix', 'costUnit', 'streamFormat', 'supports', 'flags', 'noPrompt', 'multiTurnNote', 'trace'];
+const STREAM_FORMATS = ['kiro-acp', 'opencode-json', 'claude-stream-json', 'strands-jsonl'];
 const CONTRACT = fs.readFileSync(path.join(__dirname, '..', 'lib', 'harness', 'CONTRACT.md'), 'utf8');
 
 // First-column names of the table that follows the header row starting with `header`, in the Descriptor section.
@@ -77,11 +78,14 @@ test('exactly one runtime has no arm prefix, and prefixes are unique and do not 
   for (const a of set) for (const b of set) if (a !== b) assert.ok(!a.startsWith(b), `${a} starts with ${b}`);
 });
 
+// Strands has plant arms only, so its round trip uses one; every other runtime uses its vanilla arm.
+const sampleArm = (d) => (d.id === 'strands' ? { spec: `${d.armPrefix}plant-policy`, kind: 'plant' } : { spec: `${d.armPrefix}vanilla`, kind: 'vanilla' });
+
 test('arm prefix round trip: spec, resolved arm, runtime and harness agree for every runtime', () => {
   for (const [id, d] of entries) {
-    const spec = `${d.armPrefix}vanilla`;
+    const { spec, kind } = sampleArm(d);
     const parsed = parseArmSpec(spec);
-    assert.equal(parsed.kind, 'vanilla');
+    assert.equal(parsed.kind, kind);
     if (d.armPrefix) assert.equal(parsed[d.armPrefix.slice(0, -1)], true, `${spec} flag`);
     const arm = resolveArm(spec, '/nonexistent');
     assert.equal(arm.id, spec);
@@ -89,6 +93,16 @@ test('arm prefix round trip: spec, resolved arm, runtime and harness agree for e
     assert.equal(runtimeOf(arm), id);
     assert.equal(harnessFor(arm).id, id);
   }
+});
+
+test('noPrompt names the flags and env each runtime uses to skip its own prompts; kiroArgs passes the kiro-cli flags', () => {
+  for (const [id, d] of entries) {
+    assert.deepEqual(Object.keys(d.noPrompt).sort(), ['env', 'flags', 'note'], `${id}.noPrompt keys`);
+    assert.ok(Object.isFrozen(d.noPrompt) && Array.isArray(d.noPrompt.flags) && typeof d.noPrompt.note === 'string', `${id}.noPrompt`);
+  }
+  const args = kiroArgs({ arm: { vanilla: true, agent: null }, task: { prompt: 'p' }, config: { model: 'm', effort: 'high', agentEngine: 'v2' } });
+  for (const flag of registry['kiro-cli'].noPrompt.flags) assert.ok(args.includes(flag), `kiroArgs lacks ${flag}`);
+  assert.deepEqual({ ...registry.strands.noPrompt.env }, { BYPASS_TOOL_CONSENT: 'true' });
 });
 
 test('the exported oc- and cc- prefixes still match their descriptors', () => {

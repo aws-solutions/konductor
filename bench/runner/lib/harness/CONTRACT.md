@@ -1,6 +1,6 @@
 # Harness contract
 
-A harness runs one agent CLI for one benchmark run. `runner/lib/harness/index.js` maps a runtime name to a harness module (`harnessFor(armOrResult)`). Today there are three: `kiro.js` (`kiro-cli`), `opencode.js` (`opencode`) and `claude-code.js` (`claude-code`).
+A harness runs one agent CLI for one benchmark run. `runner/lib/harness/index.js` maps a runtime name to a harness module (`harnessFor(armOrResult)`). Today there are four: `kiro.js` (`kiro-cli`), `opencode.js` (`opencode`), `claude-code.js` (`claude-code`) and `strands.js` (`strands`, plant arms only: it runs `bench/physical/strands/launch.py`, a Strands agent with forwarding plant tool stubs).
 
 This file lists what the runner calls. It is derived from the call sites in `run-one.js`, `orchestrate.js`, `run-cmd.js`, `arm-opts.js`, `skills.js` and `trace.js`, and it is checked against the three modules by reading them. `runner/test/harness-contract.test.js` reads the member tables below and checks every entry of `HARNESSES` against them, then runs `parseResult` on a recorded stream and checks `acc`. A missing member fails that test instead of raising a `TypeError` in the middle of a run.
 
@@ -58,9 +58,10 @@ Every harness module exports `meta`, a frozen record of static facts about the r
 | `proseName` | string | the name used inside error messages and notes (`kiro-cli`, `opencode`, `Claude Code`) |
 | `armPrefix` | string | arm id prefix: `''` for kiro-cli, `oc-`, `cc-`. Exactly one runtime has `''`; it is the fallback of `runtimeOf` |
 | `costUnit` | `'credits'` or `'usd'` | `'usd'` runtimes are the `USD_RUNTIMES` and fill `acc.usage` |
-| `streamFormat` | `'kiro-acp'`, `'opencode-json'` or `'claude-stream-json'` | the shape of `stream.jsonl`. `stop-watch.js`, `trace.js` and `judge/bundle.js` pick their parser from it. A runtime with a new shape adds a value here and a parser to each of those three |
+| `streamFormat` | `'kiro-acp'`, `'opencode-json'`, `'claude-stream-json'` or `'strands-jsonl'` | the shape of `stream.jsonl`. `stop-watch.js`, `trace.js` and `judge/bundle.js` pick their parser from it. A runtime with a new shape adds a value here and a parser to each of those three |
 | `supports` | object of booleans | `trace`, `stopOn`, `effort`, `runCreditLimit`, `multiTurn`, `capCommands`, `skillStudy`, `agentEngine`, `prepareOnly` |
 | `flags` | object | `own`: run flags that only this runtime's arms accept (refused when no arm of the run uses it). `refused`: run flag to the reason it does not apply, in the order `run` checks them. `perRunCapFlag`: the flag that caps one run's cost, named in the `--run-credit-limit` refusal, or `null` |
+| `noPrompt` | object | how runs skip the agent's own approval prompts (design 15.3, A-4): `flags` passed on the command line, `env` variables set for the agent, and a `note` on what they cover. `strands.js` sets `env`; `kiroArgs` passes the kiro-cli flag, checked by `registry.test.js` |
 | `multiTurnNote` | string or `null` | why autonomy tasks are refused; a string exactly when `supports.multiTurn` is false |
 | `trace` | object | what `trace` says about the run. `sessionFiles`: the harness saves session files (`trace` reports their absence). `timeNote`: how time is known in `stream.jsonl`. `skillsListing`: `'agent-filter'` (the installed agent's skill filter) or `'slash-commands'` (the session init); `null` when `supports.trace` is false |
 

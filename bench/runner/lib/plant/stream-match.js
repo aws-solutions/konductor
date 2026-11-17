@@ -4,8 +4,10 @@
 // Pairs plant calls in the agent's stream with gateway `call` events as a multiset of (tool, canonical args).
 // Equal keys are interchangeable; a call on one side only is a mismatch. Never trusts the stream for safety.
 
-const { argsSha256, streamArgs } = require('./canonical.js');
+const { argsSha256, canonicalArgs, streamArgs } = require('./canonical.js');
 const { SERVER_NAME } = require('./agent-file.js');
+const { TOOLS } = require('./meta.js');
+const { censusProblems } = require('./strands-adapter.js');
 const { isV3Call, mcpCallOf, mcpInputOf } = require('../stream.js');
 
 /**
@@ -50,6 +52,69 @@ function plantCallsInStream(events) {
   return calls;
 }
 
+const PLANT_TOOLS = new Set(TOOLS);
+const groupBy = (items, key) => {
+  const map = new Map();
+  for (const item of items) map.set(key(item), [...(map.get(key(item)) ?? []), item]);
+  return map;
+};
+const sameResult = (a, b) => a.status === b.status && canonicalArgs(a.content ?? null) === canonicalArgs(b.content ?? null);
+
+/**
+ * Plant calls and adapter facts from a parsed Strands trace (`strands-jsonl`, written by physical/strands/launch.py).
+ *
+ * The stream side is what the model asked for: each `model_tool_use` of a plant tool, recorded at the model before any
+ * hook or middleware could change it, keyed by its input. A model call that no stub ever forwarded is `agent_cancelled`
+ * (a hook, middleware or interrupt in the agent stopped it): it is counted in `adapter.agentCancelled` and left out of
+ * the match, so it is not a mismatch (design 15.3). The adapter facts compare the model's calls with the stubs'
+ * `forward` lines and the agent's final `tool_result`s: `rewrittenArgs` (a stub got other arguments or another tool),
+ * `retried` (one model call forwarded more than once), `rewrittenResults` (the agent saw a result the stub did not
+ * return) and `unmatchedForwards` (a forward with no model call). Rewrites and retries already break the match with
+ * gateway.jsonl; a rewritten result does not, so the scorer adds it to the mismatches.
+ *
+ * `forbidHooks` true (a plain Strands arm in a counted suite) also lists the census problems; the scorer counts them
+ * as mismatches, because the run's path cannot be trusted. Returns `{calls, adapter}`.
+ */
+function plantCallsInStrandsTrace(events, { forbidHooks = false } = {}) {
+  const uses = events.filter((e) => e?.type === 'model_tool_use' && PLANT_TOOLS.has(e.name));
+  const forwards = groupBy(events.filter((e) => e?.type === 'forward'), (f) => f.toolUseId);
+  const results = groupBy(events.filter((e) => e?.type === 'tool_result'), (r) => r.toolUseId);
+  const start = events.find((e) => e?.type === 'start') ?? null;
+  const census = events.filter((e) => e?.type === 'census').at(-1) ?? null;
+  const adapter = {
+    kind: 'B', name: start?.adapter?.name ?? null, version: start?.adapter?.version ?? null, strands: start?.strands ?? null,
+    hooks: forbidHooks ? 'refuse' : 'allowed', hookProblems: forbidHooks ? censusProblems(census) : [],
+    agentCancelled: 0, rewrittenArgs: 0, retried: 0, rewrittenResults: 0, unmatchedForwards: 0,
+  };
+  const calls = [];
+  for (const use of uses) {
+    const sent = forwards.get(use.toolUseId) ?? [];
+    if (!sent.length) {
+      adapter.agentCancelled += 1;
+      continue;
+    }
+    // Input that was not valid JSON is null: its tool stays unreadable, so it never pairs and stays a mismatch.
+    const key = use.input === null ? null : argsSha256(use.input);
+    calls.push({ toolCallId: use.toolUseId, tool: use.input === null ? null : use.name, argsSha256: key, engine: 'strands' });
+    if (sent.length > 1) adapter.retried += 1;
+    if (sent.some((f) => f.tool !== use.name || argsSha256(f.args ?? {}) !== key)) adapter.rewrittenArgs += 1;
+    const seen = results.get(use.toolUseId)?.at(-1);
+    if (seen && !sameResult(seen, sent.at(-1).result ?? {})) adapter.rewrittenResults += 1;
+  }
+  const asked = new Set(uses.map((u) => u.toolUseId));
+  adapter.unmatchedForwards = [...forwards.keys()].filter((id) => !asked.has(id)).length;
+  return { calls, adapter };
+}
+
+/**
+ * The plant calls of a parsed agent stream `events` in stream format `format` (a harness descriptor's `streamFormat`):
+ * `{calls, adapter}`, where `adapter` is null for the shim (kind A) formats. `opts` reach the Strands reader.
+ */
+function streamCallsOf(format, events, opts = {}) {
+  if (format === 'strands-jsonl') return plantCallsInStrandsTrace(events, opts);
+  return { calls: plantCallsInStream(events), adapter: null };
+}
+
 /** Gateway `call` events from parsed gateway log `lines`: `{callId, tool, argsSha256}` in log order. */
 function plantCallsInGatewayLog(lines) {
   return lines.filter((l) => l.type === 'call').map((l) => ({ callId: `c${l.seq}`, tool: l.tool, argsSha256: l.args_sha256 }));
@@ -71,4 +136,4 @@ function matchCalls(streamCalls, gatewayCalls) {
   return { pairs, streamOnly: [...waiting.values()].flat(), gatewayOnly };
 }
 
-module.exports = { plantCallsInStream, plantCallsInGatewayLog, matchCalls };
+module.exports = { plantCallsInStream, plantCallsInStrandsTrace, streamCallsOf, plantCallsInGatewayLog, matchCalls };

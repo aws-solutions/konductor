@@ -7,6 +7,7 @@ const path = require('node:path');
 const { parseStream, aggregateStream } = require('../runner/lib/stream.js');
 const { aggregateEvents } = require('../runner/lib/harness/opencode-parse.js');
 const claudeParse = require('../runner/lib/harness/claude-code-parse.js');
+const strandsParse = require('../runner/lib/harness/strands-parse.js');
 const { runtimeOf, descriptorOf } = require('../runner/lib/harness/runtime.js');
 const { ANSWER_KEY } = require('../runner/lib/sandbox.js');
 const { redact } = require('./redact.js');
@@ -46,6 +47,7 @@ function readText(file) {
 const FINAL_TEXT = {
   'kiro-acp': (events) => aggregateStream(events).finalText,
   'opencode-json': (events) => aggregateEvents(events).lastText,
+  'strands-jsonl': (events) => strandsParse.aggregateEvents(events).finalText,
   'claude-stream-json': (events) => {
     const a = claudeParse.aggregateEvents(events);
     const blank = (t) => typeof t !== 'string' || !t.trim();

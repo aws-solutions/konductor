@@ -10,7 +10,7 @@ const { wilson, fmtInterval } = require('./probes-stats.js');
 const { table } = require('./render.js');
 const { readPlantField, mainFailure, tallyMeasures, PlantFormatError, EXCLUSION_POLICY, NOT_COUNTED } = require('../runner/lib/plant/score.js');
 const { readManifest, sha256Hex, ReleaseRefused, MANIFEST_FILE } = require('../runner/lib/plant/manifest.js');
-const { PLANT_ARMS } = require('../runner/lib/arms.js');
+const { isPlantArmId } = require('../runner/lib/arms.js');
 const { controlOf, controlsSection, controlLines } = require('./plant-controls.js');
 
 const ANALYSIS_PLAN_FILE = 'analysis-plan.md';
@@ -78,7 +78,7 @@ function readRelease(dir) {
 }
 
 /** Whether a result.json comes from a plant arm (`plant-policy` or `plant-allowall`). */
-const isPlantRun = (result) => Object.hasOwn(PLANT_ARMS, result.armId);
+const isPlantRun = (result) => isPlantArmId(result.armId);
 
 /** The plant row of the run in `dir`, with its suite's run config, null for a non-plant run. Throws on a plant run with no plant field or an unknown schemaVersion. */
 function plantRowOf(root, dir) {
@@ -234,6 +234,17 @@ function warningsOf({ flags, cgroups, isolations, integrity, floor, notCounted }
 }
 
 /** The header block (14.7 item 1) for `release` over `rows`. */
+/**
+ * The header's adapter line for `plants`. A kind-B agent's plant tools are stubs that forward, so it differs a little
+ * from the agent its owner ships, and the header says so (design 15.2). Throws PlantReportError on a mix of kinds,
+ * since the arm tables group by arm name and would pool a Kiro CLI arm with a Strands arm of the same name.
+ */
+function adapterLimit(plants) {
+  const kinds = [...new Set(plants.map((p) => p.adapter?.kind ?? 'A'))];
+  if (kinds.length > 1) throw new PlantReportError('a plant report covers one adapter kind; these runs mix the Kiro CLI shim (kind A) and Strands forwarding stubs (kind B), so report them apart');
+  return kinds[0] === 'B' ? 'adapter: kind B, a Strands agent whose plant tools are forwarding stubs, not the agent as its owner ships it' : 'adapter: kind A, Kiro CLI through the MCP shim';
+}
+
 function headerOf(release, rows, integrity, notCountedRows) {
   const plants = rows.map((r) => r.plant);
   const flags = flagCounts(plants);
@@ -243,7 +254,7 @@ function headerOf(release, rows, integrity, notCountedRows) {
   for (const why of notCountedRows.flatMap(notCountedOf)) notCounted[why] = (notCounted[why] ?? 0) + 1;
   const warnings = warningsOf({ flags, cgroups, isolations, integrity, floor: release.floor, notCounted });
   const limits = [...FIXED_LIMITS, `isolation: ${isolations.map((m) => m ?? 'not recorded').join('; ')}`, `sandbox cgroup: ${cgroups.map((c) => c ?? 'not recorded').join('; ')}`,
-    `plantPolicyGap trials: ${flags.plantPolicyGap ?? 0}`];
+    `plantPolicyGap trials: ${flags.plantPolicyGap ?? 0}`, adapterLimit(plants)];
   return {
     release: release.release, manifestSha256: release.manifestSha256, keyId: release.keyId, analysisPlanSha256: release.analysisPlanSha256,
     exclusionPolicy: EXCLUSION_POLICY, label: 'SIMULATOR ONLY', status: warnings.length ? 'WARN' : 'PASS', warnings, limits,

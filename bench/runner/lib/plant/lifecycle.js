@@ -12,6 +12,8 @@ const { GatewayProcess, runningHashProblems } = require('./gateway-proc.js');
 const { writePlantAgent } = require('./agent-file.js');
 const { scorePlant } = require('./score.js');
 const { setModes } = require('./intake.js');
+const { installForwarder, releaseForwarder, writeRunFile, PLANT_DIR } = require('./strands-adapter.js');
+const { descriptorOf } = require('../harness/runtime.js');
 
 const SHIM = path.join(__dirname, 'shim.js');
 const SOCKET_PATH_MAX = 107;
@@ -171,6 +173,7 @@ class PlantRun {
       plant = scorePlant({
         identity: { release: this.suite.release.manifest.release, manifestSha256: this.suite.release.manifestSha256, keyId: this.suite.release.keyId, arm: this.arm.plant.arm, counted: this.suite.counted, comparable: this.suite.comparable, notCounted: this.suite.notCounted, seed: this.suite.tasks.seedOf(this.task.id) },
         environment: this.task.environment, gatewayText: this.texts.gateway, worldText: this.texts.world, streamEvents: events, finalText: agg?.finalText ?? null,
+        streamFormat: descriptorOf(this.arm.runtime).streamFormat, forbidHooks: this.suite.counted && this.arm.plant.hooks === 'refuse',
         flags: [...meta.flags, ...this.runnerFlags({ agg, exec }), ...extraFlags], unscrubbedFiles: meta.unscrubbed ?? [],
         gateway: { ready: this.gateway.readyAt !== null && this.startError === null, heartbeatGaps: this.gateway.heartbeatGaps(), runningHashOk: this.hashProblems.length === 0 },
         refusalRule: this.suite.refusalRule,
@@ -191,7 +194,8 @@ class PlantRun {
   dispose() {
     this.gateway.kill();
     fs.rmSync(this.socketRoot, { recursive: true, force: true });
-    fs.chmodSync(this.plantDir, 0o700);
+    if (this.arm.runtime === 'strands') releaseForwarder(this.plantDir);
+    else fs.chmodSync(this.plantDir, 0o700);
   }
 }
 
@@ -217,10 +221,16 @@ async function openPlantRun({ suite, arm, task, runRoot, home, cwd, outDir }) {
   const socketRoot = fs.mkdtempSync(path.join(suite.socketParent, 's-'));
   const socketPath = path.join(socketRoot, 'gw.sock');
   if (Buffer.byteLength(socketPath) > SOCKET_PATH_MAX) throw new Error(`socket path ${socketPath} passes ${SOCKET_PATH_MAX} bytes`);
-  const plantDir = path.join(runRoot, 'plant');
-  const shimPath = path.join(plantDir, 'shim.js');
-  writePlantAgent(home, { shimPath, socketPath, nodeBin: process.execPath });
-  installShim(plantDir, shimPath);
+  const plantDir = path.join(runRoot, PLANT_DIR);
+  if (arm.runtime === 'strands') {
+    // Kind B: the forwarder dials gw.sock from inside the agent process; its run file names the socket, nothing more.
+    writeRunFile(home, { socketPath });
+    installForwarder(plantDir);
+  } else {
+    const shimPath = path.join(plantDir, 'shim.js');
+    writePlantAgent(home, { shimPath, socketPath, nodeBin: process.execPath });
+    installShim(plantDir, shimPath);
+  }
   const gateway = new GatewayProcess({
     python: suite.python, stdoutPath: path.join(logDir, 'gateway.stdout'), stderrPath: path.join(logDir, 'gateway.stderr'),
     deadlines: suite.deadlines, ...(suite.makeToken ? { makeToken: suite.makeToken } : {}),

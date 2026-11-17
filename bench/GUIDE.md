@@ -365,6 +365,8 @@ Signing a release is done by the custodian with `node bench/physical/ci/plant-re
 
 A suite run with `--kiro-bin` pointing at a fake control is a control suite. Its trials end in well under a second, so bench skips its "every run finished in under a second" check (exit 5) for that suite only. It logs `control suite: short-run check skipped` and records it in `summary.json`. A real plant suite still gets the check.
 
+Strands agents can run the plant too (Phase 2, in progress). The arms are `st-plant-policy` and `st-plant-allowall`. The agent's plant tools are stubs: each sends its call to the same gateway and hands back the answer, so the gateway still decides every call and the scoring is the same. Only a scripted fake model is enabled, so these runs cost nothing and use no AWS credentials. Strands lets an agent's own hooks cancel, change or repeat a tool call. Before the first trial bench lists every such hook. A counted suite refuses one on a plain arm; to measure such an agent anyway, use the `-hooked` arm, which keeps its numbers apart. A call the agent's own hook stopped is marked `agent_cancelled`. A changed or repeated call is a mismatch, which counts as a failure. See the Strands part of the plant section in README.md.
+
 ---
 
 ## Where to go next

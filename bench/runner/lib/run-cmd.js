@@ -11,7 +11,7 @@ const { resolveArm } = require('./arms.js');
 const { applyArmOptions, attachVariant } = require('./arm-opts.js');
 const { applyOracle } = require('./oracle.js');
 const { STOP_ON } = require('./stop-watch.js');
-const { harnessFor, opencode: oc, claudeCode: cc } = require('./harness/index.js');
+const { harnessFor, opencode: oc, claudeCode: cc, strands: st } = require('./harness/index.js');
 const { AGENT_ENGINES, DEFAULT_ENGINE, isUsdRuntime, descriptorOf, supporting, notSupporting, joinNames } = require('./harness/runtime.js');
 const { DESCRIPTORS } = require('./harness/descriptors.js');
 const { readProfile } = require('./harness/opencode-creds.js');
@@ -35,6 +35,7 @@ const { maxAuthFailuresOf, AUTH_EXIT_CODE } = require('./auth-failure.js');
 const { makeLoginCheck } = require('./login-check.js');
 const { preparePlantSuite } = require('./plant/intake.js');
 const { preflightWalls } = require('./plant/walls.js');
+const { preflightStrands } = require('./plant/strands-census.js');
 const { makeIso } = require('./run-one.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
@@ -197,6 +198,7 @@ async function cmdRun(opts, deps = {}) {
   if (runtimes.length > 1) throw new Error(`arms from different harnesses cannot share one run (${arms.map((a) => `${a.id}: ${harnessFor(a).id}`).join(', ')}); run them separately with different --out`);
   const isOc = runtimes[0] === 'opencode';
   const isCc = runtimes[0] === 'claude-code';
+  const isSt = runtimes[0] === 'strands';
   const desc = descriptorOf(runtimes[0]);
   const unit = desc.costUnit;
   const isUsd = unit === 'usd';
@@ -280,7 +282,10 @@ async function cmdRun(opts, deps = {}) {
   }
   const ccModel = isCc ? opts.model || cc.DEFAULT_MODEL : null;
   if (isCc && !cc.canonicalModel(ccModel)) throw new Error('--model needs a Bedrock model id, for example us.anthropic.claude-sonnet-5-5');
-  const config = isCc
+  if (isSt && !String(opts.model ?? '').startsWith('fake:')) throw new Error('Strands arms need --model fake:<script.json>: only the scripted fake model is enabled, so no paid model call can run');
+  const config = isSt
+    ? { model: opts.model, effort: 'default' }
+    : isCc
     ? { model: ccModel, canonicalModel: cc.canonicalModel(ccModel), effort: 'default' }
     : isOc
     ? { model: opts.model || oc.DEFAULT_MODEL, effort: oc.variantOf(opts.effort || DEFAULT_EFFORT) }
@@ -332,6 +337,11 @@ async function cmdRun(opts, deps = {}) {
       const shadow = cc.PROFILE_VARS.filter((k) => process.env[k]);
       if (shadow.length) log(`note: ${shadow.join(', ')} ${shadow.length === 1 ? 'is' : 'are'} set here and is not passed to claude (the SDK would skip the exported keys)`);
     }
+    if (isSt) {
+      const value = (name) => (opts[name] && opts[name] !== true ? opts[name] : null);
+      ctx.strands = st.resolveStrands({ python: value('strands-python') ?? 'python3', agentFile: value('strands-agent') });
+      log(`strands-agents ${ctx.strands.version} (${ctx.strands.python}), agent ${ctx.strands.agentFile ?? 'plain Agent'}, model ${config.model}, no credentials passed`);
+    }
     const { prepared, errors } = prepareAll({ arms, ctx, log, allowPartial: Boolean(opts['allow-partial']) });
     log(`arms:\n${preflightTable(arms, prepared, errors)}`);
 
@@ -354,6 +364,11 @@ async function cmdRun(opts, deps = {}) {
         plantSuite.walls = walls;
         log(`plant walls: prober passed; ${walls.checklist.map((c) => `${c.id} ${c.state}`).join(', ')}; cgroup ${walls.cgroup.ok ? walls.cgroup.caps : `missing (${walls.cgroup.reason})`}`);
       }
+      if (isSt) {
+        const wrap = (file, args) => makeIso(ctx, arms[0], scratchDir, null).wrap(file, args);
+        plantSuite.strandsCensus = preflightStrands({ strands: ctx.strands, suite: plantSuite, arms, env: st.env({ home: scratchDir, tmpdir: scratchDir }), scratch: scratchDir, wrap });
+        log(`plant: Strands hook census: ${plantSuite.strandsCensus.problems.length ? plantSuite.strandsCensus.problems.join('; ') : 'no hook, middleware or tool swap that can change a plant call'}`);
+      }
       if (plantSuite.hostNoise.length) log(`warning: plant: host failed quiet-host checks (${plantSuite.hostNoise.join(', ')}); this suite is not counted`);
       log(`plant release ${plantSuite.release.manifest.release} (manifest ${plantSuite.release.manifestSha256.slice(0, 12)}, key ${plantSuite.release.keyId.slice(0, 12)}), ${plantSuite.control ? 'control' : plantSuite.counted ? 'counted' : `NOT COUNTED (${plantSuite.notCounted.join('; ')})`} suite`);
     }
@@ -367,7 +382,9 @@ async function cmdRun(opts, deps = {}) {
       absExclude: [outDir, cacheDir, cargoTarget, `${cargoTarget}-mcp`, scratchDir, ...(realCache ? [realCache] : [])],
     };
 
-    if (isOc) {
+    if (isSt) {
+      ctx.envInfo = { kiroCliVersion: null, harnessVersion: ctx.strands.version, modelListSnapshotPath: null };
+    } else if (isOc) {
       ctx.envInfo = { kiroCliVersion: null, harnessVersion: ctx.opencode.version, modelListSnapshotPath: null, region: oc.REGION };
     } else if (isCc) {
       ctx.envInfo = { kiroCliVersion: null, harnessVersion: ctx.claude.version, modelListSnapshotPath: null, region: ccRegion };
@@ -395,7 +412,11 @@ async function cmdRun(opts, deps = {}) {
       arms: rc.armRecords(arms, prepared, errors),
       originMain: mainArm ? { originMainSha: mainArm.originMainSha, localMainSha: mainArm.localMainSha, behindOrigin: mainArm.behindOrigin, usedRef: mainArm.ref } : null,
       modelNormalized: arms.some((a) => !a.vanilla),
-      ...(isOc ? {
+      ...(isSt ? {
+        harnessVersion: ctx.strands.version,
+        strands: { python: ctx.strands.python, version: ctx.strands.version, agentFile: ctx.strands.agentFile, adapter: 'kind B: plant tools are forwarding stubs', census: plantSuite?.strandsCensus ?? null },
+        env: rc.envPolicy(process.env, []),
+      } : isOc ? {
         harnessVersion: ctx.opencode.version,
         opencode: {
           npmPackage: `opencode-ai@${oc.VERSION}`, version: ctx.opencode.version, binaryPath: ctx.opencode.bin, binarySha256: ctx.opencode.sha256,
@@ -438,7 +459,9 @@ async function cmdRun(opts, deps = {}) {
       fs.mkdirSync(path.join(outDir, 'variants'), { recursive: true });
       for (const v of variants) fs.writeFileSync(path.join(outDir, 'variants', `${v.variantId}.json`), JSON.stringify(v, null, 2) + '\n');
     }
-    const envFor = (konductor) => (isCc
+    const envFor = (konductor) => (isSt
+      ? st.env({ home: '<run-home>', tmpdir: '<run>/tmp' })
+      : isCc
       ? cc.envSetup({ arm: { vanilla: !konductor }, ctx, home: '<run-home>', tmpdir: '<run>/tmp', baseEnv: { ...process.env, ...Object.fromEntries(cc.CREDENTIAL_VARS.map((k) => [k, '<set>'])) } })
       : isOc
       ? oc.envSetup({ arm: { vanilla: !konductor }, config, ctx, home: '<run-home>' })

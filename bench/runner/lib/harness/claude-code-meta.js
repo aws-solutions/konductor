@@ -25,6 +25,8 @@ module.exports = Object.freeze({
     }),
     perRunCapFlag: 'run-budget-usd',
   }),
+  // How runs skip the agent's own approval prompts (design 15.3, A-4): PERMISSION_MODE in claude-code.js, plus --allowedTools.
+  noPrompt: Object.freeze({ flags: Object.freeze(['--permission-mode', 'acceptEdits']), env: Object.freeze({}), note: '--allowedTools lists the tools that run without a prompt' }),
   multiTurnNote: 'the resume flags have not been verified',
   trace: Object.freeze({
     sessionFiles: false,

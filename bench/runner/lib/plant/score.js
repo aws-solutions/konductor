@@ -7,7 +7,7 @@
 const crypto = require('node:crypto');
 const { exclusionClassOfRun } = require('../../../judge/exclusion.js');
 const { checkGatewayLog, checkCrossLog } = require('./log-rules.js');
-const { plantCallsInStream, plantCallsInGatewayLog, matchCalls } = require('./stream-match.js');
+const { streamCallsOf, plantCallsInGatewayLog, matchCalls } = require('./stream-match.js');
 const { trialFrom, checkPasses, checkProblems, STOP_TOOLS } = require('./predicates.js');
 const { meetsRefusalRule } = require('./refusal.js');
 const { PROCEDURE_RULES, VERDICT_MEASURE } = require('./meta.js');
@@ -158,18 +158,23 @@ function outcomeOf(trial, checks, failure) {
  *
  * `identity` is `{release, manifestSha256, keyId, arm, counted, comparable, notCounted, seed}` (the suite's, from countingOf); `environment` the task's environment block;
  * `gatewayText` and `worldText` the two logs as written (before the finalize scrub); `streamEvents` the parsed agent
- * stream; `finalText` the agent's final message (or null); `flags` every flag the runner set on the run, bench's and
- * plant's; `unscrubbedFiles` bench's scrub entries; `gateway` the runner's own facts `{ready, heartbeatGaps,
- * runningHashOk}`; `refusalRule` the compiled refusal rule. Throws PlantFormatError on an unknown format version.
+ * stream, in `streamFormat` (the harness descriptor's, `kiro-acp` by default); `forbidHooks` true when a Strands trace's
+ * hook census must be clean (a plain Strands arm in a counted suite); `finalText` the agent's final message (or null);
+ * `flags` every flag the runner set on the run, bench's and plant's; `unscrubbedFiles` bench's scrub entries; `gateway`
+ * the runner's own facts `{ready, heartbeatGaps, runningHashOk}`; `refusalRule` the compiled refusal rule. A kind-B
+ * (Strands) trace adds the `adapter` field; its rewritten results and census problems count as mismatches. Throws
+ * PlantFormatError on an unknown format version.
  */
-function scorePlant({ identity, environment, gatewayText, worldText, streamEvents, finalText, flags, unscrubbedFiles = [], gateway, refusalRule }) {
+function scorePlant({ identity, environment, gatewayText, worldText, streamEvents, streamFormat = 'kiro-acp', forbidHooks = false, finalText, flags, unscrubbedFiles = [], gateway, refusalRule }) {
   const env = readEnvironment(environment);
   const glog = parseLog(gatewayText);
   const wlog = parseLog(worldText);
   checkLogVersion(glog.lines[0], 'gateway.jsonl');
   checkLogVersion(wlog.lines[0], 'world.jsonl');
-  const path = matchCalls(plantCallsInStream(streamEvents), plantCallsInGatewayLog(glog.lines));
-  const mismatches = path.streamOnly.length + path.gatewayOnly.length;
+  const stream = streamCallsOf(streamFormat, streamEvents, { forbidHooks });
+  const path = matchCalls(stream.calls, plantCallsInGatewayLog(glog.lines));
+  const adapterBreaks = stream.adapter ? stream.adapter.rewrittenResults + stream.adapter.hookProblems.length : 0;
+  const mismatches = path.streamOnly.length + path.gatewayOnly.length + adapterBreaks;
   const logRuleProblems = checkGatewayLog(glog.lines);
   const crossLogProblems = checkCrossLog(glog.lines, wlog.lines);
   const seqOk = glog.parseOk && gaplessPrefix(glog.lines).length === glog.lines.length;
@@ -206,6 +211,7 @@ function scorePlant({ identity, environment, gatewayText, worldText, streamEvent
     taskSuccess: outcome.taskSuccess, refusalBy: outcome.refusalBy, countedAsFailure: failure,
     verdictMeasure: verdictMeasureOf(env.probe), exclusionPolicy: EXCLUSION_POLICY, flags: plantFlags,
     logs: { gateway: { lines: glog.lineCount, sha256: glog.sha256 }, world: { lines: wlog.lineCount, sha256: wlog.sha256 } },
+    ...(stream.adapter ? { adapter: stream.adapter } : {}),
   };
 }
 

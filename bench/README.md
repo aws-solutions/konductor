@@ -1193,6 +1193,7 @@ The plant suite tests an agent that acts on a machine. The machine is a simulate
 | Scripted controls (do-nothing, scripted calls, careful operator, path, unsafe agent) and their report section | `bench/physical/controls/{plant-control.js,*-kiro}`, `bench/report/plant-controls.js` |
 | Release guard: refuses release content in git history by path, file type and hashed release lines, and its CI job | `bench/physical/ci/release-guard.js`, `bench/physical/ci/run-release-guard.sh`, `.github/workflows/plant-release-guard.yml` |
 | Step 0 capture of a real Kiro CLI start, and design notes per step | `bench/physical/STEP0-FINDINGS.md`, `bench/physical/fixtures/step0/` |
+| Strands arms (kind B): the launcher, forwarding tool stubs, gateway client, model recorder, hook census and the scripted fake model | `bench/physical/strands/`; runner side `bench/runner/lib/harness/strands{,-meta,-parse}.js`, `bench/runner/lib/plant/strands-adapter.js` |
 
 One-time setup: Linux, Python 3.9 or later, Node 22 or later. The gateway uses only the standard library, plus `cedarpy` when a Cedar policy is loaded:
 ```
@@ -1252,3 +1253,28 @@ Controls (FR-12): five fake Kiro CLIs in `bench/physical/controls/`, sharing `pl
 Run one with `bench run --arms plant-policy|plant-allowall --kiro-bin bench/physical/controls/NAME-kiro --plant-release DIR ...` and read it with `plant-report`. On a host that blocks user namespaces add `--isolate none --allow-unisolated`.
 
 Release guard in CI: `.github/workflows/plant-release-guard.yml` runs on every pull request and push that changes `bench/**`, on Linux with Node 22. Its steps are in `bench/physical/ci/run-release-guard.sh` (tested by `bench/runner/test/plant-release-guard-ci.test.js`). It fails on a shallow clone or a history with no commits, then runs `release-guard.js check` on the full history. The hashed-line check is optional. Without the `PLANT_RELEASE_HASHES` repository secret (always so on a fork PR) the job runs the path, file type and encrypted-header checks, prints a note that the hashed-line check is off, and passes if those find nothing. With the secret it also checks every line against the hashes: the secret's contents (the output of `hash-release DIR`: one SHA-256 hex per line; blank lines and `#` comments are allowed) are written to a mode-600 temp file under `$RUNNER_TEMP` and deleted when the step ends; they are never in the repo. A maintainer who wants that check can add the secret under Settings > Secrets and variables > Actions, or with `gh secret set PLANT_RELEASE_HASHES < FILE`. `bench/.gitignore` lists the release file names and `plant-release*/` folders so a release is not added by accident; the test fails if a tracked file matches. Every team writes and signs its own private release; this repository ships none. An example release is future work.
+
+### Strands plant arms (kind B, Phase 2, fake model only)
+
+`st-plant-policy` and `st-plant-allowall` run a [Strands](https://strandsagents.com/) agent on the same gateway, policy and logs as the Kiro CLI arms. The agent's seven plant tools are stubs: each one sends its call to `gw.sock` as `tools/call` with the arguments it got, and returns the gateway's reply as the tool result. A stub never decides, retries or caches. It holds no token. Its `initialize` names it (`plant-strands-forwarder`), and `gateway.jsonl` logs that name. Every report on these arms says in its header that the plant tools are stubs, and `plant-report` refuses to mix them with Kiro CLI runs.
+
+```
+python3.12 -m venv ~/strands-venv && ~/strands-venv/bin/pip install strands-agents
+node bench/runner/bench.js run --suite lite --tasks ID --arms st-plant-policy,st-plant-allowall --model fake:SCRIPT.json \
+  --strands-python ~/strands-venv/bin/python [--strands-agent AGENT.py] --plant-release DIR --plant-release-sha256 HEX --extra-tasks DIR/tasks --out OUT
+```
+
+| Item | What it does |
+|---|---|
+| `--model fake:SCRIPT.json` | The only model provider enabled. `SCRIPT.json` is `{"turns": [{"tools": [{"name", "input"}], "text"}]}`: the model plays one turn per call, whatever the conversation says. No model call is made and no credential is passed. Any other `--model` is refused |
+| `--strands-python PATH` | An interpreter with `strands-agents` (Python 3.10 or later; written against 1.65.0). Its version is recorded |
+| `--strands-agent FILE` | A Python file whose `build_agent(model, tools)` returns a Strands `Agent` built on that model and those tools. Without it a plain `Agent` runs. Keep the file outside the checkout, since `--hide` hides it |
+| No prompts | The launcher sets `BYPASS_TOOL_CONSENT=true`, which strands-agents-tools reads for its built-in tools (shell, file_write, editor and others); the SDK and the plant stubs never prompt. `AWS_CONFIG_FILE` and `AWS_SHARED_CREDENTIALS_FILE` point at `/dev/null` |
+| What the trace holds | `stream.jsonl` is the launcher's trace: `start`, `census`, `model_tool_use` (each tool use as the model streamed it, recorded before any hook can touch it), `forward` (what each stub got and returned), `tool_result` (what the agent kept), `usage` and `final` |
+| Stream match | As for Kiro CLI: the model's plant calls and the gateway's `call` events must be the same multiset of tool name and `args_sha256`. A rewritten argument, a retry that sends one call twice, or a result the agent saw but no stub returned is a mismatch (`plantPathLost`), a failure like any other |
+| `agent_cancelled` | A model call that no stub forwarded was stopped inside the agent (a hook, middleware or interrupt). It is counted in `plant.adapter.agentCancelled` and left out of the match, so it is not a mismatch. The gateway never saw it, so it never scores as safe or unsafe |
+| Hook census | Before the first trial the launcher builds the agent and lists every callback on `BeforeToolsEvent`, `BeforeToolCallEvent`, `AfterToolCallEvent` and `AfterToolsEvent`, every tool middleware, the tool executor, and whether each plant tool is still the stub. Strands' own callbacks are allowed. Any other callback on those events counts as one that can cancel, rewrite or retry, since its code cannot be read from outside. A counted suite with such a hook on a plain arm is refused; run it as `st-plant-policy-hooked` or `st-plant-allowall-hooked`, its own arm. The census also goes into every trial's trace; on a plain arm of a counted suite a problem there counts as a mismatch |
+| Counted or control | A Strands suite with the fake model is always a control. It is counted only when the release pins `versions.strands.version` and a real model runs, which needs the owner's go-ahead first |
+
+Tests: `bench/runner/test/plant-strands.test.js` (the whole-trial cases need `BENCH_STRANDS_PYTHON=~/strands-venv/bin/python` and are skipped without it) and `bench/physical/test/test_strands_client.py`. Limits: the census reads private Strands registries, so a new SDK version needs the census checked again; the agent code runs in the same process as the stubs, so a hostile agent could also fake its own trace (the gateway log stays the only safety record).
+

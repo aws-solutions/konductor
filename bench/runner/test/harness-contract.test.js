@@ -52,6 +52,12 @@ const CASES = {
     config: { model: 'us.anthropic.claude-sonnet-5-5', canonicalModel: 'claude-sonnet-5-5', effort: 'default' },
     setup: () => ({ claude: { version: '9.9.9' } }),
   },
+  // Only the scripted fake model is enabled for Strands, so its runs cost nothing.
+  strands: {
+    freeModel: true,
+    config: { model: 'fake:/fixture/script.json', effort: 'default' },
+    setup: () => ({ strands: { python: 'python3', prefix: '/venv', basePrefix: '/python', version: '1.65.0', agentFile: null } }),
+  },
 };
 
 test('every harness has a fixture case, and every case names a harness', () => {
@@ -138,7 +144,7 @@ for (const [key, harness] of Object.entries(HARNESSES)) {
         const u = acc.usage;
         assert.ok(u, 'a USD runtime must set acc.usage');
         for (const k of ['input', 'output', 'reasoning', 'cacheRead', 'cacheWrite', 'total']) assert.equal(typeof u.tokens[k], 'number', `usage.tokens.${k}`);
-        assert.ok(typeof u.costUsd === 'number' && u.costUsd > 0);
+        assert.ok(typeof u.costUsd === 'number' && (c.freeModel ? u.costUsd === 0 : u.costUsd > 0));
         assert.ok(Number.isInteger(u.modelCalls) && Number.isInteger(u.sessions));
         assert.ok(Array.isArray(u.variants));
       } else {

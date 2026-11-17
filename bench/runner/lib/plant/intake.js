@@ -176,6 +176,18 @@ function isCountedSuite(opts, kiroBin, manifest, versionOfBin) {
   return versionOfBin(kiroBin) === pinned;
 }
 
+/**
+ * True when a Strands suite is counted: the release pins `versions.strands.version` (the strands-agents version) and
+ * the model is a real one. A scripted `fake:` model is always a control. Throws ReleaseRefused when the pin and the
+ * interpreter's `strands.version` differ, so a wrong SDK is refused rather than run as a control.
+ */
+function isCountedStrands(manifest, strands, model) {
+  const pinned = manifest.versions?.strands?.version;
+  if (!pinned || String(model).startsWith('fake:')) return false;
+  if (strands?.version !== pinned) throw new ReleaseRefused(`strands-agents ${strands?.version} is not the pinned ${pinned}`);
+  return true;
+}
+
 /** Throws ReleaseRefused when the out dir shares a filesystem with scratch or home (NFR-12, counted suites with isolation). */
 function checkOutFilesystem(outDir, others) {
   const dev = fs.statSync(outDir).dev;
@@ -255,11 +267,12 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
     fs.mkdirSync(socketParent, { mode: 0o700 });
     if (Buffer.byteLength(socketParent) + SOCKET_SUFFIX_BYTES > SOCKET_PATH_MAX) throw new ReleaseRefused(`socket paths under ${socketParent} would pass ${SOCKET_PATH_MAX} bytes`);
     release = intakeRelease({ dir, expectedSha256, privateRoot, keys });
-    const control = !isCountedSuite(opts, ctx.kiroBin, release.manifest, versionOfBin);
+    const strands = arms[0].runtime === 'strands';
+    const control = strands ? !isCountedStrands(release.manifest, ctx.strands, ctx.config.model) : !isCountedSuite(opts, ctx.kiroBin, release.manifest, versionOfBin);
     const comparableMode = isComparableMode(ctx.isolation.mode);
     let noise = [];
     if (!control) {
-      checkKiroPin(ctx.kiroBin, release.manifest, versionOfBin, ctx.config.agentEngine);
+      if (!strands) checkKiroPin(ctx.kiroBin, release.manifest, versionOfBin, ctx.config.agentEngine);
       const missing = POLICY_FILES.filter((rel) => !release.sha256Of(rel));
       if (missing.length) throw new ReleaseRefused(`a counted plant suite needs the Cedar files; the release lacks ${missing.join(', ')}`);
       // Quiet-host check (13.5 B-6): a sandboxed suite on a noisy host is refused, as the prober would refuse it; an
@@ -295,4 +308,4 @@ function removePrivateRoot(privateRoot, releaseRoot) {
   fs.rmSync(privateRoot, { recursive: true, force: true });
 }
 
-module.exports = { oddFileReason, refuseLauncher, intakeRelease, discardRelease, preparePlantSuite, countingOf, refuseInside, setModes, ReleaseRefused };
+module.exports = { oddFileReason, refuseLauncher, isCountedStrands, intakeRelease, discardRelease, preparePlantSuite, countingOf, refuseInside, setModes, ReleaseRefused };

@@ -1,0 +1,7 @@
+{"adapter": {"kind": "B", "name": "plant-strands-forwarder", "version": 1}, "model": "fake:/fixture/script.json", "sessionId": "5d34ed47a57749058ae0ef97c24ba345", "strands": "1.65.0", "type": "start", "v": "plant-strands/1"}
+{"executor": "strands.tools.executors.concurrent.ConcurrentToolExecutor", "hooks": [], "middleware": [], "tools": {"get_state": "forwarder"}, "type": "census", "unreadable": []}
+{"input": {}, "name": "get_state", "toolUseId": "fake-1", "type": "model_tool_use"}
+{"args": {}, "reply": {"id": "fwd-2", "jsonrpc": "2.0", "result": {"content": [{"text": "{\"running\":false}", "type": "text"}], "isError": false, "structuredContent": {"running": false}}}, "result": {"content": [{"text": "{\"running\":false}"}, {"json": {"running": false}}], "status": "success", "toolUseId": "fake-1"}, "tool": "get_state", "toolUseId": "fake-1", "type": "forward"}
+{"content": [{"text": "{\"running\":false}"}, {"json": {"running": false}}], "status": "success", "toolUseId": "fake-1", "type": "tool_result"}
+{"inputTokens": 2, "modelCalls": 2, "outputTokens": 2, "type": "usage"}
+{"status": "success", "stopReason": "end_turn", "text": "The belt is stopped.", "type": "final"}

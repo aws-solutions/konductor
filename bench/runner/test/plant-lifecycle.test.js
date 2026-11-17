@@ -40,10 +40,10 @@ test('plant-policy and plant-allowall parse as plant arms and resolve to kiro-cl
   assert.deepEqual(arm.plant, { arm: 'policy' });
 });
 
-test('a plant arm under the oc- or cc- prefix is refused: plant arms run on kiro-cli only', () => {
+test('a plant arm under the oc- or cc- prefix is refused: plant arms run on kiro-cli or Strands only', () => {
   for (const spec of ['oc-plant-policy', 'cc-plant-allowall']) {
-    assert.throws(() => parseArmSpec(spec), /plant arms run on kiro-cli only/);
-    assert.throws(() => resolveArm(spec, '.'), /plant arms run on kiro-cli only/);
+    assert.throws(() => parseArmSpec(spec), /plant arms run on kiro-cli or Strands \(st-\) only/);
+    assert.throws(() => resolveArm(spec, '.'), /plant arms run on kiro-cli or Strands \(st-\) only/);
   }
 });
 

@@ -14,10 +14,36 @@ const prefixOf = (runtime) => DESCRIPTORS.find((d) => d.id === runtime).armPrefi
 const OC_PREFIX = prefixOf('opencode');
 const CC_PREFIX = prefixOf('claude-code');
 const prefixedRuntime = (spec) => PREFIXED.find((d) => spec.startsWith(d.armPrefix));
-// The plant arms (FR-9) by external id, with the arm name the gateway and result.json use. Kiro CLI only.
+// The plant arms (FR-9) by external id, with the arm name the gateway and result.json use. Kiro CLI, or Strands under
+// `st-`. A `-hooked` arm is Strands only: its agent may carry tool hooks, so its trials are kept apart (design 15.3).
 const PLANT_ARMS = Object.freeze({ 'plant-policy': 'policy', 'plant-allowall': 'allow-all' });
+const HOOKED_PLANT_ARMS = Object.freeze({ 'plant-policy-hooked': 'policy', 'plant-allowall-hooked': 'allow-all' });
 const isPlantArm = (spec) => Object.hasOwn(PLANT_ARMS, spec);
-const PLANT_ONLY_KIRO = 'plant arms run on kiro-cli only';
+const isHookedPlantArm = (spec) => Object.hasOwn(HOOKED_PLANT_ARMS, spec);
+const PLANT_ONLY_KIRO = 'plant arms run on kiro-cli or Strands (st-) only';
+const STRANDS_PREFIX = prefixOf('strands');
+const STRANDS_PLANT_ONLY = 'Strands arms are plant arms only (st-plant-policy, st-plant-allowall, st-plant-policy-hooked, st-plant-allowall-hooked)';
+/** Every plant arm id a result can carry: the Kiro CLI ids and the Strands ids with their prefix. */
+const PLANT_ARM_IDS = Object.freeze([...Object.keys(PLANT_ARMS), ...[...Object.keys(PLANT_ARMS), ...Object.keys(HOOKED_PLANT_ARMS)].map((a) => `${STRANDS_PREFIX}${a}`)]);
+const isPlantArmId = (armId) => PLANT_ARM_IDS.includes(armId);
+
+/**
+ * The parsed Strands arm for `rest` (an arm spec with its `st-` prefix removed). Only the plant arms exist; a hooked
+ * arm carries `hooks: "own-arm"`, a plain one `hooks: "refuse"` (a counted suite refuses tool hooks on it).
+ */
+function parseStrandsArm(rest) {
+  if (isPlantArm(rest)) return { kind: 'plant', name: `${STRANDS_PREFIX}${rest}`, plantArm: PLANT_ARMS[rest], hooks: 'refuse' };
+  if (isHookedPlantArm(rest)) return { kind: 'plant', name: `${STRANDS_PREFIX}${rest}`, plantArm: HOOKED_PLANT_ARMS[rest], hooks: 'own-arm' };
+  throw new Error(`arm "${STRANDS_PREFIX}${rest}": ${STRANDS_PLANT_ONLY}`);
+}
+
+/** Throws when `spec` puts a plant arm under a runtime prefix that cannot run it (oc-, cc-, or a prefix inside a prefix). */
+function refusePrefixedPlant(spec, d) {
+  const rest = spec.slice(d.armPrefix.length);
+  const nested = prefixedRuntime(rest);
+  const plantInside = isPlantArm(rest) || isHookedPlantArm(rest) || (nested && nested.id === 'strands');
+  if (plantInside && (d.id !== 'strands' || nested)) throw new Error(`arm "${spec}": ${PLANT_ONLY_KIRO}`);
+}
 const KNOWN_ARMS = ['vanilla', 'v1.0.0', 'v1.1.0', 'v1.2.0', 'main', 'oc-vanilla', 'oc-v1.2.0', 'oc-main', 'cc-vanilla', 'cc-main'];
 
 function git(repo, args) {
@@ -64,10 +90,12 @@ const TAG_NAME_RE = /^v\d+\.\d+\.\d+$/;
  */
 function parseArmSpec(spec) {
   const d = prefixedRuntime(spec);
-  if (d && isPlantArm(spec.slice(d.armPrefix.length))) throw new Error(`arm "${spec}": ${PLANT_ONLY_KIRO}`);
+  if (d) refusePrefixedPlant(spec, d);
+  if (d?.id === 'strands') return { ...parseStrandsArm(spec.slice(d.armPrefix.length)), st: true };
   if (d) return { ...parseArmSpec(spec.slice(d.armPrefix.length)), [d.armPrefix.slice(0, -1)]: true };
   if (spec === 'vanilla') return { kind: 'vanilla', name: 'vanilla' };
   if (isPlantArm(spec)) return { kind: 'plant', name: spec, plantArm: PLANT_ARMS[spec] };
+  if (isHookedPlantArm(spec)) throw new Error(`arm "${spec}": hooked plant arms run on Strands only (${STRANDS_PREFIX}${spec})`);
   const eq = spec.indexOf('=');
   if (eq === -1) {
     if (spec === 'main') return { kind: 'main', name: 'main' };
@@ -76,7 +104,7 @@ function parseArmSpec(spec) {
   }
   const name = spec.slice(0, eq);
   const ref = spec.slice(eq + 1);
-  if (name === 'vanilla' || name === 'main' || isPlantArm(name)) throw new Error(`arm name "${name}" is reserved`);
+  if (name === 'vanilla' || name === 'main' || isPlantArm(name) || isHookedPlantArm(name)) throw new Error(`arm name "${name}" is reserved`);
   if (TAG_NAME_RE.test(name)) {
     if (ref !== name) throw new Error(`arm name "${name}" is reserved for the release tag of that name (use ${name} or ${name}=${name}); pick another name for ref "${ref}"`);
     return { kind: 'git', name, ref, bare: true };
@@ -135,7 +163,11 @@ function withProvenance(base, repo) {
 // the same condition run through opencode instead of kiro-cli (runtime 'opencode').
 function resolveArm(spec, repo) {
   const d = prefixedRuntime(spec);
-  if (d && isPlantArm(spec.slice(d.armPrefix.length))) throw new Error(`arm "${spec}": ${PLANT_ONLY_KIRO}`);
+  if (d) refusePrefixedPlant(spec, d);
+  if (d?.id === 'strands') {
+    const parsed = parseStrandsArm(spec.slice(d.armPrefix.length));
+    return { id: parsed.name, label: parsed.name, ref: null, commitSha: null, source: null, dirty: null, contentHash: null, harness: 'plant', runtime: 'strands', agent: null, vanilla: true, plant: { arm: parsed.plantArm, hooks: parsed.hooks }, warnings: [] };
+  }
   if (d) {
     const base = resolveArm(spec.slice(d.armPrefix.length), repo);
     return { ...base, id: `${d.armPrefix}${base.id}`, label: `${d.armPrefix}${base.label}`, runtime: d.id, harness: base.vanilla ? 'none' : 'claude' };
@@ -189,7 +221,9 @@ const ARM_SYNTAX = [
   '                      resolved in --repo-root without fetching; built from `git archive`, a dirty tree never leaks',
   '  name=dir:<path>     a working-tree directory (a worktree or checkout), snapshot of tracked and untracked',
   '                      files that are not ignored; label name@<hash12>, recorded as dirty',
-  '  plant-policy | plant-allowall    plant arms on the simulated conveyor (kiro-cli only, never with oc- or cc-)',
+  '  plant-policy | plant-allowall    plant arms on the simulated conveyor (kiro-cli; never with oc- or cc-)',
+  '  st-plant-policy | st-plant-allowall    the same on a Strands agent with forwarding plant tools (kind B);',
+  '                      st-plant-policy-hooked | st-plant-allowall-hooked keep an agent with tool hooks apart',
   '  name: [a-z0-9][a-z0-9._-]{0,40}; vanilla, main, vX.Y.Z and the plant arm names are reserved. A bare ref (feat/x) is refused.',
   '  A ref that is not local is never fetched; run `git fetch origin pull/<n>/head:pr-<n>` yourself, then pr-<n>=pr-<n>.',
 ].join('\n');
@@ -216,4 +250,4 @@ function formatArmRows(arms) {
   return rows.map((r) => r.map((c, i) => c.padEnd(w[i])).join('  ').trimEnd()).join('\n');
 }
 
-module.exports = { resolveArm, resolveArms, parseArmSpec, resolveMain, listArms, formatArmRows, ARM_SYNTAX, KNOWN_ARMS, PLANT_ARMS, MAIN_LABEL, OC_PREFIX, CC_PREFIX };
+module.exports = { resolveArm, resolveArms, parseArmSpec, resolveMain, listArms, formatArmRows, ARM_SYNTAX, KNOWN_ARMS, PLANT_ARMS, HOOKED_PLANT_ARMS, PLANT_ARM_IDS, isPlantArmId, MAIN_LABEL, OC_PREFIX, CC_PREFIX, STRANDS_PREFIX };

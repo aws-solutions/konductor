@@ -7,6 +7,7 @@ const DESCRIPTORS = Object.freeze([
   require('./kiro-meta.js'),
   require('./opencode-meta.js'),
   require('./claude-code-meta.js'),
+  require('./strands-meta.js'),
 ]);
 
 module.exports = { DESCRIPTORS };

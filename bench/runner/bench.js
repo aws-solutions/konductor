@@ -34,7 +34,7 @@ const USAGE = `Usage:
        [--extra-tasks DIR,DIR] [--suites-dir DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
        [--arm-config name=key.path=value[;key.path=value],...] [--oracle-skills [ARM,ARM]] [--oracle-manifest FILE]
        [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed] [--max-auth-failures N] [--timeout-sec N]
-       [--plant-release DIR --plant-release-sha256 HEX] [--plant-python PATH]
+       [--plant-release DIR --plant-release-sha256 HEX] [--plant-python PATH] [--strands-python PATH] [--strands-agent FILE]
        (--profile quick runs 1 to 3 replicates (default 2) and labels a result under 3 runs anecdotal. --profile detailed runs at least 5 replicates (default 5),
        adds an A/A arm (the first konductor arm repeated at its exact commit), judges with the graded mode as well, and writes calibration-sample.json and .md
        to the results directory. Without --profile the suite defaults apply and no arm is added. Credits are tracked per run in credit-ledger.jsonl; with no
@@ -51,6 +51,9 @@ const USAGE = `Usage:
        (--plant-release DIR and --plant-release-sha256 HEX are required by the plant-policy and plant-allowall arms: the signed release is copied
        to a runner-private dir and checked there; --plant-python is the interpreter that runs the gateway, default python3. A plant suite runs
        plant arms and plant tasks only, at --parallel 1; without --kiro-bin it is counted and the Kiro CLI must match the release pin)
+       (st-plant-policy, st-plant-allowall and their -hooked forms run a Strands agent whose plant tools forward to the gateway: --strands-python is the
+       interpreter with strands-agents, default python3; --strands-agent FILE holds build_agent(model, tools), default a plain Agent; --model must be
+       fake:<script.json>, the only model provider enabled. Before any trial a hook census refuses a counted suite whose plain arms carry tool hooks)
        (--extra-tasks loads tasks from DIR/<id>.json with DIR/fixtures and DIR/hidden; DIR is hidden from the agent like tasks/hidden)
        (--suites-dir DIR looks for the suite file DIR/<suite>.json first and then in <bench-dir>/suites, so a generated skilleval-* suite needs no file in the checkout)
        (--run-credit-limit X: on engine v2 the run is killed at the poll once its metered credits pass X and is recorded as censored. On v3 credits

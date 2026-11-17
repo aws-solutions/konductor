@@ -26,9 +26,10 @@
 const kiro = require('./kiro.js');
 const opencode = require('./opencode.js');
 const claudeCode = require('./claude-code.js');
+const strands = require('./strands.js');
 const { runtimeOf } = require('./runtime.js');
 
-const HARNESSES = { 'kiro-cli': kiro, opencode, 'claude-code': claudeCode };
+const HARNESSES = { 'kiro-cli': kiro, opencode, 'claude-code': claudeCode, strands };
 
 // id -> descriptor (id, label, armPrefix, costUnit, supports), read from each harness module. runtime.js and arms.js
 // read the same descriptors through descriptors.js because they cannot load the harness modules (require cycle).
@@ -36,4 +37,4 @@ const registry = Object.fromEntries(Object.entries(HARNESSES).map(([id, h]) => [
 
 const harnessFor = (armOrResult) => HARNESSES[runtimeOf(armOrResult)];
 
-module.exports = { harnessFor, runtimeOf, HARNESSES, registry, kiro, opencode, claudeCode };
+module.exports = { harnessFor, runtimeOf, HARNESSES, registry, kiro, opencode, claudeCode, strands };

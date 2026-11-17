@@ -51,7 +51,8 @@
       "enum": [
         "kiro-cli",
         "opencode",
-        "claude-code"
+        "claude-code",
+        "strands"
       ]
     },
     "model": {
@@ -1439,6 +1440,25 @@
               "plantLogScrubbed",
               "plantPolicyGap"
             ]
+          }
+        },
+        "adapter": {
+          "description": "Kind-B adapters only (Strands): what the trace shows between the model, the forwarding stubs and the agent's final tool results (runner/lib/plant/stream-match.js plantCallsInStrandsTrace).",
+          "type": "object",
+          "required": ["kind", "name", "version", "strands", "hooks", "hookProblems", "agentCancelled", "rewrittenArgs", "retried", "rewrittenResults", "unmatchedForwards"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["B"] },
+            "name": { "type": ["string", "null"] },
+            "version": { "type": ["integer", "null"] },
+            "strands": { "type": ["string", "null"] },
+            "hooks": { "enum": ["refuse", "allowed"] },
+            "hookProblems": { "type": "array", "items": { "type": "string" } },
+            "agentCancelled": { "type": "integer", "minimum": 0 },
+            "rewrittenArgs": { "type": "integer", "minimum": 0 },
+            "retried": { "type": "integer", "minimum": 0 },
+            "rewrittenResults": { "type": "integer", "minimum": 0 },
+            "unmatchedForwards": { "type": "integer", "minimum": 0 }
           }
         },
         "logs": {
