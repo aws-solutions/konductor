@@ -7,6 +7,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp } = require('./helpers.js');
@@ -282,17 +283,26 @@ test('the CPU-burn and disk-fill rows pass against a socket that keeps answering
 
 // ---- skipped: need the real sandbox ----
 
+// Where the sandbox must stop writes whatever the host allows, so a host-writable dir there is never put on the allowlist.
+const GUARDED_WRITE_DIRS = () => [...new Set(['/tmp', '/var/tmp', '/dev/shm', os.homedir(), fs.realpathSync(os.homedir())])];
+const insideOf = (p, dir) => p === dir || p.startsWith(`${dir}/`);
+
 /**
- * An allowlist file naming every listener and socket this host has right now, as a stand-in for the 13.5 allowlist on a
- * host that is not quiet (sshd, chronyd, systemd). Anything the agent finds beyond these still fails the default-deny rows.
+ * An allowlist file naming every listener and socket this host has right now, and every directory outside the guarded
+ * ones that this user can already write on the host, as a stand-in for the 13.5 allowlist on a host that is not quiet
+ * (sshd, chronyd, systemd, a remote desktop's log and run dirs). Anything the agent finds beyond these still fails the
+ * default-deny rows; home, the shared temp dirs and `dir` itself are never allowlisted.
  */
 function noisyHostAllowlist(dir) {
   const host = new prober.Host();
   const sockets = host.unixSockets().filter((s) => !/\s/.test(s.path));
+  const guarded = [...GUARDED_WRITE_DIRS(), fs.realpathSync(dir)];
+  const writable = host.writableDirs([]).filter((d) => !/\s/.test(d) && !guarded.some((g) => insideOf(d, g) || insideOf(g, d)));
   const entries = [
     ...host.listeners('tcp').map((a) => `tcp ${a}`), ...host.listeners('udp').map((a) => `udp ${a}`),
     ...sockets.filter((s) => s.abstract).map((s) => `abstract ${s.path}`),
     ...sockets.filter((s) => !s.abstract).map((s) => `path ${s.path}`),
+    ...writable.map((d) => `writable ${d}`),
   ];
   const file = path.join(dir, 'network-allowlist.txt');
   fs.writeFileSync(file, entries.map((e) => `${e} test host is not quiet\n`).join(''));
@@ -311,12 +321,58 @@ function sandboxRig() {
   return { root, out, suite, makeIso };
 }
 
+/**
+ * Watches the host's loopback and wildcard listeners and its unix sockets from outside the sandbox while `fn` runs.
+ * Under the full suite other test files open loopback listeners and sockets at any moment, after the allowlist was
+ * written; the sandbox shares the host's network namespace and filesystem, so the prober sees them too. Returns `fn`'s
+ * result and every `tcp ip:port`, `udp ip:port`, `abstract @name` and `path /file` the host showed meanwhile.
+ */
+async function watchHostNoise(fn, everyMs = 25) {
+  const host = new prober.Host();
+  const seen = new Set();
+  const look = () => {
+    for (const kind of ['tcp', 'udp']) for (const a of host.listeners(kind)) seen.add(`${kind} ${a}`);
+    for (const so of host.unixSockets()) seen.add(`${so.abstract ? 'abstract' : 'path'} ${so.path}`);
+  };
+  look();
+  const timer = setInterval(look, everyMs);
+  try { return { result: await fn(), seen }; } finally { clearInterval(timer); look(); }
+}
+
+// The two rows whose findings can be another process's listener or socket rather than a hole in the walls.
+const HOST_NOISE_ROWS = ['default-deny-loopback-listeners: ', 'default-deny-unix-sockets: '];
+
+/** `problems` without the listener and socket findings the host itself showed; one only the sandbox saw stays. */
+function withoutHostNoise(problems, seen) {
+  return problems.flatMap((p) => {
+    const row = HOST_NOISE_ROWS.find((r) => p.startsWith(r));
+    if (!row) return [p];
+    const left = p.slice(row.length).split(', ').filter((item) => !seen.has(item));
+    return left.length ? [`${row}${left.join(', ')}`] : [];
+  });
+}
+
+test('the host-noise filter drops only listeners and sockets the host showed, and keeps every other problem', () => {
+  const seen = new Set(['tcp 127.0.0.1:33469', 'abstract @other-test', 'path /tmp/x/gw.sock']);
+  assert.deepEqual(withoutHostNoise(['default-deny-loopback-listeners: tcp 127.0.0.1:33469'], seen), []);
+  assert.deepEqual(withoutHostNoise(['default-deny-loopback-listeners: tcp 127.0.0.1:33469, udp 0.0.0.0:9'], seen), ['default-deny-loopback-listeners: udp 0.0.0.0:9']);
+  assert.deepEqual(withoutHostNoise(['default-deny-unix-sockets: abstract @other-test, path /tmp/x/gw.sock'], seen), []);
+  assert.deepEqual(withoutHostNoise(['default-deny-unix-sockets: path /run/only-inside.sock'], seen), ['default-deny-unix-sockets: path /run/only-inside.sock']);
+  assert.deepEqual(withoutHostNoise(['default-deny-writable-paths: /x', 'out-dir-hidden: sentinel seen'], seen), ['default-deny-writable-paths: /x', 'out-dir-hidden: sentinel seen']);
+});
+
+test('the noisy-host allowlist names host-writable dirs but never home, the shared temp dirs or the rig itself', () => {
+  const dir = tmp();
+  const allow = prober.parseAllowlist(fs.readFileSync(noisyHostAllowlist(dir), 'utf8'));
+  for (const d of allow.writable) for (const g of [...GUARDED_WRITE_DIRS(), fs.realpathSync(dir)]) assert.ok(!insideOf(d, g) && !insideOf(g, d), `${d} overlaps ${g}`);
+});
+
 test('inside the real sandbox every prober row that needs no gateway holds', { skip: needsSandbox }, async () => {
   const { root, out, suite, makeIso } = sandboxRig();
   const scratch = path.join(root, 'scratch');
   fs.mkdirSync(scratch);
-  const run = await walls.runWallProber({ suite, scratch, outDir: out, makeIso });
-  assert.deepEqual(run.problems, []);
+  const { result: run, seen } = await watchHostNoise(() => walls.runWallProber({ suite, scratch, outDir: out, makeIso }));
+  assert.deepEqual(withoutHostNoise(run.problems, seen), []);
 });
 
 test('two runs at once: run B cannot list or connect to run A\'s socket root', { skip: needsSandbox }, async () => {
