@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The table cells and the click-through detail of one step. Each lane (one run) has five cells per step.
+// The table cells and the click-through detail of one step: five cells per step.
 
 const { esc, pill, na, fmtMs, fmtInt, jsonBlock, oneLine, factList } = require('./html.js');
 
@@ -40,7 +40,7 @@ function tokensCell(step, tokens) {
   return `<span class="num" title="cache read ${esc(step.tokens.cacheRead)}, cache write ${esc(step.tokens.cacheWrite)}">${fmtInt(step.tokens.input)} in / ${fmtInt(step.tokens.output)} out</span>`;
 }
 
-/** The five cells of `step` in lane `lane` (an index), as table cells. `trace` is the lane's trace. */
+/** The five cells of `step` of run number `lane` (its index on the page), as table cells. `trace` is that run's trace. */
 function laneCells(step, lane, trace) {
   const id = `d-${lane}-${step.n}`;
   const cls = `k-${step.kind}`;
@@ -53,9 +53,6 @@ function laneCells(step, lane, trace) {
     `<td class="${cls}" ${click}>${stateStrip(step.stateAfter)}</td>`,
   ].join('');
 }
-
-/** Cells for a lane that has no step at this index. */
-const emptyCells = () => `<td class="lead na" colspan="5">no call at this step</td>`;
 
 function tokenRows(step, tokens) {
   if (tokens.mode === 'not-recorded') return [['tokens', esc(tokens.note)]];
@@ -90,4 +87,4 @@ function stepDetail(step, lane, trace) {
   return `<div hidden id="d-${lane}-${step.n}"><h3>${esc(trace.label)}: step ${step.n}, ${esc(step.tool)}</h3><h4>arguments</h4>${jsonBlock(step.args)}<h4>gateway</h4>${factList(rows)}${saw}</div>`;
 }
 
-module.exports = { laneCells, emptyCells, stepDetail, stateStrip };
+module.exports = { laneCells, stepDetail, stateStrip };
