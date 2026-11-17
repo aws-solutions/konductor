@@ -40,12 +40,16 @@ function rig(releaseOpts = {}) {
   return { root, bench, release, tasks, suites, ...dirs, cleanup };
 }
 
-/** The suite preflight for rig `r` on task `taskId`. `opts` and `more` replace flags and arguments. */
+/**
+ * The suite preflight for rig `r` on task `taskId`. `opts` and `more` replace flags and arguments. The host listener
+ * check reads no listeners unless `more.readListeners` gives some: under the full suite other test files open loopback
+ * ports between this rig's trials, which would stop the suite with a PlantSuiteStop that has nothing to do with the test.
+ */
 function suiteOf(r, { opts = {}, taskId = TASK_ID, ...more } = {}) {
   const suite = preparePlantSuite({
     opts: { 'plant-release': r.release.dir, 'plant-release-sha256': r.release.sha256, 'kiro-bin': path.join(r.root, 'bin', 'kiro-cli'), ...opts },
     arms: [resolveArm('plant-policy', r.repo)], tasks: [r.tasks.get(taskId)], parallel: 1, outDir: r.out,
-    ctx: { scratchDir: r.scratch, config: CONFIG, isolation: { mode: 'none' } }, repo: r.repo, keys: r.release.keys, home: r.home, deadlines: FAST, ...more,
+    ctx: { scratchDir: r.scratch, config: CONFIG, isolation: { mode: 'none' } }, repo: r.repo, keys: r.release.keys, home: r.home, deadlines: FAST, readListeners: () => [], ...more,
   });
   r.suites.push(suite);
   return suite;
