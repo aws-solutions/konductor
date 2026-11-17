@@ -1,5 +1,5 @@
 ---
-name: asdlc-code-simplifier
+name: k-code-simplifier
 description: 'Simplifies and refines code for clarity, consistency, and maintainability while preserving functionality. Use when asked to simplify, clean up or flatten code (nested ternaries, deep nesting, duplication) without changing behavior.'
 version: 1.0.0
 tags: [refactor, simplify, readability, maintainability]
