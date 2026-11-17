@@ -210,8 +210,12 @@ test('afterExit for kiro-cli copies the dumps and log files and leaves other fil
     write(path.join(home, '.kiro', 'login.json'), '{"token":"t"}');
     write(path.join(home, '.local', 'share', 'kiro-cli', 'data.sqlite3'), 'db');
     write(path.join(home, '.kiro', 'sessions', 'logs', 'a.json'), '{}');
+    assert.equal(env.KIRO_DUMP_REQUESTS_DIR, path.join(`${runRoot}-introspect`, 'requests'), 'the dumps go next to the run root, not inside it');
+    assert.equal(fs.statSync(`${runRoot}-introspect`).mode & 0o777, 0o700);
     const rec = await probe.afterExit();
-    assert.deepEqual(rec.copied.kiroDumps.copied, [path.join('introspect/requests/sess_1/0000-1000.json')]);
+    assert.deepEqual(rec.copied.kiroDumps.copied, [path.join('requests/sess_1/0000-1000.json')]);
+    assert.ok(fs.existsSync(path.join(outDir, 'introspect', 'kiro', 'requests', 'sess_1', '0000-1000.json')));
+    assert.equal(rec.kiroDumpRoot.outsideRunRoot, true);
     assert.deepEqual(rec.copied.tmpLogs.copied, [path.join('tmp/kiro-log/kiro-chat.log')]);
     assert.deepEqual(rec.copied.homeLogs.copied.sort(), [path.join('.kiro/logs/x/events.json'), path.join('.kiro/logs/x/kiro.log')]);
     assert.equal(fs.existsSync(path.join(outDir, 'introspect', 'home-logs', '.kiro', 'login.json')), false);

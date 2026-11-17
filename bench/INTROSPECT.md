@@ -21,6 +21,8 @@ Everything stays on the host, in `<run>/introspect` (mode 0700, files 0600), ins
 - `claude-projects/` (Claude Code), `kiro/`, `tmp-logs/`, `home-logs/` (kiro-cli): copies of the agent-written probe files. Links and special files are skipped, never followed.
 - `timeline.md` and `timeline.json`: the report.
 
+kiro-cli writes its request and configuration dumps to `<run root>-introspect`, a sibling of the run root, so they are outside the agent's working directory and HOME. The isolation keeps that directory writable for the engine; the runner copies it to `kiro/` after the agent exits and removes it with the run root.
+
 `node bench/scripts/introspect-summary.js <out-dir>` writes `<out-dir>/introspect-summary.md` and `.json`: one row per run and the mean per arm and task. `--rebuild` regenerates every run's report from its files first.
 
 ## No host collector

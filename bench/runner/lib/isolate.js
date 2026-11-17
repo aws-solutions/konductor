@@ -212,7 +212,7 @@ const subpaths = (ps) => uniq(ps.flatMap(withDataVolume)).map((p) => `  (subpath
 const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // The last matching rule wins, so each allow follows the deny it carves out of, and the read denies come last.
-function buildProfile({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees, frozenDirs = [], offline = false }) {
+function buildProfile({ scratchRoot, writable = [], homes, systemDirs, hide, masks, readOnlyTrees, frozenDirs = [], offline = false }) {
   const block = (head, ps) => (ps.length ? [`(${head}`, ...subpaths(ps), ')'] : []);
   const hidden = [...hideTargets(homes, hide, masks), ...homes.flatMap((h) => KEYCHAINS_IN_HOME.map((d) => path.join(h, d)))];
   // A Time Machine local snapshot exposes another copy of the home under /private/var/folders.
@@ -226,7 +226,7 @@ function buildProfile({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTre
     ...block('allow file-write*', sandboxWritableInHome(homes)),
     // Anything written here would run outside the sandbox later (a login item, a service, a plug-in).
     ...block('deny file-write*', homes.flatMap((h) => LIBRARY_AUTORUN.map((d) => path.join(h, d)))),
-    ...block('allow file-write*', [scratchRoot]),
+    ...block('allow file-write*', [scratchRoot, ...writable]),
     // After the scratch allow, so it holds even when the directory sits under a path that rule covers. The child
     // keeps writing through the descriptors it inherited; it cannot open, truncate, replace or remove the files.
     ...block('deny file-write*', frozenDirs),
@@ -262,10 +262,10 @@ function exposeOnlyLines({ parent, child }) {
   ];
 }
 
-function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees, readOnly = [], exposeOnly = [], softMasks = [], offline = false }) {
+function buildScript({ scratchRoot, writable = [], homes, systemDirs, hide, masks, readOnlyTrees, readOnly = [], exposeOnly = [], softMasks = [], offline = false }) {
   const lines = ['set -e', 'ro() { mount --rbind "$1" "$1" && mount -o remount,ro,bind "$1"; }'];
   for (const d of [...homes, ...systemDirs, ...readOnlyTrees]) lines.push(`ro ${shq(d)}`);
-  lines.push(`mount --bind ${shq(scratchRoot)} ${shq(scratchRoot)} && mount -o remount,rw,bind ${shq(scratchRoot)}`);
+  for (const d of [scratchRoot, ...writable]) lines.push(`mount --bind ${shq(d)} ${shq(d)} && mount -o remount,rw,bind ${shq(d)}`);
   // After the scratch rw bind, so a directory inside scratch (the plant dir) ends up read-only.
   for (const d of readOnly) lines.push(`ro ${shq(d)}`);
   for (const e of exposeOnly) lines.push(...exposeOnlyLines(e));
@@ -291,12 +291,14 @@ function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTree
  * (sandbox-exec only; the live stdout and stderr files, see liveStdioDir). `offline` also gives the command an empty network namespace.
  * `readOnly` lists directories (the plant dir) that stay readable but cannot be changed, even inside scratch. `exposeOnly` is
  * `[{parent, child}]`: `parent` is emptied and only `child`, inside it, shows again, read-only (a run's socket root among
- * its siblings). Both are namespace mode only, which is the only mode plant runs are comparable in.
+ * its siblings). Both are namespace mode only, which is the only mode plant runs are comparable in. `writable` lists
+ * directories outside the scratch root that stay writable as well (the kiro-cli introspect dumps, a sibling of the run root).
  */
-function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [], keyRoots = [], keep = [], frozenDirs = [], readOnly = [], exposeOnly = [], socketDirs, sshTmp, offline = false, defaultHide = defaultHideOn() }) {
+function makeIsolation({ mode, scratchRoot, writable: writableDirs = [], home, hide: extraHide = [], mask = [], keyRoots = [], keep = [], frozenDirs = [], readOnly = [], exposeOnly = [], socketDirs, sshTmp, offline = false, defaultHide = defaultHideOn() }) {
   if (mode !== 'unshare' && mode !== SANDBOX_BIN) return { mode: 'none', wrap: (file, args) => ({ file, args }) };
   const hide = defaultHide ? uniq([...HIDE_CREDENTIALS_IN_HOME, ...extraHide]) : extraHide;
   const scratch = fs.realpathSync(scratchRoot);
+  const extraWritable = uniq(writableDirs.map((d) => fs.realpathSync(d))).filter((d) => !inside(d, scratch));
   const homes = realHomes(home);
   const systemDirs = realDirs([...RO_SYSTEM_DIRS, os.tmpdir()]);
   const pathDirs = (process.env.PATH || '').split(path.delimiter).map(realOrNull).filter(Boolean);
@@ -308,7 +310,7 @@ function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [
   const readOnlyTrees = [];
   for (const t of writableTrees()) {
     const r = realOrNull(t);
-    if (!r || systemDirs.includes(r) || inside(scratch, r) || homes.some((h) => inside(h, r) || inside(r, h))) continue;
+    if (!r || systemDirs.includes(r) || inside(scratch, r) || extraWritable.some((w) => inside(w, r)) || homes.some((h) => inside(h, r) || inside(r, h))) continue;
     (keepPaths.some((k) => inside(k, r)) ? readOnlyTrees : hidden).push(r);
   }
 
@@ -320,7 +322,7 @@ function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [
   if (mode === SANDBOX_BIN) {
     const sbReadOnly = uniq([...readOnlyTrees, ...userLocalTrees().map(realOrNull).filter(Boolean)]);
     const frozen = frozenDirs.map((d) => realOrNull(d)).filter(Boolean);
-    const profile = buildProfile({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees: sbReadOnly, frozenDirs: frozen, offline });
+    const profile = buildProfile({ scratchRoot: scratch, writable: extraWritable, homes, systemDirs, hide, masks, readOnlyTrees: sbReadOnly, frozenDirs: frozen, offline });
     return { mode, profile, flaggedInHome: sandboxFlaggedInHome(homes), wrap: (file, args) => ({ file: SANDBOX_BIN, args: ['-p', profile, file, ...args] }) };
   }
   const realChild = ({ parent, child }) => {
@@ -328,7 +330,7 @@ function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [
     if (!inside(c, p) || c === p) throw new Error(`exposeOnly: ${child} is not inside ${parent}`);
     return { parent: p, child: c };
   };
-  const script = buildScript({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees, readOnly: readOnly.map((d) => fs.realpathSync(d)), exposeOnly: exposeOnly.map(realChild), softMasks: sshDirs, offline });
+  const script = buildScript({ scratchRoot: scratch, writable: extraWritable, homes, systemDirs, hide, masks, readOnlyTrees, readOnly: readOnly.map((d) => fs.realpathSync(d)), exposeOnly: exposeOnly.map(realChild), softMasks: sshDirs, offline });
   return {
     mode,
     script,

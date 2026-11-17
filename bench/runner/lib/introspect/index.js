@@ -7,9 +7,11 @@
 // Claude Code: OpenTelemetry logs, metrics and traces (prompts, tool details, raw API bodies) go to a loopback OTLP
 // receiver the runner starts for the run (otlp-sink.js), and the session transcripts, sub-agent ones included, are
 // copied out of the scratch HOME. kiro-cli (engine v3): the engine's request dump, configuration dump and timeline
-// markers are switched on and written under the run root, then copied out with every log file it left. Every probe
-// output is written to <run>/introspect (mode 0700), inside the out dir, so the harness scrub covers it. Nothing is
-// sent anywhere off the host; collector-watch.js samples the sockets to the host collector ports for the evidence.
+// markers are switched on. The dumps go to a sibling of the run root (kiroDumpRoot), outside the agent's working
+// directory and HOME, so the agent does not come across its own prompt while it works; they are copied out with every
+// log file the engine left. Every probe output is written to <run>/introspect (mode 0700), inside the out dir, so the
+// harness scrub covers it. Nothing is sent anywhere off the host; collector-watch.js samples the sockets to the host
+// collector ports for the evidence.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -55,6 +57,18 @@ function claudeEnv(url) {
   };
 }
 
+// Where kiro-cli writes its dumps for a run: next to the run root, like the live stdio dir, never inside it. The run's
+// isolation makes it writable (writableDirs) and run-one removes it with the run root.
+function kiroDumpRoot(runRoot) {
+  return path.join(path.dirname(runRoot), `${path.basename(runRoot)}-introspect`);
+}
+
+/** Extra directories the agent process must be able to write for this harness's probe, created mode 0700. */
+function probeWritableDirs({ harnessId, runRoot }) {
+  if (harnessId !== 'kiro-cli') return [];
+  return [ensurePrivateDir(kiroDumpRoot(runRoot))];
+}
+
 function kiroEnv(agentDir) {
   return {
     KIRO_DUMP_REQUESTS: '1',
@@ -80,6 +94,8 @@ function mergeEnv(childEnv, probeEnv, { sinkUrl = null } = {}) {
   }
   return env;
 }
+
+const inside = (p, dir) => p === dir || p.startsWith(dir + path.sep);
 
 function ensurePrivateDir(dir) {
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
@@ -133,7 +149,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * `afterExit` stops the sink and the watch, copies the agent-written probe files out of the scratch tree and writes
  * <run>/introspect/probe.json. Call `afterExit` once the agent has exited and before the scratch tree is removed.
  */
-async function startProbe({ harnessId, outDir, runRoot, home, baseEnv = process.env, deps = {} }) {
+async function startProbe({ harnessId, outDir, runRoot, home, dumpRoot = null, baseEnv = process.env, deps = {} }) {
   const dir = ensurePrivateDir(path.join(outDir, DIR));
   const record = {
     harness: harnessId, startedAt: new Date().toISOString(),
@@ -148,8 +164,9 @@ async function startProbe({ harnessId, outDir, runRoot, home, baseEnv = process.
     probeEnv = claudeEnv(sink.url);
     record.sink = { url: sink.url, bind: '127.0.0.1', protocol: 'http/json', file: `${DIR}/otlp.jsonl` };
   } else if (harnessId === 'kiro-cli') {
-    agentDir = ensurePrivateDir(path.join(runRoot, 'introspect'));
+    agentDir = ensurePrivateDir(dumpRoot ?? kiroDumpRoot(runRoot));
     probeEnv = kiroEnv(agentDir);
+    record.kiroDumpRoot = { outsideRunRoot: !inside(agentDir, runRoot), name: path.basename(agentDir) };
     record.notes.push('kiro-cli: request bodies come from the v3 engine request dump (KIRO_DUMP_REQUESTS); token counts per request are not in it');
   } else {
     record.notes.push(`${harnessId}: no probe is implemented for this runtime; only the stream-based timeline is written`);
@@ -174,7 +191,7 @@ async function startProbe({ harnessId, outDir, runRoot, home, baseEnv = process.
         record.settingsTelemetryNames = settingsTelemetry(home);
       }
       if (agentDir) {
-        record.copied.kiroDumps = copyTreePlain(runRoot, 'introspect', path.join(dir, 'kiro'));
+        record.copied.kiroDumps = copyTreePlain(agentDir, '.', path.join(dir, 'kiro'));
         // Log files only: a .log file, or a .json/.jsonl/.txt file inside a logs directory. Never the auth database.
         const isLog = (rel) => (/\.log$/.test(rel) || (/(^|\/)(logs?|kiro-log)\//.test(rel) && /\.(jsonl?|txt)$/.test(rel))) && !/(^|\/)(node_modules|\.git)\//.test(rel);
         record.copied.tmpLogs = copyTreePlain(runRoot, 'tmp', path.join(dir, 'tmp-logs'), { filter: (rel) => /\.log$/.test(rel), depth: 6 });
@@ -193,10 +210,10 @@ function runConfigRecord(runtime) {
     enabled: true,
     output: '<run>/introspect (mode 0700): probe.json, timeline.md and the raw probe files',
     claudeCode: runtime === 'claude-code' ? { exporter: 'OTLP http/json to a loopback receiver the runner starts per run (127.0.0.1, OS-picked port)', variables: Object.keys(claudeEnv('http://127.0.0.1:0')).sort() } : undefined,
-    kiroCli: runtime === 'kiro-cli' ? { variables: Object.keys(kiroEnv('/x')).sort(), dumps: '<run root>/introspect, copied to <run>/introspect/kiro' } : undefined,
+    kiroCli: runtime === 'kiro-cli' ? { variables: Object.keys(kiroEnv('/x')).sort(), dumps: '<run root>-introspect, a sibling of the run root outside the agent workspace and HOME, copied to <run>/introspect/kiro' } : undefined,
     collectorWatch: 'ss samples every 250 ms of sockets to 127.0.0.1:20774, :4317 and :4318 from processes of the run',
     comparable: false,
   };
 }
 
-module.exports = { startProbe, mergeEnv, claudeEnv, kiroEnv, copyTreePlain, runConfigRecord, settingsTelemetry, TELEMETRY_NAME, DIR };
+module.exports = { startProbe, mergeEnv, claudeEnv, kiroEnv, kiroDumpRoot, probeWritableDirs, copyTreePlain, runConfigRecord, settingsTelemetry, TELEMETRY_NAME, DIR };
