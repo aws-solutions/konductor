@@ -430,6 +430,15 @@ needs the changes below.
   stage has `name` and `agent`. They gain the keys of [Keys](#keys) that the canvas shows (D13): `Intent` gains
   `accept`, `Stage` gains `prompt`, `prompt_file`, `outputs` and `done_when`, and `WorkflowView` gains `format`,
   `version` and `params`. The view still has the mapping form of `intent` only.
+- **Stage kind and lines.** Each `Stage` in the view also has two fields that the server derives from the text and
+  that are not keys of the file. `kind` is the key that names the stage's kind. It is `agent` in the first release, and
+  a later release may add values, so a client draws a kind it does not know as a plain stage. `range` is
+  `{ line, end_line }`, counted from 1 as a diagnostic counts lines, and both lines are included. `line` is the line of
+  the stage's first key, so a comment above the stage, and a `-` on a line of its own, are not in the range. `end_line`
+  is the line where the stage's last value ends, so every line of a block scalar is in it, and so is a comment between
+  the stage's keys or after a value on the same line. Blank lines and comment lines after the stage are not. A stage
+  written in flow form runs from its `{` to its `}`, so a stage on one line has `line` equal to `end_line`. The Rust
+  server keeps each stage's source lines when it builds the view.
 - **`intent`.** The table accepts one line or a mapping with `outcome`. This design accepts the mapping only (D18). The
   string form reports `NOT_SUPPORTED_BY_THIS_BUILD`, and the canvas writes the mapping.
 - **Pass rule.** "How a run goes" says every stage is a `kiro-cli` session and that a stage is `passed` when its session
