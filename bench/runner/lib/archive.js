@@ -10,7 +10,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const zlib = require('node:zlib');
 const { spawn, execFileSync } = require('node:child_process');
-const { pipeline, Transform } = require('node:stream');
+const { pipeline, Transform, Writable } = require('node:stream');
 const { promisify } = require('node:util');
 const { markOwned, inspectMarker } = require('./owned.js');
 
@@ -132,6 +132,33 @@ async function writeArchive(runDir, dest, algo) {
   return hash.digest();
 }
 
+/**
+ * A sink that feeds `stdin` until it closes, then drops the rest. tar stops reading at the end-of-archive marker and may
+ * close its stdin while padding is still on the way; that is not an error. The rest is still read and decompressed, so
+ * the decompressor checks the whole file, and tar's own exit status says whether the archive was good.
+ */
+function tarFeed(stdin) {
+  let closed = false;
+  const stop = () => { closed = true; };
+  stdin.on('error', stop);
+  stdin.on('close', stop);
+  return new Writable({
+    write(chunk, _enc, cb) {
+      if (closed) return cb();
+      stdin.write(chunk, (err) => { if (err) closed = true; cb(); });
+    },
+    final(cb) {
+      if (!closed) stdin.end();
+      cb();
+    },
+    // A decompression error destroys the sink; close tar's input too, or tar waits on it forever.
+    destroy(err, cb) {
+      if (err && !closed) stdin.destroy();
+      cb(err);
+    },
+  });
+}
+
 /** Streams the decompressed archive into `tar` with the given arguments; resolves to its stdout. */
 async function throughTar(file, algo, tarArgs) {
   const tar = spawn('tar', tarArgs, { stdio: ['pipe', 'pipe', 'pipe'] });
@@ -139,12 +166,12 @@ async function throughTar(file, algo, tarArgs) {
   tar.stdout.setEncoding('utf8');
   tar.stdout.on('data', (d) => { stdout += d; });
   const done = exited(tar, 'tar');
-  tar.stdin.on('error', () => { /* tar closed early; its exit status says why */ });
+  const feed = tarFeed(tar.stdin);
   if (algo === 'zstd') {
     const z = spawn('zstd', ['-dcq', '--', file], { stdio: ['ignore', 'pipe', 'pipe'] });
-    await Promise.all([pipe(z.stdout, tar.stdin), exited(z, 'zstd'), done]);
+    await Promise.all([pipe(z.stdout, feed), exited(z, 'zstd'), done]);
   } else {
-    await Promise.all([pipe(fs.createReadStream(file), zlib.createGunzip(), tar.stdin), done]);
+    await Promise.all([pipe(fs.createReadStream(file), zlib.createGunzip(), feed), done]);
   }
   return stdout;
 }

@@ -269,3 +269,29 @@ test('cmdArchive --restore --dry-run lists what it would extract and extracts no
   assert.match(real.out, /restored 2 of 2/);
   assert.ok(fs.existsSync(path.join(root, 'vanilla', 't1', '1', 'workspace', 'a.txt')));
 });
+
+// tar stops reading at its end-of-archive marker and closes its stdin while the rest of the stream may still be on the
+// way. Under load that showed up as "Premature close" or EPIPE on a good archive. A megabyte of padding after the marker
+// makes tar close early on every run, so the race is no longer left to timing.
+function paddedArchive(dir, { damageTail = false } = {}) {
+  const src = path.join(dir, 'src');
+  write(path.join(src, 'workspace', 'a.txt'), 'alpha\n');
+  const tarred = spawnSync('tar', ['-cf', '-', '-C', src, 'workspace'], { maxBuffer: 64 * 1024 * 1024 }).stdout;
+  const gz = require('node:zlib').gzipSync(Buffer.concat([tarred, Buffer.alloc(1024 * 1024)]));
+  if (damageTail) gz.writeUInt32LE((gz.readUInt32LE(gz.length - 8) ^ 0xffffffff) >>> 0, gz.length - 8);
+  const file = path.join(dir, 'workspace.tar.gz');
+  fs.writeFileSync(file, gz);
+  return file;
+}
+
+test('an archive with padding after the end-of-archive marker lists and extracts every time, though tar closes its input early', async () => {
+  const dir = scratch();
+  const file = paddedArchive(dir);
+  for (let i = 0; i < 5; i++) assert.deepEqual(await archive.listArchive(file), ['workspace', 'workspace/a.txt']);
+});
+
+test('the whole stream is still decompressed after tar stops reading, so a damaged tail is refused', async () => {
+  const dir = scratch();
+  const file = paddedArchive(dir, { damageTail: true });
+  await assert.rejects(archive.listArchive(file), /incorrect data check|check/);
+});
