@@ -236,16 +236,18 @@ test('answers: control characters are removed, newlines and tabs stay', () => {
     // The renderer cleans what it is given, even if a record's text was changed after prepare().
     answer: {
       ...prepareAnswer(ANSWER),
-      text: 'a\u0000b\u001b[31mc\u007f\td\u000be\u000cf\ng',
+      text: 'a\u0000b\u001b[31mc\u007f\td\u000be\u000cf\u000e\u001fg\nh',
     },
   });
-  assert.equal(extractAnswerBlock(rendered.prompt), 'ab[31mc\tdef\ng');
+  assert.equal(extractAnswerBlock(rendered.prompt), 'ab[31mc\tdefg\nh');
 });
 test('marker collision: refuses when the marker is in the request, the checklist or the answer', () => {
   for (const overrides of [
     { request: `see ${MARKER}` },
     { checklist: [`mention ${MARKER}`] },
     { answer: { ...prepareAnswer(ANSWER), text: MARKER } },
+    // The check runs on the cleaned text, so a marker split by a control character is found too.
+    { answer: { ...prepareAnswer(ANSWER), text: 'fixedmarker\u00010001' } },
   ]) {
     assert.throws(() => renderPrompt(overrides), /marker appears/);
   }
@@ -343,7 +345,7 @@ test('loadTemplate: refuses an unknown or missing placeholder, a stray brace pai
       /marker lines/,
     ],
     [
-      'two-answer placeholders',
+      'a placeholder outside the list (answer_a)',
       good.replace('{{answer}}', '{{answer_a}}'),
       /unknown placeholder\(s\) answer_a/,
     ],

@@ -54,6 +54,7 @@ test('two scales: items is reading B, outcome is reading A, both at prompt versi
       ['outcome', 'A', 1, 'judge-prompt.outcome.v1.md'],
     ],
   );
+  // Names a stored record or a setting might carry, plus inherited property names and empty values.
   for (const id of [
     'overall',
     'strength',
@@ -224,6 +225,36 @@ const PARSE = [
     /repeated field\(s\): items/,
   ],
   [
+    'an escaped repeat of items',
+    `{"items":${JSON.stringify(toLabels('XXXXX'))},"\\u0069tems":${JSON.stringify(toLabels('MMMMM'))}}`,
+    5,
+    /repeated field\(s\): items/,
+  ],
+  [
+    'a repeated reason key',
+    `{"items":${ITEMS_JSON},"reason":"first","reason":"second"}`,
+    5,
+    /repeated field\(s\): reason/,
+  ],
+  [
+    'an escaped quote in a reason before a repeated items key',
+    `{"reason":${JSON.stringify('x", "items": y')},"items":${JSON.stringify(toLabels('XXXXX'))},"items":${ITEMS_JSON}}`,
+    5,
+    /repeated field\(s\): items/,
+  ],
+  [
+    'a reason that holds a quote, a comma and a key-like string',
+    JSON.stringify({ items: toLabels('MMXPM'), reason: 'x", "items": y' }),
+    5,
+    null,
+  ],
+  [
+    'a repeated key below the top level is not a repeated field',
+    `{"items":[{"a":1,"a":2},${toLabels('MMMM').map((label) => JSON.stringify(label))}]}`,
+    5,
+    /items\[0\]/,
+  ],
+  [
     'a __proto__ key',
     `{"items":${JSON.stringify(toLabels('MMMMM'))},"__proto__":{"x":1}}`,
     5,
@@ -297,6 +328,10 @@ const PARSE_KINDS = {
   'a label that is an object': 'labels',
   'a two-array reply (items_a, items_b)': 'fields',
   'a repeated items key': 'fields',
+  'an escaped repeat of items': 'fields',
+  'a repeated reason key': 'fields',
+  'an escaped quote in a reason before a repeated items key': 'fields',
+  'a repeated key below the top level is not a repeated field': 'labels',
   'a __proto__ key': 'fields',
   'a stated arm': 'fields',
   'an overall score field': 'fields',
@@ -320,6 +355,17 @@ for (const [name, text, itemCount, invalidPattern] of PARSE) {
     }
   });
 }
+test('parser: topLevelKeys lists the keys of the top-level object in order, repeats included, and nothing else', () => {
+  for (const [json, keys] of [
+    ['{}', []],
+    ['{"a":1,"b":2}', ['a', 'b']],
+    ['{"a":1,"b":{"a":2,"c":[{"d":1}]},"a":[{"e":3}]}', ['a', 'b', 'a']],
+    ['{ "a" : 1 ,\n "b"\t:\n2 }', ['a', 'b']],
+    ['{"\\u0061":1,"x\\"y":2,"z\\\\":3}', ['a', 'x"y', 'z\\']],
+    ['{"s":"a:b","t":"\\"k\\": 1","u":["v"]}', ['s', 't', 'u']],
+  ])
+    assert.deepEqual(judgeScale.topLevelKeys(json), keys, json);
+});
 test('parser: every invalid row has a kind, every kind is one of INVALID_KINDS, and each kind is used', () => {
   const invalidNames = PARSE.filter((row) => row[3] !== null).map(
     (row) => row[0],
@@ -692,6 +738,12 @@ test('seats: the scale is required, and judgments of another scale are refused, 
     () => aggregate(mixed),
     /judgments\[4\] is for scale "outcome", not "items"/,
   );
+  // The scale is checked on an invalid judgment too, so a failed outcome judgment cannot slip into an items task.
+  assert.throws(
+    () =>
+      aggregate([...items, { valid: false, scale: 'outcome', invalid: 'x' }]),
+    /judgments\[4\] is for scale "outcome", not "items"/,
+  );
   assert.throws(
     () => aggregate([{ ...makeJudgment('a', 'with', 1), scale: undefined }]),
     TypeError,
@@ -723,7 +775,9 @@ test('seats: bad options are named TypeErrors', () => {
     );
   assert.throws(
     () => aggregate('not a list'),
-    (error) => error instanceof TypeError && /judgments/.test(error.message),
+    (error) =>
+      error instanceof TypeError &&
+      /judgments must be an array/.test(error.message),
   );
   for (const scale of [undefined, 'zzz'])
     assert.throws(
@@ -744,6 +798,10 @@ test('seats: a bad judgment shape is a named TypeError', () => {
     [{ ...base, arm: 'both' }, /judgments\[0\]\.arm/],
     [{ ...base, arm: undefined }, /judgments\[0\]\.arm/],
     [{ ...base, score: 'x' }, /judgments\[0\]\.score/],
+    [{ ...base, score: true }, /judgments\[0\]\.score/],
+    [{ ...base, score: '3' }, /judgments\[0\]\.score/],
+    [{ ...base, score: [3] }, /judgments\[0\]\.score/],
+    [{ ...base, score: null }, /judgments\[0\]\.score/],
     [{ ...base, score: Number.NaN }, /judgments\[0\]\.score/],
     [
       { ...base, score: 1000 },
@@ -762,6 +820,12 @@ test('seats: a bad judgment shape is a named TypeError', () => {
     [{ ...base, guard: { items: 2, met: '1' } }, /judgments\[0\]\.guard/],
     [{ ...base, guard: { items: 2, met: 3 } }, /judgments\[0\]\.guard/],
     [{ ...base, guard: { items: 0, met: 0 } }, /judgments\[0\]\.guard/],
+    [{ ...base, guard: { items: 2, met: -1 } }, /judgments\[0\]\.guard/],
+    [{ ...base, guard: { items: 1.5, met: 1 } }, /judgments\[0\]\.guard/],
+    [{ ...base, guard: 0 }, /judgments\[0\]\.guard/],
+    [{ ...base, guard: '' }, /judgments\[0\]\.guard/],
+    [{ ...base, guard: false }, /judgments\[0\]\.guard/],
+    [{ ...base, guard: [] }, /judgments\[0\]\.guard/],
   ];
   for (const [judgment, pattern] of cases)
     assert.throws(
@@ -777,6 +841,21 @@ test('seats: a bad judgment shape is a named TypeError', () => {
       { scale: 'items', valid: false, invalid: 'x' },
     ]).gap,
     1.5,
+  );
+});
+test('seats: a judgment with no guard field counts like one with a null guard', () => {
+  // A checklist with no guard item gives no guard figure; the field may be null or left out.
+  const omitGuard = ({ guard: _guard, ...judgment }) => judgment;
+  const judgments = [...makeSeat('a', 1), ...makeSeat('b', 2)].map(omitGuard);
+  for (const judgment of judgments) assert.ok(!('guard' in judgment));
+  const aggregated = aggregate(judgments);
+  assert.equal(aggregated.valid, true);
+  assert.equal(aggregated.guard, null);
+  assert.equal(aggregated.gap, 1.5);
+  assert.deepEqual(
+    aggregate([...judgments.slice(0, 2), ...makeSeat('b', 2)]).guard,
+    null,
+    'an absent guard and a null guard agree',
   );
 });
 test('seats: counted judgments that disagree on the guard are refused', () => {
