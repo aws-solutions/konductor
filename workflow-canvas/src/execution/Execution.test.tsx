@@ -43,7 +43,7 @@ async function openExecution(runs: RunPort) {
     />,
   );
   await screen.findByTestId('node-end');
-  fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
   await screen.findByRole('button', { name: 'Run' });
   return Object.assign(scheduler, { unmount });
 }
@@ -289,9 +289,9 @@ describe('a run', () => {
     );
     await press(runButton());
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Designer' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }));
     await tick(scheduler);
-    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
 
     expect(badges()).toEqual(['Done', 'Done', 'Done', 'Passed']);
     expect(statusLine().textContent).toContain('Run passed.');
@@ -301,7 +301,7 @@ describe('a run', () => {
     await openExecution(serverShowing(helloRun(0)));
     await press(runButton());
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Designer' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }));
 
     expect(screen.queryAllByTestId('status-badge')).toEqual([]);
   });
@@ -389,7 +389,7 @@ describe('the canvas of the Execution tab', () => {
   it('stays the same canvas while the page draws again, as when the goal is typed', async () => {
     await openExecution(serverShowing(helloRun(0)));
     const canvas = () =>
-      within(screen.getByRole('tabpanel', { name: 'Execution' })).getByRole(
+      within(screen.getByRole('tabpanel', { name: 'Run' })).getByRole(
         'region',
         { name: 'Workflow graph' },
       );
@@ -412,8 +412,8 @@ describe('the goal', () => {
     await openExecution(serverShowing(helloRun(0)));
     fireEvent.change(goalBox(), { target: { value: 'Fix the typo' } });
 
-    openTab('Designer');
-    openTab('Execution');
+    openTab('Design');
+    openTab('Run');
 
     expect(goalBox().value).toBe('Fix the typo');
     expect(isOff(runButton())).toBe(false);
@@ -425,8 +425,8 @@ describe('the goal', () => {
     fireEvent.change(goalBox(), { target: { value: 'Fix the typo' } });
     await press(runButton());
 
-    openTab('Designer');
-    openTab('Execution');
+    openTab('Design');
+    openTab('Run');
 
     expect(goalBox().value).toBe('Fix the typo');
     expect(goalBox().readOnly).toBe(true);
@@ -483,7 +483,7 @@ describe('the goal', () => {
       />,
     );
     await screen.findByTestId('node-end');
-    openTab('Execution');
+    openTab('Run');
     await screen.findByRole('button', { name: 'Run' });
 
     expect(goalBox().value).toBe('Fix the typo and add a test then ship');
@@ -738,7 +738,7 @@ describe('the live regions', () => {
     const scheduler = await openExecution(runs);
     await press(runButton());
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Designer' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }));
     expect(screen.queryByTestId('run-status')).toBeNull();
     await tick(scheduler);
     await tick(scheduler);
@@ -759,7 +759,7 @@ describe('the live regions', () => {
     const scheduler = await openExecution(runs);
     await press(runButton());
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Designer' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }));
     expect(screen.queryByTestId('run-error')).toBeNull();
     await tick(scheduler);
 
@@ -845,7 +845,7 @@ describe('when there is no workflow to run', () => {
     );
     await screen.findByText('The code is not valid.');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
 
     expect(
       screen.getAllByText('The code is not valid.').length,
@@ -858,7 +858,7 @@ describe('when there is no workflow to run', () => {
       <App load={new Promise(() => {})} scheduler={new FakeScheduler()} />,
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
 
     expect(screen.getAllByText('Loading the workflow').length).toBeGreaterThan(
       0,
@@ -902,7 +902,7 @@ describe('when another workflow is opened during a run', () => {
     );
     const { rerender } = render(view(first));
     await screen.findByTestId('node-end');
-    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
     await press(await screen.findByRole('button', { name: 'Run' }));
     await tick(scheduler);
     expect(statusLine().textContent).toContain('Running draft');

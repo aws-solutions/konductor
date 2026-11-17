@@ -7,8 +7,8 @@ import { ModeSwitch, type PageView } from './ModeSwitch';
 type ViewId = 'designer' | 'execution';
 
 const views: readonly PageView<ViewId>[] = [
-  { id: 'designer', label: 'Designer', content: null },
-  { id: 'execution', label: 'Execution', content: null },
+  { id: 'designer', label: 'Design', content: null },
+  { id: 'execution', label: 'Run', content: null },
 ];
 
 function Harness({ initial }: { initial: ViewId }) {
@@ -35,22 +35,22 @@ describe('ModeSwitch', () => {
   it('leaves Alt+ArrowLeft to the browser', () => {
     render(<Harness initial="execution" />);
 
-    const event = pressKey(tab('Execution'), {
+    const event = pressKey(tab('Run'), {
       key: 'ArrowLeft',
       altKey: true,
     });
 
     expect(event.defaultPrevented).toBe(false);
-    expect(tab('Execution').getAttribute('aria-selected')).toBe('true');
+    expect(tab('Run').getAttribute('aria-selected')).toBe('true');
   });
 
   it('leaves Ctrl+Home to the browser', () => {
     render(<Harness initial="execution" />);
 
-    const event = pressKey(tab('Execution'), { key: 'Home', ctrlKey: true });
+    const event = pressKey(tab('Run'), { key: 'Home', ctrlKey: true });
 
     expect(event.defaultPrevented).toBe(false);
-    expect(tab('Execution').getAttribute('aria-selected')).toBe('true');
+    expect(tab('Run').getAttribute('aria-selected')).toBe('true');
   });
 
   it.each([
@@ -59,23 +59,23 @@ describe('ModeSwitch', () => {
   ])('leaves $key with a modifier to the browser', (init) => {
     render(<Harness initial="designer" />);
 
-    const event = pressKey(tab('Designer'), init);
+    const event = pressKey(tab('Design'), init);
 
     expect(event.defaultPrevented).toBe(false);
-    expect(tab('Designer').getAttribute('aria-selected')).toBe('true');
+    expect(tab('Design').getAttribute('aria-selected')).toBe('true');
   });
 
   it('still moves the selection with plain arrow keys, Home and End', () => {
     render(<Harness initial="designer" />);
 
-    const right = pressKey(tab('Designer'), { key: 'ArrowRight' });
+    const right = pressKey(tab('Design'), { key: 'ArrowRight' });
     expect(right.defaultPrevented).toBe(true);
-    expect(tab('Execution').getAttribute('aria-selected')).toBe('true');
+    expect(tab('Run').getAttribute('aria-selected')).toBe('true');
 
-    pressKey(tab('Execution'), { key: 'Home' });
-    expect(tab('Designer').getAttribute('aria-selected')).toBe('true');
+    pressKey(tab('Run'), { key: 'Home' });
+    expect(tab('Design').getAttribute('aria-selected')).toBe('true');
 
-    pressKey(tab('Designer'), { key: 'End' });
-    expect(tab('Execution').getAttribute('aria-selected')).toBe('true');
+    pressKey(tab('Design'), { key: 'End' });
+    expect(tab('Run').getAttribute('aria-selected')).toBe('true');
   });
 });

@@ -134,7 +134,7 @@ test('keeps the keyboard ring of a node visible in the dark mode', async ({
 }) => {
   await canvas.switchTheme();
   await canvas.expectWorkflowDrawn();
-  await canvas.tab('Designer').focus();
+  await canvas.tab('Design').focus();
 
   await canvas.tabToNextNode();
 
@@ -163,11 +163,11 @@ async function expectSwitchOnBand(canvas: WorkflowCanvasPage) {
   expect(switcher!.y).toBeLessThan(title!.y + title!.height);
   expect(switcher!.y + switcher!.height).toBeGreaterThan(title!.y);
   await expect(list).toHaveCSS('border-top-color', BAND_DIVIDER_RGB);
-  await expect(canvas.tab('Designer')).toHaveCSS(
+  await expect(canvas.tab('Design')).toHaveCSS(
     'background-color',
     BAND_LINK_RGB,
   );
-  await expect(canvas.tab('Designer')).toHaveCSS('color', BAND_RGB);
+  await expect(canvas.tab('Design')).toHaveCSS('color', BAND_RGB);
 }
 
 test('puts the view switch on the dark band in the light mode', async ({
