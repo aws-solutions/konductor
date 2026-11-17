@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.6.0
+  version: 1.6.1
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -35,6 +35,9 @@ info:
     `range`. Version 1.4.0 only adds: the operation `listAgents`.
     Version 1.5.0 only adds: the answer of `GET /api/workflow` gains
     `stage_fields`. Version 1.6.0 only adds: the operation `getRunEvents`.
+    Version 1.6.1 adds nothing: the `status` of a `stage_state` event gets
+    its own enum without `pending`. The event was already described as never
+    `pending`, so no answer a server sends changes.
 
     **Conventions**
 
@@ -2423,7 +2426,11 @@ components:
         stage:
           $ref: '#/components/schemas/StageName'
         status:
-          $ref: '#/components/schemas/StageStatus'
+          type: string
+          enum: [running, passed, blocked]
+          description: |
+            The status the stage moved to. It is a `StageStatus` other than
+            `pending`, because a stage never moves back to `pending`.
         reason:
           $ref: '#/components/schemas/StageReason'
       if:
