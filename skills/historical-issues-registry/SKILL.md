@@ -11,8 +11,6 @@ tags: [skill, code-review, adversarial, historical, filter]
 
 A code review that spans multiple revisions accumulates decisions: findings the author fixed, findings the reviewer marked wontfix, findings the reviewer rejected as false positives. Re-posting the same finding on a later revision is worse than missing it — it teaches reviewers to ignore automated comments.
 
-This skill filters new findings that duplicate ones already fixed or already decided against by a human reviewer, reducing noise across revisions of the same review.
-
 This skill loads prior review state, canonicalizes each historical finding into a fingerprint, and filters new candidate findings against those fingerprints before they reach the CR.
 
 ## Usage
