@@ -46,6 +46,27 @@ test('only a failed, never-started run with a login message is an auth failure',
   assert.equal(classifyAuthFailure({ agg: null, exec: failed, texts: ['segfault'] }), null, 'no login message');
 });
 
+test('an expired AWS session token is a login failure, in the words AWS and Claude Code use', () => {
+  assert.match(authFailureText('API Error: 403 The security token included in the request is expired'), /security token included in the request is expired/);
+  assert.match(authFailureText('403 The security token included in the request is expired'), /403 The security token/);
+  assert.match(authFailureText('AWS authentication failed'), /AWS authentication failed/);
+  assert.match(authFailureText('An error occurred (ExpiredTokenException) when calling the InvokeModel operation'), /ExpiredTokenException/);
+  assert.equal(authFailureText('403 Forbidden: model access denied'), null);
+});
+
+// The agent reported a finished, failed run: Claude Code's result line after the first model request was refused.
+const ccFailed = (finalText, toolCalls = 0) => ({ runFinishedStatus: 'error', meteringEntries: 0, toolCalls, turnDurationMs: 574, finalText });
+
+test('a run that failed with an expired token before any tool call is an auth failure, even though a turn started', () => {
+  const agg = ccFailed('API Error: 403 The security token included in the request is expired');
+  assert.equal(neverStartedTurn(agg), false);
+  assert.match(classifyAuthFailure({ agg, exec: failed, texts: [''] }), /security token included in the request is expired/);
+  assert.match(classifyAuthFailure({ agg: ccFailed('API Error'), exec: failed, texts: ['AWS authentication failed\n'] }), /AWS authentication failed/, 'stderr is read');
+  assert.equal(classifyAuthFailure({ agg: ccFailed('API Error: 403 The security token included in the request is expired', 2), exec: failed, texts: [''] }), null, 'a tool ran');
+  assert.equal(classifyAuthFailure({ agg: { ...agg, runFinishedStatus: 'success' }, exec: failed, texts: [''] }), null, 'the run succeeded');
+  assert.equal(classifyAuthFailure({ agg: ccFailed('API Error: 500 internal'), exec: failed, texts: ['', 'model text: you are not logged in'] }), null, 'the stream is not read once a turn started');
+});
+
 const ARM = { id: 'v1.2.0', label: 'v1.2.0', ref: 'v1.2.0', commitSha: 'abc', harness: 'kiro-cli-v2', agent: 'konductor' };
 const base = { arm: ARM, task: { id: 't1' }, replicate: 1, config: { model: 'm', effort: 'high', agentEngine: 'v2' }, session: null, checks: [], transcript: null, env: { kiroCliVersion: 'k', modelListSnapshotPath: null } };
 

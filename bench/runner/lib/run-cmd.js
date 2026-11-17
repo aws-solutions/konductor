@@ -37,6 +37,8 @@ const { preparePlantSuite } = require('./plant/intake.js');
 const { preflightWalls, trialGatewayRows, checklistWithTrials } = require('./plant/walls.js');
 const { preflightStrands } = require('./plant/strands-census.js');
 const { makeIso } = require('./run-one.js');
+const { pinConflicts, describeConflicts } = require('./study-pins.js');
+const { profileCredentials } = require('./aws-creds.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -213,7 +215,9 @@ async function cmdRun(opts, deps = {}) {
     const multiTurn = tasks.filter((t) => t.autonomy).map((t) => t.id);
     if (multiTurn.length) throw new Error(`multi-turn (autonomy) tasks are not supported on the ${desc.proseName} harness yet: ${multiTurn.join(', ')}; ${desc.multiTurnNote}. Choose other tasks with --tasks`);
   }
-  if (isCc) cc.checkCredentials(process.env);
+  // Claude Code takes exported keys: from the environment, or with --aws-profile read from that profile before each run that needs fresh ones.
+  const ccCreds = isCc && opts['aws-profile'] !== undefined ? profileCredentials(opts['aws-profile'] === true ? '' : String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {}) : null;
+  if (isCc) cc.checkCredentials(ccCreds ? { ...process.env, ...ccCreds.current() } : process.env);
   const budgetCredits = opts[budgetFlag] ? Number(opts[budgetFlag]) : null;
   if (budgetCredits !== null && !(budgetCredits > 0)) throw new Error(`--${budgetFlag} must be a positive number`);
   const censoredFloor = opts['censored-floor'] ? Number(opts['censored-floor']) : isUsd ? DEFAULT_CENSORED_FLOOR_USD : DEFAULT_CENSORED_FLOOR;
@@ -255,6 +259,9 @@ async function cmdRun(opts, deps = {}) {
   for (const a of arms) for (const w of a.warnings) log(`warning: arm ${a.id}: ${w}`);
 
   const outDir = path.resolve(opts.out || path.join(REPO, 'bench', 'results', new Date().toISOString().replace(/[:.]/g, '-')));
+  const armDrift = pinConflicts(outDir, arms);
+  if (armDrift.length && !opts['allow-arm-drift']) throw new Error(describeConflicts(armDrift, outDir));
+  for (const c of armDrift) log(`warning: --allow-arm-drift: arm ${c.armId} was ${c.recorded.slice(0, 12)} in earlier results of this --out and is ${c.now.slice(0, 12)} now`);
   const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
   const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
   const authDb = isUsd ? null : opts['auth-db'] && opts['auth-db'] !== true ? path.resolve(opts['auth-db']) : sandbox.defaultAuthDb();
@@ -330,8 +337,9 @@ async function cmdRun(opts, deps = {}) {
     if (isCc) {
       const flagValue = (name) => (opts[name] && opts[name] !== true ? opts[name] : null);
       ctx.claude = cc.resolveClaude({ binOverride: flagValue('claude-bin') ?? undefined, toolsDir: flagValue('claude-tools-dir') ?? undefined });
-      Object.assign(ctx, { region: ccRegion, runBudgetUsd });
-      log(`claude ${ctx.claude.version} (${ctx.claude.bin}), sha256 ${ctx.claude.sha256.slice(0, 12)}, model ${config.model} (canonical ${config.canonicalModel}), region ${ccRegion}, permission mode ${cc.PERMISSION_MODE}, per-run budget $${runBudgetUsd ?? cc.DEFAULT_RUN_BUDGET_USD}, credentials from the environment (${cc.credentialNames().join(', ')})`);
+      Object.assign(ctx, { region: ccRegion, runBudgetUsd, ...(ccCreds ? { awsCreds: ccCreds } : {}) });
+      const credsNote = ccCreds ? `credentials from profile ${ccCreds.profile}, read again before a run when they expire within 15 minutes` : `credentials from the environment (${cc.credentialNames().join(', ')})`;
+      log(`claude ${ctx.claude.version} (${ctx.claude.bin}), sha256 ${ctx.claude.sha256.slice(0, 12)}, model ${config.model} (canonical ${config.canonicalModel}), region ${ccRegion}, permission mode ${cc.PERMISSION_MODE}, per-run budget $${runBudgetUsd ?? cc.DEFAULT_RUN_BUDGET_USD}, ${credsNote}`);
       const versionNote = cc.versionWarning(ctx.claude.version);
       if (versionNote) log(`warning: ${versionNote}`);
       const shadow = cc.PROFILE_VARS.filter((k) => process.env[k]);
@@ -411,6 +419,7 @@ async function cmdRun(opts, deps = {}) {
       ...config, ...ctx.envInfo,
       isolation: { ...isolation, ...describeHide(isolation.mode, ctx.hide), mask: ctx.mask }, comparable: isComparableMode(isolation.mode), tripwire: { depth: ctx.tripwire.roots[0].depth, excludes: [...DEFAULT_EXCLUDES, ...tripExtra], roots: ctx.tripwire.roots.map((r) => r.dir) },
       arms: rc.armRecords(arms, prepared, errors),
+      armDrift: armDrift.length ? armDrift.map((c) => ({ armId: c.armId, recorded: c.recorded, now: c.now, kind: c.kind })) : null,
       originMain: mainArm ? { originMainSha: mainArm.originMainSha, localMainSha: mainArm.localMainSha, behindOrigin: mainArm.behindOrigin, usedRef: mainArm.ref } : null,
       modelNormalized: arms.some((a) => !a.vanilla),
       ...(isSt ? {

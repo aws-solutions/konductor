@@ -2,7 +2,7 @@
 'use strict';
 
 // Static description of the Claude Code runtime. See kiro-meta.js for why this is its own file.
-const AWS_VARS = 'credentials come from the AWS_* variables in the environment that starts the bench';
+const AWS_VARS = 'credentials come from the AWS_* variables in the environment that starts the bench, or from --aws-profile';
 const NO_WATCHER = 'the early-stop watcher reads kiro-cli and opencode events only';
 
 module.exports = Object.freeze({
@@ -21,7 +21,6 @@ module.exports = Object.freeze({
       'stop-on': NO_WATCHER,
       'max-tool-calls': NO_WATCHER,
       'aws-creds-file': AWS_VARS,
-      'aws-profile': AWS_VARS,
     }),
     perRunCapFlag: 'run-budget-usd',
   }),

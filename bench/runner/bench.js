@@ -28,7 +28,7 @@ const USAGE = `Usage:
   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe|canary-layers [--arms a,b,c] [--tasks id,id]
        [--replicates N] [--replicate-offset N] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
-       [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--gate-strict] [--allow-partial] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
+       [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--gate-strict] [--allow-partial] [--allow-arm-drift] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
        [--extra-tasks DIR,DIR] [--suites-dir DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
@@ -40,7 +40,9 @@ const USAGE = `Usage:
        to the results directory. Without --profile the suite defaults apply and no arm is added. Credits are tracked per run in credit-ledger.jsonl; with no
        --budget-credits nothing stops a run, with it new runs stop at 90% of the budget)
        (--replicate-offset N numbers the replicates N+1 to N+replicates, to add runs to an out dir that already holds replicates 1 to N. The default 0 numbers them from 1.
-       A run writes over any result.json already at a planned path and prints a warning with the count of cells it will overwrite)
+       A run writes over any result.json already at a planned path and prints a warning with the count of cells it will overwrite.
+       Every arm ref is resolved to a commit once, when the command starts; run-config.json and each result.json record it. A command refuses an --out
+       that already holds results of the same arm id at another commit (main after a fetch, say) unless --allow-arm-drift is given)
        (--max-auth-failures N stops the chunk after N consecutive runs that could not log in (no turn ran, "Not logged in", "Authentication failed" or "token already expired"), default 3,
        or the BENCH_MAX_AUTH_FAILURES variable; remaining cells are skipped and the command exits 6. Such a run is charged 0 and marked infra, never a timeout.
        Runs whose agent binary could not be launched (exit 127, no such file) count toward the same limit)
@@ -76,8 +78,10 @@ const USAGE = `Usage:
        opencode arms (oc-vanilla, oc-v1.2.0, oc-main; one harness per run):
        --aws-creds-file FILE [--aws-profile bench] [--budget-usd X] [--opencode-bin PATH] [--rg-bin PATH]
        Claude Code arms (cc-vanilla, cc-main, cc-name=<git ref>; one harness per run; the real claude binary, never a launcher script):
-       [--budget-usd X] [--run-budget-usd X] [--aws-region us-east-1] (--claude-bin PATH | --claude-tools-dir DIR)
+       [--budget-usd X] [--run-budget-usd X] [--aws-region us-east-1] [--aws-profile NAME] (--claude-bin PATH | --claude-tools-dir DIR)
        (credentials are the AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_SESSION_TOKEN variables of the shell that starts the bench; nothing is read from a file.
+       With --aws-profile NAME the runner reads them with aws configure export-credentials --profile NAME instead, at the start and again before a run
+       when the cached keys have no expiry or expire within 15 minutes, and passes them to that run only; a study can then outlive one session's keys.
        --run-budget-usd is claude's own per-run cap, default 5. --effort, --stop-on, --max-tool-calls and --run-credit-limit do not apply)
   node bench/runner/bench.js judge --run DIR [--judges a,b] [--mode rubric,pairwise] [--baseline vanilla|ARM]
        [--concurrency N] [--budget-credits X] [--judge-cmd CMD] [--max-file-chars N] [--max-bundle-chars N]
@@ -127,6 +131,11 @@ const USAGE = `Usage:
        (scores the runs of the canary-layers suite from stream.jsonl, with no model call: per layer token (core rules, system prompt, skill index, skill body, SOP body, routing context),
        per entry agent and per task, the share of runs where the token showed in a tool result (direct) or in the model's own text or calls (inferred), next to whether the agent spec
        declares that layer. FILE is the layers.json written by bench/scripts/canary-layers.js build. Writes canary-report.md and canary-report.json to --out. See bench/CANARY-LAYERS.md)
+  node bench/runner/bench.js plant-trace --run TRIAL_DIR [--vs TRIAL_DIR] --out FILE.html
+       (one static HTML page for a plant trial, with no model and no network: a timeline with one row per tool call and the time per step, rows coloured allowed,
+       blocked or unsafe attempt from the gateway log, the plant state after each call, a click-through detail with the call, arguments and the gateway's reason,
+       tokens per step where the stream records them, and the stream-to-gateway mismatches. TRIAL_DIR holds result.json, stream.jsonl and plant/gateway.jsonl
+       and plant/world.jsonl. With --vs the second trial gets its own block below the first. Exit 2 on a missing file or an unknown stream format)
   node bench/runner/bench.js plant-policy-test --release DIR [--python PATH]
        (runs the gateway-only truth table of a plant release with no model: a test-mode gateway decides every row of truth-table.json, then a wrong-token
        frame must be refused. Prints one PASS or FAIL line per cell; exit 1 when any cell fails. --python names the interpreter with cedarpy, default python3.
@@ -401,6 +410,7 @@ async function main(argv) {
   if (cmd === 'probe-report') return require('../report/probes.js').cmdProbeReport(opts);
   if (cmd === 'canary-report') return require('../report/canary-layers.js').cmdCanaryReport(opts);
   if (cmd === 'plant-report') return require('../report/plant.js').cmdPlantReport(opts);
+  if (cmd === 'plant-trace') return require('../report/plant-trace/index.js').cmdPlantTrace(opts);
   if (cmd === 'plant-policy-test') return require('./lib/plant/policy-test.js').cmdPlantPolicyTest(opts);
   if (cmd === 'backfill') return evalCommands.cmdBackfill(opts);
   if (cmd === 'compare') return evalCommands.cmdCompare(opts);
