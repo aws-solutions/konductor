@@ -4,10 +4,11 @@ import { describe, expect, it } from 'vitest';
 import type { WorkflowApi } from '../core/workflow-api.ts';
 import { contractOperations } from '../test-support/contract.ts';
 import { buildRoutes, type Route } from './routes.ts';
+import type { Waiter } from './run-events.ts';
 import type { SessionGate } from './session.ts';
 
 // The table is read, not called, so the handlers never reach these.
-const routes = buildRoutes({} as WorkflowApi, {} as SessionGate);
+const routes = buildRoutes({} as WorkflowApi, {} as SessionGate, {} as Waiter);
 const operations = contractOperations();
 
 // A concrete path for a template, with each `{param}` filled in.

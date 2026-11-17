@@ -25,3 +25,8 @@ export function sameSecret(a: string, b: string): boolean {
   const digest = (text: string) => createHash('sha256').update(text).digest();
   return timingSafeEqual(digest(a), digest(b));
 }
+
+/** Waits `ms` of real time. The timer does not keep the process alive. */
+export function timerPause(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms).unref());
+}

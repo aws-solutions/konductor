@@ -151,3 +151,35 @@ export interface Run {
   order: string[];
   stages: Record<string, RunStage>;
 }
+
+interface EventBase {
+  seq: number;
+  run_id: string;
+  at: string;
+}
+
+/** A stage of the run moved to a new status. */
+export interface StageStateEvent extends EventBase {
+  type: 'stage_state';
+  stage: string;
+  status: StageStatus;
+  /** Present when the status is `blocked`. */
+  reason?: StageReason;
+}
+
+/** One line of a stage's standard output, sent only while the run is active. */
+export interface ConsoleEvent extends EventBase {
+  type: 'console';
+  stage: string;
+  /** The place of the line in the stage's output, from 1. */
+  n: number;
+  text: string;
+}
+
+export interface RunFinishedEvent extends EventBase {
+  type: 'run_finished';
+  status: Exclude<RunStatus, 'running'>;
+  exit_code: number;
+}
+
+export type RunEvent = StageStateEvent | ConsoleEvent | RunFinishedEvent;

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Clock } from './clock.ts';
 import { HARNESS } from './contract.ts';
-import type { Run, RunStage, StageReason } from './model.ts';
+import type { Run, RunEvent, RunStage, StageReason } from './model.ts';
+import { scriptOf, type TimedEvent } from './run-events.ts';
 import { formatTimestamp, runIdPrefix } from './timestamp.ts';
 
 /** How long each simulated stage takes. */
@@ -21,6 +22,18 @@ interface StartedRun {
   startedAt: number;
   order: string[];
   plan: RunPlan;
+  script: TimedEvent[];
+}
+
+/** The events of a run that have happened by now. */
+export interface EventsSoFar {
+  /** In order. A finished run has no console lines: they are live only. */
+  events: RunEvent[];
+  /** The highest `seq` the run has given out, console lines included. */
+  lastSeq: number;
+  finished: boolean;
+  /** When the next event happens, while the run has one to come. */
+  nextAt?: number;
 }
 
 export interface RunSimulatorOptions {
@@ -59,12 +72,23 @@ export class RunSimulator {
     plan: RunPlan = {},
   ): string {
     const startedAt = this.clock.now();
+    const runId = this.newRunId(startedAt);
+    const order = [...stageNames];
+    const normal = normalized(plan, stageNames.length);
     const run = {
-      runId: this.newRunId(startedAt),
+      runId,
       workflow,
       startedAt,
-      order: [...stageNames],
-      plan: normalized(plan, stageNames.length),
+      order,
+      plan: normal,
+      script: scriptOf({
+        runId,
+        startedAt,
+        order,
+        stageMs: this.stageMs,
+        block: normal.block,
+        neverEnds: normal.neverEnds,
+      }),
     };
     this.runs.set(run.runId, run);
     this.latest = run;
@@ -74,6 +98,23 @@ export class RunSimulator {
   get(runId: string): Run | undefined {
     const run = this.runs.get(runId);
     return run && this.describe(run);
+  }
+
+  events(runId: string): EventsSoFar | undefined {
+    const run = this.runs.get(runId);
+    if (!run) return undefined;
+    const now = this.clock.now();
+    const happened = run.script.filter((timed) => timed.time <= now);
+    const finished = this.isDone(run);
+    const next = run.script.find((timed) => timed.time > now);
+    return {
+      events: happened
+        .map((timed) => timed.event)
+        .filter((event) => !finished || event.type !== 'console'),
+      lastSeq: happened.at(-1)?.event.seq ?? 0,
+      finished,
+      ...(next ? { nextAt: next.time } : {}),
+    };
   }
 
   private describe(run: StartedRun): Run {
