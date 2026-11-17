@@ -5,6 +5,7 @@ import {
   refuseRunsWith,
   runReply,
 } from '../support/run-routes';
+import { HELLO_PLAN_TEXT } from '../support/hello-plan';
 import { overwriteWorkflow, SAMPLE_TEXT } from '../support/stub-workflow';
 import { saveFullPageScreenshot } from '../support/screenshots';
 import type { WorkflowCanvasPage } from '../support/workflow-canvas-page';
@@ -192,6 +193,41 @@ test('capture the Designer tab with a change it cannot write in place', async ({
   await expect(designer.page.getByTestId('not-in-place')).toBeVisible();
 
   await saveFullPageScreenshot(designer.page, 'designer-not-in-place');
+});
+
+test('capture the Designer tab with the prompt of a stage being edited', async ({
+  canvas,
+  designer,
+  request,
+}) => {
+  await overwriteWorkflow(request, HELLO_PLAN_TEXT);
+  await canvas.page.reload();
+  await expect(designer.name).toHaveValue('plan');
+  await designer.prompt.fill(
+    'Write a plan to PLAN.md.\nKeep it to three steps.\nDo not change any other file.',
+  );
+  await designer.expectStatus('Unsaved changes');
+
+  await saveFullPageScreenshot(designer.page, 'designer-prompt');
+});
+
+test('capture the Designer tab with a stage that reads its prompt from a file', async ({
+  canvas,
+  designer,
+  request,
+}) => {
+  await overwriteWorkflow(
+    request,
+    SAMPLE_TEXT.replace(
+      '    agent: k-quality-assurance\n',
+      '    agent: k-quality-assurance\n    prompt_file: review.md\n',
+    ),
+  );
+  await canvas.page.reload();
+  await designer.stage('review').click();
+  await expect(designer.promptFile).toHaveValue('review.md');
+
+  await saveFullPageScreenshot(designer.page, 'designer-prompt-file');
 });
 
 test('capture the Designer tab with unsaved edits in the dark mode', async ({

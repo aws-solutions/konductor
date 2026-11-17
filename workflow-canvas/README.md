@@ -8,8 +8,8 @@ The page has Design and Run views, picked with a switch in the page
 header. The Design view loads the workflow
 from the API and draws it: the intent, each stage in list order (name, agent
 and harness) and the end, joined by run-order edges. You can pick the agent of
-a stage, rename it, add a stage, delete one and save the file. A save changes
-only the values it edits and keeps every other key of the file. It shows a
+a stage, rename it, edit its prompt, add a stage, delete one and save the file.
+A save changes only the values it edits and keeps every other key of the file. It shows a
 loading message, an error message or an empty message when there is nothing to
 draw. The Run view draws the saved workflow and runs it: a Run button
 starts a run, and each node shows its live state until the run ends. A blocked
@@ -405,12 +405,12 @@ The rest wraps the core, so the rules can be tested without a browser:
 
 The tab has the graph on the left, with **Add stage** above it and the save
 line and **Save** in its header, and **Properties** on the right. Properties
-shows the selected stage (the first one when the page opens): its `name` and
-its `agent`, and **Delete stage**. These are the two keys of a stage that the
-Designer edits. A stage may also have a `prompt` or a `prompt_file`, which the
-page does not show or edit and which a save keeps. The stages run in the order
-they are listed, and there is no way to link or reorder them yet. There is no
-raw YAML editor.
+shows the selected stage (the first one when the page opens): its `name`, its
+`agent` and its `prompt`, and **Delete stage**. These are the keys of a stage
+that the Designer edits. A stage may also have a `prompt_file`, which the page
+shows as a read-only path and a save keeps. The stages run in the order they are
+listed, and there is no way to link or reorder them yet. There is no raw YAML
+editor.
 
 - **Add stage** adds a stage at the end, named `agent-1` (the first free
   `agent-N`) with the agent `k-developer`, selects it and moves focus to its
@@ -425,6 +425,17 @@ raw YAML editor.
   list is part of the page (`designer/core/agents.ts`); a file that names an
   agent not on the list keeps it, shown first, and keeps it on offer when
   another agent is chosen. There is no field to type any other id yet.
+- **prompt** is a text area with the count of its characters against 32768, the
+  limit that the contract and the specification table give (`MAX_PROMPT_CHARS`,
+  which a test compares with both). The text is shown as typed, never as HTML.
+  Empty text removes the `prompt` key. A line above the text area says that
+  saving a prompt ends trust, so the next Run asks again; the page grants no
+  trust. A stage with a `prompt_file` shows the path read-only, and the text
+  area is off with the reason "This stage reads its prompt from a file." A stage
+  with both keys shows the finding of the check and keeps the text area off, and
+  the page picks neither. The text area is also off, with the reason, for a
+  prompt that is an alias or has an anchor or a tag, for a stage with two
+  `prompt` keys, and for a file that uses a `<<` merge key.
 - **Delete stage** removes the stage, selects the one before it (or the next,
   for the first) and moves focus to its name. A workflow keeps at least one
   stage, so it is off for the last.
@@ -438,7 +449,8 @@ Nothing is written until **Save**. The line beside it says **No changes**,
 **Unsaved changes**, **Saving** or **Saved** in a polite live region. Save
 sends the whole text with `PUT /api/workflow` and the `hash` of the file as it
 was loaded (`base_hash`), and takes the hash of the answer for the next save.
-The writer (`stage-text.ts`) changes only the bytes of the values it edits. A
+The writer (`stage-text.ts`) changes only the bytes of the values it edits, in
+two passes. The first writes `name`, `agent` and whole stages by line. A
 stage whose `name` or `agent` changed keeps every other byte of its item: its
 other keys, such as `prompt` and `prompt_file`, its comments and its layout. A
 deleted stage takes its item and the comments in front of it, and a new stage
@@ -447,6 +459,36 @@ outside the block of stages stays as it was, so `format`, `version`, `params`,
 the comments and the line endings are kept. The writer knows which stage of the
 file each stage of the draft was, also after a save, so a rename is an edit of
 that stage and not a new one.
+
+The second pass writes the prompts. The line writer cannot find where a block
+scalar ends, and a prompt is usually one (`>-` in `hello-plan.yml`), so
+`prompt-spots.ts` finds the range of each stage's `prompt` value with the
+`yaml` parser, and `prompt-text.ts` replaces only those bytes:
+
+- Text on one line is plain when that is safe. With a `: `, a ` #`, a leading
+  indicator, a space at either end or a character that YAML reads as syntax, it
+  is double-quoted, with `\u` escapes for U+007F to U+009F, U+2028 and U+2029.
+- Text with a line break is a literal block scalar, indented two more than the
+  key. Its chomping is the text's own: `|-` for no trailing line break, `|` for
+  one and `|+` for more. A first line that starts with a space gets an
+  indentation indicator. Text that a block cannot hold (a control character,
+  U+0085, U+2028, U+2029, a carriage return, or only white space) is
+  double-quoted with escapes.
+- A prompt that is a block scalar already keeps its style (`|` or `>`), its
+  indentation indicator and the comment on its header line, and takes its
+  chomping from the new text. Where a folded block would read back differently,
+  as it does for text with line breaks, a literal block is written.
+- A prompt that is not changed stays byte for byte, a block scalar included.
+- Empty text removes the key and its lines. When the key shares a line with the
+  dash, the key and its value up to the next key go and the dash stays. A file
+  that ends without a line break still ends without one.
+- A stage with no `prompt` gets a `prompt:` line after its last key, with the
+  indent of its keys, before the blank lines and comments of the next stage.
+- A file with CRLF line endings gets the text with CRLF, and a typed CRLF counts
+  as one line break. A value written in a flow item is always double-quoted.
+- The result is read again with the same parser. A prompt that does not read
+  back as typed is written in the next form (a literal block, then
+  double quotes), and if none reads back it is refused and never written.
 
 The page never rewrites a file whole. It refuses a change it cannot write in
 place, says why, and keeps Save off with the reason in its tooltip, as plain
@@ -463,6 +505,15 @@ text:
   value that goes on to the next line, a double-quoted value with an escape
   that JSON does not read), or does not read as the value the server gave, the
   same warning says so.
+- A prompt change that cannot be written in place says why in the same
+  warning: the file mixes line endings or does not read as YAML, the stage has
+  both `prompt` and `prompt_file`, two `prompt` keys, or a prompt that is an
+  alias or has an anchor or a tag, the file uses a `<<` merge key, the stage is
+  in the flow form (`- {name: a}`) and its prompt would be added or removed, or
+  the prompt is the only key on the line of its dash and would be removed. A
+  prompt in the other layouts that stop a `name` or `agent` change (a value on
+  the next line, a block scalar, a flow item) is edited, since the parser gives
+  the range of its value.
 
 A double-quoted value with a YAML escape that JSON cannot read, such as `\x41`
 or `\e`, is refused for an in-place edit, since the page cannot tell its text.
@@ -532,14 +583,15 @@ does a draft that has been saved.
 The code follows the split of the Run view:
 
 - `src/designer/core/` is the core and does no IO: the draft of the stages, the
-  text that a save writes (`stage-text.ts`), the findings put on the stage and
+  text that a save writes (`stage-text.ts`, `prompt-text.ts`), the findings put on the stage and
   field they are about (`problems.ts`), the state of the editor and its
   reducer, and the two loops that check (after a pause) and save. Its ports
   are `EditPort` (save, check and reload) and the `Scheduler` of the run core,
   so a test moves time by hand and nothing sleeps.
   `test-support/designer-purity.test.ts` fails if the core imports anything
-  but its own modules, the wire types, `messageOf` and the scheduler port, or reads a
-  clock, randomness, the environment or the network.
+  but its own modules, the wire types, `messageOf` and the scheduler port, or
+  reads a clock, randomness, the environment or the network. The one package it
+  may import is `yaml`, and only in `prompt-spots.ts`.
 - `createHttpApi` has `saveWorkflow` and `checkWorkflow`; `loadWorkflow` ties
   them to the session token as the `EditPort`, and turns a 409 `conflict` and
   a 422 `invalid_workflow` (with its `diagnostics`) into the core's own errors.
@@ -762,7 +814,9 @@ cannot be read (the file holds the text, or does not), and a conflict whose
 draft can be copied, and a graph that grows by added stages and is fitted again.
 They edit the `hello-plan` example of the workflow engine
 (`workflow-engine/examples/hello-plan.yml`, named `hello`, the root of the
-stub) and check that no other byte changes, keep Save off for a file whose
+stub), an agent and the prompt of its `>-` stage, and check that no other byte
+changes. They also add a prompt to a stage that has none, keep Save off for a
+prompt that the check refuses, keep Save off for a file whose
 stages are in brackets, and run after a save, which the stub answers with
 `trust_required`, so the dialog opens.
 A test that says a save "writes nothing" counts the `PUT` requests that the page
@@ -804,8 +858,10 @@ also saved with unsaved edits (`designer-editing.png`, and
 `designer-editing-dark.png` in the dark theme), after a save
 (`designer-saved.png`), with a problem the server found
 (`designer-problems.png`), when the file changed on disk
-(`designer-conflict.png`) and with a change it cannot write in place
-(`designer-not-in-place.png`). The Run view is also saved after a stage was
+(`designer-conflict.png`), with a change it cannot write in place
+(`designer-not-in-place.png`), with the prompt of a `hello-plan` stage being
+edited (`designer-prompt.png`) and with a stage that reads its prompt from a
+file (`designer-prompt-file.png`). The Run view is also saved after a stage was
 blocked (`execution-tab-blocked.png`) and with the trust dialog open
 (`execution-trust-required.png`). Pull request
 descriptions embed these files, so regenerate and commit them when the UI

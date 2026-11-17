@@ -29,6 +29,10 @@ not per individual commit.
   reason, a change it cannot write in place, shows the reason of a blocked stage, opens a dialog with the
   `konductor flow trust` command when a Run needs trust, and shows the harness as the server names it, `claude` and
   `fake` included. When the server no longer knows the session, the page tells the user to start `flow view` again.
+- The workflow canvas edits the `prompt` of a stage in a text area with a character count, writes it in place with the
+  `yaml` parser so that only the bytes of the value change (a `>-` block scalar included), refuses with the reason a
+  prompt that would not read back as typed, shows a `prompt_file` read-only, and says that saving a prompt ends trust.
+  `yaml` is now a dependency of the page.
 - `konductor flow check` and `konductor flow show` validate a workflow file and print its resolved form as JSON. The
   engine behind them is the Rust workspace in `workflow-engine/`, with its own CI.
 - `konductor flow run <name> --harness <harness>` runs a workflow. Each stage gets the stage prompt and passes on a
