@@ -239,7 +239,7 @@ flowchart TD
 | Artifact | Filename patterns checked | Criticality |
 | --- | --- | --- |
 | System architecture | `system-design.md` | **Required** — evaluation cannot proceed without it |
-| Threat model | `threat-model.md` | Critical — warned if missing |
+| Threat model | `threat-model.md` | Required for READY FOR IMPLEMENTATION; warned if missing |
 | API specifications | `smithy-model/` or `api-specs/` | Optional |
 | Data models | `dynamodb-*.md` or `data-model.md` | Optional |
 | Security policies | `security-policy*.md` or `iam-policies.md` | Optional |
