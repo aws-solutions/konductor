@@ -19,7 +19,7 @@ Everything stays on the host, in `<run>/introspect` (mode 0700, files 0600), ins
 - `probe.json`: the probe settings, what the sink received, the collector watch, what was copied.
 - `otlp.jsonl` (Claude Code): every OTLP request body the run sent.
 - `claude-projects/` (Claude Code), `kiro/`, `tmp-logs/`, `home-logs/` (kiro-cli): copies of the agent-written probe files. Links and special files are skipped, never followed.
-- `timeline.md` and `timeline.json`: the report.
+- `timeline.md` and `timeline.json`: the report. Its first-request section lists the tool names the prompt mentions (backticked snake_case words and `tool::<server>::<name>` ids) and whether each one is in the tool list sent with the request.
 
 kiro-cli writes its request and configuration dumps to `<run root>-introspect`, a sibling of the run root, so they are outside the agent's working directory and HOME. The isolation keeps that directory writable for the engine; the runner copies it to `kiro/` after the agent exits and removes it with the run root.
 

@@ -352,3 +352,15 @@ test('introspect-summary finds the runs of an out dir and writes one row each, w
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('the report lists the tool names the prompt mentions and whether each is in the tool list', () => {
+  const tools = [{ name: 'read_file' }, { name: 'load_resource' }, { name: '@konductor-skills/find_skills' }];
+  const text = 'Load a skill with the `get_skill` tool; if it is deferred, load it with `tool_load` first. Use `read_file`, `get_skill`. '
+    + 'tool::konductor-skills::find_skills and tool::konductor-skills::get_skill';
+  assert.deepEqual(report.toolNamesInPrompt(text, tools), [
+    { name: 'get_skill', mentions: 3, inToolList: false },
+    { name: 'tool_load', mentions: 1, inToolList: false },
+    { name: 'find_skills', mentions: 1, inToolList: true },
+    { name: 'read_file', mentions: 1, inToolList: true },
+  ]);
+});

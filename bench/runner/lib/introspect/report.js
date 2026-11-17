@@ -173,6 +173,24 @@ const CONTENTS_OF = /Contents of (\S+?)(?: \(([^)]*)\))?:/g;
 const SKILL_BODY = /Base directory for this skill: (\S+)/g;
 const SKILL_MD_PATH = /([\w.-]+)\/SKILL\.md/g;
 const HOOK_INSTRUCTION = /<HOOK_INSTRUCTION[^>]*>([\s\S]*?)<\/HOOK_INSTRUCTION>/g;
+// Tool names a prompt tells the model to call: a backticked snake_case word, or the name part of a tool::<server>::<name> id.
+const TOOL_NAME_MENTION = /`([a-z][a-z0-9]*(?:_[a-z0-9]+)+)`|\btool::[\w.-]+::([A-Za-z][\w-]*)/g;
+
+/**
+ * The tool names the prompt mentions, each with its mention count and whether a tool of that name is in the request's
+ * tool list (exactly, or as the last part of a namespaced name such as server___name or @server/name).
+ */
+function toolNamesInPrompt(text, tools) {
+  const counts = new Map();
+  for (const m of String(text).matchAll(TOOL_NAME_MENTION)) {
+    const name = m[1] ?? m[2];
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  const offered = tools.map((t) => String(t.name));
+  const inList = (n) => offered.some((t) => t === n || t.endsWith(`/${n}`) || t.endsWith(`__${n}`) || t.endsWith(`::${n}`));
+  return [...counts].map(([name, mentions]) => ({ name, mentions, inToolList: inList(name) }))
+    .sort((a, b) => (a.inToolList - b.inToolList) || (b.mentions - a.mentions) || a.name.localeCompare(b.name));
+}
 
 function contextFilesOf(text) {
   const out = [];
@@ -220,6 +238,7 @@ function analyzeBlocks({ model, blocks, tools }) {
     skillsListed: listedSkills(all),
     skillBodiesPreloaded: [...new Set([...all.matchAll(SKILL_BODY)].map((m) => path.basename(m[1])))],
     skillMdMentioned: [...new Set([...all.matchAll(SKILL_MD_PATH)].map((m) => m[1]))],
+    toolNamesInPrompt: toolNamesInPrompt(all, tools),
     totalChars: all.length + toolChars,
   };
 }
@@ -537,6 +556,9 @@ function renderReport(r) {
     L.push(`- skill bodies already in the request: ${f.skillBodiesPreloaded.length ? f.skillBodiesPreloaded.join(', ') : 'none'}`);
     L.push(`- SKILL.md paths mentioned: ${f.skillMdMentioned.length ? f.skillMdMentioned.join(', ') : 'none'}`);
     L.push(`- tools (${f.tools.length}): ${f.tools.map((t) => t.name).join(', ') || 'none'}`);
+    const named = f.toolNamesInPrompt ?? [];
+    const fmt = (xs) => xs.map((x) => `${x.name} (${x.mentions})`).join(', ') || 'none';
+    L.push(`- tool names the prompt mentions (backticked snake_case, tool:: ids), with mention counts: not in the tool list: ${fmt(named.filter((x) => !x.inToolList))}; in the tool list: ${fmt(named.filter((x) => x.inToolList))}`);
     if (f.contextFields) L.push(`- request context fields (chars): ${Object.entries(f.contextFields).map(([k, v]) => `${k} ${v}`).join(', ') || 'none'}`);
   }
   L.push('');
@@ -609,4 +631,4 @@ function writeReport(runDir) {
   return r;
 }
 
-module.exports = { buildReport, renderReport, writeReport, readOtlp, requestBodies, analyzeClaudeRequest, analyzeKiroRequest, readKiroDumps, readKiroLog, kiroMarkers, kiroRequests, claudeRequests, listedSkills, sectionsOf, probeMatrix, attrMap };
+module.exports = { toolNamesInPrompt, buildReport, renderReport, writeReport, readOtlp, requestBodies, analyzeClaudeRequest, analyzeKiroRequest, readKiroDumps, readKiroLog, kiroMarkers, kiroRequests, claudeRequests, listedSkills, sectionsOf, probeMatrix, attrMap };
