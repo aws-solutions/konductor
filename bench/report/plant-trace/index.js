@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// `bench plant-trace`: one static HTML page for a plant trial, or two trials side by side. Reads files only, calls no
+// `bench plant-trace`: one static HTML page for a plant trial, or two trials one below the other. Reads files only, calls no
 // model and no network, and writes one file.
 
 const fs = require('node:fs');
@@ -14,7 +14,7 @@ const isText = (v) => typeof v === 'string' && v !== '';
 
 /**
  * The page text for the trial dirs `dirs` (one or two): a trial dir holds result.json, stream.jsonl and plant/gateway.jsonl
- * and plant/world.jsonl. Two lanes get the arm names as labels, with `(2)` added when both are the same arm.
+ * and plant/world.jsonl. Two runs get the arm names as labels, with `(2)` added when both are the same arm.
  */
 function pageFor(dirs) {
   const traces = dirs.map((d) => buildTrace(readTrial(path.resolve(d))));

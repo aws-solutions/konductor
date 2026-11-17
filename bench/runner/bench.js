@@ -132,7 +132,7 @@ const USAGE = `Usage:
        (one static HTML page for a plant trial, with no model and no network: a timeline with one row per tool call and the time per step, rows coloured allowed,
        blocked or unsafe attempt from the gateway log, the plant state after each call, a click-through detail with the call, arguments and the gateway's reason,
        tokens per step where the stream records them, and the stream-to-gateway mismatches. TRIAL_DIR holds result.json, stream.jsonl and plant/gateway.jsonl
-       and plant/world.jsonl. With --vs the two trials sit side by side, lined up by step. Exit 2 on a missing file or an unknown stream format)
+       and plant/world.jsonl. With --vs the second trial gets its own block below the first. Exit 2 on a missing file or an unknown stream format)
   node bench/runner/bench.js plant-policy-test --release DIR [--python PATH]
        (runs the gateway-only truth table of a plant release with no model: a test-mode gateway decides every row of truth-table.json, then a wrong-token
        frame must be refused. Prints one PASS or FAIL line per cell; exit 1 when any cell fails. --python names the interpreter with cedarpy, default python3.

@@ -42,11 +42,15 @@ test('Kiro tokens are labelled not recorded, never zero', () => {
   assert.doesNotMatch(html, /0 in \/ 0 out/);
 });
 
-test('two runs render side by side, lined up by step, as one file with no outside request', () => {
+test('two runs stack one below the other, each its own block naming its arm, as one file with no outside request', () => {
   const html = renderPage([buildTrace(trial('allowall')), buildTrace(trial('policy'))]);
-  assert.equal((html.match(/<tr><td class="num">\d+<\/td>/g) ?? []).length, 5);
-  assert.match(html, /plant-allowall/);
-  assert.match(html, /plant-policy/);
+  const blocks = html.split('<section class="panel run">').slice(1);
+  assert.equal(blocks.length, 2);
+  assert.match(blocks[0], /<h2>plant-allowall<\/h2>/);
+  assert.match(blocks[1], /<h2>plant-policy<\/h2>/);
+  for (const b of blocks) assert.equal((b.match(/<tr><td class="num">\d+<\/td>/g) ?? []).length, 5);
+  // One column at every width: no tiling grid, no side column, no media query that changes the layout.
+  assert.doesNotMatch(html, /repeat\(auto-fit|minmax\(0, 1fr\) \d+px|position: sticky|@media/);
   assert.doesNotMatch(html, /https?:\/\//);
   assert.doesNotMatch(html, /<link|<img|src=/);
 });
