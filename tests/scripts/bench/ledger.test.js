@@ -532,6 +532,21 @@ test('settle, cancel and failure rows; a reservation closes once; an expired res
   });
 });
 
+test('a label cut at 120 characters never ends inside an emoji', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const ledger = makeLedger(dir);
+    (await ledger.reserve(1, `${'a'.repeat(119)}\u{1F600}tail`)).cancel();
+    const [reserveRow] = readRows(ledger.file);
+    assert.equal(reserveRow.label, 'a'.repeat(119));
+    (await ledger.reserve(1, `${'b'.repeat(118)}\u{1F600}tail`)).cancel();
+    assert.equal(
+      readRows(ledger.file)[2].label,
+      `${'b'.repeat(118)}\u{1F600}`,
+      'a pair that fits is kept',
+    );
+  });
+});
+
 test('the file and folder are private, and rows carry run, id and an ISO time', async () => {
   await helpers.withTmpAsync(async (dir) => {
     const ledger = makeLedger(dir);

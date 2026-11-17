@@ -13,7 +13,8 @@
  * it knows: a secret of another shape passes.
  *
  * Size caps: input over INPUT_CEILING characters is dropped whole, not scanned in part, so nothing unscanned
- * is ever returned. Output is cut to `maxChars` (4000 by default) after redaction, so a cut cannot split a secret.
+ * is ever returned. Output is cut to `maxChars` (4000 by default) after redaction, so a cut cannot split a secret,
+ * and cutAtCodePoint never ends the cut inside an emoji or another surrogate pair.
  */
 'use strict';
 
@@ -102,6 +103,28 @@ function checkLiterals(literals) {
   return [...new Set(literals)].sort((a, b) => b.length - a.length);
 }
 
+/**
+ * `text` cut to at most `limit` UTF-16 units, never ending between the two halves of a surrogate pair (an emoji):
+ * a pair that would be split is dropped whole. `limit` is a whole number of 0 or more, or Infinity. A lone surrogate
+ * already in `text` is kept as it is.
+ */
+function cutAtCodePoint(text, limit) {
+  if (limit !== Infinity && !(Number.isInteger(limit) && limit >= 0))
+    throw new TypeError('limit must be a whole number, 0 or more, or Infinity');
+  if (text.length <= limit) return text;
+  let end = limit;
+  const before = text.charCodeAt(end - 1); // NaN when the limit is 0, which no pair test accepts
+  const after = text.charCodeAt(end);
+  if (
+    before >= 0xd800 &&
+    before <= 0xdbff &&
+    after >= 0xdc00 &&
+    after <= 0xdfff
+  )
+    end -= 1;
+  return text.slice(0, end);
+}
+
 /** A redact(value, { maxChars }) function that also removes the exact `literals`. null and undefined become ''. */
 function createRedactor({ literals = [], maxChars = DEFAULT_MAX_CHARS } = {}) {
   const exactLiterals = checkLiterals(literals);
@@ -113,9 +136,9 @@ function createRedactor({ literals = [], maxChars = DEFAULT_MAX_CHARS } = {}) {
       text = text.split(literal).join('[REDACTED]');
     for (const { pattern, replacement } of RULES)
       text = text.replace(pattern, replacement);
-    return text.length > charLimit
-      ? `${text.slice(0, charLimit)}[truncated ${text.length - charLimit} characters]`
-      : text;
+    if (!(text.length > charLimit)) return text;
+    const kept = cutAtCodePoint(text, charLimit);
+    return `${kept}[truncated ${text.length - kept.length} characters]`;
   };
 }
 
@@ -163,6 +186,7 @@ module.exports = {
   MIN_LITERAL,
   KNOWN_EXAMPLES,
   newCanary,
+  cutAtCodePoint,
   createRedactor,
   redact,
   checkLiterals,

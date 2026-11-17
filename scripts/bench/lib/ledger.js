@@ -42,7 +42,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { redact } = require('./redact');
+const { redact, cutAtCodePoint } = require('./redact');
 const { callCost } = require('./cost-profile');
 
 const LIMITS = Object.freeze(['max_usd', 'total_cap_usd']);
@@ -486,7 +486,10 @@ function createLedger({
     };
     fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
     const id = newId();
-    const shortLabel = redactLabel(label, { maxChars: Infinity }).slice(0, 120); // a label can carry a key by mistake
+    const shortLabel = cutAtCodePoint(
+      redactLabel(label, { maxChars: Infinity }),
+      120,
+    ); // a label can carry a key by mistake
     await withLock(
       lockFile,
       {
