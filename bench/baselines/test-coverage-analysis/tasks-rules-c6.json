@@ -1,0 +1,99 @@
+{
+  "format_version": 1,
+  "skill": "test-coverage-analysis",
+  "batch": "rules-c6",
+  "generated_at": "2026-11-10T11:57:25.412Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "0b09f96f3535fdb2a1951a80c4e080e45f92f3dbcaa39ca35928a6b88d0f4d3f",
+  "scenarios": [
+    {
+      "id": "test-coverage-analysis-rules-1",
+      "title": "Vue clinic scheduler pilot, one number for the director",
+      "target_section": "Stage 3: Test Distribution Analysis",
+      "prompt": "Our clinic scheduling frontend (Vue 3 + Pinia, Vite) goes to the pilot clinics in two weeks and my director wants one number for \"how well tested we are\". This is what CI printed:\n\n```\nTest Files  48 passed (48)\n     Tests  612 passed (612)\n```\n\nFolder breakdown I made by hand (test counts are from the verbose reporter):\n- src/components/**: 31 files, 338 tests. Mostly mount() and then check the HTML matches a snapshot or that a CSS class is present\n- src/stores: 6 files, 97 tests. Slot-conflict and reminder-time logic\n- tests/flows: 8 files, 140 tests. Testing Library: fill form, mocked API, see confirmation\n- cypress/e2e: 3 files, 37 tests. Book appointment, cancel, login\n\nI assume 48 is the number to quote? Tell me where we stand and what to do before the pilot.",
+      "rubric": [
+        "Quotes 612 individual tests as the size of the suite rather than 48 files, and says that 48 counts files and 612 counts test cases.",
+        "Recognises the project as a Vue single-page frontend and picks an approach that favours user-flow integration tests, giving a target split between unit, integration and end-to-end tests.",
+        "Works out that the component and store tests make up roughly 435 of 612 tests (about 71%), the flow tests about 23% and Cypress about 6%, compares that with the frontend target, calls the suite skewed toward unit-level tests, and says to shift effort toward flows and critical journeys.",
+        "Calls the 31 component files that only check snapshots or CSS classes low-value and suggests deleting them or converting them into flow tests.",
+        "Says what could go wrong at the pilot clinics given the gaps found (for example double-booking or a broken login going unnoticed), rates how likely and how damaging each is, and names mitigations to do before the pilot.",
+        "Lists must-fix problems first, then should-fix, then optional suggestions, and ends by asking whether the user wants these fixed."
+      ],
+      "why_skill_matters": "The user wants a single number and proposes the file count, while the pasted material has a per-folder test count. It is a Vue frontend whose suite is heavy in snapshot and class-check component tests. This makes the case-versus-file count, architecture target, distribution comparison and low-value tests matter. A pilot release gives the risk angle."
+    },
+    {
+      "id": "test-coverage-analysis-rules-3",
+      "title": "Cold-chain sensor pipeline on serverless",
+      "target_section": "Stage 6: Integration Point Analysis",
+      "prompt": "We're releasing a cold-chain sensor ingestion pipeline next week, all AWS serverless. Flow: devices -> IoT Core rule -> Lambda `parseReading` -> Kinesis stream -> Lambda `writeBatch` -> Timestream. A separate `alertDispatcher` Lambda reads thresholds from DynamoDB and publishes to SNS (SMS). The admin API goes API Gateway -> Cognito authorizer -> Lambda -> DynamoDB. Customer requirements: an SMS must go out within 30 s of a breach, and readings must be encrypted at rest.\n\nTests we have (all jest):\n- parseReading.test.ts: 14 tests, all with valid payloads\n- writeBatch.test.ts: 9 tests, Timestream client replaced with jest.mock, checks the call arguments\n- alertDispatcher.test.ts: 11 tests, DynamoDB and SNS both mocked; none where SNS throws\n- adminApi.test.ts: 7 tests, calls the handler directly with a fake event that already contains the claims\n- e2e/smoke.test.ts: 1 test, publishes one reading to staging and checks it lands in Timestream\n\nWhat's missing, and what should I write first? Please be specific about files and what each test would look like.",
+      "rubric": [
+        "Points out that the writeBatch and alertDispatcher tests mock Timestream, DynamoDB and SNS, so they do not check the real integrations, and that nothing tests the IoT rule to parseReading, the Kinesis hop or the Cognito authorizer, because adminApi bypasses it with a pre-built event.",
+        "Names missing negative cases: malformed or out-of-range payloads for parseReading, SNS failure or timeout in alertDispatcher, and a Timestream write error or throttle in writeBatch.",
+        "Notes that neither the 30-second alert target nor encryption at rest has any test of a suitable kind, and that mocked unit tests cannot show either.",
+        "For the top gaps, names the file or handler, the kind of test and why, a sketch of the test, and an effort estimate, and sets an order for what to write first.",
+        "Weighs the main gaps by likelihood and impact for next week's release (for example missed breach alerts or unauthenticated admin access) and says what must be done before release."
+      ],
+      "why_skill_matters": "Serverless pipeline with several integration hops, mocks of the very services under test, valid-input-only tests and two quality requirements without matching tests. This makes integration points, error paths, quality targets and actionable advice matter."
+    },
+    {
+      "id": "test-coverage-analysis-rules-4",
+      "title": "Expense claims stories against test names",
+      "target_section": "Stage 4: Functional Test Coverage Analysis",
+      "prompt": "Finishing the expense-reimbursement module (Python/Flask, Postgres). Below are the stories with acceptance criteria and the pytest test names. Which criteria have no test and what do I write? Release is Friday.\n\nStory 1, Submit claim\n1.1 An employee can submit a claim with 1 to 20 line items\n1.2 Each line needs a receipt (jpg, png or pdf) under 5 MB\n1.3 Claims over 500 EUR need manager approval before payout\n\nStory 2, Approve\n2.1 A manager sees only their direct reports' claims\n2.2 Rejecting a claim requires a comment\n2.3 The approver gets an email when a claim is waiting\n\nStory 3, Payout\n3.1 Approved claims are exported as a bank CSV every night\n3.2 The export excludes claims already paid\n\nTests:\n```\ntest_claims.py::test_submit_claim_with_three_items\ntest_claims.py::test_submit_claim_rejects_zero_items\ntest_claims.py::test_receipt_png_accepted\ntest_claims.py::test_claim_over_limit_goes_to_pending_manager\ntest_approval.py::test_manager_lists_direct_reports_claims\ntest_approval.py::test_reject_with_comment\ntest_payout.py::test_csv_has_header_row\ntest_payout.py::test_paid_claims_not_exported\n```",
+      "rubric": [
+        "Maps each criterion to tests: 1.1, 1.3, 2.1 and 3.2 are covered by named tests, 1.2, 2.2 and 3.1 only partly (png only, the with-comment case only, header row only), and 2.3 (the email) has no automated test.",
+        "Gives a per-story or overall coverage figure that agrees with its own criterion-by-criterion list.",
+        "Names the missing negative and boundary tests: 21 line items, receipt over 5 MB, unsupported file type, rejecting with no comment, and a claim of exactly 500 EUR.",
+        "Gives a test sketch or name for the main missing tests and a manual step-by-step procedure for checking the approver email, with an effort estimate.",
+        "Says which gaps carry the highest risk for Friday's release (for example wrongly approved large claims or a payout export that is wrong) and what to do before then.",
+        "Orders findings from most to least severe, keeps must-fix separate from optional, and ends with a question asking whether to fix them."
+      ],
+      "why_skill_matters": "Stories with numbered criteria and a list of test names make the criteria-to-test mapping, partial coverage, missing boundary/negative tests and manual procedure (an email) matter."
+    },
+    {
+      "id": "test-coverage-analysis-rules-6",
+      "title": "Driver app v3.2 store push tomorrow",
+      "target_section": "Stage 9: Readiness Assessment (Readiness Mode Only)",
+      "prompt": "Driver app for our food delivery startup (React Native + Redux, talking to a Node API). We want to push v3.2 to the stores tomorrow. Jest output from CI this morning:\n\n```\nFAIL src/screens/Login/LoginScreen.test.tsx\n  ✕ shows error banner on 401 (84 ms)\nTest Suites: 1 failed, 57 passed, 58 total\nTests:       1 failed, 403 passed, 404 total\n```\n\nWhat's in there: 44 suites are `*.snapshot.test.tsx` files that render a component and call toMatchSnapshot (about 260 tests). 9 suites test reducers, selectors and utils. 4 suites render screens with react-native-testing-library and press things against a mocked API. There's no Detox or other e2e at all; QA walks through the happy path by hand. Nobody has written a test for the new proof-of-delivery photo upload.\n\nIs it safe to ship tomorrow?",
+      "rubric": [
+        "Gives an explicit verdict of not ready or at risk and names the failing LoginScreen 401 test as something that must be fixed or explained before shipping.",
+        "Also names the untested proof-of-delivery photo upload and the lack of any automated end-to-end journey as reasons behind the verdict.",
+        "Calls the roughly 260 snapshot tests low-value (they check structure, not behaviour) and suggests replacing them with screen-level tests or removing them.",
+        "Identifies a mobile UI app and says its tests should lean on screen and flow integration tests with a few end-to-end journeys, and notes that the current mix does not match.",
+        "Rates the main risks (login failure for drivers, broken photo upload, store rollback cost) by likelihood and impact, with immediate pre-release steps and a manual test plan for what has no automation.",
+        "Presents must-fix items before should-fix and optional ones, and ends by asking whether the user wants these fixed."
+      ],
+      "why_skill_matters": "A direct \"can we ship\" with one failing test on login, an untested new feature, no e2e and a snapshot-dominated suite. It makes the readiness verdict, blockers, low-value tests and mobile frontend target matter."
+    },
+    {
+      "id": "test-coverage-analysis-rules-7",
+      "title": "Rails gradebook where almost everything is a browser test",
+      "target_section": "Stage 7: Gap Identification",
+      "prompt": "Rails 7 app (server-rendered, Hotwire and some Stimulus) for a school gradebook. Teachers enter grades, parents view them, Sidekiq sends weekly summary emails. Our tests:\n\n- models: 21 tests\n- controllers/requests: 18 tests\n- jobs: 3 tests\n- system tests (Capybara, headless Chrome): 94 tests. Each walks through the UI, many repeat the same login steps, and many check validations like a blank grade or an out-of-range grade\n\nAll 136 pass, but CI takes 14 minutes. A colleague says we're \"extremely well covered\". I'm not sure. The grade-calculation module (weighted averages, drop the lowest score, round to one decimal) is only exercised in the model tests, with whole-number scores.\n\nTerms starts in three weeks. Review this and tell me what to add before then, with enough detail that a junior dev could write it.",
+      "rubric": [
+        "Identifies the app as a server-rendered full-stack Rails application and names a matching testing approach with a target split between unit, integration and end-to-end tests.",
+        "Works out that the 94 system tests are about 69% of 136, the models, requests and jobs about 31%, says the suite is heavily weighted to browser tests compared with the target, and says what to move down to faster levels.",
+        "Names missing edge cases for the grade calculation: all scores dropped or a single score, a tie for lowest, rounding at .05 boundaries, fractional scores, zero weights, and the empty case.",
+        "Specifies, for the main gaps, the file or module to test, the kind of test and why, a sketch of the test, and an effort estimate.",
+        "Judges the risk of wrong grades or failed weekly emails reaching parents when the term starts, weighing likelihood and impact, with mitigations to do first."
+      ],
+      "why_skill_matters": "A near-all-UI suite that a colleague calls well covered, plus a calculation module tested only with whole numbers. It makes architecture target, distribution comparison, edge cases and concrete advice matter."
+    },
+    {
+      "id": "test-coverage-analysis-rules-8",
+      "title": "Black Friday coupon service, pasted code and tests",
+      "target_section": "Stage 8: Pattern Analysis",
+      "prompt": "Launching a Black Friday promo tomorrow. Our Express service wraps this module in POST /coupons/apply. This is all the code and all the tests we have. What's missing, and what's not worth keeping? Tell me what to write.\n\n```js\n// coupon.js\nconst COUPONS = new Map();\nfunction create(code, pct, maxUses, expiresAt) {\n  if (pct <= 0 || pct > 100) throw new Error('bad pct');\n  COUPONS.set(code, { code, pct, maxUses, used: 0, expiresAt });\n}\nfunction apply(code, cartTotal, now = Date.now()) {\n  const c = COUPONS.get(code);\n  if (!c) throw new Error('unknown');\n  if (now > c.expiresAt) throw new Error('expired');\n  if (c.used >= c.maxUses) throw new Error('exhausted');\n  c.used++;\n  return Math.round(cartTotal * (1 - c.pct / 100) * 100) / 100;\n}\nfunction getCode(c) { return c.code; }\n```\n\n```js\n// coupon.test.js\ntest('creates coupon', () => { create('A', 10, 5, 9e12); });\ntest('applies 10 percent', () => { expect(apply('A', 100)).toEqual(90); });\ntest('getCode returns code', () => { expect(getCode({code:'x'})).toEqual('x'); });\ntest('apply works twice', () => { apply('A', 50); apply('A', 50); });\n```",
+      "rubric": [
+        "Names the missing error and boundary cases from the code: unknown code, expired code (including now equal to expiresAt), exhausted code at maxUses, pct of 0, above 100 or exactly 100, and a zero or negative cart total.",
+        "Identifies 'creates coupon' and 'apply works twice' as tests without assertions, and the getCode test as trivial, and recommends deleting or strengthening them.",
+        "Gives actual test code or precise test names for the main gaps, says what kind of test each is (unit for the module, a request-level test for the POST route), and gives a rough effort.",
+        "Reports that of the three behaviours in the module (validating on create, applying a discount, enforcing expiry and usage limits), only the plain discount is really tested, and says what that implies about coverage.",
+        "Weighs risks for tomorrow's promo (for example an over-redeemed or expired coupon giving unlimited discounts) by likelihood and impact, and says what must be fixed first.",
+        "Presents findings from most to least severe, with must-fix separate from optional, and finishes by asking whether the user wants the fixes made."
+      ],
+      "why_skill_matters": "Short pasted code with four tests: two without assertions, one trivial, and only one happy path. No error path is tested. It makes negative and boundary tests, low-value tests and concrete test advice matter, with a launch deadline for risk."
+    }
+  ]
+}

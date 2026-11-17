@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "dynamodb-validation",
+  "skill_md_sha256": "5bd715a75f273cb46d8f4a40bf579108167354df5b9f7a7c7c1ec284c0a28a2d",
+  "request_context": "A request to review a proposed database table design on a cloud key-value store before implementation, checking for scalability, cost, security and operational problems and recommending fixes.",
+  "rules": [
+    {
+      "id": "dynamodb-validation-r01",
+      "source_quote": "**Low cardinality**: Partition keys with < 100 unique values create hot partition risk",
+      "class": "useful",
+      "outcome": "Flags a primary key built on a low-variety or time-based attribute (such as status, type, or a date) as a serious hot-spot risk, explains that writes concentrate on a few key values, and proposes a higher-variety key or a sharding approach such as a random or computed suffix.",
+      "why": "Traffic piles onto few partitions, causing throttling that extra capacity cannot fix.",
+      "scenario_hint": "Design that uses a status field or a date as the main partition key for a high-write table."
+    },
+    {
+      "id": "dynamodb-validation-r02",
+      "source_quote": "**\"List all items\" without GSI**: Common anti-pattern forcing Scan operations in production",
+      "class": "useful",
+      "outcome": "Identifies access patterns such as 'list all records' that can only be served by scanning the whole table, explains that cost and latency grow with table size, and recommends a secondary index with a constant grouping key (or an equivalent query-based approach) instead.",
+      "why": "Full scans become slow and expensive in production as data grows.",
+      "scenario_hint": "Design that needs a screen showing every task in the system and has no index supporting it."
+    },
+    {
+      "id": "dynamodb-validation-r03",
+      "source_quote": "Map each stated access pattern to primary key or index",
+      "class": "useful",
+      "outcome": "Maps every stated access pattern to the primary key or a specific secondary index, and calls out any pattern that no key or index supports.",
+      "why": "Unsupported patterns force scans or force redesign after launch.",
+      "scenario_hint": "Design listing several access patterns where one or two are not served by any key or index."
+    },
+    {
+      "id": "dynamodb-validation-r04",
+      "source_quote": "GSI write capacity < base table write capacity",
+      "class": "useful",
+      "outcome": "Compares write capacity of each secondary index to the base table and warns that an under-provisioned index can throttle and cause base-table writes to fail, treating this as a severe risk with the capacity numbers shown.",
+      "why": "An index throttle can silently take down all writes even when the table has headroom.",
+      "scenario_hint": "Provisioned-capacity design where an index has lower write units than the table."
+    },
+    {
+      "id": "dynamodb-validation-r05",
+      "source_quote": "**Over-projected GSI attributes**: Projecting attributes never used in queries",
+      "class": "useful",
+      "outcome": "Points out secondary indexes that copy all attributes when queries only need a few, quantifies the wasted storage and write cost, and recommends projecting only the needed attributes.",
+      "why": "Over-projection inflates storage and write costs for no benefit.",
+      "scenario_hint": "Design where every secondary index copies all attributes but queries read only a few."
+    },
+    {
+      "id": "dynamodb-validation-r06",
+      "source_quote": "> 5 GSIs or > 3 LSIs on single table",
+      "class": "useful",
+      "outcome": "Counts the secondary indexes and warns when there are more than about five global or three local ones, explaining that each index multiplies write cost and operational burden, and suggests consolidating or removing indexes without a proven access pattern.",
+      "why": "Excess indexes inflate cost and complexity for little value.",
+      "scenario_hint": "Design with six or more secondary indexes, some of which have no documented use."
+    },
+    {
+      "id": "dynamodb-validation-r07",
+      "source_quote": "Verify encryption at rest enabled (AWS managed or customer managed KMS)",
+      "class": "useful",
+      "outcome": "Checks whether encryption at rest is configured and flags its absence as a must-fix issue; also checks for sensitive or personal data placed in key values, and for overly broad access permissions.",
+      "why": "Missing encryption or exposed personal data in keys is a compliance and security failure.",
+      "scenario_hint": "Design that omits encryption settings or uses email addresses as keys."
+    },
+    {
+      "id": "dynamodb-validation-r08",
+      "source_quote": "Verify PITR enabled for production tables (1-35 day retention)",
+      "class": "useful",
+      "outcome": "Checks for point-in-time recovery and a backup strategy with retention periods, recovery time and recovery point objectives, and cross-region copies for critical data, and flags missing ones as gaps.",
+      "why": "Without backups and recovery targets, data loss or long outages are unrecoverable.",
+      "scenario_hint": "Production table design that says nothing about backups or recovery."
+    },
+    {
+      "id": "dynamodb-validation-r09",
+      "source_quote": "**DynamoDB for full-text search**: Should use OpenSearch or CloudSearch instead",
+      "class": "useful",
+      "outcome": "Recognizes requirements that fit poorly on this database, such as full-text search, complex joins, heavy analytics or large binary files, and recommends a more suitable service for each.",
+      "why": "Forcing these workloads onto the wrong store yields poor performance and cost.",
+      "scenario_hint": "Design that requires free-text search or ad-hoc aggregation over the table."
+    },
+    {
+      "id": "dynamodb-validation-r10",
+      "source_quote": "GSI throttling alarm (UserErrors on GSI > 0 for 2 periods) - CRITICAL",
+      "class": "useful",
+      "outcome": "Checks that monitoring alarms exist for throttling on both the table and its secondary indexes, plus latency and capacity use, and flags missing alarms or runbooks as an operational gap.",
+      "why": "Without alarms, throttling and failures go undetected until users are affected.",
+      "scenario_hint": "Design with no mention of alarms, dashboards or operational procedures."
+    },
+    {
+      "id": "dynamodb-validation-r11",
+      "source_quote": "Provide specific, actionable remediation steps",
+      "class": "generic",
+      "outcome": "Each problem is backed by specific evidence from the design (attribute names, numbers or calculations), explains the consequence, and gives concrete, actionable fix steps with a corrected example.",
+      "why": "Vague findings cannot be acted on or verified.",
+      "scenario_hint": "Any request to review a database table design."
+    },
+    {
+      "id": "dynamodb-validation-r12",
+      "source_quote": "Present findings as: CRITICAL → IMPORTANT → SUGGESTION.",
+      "class": "style",
+      "outcome": "Findings are grouped and ordered from must-fix to should-fix to optional, and the review ends by asking whether the author wants the issues fixed.",
+      "why": "",
+      "scenario_hint": "Any request to review a database table design."
+    }
+  ]
+}

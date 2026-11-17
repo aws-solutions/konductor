@@ -1,0 +1,140 @@
+{
+  "format_version": 1,
+  "skill": "pre-planning-analysis",
+  "batch": "rules-c5",
+  "generated_at": "2026-11-10T11:42:03.581Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "86797b7ac27a5a91618dae9fd50ae8bbd954d143b4839e7038c04571717f26ff",
+  "scenarios": [
+    {
+      "id": "pre-planning-analysis-rules-1",
+      "title": "Tidy up the payroll calc module and slip in overtime",
+      "target_section": "Refactoring",
+      "prompt": "Our payroll-calc module in the Django monolith is a mess. One 900-line file, `calc.py`, with functions that call each other in circles, tax logic mixed with date handling, and a few globals nobody remembers adding. I want to split it into sensible pieces and clean it up. While we're in there, finance also asked if we could add a \"double-time on public holidays\" rule since the overtime function will be touched anyway. We have maybe 40% test coverage on this module, mostly on the happy path. Payroll runs twice a month and a wrong paycheck is a big deal. Can you tell me how you'd approach this? I'm not asking you to do it, just the plan.",
+      "rubric": [
+        "Advises doing the split of calc.py and the double-time-on-holidays rule as separate pieces of work (not in the same change), rather than folding the holiday rule into the cleanup.",
+        "Says the current payroll results must be captured before restructuring (e.g. characterization tests or recorded outputs, given only about 40% happy-path coverage) and re-checked after each individual step.",
+        "Gives a way to undo a bad step, such as small reversible commits or a flag or parallel run, given that wrong paychecks are costly.",
+        "Commits to restructuring existing code as the main kind of work, with a stated confidence, and notes the holiday rule as a different kind of work.",
+        "Warns about the holiday rule creeping into the cleanup, or about fixing odd behaviour (globals, circular calls) while moving it, and says how to guard against that.",
+        "States what is included now (restructuring calc.py), what is excluded, and what is postponed (holiday double-time).",
+        "Lists assumptions made, such as that tax rules must not change or that the Django callers of calc.py should keep working, so the user can correct them."
+      ],
+      "why_skill_matters": "The request mixes a cleanup of a large payroll file with a new feature and mentions thin test coverage and high stakes. It makes separation of restructuring from feature work, behaviour preservation, rollback, scope boundaries and assumptions matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-2",
+      "title": "Add a waitlist feature to a booking app",
+      "target_section": "Build from Scratch",
+      "prompt": "I maintain a small Node/Express + Postgres app that lets people book slots at a community climbing gym. We want a waitlist: if a class is full, a member can join the waitlist, and when someone cancels, the next person is automatically offered the spot. The app already has bookings, cancellations, and an email reminder job that runs through a queue (we use BullMQ). I haven't written anything yet. I'm the only dev, and I tend to just start coding and then regret my choices. How should I get started on this so I don't end up with something that doesn't fit the rest of the app?",
+      "rubric": [
+        "Tells the user to first read how the existing booking and cancellation code and the BullMQ reminder job are written, and to follow those patterns for the waitlist offer flow.",
+        "Says to reuse what exists (the queue, email sending, cancellation hook) rather than adding a new mechanism such as a separate scheduler or a new library.",
+        "Defines what finished looks like for the waitlist, for example joining a full class, auto-offer on cancellation, and a stated outcome when the offer isn't taken.",
+        "Classifies this as building new functionality inside an existing codebase, with a stated confidence and a reason drawn from the request.",
+        "Lists specific deliverables and names things left out (e.g. payments, notification preferences, admin UI), with a way to check each deliverable.",
+        "Raises open questions that change the design, such as how long an offer stays open, whether offers are sequential, and what happens to people who miss the offer.",
+        "States its assumptions, such as one waitlist per class and members only, so the user can correct them."
+      ],
+      "why_skill_matters": "A solo dev adds a feature to an app with existing queue and cancellation code, and has a habit of coding first. It makes discovery of conventions, no new patterns, done criteria, deliverables and exclusions matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-3",
+      "title": "Moving a team off a legacy reporting stack",
+      "target_section": "Collaborative",
+      "prompt": "ok so context: we have a bunch of reports that run off a 2014-era SSRS server plus some Excel macros that finance maintains. leadership wants us \"off it\" by next fiscal year. i've been thinking power bi, but our data lead is pushing for dbt + metabase, and honestly i'm not sure either of them is right. there's about 140 reports, nobody knows how many are actually used. team is me, two analysts and a part-time engineer. i don't really have a plan, i just know i have to come up with one. can you help me think through how to go about this? i'd rather we figure it out together than you hand me a finished answer, i'm going to have to defend whatever we pick.",
+      "rubric": [
+        "Offers the Power BI versus dbt + Metabase question as a choice for the user to make, with the trade-offs of each, and does not just pick one.",
+        "Restates its understanding of the situation (140 reports, unknown usage, four-person team, next fiscal year deadline) and asks the user to confirm or correct it.",
+        "Breaks the effort into stages, such as inventory of report usage, then tool decision, then pilot, then phased cutover, where the user decides before moving on.",
+        "Treats the tool choice as a long-term design decision, covering maintenance burden for a small team, lock-in and cost, rather than a quick preference.",
+        "Warns about acting on unvalidated guesses, such as assuming all 140 reports need migrating, or about trying to migrate everything at once, and suggests measuring usage first.",
+        "Asks targeted questions that would settle the approach, such as what the Excel macros do, who consumes the reports, and what constraints leadership set beyond the date."
+      ],
+      "why_skill_matters": "The user explicitly wants joint thinking and has a contested tool choice buried among facts. The subtle part is that a good answer should not choose the tool for them; the pull is toward a full recommendation. It makes option-giving, confirmation, staged steps, long-term trade-offs and unvalidated assumptions matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-4",
+      "title": "Event-driven or not for a ticket resale marketplace",
+      "target_section": "Architecture",
+      "prompt": "We're starting a ticket resale marketplace from zero. Sellers list tickets, buyers purchase, we hold funds in escrow until the event happens, then pay out. Expected launch volume is small, maybe 200 transactions a day, but the founders keep saying we'll be \"the next big thing\" and want it to handle 100x. Team is 5 engineers, mostly Python. One of them wants microservices with Kafka from day one; another says a modular monolith. I need to come back with a recommendation on how we should structure the system, and I'd like to work through it together with you before I commit to anything. What do you think, and how would you go about deciding?",
+      "rubric": [
+        "Compares at least the microservices-with-Kafka and modular-monolith options, with concrete trade-offs for a 5-engineer Python team.",
+        "Advises against designing for 100x scale now, tying this to the 200 transactions a day, and says what would trigger revisiting the structure.",
+        "Discusses long-term consequences of the choice for escrow and payout correctness, such as consistency of money movement and how hard it is to split later.",
+        "Presents the structure choice as a decision for the user with options, and restates the constraints (volume, team size, escrow) for the user to confirm, rather than issuing a flat verdict.",
+        "Classifies this as a system design question with a stated confidence and a reason from the wording.",
+        "Proposes an ordered sequence of roles to involve, e.g. requirements, then design review, then implementation, each with a purpose, without inventing unavailable specialists.",
+        "Calls out the risk of building for hypothetical scale or adding infrastructure that wasn't asked for, and says how to guard against it.",
+        "States assumptions, such as no regulatory or payment-licence constraint, a third-party payment provider handling the escrow, and the team's Kafka experience."
+      ],
+      "why_skill_matters": "A greenfield system design question with a scale-inflation temptation, a split team and a wish to decide jointly. Makes trade-offs, premature optimization, long-term impact, shared decision-making and sequencing matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-5",
+      "title": "Is on-device speech recognition viable for our app",
+      "target_section": "Research",
+      "prompt": "Product wants voice notes in our field-inspection Android app transcribed, and it has to work in basements and rural sites with no signal. Someone on the team said \"just use Whisper on the phone\". I have no idea whether that's realistic on the mid-range devices our inspectors carry (mostly 4GB RAM Samsung A-series, a few older ones). I'm not committing to anything yet, just want to look into whether it's viable. I could spend a few days on it before the planning meeting on the 24th. Where do I even start?",
+      "rubric": [
+        "Frames a specific question to answer, such as whether an on-device model can transcribe inspection voice notes with acceptable accuracy and speed on 4GB Samsung A-series phones offline.",
+        "Sets what counts as good enough with concrete thresholds or criteria (accuracy, transcription time, memory and battery, model size).",
+        "Fits the investigation into the few days before the 24th with a stated time limit or day-by-day split and a point at which to stop.",
+        "Says what form the findings take for the planning meeting, for example a short go/no-go note with measurements and a fallback.",
+        "Classifies this as an investigation with an unclear path, with a stated confidence.",
+        "Warns against open-ended research or building a full feature before viability is known, and mentions a quick prototype or measurement as a limited alternative.",
+        "Asks about unknowns that change the answer, such as supported languages, noisy-site audio, acceptable latency, and whether delayed upload transcription is allowed."
+      ],
+      "why_skill_matters": "Open viability question with a deadline and device constraints. Makes exit criteria, time bounds, output form and endless-research risk matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-6",
+      "title": "Pasted spec for a promo code field",
+      "target_section": "Mid-sized Task",
+      "prompt": "Here's the ticket from Jira, I need to know how to break this down for the sprint:\n\n\"SHOP-482: Add promo code input to checkout. Customers can type a promo code on the payment step and get the discount applied to the order total before they pay. Codes are already stored in the `promo_codes` table (code, percent_off, expires_at). Show an error if the code is invalid or expired. Nice to have eventually: stackable codes, single-use codes, referral tracking, admin screen to create codes. Design says the field goes under the order summary.\"\n\nOur checkout is React + a Go API. We already have a loyalty-points discount in the API (internal/pricing/loyalty.go) that has its own validation and error responses. Estimate was 5 points. The PM keeps adding comments in the ticket like \"could we also do free shipping codes while we're at it?\" I'd like to keep this to what fits in the sprint.",
+      "rubric": [
+        "Lists exact deliverables for SHOP-482 (promo input under the order summary, API validation against promo_codes, discount applied to the total, error for invalid or expired codes).",
+        "Gives a way to verify each deliverable, such as an expired code showing an error or a percent_off code reducing the total correctly.",
+        "Keeps stackable codes, single-use codes, referral tracking, the admin screen and free-shipping codes out of this ticket.",
+        "Says to look at how the existing loyalty discount in loyalty.go computes totals and returns errors and to follow that approach for promo codes instead of inventing a new one.",
+        "Separates what is in this sprint, what is out, and what is deferred to later (the nice-to-haves), instead of only listing what is in.",
+        "Identifies the PM's free-shipping request and the nice-to-have list as scope growth risks and says how to handle them, such as a separate ticket or a decision by the PM.",
+        "Notes unclear points in the ticket that affect the work, such as whether percent_off applies before or after tax and shipping, case sensitivity, or how a promo code interacts with the loyalty discount.",
+        "Writes down assumptions it made (e.g. one code per order, discount computed server-side) for the user to correct."
+      ],
+      "why_skill_matters": "A scoped ticket with a nice-to-have list, an existing similar discount path and a PM comment pulling toward more. The subtle part is the single comment about free shipping, the \"eventually\" list in the same text as the real scope, and the loyalty code mentioned in passing. Makes deliverables, exclusions, existing patterns, scope growth and deferrals matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-7",
+      "title": "Vague ask to modernise an internal inventory tool",
+      "target_section": "Phase 0: Intent Classification",
+      "prompt": "Our warehouse lead messaged me: \"the inventory tool is really showing its age, can we do something about it?\" That's all I have. It's a PHP app from around 2016 that tracks stock levels and prints pick lists; about 30 people use it daily. The core is one 2,000-line `stock.php` and I'm itching to clean it up. I don't know if she means it looks dated, it's slow, it's buggy, or she wants new features. I have about a week next week to start on something. What should I do with this?",
+      "rubric": [
+        "Commits to a best-guess kind of work for the message (or clearly says it cannot be determined) and gives a stated confidence, quoting the \"showing its age\" wording as the basis.",
+        "Names the specific unclear points (looks, speed, bugs, new features) and asks targeted questions for the warehouse lead, such as which task is slow or painful, how often, and what success would look like.",
+        "Turns next week into a time-limited discovery effort with a stopping point and a stated form for what the user brings back (for example a short findings note with the confirmed problem).",
+        "Cautions that cleaning up stock.php should not happen alongside other changes and, if done later, needs current behaviour captured and checked after each step with a way to roll back.",
+        "Says what is in scope for the week (talking to the lead and gathering evidence), what is out, and what is postponed until the need is known.",
+        "Warns against guessing and starting a rewrite or modernisation, and says to confirm the actual problem first.",
+        "Lists what it is assuming (e.g. the lead has a specific pain point, no rewrite budget) for the user to correct."
+      ],
+      "why_skill_matters": "A one-line ambiguous message with some context and a temptation to refactor. Makes classification under low confidence, targeted questions, a time-boxed investigation, scope bounds, restructuring safety and assumption risk matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-8",
+      "title": "Event registration site from idea to launch",
+      "target_section": "Recommended Agent Chain",
+      "prompt": "I run a regional robotics league and we want a website where teams register for tournaments, pay the entry fee, upload their roster, and get a confirmation email. Right now it's a Google Form and a spreadsheet and I do everything by hand. Season starts in 4 months. I have a volunteer who's a decent web developer, and I can get a small budget. I don't know anything about how software projects are supposed to go. What are all the steps, and who or what should do each one? Please be concrete, I don't want a generic software process lecture.",
+      "rubric": [
+        "Gives an ordered sequence of stages from requirements through design to build and testing, each tied to who does it and its purpose, with the volunteer developer and the user's own role assigned concretely.",
+        "Uses only roles that exist for this team (user, volunteer developer, any assistant or contractor) and does not assume a staffed team such as a dedicated QA group or DevOps.",
+        "States what the first release includes (registration, payment, roster upload, confirmation email), what is excluded, and what is deferred until after the season starts.",
+        "Warns about adding extras such as scoring, brackets or live results in the first release, or about starting to build before requirements are settled.",
+        "Classifies the request as building something new with a stated confidence and a reason from the request.",
+        "Defines concrete deliverables with a way to check each, such as a team completing a test registration and payment end to end and receiving the email.",
+        "Asks questions that change the plan, such as whether to use an existing platform, which payment provider, and how many teams."
+      ],
+      "why_skill_matters": "A non-technical user with a multi-phase project and limited staff. Makes the ordered sequence of roles, existing-roles-only, scope boundaries, deliverables and extras risk matter."
+    }
+  ]
+}

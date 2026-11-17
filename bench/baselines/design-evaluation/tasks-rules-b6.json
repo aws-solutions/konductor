@@ -1,0 +1,120 @@
+{
+  "format_version": 1,
+  "skill": "design-evaluation",
+  "batch": "rules-b6",
+  "generated_at": "2026-11-10T00:04:47.571Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "42c52006478e3f785f3ae0720321d3a799abae3ec79f7cd22cbfe780fbd14ac6",
+  "scenarios": [
+    {
+      "id": "design-evaluation-rules-2",
+      "title": "Two-service internal tool, avoid over-engineering",
+      "target_section": "Scope-Tailored Feedback",
+      "prompt": "Hey, I'm a solo dev at a 40-person company. I designed a small internal tool for HR to track equipment loans (laptops, monitors). Please review before I start building. Be honest.\n\nDesign:\n- Two services: a Node/Express API and a React frontend served as static files from S3+CloudFront. Hosted on one ECS Fargate task (1 vCPU) plus RDS Postgres db.t3.micro.\n- ~40 users, maybe 200 requests a day. Login via company Google SSO.\n- Tables: employees, equipment, loans (equipment_id, employee_id, loaned_at, returned_at). Queries: \"what does employee X have\", \"who has equipment Y\", \"overdue loans\".\n- I'm planning to add Kafka for loan events, a Redis cache in front of Postgres, and split the API into three microservices (loans, inventory, notifications) \"for future scale\". Also want Kubernetes later.\n- Sends an email via SES when a loan is overdue. If SES fails, we just log it.\n- Cost estimate: \"about $15/month\" (I only counted the Fargate task).\n- No monitoring section yet. No deploy runbook; I'm the only one who knows how it works.\n- Backups: RDS automated daily snapshots.\n\nWhat do you think?",
+      "rubric": [
+        "Advises against the planned Kafka, Redis, three-way microservice split and Kubernetes for a 40-user, ~200 requests/day tool, recommending the simple two-service setup stay as is.",
+        "Observes that the $15/month figure counts only Fargate and ignores RDS, CloudFront/S3, SES and data transfer (and Kafka/Redis if added), and asks for a corrected estimate.",
+        "Notes that being the sole person who knows how it works with no runbook is a risk and recommends a short operational doc (deploy, restore from snapshot, what to do if overdue emails stop).",
+        "Recommends minimal but concrete observability for this tool, such as logs for failed SES sends and basic alarms on task health or database, instead of a heavy stack.",
+        "Acknowledges that areas like high-scale capacity planning or multi-region disaster recovery are not needed for this tool, and explains why omitting them is reasonable.",
+        "Mentions optional later improvements (e.g. defining a simple availability target) as nice-to-have rather than requirements."
+      ],
+      "why_skill_matters": "A tiny two-service tool with over-engineering plans, a compute-only cost estimate, no runbook, no monitoring, and many not-applicable concerns. Makes r08, r07, r06, r05, r10, r09 matter."
+    },
+    {
+      "id": "design-evaluation-rules-3",
+      "title": "Fintech payments platform, a dozen services",
+      "target_section": "10 Evaluation Dimensions",
+      "prompt": "Principal engineer here. We're locking the design for our merchant payouts platform next week and I want a hard review. Summary of the package:\n\nPlatform: 12 services (onboarding, KYC, ledger, payouts, FX, reconciliation, reporting, merchant-portal-api, webhook-dispatcher, risk, notifications, admin). Owned by 5 teams across 3 time zones. Kubernetes on AWS, one region, 3 AZs. Kafka between services, Aurora Postgres for ledger.\n\nDetails:\n- Payouts calls a third-party bank API (BankLink) to initiate transfers. Design says: \"POST transfer, store bank reference.\" No timeout, retry or idempotency key described, no behavior for bank downtime.\n- FX service calls a rate provider; fallback is \"use last cached rate\" with 15-minute max staleness, then reject. That one is covered.\n- Threat model: 9 threats, all with mitigations. Admin service has MFA + IP allowlist.\n- Public API: /v1/ prefix, deprecation policy of 12 months documented.\n- Data model: ledger table with indexes covering all documented queries (by merchant+date, by payout id, by bank reference).\n- Observability: OpenTelemetry traces, Prometheus metrics, structured logs. Alerts defined per service.\n- Runbooks: only for ledger and payouts; other 10 services none. No on-call rotation defined across teams. No incident command process.\n- Cost: spreadsheet projects $48k/month, based on 2023 pricing for compute; doesn't include Kafka (MSK), Aurora IO, or cross-AZ traffic.\n- Ownership: each service has a team but no documented SLOs between services.\n\nReview it.",
+      "rubric": [
+        "Flags the BankLink payout call as a blocker because it has no timeout, retry, idempotency or downtime behavior, noting the risk of duplicate or lost transfers.",
+        "Gives cross-service and organizational concerns appropriate to 12 services and 5 teams, such as on-call rotation across time zones, incident command, and inter-service ownership and SLOs.",
+        "Notes runbooks exist for only 2 of 12 services and recommends covering the rest.",
+        "Points out the $48k/month estimate omits MSK/Kafka, Aurora IO and cross-AZ traffic and uses outdated pricing, and asks for revalidation.",
+        "Offers optional resilience ideas such as chaos or failure-injection experiments, or error budgets, labelled as optional.",
+        "Does not demand a multi-region setup or reopen areas already well covered (versioning, threat mitigations, ledger indexes); credits them as adequate or justifies the single-region choice.",
+        "Separates the blocking BankLink gap from the should-fix items (runbooks, cost) and from optional ideas."
+      ],
+      "why_skill_matters": "Large design with one real blocker (bank call), several should-fix items (runbooks, cost, on-call), and well-covered areas. Tests r02, r08, r06, r07, r09, r10, r11."
+    },
+    {
+      "id": "design-evaluation-rules-4",
+      "title": "Subtle: tenant lookup by email buried in a long notes dump",
+      "target_section": "Quality Gate",
+      "prompt": "Pasting our design notes for the property-management SaaS \"KeyRing\" for a last look before build. Mostly boring stuff, I think it's fine.\n\nOverview: 3 services (listings-api, leases-api, billing-worker). Python/FastAPI, deployed on ECS. Postgres for leases, DynamoDB for tenant profiles.\n\nAuth: Cognito user pools, access tokens 1 hour, refresh tokens 7 days with rotation, revocation on password change. Threat model had 7 items, all mitigated (we reviewed with the security team in October).\n\nListings: public REST endpoints under /api/v2/, we keep v1 alive 6 months after v2 launch, header Sunset sent on v1.\n\nBilling-worker: charges rent via Stripe nightly. Stripe calls use idempotency keys, 10s timeout, 3 retries with exponential backoff, failed charges go to a dead-letter queue, and an alert fires after 5 DLQ messages. \n\nDynamoDB tenant profile table: partition key tenantId, attributes name, email, phone, unitId, moveInDate. Access patterns documented: (1) get tenant by tenantId (portal), (2) get tenant by email when they click a magic link, (3) list all tenants in a unit for the property manager's screen, (4) list tenants with moveInDate in the next 30 days for welcome emails. No GSIs defined.\n\nMonitoring: Datadog APM, logs in JSON with correlation IDs, dashboards for each service, SLOs for API latency set at p95 < 400ms.\n\nOps: on-call runbooks in Notion for each service, linked from the PagerDuty alerts.\n\nCost: estimate of $2,100/month broken out for ECS, RDS, DynamoDB on-demand, Datadog, Stripe fees, data transfer.\n\nAnything blocking?",
+      "rubric": [
+        "Identifies that with only tenantId as partition key and no secondary indexes, the lookups by email, by unit and by upcoming move-in date cannot be served efficiently (would need scans), and says the table design must change before build.",
+        "Recognizes that the security threats are mitigated (token lifetime, refresh rotation, revocation) and does not invent an unmitigated serious threat.",
+        "Credits the Stripe handling (idempotency, timeout, retries, dead-letter queue) as adequate rather than flagging it as missing.",
+        "Credits the v2 path versioning and the v1 sunset policy as meeting the versioning need, not flagging it.",
+        "Does not demand extra sections or practices already present (observability, runbooks, cost breakdown), and says briefly that they are covered.",
+        "Presents the data-model issue as the single blocking finding, ahead of any smaller or optional remarks."
+      ],
+      "why_skill_matters": "A well-prepared package where the only real blocker is one clause: four access patterns versus a table with only a partition key and no GSIs. Nearby material is all good and pulls toward saying \"looks fine\". Makes r03 matter, with r01, r02, r04 checking that the reviewer does not over-flag."
+    },
+    {
+      "id": "design-evaluation-rules-5",
+      "title": "Subtle: public API with webhook partner, versioning clause hidden",
+      "target_section": "Quality Gate",
+      "prompt": "Reviewing a design for \"ShipTrack\", a B2B shipment tracking product. I wrote the doc in a hurry; can you tell me what needs fixing before the contractors start? Pasting the relevant parts.\n\nContext: 5 services on AWS (api-gateway, tracking, carriers-adapter, customer-portal, alerts). About 60 enterprise customers integrate against our REST API with their own code, some of them embedded in their ERP systems that they only update once or twice a year.\n\nSecurity: API keys per customer hashed in DB, TLS everywhere, per-key rate limits, WAF in front. Threat model lists key leakage (mitigated by key rotation endpoint and anomaly alerts), and tenant data crossover (mitigated by row-level tenant filter plus integration tests). All threats have owners and mitigations.\n\nAPI: Endpoints are /shipments, /shipments/{id}/events, /carriers, /webhooks. Response schema for shipments will \"evolve as we add carriers; fields may be renamed or restructured to stay consistent\". Customers parse the JSON directly.\n\nCarriers-adapter: calls 4 carrier APIs (FedEx, UPS, DHL, a regional one). Each call has a 5s timeout, circuit breaker, cached last-known status served with a \"stale\" flag if the carrier is down. \n\nData: DynamoDB with shipmentId PK and eventTime SK; GSI on customerId+createdAt. Access patterns documented and all covered.\n\nObservability: CloudWatch metrics, X-Ray traces, structured logs. Alarms on error rates and carrier failure rates.\n\nRunbook: wiki page per service with escalation steps.\n\nCost: AWS Calculator export covering all services, DynamoDB RU/WU based on 20M events a month, data transfer.\n\nChaos testing: not planned.",
+      "rubric": [
+        "Identifies that renaming or restructuring response fields with no version or compatibility mechanism will break ERP-embedded enterprise customers who update rarely, and requires a versioning and deprecation approach before build.",
+        "Mentions chaos or failure-injection testing (carrier outage drills) as an optional improvement rather than a requirement.",
+        "Treats the security section as adequately mitigated (key leakage, tenant crossover) and does not raise an unmitigated serious threat.",
+        "Credits the carrier timeouts, circuit breaker and stale-status fallback as sufficient failure handling.",
+        "Does not demand missing sections that exist (observability, runbook, cost estimate) and treats them as covered.",
+        "Places the versioning problem as the one must-fix item, separate from and above optional suggestions."
+      ],
+      "why_skill_matters": "The one real blocker sits in a clause about fields that \"may be renamed or restructured\", surrounded by strong sections. Makes r04 matter, with r09 for optional chaos, and r01/r02 checking no false alarms."
+    },
+    {
+      "id": "design-evaluation-rules-6",
+      "title": "Healthcare scheduling app with thin ops and weak cost",
+      "target_section": "Execution",
+      "prompt": "Need a pre-implementation review of our clinic scheduling system. Mid-size, 6 services. I'll paste what we've got and I'd like you to tell me what to fix and what is fine.\n\nServices: patient-portal, scheduler, provider-directory, reminders (SMS via Twilio), billing-export, audit.\n\nSecurity: Patient data encrypted at rest (KMS) and in transit. Threat model: T1 unauthorized access to patient records via IDOR on /appointments/{id} (high) - mitigation: \"authorization checks to be added in code review\"; T2 SMS spoofing (medium) - signed messages; T3 insider data export (high) - mitigation: audit service logs all exports + alert to compliance.\n\nReminders: calls Twilio, \"sends the SMS and records success\". Nothing about Twilio being down, rate limits or duplicates.\n\nData: Postgres. Tables for appointments, patients, providers. Queries: appointments by provider and day, by patient, free slots by provider. Indexes defined for each of those.\n\nAPI: internal and partner clinics use /v1/ endpoints, changes handled via additive fields and new /v2/ for breaking changes.\n\nObservability: \"We'll add logging later.\"\nRunbooks: none; ops team will \"figure it out after launch\".\nCost: $6,000/month estimated from the EC2 hours of the 6 services only. Also use RDS Multi-AZ, ElastiCache, Twilio at ~150k SMS/month, S3, and NAT gateways.\n\nChaos / game days: not mentioned.\n\nGive me the review and tell me what's ready.",
+      "rubric": [
+        "Treats the IDOR threat on /appointments/{id} (mitigation only \"to be added in code review\") as a must-fix before build, with a concrete control such as object-level authorization enforced in the design and tested.",
+        "Flags the Twilio reminder flow as a must-fix because it has no behavior for outages, rate limits, retries or duplicate sends.",
+        "Says \"we'll add logging later\" is insufficient, and recommends concrete logs, metrics and traces (e.g. reminder send failures, appointment API errors, audit events).",
+        "Notes the absence of any runbook or on-call procedures and recommends writing them before launch rather than after.",
+        "Points out the $6,000/month figure counts only EC2 and misses RDS Multi-AZ, ElastiCache, Twilio SMS volume, S3 and NAT gateways.",
+        "Gives mid-size-appropriate analysis of how the six services interact (e.g. scheduler to reminders to audit flows, shared data ownership) rather than only single-service advice.",
+        "Says the data model and the versioning approach are adequate and does not ask for them to be redone, noting briefly why they are fine.",
+        "Orders the IDOR and Twilio issues before the observability, runbook and cost items, with game-day ideas last."
+      ],
+      "why_skill_matters": "Mixed package: one unmitigated serious threat, an unhandled external dependency, absent observability and runbooks, a compute-only cost, and good data/API sections. Makes r01, r02, r05, r06, r07, r08 matter, with r10 checking that sound sections are not re-flagged."
+    },
+    {
+      "id": "design-evaluation-rules-7",
+      "title": "Casual one-service hobby API with minimal notes",
+      "target_section": "Overview",
+      "prompt": "ok so I'm building a little recipe-sharing API for me and some friends (like 15 people). one Go service, SQLite on a small VPS, behind Caddy with auto TLS. login is username + password with bcrypt, sessions in a cookie. no versioning, endpoints like /recipes and /recipes/{id}, only my own web page calls it. backups = nightly cron that copies the sqlite file to a Backblaze bucket. queries: list recipes, get recipe, search by title. I have no monitoring other than checking if the site loads. cost is the VPS at $6/month. it sends no emails and calls no other services.\n\ncould you review the design before i spend the weekend on it? don't want to be told to do a million things, just what matters",
+      "rubric": [
+        "Gives short, focused advice suited to a one-service hobby project and explicitly warns against adding heavy infrastructure such as microservices, queues, or Kubernetes.",
+        "Suggests a lightweight way to know the service is healthy and failing requests are visible (e.g. basic request logs and an uptime check) rather than a full observability stack.",
+        "Offers optional extras such as a restore test of the Backblaze backup or a simple availability goal, clearly labelled as nice-to-have.",
+        "States that things like external-service failure handling, scaling plans and a runbook are not needed or low priority here (own front-end only, no outside calls, 15 users), with that reasoning.",
+        "Says that versioning can reasonably be skipped because only the author's own web page consumes the API, and notes it as something to revisit if third parties ever use it.",
+        "Keeps any must-do items clearly separate from and ahead of the optional ones."
+      ],
+      "why_skill_matters": "A tiny project where most formal concerns are not applicable and the user wants brevity. Makes r08, r05, r09, r04 matter and tests that omissions are justified rather than demanded (r10)."
+    },
+    {
+      "id": "design-evaluation-rules-8",
+      "title": "IoT fleet platform, certificate and vendor gaps in a long brief",
+      "target_section": "Tech Design Reviewer",
+      "prompt": "We're an 8-service IoT telemetry platform (device-gateway, ingest, rules-engine, timeseries-api, firmware-updater, tenant-admin, billing, alerts). Design freeze is Friday. I want a no-nonsense review. Details:\n\nDevices connect over MQTT with per-device X.509 certs. Firmware-updater serves signed images. Threat model: T1 (high) compromised device cert used to publish fake telemetry: mitigation \"revoke manually via support ticket\", no CRL/OCSP or automated revocation; T2 (high) firmware image tampering: mitigated by code signing with HSM-held key; T3 (medium) tenant data leak: row-level tenant IDs and per-tenant encryption keys.\n\nIngest writes to Timestream. Alerts service sends SMS and email through a vendor (SendGrid and Twilio). The doc says \"alerts are delivered via vendors\" with no more detail.\n\nTimeseries-api: GET /v1/devices/{id}/metrics?from&to, also GET /v1/tenants/{id}/devices/latest. Data model: Timestream with dimensions deviceId, tenantId; documented patterns: metrics for a device over a range, latest value per device for a tenant, and \"all devices in a tenant with temperature > X in last hour\". Latest-per-device is computed by scanning the last day for each device on each request.\n\nVersioning: /v1/ prefix, additive-only policy, 12-month deprecation.\n\nObservability: Grafana + Prometheus, ingest lag metric, alert on lag > 60s. Runbooks exist for ingest and alerts only.\n\nCost: spreadsheet covers Timestream writes for 50k devices at 1 msg/min, MQTT broker, and Twilio; omits Timestream query cost, storage retention, SendGrid, data transfer.\n\nScale: 50k devices now, 500k in 18 months.\n\nReview please.",
+      "rubric": [
+        "Treats the compromised-device-certificate threat with only manual revocation by support ticket as a must-fix, recommending automated revocation (CRL/OCSP or a denylist at the gateway).",
+        "Flags that the SMS/email vendor delivery (SendGrid, Twilio) has no described handling for vendor outages, retries, or fallback, as a must-fix.",
+        "Points out that \"latest value per device\" via day-wide scans per request will not scale to the documented pattern at 500k devices, and the temperature-threshold pattern needs support, and says the data design must address these.",
+        "Notes the cost spreadsheet omits Timestream query cost, retention storage, SendGrid and data transfer, and does not account for the growth to 500k devices.",
+        "Notes runbooks cover only ingest and alerts and recommends playbooks for the remaining services such as device-gateway and firmware-updater.",
+        "Provides multi-service analysis suited to 8 services, such as how device-gateway, ingest, rules-engine and alerts interact under load and failure.",
+        "Does not re-flag the sound versioning policy or the mitigated firmware-signing and tenant-leak threats, and credits them as adequate."
+      ],
+      "why_skill_matters": "Long multi-service brief with two serious gaps (manual revocation, unspecified vendor handling), a data pattern problem, cost and runbook gaps, and several well-covered areas. Makes r01, r02, r03, r07, r06, r08, r10 matter."
+    }
+  ]
+}

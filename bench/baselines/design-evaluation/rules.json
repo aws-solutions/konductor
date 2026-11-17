@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "design-evaluation",
+  "skill_md_sha256": "bf30450c696c2ea27a780eeff4144826a617614fd00cd3680fe414438e34ccbf",
+  "request_context": "A request to review a complete technical design package, covering architecture, security, APIs, data models and operations, as a final quality check before it is handed to engineers to build.",
+  "rules": [
+    {
+      "id": "design-evaluation-r01",
+      "source_quote": "Security design has unmitigated HIGH severity threats",
+      "class": "useful",
+      "outcome": "Treats any serious security threat that has no mitigation in the design as a blocker that must be resolved before implementation starts, and names the specific threat.",
+      "why": "Building on a design with known unmitigated serious threats bakes vulnerabilities into the product.",
+      "scenario_hint": "Design package whose threat analysis lists a serious threat, such as token theft, with no countermeasure in the architecture."
+    },
+    {
+      "id": "design-evaluation-r02",
+      "source_quote": "No failure handling strategy for external dependencies",
+      "class": "useful",
+      "outcome": "Flags as a blocker any third-party or external service call that lacks a defined behavior for outages, timeouts, retries or degraded operation.",
+      "why": "Unhandled dependency failures cascade into outages in production.",
+      "scenario_hint": "Design that calls a payment provider or external API but describes only the happy path."
+    },
+    {
+      "id": "design-evaluation-r03",
+      "source_quote": "Data model cannot support all documented access patterns",
+      "class": "useful",
+      "outcome": "Checks the data model against each documented query or access pattern and flags as a blocker any pattern the schema or keys cannot serve efficiently or at all.",
+      "why": "A schema that cannot serve required queries forces costly rework after implementation begins.",
+      "scenario_hint": "Design with a key-value table whose keys do not allow a documented lookup by a different attribute."
+    },
+    {
+      "id": "design-evaluation-r04",
+      "source_quote": "API design has breaking change risks with no versioning strategy",
+      "class": "useful",
+      "outcome": "Flags as a blocker an API that has no versioning or compatibility approach and could break existing clients when it changes.",
+      "why": "Unversioned API changes break consumers with no migration path.",
+      "scenario_hint": "API specification with public endpoints and no version in paths or headers and no deprecation plan."
+    },
+    {
+      "id": "design-evaluation-r05",
+      "source_quote": "Observability strategy (metrics, logs, traces) not defined",
+      "class": "useful",
+      "outcome": "Notes as a should-fix issue when the design does not say what metrics, logs and traces will be collected, and recommends concrete signals to add.",
+      "why": "Without planned observability, production problems are hard to detect and diagnose.",
+      "scenario_hint": "Design package with no monitoring or logging section."
+    },
+    {
+      "id": "design-evaluation-r06",
+      "source_quote": "No runbook or operational playbook referenced",
+      "class": "useful",
+      "outcome": "Points out that no operational runbook or incident playbook is referenced and recommends creating one for on-call handling.",
+      "why": "Operators lack guidance during incidents, lengthening outages.",
+      "scenario_hint": "Design with deployment and alarms described but no operational procedures."
+    },
+    {
+      "id": "design-evaluation-r07",
+      "source_quote": "Cost estimates not validated against architecture",
+      "class": "useful",
+      "outcome": "Checks whether the cost estimates match the proposed architecture and flags figures that ignore major components or usage volumes.",
+      "why": "Budget surprises appear after the design is committed.",
+      "scenario_hint": "Design whose cost estimate covers compute only while the architecture also uses managed databases, queues and data transfer."
+    },
+    {
+      "id": "design-evaluation-r08",
+      "source_quote": "Small projects (1-2 services) get focused feedback on core patterns.",
+      "class": "useful",
+      "outcome": "Tailors depth to project size: a small system gets simple, focused advice that warns against over-engineering, a mid-size one gets analysis of interactions between services, and a very large one gets operational and organizational maturity concerns.",
+      "why": "Uniform heavyweight feedback pushes needless complexity onto small projects and misses coordination risks in large ones.",
+      "scenario_hint": "Design for a two-service internal tool, versus a design spanning a dozen services."
+    },
+    {
+      "id": "design-evaluation-r09",
+      "source_quote": "Could add chaos engineering scenarios for resilience validation",
+      "class": "useful",
+      "outcome": "Offers optional improvements such as fault-injection experiments and defining service level objectives with error budgets, clearly marked as nice-to-have.",
+      "why": "Optional hardening ideas get confused with required fixes, or are omitted entirely.",
+      "scenario_hint": "Solid design with adequate resilience that could still be validated further."
+    },
+    {
+      "id": "design-evaluation-r10",
+      "source_quote": "Only evaluate sections relevant to the given {Tech Design}—if a section is not applicable, acknowledge its omission and justify whether it is reasonable.",
+      "class": "generic",
+      "outcome": "When a typical design section is absent or not applicable, the review says so and explains whether leaving it out is reasonable for this project, rather than demanding it blindly.",
+      "why": "Demanding irrelevant sections adds noise and wasted work.",
+      "scenario_hint": "Any request to review a design that omits some usual sections."
+    },
+    {
+      "id": "design-evaluation-r11",
+      "source_quote": "Present findings as: CRITICAL → IMPORTANT → SUGGESTION.",
+      "class": "style",
+      "outcome": "Findings are ordered from most to least severe, with must-fix issues clearly separated from should-fix and optional ones.",
+      "why": "",
+      "scenario_hint": "Any request to review a design package before implementation."
+    },
+    {
+      "id": "design-evaluation-r12",
+      "source_quote": "Ask: \"Fix these issues? [y/n]\"",
+      "class": "style",
+      "outcome": "The review presents all findings without asking clarifying questions beforehand and ends with a single question asking whether the author wants the issues fixed.",
+      "why": "",
+      "scenario_hint": "Any request to review a design package before implementation."
+    }
+  ]
+}

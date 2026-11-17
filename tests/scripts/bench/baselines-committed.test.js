@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Tests of the baselines committed under bench/baselines/ (the real ones, not the fixture): the manifest check passes,
-// and `plan` can read every skill that has one. They read the committed files only and change nothing.
+// `plan` can read every skill that has one, and each record of bench/exclusions.json names a committed task. They read
+// the committed files only and change nothing.
 'use strict';
 
 const test = require('node:test');
@@ -9,6 +10,11 @@ const fs = require('fs');
 
 const { createLayout } = require('../../../scripts/bench/lib/layout');
 const { buildPlan } = require('../../../scripts/bench/lib/plan');
+const {
+  loadExclusions,
+  knownTaskIds,
+  unmatchedExclusions,
+} = require('../../../scripts/bench/lib/baseline');
 const {
   verifyBaselines,
 } = require('../../../scripts/bench/lib/baseline-manifest');
@@ -52,6 +58,29 @@ test('plan reads every committed skill: ready, or rules stale when SKILL.md chan
       ['ready', 'rules stale'].includes(entry.status),
       `${entry.skill}: ${entry.status}`,
     );
+});
+
+// The reading A exclusions of bench/exclusions.json. A record added or removed changes this list on purpose.
+const EXCLUDED_IDS = [
+  'security-test-generation-rules-1',
+  'security-test-generation-rules-3',
+  'security-test-generation-rules-8',
+];
+
+test('every record of bench/exclusions.json names a task of a committed baseline, and the plan leaves out exactly those tasks', () => {
+  const exclusions = loadExclusions(layout);
+  const known = knownTaskIds(layout);
+  const recorded = [];
+  for (const [batch, entry] of Object.entries(exclusions.batches)) {
+    assert.deepEqual(unmatchedExclusions(exclusions, batch, known), [], batch);
+    recorded.push(...entry.scenarios.map((record) => record.id));
+  }
+  assert.deepEqual([...recorded].sort(), EXCLUDED_IDS);
+  const plan = buildPlan({ layout, config: helpers.exampleConfig(), skills });
+  const left = plan.skills.flatMap((entry) =>
+    entry.batches.flatMap((batch) => batch.excluded),
+  );
+  assert.deepEqual(left.sort(), EXCLUDED_IDS);
 });
 
 test('every committed skill has two batches of five to eight tasks, and reading A lacks only the excluded ones', () => {

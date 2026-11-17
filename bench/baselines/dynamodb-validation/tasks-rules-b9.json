@@ -1,0 +1,114 @@
+{
+  "format_version": 1,
+  "skill": "dynamodb-validation",
+  "batch": "rules-b9",
+  "generated_at": "2026-11-10T07:40:03.449Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "9262af213503cb54c9983c660a4bd23e5ea7f9a5556566e1953279c296dfeb37",
+  "scenarios": [
+    {
+      "id": "dynamodb-validation-rules-1",
+      "title": "Event ingestion table keyed by day",
+      "target_section": "CATEGORY 1: PARTITION KEY DESIGN (Critical Priority)",
+      "prompt": "Hey, we're about to build a table for our IoT telemetry pipeline and I'd like a second pair of eyes on the design before we write the CDK. Here's the plan:\n\nTable: DeviceReadings\n- Partition key: readingDate (string, e.g. \"2026-11-09\")\n- Sort key: deviceId#timestamp (string)\n- Attributes: deviceId, temperature, humidity, batteryPct, firmwareVersion, receivedAt\n- Billing: provisioned, 4,000 WCU / 1,200 RCU\n- Writes: about 3,500 readings/sec from roughly 40,000 devices, all day long\n- Reads: dashboards pull \"all readings for a device in the last hour\" (~20 req/sec), and an ops page pulls \"latest readings for a given firmware version\" (~2 req/sec)\n- Encryption: default settings\n- Backups: we figured we'd deal with that later\n\nAccess patterns:\n1. Write a reading\n2. Get readings for a device over a time range\n3. Get latest readings by firmware version\n\nI picked the date as the partition key because most of our queries are time based. Does this look OK to you?",
+      "rubric": [
+        "Flags that using the calendar date as the main key sends all ~3,500 writes/sec on a given day to one key value (one partition), so the table cannot use its 4,000 WCU and will throttle, and proposes a key based on deviceId or a sharding suffix.",
+        "Notes that \"readings for a device over a time range\" is not served efficiently by a date-keyed table (needs the device as the leading key or an index) and that \"latest readings by firmware version\" has no key or index supporting it.",
+        "Points out that \"deal with backups later\" is a gap for a production table and recommends point-in-time recovery plus a defined retention period and recovery objectives.",
+        "Asks to confirm encryption at rest is explicitly configured rather than left at default and states what to choose (AWS-managed or customer-managed key).",
+        "Backs each problem with this design's own details (readingDate, 3,500 writes/sec vs 4,000 WCU, the named access patterns) and gives a corrected key schema example with concrete steps.",
+        "Mentions that no alarms or monitoring for throttling are described and recommends them."
+      ],
+      "why_skill_matters": "A date-based partition key on a high-write table is the classic hot partition. The access patterns also don't map cleanly to the keys, and backups, encryption and monitoring are skipped or vague."
+    },
+    {
+      "id": "dynamodb-validation-rules-2",
+      "title": "Task manager admin screen",
+      "target_section": "CATEGORY 2: INDEX COVERAGE (High Priority)",
+      "prompt": "Small team, we're building a task tracker (think a lightweight Jira). Here's the DynamoDB design I wrote up. Can you sanity check it before I start coding?\n\nTable: Tasks (on-demand)\n- PK: taskId (uuid)\n- Attributes: title, description, assigneeId, projectId, status (todo/doing/done), priority, dueDate, created_at\n\nGSI: ByAssignee — PK assigneeId, SK dueDate, projection ALL\nGSI: ByProject — PK projectId, SK created_at, projection ALL\n\nScreens / queries:\n- My tasks (by assignee, sorted by due date) — hit constantly\n- Project board (tasks for a project) — hit constantly\n- Task detail by id\n- Manager dashboard: \"show every task in the system, newest first, 25 per page\" — 15 or so managers have this open all day, refreshing every few seconds\n- Overdue tasks across all projects\n\nI was going to just do a Scan with Limit 25 for the dashboard since it's only managers. Total is about 400k tasks now and growing by maybe 10k a month.",
+      "rubric": [
+        "Explains that the \"every task, newest first\" dashboard cannot sensibly be served by a Scan with Limit 25: Scan reads through the whole ~400k item table, cost and latency grow with table size, and newest-first ordering is not possible with Scan.",
+        "Recommends a concrete alternative for the dashboard, such as an index with a constant grouping key and created_at sort key, or another query-based approach, and notes the single-hot-key trade-off given the constant refreshing.",
+        "Identifies that \"overdue tasks across all projects\" is also unsupported by the table or either index and proposes a way to serve it.",
+        "Points out that both indexes copy all attributes (including description) though the screens likely need only a few, and recommends projecting only the needed attributes with rough cost reasoning.",
+        "Ties each issue to the named queries and indexes in this design, with a corrected index definition or query example.",
+        "Notes the design says nothing about backups or point-in-time recovery."
+      ],
+      "why_skill_matters": "A manager dashboard needs a list-everything query and the author plans a Scan; another pattern is also unserved, and both indexes project everything."
+    },
+    {
+      "id": "dynamodb-validation-rules-3",
+      "title": "Order system with throttling index",
+      "target_section": "CATEGORY 11: CRITICAL PITFALLS DETECTION (Critical Priority)",
+      "prompt": "We run an e-commerce order table and last week we had a weird incident: writes failed for ~20 minutes even though the main table's consumption graph looked fine. I'm redesigning and want you to review the new setup before we deploy.\n\nTable Orders (provisioned): 2,000 WCU, 1,500 RCU, PK orderId, SK lineItem.\n\nIndexes:\n- ByCustomer: PK customerId, SK orderDate — 600 WCU, 500 RCU — projection ALL\n- ByStatus: PK orderStatus (PENDING, PAID, SHIPPED, CANCELLED, RETURNED), SK orderDate — 300 WCU — projection ALL\n- ByWarehouse: PK warehouseId (12 warehouses), SK orderDate — 500 WCU — projection ALL\n- ByCarrier: PK carrierCode, SK shipDate — 400 WCU — projection ALL\n- ByCoupon: PK couponCode, SK orderDate — 200 WCU — projection ALL, \"just in case marketing wants it\"\n- ByRegion: PK region, SK orderDate — 200 WCU — ALL, no query uses it yet\n\nNormal write rate is around 1,400 writes/sec to the main table. Every order write touches all of these indexes. Items are ~2 KB.\n\nNo alarms are set up yet, we just look at the console when someone complains.",
+      "rubric": [
+        "Compares index write capacity (e.g. ByStatus 300, ByCarrier 400, ByCoupon 200 WCU) with the table's 2,000 WCU and ~1,400 writes/sec, and explains that an under-provisioned index throttles and makes base table writes fail, tying this to the incident described.",
+        "Flags the ByStatus key (five status values) and ByWarehouse key (12 values) as low-variety keys that concentrate traffic on few partitions and suggests a better key or sharding.",
+        "Counts six indexes and warns about the write cost multiplication on every order, recommending dropping or consolidating ByCoupon and ByRegion which have no real query.",
+        "Notes that all indexes copy all attributes of 2 KB items and recommends narrower projections.",
+        "Recommends throttling alarms for the table and for each index, since the team currently has none.",
+        "Uses the numbers from the design (WCU per index, 1,400 writes/sec, 2 KB items) in calculations and gives a corrected index capacity or definition example."
+      ],
+      "why_skill_matters": "Under-provisioned indexes, low-variety index keys, six indexes with two speculative, all-attribute projections and no alarms — all in a post-incident redesign."
+    },
+    {
+      "id": "dynamodb-validation-rules-4",
+      "title": "Patient portal with email keys",
+      "target_section": "CATEGORY 5: SECURITY & COMPLIANCE (Critical Priority)",
+      "prompt": "Reviewing a design for a patient appointment portal at a small clinic network. Notes from the architect, pasted below. I just need to know if it's good to go to implementation.\n\n---\nTable: Appointments (on-demand, single region us-east-1)\nPK: patientEmail\nSK: appointmentTime#appointmentId\nAttributes: patientName, dob, phone, providerId, reason (free text, up to 2 KB), status, notes\n\nAccess:\n- Patient sees their own appointments (PK query)\n- Provider sees their day: query by providerId and date\n- Front desk looks up by patient last name\n\nGSI ByProvider: PK providerId, SK appointmentTime, projection ALL\n\nSecurity notes: Lambda role has `dynamodb:*` on `*` so we don't hit permission errors during development, \"will tighten later\". VPC endpoint not set up, Lambdas call the public endpoint. Table uses the default settings from the console.\n\nBackups: nightly export is planned \"if there's budget\".\n---\n\nThanks!",
+      "rubric": [
+        "Flags that patientEmail (personal, health-related identity data) is used as the table key and so appears in logs and metrics, and suggests an opaque patient identifier instead.",
+        "Calls out the Lambda role granting every DynamoDB action on every resource as too broad for this data, and asks that encryption at rest be explicitly confirmed since only \"default settings\" are mentioned.",
+        "Notes that the \"front desk looks up by patient last name\" pattern is not served by the table key or the ByProvider index and proposes an index or alternative.",
+        "Treats the \"nightly export if there's budget\" as insufficient for patient records and recommends point-in-time recovery with defined retention and recovery objectives.",
+        "Points out the ByProvider index copies all attributes, including dob, phone and notes, though a provider's day view needs few, and recommends narrower projection.",
+        "Cites this design's specifics (patientEmail, dynamodb:* on *, the last-name lookup) and gives a corrected key or policy example with steps."
+      ],
+      "why_skill_matters": "The notes hide the sensitive-data-in-key problem inside the first line and an unserved front-desk lookup inside a list of reasonable patterns, next to loose permissions, weak backup plans and a full-copy index."
+    },
+    {
+      "id": "dynamodb-validation-rules-5",
+      "title": "Helpdesk tickets with search and reports",
+      "target_section": "CATEGORY 7: ANTI-PATTERNS & USE CASE FIT (Critical Priority)",
+      "prompt": "We're building a customer support helpdesk and I want to put everything in one DynamoDB table because the team likes it. Can you review this and tell me where it'll hurt?\n\nTable Tickets (on-demand), PK ticketId, attributes: customerEmail, subject, body, category, assignedAgent, state, opened_at, closed_at, screenshots (we store the uploaded PNGs directly in the item, typically 1-3 MB each, a few per ticket).\n\nThings the product needs:\n1. Agents type keywords and find tickets whose subject or body contains them (like \"refund duplicate charge\")\n2. Customer sees their tickets\n3. Agent wall board: all open tickets, oldest first, refreshed every 5 seconds on about 30 screens\n4. Tickets assigned to me\n5. Monthly report for management: count of tickets per category and average time to close, over the last 3 years, sliced however they ask for it that week\n\nI planned a Scan with a filter for 1, 3 and 5 since the table is small right now (about 20k tickets). The only index I've added is one on customerEmail.",
+      "rubric": [
+        "Says keyword search over subject and body is a poor fit for this database and recommends a dedicated search service.",
+        "Says the monthly slice-it-however-they-ask report with averages is analytics that suits a warehouse or query-over-S3 tool, and that screenshots of 1-3 MB cannot sit in items (item size limit) and belong in object storage with a reference.",
+        "Explains the wall board \"all open tickets, oldest first\" would require a Scan that gets costlier as the table grows, even if 20k is small now, and recommends an index (such as a constant or state-based grouping key with opened_at as sort) instead.",
+        "Maps the patterns and notes that \"tickets assigned to me\" has no key or index, while \"customer sees their tickets\" is the only one served.",
+        "Refers to the actual attributes and patterns (screenshots, wall board refresh rate, assignedAgent) and gives a concrete corrected layout with steps."
+      ],
+      "why_skill_matters": "The request mixes free-text search, ad-hoc analytics and large binaries in items with a list-everything screen and an unserved per-agent query, all served by Scans."
+    },
+    {
+      "id": "dynamodb-validation-rules-6",
+      "title": "Audit log with a lopsided tenant",
+      "target_section": "CATEGORY 12: DESIGN SMELL DETECTION (High Priority)",
+      "prompt": "Here's the design doc excerpt for our multi-tenant audit log. We're a B2B SaaS, about 300 tenants. Please review before the infra team provisions it Monday.\n\nThe AuditEvents table is provisioned at 1,500 WCU and 800 RCU. Partition key is tenantId, sort key is eventTime#eventId. Peak ingest is about 1,100 events/sec, and one enterprise customer (Northwind) generates roughly 60 percent of all events. We expect that to grow. Customers browse their own log, filtered by time range, which works off the primary key. Support also needs \"everything this actor did across tenants\", so there's an index ByActor on actorId with 200 WCU, projection ALL. Security wants \"all events of type LOGIN_FAILED in the last hour\", so we added ByType on eventType (there are 7 event types) at 1,500 WCU, projection ALL. Events are about 3 KB. Retention is 13 months with TTL. We'll check the dashboards after launch and add alarms if we notice problems. Encryption uses a customer-managed key and PITR is on.",
+      "rubric": [
+        "Spots that ByActor has only 200 WCU against a 1,500 WCU table and ~1,100 events/sec of writes, and explains that this index will throttle and cause failures on writes to the main table too.",
+        "Flags that tenantId as the key with one tenant producing ~60 percent of events concentrates writes on one key value, and that eventType with 7 values for ByType does the same; proposes a sharding suffix or different key.",
+        "Calls \"add alarms after launch\" a gap and recommends throttling alarms on the table and on both indexes before go-live.",
+        "Notes both indexes copy all attributes of 3 KB events, doubling or tripling stored and written data, and recommends projecting fewer attributes.",
+        "Uses the design's numbers (200 vs 1,500 WCU, 60 percent, 7 types, 3 KB) in its reasoning and offers a corrected capacity or key example."
+      ],
+      "why_skill_matters": "One sentence buries a tiny-capacity index inside prose, and the dominant tenant and few event types create hot keys, while encryption and PITR being fine pull attention away from the real gaps."
+    },
+    {
+      "id": "dynamodb-validation-rules-8",
+      "title": "Loyalty points launch readiness",
+      "target_section": "CATEGORY 13: OPERATIONAL READINESS (High Priority)",
+      "prompt": "We launch the loyalty points service next Tuesday and I need a go/no-go view on the table. Design is below, keep it practical.\n\nTable LoyaltyMembers (provisioned, 600 WCU / 900 RCU, us-west-2)\n- PK memberId (uuid), SK recordType#timestamp (points ledger entries and profile record live together)\n- Attributes: email, tier, pointsBalance, ledgerAmount, reason\n- GSI ByEmail: PK email, projection limited to memberId, tier and pointsBalance, 600 WCU\n\nPatterns:\n- Show a member's balance and recent ledger (primary key)\n- Log in by email (ByEmail)\n- Admin page: \"list all members and their tier\", staff open it a few times a day, ~2.5M members\n- Redeem points (decrement the balance and add a ledger row, must not double spend)\n\nStatus of everything else: encryption not yet looked at. No backups configured. No alarms or dashboards, no runbook, nobody has been named on call. No load test, since \"DynamoDB scales\". Peak traffic expected is 250 writes/sec at launch, perhaps 4x in six months.",
+      "rubric": [
+        "Says missing throttling and latency alarms on the table and on ByEmail, no dashboard, no runbook and no on-call owner are gaps to close before launch, and names which alarms are needed.",
+        "Says no backups for a points ledger is a launch gap and recommends point-in-time recovery, a retention period, and stated recovery time and data-loss objectives.",
+        "Says encryption at rest must be confirmed and explicitly configured before launch, and notes that email used as the login lookup key should be reviewed as personal data in index keys.",
+        "Notes the admin \"list all members\" page over ~2.5M members implies a full Scan unless an index with a constant grouping key or similar is added, and explains why a Scan is expensive even if used rarely.",
+        "Compares ByEmail's 600 WCU with the table's 600 WCU and 250 writes/sec (growing about 4x) and says index capacity must not fall below the table's, or throttling will block writes.",
+        "Anchors the go/no-go verdict in this design's facts (Tuesday launch, 2.5M members, 250 writes/sec, no backups) and lists concrete fix steps, with an example such as an alarm or index definition."
+      ],
+      "why_skill_matters": "A launch-bound design with almost nothing operational in place, plus a list-all admin page and capacity numbers that need comparing."
+    }
+  ]
+}

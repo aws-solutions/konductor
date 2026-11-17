@@ -1,0 +1,233 @@
+{
+  "format_version": 1,
+  "skill": "e2e-test-strategy",
+  "batch": "rules-b8",
+  "rules": {
+    "e2e-test-strategy-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "e2e-test-strategy-r02": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "e2e-test-strategy-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "e2e-test-strategy-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "e2e-test-strategy-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "e2e-test-strategy-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "e2e-test-strategy-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "e2e-test-strategy-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "e2e-test-strategy-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "e2e-test-strategy-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "e2e-test-strategy-r11": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "e2e-test-strategy-r12": {
+      "class": "style",
+      "kept": false,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "e2e-test-strategy-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r03"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r03"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "e2e-test-strategy-r11"
+      }
+    },
+    "e2e-test-strategy-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r10"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r10"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r09"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "e2e-test-strategy-r11"
+      }
+    },
+    "e2e-test-strategy-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r08"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r09"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "e2e-test-strategy-r11"
+      }
+    },
+    "e2e-test-strategy-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r03"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r04"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "e2e-test-strategy-r11"
+      }
+    },
+    "e2e-test-strategy-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "e2e-test-strategy-r11"
+      }
+    },
+    "e2e-test-strategy-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "e2e-test-strategy-r06"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "e2e-test-strategy-r11"
+      }
+    }
+  }
+}
