@@ -379,8 +379,9 @@ not per individual commit.
   file-organization reference pins every Smithy artifact no newer than the installed CLI, with
   1.75.0 in the example, and adds `$schema`.
 - The Smithy skills say `$version: "2"` resolves to IDL 2.1 on Smithy 1.75.0 or later.
-- The Smithy skills treat `@paginated` `items` as recommended, not required, and let
-  operations inherit `@paginated` settings from the service.
+- The Smithy skills treat `@paginated` `items` as recommended, not required, and say each list
+  operation carries its own `@paginated`, which can take its settings from a service-level
+  `@paginated`.
 - The Smithy skills accept any string as a service `version`; a date is only a convention.
 - `smithy-modeling` adds a resource lifecycle example, a `GetUserInput` with a required
   `@httpLabel` member, and says mixins pass their traits to the shapes that use them.

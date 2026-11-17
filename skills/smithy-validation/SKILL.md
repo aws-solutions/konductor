@@ -142,7 +142,7 @@ Use this skill when:
 
 **Verify:**
 
-- List operations have the `@paginated` trait, either directly or inherited from the service's `@paginated` (operation settings override the service's)
+- Each list operation carries its own `@paginated` trait. It can be empty when the service's `@paginated` supplies every setting, since a service-level trait only supplies defaults to operations that have the trait. A list operation without it is a finding
 - `inputToken` and `outputToken` set on the operation or inherited from the service, and `pageSize` defined
 - `items` names the paged list or map; it is optional, but recommended
 - The `inputToken` member is not `@required`
