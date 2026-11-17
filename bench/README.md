@@ -914,6 +914,8 @@ git fetch origin pull/95/head:pr-95          # then pr-95=pr-95
 git fetch origin feat/x                      # then pr-95=origin/feat/x
 git worktree add --detach /tmp/wip HEAD      # edit files in /tmp/wip, then wip=dir:/tmp/wip
 node bench/runner/bench.js pr-plan --ref pr-95=pr-95 --suite lite   # prints the commands and a budget, runs nothing
+node bench/runner/bench.js pr-plan --ref a=feat/a --ref b=feat/b --ref cc-a=feat/a --budget-usd 5 --out $OUT
+                                     # several arms; cc- arms plan their own Claude Code run in $OUT/claude-code
 node bench/runner/bench.js run --suite lite --arms vanilla,v1.2.0,pr-95=pr-95 --replicates 3 --budget-credits 300 --out $OUT
 node bench/runner/bench.js run ... --prepare-only                   # build and trial-install every arm, print the table, no agent
 node bench/runner/bench.js judge --run $OUT --baseline v1.2.0       # pairwise against v1.2.0 instead of vanilla
@@ -959,7 +961,10 @@ The six `autonomy-*` tasks leave a decision open, and a scripted user (no model)
 ## Piloting orchestration options
 Make an option an arm, run it against a release, and read quality, autonomy and cost together.
 - Arm: a branch or tag as `opt-a=<ref>` (built from `git archive`), or a worktree as `opt-a=dir:<path>` (edits count, recorded dirty).
-- Plan, runs nothing: `pr-plan --ref opt-a=<ref> --suite pilot --budget-credits 150` (also `--base v1.2.0`, `--base main`). The
+- Plan, runs nothing: `pr-plan --ref opt-a=<ref> --suite pilot --budget-credits 150` (also `--base v1.2.0`, `--base main`).
+  Repeat `--ref` for several options in one run; `--out DIR` sets the run directory (default under the temp dir). A
+  `cc-opt-a=<ref>` arm plans a Claude Code run of its own against `cc-vanilla`; there is no measured USD figure for the suites,
+  so it needs `--budget-usd`, and the plan prints a floor from the smoke runs (about USD 0.044 vanilla and 0.185 konductor per run). The
   `pilot` suite is 8 tasks borrowed from lite (3), real (2) and autonomy (3, one needs no question); 1 replicate. There are no
   observed figures for autonomy tasks, so `pr-plan` refuses to guess a cap and wants `--budget-credits`.
 - Sequence: `run --suite pilot --arms vanilla,v1.2.0,main,opt-a=<ref>`, then `contrast --run $OUT --base v1.2.0` (no credits),

@@ -29,7 +29,7 @@ const FLAGS = {
   'report-2x2': ['kiro-vanilla', 'kiro-konductor', 'cc-vanilla', 'cc-konductor', 'out', 'json', 'bench-dir', 'extra-tasks', 'scoring', 'criteria-pack'],
   compare: ['base', 'head', 'min-rel', 'rule', 'force', 'bench-dir'],
   contrast: ['run', 'base', 'head', 'min-rel', 'rule', 'by', 'bench-dir', 'extra-tasks', 'detail', 'format', 'out', 'scoring', 'phases'],
-  'pr-plan': ['ref', 'base', 'suite', 'replicates', 'no-vanilla', 'budget-credits', 'seed', 'repo-root', 'bench-dir'],
+  'pr-plan': ['ref', 'base', 'suite', 'replicates', 'no-vanilla', 'budget-credits', 'budget-usd', 'out', 'seed', 'repo-root', 'bench-dir'],
   recheck: ['run', 'bench-dir', 'dry-run', 'extra-tasks'],
   backfill: ['run', 'write', 'credits', 'skills', 'bench-dir', 'repo-root', 'extra-tasks'],
   skills: ['run', 'bench-dir', 'repo-root', 'json', 'extra-tasks'],

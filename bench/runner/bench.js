@@ -7,7 +7,7 @@
  *        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
- *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
+ *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--ref ...] [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
  *   node bench/runner/bench.js gc [--apply] | archive --run DIR [--apply]   (reclaim what the bench made; dry run by default)
  *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix|keep-prune ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
@@ -166,9 +166,12 @@ const USAGE = `Usage:
        [--detail quick|full] [--format md|html|both] [--out DIR] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (each head arm against the base arm, overall and per task class (--by task: per task); writes contrast.md, contrast.json, contrast.html
        and charts/ in --out (default: DIR). Default base: v1.2.0 if present, else vanilla, else the first arm. Default head: all other arms)
-  node bench/runner/bench.js pr-plan --ref name=<git ref>|name=dir:<path> [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
-       [--replicates N] [--no-vanilla] [--budget-credits X] [--seed N] [--repo-root DIR] [--bench-dir DIR]
-       (prints the run, contrast, judge and report commands for one ref against a release; runs nothing)
+  node bench/runner/bench.js pr-plan --ref name=<git ref>|name=dir:<path>|cc-name=... [--ref ...] [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
+       [--replicates N] [--no-vanilla] [--budget-credits X] [--budget-usd X] [--out DIR] [--seed N] [--repo-root DIR] [--bench-dir DIR]
+       (prints the run, contrast, judge and report commands for one or more refs against a release; runs nothing. Repeat --ref for several arms;
+       a cc- arm is a Claude Code arm, planned as its own run against cc-vanilla and capped by --budget-usd, which it needs since no USD figure
+       is measured for the suites. --out sets the run directory (default under the temp dir); with both harnesses each run gets OUT/kiro-cli and
+       OUT/claude-code)
   node bench/runner/bench.js recheck --run DIR [--bench-dir DIR] [--dry-run] [--extra-tasks DIR,DIR]
        (re-evaluates the current task checks against each run's saved workspace; the first results are kept
        under checksOriginal in result.json; stream.jsonl and credit fields are never touched; safe to repeat)
@@ -335,7 +338,7 @@ ${ARM_SYNTAX}
 An unknown flag is an error (exit 2) and nothing runs. --help and -h print this text.`;
 
 // Flags that may be given more than once; a repeated one becomes an array.
-const REPEATABLE_FLAGS = new Set(['root']);
+const REPEATABLE_FLAGS = new Set(['root', 'ref']);
 
 function parseArgs(argv) {
   const opts = { _: [] };
@@ -367,6 +370,7 @@ function cmdPrPlan(opts) {
     const p = planPr({
       ref: opts.ref, base: opts.base === undefined ? undefined : opts.base, suite: opts.suite === undefined ? undefined : opts.suite,
       replicates: opts.replicates, noVanilla: Boolean(opts['no-vanilla']), budgetCredits: opts['budget-credits'] === undefined ? null : Number(opts['budget-credits']),
+      budgetUsd: opts['budget-usd'] === undefined ? null : Number(opts['budget-usd']), out: opts.out && opts.out !== true ? opts.out : null,
       seed: opts.seed, benchDir: opts['bench-dir'] ? require('node:path').resolve(opts['bench-dir']) : undefined,
       repoRoot: opts['repo-root'] && opts['repo-root'] !== true ? opts['repo-root'] : null,
     });

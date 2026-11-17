@@ -175,3 +175,89 @@ test('the CLI prints the plan and exits 0; a refusal prints to stderr and sets e
     require('node:fs').rmSync(b.root, { recursive: true, force: true });
   }
 });
+
+test('several --ref arms go into one Kiro run, each estimated like main, with one out name for all of them', () => {
+  const b = bench({ lite: { ...lite, tasks: ['a', 'b', 'c', 'd', 'e'] } });
+  try {
+    const p = planPr({ ref: ['pr-1=feat/a', 'pr-2=feat/b'], suite: 'lite', benchDir: b.dir, now: NOW, tmpRoot: '/tmp' });
+    assert.deepEqual(p.arms, ['vanilla', 'v1.2.0', 'pr-1=feat/a', 'pr-2=feat/b']);
+    assert.match(p.out, /\/pr-1_pr-2-lite-20260304-050607$/);
+    assert.ok(Math.abs(p.estimate.total - (6.78 + 23.31 + 31.01 + 31.01)) < 1e-9);
+    assert.deepEqual(p.estimate.lines.map((l) => l.basis), ['observed', 'observed', 'assumed like main', 'assumed like main']);
+    assert.match(p.commands.run, /--arms vanilla,v1\.2\.0,pr-1=feat\/a,pr-2=feat\/b /);
+    assert.equal(p.groups.length, 1);
+    assert.throws(() => planPr({ ref: ['p=feat/a', 'p=feat/b'], suite: 'lite', benchDir: b.dir, now: NOW }), /two --ref arms are named "p"/);
+  } finally { require('node:fs').rmSync(b.root, { recursive: true, force: true }); }
+});
+
+test('--out replaces the temp-dir default; with both harnesses each run gets its own subdirectory', () => {
+  const b = bench({ lite: { ...lite, tasks: ['a', 'b', 'c', 'd', 'e'] } });
+  try {
+    const one = planPr({ ref: 'pr=feat/x', suite: 'lite', out: '/var/tmp/my-runs/pr', benchDir: b.dir, now: NOW, tmpRoot: '/tmp' });
+    assert.equal(one.out, '/var/tmp/my-runs/pr');
+    assert.match(one.commands.run, /--out \/var\/tmp\/my-runs\/pr$/);
+    const two = planPr({ ref: ['pr=feat/x', 'cc-pr=feat/x'], suite: 'lite', budgetUsd: 5, out: '/var/tmp/my-runs/pr', benchDir: b.dir, now: NOW, tmpRoot: '/tmp' });
+    assert.deepEqual(two.groups.map((g) => g.out), ['/var/tmp/my-runs/pr/kiro-cli', '/var/tmp/my-runs/pr/claude-code']);
+  } finally { require('node:fs').rmSync(b.root, { recursive: true, force: true }); }
+});
+
+test('a cc- arm is planned as its own Claude Code run against cc-vanilla, capped in USD, with a smoke floor and no guessed cap', () => {
+  const b = bench({ lite: { ...lite, tasks: ['a', 'b', 'c', 'd', 'e'] } });
+  try {
+    assert.throws(() => planPr({ ref: 'cc-pr=feat/x', suite: 'lite', benchDir: b.dir, now: NOW }), /no measured USD cost for Claude Code on the lite suite.*--budget-usd/s);
+    const p = planPr({ ref: ['pr=feat/x', 'cc-pr=feat/x'], suite: 'lite', budgetUsd: 4, benchDir: b.dir, now: NOW, tmpRoot: '/tmp' });
+    const [kiro, ccg] = p.groups;
+    assert.equal(kiro.harness, 'kiro-cli');
+    assert.deepEqual(ccg.arms, ['cc-vanilla', 'cc-pr=feat/x']);
+    assert.equal(ccg.unit, 'USD');
+    assert.equal(ccg.budget, 4);
+    assert.match(ccg.commands.run, /--arms cc-vanilla,cc-pr=feat\/x .*--budget-usd 4 /);
+    assert.doesNotMatch(ccg.commands.run, /--budget-credits/);
+    assert.equal(ccg.commands.judge, `node bench/runner/bench.js judge --run ${ccg.out} --baseline cc-vanilla`);
+    // 5 tasks, 1 replicate: 5 * 0.044 + 5 * 0.185
+    assert.ok(Math.abs(ccg.estimate.total - 5 * (0.044 + 0.185)) < 1e-9);
+    assert.equal(ccg.estimate.floor, true);
+    assert.match(p.text, /two separate runs/);
+    assert.match(p.text, /cc-pr\s+at least 0\.93/);
+    assert.match(p.text, /not a forecast/);
+    assert.deepEqual(p.arms, kiro.arms);
+    const ccOnly = planPr({ ref: 'cc-w=dir:/work/tree', suite: 'lite', budgetUsd: 3, benchDir: b.dir, now: NOW, tmpRoot: '/tmp' });
+    assert.deepEqual(ccOnly.arms, ['cc-vanilla', 'cc-w=dir:/work/tree']);
+    assert.equal(ccOnly.groups.length, 1);
+  } finally { require('node:fs').rmSync(b.root, { recursive: true, force: true }); }
+});
+
+test('a budget for a harness the plan does not have, an oc- arm and a cc base are refused', () => {
+  const b = bench({ lite: { ...lite, tasks: ['a', 'b', 'c', 'd', 'e'] } });
+  try {
+    const plan = (o) => planPr({ suite: 'lite', benchDir: b.dir, now: NOW, ...o });
+    assert.throws(() => plan({ ref: 'pr=feat/x', budgetUsd: 3 }), /--budget-usd applies to Claude Code/);
+    assert.throws(() => plan({ ref: 'cc-pr=feat/x', budgetUsd: 3, budgetCredits: 10 }), /--budget-credits applies to Kiro CLI arms/);
+    assert.throws(() => plan({ ref: 'oc-pr=feat/x' }), /Kiro CLI and Claude Code \(cc-\) arms only/);
+    assert.throws(() => plan({ ref: 'pr=feat/x', base: 'cc-main' }), /--base names the Kiro CLI base arm/);
+    assert.throws(() => plan({ ref: 'cc-pr=feat/x', budgetUsd: 0 }), /--budget-usd must be a positive number/);
+    const low = plan({ ref: 'cc-pr=feat/x', budgetUsd: 0.5, tmpRoot: '/tmp' });
+    assert.match(low.warnings.join('\n'), /below the Claude Code floor/);
+  } finally { require('node:fs').rmSync(b.root, { recursive: true, force: true }); }
+});
+
+test('the CLI takes --ref more than once, --out and --budget-usd', async () => {
+  const b = bench({ lite: { ...lite, tasks: ['a', 'b', 'c', 'd', 'e'] } });
+  const out = [];
+  const err = [];
+  const [ol, oe] = [console.log, console.error];
+  console.log = (m) => out.push(String(m));
+  console.error = (m) => err.push(String(m));
+  const prev = process.exitCode;
+  try {
+    await main(['pr-plan', '--ref', 'a=feat/a', '--ref', 'b=feat/b', '--ref', 'cc-a=feat/a', '--budget-usd', '6', '--out', '/var/tmp/plan-x', '--suite', 'lite', '--bench-dir', b.dir]);
+    const text = out.join('\n');
+    assert.notEqual(process.exitCode, 2, err.join('\n'));
+    assert.match(text, /--arms vanilla,v1\.2\.0,a=feat\/a,b=feat\/b .*--out \/var\/tmp\/plan-x\/kiro-cli/);
+    assert.match(text, /--arms cc-vanilla,cc-a=feat\/a .*--budget-usd 6 --out \/var\/tmp\/plan-x\/claude-code/);
+  } finally {
+    [console.log, console.error] = [ol, oe];
+    process.exitCode = prev;
+    require('node:fs').rmSync(b.root, { recursive: true, force: true });
+  }
+});
