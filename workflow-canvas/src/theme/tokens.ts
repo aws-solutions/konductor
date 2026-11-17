@@ -130,8 +130,9 @@ export const BAND = {
   textMuted: '#c9c2e0',
   link: '#c4b2ff',
   /**
-   * The border of the view switch in the page header. The band is dark in
-   * both modes, so it takes the hairline of the dark palette.
+   * The hairline under the top bar and the border of the view switch in the
+   * page header. The band is dark in both modes, so it takes the hairline of
+   * the dark palette.
    */
   divider: DARK.border,
 } as const;
