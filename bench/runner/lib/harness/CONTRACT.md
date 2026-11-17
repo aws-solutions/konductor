@@ -59,13 +59,13 @@ Every harness module exports `meta`, a frozen record of static facts about the r
 | `armPrefix` | string | arm id prefix: `''` for kiro-cli, `oc-`, `cc-`. Exactly one runtime has `''`; it is the fallback of `runtimeOf` |
 | `costUnit` | `'credits'` or `'usd'` | `'usd'` runtimes are the `USD_RUNTIMES` and fill `acc.usage` |
 | `streamFormat` | `'kiro-acp'`, `'opencode-json'`, `'claude-stream-json'` or `'strands-jsonl'` | the shape of `stream.jsonl`. `stop-watch.js`, `trace.js` and `judge/bundle.js` pick their parser from it. A runtime with a new shape adds a value here and a parser to each of those three |
-| `supports` | object of booleans | `trace`, `stopOn`, `effort`, `runCreditLimit`, `multiTurn`, `capCommands`, `skillStudy`, `agentEngine`, `prepareOnly` |
+| `supports` | object of booleans | `trace`, `stopOn`, `effort`, `runCreditLimit`, `multiTurn`, `capCommands`, `skillStudy`, `agentEngine`, `prepareOnly`, `armConfig` |
 | `flags` | object | `own`: run flags that only this runtime's arms accept (refused when no arm of the run uses it). `refused`: run flag to the reason it does not apply, in the order `run` checks them. `perRunCapFlag`: the flag that caps one run's cost, named in the `--run-credit-limit` refusal, or `null` |
 | `noPrompt` | object | how runs skip the agent's own approval prompts (design 15.3, A-4): `flags` passed on the command line, `env` variables set for the agent, and a `note` on what they cover. `strands.js` sets `env`; `kiroArgs` passes the kiro-cli flag, checked by `registry.test.js` |
 | `multiTurnNote` | string or `null` | why autonomy tasks are refused; a string exactly when `supports.multiTurn` is false |
 | `trace` | object | what `trace` says about the run. `sessionFiles`: the harness saves session files (`trace` reports their absence). `timeNote`: how time is known in `stream.jsonl`. `skillsListing`: `'agent-filter'` (the installed agent's skill filter) or `'slash-commands'` (the session init); `null` when `supports.trace` is false |
 
-`supports` records what the runner allows. `run-cmd.js` reads `runCreditLimit`, `multiTurn`, `agentEngine` and `prepareOnly`; `trace.js` reads `trace`. `effort` and `stopOn` must agree with `flags.refused` (`registry.test.js` checks it). The other keys are not read yet.
+`supports` records what the runner allows. `run-cmd.js` reads `runCreditLimit`, `multiTurn`, `agentEngine` and `prepareOnly`; `arm-opts.js` reads `armConfig`; `trace.js` reads `trace`. `effort` and `stopOn` must agree with `flags.refused` (`registry.test.js` checks it). The other keys are not read yet.
 
 | Key | Meaning | Where it is enforced |
 | --- | --- | --- |
@@ -78,6 +78,7 @@ Every harness module exports `meta`, a frozen record of static facts about the r
 | `skillStudy` | `cap skill-study` can drive the runtime | `cap/skillstudy.js` and `cap/studyio.js` are kiro-cli only |
 | `agentEngine` | `--agent-engine` applies | `engineOpt` in `run-cmd.js` |
 | `prepareOnly` | `--prepare-only` covers the runtime | `prepareOnlyRun` in `run-cmd.js` |
+| `armConfig` | `installInto` writes the arm's `--arm-config` keys into the scratch `~/.konductor/config.yml` | `applyArmOptions` in `arm-opts.js` refuses the flag for runtimes that are false here |
 
 Derived from the descriptors: `RUNTIMES`, `USD_RUNTIMES`, `isUsdRuntime` and `runtimeOf` in `runtime.js`, and the `oc-`/`cc-` prefix handling and `OC_PREFIX`/`CC_PREFIX` in `arms.js`.
 

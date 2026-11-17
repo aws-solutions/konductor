@@ -12,7 +12,7 @@ module.exports = Object.freeze({
   armPrefix: 'cc-',
   costUnit: 'usd',
   streamFormat: 'claude-stream-json',
-  supports: Object.freeze({ trace: true, stopOn: false, effort: false, runCreditLimit: false, multiTurn: false, capCommands: false, skillStudy: false, agentEngine: false, prepareOnly: false }),
+  supports: Object.freeze({ trace: true, stopOn: false, effort: false, runCreditLimit: false, multiTurn: false, capCommands: false, skillStudy: false, agentEngine: false, prepareOnly: false, armConfig: true }),
   flags: Object.freeze({
     own: Object.freeze(['claude-bin', 'claude-tools-dir', 'run-budget-usd']),
     // Table order is the order `run` checks them in.

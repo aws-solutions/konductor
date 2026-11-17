@@ -16,6 +16,7 @@ const { scrubTreeDetailed } = require('../hygiene.js');
 const { secretLiterals } = require('../scrub.js');
 const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
+const { writeArmConfig } = require('../arm-config.js');
 const { orchMetrics: computeOrchMetrics } = require('../orch-metrics.js');
 const { copyPlainFile, assertPlainPath } = require('../safe-copy.js');
 const parse = require('./claude-code-parse.js');
@@ -243,6 +244,8 @@ function installInto(home, { arm, prepared, ctx, config, outDir }) {
     const installed = checkInstalledAgents(home, { canonical: config.canonicalModel, entryAgent: arm.agentOverride ?? arm.agent ?? 'konductor', expectedAgents: ctx.expectedAgentCount === undefined ? EXPECTED_AGENTS : ctx.expectedAgentCount });
     meta.installedAgents = installed.count;
     log.push(`agents (${installed.count}): ${installed.agents.join(', ')}`, `pin: model ${config.canonicalModel} on every agent`);
+    // The install's SessionStart hook reads orchestration.mode from $HOME/.konductor/config.yml when the session starts.
+    if (arm.armConfig) log.push(`arm config: ${writeArmConfig(home, arm.armConfig)}`);
   } else {
     log.push('vanilla: empty config directory, built-in agents and skills only');
   }

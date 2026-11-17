@@ -8,6 +8,10 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const { runtimeOf, descriptorOf, supporting, joinNames } = require('./harness/runtime.js');
+
+// konductor reads orchestration.mode for this agent only (MODE_AGENT in cli/konductor-rs/src/cli/orchestration_hook.rs).
+const MODE_AGENT = 'konductor';
 
 // One argv string is capped near 128 KiB on Linux; the prefix plus the prompt must fit in it.
 const MAX_PREFIX_BYTES = 90000;
@@ -65,6 +69,9 @@ function applyArmOptions(arms, opts) {
   for (const [name, config] of require('./arm-config.js').parseArmConfig(opts['arm-config'])) {
     const arm = armNamed(arms, name, 'arm-config');
     if (arm.vanilla) throw new Error(`--arm-config: arm "${name}" is vanilla and vanilla has no konductor config`);
+    const desc = descriptorOf(runtimeOf(arm));
+    if (!desc.supports.armConfig) throw new Error(`--arm-config: arm "${name}" is ${/^[aeiou]/i.test(desc.proseName) ? 'an' : 'a'} ${desc.proseName} arm, whose install never writes the config; it applies to ${joinNames(supporting('armConfig').map((d) => d.proseName))} arms only`);
+    if (config.orchestration !== undefined && arm.agent !== MODE_AGENT) throw new Error(`--arm-config: arm "${name}" starts in "${arm.agent}", but orchestration.* applies to the ${MODE_AGENT} agent only, so the key would change nothing`);
     arm.armConfig = config;
     armConfig[name] = config;
   }

@@ -10,7 +10,7 @@ const path = require('node:path');
 const { tmp } = require('./helpers.js');
 const armConfig = require('../lib/arm-config.js');
 const { applyArmOptions } = require('../lib/arm-opts.js');
-const { kiro } = require('../lib/harness/index.js');
+const { kiro, claudeCode: cc } = require('../lib/harness/index.js');
 const { buildResult } = require('../lib/result.js');
 const { checkArgs } = require('../lib/cli-flags.js');
 const { aggregateStream } = require('../lib/stream.js');
@@ -92,6 +92,44 @@ test('the kiro harness writes the arm config after the install and before the ag
     kiro.installInto(plain, { arm: { ...arm, armConfig: undefined }, prepared: { bin, exportDir: path.join(root, 'src') }, ctx: { authDb }, config: { model: 'm', agentEngine: 'v3' }, outDir });
     assert.equal(fs.existsSync(path.join(plain, '.konductor/config.yml')), false, 'an arm without options gets no file');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the claude-code harness writes the arm config after the install, where the SessionStart hook reads it', () => {
+  const root = tmp();
+  try {
+    const canonical = 'claude-sonnet-5-5';
+    // Stands in for `konductor install --harness claude`: one konductor agent file with the dashed pin.
+    const claudeInstall = (home) => {
+      fs.mkdirSync(path.join(home, '.claude', 'agents'), { recursive: true });
+      fs.writeFileSync(path.join(home, '.claude', 'agents', 'konductor.md'), `---\nname: konductor\nmodel: ${canonical}\n---\n`);
+      return 'installed';
+    };
+    const ctx = { claudeInstall, expectedAgentCount: null };
+    const config = { model: 'us.anthropic.claude-sonnet-5-5', canonicalModel: canonical };
+    const arm = { id: 'cc-coord', runtime: 'claude-code', vanilla: false, agent: 'konductor', armConfig: { orchestration: { mode: 'coordinator' } } };
+    const outDir = path.join(root, 'out');
+    fs.mkdirSync(outDir);
+    const home = path.join(root, 'home');
+    cc.installInto(home, { arm, prepared: {}, ctx, config, outDir });
+    const file = path.join(home, '.konductor', 'config.yml');
+    assert.equal(fs.readFileSync(file, 'utf8'), 'orchestration:\n  mode: coordinator\n');
+    assert.match(fs.readFileSync(path.join(outDir, 'install.log'), 'utf8'), new RegExp(`arm config: ${file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+    const plain = path.join(root, 'home2');
+    cc.installInto(plain, { arm: { ...arm, armConfig: undefined }, prepared: {}, ctx, config, outDir: null });
+    assert.equal(fs.existsSync(path.join(plain, '.konductor', 'config.yml')), false, 'an arm without options gets no file');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('--arm-config is refused for an arm where it would change nothing', () => {
+  const withArm = (extra) => [...arms(), { id: 'x', vanilla: false, agent: 'konductor', ...extra }];
+  const cc1 = withArm({ runtime: 'claude-code' });
+  applyArmOptions(cc1, { 'arm-config': 'x=orchestration.mode=coordinator' });
+  assert.deepEqual(cc1[3].armConfig, { orchestration: { mode: 'coordinator' } }, 'a Claude Code arm takes the config');
+  assert.throws(() => applyArmOptions(withArm({ runtime: 'opencode' }), { 'arm-config': 'x=orchestration.mode=coordinator' }), /opencode arm, whose install never writes the config; it applies to kiro-cli and Claude Code arms only/);
+  assert.throws(() => applyArmOptions(withArm({ runtime: 'claude-code' }), { 'arm-agent': 'x=k-developer', 'arm-config': 'x=orchestration.mode=coordinator' }), /starts in "k-developer", but orchestration\.\* applies to the konductor agent only/);
+  const other = withArm({ runtime: 'claude-code' });
+  applyArmOptions(other, { 'arm-agent': 'x=k-developer', 'arm-config': 'x=tier=minor' });
+  assert.deepEqual(other[3].armConfig, { tier: 'minor' }, 'a key outside orchestration is not tied to the entry agent');
 });
 
 test('result.json records the arm config', () => {
