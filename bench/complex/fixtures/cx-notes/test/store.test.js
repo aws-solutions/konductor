@@ -8,7 +8,12 @@ const path = require('node:path');
 const { createStore } = require('../src/store');
 const { createNotes } = require('../src/service');
 
-const tmpFile = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'notes-')), 'n.json');
+// Every temp dir these tests make, removed once the file's tests are done.
+const dirs = [];
+test.after(() => { for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true }); });
+const tempDir = (prefix) => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix)); dirs.push(dir); return dir; };
+
+const tmpFile = () => path.join(tempDir('notes-'), 'n.json');
 
 test('a missing file loads as an empty store', () => {
   const data = createStore(tmpFile()).load();

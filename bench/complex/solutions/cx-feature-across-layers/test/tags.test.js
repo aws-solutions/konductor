@@ -7,7 +7,12 @@ const os = require('node:os');
 const path = require('node:path');
 const { run } = require('../src/cli');
 
-const env = () => ({ NOTES_FILE: path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'notes-')), 'n.json') });
+// Every temp dir these tests make, removed once the file's tests are done.
+const dirs = [];
+test.after(() => { for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true }); });
+const tempDir = (prefix) => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix)); dirs.push(dir); return dir; };
+
+const env = () => ({ NOTES_FILE: path.join(tempDir('notes-'), 'n.json') });
 
 test('add with tags lists them in order, lowercased and without repeats', () => {
   const e = env();

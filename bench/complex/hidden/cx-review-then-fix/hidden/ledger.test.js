@@ -7,8 +7,13 @@ const os = require('node:os');
 const path = require('node:path');
 const { createLedger, createExports, createRateCache, newCorrelationId, loadConfig } = require('../src');
 
+// Every temp dir these tests make, removed once the file's tests are done.
+const dirs = [];
+test.after(() => { for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true }); });
+const tempDir = (prefix) => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix)); dirs.push(dir); return dir; };
+
 function exportsDir() {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'led-hidden-'));
+  const base = tempDir('led-hidden-');
   const dir = path.join(base, 'exports');
   fs.mkdirSync(path.join(dir, '2025'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'march.csv'), 'id,cents\n1,500\n');
@@ -118,7 +123,7 @@ test('newCorrelationId returns an 8 character lowercase alphanumeric id', () => 
 });
 
 test('loadConfig reads the file synchronously and returns the parsed object', () => {
-  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'led-cfg-')), 'c.json');
+  const file = path.join(tempDir('led-cfg-'), 'c.json');
   fs.writeFileSync(file, '{"port":8080,"name":"ledger"}');
   const config = loadConfig(file);
   assert.equal(typeof config.then, 'undefined');
