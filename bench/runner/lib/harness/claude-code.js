@@ -208,7 +208,7 @@ function buildCommand({ arm, task, config, ctx, resume = null }) {
 // ---- Arm ----
 
 function prepareArm(arm, ctx) {
-  const dir = path.join(ctx.cacheDir, `${arm.id}-${arm.cacheKey ?? arm.commitSha.slice(0, 12)}`);
+  const dir = sandbox.buildDirOf(ctx, 'claude', arm);
   const exportDir = path.join(dir, 'src');
   const bin = path.join(dir, 'konductor');
   const readyFile = path.join(dir, '.ready');

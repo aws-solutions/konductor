@@ -125,13 +125,28 @@ function synthArm(bin, exportDir) {
   }
 }
 
+let toolchainCache = null;
+// The compiler versions are build inputs: a toolchain upgrade between commands must not reuse a binary built by the old one.
+const toolchainId = () => (toolchainCache ??= `${versionOf('rustc') ?? 'rustc?'}|${versionOf('cargo') ?? 'cargo?'}`);
+
+/**
+ * The cache directory of an arm's build of `kind` (kiro, claude, opencode). It is keyed by what the build reads: the
+ * arm's commit or snapshot hash (its cacheKey, which a variant extends) and the toolchain, never by the arm's name, so
+ * two arms on the same content share one build and one binary.
+ */
+function buildDirOf(ctx, kind, arm) {
+  const source = arm.cacheKey ?? arm.commitSha.slice(0, 12);
+  const inputs = crypto.createHash('sha256').update(JSON.stringify({ kind, source, commitSha: arm.commitSha ?? null, contentHash: arm.contentHash ?? null, toolchain: ctx.toolchainId ?? toolchainId() })).digest('hex').slice(0, 10);
+  return path.join(ctx.cacheDir, `${kind}-${source}-${inputs}`);
+}
+
 /**
  * Exports the arm (commit or working-tree snapshot), builds its MCP server and CLI, and synthesizes dist/.
- * Cached by commit SHA, or by content hash for a directory arm; a cache hit is reused only if the MCP
+ * Cached in buildDirOf (by commit SHA, or content hash for a directory arm, plus the toolchain; shared by arms of any name); a cache hit is reused only if the MCP
  * binary still matches the sha256 recorded when it was built.
  */
 function prepareArm(arm, ctx) {
-  const dir = path.join(ctx.cacheDir, `${arm.id}-${arm.cacheKey ?? arm.commitSha.slice(0, 12)}`);
+  const dir = buildDirOf(ctx, 'kiro', arm);
   const exportDir = path.join(dir, 'src');
   const bin = path.join(dir, 'konductor');
   const mcpBin = path.join(exportDir, 'mcp/target/release/skill-lookup-mcp');
@@ -254,5 +269,5 @@ function resolveKiroCli(pathEnv = process.env.PATH) {
 
 module.exports = {
   prepareArm, synthArm, installInto, runKonductor, normalizeAgentModels, emptyKiroHome, kiroDataDir, copyAuthDb, removeAuthCopy, copyFixture, findAnswerKey,
-  exportRef, exportArm, readyMatches, KIRO_REQUIRED, buildMcp, buildCli, sha256File, resolveKiroCli, makeScratchRoot, defaultAuthDb, kiroCliVersion, versionOf, run, ANSWER_KEY,
+  exportRef, exportArm, readyMatches, buildDirOf, KIRO_REQUIRED, buildMcp, buildCli, sha256File, resolveKiroCli, makeScratchRoot, defaultAuthDb, kiroCliVersion, versionOf, run, ANSWER_KEY,
 };

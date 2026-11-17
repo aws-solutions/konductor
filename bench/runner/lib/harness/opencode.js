@@ -269,7 +269,7 @@ function finalize(outDir, ctx) {
 }
 
 function prepareArm(arm, ctx) {
-  const dir = path.join(ctx.cacheDir, `${arm.id}-${arm.cacheKey ?? arm.commitSha.slice(0, 12)}`);
+  const dir = sandbox.buildDirOf(ctx, 'opencode', arm);
   const exportDir = path.join(dir, 'src');
   const bin = path.join(dir, 'konductor');
   const claudeDir = path.join(dir, 'claude-install', '.claude');
