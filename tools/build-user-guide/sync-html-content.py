@@ -277,8 +277,8 @@ EDITS = [
      'REACH FOR IT: Validated requirements exist and you need development-ready stories. · DECLARED BY',
      'REACH FOR IT: You need stories, epics or acceptance criteria, or want to turn a feature idea into backlog items. No requirements doc is needed. · DECLARED BY'),
     ("skills catalog: system-design-patterns row",
-     '"k":"system-design-patterns","v":"Guides system architecture design through a structured interview. Produces the system design, NFRs, threat-model inputs, and an architecture-diagram description.',
-     '"k":"system-design-patterns","v":"Guides system architecture design through a structured interview, or works from existing requirements without one when you ask for no questions. Produces the system design, NFRs, threat-model inputs, and an architecture-diagram description.'),
+     '"k":"system-design-patterns","v":"Guides system architecture design through a structured interview. Produces',
+     '"k":"system-design-patterns","v":"Guides system architecture design through a structured interview, or works from existing requirements without one when you ask for no questions. Produces'),
     ("skills catalog: requirements-extraction row",
      '"k":"requirements-extraction","v":"Extracts design inputs from requirements outputs into three focused files: business-context.md, requirements-summary.md, user-stories-extract.md.',
      '"k":"requirements-extraction","v":"Extracts design inputs from existing requirements and user stories into three focused files: business-context.md, requirements-summary.md, user-stories-extract.md.'),
@@ -609,6 +609,9 @@ ROSTER = [
     ('uninstall: hook and context rows',
      '  { where: "Runtime agent directories", by: "konductor install", gone: "konductor uninstall" },\n',
      '  { where: "Runtime agent directories", by: "konductor install", gone: "konductor uninstall" },\n  { where: "Session-start hook: .kiro/hooks/konductor-orchestration-hooks.json (Kiro CLI v3), the agentSpawn entry in .kiro/agents/konductor.json (Kiro CLI v2), the SessionStart block in the Claude Code hooks settings file", by: "konductor install", gone: "konductor uninstall" },\n  { where: ".konductor/context/ under the install target (Claude Code installs only; .konductor/memory/ is kept)", by: "konductor install", gone: "konductor uninstall" },\n'),
+    ("skills catalog: system-design-patterns outputs",
+     "Produces the system design, NFRs, threat-model inputs, and an architecture-diagram description.",
+     "Produces four documents: the system design (with NFRs), threat-model input, an architecture-diagram description, and a design review handoff."),
 ]
 
 

@@ -85,6 +85,43 @@ not per individual commit.
   `skills/sprint-planning/references/asana.md`, which the skill opens when the team uses Asana
   (81 skills). `sprint-planning` now also covers team-size capacity, sprint rollover, batch
   approval, and linking tasks to tickets and code reviews.
+- `historical-issues-registry`, `sop-state-management`, and `dom-inspection` moved detail that only
+  some runs need into `references/`: the multi-match precedence rule, the per-operation steps, and
+  the report schema, test-oracle table, and Cloudscape notes. Each `SKILL.md` says when to open
+  each file.
+- The `security-remediation`, `security-test-generation`, `threat-modeling` and
+  `ui-text-validation` skills read as one set of instructions, without a pasted second prompt
+  and role. `security-remediation` asks for the finding text or ticket instead of an unfilled
+  placeholder, and its plan now includes the effort estimates, verification steps and rollback
+  plan it promised. `threat-modeling` uses its built-in template by default and drops the
+  tool-check step. `ui-text-validation` reports inline unless the audit spans several pages or
+  the user asks for a file, and checks headings for sentence case.
+- `progress-tracking` moved its final-mode stages (code analysis, pattern matching, traceability)
+  into `references/final-mode.md`, and `security-test-generation` moved its Kiro and other-tool
+  output steps into `references/output-kiro.md` and `references/output-generic.md`. Each skill
+  opens the file only when the mode or tool type needs it.
+- `smithy-modeling` and `smithy-validation` now share one Smithy file-organization guide in
+  `skills/smithy-modeling/references/file-organization.md`, loaded only when a model spans more
+  than one file. Its validator example now nests the selector under `configuration`, and its
+  service example no longer sets a doc comment and a `@documentation` trait together, which
+  Smithy rejects.
+- `iam-policy-design` and `policy-validation` now share one set of GDPR, HIPAA, PCI-DSS and SOC 2
+  checklists in `skills/iam-policy-design/references/compliance-checklists.md`, loaded only when
+  the user or the design under review names a compliance framework or the design handles
+  regulated data. Audit-control findings now cite HIPAA §164.312(b), and the GDPR checklist no
+  longer claims a fixed 3-year log retention. `policy-validation` now also checks SOC 2, and its
+  report uses one per-framework template. `smithy-validation` loads its example review only when
+  writing a report.
+- `cost-estimation` moved its REVIEW workflow (checking an existing estimate) into
+  `references/review-workflow.md`. The skill opens it only when the user picks REVIEW.
+- `cost-estimation` moved its CREATE workflow out of `SKILL.md`. The setup reply, context
+  gathering and clarifying questions are in `references/create-context.md`, which the skill opens
+  when the user picks CREATE. The pricing research, scenarios, growth modeling, optimization and
+  report steps are in `references/create-analysis.md`, which it opens once the context is
+  confirmed.
+- `architecture-diagram-generation` keeps its XML templates, icon styles and common patterns in
+  `references/drawio-templates.md` and loads them only when generating the XML. Its repeated
+  introduction is now one overview.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
@@ -201,6 +238,18 @@ not per individual commit.
 - `k-product-manager`, `k-tpm` and `k-quality-assurance` prompts drop their hand-written
   skill lists, whose old triggers contradicted the new descriptions. Each skill's description is
   now the one place that says when to use it.
+- `about-konductor` and `design-doc-guidelines` load less up front. CLI, install-check, and model
+  detail, and the rules for multi-document designs and renames, now live under each skill's
+  `references/` and load only when the task needs them. `design-doc-guidelines` uses generic
+  examples for technical accuracy and threat models.
+- `requirements-extraction`, `user-story-writing`, and `system-design-patterns` now read as one
+  set of instructions each, without a pasted prompt and its separate role. Repeated rules are
+  stated once. `requirements-extraction` folds its checklist into the Quality Gate, so a missing
+  output file is CRITICAL and missing integration points are IMPORTANT. `system-design-patterns`
+  lists its real five interview phases and four documents, adds a non-functional requirements
+  section to the design document, and points follow-up work at konductor skills instead of
+  prompts that don't exist. Its S3 Intelligent-Tiering advice now targets data with unknown or
+  changing access patterns, not infrequently accessed data.
 
 ### Fixed
 
