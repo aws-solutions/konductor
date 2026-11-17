@@ -15,6 +15,13 @@ const SKILL_FIELDS = [
   'startupResourceCount', 'targetLoaded', 'targetAttempted', 'targetReachable', 'sopNameSource', 'skillsScope',
 ];
 
+// Claude Code only: what a run had in context without a tool call, and where its loads happened. Kept out of SKILL_FIELDS so
+// kiro-cli and opencode results, and the backfill of older results, stay as they are.
+const CLAUDE_SKILL_FIELDS = ['skillsPreloaded', 'skillBytesPreloaded', 'skillLoadsByScope', 'skillLoadsNoBody', 'skillReferenceReads'];
+
+// Claude Code injects the full body of at most this many distinct frontmatter `skills:` names into a sub-agent.
+const CC_PRELOAD_CAP = 32;
+
 const lower = (s) => String(s).toLowerCase();
 
 // Text blocks a skills-server tool returned: the bytes the model saw. v3 answers with { response } or a bare string.
@@ -43,8 +50,29 @@ function kiroErrored(call) {
 // v3 get_skill call. The model may have passed a name; the stream just does not say.
 const ARGS_NOT_RECORDED = '(args not recorded)';
 
+const SKILL_MD = /(?:^|\/)([^/\s'"]+)\/SKILL\.md$/;
+const SHELL_SKILL_READ = /\b(?:cat|head|tail|sed|less|more|bat|awk)\b[^|;&\n]*?([^/\s'"]+)\/SKILL\.md\b/;
+const READ_TOOLS = new Set(['read_file', 'fs_read']);
+const SHELL_TOOLS = new Set(['execute_bash', 'execute_cmd']);
+
+// { name, via } of a kiro read_file/fs_read of a SKILL.md, or of a shell command that prints one; else null.
+function skillFileReadOf(u) {
+  const tool = toolNameOf(u);
+  const raw = u?.rawInput && typeof u.rawInput === 'object' ? u.rawInput : {};
+  if (READ_TOOLS.has(tool)) {
+    const paths = [raw.path, ...(Array.isArray(raw.operations) ? raw.operations.map((o) => o?.path) : []), ...(u.locations ?? []).map((l) => l?.path)];
+    for (const p of paths) { const m = SKILL_MD.exec(String(p ?? '')); if (m) return { name: m[1], via: 'read-skill-md' }; }
+  }
+  if (SHELL_TOOLS.has(tool)) { const m = SHELL_SKILL_READ.exec(String(raw.command ?? '')); if (m) return { name: m[1], via: 'shell-read-skill-md' }; }
+  return null;
+}
+
+// Text a v3 tool_call_update carries in `content`; read_file answers there, not in rawOutput.
+const contentTextOf = (u) => (Array.isArray(u?.content) ? u.content.map((c) => c?.content?.text ?? '').join('') : '');
+
 // Skills-server calls in a kiro stream, keyed by tool call id, plus v3 load_resource calls with a skill:: id (tool
-// 'load_resource', the skill name as input.name) and v3 SOP activations (tool 'disclose_context', same input). The stream carries every session, subagents included.
+// 'load_resource', the skill name as input.name), v3 SOP activations (tool 'disclose_context', same input) and file or
+// shell reads of a SKILL.md (tool 'skill-file'). The stream carries every session, subagents included.
 function kiroCalls(events) {
   const calls = new Map();
   let anon = 0;
@@ -52,6 +80,12 @@ function kiroCalls(events) {
     const u = ev?.type === 'sessionUpdate' ? ev.data?.update : null;
     if (!u) continue;
     if (u.sessionUpdate === 'tool_call') {
+      const fr = skillFileReadOf(u);
+      if (fr) {
+        const id = u.toolCallId ?? `anon-${anon++}`;
+        calls.set(id, { output: null, status: null, text: '', ...(calls.get(id) ?? {}), tool: 'skill-file', input: { name: fr.name }, via: fr.via });
+        continue;
+      }
       const rc = skillResourceCallOf(u);
       if (rc) {
         const id = u.toolCallId ?? `anon-${anon++}`;
@@ -76,6 +110,7 @@ function kiroCalls(events) {
       if (c.tool !== 'load_resource' && c.tool !== 'disclose_context' && u.rawInput && typeof u.rawInput === 'object') c.input = { ...c.input, ...mcpInputOf(u.rawInput) };
       if (u.rawOutput !== undefined) c.output = u.rawOutput;
       if (u.status) c.status = u.status;
+      if (c.tool === 'skill-file') c.text += contentTextOf(u);
     }
   }
   return [...calls.values()];
@@ -217,6 +252,11 @@ function extractSkills(events, runtime) {
       } else if (c.status === 'completed' && bytes > 0) load(c.input.name, 'disclose_context', bytes);
       continue;
     }
+    if (c.tool === 'skill-file') {
+      // A plain file read: a failure is a missing file, not a refused skill call, so it is not counted as one.
+      if (c.status === 'completed' && c.text) load(c.input.name, c.via, Buffer.byteLength(c.text));
+      continue;
+    }
     const raw = c.input?.name ?? c.input?.skill_name;
     const name = typeof raw === 'string' && raw.trim() ? raw.trim() : null;
     if (name) requested.add(name);
@@ -292,6 +332,8 @@ function reachable(kind, target, startup) {
     if (!Array.isArray(startup.skillNames)) return null;
     return has(startup.skillNames, target) || (kind === 'sop' && has(startup.skillNames, `sop-${target}`));
   }
+  // Claude Code offers every installed skill through the Skill tool; there is no filter to check against.
+  if (startup.runtime === 'claude-code') return null;
   // kiro serves SOPs as MCP prompts the user invokes; get_skill reads the skill index only.
   if (kind === 'sop') return false;
   return startup.skillFilter ? has(startup.skillFilter, target) : true;
@@ -414,14 +456,83 @@ function opencodeSkillInfo(cfgDir, exportDir) {
   return safe(() => ({ catalog: catalogFrom(listCatalogDir(exportDir)), startup: startupOpencode(cfgDir) }));
 }
 
-/** Claude Code: the catalog of the arm's source tree. Its startup resources are not measured. */
+// The block list under `key:` in an agent file's frontmatter ("- name" lines).
+function fmList(fm, key) {
+  const lines = fm.split('\n');
+  const i = lines.findIndex((l) => l.trimEnd() === `${key}:`);
+  if (i < 0) return [];
+  const out = [];
+  for (const l of lines.slice(i + 1)) {
+    const m = /^\s*-\s+["']?([^"'\s]+)["']?\s*$/.exec(l);
+    if (!m) break;
+    out.push(m[1]);
+  }
+  return out;
+}
+
+/**
+ * What Claude Code puts in context at spawn without a tool call. A sub-agent started by Agent/Task gets the full body
+ * of each skill in its frontmatter `skills:` list, the first CC_PRELOAD_CAP distinct names. An agent run as the main
+ * thread with `--agent` does not: in recorded runs its first request holds the agent prompt and the skill index only.
+ * `preloads` maps each installed agent to [{ name, bytes }], bytes being the installed SKILL.md size.
+ */
+function startupClaude(configDir) {
+  const preloads = {};
+  const agentsDir = path.join(configDir, 'agents');
+  for (const f of fs.readdirSync(agentsDir).filter((n) => n.endsWith('.md')).sort()) {
+    const names = [...new Set(fmList(frontmatter(fs.readFileSync(path.join(agentsDir, f), 'utf8')), 'skills'))].slice(0, CC_PRELOAD_CAP);
+    preloads[f.replace(/\.md$/, '')] = names.map((name) => ({ name, bytes: sizeOf(path.join(configDir, 'skills', name, 'SKILL.md')) }));
+  }
+  return { runtime: 'claude-code', builtin: false, source: 'installed agent frontmatter', preloads, mainThreadPreload: false, resources: [], count: null, totalBytes: null, unknownSizes: null };
+}
+
+/** Claude Code: the catalog of the arm's source tree, and the skills each installed agent preloads as a sub-agent. */
 function claudeSkillInfo(configDir, exportDir) {
-  return safe(() => ({ catalog: catalogFrom(listCatalogDir(exportDir)), startup: null }));
+  return safe(() => ({ catalog: catalogFrom(listCatalogDir(exportDir)), startup: safe(() => startupClaude(configDir)) }));
+}
+
+/**
+ * The CLAUDE_SKILL_FIELDS of a Claude Code run. skillsPreloaded lists the frontmatter skills of every sub-agent the run
+ * spawned, with the number of spawns that had each in context; skillBytesPreloaded sums the bytes once per spawn.
+ * Both are null when the arm's startup record is missing. Loads are split by the session that made them, and a Skill
+ * call answered without its body message is counted in skillLoadsNoBody.
+ */
+function claudeSkillExtras(events, startup) {
+  const calls = claudeParse.skillCalls(events);
+  const loaded = calls.filter((c) => c.status === 'ok' && c.input?.name);
+  const byScope = { main: 0, child: 0 };
+  for (const c of loaded) byScope[c.scope === 'child' ? 'child' : 'main']++;
+  let skillsPreloaded = null;
+  let skillBytesPreloaded = null;
+  if (startup?.preloads) {
+    const byName = new Map();
+    skillBytesPreloaded = 0;
+    for (const agent of claudeParse.spawnedAgents(events)) {
+      for (const s of startup.preloads[agent] ?? []) {
+        const cur = byName.get(s.name) ?? { name: s.name, agents: [], spawns: 0, bytes: s.bytes };
+        if (!cur.agents.includes(agent)) cur.agents.push(agent);
+        cur.spawns++;
+        skillBytesPreloaded += s.bytes ?? 0;
+        byName.set(s.name, cur);
+      }
+    }
+    skillsPreloaded = [...byName.values()];
+  }
+  return {
+    skillsPreloaded, skillBytesPreloaded, skillLoadsByScope: byScope,
+    skillLoadsNoBody: loaded.filter((c) => c.via === 'skill-tool' && !c.bodySeen).length,
+    skillReferenceReads: claudeParse.skillReferenceReads(events).filter((r) => r.ok).length,
+  };
 }
 
 /** Called by a harness after the stream is parsed. Never throws: tracking must not affect a run. */
 function captureSkills({ runtime, events, arm, ctx }) {
-  return safe(() => ({ extraction: extractSkills(events, runtime), info: arm?.vanilla ? null : ctx?.skillInfo?.get(arm?.id) ?? null }));
+  return safe(() => {
+    const info = arm?.vanilla ? null : ctx?.skillInfo?.get(arm?.id) ?? null;
+    const extras = runtime === 'claude-code' ? safe(() => claudeSkillExtras(events, info?.startup ?? null)) : null;
+    if (extras && arm?.vanilla) { extras.skillsPreloaded = []; extras.skillBytesPreloaded = 0; }
+    return { extraction: extractSkills(events, runtime), info, ...(extras ? { extras } : {}) };
+  });
 }
 
 /** SOPs whose name appears in the final text next to an `@` or `/sop-` invocation: the pointer the orchestrator is told to give. */
@@ -445,8 +556,9 @@ function capInvocationOf({ agg, extraction, sops = [] }) {
 }
 
 /** The result.json fields. All null when nothing was captured. */
-function resultFields({ extraction, info, task, arm }) {
-  if (!extraction) return Object.fromEntries(SKILL_FIELDS.map((k) => [k, null]));
+function resultFields({ extraction, info, task, arm, extras = null }) {
+  const cc = extras ? Object.fromEntries(CLAUDE_SKILL_FIELDS.map((k) => [k, extras[k] ?? null])) : {};
+  if (!extraction) return { ...Object.fromEntries(SKILL_FIELDS.map((k) => [k, null])), ...cc };
   const catalog = info?.catalog ?? catalogFrom();
   const startup = arm?.vanilla ? null : info?.startup ?? null;
   return {
@@ -462,11 +574,12 @@ function resultFields({ extraction, info, task, arm }) {
     ...targetOutcome({ extraction, task, arm, catalog, startup }),
     sopNameSource: catalog.sopSource,
     skillsScope: extraction.runtime === 'opencode' ? 'parent-session' : 'all-sessions',
+    ...cc,
   };
 }
 
 module.exports = {
-  ARGS_NOT_RECORDED, SKILL_FIELDS, extractSkills, catalogFrom, catalogFromListing, catalogFromAgentJson, isSopName, listCatalogDir, targetOutcome,
+  ARGS_NOT_RECORDED, SKILL_FIELDS, CLAUDE_SKILL_FIELDS, CC_PRELOAD_CAP, extractSkills, claudeSkillExtras, startupClaude, fmList, catalogFrom, catalogFromListing, catalogFromAgentJson, isSopName, listCatalogDir, targetOutcome,
   startupKiro, startupOpencode, builtinStartup, kiroSkillInfo, opencodeSkillInfo, claudeSkillInfo, captureSkills, resultFields, normalizeUri, has,
   firstDecisionOf, identifiedSops, capInvocationOf,
 };

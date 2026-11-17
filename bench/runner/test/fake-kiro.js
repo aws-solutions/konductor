@@ -37,6 +37,12 @@ if (tc.exitCode) { if (tc.stderrText) console.error(tc.stderrText); process.exit
 if (tc.sleepSec) { setTimeout(() => {}, tc.sleepSec * 1000); return; }
 const ev = (type, data) => console.log(JSON.stringify({ type, data }));
 fs.writeFileSync('out.txt', 'done\\n');
+// --introspect: a request dump, the way engine v3 writes one, recording where it was written from.
+if (tc.dumpRequests && process.env.KIRO_DUMP_REQUESTS_DIR) {
+  const d = path.join(process.env.KIRO_DUMP_REQUESTS_DIR, 'sess_fake');
+  fs.mkdirSync(d, { recursive: true });
+  fs.writeFileSync(path.join(d, '0000-1000.json'), JSON.stringify({ cwd: process.cwd(), home: process.env.HOME, dumpDir: process.env.KIRO_DUMP_REQUESTS_DIR }));
+}
 for (const [f, text] of Object.entries(tc.files || {})) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); }
 const sid = cfg.sessionId || 's1';
 // Engine v3 titles a call instead of naming the tool, marks a sub-agent call with its own subtask id, and reports

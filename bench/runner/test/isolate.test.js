@@ -387,3 +387,28 @@ test('inside the namespace the plant dir in scratch is read-only and only the ex
   const r = spawnSync(w.file, w.args, { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
 });
+
+test('a writable dir outside scratch gets its own rw bind; a dir inside scratch adds nothing', () => {
+  const scratch = mkScratch('scr-');
+  const extra = mkScratch('scr-extra-');
+  const { script } = makeIsolation({ mode: 'unshare', scratchRoot: scratch, writable: [extra, path.join(scratch, '.')] });
+  const rw = script.split('\n').filter((l) => /remount,rw,bind/.test(l));
+  assert.deepEqual(rw.map((l) => l.split(' ')[2]), [`'${fs.realpathSync(scratch)}'`, `'${fs.realpathSync(extra)}'`]);
+  assert.equal(spawnSync('sh', ['-n', '-c', script]).status, 0);
+});
+
+test('inside the namespace a writable dir outside scratch takes writes and its sibling does not', { skip }, () => {
+  const scratch = makeScratchRoot();
+  const extra = `${scratch}-introspect`;
+  const other = `${scratch}-other`;
+  fs.mkdirSync(extra);
+  fs.mkdirSync(other);
+  try {
+    const r = inNs(scratch, [`touch ${extra}/dump || exit 10`, `touch ${other}/x 2>/dev/null && exit 11`, 'exit 0'].join('; '), { writable: [extra] });
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(fs.existsSync(path.join(extra, 'dump')), true);
+    assert.equal(fs.existsSync(path.join(other, 'x')), false);
+  } finally {
+    for (const d of [scratch, extra, other]) fs.rmSync(d, { recursive: true, force: true });
+  }
+});

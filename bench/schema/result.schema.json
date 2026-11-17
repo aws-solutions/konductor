@@ -589,7 +589,9 @@
             "enum": [
               "get_skill",
               "skill-tool",
-              "disclose_context"
+              "disclose_context",
+              "read-skill-md",
+              "shell-read-skill-md"
             ]
           },
           "count": {
@@ -628,7 +630,9 @@
             "enum": [
               "get_skill",
               "skill-tool",
-              "disclose_context"
+              "disclose_context",
+              "read-skill-md",
+              "shell-read-skill-md"
             ]
           },
           "count": {
@@ -639,6 +643,83 @@
       }
     },
     "skillBytesLoaded": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "skillsPreloaded": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "agents",
+          "spawns"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "spawns": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "bytes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "skillBytesPreloaded": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "skillLoadsByScope": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "main",
+        "child"
+      ],
+      "properties": {
+        "main": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "child": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "skillLoadsNoBody": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "skillReferenceReads": {
       "type": [
         "integer",
         "null"

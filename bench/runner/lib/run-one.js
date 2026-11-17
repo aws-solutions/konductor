@@ -27,6 +27,8 @@ const { classifyLaunchFailure } = require('./launch-failure.js');
 const { moveFile, UntrustedFileError } = require('./move-file.js');
 const { openPlantRun } = require('./plant/lifecycle.js');
 const { plantWalls, withCgroup } = require('./plant/walls.js');
+const introspect = require('./introspect/index.js');
+const introspectReport = require('./introspect/report.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
@@ -149,10 +151,10 @@ function snapshotWorkspace(cwd, dest) {
 
 // A real task also hides the host copies of its project and the package caches. Its checks run with no network.
 // A plant run (`plantRun`) also gets its plant dir read-only and only its own socket root, and runs in the cgroup scope when the host has one.
-function makeIso(ctx, arm, scratchRoot, task, { offline = false, frozenDirs = [], plantRun = null } = {}) {
+function makeIso(ctx, arm, scratchRoot, task, { offline = false, frozenDirs = [], writableDirs = [], plantRun = null } = {}) {
   const extra = task?.real ? real.hidePaths(task, { cache: ctx.realCache }) : [];
   const iso = makeIsolation({
-    mode: ctx.isolation.mode, scratchRoot, hide: [...(ctx.hide || []), ...extra], mask: ctx.mask || [], keyRoots: ctx.keyRoots || [], keep: harnessFor(arm).keepPaths(ctx), frozenDirs, offline,
+    mode: ctx.isolation.mode, scratchRoot, writable: writableDirs, hide: [...(ctx.hide || []), ...extra], mask: ctx.mask || [], keyRoots: ctx.keyRoots || [], keep: harnessFor(arm).keepPaths(ctx), frozenDirs, offline,
     ...(plantRun ? plantWalls(ctx.plant, plantRun) : {}),
   });
   return withCgroup(iso, ctx.cgroup);
@@ -368,6 +370,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
   let stdioDir = null;
   let home = null;
   let plantRun = null;
+  let probeDirs = [];
   const installsWindow = ctx.installsGate ? ctx.installsGate.begin() : null;
   try {
     fs.mkdirSync(outDir, { recursive: true });
@@ -400,11 +403,27 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
     }
 
     if (!result) {
-      const iso = makeIso(ctx, arm, runRoot, task, { frozenDirs: stdioDir ? [stdioDir] : [], plantRun });
+      // The kiro-cli dumps go next to the run root, out of the agent's working directory and HOME; the isolation keeps
+      // that directory writable for the engine.
+      try {
+        if (ctx.introspect) probeDirs = introspect.probeWritableDirs({ harnessId: harness.id, runRoot });
+      } catch (e) {
+        meta.infraError = `cannot create the introspect dump directory: ${e.message}`;
+        result = errorResult({ ...base, message: meta.infraError, meta });
+      }
+    }
+
+    if (!result) {
+      const iso = makeIso(ctx, arm, runRoot, task, { frozenDirs: stdioDir ? [stdioDir] : [], writableDirs: probeDirs, plantRun });
       const tripwire = createTripwire({ markerPath: path.join(runRoot, '.marker'), ...ctx.tripwire });
+      let probe = null;
       try {
         const tmpdir = path.join(runRoot, 'tmp');
-        const env = harness.env({ arm, config, ctx, home, tmpdir });
+        let env = harness.env({ arm, config, ctx, home, tmpdir });
+        if (ctx.introspect) {
+          probe = await introspect.startProbe({ harnessId: harness.id, outDir, runRoot, home, dumpRoot: probeDirs[0] ?? null, deps: ctx.introspectDeps ?? {} });
+          env = probe.apply(env);
+        }
         tripwire.start();
         if (plantRun?.startError) exec = plantRun.unstartedExec();
         else {
@@ -417,6 +436,10 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       }
       if (plantRun) await plantRun.finish();
       harness.removeCredentials(home);
+      if (probe) {
+        meta.flags.push('introspect');
+        try { await probe.afterExit(); } catch (e) { meta.flags.push('introspectFailed'); process.stderr.write(`[bench] introspect: ${e.message}\n`); }
+      }
       if (exec?.tamperedFiles?.length) {
         meta.flags.push('stdioTampered');
         meta.tamperedFiles = exec.tamperedFiles;
@@ -468,6 +491,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
     }
     fs.rmSync(runRoot, { recursive: true, force: true });
     if (stdioDir) fs.rmSync(stdioDir, { recursive: true, force: true });
+    for (const d of probeDirs) fs.rmSync(d, { recursive: true, force: true });
   }
   const scrubbed = scrubDeep(result, secretLiterals(process.env, harness.secrets ? harness.secrets(ctx) : []));
   result = scrubbed.value;
@@ -480,6 +504,9 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
     fs.mkdirSync(outDir, { recursive: true });
     writeAtomic(path.join(outDir, 'result.json'), JSON.stringify(result, null, 2) + '\n');
   } catch { /* the caller still gets the result object */ }
+  if (ctx.introspect) {
+    try { introspectReport.writeReport(outDir); } catch (e) { process.stderr.write(`[bench] introspect report: ${e.message}\n`); }
+  }
   return result;
 }
 

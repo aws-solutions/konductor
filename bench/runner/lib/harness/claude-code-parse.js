@@ -5,6 +5,7 @@
 // recorded streams (bench/runner/test/fixtures/claude-code). The totals on a `result` line are cumulative for the
 // session, and a session that resumes after a background task prints a second `result`, so the last one is used.
 
+const path = require('node:path');
 const { detectAskedUser } = require('../stream.js');
 
 const SUBAGENT_TOOLS = new Set(['Agent', 'Task']);
@@ -68,24 +69,39 @@ function tokensFromModelUsage(modelUsage) {
 
 const SKILL_BODY = /^Base directory for this skill:/;
 const SKILL_FILE = /(?:^|\/)([^/]+)\/SKILL\.md$/;
+// A skill reference file (skills/<name>/references/...): part of a skill, but not its body.
+const SKILL_REFERENCE = /(?:^|\/)skills\/([^/]+)\/references\/[^/]+$/;
+// A shell command that prints a SKILL.md, for example `cat ~/.claude/skills/x/SKILL.md`.
+const SHELL_SKILL_READ = /\b(?:cat|head|tail|sed|less|more|bat|awk)\b[^|;&\n]*?([^/\s'"]+)\/SKILL\.md\b/;
 
 /**
- * Skill loads in stream order, in the shape the shared extractor reads: { tool: 'skill', input: { name }, text, status, via }.
- * A load is a `Skill` tool call (the skill text arrives as the user message after the tool result) or a Read of a SKILL.md file.
+ * Skill loads in stream order, in the shape the shared extractor reads:
+ * { tool: 'skill', input: { name }, text, status, via, scope, bodySeen }.
+ * A load is a `Skill` tool call (the skill text arrives as the user message after the tool result), a Read of a
+ * SKILL.md file, or a shell command that prints one. `scope` is 'child' when a sub-agent made the call
+ * (`parent_tool_use_id` is set), else 'main'. `bodySeen` is false for a `Skill` call whose body message never came:
+ * Claude Code then answered "Launching skill: <name>" only, as it does in a sub-agent that has the skill preloaded.
+ * The body message carries the same `parent_tool_use_id` as its tool result, so pending bodies are kept per scope and
+ * a parallel sub-agent cannot take another one's body.
  */
 function skillCalls(events) {
   const calls = new Map();
   const order = [];
-  let open = null;
+  const open = new Map();
   for (const ev of events ?? []) {
+    const scopeKey = ev?.parent_tool_use_id ?? '';
+    const scope = ev?.parent_tool_use_id ? 'child' : 'main';
     if (ev?.type === 'assistant') {
       for (const b of blocks(ev)) {
         if (b?.type !== 'tool_use' || !b.id || calls.has(b.id)) continue;
         let call = null;
-        if (b.name === 'Skill') call = { tool: 'skill', input: { name: b.input?.skill ?? b.input?.name ?? null }, text: null, status: null, via: 'skill-tool', body: null };
+        if (b.name === 'Skill') call = { tool: 'skill', input: { name: b.input?.skill ?? b.input?.name ?? null }, text: null, status: null, via: 'skill-tool', scope, bodySeen: false };
         else if (b.name === 'Read') {
           const m = SKILL_FILE.exec(String(b.input?.file_path ?? ''));
-          if (m) call = { tool: 'skill', input: { name: m[1] }, text: null, status: null, via: 'read-skill-md', body: null };
+          if (m) call = { tool: 'skill', input: { name: m[1] }, text: null, status: null, via: 'read-skill-md', scope, bodySeen: false };
+        } else if (b.name === 'Bash') {
+          const m = SHELL_SKILL_READ.exec(String(b.input?.command ?? ''));
+          if (m) call = { tool: 'skill', input: { name: m[1] }, text: null, status: null, via: 'shell-read-skill-md', scope, bodySeen: false };
         }
         if (call) { calls.set(b.id, call); order.push(call); }
       }
@@ -95,15 +111,51 @@ function skillCalls(events) {
           const call = calls.get(b.tool_use_id);
           call.status = b.is_error ? 'error' : 'ok';
           call.text = textOf(b.content);
-          open = call.via === 'skill-tool' && !b.is_error ? call : null;
-        } else if (open && b?.type === 'text' && SKILL_BODY.test(b.text ?? '')) {
-          open.text = `${open.text}\n${b.text}`;
-          open = null;
+          if (call.via !== 'skill-tool') call.bodySeen = !b.is_error && call.text.length > 0;
+          if (call.via === 'skill-tool' && !b.is_error) open.set(scopeKey, call);
+          else open.delete(scopeKey);
+        } else if (open.has(scopeKey) && b?.type === 'text' && SKILL_BODY.test(b.text ?? '')) {
+          const call = open.get(scopeKey);
+          call.text = `${call.text}\n${b.text}`;
+          call.bodySeen = true;
+          open.delete(scopeKey);
         }
       }
     }
   }
-  return order.map(({ body, ...c }) => c);
+  return order;
+}
+
+/** Reads of skills/<name>/references/* files, in stream order: { name, file, scope, ok }. */
+function skillReferenceReads(events) {
+  const reads = new Map();
+  for (const ev of events ?? []) {
+    if (ev?.type === 'assistant') {
+      for (const b of blocks(ev)) {
+        if (b?.type !== 'tool_use' || b.name !== 'Read' || !b.id || reads.has(b.id)) continue;
+        const m = SKILL_REFERENCE.exec(String(b.input?.file_path ?? ''));
+        if (m) reads.set(b.id, { name: m[1], file: path.basename(b.input.file_path), scope: ev.parent_tool_use_id ? 'child' : 'main', ok: null });
+      }
+    } else if (ev?.type === 'user') {
+      for (const b of blocks(ev)) if (b?.type === 'tool_result' && reads.has(b.tool_use_id)) reads.get(b.tool_use_id).ok = !b.is_error;
+    }
+  }
+  return [...reads.values()];
+}
+
+/** The sub-agent type of every Agent or Task call, in stream order (a nested call is listed too). */
+function spawnedAgents(events) {
+  const seen = new Set();
+  const out = [];
+  for (const ev of events ?? []) {
+    if (ev?.type !== 'assistant') continue;
+    for (const b of blocks(ev)) {
+      if (b?.type !== 'tool_use' || !SUBAGENT_TOOLS.has(b.name) || !b.id || seen.has(b.id)) continue;
+      seen.add(b.id);
+      out.push(b.input?.subagent_type ?? null);
+    }
+  }
+  return out;
 }
 
 // ---- Spawn tree ----
@@ -302,6 +354,6 @@ function aggregateEvents(events, { expectedModel = null, rates = null } = {}) {
 }
 
 module.exports = {
-  aggregateEvents, spawnTree, skillCalls, canonicalModelOf, priceTokens, tokensFromModelUsage, totalTokens, zeroTokens,
+  aggregateEvents, spawnTree, skillCalls, skillReferenceReads, spawnedAgents, canonicalModelOf, priceTokens, tokensFromModelUsage, totalTokens, zeroTokens,
   SUBAGENT_TOOLS, ASK_TOOLS, SYNTHETIC_MODEL, CREDENTIAL_ERROR,
 };

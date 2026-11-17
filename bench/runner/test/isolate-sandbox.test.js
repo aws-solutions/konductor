@@ -225,3 +225,17 @@ test('offline blocks outbound connections and keeps loopback', { skip }, async (
     fs.rmSync(scratch, { recursive: true, force: true });
   }
 });
+
+test('a writable dir outside scratch is allowed in the same rule as the scratch root', () => {
+  const scratch = makeScratchRoot();
+  const extra = `${scratch}-introspect`;
+  fs.mkdirSync(extra);
+  try {
+    const { profile } = makeIsolation({ mode: 'sandbox-exec', scratchRoot: scratch, writable: [extra], home: os.homedir() });
+    const allow = profile.split('(allow file-write*').find((b) => b.includes(`(subpath "${fs.realpathSync(scratch)}")`));
+    assert.ok(allow && allow.includes(`(subpath "${fs.realpathSync(extra)}")`), profile);
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+    fs.rmSync(extra, { recursive: true, force: true });
+  }
+});
