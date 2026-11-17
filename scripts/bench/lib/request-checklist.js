@@ -716,7 +716,8 @@ function bookedUsd(result, config, callKind = 'judge', model, costProfile) {
  * ledger, under `credentialGuard` and the judge call timeout, with the job's exported `credentials` passed to the
  * process and the call priced and booked from `costProfile` (the committed one when not given). `judgeCall` is
  * injected so this module starts no process. The ledger label ends in " repair" for the repair call (`meta.repair`).
- * Returns { ok, text, usd, ms, error }; `error` is the redacted error and stderr of a failed call.
+ * Returns { ok, text, usd, ms, error, cutOff }; `error` is the redacted error and stderr of a failed call, and
+ * `cutOff` is true when the reply reached the output limit (opencode.js judgeCall).
  */
 function createWriterCall({
   judgeCall,
@@ -746,6 +747,7 @@ function createWriterCall({
       text: result.text,
       usd: bookedUsd(result, config, 'writer', model, costProfile),
       ms: result.ms ?? null,
+      cutOff: result.cutOff === true,
       error: result.ok
         ? null
         : [result.error, result.stderr].filter(Boolean).join(' | ') ||
@@ -769,7 +771,7 @@ const credentialStop = (message, attempt) =>
 /**
  * Writes the checklists of the pending tasks, `concurrency` at a time, then the copies. Dependencies are injected so
  * the rules can be tested without a model:
- *   call(job, attempt, prompt, meta) -> { ok, text, usd, ms, error }   (createWriterCall)
+ *   call(job, attempt, prompt, meta) -> { ok, text, usd, ms, error, cutOff }   (createWriterCall)
  *     `meta` is { repair: true } for the one repair call of a checklist, else undefined.
  *   write(file, record)                                                (default writeChecklistFile)
  * A reply is read ONLY when the call's ok flag is true. A failed call or a rejected reply is retried up to
@@ -778,9 +780,13 @@ const credentialStop = (message, attempt) =>
  * task is refused. A failure the provider says can never work is not retried. A fatal error (a credential failure,
  * a spend stop, a ledger error) stops every worker and is thrown after they settle; `systemicAfter` tasks in a row
  * whose every call failed throw SystemicFailureError, which is fatal too. Finished files are kept.
- * Returns { written, copied, failed, refused, usd }: task ids written and copied, and { task_id, reason } for each
- * task that failed or was refused. `redact` cleans the message of that SystemicFailureError (default: the module
- * redactor); the job passes a run redactor that also removes the credential values it handed out.
+ * A try whose reply reached the output limit and could not be used (the call failed because the model stopped for
+ * length, or the reply fails the checks) is a failed try like any other and is counted in `cut_off`; a try that is
+ * retried and cut off again counts again. A reply that used the whole limit and passed the checks is not counted.
+ * Returns { written, copied, failed, refused, usd, cut_off }: task ids written and copied, and { task_id, reason } for
+ * each task that failed or was refused, and the number of tries cut off. `redact` cleans the message of that
+ * SystemicFailureError (default: the module redactor); the job passes a run redactor that also removes the credential
+ * values it handed out.
  */
 async function writeChecklists({
   jobs,
@@ -806,6 +812,7 @@ async function writeChecklists({
   const failed = [];
   const refused = [];
   let usdTotal = 0;
+  let cutOff = 0;
   const accepted = new Map();
   // Copies whose source is already done on disk are served from that file.
   for (const job of jobs.filter((entry) => entry.state === 'done')) {
@@ -834,6 +841,9 @@ async function writeChecklists({
       list.push({ task_id: job.task_id, reason });
       log(`${job.task_id}: NOT written (${reason}); USD ${spent.toFixed(4)}`);
     };
+    const countCutOff = (result) => {
+      if (result.cutOff === true) cutOff += 1;
+    };
 
     /**
      * One call. Returns { result } for a call that returned, or { thrown } with the reason for a call that threw
@@ -855,6 +865,7 @@ async function writeChecklists({
       spent += usd;
       usdTotal += usd;
       if (result.ok) return { result };
+      countCutOff(result);
       // The class is read from the whole text; only the stored reason is cut.
       const fullText = result.error || 'call failed';
       const kind = classifyError(new Error(fullText));
@@ -893,10 +904,12 @@ async function writeChecklists({
           refusal: outcome.failure.kind === 'refusal',
         };
       const again = readReply(outcome.result.text, { itemCount });
-      if (again.problems.length)
+      if (again.problems.length) {
+        countCutOff(outcome.result);
         return {
           error: `repair rejected: ${again.problems.slice(0, 4).join('; ')}`,
         };
+      }
       return { items: again.items, ms: outcome.result.ms ?? null };
     };
 
@@ -925,6 +938,7 @@ async function writeChecklists({
       }
       lastKind = 'rejected';
       lastReason = `reply rejected: ${reply.problems.slice(0, 4).join('; ')}`;
+      countCutOff(outcome.result);
       // A reply that fails only on item length gets the one repair call.
       const lengths = reply.items
         ? lengthFailures(reply.items, { itemCount })
@@ -1048,6 +1062,7 @@ async function writeChecklists({
     failed,
     refused,
     usd: Number(usdTotal.toFixed(4)),
+    cut_off: cutOff,
   };
 }
 

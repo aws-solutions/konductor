@@ -319,6 +319,51 @@ test('a failed repair call is never parsed (its text field may look like a reply
     assert.equal(record.usd, 0.03);
   }));
 
+test('a repair call, or a repair reply, cut off at the output limit is counted in cut_off like any other try', () =>
+  withJobs(async (jobs) => {
+    const cutOffFailure = {
+      ok: false,
+      text: '',
+      usd: 0.01,
+      ms: 1,
+      error: 'reply cut off at the output limit',
+      cutOff: true,
+    };
+    // The first reply fails on length and was cut off (1); the repair call fails cut off (2); the next fresh attempt is good.
+    const failedRepair = await run(jobs, [
+      okResult(reply(FIXTURE.first_reply_items), { cutOff: true }),
+      cutOffFailure,
+      okResult(reply(FIXTURE.repaired_items)),
+    ]);
+    assert.equal(failedRepair.result.cut_off, 2);
+    assert.deepEqual(failedRepair.result.written, [FIXTURE.task.id]);
+    // A repair reply that is rejected counts when it was cut off, and one that is not cut off does not.
+    for (const [cutOff, expected] of [
+      [true, 1],
+      [false, 0],
+    ]) {
+      const rejected = await run(
+        jobs,
+        [
+          okResult(reply(FIXTURE.first_reply_items)),
+          okResult(reply(FIXTURE.still_long_items), { cutOff }),
+        ],
+        { attempts: 1 },
+      );
+      assert.equal(rejected.result.cut_off, expected, String(cutOff));
+    }
+  }));
+
+test('a repair reply that used the whole limit and passed the checks is not counted in cut_off', () =>
+  withJobs(async (jobs) => {
+    const out = await run(jobs, [
+      okResult(reply(FIXTURE.first_reply_items), { cutOff: true }),
+      okResult(reply(FIXTURE.repaired_items), { cutOff: true }),
+    ]);
+    assert.deepEqual(out.result.written, [FIXTURE.task.id]);
+    assert.equal(out.result.cut_off, 1, 'only the first reply was lost');
+  }));
+
 test('a repair call that throws before it starts is not fatal; the fresh attempts go on', () =>
   withJobs(async (jobs) => {
     const out = await run(jobs, (count, entry) => {

@@ -1210,6 +1210,50 @@ test('error text in a reason and a log line is redacted', async () => {
 
 // ---- the call and the files --------------------------------------------------------------------------------------
 
+test('a try whose reply reached the output limit and could not be used is counted in cut_off, once per try', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const jobs = plan(dir, [makeSet([makeTask(1)])]);
+    const replies = [
+      failedResult('reply cut off at the output limit of 9000 tokens', {
+        cutOff: true,
+      }),
+      okResult('{"items": [', { cutOff: true }),
+      okResult(reply(6)),
+    ];
+    let index = 0;
+    const { result } = await run(jobs, async () => replies[index++]);
+    assert.deepEqual(result.written, ['keep-t-1']);
+    assert.equal(result.cut_off, 2);
+  });
+});
+
+test('cut_off does not count a reply that used the whole limit and passed the checks, or a failure that was not a cut off', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const jobs = plan(dir, [makeSet([makeTask(1)])]);
+    const replies = [
+      failedResult('throttled'),
+      okResult('not a checklist'),
+      okResult(reply(6), { cutOff: true }),
+    ];
+    let index = 0;
+    const { result } = await run(jobs, async () => replies[index++]);
+    assert.deepEqual(result.written, ['keep-t-1']);
+    assert.equal(result.cut_off, 0);
+  });
+});
+
+test('every try of a task cut off at the limit fails the task, and each try of each task is counted', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const jobs = plan(dir, [makeSet([makeTask(1), makeTask(2)])]);
+    const { result } = await run(jobs, async () =>
+      failedResult('reply cut off at the output limit', { cutOff: true }),
+    );
+    assert.equal(result.failed.length, 2);
+    assert.deepEqual(result.written, []);
+    assert.equal(result.cut_off, 6, 'two tasks of three tries each');
+  });
+});
+
 test('createWriterCall makes one judgeCall with the writer model, the job label and the judge timeout, and books what the ledger books', async () => {
   const seen = [];
   const ledger = { reserve: () => {} };
@@ -1247,6 +1291,9 @@ test('createWriterCall makes one judgeCall with the writer model, the job label 
     reply({ reportedUsd: 0 }),
     reply({ reportedUsd: 0, usage: { input_tokens: 0 } }),
     reply({ ok: false, text: '' }),
+    reply({ ok: false, cutOff: true, error: 'reply cut off' }),
+    reply({ cutOff: true }),
+    reply({ cutOff: 'yes' }),
   ];
   const call = checklist.createWriterCall({
     judgeCall: async (options) => {
@@ -1266,6 +1313,7 @@ test('createWriterCall makes one judgeCall with the writer model, the job label 
     usd: 0.05,
     ms: 7,
     error: null,
+    cutOff: false,
   });
   assert.deepEqual(seen[0], {
     ledger,
@@ -1311,6 +1359,17 @@ test('createWriterCall makes one judgeCall with the writer model, the job label 
     'call failed',
     'a failed call always carries an error',
   );
+  assert.equal(
+    (await call(job, 1, 'P')).cutOff,
+    true,
+    'a failed call that hit the limit',
+  );
+  assert.equal(
+    (await call(job, 1, 'P')).cutOff,
+    true,
+    'a reply that used the whole limit',
+  );
+  assert.equal((await call(job, 1, 'P')).cutOff, false, 'only true counts');
 });
 
 test('bookedUsd charges the mean of a known call kind and model and refuses any other kind or no model', () => {
