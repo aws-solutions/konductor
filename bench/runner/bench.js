@@ -92,8 +92,11 @@ const USAGE = `Usage:
        [--concurrency N] [--budget-credits X] [--judge-cmd CMD] [--max-file-chars N] [--max-bundle-chars N]
        [--redact-file FILE] [--judge-timeout-sec N] [--bench-dir DIR] [--allow-small-panel] [--kiro-bin PATH]
        [--isolate auto|unshare|sandbox-exec|none] [--hide DIR,DIR] [--auth-db FILE] [--extra-tasks DIR,DIR] [--profile quick|detailed]
-       [--judge-backend kiro|opencode] [--budget-usd X] [--aws-creds-file FILE] [--aws-profile bench] [--aws-region us-east-1] [--opencode-bin PATH] [--cache DIR]
+       [--judge-backend kiro|opencode] [--budget-usd X] [--aws-creds-file FILE | --aws-export-profile NAME] [--aws-profile bench] [--aws-region us-east-1] [--opencode-bin PATH] [--cache DIR]
        [--criteria-pack quality] [--plan] [--quote-match lenient|strict] [--rescore-quotes]
+       (--aws-export-profile NAME takes the opencode backend's credentials from aws configure export-credentials --profile NAME instead of a file and asks again when fewer than
+       15 minutes remain; a refresh that brings no later expiry is asked again a minute later, and only expired credentials with nothing newer stop the pass. Values are never logged.
+       On either source, 3 calls in a row that fail on their credentials stop the pass: the remaining calls are recorded as skipped and the command exits 3)
        (--criteria-pack quality runs only the quality-dimensions pass over the finished runs and writes judgments-quality.json beside judgments.json; judgments.json is not read or changed.
        Criteria that do not apply to a run are skipped and reported as n/a. The pack pass always matches evidence quotes strictly and refuses --quote-match. See bench/QUALITY-PACK.md)
        (--quote-match picks the evidence-quote rule that the older fields of judgments.json carry: lenient, the default, or strict. Both rules are applied to every criterion and both

@@ -11,7 +11,7 @@ const { runPool } = require('../runner/lib/orchestrate.js');
 const { loadRun } = require('../report/load.js');
 const { checkJudgeModel, checkPanel, families, effectiveLimits, maxPromptBytes: promptBytesFor } = require('./config.js');
 const { buildBundle } = require('./bundle.js');
-const { validateRubricReply, parseJsonStrict } = require('./validate.js');
+const { validateRubricReply, parseJsonReply } = require('./validate.js');
 const { withCache, hasCachedReply } = require('./model.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
@@ -67,15 +67,15 @@ function describePackPlan(o) {
   const maxPromptBytes = promptBytesFor(backend);
   let cached = 0;
   let tooLarge = 0;
-  const liveBy = new Map(judges.map((judge) => [judge, { judge, kind: 'pack', live: 0 }]));
+  const liveBy = new Map(judges.map((judge) => [judge, { judge, kind: 'pack', live: 0, promptChars: 0 }]));
   for (const p of base.plan.filter((x) => x.calls)) {
     const items = judgedItemsOf(p);
     const prompt = packPromptOf(p, redactions);
-    const accept = (text) => { const parsed = parseJsonStrict(text); return parsed.ok && validateRubricReply(parsed.value, items).ok; };
+    const accept = (text) => { const parsed = parseJsonReply(text); return parsed.ok && validateRubricReply(parsed.value, items).ok; };
     for (const judge of judges) {
       if (Buffer.byteLength(prompt) > maxPromptBytes) tooLarge++;
       else if (hasCachedReply(cacheDir, { model: judge, prompt, salt, accept })) cached++;
-      else liveBy.get(judge).live++;
+      else { liveBy.get(judge).live++; liveBy.get(judge).promptChars += prompt.length; }
     }
   }
   const live = base.calls - cached - tooLarge;
@@ -134,8 +134,10 @@ async function runPackJudging(o) {
     log(`judged quality ${judge} ${runKey(p.run)}: ${out.error ? `ERROR ${out.error}` : 'ok'}; ${study.line()}`);
     return out;
   };
-  const onSkip = () => ({ error: `budget reached (${study.stopReason() ?? (usdMode ? `$${budgetUsd}` : `${budgetCredits} credits`)})`, calls: [], parseFailures: 0 });
-  const outs = await runPool(units, concurrency, worker, () => study.shouldStop(), onSkip);
+  // A caller that stopped (the opencode backend after repeated credential failures) ends the pass the way a budget does.
+  const callerStop = () => o.caller?.stopReason?.() ?? null;
+  const onSkip = () => ({ error: callerStop() ?? `budget reached (${study.stopReason() ?? (usdMode ? `$${budgetUsd}` : `${budgetCredits} credits`)})`, calls: [], parseFailures: 0 });
+  const outs = await runPool(units, concurrency, worker, () => study.shouldStop() || Boolean(callerStop()), onSkip);
 
   const records = units.map(({ judge, p }, i) => {
     const out = outs[i];

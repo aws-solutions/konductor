@@ -48,6 +48,61 @@ function parseJsonStrict(text) {
   }
 }
 
+// A quote mark inside a string closes it only when what follows can follow a JSON string: a closing bracket, a colon, the end,
+// or a comma and then the next key or element.
+function closesString(s, i) {
+  let j = i + 1;
+  while (j < s.length && /\s/.test(s[j])) j++;
+  if (j >= s.length || '}]:'.includes(s[j])) return true;
+  if (s[j] !== ',') return false;
+  j++;
+  while (j < s.length && /\s/.test(s[j])) j++;
+  return j >= s.length || '"{['.includes(s[j]);
+}
+
+const JSON_ESCAPES = new Set(['"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u']);
+
+// Escapes a stray quote mark inside a string, and keeps as text a backslash JSON cannot read (\x, \s, \'). These are the two
+// slips in judge replies saved so far: a quote wrapped in its own quote marks ("evidence":""text""), and code with backslashes
+// copied into a quote (`'\x1b[?25l'`, `/[\s-]+/`). Everything outside strings is left alone.
+function repairStrings(text) {
+  let out = '';
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (!inString) { if (c === '"') inString = true; out += c; continue; }
+    if (c === '\\') {
+      const n = text[i + 1];
+      if (n !== undefined && JSON_ESCAPES.has(n)) { out += `${c}${n}`; i++; } else out += '\\\\';
+      continue;
+    }
+    if (c === '"') {
+      if (closesString(text, i)) { inString = false; out += c; } else out += '\\"';
+      continue;
+    }
+    out += c;
+  }
+  return out;
+}
+
+/**
+ * parseJsonStrict, then one repair of the string slips repairStrings fixes. The reply's structure is never guessed: prose
+ * around the JSON still fails, because in the saved replies that prose takes the answer back ("I need to re-evaluate").
+ * `repaired` is true when the repair was needed; the caller still checks the value's shape.
+ */
+function parseJsonReply(text) {
+  const strict = parseJsonStrict(text);
+  if (strict.ok) return strict;
+  let s = String(text ?? '').trim();
+  const fence = s.match(/^```(?:json)?\s*\n([\s\S]*?)\n?```$/i);
+  if (fence) s = fence[1].trim();
+  try {
+    return { ok: true, value: JSON.parse(repairStrings(s)), repaired: true };
+  } catch {
+    return strict;
+  }
+}
+
 function validateRubricReply(value, rubric) {
   const errors = validate(RUBRIC_SCHEMA, value);
   if (errors.length) return { ok: false, error: errors.slice(0, 3).join('; ') };
@@ -72,4 +127,4 @@ function validateGradedReply(value) {
   return errors.length ? { ok: false, error: errors.slice(0, 3).join('; ') } : { ok: true, gradeA: value.gradeA, gradeB: value.gradeB, reason: value.reason };
 }
 
-module.exports = { parseJsonStrict, validateRubricReply, validatePairReply, validateGradedReply };
+module.exports = { parseJsonStrict, parseJsonReply, repairStrings, validateRubricReply, validatePairReply, validateGradedReply };

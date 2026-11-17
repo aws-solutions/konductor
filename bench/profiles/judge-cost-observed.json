@@ -6,7 +6,7 @@
   "kiro": "credits"
  },
  "provenance": "Spend per judge call measured over 15109 live opencode calls (4951 more were served from the cache at no cost) and 171 live kiro calls in earlier bench studies of the lite, pilot, requirements and rootcause suites. Failed live calls are kept because they cost money, so each mean already includes the single re-ask after a bad reply. kiro figures are credits; opencode figures are USD. The kiro pooled entry comes from the spend of whole judging invocations (mixed modes), so it has no per-call median or p90.",
- "lookup": "exact (backend, judge, kind), then (backend, \"*\", kind), then (backend, \"*\", \"*\"). kind is rubric, pairwise, graded or pack.",
+ "lookup": "exact (backend, judge, kind), then (backend, \"*\", kind), then (backend, \"*\", \"*\"). kind is rubric, pairwise, graded or pack. An entry's perUnit, when present, is used instead of its mean and p90.",
  "entries": [
   {
    "backend": "kiro",
@@ -50,7 +50,15 @@
    "failedLive": 0,
    "mean": 0.00695,
    "median": 0.00807,
-   "p90": 0.0105
+   "p90": 0.0105,
+   "perUnit": {
+    "fixed": 0.000857,
+    "perKChar": 0.0001809,
+    "highRatio": 1.13,
+    "units": 623,
+    "meanKChars": 83.9,
+    "measuredOn": "2026-11-17"
+   }
   },
   {
    "backend": "opencode",
@@ -72,7 +80,15 @@
    "failedLive": 6,
    "mean": 0.00439,
    "median": 0.00419,
-   "p90": 0.00773
+   "p90": 0.00773,
+   "perUnit": {
+    "fixed": 0.000688,
+    "perKChar": 0.0001759,
+    "highRatio": 1.16,
+    "units": 314,
+    "meanKChars": 67.4,
+    "measuredOn": "2026-11-17"
+   }
   },
   {
    "backend": "opencode",
@@ -94,7 +110,15 @@
    "failedLive": 2,
    "mean": 0.01065,
    "median": 0.01217,
-   "p90": 0.01646
+   "p90": 0.01646,
+   "perUnit": {
+    "fixed": 0.001161,
+    "perKChar": 0.0002758,
+    "highRatio": 1.08,
+    "units": 623,
+    "meanKChars": 83.9,
+    "measuredOn": "2026-11-17"
+   }
   },
   {
    "backend": "opencode",
@@ -116,7 +140,15 @@
    "failedLive": 80,
    "mean": 0.00672,
    "median": 0.00646,
-   "p90": 0.01463
+   "p90": 0.01463,
+   "perUnit": {
+    "fixed": 0.001268,
+    "perKChar": 0.0003214,
+    "highRatio": 1.54,
+    "units": 359,
+    "meanKChars": 71.4,
+    "measuredOn": "2026-11-17"
+   }
   },
   {
    "backend": "opencode",
@@ -138,7 +170,15 @@
    "failedLive": 3,
    "mean": 0.00479,
    "median": 0.00545,
-   "p90": 0.00722
+   "p90": 0.00722,
+   "perUnit": {
+    "fixed": 0.002234,
+    "perKChar": 6.75e-05,
+    "highRatio": 1.25,
+    "units": 623,
+    "meanKChars": 83.9,
+    "measuredOn": "2026-11-17"
+   }
   },
   {
    "backend": "opencode",
@@ -160,7 +200,15 @@
    "failedLive": 24,
    "mean": 0.00244,
    "median": 0.00215,
-   "p90": 0.00424
+   "p90": 0.00424,
+   "perUnit": {
+    "fixed": 0.000823,
+    "perKChar": 6.63e-05,
+    "highRatio": 1.14,
+    "units": 314,
+    "meanKChars": 67.0,
+    "measuredOn": "2026-11-17"
+   }
   },
   {
    "backend": "opencode",
@@ -250,5 +298,6 @@
    "median": 0.00417,
    "p90": 0.01139
   }
- ]
+ ],
+ "perUnitProvenance": "perUnit, where present, is spend per judged unit (the first call and any re-ask after a bad reply) as a line in the prompt's length: fixed + perKChar x thousands of prompt characters. Fitted on 2856 live units (rubric and pack, the gpt-5.6-luna, deepseek-3.2 and glm-5 panel) of a 624-run study on real-repository and lite tasks whose prompts averaged 67 to 84 thousand characters; spend tracked prompt length with a correlation of 0.84 to 0.98. highRatio is the 90th percentile of actual over fitted spend. A plan that knows its prompts uses perUnit; the flat mean and p90 above were measured on smaller prompts and underestimated that study by about 2 to 3 times per call."
 }
