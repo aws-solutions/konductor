@@ -34,7 +34,7 @@ const { studyInfraCheck } = require('./infra-check.js');
 const { maxAuthFailuresOf, AUTH_EXIT_CODE } = require('./auth-failure.js');
 const { makeLoginCheck } = require('./login-check.js');
 const { preparePlantSuite } = require('./plant/intake.js');
-const { preflightWalls } = require('./plant/walls.js');
+const { preflightWalls, trialGatewayRows, checklistWithTrials } = require('./plant/walls.js');
 const { preflightStrands } = require('./plant/strands-census.js');
 const { makeIso } = require('./run-one.js');
 
@@ -482,7 +482,13 @@ async function cmdRun(opts, deps = {}) {
     const gate = judged.gate;
     const { infra, skipped: infraCheckSkipped } = studyInfraCheck(results, plantSuite);
     if (infraCheckSkipped) log(infraCheckSkipped);
-    writeAtomic(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(authStop.tripped ? { authStop } : {}), ...(infra ? { infraFailure: infra } : {}), ...(infraCheckSkipped ? { infraCheckSkipped } : {}), ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
+    const trialRows = plantSuite?.walls && plantSuite.control
+      ? results.filter((r) => r?.armId).flatMap((r) => trialGatewayRows(path.join(outDir, r.armId, r.taskId, String(r.replicate)))) : [];
+    if (trialRows.length) {
+      plantSuite.walls.checklist = checklistWithTrials(plantSuite.walls.results, trialRows);
+      log(`plant walls: with the prober trials' gateway rows; ${plantSuite.walls.checklist.map((c) => `${c.id} ${c.state}`).join(', ')}`);
+    }
+    writeAtomic(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(authStop.tripped ? { authStop } : {}), ...(infra ? { infraFailure: infra } : {}), ...(infraCheckSkipped ? { infraCheckSkipped } : {}), ...(trialRows.length ? { plantBoundaryChecklist: plantSuite.walls.checklist } : {}), ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
     if (judged.warning) log(judged.warning);
     if (!gate.ok) {
       log(judged.alarm);

@@ -95,6 +95,37 @@ function checklist(results) {
   });
 }
 
+/** The prober rows that need the live gateway of a trial, by id; the preflight records them `held: null`. */
+const GATEWAY_ROWS = new Map(prober.ROWS.filter((r) => r.gateway).map((r) => [r.id, r]));
+const NESTED_ROW = 'nested-pidns-connect-closed';
+
+/**
+ * The gateway rows a wall prober trial of a control suite left in `runDir`, as `{row, boundary, sr, held, detail}`: its
+ * stream lines for the rows that need the live gateway (boundary and sr taken from the prober, not the line), plus the
+ * nested pid namespace row as held when its own line was lost but `plant/gateway.jsonl` holds the `nested_pidns` limit
+ * the gateway ends the trial on. Empty for a trial of any other agent.
+ */
+function trialGatewayRows(runDir) {
+  const read = (rel) => readTextOr(path.join(runDir, rel));
+  const rows = parseProberOutput(read('stream.jsonl')).filter((r) => GATEWAY_ROWS.has(r.row) && typeof r.held === 'boolean')
+    .map((r) => ({ row: r.row, boundary: GATEWAY_ROWS.get(r.row).boundary, sr: GATEWAY_ROWS.get(r.row).sr, held: r.held, detail: r.detail }));
+  if (rows.length && !rows.some((r) => r.row === NESTED_ROW)) {
+    const limit = read('plant/gateway.jsonl').split('\n').some((l) => { try { const e = JSON.parse(l); return e.type === 'limit' && e.which === 'nested_pidns'; } catch { return false; } });
+    const nested = GATEWAY_ROWS.get(NESTED_ROW);
+    if (limit) rows.push({ row: NESTED_ROW, boundary: nested.boundary, sr: nested.sr, held: true, detail: 'the gateway log holds the nested_pidns limit' });
+  }
+  return rows;
+}
+
+/**
+ * The checklist from the preflight `results` with each gateway row replaced by the trial `rows` for it (from
+ * trialGatewayRows, any number of trials). A gateway row no trial reported stays as the preflight left it.
+ */
+function checklistWithTrials(results, rows) {
+  const reported = new Set(rows.map((r) => r.row));
+  return checklist([...results.filter((r) => !reported.has(r.row)), ...rows]);
+}
+
 /** The row results that did not hold, plus any row the prober never reported. */
 function failedRows(results) {
   const reported = new Set(results.map((r) => r.row));
@@ -251,10 +282,10 @@ async function preflightWalls({ ctx, suite, repo, outDir, makeIso }) {
   const cgroup = detectCgroup();
   const run = await runWallProber({ suite, scratch: ctx.scratchDir, outDir, makeIso: (root, plantRun) => withCgroup(makeIso(root, plantRun), cgroup) });
   if (run.problems.length) throw new WallsRefused(`the wall prober found a way through:\n  ${run.problems.join('\n  ')}`);
-  return { cgroup, checklist: checklist(run.results) };
+  return { cgroup, checklist: checklist(run.results), results: run.results };
 }
 
 module.exports = {
   plantWalls, detectCgroup, withCgroup, requireCheckoutHidden, requireMasksOutsideScratch, requireNoWritableSubmounts,
-  checklist, failedRows, parseProberOutput, releaseAllowlist, hostNoise, listenStub, runWallProber, preflightWalls, WallsRefused, CGROUP_PROPERTIES,
+  checklist, trialGatewayRows, checklistWithTrials, failedRows, parseProberOutput, releaseAllowlist, hostNoise, listenStub, runWallProber, preflightWalls, WallsRefused, CGROUP_PROPERTIES,
 };

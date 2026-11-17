@@ -196,6 +196,33 @@ test('the checklist marks a boundary broken, held or not run from its rows, and 
   assert.equal(walls.checklist(bad).find((c) => c.id === 'B-7').state, 'broken');
 });
 
+test('a prober control trial\'s gateway rows feed B-4 and B-5, which the preflight left not run', () => {
+  const preflight = prober.ROWS.map((r) => ({ row: r.id, boundary: r.boundary, held: r.gateway ? null : true }));
+  const run = tmp();
+  fs.mkdirSync(path.join(run, 'plant'));
+  // The nested row's own line is lost (the gateway ends the trial on it); the gateway log's limit shows it held.
+  // A forged boundary on a line is ignored: the prober's own table says which boundary a row supports.
+  fs.writeFileSync(path.join(run, 'stream.jsonl'), [
+    { row: 'cpu-burn-gateway-answers', boundary: ['B-1'], held: true, detail: 'answered' },
+    { row: 'disk-fill-gateway-answers', boundary: ['B-5'], held: true },
+    { row: 'plant-dir-read-only', boundary: [], held: false },
+  ].map((l) => JSON.stringify(l)).join('\n') + '\n');
+  fs.writeFileSync(path.join(run, 'plant', 'gateway.jsonl'), '{"type":"limit","which":"nested_pidns"}\n');
+  const rows = walls.trialGatewayRows(run);
+  assert.deepEqual(rows.map((r) => [r.row, r.boundary, r.held]), [
+    ['cpu-burn-gateway-answers', ['B-5'], true], ['disk-fill-gateway-answers', ['B-5'], true], ['nested-pidns-connect-closed', ['B-4'], true]]);
+  const states = Object.fromEntries(walls.checklistWithTrials(preflight, rows).map((c) => [c.id, c.state]));
+  assert.equal(states['B-4'], 'held');
+  assert.equal(states['B-5'], 'held');
+  assert.equal(states['B-1'], 'held');
+  const broke = walls.checklistWithTrials(preflight, [{ ...rows[0], held: false }]);
+  assert.equal(broke.find((c) => c.id === 'B-5').state, 'broken');
+  assert.equal(broke.find((c) => c.id === 'B-4').state, 'not run');
+  const other = tmp();
+  fs.writeFileSync(path.join(other, 'stream.jsonl'), '{"type":"tool_call"}\n');
+  assert.deepEqual(walls.trialGatewayRows(other), []);
+});
+
 test('a plant suite is refused unless --hide names the checkout or a directory above it', () => {
   const root = tmp();
   const repo = path.join(root, 'checkout');
