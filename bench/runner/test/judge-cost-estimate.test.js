@@ -17,6 +17,9 @@ const { compileRedactions, DEFAULT_REDACTIONS } = require('../../judge/redact.js
 const { loadObserved, lookup, estimateFromObserved, FILE } = require('../../judge/observed-cost.js');
 const { cmdJudge } = require('../eval-commands.js');
 const { loadRun } = require('../../report/load.js');
+const { buildBundle } = require('../../judge/bundle.js');
+const { rubricPrompt } = require('../../judge/prompts.js');
+const { readAnswerKey } = require('../../judge/revision.js');
 
 const cleanup = (root) => fs.rmSync(root, { recursive: true, force: true });
 const LIMITS = { maxFileChars: 6000, maxBundleChars: 24000 };
@@ -48,6 +51,28 @@ test('low is the mean total and high the p90 total; a missing p90 leaves high un
   assert.equal(estimateFromObserved(DATA, 'kiro', [{ judge: 'a', kind: 'rubric', live: 3 }]).high, null);
   assert.equal(estimateFromObserved(DATA, 'nobackend', [{ judge: 'a', kind: 'rubric', live: 3 }]), null);
   assert.equal(estimateFromObserved(null, 'kiro', [{ judge: 'a', kind: 'rubric', live: 3 }]), null);
+});
+
+test('an entry with a perUnit line prices a unit from its prompt length; without promptChars the flat mean is used', () => {
+  const data = { schemaVersion: 1, entries: [{ backend: 'opencode', judge: 'glm-5', kind: 'rubric', liveCalls: 100, mean: 0.01, p90: 0.02, perUnit: { fixed: 0.001, perKChar: 0.0003, highRatio: 1.5 } }] };
+  const e = estimateFromObserved(data, 'opencode', [{ judge: 'glm-5', kind: 'rubric', live: 10, promptChars: 700000 }]);
+  assert.ok(Math.abs(e.low - (0.01 + 0.21)) < 1e-12, `low ${e.low}`);
+  assert.ok(Math.abs(e.high - 0.22 * 1.5) < 1e-12, `high ${e.high}`);
+  const short = estimateFromObserved(data, 'opencode', [{ judge: 'glm-5', kind: 'rubric', live: 10, promptChars: 70000 }]);
+  assert.ok(short.low < e.low / 5, 'a tenth of the prompt text costs far less');
+  const flat = estimateFromObserved(data, 'opencode', [{ judge: 'glm-5', kind: 'rubric', live: 10 }]);
+  assert.ok(Math.abs(flat.low - 0.1) < 1e-12 && Math.abs(flat.high - 0.2) < 1e-12);
+});
+
+test('the shipped perUnit lines price the quality-pack pass of the study they were fitted on within 10% of its spend', () => {
+  // That study: 624 runs per judge, prompts of about 83,900 characters on average, $30.03 spent on the pack pass. This is
+  // the sample the lines were fitted on, so it checks the data file and the arithmetic, not how well the lines generalize.
+  const units = ['gpt-5.6-luna', 'deepseek-3.2', 'glm-5'].map((judge) => ({ judge, kind: 'pack', live: 624, promptChars: 624 * 83900 }));
+  const e = estimateFromObserved(loadObserved(), 'opencode', units);
+  assert.ok(Math.abs(e.low - 30.03) / 30.03 < 0.1, `low ${e.low.toFixed(2)}`);
+  assert.ok(e.high > e.low && e.high < 30.03 * 1.5, `high ${e.high.toFixed(2)}`);
+  const flatMean = ['gpt-5.6-luna', 'deepseek-3.2', 'glm-5'].reduce((n, judge) => n + lookup(loadObserved(), 'opencode', judge, 'pack').mean * 624, 0);
+  assert.ok(flatMean < 30.03 / 2, `the flat mean (${flatMean.toFixed(2)}) is the underestimate this line replaces`);
 });
 
 test('estimateSpend: own history wins over the data, the data comes next, then unknown', () => {
@@ -101,7 +126,18 @@ test('a plan with no earlier judging uses the data file, per judge and pass, and
     const d = planJudging(optsOf(s, judges, { backend: 'opencode', modes: ['rubric', 'pairwise'], caller: () => { throw new Error('backend called'); } }));
     assert.equal(d.estimate.source, 'observed');
     const data = loadObserved();
-    const want = judges.reduce((t, j) => t + 2 * lookup(data, 'opencode', j, 'rubric').mean + 2 * lookup(data, 'opencode', j, 'pairwise').mean, 0);
+    // Rubric entries carry a perUnit line, priced from the length of the two rubric prompts; pairwise entries use the flat mean.
+    const task = loadTasks(s.bench).get('d1');
+    const rubricChars = ['vanilla', 'other'].reduce((n, arm) => {
+      const dir = path.join(s.runDir, arm, 'd1', '1');
+      const result = JSON.parse(fs.readFileSync(path.join(dir, 'result.json'), 'utf8'));
+      const bundle = buildBundle({ runDir: dir, result, fixtureDir: task.fixtureDir, limits: LIMITS, redactions: compileRedactions(DEFAULT_REDACTIONS) });
+      return n + rubricPrompt({ task, answerKey: readAnswerKey(task.fixtureDir), bundleText: bundle.text }).length;
+    }, 0);
+    const want = judges.reduce((t, j) => {
+      const line = lookup(data, 'opencode', j, 'rubric').perUnit;
+      return t + 2 * line.fixed + line.perKChar * (rubricChars / 1000) + 2 * lookup(data, 'opencode', j, 'pairwise').mean;
+    }, 0);
     assert.ok(Math.abs(d.estimate.low - want) < 1e-9, `${d.estimate.low} vs ${want}`);
     assert.ok(d.estimate.high > d.estimate.low);
     const pack = describePackPlan({ run: loadRun(s.runDir), tasks: loadTasks(s.bench), benchDir: s.bench, limits: LIMITS, redactions: compileRedactions(DEFAULT_REDACTIONS), thePack: loadPack('quality'), judges, backend: 'opencode' });
