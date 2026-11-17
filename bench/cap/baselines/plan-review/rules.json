@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "plan-review",
+  "skill_md_sha256": "989e60e15d617d6c4f7008428b80023e5e26622724bfbacbd64b9f0936c25aea",
+  "request_context": "A request to critically evaluate a work plan or task breakdown before execution, judging whether it is clear and complete enough for someone to carry out.",
+  "rules": [
+    {
+      "id": "plan-review-r01",
+      "source_quote": "The implementation direction in the plan is NOT NEGOTIABLE.",
+      "class": "useful",
+      "outcome": "The review judges whether the plan documents its chosen approach well enough to execute, and does not criticize or propose replacing the chosen technical approach itself.",
+      "why": "A reviewer who redesigns the plan oversteps the role and derails a review that should assess documentation quality.",
+      "scenario_hint": "Plan that picks a technical approach the reviewer might personally disagree with."
+    },
+    {
+      "id": "plan-review-r02",
+      "source_quote": "**Fail**: Task says \"implement X\" without pointing to reference code",
+      "class": "useful",
+      "outcome": "Flags tasks that say what to build but do not point to specific files, functions, patterns or examples to follow, naming the affected tasks.",
+      "why": "Implementers cannot start without knowing where to look and end up guessing.",
+      "scenario_hint": "Plan with tasks like 'implement the export feature' and no pointers to existing code."
+    },
+    {
+      "id": "plan-review-r03",
+      "source_quote": "No vague words like \"appropriate\", \"similar\", \"etc.\"",
+      "class": "useful",
+      "outcome": "Calls out vague or undefined wording in tasks (such as 'appropriate', 'similar', 'standard pattern', 'handle edge cases') and asks for concrete specifics in its place.",
+      "why": "Vague phrasing hides scope and lets different implementers build different things.",
+      "scenario_hint": "Plan that says 'use the standard pattern' and 'handle edge cases'."
+    },
+    {
+      "id": "plan-review-r04",
+      "source_quote": "Commands to verify are specified (not \"run tests\")",
+      "class": "useful",
+      "outcome": "Checks that each task has measurable pass/fail criteria with exact commands and expected results, and flags criteria like 'should work correctly' or 'run tests' as insufficient.",
+      "why": "Without concrete acceptance checks nobody can tell when a task is actually done.",
+      "scenario_hint": "Plan whose acceptance criteria are 'make sure authentication works'."
+    },
+    {
+      "id": "plan-review-r05",
+      "source_quote": "Edge cases have verification steps",
+      "class": "useful",
+      "outcome": "Notes whether edge cases and failure scenarios have their own verification steps, not only the happy path.",
+      "why": "Unverified edge cases ship as bugs.",
+      "scenario_hint": "Plan with tests only for the main success flow."
+    },
+    {
+      "id": "plan-review-r06",
+      "source_quote": "Potential conflicts or side effects are noted",
+      "class": "useful",
+      "outcome": "Assesses whether the plan lists dependencies, constraints, other files that may need changes and possible side effects, and points out where the implementer would have to guess or research.",
+      "why": "Missing context forces assumptions that cause rework.",
+      "scenario_hint": "Plan that changes a shared module without mentioning dependents."
+    },
+    {
+      "id": "plan-review-r07",
+      "source_quote": "VERIFY they exist",
+      "class": "useful",
+      "outcome": "Actually checks that files, functions and paths cited in the plan exist, and reports any that are missing, renamed or not found in the referenced file.",
+      "why": "Plans citing nonexistent code mislead implementers and waste time.",
+      "scenario_hint": "Plan referencing a file path or function that has been renamed or never existed."
+    },
+    {
+      "id": "plan-review-r08",
+      "source_quote": "Purpose/objective is stated upfront",
+      "class": "useful",
+      "outcome": "Evaluates whether the plan states its purpose and background, shows how tasks connect in a logical order, and identifies parallelizable work and the critical path.",
+      "why": "Isolated steps without a narrative leave readers unable to prioritize or sequence work.",
+      "scenario_hint": "Plan that is a bare list of tasks with no background."
+    },
+    {
+      "id": "plan-review-r09",
+      "source_quote": "Verdict contradicts the criteria scores (e.g., all Pass but rated ⭐⭐)",
+      "class": "useful",
+      "outcome": "The overall rating is consistent with the per-aspect results: all aspects fully met gives the top rating, one partial gives one below, and fewer fully met aspects give progressively lower ratings.",
+      "why": "An inconsistent rating undermines trust in the review.",
+      "scenario_hint": "Plan that fully meets three aspects and partially meets one."
+    },
+    {
+      "id": "plan-review-r10",
+      "source_quote": "Blocking issues lack specific fix instructions",
+      "class": "useful",
+      "outcome": "Each serious problem states what is wrong and what specifically is needed to fix it, and must-fix problems are clearly separated from nice-to-have suggestions.",
+      "why": "Authors cannot act on a rejection that does not say how to fix it.",
+      "scenario_hint": "Plan that is rejected for multiple gaps."
+    },
+    {
+      "id": "plan-review-r11",
+      "source_quote": "Review skips any of the 4 criteria",
+      "class": "generic",
+      "outcome": "The review covers all four aspects (clarity, verifiability, context completeness, overall purpose and flow) and gives a final star rating with a clear approve/reject verdict.",
+      "why": "A partial review or one without a verdict gives no decision to act on.",
+      "scenario_hint": "Any request to review a work plan."
+    },
+    {
+      "id": "plan-review-r12",
+      "source_quote": "## VERDICT: BLOCKED ⭐⭐",
+      "class": "style",
+      "outcome": "The verdict is stated as a heading with the decision word and star count, followed by a short summary and then strengths, concerns and suggestions for approvals, or blocking issues and a must-fix list for rejections.",
+      "why": "",
+      "scenario_hint": "Any request to review a work plan."
+    }
+  ]
+}

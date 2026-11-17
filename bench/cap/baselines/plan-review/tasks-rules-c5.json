@@ -1,0 +1,133 @@
+{
+  "format_version": 1,
+  "skill": "plan-review",
+  "batch": "rules-c5",
+  "generated_at": "2026-11-10T11:42:13.633Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "fe4f0504b48783b209b7c013e712fbec45362d20f719fe3f73a2b173cf274556",
+  "scenarios": [
+    {
+      "id": "plan-review-rules-1",
+      "title": "Rust rewrite of image resizer service",
+      "target_section": "Core Principle",
+      "prompt": "Our team lead wants me to get this plan reviewed before we start next sprint. Personally I think rewriting in Rust is overkill but that's what was decided, so don't relitigate it, just tell me if the plan is good enough to start.\n\n**Plan: Rewrite thumbnail service from Node to Rust**\n\nBackground: The thumbnail service (currently `services/thumbs/index.js`) handles ~400 req/s at peak and p99 latency is 900ms, which is breaching the SLO of 300ms. Decision made in the Oct architecture meeting: rewrite hot path in Rust using the `image` crate, deploy behind the same ALB target group.\n\n1. Create new crate `thumbs-rs/` with an axum server exposing `GET /thumb?url=&w=&h=`. Follow the request/response shape in `services/thumbs/index.js` function `handleThumb` (lines 40-112).\n2. Port resize logic from `services/thumbs/resize.js` `resizeToFit()` using `image::imageops::resize` with Lanczos3 filter, matching the existing aspect-ratio rules.\n3. Port the S3 cache lookup from `services/thumbs/cache.js` `getCached()` / `putCached()`, keeping the key format `thumb/{sha1(url)}/{w}x{h}.jpg`.\n4. Acceptance: `cargo test -p thumbs-rs` passes including golden-image tests in `thumbs-rs/tests/golden/` (compare to Node output, max 1% pixel diff). Load test: `k6 run loadtest/thumbs.js` shows p99 < 300ms at 500 req/s for 10 minutes. Also `curl -i 'localhost:8080/thumb?url=<bad>&w=100&h=100'` returns 400 with JSON body `{\"error\":\"invalid_url\"}`; oversized w/h (>4096) returns 400 `{\"error\":\"dimension_limit\"}`; upstream 404 returns 502.\n5. Cutover: shift 5% traffic via ALB weighted target group, watch p99 and 5xx for 1 hour, then 50%, then 100. Rollback = set weight back to 0 on the Rust group.\n\nDependencies: none new in infra, Rust toolchain 1.80 in CI image.",
+      "rubric": [
+        "Does not argue that Rust, the `image` crate or the rewrite is the wrong choice for the latency problem (e.g. suggesting caching or a CDN instead); it treats the rewrite as settled.",
+        "Credits that tasks 1-3 point to concrete Node source locations (handleThumb lines 40-112, resizeToFit, getCached/putCached) as references for the port.",
+        "Recognises that the acceptance step gives exact commands (cargo test, k6 run) and measurable thresholds (1% pixel diff, p99 < 300ms at 500 req/s for 10 minutes).",
+        "Notes that the bad-URL, oversized dimension and upstream-404 cases have their own expected responses, and may point out any remaining untested failures (e.g. S3 unavailability, non-image content).",
+        "Comments on the stated purpose (p99 breaching the 300ms SLO) and the flow from build to staged cutover, and may note that tasks 2 and 3 could run in parallel.",
+        "The star rating is consistent with the per-aspect results it reports, a mostly passing plan receiving a high rating rather than a rejecting verdict.",
+        "Evaluates clarity, verifiability, context completeness and purpose/flow and ends with an explicit star rating and approve/reject verdict."
+      ],
+      "why_skill_matters": "A strong plan with a technical choice the user openly doubts. Tests that the reviewer stays on documentation quality and not on second-guessing Rust, and that a good plan is rated high consistently."
+    },
+    {
+      "id": "plan-review-rules-2",
+      "title": "Vague onboarding portal plan",
+      "target_section": "What to Reject",
+      "prompt": "Pls review, I need to send to the PM today. Its for the customer onboarding portal.\n\nOnboarding Portal v2\n\n1. Implement the new signup flow in an appropriate way, similar to what we did for the partner portal.\n2. Update the config so the new steps show up.\n3. Hook up the email provider and use the standard pattern for notifications.\n4. Handle edge cases (expired invites, duplicate accounts, etc.)\n5. Make sure it all works correctly before launch.\n6. Update docs.\n\nTimeline: 3 weeks. Dev: Priya and Tomasz.",
+      "rubric": [
+        "Flags that task 1 (signup flow) and task 2 (config) do not say which files, modules or partner-portal code to follow, and asks for them by task.",
+        "Calls out the vague phrasing \"appropriate way\", \"similar to the partner portal\", \"standard pattern\" and \"etc.\" and asks for concrete replacements.",
+        "Points out that task 5 (\"works correctly\") and the launch check have no commands or measurable pass/fail criteria.",
+        "For each blocking problem says both what is wrong and what specifically is needed, and keeps these separate from optional improvements.",
+        "Gives a low rating consistent with most aspects failing, with a rejecting verdict.",
+        "Addresses clarity, verifiability, context completeness and purpose/flow and gives a star rating with an explicit reject verdict."
+      ],
+      "why_skill_matters": "A short plan full of vague wording, no references, no criteria and thin background. Makes vagueness, missing references, acceptance criteria and fix guidance matter."
+    },
+    {
+      "id": "plan-review-rules-3",
+      "title": "Auth middleware swap with stale references",
+      "target_section": "File Verification",
+      "prompt": "Can you look over this before I kick it off? I pasted the relevant tree and the current middleware file so you can see what's there.\n\n```\nsrc/\n  api/\n    routes.ts\n    middleware/\n      authGuard.ts\n      rateLimit.ts\n  lib/\n    jwt.ts\n```\n\n`src/api/middleware/authGuard.ts`:\n```ts\nimport { verifyToken } from \"../../lib/jwt\";\nexport function authGuard(req, res, next) {\n  const tok = req.headers.authorization?.split(\" \")[1];\n  if (!tok) return res.status(401).end();\n  try { req.user = verifyToken(tok); next(); }\n  catch { res.status(401).end(); }\n}\n```\n\n**Plan: move API auth from self-signed JWT to Auth0 tokens**\n\nWhy: security asked us to stop managing signing keys ourselves; audit finding SEC-212 due end of month.\n\n1. In `src/api/middleware/auth.ts`, replace `validateJwt()` with a call to `jwks-rsa` to verify RS256 tokens against our Auth0 tenant. Keep the 401 behaviour.\n2. Update `src/lib/tokenService.ts` `issueToken()` to stop minting tokens; delete after callers are removed.\n3. Update `src/api/routes.ts` so every protected route uses the new middleware.\n4. Verify: `npm test -- auth` passes; `curl -H \"Authorization: Bearer <auth0 token>\" localhost:3000/api/me` returns 200 and a token signed with the old key returns 401.",
+      "rubric": [
+        "Reports that `src/api/middleware/auth.ts` is not in the pasted tree and that the middleware is actually `authGuard.ts`.",
+        "Reports that `validateJwt()` is not in the pasted code (the function is `authGuard`/`verifyToken`) and that `src/lib/tokenService.ts` / `issueToken()` do not appear in the tree (the tree shows `lib/jwt.ts`).",
+        "Notes that removing token issuing and changing middleware may affect other callers or files (e.g. `verifyToken`/`jwt.ts`, rateLimit, login endpoints) that the plan does not list.",
+        "Credits or assesses the verify step (npm test -- auth, curl with Auth0 token returns 200, old-key token returns 401) as concrete, and may note the unspecified test files or edge cases like expired tokens.",
+        "Gives for each discrepancy what is wrong and what the author must fix (correct paths/names), separating must-fix from minor points.",
+        "Covers all four aspects and ends with a star rating and clear approve/reject verdict."
+      ],
+      "why_skill_matters": "Plan cites file and function names that do not match the pasted tree and code. The tree is given, so the answer can compare. Also the plan removes issuing without listing callers."
+    },
+    {
+      "id": "plan-review-rules-4",
+      "title": "Warehouse barcode scanner rollout, one partial gap",
+      "target_section": "Scoring",
+      "prompt": "Hi, I'm an ops manager, not technical, but I wrote this plan for the dev contractor to roll out the new barcode scanner app to our three warehouses. Is it ready to hand over? Be honest.\n\n**Purpose:** Pickers currently write SKUs on paper, causing about 4% mis-picks (roughly 60 orders/week returned). The scanner app should cut mis-picks below 1% by end of Q1.\n\n**Tasks**\n1. Build the scanning screen in the existing Android app, copying the layout of `ReceivingScreen.kt` (`ReceivingScreen()` composable) and using the ZXing library already in `build.gradle`. \n2. On scan, call `GET /api/v2/sku/{code}` (documented in `docs/api/sku.md`) and show name + bin location. Depends on task 1.\n3. Add an offline queue so picks made without wifi sync later; follow the pattern in `SyncQueue.kt` `enqueue()`. Depends on task 1. Can be done in parallel with task 2.\n4. Pilot at the Leeds warehouse for 2 weeks, then Bristol and Hull.\n\n**Acceptance**\n- Task 1: `./gradlew testDebugUnitTest --tests '*ScanScreenTest'` passes; manual test scans 20 sample labels in `docs/test-labels.pdf`, 20/20 read.\n- Task 2: unknown SKU shows \"SKU not found\" message; instrumented test `SkuLookupTest` passes with `./gradlew connectedDebugAndroidTest`.\n- Task 3: airplane-mode test: 10 picks queued, reconnect, all 10 appear in server within 60s.\n- Task 4: mis-pick rate at Leeds below 1% over the 2-week pilot, measured from the returns report.\n\nI couldn't think what to put about devices; we have a mix of old Zebra handhelds and some staff use their own phones.",
+      "rubric": [
+        "Identifies the unresolved device question (mixed old Zebra handhelds and personal phones, OS versions, camera vs hardware scanner) as missing context the contractor would have to guess.",
+        "Credits the stated purpose and numbers (4% mis-picks, 60 returns a week, target under 1%) and the dependency order with tasks 2 and 3 parallel after task 1.",
+        "Credits the acceptance items as concrete with commands and thresholds (20/20 labels, 10 picks within 60s, under 1% at Leeds).",
+        "The rating follows from three aspects being met and one partly met, so it lands one level below the top with an approving verdict, rather than at the top or rejected.",
+        "Separates what must be added (device information) from optional improvements, and says specifically what to add.",
+        "Covers all four aspects and states a star rating with approve/reject verdict."
+      ],
+      "why_skill_matters": "A good plan from a non-technical author with one real gap (devices). Tests rating consistency with one partial aspect and gap-vs-nice-to-have separation."
+    },
+    {
+      "id": "plan-review-rules-5",
+      "title": "Billing proration plan, happy path only",
+      "target_section": "2. VERIFICATION",
+      "prompt": "We're adding mid-cycle plan upgrades with proration to our SaaS billing. Here's the plan from our staff engineer, I want a review as I'm the EM and have to approve it. I can't get at the repo right now, but I pasted a grep of the function definitions so you can see what's there.\n\n```\nbilling/proration.py:41:def calculate_credit(plan, days_unused):\nbilling/proration.py:67:def round_cents(x):\nbilling/upgrade.py:15:def apply_upgrade(sub, new_plan):\nbilling/stripe_utils.py:9:def create_invoice_item(customer, amount_cents, desc):\n```\n\n**Goal:** Customers upgrading mid-month currently get billed the full new price. Support gets ~30 tickets/month about it. Charge only the prorated difference.\n\n1. Add `calculateProration(oldPlan, newPlan, daysLeft, daysInCycle)` to `billing/proration.py`, modelled on `calculate_credit()` in the same file (line 88).\n2. Modify `billing/upgrade.py` `apply_upgrade()` to call it and create a Stripe invoice item via the helper `stripe_utils.add_invoice_item()`.\n3. Update the invoice email template `templates/email/upgrade_invoice.html` to show the prorated line.\n\nVerification:\n- Test: upgrade Basic ($10) to Pro ($30) with 15 of 30 days left, expect an extra charge of $10. Run `pytest billing/tests/test_proration.py::test_basic_to_pro_midmonth`.\n- Check the email renders.\n\nOrder: 1 → 2 → 3.\n\nRollout: ship behind flag `proration_enabled`, enable for internal accounts first.",
+      "rubric": [
+        "Points out that only one happy-path upgrade example is verified and that cases such as upgrade on the last or first day, downgrades, annual plans, Stripe failure/declined payment, or currency rounding have no verification.",
+        "Flags \"Check the email renders\" as not measurable and asks for a command or exact expected output, while crediting the pytest command and the $10 expected result.",
+        "Notes that the pasted definitions disagree with the plan: `calculate_credit` is at line 41, not 88, and the Stripe helper is `create_invoice_item`, not `add_invoice_item`.",
+        "Notes missing context such as other callers of `apply_upgrade()`, tax handling, existing subscriptions with discounts, or the Stripe API version/config the implementer must guess.",
+        "Describes each gap with what is wrong and what is needed, and distinguishes must-fix items from suggestions.",
+        "Does not contest the choice to use Stripe invoice items or to prorate by days; it works within them.",
+        "Evaluates all four aspects and gives a final star rating with clear approve/reject verdict."
+      ],
+      "why_skill_matters": "Goal is clear, but verification covers a single happy case and a vague email check, and the pasted definitions contradict two references in the plan (line number and helper name). Makes edge-case verification, measurability and reference checking matter."
+    },
+    {
+      "id": "plan-review-rules-6",
+      "title": "Bare task list for ML labelling tool",
+      "target_section": "4. BIG PICTURE",
+      "prompt": "this is what the intern wrote for the labeling tool project. thoughts? be gentle lol\n\n- Task A: build the annotation UI (`web/src/Annotator.tsx`, extend the `Canvas` component, props defined at top of file)\n- Task B: add `POST /labels` endpoint in `server/labels.go` following `HandleCreateItem` in `server/items.go`\n- Task C: write labels table migration `db/migrations/0042_labels.sql`, columns: id, item_id, user_id, class, bbox_json, created_at\n- Task D: export labels to COCO JSON via `scripts/export_coco.py`\n- Task E: wire up the auth to the endpoint\n- Task F: write tests\n\nAcceptance for A: `npm run test -- Annotator` passes. For B: `go test ./server -run TestCreateLabel` passes. For C: `make migrate-up` succeeds and `\\d labels` shows the table. For D: output validates with `pycocotools` on 50 sample items. E and F: done when merged.",
+      "rubric": [
+        "Notes that there is no purpose or background (why the tool is built, who uses it, goals), that the order of tasks and dependencies (migration before endpoint, endpoint before UI) is not stated, and that critical path and parallel work are unidentified.",
+        "Credits tasks A-D for naming specific files and example functions, and flags tasks E and F as lacking file or pattern references.",
+        "Notes that E and F (\"done when merged\") have no measurable pass/fail criteria while A-D have commands.",
+        "Points out missing context such as which auth mechanism to wire in, label class definitions, and bbox_json format.",
+        "For each problem states what is wrong and what is needed, and separates must-fix from nice-to-have, in a constructive tone.",
+        "Covers all four aspects and gives a star rating with approve/reject verdict."
+      ],
+      "why_skill_matters": "Plan with good per-task references but no background, no ordering, and two undefined tasks. Makes the big-picture aspect matter more than the others."
+    },
+    {
+      "id": "plan-review-rules-7",
+      "title": "Cache layer plan with a disliked approach and a hidden gap",
+      "target_section": "Review Workflow",
+      "prompt": "I'm reviewing for a teammate who's on leave. They've written the plan for adding an in-process LRU cache to our product catalog API. I would have used Redis but they own it, so I just need to know if it's executable by whoever picks it up.\n\nContext: catalog API (`catalog/service.go`) gets ~2k rps, 80% hits for the same 500 SKUs. DB CPU is at 85%. Goal: get DB CPU under 50% without adding infra.\n\nPlan:\n1. Add `catalog/cache.go` with an LRU of 5000 entries using `hashicorp/golang-lru/v2`, TTL 60s. Follow the wiring style in `catalog/service.go` `NewService()` (lines 20-45), which already takes a `Config` struct; add `CacheSize` and `CacheTTL`.\n2. Wrap `GetProduct()` (service.go:112) with read-through logic. \n3. In `catalog/admin.go`, `UpdateProduct()` must invalidate the entry.\n4. Verification: `go test ./catalog -run TestCache` passes. Load test with `vegeta attack -rate=2000 -duration=10m` shows DB CPU below 50% in the Grafana dashboard `catalog-db`.\n\nNotes: runs as 6 replicas behind a load balancer.",
+      "rubric": [
+        "Does not recommend replacing the in-process LRU with Redis or another shared cache as a defect of the plan; at most it treats shared-cache concerns as documentation gaps.",
+        "Raises that with 6 replicas an invalidation in `UpdateProduct()` only clears one replica's cache, so the plan must state how staleness across replicas is handled or accepted within the 60s TTL, as missing context.",
+        "Notes that there is no verification for invalidation (update then read returns new value), TTL expiry, or cache miss/eviction behaviour.",
+        "Assesses the load test step: credits the vegeta command and the 50% DB CPU target, and may note that the \"TestCache\" tests and the dashboard reading are unspecified.",
+        "Comments on the goal being stated (DB CPU 85% to under 50%) and the order of the steps.",
+        "Covers all four aspects and gives a final star rating with approve/reject verdict."
+      ],
+      "why_skill_matters": "The user dislikes the approach; plan is mostly strong, but the 6-replica note hides a consistency gap that must be flagged as missing context, not as a wrong design. Also no invalidation tests."
+    },
+    {
+      "id": "plan-review-rules-8",
+      "title": "Terraform VPC peering plan with circular references",
+      "target_section": "Quality Gate",
+      "prompt": "Need a go / no-go on this for the infra change window Thursday. Platform wiki page, copied below.\n\n**Peer prod VPC with analytics VPC**\n\nWhy: analytics team needs read access to the prod replica DB; currently they go through a public endpoint which security wants closed.\n\nT1. Create the peering resource. Details: see T3.\nT2. Update route tables on both sides. Use the CIDRs from T1.\nT3. Define variables for the CIDRs and the peering ID, as described in T2.\nT4. Update security groups to allow 5432 from analytics CIDR to the replica.\nT5. Close the public endpoint.\n\nVerification: connectivity works from analytics. Public endpoint is gone.\n\nFiles: `infra/network/peering.tf` (new). Existing module at `infra/network/vpc.tf`.\n\nRollback: revert the PR.",
+      "rubric": [
+        "Identifies that T1, T2 and T3 refer to each other (\"see T3\", \"CIDRs from T1\", \"as described in T2\") so none gives the actual CIDRs, variable names or peering settings, and asks for the concrete values.",
+        "Points out that \"connectivity works\" and \"public endpoint is gone\" lack exact commands and expected results (e.g. a psql or nc check on 5432 from analytics, a failed connection to the public hostname).",
+        "Flags that T4 and T5 do not say which security group or endpoint resources and files to change, beyond the new peering.tf and vpc.tf.",
+        "For each blocking problem says what is wrong and what is needed, and separates must-fix from suggestions, giving a reject verdict.",
+        "The rating is low and consistent with several aspects failing rather than passing.",
+        "Covers all four aspects with a star rating and explicit reject verdict."
+      ],
+      "why_skill_matters": "Circular references among T1-T3, vague verification, and thin references. Makes blocking-issue fix instructions and rating consistency matter."
+    }
+  ]
+}

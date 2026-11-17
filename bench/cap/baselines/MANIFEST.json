@@ -1,0 +1,10 @@
+{
+  "format_version": 1,
+  "files": {
+    "plan-review/rules.json": "fe4f0504b48783b209b7c013e712fbec45362d20f719fe3f73a2b173cf274556",
+    "plan-review/tasks-rules-b6.buckets.json": "131265ed1756ec5a062ac3130487e1908b019e9bf9c49a238cdca02c0ed39cdb",
+    "plan-review/tasks-rules-b6.json": "d85548a07fccb452b8784068b7cc61ec3fa20839d1be4ba2fa1f19f80e12e8a5",
+    "plan-review/tasks-rules-c5.buckets.json": "10b25964505dfb020a4b1e1a590fafdc0478c41046d970cf1c8514dea1707595",
+    "plan-review/tasks-rules-c5.json": "8a23ec97a176f7c0a7fda7643dfc6f35fd1d7787007dcfeecb799158026756c1"
+  }
+}

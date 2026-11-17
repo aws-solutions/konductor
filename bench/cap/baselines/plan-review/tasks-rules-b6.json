@@ -1,0 +1,131 @@
+{
+  "format_version": 1,
+  "skill": "plan-review",
+  "batch": "rules-b6",
+  "generated_at": "2026-11-10T00:05:12.021Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "fe4f0504b48783b209b7c013e712fbec45362d20f719fe3f73a2b173cf274556",
+  "scenarios": [
+    {
+      "id": "plan-review-rules-1",
+      "title": "CSV export plan for a contractor",
+      "target_section": "What to Reject",
+      "prompt": "can you review this plan before I hand it to the contractor? they start monday and I don't want a bunch of back and forth\n\n**Add CSV export to the reports page**\n\n1. Implement the export feature on the backend.\n2. Add an export button to the frontend, similar to the other buttons.\n3. Handle edge cases (big reports, weird characters, etc.)\n4. Make sure it works correctly and the tests pass.\n\nBackground: customers keep asking for it. That's all I've got written down, the contractor is smart and will figure it out.",
+      "rubric": [
+        "Says that the backend export task and the frontend button task give no file, endpoint, or existing reports code to build from, and names these tasks (1 and 2).",
+        "Points out that \"similar to the other buttons\" and \"edge cases (big reports, weird characters, etc.)\" are too loose, and asks which buttons to copy and which specific cases are in scope.",
+        "Says \"works correctly and the tests pass\" cannot be checked as written, and asks for the exact test command and an expected result such as row count or file contents.",
+        "Gives a low rating of two stars or fewer and a rejection, in line with most of the four aspects not being met.",
+        "For each major problem says what is missing and what concrete information the author must add, and separates must-fix items from optional improvements.",
+        "Addresses all four aspects (how clear, how verifiable, how complete the context, and purpose and flow) and ends with a star rating and an explicit approve or reject decision."
+      ],
+      "why_skill_matters": "A four-line plan with vague tasks, loose wording, no file pointers and no real acceptance check. The user expects the contractor to improvise. It makes pointers to code, vague terms, measurable checks, rating consistency and actionable fix instructions matter."
+    },
+    {
+      "id": "plan-review-rules-2",
+      "title": "Feature flags polled from S3",
+      "target_section": "Core Principle",
+      "prompt": "Need a review of this plan. Heads up: the approach (flags in one JSON file on S3, each service polls it) was decided in ADR-12 and the CTO signed off. Personally I think polling a file from S3 is kind of janky but that's not my call. Just tell me if the plan is good enough for the team to start.\n\n**Feature flags via S3 JSON**\nPurpose: product wants to toggle `new_invoice_ui` per environment without a deploy. Billing and orders services both need it by end of month.\n\n1. Create `services/common/flags/loader.py` with `load_flags()`, modeled on `load_config` in `services/common/config/loader.py` (lines 20-58). It fetches `s3://acme-flags-prod/flags.json` every 60s and caches it in memory.\n Verify: `pytest services/common/flags/tests/test_loader.py -q` passes (6 tests).\n2. Wire into `services/billing/app.py` inside `create_app()`. Expose `/debug/flags`.\n Verify: `curl localhost:8080/debug/flags` returns JSON containing `new_invoice_ui`.\n3. Same for `services/orders/app.py`.\n Verify: same as task 2.\n4. Add a step to `.github/workflows/test.yml` after job `unit` that runs the loader tests.\n Verify: workflow run is green.\n\nTasks 2 and 3 can run in parallel after 1; 4 can happen any time after 1.",
+      "rubric": [
+        "Does not require the team to drop S3 polling for a flag service or another mechanism, and does not count the polling choice as a problem the author must fix.",
+        "Credits that tasks point to concrete places such as the loader path, `load_config` lines 20-58 and `create_app()`, rather than faulting the plan for missing pointers.",
+        "Notes that task 3 only says \"same as task 2\" and the flag key checked there is billing-specific, so the orders check is not truly specified.",
+        "Observes that nothing is verified for S3 being unreachable, malformed JSON, or a missing flag key.",
+        "Gives about four stars and an approval with concerns, since only verification is partly lacking, rather than a rejection or a perfect score.",
+        "Covers all four aspects and states a final star rating with a clear approve or reject verdict."
+      ],
+      "why_skill_matters": "The plan is mostly well documented. The user openly dislikes the chosen approach, which pulls toward criticizing it. The real gaps are the vague orders verification and no failure-case checks. It makes keeping to the chosen direction, crediting concrete references, failure-case verification and rating consistency matter."
+    },
+    {
+      "id": "plan-review-rules-3",
+      "title": "Timezone dates plan with a renamed file",
+      "target_section": "File Verification",
+      "prompt": "Quick sanity check on this plan please. I pasted the src listing and a grep so you can see what's actually there (this is the whole src tree).\n\n```\nsrc/utils/date_format.js\nsrc/api/invoices.js\nsrc/components/InvoiceTable.jsx\nsrc/components/ReportHeader.jsx\nsrc/pages/Dashboard.jsx\n\n$ grep -rn \"formatDate\" src\nsrc/utils/date_format.js:4:export function formatDate(d, locale) {\nsrc/components/InvoiceTable.jsx:18:  formatDate(row.due)\nsrc/components/ReportHeader.jsx:9:  formatDate(new Date())\nsrc/pages/Dashboard.jsx:41:  formatDate(lastSync)\n```\n\n**Show dates in the user's timezone instead of UTC**\nGoal: support keeps getting tickets that due dates are off by a day for users in Australia.\n\n1. In `src/utils/dateFmt.js` change `formatDate(d, locale)` to take a third param `tz`. Verify: `npm test -- date` passes.\n2. Update `InvoiceTable.jsx` to pass the user's tz from the `useUser()` hook in `src/hooks/useUser.js`. Verify: `npm test -- InvoiceTable` passes.\n3. Show a timezone label in the UI. Verify visually.\n\nTask 1 first, then 2 and 3.",
+      "rubric": [
+        "Reports that `src/utils/dateFmt.js` does not appear in the pasted listing, which has `date_format.js`, and treats it as a wrong or outdated path.",
+        "Reports that `src/hooks/useUser.js` is not in the listing, so the `useUser()` source is unconfirmed.",
+        "Notes that `ReportHeader.jsx` and `Dashboard.jsx` also call `formatDate`, are not in the plan, and may change behaviour when the signature changes.",
+        "Says task 3 (timezone label) names no component or file where the label goes.",
+        "Describes what to correct for each issue (fix paths, add the other callers, name the label location) and distinguishes must-fix from minor items.",
+        "Covers all four aspects and states a final star rating with a clear approve or reject verdict."
+      ],
+      "why_skill_matters": "The plan looks reasonable on a skim, but one path is wrong versus the pasted tree, another file is absent, and two callers of the changed function are left out. It makes checking cited paths, side effects on other callers and pointers matter."
+    },
+    {
+      "id": "plan-review-rules-4",
+      "title": "Event pipeline task list with no background",
+      "target_section": "4. BIG PICTURE",
+      "prompt": "hey, my lead asked me to write up the plan for the new analytics pipeline and I banged this out in 10 min. can you tell me if it's ok to send over?\n\n1. Set up Kafka consumer\n2. Parse events\n3. Write to warehouse\n4. Add dashboards\n5. Deploy\n\nI think it's self explanatory? The team has done this kind of thing before.",
+      "rubric": [
+        "Notes that the plan never says why the pipeline is being built or what outcome it serves.",
+        "Comments on ordering and dependencies: for example that dashboards depend on warehouse writes, and says which tasks, if any, could run in parallel and what the critical path is.",
+        "Says the consumer, parsing and warehouse tasks give no topic, event schema, repo location or example code to follow.",
+        "Notes that none of the five tasks, including \"Deploy\", has a pass/fail check or command.",
+        "Lists what the author must add (such as purpose, topic and schema details, acceptance checks) as required fixes, separate from optional polish.",
+        "Covers all four aspects and ends with a star rating and an explicit reject or approve verdict."
+      ],
+      "why_skill_matters": "A five-line bare list with no purpose, no references, no checks and no flow. The author thinks it is self-explanatory. It makes missing background, task flow, pointers, acceptance checks and actionable fixes matter."
+    },
+    {
+      "id": "plan-review-rules-5",
+      "title": "Refund flow with only the happy path tested",
+      "target_section": "2. VERIFICATION",
+      "prompt": "Can you review this plan for the refunds feature? Support told us about 15% of refunds are partial, and a bunch of orders are paid partly with gift cards. Is it ready for the dev team?\n\n**Admin refunds via Stripe**\nGoal: support can refund an order from the admin panel instead of asking engineering to do it in the Stripe dashboard.\n\n1. Add `POST /admin/refunds` in `app/routes/admin.py`, modeled on `create_credit` in the same file. It calls `stripe.Refund.create` for the order's charge.\n Verify: `pytest tests/test_refunds.py::test_full_refund` passes.\n2. Add a Refund button to `templates/admin/order.html` next to the Cancel button.\n Verify: `pytest tests/test_admin_ui.py::test_refund_button_visible` passes.\n3. On success set `orders.status` to `'refunded'`.\n Verify: a test asserts the status is `'refunded'` after a full refund.\n\nOrder: 1, then 3, then 2 (button needs the endpoint).",
+      "rubric": [
+        "Points out that only a full, successful refund is verified, and partial refunds, gift-card-paid orders and Stripe errors or timeouts have no checks.",
+        "Notes the plan does not say what happens to the gift-card portion of a refund or to other code that reads order status once it is `'refunded'`.",
+        "Says task 3's check names no test file or command, unlike tasks 1 and 2, which give exact pytest targets.",
+        "Gives about three stars and an approve with concerns, consistent with clear references and flow but gaps in checks and context.",
+        "Gives concrete additions for the gaps (for example specific partial-refund and failure test cases) and separates required from optional ones.",
+        "Covers all four aspects and ends with a star rating and an explicit approve or reject verdict."
+      ],
+      "why_skill_matters": "The plan is well referenced, but its checks are happy-path only, while the user's text hints at partial refunds and gift cards that the plan ignores. It makes failure-case verification, hidden side effects, command specificity and rating consistency matter."
+    },
+    {
+      "id": "plan-review-rules-6",
+      "title": "Making getSession async, callers missed",
+      "target_section": "3. CONTEXT COMPLETENESS",
+      "prompt": "Plan below is for moving our session lookup to Redis. I ran a couple greps so you have real data. Tell me if the team can pick it up.\n\n```\n$ grep -n \"export\" lib/auth/session.ts\n12:export async function destroySession(id: string)\n27:export function getSession(req: Request)\n48:export function refreshSession(id: string)\n\n$ grep -rn \"getSession(\" --include=*.ts --include=*.tsx . \nmiddleware.ts:12\napp/api/me/route.ts:8\napp/dashboard/layout.tsx:15\napp/settings/page.tsx:22\nlib/audit.ts:31\n```\n\n**Redis-backed sessions**\nGoal: sessions are currently signed cookies that can't be revoked; we need server-side revocation for the security audit.\n\n1. In `lib/auth/session.ts` make `getSession()` async and refactor `validateSession()` to match. Verify: `npm run typecheck` exits 0.\n2. Update callers in `middleware.ts` and `app/api/me/route.ts`. Verify: `npm test` passes.\n3. Add a Redis client in `lib/redis.ts`, following `lib/db.ts` for the connection pattern. Verify: `npm test` passes.\n\nSequential, 1 → 2 → 3.",
+      "rubric": [
+        "Reports that `validateSession()` does not appear among the exports of `lib/auth/session.ts` in the pasted output.",
+        "Notes that `app/dashboard/layout.tsx`, `app/settings/page.tsx` and `lib/audit.ts` also call `getSession` and are missing from task 2.",
+        "Says \"npm test passes\" for tasks 2 and 3 does not show that revocation or the Redis connection works, and asks for specific checks.",
+        "For each problem says what the author must change (correct function name, full caller list, concrete checks), and separates must-fix from optional.",
+        "Covers all four aspects and ends with a star rating and an explicit approve or reject verdict."
+      ],
+      "why_skill_matters": "The user pasted grep output that contradicts the plan: a function the plan names is absent and three callers are left out. It makes checking cited functions against real output, hidden dependents, weak checks and fix instructions matter."
+    },
+    {
+      "id": "plan-review-rules-7",
+      "title": "Unread badge plan, mostly solid",
+      "target_section": "Scoring",
+      "prompt": "I think this one is in good shape but want a second pair of eyes before kickoff on Tuesday.\n\n**Unread-count badge in the app header**\nWhy: support gets ~40 tickets a week from users who miss replies. Success = badge shows a new reply within 30s.\nFlow: A and B in parallel, C after A, D after B and C.\n\nA. Add `GET /api/messages/unread-count` in `server/routes/messages.js`, following `getThreads` (lines 44-70) in that file; query through `countUnread(userId)` in `server/db/messages.js`.\n Verify: `npm test -- messages.unread` passes (4 tests); `curl -H \"Authorization: Bearer $T\" localhost:3000/api/messages/unread-count` returns `{\"count\": N}`.\nB. Create `client/components/UnreadBadge.jsx`, modeled on `client/components/CartBadge.jsx`.\n Verify: `npm test -- UnreadBadge` passes; it renders the count and hides at 0.\nC. Poll the endpoint every 30s using `client/hooks/usePolling.js` (already exists, used in `Dashboard.jsx`).\n Verify: `npm test -- usePolling` passes.\nD. Mount the badge in the app layout component next to the avatar.\n Verify: manually send a reply, badge updates within 30s.\n\nNote: we chose polling over websockets because infra has no websocket gateway.",
+      "rubric": [
+        "Gives about four stars and an approval, since purpose, references and flow are strong and only checks have gaps, not a rejection or a perfect score.",
+        "Accepts the polling-over-websockets decision and does not tell the team to switch to websockets.",
+        "Notes there are no checks for a logged-out or 401 case, a network failure, or a large count in the badge.",
+        "Credits the stated purpose and success target, and the parallel A/B and A→C→D flow, as strengths.",
+        "Says task D's manual check lacks exact steps or an expected observable beyond \"updates within 30s\", and names it as the weakest check.",
+        "Covers all four aspects and states a final star rating with a clear approve or reject verdict."
+      ],
+      "why_skill_matters": "A strong plan with real strengths and a few gaps in edge-case and manual verification. The polling note tempts a design critique. It makes rating consistency, accepting the approach, missing edge-case checks and recognizing good flow matter."
+    },
+    {
+      "id": "plan-review-rules-8",
+      "title": "Migration plan with circular references",
+      "target_section": "1. CLARITY",
+      "prompt": "need to ship the users table migration friday. here's the plan, lgtm? just want a yes/no from you\n\n**Migrate users table to new schema**\n1. Write the migration script using the standard pattern. For the field mapping see task 3.\n2. Backfill old rows appropriately.\n3. Define the field mapping — see task 1.\n4. Handle edge cases and rollback.\n5. Run in prod once it looks good.\n\ncontext: we've done migrations before, the new schema is in the wiki.",
+      "rubric": [
+        "Flags \"the standard pattern\", \"appropriately\" and \"handle edge cases\" as undefined wording and asks which pattern, what rule for backfill, and which edge cases.",
+        "Points out that tasks 1 and 3 refer to each other, so there is no workable starting point or order, and notes the missing critical path.",
+        "Says \"once it looks good\" in task 5 is not a pass/fail check and asks for exact validation steps, such as row counts or a verification query.",
+        "Notes that no task names the script location, table or schema doc (only \"the wiki\"), and asks for specific references.",
+        "Gives one or two stars and rejects, consistent with nearly every aspect failing, rather than a yes.",
+        "Gives specific fixes for each blocking issue and separates must-fix items from optional ones.",
+        "Covers all four aspects and states the final star rating and a clear approve or reject decision."
+      ],
+      "why_skill_matters": "A terse plan with undefined terms, a loop between two tasks, no checks and no references, with a user pushing for a quick yes. It makes vague wording, circular dependence, concrete checks, pointers, rating and fix instructions matter."
+    }
+  ]
+}
