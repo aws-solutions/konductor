@@ -152,9 +152,9 @@ test('a counted plant suite needs the pinned Kiro CLI, the Cedar files and an ou
   const r = rig();
   try {
     const kiroBin = makeFakePlantKiro(path.join(r.root, 'bin'), { dir: r.probe });
-    const counted = (rr, versionOfBin = () => 'kiro-cli 9.9.9') => () => preparePlantSuite({
+    const counted = (rr, versionOfBin = () => 'kiro-cli 9.9.9', mode = 'none') => () => preparePlantSuite({
       opts: { 'plant-release': rr.release.dir, 'plant-release-sha256': rr.release.sha256 }, arms: [resolveArm('plant-policy', rr.repo)], tasks: [rr.tasks.get(TASK_ID)],
-      parallel: 1, outDir: rr.out, ctx: { scratchDir: rr.scratch, config: CONFIG, isolation: { mode: 'none' }, kiroBin }, repo: rr.repo, keys: rr.release.keys, home: rr.home, versionOfBin,
+      parallel: 1, outDir: rr.out, ctx: { scratchDir: rr.scratch, config: CONFIG, isolation: { mode }, kiroBin }, repo: rr.repo, keys: rr.release.keys, home: rr.home, versionOfBin,
     });
     assert.throws(counted(r), /versions.kiroCli/);
     const sha256 = crypto.createHash('sha256').update(fs.readFileSync(kiroBin)).digest('hex');
@@ -174,7 +174,12 @@ test('a counted plant suite needs the pinned Kiro CLI, the Cedar files and an ou
     } finally { v3.cleanup(); }
     const cedar = rig({ manifest: { versions: pin }, files: { 'policy/plant.cedar': 'stub', 'policy/plant.cedarschema': 'stub', 'sensor-limits.json': '{}' } });
     try {
-      assert.throws(counted(cedar), /same filesystem as scratch/);
+      assert.throws(counted(cedar, undefined, 'unshare'), /same filesystem as scratch/);
+      // --isolate none --allow-unisolated: the pilot. Still counted by its pin, never comparable, and no own-filesystem rule.
+      const pilot = counted(cedar)();
+      assert.equal(pilot.counted, true);
+      assert.equal(pilot.comparable, false);
+      pilot.dispose();
     } finally { cedar.cleanup(); }
   } finally { r.cleanup(); }
 });

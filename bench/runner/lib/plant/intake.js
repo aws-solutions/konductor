@@ -175,7 +175,7 @@ function isCountedSuite(opts, kiroBin, manifest, versionOfBin) {
   return versionOfBin(kiroBin) === pinned;
 }
 
-/** Throws ReleaseRefused when the out dir shares a filesystem with scratch or home (NFR-12, counted suites). */
+/** Throws ReleaseRefused when the out dir shares a filesystem with scratch or home (NFR-12, counted suites with isolation). */
 function checkOutFilesystem(outDir, others) {
   const dev = fs.statSync(outDir).dev;
   for (const [name, dir] of Object.entries(others)) {
@@ -243,7 +243,9 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
       checkKiroPin(ctx.kiroBin, release.manifest, versionOfBin, ctx.config.agentEngine);
       const missing = POLICY_FILES.filter((rel) => !release.sha256Of(rel));
       if (missing.length) throw new ReleaseRefused(`a counted plant suite needs the Cedar files; the release lacks ${missing.join(', ')}`);
-      checkOutFilesystem(outDir, { scratch: ctx.scratchDir, home });
+      // The own-filesystem rule guards a comparable suite. A suite run with --isolate none --allow-unisolated is never comparable
+      // and the report warns on it, so it may write its out dir anywhere outside scratch, home and the repo (the pilot).
+      if (isComparableMode(ctx.isolation.mode)) checkOutFilesystem(outDir, { scratch: ctx.scratchDir, home });
     }
     if (!release.sha256Of(REFUSAL_RULE)) throw new ReleaseRefused(`the release lacks ${REFUSAL_RULE}`);
     return {
