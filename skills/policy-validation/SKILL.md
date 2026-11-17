@@ -56,7 +56,7 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 - A trail that is single-region or skips global service events
 - CloudTrail logs not encrypted or without log file validation
 - KMS key rotation off for sensitive data where nothing requires it
-- `service:*` on a low-risk service (`cloudwatch:*`, `xray:*`) without a documented justification
+- Any other `service:*`, such as `cloudwatch:*`, `xray:*`, `sqs:*`, `sns:*` or `ssm:*`, without a documented justification
 - Cross-account trust that has a condition key but whose intent is unverified
 - Named actions beyond what the role needs, with no wildcard
 - Key administrators who can also decrypt

@@ -389,10 +389,10 @@ Check EVERY IAM policy statement for:
    - Search for: `"Resource": "arn:aws:*:*:*:*"` patterns
    - Exception: Only acceptable for service-level actions (e.g., `sts:GetCallerIdentity`)
 
-2. **Wildcard Actions** - CRITICAL, except `service:*` on a low-risk service
+2. **Wildcard Actions** - CRITICAL for `*` and the services named below, IMPORTANT for any other `service:*`
    - Search for: `"Action": "*"` or `actions: ["*"]`
    - Search for: `"Action": "service:*"` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, which includes `lambda:UpdateFunctionCode`, `iam:*`, `sts:*`), or `ec2:*`, which covers EBS snapshots, security-group ingress and instance userData
-   - `service:*` on a low-risk service (`cloudwatch:*`, `xray:*`) is IMPORTANT
+   - Any other `service:*`, such as `cloudwatch:*`, `xray:*`, `sqs:*`, `sns:*` or `ssm:*`, is IMPORTANT
 
 3. **Overly Permissive Actions** - Flag as IMPORTANT
    - A list of named actions broader than the code needs, with no wildcard. For example, a read-only Lambda granted `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject`
@@ -1172,7 +1172,7 @@ Provide thorough, actionable feedback that improves infrastructure quality and e
 
 - CloudWatch alarms not defined for key metrics
 - No backup configuration for stateful resources
-- IAM `service:*` on a low-risk service, such as `cloudwatch:*` or `xray:*`
+- IAM `service:*` on any other service, such as `cloudwatch:*`, `xray:*`, `sqs:*`, `sns:*` or `ssm:*`
 - Cross-account trust that has a condition key but whose intent is unverified
 - Lambda functions without reserved concurrency limits, DLQ or tracing
 - Low-cardinality partition keys that create hot partitions
