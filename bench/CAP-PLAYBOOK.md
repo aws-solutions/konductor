@@ -20,6 +20,7 @@ evaluate a skill, and whether a skill should be pruned. Everything marked free s
 | `report --verdict platform` | Is the platform worth keeping against vanilla? One page, one call per arm. | free |
 | `cap skill-plan --base REF --runs DIR` | Which skills get a lift study, on which tasks, with how many runs and at what estimated cost? | free |
 | `cap skill-study --study DIR`, then `cap decide --study DIR` | For each skill: delete, prune (which sections, which lines, move or remove) or keep? | tens to hundreds of credits per skill |
+| `cap keep-prune --skill NAME --run stub-ID` | One keep-or-prune record per skill: a quick and a deep verdict side by side, under Michael Lin's dated rules. Phase A runs on the stub provider only. | free |
 
 The prune report is a recommendation, never a deletion. A person decides, with the checklist at the end.
 
@@ -166,6 +167,16 @@ A skill that helps when forced but rarely loads on its own is a discovery proble
 The forced readings are their own Bonferroni family over the skills in the forced wave, so adding them does not widen any wave 1 interval. A failed forced wave is reported and retried on resume; it does not stop the study.
 
 What it cannot show: a section moved to references may never be opened (the move arm counts the runs that opened the file; zero means the move behaved like a removal); the quality score covers the study tasks only; kiro-cli loads skills by name through the skills server, so a changed description or index entry changes whether the skill loads at all, which this study holds fixed. Small effects need more runs than a pilot has: the earlier delegation-protocol lift run was unmeasurable at n=3 for this reason.
+
+## Keep or prune: one record, two depths (phase A, stub only)
+
+`cap keep-prune` is the one keep-or-prune tool. It runs a skill at a quick depth (one answer per task and arm, over the skill's frozen baseline) and a deep depth (replicated answers with an A/A repeat), and writes one record with both verdicts side by side. Both depths use the same judges, controls and rules. The rules are Michael Lin's, copied with credit: labels (2026-11-10), suggested verdicts (2026-11-16), NO DATA under 12 of every 16 tasks or with a stale judgment, and the control pass rules. One rule is ours: the deep depth is NO DATA inside the A/A spread (2026-11-17).
+
+1. `node bench/runner/bench.js cap keep-prune --skill plan-review --run stub-pilot --out DIR` (free). Phase A has only the stub provider, so the record is a test of the pipeline, never a measurement.
+2. Read `DIR/stub-pilot/records/plan-review.md`. Check the controls row first: no verdict is read unless the convention control and the dose ladder both passed.
+3. When `agree` is false, the two depths disagree. Read both; do not average them. A person who is not the skill's author fills `signoff`.
+
+`cap decide` writes the same record format beside each call (`decisions/records/`). Its deep block stays NO DATA until the study's runs carry the A and B readings (phase B). Until then the call itself is in `capCall`, for a person to read, and the 0.10 margin is not used for a keep-or-prune verdict.
 
 ## Pruning pull request checklist
 

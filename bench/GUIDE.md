@@ -133,6 +133,7 @@ These call no model. The marks in the table say what each command costs.
 | Do all arms build and install? | add `--prepare-only` to any `run` command | free, builds arms, starts no agent |
 | What will judging cost? | `node bench/runner/bench.js judge --run DIR --plan` | free, calls no model |
 | Is the code healthy? | `node --test "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js"` | free |
+| Does the keep-or-prune pipeline work end to end? | `node bench/runner/bench.js cap keep-prune --skill plan-review --run stub-pilot --out /tmp/kp` | free, stub provider only |
 
 `pr-plan` prints the next commands in order, with an estimate:
 

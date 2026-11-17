@@ -64,6 +64,7 @@ const FLAGS = {
   'cap review-import': ['ratings', 'key', 'run', 'rater', 'out', 'save', 'force', 'kappa-min', 'agreement-min', 'spearman-min', 'json'],
   'cap criteria': ['study', 'runs', 'runs-glob', 'baseline', 'aa', 'out', 'json', 'margin', 'saturated', 'judge-disagree', 'replicate-sd', 'min-runs', 'no-adjust', 'bench-dir', 'extra-tasks'],
   'cap forced-prefix': ['cap', 'harness', 'base', 'out', 'repo-root', 'bench-dir'],
+  'cap keep-prune': ['skill', 'run', 'out', 'depth', 'provider', 'subject-model', 'judges', 'replicates', 'rejudge', 'repo-root', 'json'],
   'cap plan': [
     'mode', 'cap', 'base', 'reps', 'tasks', 'budget-credits', 'vanilla', 'allow-regex', 'force', 'candidate', 'acting-agent', 'agent-engine', 'scratch', 'seed',
     'repo-root', 'bench-dir', 'extra-tasks', 'json', 'profile',
@@ -71,12 +72,12 @@ const FLAGS = {
 };
 
 // Commands whose first word selects the sub-command and therefore the flag table.
-const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix'] };
+const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix', 'keep-prune'] };
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
   'cargo-online', 'allow-partial', 'allow-unisolated', 'gate-strict', 'allow-stale-pack', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
-  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes', 'apply', 'remove-originals',
+  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes', 'apply', 'remove-originals', 'rejudge',
 ]);
 
 const COMMANDS = [...new Set(Object.keys(FLAGS).map((k) => k.split(' ')[0]))];

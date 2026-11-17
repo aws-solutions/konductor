@@ -12,7 +12,9 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
+const crypto = require('node:crypto');
+const { blockFromDecision, buildRecord, writeRecord } = require('./kprecord.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { scoringOf } = require('./captasks.js');
 const { buildVariant } = require('./variant.js');
@@ -500,6 +502,22 @@ async function skillSteps({ study, studyDir, rec, step, log, dryRun, result, con
 
 // ---- decisions ----
 
+/** The sha256 of skills/<name>/SKILL.md at the study's base, or null when git cannot show it. */
+function skillShaAtBase(study, name) {
+  const r = spawnSync('git', ['-C', study.settings.repo, 'show', `${study.plan.base.commitSha ?? study.settings.base}:skills/${name}/SKILL.md`], { encoding: null });
+  return r.status === 0 ? crypto.createHash('sha256').update(r.stdout).digest('hex') : null;
+}
+
+/**
+ * Writes one keep-or-prune record per call to <outDir>/records/<skill>.json, with the call in its deep block. The block
+ * is NO DATA until the study's runs carry A and B readings (kprecord.js blockFromDecision); the call rides along.
+ */
+function writeDecisionRecords({ study, decisions, outDir, controls }) {
+  for (const d of decisions) {
+    const deep = blockFromDecision(d, { commit: study.plan.base.commitSha ?? null, runId: path.basename(outDir), model: study.settings.model ?? study.plan.model ?? null, controlsTrusted: controls.trusted, replicates: study.plan.profile?.reps ?? null });
+    writeRecord(path.join(outDir, 'records', `${d.name}.json`), buildRecord({ skill: { name: d.name, sha256: skillShaAtBase(study, d.name) }, deep }));
+  }
+}
 function decideStudy({ studyDir, outDir = null, patches = true, heldMin = null }) {
   const study = loadStudy(studyDir);
   const p = paths(studyDir);
@@ -548,6 +566,7 @@ function decideStudy({ studyDir, outDir = null, patches = true, heldMin = null }
   const meta = { base: study.plan.base.label, createdAt: new Date().toISOString(), controls, plan: { profile: study.plan.profile, model: study.plan.model, engine: study.plan.engine } };
   writeJson(path.join(out, 'decisions.json'), { ...meta, decisions });
   writeJson(path.join(out, 'evidence.json'), evidence);
+  writeDecisionRecords({ study, decisions, outDir: out, controls });
   const forcedMd = renderForced(decisions);
   fs.writeFileSync(path.join(out, 'decisions.md'), `${renderDecisions(decisions, meta)}${forcedMd.length ? `\n${forcedMd.join('\n')}\n` : ''}`);
   return { decisions, outDir: out };

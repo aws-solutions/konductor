@@ -1,0 +1,1014 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Konductor keep-or-prune record, major version 1 (cap keep-prune, cap decide). A skill record holds a quick and a deep block side by side; they are never averaged.",
+  "type": "object",
+  "required": [
+    "schema",
+    "createdAt",
+    "skill",
+    "scope",
+    "rules",
+    "baseline",
+    "quick",
+    "deep",
+    "agree",
+    "tokens",
+    "stale",
+    "signoff"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "keep-prune-record/1"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "skill": {
+      "type": "object",
+      "required": [
+        "name",
+        "sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "kind",
+        "id",
+        "lines"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "skill",
+            "section",
+            "rule",
+            "context"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "lines": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "required": [
+        "labelRulesDate",
+        "verdictRulesDate",
+        "passRulesDate",
+        "deepRulesDate",
+        "sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "labelRulesDate": {
+          "type": "string"
+        },
+        "verdictRulesDate": {
+          "type": "string"
+        },
+        "passRulesDate": {
+          "type": "string"
+        },
+        "deepRulesDate": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "required": [
+        "manifestSha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "manifestSha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "quick": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "commit",
+        "runId",
+        "provider",
+        "subject",
+        "judges",
+        "judgesRefused",
+        "unjudged",
+        "coverage",
+        "gapA",
+        "gapB",
+        "bWaiting",
+        "controls",
+        "cost",
+        "label",
+        "labelWhy",
+        "verdict",
+        "verdictWhy",
+        "action",
+        "noData"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "subject": {
+          "type": "object",
+          "required": [
+            "harness",
+            "model",
+            "family"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "harness": {
+              "enum": [
+                "one-turn",
+                "kiro-cli"
+              ]
+            },
+            "model": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "family": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "judges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "model",
+              "family"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "family": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "judgesRefused": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "model",
+              "family",
+              "why"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "family": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "why": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "unjudged": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "coverage": {
+          "type": "object",
+          "required": [
+            "tasksCounted",
+            "tasksTotal",
+            "bTasksCounted",
+            "notLoaded",
+            "setupFault",
+            "staleJudgments"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "tasksCounted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "tasksTotal": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "bTasksCounted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "notLoaded": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "setupFault": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "staleJudgments": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "gapA": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "mean",
+            "tInterval",
+            "bootstrapInterval"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "mean": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "tInterval": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "number"
+              }
+            },
+            "bootstrapInterval": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "gapB": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "mean",
+            "tInterval",
+            "bootstrapInterval"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "mean": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "tInterval": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "number"
+              }
+            },
+            "bootstrapInterval": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "bWaiting": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "controls": {
+          "type": "object",
+          "required": [
+            "passed",
+            "status",
+            "ran",
+            "results"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "passed": {
+              "type": "boolean"
+            },
+            "status": {
+              "enum": [
+                "PASS",
+                "FAIL",
+                "NONE"
+              ]
+            },
+            "ran": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "results": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "control",
+                  "status",
+                  "missing"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "control": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "enum": [
+                      "PASS",
+                      "FAIL",
+                      "NOT RUN"
+                    ]
+                  },
+                  "missing": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "cost": {
+          "type": "object",
+          "required": [
+            "usd"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "usd": {
+              "type": "number"
+            }
+          }
+        },
+        "label": {
+          "enum": [
+            "helps quality",
+            "harm",
+            "teaches conventions (human call)",
+            "no change",
+            "NO DATA"
+          ]
+        },
+        "labelWhy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verdict": {
+          "enum": [
+            "keep",
+            "lean keep",
+            "close call",
+            "lean prune",
+            "prune",
+            "no data"
+          ]
+        },
+        "verdictWhy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "action": {
+          "type": "string"
+        },
+        "noData": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "deep": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "commit",
+        "runId",
+        "provider",
+        "subject",
+        "judges",
+        "judgesRefused",
+        "unjudged",
+        "coverage",
+        "gapA",
+        "gapB",
+        "bWaiting",
+        "controls",
+        "cost",
+        "label",
+        "labelWhy",
+        "verdict",
+        "verdictWhy",
+        "action",
+        "noData",
+        "noise",
+        "hiddenChecks"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "subject": {
+          "type": "object",
+          "required": [
+            "harness",
+            "model",
+            "family"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "harness": {
+              "enum": [
+                "one-turn",
+                "kiro-cli"
+              ]
+            },
+            "model": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "family": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "judges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "model",
+              "family"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "family": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "judgesRefused": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "model",
+              "family",
+              "why"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "family": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "why": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "unjudged": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "coverage": {
+          "type": "object",
+          "required": [
+            "tasksCounted",
+            "tasksTotal",
+            "bTasksCounted",
+            "notLoaded",
+            "setupFault",
+            "staleJudgments"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "tasksCounted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "tasksTotal": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "bTasksCounted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "notLoaded": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "setupFault": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "staleJudgments": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "runsPerSide": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          }
+        },
+        "gapA": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "mean",
+            "tInterval",
+            "bootstrapInterval"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "mean": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "tInterval": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "number"
+              }
+            },
+            "bootstrapInterval": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "gapB": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "mean",
+            "tInterval",
+            "bootstrapInterval"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "mean": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "tInterval": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "number"
+              }
+            },
+            "bootstrapInterval": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "bWaiting": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "controls": {
+          "type": "object",
+          "required": [
+            "passed",
+            "status",
+            "ran",
+            "results"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "passed": {
+              "type": "boolean"
+            },
+            "status": {
+              "enum": [
+                "PASS",
+                "FAIL",
+                "NONE"
+              ]
+            },
+            "ran": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "results": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "control",
+                  "status",
+                  "missing"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "control": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "enum": [
+                      "PASS",
+                      "FAIL",
+                      "NOT RUN"
+                    ]
+                  },
+                  "missing": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "cost": {
+          "type": "object",
+          "required": [
+            "credits",
+            "usd"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "credits": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "usd": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          }
+        },
+        "label": {
+          "enum": [
+            "helps quality",
+            "harm",
+            "teaches conventions (human call)",
+            "no change",
+            "NO DATA"
+          ]
+        },
+        "labelWhy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verdict": {
+          "enum": [
+            "keep",
+            "lean keep",
+            "close call",
+            "lean prune",
+            "prune",
+            "no data"
+          ]
+        },
+        "verdictWhy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "action": {
+          "type": "string"
+        },
+        "noData": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "noise": {
+          "type": "object",
+          "required": [
+            "aaSpread",
+            "aaInterval",
+            "replicates"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "aaSpread": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "aaInterval": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "number"
+              }
+            },
+            "replicates": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          }
+        },
+        "hiddenChecks": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "with",
+            "without"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "with": {
+              "type": "number"
+            },
+            "without": {
+              "type": "number"
+            }
+          }
+        },
+        "capCall": {
+          "type": "object",
+          "required": [
+            "decision",
+            "confidence",
+            "reasons"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "decision": {
+              "enum": [
+                "DELETE",
+                "PRUNE",
+                "KEEP",
+                "NEEDS DATA"
+              ]
+            },
+            "confidence": {
+              "type": "string"
+            },
+            "reasons": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "agree": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "tokens": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "stale": {
+      "type": "object",
+      "required": [
+        "value",
+        "why"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "boolean"
+        },
+        "why": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "signoff": {
+      "type": "object",
+      "required": [
+        "by",
+        "date",
+        "decision",
+        "note"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "decision": {
+          "enum": [
+            null,
+            "keep",
+            "prune",
+            "fix",
+            "reject"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}
