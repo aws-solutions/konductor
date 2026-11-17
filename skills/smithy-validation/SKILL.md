@@ -266,8 +266,8 @@ Look for an earlier version of the model before you start: other `*.smithy` file
 
 ```bash
 smithy diff --old previous-model/ --new current-model/
-smithy diff --mode git              # compare the working tree's model against HEAD
-smithy diff --mode git --old main   # or against a branch or commit
+smithy diff --mode git --old main   # a review branch against its base
+smithy diff --mode git              # uncommitted changes against HEAD
 ```
 
 Identify and document:
