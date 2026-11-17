@@ -376,7 +376,8 @@ not per individual commit.
   `smithy diff --mode git`, `@readonly` and `@idempotent` as behavior traits, member renames as
   breaking even with `@jsonName`, and IDL 2.1 needing Smithy 1.75.0 or later. The example
   review puts `@sensitive` on a target shape, since the trait cannot apply to members, and the
-  file-organization reference repins the example to 1.75.0 and adds `$schema`.
+  file-organization reference pins every Smithy artifact no newer than the installed CLI, with
+  1.75.0 in the example, and adds `$schema`.
 - The Smithy skills say `$version: "2"` resolves to IDL 2.1 on Smithy 1.75.0 or later.
 - The Smithy skills treat `@paginated` `items` as recommended, not required, and let
   operations inherit `@paginated` settings from the service.
