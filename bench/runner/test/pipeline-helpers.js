@@ -91,6 +91,8 @@ function sandbox() {
     GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.com', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.com',
     NO_KIRO_CHECK: '1', NO_ISOLATION_CHECK: '1', NO_OPENCODE_CHECK: '1', MIN_FREE_GB: '0', MIN_FREE_GB_TMPFS: '0', MIN_MEM_GB: '0', MIN_FREE_MB: '0',
     BENCH_PROC_PATTERN: 'no-such-bench-process-pattern', AC_BENCH_PROC_PATTERN: 'no-such-bench-process-pattern', FAKE_CALLS: calls,
+    // A konductor install by anything else on the host must not fail these preflights; the check itself is tested with a marker process.
+    INSTALL_PROC_PATTERN: 'no-such-install-process-pattern',
   };
   const spawn = (script, args, env = {}, opts = {}) => spawnSync('bash', [path.join(SCRIPTS, script), ...args], { env: { ...base, ...env }, encoding: 'utf8', cwd: root, timeout: 120000, ...opts });
   const read = (f) => { try { return fs.readFileSync(f, 'utf8'); } catch { return ''; } };

@@ -53,7 +53,7 @@
 #   SMOKE_REAL_TASK, SMOKE_AUTON_TASK   smoke-test tasks                [first real and first auton task of TASKS_FILE]
 #   PROBE_BENCH   bench dir holding a two-turn probe task for the resume check; PROBE_SUITE [autonomy], PROBE_TASK [probe-hello]. Unset: the probe is skipped.
 #   MIN_FREE_GB [20], MIN_FREE_GB_TMPFS [10], MIN_MEM_GB [8], SCRATCH_PARENT [/tmp, its path must not contain "bench"]
-#   Test-only: NO_KIRO_CHECK, NO_ISOLATION_CHECK, BENCH_PROC_PATTERN
+#   Test-only: NO_KIRO_CHECK, NO_ISOLATION_CHECK, BENCH_PROC_PATTERN, INSTALL_PROC_PATTERN
 #
 # ISOLATION: do NOT run `konductor install` or `konductor update` (or anything else that writes the real
 #   ~/.konductor/installs) while this runs. The runner hashes that directory before and after every run and
@@ -93,6 +93,7 @@ AUTH_DB=${AUTH_DB:-$REAL_HOME/.local/share/kiro-cli/data.sqlite3}
 KIRO=${KIRO_CLI:-kiro-cli}
 SCRATCH_PARENT=${SCRATCH_PARENT:-/tmp}
 BENCH_PROC_PATTERN=${BENCH_PROC_PATTERN:-'bench/runner/bench\.js'}
+INSTALL_PROC_PATTERN=${INSTALL_PROC_PATTERN:-'konductor[^ ]* (install|update)'}
 ARM_CACHES=${ARM_CACHES:-}
 
 EXPECT_BRANCH=${EXPECT_BRANCH:-}
@@ -304,7 +305,7 @@ preflight() {
   fi
   running=$(other_bench_running)
   [ -z "$running" ] && pf ok "no other bench run active" || pf FAIL "another bench run is active: $running"
-  pgrep -af 'konductor[^ ]* (install|update)' | grep -v pgrep >/dev/null && pf FAIL "a konductor install/update is running" || pf ok "no konductor install/update running"
+  pgrep -af "$INSTALL_PROC_PATTERN" 2>/dev/null | grep -v pgrep >/dev/null && pf FAIL "a konductor install/update is running" || pf ok "no konductor install/update running"
   if dp=$(daemon_pid) && [ "${RP_CHILD:-0}" != 1 ]; then pf FAIL "run-real-pilot is already running (pid $dp)"; else pf ok "no other run-real-pilot daemon"; fi
   node --version >/dev/null 2>&1 && pf ok "node $(node --version)" || pf FAIL "node not found"
   if [ "${NO_ISOLATION_CHECK:-0}" != 1 ]; then

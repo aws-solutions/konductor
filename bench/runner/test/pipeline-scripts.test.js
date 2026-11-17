@@ -190,6 +190,21 @@ test('run-real-pilot: the preflight does not count a pgrep that another script i
   } finally { await stopChild(other); s.done(); }
 });
 
+test('run-real-pilot: the preflight refuses while a konductor install or update runs, and sees no other install', opts, async () => {
+  const s = sandbox();
+  const m = marker('install');
+  const p = spawn('bash', ['-c', 'exec -a "$1" sleep 60', 'x', `/opt/x/${m}/konductor install --harness claude`], { stdio: 'ignore' });
+  try {
+    const run = (env) => spawnSync('bash', [path.join(SCRIPTS, 'run-real-pilot.sh'), '--dry-run'], { env: { ...s.base, ...pilotEnv(s), ...env }, encoding: 'utf8', cwd: s.root, timeout: 60000 });
+    const hit = run({ INSTALL_PROC_PATTERN: m });
+    assert.notEqual(hit.status, 0);
+    assert.match(out(hit), /preflight FAIL: a konductor install\/update is running/);
+    const clear = run({});
+    assert.match(out(clear), /preflight ok: {3}no konductor install\/update running/);
+    assert.equal(clear.status, 0, out(clear));
+  } finally { await stopChild(p); s.done(); }
+});
+
 test('run-real-pilot: the preflight still refuses while a real process matches the bench pattern', opts, async () => {
   const s = sandbox();
   const m = marker('real');
