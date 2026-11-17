@@ -509,8 +509,14 @@ async function cmdRun(opts, deps = {}) {
       fs.mkdirSync(path.join(outDir, 'variants'), { recursive: true });
       for (const v of variants) fs.writeFileSync(path.join(outDir, 'variants', `${v.variantId}.json`), JSON.stringify(v, null, 2) + '\n');
     }
+    // The Strands launcher env is the whole env, so it is described as one: every key set, nothing passed through.
+    const strandsSetup = () => {
+      const placeholder = stCreds ? { awsCreds: { current: () => Object.fromEntries(['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN'].map((k) => [k, '<set>'])) } } : null;
+      const set = st.env({ home: '<run-home>', tmpdir: '<run>/tmp', ctx: placeholder });
+      return { keys: Object.keys(set).sort(), set, unset: [] };
+    };
     const envFor = (konductor) => (isSt
-      ? st.env({ home: '<run-home>', tmpdir: '<run>/tmp' })
+      ? strandsSetup()
       : isCc
       ? cc.envSetup({ arm: { vanilla: !konductor }, ctx, home: '<run-home>', tmpdir: '<run>/tmp', baseEnv: { ...process.env, ...Object.fromEntries(cc.CREDENTIAL_VARS.map((k) => [k, '<set>'])) } })
       : isOc
