@@ -338,6 +338,9 @@ async function cmdRun(opts, deps = {}) {
     if (isCc) {
       const flagValue = (name) => (opts[name] && opts[name] !== true ? opts[name] : null);
       ctx.claude = cc.resolveClaude({ binOverride: flagValue('claude-bin') ?? undefined, toolsDir: flagValue('claude-tools-dir') ?? undefined });
+      const claudeChanged = cc.claudeChanges(readRunConfigs(outDir), ctx.claude);
+      if (claudeChanged.length && !opts['allow-claude-change']) throw new Error(cc.describeClaudeChanges(claudeChanged, ctx.claude, outDir, flagValue('claude-tools-dir')));
+      if (claudeChanged.length) log(`warning: --allow-claude-change: ${cc.describeClaudeChanges(claudeChanged, ctx.claude, outDir, flagValue('claude-tools-dir')).split('. One study')[0]}`);
       Object.assign(ctx, { region: ccRegion, runBudgetUsd, ...(ccCreds ? { awsCreds: ccCreds } : {}) });
       const credsNote = ccCreds ? `credentials from profile ${ccCreds.profile}, read again before a run when they expire within 15 minutes` : `credentials from the environment (${cc.credentialNames().join(', ')})`;
       log(`claude ${ctx.claude.version} (${ctx.claude.bin}), sha256 ${ctx.claude.sha256.slice(0, 12)}, model ${config.model} (canonical ${config.canonicalModel}), region ${ccRegion}, permission mode ${cc.PERMISSION_MODE}, per-run budget $${runBudgetUsd ?? cc.DEFAULT_RUN_BUDGET_USD}, ${credsNote}`);

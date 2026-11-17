@@ -150,6 +150,44 @@ test('resolveClaude has no default location: it needs a binary or a tools direct
   }
 });
 
+test('claudeChanges finds an earlier command of the same --out that used another claude binary', () => {
+  const now = { bin: '/t/2.0.0/claude', version: '2.0.0', sha256: 'b'.repeat(64) };
+  const configs = [
+    { startedAt: '2030-01-01T00:00:00Z', claudeCode: { version: '1.0.0', binarySha256: 'a'.repeat(64) } },
+    { startedAt: '2030-01-02T00:00:00Z', claudeCode: { version: '1.0.0', binarySha256: 'a'.repeat(64) } },
+    { startedAt: '2030-01-03T00:00:00Z', claudeCode: { version: '2.0.0', binarySha256: 'b'.repeat(64) } },
+    { startedAt: '2030-01-04T00:00:00Z' },
+  ];
+  const changes = cc.claudeChanges(configs, now);
+  assert.deepEqual(changes, [{ version: '1.0.0', binarySha256: 'a'.repeat(64), startedAt: '2030-01-01T00:00:00Z' }]);
+  const msg = cc.describeClaudeChanges(changes, now, '/out');
+  assert.match(msg, /claude 1\.0\.0, sha256 a{12}.*resolved claude 2\.0\.0/);
+  assert.doesNotMatch(msg, /--claude-bin/, 'no tools directory, so no path to offer');
+  assert.match(msg, /--allow-claude-change/);
+  assert.deepEqual(cc.claudeChanges(configs.slice(2), now), []);
+});
+
+test('run refuses a --claude-tools-dir that now resolves a newer claude than the study recorded, unless --allow-claude-change', async () => {
+  const { cmdRun } = require('../lib/run-cmd.js');
+  const root = tmp();
+  try {
+    const bench = makeBench(path.join(root, 'bench'));
+    const tools = path.join(root, 'tools');
+    const probe = path.join(root, 'probe');
+    fs.mkdirSync(probe);
+    const oldBin = makeFakeClaude(tools, { dir: probe, streamFile: path.join(FX, 'vanilla-success.stream.jsonl') }, '1.0.0');
+    const oldSha = cc.resolveClaude({ binOverride: oldBin }).sha256;
+    makeFakeClaude(tools, { dir: probe, streamFile: path.join(FX, 'vanilla-success.stream.jsonl'), version: 'upgraded' }, '1.0.1');
+    fs.appendFileSync(path.join(tools, '1.0.1', 'claude'), 'x');
+    const out = path.join(root, 'out');
+    write(path.join(out, 'run-config.json'), JSON.stringify({ startedAt: '2030-01-01T00:00:00Z', claudeCode: { version: '1.0.0', binarySha256: oldSha } }));
+    await withEnv(CREDS, () => assert.rejects(
+      cmdRun({ suite: 'lite', arms: 'cc-vanilla', 'bench-dir': bench, 'repo-root': root, out, cache: path.join(root, 'cache'), 'claude-tools-dir': tools }),
+      (e) => { assert.match(e.message, /One study must use one claude binary/); assert.ok(e.message.includes(`--claude-bin ${oldBin}`), e.message); return true; },
+    ));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('versionWarning is silent for the validated version and names both versions otherwise', () => {
   assert.equal(cc.versionWarning(cc.VALIDATED_VERSION), null);
   assert.match(cc.versionWarning('2.1.318.1638'), /claude 2\.1\.318\.1638 differs from 2\.1\.316\.1544/);

@@ -108,6 +108,30 @@ function resolveClaude({ binOverride = process.env.BENCH_CLAUDE_BIN || null, too
   return { bin, version, sha256: sandbox.sha256File(bin), supportsHookEvents: binaryContains(bin, '--include-hook-events') };
 }
 
+/**
+ * Claude Code binaries recorded by earlier commands into the same --out that differ from `claude`. A tools directory
+ * is upgraded in place and --claude-tools-dir takes its newest version, so without this one study could mix versions.
+ */
+function claudeChanges(configs, claude) {
+  const out = [];
+  for (const c of configs) {
+    const rec = c?.claudeCode;
+    if (!rec?.binarySha256 || rec.binarySha256 === claude.sha256 || out.some((o) => o.binarySha256 === rec.binarySha256)) continue;
+    out.push({ version: rec.version ?? null, binarySha256: rec.binarySha256, startedAt: c.startedAt ?? null });
+  }
+  return out;
+}
+
+/**
+ * The error for `changes`, naming both binaries and the ways out. run-config holds no path under HOME, so the path to
+ * pin is rebuilt from `toolsDir` and the recorded version, and offered only when that binary is still there.
+ */
+function describeClaudeChanges(changes, claude, outDir, toolsDir = null) {
+  const was = changes.map((c) => `claude ${c.version ?? 'unknown'}, sha256 ${c.binarySha256.slice(0, 12)}${c.startedAt ? `, recorded ${c.startedAt}` : ''}`).join('; ');
+  const pin = toolsDir ? changes.map((c) => c.version && /^\d+(\.\d+)+$/.test(c.version) && path.join(toolsDir, c.version, 'claude')).find((f) => f && executable(f)) : null;
+  return `${outDir} holds runs of ${was}; this command resolved claude ${claude.version} (${claude.bin}), sha256 ${claude.sha256.slice(0, 12)}. One study must use one claude binary: ${pin ? `pass --claude-bin ${pin}, ` : ''}use a new --out, or pass --allow-claude-change to mix them anyway`;
+}
+
 /** A warning line when `version` is not the one the harness was validated against, else null. */
 const versionWarning = (version) => (version === VALIDATED_VERSION ? null : `claude ${version} differs from ${VALIDATED_VERSION}, the version this harness was validated against; stream fields or flags may differ`);
 
@@ -424,5 +448,5 @@ module.exports = {
   id, meta, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
-  resolveClaude, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
+  resolveClaude, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
 };
