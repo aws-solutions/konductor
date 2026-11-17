@@ -78,8 +78,10 @@ const USAGE = `Usage:
        opencode arms (oc-vanilla, oc-v1.2.0, oc-main; one harness per run):
        --aws-creds-file FILE [--aws-profile bench] [--budget-usd X] [--opencode-bin PATH] [--rg-bin PATH]
        Claude Code arms (cc-vanilla, cc-main, cc-name=<git ref>; one harness per run; the real claude binary, never a launcher script):
-       [--budget-usd X] [--run-budget-usd X] [--aws-region us-east-1] (--claude-bin PATH | --claude-tools-dir DIR)
+       [--budget-usd X] [--run-budget-usd X] [--aws-region us-east-1] [--aws-profile NAME] (--claude-bin PATH | --claude-tools-dir DIR)
        (credentials are the AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_SESSION_TOKEN variables of the shell that starts the bench; nothing is read from a file.
+       With --aws-profile NAME the runner reads them with aws configure export-credentials --profile NAME instead, at the start and again before a run
+       when the cached keys have no expiry or expire within 15 minutes, and passes them to that run only; a study can then outlive one session's keys.
        --run-budget-usd is claude's own per-run cap, default 5. --effort, --stop-on, --max-tool-calls and --run-credit-limit do not apply)
   node bench/runner/bench.js judge --run DIR [--judges a,b] [--mode rubric,pairwise] [--baseline vanilla|ARM]
        [--concurrency N] [--budget-credits X] [--judge-cmd CMD] [--max-file-chars N] [--max-bundle-chars N]

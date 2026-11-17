@@ -38,6 +38,7 @@ const { preflightWalls, trialGatewayRows, checklistWithTrials } = require('./pla
 const { preflightStrands } = require('./plant/strands-census.js');
 const { makeIso } = require('./run-one.js');
 const { pinConflicts, describeConflicts } = require('./study-pins.js');
+const { profileCredentials } = require('./aws-creds.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -214,7 +215,9 @@ async function cmdRun(opts, deps = {}) {
     const multiTurn = tasks.filter((t) => t.autonomy).map((t) => t.id);
     if (multiTurn.length) throw new Error(`multi-turn (autonomy) tasks are not supported on the ${desc.proseName} harness yet: ${multiTurn.join(', ')}; ${desc.multiTurnNote}. Choose other tasks with --tasks`);
   }
-  if (isCc) cc.checkCredentials(process.env);
+  // Claude Code takes exported keys: from the environment, or with --aws-profile read from that profile before each run that needs fresh ones.
+  const ccCreds = isCc && opts['aws-profile'] !== undefined ? profileCredentials(opts['aws-profile'] === true ? '' : String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {}) : null;
+  if (isCc) cc.checkCredentials(ccCreds ? { ...process.env, ...ccCreds.current() } : process.env);
   const budgetCredits = opts[budgetFlag] ? Number(opts[budgetFlag]) : null;
   if (budgetCredits !== null && !(budgetCredits > 0)) throw new Error(`--${budgetFlag} must be a positive number`);
   const censoredFloor = opts['censored-floor'] ? Number(opts['censored-floor']) : isUsd ? DEFAULT_CENSORED_FLOOR_USD : DEFAULT_CENSORED_FLOOR;
@@ -334,8 +337,9 @@ async function cmdRun(opts, deps = {}) {
     if (isCc) {
       const flagValue = (name) => (opts[name] && opts[name] !== true ? opts[name] : null);
       ctx.claude = cc.resolveClaude({ binOverride: flagValue('claude-bin') ?? undefined, toolsDir: flagValue('claude-tools-dir') ?? undefined });
-      Object.assign(ctx, { region: ccRegion, runBudgetUsd });
-      log(`claude ${ctx.claude.version} (${ctx.claude.bin}), sha256 ${ctx.claude.sha256.slice(0, 12)}, model ${config.model} (canonical ${config.canonicalModel}), region ${ccRegion}, permission mode ${cc.PERMISSION_MODE}, per-run budget $${runBudgetUsd ?? cc.DEFAULT_RUN_BUDGET_USD}, credentials from the environment (${cc.credentialNames().join(', ')})`);
+      Object.assign(ctx, { region: ccRegion, runBudgetUsd, ...(ccCreds ? { awsCreds: ccCreds } : {}) });
+      const credsNote = ccCreds ? `credentials from profile ${ccCreds.profile}, read again before a run when they expire within 15 minutes` : `credentials from the environment (${cc.credentialNames().join(', ')})`;
+      log(`claude ${ctx.claude.version} (${ctx.claude.bin}), sha256 ${ctx.claude.sha256.slice(0, 12)}, model ${config.model} (canonical ${config.canonicalModel}), region ${ccRegion}, permission mode ${cc.PERMISSION_MODE}, per-run budget $${runBudgetUsd ?? cc.DEFAULT_RUN_BUDGET_USD}, ${credsNote}`);
       const versionNote = cc.versionWarning(ctx.claude.version);
       if (versionNote) log(`warning: ${versionNote}`);
       const shadow = cc.PROFILE_VARS.filter((k) => process.env[k]);

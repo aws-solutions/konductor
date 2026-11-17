@@ -9,7 +9,7 @@ This file lists what the runner calls. It is derived from the call sites in `run
 ## Terms
 
 - `arm`: one condition under test. Fields used by harnesses: `id`, `vanilla`, `agent`, `agentOverride`, `armConfig`, `prefixText`, `runtime`, `commitSha`, `contentHash`, `cacheKey`.
-- `ctx`: the run context built in `run-cmd.js`. Harness-relevant members: `config`, `cacheDir`, `repo`, `kiroBin`, `opencode`, `claude`, `rgBin`, `awsCredsFile`, `awsProfile`, `authDb`, `envKeep`, `skillInfo`.
+- `ctx`: the run context built in `run-cmd.js`. Harness-relevant members: `config`, `cacheDir`, `repo`, `kiroBin`, `opencode`, `claude`, `rgBin`, `awsCredsFile`, `awsProfile`, `awsCreds` (Claude Code with `--aws-profile`: `current()` gives the keys for the next run), `authDb`, `envKeep`, `skillInfo`.
 - `config`: `{ model, canonicalModel?, effort, agentEngine? }`, the same object as `ctx.config`.
 - `prepared`: what `prepareArm` returned for the arm, after `orchestrate.prepareAll` added `entryAgent` and `rewrittenAgents`.
 - `home`: the per-run scratch HOME. `tmpdir`: `<run>/tmp`. `outDir`: the run's output directory (holds `stream.jsonl`, `stderr.txt`, `command.txt`, `result.json`).
