@@ -431,6 +431,8 @@ fn check_claude_preload_budget(
 /// Warns when an agent's Claude Code file would list skills to load on
 /// demand while its explicit `clientConfig.claudeCli.tools` list does not
 /// grant the `Skill` tool, so the agent could not load any of them.
+/// A bare `*` grants every tool, `Skill` included, so it satisfies the
+/// check.
 fn check_claude_skill_tool_grant(agents: &[parser::ParsedAgentSpec]) -> Vec<String> {
     let mut warnings = Vec::new();
     for agent in agents {
@@ -440,7 +442,7 @@ fn check_claude_skill_tool_grant(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
         let Some(tools) = &claude_cli.tools else {
             continue;
         };
-        if tools.iter().any(|tool| tool == "Skill") {
+        if tools.iter().any(|tool| tool == "Skill" || tool == "*") {
             continue;
         }
         let preloaded = distinct_preload_names(&claude_cli.skills);
@@ -1661,6 +1663,16 @@ mod tests {
         let all_preloaded =
             agent_spec_with_claude_tools("k-preloaded", &["a"], &["a"], Some(&["Read"]));
         let warnings = check_claude_skill_tool_grant(&[granted, inherited, all_preloaded]);
+        assert!(warnings.is_empty(), "got: {warnings:?}");
+    }
+
+    #[test]
+    fn claude_skill_tool_grant_is_silent_when_a_bare_wildcard_grants_every_tool() {
+        let wildcard_only =
+            agent_spec_with_claude_tools("k-star", &["a", "b"], &["a"], Some(&["*"]));
+        let wildcard_among_others =
+            agent_spec_with_claude_tools("k-star-mixed", &["a", "b"], &["a"], Some(&["Read", "*"]));
+        let warnings = check_claude_skill_tool_grant(&[wildcard_only, wildcard_among_others]);
         assert!(warnings.is_empty(), "got: {warnings:?}");
     }
 
