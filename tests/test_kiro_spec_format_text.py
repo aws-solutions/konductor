@@ -131,9 +131,15 @@ def _check_waves(text, label):
     assert [w["id"] for w in plan.waves] == list(range(len(plan.waves))), label
 
     expected = plan.expected_waves()
-    off = {l: (expected.get(l), plan.placed.get(l)) for l in plan.leaves
-           if expected.get(l) != plan.placed.get(l)}
-    assert not off, f"{label}: leaf -> (wave the rule gives, wave listed): {off}"
+    early = {l: (expected.get(l), plan.placed.get(l)) for l in plan.leaves
+             if expected.get(l) is None or plan.placed[l] < expected[l]}
+    assert not early, f"{label}: leaf -> (earliest wave the rule gives, wave listed): {early}"
+
+    for wave in plan.waves:
+        checkpoints = [t for t in wave["tasks"] if plan.is_checkpoint(t)]
+        assert not checkpoints or len(wave["tasks"]) == 1, (
+            f"{label}: checkpoint {checkpoints} shares wave {wave['id']}: {wave['tasks']}"
+        )
 
     for leaf in plan.leaves:
         if not plan.is_checkpoint(leaf):
@@ -157,7 +163,7 @@ def _requirement_criteria(text):
     return counts
 
 
-def test_task_skill_example_places_every_leaf_in_the_wave_the_rule_gives_it():
+def test_task_skill_example_places_every_leaf_no_earlier_than_the_rule_and_checkpoints_alone():
     _check_waves(_task_skill_example(), "task skill example")
 
 
@@ -185,7 +191,7 @@ def test_task_skill_marks_optional_tasks_and_checkpoints():
 
 
 @pytest.mark.parametrize("name", GENERATED_EXAMPLES)
-def test_generated_example_places_every_leaf_in_the_wave_the_rule_gives_it(name):
+def test_generated_example_places_every_leaf_no_earlier_than_the_rule_and_checkpoints_alone(name):
     spec = _generated_spec(name)
     if spec is None:
         pytest.skip(f"no generated {name} spec: set KIRO_EXAMPLE_SPECS to a directory holding one")

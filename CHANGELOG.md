@@ -350,7 +350,8 @@ not per individual commit.
     statements, each with the requirements it validates.
   - `tasks.md` marks optional test tasks with `- [ ]*`, adds checkpoint tasks, names the
     property each property test checks, and ends with a Task Dependency Graph (a flowchart and
-    a JSON list of waves), which Kiro's spec format check requires.
+    a JSON list of waves, with each checkpoint alone in its wave and same-file writes in
+    separate waves), which Kiro's spec format check requires.
   - The SOP takes `spec_type` (`feature` or `bugfix`) and `workflow` (`requirements-first` or
     `design-first`), and writes `.config.kiro`. A bugfix spec writes `bugfix.md` with Current,
     Expected and Unchanged Behavior sections from a `bug_report_path`. Run on its own on Kiro,

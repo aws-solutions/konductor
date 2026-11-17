@@ -89,8 +89,9 @@ flowchart TD
     {"id": 0, "tasks": ["1"]},
     {"id": 1, "tasks": ["2.1"]},
     {"id": 2, "tasks": ["2.2", "4.1"]},
-    {"id": 3, "tasks": ["3", "4.2"]},
-    {"id": 4, "tasks": ["5"]}
+    {"id": 3, "tasks": ["3"]},
+    {"id": 4, "tasks": ["4.2"]},
+    {"id": 5, "tasks": ["5"]}
   ]
 }
 ```
@@ -145,6 +146,8 @@ Wave rules:
 - A checkpoint takes the later of the wave that rule gives it and one past the last optional leaf of the tasks it checks, so each of those optional leaves is in an earlier wave and the checkpoint checks whichever of them ran
 - Because a leaf waits on a checkpoint's required predecessors rather than on the checkpoint's own wave, a stage's first sub-task can share a wave with the previous stage's optional tests, or run before the checkpoint between the two stages. Kiro's waves do the same
 - Tasks in one wave are independent; Kiro runs each wave's tasks concurrently
+- Kiro's own task generator adds two rules, which this skill follows: tasks that write the same file go in different waves, and tests come after the code they test. So a checkpoint, which runs the tests, is alone in its wave, and two leaves that write the same file never share a wave
+- To satisfy those two rules, move a leaf to a later wave than the one the rule gives it, never an earlier one, and place every later leaf, checkpoints included, from the waves the earlier leaves actually got. In the example the rule puts `4.2` in wave 3 beside checkpoint `3`, so `4.2` moves to wave 4 and final checkpoint `5` to wave 5
 - Kiro tolerates a looser placement in its own tasks.md: it puts a task one wave after the single piece of code that task exercises, rather than after every required predecessor the rule names, and it runs that file without complaint. Emit the stricter form above
 
 ### Bugfix specs
@@ -174,7 +177,7 @@ When the spec has `bugfix.md` instead of `requirements.md`, follow the bugfix ta
 4. Map each acceptance criterion to implementation tasks, and each correctness property to one test task
 5. Order tasks by dependency (foundation → core → polish), add checkpoints, then build the dependency graph and the waves from that order
 6. Write tasks.md to `{spec_dir}/tasks.md`
-7. Check it: every cited criterion and property exists, every property has a test task, and every leaf task id appears in exactly one wave, the wave the wave rule gives it. `grep -n '^ *- \[ \]' tasks.md` lists the tasks to compare with the waves
+7. Check it: every cited criterion and property exists, every property has a test task, and every leaf task id appears in exactly one wave, no earlier than the wave the wave rule gives it, with each checkpoint alone in its wave and no two leaves that write the same file in one wave. `grep -n '^ *- \[ \]' tasks.md` lists the tasks to compare with the waves
 8. Present to user for approval. If user requests changes, revise and re-present (max 2 cycles). If the user said not to ask questions, skip approval: state your assumptions in the final message and finish.
 
 ## Quality Gate
@@ -182,7 +185,7 @@ When the spec has `bugfix.md` instead of `requirements.md`, follow the bugfix ta
 **CRITICAL (must fix):**
 
 - Tasks have circular dependencies
-- In a feature spec, `## Task Dependency Graph` missing, or its `waves` JSON is invalid, omits a leaf task, lists one twice, lists a parent task, or puts a leaf in a wave other than the one the wave rule gives it
+- In a feature spec, `## Task Dependency Graph` missing, or its `waves` JSON is invalid, omits a leaf task, lists one twice, lists a parent task, puts a leaf earlier than the wave the wave rule gives it, or puts a checkpoint in a wave with another task
 - A task missing the requirement reference its kind calls for: an implementation, example or unit test task without its `_Requirements: X.Y_` line, a property-based test task without its `**Validates: Requirements N.M**` line, or a bugfix verify sub-task without its `_Requirements: X.Y_` line. Checkpoints are exempt
 - A reference to an acceptance criterion or property that does not exist
 - tasks.md written anywhere other than `{spec_dir}`
