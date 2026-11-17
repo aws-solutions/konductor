@@ -17,7 +17,9 @@
 //
 // Runs come from one of two places. `scoreRun` reads the results of a finished bench run (bench.js run over the tasks
 // `writeTasks` makes). Nothing here starts a paid run. `runStub` writes a stub kiro-cli stream per request and repeat,
-// then reads it back through the same code, so the whole path runs with no model and no spend.
+// then reads it back through the same code, so the whole path runs with no model and no spend. Its behaviour says
+// which skill each run loads: always this skill, never, the right answer (an oracle), or a fake model that picks a
+// skill from the request and the skill index (fakepicker.js), which can pick the wrong skill.
 
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -65,17 +67,18 @@ function readStream(text) {
 }
 
 /**
- * A stub kiro-cli stream for one request: a get_skill call for `name` that returns its text when `load` is true, an
- * answer line either way. `extra` adds calls: 'twice' loads the skill a second time, 'empty' makes the load return no
- * text (a failed load, not a load).
+ * A stub kiro-cli stream for one request: a get_skill call that returns the skill's text, then an answer line. `load`
+ * is true (load `name`), a skill name (load that skill instead), or false or null (load nothing). `extra` adds calls:
+ * 'twice' loads the skill a second time, 'empty' makes the load return no text (a failed load, not a load).
  */
-function stubStream({ name, load, extra = null }) {
+function stubStream({ name: subject, load, extra = null }) {
+  const name = load === true ? subject : typeof load === 'string' ? load : null;
   const sid = 'stub-session';
   const call = (id, skill) => ({ type: 'sessionUpdate', data: { sessionId: sid, update: { sessionUpdate: 'tool_call', toolCallId: id, rawInput: { name: skill }, _meta: { kiro: { toolName: 'get_skill', mcpServerName: 'konductor-skills' } } } } });
   const body = (skill, text) => ({ items: [{ Json: { content: [{ type: 'text', text: JSON.stringify({ name: skill, content: text, path: `/s/${skill}/SKILL.md`, size_bytes: text.length }) }], isError: false } }] });
   const done = (id, rawOutput) => ({ type: 'sessionUpdate', data: { update: { sessionUpdate: 'tool_call_update', toolCallId: id, status: 'completed', rawOutput } } });
   const events = [{ type: 'runStarted', data: { payloadSchema: 'acp', acpProtocolVersion: 1, engine: 'v2' } }];
-  if (load) {
+  if (name) {
     const text = extra === 'empty' ? '' : `# ${name}\nstub skill text\n`;
     events.push(call('c1', name), done('c1', extra === 'empty' ? { items: [] } : body(name, text)));
     if (extra === 'twice') events.push(call('c2', name), done('c2', body(name, text)));
@@ -92,7 +95,8 @@ function stubStream({ name, load, extra = null }) {
  * @param {string} o.runId must be stub or stub-<name>
  * @param {string} o.dir where the streams go
  * @param {number} [o.reps] repeats per request
- * @param {string|function} [o.behaviour] always, never, correct, or (request, rep) => boolean
+ * @param {string|function} [o.behaviour] always, never, correct, or (request, rep) => true, false, or the name of the
+ *   skill that run loads (a fake model's pick)
  * @param {string|null} [o.extra] passed to stubStream for every loading run ('twice' or 'empty')
  * @returns {object[]} result.json-shaped rows: { status, triggerQuery, skillsLoaded, capInvocation, flags }
  */

@@ -123,3 +123,35 @@ test('the selection tasks for a later approved run carry each request and its ex
   const task = JSON.parse(fs.readFileSync(path.join(dir, `${made[0].taskId}.json`), 'utf8'));
   assert.deepEqual([task.prompt, task.triggerQuery.expect, task.triggerQuery.capId], [SET.requests[0].prompt, 'load', `skill:${PILOT}`]);
 });
+
+test('the fake model picks the skill whose description shares the most words, or none', () => {
+  const { createFakePicker, wordsOf } = require('../../cap/fakepicker.js');
+  const pick = createFakePicker({ catalog: [{ name: 'b-poems', description: 'Write short poems and haiku for the team channel.' }, { name: 'a-plans', description: 'Review work plans before execution.' }] });
+  assert.equal(pick('Review this work plan before we start.'), 'a-plans');
+  assert.equal(pick('A haiku for the team channel, please.'), 'b-poems');
+  assert.equal(pick('Rename the variable total.'), null, 'one shared word or none is no pick');
+  assert.equal(pick('Review the haiku plan for the team.'), 'a-plans', 'a tie goes to the name first in order');
+  assert.deepEqual([...wordsOf('Plans, PLANS and a cat')].sort(), ['plan']);
+});
+
+test('the fake model end to end: a wrong pick shows as a miss and as the skill picked instead', (t) => {
+  const tree = frozenTree(t);
+  const decoy = path.join(tree.repo, 'skills', 'decoy-notes');
+  fs.mkdirSync(decoy);
+  fs.writeFileSync(path.join(decoy, 'SKILL.md'), '---\nname: decoy-notes\ndescription: Write short poems and haiku for the team channel about rain.\n---\n# Decoy notes\n');
+  const requests = [
+    { id: 'load-1', prompt: 'Review the work plan in PLAN.md before execution starts.', expect: 'load' },
+    { id: 'load-2', prompt: 'Critical review of this implementation plan and task breakdown, please.', expect: 'load' },
+    { id: 'load-3', prompt: 'Write the plan for the team channel as a haiku.', expect: 'load' },
+    { id: 'none-1', prompt: 'Rename the variable total to grandTotal in src/cart.js.', expect: 'none' },
+    { id: 'none-2', prompt: 'A haiku about autumn rain for the team channel.', expect: 'none' },
+    { id: 'none-3', prompt: 'Give a star rating and a verdict for this restaurant review.', expect: 'none' },
+  ];
+  const draftFile = path.join(tree.root, 'fake-set.json');
+  fs.writeFileSync(draftFile, JSON.stringify({ format_version: 1, skill: PILOT, requests }));
+  const r = runSelect({ name: PILOT, repo: tree.repo, outDir: tree.out, runId: 'stub-fake', baselinesDir: tree.baselinesDir, requestsFile: draftFile, behaviour: 'fake' });
+  const { tp, fp, fn, tn, confusionCounts } = r.scored.score;
+  assert.deepEqual({ tp, fp, fn, tn }, { tp: 2, fp: 1, fn: 1, tn: 2 });
+  assert.deepEqual([r.result.triggerPrecision, r.result.triggerRecall], [2 / 3, 2 / 3]);
+  assert.deepEqual(confusionCounts, { 'decoy-notes': 3 }, 'load-3 went to the decoy in all three repeats');
+});

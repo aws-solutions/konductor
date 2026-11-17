@@ -3,7 +3,8 @@
 
 // `bench.js cap select`: the selection test of one skill (selection.js). It writes one selection result, the file
 // `cap keep-prune --selection FILE` reads to open the whole-skill gate. Three ways in, none of them paid:
-//   --run stub-ID     the stub: a stub stream per request and repeat, read back with the runner's stream code
+//   --run stub-ID     the stub: a stub stream per request and repeat, read back with the runner's stream code; with
+//                     --stub-behaviour fake, a fake model picks a skill from each request and the tree's skill index
 //   --from-run DIR    scores a finished bench run of the selection tasks (results already paid for and approved)
 //   --write-tasks DIR writes the selection tasks for a later run; running them is a paid run the owner approves first
 
@@ -15,6 +16,7 @@ const { loadBaseline, BASELINES_DIR } = require('./frozen.js');
 const { loadChecked } = require('./baselineformats.js');
 const { assertSkillSubject } = require('./subjectunit.js');
 const sel = require('./selection.js');
+const { catalogOf, createFakePicker } = require('./fakepicker.js');
 
 /**
  * The requests to run: the frozen selection.json of the skill's baseline, or a draft file.
@@ -31,6 +33,14 @@ function requestsOf({ name, repo, baselinesDir, requestsFile }) {
   return { set: baseline.selection.set, sha256: baseline.selection.sha256, frozen: true, unitSha256: baseline.unit.sha256 };
 }
 
+/** The stub behaviour runStub takes: a named one, or for 'fake' a picker over the skill index of `repo`. */
+function stubBehaviour(behaviour, repo) {
+  if (behaviour !== 'fake' && !Object.hasOwn(sel.STUB_BEHAVIOURS, behaviour)) throw new Error(`--stub-behaviour takes ${[...Object.keys(sel.STUB_BEHAVIOURS), 'fake'].join(', ')} (got ${JSON.stringify(behaviour)})`);
+  if (behaviour !== 'fake') return behaviour;
+  const pick = createFakePicker({ catalog: catalogOf(repo) });
+  return (request) => pick(request.prompt);
+}
+
 /**
  * Runs or scores the selection test and writes `<outDir>/<runId>/selection/<name>.json`.
  * @param {object} o
@@ -40,7 +50,7 @@ function requestsOf({ name, repo, baselinesDir, requestsFile }) {
  * @param {string} [o.runId] stub or stub-<name>, for the stub
  * @param {string} [o.fromRun] a finished bench run folder to score instead of the stub
  * @param {number} [o.reps] stub repeats per request
- * @param {string} [o.behaviour] stub behaviour: always, never or correct
+ * @param {string} [o.behaviour] stub behaviour: always, never, correct, or fake (a fake model picks from the skill index)
  * @param {string} [o.requestsFile] a draft selection.json instead of the frozen one
  * @param {string} [o.baselinesDir] the frozen baselines folder
  * @param {string} [o.measuredAt] the date to record
@@ -59,7 +69,7 @@ function runSelect({ name, repo, outDir, runId = null, fromRun = null, reps = 3,
   } else {
     if (!runId) throw new Error('--run stub-<name> or --from-run DIR is required');
     folder = path.join(outDir, runId);
-    results = sel.runStub({ name, set: req.set, runId, dir: path.join(folder, 'selection', name, 'streams'), reps, behaviour });
+    results = sel.runStub({ name, set: req.set, runId, dir: path.join(folder, 'selection', name, 'streams'), reps, behaviour: stubBehaviour(behaviour, repo) });
     source = runId;
   }
   const scored = sel.scoreRun(results, name);
@@ -97,6 +107,8 @@ function cmdSelect(opts) {
   if (opts.json) { console.log(JSON.stringify(r.result, null, 2)); return; }
   const x = r.result;
   console.log(`selection of ${name}: precision ${f2(x.triggerPrecision)}, recall ${f2(x.triggerRecall)}, observed use ${f2(x.observedUseRate)} over ${x.runs} runs (${x.requests.load} should load, ${x.requests.none} should not; ${x.failedLoads} failed loads; ${x.frozen ? 'frozen' : 'draft'} requests)`);
+  const instead = Object.entries(r.scored.score.confusionCounts).map(([n, k]) => `${n} (${k})`).join(', ');
+  if (instead) console.log(`picked instead on a wrong answer: ${instead}`);
   console.log(`wrote ${r.file}; pass it to cap keep-prune --selection${opts['from-run'] ? '' : ' (stub data: never a measurement)'}`);
 }
 
