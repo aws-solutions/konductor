@@ -103,7 +103,7 @@ class McpConnection:
         if version != MCP_PROTOCOL_VERSION:
             raise McpError(INVALID_PARAMS, f"unsupported protocol version; this server speaks {MCP_PROTOCOL_VERSION}")
         self._initialized = True
-        self._plant.event("mcp", conn=self._conn, method="initialize")
+        self._plant.event("mcp", conn=self._conn, method="initialize", client=_client_of(msg.get("params") or {}))
         result = {"protocolVersion": MCP_PROTOCOL_VERSION, "capabilities": {"tools": {}}, "serverInfo": SERVER_INFO}
         return {"jsonrpc": "2.0", "id": rpc_id, "result": result}
 
@@ -131,3 +131,15 @@ def _valid_id(msg):
         return True
     rpc_id = msg["id"]
     return isinstance(rpc_id, str) or (isinstance(rpc_id, int) and not isinstance(rpc_id, bool))
+
+
+# How much of the client's self-description the log keeps. It is agent-written text, so only short strings pass.
+CLIENT_FIELD_MAX = 64
+
+
+def _client_of(params):
+    """`{name, version}` from `initialize` params' `clientInfo` (A-6), each a string cut to CLIENT_FIELD_MAX, or None."""
+    info = params.get("clientInfo")
+    if not isinstance(info, dict):
+        return None
+    return {k: info[k][:CLIENT_FIELD_MAX] if isinstance(info.get(k), str) else None for k in ("name", "version")}
