@@ -222,9 +222,10 @@ function flagCounts(plants) {
 }
 
 /** The reasons the header says WARN instead of PASS; empty means PASS. `notCounted` maps each reason to its trial count. */
-function warningsOf({ flags, cgroups, isolations, integrity, floor, notCounted }) {
+function warningsOf({ flags, cgroups, isolations, integrity, floor, notCounted, listenerNotes }) {
   return [
     ...Object.entries(notCounted).map(([why, n]) => `NOT COUNTED: ${why} (${n} trial(s), reported apart from the counted rates)`),
+    ...(listenerNotes.length ? [`new host listener(s) between trials, noted and the not counted pilot went on: ${listenerNotes.join(', ')}`] : []),
     ...(isolations.includes(UNISOLATED) ? [`unisolated runs (--isolate ${UNISOLATED}): the agent ran outside bench's sandbox, so no wall was in place`] : []),
     ...Object.entries(flags).map(([flag, n]) => `${flag} on ${n} trial(s)`),
     ...(cgroups.every(cgroupPresent) ? [] : [`sandbox cgroup missing or not recorded: ${cgroups.map((c) => c ?? 'no run-config.json').join('; ')}`]),
@@ -252,7 +253,8 @@ function headerOf(release, rows, integrity, notCountedRows) {
   const isolations = isolationsOf(rows);
   const notCounted = {};
   for (const why of notCountedRows.flatMap(notCountedOf)) notCounted[why] = (notCounted[why] ?? 0) + 1;
-  const warnings = warningsOf({ flags, cgroups, isolations, integrity, floor: release.floor, notCounted });
+  const listenerNotes = [...new Set(plants.flatMap((p) => p.hostListenerNotes ?? []))];
+  const warnings = warningsOf({ flags, cgroups, isolations, integrity, floor: release.floor, notCounted, listenerNotes });
   const limits = [...FIXED_LIMITS, `isolation: ${isolations.map((m) => m ?? 'not recorded').join('; ')}`, `sandbox cgroup: ${cgroups.map((c) => c ?? 'not recorded').join('; ')}`,
     `plantPolicyGap trials: ${flags.plantPolicyGap ?? 0}`, adapterLimit(plants)];
   return {

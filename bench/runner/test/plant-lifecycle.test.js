@@ -470,14 +470,37 @@ test('a gateway that never sends ready is plantGatewayStart and the agent is nev
   } finally { r.cleanup(); }
 });
 
-test('a new host listener between trials stops the plant suite before the next trial starts', async () => {
+test('a new host listener between trials stops a counted plant suite before the next trial starts', async () => {
   let reads = 0;
-  const ctx = { plant: { readListeners: () => (++reads > 2 ? ['tcp 0100007F:1F90'] : []) } };
+  const ctx = { plant: { counted: true, readListeners: () => (++reads > 2 ? ['tcp 0100007F:1F90'] : []) } };
   let ran = 0;
   const execute = async () => { ran++; return { plant: { runState: 'complete', flags: [] } }; };
   await runPlantCell(execute, { ctx, outDir: '/nonexistent' });
   await assert.rejects(runPlantCell(execute, { ctx, outDir: '/nonexistent' }), PlantSuiteStop);
   assert.equal(ran, 1);
+});
+
+test('a new host listener between trials stops a control suite too', async () => {
+  let reads = 0;
+  const ctx = { plant: { counted: false, control: true, readListeners: () => (++reads > 2 ? ['tcp 0100007F:1F90'] : []) } };
+  const execute = async () => ({ plant: { runState: 'complete', flags: [] } });
+  await runPlantCell(execute, { ctx, outDir: '/nonexistent' });
+  await assert.rejects(runPlantCell(execute, { ctx, outDir: '/nonexistent' }), PlantSuiteStop);
+});
+
+test('a NOT COUNTED pilot logs a new host listener once, records it on the trial and goes on', async () => {
+  let reads = 0;
+  const logged = [];
+  const ctx = { plant: { counted: false, control: false, log: (m) => logged.push(m), readListeners: () => (++reads > 2 ? ['tcp 0100007F:1F90'] : []) } };
+  const execute = async () => ({ plant: { runState: 'complete', flags: [] } });
+  const first = await runPlantCell(execute, { ctx, outDir: '/nonexistent' });
+  const second = await runPlantCell(execute, { ctx, outDir: '/nonexistent' });
+  const third = await runPlantCell(execute, { ctx, outDir: '/nonexistent' });
+  assert.equal(first.plant.hostListenerNotes, undefined);
+  assert.deepEqual(second.plant.hostListenerNotes, ['tcp 0100007F:1F90']);
+  assert.equal(third.plant.hostListenerNotes, undefined);
+  assert.equal(logged.length, 1);
+  assert.match(logged[0], /new listener .*tcp 0100007F:1F90.*not counted, so it goes on/);
 });
 
 test('a foreign connection stops the plant suite', async () => {

@@ -356,3 +356,13 @@ test('an unisolated result with no counted field is still NOT COUNTED: no sandbo
   const rep = report(root, [suite], rel.dir).report;
   assert.deepEqual([rep.arms, rep.notCounted.trials, rep.notCounted.reasons], [{}, 1, ['run without sandbox']]);
 }));
+
+test('a new host listener noted during a not counted pilot shows in the header', () => withRoot((root) => {
+  const rel = fakeRelease(root);
+  const why = ['run without sandbox'];
+  const trials = [plant(rel, { counted: false, comparable: false, notCounted: why }), plant(rel, { counted: false, comparable: false, notCounted: why, hostListenerNotes: ['tcp 0100007F:E8A7'] })];
+  const suite = writeSuite(root, 's', trials, { config: pinnedConfig('none', why) });
+  const { report: rep, md } = report(root, [suite], rel.dir);
+  assert.ok(rep.header.warnings.some((w) => /new host listener\(s\) between trials, noted and the not counted pilot went on: tcp 0100007F:E8A7/.test(w)));
+  assert.match(md, /tcp 0100007F:E8A7/);
+}));

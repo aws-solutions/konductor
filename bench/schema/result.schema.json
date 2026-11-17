@@ -1187,6 +1187,12 @@
             "type": "string"
           }
         },
+        "hostListenerNotes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "probe": {
           "type": [
             "string",

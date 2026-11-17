@@ -357,6 +357,7 @@ async function cmdRun(opts, deps = {}) {
     if (arms.some((a) => a.plant)) {
       plantSuite = preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo: REPO, ...deps.plant });
       ctx.plant = plantSuite;
+      plantSuite.log = log;
       ctx.mask.push(...plantSuite.mask);
       if (isolation.mode === 'unshare') {
         const walls = await preflightWalls({ ctx, suite: plantSuite, repo: REPO, outDir, makeIso: (root, plantRun) => makeIso(ctx, arms[0], root, null, { plantRun }) });

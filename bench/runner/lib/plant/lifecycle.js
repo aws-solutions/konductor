@@ -262,12 +262,20 @@ function readHostListeners() {
   return [...new Set(listening)].sort();
 }
 
-/** Throws PlantSuiteStop when the host has a listener it did not have at the suite's first trial (SR-20). */
+/**
+ * Reads the host's listeners and returns those it did not have at the suite's first trial (SR-20). A counted or
+ * control suite throws PlantSuiteStop on any new one. A NOT COUNTED pilot only logs it through `suite.log`, and
+ * learns it, so each new listener is noted once and the pilot goes on.
+ */
 function checkListeners(suite) {
   const read = suite.readListeners ?? readHostListeners;
   suite.listenersAtStart ??= new Set(read());
   const added = read().filter((l) => !suite.listenersAtStart.has(l));
-  if (added.length) throw new PlantSuiteStop(`a new listener appeared on the host between trials (${added.join(', ')}); the plant suite stops`);
+  if (!added.length) return [];
+  if (suite.counted || suite.control) throw new PlantSuiteStop(`a new listener appeared on the host between trials (${added.join(', ')}); the plant suite stops`);
+  for (const l of added) suite.listenersAtStart.add(l);
+  suite.log?.(`note: plant: a new listener appeared on the host between trials (${added.join(', ')}); this suite is not counted, so it goes on`);
+  return added;
 }
 
 /** Moves everything in `outDir` but earlier attempts into `outDir/launch-attempts/<n>`, so a rerun starts clean. */
@@ -279,12 +287,13 @@ function keepAttempt(outDir, n) {
 
 /**
  * Runs one plant cell with `execute` (run-one's executeRun) and `args` (its arguments). Checks the host's listeners
- * before each trial, reruns a launch failure at most twice (10.1), and stops the suite on a foreign connection (SR-4).
+ * before each trial (a NOT COUNTED pilot records new ones in `plant.hostListenerNotes` and goes on), reruns a launch failure at most twice (10.1), and stops the suite on a foreign connection (SR-4).
  */
 async function runPlantCell(execute, args) {
   for (let attempt = 1; ; attempt++) {
-    checkListeners(args.ctx.plant);
+    const newListeners = checkListeners(args.ctx.plant);
     const result = await execute(args);
+    if (newListeners.length && result.plant) result.plant.hostListenerNotes = newListeners;
     if (result.plant?.flags.includes('plantForeignConn')) throw new PlantSuiteStop(`a foreign connection reached gw.sock in ${args.outDir}; the plant suite stops`);
     if (result.plant?.runState !== 'launch_failure' || attempt > MAX_RERUNS) return result;
     keepAttempt(args.outDir, attempt);
