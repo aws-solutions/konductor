@@ -41,7 +41,7 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 **CRITICAL:** one of the findings below.
 
 - `*` action, `*` resource, `ec2:*` (it covers EBS snapshots, security-group ingress and instance userData), or `service:*` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) without a documented justification
-- Cross-account trust without `sts:ExternalId` or another condition key
+- Cross-account trust with no condition that limits which principal can assume the role, such as `sts:ExternalId`, `aws:PrincipalOrgID`, `aws:PrincipalArn`, or `aws:SourceAccount`/`aws:SourceArn` for service principals. Transport or time conditions (`aws:SecureTransport`, `aws:CurrentTime`) do not count
 - `kms:*` granted to a non-admin principal
 - S3 bucket open to the public, an RDS instance or EBS volume with no encryption at rest, S3 or DynamoDB data that needs SSE-KMS or a customer managed key left on default keys, or no TLS enforcement where sensitive data moves
 - No CloudTrail trail at all
@@ -57,7 +57,7 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 - CloudTrail logs not encrypted or without log file validation
 - KMS key rotation off for sensitive data where nothing requires it
 - Any other `service:*`, such as `cloudwatch:*`, `xray:*`, `sqs:*`, `sns:*` or `ssm:*`, without a documented justification
-- Cross-account trust that has a condition key but whose intent is unverified
+- Cross-account trust with a condition that limits the principal but whose intent is unverified
 - Named actions beyond what the role needs, with no wildcard
 - Key administrators who can also decrypt
 - No permission boundary on a role with `iam:*` or `sts:AssumeRole`
@@ -835,7 +835,7 @@ Generate output in this format:
 **CRITICAL (must fix):**
 
 - Wildcard actions on sensitive services without documented justification
-- Cross-account trust without `ExternalId` or condition keys
+- Cross-account trust with no condition that limits which principal can assume the role, such as `sts:ExternalId`, `aws:PrincipalOrgID`, `aws:PrincipalArn`, or `aws:SourceAccount`/`aws:SourceArn` for service principals. Transport or time conditions (`aws:SecureTransport`, `aws:CurrentTime`) do not count
 - KMS key policies allow `kms:*` to non-admin principals
 - S3 bucket policies allow public access
 - No CloudTrail trail at all

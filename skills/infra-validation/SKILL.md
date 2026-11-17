@@ -400,8 +400,8 @@ Check EVERY IAM policy statement for:
 
 4. **Cross-Account Access**
    - Check for `Principal` with external account IDs
-   - CRITICAL when the trust has no `sts:ExternalId` or other condition key
-   - IMPORTANT when it is conditioned but its intent is unverified
+   - CRITICAL when the trust has no condition that limits which principal can assume the role, such as `sts:ExternalId`, `aws:PrincipalOrgID`, `aws:PrincipalArn`, or `aws:SourceAccount`/`aws:SourceArn` for service principals. Transport or time conditions (`aws:SecureTransport`, `aws:CurrentTime`) do not count
+   - IMPORTANT when it has such a condition but its intent is unverified
 
 **Validation Command Examples**:
 
@@ -1166,14 +1166,14 @@ Provide thorough, actionable feedback that improves infrastructure quality and e
 - No deletion protection, or a destroy-on-delete removal policy, on stateful resources (RDS, DynamoDB) in production
 - Hardcoded passwords, keys or tokens in code or environment variables
 - IAM statements with wildcard actions (`*`, `ec2:*`, or `service:*` on a data, credential, code or permission service: `s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) or wildcard resources
-- Cross-account trust with no `sts:ExternalId` or other condition key
+- Cross-account trust with no condition that limits which principal can assume the role, such as `sts:ExternalId`, `aws:PrincipalOrgID`, `aws:PrincipalArn`, or `aws:SourceAccount`/`aws:SourceArn` for service principals. Transport or time conditions (`aws:SecureTransport`, `aws:CurrentTime`) do not count
 
 **IMPORTANT (should fix):**
 
 - CloudWatch alarms not defined for key metrics
 - No backup configuration for stateful resources
 - IAM `service:*` on any other service, such as `cloudwatch:*`, `xray:*`, `sqs:*`, `sns:*` or `ssm:*`
-- Cross-account trust that has a condition key but whose intent is unverified
+- Cross-account trust with a condition that limits the principal but whose intent is unverified
 - Lambda functions without reserved concurrency limits, DLQ or tracing
 - Low-cardinality partition keys that create hot partitions
 
