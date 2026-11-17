@@ -20,7 +20,8 @@ const NOTE = 'ARCHIVE.md';
 const ARCHIVE_NAMES = { gzip: 'workspace.tar.gz', zstd: 'workspace.tar.zst' };
 const EVIDENCE_NAMES = new Set(['result.json', 'stream.jsonl', 'installed-agent.json', 'run-config.json', 'summary.json', 'credit-ledger.jsonl']);
 const isEvidenceFile = (name) => EVIDENCE_NAMES.has(name) || /^judgments.*\.json$/.test(name);
-const isEvidenceDir = (name) => name === 'session';
+// session/ holds a run's session files; run-configs/ at the top level keeps the run-config of every command that ran into the directory.
+const isEvidenceDir = (name) => name === 'session' || name === 'run-configs';
 const MAX_DEPTH = 8;
 const SKIP = new Set(['node_modules', '.git']);
 

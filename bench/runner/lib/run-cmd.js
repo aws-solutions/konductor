@@ -39,6 +39,7 @@ const { preflightStrands } = require('./plant/strands-census.js');
 const { makeIso } = require('./run-one.js');
 const { pinConflicts, describeConflicts } = require('./study-pins.js');
 const { profileCredentials } = require('./aws-creds.js');
+const { writeRunConfig, readRunConfigs } = require('./run-configs.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -464,7 +465,7 @@ async function cmdRun(opts, deps = {}) {
       toolchainCheck,
       startedAt: new Date().toISOString(),
     };
-    writeAtomic(path.join(outDir, 'run-config.json'), JSON.stringify(runConfig, null, 2) + '\n');
+    writeRunConfig(outDir, runConfig);
     if (variants.length) {
       fs.mkdirSync(path.join(outDir, 'variants'), { recursive: true });
       for (const v of variants) fs.writeFileSync(path.join(outDir, 'variants', `${v.variantId}.json`), JSON.stringify(v, null, 2) + '\n');
