@@ -10,9 +10,10 @@
  *
  * Prompt differences between the arms (everything else is identical):
  *   - the `with` arm may get the explicit load instruction (loadInstruction);
- *   - the `without` arm's agent prompt and description have every line that refers to the skill under test removed
- *     (stripSkillReferences), because the skill is absent there and a prompt that lists it would tell the model,
- *     and through its answer the judges, which arm it is in;
+ *   - the `without` arm's agent prompt has every line that refers to the skill under test removed
+ *     (stripSkillReferences), and its description every clause that does (stripDescriptionReport), because the
+ *     skill is absent there and a prompt that lists it would tell the model, and through its answer the judges,
+ *     which arm it is in. A description with nothing left is refused, naming the agent;
  *   - both arms get the identical ANSWER_STYLE_RULE, which tells the model not to describe tools, skills or
  *     instructions.
  * This is the upstream half of blinding. The text sanitizer (sanitize.js) is the downstream half and cannot
@@ -36,7 +37,11 @@ const { readJsonFile, JsonFileError } = require('./read-file');
 const { DEFAULT_SETTINGS } = require('./sanitize');
 const { AgentSpecError } = require('./skills');
 
-/** Bump when the arm prompts change in a way that makes new pairs not comparable with older ones. */
+/**
+ * Bump when the arm prompts change in a way that makes new pairs not comparable with older ones. A change that
+ * reaches an agent's text shows in that answer's `agents_json_sha256` anyway; the version is for a change the
+ * hashes cannot show.
+ */
 const ARM_BLINDING_VERSION = 1;
 
 /**
@@ -78,6 +83,57 @@ const FENCE = /^\s*(?:```|~~~)/;
 const indentOf = (line) => /^\s*/.exec(line)[0].length;
 
 /**
+ * The patterns that find references to `skill` in a prompt, shared by the line stripper and the description stripper.
+ * `name` matches the skill at a name boundary (`<slug>` and `<plugin>:<slug>`, in any letter case); a name of several
+ * words also matches its spaced form ("test coverage analysis") and any mix of spaces, hyphens and underscores
+ * between the words, as sanitize.js does. `refersToSkill(text)` says whether a line or clause is a reference:
+ *   - a name with a hyphen or underscore (the slug itself) is one wherever it appears;
+ *   - the spaced form of a several-word name, and a one-word name, are also everyday words, so they count only in
+ *     backticks or bold, as `<plugin>:<slug>`, next to the word "skill", or (spaced form) in Title Case or capitals
+ *     ("Test Coverage Analysis"). A line that uses them as plain words is not a reference and is listed as loose.
+ */
+function referenceMatchers(skill, plugin) {
+  const words = skill.split(/[-_\s]+/).filter(Boolean);
+  const multiWord = words.length > 1;
+  const boundary = (core) =>
+    `(?<![${SLUG_CHARS}])(?:${escapeRegExp(plugin)}:)?${core}(?![${SLUG_CHARS}])`;
+  const slug = escapeRegExp(skill);
+  const spaced = words.map(escapeRegExp).join('[\\s_-]+');
+  const name = boundary(multiWord ? spaced : slug);
+  const joined = words.map(escapeRegExp).join('[-_]');
+  const token = `[\`*]*${name}[\`*]*`;
+  const mentions = new RegExp(name, 'i');
+  const slugForm = new RegExp(boundary(multiWord ? joined : slug), 'i');
+  const markedOrQualified = new RegExp(
+    `[\`*]${name}|${name}[\`*]|(?<![${SLUG_CHARS}])${escapeRegExp(plugin)}:${multiWord ? spaced : slug}(?![${SLUG_CHARS}])`,
+    'i',
+  );
+  const nextToSkillWord = new RegExp(
+    `\\bskills?\\s+${name}|${name}\\s+skills?\\b`,
+    'i',
+  );
+  const titleCase = multiWord
+    ? new RegExp(
+        boundary(
+          words
+            .map((word) => {
+              const capitalized = word[0].toUpperCase() + word.slice(1);
+              return `(?:${escapeRegExp(capitalized)}|${escapeRegExp(word.toUpperCase())})`;
+            })
+            .join('[\\s_-]+'),
+        ),
+      )
+    : null;
+  const refersToSkill = (line) =>
+    mentions.test(line) &&
+    ((multiWord && slugForm.test(line)) ||
+      markedOrQualified.test(line) ||
+      nextToSkillWord.test(line) ||
+      Boolean(titleCase && titleCase.test(line)));
+  return { name, token, mentions, refersToSkill };
+}
+
+/**
  * Removes every reference to `skill` from an agent prompt for the `without` arm. Text names the skill when the
  * slug (also as `<plugin>:<slug>`, in any letter case) stands at a name boundary: `my-<slug>-x` and `<slug>-x` are
  * other names and are not touched. A name made of several words (it holds a hyphen or underscore) is a reference
@@ -98,22 +154,7 @@ const indentOf = (line) => /^\s*/.exec(line)[0].length;
  */
 function stripSkillReferencesReport(text, skill, plugin = PLUGIN) {
   const source = String(text);
-  const slug = escapeRegExp(skill);
-  const name = `(?<![${SLUG_CHARS}])(?:${escapeRegExp(plugin)}:)?${slug}(?![${SLUG_CHARS}])`;
-  const token = `[\`*]*${name}[\`*]*`;
-  const mentions = new RegExp(name, 'i');
-  const markedOrQualified = new RegExp(
-    `[\`*]${name}|${name}[\`*]|(?<![${SLUG_CHARS}])${escapeRegExp(plugin)}:${slug}(?![${SLUG_CHARS}])`,
-    'i',
-  );
-  const nextToSkillWord = new RegExp(
-    `\\bskills?\\s+${name}|${name}\\s+skills?\\b`,
-    'i',
-  );
-  const multiWord = /[-_]/.test(skill);
-  const refersToSkill = (line) =>
-    mentions.test(line) &&
-    (multiWord || markedOrQualified.test(line) || nextToSkillWord.test(line));
+  const { token, mentions, refersToSkill } = referenceMatchers(skill, plugin);
   const leadingEntry = new RegExp(
     `^(\\s*(?:[-*]\\s+|\\d+\\.\\s+)?)${token}\\s*(?:,\\s*|\\s+(?:and|or)\\s+)`,
     'i',
@@ -177,6 +218,74 @@ function stripSkillReferencesReport(text, skill, plugin = PLUGIN) {
 /** stripSkillReferencesReport without the report: the prompt text for the `without` arm. */
 const stripSkillReferences = (text, skill, plugin = PLUGIN) =>
   stripSkillReferencesReport(text, skill, plugin).text;
+
+// A sentence ends at . ! or ? and its whitespace; the capture keeps the whitespace so the text can be put back together.
+const DESCRIPTION_SENTENCES = /(?<=[.!?])(\s+)/;
+// A clause ends at a comma, semicolon or colon, or at "and", "or", "but" (a comma before the word goes with it).
+const DESCRIPTION_CLAUSES = /((?:[,;:])?\s+(?:and|or|but)\s+|(?<=[,;:])\s+)/i;
+
+/**
+ * The `without` arm's description: `text` with every clause that refers to `skill` removed. A description is usually
+ * one line, so cutting a line (as stripSkillReferencesReport does for a prompt) would empty it. Per sentence: a sentence
+ * with no reference stays; one that refers to the skill keeps the clauses that do not, rejoined with the separators that
+ * stood before them; a sentence whose every clause refers to it goes. The first letter is capitalized when the first
+ * clause was cut from a sentence that began with a capital, and the sentence's closing mark is put back when the last
+ * clause held it. The result is empty when nothing is left; buildArms refuses that.
+ *
+ * @returns {{ text: string, dropped: string[], loose: string[] }} `dropped` lists the clauses removed and `loose` the
+ *   kept sentences that still use the name as an ordinary word.
+ */
+function stripDescriptionReport(text, skill, plugin = PLUGIN) {
+  const source = String(text);
+  const { mentions, refersToSkill } = referenceMatchers(skill, plugin);
+  const dropped = [];
+  const loose = [];
+  if (!mentions.test(source)) return { text: source, dropped, loose };
+  const parts = source.split(DESCRIPTION_SENTENCES);
+  const kept = [];
+  for (let i = 0; i < parts.length; i += 2) {
+    const sentence = parts[i];
+    const separator = i > 0 ? parts[i - 1] : '';
+    if (!refersToSkill(sentence)) {
+      if (mentions.test(sentence)) loose.push(sentence);
+      kept.push({ separator, text: sentence });
+      continue;
+    }
+    const pieces = sentence.split(DESCRIPTION_CLAUSES);
+    const survivors = [];
+    for (let j = 0; j < pieces.length; j += 2) {
+      if (refersToSkill(pieces[j])) dropped.push(pieces[j].trim());
+      else
+        survivors.push({
+          separator: j > 0 ? pieces[j - 1] : '',
+          text: pieces[j],
+        });
+    }
+    if (!survivors.length) continue;
+    // A separator that starts with a comma follows a clause that may already end with one: ", and" after "Plans,".
+    let rebuilt = '';
+    for (const clause of survivors) {
+      const joiner = /[,;:]$/.test(rebuilt)
+        ? clause.separator.replace(/^[,;:]/, '')
+        : clause.separator;
+      rebuilt += (rebuilt ? joiner : '') + clause.text;
+    }
+    if (refersToSkill(pieces[0]) && /^[A-Z]/.test(sentence))
+      rebuilt = rebuilt[0].toUpperCase() + rebuilt.slice(1);
+    // The last clause is gone: end where the sentence ended, not on a comma or with the mark missing.
+    if (refersToSkill(pieces[pieces.length - 1])) {
+      const closing = /[.!?]+$/.exec(sentence.trimEnd());
+      rebuilt = rebuilt.replace(/[\s,;:]+$/, '') + (closing ? closing[0] : '');
+    }
+    if (mentions.test(rebuilt)) loose.push(rebuilt);
+    kept.push({ separator, text: rebuilt });
+  }
+  const result = kept
+    .map((sentence, index) => (index ? sentence.separator : '') + sentence.text)
+    .join('')
+    .trim();
+  return { text: result, dropped, loose };
+}
 
 /**
  * The explicit load instruction, appended to the `with` arm's agent prompt only. It names the skill under test,
@@ -384,10 +493,15 @@ function buildArms(
   const sources = { skillsDir, controlSkillsDir };
   for (const skill of skillNames) skillSourceDir(skill, sources);
   const withoutNames = skillNames.filter((skill) => skill !== targetSkill);
-  const strippedDescription = stripSkillReferencesReport(
+  const strippedDescription = stripDescriptionReport(
     spec.description,
     targetSkill,
   );
+  if (spec.description.trim() && !strippedDescription.text)
+    throw new AgentSpecError(
+      path.join(agentsDir, agent + SPEC_SUFFIX),
+      `config.description: every clause names ${targetSkill}, so the without arm of ${agent} would have no description; reword it so part of it does not name the skill`,
+    );
   const strippedPrompt = stripSkillReferencesReport(spec.prompt, targetSkill);
   const withoutDescription = strippedDescription.text;
   const withoutPrompt = strippedPrompt.text + ANSWER_STYLE_RULE;
@@ -488,6 +602,7 @@ module.exports = {
   CONTROL_SKILLS_DIR,
   stripSkillReferences,
   stripSkillReferencesReport,
+  stripDescriptionReport,
   assertOnlyTargetDiffers,
   loadInstruction,
   loadAgentSpec,
