@@ -30,7 +30,11 @@ function validateCopy(keep, mutate) {
     let out = '';
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { out += d; });
-    child.on('close', (code) => { fs.rmSync(root, { recursive: true, force: true }); resolve({ code, out }); });
+    child.on('close', (code) => {
+      const left = fs.readdirSync(childTmp);
+      fs.rmSync(root, { recursive: true, force: true });
+      resolve({ code, out, left });
+    });
   });
 }
 
@@ -58,4 +62,6 @@ test('the validator accepts the shipped autonomy tasks and rejects broken eviden
   assert.match(noWrongGuess.out, /error: autonomy-format-bytes: partial "two-decimals" passes every intended test/);
   assert.match(withSentence.out, /error: autonomy-league-table\.json: the prompt must not contain the no-questions sentence/);
   assert.match(oneClarificationDropped.out, /error: autonomy-storage-cleanup\.json: clarification "tmp" matches none of the example questions/);
+  // The validator runs every check under a TMPDIR of its own and removes it, so a test that leaks leaves nothing here.
+  for (const r of [ok, noWrongGuess, withSentence, oneClarificationDropped]) assert.deepEqual(r.left, []);
 });

@@ -786,4 +786,17 @@ function main() {
   console.log('OK');
 }
 
+/**
+ * Points TMPDIR at a fresh dir of this run's own and removes it when the process exits. The checks run fixture, solution
+ * and hidden tests (and tests an agent wrote) that make temp dirs and may never remove them; their children inherit
+ * TMPDIR, so whatever they leave goes with this dir instead of piling up in the caller's TMPDIR.
+ * shortcut: a SIGKILL of the validator leaves this one dir behind; move it under a reaper if that is ever seen.
+ */
+function ownTempDir() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-validate-run-'));
+  process.env.TMPDIR = dir;
+  process.on('exit', () => fs.rmSync(dir, { recursive: true, force: true }));
+}
+
+ownTempDir();
 main();
