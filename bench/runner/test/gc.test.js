@@ -391,18 +391,36 @@ test('a marker that is itself a symlink is not valid', () => {
 
 test('roots, the home directory, temp dirs, repository roots and parents of them are never deletable', () => {
   const root = scratchRoot();
-  const ctx = gc.makeContext({ scan: { found: [], symlinks: [], warnings: [], roots: [root] }, snapshot: { ok: true, procs: [] } });
-  const danger = (p) => gc.dangerousLocation(p, ctx);
-  assert.match(danger('/'), /filesystem root/);
-  assert.match(danger('/tmp'), /protected location/);
-  assert.match(danger('/var/tmp'), /protected location/);
-  assert.match(danger('/var'), /contains/);
-  const home = fs.realpathSync(os.homedir());
-  assert.match(danger(home), /home directory/);
-  assert.match(danger(path.dirname(home)), /contains/);
-  assert.match(danger(root), /protected location/);
-  assert.match(danger(path.resolve(__dirname, '..', '..', '..')), /protected location|contains/);
-  assert.equal(danger(path.join(root, 'child')), null);
+  // A home of its own, two levels below a scratch dir: with the caller's HOME, a suite run with a scratch HOME under /tmp
+  // made the parent of home /tmp itself, which is a protected location rather than one that contains home.
+  const home = path.join(scratchRoot(), 'users', 'me');
+  fs.mkdirSync(home, { recursive: true });
+  const prior = process.env.HOME;
+  process.env.HOME = home;
+  try {
+    const ctx = gc.makeContext({ scan: { found: [], symlinks: [], warnings: [], roots: [root] }, snapshot: { ok: true, procs: [] } });
+    const danger = (p) => gc.dangerousLocation(p, ctx);
+    assert.match(danger('/'), /filesystem root/);
+    assert.match(danger('/tmp'), /protected location/);
+    assert.match(danger('/var/tmp'), /protected location/);
+    assert.match(danger('/var'), /contains/);
+    assert.equal(ctx.home, fs.realpathSync(home));
+    assert.match(danger(ctx.home), /home directory/);
+    assert.match(danger(path.dirname(ctx.home)), /contains/);
+    assert.match(danger(root), /protected location/);
+    assert.match(danger(path.resolve(__dirname, '..', '..', '..')), /protected location|contains/);
+    assert.equal(danger(path.join(root, 'child')), null);
+  } finally {
+    if (prior === undefined) delete process.env.HOME;
+    else process.env.HOME = prior;
+  }
+});
+
+test('the home directory is protected wherever it is, even right below /tmp', () => {
+  const ctx = gc.makeContext({ scan: { found: [], symlinks: [], warnings: [], roots: [] }, snapshot: { ok: true, procs: [] } });
+  const homeInTmp = { ...ctx, home: '/tmp/somebody', never: new Set([...ctx.never, '/tmp/somebody']) };
+  assert.match(gc.dangerousLocation('/tmp/somebody', homeInTmp), /home directory/);
+  assert.match(gc.dangerousLocation('/tmp', homeInTmp), /protected location \/tmp/);
 });
 
 test('a marker in the scan root itself, or in the home directory, is kept', () => {
