@@ -1144,8 +1144,8 @@ describe('the two tabs', () => {
     await openDesigner();
     type('write');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Designer' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }));
 
     expect(await screen.findByTestId('node-stage-write')).toBeTruthy();
     expect(nameInput().value).toBe('write');
@@ -1155,9 +1155,9 @@ describe('the two tabs', () => {
     await openDesigner();
     type('write');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
 
-    const panel = screen.getByRole('tabpanel', { name: 'Execution' });
+    const panel = screen.getByRole('tabpanel', { name: 'Run' });
     expect(await within(panel).findByTestId('node-stage-draft')).toBeTruthy();
     expect(within(panel).queryByTestId('node-stage-write')).toBeNull();
     expect(within(panel).getByTestId('unsaved-note')).toBeTruthy();
@@ -1169,9 +1169,9 @@ describe('the two tabs', () => {
     fireEvent.click(saveButton());
     await waitFor(() => expect(status()).toBe('Saved'));
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
 
-    const panel = screen.getByRole('tabpanel', { name: 'Execution' });
+    const panel = screen.getByRole('tabpanel', { name: 'Run' });
     expect(await within(panel).findByTestId('node-stage-write')).toBeTruthy();
     expect(within(panel).queryByTestId('unsaved-note')).toBeNull();
   });
