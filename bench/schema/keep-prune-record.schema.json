@@ -279,13 +279,22 @@
         "triggerPrecision",
         "triggerRecall",
         "observedUseRate",
+        "requests",
+        "runs",
+        "failedLoads",
+        "frozen",
+        "requestsSha256",
+        "unitSha256",
         "source",
         "measuredAt"
       ],
       "additionalProperties": false,
       "properties": {
         "triggerPrecision": {
-          "type": "number",
+          "type": [
+            "number",
+            "null"
+          ],
           "minimum": 0
         },
         "triggerRecall": {
@@ -295,6 +304,43 @@
         "observedUseRate": {
           "type": "number",
           "minimum": 0
+        },
+        "requests": {
+          "type": "object",
+          "required": [
+            "load",
+            "none"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "load": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "none": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "runs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedLoads": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "frozen": {
+          "type": "boolean"
+        },
+        "requestsSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "unitSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
         },
         "source": {
           "type": "string",

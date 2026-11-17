@@ -1,0 +1,125 @@
+// SPDX-License-Identifier: Apache-2.0
+// Stage 1's selection test (cap select, cap/selection.js), on the stub: no model, no credentials, no spend. The
+// requests format, the load read from a kiro-cli stream with the runner's own code, trigger precision and recall for a
+// skill that always loads, never loads and loads correctly, a load counted once per run, an empty load that is not a
+// load, and the whole-skill gate of the keep-prune record opening only for a frozen, current selection result.
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const sel = require('../../cap/selection.js');
+const { runSelect } = require('../../cap/selectrun.js');
+const { runKeepPrune } = require('../../cap/kprun.js');
+const { validateSelection } = require('../../cap/baselineformats.js');
+const { verifyBaselines } = require('../../cap/baselineverify.js');
+
+const REPO = path.resolve(__dirname, '..', '..', '..');
+const PILOT = 'plan-review';
+const tmp = (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kps-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  return dir;
+};
+const sha = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+
+/** A selection set for the pilot: three requests that should load it and three that should not. */
+const SET = Object.freeze({
+  format_version: 1,
+  skill: PILOT,
+  requests: [
+    { id: 'load-1', prompt: 'Before we start, check whether this task breakdown is clear enough for someone to carry out.', expect: 'load' },
+    { id: 'load-2', prompt: 'Review the work plan in PLAN.md and tell me which steps are too vague to execute.', expect: 'load' },
+    { id: 'load-3', prompt: 'Is this implementation plan complete? Point out missing files or acceptance checks.', expect: 'load' },
+    { id: 'none-1', prompt: 'Rename the variable total to grandTotal in src/cart.js.', expect: 'none' },
+    { id: 'none-2', prompt: 'What time zone does the server log use?', expect: 'none' },
+    { id: 'none-3', prompt: 'Write a haiku about autumn rain for the team channel.', expect: 'none' },
+  ],
+});
+
+/** A repository with the pilot skill and a baselines folder with its baseline, its selection.json frozen in. */
+function frozenTree(t, { set = SET } = {}) {
+  const root = tmp(t);
+  const repo = path.join(root, 'repo');
+  const baselinesDir = path.join(root, 'baselines');
+  fs.cpSync(path.join(REPO, 'skills', PILOT), path.join(repo, 'skills', PILOT), { recursive: true });
+  fs.cpSync(path.join(REPO, 'bench', 'cap', 'baselines', PILOT), path.join(baselinesDir, PILOT), { recursive: true });
+  fs.writeFileSync(path.join(baselinesDir, PILOT, 'selection.json'), `${JSON.stringify(set, null, 2)}\n`);
+  const files = {};
+  for (const f of fs.readdirSync(path.join(baselinesDir, PILOT)).sort()) files[`${PILOT}/${f}`] = sha(fs.readFileSync(path.join(baselinesDir, PILOT, f)));
+  fs.writeFileSync(path.join(baselinesDir, 'MANIFEST.json'), JSON.stringify({ format_version: 1, files }));
+  return { root, repo, baselinesDir, out: path.join(root, 'out') };
+}
+const stubScore = (t, behaviour, extra = null) => sel.scoreRun(sel.runStub({ name: PILOT, set: SET, runId: 'stub-t', dir: tmp(t), behaviour, extra }), PILOT);
+
+test('the selection format needs three of each kind, unique ids, and prompts that do not name the skill', () => {
+  assert.deepEqual(validateSelection(SET, { skill: PILOT }).errors, []);
+  const fewer = { ...SET, requests: SET.requests.filter((r) => r.id !== 'none-3') };
+  assert.ok(validateSelection(fewer).errors.some((e) => /at least 6 entries|at least 3 with expect "none"/.test(e)));
+  const named = { ...SET, requests: SET.requests.map((r, i) => (i === 0 ? { ...r, prompt: 'Run plan-review on this breakdown please.' } : r)) };
+  assert.ok(validateSelection(named).errors.some((e) => /must not name the skill/.test(e)));
+  const twice = { ...SET, requests: SET.requests.map((r, i) => (i === 1 ? { ...r, id: 'load-1' } : r)) };
+  assert.ok(validateSelection(twice).errors.some((e) => /id "load-1" is used twice/.test(e)));
+});
+
+test('the stub stream is read with the runner code: always, never and correct give their known precision and recall', (t) => {
+  const always = stubScore(t, 'always').score;
+  assert.deepEqual([always.tp, always.fp, always.fn, always.precision.value, always.recall.value], [3, 3, 0, 0.5, 1]);
+  const never = stubScore(t, 'never').score;
+  assert.deepEqual([never.tp, never.fp, never.precision.value, never.recall.value], [0, 0, null, 0], 'precision has nothing to be precise about');
+  const correct = stubScore(t, 'correct').score;
+  assert.deepEqual([correct.precision.value, correct.recall.value], [1, 1]);
+});
+
+test('a skill loaded twice in one run counts once, and a load that returned no text is a failed load, not a load', (t) => {
+  const results = sel.runStub({ name: PILOT, set: SET, runId: 'stub-t', dir: tmp(t), behaviour: 'correct', extra: 'twice' });
+  assert.equal(results[0].skillsLoaded[0].count, 2, 'the stream holds two loads');
+  const twice = sel.scoreRun(results, PILOT);
+  assert.deepEqual([twice.score.tp, twice.rows.filter((r) => r.hit).length], [3, 9], 'nine loading runs, each one hit');
+  const empty = stubScore(t, 'always', 'empty');
+  assert.equal(empty.score.recall.value, 0);
+  assert.equal(empty.failedLoads, 18);
+});
+
+test('cap select on a frozen set opens the whole-skill gate; a draft or a changed unit keeps it NO DATA', (t) => {
+  const tree = frozenTree(t);
+  assert.deepEqual(verifyBaselines({ dir: tree.baselinesDir, skillsDir: path.join(tree.repo, 'skills') }).problems, []);
+  const s = runSelect({ name: PILOT, repo: tree.repo, outDir: tree.out, runId: 'stub-sel', baselinesDir: tree.baselinesDir, measuredAt: '2026-11-17' });
+  assert.equal(s.result.frozen, true);
+  assert.deepEqual([s.result.triggerPrecision, s.result.triggerRecall, s.result.observedUseRate, s.result.runs], [1, 1, 0.5, 18]);
+  const selection = JSON.parse(fs.readFileSync(s.file, 'utf8'));
+  const kp = (runId, over = {}) => runKeepPrune({ name: PILOT, repo: tree.repo, baselinesDir: tree.baselinesDir, outDir: tree.out, depth: 'quick', runId, selection, ...over }).record;
+  const open = kp('stub-kp-a');
+  assert.equal(open.wholeSkill.status, 'ready for review');
+  assert.match(open.wholeSkill.why[0], /no rule combines them/);
+  assert.deepEqual(open.selection, selection);
+  const draftFile = path.join(tree.root, 'draft.json');
+  fs.writeFileSync(draftFile, JSON.stringify(SET));
+  const draft = runSelect({ name: PILOT, repo: tree.repo, outDir: tree.out, runId: 'stub-sel-d', baselinesDir: tree.baselinesDir, requestsFile: draftFile });
+  assert.match(kp('stub-kp-b', { selection: draft.result }).wholeSkill.why.join(' '), /selection requests are a draft/);
+  const other = { ...selection, unitSha256: 'f'.repeat(64) };
+  assert.match(kp('stub-kp-c', { selection: other }).wholeSkill.why.join(' '), /measured on another loaded unit/);
+});
+
+test('a baseline without selection.json is refused by cap select, and a bad one fails the baselines check', (t) => {
+  const tree = frozenTree(t);
+  fs.rmSync(path.join(tree.baselinesDir, PILOT, 'selection.json'));
+  const m = JSON.parse(fs.readFileSync(path.join(tree.baselinesDir, 'MANIFEST.json'), 'utf8'));
+  delete m.files[`${PILOT}/selection.json`];
+  fs.writeFileSync(path.join(tree.baselinesDir, 'MANIFEST.json'), JSON.stringify(m));
+  assert.throws(() => runSelect({ name: PILOT, repo: tree.repo, outDir: tree.out, runId: 'stub-x', baselinesDir: tree.baselinesDir }), /has no frozen selection\.json/);
+  const bad = frozenTree(t, { set: { ...SET, requests: SET.requests.slice(0, 4) } });
+  assert.ok(verifyBaselines({ dir: bad.baselinesDir, skillsDir: path.join(bad.repo, 'skills') }).problems.some((p) => /selection\.json: requests/.test(p)));
+});
+
+test('the selection tasks for a later approved run carry each request and its expectation', (t) => {
+  const dir = tmp(t);
+  const made = sel.writeTasks({ name: PILOT, set: SET, dir });
+  assert.equal(made.length, 6);
+  const task = JSON.parse(fs.readFileSync(path.join(dir, `${made[0].taskId}.json`), 'utf8'));
+  assert.deepEqual([task.prompt, task.triggerQuery.expect, task.triggerQuery.capId], [SET.requests[0].prompt, 'load', `skill:${PILOT}`]);
+});

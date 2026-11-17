@@ -107,28 +107,47 @@ function blockFromDecision(decision, meta = {}) {
   };
 }
 
+/** The fields of a selection result (selection.js selectionResult), in record order. */
+const SELECTION_FIELDS = Object.freeze(['triggerPrecision', 'triggerRecall', 'observedUseRate', 'requests', 'runs', 'failedLoads', 'frozen', 'requestsSha256', 'unitSha256', 'source', 'measuredAt']);
+const HEX64 = /^[0-9a-f]{64}$/;
+const isRate = (v) => typeof v === 'number' && v >= 0 && v <= 1;
+const isCount = (v) => Number.isInteger(v) && v >= 0;
+
 /**
- * Problems of a selection result (an empty list when it is usable). A selection result is measured apart from the
- * forced-load check: { triggerPrecision, triggerRecall, observedUseRate, source, measuredAt }, the three numbers in
- * [0, 1], `source` naming the run or file it came from, `measuredAt` a date.
+ * Problems of a selection result (an empty list when it is usable). It is measured apart from the forced-load check
+ * by `cap select` (selection.js): trigger precision (null when no request loaded the skill), trigger recall and the
+ * observed use rate in [0, 1]; request and run counts; whether the requests are the frozen ones; the hashes of the
+ * requests file and of the loaded unit it ran on; its source and date.
  * @param {object} s the selection result
  */
 function selectionProblems(s) {
   if (!s || typeof s !== 'object' || Array.isArray(s)) return ['the selection result must be an object'];
   const problems = [];
-  for (const k of ['triggerPrecision', 'triggerRecall', 'observedUseRate']) if (typeof s[k] !== 'number' || !(s[k] >= 0 && s[k] <= 1)) problems.push(`${k} must be a number from 0 to 1`);
+  if (!(s.triggerPrecision === null || isRate(s.triggerPrecision))) problems.push('triggerPrecision must be a number from 0 to 1, or null');
+  for (const k of ['triggerRecall', 'observedUseRate']) if (!isRate(s[k])) problems.push(`${k} must be a number from 0 to 1`);
+  if (!s.requests || !isCount(s.requests.load) || !isCount(s.requests.none)) problems.push('requests must be { load, none } counts');
+  for (const k of ['runs', 'failedLoads']) if (!isCount(s[k])) problems.push(`${k} must be a whole number`);
+  if (typeof s.frozen !== 'boolean') problems.push('frozen must be true or false');
+  for (const k of ['requestsSha256', 'unitSha256']) if (!HEX64.test(String(s[k]))) problems.push(`${k} must be a SHA-256`);
   for (const k of ['source', 'measuredAt']) if (typeof s[k] !== 'string' || !s[k].trim()) problems.push(`${k} must be a non-empty string`);
-  const extra = Object.keys(s).filter((k) => !['triggerPrecision', 'triggerRecall', 'observedUseRate', 'source', 'measuredAt'].includes(k));
+  const extra = Object.keys(s).filter((k) => !SELECTION_FIELDS.includes(k));
   if (extra.length) problems.push(`unknown field(s): ${extra.join(', ')}`);
   return problems;
 }
 
 /**
- * The whole-skill gate: NO DATA, with every reason, unless a selection result is present and the unit is current and
- * mapped. Even then it is only ready for a person to read beside the conditional verdicts; no rule combines them.
+ * The whole-skill gate: NO DATA, with every reason, unless a selection result is present, ran on the frozen requests
+ * and on today's loaded unit, and the unit is current and mapped. Even then it is only ready for a person to read
+ * beside the conditional verdicts; no rule combines them (a skill that helps only when forced is a selection fix).
+ * @param {object} o { selection, unitSha256 (today's unit), staleWhy, identityWhy }
  */
-function wholeSkillGate({ selection, staleWhy, identityWhy }) {
-  const why = [selection ? null : NO_SELECTION, staleWhy, identityWhy].filter(Boolean);
+function wholeSkillGate({ selection, unitSha256 = null, staleWhy, identityWhy }) {
+  const why = [
+    selection ? null : NO_SELECTION,
+    selection && !selection.frozen ? 'the selection requests are a draft, not the ones frozen in the baselines manifest' : null,
+    selection && unitSha256 && selection.unitSha256 !== unitSha256 ? `the selection result was measured on another loaded unit (${selection.unitSha256.slice(0, 12)}, now ${unitSha256.slice(0, 12)})` : null,
+    staleWhy, identityWhy,
+  ].filter(Boolean);
   if (why.length) return { status: WHOLE.noData, why };
   return { status: WHOLE.ready, why: [`a person reads the selection result beside the ${CLAIM}; no rule combines them`] };
 }
@@ -157,7 +176,7 @@ function buildRecord({ skill, unit = null, baseline = null, identity = null, sel
     baseline: { manifestSha256: baseline?.manifestSha256 ?? null, legacy: baseline?.legacy ?? null, unitSha256: baseline?.unitSha256 ?? null, source: baseline?.source ?? null },
     identity,
     selection,
-    wholeSkill: scope.id === 'whole' ? wholeSkillGate({ selection, staleWhy, identityWhy: identity?.why ?? null }) : null,
+    wholeSkill: scope.id === 'whole' ? wholeSkillGate({ selection, unitSha256: unit?.manifestSha256 ?? null, staleWhy, identityWhy: identity?.why ?? null }) : null,
     quick, deep,
     agree: quick && deep ? quick.verdict === deep.verdict : null,
     tokens: null,
@@ -225,7 +244,7 @@ function renderRecord(record) {
     row('judges', (b) => b.judges.map((j) => `${j.model} (${j.family})`).join(', ') || 'none'), '',
     `Loaded unit: ${record.unit ? `${record.unit.manifestSha256.slice(0, 12)} over ${record.unit.paths.join(', ')}` : 'not recorded'}. Source: ${src?.commit ?? 'unknown'}${src?.dirty ? ' (with uncommitted changes)' : ''}.`,
     `Stale: ${record.stale.value ? `YES: ${record.stale.why}` : 'no'}.`,
-    `Selection: ${sel ? `precision ${sel.triggerPrecision}, recall ${sel.triggerRecall}, observed use ${sel.observedUseRate} (${sel.source})` : 'not measured'}.`,
+    `Selection: ${sel ? `precision ${sel.triggerPrecision ?? 'n/a (never loaded)'}, recall ${sel.triggerRecall}, observed use ${sel.observedUseRate} over ${sel.runs} runs, ${sel.frozen ? 'frozen' : 'draft'} requests (${sel.source})` : 'not measured'}.`,
     record.wholeSkill ? `Whole-skill call: ${record.wholeSkill.status}: ${record.wholeSkill.why.join('; ')}.` : '',
     `Agree: ${record.agree === null ? 'one depth only' : record.agree ? 'yes' : 'NO: the verdicts differ, a person decides'}. Sign-off: ${record.signoff.by ?? 'none yet'}.`, '',
   ].filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');

@@ -30,7 +30,8 @@ const ladder = loadDoseLadder();
 const stub = createStubProvider({ ladder });
 const seats = [...STUB_JUDGES];
 const pilot = () => loadBaseline({ name: PILOT, skillsDir: path.join(REPO, 'skills') });
-const SELECTION = Object.freeze({ triggerPrecision: 0.9, triggerRecall: 0.8, observedUseRate: 0.4, source: 'stub-selection', measuredAt: '2026-11-17' });
+/** A frozen selection result measured on `unitSha256`, as cap select writes it. */
+const selectionOn = (unitSha256) => ({ triggerPrecision: 0.9, triggerRecall: 0.8, observedUseRate: 0.4, requests: { load: 5, none: 5 }, runs: 30, failedLoads: 0, frozen: true, requestsSha256: 'e'.repeat(64), unitSha256, source: 'stub-selection', measuredAt: '2026-11-17' });
 /** A repository with only the pilot skill and a baselines folder with only its baseline, for edits. */
 function pilotRepo(t) {
   const root = tmp(t);
@@ -200,6 +201,7 @@ test('a reference-file edit flips the record to stale; a selection result opens 
   const skillsDir = path.join(repo, 'skills');
   const ref = path.join(skillsDir, PILOT, 'references', 'checks.md');
   const opts = { name: PILOT, repo, baselinesDir, outDir: path.join(root, 'out'), depth: 'quick' };
+  const SELECTION = selectionOn(require('../../cap/subjectunit.js').subjectManifest({ skillsDir, name: PILOT }).sha256);
   const first = runKeepPrune({ ...opts, runId: 'stub-a', selection: SELECTION });
   assert.equal(first.record.stale.value, false);
   assert.equal(first.record.wholeSkill.status, 'ready for review');
