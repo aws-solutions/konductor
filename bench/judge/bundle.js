@@ -12,6 +12,7 @@ const { runtimeOf, descriptorOf } = require('../runner/lib/harness/runtime.js');
 const { ANSWER_KEY } = require('../runner/lib/sandbox.js');
 const { redact } = require('./redact.js');
 const { scrubStringCounted, secretLiterals } = require('../runner/lib/scrub.js');
+const { isEphemeralDir, isEphemeralFile } = require('./ephemeral.js');
 
 // Tool state, not deliverables; listing it would also reveal the arm. Deliverables such as
 // .kiro/specs/** are kept. Names match at any depth, paths from the workspace root.
@@ -19,20 +20,26 @@ const SKIP_NAMES = new Set(['.git', 'node_modules']);
 const SKIP_PATHS = ['.kiro/agents', '.kiro/steering', '.kiro/skills', '.kiro/settings', '.kiro/sessions', '.konductor', '.claude', '.opencode'];
 const skipped = (rel) => SKIP_NAMES.has(path.basename(rel)) || SKIP_PATHS.some((p) => rel === p || rel.startsWith(`${p}/`));
 
+// `excluded` counts skipped tool-state directories; `ephemeral` counts the test and lint caches skipped (see ephemeral.js),
+// directories and stray compiled files together.
 function walk(root, rel = '') {
   const out = [];
-  const excluded = { count: 0 };
+  const excluded = { count: 0, ephemeral: 0 };
   const visit = (r) => {
     for (const ent of fs.readdirSync(path.join(root, r), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       const sub = path.join(r, ent.name);
       if (ent.isDirectory()) {
         if (skipped(sub)) excluded.count++;
+        else if (isEphemeralDir(ent.name)) excluded.ephemeral++;
         else visit(sub);
-      } else if (ent.isFile() && ent.name !== ANSWER_KEY) out.push(sub);
+      } else if (ent.isFile() && ent.name !== ANSWER_KEY) {
+        if (isEphemeralFile(ent.name)) excluded.ephemeral++;
+        else out.push(sub);
+      }
     }
   };
   if (fs.existsSync(path.join(root, rel))) visit(rel);
-  return { files: out, excluded: excluded.count };
+  return { files: out, excluded: excluded.count, ephemeral: excluded.ephemeral };
 }
 
 function readText(file) {
@@ -88,9 +95,10 @@ function checkLine(c) {
 // counts the replacements.
 function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals = secretLiterals(process.env) }) {
   const { maxFileChars, maxBundleChars } = limits;
-  const meta = { truncatedFiles: [], omittedFiles: [], excluded: 0 };
+  const meta = { truncatedFiles: [], omittedFiles: [], excluded: 0, ephemeral: 0 };
   const ws = walk(path.join(runDir, 'workspace'));
   meta.excluded = ws.excluded;
+  meta.ephemeral = ws.ephemeral;
   const base = new Set(walk(fixtureDir).files);
 
   const changed = [];

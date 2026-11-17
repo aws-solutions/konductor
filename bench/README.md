@@ -762,7 +762,8 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   unless `--allow-small-panel` (recorded in `judgments.json`, flagged in the report). One judge per
   family; Claude models and the subject model's family are refused.
 - A judge sees the task, rubric, the fixture's `.bench-answer-key.md` and one output bundle: final text,
-  files changed versus the fixture (`.kiro/specs/**` included; only tool state is skipped), check
+  files changed versus the fixture (`.kiro/specs/**` included; tool state and test or lint caches such as `.pytest_cache`
+  and `__pycache__` are skipped, see `judge/ephemeral.js`), check
   results. Never the transcript, tool calls or arm names. Arm-revealing phrases (agent and tool
   names, skill, SOP, steering, maker-checker, delegation, versions) are deleted, not replaced by a
   marker; deliverable paths stay. `--redact-file` adds rules; the rules that fired are recorded.
