@@ -37,7 +37,7 @@ Scan the design directory and identify which artifacts are present.
   - `security-policy*.md` or `iam-policies.md` — security policies
   - `*.drawio.xml` or `architecture-diagram*` — architecture diagrams
 - You MUST report which artifacts were found and which are missing
-- You SHOULD warn if critical artifacts (system design, threat model) are missing
+- If threat-model.md is missing, You MUST warn that the review still runs but cannot end READY FOR IMPLEMENTATION
 - You MUST NOT proceed to evaluation if system-design.md is missing. This differs from `design-evaluation`, which lists missing artifacts and scores what is present, because every dimension this SOP scores is judged against the system design
 
 **Expected Output:**
@@ -125,7 +125,7 @@ Write the consolidated review report to the output file.
   [Concrete steps; unscored]
 
   ## Recommendation
-  [READY FOR IMPLEMENTATION / NOT READY — reason]
+  [READY FOR IMPLEMENTATION / NOT READY: reason. A missing threat model gives NOT READY: threat model not provided]
   ```
 
 - You MUST NOT print the full report content in your response — the file itself is sufficient
@@ -143,7 +143,8 @@ Summarize findings and recommend next steps.
 **Constraints:**
 
 - You MUST state clearly: READY FOR IMPLEMENTATION or NOT READY
-- If NOT READY, you MUST list the critical issues that must be resolved
+- If threat-model.md was not provided, the recommendation MUST be NOT READY: threat model not provided. The threat model stays under Not Provided with no severity
+- If NOT READY, you MUST list the critical issues that must be resolved, and the missing threat model if that is a reason
 - You SHOULD offer to help fix critical issues using the appropriate architect skills
 - You MAY offer to re-run the review after fixes are applied
 
@@ -179,12 +180,18 @@ Recommendation: READY FOR IMPLEMENTATION
 ```
 Artifacts found:
 ✅ system-design.md
-⚠️ threat-model.md (MISSING — critical, recommended before review)
+⚠️ threat-model.md (not provided)
 ✅ smithy-model/
 ✅ dynamodb-table-design.md
 
-Proceeding with review. Note: the Security dimension is capped at 3 without a threat model.
-Consider generating a threat model first using the k-architect agent with the threat-modeling skill.
+Proceeding with review. Without a threat model the Security dimension is capped at 3 and the
+review cannot end READY FOR IMPLEMENTATION.
+
+Design review complete. Report saved to design-review-report.md
+
+Recommendation: NOT READY: threat model not provided
+
+Generate a threat model using the k-architect agent with the threat-modeling skill, then re-run the review.
 ```
 
 ### Example 3: Dry Run
@@ -219,7 +226,7 @@ No report generated (dry_run=true).
 
 ### Issue: Evaluation produces too many findings
 
-**Solution:** Focus on CRITICAL issues first. IMPORTANT and SUGGESTION items can be addressed iteratively. A design with only IMPORTANT issues is still ready for implementation.
+**Solution:** Focus on CRITICAL issues first. IMPORTANT and SUGGESTION items can be addressed iteratively. A design with only IMPORTANT issues is still ready for implementation, as long as a threat model was provided.
 
 ### Issue: Report file write fails
 

@@ -268,9 +268,10 @@ does not print the report body.
 - **The confirmation gate is real.** It will not proceed without an explicit answer.
 - **`dry_run: true` stops at step 2** and reports what would be reviewed.
 - **Only IMPORTANT issues is still READY.** The SOP's troubleshooting states a design with only
-  IMPORTANT issues remains ready for implementation.
-- **A missing threat model degrades rather than blocks.** The review proceeds, and the Security
-  dimension is capped at 3 (`design-evaluation` Step 0).
+  IMPORTANT issues remains ready for implementation, as long as a threat model was provided.
+- **A missing threat model rules out READY.** The review still runs, with the Security dimension
+  capped at 3 (`design-evaluation` Step 0), and the recommendation is NOT READY: threat model not
+  provided. The threat model is listed under Not Provided, with no severity.
 
 ---
 
