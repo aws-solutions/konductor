@@ -15,7 +15,11 @@ const { resolveArm } = require('../lib/arms.js');
 const { preparePlantSuite } = require('../lib/plant/intake.js');
 const { DEADLINES } = require('../lib/plant/gateway-proc.js');
 
-const FAST = { ...DEADLINES, readyMs: 8000, heartbeatLossMs: 2500, finalMs: 5000 };
+// Generous on purpose: a test about a limit, a launch failure or a foreign connection must not turn into a gateway that
+// never got ready or lost its heartbeat because the host was busy (the full suite runs many gateways at once). A test
+// about heartbeat loss sets its own short heartbeatLossMs (LOSS_FAST).
+const FAST = { ...DEADLINES, readyMs: 60000, heartbeatLossMs: 30000, finalMs: 5000 };
+const LOSS_FAST = { ...FAST, heartbeatLossMs: 2500 };
 const CONFIG = { model: 'claude-sonnet-5.5', effort: 'high', agentEngine: 'v2' };
 
 function chmodTree(dir) {
@@ -76,4 +80,4 @@ async function plantRun(r, fake, { arm = 'plant-policy', suiteMore = {}, kiroBin
 
 const readJsonl = (file) => fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
 
-module.exports = { rig, suiteOf, plantRun, readJsonl, FAST, CONFIG };
+module.exports = { rig, suiteOf, plantRun, readJsonl, FAST, LOSS_FAST, CONFIG };

@@ -116,7 +116,7 @@ const request = (method, params) => new Promise((resolve) => { const id = nextId
     if (call.inGateway !== false) await request('tools/call', { name: call.tool, arguments: call.args });
   }
   if (cfg.overLongLine) shim.stdin.write('x'.repeat(65 * 1024) + '\n');
-  if (cfg.hold) { setTimeout(() => {}, 60000); return; }
+  if (cfg.hold) { probe('held.json', { at: Date.now() }); setTimeout(() => {}, 60000); return; }
   ev('metadata', { sessionId: 's1', turnDurationMs: 100, meteringUsage: [{ value: 0.5, unit: 'credit' }] });
   ev('runFinished', { sessionId: 's1', status: 'success', stopReason: 'end_turn', finalText: cfg.finalText || 'done', finalTextTruncated: false });
   shim.stdin.end();

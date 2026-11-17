@@ -23,7 +23,7 @@ const { NOT_COUNTED } = require('../lib/plant/score.js');
 const { hostNoise } = require('../lib/plant/walls.js');
 const { GatewayProcess, gatewayCommand, runningHashProblems } = require('../lib/plant/gateway-proc.js');
 const { runPlantCell, sandboxPidns, PlantSuiteStop, PlantRun } = require('../lib/plant/lifecycle.js');
-const { rig, suiteOf, plantRun, readJsonl, FAST, CONFIG } = require('./plant-run-rig.js');
+const { rig, suiteOf, plantRun, readJsonl, FAST, LOSS_FAST, CONFIG } = require('./plant-run-rig.js');
 const { startGateway } = require('../lib/plant/launch.js');
 
 const unshareBlocked = spawnSync('unshare', ['--user', '--map-root-user', 'true']).status !== 0;
@@ -424,7 +424,7 @@ test('a gateway that stops heartbeating mid-run is lost: the agent is killed, th
   const bystanderDir = fs.mkdtempSync(path.join(r.root, 'by-'));
   const bystander = await startGateway({ taskFile: task, logDir: bystanderDir, socketPath: path.join(bystanderDir, 'gw.sock') });
   try {
-    const { run } = await plantRun(r, { stopGateway: true });
+    const { run } = await plantRun(r, { stopGateway: true }, { suiteMore: { deadlines: LOSS_FAST } });
     const started = Date.now();
     const result = await run();
     assert.ok(Date.now() - started < 20000, 'the agent was stopped, not left to its timeout');
@@ -510,16 +510,23 @@ test('a foreign connection stops the plant suite', async () => {
 
 // ---- terminal gateway violations stop the agent at once (SR-4, SR-16) ----
 
-const HELD_LIMIT_MS = 15000;
+// The fake agent's hold. A trial stopped early ends with "stopped early: <reason>" and before the hold runs out; one left to
+// run ends at the hold or the task timeout instead. Neither check depends on how fast a busy host starts the gateway.
+const HOLD_MS = 60000;
+const stoppedBeforeHold = (heldMs) => assert.ok(heldMs === null || heldMs < HOLD_MS, `the agent was stopped, not left to its ${HOLD_MS / 1000} s hold (it held for ${heldMs} ms)`);
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 
 /**
  * Runs the cells `cellCount` times over one rig as a suite would: each cell is a trial whose agent stays open for 60 s
  * after `fake` does its part. Stops at the first PlantSuiteStop. Resolves with the results, the stop (or null), how
- * many trials started, the first agent's pid, the first trial's out dir and the time taken.
+ * many trials started, the first agent's pid, the first trial's out dir, and `heldMs`: the time from the agent starting
+ * its hold to the trial's end (null when it never reached the hold). Gateway start-up and the calls before the hold are
+ * not in `heldMs`, so a busy host does not count against the stop. The task timeout is raised well past the hold, so a
+ * slow host never hits the timeout before the gateway's limit or check does: a trial that ends must end by the stop.
  */
 async function heldCells(r, fake, cellCount = 1) {
-  const { args } = await plantRun(r, { hold: true, ...fake });
+  const planned = await plantRun(r, { hold: true, ...fake });
+  const args = { ...planned.args, task: { ...planned.args.task, timeoutSec: 10 * HOLD_MS / 1000 } };
   const results = [];
   let started = 0;
   let stop = null;
@@ -533,15 +540,19 @@ async function heldCells(r, fake, cellCount = 1) {
       stop = e;
     }
   }
+  const ended = Date.now();
   const agent = JSON.parse(fs.readFileSync(path.join(r.probe, 'started.json'), 'utf8')).pid;
-  return { results, stop, started, agent, outDir: args.outDir, ms: Date.now() - begun };
+  const heldFile = path.join(r.probe, 'held.json');
+  const heldMs = fs.existsSync(heldFile) ? ended - JSON.parse(fs.readFileSync(heldFile, 'utf8')).at : null;
+  return { results, stop, started, agent, outDir: args.outDir, ms: ended - begun, heldMs };
 }
 
 test('a line over the limit ends the trial at once: the held agent is killed and the trial is plantLimit', async () => {
   const r = rig();
   try {
-    const { results, ms, agent } = await heldCells(r, { calls: STOP_CALLS, overLongLine: true });
-    assert.ok(ms < HELD_LIMIT_MS, `the agent was stopped, not left to its 60 s hold (took ${ms} ms)`);
+    const { results, heldMs, agent } = await heldCells(r, { calls: STOP_CALLS, overLongLine: true });
+    stoppedBeforeHold(heldMs);
+    assert.notEqual(results[0].status, 'timeout');
     assert.equal(alive(agent), false);
     assert.ok(results[0].plant.flags.includes('plantLimit'));
     assert.match(results[0].error, /stopped early: plantLimit/);
@@ -552,8 +563,10 @@ test('a call over the limit ends the trial at once: the held agent is killed and
   const r = rig();
   try {
     const flood = Array.from({ length: 2001 }, () => ({ tool: 'get_state', args: {}, inStream: false }));
-    const { results, ms, agent, outDir } = await heldCells(r, { calls: flood });
-    assert.ok(ms < 60000, `the agent was stopped, not left to its 60 s hold (took ${ms} ms)`);
+    const { results, heldMs, agent, outDir } = await heldCells(r, { calls: flood });
+    stoppedBeforeHold(heldMs);
+    assert.match(results[0].error, /stopped early: plantLimit/);
+    assert.notEqual(results[0].status, 'timeout');
     assert.equal(alive(agent), false);
     assert.ok(results[0].plant.flags.includes('plantLimit'));
     assert.ok(readJsonl(path.join(outDir, 'plant', 'gateway.jsonl')).some((l) => l.type === 'limit' && l.which === 'calls'));
@@ -566,11 +579,14 @@ test('a foreign connection ends the trial at once, and the suite stops: no later
   // The shim's own connection becomes the stranger: the gateway is told the sandbox is in another pid namespace.
   GatewayProcess.prototype.peer = function foreignPeer() { realPeer.call(this, 'pid:[1]'); };
   try {
-    const { stop, started, ms, agent, outDir } = await heldCells(r, { calls: STOP_CALLS }, 2);
+    const { stop, started, heldMs, agent, outDir } = await heldCells(r, { calls: STOP_CALLS }, 2);
     assert.ok(stop, 'the suite stopped');
     assert.match(stop.message, /foreign connection/);
     assert.equal(started, 1, 'the second cell never started');
-    assert.ok(ms < HELD_LIMIT_MS, `the agent was stopped, not left to its 60 s hold (took ${ms} ms)`);
+    stoppedBeforeHold(heldMs);
+    const first = JSON.parse(fs.readFileSync(path.join(outDir, 'result.json'), 'utf8'));
+    assert.match(first.error, /stopped early: plantForeignConn/);
+    assert.notEqual(first.status, 'timeout');
     assert.equal(alive(agent), false);
     assert.ok(readJsonl(path.join(outDir, 'plant', 'gateway.jsonl')).some((l) => l.type === 'foreign_conn'));
   } finally {
