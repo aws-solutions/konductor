@@ -59,7 +59,10 @@ const SCALES = Object.freeze({
   }),
 });
 
-/** The scale descriptor for an id. Throws on any other id, so a retired scale name cannot reach a paid call. */
+/**
+ * The scale descriptor for an id. Throws on any other id, so a misspelled or stale scale name in a setting or a stored
+ * record cannot reach a paid call.
+ */
 function resolveScale(id) {
   if (!Object.hasOwn(SCALES, id))
     throw new TypeError(
@@ -93,7 +96,8 @@ const WHOLE_REPLY_FENCE = /^```(?:json)?[ \t]*\n([\s\S]*)\n[ \t]*```$/;
 
 /**
  * The keys of the top-level object in `json`, in order and with repeats. `json` already parsed without an error, so
- * every string is closed. JSON.parse keeps only the last of two equal keys, so a repeat is found here instead.
+ * every string is closed. JSON.parse keeps only the last of two equal keys, so a repeat is found here instead. Any
+ * other reader of a model reply that must refuse a repeated key uses this function too.
  */
 function topLevelKeys(json) {
   const keys = [];
@@ -257,6 +261,9 @@ function scoreJudgment({ scale, text, arm, itemCount, buckets = null }) {
  * `guard` is { items, with_met, without_met }: the mean over counted seats of the guard weight met by each arm's own
  * judgment, or null when the checklist has no guard item. The counted judgments must agree on the guard: all null, or
  * all with the same number of guard items.
+ * Every judgment is checked first, a TypeError naming its index when it fails: `valid` must be true or false, and a
+ * valid one needs a `score` that is a number from 1 to 5 and a `guard` that is null or absent (no guard item) or
+ * { items: a whole number, met: 0 to items }.
  */
 function aggregateTask(judgments, { scale, minSeats = MIN_SEATS } = {}) {
   const scaleInfo = resolveScale(scale);
@@ -297,7 +304,7 @@ function aggregateTask(judgments, { scale, minSeats = MIN_SEATS } = {}) {
       )
     )
       throw new TypeError(
-        `judgments[${index}].guard must be null or { items: a whole number, met: 0 to items }`,
+        `judgments[${index}].guard must be null, absent, or { items: a whole number, met: 0 to items }`,
       );
     if (!seats.has(judgment.seat)) seats.set(judgment.seat, new Map());
     seats.get(judgment.seat).set(judgment.arm, judgment);
@@ -361,6 +368,7 @@ module.exports = {
   INVALID_KINDS,
   resolveScale,
   parseReply,
+  topLevelKeys,
   scoreOf,
   scoreJudgment,
   aggregateTask,
