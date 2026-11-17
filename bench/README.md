@@ -548,8 +548,13 @@ bash bench/scripts/pilot-2x2.sh --cells report --out /var/tmp/pilot-2x2
   if that fails) or from the three `AWS_*` variables already in the shell. Claude Code gets them through its environment.
   Judging gets a mode 0600 credentials file in the scratch directory, removed when judging ends or the script exits. Nothing
   is printed, put on a command line or written under `OUT`. Kiro runs get no AWS keys.
+- More than the four cells: the script runs exactly the 2x2 and one `--konductor-ref` (a second one is refused). To compare
+  several refs per harness, run `bench.js run` once per harness (Kiro arms in one run, `cc-` arms in another; `bench.js pr-plan
+  --ref a=REF --ref cc-a=REF ...` prints the commands), judge each run, and build the table with one arm per cell, as below.
 - Table: `bench.js report-2x2 --kiro-vanilla DIR --kiro-konductor DIR --cc-vanilla DIR --cc-konductor DIR [--out DIR] [--json]`
-  (each flag takes one or more comma-separated judged run directories; `--out` also writes `charts/quality-by-cell.svg`, `konductor-effect.svg` and `cost-ratio.svg`, linked from the markdown, described in [PILOT-2X2.md](PILOT-2X2.md#charts)). It refuses cells with different tasks, judge panel,
+  (each flag takes one or more comma-separated judged run directories, and `:ARM` after the last one picks the one arm a
+  cell reads when the directories hold several, for example `--kiro-konductor /runs/kiro:pr-1`; `--cell kiroKonductor=DIR:pr-1`
+  is the same and may replace any of the four flags. Without `:ARM` a cell must hold exactly one arm; `--out` also writes `charts/quality-by-cell.svg`, `konductor-effect.svg` and `cost-ratio.svg`, linked from the markdown, described in [PILOT-2X2.md](PILOT-2X2.md#charts)). It refuses cells with different tasks, judge panel,
   rubric revision, model, konductor commit (a mismatch, a missing commit, or more than one in a cell), a run judged by only part of the panel, or cost unit. It prints quality per task and cell, the five contrasts, the
   konductor over vanilla cost ratio inside each harness, success, timeouts, delegation and model identity. Intervals appear
   only with 5 or more tasks of 2 or more replicates per cell (`--reps 2` or more).

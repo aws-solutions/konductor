@@ -10,6 +10,11 @@
 #   bash bench/scripts/pilot-2x2.sh --profile NAME --budget-usd CEILING --kiro-credit-limit N --out /var/tmp/pilot-2x2 \
 #     --claude-tools-dir DIR
 #
+# This script runs exactly the four cells of the 2x2 and one konductor commit; it takes no list of arms. For more arms or
+# refs per harness, run `node bench/runner/bench.js run --arms vanilla,a=REF1,b=REF2 ...` once per harness (Kiro arms in one
+# run, cc- arms in another), judge each run, then pick one arm per cell with `report-2x2 --kiro-konductor DIR:a ...`
+# (or `--cell kiroKonductor=DIR:a`). `bench.js pr-plan --ref a=REF1 --ref cc-a=REF1 ...` prints those commands.
+#
 # Cells and order: kiro-konductor, kiro-vanilla, cc-konductor, cc-vanilla, then judging of each, then `report-2x2`.
 #   The konductor cell goes first in each harness so a failed install (for example a missing model pin) stops before the
 #   other cell spends anything.
@@ -81,6 +86,7 @@ REPS=1
 TASKS_CSV="$DEFAULT_TASKS"
 SEED=1
 REF="$DEFAULT_REF"
+REF_GIVEN=""
 PROFILE=""
 REFRESH_CMD="${PILOT_REFRESH_CMD:-}"
 REGION=us-east-1
@@ -122,7 +128,9 @@ while [ $# -gt 0 ]; do
     --reps) REPS="${2:?--reps needs a number}"; shift 2 ;;
     --tasks) TASKS_CSV="${2:?--tasks needs a comma-separated list}"; shift 2 ;;
     --seed) SEED="${2:?--seed needs a number}"; shift 2 ;;
-    --konductor-ref) REF="${2:?--konductor-ref needs a commit}"; shift 2 ;;
+    --konductor-ref)
+      [ -z "$REF_GIVEN" ] || die "--konductor-ref is given more than once; this script builds both konductor cells from one commit. For several refs, see the note at the top of --help (bench.js run, then report-2x2 with DIR:ARM)"
+      REF="${2:?--konductor-ref needs a commit}"; REF_GIVEN=1; shift 2 ;;
     --profile) PROFILE="${2:?--profile needs a name}"; shift 2 ;;
     --refresh-cmd) REFRESH_CMD="${2:?--refresh-cmd needs a command}"; shift 2 ;;
     --region) REGION="${2:?--region needs a value}"; shift 2 ;;

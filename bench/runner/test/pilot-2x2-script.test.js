@@ -137,7 +137,7 @@ test('budgets have no default: each cell group needs the ceiling it spends again
   need([...FULL(s), '--tasks', 't1,t1'], /lists a task twice/);
   need([...FULL(s), '--tasks', 'T 1'], /is not a task id/);
   need([...FULL(s), '--cells', 'everything'], /--cells takes/);
-  need([...FULL(s), '--konductor-ref', 'no-such-ref-zzz'], /is not a commit/);
+  need(FULL(s).map((a, i, all) => (all[i - 1] === '--konductor-ref' ? 'no-such-ref-zzz' : a)), /is not a commit/);
   need([...FULL(s), '--arm', 'x'], /unknown option: --arm/);
   need(['--profile', 'good'], /--out DIR is required/);
 });
@@ -375,4 +375,18 @@ test('SIGTERM during a run still removes the scratch directory', () => {
   });
   assert.notEqual(r.status, 0);
   assert.deepEqual(fs.readdirSync(s.scratch), []);
+});
+
+test('the script is the 2x2-only path: a second --konductor-ref is refused, and --help points to bench.js run and report-2x2 DIR:ARM', () => {
+  const s = setup();
+  const twice = run(s, [...FULL(s), '--konductor-ref', 'HEAD~1', '--dry-run']);
+  assert.equal(twice.status, 2);
+  assert.match(twice.stderr, /--konductor-ref is given more than once/);
+  assert.deepEqual(s.calls(), []);
+  const help = run(s, ['--help']);
+  assert.equal(help.status, 0);
+  assert.match(help.stdout, /runs exactly the four cells of the 2x2/);
+  assert.match(help.stdout, /bench\.js run --arms/);
+  assert.match(help.stdout, /report-2x2 --kiro-konductor DIR:a/);
+  assert.match(help.stdout, /pr-plan --ref/);
 });

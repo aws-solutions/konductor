@@ -43,16 +43,40 @@ function canonicalModel(id) {
   return String(id ?? 'unknown').replace(/^(?:us|eu|apac|global)\.anthropic\./, '').replace(/\./g, '-');
 }
 
-function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack, quoteRule = null }) {
+/**
+ * The run reduced to one arm: its runs, its config entry and its judgment records. Used when a cell names the arm it
+ * reads from a directory that holds several. Returns a new object; the loaded run is not changed.
+ */
+function onlyArm(run, armId) {
+  const keep = (rec) => rec.armId === undefined || rec.armId === armId;
+  const j = run.judgments;
+  const judgments = j ? {
+    ...j,
+    rubric: (j.rubric ?? []).filter(keep),
+    graded: (j.graded ?? []).filter(keep),
+    notJudged: (j.notJudged ?? []).filter(keep),
+    // A pairwise record compares the arm with a baseline that is dropped here, and the 2x2 reads rubric records only.
+    pairwise: [],
+  } : j;
+  const config = { ...run.config, armIds: (run.config?.armIds ?? []).filter((id) => id === armId), arms: (run.config?.arms ?? []).filter((a) => a.id === armId) };
+  return { ...run, config, runs: run.runs.filter((e) => e.armId === armId), judgments };
+}
+
+function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack, quoteRule = null, arm = null }) {
   const where = `cell ${spec.id} (${labelOf(spec)})`;
   if (!Array.isArray(dirs) || !dirs.length) throw new Error(`${where}: no run directory given`);
   let run;
   try { run = loadRuns(dirs); } catch (e) { throw new Error(`${where}: ${e.message}`); }
   if (run.harness !== spec.harness) throw new Error(`${where}: expected a ${spec.harness} run directory, found ${run.harness}. Check the flags: ${spec.harness === 'kiro-cli' ? 'a Kiro cell cannot hold Claude Code or opencode results' : 'a Claude Code cell holds cc- arms only'}`);
+  if (arm) {
+    const present = uniq(run.runs.map((e) => e.armId)).sort();
+    if (!present.includes(arm)) throw new Error(`${where}: arm ${arm} is not in the run directory; it holds ${present.length ? present.join(', ') : 'no arm'}`);
+    run = onlyArm(run, arm);
+  }
   enrichOrch(run);
   const executed = run.runs.filter((e) => e.result.status !== 'budget_skipped');
   const arms = uniq(executed.map((e) => e.armId));
-  if (arms.length !== 1) throw new Error(`${where}: exactly one arm per cell is expected, found ${arms.length ? arms.join(', ') : 'none'}`);
+  if (arms.length !== 1) throw new Error(`${where}: exactly one arm per cell is expected, found ${arms.length ? arms.join(', ') : 'none'}${arms.length > 1 ? `. Pick one with --${spec.flag} DIR:ARM or --cell ${spec.id}=DIR:ARM` : ''}`);
   const armId = arms[0];
   const isVanillaArm = armId === 'vanilla' || armId === 'cc-vanilla';
   if (spec.role === 'vanilla' && !isVanillaArm) throw new Error(`${where}: the arm is ${armId}, expected vanilla`);
@@ -198,12 +222,13 @@ function costRatio(van, kon) {
 
 /**
  * dirs: { kiroVanilla, kiroKonductor, ccVanilla, ccKonductor }, each an array of finished and judged run directories
- * (several per cell are merged read-only, as `report` does). Throws when the four cells cannot be compared.
+ * (several per cell are merged read-only, as `report` does). arms: the same keys, each the one arm a cell reads when its
+ * directories hold several; a cell without an entry must hold exactly one arm. Throws when the four cells cannot be compared.
  */
-function buildFactorial({ dirs, benchDir, extraDirs = [], scoringFile, qualityPack = null, quoteRule = null, withSensitivity = true } = {}) {
+function buildFactorial({ dirs, arms = {}, benchDir, extraDirs = [], scoringFile, qualityPack = null, quoteRule = null, withSensitivity = true } = {}) {
   const tasks = loadTasks(benchDir, { extraDirs });
   const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
-  const loaded = SPECS.map((spec) => loadCell(spec, dirs?.[spec.id], { tasks, weights, scoringFile, qualityPack, quoteRule }));
+  const loaded = SPECS.map((spec) => loadCell(spec, dirs?.[spec.id], { tasks, weights, scoringFile, qualityPack, quoteRule, arm: arms?.[spec.id] ?? null }));
   const { tasks: taskIds, notes } = checkComparable(loaded);
   const cells = loaded.map((c) => summarizeCell(c, taskIds));
   const byId = Object.fromEntries(cells.map((c) => [c.id, c]));
@@ -243,7 +268,7 @@ function buildFactorial({ dirs, benchDir, extraDirs = [], scoringFile, qualityPa
     weights, cells, contrasts, costRatios, notes: out,
     ...(qualityDimensions ? { qualityDimensions } : {}),
   };
-  if (withSensitivity) result.sensitivity = factorialSensitivity(result, buildFactorial({ dirs, benchDir, extraDirs, scoringFile, qualityPack, quoteRule: otherRule(quote.requested), withSensitivity: false }));
+  if (withSensitivity) result.sensitivity = factorialSensitivity(result, buildFactorial({ dirs, arms, benchDir, extraDirs, scoringFile, qualityPack, quoteRule: otherRule(quote.requested), withSensitivity: false }));
   return result;
 }
 

@@ -99,8 +99,10 @@ chart appear only when the table has intervals. The quality chart has no interva
 ## How the pieces fit
 
 - `bench/report/factorial.js` and `bench.js report-2x2` load four judged run directories with the existing loaders
-  (`loadRuns`, `analyze`), score them with the existing formula and lay them side by side. They only read.
-- `bench/scripts/pilot-2x2.sh` runs the cells, judges them and calls `report-2x2`. It makes one `bench.js run` per cell and
+  (`loadRuns`, `analyze`), score them with the existing formula and lay them side by side. They only read. A cell reads one
+  arm; when its directories hold several (a multi-arm `bench.js run`), `DIR:ARM` or `--cell ID=DIR:ARM` names the one it reads.
+- `bench/scripts/pilot-2x2.sh` runs the cells, judges them and calls `report-2x2`. It is the 2x2 path only: four cells and
+  one konductor commit. More arms go through `bench.js run` per harness and `report-2x2` with an arm per cell. It makes one `bench.js run` per cell and
   task, so a rerun skips finished tasks. Its helper `pilot-2x2.js` holds the resume marker, the finished-directory check and the
   spend arithmetic.
 - Order: within each harness the konductor cell runs before the vanilla cell, so a refused install (for example an agent

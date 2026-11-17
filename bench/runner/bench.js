@@ -156,10 +156,11 @@ const USAGE = `Usage:
        quick is one page, full is everything; default full and both. Several run directories are merged into one run and need --out.
        Spawns, spawn depth, review rounds and reworks after a pass are always shown (read from result.json, else from stream.jsonl). --phases counts the phase
        documents of the listed phases (profiles/phase-documents.json), or all of them; leave it off for tasks that are not SDLC tasks)
-  node bench/runner/bench.js report-2x2 --kiro-vanilla DIR[,DIR...] --kiro-konductor DIR[,DIR...] --cc-vanilla DIR[,DIR...] --cc-konductor DIR[,DIR...]
-       [--out DIR] [--json] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--criteria-pack quality]
+  node bench/runner/bench.js report-2x2 --kiro-vanilla DIR[,DIR...][:ARM] --kiro-konductor DIR[,DIR...][:ARM] --cc-vanilla DIR[,DIR...][:ARM] --cc-konductor DIR[,DIR...][:ARM]
+       [--cell ID=DIR[,DIR...][:ARM] ...] [--out DIR] [--json] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--criteria-pack quality]
        (the 2x2 pilot table, harness by konductor on one model, from four judged run directories, one harness each; prints markdown, or JSON with --json,
-       and writes factorial-2x2.md, .json and three SVG charts in charts/ to --out. Refuses cells with different tasks, judge panels, rubric revisions, models or cost units. Quality is compared
+       and writes factorial-2x2.md, .json and three SVG charts in charts/ to --out. A cell whose directories hold several arms names the one it
+       reads with :ARM, for example --kiro-konductor /runs/kiro:main; --cell kiroVanilla=DIR:vanilla does the same and may replace any of the four flags. Refuses cells with different tasks, judge panels, rubric revisions, models or cost units. Quality is compared
        across cells; cost only as konductor over vanilla inside a harness. Intervals appear only with 5 or more tasks of 2 or more replicates per cell, otherwise
        the table says "descriptive only" and the charts carry no whiskers. Reads run directories and writes nothing but --out)
   node bench/runner/bench.js contrast --run DIR[,DIR...] [--base ARM] [--head ARM,ARM] [--min-rel 0.15] [--rule both|any] [--by class|task] [--phases ID,ID|all]
@@ -338,7 +339,7 @@ ${ARM_SYNTAX}
 An unknown flag is an error (exit 2) and nothing runs. --help and -h print this text.`;
 
 // Flags that may be given more than once; a repeated one becomes an array.
-const REPEATABLE_FLAGS = new Set(['root', 'ref']);
+const REPEATABLE_FLAGS = new Set(['root', 'cell', 'ref']);
 
 function parseArgs(argv) {
   const opts = { _: [] };

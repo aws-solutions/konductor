@@ -556,15 +556,61 @@ function cmdCalibrate(opts) {
 }
 
 // The 2x2 pilot table from four judged run directories. Reads only; --out writes factorial-2x2.md and .json.
+// An arm id as the runner writes it: cc-/oc- prefixed or not, never containing '/', ',' or ':'.
+const CELL_ARM_RE = /^[a-z0-9][a-z0-9._-]{0,48}$/;
+
+/**
+ * One cell value: DIR[,DIR...] with an optional :ARM after the last directory, naming the one arm the cell reads.
+ * A value that exists as a path as written is a path, so a directory whose name holds a colon still works.
+ */
+function parseCellValue(value, label) {
+  const v = String(value);
+  const at = v.lastIndexOf(':');
+  let dirsPart = v;
+  let arm = null;
+  if (at > 0 && !fs.existsSync(v)) {
+    const tail = v.slice(at + 1);
+    if (!CELL_ARM_RE.test(tail)) throw new Error(`${label}: "${tail}" after the last ":" is not an arm id`);
+    dirsPart = v.slice(0, at);
+    arm = tail;
+  }
+  const dirs = dirsPart.split(',').filter(Boolean);
+  if (!dirs.length) throw new Error(`${label}: no run directory given`);
+  return { dirs, arm };
+}
+
+/** The cell directories and arms from --kiro-vanilla style flags and repeated --cell ID=DIR[,DIR...][:ARM]. */
+function factorialCellsOf(opts) {
+  const dirs = {};
+  const arms = {};
+  const byName = new Map(FACTORIAL_CELLS.flatMap((c) => [[c.id, c], [c.flag, c]]));
+  const cellFlags = opts.cell === undefined ? [] : [].concat(opts.cell);
+  for (const raw of cellFlags) {
+    if (raw === true) throw new Error('--cell needs ID=DIR[,DIR...][:ARM], for example --cell kiroVanilla=/runs/a:vanilla');
+    const eq = String(raw).indexOf('=');
+    const c = eq > 0 ? byName.get(String(raw).slice(0, eq)) : undefined;
+    if (!c) throw new Error(`--cell ${raw}: the cell id before "=" is one of ${FACTORIAL_CELLS.map((x) => x.id).join(', ')} (or ${FACTORIAL_CELLS.map((x) => x.flag).join(', ')})`);
+    if (dirs[c.id]) throw new Error(`cell ${c.id} is given more than once`);
+    const p = parseCellValue(String(raw).slice(eq + 1), `--cell ${c.id}`);
+    dirs[c.id] = p.dirs;
+    if (p.arm) arms[c.id] = p.arm;
+  }
+  for (const c of FACTORIAL_CELLS) {
+    const v = opts[c.flag];
+    if (v === undefined && dirs[c.id]) continue;
+    if (dirs[c.id]) throw new Error(`cell ${c.id} is given by both --${c.flag} and --cell`);
+    if (!v || v === true) throw new Error(`--${c.flag} is required (one or more judged run directories, comma separated, optionally :ARM), or --cell ${c.id}=DIR[:ARM]`);
+    const p = parseCellValue(v, `--${c.flag}`);
+    dirs[c.id] = p.dirs;
+    if (p.arm) arms[c.id] = p.arm;
+  }
+  return { dirs, arms };
+}
+
 function cmdReport2x2(opts) {
   try {
-    const dirs = {};
-    for (const c of FACTORIAL_CELLS) {
-      const v = opts[c.flag];
-      if (!v || v === true) throw new Error(`--${c.flag} is required (one or more judged run directories, comma separated)`);
-      dirs[c.id] = String(v).split(',').filter(Boolean);
-    }
-    const res = buildFactorial({ dirs, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), scoringFile: scoringOf(opts), qualityPack: packOf(opts) });
+    const { dirs, arms } = factorialCellsOf(opts);
+    const res = buildFactorial({ dirs, arms, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), scoringFile: scoringOf(opts), qualityPack: packOf(opts) });
     const writing = Boolean(opts.out && opts.out !== true);
     const charts = writing ? factorialCharts(res) : null;
     const md = toMarkdown(renderFactorial(res, { charts }));
@@ -607,4 +653,4 @@ async function cmdTrace(opts) {
   console.log(format === 'json' ? JSON.stringify(trace, null, 2) : renderTrace(trace, { full: Boolean(opts.full) }).trimEnd());
 }
 
-module.exports = { cmdExplain, cmdTrace, cmdReport2x2, cmdJudge, cmdRecheck, cmdBackfill, cmdReport, cmdCompare, cmdContrast, cmdCalibrate, cmdSkills, resolveJudges, DEFAULT_JUDGES };
+module.exports = { cmdExplain, cmdTrace, cmdReport2x2, factorialCellsOf, cmdJudge, cmdRecheck, cmdBackfill, cmdReport, cmdCompare, cmdContrast, cmdCalibrate, cmdSkills, resolveJudges, DEFAULT_JUDGES };

@@ -222,6 +222,50 @@ test('a cell with two arms is refused', () => {
   assert.throws(() => build(bench, d), /exactly one arm per cell is expected, found konductor, other/);
 });
 
+test('the refusal of a cell with two arms says how to pick one', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const d = four(root, bench);
+  const other = cell(root, bench, 'kk2', { kind: 'kiro', arm: 'other', sha: SHA });
+  fs.cpSync(path.join(other, 'other'), path.join(d.kiroKonductor[0], 'other'), { recursive: true });
+  assert.throws(() => build(bench, d), /Pick one with --kiro-konductor DIR:ARM or --cell kiroKonductor=DIR:ARM/);
+});
+
+// One Kiro directory with three arms, as a multi-arm `bench.js run` leaves it: each Kiro cell picks its arm from it.
+function multiArmKiro(root, bench) {
+  const d = four(root, bench);
+  const shared = path.join(root, 'kiro-multi');
+  fs.cpSync(d.kiroKonductor[0], shared, { recursive: true });
+  const extra = cell(root, bench, 'combo-src', { kind: 'kiro', arm: 'combo', sha: SHA, rubric: () => 0.9 });
+  fs.cpSync(path.join(extra, 'combo'), path.join(shared, 'combo'), { recursive: true });
+  fs.cpSync(path.join(d.kiroVanilla[0], 'vanilla'), path.join(shared, 'vanilla'), { recursive: true });
+  const j = (dir) => JSON.parse(fs.readFileSync(path.join(dir, 'judgments.json'), 'utf8'));
+  const merged = j(shared);
+  merged.rubric = [...merged.rubric, ...j(extra).rubric, ...j(d.kiroVanilla[0]).rubric];
+  fs.writeFileSync(path.join(shared, 'judgments.json'), JSON.stringify(merged));
+  return { d, shared };
+}
+
+test('an arm selector lets two cells read their arms from one directory that holds several', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const { d, shared } = multiArmKiro(root, bench);
+  assert.throws(() => build(bench, { ...d, kiroVanilla: [shared] }), /exactly one arm per cell is expected, found combo, konductor, vanilla/);
+  const ref = build(bench, d);
+  const res = buildFactorial({ dirs: { ...d, kiroVanilla: [shared], kiroKonductor: [shared] }, arms: { kiroVanilla: 'vanilla', kiroKonductor: 'konductor' }, benchDir: bench });
+  assert.deepEqual(res.cells.map((c) => c.quality), ref.cells.map((c) => c.quality));
+  const combo = buildFactorial({ dirs: { ...d, kiroKonductor: [shared] }, arms: { kiroKonductor: 'combo' }, benchDir: bench });
+  near(combo.cells.find((c) => c.id === 'kiroKonductor').quality, 40 + 60 * 0.9);
+});
+
+test('an arm selector that names an arm the directory does not hold is refused with the arms it does hold', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const { d, shared } = multiArmKiro(root, bench);
+  assert.throws(() => buildFactorial({ dirs: { ...d, kiroKonductor: [shared] }, arms: { kiroKonductor: 'nope' }, benchDir: bench }), /cell kiroKonductor .*: arm nope is not in the run directory; it holds combo, konductor, vanilla/);
+  assert.throws(() => buildFactorial({ dirs: { ...d, kiroVanilla: [shared] }, arms: { kiroVanilla: 'combo' }, benchDir: bench }), /the arm is combo, expected vanilla/);
+});
+
 test('several run directories of one cell are merged, as report does', () => {
   const root = tmp();
   const bench = benchWith(root);
@@ -272,6 +316,53 @@ test('report-2x2 prints markdown, prints JSON with --json, and writes the files 
   assert.equal(w.status, 0, w.stderr);
   assert.deepEqual(fs.readdirSync(out).sort(), ['charts', 'factorial-2x2.json', 'factorial-2x2.md']);
   assert.equal(fs.readFileSync(path.join(out, 'factorial-2x2.md'), 'utf8'), `${w.stdout.trimEnd()}\n`);
+});
+
+test('report-2x2 reads DIR:ARM on a cell flag and --cell ID=DIR:ARM, and gives the same table either way', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const { d, shared } = multiArmKiro(root, bench);
+  const ref = cli([...flags(bench, d), '--json']);
+  assert.equal(ref.status, 0, ref.stderr);
+  const quality = (r) => JSON.parse(r.stdout).cells.map((c) => c.quality);
+  const suffix = cli([...flags(bench, { ...d, kiroVanilla: [`${shared}:vanilla`], kiroKonductor: [`${shared}:konductor`] }), '--json']);
+  assert.equal(suffix.status, 0, suffix.stderr);
+  assert.deepEqual(quality(suffix), quality(ref));
+  const noKiro = flags(bench, d).filter((a, i, all) => !/^--kiro-/.test(a) && !/^--kiro-/.test(all[i - 1] ?? ''));
+  const viaCell = cli([...noKiro, '--cell', `kiroVanilla=${shared}:vanilla`, '--cell', `kiro-konductor=${shared}:konductor`, '--json']);
+  assert.equal(viaCell.status, 0, viaCell.stderr);
+  assert.deepEqual(quality(viaCell), quality(ref));
+  const unpicked = cli(flags(bench, { ...d, kiroVanilla: [shared] }));
+  assert.equal(unpicked.status, 2);
+  assert.match(unpicked.stderr, /found combo, konductor, vanilla\. Pick one with --kiro-vanilla DIR:ARM/);
+});
+
+test('report-2x2 refuses a bad --cell: an unknown id, a cell given twice, and a cell given by both forms', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const d = four(root, bench);
+  const bad = cli([...flags(bench, d), '--cell', `nope=${d.kiroVanilla[0]}`]);
+  assert.equal(bad.status, 2);
+  assert.match(bad.stderr, /--cell nope=.*the cell id before "=" is one of kiroVanilla/);
+  const both = cli([...flags(bench, d), '--cell', `kiroVanilla=${d.kiroVanilla[0]}`]);
+  assert.equal(both.status, 2);
+  assert.match(both.stderr, /cell kiroVanilla is given by both --kiro-vanilla and --cell/);
+  const twice = cli([...flags(bench, d).slice(2), '--cell', `kiroVanilla=${d.kiroVanilla[0]}`, '--cell', `kiroVanilla=${d.kiroVanilla[0]}`]);
+  assert.equal(twice.status, 2);
+  assert.match(twice.stderr, /cell kiroVanilla is given more than once/);
+  const badArm = cli(flags(bench, { ...d, kiroVanilla: [`${d.kiroVanilla[0]}:Not/An-Arm`] }));
+  assert.equal(badArm.status, 2);
+  assert.match(badArm.stderr, /is not an arm id/);
+});
+
+test('a directory whose name holds a colon is still read as a directory', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const d = four(root, bench);
+  const colon = `${d.kiroVanilla[0]}:copy`;
+  fs.cpSync(d.kiroVanilla[0], colon, { recursive: true });
+  const r = cli(flags(bench, { ...d, kiroVanilla: [colon] }));
+  assert.equal(r.status, 0, r.stderr);
 });
 
 test('report-2x2 exits 2 with a clear message for a missing flag, a refused input and an unknown flag', () => {

@@ -26,7 +26,7 @@ const FLAGS = {
   'plant-report': ['run', 'release', 'out'],
   'plant-policy-test': ['release', 'python'],
   report: ['run', 'baseline', 'out', 'bench-dir', 'extra-tasks', 'detail', 'format', 'scoring', 'profile', 'verdict', 'phases', 'test-arms', 'changed-skills', 'criteria-pack', 'allow-stale-pack'],
-  'report-2x2': ['kiro-vanilla', 'kiro-konductor', 'cc-vanilla', 'cc-konductor', 'out', 'json', 'bench-dir', 'extra-tasks', 'scoring', 'criteria-pack'],
+  'report-2x2': ['kiro-vanilla', 'kiro-konductor', 'cc-vanilla', 'cc-konductor', 'cell', 'out', 'json', 'bench-dir', 'extra-tasks', 'scoring', 'criteria-pack'],
   compare: ['base', 'head', 'min-rel', 'rule', 'force', 'bench-dir'],
   contrast: ['run', 'base', 'head', 'min-rel', 'rule', 'by', 'bench-dir', 'extra-tasks', 'detail', 'format', 'out', 'scoring', 'phases'],
   'pr-plan': ['ref', 'base', 'suite', 'replicates', 'no-vanilla', 'budget-credits', 'budget-usd', 'out', 'seed', 'repo-root', 'bench-dir'],
