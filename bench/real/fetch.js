@@ -8,7 +8,7 @@
 //
 //   node bench/real/fetch.js [--cache DIR] [--ids id,id]
 //
-// Default cache: /tmp/konductor-bench/realrepos (or $BENCH_REAL_CACHE). Safe to repeat: a commit that is
+// Default cache: $XDG_STATE_HOME/konductor-bench/realrepos, else ~/.local/state/konductor-bench/realrepos (or $BENCH_REAL_CACHE). Safe to repeat: a commit that is
 // already present with the pinned tree is not fetched again. Every commit is checked against the pinned
 // tree id in the manifest, so a moved or rewritten upstream is detected.
 

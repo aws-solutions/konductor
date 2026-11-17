@@ -288,7 +288,7 @@ For studies that run for hours, read [RUNBOOK.md](RUNBOOK.md). It covers the una
 | Something wrote to your real home | The tripwire scans for changes after each run. A hash of `~/.konductor/installs` before and after fails the batch with exit 4. | Do not run `konductor install` or switch branches while a study runs. |
 | Disk fills up | Runs keep a full workspace each. | `gc` lists what bench made and may reclaim (a dry run). `archive --run DIR` packs finished workspaces. |
 
-**State directory.** The unattended scripts keep their state in a per-user directory now, so the default location changed. A chain started before the upgrade is not found by `monitor.sh`; set `STATE_DIR` to the old path (`/tmp/konductor-bench`) to watch it. `bench/real/lib.js` still defaults its real-repo cache to `/tmp/konductor-bench/realrepos`, outside that directory.
+**State directory.** The unattended scripts keep their state in a per-user directory now, so the default location changed. A chain started before the upgrade is not found by `monitor.sh`; set `STATE_DIR` to the old path (`/tmp/konductor-bench`) to watch it. The real-repo cache (`bench/real/lib.js`) defaults to `realrepos` in that same per-user directory; the old `/tmp/konductor-bench/realrepos` is still used while it exists and the new one does not.
 
 Exit codes of `run`: 0 ok, 1 error, 2 bad arguments, 3 credit guard stop, 4 isolation failure, 5 infra check (every run errored or finished in under 1 s), 6 login or launch failure stop.
 
