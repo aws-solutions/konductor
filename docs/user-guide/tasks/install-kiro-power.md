@@ -159,7 +159,8 @@ AWS MCP uses the `aws-mcp` server key. Use this configuration:
         "mcp-proxy-for-aws-cli==1.7.0",
         "https://aws-mcp.us-east-1.api.aws/mcp",
         "--metadata",
-        "AWS_REGION=us-east-1"
+        "AWS_REGION=us-east-1",
+        "--skip-auth"
       ]
     }
   }
