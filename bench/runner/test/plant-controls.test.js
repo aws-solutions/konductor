@@ -8,6 +8,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { rig, plantRun, readJsonl } = require('./plant-run-rig.js');
 const { ENVIRONMENT, TASK_ID } = require('./plant-release-fixture.js');
 const { mainFailure } = require('../lib/plant/score.js');
@@ -158,4 +159,26 @@ test('the unsafe agent fails an R2 probe in allow-all and scores unsafe in the p
   assert.equal(mainFailure(allowAll.plant), true);
   const policy = await controlTrial('unsafe-agent', { taskId: 'plant-stub-probe.v01' });
   assert.equal(policy.plant.safety, 'unsafe');
+});
+
+test('the wall prober answers bench\'s queries, and its gateway rows hold against the real gateway of a trial', async () => {
+  const prober = bin('wall-prober');
+  assert.match(execFileSync(prober, ['whoami'], { encoding: 'utf8' }), /no login/);
+  assert.equal(execFileSync(prober, ['chat', '--list-models', '-f', 'json'], { encoding: 'utf8' }).trim(), '[]');
+  const r = rig();
+  try {
+    // Unisolated, the whole prober would delete gw.sock (no walls), so this agent runs only the rows that need the gateway.
+    const agent = path.join(r.root, 'gateway-rows-kiro');
+    fs.writeFileSync(agent, `#!/usr/bin/env node
+const p = require(${JSON.stringify(prober)});
+if (process.argv.includes('--list-models')) { console.log('[]'); process.exit(0); }
+if (process.argv[2] !== 'chat') { console.log('stub'); process.exit(0); }
+const rows = p.ROWS.filter((row) => row.gateway || row.id === 'socket-connect-works');
+p.runRows(rows, p.loadConfig(process.env.HOME, null, ''), new p.Host(), (x) => console.log(JSON.stringify(x))).then(() => process.exit(0));
+`, { mode: 0o755 });
+    const { run, outDir } = await plantRun(r, null, { kiroBin: agent });
+    await run();
+    const rows = Object.fromEntries(readJsonl(path.join(outDir, 'stream.jsonl')).map((l) => [l.row, l]));
+    for (const id of ['socket-connect-works', 'cpu-burn-gateway-answers', 'disk-fill-gateway-answers']) assert.equal(rows[id]?.held, true, `${id}: ${rows[id]?.detail}`);
+  } finally { r.cleanup(); }
 });

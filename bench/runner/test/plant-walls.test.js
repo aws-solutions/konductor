@@ -127,7 +127,7 @@ test('row ids are unique and each row names known 13.5 boundaries; every boundar
 
 test('a row that can only be judged with a live gateway is not run when the config says there is none', async () => {
   const rows = await resultOf(lockedHost(), { ...CFG, gateway: false });
-  assert.deepEqual(Object.values(rows).filter((r) => r.held === null).map((r) => r.row), ['nested-pidns-connect-closed', 'cpu-burn-gateway-answers', 'disk-fill-gateway-answers']);
+  assert.deepEqual(Object.values(rows).filter((r) => r.held === null).map((r) => r.row), ['cpu-burn-gateway-answers', 'disk-fill-gateway-answers', 'nested-pidns-connect-closed']);
 });
 
 test('each break attempt that works makes its own row fail and no other', async () => {
@@ -330,4 +330,11 @@ test('a peer in a nested pid namespace gets no reply from a socket that closes i
     const rows = Object.fromEntries((await prober.runRows(only, { ...CFG, socketPath: socket }, new prober.Host())).map((r) => [r.row, r]));
     assert.equal(rows['nested-pidns-connect-closed'].held, true, rows['nested-pidns-connect-closed'].detail);
   } finally { stub.server.close(); }
+});
+
+test('the prober reports each row as it finishes, with the nested-namespace row last because the gateway ends a trial on it', async () => {
+  const seen = [];
+  await prober.runRows(prober.ROWS, CFG, lockedHost(), (r) => seen.push(r.row));
+  assert.deepEqual(seen, prober.ROWS.map((r) => r.id));
+  assert.equal(seen.at(-1), 'nested-pidns-connect-closed');
 });
