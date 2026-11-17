@@ -22,6 +22,8 @@ function runWithDeadline(start, { timeoutMs, callerSignal, onError }) {
     const onAbort = () => stop(new BookingError('ABORTED', 'the caller cancelled the booking'));
     const timer = setTimeout(() => stop(new BookingError('PAYMENT_TIMEOUT', `no payment answer within ${timeoutMs} ms`)), timeoutMs);
     callerSignal?.addEventListener('abort', onAbort, { once: true });
+    // The caller may have aborted while the seat was being taken, before this listener existed.
+    if (callerSignal?.aborted) return onAbort();
     Promise.resolve()
       .then(() => start(controller.signal))
       .then((value) => finish(resolve, value), (err) => finish(reject, onError(err)));

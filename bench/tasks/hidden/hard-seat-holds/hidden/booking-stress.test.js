@@ -122,7 +122,7 @@ test('aborting while the charge runs rejects with ABORTED, aborts the charge and
   const s = service({ capacity: 1, pay });
   const controller = new AbortController();
   const pending = s.book('show', 'u1', { signal: controller.signal });
-  await sleep(10);
+  while (!pay.calls.length) await sleep(1);
   controller.abort();
   await assert.rejects(pending, { code: 'ABORTED' });
   assert.ok(pay.calls[0] && pay.calls[0].signal && pay.calls[0].signal.aborted, 'the charge signal is aborted');
