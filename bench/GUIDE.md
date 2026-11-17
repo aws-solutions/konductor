@@ -67,7 +67,7 @@ Purple boxes call a model and spend credits. The rest is local work.
 2. **Run.** The agent starts in a fresh copy of the task's fixture, in an isolated process (`unshare` on Linux, `sandbox-exec` on macOS). It sees an allowlisted environment, and credentials, SSH keys and the answer keys are hidden from it. The network stays open.
 3. **Record.** The agent's event stream is saved as `stream.jsonl`. The parser reads it for tool calls, skill loads, metered spend and the final answer.
 4. **Snapshot and check.** After the agent exits, the workspace is copied out and the task's checks run on it in a separate scratch home, with network access denied where the platform supports it. Checks are regular expressions, file tests, shell commands and, for some tasks, hidden acceptance tests.
-5. **Judge.** `judge` builds a bundle from the final text, the files the agent changed, the tool calls of any child session the agent started, and the check results. The judges never see the main session's transcript or the arm name. Each judge scores the rubric items pass, partial or fail, and quotes evidence. A quote that is not in the output lowers the verdict one level.
+5. **Judge.** `judge` builds a bundle from the final text, the files the agent changed, the tool calls of its main session and of any child session it started, and the check results. The judges never see the transcript's messages or the arm name. Each judge scores the rubric items pass, partial or fail, and quotes evidence. A quote that is not in the output lowers the verdict one level.
 6. **Report.** `report` combines checks and judgments into a score per run, then compares arms, with intervals.
 
 ### What a run leaves behind
@@ -349,7 +349,7 @@ The contract documents the adapter surface for the runtimes above. It does not a
 **What is not available.**
 
 - A normalized trajectory. Tool calls are reduced to counts and names. Per-call arguments and results stay in the raw `stream.jsonl`.
-- Checks on tool sequences. Checks run on the final files, and judges see only the tool calls of child sessions, so a rule like "called tool X before tool Y" cannot be written.
+- Checks on tool sequences. Checks run on the final files, and judges see a shortened, possibly cut list of tool calls, so a rule like "called tool X before tool Y" cannot be written.
 - Scenario generation from an agent description. Generators take one skill file, and the task schema has no field for expected tool use.
 
 ---

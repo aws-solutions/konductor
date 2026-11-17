@@ -763,13 +763,15 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   family; Claude models and the subject model's family are refused.
 - A judge sees the task, rubric, the fixture's `.bench-answer-key.md` and one output bundle: final text,
   files changed versus the fixture (`.kiro/specs/**` included; tool state and test or lint caches such as `.pytest_cache`
-  and `__pycache__` are skipped, see `judge/ephemeral.js`), the tool calls and results of any child session the
-  run started, and check results. A coordinator reports its child's work second-hand, so without the child's calls a rubric
-  item such as "ran the tests and reports the result" failed for work that was done. The child block is headed "helper
-  session N", never names the child agent, leaves out skill lookups, and shares the bundle limits: it gets the room the files
-  left, at most `--max-file-chars`, and keeps each session's first and last calls when it must cut. Kiro CLI and Claude Code
-  runs have it (from the sub-task id and `parent_tool_use_id` in `stream.jsonl`); OpenCode and Strands runs do not. The
-  prompts tell the judge to count that work as the agent's own. Never the main session's transcript or tool calls, and
+  and `__pycache__` are skipped, see `judge/ephemeral.js`), the tool calls and results of the run, and check results.
+  Rubric items such as "ran the tests and reports the result" judge work, and a coordinator reports its child's work
+  second-hand, so with the final text alone it failed for work that was done. Every arm gets the same block: the main
+  session's calls, then each child session's under "Helper session N". It never names the child agent, leaves out skill
+  lookups, hand-off calls and reads of the arm's own tooling (`.kiro` other than `.kiro/specs`, `.konductor`, `.claude`,
+  the scratch HOME), prints workspace paths relative, and shares the bundle limits: it gets the room the files left, at most
+  `--max-file-chars`, and keeps each session's first and last calls when it must cut. Kiro CLI and Claude Code runs have it
+  (from the sub-task id and `parent_tool_use_id` in `stream.jsonl`); OpenCode and Strands runs do not. The prompts tell the
+  judge to count main and helper sessions alike as the agent's own work. Never the transcript's messages and thoughts, and
   never arm names. Arm-revealing phrases (agent and tool
   names, skill, SOP, steering, maker-checker, delegation, versions) are deleted, not replaced by a
   marker; deliverable paths stay. `--redact-file` adds rules; the rules that fired are recorded.
