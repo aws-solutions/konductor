@@ -1,27 +1,30 @@
 // SPDX-License-Identifier: Apache-2.0
-// The page's only script. It reads no data: a click copies the hidden, already escaped detail block named by data-d into
-// the detail panel and opens it, Close or Escape hides it, and the theme button flips data-theme. Nothing is fetched.
+// The page's only script. Steps open and close as native <details> without it. It adds: Expand all and Collapse all,
+// a "more" button that copies the hidden, already escaped extras block named by data-d into the side panel (Close or
+// Escape hides it), and the theme button. It reads no data and fetches nothing.
 (function () {
   var panel = document.getElementById('drawer');
-  var drawer = document.getElementById('drawer-body');
-  var cells = document.querySelectorAll('td[data-d]');
-  function show(id) {
-    var src = document.getElementById(id);
+  var body = document.getElementById('drawer-body');
+  var more = document.querySelectorAll('button.more[data-d]');
+  function show(button) {
+    var src = document.getElementById(button.getAttribute('data-d'));
     if (!src) return;
-    drawer.replaceChildren.apply(drawer, Array.prototype.map.call(src.childNodes, function (n) { return n.cloneNode(true); }));
-    cells.forEach(function (c) { c.classList.toggle('sel', c.getAttribute('data-d') === id); });
+    body.replaceChildren.apply(body, Array.prototype.map.call(src.childNodes, function (n) { return n.cloneNode(true); }));
+    more.forEach(function (b) { b.classList.toggle('sel', b === button); });
     panel.hidden = false;
   }
   function hide() {
     panel.hidden = true;
-    cells.forEach(function (c) { c.classList.remove('sel'); });
+    more.forEach(function (b) { b.classList.remove('sel'); });
   }
+  more.forEach(function (b) { b.addEventListener('click', function () { show(b); }); });
   document.getElementById('drawer-close').addEventListener('click', hide);
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(); });
-  cells.forEach(function (c) {
-    c.addEventListener('click', function () { show(c.getAttribute('data-d')); });
-    if (c.hasAttribute('tabindex')) c.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(c.getAttribute('data-d')); } });
-  });
+  function setAll(open) {
+    document.querySelectorAll('details.step, details.agent').forEach(function (d) { d.open = open; });
+  }
+  document.getElementById('expand-all').addEventListener('click', function () { setAll(true); });
+  document.getElementById('collapse-all').addEventListener('click', function () { setAll(false); });
   var root = document.documentElement;
   if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) root.setAttribute('data-theme', 'light');
   document.getElementById('theme').addEventListener('click', function () {

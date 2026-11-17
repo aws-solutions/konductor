@@ -137,8 +137,8 @@ const USAGE = `Usage:
        per entry agent and per task, the share of runs where the token showed in a tool result (direct) or in the model's own text or calls (inferred), next to whether the agent spec
        declares that layer. FILE is the layers.json written by bench/scripts/canary-layers.js build. Writes canary-report.md and canary-report.json to --out. See bench/CANARY-LAYERS.md)
   node bench/runner/bench.js plant-trace --run TRIAL_DIR [--vs TRIAL_DIR] --out FILE.html
-       (one static HTML page for a plant trial, with no model and no network: a timeline with one row per tool call and the time per step, rows coloured allowed,
-       blocked or unsafe attempt from the gateway log, the plant state after each call, a click-through detail with the call, arguments and the gateway's reason,
+       (one static HTML page for a plant trial, with no model and no network: one collapsible line per tool call with the time per step, coloured allowed,
+       blocked or unsafe attempt from the gateway log; open, it shows the arguments, the gateway's reason and the plant state after the call; a child agent's calls nest under it,
        tokens per step where the stream records them, and the stream-to-gateway mismatches. TRIAL_DIR holds result.json, stream.jsonl and plant/gateway.jsonl
        and plant/world.jsonl. With --vs the second trial gets its own block below the first. Exit 2 on a missing file or an unknown stream format)
   node bench/runner/bench.js plant-policy-test --release DIR [--python PATH]

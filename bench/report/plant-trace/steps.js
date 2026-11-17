@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Joins one trial's gateway log, simulator log and agent stream into one row per tool call. The gateway log is the
-// truth for what was asked and what was decided; the stream adds what the agent saw and its tokens. The two are matched
-// as a multiset of (tool, args_sha256), never by rpc_id, with the bench's own matcher.
+// Joins one trial's gateway log, simulator log and agent stream into one step per tool call, nested under the child
+// agents that made them. The output is plain JSON, so the page (or any other reader) needs nothing else. The gateway log
+// is the truth for what was asked and what was decided; the stream adds what the agent saw, its tokens and which agent
+// called. The two are matched as a multiset of (tool, args_sha256), never by rpc_id, with the bench's own matcher.
 
 const path = require('node:path');
 const { matchCalls, plantCallsInGatewayLog } = require('../../runner/lib/plant/stream-match.js');
 const { streamTrace } = require('./stream-calls.js');
+const { nestSteps } = require('./tree.js');
 
 const DECISIONS = new Set(['allowed', 'denied', 'approval_required', 'execution_error']);
 const BLOCKED = new Set(['denied', 'approval_required', 'execution_error']);
@@ -58,7 +60,7 @@ function stepOf(n, call, events, world, prevEndMs) {
     waitMs: Number.isFinite(prevEndMs) ? Math.max(0, wallMs(call) - prevEndMs) : null,
     gatewayMs: endMs - wallMs(call), simMs: simAdvance(call, world, callId, after),
     stepMs: Number.isFinite(prevEndMs) ? Math.max(0, endMs - prevEndMs) : null,
-    events: events.filter((e) => e !== call), tWall: call.t_wall,
+    gatewayRecord: call, events: events.filter((e) => e !== call), tWall: call.t_wall,
     stream: null, tokens: null,
   };
 }
@@ -75,41 +77,54 @@ function gatewaySteps(gateway, world) {
   });
 }
 
-/** Adds what the agent stream says to each step and returns `{steps, streamOnly}`: stream calls the gateway never saw. */
+/**
+ * Adds what the agent stream says to each step and returns `{steps, streamOnly, streamOrder}`. Each step gets `stream`
+ * (`{matched, toolCallId, args, resultText, raw}`), `tokens`, `gatewayOnly` and `parentId` (the child agent that made
+ * it, or null). `streamOnly` are stream calls the gateway never saw; `streamOrder` maps a step's `n` to its stream place.
+ */
 function joinStream(steps, trace, gateway) {
   const { pairs, streamOnly, gatewayOnly } = matchCalls(trace.calls, plantCallsInGatewayLog(gateway));
   const streamOf = new Map(pairs.map((p) => [p.gateway.callId, p.stream]));
   const lost = new Set(gatewayOnly.map((g) => g.callId));
+  const streamOrder = new Map();
   for (const step of steps) {
     const stream = streamOf.get(step.callId);
-    step.stream = stream ? { matched: true, toolCallId: stream.toolCallId, ...trace.seen.get(stream.toolCallId) } : { matched: false };
+    const { parentId = null, order, ...seen } = stream ? trace.seen.get(stream.toolCallId) ?? {} : {};
+    step.stream = stream ? { matched: true, toolCallId: stream.toolCallId, ...seen } : { matched: false };
     step.tokens = stream ? trace.tokens.byCall.get(stream.toolCallId) ?? null : null;
     step.gatewayOnly = lost.has(step.callId);
+    step.parentId = parentId;
+    if (Number.isFinite(order)) streamOrder.set(step.n, order);
   }
-  return { steps, streamOnly: streamOnly.map((c) => ({ ...c, ...trace.seen.get(c.toolCallId) })) };
+  const strip = (c) => { const { raw: _raw, order: _order, ...rest } = { ...c, ...trace.seen.get(c.toolCallId) }; return rest; };
+  return { steps, streamOnly: streamOnly.map(strip), streamOrder };
 }
 
 const count = (steps, test) => steps.filter(test).length;
 
 /**
- * Everything the page shows about one trial `trial` (from `readTrial`): `{label, task, arm, model, harness, status, wallMs,
- * steps, streamOnly, tokens, final, counts, badLines}`. `final` is the plant state at the end of the run, after the settle.
- * `counts` has the steps, how many the gateway blocked, how many carried an unsafe rule (`unsafeTries`, blocked or not), how many
- * unsafe ones ran (`unsafeRan`) and the stream-to-gateway mismatches.
+ * Everything the page shows about one trial `trial` (from `readTrial`), as plain JSON a web page could also read:
+ * `{label, task, arm, model, harness, status, wallMs, steps, streamOnly, tokens, final, counts, badLines}`.
+ * `steps` is the step tree from `nestSteps`: call nodes in gateway order, with the calls of a child agent nested under an
+ * agent node. `tokens` is `{mode, note, total}`. `final` is the plant state at the end of the run, after the settle.
+ * `counts` has the calls, how many the gateway blocked, how many carried an unsafe rule (`unsafeTries`, blocked or not), how
+ * many unsafe ones ran (`unsafeRan`), the stream-to-gateway mismatches and the child agents.
  */
 function buildTrace(trial) {
   const trace = streamTrace(trial.streamFormat, trial.events);
-  const { steps, streamOnly } = joinStream(gatewaySteps(trial.gateway, trial.world), trace, trial.gateway);
+  const { steps, streamOnly, streamOrder } = joinStream(gatewaySteps(trial.gateway, trial.world), trace, trial.gateway);
   const r = trial.result;
   const endState = trial.world.at(-1)?.state ?? null;
   const settleHarm = trial.gateway.filter((l) => l.type === 'harm' && l.cause === 'settle').flatMap((l) => l.rules);
+  const { byCall: _byCall, ...tokens } = trace.tokens;
   return {
     label: r.armId ?? baseName(trial.dir), arm: r.armId ?? null, task: r.taskId ?? null, model: r.model ?? null,
     harness: r.harness ?? null, status: r.status ?? null, wallMs: r.wallClockMs ?? null,
-    steps, streamOnly, tokens: trace.tokens, final: { state: endState, harm: settleHarm },
+    steps: nestSteps(steps, trace.agents, streamOrder), streamOnly, tokens, final: { state: endState, harm: settleHarm },
     counts: {
       steps: steps.length, blocked: count(steps, (s) => s.kind === 'blocked'), unsafeTries: count(steps, (s) => s.unsafe.length > 0),
       unsafeRan: count(steps, (s) => s.kind === 'unsafe'), mismatches: streamOnly.length + count(steps, (s) => s.gatewayOnly),
+      agents: trace.agents.length,
     },
     badLines: trial.badLines,
   };

@@ -48,7 +48,7 @@ test('two runs stack one below the other, each its own block naming its arm, as 
   assert.equal(blocks.length, 2);
   assert.match(blocks[0], /<h2>plant-allowall<\/h2>/);
   assert.match(blocks[1], /<h2>plant-policy<\/h2>/);
-  for (const b of blocks) assert.equal((b.match(/<tr><td class="num">\d+<\/td>/g) ?? []).length, 5);
+  for (const b of blocks) assert.equal((b.match(/<details class="step k-allowed"><summary>/g) ?? []).length, 5);
   // One column at every width: no tiling grid, no side column, no media query that changes the layout.
   assert.doesNotMatch(html, /repeat\(auto-fit|minmax\(0, 1fr\) \d+px|position: sticky|@media/);
   assert.doesNotMatch(html, /https?:\/\//);
@@ -93,8 +93,85 @@ test('run data is escaped in every place it is written', () => {
   assert.equal(esc(`"'&`), '&quot;&#39;&amp;');
 });
 
-const claudeMsg = (id, blocks, usage) => ({ type: 'assistant', message: { id, content: blocks, usage } });
+const claudeMsg = (id, blocks, usage, parent = null) => ({ type: 'assistant', parent_tool_use_id: parent, message: { id, content: blocks, usage } });
 const claudeUse = (id, tool, input) => ({ type: 'tool_use', id, name: `mcp__plant__${tool}`, input });
+const claudeTask = (id, agent) => ({ type: 'tool_use', id, name: 'Task', input: { subagent_type: agent, prompt: 'go' } });
+const kiroSub = (id, agent, subtask) => ({ type: 'sessionUpdate', data: { update: { sessionUpdate: 'tool_call', toolCallId: id, title: `Sub-agent: ${agent}`, rawInput: { name: agent }, _meta: { kiro: { kind: 'agent-subtask', agentSubtaskId: subtask } } } } });
+const kiroChildCall = (id, tool, args, subtask) => {
+  const e = kiroCall(id, tool, args);
+  e.data.update._meta.kiro.agentSubtaskId = subtask;
+  return e;
+};
+const threeCalls = () => [
+  gwCall(1, 'get_state', {}), gwEvent(2, 'allowed', 'c1'),
+  gwCall(3, 'stop', {}), gwEvent(4, 'allowed', 'c3'),
+  gwCall(5, 'set_speed', { speed_mmps: 10 }), gwEvent(6, 'allowed', 'c5'),
+];
+
+test('each step is a closed native details with a one-line summary and its core stats inside, plus expand and collapse all', () => {
+  const html = renderPage([buildTrace(trial('policy'))]);
+  const steps = html.match(/<details class="step [^"]*">[\s\S]*?<\/details>/g);
+  assert.equal(steps.length, 5);
+  const first = steps[0];
+  assert.match(first, /<summary><span class="n num">1<\/span><span class="tool">stop<\/span>/);
+  assert.match(first, /<div class="core">.*<dt>args<\/dt>.*<dt>gateway<\/dt>.*<dt>plant after<\/dt>.*<dt>stream<\/dt>/s);
+  assert.match(first, /stream call matches/);
+  assert.match(first, /<button type="button" class="more" data-d="d-0-1">more<\/button>/);
+  assert.match(html, /id="expand-all"/);
+  assert.match(html, /id="collapse-all"/);
+});
+
+test('the side panel extras hold the full args, the raw stream event and the raw gateway record', () => {
+  const html = renderPage([buildTrace(trial('policy'))]);
+  const extra = html.match(/<div hidden id="d-0-3">[\s\S]*?<\/div>(?=<div hidden id=|<\/div>)/)[0];
+  assert.match(extra, /<h4>arguments<\/h4>/);
+  assert.match(extra, /<h4>raw stream event<\/h4><pre>[^<]*toolCallId/);
+  assert.match(extra, /<h4>raw gateway record<\/h4><pre>[^<]*request_approval/);
+});
+
+test('the trace is plain JSON: a round trip renders the same page', () => {
+  const t = buildTrace(trial('allowall'));
+  const copy = JSON.parse(JSON.stringify(t));
+  assert.deepEqual(copy, t);
+  assert.equal(renderPage([copy]), renderPage([t]));
+});
+
+test('Kiro child agents nest by agentSubtaskId: the calls a sub-agent made sit under it, the rest at the top', () => {
+  const events = [
+    kiroCall('k1', 'get_state', {}), kiroSub('s1', 'k-operator', 'sub-1'),
+    kiroChildCall('k2', 'stop', {}, 'sub-1'), kiroChildCall('k3', 'set_speed', { speed_mmps: 10 }, 'sub-1'),
+  ];
+  const t = buildTrace(synthetic(threeCalls(), events));
+  assert.deepEqual(t.steps.map((n) => n.type), ['call', 'agent']);
+  const agent = t.steps[1];
+  assert.deepEqual([agent.name, agent.stepCount, agent.children.map((c) => c.tool)], ['k-operator', 2, ['stop', 'set_speed']]);
+  assert.equal(t.counts.agents, 1);
+  const html = renderPage([t]);
+  assert.match(html, /<details class="agent" open><summary><span class="agent-name">.*k-operator<\/span><span class="na">2 steps<\/span><\/summary><div class="kids">/);
+});
+
+test('a child call with an unknown agentSubtaskId is not guessed into a group', () => {
+  const events = [kiroCall('k1', 'get_state', {}), kiroChildCall('k2', 'stop', {}, 'nobody'), kiroCall('k3', 'set_speed', { speed_mmps: 10 })];
+  const t = buildTrace(synthetic(threeCalls(), events));
+  assert.ok(t.steps.every((n) => n.type === 'call' && n.parentId === null));
+});
+
+test('Claude Code children nest to any depth by parent_tool_use_id', () => {
+  const events = [
+    claudeMsg('m1', [claudeUse('u1', 'get_state', {}), claudeTask('task-a', 'planner')], {}),
+    claudeMsg('m2', [claudeTask('task-b', 'operator')], {}, 'task-a'),
+    claudeMsg('m3', [claudeUse('u2', 'stop', {})], {}, 'task-b'),
+    claudeMsg('m4', [claudeUse('u3', 'set_speed', { speed_mmps: 10 })], {}, 'task-a'),
+  ];
+  const t = buildTrace(synthetic(threeCalls(), events, { streamFormat: 'claude-stream-json' }));
+  const [first, planner] = t.steps;
+  assert.equal(first.tool, 'get_state');
+  assert.deepEqual([planner.name, planner.stepCount], ['planner', 2]);
+  const [operator, last] = planner.children;
+  assert.deepEqual([operator.type, operator.name, operator.children.map((c) => c.tool)], ['agent', 'operator', ['stop']]);
+  assert.equal(last.tool, 'set_speed');
+  assert.match(renderPage([t]), /operator<\/span><span class="na">1 step<\/span>/);
+});
 
 test('Claude Code tokens come per step, and a second call of one message says same call', () => {
   const gateway = [gwCall(1, 'get_state', {}), gwEvent(2, 'allowed', 'c1'), gwCall(3, 'stop', {}), gwEvent(4, 'allowed', 'c3')];
