@@ -13,6 +13,7 @@ import {
   removeStage,
   renameStage,
   setAgent,
+  setPrompt,
   type Draft,
 } from './draft';
 import {
@@ -68,6 +69,12 @@ function agentSet(state: EditState, id: string, agent: string): EditState {
   const stage = state.draft.stages.find((candidate) => candidate.id === id);
   if (!stage || stage.agent === agent) return state;
   return edited(state, setAgent(state.draft, id, agent), state.selectedId);
+}
+
+function promptSet(state: EditState, id: string, prompt: string): EditState {
+  const stage = state.draft.stages.find((candidate) => candidate.id === id);
+  if (!stage || stage.prompt === prompt) return state;
+  return edited(state, setPrompt(state.draft, id, prompt), state.selectedId);
 }
 
 function selected(state: EditState, id: string): EditState {
@@ -193,6 +200,8 @@ function step(
       return renamed(state, event.id, event.name);
     case 'set-agent':
       return agentSet(state, event.id, event.agent);
+    case 'set-prompt':
+      return promptSet(state, event.id, event.prompt);
     case 'remove':
       return removed(state, event.id);
     case 'checked':

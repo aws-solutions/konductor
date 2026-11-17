@@ -10,6 +10,7 @@ const stage = (id: string, name: string): DraftStage => ({
   id,
   name,
   agent: 'k-developer',
+  prompt: '',
 });
 
 const LOADED = [stage('s1', 'draft'), stage('s2', 'review')];

@@ -135,6 +135,7 @@ export function DesignerEditor({
             nameRef={nameRef}
             onRename={editor.rename}
             onAgent={editor.setAgent}
+            onPrompt={editor.setPrompt}
             onRemove={(id) => {
               const stage = state.draft.stages.find((s) => s.id === id);
               editor.remove(id);

@@ -7,6 +7,7 @@ import type {
 } from '../../api/types';
 import { draftOf, idsOf, type Draft } from './draft';
 import { checkOf, type Check } from './problems';
+import { savedPrompts } from './saved-prompts';
 
 /** A workflow that has a file, so it can be edited and saved. */
 export type EditableDocument = WorkflowDocument & {
@@ -85,6 +86,7 @@ export type EditEvent =
   | { type: 'add' }
   | { type: 'rename'; id: string; name: string }
   | { type: 'set-agent'; id: string; agent: string }
+  | { type: 'set-prompt'; id: string; prompt: string }
   | { type: 'remove'; id: string }
   | { type: 'checked'; revision: number; diagnostics: DiagnosticView[] }
   | { type: 'save' }
@@ -120,7 +122,8 @@ export function openDocument(
   revision = 0,
 ): EditState | undefined {
   if (!isEditable(document)) return undefined;
-  const draft = draftOf(document.view.stages);
+  const prompts = savedPrompts(document)?.map((spot) => spot.text);
+  const draft = draftOf(document.view.stages, prompts);
   return {
     saved: document,
     draft,

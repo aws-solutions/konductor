@@ -23,6 +23,28 @@ function finding(path: string, message = 'Wrong.'): DiagnosticView {
   return { message, path, line: 1, severity: 'error' };
 }
 
+describe('problemsOf, for the prompt keys', () => {
+  it.each([
+    ['stages[0].prompt', 'prompt'],
+    ['stages[1].prompt_file', 'prompt_file'],
+  ] as const)('puts a finding at %s on the %s of that stage', (path, field) => {
+    const [problem] = problemsOf([finding(path)], DRAFT);
+
+    expect(problem).toMatchObject({
+      stageId: path.includes('[0]') ? 's1' : 's2',
+      field,
+    });
+  });
+
+  it('finds the stage by its name too', () => {
+    const draft = draftOf([{ name: 'plan', agent: 'k-tpm' }]);
+
+    expect(problemsOf([finding('stages.plan.prompt_file')], draft)).toEqual([
+      expect.objectContaining({ stageId: 's1', field: 'prompt_file' }),
+    ]);
+  });
+});
+
 describe('problemsOf', () => {
   it('puts a finding about a stage by its place in the list on that stage', () => {
     const [problem] = problemsOf([finding('stages[1].name')], DRAFT);

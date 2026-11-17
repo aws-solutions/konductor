@@ -13,6 +13,10 @@ export type SaveStatus =
 export class DesignerPage {
   readonly name: Locator;
   readonly agent: Locator;
+  /** The text area of the prompt of the selected stage. */
+  readonly prompt: Locator;
+  /** The read-only path of the prompt file of the selected stage. */
+  readonly promptFile: Locator;
   readonly add: Locator;
   readonly remove: Locator;
   readonly save: Locator;
@@ -28,6 +32,11 @@ export class DesignerPage {
   constructor(readonly page: Page) {
     this.name = page.getByRole('textbox', { name: 'name', exact: true });
     this.agent = page.getByRole('button', { name: /^agent / });
+    this.prompt = page.getByRole('textbox', { name: 'prompt', exact: true });
+    this.promptFile = page.getByRole('textbox', {
+      name: 'prompt_file',
+      exact: true,
+    });
     this.add = page.getByRole('button', { name: 'Add stage' });
     this.remove = page.getByRole('button', { name: 'Delete stage' });
     this.save = page.getByRole('button', { name: 'Save', exact: true });

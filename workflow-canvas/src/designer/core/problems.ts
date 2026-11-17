@@ -3,7 +3,7 @@ import type { DiagnosticView, Severity } from '../../api/types';
 import type { Draft, DraftStage } from './draft';
 
 /** A field of a stage that the Designer edits. */
-export type StageField = 'name' | 'agent';
+export type StageField = 'name' | 'agent' | 'prompt' | 'prompt_file';
 
 /** A finding of the check, with the stage and field it is about, if any. */
 export interface Problem {
@@ -22,14 +22,18 @@ export interface Problem {
   echo?: true;
 }
 
-const BY_INDEX = /^stages\[(\d+)\]\.(name|agent)$/;
-const BY_NAME = /^stages\.([^.[\]]+)\.(name|agent)$/;
+const BY_INDEX = /^stages\[(\d+)\]\.(name|agent|prompt|prompt_file)$/;
+const BY_NAME = /^stages\.([^.[\]]+)\.(name|agent|prompt|prompt_file)$/;
 
 function aim(
   stage: DraftStage | undefined,
   field: string | undefined,
 ): { stageId: string; field: StageField } | undefined {
-  return stage && (field === 'name' || field === 'agent')
+  return stage &&
+    (field === 'name' ||
+      field === 'agent' ||
+      field === 'prompt' ||
+      field === 'prompt_file')
     ? { stageId: stage.id, field }
     : undefined;
 }
