@@ -88,6 +88,20 @@ export interface CheckResult {
   summary: { valid: boolean; counts: { stages: number } };
 }
 
+/** One key of a stage that a person edits, and what it takes. */
+export interface StageField {
+  key: string;
+  type: 'name' | 'text' | 'path';
+  required: boolean;
+  min_length?: number;
+  max_length?: number;
+  pattern?: string;
+  reserved?: string[];
+  excludes?: string[];
+}
+
+export type StageFields = Record<StageKind, StageField[]>;
+
 export interface WorkflowDocument {
   name: string;
   text: string | null;
@@ -95,6 +109,7 @@ export interface WorkflowDocument {
   read_only: boolean;
   view: WorkflowView | null;
   diagnostics: Diagnostic[];
+  stage_fields: StageFields;
 }
 
 export interface SaveResult {

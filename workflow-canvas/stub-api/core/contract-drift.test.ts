@@ -5,6 +5,7 @@ import { STATUS_BY_CODE } from '../http/respond.ts';
 import {
   contractDescription,
   errorExamples,
+  responseExample,
   responseExampleOf,
   schemaOf,
 } from '../test-support/contract.ts';
@@ -26,6 +27,7 @@ import {
   VERSION_PATTERN,
 } from './contract.ts';
 import { ERROR_CODES, type ErrorCode } from './errors.ts';
+import { STAGE_FIELDS } from './fields.ts';
 import { KEY_TABLES } from './keys.ts';
 import { DIAGNOSTIC_CODES, STAGE_REASONS } from './model.ts';
 
@@ -150,6 +152,13 @@ describe('the stub and api/openapi.yaml', () => {
     expect(contractDescription()).toContain(
       `nested deeper than ${MAX_YAML_DEPTH} levels`,
     );
+  });
+
+  it('report the same fields of a stage', () => {
+    const loaded = responseExample('GET', '/api/workflow', 200, 'existing') as {
+      stage_fields: unknown;
+    };
+    expect(STAGE_FIELDS).toEqual(loaded.stage_fields);
   });
 
   it('report the same limits in the session', () => {

@@ -84,7 +84,10 @@ A workflow in this version has a `format`, a `version`, an `intent` with an
 are refused by name with the slice that adds them. Each stage of a parsed view
 also has a `kind` (`agent`, the one kind in this version) and a `range`, the
 lines of the text it takes up, so a client can draw a stage and mark its lines
-without reading YAML. The file also holds what a
+without reading YAML. `GET /api/workflow` also returns `stage_fields`: for
+each kind of stage, the keys a person may edit, with their type, whether they
+are required and their limits, so a form can be built from data. The file also
+holds what a
 backend needs to implement the calls: the accepted workflow text, the checks
 that make a text invalid, the list of diagnostic codes, how a file that is not
 a plain file is handled, and what a run does stage by stage. A client follows a

@@ -1003,6 +1003,12 @@ describe('workflow canvas API contract', () => {
       );
     });
 
+    it('says that version 1.5.0 only adds the fields of a stage', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.5\.0 only adds: the answer of `GET \/api\/workflow` gains `stage_fields`/,
+      );
+    });
+
     it('says that version 1.4.0 only adds the list of agents', () => {
       expect(words(spec.info.description)).toMatch(
         /Version 1\.4\.0 only adds: the operation `listAgents`/,
@@ -1027,7 +1033,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.4.0');
+      expect(info.version).toBe('1.5.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1129,6 +1135,78 @@ describe('workflow canvas API contract', () => {
       expect(words(spec.info.description)).toMatch(
         /Version 1\.2\.1 adds nothing and removes nothing/,
       );
+    });
+  });
+
+  describe('the fields of a stage', () => {
+    interface Field {
+      key: string;
+      type: string;
+      required: boolean;
+      min_length?: number;
+      max_length?: number;
+      pattern?: string;
+      reserved?: string[];
+      excludes?: string[];
+    }
+    const loaded = () => jsonBodyOf(spec, 'GET /api/workflow', '200');
+    const fieldsOf = (name: string) =>
+      (namedExample(loaded(), name)['stage_fields'] as { agent: Field[] })
+        .agent;
+    const byKey = (key: string) =>
+      fieldsOf('existing').find((f) => f.key === key)!;
+    const stage = () => spec.components.schemas['Stage']!;
+    const stageProperty = (key: string) =>
+      (stage()['properties'] as Record<string, Schema>)[key]!;
+
+    it('are the same whether or not the root has a file', () => {
+      expect(fieldsOf('new')).toEqual(fieldsOf('existing'));
+    });
+
+    it('are the keys of a stage that the first release reads and a person edits', () => {
+      expect(fieldsOf('existing').map((f) => f.key)).toEqual([
+        'name',
+        'agent',
+        'prompt',
+        'prompt_file',
+      ]);
+    });
+
+    it('require the keys that a stage requires', () => {
+      const required = new Set(stage()['required'] as string[]);
+      for (const field of fieldsOf('existing')) {
+        expect(field.required, field.key).toBe(required.has(field.key));
+      }
+    });
+
+    it('hold the limits and patterns that the schemas state', () => {
+      const name = spec.components.schemas['Name']!;
+      const stageName = spec.components.schemas['StageName']!;
+      const reserved = (
+        (stageName['allOf'] as Schema[])[1]!['not'] as { enum: string[] }
+      ).enum;
+      expect(byKey('name').pattern).toBe(name['pattern']);
+      expect(byKey('name').reserved).toEqual(reserved);
+      expect(byKey('agent').pattern).toBe(name['pattern']);
+      expect(byKey('prompt').min_length).toBe(
+        stageProperty('prompt')['minLength'],
+      );
+      expect(byKey('prompt').max_length).toBe(
+        stageProperty('prompt')['maxLength'],
+      );
+      expect(byKey('prompt_file').pattern).toBe(
+        spec.components.schemas['Path']!['pattern'],
+      );
+      for (const key of ['name', 'agent']) {
+        expect(byKey(key).max_length, key).toBe(64);
+        expect('a'.repeat(64)).toMatch(new RegExp(byKey(key).pattern!));
+        expect('a'.repeat(65)).not.toMatch(new RegExp(byKey(key).pattern!));
+      }
+    });
+
+    it('say that prompt and prompt_file exclude each other', () => {
+      expect(byKey('prompt').excludes).toEqual(['prompt_file']);
+      expect(byKey('prompt_file').excludes).toEqual(['prompt']);
     });
   });
 

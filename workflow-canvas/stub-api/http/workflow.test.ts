@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /** Calls GET and PUT /api/workflow over HTTP and checks them against the contract. */
 import { describe, expect, it } from 'vitest';
+import { STAGE_FIELDS } from '../core/fields.ts';
 import { sha256Hex } from '../core/hash.ts';
 import { SAMPLE_FILES } from '../core/sample.ts';
 import {
@@ -85,6 +86,7 @@ describe('GET /api/workflow', () => {
         ],
       },
       diagnostics: [],
+      stage_fields: STAGE_FIELDS,
     });
   });
 
