@@ -45,6 +45,11 @@ const AWS_AUTH_NAME =
 // "unauthorized" and "401" are credential failures only in an AWS shape: next to an AWS error name or to "not authorized
 // to perform". A bare "401 Unauthorized" from another tool (a registry, a Git host) is not an AWS credential problem.
 const AWS_AUTH_SHAPE = `(?:${AWS_AUTH_NAME}|not authorized to perform)`;
+// "token has expired" and "refresh failed" are credential failures only next to the word AWS or SSO. Other tools print
+// them too (`npm ERR! refresh failed for registry`, `git: token has expired for github`). A host name such as
+// aws.example.com or a name such as aws-sdk is not the word AWS.
+const AWS_ANCHOR = '(?:\\bsso\\b|\\baws\\b(?![.-]))';
+const TOKEN_EXPIRY = 'token has expired|refresh failed';
 const CREDENTIAL = new RegExp(
   [
     'could not load credentials|credential chain failed|nocredentials|expiredtoken|expired token',
@@ -52,7 +57,8 @@ const CREDENTIAL = new RegExp(
     'unrecognizedclientexception|invalidclienttokenid|unable to locate credentials|signaturedoesnotmatch',
     'invalidsignature|authfailure|missing authentication token|requires aws credentials',
     // The AWS SSO login that backs a profile: the session ran out and could not be refreshed.
-    'token has expired|sso session|refresh failed|the sso session associated with this profile has expired',
+    'sso session|the sso session associated with this profile has expired',
+    `${AWS_ANCHOR}[^\\n]{0,60}(?:${TOKEN_EXPIRY})|(?:${TOKEN_EXPIRY})[^\\n]{0,60}${AWS_ANCHOR}`,
     `unauthorized[^\\n]{0,60}${AWS_AUTH_SHAPE}|${AWS_AUTH_SHAPE}[^\\n]{0,60}unauthorized`,
     `\\b401\\b[^\\n]{0,60}(?:${AWS_AUTH_NAME})|(?:${AWS_AUTH_NAME})[^\\n]{0,60}\\b401\\b`,
   ].join('|'),

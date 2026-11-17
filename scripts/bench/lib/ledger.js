@@ -91,6 +91,13 @@ class SpendStopError extends LedgerError {
 
 const isMoney = (value) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0;
+/** Throws a TypeError before any row is written when `value` is neither absent nor text: the reader refuses such a row. */
+function requireTextOrAbsent(where, name, value) {
+  if (value !== undefined && typeof value !== 'string')
+    throw new TypeError(
+      `${where}: ${name} must be text or left out, got ${typeof value === 'object' ? JSON.stringify(value) : typeof value}`,
+    );
+}
 const formatUsd = (amount) => `$${amount.toFixed(2)}`;
 /** A projected cost and a limit, with as many decimals as it takes to show two different amounts as different. */
 function formatUsdPair(projected, limit) {
@@ -471,6 +478,8 @@ function createLedger({
       );
     if (!isMoney(meanUsd))
       throw new TypeError('reserve: the mean cost must be a number, 0 or more');
+    requireTextOrAbsent('reserve', 'kind', kind);
+    requireTextOrAbsent('reserve', 'model', model);
     const callFields = {
       ...(kind === undefined ? {} : { kind }),
       ...(model === undefined ? {} : { model }),
@@ -535,10 +544,11 @@ function createLedger({
     );
     let isClosed = false;
     // Settling takes no lock: one short line appended in a single write. A reservation is settled once.
+    // The reservation is closed only once the row is written: a write that fails leaves it open, so the caller's
+    // cleanup can retry the settle or cancel it instead of hitting "already settled" and losing the real error.
     const settleWith = (amount, extraFields) => {
       if (isClosed)
         throw new Error(`reservation ${id} was already settled or cancelled`);
-      isClosed = true;
       append({
         type: 'settle',
         id,
@@ -546,6 +556,7 @@ function createLedger({
         usd: amount,
         ...extraFields,
       });
+      isClosed = true;
     };
     return {
       id,
@@ -568,6 +579,7 @@ function createLedger({
         ok = true,
         modelStarted = true,
       } = {}) {
+        requireTextOrAbsent('settle', 'model', model);
         const tokens = usage
           ? Object.fromEntries(
               TOKEN_FIELDS.filter((field) => isMoney(usage[field])).map(
