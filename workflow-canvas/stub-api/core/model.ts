@@ -140,6 +140,14 @@ export interface RunStage {
   reason?: StageReason;
 }
 
+/** One row of the run history: a run of the root, newest first. */
+export interface RunSummary {
+  run_id: string;
+  started_at: string;
+  status: RunStatus;
+  goal: string;
+}
+
 export interface Run {
   run_id: string;
   workflow: string;

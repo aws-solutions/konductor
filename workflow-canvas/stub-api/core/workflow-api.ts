@@ -13,8 +13,10 @@ import type {
   CheckResult,
   Run,
   RunEvent,
+  RunSummary,
   SaveResult,
   WorkflowDocument,
+  WorkflowView,
 } from './model.ts';
 import type { RunPlan, RunSimulator } from './runs.ts';
 import type { Behavior } from './sample.ts';
@@ -115,7 +117,7 @@ export class WorkflowApi {
    * that is active, the harness. The workflow is trusted only while the file
    * still has the bytes it had when the stub started.
    */
-  startRun(): { run_id: string } {
+  startRun(goal: string): { run_id: string } {
     const file = this.store.read(this.root);
     if (!file) {
       throw new ApiError('not_found', 'The workflow has not been saved yet.');
@@ -128,7 +130,9 @@ export class WorkflowApi {
     const active =
       this.runs.activeRunId() ??
       (this.behavior.busy
-        ? this.runs.start(this.root, stageNames, { neverEnds: true })
+        ? this.runs.start(this.root, stageNames, goalOfOther(check.view), {
+            neverEnds: true,
+          })
         : undefined);
     if (active) {
       throw new ApiError(
@@ -148,7 +152,18 @@ export class WorkflowApi {
         },
       );
     }
-    return { run_id: this.runs.start(this.root, stageNames, this.planOfRun()) };
+    const runId = this.runs.start(
+      this.root,
+      stageNames,
+      goal,
+      this.planOfRun(),
+    );
+    return { run_id: runId };
+  }
+
+  /** The runs of the root, newest first: the stub keeps every run it played. */
+  listRuns(limit: number): { runs: RunSummary[] } {
+    return { runs: this.runs.list(limit) };
   }
 
   listAgents(): { agents: Agent[] } {
@@ -205,6 +220,12 @@ export class WorkflowApi {
     }
     return target;
   }
+}
+
+// The run that another program started has a goal the stub never saw, so it
+// stands in the workflow's default goal, or its outcome.
+function goalOfOther(view: WorkflowView): string {
+  return view.params?.goal?.default ?? view.intent.outcome;
 }
 
 function emptyDocument(name: string): WorkflowDocument {

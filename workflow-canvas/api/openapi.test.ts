@@ -74,6 +74,7 @@ const STABLE_OPERATION_IDS = [
   'getRun',
   'listAgents',
   'getRunEvents',
+  'listRuns',
 ];
 
 // This version has these operations and no others.
@@ -84,6 +85,7 @@ const OPERATIONS = [
   'GET /api/agents listAgents',
   'POST /api/validate checkWorkflow',
   'POST /api/run startRun',
+  'GET /api/runs listRuns',
   'GET /api/runs/{id} getRun',
   'GET /api/runs/{id}/events getRunEvents',
 ];
@@ -1035,7 +1037,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.6.0');
+      expect(info.version).toBe('1.7.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1315,6 +1317,46 @@ describe('workflow canvas API contract', () => {
     it('says that version 1.6.0 only adds the events of a run', () => {
       expect(words(spec.info.description)).toMatch(
         /Version 1\.6\.0 only adds: the operation `getRunEvents`/,
+      );
+    });
+  });
+
+  describe('the history of runs', () => {
+    const words = (text: string) => text.replace(/\s+/g, ' ');
+    const rows = () =>
+      (
+        jsonBodyOf(spec, 'GET /api/runs', '200').example as {
+          runs: { started_at: string; status: string }[];
+        }
+      ).runs;
+
+    it('lists the newest run first', () => {
+      const starts = rows().map((row) => row.started_at);
+      expect(starts.length).toBeGreaterThan(1);
+      expect(starts).toEqual([...starts].sort().reverse());
+    });
+
+    it('has at most one active run, the newest', () => {
+      const active = rows().filter((row) => row.status === 'running');
+      expect(active.length).toBeLessThan(2);
+      if (active.length === 1) expect(rows()[0]).toBe(active[0]);
+    });
+
+    it('caps the list at the largest limit', () => {
+      const limit = spec.paths['/api/runs']!['get']!.parameters!.find(
+        (p) => p.name === 'limit',
+      );
+      expect(limit?.schema?.['maximum']).toBe(200);
+      const list = spec.components.schemas['RunList']!['properties'] as Record<
+        string,
+        Schema
+      >;
+      expect(list['runs']!['maxItems']).toBe(200);
+    });
+
+    it('says that version 1.7.0 only adds the history of runs', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.7\.0 only adds: the operation `listRuns`/,
       );
     });
   });

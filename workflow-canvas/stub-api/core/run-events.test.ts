@@ -5,6 +5,7 @@ import { countingSuffix, FakeClock } from '../test-support/fake-clock.ts';
 import type { Run, RunEvent } from './model.ts';
 import { RunSimulator, type RunPlan } from './runs.ts';
 
+const GOAL = 'Say hello';
 const STAGE_MS = 3000;
 let clock: FakeClock;
 let runs: RunSimulator;
@@ -48,7 +49,7 @@ describe('the events of a simulated run', () => {
   ])(
     'agree with the state of a run that %s, at every step of the clock',
     (_, plan) => {
-      const runId = runs.start('hello', ORDER, plan);
+      const runId = runs.start('hello', ORDER, GOAL, plan);
       for (let step = 0; step <= ORDER.length * 3 + 1; step++) {
         const run = runs.get(runId)!;
         const { events } = runs.events(runId)!;
@@ -63,7 +64,7 @@ describe('the events of a simulated run', () => {
   );
 
   it('number every event from 1 while the run is active, console lines included', () => {
-    const runId = runs.start('hello', ORDER);
+    const runId = runs.start('hello', ORDER, GOAL);
     clock.advance(STAGE_MS * ORDER.length - 1);
     const { events, lastSeq, finished } = runs.events(runId)!;
     expect(finished).toBe(false);
@@ -74,7 +75,7 @@ describe('the events of a simulated run', () => {
   });
 
   it('print each line of a stage while it runs, numbered from 1', () => {
-    const runId = runs.start('hello', ORDER);
+    const runId = runs.start('hello', ORDER, GOAL);
     clock.advance(STAGE_MS / 3);
     expect(runs.events(runId)!.events.at(-1)).toEqual({
       seq: 2,
@@ -88,7 +89,7 @@ describe('the events of a simulated run', () => {
   });
 
   it('drop the console lines once the run has finished, and keep the rest', () => {
-    const runId = runs.start('hello', ORDER, {
+    const runId = runs.start('hello', ORDER, GOAL, {
       block: { at: 0, reason: 'TIMEOUT' },
     });
     clock.advance(STAGE_MS);
@@ -103,14 +104,14 @@ describe('the events of a simulated run', () => {
   });
 
   it('say when the next event is due, and nothing once the run has finished', () => {
-    const runId = runs.start('hello', ['only']);
+    const runId = runs.start('hello', ['only'], GOAL);
     expect(runs.events(runId)!.nextAt).toBe(clock.now() + STAGE_MS / 3);
     clock.advance(STAGE_MS);
     expect(runs.events(runId)!.nextAt).toBeUndefined();
   });
 
   it('stay in the first stage of a run that never ends', () => {
-    const runId = runs.start('hello', ORDER, { neverEnds: true });
+    const runId = runs.start('hello', ORDER, GOAL, { neverEnds: true });
     clock.advance(STAGE_MS * 10);
     const { events, finished, nextAt } = runs.events(runId)!;
     expect(finished).toBe(false);

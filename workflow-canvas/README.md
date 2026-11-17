@@ -75,6 +75,7 @@ canvas calls. It covers these operations:
 | `GET /api/agents`           | `listAgents`    | List the agents a stage may name        |
 | `POST /api/validate`        | `checkWorkflow` | Check workflow text and report problems |
 | `POST /api/run`             | `startRun`      | Start a run                             |
+| `GET /api/runs`             | `listRuns`      | List the past runs, newest first        |
 | `GET /api/runs/{id}`        | `getRun`        | Get the status of a run                 |
 | `GET /api/runs/{id}/events` | `getRunEvents`  | Follow the events of a run              |
 
@@ -95,7 +96,9 @@ a plain file is handled, and what a run does stage by stage. A client follows a
 run by polling `GET /api/runs/{id}`, or with the long poll of
 `GET /api/runs/{id}/events`: numbered events for stage changes, the end of the
 run and console lines. A client resumes from the last number it read. Console
-lines are live only: a finished run's events have none. The session response also says which
+lines are live only: a finished run's events have none. `GET /api/runs` lists
+the runs of the workflow, newest first, with each run's start time, status and
+goal. The session response also says which
 server it is: `konductor_version`, the `capabilities` it supports (the
 `operationId` of each operation, which is not renamed within an API major
 version) and its `limits` (text bytes, stages, outcome, prompt and goal
@@ -183,7 +186,8 @@ eight agents that the Designer offers. The stub reads no files, so for a
 `prompt_file` it checks only the path rules: it accepts a path to a file that
 does not exist. A run is faked and calls no agent: its stages run for 3 seconds
 each, one after the other, each prints two scripted console lines, and all of
-them pass. It runs one run at a time and
+them pass. `GET /api/runs` lists the runs it played since it started. It runs
+one run at a time and
 never fails a stage.
 
 `STUB_WORKFLOW` picks the workflow of the session, to show the other answers of

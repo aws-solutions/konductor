@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Clock } from './clock.ts';
 import { HARNESS } from './contract.ts';
-import type { Run, RunEvent, RunStage, StageReason } from './model.ts';
+import type {
+  Run,
+  RunEvent,
+  RunStage,
+  RunSummary,
+  StageReason,
+} from './model.ts';
 import { scriptOf, type TimedEvent } from './run-events.ts';
 import { formatTimestamp, runIdPrefix } from './timestamp.ts';
 
@@ -22,6 +28,7 @@ interface StartedRun {
   startedAt: number;
   order: string[];
   plan: RunPlan;
+  goal: string;
   script: TimedEvent[];
 }
 
@@ -69,6 +76,7 @@ export class RunSimulator {
   start(
     workflow: string,
     stageNames: readonly string[],
+    goal: string,
     plan: RunPlan = {},
   ): string {
     const startedAt = this.clock.now();
@@ -81,6 +89,7 @@ export class RunSimulator {
       startedAt,
       order,
       plan: normal,
+      goal,
       script: scriptOf({
         runId,
         startedAt,
@@ -93,6 +102,19 @@ export class RunSimulator {
     this.runs.set(run.runId, run);
     this.latest = run;
     return run.runId;
+  }
+
+  /** The runs so far, newest first, at most `limit` of them. */
+  list(limit: number): RunSummary[] {
+    return [...this.runs.values()]
+      .reverse()
+      .slice(0, limit)
+      .map((run) => ({
+        run_id: run.runId,
+        started_at: formatTimestamp(run.startedAt),
+        status: this.describe(run).status,
+        goal: run.goal,
+      }));
   }
 
   get(runId: string): Run | undefined {
