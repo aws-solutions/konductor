@@ -8,11 +8,16 @@
 //   deep   replicated answers per task and arm (with, its A/A repeat aa, without), as full sessions give them.
 //
 // Both depths score each answer with the same two readings, A (a checklist written from the request alone) and B (the
-// skill's rules checklist), on the 1 to 5 scale, and read them with the same rules. A task's gap is the mean over the
-// counted judge seats of (score with) minus (score without); a seat counts when it judged every arm validly, and a task
-// counts when 2 seats count and the with arm loaded the skill. Judges are seated by SR-24 (judge/family.js). A stored
-// judgment made from other inputs is stale and refused, never read. No verdict is read unless every control in the
-// run passed (SR-25). The deep check adds one rule of ours (DEEP_RULES): no verdict inside the A/A spread.
+// skill's rules checklist), on the 1 to 5 scale, and read them with the same rules. Every judged answer has three
+// judges from three distinct, known model families, none the agent's (PANEL_RULES, SR-24); the answer's score is the
+// median of the three. A task's gap is the mean median score with minus the mean median score without; a task counts
+// when all three judges scored every answer validly and the with arm loaded the skill. A stored judgment made from
+// other inputs is stale and refused, never read. No verdict is read unless every control in the run passed (SR-25).
+// The deep check adds one rule of ours (DEEP_RULES): no verdict inside the A/A spread.
+//
+// What this measures is the conditional effect after load: the with arm is made to load the skill, so the result says
+// what the skill does once selected, not whether users' requests select it. A whole-skill keep or prune call also
+// needs a separate selection result (kprecord.js).
 //
 // All model work goes through `provider` ({ answer, writeChecklist, judge }); in Phase A only the stub exists
 // (stubprovider.js), so nothing here can spend.
@@ -33,8 +38,10 @@ const DEPTHS = Object.freeze({
 });
 const READINGS = Object.freeze(['A', 'B']);
 const WEIGHT = Object.freeze({ MET: 1, PARTIAL: 0.5, MISSING: 0 });
-/** His judge-scale rule: a task counts in a reading when this many seats judged all its answers validly. */
-const MIN_SEATS = 2;
+/** The owner's panel rule (PANEL_RULES): this many judge families score every judged answer. */
+const JUDGE_FAMILIES = 3;
+/** What every keep-or-prune block measures. */
+const CLAIM = 'conditional effect after load';
 const JUDGE_PROMPT_VERSION = 'cap-keep-prune-judge/1';
 const DEFAULT_REPLICATES = 3;
 
@@ -47,7 +54,23 @@ const DEEP_RULES = [
   '3. A change is a new dated rule; a record made under these rules is never read again under new ones.',
 ].join('\n');
 
+const PANEL_RULES_DATE = '2026-11-17';
+const PANEL_RULES = [
+  'Both depths, an owner decision that replaces the copied rule of two judge seats per task.',
+  '',
+  `1. Before any judging, at least ${JUDGE_FAMILIES} judges must be seated from ${JUDGE_FAMILIES} distinct, known model families, none of them the agent's family (SR-24). With fewer, nothing is judged and the check is \`NO DATA\` with "not enough judge families" as its first reason.`,
+  `2. The first ${JUDGE_FAMILIES} seated judges score every judged answer. The answer's score is the median of their ${JUDGE_FAMILIES} scores.`,
+  `3. A task counts in a reading only when all ${JUDGE_FAMILIES} judges scored every one of its answers validly. Every score and family is kept in the record.`,
+  '4. A change is a new dated rule; a record made under these rules is never read again under new ones.',
+].join('\n');
+
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+/** The median of a non-empty list of numbers. */
+const median = (xs) => {
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
 const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
 const safe = (s) => String(s).replace(/[^A-Za-z0-9._-]+/g, '_');
 
@@ -114,9 +137,10 @@ function judgmentStore(dir) {
 }
 
 /**
- * The judgments of one reading of one task: per seat, per arm, the scores of its answers (one per replicate).
- * Returns { seatScores: Map(seat -> { arm: [score] }), stale }. A missing judgment is made by the provider and stored;
- * a stale one is refused (not read, counted) unless `rejudge` is true, which makes it again.
+ * The judgments of one reading of one task: per seat, per arm, the score of each answer (one per replicate; null when
+ * the judgment was invalid or refused as stale). Returns { seatScores: Map(seat -> { arm: [score|null] }), stale }.
+ * A missing judgment is made by the provider and stored; a stale one is refused (not read, counted) unless `rejudge`
+ * is true, which makes it again. `seats` are judge model ids, `keyBase` the store key prefix, `answers` { arm: [{ text }] }.
  */
 function judgeReading({ provider, store, seats, keyBase, taskId, checklist, answers, rejudge }) {
   const seatScores = new Map();
@@ -129,14 +153,13 @@ function judgeReading({ provider, store, seats, keyBase, taskId, checklist, answ
         const inputSha = sha256(JSON.stringify([JUDGE_PROMPT_VERSION, seat, checklist, ans.text]));
         const key = [...keyBase, `${safe(seat)}.${arm}.${rep}`];
         let { state, record } = store.get(key, inputSha);
-        if (state === 'stale' && !rejudge) { stale += 1; return; }
+        if (state === 'stale' && !rejudge) { stale += 1; byArm[arm].push(null); return; }
         if (state !== 'current') {
           const j = provider.judge({ seat, checklist, answer: ans.text, taskId });
           record = { input_sha256: inputSha, seat, arm, replicate: rep, labels: j.labels, version: j.version ?? null };
           store.put(key, record);
         }
-        const score = scoreOf(record.labels, checklist.length);
-        if (score !== null) byArm[arm].push(score);
+        byArm[arm].push(scoreOf(record.labels, checklist.length));
       });
     }
     seatScores.set(seat, byArm);
@@ -144,19 +167,36 @@ function judgeReading({ provider, store, seats, keyBase, taskId, checklist, answ
   return { seatScores, stale };
 }
 
-/** The task gap of `left` minus `right` from seat scores, and whether the task counts (MIN_SEATS seats judged every arm). */
-function taskGap(seatScores, left, right, arms) {
-  const gaps = [];
-  for (const byArm of seatScores.values()) {
-    if (!arms.every((a) => byArm[a]?.length)) continue;
-    gaps.push(mean(byArm[left]) - mean(byArm[right]));
-  }
-  return { counted: gaps.length >= MIN_SEATS, gap: gaps.length ? mean(gaps) : null, seats: gaps.length };
+/**
+ * The panel scores of each answer: { arm: [{ replicate, median, seats: [{ model, score }] }] }. `median` is null unless
+ * every seat scored the answer validly.
+ */
+function answerScores(seatScores, arms) {
+  const seats = [...seatScores.keys()];
+  return Object.fromEntries(arms.map((arm) => {
+    const n = Math.max(0, ...seats.map((s) => seatScores.get(s)[arm]?.length ?? 0));
+    return [arm, Array.from({ length: n }, (_, rep) => {
+      const list = seats.map((model) => ({ model, score: seatScores.get(model)[arm]?.[rep] ?? null }));
+      return { replicate: rep, median: list.length === JUDGE_FAMILIES && list.every((x) => x.score !== null) ? median(list.map((x) => x.score)) : null, seats: list };
+    })];
+  }));
 }
 
 /**
- * Checks one subject (a skill or a control skill) at one depth and returns his readSkill shape plus the A/A reading:
- * { skill, tasks, A, B, B_all, exclusions, aa, status }. `subject` is { name, skill: { text } , batches: [{ batch,
+ * The task gap of `left` minus `right`: mean median score of `left`'s answers minus that of `right`'s. The task counts
+ * only when every answer of every arm in `arms` has its panel median (PANEL_RULES 3). Returns { counted, gap, scores }.
+ */
+function taskGap(seatScores, left, right, arms) {
+  const scores = answerScores(seatScores, arms);
+  const counted = arms.every((a) => scores[a].length > 0 && scores[a].every((x) => x.median !== null));
+  const gap = counted ? mean(scores[left].map((x) => x.median)) - mean(scores[right].map((x) => x.median)) : null;
+  return { counted, gap, scores };
+}
+
+/**
+ * Checks one subject (a skill or a control skill) at one depth and returns his readSkill shape plus the A/A reading
+ * and every panel score: { skill, tasks, A, B, B_all, exclusions, aa, status, scores }. `seats` are the panel's judge
+ * model ids (empty: nothing is judged). `subject` is { name, skill: { text } , batches: [{ batch,
  * tasks: [{ id, prompt, rubric }] }] }. `bWaiting` lists batches whose rules checklist waits for a refreshed baseline,
  * so B is not judged there. `status` counts tasks by what happened to them (counted, not_loaded, setup_fault).
  */
@@ -164,6 +204,7 @@ function checkSubject({ subject, depth, provider, seats, store, subjectModel, re
   const { arms } = DEPTHS[depth];
   const reps = depth === 'deep' ? replicates : 1;
   const rows = { A: [], B: [], aa: [] };
+  const scores = [];
   const status = { counted: 0, not_loaded: 0, setup_fault: 0 };
   const allTasks = subject.batches.flatMap((b) => b.tasks.map((t) => ({ ...t, batch: b.batch })));
   for (const task of allTasks) {
@@ -187,6 +228,7 @@ function checkSubject({ subject, depth, provider, seats, store, subjectModel, re
       const j = judgeReading({ provider, store, seats, keyBase, taskId: task.id, checklist: checklists[reading], answers, rejudge });
       const g = taskGap(j.seatScores, 'with', 'without', arms);
       rows[reading].push({ batch: task.batch, counted: j.stale === 0 && g.counted, gap: g.gap, stale: j.stale });
+      for (const [arm, list] of Object.entries(g.scores)) for (const x of list) scores.push({ task: task.id, batch: task.batch, reading, arm, ...x });
       if (reading === 'A' && depth === 'deep') {
         const a = taskGap(j.seatScores, 'with', 'aa', arms);
         rows.aa.push({ batch: task.batch, counted: j.stale === 0 && a.counted, gap: a.gap, stale: 0 });
@@ -194,7 +236,7 @@ function checkSubject({ subject, depth, provider, seats, store, subjectModel, re
     }
   }
   const B = readingOf(rows.B);
-  return { skill: subject.name, tasks: allTasks.length, A: readingOf(rows.A), B, B_all: B, exclusions: [], aa: depth === 'deep' ? readingOf(rows.aa) : null, status };
+  return { skill: subject.name, tasks: allTasks.length, A: readingOf(rows.A), B, B_all: B, exclusions: [], aa: depth === 'deep' ? readingOf(rows.aa) : null, status, scores };
 }
 
 /**
@@ -235,6 +277,27 @@ function deepNoData(A, aa) {
 }
 
 /**
+ * The judge panel under SR-24 and PANEL_RULES: { seats, why, info }. `seats` are the first JUDGE_FAMILIES seated judge
+ * model ids, or empty with `why` naming the shortage; `info` is judgeSeats' result with later seated judges marked
+ * as not on the panel.
+ */
+function judgePanel({ subjectModel, judges }) {
+  const info = judgeSeats({ subjectModel, judges });
+  let taken = 0;
+  const seats = info.seats.map((s) => {
+    if (!s.seated) return s;
+    taken += 1;
+    return taken <= JUDGE_FAMILIES ? s : { ...s, seated: false, why: `the panel already has its ${JUDGE_FAMILIES} families` };
+  });
+  const seated = seats.filter((s) => s.seated);
+  const panel = { ...info, seats };
+  if (info.judged && seated.length === JUDGE_FAMILIES) return { seats: seated.map((s) => s.model), why: null, info: panel };
+  const detail = info.judged ? `only ${seated.length} distinct known families other than the agent's (${info.subject.family}) are seated` : info.why;
+  const why = `not enough judge families: ${JUDGE_FAMILIES} distinct, known families other than the agent's are needed before judging; ${detail}`;
+  return { seats: [], why, info: { ...panel, judged: false, why, seats: seats.map((s) => (s.seated ? { ...s, seated: false, why: 'not enough judge families, so nothing is judged' } : s)) } };
+}
+
+/**
  * The verdict of one depth for one skill. Runs the controls (convention-control at this depth, and the dose ladder)
  * and the skill under the same seats, then applies the copied rules, SR-24, SR-25 and our deep rule. Options:
  *   depth          quick or deep
@@ -246,13 +309,13 @@ function deepNoData(A, aa) {
  *   bWaiting       batches whose B waits for a refreshed baseline
  *   store          a judgmentStore; replicates and rejudge as in checkSubject
  * Returns { depth, entry, summary, seats, controls }, where entry is labelSkill's result with every extra no-data
- * cause added in front of his own: SR-24 first, then `subjectNoData` (a stale loaded unit, an unapproved rename or
- * fold), then SR-25, then the deep rule. `subjectNoData` lists reasons the subject cannot be read; falsy ones are skipped.
+ * cause added in front of his own: not enough judge families first, then `subjectNoData` (a stale unit, an unapproved
+ * rename or fold), then SR-25, then the deep rule. `subjectNoData` is a list of reasons the subject cannot be read.
  */
 function checkDepth({ depth, subject, convention = null, ladder = null, provider, subjectModel, judges, bWaiting = [], subjectNoData = [], store = judgmentStore(null), replicates = DEFAULT_REPLICATES, rejudge = false }) {
   if (!DEPTHS[depth]) throw new Error(`depth must be quick or deep, not ${JSON.stringify(depth)}`);
-  const seatInfo = judgeSeats({ subjectModel, judges });
-  const seats = seatInfo.judged ? seatInfo.seats.filter((s) => s.seated).map((s) => s.model) : [];
+  const panel = judgePanel({ subjectModel, judges });
+  const { seats } = panel;
   const common = { depth, provider, seats, store, subjectModel, replicates, rejudge };
   const evaluations = [];
   const ran = [];
@@ -263,7 +326,7 @@ function checkDepth({ depth, subject, convention = null, ladder = null, provider
   const batches = subject.batches.map((b) => b.batch);
   const entry = labelSkill({ summary, batches, bWaiting });
   const extra = [];
-  if (!seatInfo.judged) extra.push(seatInfo.why);
+  if (panel.why) extra.push(panel.why);
   extra.push(...subjectNoData.filter(Boolean));
   if (!trust.trusted) extra.push(trust.status === 'NONE' ? 'the run includes no control, so no verdict is read (SR-25)' : `a control did not pass (${trust.evaluations.filter((e) => !e.pass).map((e) => `${e.control} ${e.status}`).join(', ')}), so no verdict is read (SR-25)`);
   const aaWhy = deepNoData(summary.A, summary.aa);
@@ -273,10 +336,10 @@ function checkDepth({ depth, subject, convention = null, ladder = null, provider
     const v = verdictFor(LABELS.noData, null, null, { noDataWhy: noData[0] });
     Object.assign(entry, { label: LABELS.noData, why: noData[0], verdict: v.verdict, verdict_why: v.why, verdict_action: v.action, no_data: noData });
   }
-  return { depth, entry, summary, seats: seatInfo, controls: { ...trust, ran } };
+  return { depth, entry, summary, seats: panel.info, unjudged: panel.why, controls: { ...trust, ran } };
 }
 
 module.exports = {
-  DEPTHS, MIN_SEATS, DEEP_RULES, DEEP_RULES_DATE, JUDGE_PROMPT_VERSION, DEFAULT_REPLICATES,
-  scoreOf, readingOf, judgmentStore, checkSubject, checkLadder, deepNoData, checkDepth,
+  DEPTHS, JUDGE_FAMILIES, CLAIM, DEEP_RULES, DEEP_RULES_DATE, PANEL_RULES, PANEL_RULES_DATE, JUDGE_PROMPT_VERSION, DEFAULT_REPLICATES,
+  scoreOf, median, readingOf, judgmentStore, checkSubject, checkLadder, deepNoData, judgePanel, checkDepth,
 };

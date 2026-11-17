@@ -6,9 +6,13 @@
     "schema",
     "createdAt",
     "skill",
+    "unit",
     "scope",
     "rules",
     "baseline",
+    "identity",
+    "selection",
+    "wholeSkill",
     "quick",
     "deep",
     "agree",
@@ -19,7 +23,7 @@
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "keep-prune-record/1"
+      "const": "keep-prune-record/2"
     },
     "createdAt": {
       "type": "string"
@@ -44,6 +48,72 @@
         }
       }
     },
+    "unit": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "manifestSha256",
+        "paths",
+        "unresolved",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "manifestSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "unresolved": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "source": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "commit",
+            "tree",
+            "dirty"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "commit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "tree": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "dirty": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
     "scope": {
       "type": "object",
       "required": [
@@ -57,8 +127,7 @@
           "enum": [
             "skill",
             "section",
-            "rule",
-            "context"
+            "rule"
           ]
         },
         "id": {
@@ -82,6 +151,7 @@
         "verdictRulesDate",
         "passRulesDate",
         "deepRulesDate",
+        "panelRulesDate",
         "sha256"
       ],
       "additionalProperties": false,
@@ -101,13 +171,19 @@
         "sha256": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
+        },
+        "panelRulesDate": {
+          "type": "string"
         }
       }
     },
     "baseline": {
       "type": "object",
       "required": [
-        "manifestSha256"
+        "manifestSha256",
+        "legacy",
+        "unitSha256",
+        "source"
       ],
       "additionalProperties": false,
       "properties": {
@@ -115,7 +191,145 @@
           "type": [
             "string",
             "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "legacy": {
+          "type": [
+            "boolean",
+            "null"
           ]
+        },
+        "unitSha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "source": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "commit",
+            "tree"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "commit": {
+              "type": "string"
+            },
+            "tree": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "identity": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "name",
+        "replacedBy",
+        "how",
+        "approvedBy",
+        "why"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replacedBy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "how": {
+          "enum": [
+            "renamed",
+            "folded"
+          ]
+        },
+        "approvedBy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "why": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "selection": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "triggerPrecision",
+        "triggerRecall",
+        "observedUseRate",
+        "source",
+        "measuredAt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "triggerPrecision": {
+          "type": "number",
+          "minimum": 0
+        },
+        "triggerRecall": {
+          "type": "number",
+          "minimum": 0
+        },
+        "observedUseRate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "measuredAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "wholeSkill": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "status",
+        "why"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "NO DATA",
+            "ready for review"
+          ]
+        },
+        "why": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
         }
       }
     },
@@ -125,6 +339,7 @@
         "null"
       ],
       "required": [
+        "claim",
         "commit",
         "runId",
         "provider",
@@ -136,6 +351,7 @@
         "gapA",
         "gapB",
         "bWaiting",
+        "scores",
         "controls",
         "cost",
         "label",
@@ -147,6 +363,9 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "claim": {
+          "const": "conditional effect after load"
+        },
         "commit": {
           "type": [
             "string",
@@ -477,6 +696,82 @@
           "items": {
             "type": "string"
           }
+        },
+        "scores": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "task",
+              "batch",
+              "reading",
+              "arm",
+              "replicate",
+              "median",
+              "judges"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "task": {
+                "type": "string"
+              },
+              "batch": {
+                "type": "string"
+              },
+              "reading": {
+                "enum": [
+                  "A",
+                  "B"
+                ]
+              },
+              "arm": {
+                "enum": [
+                  "with",
+                  "aa",
+                  "without"
+                ]
+              },
+              "replicate": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "median": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "judges": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "model",
+                    "family",
+                    "score"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "model": {
+                      "type": "string"
+                    },
+                    "family": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "score": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -486,6 +781,7 @@
         "null"
       ],
       "required": [
+        "claim",
         "commit",
         "runId",
         "provider",
@@ -497,6 +793,7 @@
         "gapA",
         "gapB",
         "bWaiting",
+        "scores",
         "controls",
         "cost",
         "label",
@@ -510,6 +807,9 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "claim": {
+          "const": "conditional effect after load"
+        },
         "commit": {
           "type": [
             "string",
@@ -934,6 +1234,82 @@
               "type": "array",
               "items": {
                 "type": "string"
+              }
+            }
+          }
+        },
+        "scores": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "task",
+              "batch",
+              "reading",
+              "arm",
+              "replicate",
+              "median",
+              "judges"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "task": {
+                "type": "string"
+              },
+              "batch": {
+                "type": "string"
+              },
+              "reading": {
+                "enum": [
+                  "A",
+                  "B"
+                ]
+              },
+              "arm": {
+                "enum": [
+                  "with",
+                  "aa",
+                  "without"
+                ]
+              },
+              "replicate": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "median": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "judges": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "model",
+                    "family",
+                    "score"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "model": {
+                      "type": "string"
+                    },
+                    "family": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "score": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  }
+                }
               }
             }
           }

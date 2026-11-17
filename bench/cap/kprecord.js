@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The keep-or-prune record (bench/schema/keep-prune-record.schema.json): one JSON file per scope (skill, section, rule
-// or context file). A skill record holds a `quick` and a `deep` block side by side, each with its own label, verdict,
-// coverage and judges. The two are never averaged: `agree` is false when their verdicts differ and a person decides in
-// `signoff`. A verdict is a suggestion; `signoff` starts empty. Readers refuse an unknown major version (NFR-10), and a
-// record made under other rules or from another SKILL.md is stale, listed and never read as current.
+// The keep-or-prune record (bench/schema/keep-prune-record.schema.json): one JSON file per scope (a skill, or a
+// section or rule of one). A skill record holds a `quick` and a `deep` block side by side, each with its own label,
+// verdict, coverage, judges and every panel score. The two are never averaged: `agree` is false when their verdicts
+// differ and a person decides in `signoff`. A verdict is a suggestion; `signoff` starts empty.
+//
+// Each block measures the conditional effect after load (`claim`): the with arm was made to load the skill. Whether
+// users' requests select the skill is a separate selection result (`selection`: trigger precision and recall, observed
+// use), and `wholeSkill` is NO DATA without it, so a whole-skill keep or prune call never rests on forced loading alone.
+//
+// The record names the whole loaded unit (`unit`: subject manifest hash, paths, Git source), the baseline's recorded
+// unit, and any rename or fold (`identity`). Readers refuse an unknown major version (NFR-10). A record made under other
+// rules or from another loaded unit is stale, listed and never read as current.
 
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -13,34 +20,47 @@ const path = require('node:path');
 const { validate, loadSchema } = require('../runner/lib/schema.js');
 const { LABEL_RULES, LABEL_RULES_DATE, VERDICT_RULES, VERDICT_RULES_DATE, LABELS, verdictFor } = require('./labels.js');
 const { PASS_RULES, PASS_RULES_DATE } = require('./passrules.js');
-const { DEEP_RULES, DEEP_RULES_DATE, DEPTHS } = require('./keepprune.js');
+const { DEEP_RULES, DEEP_RULES_DATE, PANEL_RULES, PANEL_RULES_DATE, DEPTHS, CLAIM } = require('./keepprune.js');
 const { familyOf } = require('../judge/family.js');
+const { readJsonFile } = require('./checkedjson.js');
+const { subjectManifest } = require('./subjectunit.js');
 
 const SCHEMA_NAME = 'keep-prune-record';
-const MAJOR = 1;
+const MAJOR = 2;
 const SCHEMA_ID = `${SCHEMA_NAME}/${MAJOR}`;
+const WHOLE = Object.freeze({ noData: 'NO DATA', ready: 'ready for review' });
+const NO_SELECTION = `no selection result (trigger precision and recall, observed use): the blocks give the ${CLAIM} only, so no whole-skill keep or prune call is made`;
 
 const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
-/** The rule set every record names: the dates and one hash over all four rule texts. */
+/** The rule set every record names: the dates and one hash over all five rule texts. */
 const RULES = Object.freeze({
-  labelRulesDate: LABEL_RULES_DATE, verdictRulesDate: VERDICT_RULES_DATE, passRulesDate: PASS_RULES_DATE, deepRulesDate: DEEP_RULES_DATE,
-  sha256: sha256([LABEL_RULES, VERDICT_RULES, PASS_RULES, DEEP_RULES].join('\n\u0000\n')),
+  labelRulesDate: LABEL_RULES_DATE, verdictRulesDate: VERDICT_RULES_DATE, passRulesDate: PASS_RULES_DATE, deepRulesDate: DEEP_RULES_DATE, panelRulesDate: PANEL_RULES_DATE,
+  sha256: sha256([LABEL_RULES, VERDICT_RULES, PASS_RULES, DEEP_RULES, PANEL_RULES].join('\n\u0000\n')),
 });
 
 const gapOf = (reading) => (reading && reading.tasks ? { mean: reading.mean_gap, tInterval: reading.t_interval, bootstrapInterval: reading.bootstrap_interval } : null);
 
+/** The panel scores of a check as record rows: one per judged answer, its median and each judge's score and family. */
+const scoreRows = (scores = []) => scores.map((x) => ({
+  task: x.task, batch: x.batch, reading: x.reading, arm: x.arm, replicate: x.replicate, median: x.median,
+  judges: x.seats.map((s) => ({ model: s.model, family: familyOf(s.model), score: s.score })),
+}));
+
 /**
- * One depth block from checkDepth's result. `meta` gives what the check does not know: { commit, runId, provider,
- * replicates, bWaiting }. Hidden checks are a separate hard score (null until a deep run has them), never folded in.
+ * One depth block from checkDepth's result.
+ * @param {object} check checkDepth's result
+ * @param {object} [meta] what the check does not know: { commit, runId, provider, replicates, bWaiting }
+ * Hidden checks are a separate hard score (null until a deep run has them), never folded in.
  */
 function blockFromCheck(check, meta = {}) {
   const { depth, entry, summary, seats, controls } = check;
   const block = {
+    claim: CLAIM,
     commit: meta.commit ?? null, runId: meta.runId ?? null, provider: meta.provider ?? null,
     subject: { harness: DEPTHS[depth].harness, model: seats.subject.model, family: seats.subject.family },
     judges: seats.seats.filter((s) => s.seated).map((s) => ({ model: s.model, family: s.family })),
     judgesRefused: seats.seats.filter((s) => !s.seated).map((s) => ({ model: s.model, family: s.family, why: s.why ?? 'the run is unjudged' })),
-    unjudged: seats.judged ? null : seats.why,
+    unjudged: check.unjudged ?? (seats.judged ? null : seats.why),
     coverage: {
       tasksCounted: summary.A.tasks_counted, tasksTotal: summary.tasks, bTasksCounted: summary.B.tasks_counted,
       notLoaded: summary.status.not_loaded, setupFault: summary.status.setup_fault,
@@ -48,6 +68,7 @@ function blockFromCheck(check, meta = {}) {
       ...(depth === 'deep' ? { runsPerSide: meta.replicates ?? null } : {}),
     },
     gapA: gapOf(summary.A), gapB: gapOf(summary.B), bWaiting: [...(meta.bWaiting ?? [])],
+    scores: scoreRows(summary.scores),
     controls: { passed: controls.trusted, status: controls.status, ran: controls.ran, results: controls.evaluations.map((e) => ({ control: e.control, status: e.status, missing: e.missing })) },
     cost: depth === 'deep' ? { credits: 0, usd: 0 } : { usd: 0 },
     label: entry.label, labelWhy: entry.why ?? null, verdict: entry.verdict, verdictWhy: entry.verdict_why ?? null, action: entry.verdict_action, noData: [...entry.no_data],
@@ -62,19 +83,21 @@ function blockFromCheck(check, meta = {}) {
 /**
  * The deep block `cap decide` writes beside a call. The study's runs are scored 0 to 1 by checks and rubric and carry
  * no A or B reading, and the copied rules read 1 to 5 readings, so the block is NO DATA until phase B wires the
- * readings in. The call itself is kept as `capCall`, for a person to read, and is not a verdict. `meta` is { commit,
- * runId, model, controlsTrusted, replicates }.
+ * readings in. The call itself is kept as `capCall`, for a person to read, and is not a verdict.
+ * @param {object} decision one cap decide call
+ * @param {object} [meta] { commit, runId, model, controlsTrusted, replicates }
  */
 function blockFromDecision(decision, meta = {}) {
   const why = "this study's runs carry no A and B readings yet: the copied rules read readings on the 1 to 5 scale, and cap decide's own 0 to 1 calls are no longer used for verdicts";
   const v = verdictFor(LABELS.noData, null, null, { noDataWhy: why });
   const del = decision.evidence?.del ?? null;
   return {
+    claim: CLAIM,
     commit: meta.commit ?? null, runId: meta.runId ?? null, provider: 'kiro-cli',
     subject: { harness: 'kiro-cli', model: meta.model ?? null, family: familyOf(meta.model) },
     judges: [], judgesRefused: [], unjudged: null,
     coverage: { tasksCounted: 0, tasksTotal: 0, bTasksCounted: 0, notLoaded: 0, setupFault: 0, staleJudgments: 0, runsPerSide: del ? Math.min(del.nHead, del.nBase) : null },
-    gapA: null, gapB: null, bWaiting: [],
+    gapA: null, gapB: null, bWaiting: [], scores: [],
     controls: { passed: meta.controlsTrusted === true, status: meta.controlsTrusted === true ? 'PASS' : meta.controlsTrusted === false ? 'FAIL' : 'NONE', ran: meta.controlsTrusted === null || meta.controlsTrusted === undefined ? [] : ['fact', 'decoy'], results: [] },
     cost: { credits: null, usd: null },
     label: LABELS.noData, labelWhy: why, verdict: v.verdict, verdictWhy: v.why, action: v.action, noData: [why],
@@ -85,18 +108,60 @@ function blockFromDecision(decision, meta = {}) {
 }
 
 /**
- * A skill record. `skill` is { name, sha256 } (the SKILL.md hash), `quick` and `deep` blocks (either may be null when
- * that depth has not run), `baseline` { manifestSha256 } or null. `agree` is null unless both blocks exist.
+ * Problems of a selection result (an empty list when it is usable). A selection result is measured apart from the
+ * forced-load check: { triggerPrecision, triggerRecall, observedUseRate, source, measuredAt }, the three numbers in
+ * [0, 1], `source` naming the run or file it came from, `measuredAt` a date.
+ * @param {object} s the selection result
  */
-function buildRecord({ skill, quick = null, deep = null, baseline = null, scope = { kind: 'skill', id: 'whole', lines: null }, createdAt = new Date().toISOString() }) {
+function selectionProblems(s) {
+  if (!s || typeof s !== 'object' || Array.isArray(s)) return ['the selection result must be an object'];
+  const problems = [];
+  for (const k of ['triggerPrecision', 'triggerRecall', 'observedUseRate']) if (typeof s[k] !== 'number' || !(s[k] >= 0 && s[k] <= 1)) problems.push(`${k} must be a number from 0 to 1`);
+  for (const k of ['source', 'measuredAt']) if (typeof s[k] !== 'string' || !s[k].trim()) problems.push(`${k} must be a non-empty string`);
+  const extra = Object.keys(s).filter((k) => !['triggerPrecision', 'triggerRecall', 'observedUseRate', 'source', 'measuredAt'].includes(k));
+  if (extra.length) problems.push(`unknown field(s): ${extra.join(', ')}`);
+  return problems;
+}
+
+/**
+ * The whole-skill gate: NO DATA, with every reason, unless a selection result is present and the unit is current and
+ * mapped. Even then it is only ready for a person to read beside the conditional verdicts; no rule combines them.
+ */
+function wholeSkillGate({ selection, staleWhy, identityWhy }) {
+  const why = [selection ? null : NO_SELECTION, staleWhy, identityWhy].filter(Boolean);
+  if (why.length) return { status: WHOLE.noData, why };
+  return { status: WHOLE.ready, why: [`a person reads the selection result beside the ${CLAIM}; no rule combines them`] };
+}
+
+/**
+ * A record for one scope of one skill.
+ * @param {object} o
+ * @param {object} o.skill { name, sha256 } (the SKILL.md hash)
+ * @param {object|null} [o.unit] today's subject manifest with its Git source: { manifestSha256, paths, unresolved, source }
+ * @param {object|null} [o.baseline] { manifestSha256, legacy, unitSha256, source, staleWhy } from the frozen baseline
+ * @param {object|null} [o.identity] { name, replacedBy, how, approvedBy, why } for a renamed or folded skill
+ * @param {object|null} [o.selection] the separate selection result, or null when none was measured
+ * @param {object|null} [o.quick] the quick block; [o.deep] the deep block (either may be null when not run)
+ * @param {object} [o.scope] { kind: skill | section | rule, id, lines }
+ * @param {string} [o.createdAt] ISO time
+ */
+function buildRecord({ skill, unit = null, baseline = null, identity = null, selection = null, quick = null, deep = null, scope = { kind: 'skill', id: 'whole', lines: null }, createdAt = new Date().toISOString() }) {
+  if (!['skill', 'section', 'rule'].includes(scope.kind)) throw new Error(`a keep-prune record is for a skill, a section or a rule, not ${JSON.stringify(scope.kind)}: always-loaded context is not ablatable by this design`);
+  if (selection) { const p = selectionProblems(selection); if (p.length) throw new Error(`selection result: ${p.join('; ')}`); }
+  const staleWhy = baseline?.staleWhy ?? null;
   return {
     schema: SCHEMA_ID, createdAt,
     skill: { name: skill.name, sha256: skill.sha256 ?? null },
-    scope, rules: { ...RULES }, baseline: { manifestSha256: baseline?.manifestSha256 ?? null },
+    unit: unit ? { manifestSha256: unit.manifestSha256, paths: [...unit.paths], unresolved: [...unit.unresolved], source: unit.source ?? null } : null,
+    scope, rules: { ...RULES },
+    baseline: { manifestSha256: baseline?.manifestSha256 ?? null, legacy: baseline?.legacy ?? null, unitSha256: baseline?.unitSha256 ?? null, source: baseline?.source ?? null },
+    identity,
+    selection,
+    wholeSkill: scope.id === 'whole' ? wholeSkillGate({ selection, staleWhy, identityWhy: identity?.why ?? null }) : null,
     quick, deep,
     agree: quick && deep ? quick.verdict === deep.verdict : null,
     tokens: null,
-    stale: { value: false, why: null },
+    stale: { value: Boolean(staleWhy), why: staleWhy },
     signoff: { by: null, date: null, decision: null, note: null },
   };
 }
@@ -119,16 +184,25 @@ function writeRecord(file, record) {
 }
 
 /**
- * Reads a record and says whether it is current. Throws on an unknown major or a schema problem. Returns the record
- * with `stale` set when it was made under other rules or from another SKILL.md than `skillSha256` (when given).
+ * Reads a record and says whether it is current. Throws on a repeated key, an unknown major or a schema problem.
+ * @param {string} file the record file
+ * @param {object} [o]
+ * @param {string} [o.skillSha256] today's SKILL.md hash
+ * @param {string} [o.skillsDir] today's skills/ folder: the loaded unit is hashed again and compared
+ * @returns {object} the record, with `stale` set when it was made under other rules or from another unit
  */
-function readRecord(file, { skillSha256 = null } = {}) {
-  const record = JSON.parse(fs.readFileSync(file, 'utf8'));
+function readRecord(file, { skillSha256 = null, skillsDir = null } = {}) {
+  const record = readJsonFile(file);
   const problems = recordProblems(record);
   if (problems.length) throw new Error(`${file}: ${problems.join('; ')}`);
-  const why = [];
+  const why = record.stale.value ? [record.stale.why] : [];
   if (record.rules.sha256 !== RULES.sha256) why.push(`made under other rules (labels ${record.rules.labelRulesDate}, verdicts ${record.rules.verdictRulesDate}); never read again under the current ones`);
   if (skillSha256 && record.skill.sha256 !== skillSha256) why.push('SKILL.md changed after the record was made');
+  if (skillsDir) {
+    const now = subjectManifest({ skillsDir, name: record.identity?.replacedBy ?? record.skill.name }).sha256;
+    if (!record.unit) why.push('the record names no loaded unit, so it cannot be shown current');
+    else if (record.unit.manifestSha256 !== now) why.push(`the loaded unit changed after the record was made (subject ${record.unit.manifestSha256.slice(0, 12)}, now ${now.slice(0, 12)})`);
+  }
   if (why.length) record.stale = { value: true, why: why.join('; ') };
   return record;
 }
@@ -137,17 +211,24 @@ function readRecord(file, { skillSha256 = null } = {}) {
 function renderRecord(record) {
   const row = (name, pick) => `| ${name} | ${['quick', 'deep'].map((d) => (record[d] ? pick(record[d]) : 'not run')).join(' | ')} |`;
   const gap = (g) => (g ? `${g.mean} ${JSON.stringify(g.tInterval)}` : 'n/a');
+  const src = record.unit?.source;
+  const sel = record.selection;
   return [
     `# Keep or prune: ${record.skill.name}`, '',
+    `Measures: ${CLAIM} (the with arm was made to load the skill).`, '',
     '| | quick | deep |', '|---|---|---|',
     row('label', (b) => b.label), row('suggested verdict', (b) => b.verdict), row('action', (b) => b.action),
     row('why', (b) => (b.noData.length ? b.noData.join('; ') : b.labelWhy)),
     row('gap A', (b) => gap(b.gapA)), row('gap B', (b) => gap(b.gapB)),
     row('tasks counted', (b) => `${b.coverage.tasksCounted} of ${b.coverage.tasksTotal}`),
     row('controls', (b) => `${b.controls.status} (${b.controls.ran.join(', ') || 'none'})`),
-    row('judges', (b) => b.judges.map((j) => j.model).join(', ') || 'none'), '',
+    row('judges', (b) => b.judges.map((j) => `${j.model} (${j.family})`).join(', ') || 'none'), '',
+    `Loaded unit: ${record.unit ? `${record.unit.manifestSha256.slice(0, 12)} over ${record.unit.paths.join(', ')}` : 'not recorded'}. Source: ${src?.commit ?? 'unknown'}${src?.dirty ? ' (with uncommitted changes)' : ''}.`,
+    `Stale: ${record.stale.value ? `YES: ${record.stale.why}` : 'no'}.`,
+    `Selection: ${sel ? `precision ${sel.triggerPrecision}, recall ${sel.triggerRecall}, observed use ${sel.observedUseRate} (${sel.source})` : 'not measured'}.`,
+    record.wholeSkill ? `Whole-skill call: ${record.wholeSkill.status}: ${record.wholeSkill.why.join('; ')}.` : '',
     `Agree: ${record.agree === null ? 'one depth only' : record.agree ? 'yes' : 'NO: the verdicts differ, a person decides'}. Sign-off: ${record.signoff.by ?? 'none yet'}.`, '',
-  ].join('\n');
+  ].filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');
 }
 
-module.exports = { SCHEMA_ID, MAJOR, RULES, blockFromCheck, blockFromDecision, buildRecord, recordProblems, writeRecord, readRecord, renderRecord };
+module.exports = { SCHEMA_ID, MAJOR, RULES, WHOLE, NO_SELECTION, blockFromCheck, blockFromDecision, selectionProblems, wholeSkillGate, buildRecord, recordProblems, writeRecord, readRecord, renderRecord };

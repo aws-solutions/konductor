@@ -20,7 +20,7 @@ evaluate a skill, and whether a skill should be pruned. Everything marked free s
 | `report --verdict platform` | Is the platform worth keeping against vanilla? One page, one call per arm. | free |
 | `cap skill-plan --base REF --runs DIR` | Which skills get a lift study, on which tasks, with how many runs and at what estimated cost? | free |
 | `cap skill-study --study DIR`, then `cap decide --study DIR` | For each skill: delete, prune (which sections, which lines, move or remove) or keep? | tens to hundreds of credits per skill |
-| `cap keep-prune --skill NAME --run stub-ID` | One keep-or-prune record per skill: a quick and a deep verdict side by side, under Michael Lin's dated rules. Phase A runs on the stub provider only. | free |
+| `cap keep-prune --skill NAME --run stub-ID` | One keep-or-prune record per skill: a quick and a deep verdict of the conditional effect after load, side by side, under Michael Lin's dated rules. The whole-skill call stays NO DATA until a separate selection result is given. Phase A runs on the stub provider only. | free |
 
 The prune report is a recommendation, never a deletion. A person decides, with the checklist at the end.
 
@@ -170,10 +170,12 @@ What it cannot show: a section moved to references may never be opened (the move
 
 ## Keep or prune: one record, two depths (phase A, stub only)
 
-`cap keep-prune` is the one keep-or-prune tool. It runs a skill at a quick depth (one answer per task and arm, over the skill's frozen baseline) and a deep depth (replicated answers with an A/A repeat), and writes one record with both verdicts side by side. Both depths use the same judges, controls and rules. No judge comes from the agent's own model family; an agent of unknown family, or a panel with no other family, is NO DATA (`bench/judge/family.js`). The rules are Michael Lin's, copied with credit: labels (2026-11-10), suggested verdicts (2026-11-16), NO DATA under 12 of every 16 tasks or with a stale judgment, and the control pass rules. One rule is ours: the deep depth is NO DATA inside the A/A spread (2026-11-17).
+`cap keep-prune` is the one keep-or-prune tool. It runs a skill at a quick depth (one answer per task and arm, over the skill's frozen baseline) and a deep depth (replicated answers with an A/A repeat), and writes one record with both verdicts side by side. Both depths use the same judges, controls and rules. No judge comes from the agent's own model family (`bench/judge/family.js`). The rules are Michael Lin's, copied with credit: labels (2026-11-10), suggested verdicts (2026-11-16), NO DATA under 12 of every 16 tasks or with a stale judgment, and the control pass rules. One rule is ours: the deep depth is NO DATA inside the A/A spread (2026-11-17). One is the owner's (2026-11-17): every judged answer has three judges from three distinct, known families, none the agent's, and its score is their median; with fewer than three families nothing is judged and the check is NO DATA, "not enough judge families" first.
+
+What it measures is the **conditional effect after load**: the with arm is made to load the skill. A skill that requests rarely select can look useful here and still earn nothing in real sessions. So the record's `wholeSkill` call is NO DATA until a separate selection result (trigger precision and recall, observed use) is given with `--selection FILE`. Only skills are checked; agents, SOPs, contexts and always-loaded steering are refused.
 
 1. `node bench/runner/bench.js cap keep-prune --skill plan-review --run stub-pilot --out DIR` (free). Phase A has only the stub provider, so the record is a test of the pipeline, never a measurement.
-2. Read `DIR/stub-pilot/records/plan-review.md`. Check the controls row first: no verdict is read unless the convention control and the dose ladder both passed.
+2. Read `DIR/stub-pilot/records/plan-review.md`. Check the loaded-unit and stale lines, then the controls row: no verdict is read unless the convention control and the dose ladder both passed.
 3. A stale baseline is NO DATA, with the reason named: the loaded unit (SKILL.md, its references and scripts, and shared references it names) changed after the baseline was frozen. Do not refresh it in place; a person writes and reviews a new baseline with `source` filled. A renamed or folded skill stays NO DATA until a person records an approved migration in `MANIFEST.json` `identities`.
 4. When `agree` is false, the two depths disagree. Read both; do not average them. A person who is not the skill's author fills `signoff`.
 

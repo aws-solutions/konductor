@@ -65,7 +65,7 @@ const FLAGS = {
   'cap review-import': ['ratings', 'key', 'run', 'rater', 'out', 'save', 'force', 'kappa-min', 'agreement-min', 'spearman-min', 'json'],
   'cap criteria': ['study', 'runs', 'runs-glob', 'baseline', 'aa', 'out', 'json', 'margin', 'saturated', 'judge-disagree', 'replicate-sd', 'min-runs', 'no-adjust', 'bench-dir', 'extra-tasks'],
   'cap forced-prefix': ['cap', 'harness', 'base', 'out', 'repo-root', 'bench-dir'],
-  'cap keep-prune': ['skill', 'run', 'out', 'depth', 'provider', 'subject-model', 'judges', 'replicates', 'rejudge', 'repo-root', 'json'],
+  'cap keep-prune': ['skill', 'run', 'out', 'depth', 'provider', 'subject-model', 'judges', 'replicates', 'rejudge', 'selection', 'repo-root', 'json'],
   'cap plan': [
     'mode', 'cap', 'base', 'reps', 'tasks', 'budget-credits', 'vanilla', 'allow-regex', 'force', 'candidate', 'acting-agent', 'agent-engine', 'scratch', 'seed',
     'repo-root', 'bench-dir', 'extra-tasks', 'json', 'profile',

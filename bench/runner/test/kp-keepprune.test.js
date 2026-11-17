@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // cap keep-prune, end to end on the stub provider (no model, no credentials, no spend): the convention control shows
 // its known effect, the dose ladder shows rising harm, a real skill gets a record with both depths, a label, a
-// suggested verdict and an empty sign-off. Then the gates around the copied rules: SR-24, SR-25, stale judgments, the
+// suggested verdict, its loaded unit and source, and an empty sign-off. Then the gates around the copied rules: the
+// three-family panel and SR-24, SR-25, stale judgments and stale units, the selection gate on the whole-skill call, the
 // deep A/A rule, the setup checks, the record's version and staleness, and the record cap decide writes.
 'use strict';
 
@@ -29,6 +30,7 @@ const ladder = loadDoseLadder();
 const stub = createStubProvider({ ladder });
 const seats = [...STUB_JUDGES];
 const pilot = () => loadBaseline({ name: PILOT, skillsDir: path.join(REPO, 'skills') });
+const SELECTION = Object.freeze({ triggerPrecision: 0.9, triggerRecall: 0.8, observedUseRate: 0.4, source: 'stub-selection', measuredAt: '2026-11-17' });
 /** A repository with only the pilot skill and a baselines folder with only its baseline, for edits. */
 function pilotRepo(t) {
   const root = tmp(t);
@@ -63,13 +65,23 @@ test('the dose ladder shows the judges reading rising harm: D0 contains 0 and th
   assert.equal(evaluateLadder(doses).status, 'PASS');
 });
 
-test('one real skill, both depths: one record with a label, a suggested verdict, both controls passed and an empty sign-off', (t) => {
+test('one real skill, both depths: one record with a label, a suggested verdict, its unit and source, and an empty sign-off', (t) => {
   const out = tmp(t);
-  const { record, file } = runKeepPrune({ name: PILOT, repo: REPO, runId: 'stub-pilot', outDir: out });
+  const { record, file, markdown } = runKeepPrune({ name: PILOT, repo: REPO, runId: 'stub-pilot', outDir: out });
   assert.deepEqual(rec.recordProblems(record), []);
-  assert.equal(record.schema, 'keep-prune-record/1');
+  assert.equal(record.schema, 'keep-prune-record/2');
+  assert.match(record.unit.manifestSha256, /^[0-9a-f]{64}$/);
+  assert.deepEqual(record.unit.paths, ['plan-review/SKILL.md']);
+  assert.match(record.unit.source.commit, /^[0-9a-f]{40}$/);
+  assert.deepEqual(record.baseline.legacy, true, 'his baselines hashed SKILL.md only');
+  assert.equal(record.stale.value, false);
+  assert.equal(record.wholeSkill.status, 'NO DATA');
+  assert.deepEqual(record.wholeSkill.why, [rec.NO_SELECTION]);
+  assert.match(markdown, /Measures: conditional effect after load/);
+  assert.match(markdown, /Whole-skill call: NO DATA: no selection result/);
   for (const depth of ['quick', 'deep']) {
     const b = record[depth];
+    assert.equal(b.claim, 'conditional effect after load');
     assert.ok(Object.values(LABELS).includes(b.label), `${depth} label ${b.label}`);
     assert.ok(Object.values(VERDICTS).includes(b.verdict), `${depth} verdict ${b.verdict}`);
     assert.equal(b.controls.passed, true);
@@ -77,6 +89,11 @@ test('one real skill, both depths: one record with a label, a suggested verdict,
     assert.deepEqual(b.judges.map((j) => j.family), ['deepseek', 'glm', 'grok']);
     assert.equal(b.subject.family, 'claude');
     assert.equal(b.coverage.tasksTotal, 16);
+    assert.ok(b.scores.length > 0);
+    for (const s of b.scores) {
+      assert.deepEqual(s.judges.map((j) => j.family), ['deepseek', 'glm', 'grok'], 'all three scores and families are kept');
+      assert.equal(s.median, kp.median(s.judges.map((j) => j.score)));
+    }
   }
   assert.equal(record.deep.coverage.runsPerSide, kp.DEFAULT_REPLICATES);
   assert.deepEqual(record.signoff, { by: null, date: null, decision: null, note: null });
@@ -97,7 +114,7 @@ test('SR-24 at both depths: an agent of unknown family is unjudged and NO DATA, 
     const r = depthCheck({ depth, subjectModel: 'auto' });
     assert.equal(r.entry.label, LABELS.noData);
     assert.equal(r.entry.verdict, VERDICTS.noData);
-    assert.match(r.entry.no_data[0], /unjudged, never a pass \(SR-24\)/);
+    assert.match(r.entry.no_data[0], /^not enough judge families: .*unjudged, never a pass \(SR-24\)/);
     assert.equal(r.controls.trusted, false, 'unjudged controls are NOT RUN, so the run is not trusted');
     const block = rec.blockFromCheck(r, { replicates: 3 });
     assert.match(block.unjudged, /SR-24/);
@@ -105,13 +122,24 @@ test('SR-24 at both depths: an agent of unknown family is unjudged and NO DATA, 
   }
 });
 
-test('SR-24: a Claude agent never gets a Claude judge seat; with only one other family no task counts', () => {
-  const r = depthCheck({ judges: ['claude-opus-5', 'deepseek-v3.2'] });
+test('panel rule: fewer than three non-agent families is NO DATA before any judging, "not enough judge families" first', () => {
+  const calls = [];
+  const counting = { ...stub, judge: (a) => { calls.push(a); return stub.judge(a); } };
+  for (const judges of [['claude-opus-5', 'deepseek-v3.2', 'glm-4.6'], ['deepseek-v3.2', 'deepseek-r2', 'glm-4.6']]) {
+    const r = depthCheck({ judges, provider: counting });
+    assert.equal(r.entry.label, LABELS.noData);
+    assert.match(r.entry.no_data[0], /^not enough judge families: 3 distinct, known families other than the agent's are needed before judging; only 2/);
+    assert.equal(calls.length, 0, 'nothing is judged');
+    const block = rec.blockFromCheck(r, {});
+    assert.deepEqual(block.judges, []);
+    assert.match(block.unjudged, /^not enough judge families/);
+  }
+  const r = depthCheck({ judges: ['claude-opus-5', 'deepseek-v3.2', 'glm-4.6', 'grok-4', 'gpt-5'] });
   const block = rec.blockFromCheck(r, {});
-  assert.deepEqual(block.judges.map((j) => j.model), ['deepseek-v3.2']);
-  assert.match(block.judgesRefused[0].why, /own family/);
-  assert.equal(r.entry.label, LABELS.noData, 'one seat is under the 2 seats a task needs');
-  assert.ok(r.entry.no_data.some((x) => /counts 0 of the skill's 16 tasks/.test(x)));
+  assert.deepEqual(block.judges.map((j) => j.family), ['deepseek', 'glm', 'grok'], 'SR-24 refuses the Claude judge; the panel takes the first three');
+  assert.match(block.judgesRefused.find((j) => j.family === 'claude').why, /own family/);
+  assert.match(block.judgesRefused.find((j) => j.family === 'gpt').why, /already has its 3 families/);
+  assert.equal(kp.median([4, 1, 3]), 3);
 });
 
 test('SR-25: a run whose control fails or includes no control gives no verdict', () => {
@@ -167,10 +195,31 @@ test('a baseline made from another SKILL.md is NO DATA with the reason named, an
   assert.throws(() => loadBaseline({ name: PILOT, skillsDir, dir: baselinesDir }), /hash differs from MANIFEST\.json/);
 });
 
+test('a reference-file edit flips the record to stale; a selection result opens the whole-skill gate only when current', (t) => {
+  const { root, repo, baselinesDir } = pilotRepo(t);
+  const skillsDir = path.join(repo, 'skills');
+  const ref = path.join(skillsDir, PILOT, 'references', 'checks.md');
+  const opts = { name: PILOT, repo, baselinesDir, outDir: path.join(root, 'out'), depth: 'quick' };
+  const first = runKeepPrune({ ...opts, runId: 'stub-a', selection: SELECTION });
+  assert.equal(first.record.stale.value, false);
+  assert.equal(first.record.wholeSkill.status, 'ready for review');
+  assert.deepEqual(first.record.selection, SELECTION);
+  fs.mkdirSync(path.dirname(ref));
+  fs.writeFileSync(ref, 'Check every task names a file.\n');
+  assert.match(rec.readRecord(first.file, { skillsDir }).stale.why, /the loaded unit changed after the record was made/);
+  const second = runKeepPrune({ ...opts, runId: 'stub-b', selection: SELECTION });
+  assert.equal(second.record.stale.value, true);
+  assert.match(second.record.stale.why, /plan-review\/references\/checks\.md/);
+  assert.equal(second.record.quick.label, LABELS.noData);
+  assert.equal(second.record.wholeSkill.status, 'NO DATA');
+  assert.throws(() => runKeepPrune({ ...opts, runId: 'stub-c', selection: { ...SELECTION, triggerRecall: 2 } }), /triggerRecall must be a number from 0 to 1/);
+});
+
 test('a non-skill subject is refused: an agent and always-loaded context', (t) => {
   const out = tmp(t);
   assert.throws(() => runKeepPrune({ name: 'k-architect', repo: REPO, runId: 'stub-x', outDir: out }), /is an agent, not a skill/);
   assert.throws(() => runKeepPrune({ name: 'k-core-rules', repo: REPO, runId: 'stub-x', outDir: out }), /not ablatable by this design/);
+  assert.throws(() => rec.buildRecord({ skill: { name: 'k-core-rules' }, scope: { kind: 'context', id: 'whole', lines: null } }), /not ablatable by this design/);
 });
 
 test('deep rule: NO DATA inside the A/A spread or with no A/A interval', () => {
@@ -200,8 +249,8 @@ test('readers refuse an unknown major, and a record made under other rules or an
   const dir = tmp(t);
   const record = rec.buildRecord({ skill: { name: PILOT, sha256: 'a'.repeat(64) }, quick: rec.blockFromCheck(depthCheck(), {}) });
   const file = rec.writeRecord(path.join(dir, 'r.json'), record);
-  fs.writeFileSync(path.join(dir, 'v2.json'), JSON.stringify({ ...record, schema: 'keep-prune-record/2' }));
-  assert.throws(() => rec.readRecord(path.join(dir, 'v2.json')), /major version 2 is unknown/);
+  fs.writeFileSync(path.join(dir, 'v3.json'), JSON.stringify({ ...record, schema: 'keep-prune-record/3' }));
+  assert.throws(() => rec.readRecord(path.join(dir, 'v3.json')), /major version 3 is unknown/);
   assert.match(rec.readRecord(file, { skillSha256: 'b'.repeat(64) }).stale.why, /SKILL.md changed/);
   fs.writeFileSync(path.join(dir, 'old.json'), JSON.stringify({ ...record, rules: { ...record.rules, sha256: 'c'.repeat(64) } }));
   assert.match(rec.readRecord(path.join(dir, 'old.json')).stale.why, /made under other rules/);
