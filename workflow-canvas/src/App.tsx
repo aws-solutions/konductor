@@ -80,12 +80,12 @@ export function App({
   const views: PageView<ViewId>[] = [
     {
       id: 'designer',
-      label: 'Designer',
+      label: 'Design',
       content: <Designer result={result} editor={editor} />,
     },
     {
       id: 'execution',
-      label: 'Execution',
+      label: 'Run',
       content: (
         <Execution
           result={saved}
