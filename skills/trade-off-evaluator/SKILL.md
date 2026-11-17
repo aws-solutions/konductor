@@ -79,7 +79,7 @@ requirement.
 
 ### Step 5: Write Report
 
-Write the full trade-off report to `docs/design/<name>-tradeoffs.md`. If called during the creation SOP, embed the table in the relevant ADR's Alternatives section.
+When a caller asks for a report file, write it to `<name>-tradeoffs.md` in the caller's output dir (default `docs/design/`); `k-design-doc-creation` passes `validation_output_dir`. During that SOP, also embed the table in the relevant ADR's Alternatives section. When invoked standalone, report inline and write a file only if the user asks for one.
 
 ## Pitfalls
 
@@ -104,4 +104,4 @@ The trade-off evaluation passes when:
 - At least 2 options are scored
 - All five dimensions are addressed (or explicitly excluded with justification)
 - The recommendation names the chosen option and references at least 2 dimension scores
-- The report is written to `docs/design/<name>-tradeoffs.md` or embedded in the ADR
+- The report is delivered where the caller asked: inline, written to the caller's output dir (default `docs/design/`), or embedded in the ADR

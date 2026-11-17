@@ -13,6 +13,8 @@ Takes user stories and system design / HLD and splits them into independent feat
 
 This skill sits between Design and Kiro Spec Generation in the SDLC — one HLD fans out into multiple independent feature tracks, each going through its own Kiro spec workflow.
 
+Produces engineer-sized features, not a task checklist; for tasks.md use `kiro-task-generation`.
+
 ## Usage
 
 Use this skill when:

@@ -120,12 +120,12 @@ Two automated passes, with no user interaction permitted:
 ### Phase 4 — Adversarial review loop *(can pause once)*
 
 The architect challenges its own design across up to 5 rounds, classifying findings CRITICAL
-(architectural or factual) / IMPORTANT / MINOR.
+(architectural or factual) / IMPORTANT / SUGGESTION.
 
 **If a CRITICAL architectural finding survives past round 2, the loop stops immediately** and you
 are asked whether to redesign or override. That is the one hard pause in Phases 2–4.
 
-Otherwise it exits early once a round produces 0 CRITICAL, 0 IMPORTANT, and fewer than 3 MINOR
+Otherwise it exits early once a round produces 0 CRITICAL, 0 IMPORTANT, and fewer than 3 SUGGESTION
 findings, applying corrections and re-running the guidelines check between rounds. No finding is
 silently dropped — each is either fixed or recorded as an engineer override.
 
@@ -135,7 +135,7 @@ silently dropped — each is either fixed or recorded as an engineer override.
 ### Phase 5 — Final output
 
 The architect applies every correction from Phases 3 and 4, runs `design-evaluation` for a
-confidence score (the average of 10 dimension scores, 1–5 each; anything below 3 is flagged),
+confidence score (the average of its 8 scored dimensions, 1 to 5 each; anything below 3 is flagged),
 writes the final file, and reports the path, the score, and any open issues — without pasting the
 document into the chat.
 
@@ -155,7 +155,7 @@ The SOP will not claim the doc is ready for principal-engineer review unless **a
 
 - [ ] `design-doc-guidelines` maker-checker: **0 CRITICAL**
 - [ ] `doc-accuracy-analyzer`: **0 INCORRECT**, each corrected in the text, and every OVERSTATED finding corrected or flagged (UNVERIFIED is acceptable with callouts)
-- [ ] Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR**
+- [ ] Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION**
 - [ ] `design-evaluation` confidence score: **≥ 3.0 average**
 
 If any fails, it presents what is left and asks: `Fix these before submission? [y/n]`.
@@ -178,9 +178,10 @@ Review the design package in design/pennywise/.
    hard pause; it will not continue without an answer.
 3. **Read all artifacts** — in order: system design → threat model → API specs → data models →
    security policies → diagrams.
-4. **Run `design-evaluation`** — scores all 10 dimensions 1–5: template adherence, scalability,
-   security and threat coverage, maintainability, resilience, testability, operational readiness,
-   cost, API quality, data model quality. Below 3 is flagged for revision.
+4. **Run `design-evaluation`**: scores 8 dimensions 1 to 5: template adherence, scalability
+   (including cost), performance, security, maintainability, resilience, code quality, and
+   testability. Below 3 is flagged for revision. A high-level assessment and actionable
+   recommendations are written as unscored report sections.
 5. **Generate report** — writes `design-review-report.md` (or your `output_file`) with dimension
    scores and Critical / Important / Suggestion findings.
 6. **Present recommendation** — **READY FOR IMPLEMENTATION** or **NOT READY**, plus the blockers if
