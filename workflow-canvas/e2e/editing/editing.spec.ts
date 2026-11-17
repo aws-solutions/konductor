@@ -249,11 +249,11 @@ test('keeps the draft when the tab is switched, and tells Execution it is not sa
 }) => {
   await designer.rename('write');
 
-  await canvas.selectTab('Execution');
+  await canvas.selectTab('Run');
 
   await expect(canvas.node('node-stage-draft')).toBeVisible();
   await expect(canvas.page.getByTestId('unsaved-note')).toBeVisible();
-  await canvas.selectTab('Designer');
+  await canvas.selectTab('Design');
   await expect(designer.name).toHaveValue('write');
 });
 
@@ -265,7 +265,7 @@ test('draws the saved stages on Execution after a save', async ({
   await designer.save.click();
   await designer.expectStatus('Saved');
 
-  await canvas.selectTab('Execution');
+  await canvas.selectTab('Run');
 
   await expect(designer.stage('write')).toBeVisible();
   await expect(canvas.page.getByTestId('unsaved-note')).toHaveCount(0);
