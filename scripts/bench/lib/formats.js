@@ -658,6 +658,7 @@ function loadChecked(kind, file, context = {}) {
 
 module.exports = {
   BUCKETS,
+  LIMITS,
   FormatError,
   validateRules,
   validateTasks,

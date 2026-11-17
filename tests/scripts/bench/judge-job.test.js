@@ -2957,6 +2957,101 @@ test('taskGaps: a task counts with 2 of 3 seats valid for both arms; a seat with
       ['t2', false, null, 1],
     ],
   );
+  // The without mean is read over the counted seats: t1's third seat has no without judgment, so it adds nothing.
+  assert.deepEqual(
+    rows.map((row) => [row.task_id, row.without_mean]),
+    [
+      ['t1', 2],
+      ['t2', null],
+    ],
+  );
+});
+
+test('taskGaps: without_mean is the mean without-arm score of the counted seats, and null for a task that does not count', () => {
+  const jobOf = (seat, arm, score) => ({
+    skill: SKILL,
+    batch: 'b1',
+    task: { id: 't1' },
+    scale: 'outcome',
+    seat,
+    arm,
+    state: 'done',
+    file: null,
+    record: {
+      seat,
+      scale: 'outcome',
+      arm,
+      status: 'valid',
+      score,
+      guard: null,
+    },
+  });
+  const readRecord = (entry) => entry.record;
+  const [counted] = judgeJob.taskGaps(
+    [
+      jobOf(SEATS[0], 'with', 5),
+      jobOf(SEATS[0], 'without', 4.5),
+      jobOf(SEATS[1], 'with', 5),
+      jobOf(SEATS[1], 'without', 5),
+      jobOf(SEATS[2], 'with', 5),
+    ],
+    { readRecord },
+  );
+  assert.equal(counted.counted, true);
+  assert.equal(counted.without_mean, 4.75);
+  const [alone] = judgeJob.taskGaps(
+    [jobOf(SEATS[0], 'with', 5), jobOf(SEATS[0], 'without', 4.5)],
+    { readRecord },
+  );
+  assert.equal(alone.counted, false);
+  assert.equal(alone.without_mean, null);
+});
+
+test('taskGaps: with_mean is the mean with-arm score of the counted seats, and null for a task that does not count', () => {
+  const jobOf = (seat, arm, score) => ({
+    skill: SKILL,
+    batch: 'b1',
+    task: { id: 't1' },
+    scale: 'outcome',
+    seat,
+    arm,
+    state: 'done',
+    file: null,
+    record: {
+      seat,
+      scale: 'outcome',
+      arm,
+      status: 'valid',
+      score,
+      guard: null,
+    },
+  });
+  const readRecord = (entry) => entry.record;
+  // The third seat judged only the with arm, so its 1 does not enter the mean over the two counted seats.
+  const [counted] = judgeJob.taskGaps(
+    [
+      jobOf(SEATS[0], 'with', 4),
+      jobOf(SEATS[0], 'without', 3),
+      jobOf(SEATS[1], 'with', 5),
+      jobOf(SEATS[1], 'without', 3),
+      jobOf(SEATS[2], 'with', 1),
+    ],
+    { readRecord },
+  );
+  assert.equal(counted.counted, true);
+  assert.equal(counted.with_mean, 4.5);
+  assert.equal(counted.without_mean, 3);
+  const [alone] = judgeJob.taskGaps(
+    [jobOf(SEATS[0], 'with', 5), jobOf(SEATS[0], 'without', 4.5)],
+    { readRecord },
+  );
+  assert.equal(alone.counted, false);
+  assert.equal(alone.with_mean, null);
+  const blocked = judgeJob.taskGaps(
+    [{ ...jobOf(SEATS[0], 'with', 5), state: 'ineligible', reason: 'x' }],
+    { readRecord },
+  );
+  assert.equal(blocked[0].with_mean, null);
 });
 
 test('taskGaps: a record that names another seat or arm than its job is left out, and the row says so', () => {

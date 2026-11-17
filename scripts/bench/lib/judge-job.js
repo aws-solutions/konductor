@@ -752,7 +752,9 @@ function scoredOf(record) {
  * answer that is not loaded or not eligible never counts. A record must name the seat and arm of the job it was read
  * for: one that names another is left out, as if it had no file, and the row says so when the task does not count.
  * `readRecord(job)` reads a done job's record (default: its judgment file).
- * Returns [{ skill, batch, task_id, counted, gap, seats_valid, invalid }] in job order, one row per task.
+ * Returns [{ skill, batch, task_id, counted, gap, without_mean, with_mean, seats_valid, invalid }] in job order, one row per
+ * task. `without_mean` and `with_mean` are the mean score of each arm over the counted seats (null when the task does not
+ * count).
  */
 function taskGaps(jobs, { readRecord = (job) => readJudgment(job.file) } = {}) {
   const tasks = new Map();
@@ -794,6 +796,8 @@ function taskGaps(jobs, { readRecord = (job) => readJudgment(job.file) } = {}) {
         task_id: row.task_id,
         counted: false,
         gap: null,
+        without_mean: null,
+        with_mean: null,
         seats_valid: 0,
         invalid:
           row.blocked ||
@@ -810,6 +814,8 @@ function taskGaps(jobs, { readRecord = (job) => readJudgment(job.file) } = {}) {
       task_id: row.task_id,
       counted: aggregate.valid,
       gap: aggregate.gap,
+      without_mean: aggregate.means ? aggregate.means.without : null,
+      with_mean: aggregate.means ? aggregate.means.with : null,
       seats_valid: aggregate.seats_valid,
       invalid:
         aggregate.invalid && row.misplaced.length

@@ -944,6 +944,38 @@ node scripts/bench/bench.js next --skills convention-control,dose-ladder --run c
 
 Run the command it prints, call `next` again until it prints `done`, then run `report` with the same `--skills` and `--run`.
 
+## Trimming easy tasks
+
+Easy tasks leave the task bank for good. A task whose answer scores near the top of the 1 to 5 scale both without and with the skill leaves almost no room for a gain, and every later run still pays to answer and judge it. The rule reads both arms: a task is dropped only when its without-arm reading A mean and its with-arm reading A mean are both at or above the threshold (4.8 by default). A task that is easy without the skill but scores lower with it stays, because the skill may be hurting there and a later run should keep measuring that. A task with no counted with-arm judgment is never dropped. After each trusted run, run `trim` on that run:
+
+```sh
+node scripts/bench/bench.js trim --run <run-id> [--skills a,b] [--threshold 4.8] [--min-per-batch 5] [--dry-run] [--list-kept]
+```
+
+| Flag                  | Default                   | Meaning                                                                                                                                                                                            |
+| --------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--run <id>`          | required                  | The run whose stored judgments say which tasks are easy.                                                                                                                                           |
+| `--skills <a,b>`      | every skill of the report | Only these skills are trimmed. Each must be a skill the run's report measured; a control (`convention-control`, `dose-ladder`) is refused, because the controls are never trimmed.                 |
+| `--threshold <n>`     | 4.8                       | A task is easy when the mean reading A score of its `without` answers and the mean of its `with` answers, each over the counted seats, are both at least `n` (1 to 5). A mean of exactly 4.8 goes. |
+| `--min-per-batch <n>` | 5                         | A batch keeps at least `n` tasks, 5 or more (the format minimum). When fewer would stay, the easy tasks with the lowest means (the lower of the two arms) stay.                                    |
+| `--dry-run`           | off                       | Prints the decisions and writes nothing.                                                                                                                                                           |
+| `--list-kept`         | off                       | Adds `kept_ids`, the ids of the tasks that stay, to each batch of the printed line. The line is long for many skills.                                                                              |
+
+`trim` reads the same stored judgments `report` reads (the reading A judge jobs, counted the same way) and drops each easy task from `bench/baselines/<skill>/tasks-<batch>.json` and from its `.buckets.json`. A task with no counted reading A judgment, such as an excluded one, is never dropped. It writes each file through a temporary file and a rename, rewrites `MANIFEST.json`, runs the manifest check and prints one JSON line: for each skill and batch the number of tasks `kept` (and with `--list-kept` their ids as `kept_ids`), the `dropped` tasks (id, `without_mean` and `with_mean`) and the `restored` ones (easy tasks kept to reach the minimum). A batch whose dropped tasks held the last checklist item of a rule also has `rules_emptied`, the ids of those rules: reading B pools the batches of a skill, so a rule that another batch still has items for is read from there. It spends nothing and calls no model.
+
+If a write fails part way (a full disk, for example), the files already replaced are written back one at a time from their old text and the error is the one that came first (exit 74). A file that could not be put back is named on a second `error:` line after the I/O error, and `git checkout -- bench/baselines` repairs it. The same command repairs the baselines after a `trim` that was killed (SIGINT or SIGKILL) between two renames, which nothing handles.
+
+It refuses with exit 64, and writes nothing, when:
+
+- the run has no `report.json`, or the report is of a stub run;
+- the run is not trusted: `controls_status` in its report is not `PASS`;
+- the report is stale: the judgments on disk now give other coverage, per-batch readings or controls than the report holds (run `report` again). Right after a trim the baselines have fewer tasks than the report counted, and the message says that the run was trimmed already: a second trim of the same run finds nothing new, so there is nothing to repeat;
+- a skill's reading A counts fewer than 12 of every 16 of its tasks;
+- the trim would leave a rule of a skill without a checklist item in any of its batches, so reading B could not read it (raise `--threshold`, or leave that skill out of `--skills`);
+- a task, bucket or manifest file was edited after the plan was made. `trim` compares each file with the text it planned from just before it replaces the file, and writes nothing when one differs. That narrows the window to the moment between the comparison and the renames; it is not a lock, so do not edit baselines while `trim` runs.
+
+It refuses with exit 1 when `bench/baselines/` does not match `MANIFEST.json` before the command starts, because rewriting the manifest would approve a change nobody reviewed. Commit the trimmed files and the new manifest together; a baseline change is a change to what every later run is measured against.
+
 ## The Crew workflow
 
 `scripts/bench/workflows/skill-benchmark.py` runs the Quickstart loop in [Kiro Crew](../../docs/guides/kiro-crew-integration.md). Launch it with Crew's workflow tool, with the file's text as the source and these inputs as its args. An input with any other name is refused, so a misspelt limit never falls back to its default:
