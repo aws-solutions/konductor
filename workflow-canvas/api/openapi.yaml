@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.4.0
+  version: 1.5.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -33,6 +33,8 @@ info:
     pattern of a capability, which a client already treats as a value it may
     not know. Version 1.3.0 only adds: each stage of a view gains `kind` and
     `range`. Version 1.4.0 only adds: the operation `listAgents`.
+    Version 1.5.0 only adds: the answer of `GET /api/workflow` gains
+    `stage_fields`.
 
     **Conventions**
 
@@ -484,6 +486,10 @@ paths:
         `hash` and `view` are `null`. A `name` other than the root is 404, even
         when a file of that name exists. So is a root file that is a link, a
         directory, over 262144 bytes or not valid UTF-8 (see **The file**).
+
+        The answer also has `stage_fields`: for each kind of stage, the keys
+        that a client may edit and what each takes, so a client can build the
+        form of a stage from data.
       tags: [Workflow]
       parameters:
         - name: name
@@ -531,6 +537,30 @@ paths:
                           agent: k-quality-assurance
                           range: { line: 13, end_line: 14 }
                     diagnostics: []
+                    stage_fields:
+                      agent:
+                        - key: name
+                          type: name
+                          required: true
+                          max_length: 64
+                          pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+                          reserved: [start, end, run, halt]
+                        - key: agent
+                          type: name
+                          required: true
+                          max_length: 64
+                          pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+                        - key: prompt
+                          type: text
+                          required: false
+                          min_length: 1
+                          max_length: 32768
+                          excludes: [prompt_file]
+                        - key: prompt_file
+                          type: path
+                          required: false
+                          pattern: '^(?![A-Za-z]:)(?!/)(?:(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)(?:/(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)*$'
+                          excludes: [prompt]
                 new:
                   summary: The root, which has no file yet
                   value:
@@ -540,6 +570,30 @@ paths:
                     read_only: false
                     view: null
                     diagnostics: []
+                    stage_fields:
+                      agent:
+                        - key: name
+                          type: name
+                          required: true
+                          max_length: 64
+                          pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+                          reserved: [start, end, run, halt]
+                        - key: agent
+                          type: name
+                          required: true
+                          max_length: 64
+                          pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+                        - key: prompt
+                          type: text
+                          required: false
+                          min_length: 1
+                          max_length: 32768
+                          excludes: [prompt_file]
+                        - key: prompt_file
+                          type: path
+                          required: false
+                          pattern: '^(?![A-Za-z]:)(?!/)(?:(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)(?:/(?!\.{1,2}(?:/|$))[^\\/\x00-\x1f\x7f-\x9f]+)*$'
+                          excludes: [prompt]
         '400':
           headers:
             X-Konductor-Api:
@@ -1794,7 +1848,7 @@ components:
               description: The number of stages in `view`, or 0 when `view` is `null`.
     WorkflowDocument:
       type: object
-      required: [name, text, hash, read_only, view, diagnostics]
+      required: [name, text, hash, read_only, view, diagnostics, stage_fields]
       description: A workflow file as stored.
       properties:
         name:
@@ -1820,6 +1874,64 @@ components:
           description: The result of checking the stored text. It is empty if there is no text.
           items:
             $ref: '#/components/schemas/Diagnostic'
+        stage_fields:
+          $ref: '#/components/schemas/StageFields'
+    StageFields:
+      type: object
+      required: [agent]
+      description: |
+        For each kind of stage, the keys of a stage that a client may edit, in
+        the order of the table under **Workflow text**, with what each takes.
+        A client can build the form of a stage from it. It is the same for
+        every text, so it is there when `view` is `null` too. A later version
+        may add kinds and keys, and a client leaves a key it does not know as
+        it is in the text.
+      properties:
+        agent:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/StageField'
+    StageField:
+      type: object
+      required: [key, type, required]
+      description: |
+        One key of a stage. A length counts code points. A rule that is left
+        out does not apply.
+      properties:
+        key:
+          type: string
+          description: The key, as it is written in the file.
+        type:
+          type: string
+          enum: [name, text, path]
+          description: |
+            `name` is a name or an id (see `pattern`), `text` is free text,
+            and `path` is a path that follows the path rule (see `Path`). A
+            later version may add types, and a client shows a value of a type
+            it does not know as text.
+        required:
+          type: boolean
+          description: Whether a stage of this kind must have the key.
+        min_length:
+          type: integer
+          minimum: 0
+        max_length:
+          type: integer
+          minimum: 1
+        pattern:
+          type: string
+          description: A regular expression that the whole value matches.
+        reserved:
+          type: array
+          items:
+            type: string
+          description: Values that the key may not take.
+        excludes:
+          type: array
+          items:
+            type: string
+          description: Keys that a stage may not have together with this one.
     SessionRequest:
       type: object
       additionalProperties: false
