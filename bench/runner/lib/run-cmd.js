@@ -122,6 +122,11 @@ function summarize(runConfig, state, extra) {
 // and stops. It needs no kiro-cli login, creates no run directory and starts no agent, so it spends no credits.
 function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
   if (runtimes.some((r) => !descriptorOf(r).supports.prepareOnly)) throw new Error(`--prepare-only covers ${joinNames(supporting('prepareOnly').map((d) => d.proseName))} arms; ${joinNames(notSupporting('prepareOnly').map((d) => d.proseName))} arms need their binary and AWS credentials, so check them with a normal run`);
+  // Claude Code arms are built and trial-installed with their model pin check; claude itself is never started.
+  const isCc = runtimes.includes('claude-code');
+  if (isCc && runtimes.length > 1) throw new Error(`--prepare-only checks Claude Code arms against a Bedrock model id; prepare them apart from ${runtimes.filter((r) => r !== 'claude-code').join(', ')} arms`);
+  const ccModel = isCc ? opts.model || cc.DEFAULT_MODEL : null;
+  if (isCc && !cc.canonicalModel(ccModel)) throw new Error('--model needs a Bedrock model id, for example us.anthropic.claude-sonnet-5-5');
   const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
   const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
   ensureOwnedDir(cacheDir, 'cache');
@@ -132,7 +137,7 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
   try {
     const ctx = {
       repo, cacheDir, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb: null,
-      config: { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine }, envKeep: list(opts['env-keep']),
+      config: isCc ? { model: ccModel, canonicalModel: cc.canonicalModel(ccModel), effort: 'default' } : { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine }, envKeep: list(opts['env-keep']),
     };
     const { prepared, errors } = prepareAll({ arms, ctx, log, allowPartial: Boolean(opts['allow-partial']) });
     console.log(preflightTable(arms, prepared, errors));

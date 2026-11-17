@@ -51,7 +51,8 @@ const USAGE = `Usage:
        (--timeout-sec N replaces the timeout of every selected task with N seconds (a positive integer); without it each task keeps the timeoutSec of its task file.
        The plan line, run-config.json (timeoutSecOverride, timeoutSecByTask) and summary.json show it)
        (--agent-engine is the kiro-cli engine, default v2; v3 installs each arm for the kiro-v3 harness)
-       (--prepare-only builds and trial-installs every arm, prints the preflight table and exits before any agent run)
+       (--prepare-only builds and trial-installs every arm, prints the preflight table and exits before any agent run. It covers kiro-cli and Claude Code
+       arms, one runtime at a time; a Claude Code arm gets the install, model pin and agent checks with --model, and claude itself is not started)
        (--plant-release DIR and --plant-release-sha256 HEX are required by the plant-policy and plant-allowall arms: the signed release is copied
        to a runner-private dir and checked there; --plant-python is the interpreter that runs the gateway, default python3. A plant suite runs
        plant arms and plant tasks only, at --parallel 1; without --kiro-bin it is counted and the Kiro CLI must match the release pin)
