@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { RunEvent, RunStage, StageReason } from './model.ts';
+import type { RunEvent, StageReason, StageStateEvent } from './model.ts';
 import { formatTimestamp } from './timestamp.ts';
 
 /** What the script of a run needs to know about it. */
@@ -25,7 +25,11 @@ export const CONSOLE_LINES: readonly ((stage: string) => string)[] = [
 ];
 
 type Draft = { time: number } & (
-  | { type: 'stage_state'; stage: string; state: RunStage }
+  | {
+      type: 'stage_state';
+      stage: string;
+      state: Pick<StageStateEvent, 'status' | 'reason'>;
+    }
   | { type: 'console'; stage: string; n: number; text: string }
   | { type: 'run_finished'; halted: boolean }
 );

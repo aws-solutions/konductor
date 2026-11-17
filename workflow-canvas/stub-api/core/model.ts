@@ -170,7 +170,8 @@ interface EventBase {
 export interface StageStateEvent extends EventBase {
   type: 'stage_state';
   stage: string;
-  status: StageStatus;
+  /** A stage never moves back to `pending`, so no event has it. */
+  status: Exclude<StageStatus, 'pending'>;
   /** Present when the status is `blocked`. */
   reason?: StageReason;
 }
