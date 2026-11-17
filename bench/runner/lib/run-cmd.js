@@ -304,7 +304,19 @@ async function cmdRun(opts, deps = {}) {
   }
   const ccModel = isCc ? opts.model || cc.DEFAULT_MODEL : null;
   if (isCc && !cc.canonicalModel(ccModel)) throw new Error('--model needs a Bedrock model id, for example us.anthropic.claude-sonnet-5-5');
-  if (isSt && !String(opts.model ?? '').startsWith('fake:')) throw new Error('Strands arms need --model fake:<script.json>: only the scripted fake model is enabled, so no paid model call can run');
+  // A Strands run on Bedrock spends money. It needs --budget-usd (what is left of it is each run's hard cap, enforced
+  // in the launcher before every model call) and --aws-profile (only that profile's exported keys reach the agent).
+  // Strands arms are plant arms, and a plant suite runs at --parallel 1 (intake.js), so no two runs share what is left.
+  const stModel = isSt ? st.bedrockModelOf(opts.model ?? '') : null;
+  let stCreds = null;
+  if (stModel) {
+    if (budgetCredits === null) throw new Error('a Strands run on Bedrock needs --budget-usd X: what is left of X is each run\'s hard spend cap');
+    if (opts['aws-profile'] === undefined || opts['aws-profile'] === true) throw new Error('a Strands run on Bedrock needs --aws-profile NAME: the keys of that profile only are exported to the agent');
+    stCreds = profileCredentials(String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {});
+    stCreds.current();
+  } else if (isSt && opts['aws-profile'] !== undefined) {
+    throw new Error('--aws-profile applies to a Strands run only with a bedrock: model; the fake model takes no credentials');
+  }
   const config = isSt
     ? { model: opts.model, effort: 'default' }
     : isCc
@@ -368,7 +380,9 @@ async function cmdRun(opts, deps = {}) {
     if (isSt) {
       const value = (name) => (opts[name] && opts[name] !== true ? opts[name] : null);
       ctx.strands = st.resolveStrands({ python: value('strands-python') ?? 'python3', agentFile: value('strands-agent') });
-      log(`strands-agents ${ctx.strands.version} (${ctx.strands.python}), agent ${ctx.strands.agentFile ?? 'plain Agent'}, model ${config.model}, no credentials passed`);
+      if (stCreds) Object.assign(ctx, { awsCreds: stCreds, strandsSpend: { capUsd: budgetCredits, left: () => budgetCredits - state.charged } });
+      const credsNote = stCreds ? `${stModel.region}, keys of profile ${stCreds.profile}, hard spend cap $${budgetCredits} for the command` : 'no credentials passed';
+      log(`strands-agents ${ctx.strands.version} (${ctx.strands.python}), agent ${ctx.strands.agentFile ?? 'plain Agent'}, model ${config.model}, ${credsNote}`);
     }
     const { prepared, errors } = prepareAll({ arms, ctx, log, allowPartial: Boolean(opts['allow-partial']) });
     log(`arms:\n${preflightTable(arms, prepared, errors)}`);
@@ -445,7 +459,10 @@ async function cmdRun(opts, deps = {}) {
       modelNormalized: arms.some((a) => !a.vanilla),
       ...(isSt ? {
         harnessVersion: ctx.strands.version,
-        strands: { python: ctx.strands.python, version: ctx.strands.version, agentFile: ctx.strands.agentFile, adapter: 'kind B: plant tools are forwarding stubs', census: plantSuite?.strandsCensus ?? null },
+        strands: {
+          python: ctx.strands.python, version: ctx.strands.version, agentFile: ctx.strands.agentFile, adapter: 'kind B: plant tools are forwarding stubs', census: plantSuite?.strandsCensus ?? null,
+          bedrock: stModel ? { ...stModel, spendCapUsd: budgetCredits, awsProfile: stCreds.profile } : null,
+        },
         env: rc.envPolicy(process.env, []),
       } : isOc ? {
         harnessVersion: ctx.opencode.version,

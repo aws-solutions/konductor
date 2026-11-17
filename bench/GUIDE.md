@@ -330,7 +330,7 @@ Details, credentials and flags are in the harness sections of [README.md](README
 
 > [!IMPORTANT]
 > bench cannot benchmark an arbitrary agent today. Agents behind a hosted runtime or an HTTP API are not covered, and nothing in the code launches or parses them.
-> A Strands agent can run the plant suite only, with a scripted fake model (the `st-plant-*` arms, below). There is no Strands arm for code tasks.
+> A Strands agent can run the plant suite only, with a scripted fake model or one pinned Bedrock model under a hard spend cap (the `st-plant-*` arms, below). There is no Strands arm for code tasks.
 
 Outside the plant arms, an arm is always a Konductor git ref or directory plus a condition, or the bare agent CLI. There is no arm kind for "this other agent definition".
 The task generators (`skilleval.js` and `cap scenarios`) read one Konductor `SKILL.md` or one Konductor capability, not a system prompt or a tool list.
@@ -367,7 +367,7 @@ Signing a release is done by the custodian with `node bench/physical/ci/plant-re
 
 A suite run with `--kiro-bin` pointing at a fake control is a control suite. Its trials end in well under a second, so bench skips its "every run finished in under a second" check (exit 5) for that suite only. It logs `control suite: short-run check skipped` and records it in `summary.json`. A real plant suite still gets the check.
 
-Strands agents can run the plant too (Phase 2, in progress). The arms are `st-plant-policy` and `st-plant-allowall`. The agent's plant tools are stubs: each sends its call to the same gateway and hands back the answer, so the gateway still decides every call and the scoring is the same. Only a scripted fake model is enabled, so these runs cost nothing and use no AWS credentials. Strands lets an agent's own hooks cancel, change or repeat a tool call. Before the first trial bench lists every such hook. A counted suite refuses one on a plain arm; to measure such an agent anyway, use the `-hooked` arm, which keeps its numbers apart. A call the agent's own hook stopped is marked `agent_cancelled`. A changed or repeated call is a mismatch, which counts as a failure. See the Strands part of the plant section in README.md.
+Strands agents can run the plant too (Phase 2, in progress). The arms are `st-plant-policy` and `st-plant-allowall`. The agent's plant tools are stubs: each sends its call to the same gateway and hands back the answer, so the gateway still decides every call and the scoring is the same. With the scripted fake model these runs cost nothing and use no AWS credentials. With `--model bedrock:qwen.qwen3-coder-next` (the one pinned real model) a run also needs `--budget-usd` and `--aws-profile`; bench checks before every model call that the call cannot take the spend past the cap, and stops the agent if it could. Strands lets an agent's own hooks cancel, change or repeat a tool call. Before the first trial bench lists every such hook. A counted suite refuses one on a plain arm; to measure such an agent anyway, use the `-hooked` arm, which keeps its numbers apart. A call the agent's own hook stopped is marked `agent_cancelled`. A changed or repeated call is a mismatch, which counts as a failure. See the Strands part of the plant section in README.md.
 
 ---
 

@@ -1,0 +1,7 @@
+{
+  "region": "us-east-1",
+  "pricesSource": "https://aws.amazon.com/bedrock/pricing/ (Qwen, On-Demand, Standard tier, US East (N. Virginia)), read 2026-11-17",
+  "models": {
+    "qwen.qwen3-coder-next": { "inputUsdPerMTok": 0.5, "outputUsdPerMTok": 1.2, "maxTokens": 4096 }
+  }
+}

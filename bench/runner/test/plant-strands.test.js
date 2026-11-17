@@ -133,6 +133,51 @@ test('the launcher env passes BYPASS_TOOL_CONSENT and no credential path', () =>
   assert.ok(!Object.keys(env).some((k) => /^AWS_(PROFILE|ACCESS|SECRET|SESSION)/.test(k)));
 });
 
+// --- Bedrock switch and spend cap (no model call: the launcher is not started) -----------------------------------
+
+const KEYS = { AWS_ACCESS_KEY_ID: 'ASIAEXAMPLEEXAMPLE01', AWS_SECRET_ACCESS_KEY: 'secret-example-value', AWS_SESSION_TOKEN: 'token-example-value' };
+const BEDROCK_CTX = (left = 4.25) => ({ awsCreds: { current: () => ({ ...KEYS }), values: () => Object.values(KEYS) }, strandsSpend: { capUsd: 5, left: () => left }, strands: { agentFile: null, python: 'py' } });
+
+test('only the pinned Bedrock model is priced; any other model is refused before a run', () => {
+  assert.equal(strands.bedrockModelOf('fake:/s.json'), null);
+  assert.deepEqual(
+    (({ id, region, inputUsdPerMTok, outputUsdPerMTok, maxTokens }) => ({ id, region, inputUsdPerMTok, outputUsdPerMTok, maxTokens }))(strands.bedrockModelOf('bedrock:qwen.qwen3-coder-next')),
+    { id: 'qwen.qwen3-coder-next', region: 'us-east-1', inputUsdPerMTok: 0.5, outputUsdPerMTok: 1.2, maxTokens: 4096 },
+  );
+  for (const m of ['bedrock:us.anthropic.claude-sonnet-5-5', 'openai:gpt-5', '', 'qwen.qwen3-coder-next']) assert.throws(() => strands.bedrockModelOf(m), /pinned id \(qwen\.qwen3-coder-next\)/, m);
+});
+
+test('a Bedrock run gets what is left of the budget as its hard cap, and only its profile keys and region', () => {
+  const ctx = BEDROCK_CTX();
+  const cmd = strands.buildCommand({ arm: { vanilla: true }, task: { prompt: 'p' }, config: { model: 'bedrock:qwen.qwen3-coder-next' }, ctx, cwd: '/r/work' });
+  assert.deepEqual(cmd.args.slice(cmd.args.indexOf('--max-usd'), cmd.args.indexOf('--max-usd') + 2), ['--max-usd', '4.25']);
+  const fake = strands.buildCommand({ arm: { vanilla: true }, task: { prompt: 'p' }, config: { model: 'fake:/s.json' }, ctx, cwd: '/r/work' });
+  assert.ok(!fake.args.includes('--max-usd'));
+  const env = strands.env({ home: '/h', tmpdir: '/t', ctx });
+  assert.deepEqual([env.AWS_ACCESS_KEY_ID, env.AWS_SESSION_TOKEN, env.AWS_REGION, env.AWS_CONFIG_FILE], [KEYS.AWS_ACCESS_KEY_ID, KEYS.AWS_SESSION_TOKEN, 'us-east-1', '/dev/null']);
+  assert.ok(!('AWS_PROFILE' in env));
+});
+
+test('cost comes from the usage line, else the last reserve when the run was cut off, and is 0 for the fake model', () => {
+  const { aggregateEvents } = require('../lib/harness/strands-parse.js');
+  const start = (model) => ({ type: 'start', model, sessionId: 's' });
+  const spend = (reservedUsd) => ({ type: 'spend', call: 1, spentUsd: 0, reservedUsd });
+  const bedrock = 'bedrock:qwen.qwen3-coder-next';
+  assert.equal(aggregateEvents([start(bedrock), spend(0.01), { type: 'usage', inputTokens: 10, outputTokens: 5, modelCalls: 1, costUsd: 0.002 }]).costUsd, 0.002);
+  assert.equal(aggregateEvents([start(bedrock), spend(0.01), spend(0.03)]).costUsd, 0.03);
+  assert.equal(aggregateEvents([start(bedrock)]).costUsd, null);
+  assert.equal(aggregateEvents([start('fake:/s.json'), { type: 'usage', inputTokens: 1, outputTokens: 1, modelCalls: 1 }]).costUsd, 0);
+});
+
+test('the Bedrock keys a run was given are scrubbed from its output', () => {
+  const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'st-scrub-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'stream.jsonl'), `{"type":"error","message":"bad key ${KEYS.AWS_SECRET_ACCESS_KEY}"}\n`);
+    strands.finalize(dir, BEDROCK_CTX());
+    assert.doesNotMatch(fs.readFileSync(path.join(dir, 'stream.jsonl'), 'utf8'), /secret-example-value/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 // --- Whole trials with the fake model -----------------------------------------------------------------------------
 
 // Agent factories with tool hooks. Each is a whole Strands agent file, as a user's --strands-agent would be.

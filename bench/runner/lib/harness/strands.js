@@ -5,6 +5,8 @@
 // (kind B, design 15.1). Plant arms only (st-plant-*); the run setup (forwarder copy, run file) is lifecycle.js's.
 // `ctx.strands` is `{python, prefix, basePrefix, version, agentFile}`: the interpreter with strands-agents, its
 // sys.prefix and sys.base_prefix (kept visible in the sandbox), the SDK version, and the agent factory file or null.
+// A `bedrock:<id>` model also needs `ctx.awsCreds` (exported keys, aws-creds.js) and `ctx.strandsSpend.left()`, the
+// USD the command may still spend: each run's launcher gets that as its hard cap (`--max-usd`).
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -19,6 +21,7 @@ const { aggregateEvents } = require('./strands-parse.js');
 
 const id = 'strands';
 const meta = require('./strands-meta.js');
+const PINS = require('../../../physical/strands/plant_strands/bedrock_models.json');
 const VERSION_PROBE = 'import sys, importlib.metadata as m; print(m.version("strands-agents")); print(sys.prefix); print(sys.base_prefix)';
 
 /**
@@ -33,6 +36,18 @@ function resolveStrands({ python = 'python3', agentFile = null } = {}) {
   return { python, prefix, basePrefix, version, agentFile: agentFile ? path.resolve(agentFile) : null };
 }
 
+/**
+ * The pinned Bedrock model `model` names (`bedrock:<id>`): `{id, region, inputUsdPerMTok, outputUsdPerMTok, maxTokens,
+ * pricesSource}`. Null for the fake model; throws for any other model, so an unpriced model never starts.
+ */
+function bedrockModelOf(model) {
+  const m = /^(fake|bedrock):(.+)$/.exec(String(model));
+  if (m?.[1] === 'fake') return null;
+  const pin = m ? PINS.models[m[2]] : null;
+  if (!pin) throw new Error(`Strands arms take --model fake:<script.json> or bedrock:<id> with a pinned id (${Object.keys(PINS.models).join(', ')}); got ${model}`);
+  return { id: m[2], region: PINS.region, ...pin, pricesSource: PINS.pricesSource };
+}
+
 const prepareArm = () => ({});
 const trialInstall = () => [];
 // The forwarder and its run file are written per run by lifecycle.js (openPlantRun), as the plant agent file is for kiro-cli.
@@ -43,19 +58,22 @@ const installInto = (home) => {
 
 /** `python -I -B <plant dir>/launch.py --model <model> [--agent-file F] <prompt>`; the launcher was copied there by lifecycle.js. */
 function buildCommand({ arm, task, config, ctx, cwd }) {
-  const args = [...pythonArgs(launcherForCwd(cwd)), '--model', config.model, ...(ctx.strands.agentFile ? ['--agent-file', ctx.strands.agentFile] : []), promptFor(arm, task)];
+  const cap = bedrockModelOf(config.model) ? ['--max-usd', String(ctx.strandsSpend.left())] : [];
+  const args = [...pythonArgs(launcherForCwd(cwd)), '--model', config.model, ...cap, ...(ctx.strands.agentFile ? ['--agent-file', ctx.strands.agentFile] : []), promptFor(arm, task)];
   return { file: ctx.strands.python, args, display: [ctx.strands.python, ...args.slice(0, -1), '<prompt>'].join(' ') };
 }
 
 /**
  * The launcher's whole environment: PATH, HOME, TMPDIR, the no-prompt variables of the descriptor (A-4), and AWS
  * config paths pointed at /dev/null with the instance metadata lookup off, so no credential on this host can reach
- * the agent. Python's -I already ignores every PYTHON* variable.
+ * the agent. With `ctx.awsCreds` (a Bedrock model) the exported keys of that one profile and the pin's region are
+ * added, and nothing else. Python's -I already ignores every PYTHON* variable.
  */
-function env({ home, tmpdir }) {
+function env({ home, tmpdir, ctx = null }) {
+  const bedrock = ctx?.awsCreds ? { ...ctx.awsCreds.current(), AWS_REGION: PINS.region, AWS_DEFAULT_REGION: PINS.region } : {};
   return {
     PATH: '/usr/bin:/bin', HOME: home, TMPDIR: tmpdir, ...meta.noPrompt.env,
-    AWS_CONFIG_FILE: '/dev/null', AWS_SHARED_CREDENTIALS_FILE: '/dev/null', AWS_EC2_METADATA_DISABLED: 'true',
+    AWS_CONFIG_FILE: '/dev/null', AWS_SHARED_CREDENTIALS_FILE: '/dev/null', AWS_EC2_METADATA_DISABLED: 'true', ...bedrock,
   };
 }
 
@@ -76,18 +94,17 @@ function parseResult(outDir, { acc, arm, ctx }) {
   acc.transcript = { bytes: Buffer.byteLength(streamText), chars: streamText.length, partial: false };
   if (badLines > 0) acc.meta.flags.push('streamTruncated');
   if (a.error) acc.meta.runError = a.error.slice(0, 300);
-  const { usage, modelCalls, error: _error, strands: _strands, adapter: _adapter, ...agg } = a;
+  const { usage, modelCalls, costUsd, error: _error, strands: _strands, adapter: _adapter, ...agg } = a;
   acc.agg = agg;
   acc.session = { model: a.configuredModel, totalRequestCount: modelCalls };
-  // shortcut: costUsd is 0 because only the fake model runs; price the tokens before a real provider is enabled.
-  acc.usage = { tokens: { input: usage.input, output: usage.output, reasoning: 0, cacheRead: 0, cacheWrite: 0, total: usage.input + usage.output }, costUsd: 0, modelCalls, sessions: 1, variants: [] };
+  acc.usage = { tokens: { input: usage.input, output: usage.output, reasoning: 0, cacheRead: 0, cacheWrite: 0, total: usage.input + usage.output }, costUsd, modelCalls, sessions: 1, variants: [] };
 }
 
 const collectArtifacts = () => {};
 
-// The agent gets no credential, but its trace could still echo one found on the host. Same scrub as kiro-cli.
-function finalize(outDir) {
-  return scrubTreeDetailed(outDir, secretLiterals(process.env), { shapes: true });
+// The trace could echo a credential found on the host, or the Bedrock keys the run was given. Same scrub as kiro-cli.
+function finalize(outDir, ctx) {
+  return scrubTreeDetailed(outDir, secretLiterals(process.env, ctx?.awsCreds ? ctx.awsCreds.values() : []), { shapes: true });
 }
 
-module.exports = { id, meta, resolveStrands, prepareArm, trialInstall, installInto, buildCommand, env, removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts, finalize };
+module.exports = { id, meta, resolveStrands, bedrockModelOf, prepareArm, trialInstall, installInto, buildCommand, env, removeCredentials, keepPaths, turnSummary, parseResult, collectArtifacts, finalize };

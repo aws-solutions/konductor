@@ -4,7 +4,7 @@
 // Static description of the Strands runtime: a Strands agent run by bench/physical/strands/launch.py with forwarding
 // plant tool stubs (kind B, design 15.1). Plant arms only (st-plant-*). See kiro-meta.js for why this is its own file.
 const NO_WATCHER = 'the early-stop watcher reads kiro-cli and opencode events only';
-const NO_CREDENTIALS = 'Strands runs take no AWS credentials yet: only the fake model provider is enabled';
+const NO_CREDS_FILE = 'a Bedrock model takes exported keys from --aws-profile; the fake model takes none';
 
 module.exports = Object.freeze({
   id: 'strands',
@@ -21,8 +21,7 @@ module.exports = Object.freeze({
       effort: 'the launcher passes no effort level to the model',
       'stop-on': NO_WATCHER,
       'max-tool-calls': NO_WATCHER,
-      'aws-creds-file': NO_CREDENTIALS,
-      'aws-profile': NO_CREDENTIALS,
+      'aws-creds-file': NO_CREDS_FILE,
     }),
     perRunCapFlag: null,
   }),

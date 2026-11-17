@@ -12,7 +12,9 @@ const lastOf = (events, type) => ofType(events, type).at(-1) ?? null;
 /**
  * The run aggregate of parsed trace `events`, in the shape harness/CONTRACT.md asks of `acc.agg`, plus `usage`
  * (`{input, output}` tokens) and `modelCalls`. `runFinishedStatus` is "success" with a `final` line, "error" with an
- * `error` line, else null (the trace never said the run ended).
+ * `error` line, else null (the trace never said the run ended). `costUsd` is 0 for the fake model; for a capped
+ * (Bedrock) model it is the `usage` line's cost, or, when the run was cut off before that line, the last `spend`
+ * line's reserve (an upper bound), or null when neither was written.
  */
 function aggregateEvents(events) {
   const start = lastOf(events, 'start');
@@ -23,6 +25,8 @@ function aggregateEvents(events) {
   const toolCalls = Object.values(toolNames).reduce((n, c) => n + c, 0);
   const text = typeof final?.text === 'string' ? final.text : null;
   const usage = lastOf(events, 'usage');
+  const spend = lastOf(events, 'spend');
+  const fake = String(start?.model ?? '').startsWith('fake:');
   return {
     sessionId: start?.sessionId ?? null, sessionIds: start?.sessionId ? [start.sessionId] : [],
     runFinishedStatus: final ? 'success' : error ? 'error' : null, stopReason: final?.stopReason ?? null,
@@ -33,6 +37,7 @@ function aggregateEvents(events) {
     error: error ? `${error.stage}: ${error.message}` : null,
     usage: { input: usage?.inputTokens ?? 0, output: usage?.outputTokens ?? 0 },
     modelCalls: usage?.modelCalls ?? 0,
+    costUsd: fake ? 0 : usage?.costUsd ?? spend?.reservedUsd ?? null,
     strands: start?.strands ?? null, adapter: start?.adapter ?? null,
   };
 }

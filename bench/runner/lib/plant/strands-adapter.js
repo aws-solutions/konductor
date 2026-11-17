@@ -11,6 +11,7 @@ const path = require('node:path');
 const SOURCE = path.join(__dirname, '..', '..', '..', 'physical', 'strands');
 const PACKAGE = 'plant_strands';
 const LAUNCHER = 'launch.py';
+const PACKAGE_FILE = /\.(?:py|json)$/;
 // The plant dir's name under a run root; lifecycle.js makes it, and the Strands harness finds the launcher there.
 const PLANT_DIR = 'plant';
 const RUN_FILE = path.join('.plant', 'strands.json');
@@ -27,17 +28,17 @@ const pythonArgs = (launcher) => ['-I', '-B', launcher];
 const launcherForCwd = (cwd) => path.join(path.dirname(cwd), PLANT_DIR, LAUNCHER);
 
 /**
- * Copies the launcher and the forwarder package (Python files only) into a new `plantDir` and makes the copy
- * read-only, as installShim does for Kiro CLI. Returns the launcher's path.
+ * Copies the launcher and the forwarder package (its Python files and the Bedrock pin file) into a new `plantDir` and
+ * makes the copy read-only, as installShim does for Kiro CLI. Returns the launcher's path.
  */
 function installForwarder(plantDir) {
   fs.mkdirSync(path.join(plantDir, PACKAGE), { recursive: true, mode: 0o700 });
   fs.copyFileSync(path.join(SOURCE, LAUNCHER), path.join(plantDir, LAUNCHER));
-  for (const name of fs.readdirSync(path.join(SOURCE, PACKAGE)).filter((n) => n.endsWith('.py'))) {
+  for (const name of fs.readdirSync(path.join(SOURCE, PACKAGE)).filter((n) => PACKAGE_FILE.test(n))) {
     fs.copyFileSync(path.join(SOURCE, PACKAGE, name), path.join(plantDir, PACKAGE, name));
   }
   for (const dir of [path.join(plantDir, PACKAGE), plantDir]) {
-    for (const name of fs.readdirSync(dir)) if (name.endsWith('.py')) fs.chmodSync(path.join(dir, name), 0o444);
+    for (const name of fs.readdirSync(dir)) if (PACKAGE_FILE.test(name)) fs.chmodSync(path.join(dir, name), 0o444);
     fs.chmodSync(dir, 0o555);
   }
   return path.join(plantDir, LAUNCHER);
