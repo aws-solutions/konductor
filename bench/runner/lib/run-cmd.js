@@ -37,6 +37,7 @@ const { preparePlantSuite } = require('./plant/intake.js');
 const { preflightWalls, trialGatewayRows, checklistWithTrials } = require('./plant/walls.js');
 const { preflightStrands } = require('./plant/strands-census.js');
 const { makeIso } = require('./run-one.js');
+const { pinConflicts, describeConflicts } = require('./study-pins.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -255,6 +256,9 @@ async function cmdRun(opts, deps = {}) {
   for (const a of arms) for (const w of a.warnings) log(`warning: arm ${a.id}: ${w}`);
 
   const outDir = path.resolve(opts.out || path.join(REPO, 'bench', 'results', new Date().toISOString().replace(/[:.]/g, '-')));
+  const armDrift = pinConflicts(outDir, arms);
+  if (armDrift.length && !opts['allow-arm-drift']) throw new Error(describeConflicts(armDrift, outDir));
+  for (const c of armDrift) log(`warning: --allow-arm-drift: arm ${c.armId} was ${c.recorded.slice(0, 12)} in earlier results of this --out and is ${c.now.slice(0, 12)} now`);
   const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
   const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
   const authDb = isUsd ? null : opts['auth-db'] && opts['auth-db'] !== true ? path.resolve(opts['auth-db']) : sandbox.defaultAuthDb();
@@ -411,6 +415,7 @@ async function cmdRun(opts, deps = {}) {
       ...config, ...ctx.envInfo,
       isolation: { ...isolation, ...describeHide(isolation.mode, ctx.hide), mask: ctx.mask }, comparable: isComparableMode(isolation.mode), tripwire: { depth: ctx.tripwire.roots[0].depth, excludes: [...DEFAULT_EXCLUDES, ...tripExtra], roots: ctx.tripwire.roots.map((r) => r.dir) },
       arms: rc.armRecords(arms, prepared, errors),
+      armDrift: armDrift.length ? armDrift.map((c) => ({ armId: c.armId, recorded: c.recorded, now: c.now, kind: c.kind })) : null,
       originMain: mainArm ? { originMainSha: mainArm.originMainSha, localMainSha: mainArm.localMainSha, behindOrigin: mainArm.behindOrigin, usedRef: mainArm.ref } : null,
       modelNormalized: arms.some((a) => !a.vanilla),
       ...(isSt ? {
