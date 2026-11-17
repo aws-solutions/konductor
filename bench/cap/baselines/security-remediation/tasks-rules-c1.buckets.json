@@ -1,0 +1,281 @@
+{
+  "format_version": 1,
+  "skill": "security-remediation",
+  "batch": "rules-c1",
+  "rules": {
+    "security-remediation-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "security-remediation-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "security-remediation-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "security-remediation-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "security-remediation-r05": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "security-remediation-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "security-remediation-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "security-remediation-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "security-remediation-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "security-remediation-r10": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    },
+    "security-remediation-r11": {
+      "class": "style",
+      "kept": false,
+      "bucket": "format"
+    },
+    "security-remediation-r12": {
+      "class": "style",
+      "kept": false,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "security-remediation-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r09"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "security-remediation-r05"
+      }
+    },
+    "security-remediation-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r06"
+      },
+      "5": {
+        "bucket": "format",
+        "rule_id": "security-remediation-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "security-remediation-r05"
+      }
+    },
+    "security-remediation-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r09"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "security-remediation-r05"
+      }
+    },
+    "security-remediation-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r09"
+      },
+      "5": {
+        "bucket": "format",
+        "rule_id": "security-remediation-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "security-remediation-r05"
+      }
+    },
+    "security-remediation-rules-5": {
+      "1": {
+        "bucket": "guard",
+        "rule_id": "security-remediation-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r06"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r09"
+      }
+    },
+    "security-remediation-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r02"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r04"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "security-remediation-r05"
+      }
+    },
+    "security-remediation-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r03"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r04"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "security-remediation-r05"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "security-remediation-r10"
+      }
+    },
+    "security-remediation-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "security-remediation-r09"
+      },
+      "5": {
+        "bucket": "format",
+        "rule_id": "security-remediation-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "security-remediation-r05"
+      }
+    }
+  }
+}

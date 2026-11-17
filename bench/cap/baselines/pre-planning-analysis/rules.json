@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "pre-planning-analysis",
+  "skill_md_sha256": "91d2316e4dda5562a7bbd833ce4dfdae738ab7ec971629760a13ccf8441157a4",
+  "request_context": "A request that is vague or spans several phases of software delivery, where it is unclear who should handle it and the work needs to be understood, bounded and routed before any work starts.",
+  "rules": [
+    {
+      "id": "pre-planning-analysis-r01",
+      "source_quote": "Classify the request into one of 6 types:",
+      "class": "useful",
+      "outcome": "The answer commits to a single kind of work for the request (restructuring existing code, building something new, a bounded task, joint planning, system design, or investigation), states how confident it is, and justifies the choice from the wording of the request.",
+      "why": "Without an explicit classification the rest of the plan is built on an unstated guess about what the user wants.",
+      "scenario_hint": "Vague request such as 'make the checkout code better' where the kind of work is not obvious."
+    },
+    {
+      "id": "pre-planning-analysis-r02",
+      "source_quote": "Do NOT combine with feature changes.",
+      "class": "useful",
+      "outcome": "For a restructuring request, the answer keeps the restructuring separate from any new functionality, and insists on identifying which behavior must be preserved and verifying it after each change, with a way to roll back.",
+      "why": "Mixing behavior changes into a restructuring makes regressions undetectable and hard to undo.",
+      "scenario_hint": "User asks to clean up or restructure a module and also mentions adding a small feature."
+    },
+    {
+      "id": "pre-planning-analysis-r03",
+      "source_quote": "Research patterns BEFORE implementation, reference specific files, define \"done\" criteria. Do NOT invent new patterns.",
+      "class": "useful",
+      "outcome": "For a new feature, the answer calls for studying similar existing code and the project's conventions before implementing, points to concrete existing code to follow, defines what counts as finished, and avoids introducing new patterns.",
+      "why": "Building without surveying the codebase yields inconsistent code that duplicates existing utilities.",
+      "scenario_hint": "User asks to add a new feature or module to an existing codebase."
+    },
+    {
+      "id": "pre-planning-analysis-r04",
+      "source_quote": "List deliverables and exclusions explicitly, define acceptance criteria per deliverable. Do NOT expand scope.",
+      "class": "useful",
+      "outcome": "For a scoped task, the answer lists the exact deliverables, names what is explicitly excluded, gives a verification criterion for each deliverable, and does not add extra work.",
+      "why": "Unbounded tasks grow beyond what was asked and cannot be verified as complete.",
+      "scenario_hint": "User requests a specific, moderately sized feature or change."
+    },
+    {
+      "id": "pre-planning-analysis-r05",
+      "source_quote": "Present choices at decision points, confirm understanding, break into checkpoints. Do NOT make major decisions without user input.",
+      "class": "useful",
+      "outcome": "For an open-ended 'help me plan' request, the answer offers options at decision points, restates its understanding for confirmation, splits the work into checkpoints, and leaves major decisions to the user rather than deciding them.",
+      "why": "Deciding major questions unilaterally produces a plan the user did not choose.",
+      "scenario_hint": "User says 'help me figure out how to approach migrating our system'."
+    },
+    {
+      "id": "pre-planning-analysis-r06",
+      "source_quote": "Involve `k-architect` (has architecture-advisor skill), document trade-offs. Do NOT optimize prematurely.",
+      "class": "useful",
+      "outcome": "For a system-design question, the answer brings in design expertise, documents the trade-offs and alternatives of the options, considers long-term impact, and avoids tuning for performance or scale before it is justified.",
+      "why": "Structural choices are costly to reverse and are made badly when trade-offs go unrecorded.",
+      "scenario_hint": "User asks how to structure a new service or system."
+    },
+    {
+      "id": "pre-planning-analysis-r07",
+      "source_quote": "Define exit criteria, set time bounds, specify output format. Do NOT research indefinitely.",
+      "class": "useful",
+      "outcome": "For an investigation request, the answer states the specific question to answer, what counts as good enough, a time limit, and the form the findings should take.",
+      "why": "Open-ended investigations never conclude and yield findings nobody can use.",
+      "scenario_hint": "User asks to look into whether a technology or approach is viable, with unclear path."
+    },
+    {
+      "id": "pre-planning-analysis-r08",
+      "source_quote": "Flag these common AI failure patterns:",
+      "class": "useful",
+      "outcome": "The answer points out risks of unrequested extras, boundaries that may grow, unvalidated assumptions, premature optimization, endless research or trying to do everything, and says how to guard against whichever apply.",
+      "why": "These failure modes are common and silently inflate or derail the work if not called out.",
+      "scenario_hint": "Loosely worded request that invites adding extras or building on guesses."
+    },
+    {
+      "id": "pre-planning-analysis-r09",
+      "source_quote": "Low confidence classification without questions to resolve ambiguity",
+      "class": "generic",
+      "outcome": "When the answer is unsure what kind of work is requested, it names the specific unclear points, explains why each matters, and asks the user targeted questions to resolve them.",
+      "why": "Proceeding on an uncertain reading wastes effort on the wrong work.",
+      "scenario_hint": "Any ambiguous request where intent cannot be determined confidently."
+    },
+    {
+      "id": "pre-planning-analysis-r10",
+      "source_quote": "Recommended agent chain references agents that don't exist",
+      "class": "useful",
+      "outcome": "The answer proposes an ordered sequence of specialists, each with a stated purpose, and only names specialists that actually exist in the available set.",
+      "why": "Routing to nonexistent specialists leaves the work with no owner.",
+      "scenario_hint": "Request spanning several phases such as requirements, design and implementation."
+    },
+    {
+      "id": "pre-planning-analysis-r11",
+      "source_quote": "Scope boundaries missing (no IN/OUT distinction)",
+      "class": "useful",
+      "outcome": "The answer states clearly what is included, what is excluded, and what is postponed for later.",
+      "why": "Without explicit boundaries the work drifts and expectations diverge.",
+      "scenario_hint": "Any vague request that needs bounding before work starts."
+    },
+    {
+      "id": "pre-planning-analysis-r12",
+      "source_quote": "Assumptions not documented",
+      "class": "generic",
+      "outcome": "The answer lists the assumptions it is making about the request so the user can correct them.",
+      "why": "Hidden assumptions lead to work built on wrong premises.",
+      "scenario_hint": "Any request to analyze an ambiguous task before delegating it."
+    }
+  ]
+}

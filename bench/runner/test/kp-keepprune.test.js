@@ -28,7 +28,19 @@ const tmp = (t) => {
 const ladder = loadDoseLadder();
 const stub = createStubProvider({ ladder });
 const seats = [...STUB_JUDGES];
-const pilot = () => loadBaseline({ name: PILOT, skillFile: path.join(REPO, 'skills', PILOT, 'SKILL.md') });
+const pilot = () => loadBaseline({ name: PILOT, skillsDir: path.join(REPO, 'skills') });
+/** A repository with only the pilot skill and a baselines folder with only its baseline, for edits. */
+function pilotRepo(t) {
+  const root = tmp(t);
+  const repo = path.join(root, 'repo');
+  const baselinesDir = path.join(root, 'baselines');
+  fs.cpSync(path.join(REPO, 'skills', PILOT), path.join(repo, 'skills', PILOT), { recursive: true });
+  fs.cpSync(path.join(REPO, 'bench', 'cap', 'baselines', PILOT), path.join(baselinesDir, PILOT), { recursive: true });
+  const files = {};
+  for (const f of fs.readdirSync(path.join(baselinesDir, PILOT)).sort()) files[`${PILOT}/${f}`] = require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(baselinesDir, PILOT, f))).digest('hex');
+  fs.writeFileSync(path.join(baselinesDir, 'MANIFEST.json'), JSON.stringify({ format_version: 1, files }));
+  return { root, repo, baselinesDir };
+}
 const depthCheck = (over = {}) => kp.checkDepth({ depth: 'quick', subject: pilot(), convention: loadConvention(), ladder, provider: stub, subjectModel: STUB_SUBJECT_MODEL, judges: STUB_JUDGES, ...over });
 
 test('the convention control comes out with its known effect at both depths: B gains, A contains 0', () => {
@@ -140,20 +152,25 @@ test('a with arm that never loads is not counted; a without arm that loads is a 
   assert.equal(s2.status.setup_fault, 16);
 });
 
-test('a baseline made from another SKILL.md reads A alone, and an edited frozen file is refused', (t) => {
-  const dir = tmp(t);
-  const skillFile = path.join(dir, 'SKILL.md');
-  fs.writeFileSync(skillFile, '# changed skill\n');
-  const b = loadBaseline({ name: PILOT, skillFile });
+test('a baseline made from another SKILL.md is NO DATA with the reason named, and an edited frozen file is refused', (t) => {
+  const { repo, baselinesDir } = pilotRepo(t);
+  const skillsDir = path.join(repo, 'skills');
+  fs.appendFileSync(path.join(skillsDir, PILOT, 'SKILL.md'), '\nOne more line.\n');
+  const b = loadBaseline({ name: PILOT, skillsDir, dir: baselinesDir });
   assert.deepEqual(b.bWaiting, ['rules-b6', 'rules-c5']);
-  assert.match(b.staleWhy, /reading B waits/);
-  const r = kp.checkDepth({ depth: 'quick', subject: b, convention: loadConvention(), ladder, provider: stub, subjectModel: STUB_SUBJECT_MODEL, judges: STUB_JUDGES, bWaiting: b.bWaiting });
+  assert.match(b.staleWhy, /SKILL\.md changed after the baseline's rules were written/);
+  const r = kp.checkDepth({ depth: 'quick', subject: b, convention: loadConvention(), ladder, provider: stub, subjectModel: STUB_SUBJECT_MODEL, judges: STUB_JUDGES, bWaiting: b.bWaiting, subjectNoData: [b.staleWhy] });
   assert.equal(r.summary.B.tasks, 0);
-  assert.ok([LABELS.helps, LABELS.harm, LABELS.noData].includes(r.entry.label), 'with B waiting only A can label');
-  const copy = path.join(dir, 'baselines');
-  fs.cpSync(path.join(REPO, 'bench', 'cap', 'baselines'), copy, { recursive: true });
-  fs.appendFileSync(path.join(copy, PILOT, 'rules.json'), ' ');
-  assert.throws(() => loadBaseline({ name: PILOT, skillFile, dir: copy }), /differs from its hash/);
+  assert.equal(r.entry.label, LABELS.noData);
+  assert.equal(r.entry.no_data[0], b.staleWhy);
+  fs.appendFileSync(path.join(baselinesDir, PILOT, 'rules.json'), ' ');
+  assert.throws(() => loadBaseline({ name: PILOT, skillsDir, dir: baselinesDir }), /hash differs from MANIFEST\.json/);
+});
+
+test('a non-skill subject is refused: an agent and always-loaded context', (t) => {
+  const out = tmp(t);
+  assert.throws(() => runKeepPrune({ name: 'k-architect', repo: REPO, runId: 'stub-x', outDir: out }), /is an agent, not a skill/);
+  assert.throws(() => runKeepPrune({ name: 'k-core-rules', repo: REPO, runId: 'stub-x', outDir: out }), /not ablatable by this design/);
 });
 
 test('deep rule: NO DATA inside the A/A spread or with no A/A interval', () => {
@@ -234,7 +251,7 @@ test('SR-26: a judge call carries the seat, the checklist and the answer, never 
 
 test('every copied module names Michael Lin, its pull request and commit on line 2, and the rule dates are his', () => {
   const cap = path.join(REPO, 'bench', 'cap');
-  for (const f of ['gapstats.js', 'labels.js', 'gaptext.js', 'doseladder.js', 'passrules.js', 'stubprovider.js']) {
+  for (const f of ['gapstats.js', 'labels.js', 'gaptext.js', 'doseladder.js', 'passrules.js', 'stubprovider.js', 'checkedjson.js', 'baselineformats.js', 'baselineverify.js']) {
     const [first, second] = fs.readFileSync(path.join(cap, f), 'utf8').split('\n');
     assert.equal(first, '// SPDX-License-Identifier: Apache-2.0', f);
     assert.match(second, /Michael Lin's .*pull request #\d+.*commit [0-9a-f]{8}/, f);

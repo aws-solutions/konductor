@@ -1,0 +1,133 @@
+{
+  "format_version": 1,
+  "skill": "playwright-test-implementation",
+  "batch": "rules-v2",
+  "generated_at": "2026-11-08T22:00:00.000Z",
+  "model": "hand-authored-outcome",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "b33c0339f9f498332b92b897fe79a37b6dec18e84e7b00be5001a5a35d1fea95",
+  "scenarios": [
+    {
+      "id": "playwright-test-implementation-rules-1",
+      "title": "Five pages behind a username-and-password login",
+      "target_section": "Step 2: Set up the authenticated session (`global-setup.ts` + `storageState`)",
+      "prompt": "We have an internal invoicing app built in React. It runs at http://localhost:4300 on my machine; staging and CI use other addresses, which CI passes in an environment variable called INVOICE_APP_URL. Every page needs a signed-in user. I'd like end-to-end tests in Playwright that run unattended in CI: one test each for the Overview, Invoices, Customers, Reports and Settings pages that opens the page and checks its main heading is visible. I also want one test that opens the Invoices page with nobody signed in and checks the visitor ends up on the login screen.\n\nThe login page is at /login:\n\n```html\n<form class=\"login-card\">\n  <h1>Sign in</h1>\n  <label for=\"email\">Email</label>\n  <input id=\"email\" name=\"email\" type=\"email\" />\n  <label for=\"pw\">Password</label>\n  <input id=\"pw\" name=\"password\" type=\"password\" />\n  <button type=\"submit\">Sign in</button>\n</form>\n```\n\nAfter a good login the app shows \"Signing you in…\" for a moment and then moves to /overview, which has a user menu button in the top right (data-testid=\"user-menu\"). The test account is qa.tester@example.com with the password example-only-password. The tests will live in tests/e2e. The repo has no folder for auth files yet, and .gitignore currently lists dist and coverage.",
+      "rubric": [
+        "Signs in once, in a step that runs before the suite, and saves the session so the five page tests reuse it instead of filling in the login form in each test.",
+        "In the sign-in step, waits for evidence that the login has finished (the Overview address or the user menu being visible) before saving the session, instead of saving straight after pressing the button or waiting for network idle.",
+        "Makes sure the folder that receives the saved session exists before the sign-in step writes to it, by creating it in the setup or by telling the user to create it.",
+        "Adds the saved session file or its folder to the ignore list and says why: it holds live session tokens that must not be committed.",
+        "Sets the app address in the test configuration from INVOICE_APP_URL, so tests can open pages by path, instead of assuming the variable is picked up on its own.",
+        "Runs the check that a visitor who is not signed in lands on the login screen without the saved session (an explicitly empty one), while the five page tests keep using it.",
+        "Reads the test account's email and password from environment variables, and neither value is written in the setup or test code."
+      ],
+      "why_skill_matters": "A suite of five signed-in page tests invites a login in every test, a saved session in a folder nobody has created, and a session file that gets committed. The unsigned-visitor check is a login-style test that only works if the saved session is switched off for it. A good answer signs in once, waits for a real sign of success, creates and ignores the session folder, wires the address from the variable and clears the session for the one test that needs it."
+    },
+    {
+      "id": "playwright-test-implementation-rules-2",
+      "title": "Pages behind a hosted identity-provider sign-in",
+      "target_section": "Pitfalls",
+      "prompt": "Our web portal sends people to a hosted login page from our identity provider, on a different domain, and then back to the portal. I need Playwright tests for the My Reports and Team Dashboard pages as a signed-in user, running in CI where nobody can type a password. On my machine the portal is at http://localhost:3000; in CI the address comes from an environment variable called PORTAL_URL.\n\nWhat happens in a browser: open the portal, get redirected to https://accounts.example-idp.com/login, enter username and password, press Sign in, and end up back on the portal at /app/home. From there My Reports (/app/reports) and Team Dashboard (/app/team) open, and each shows a heading with its name.\n\nI looked at the hosted page's source and the form is in there twice, the first copy inside a block that is hidden on wide screens:\n\n```html\n<div class=\"wrapper-mobile\" style=\"display:none\">\n  <form name=\"signInForm\" method=\"post\">\n    <input name=\"username\" type=\"text\" placeholder=\"Username\" />\n    <input name=\"password\" type=\"password\" placeholder=\"Password\" />\n    <input name=\"signInSubmit\" type=\"submit\" value=\"Sign in\" />\n  </form>\n</div>\n<div class=\"wrapper-desktop\">\n  <form name=\"signInForm\" method=\"post\">\n    <input name=\"username\" type=\"text\" placeholder=\"Username\" />\n    <input name=\"password\" type=\"password\" placeholder=\"Password\" />\n    <input name=\"signInSubmit\" type=\"submit\" value=\"Sign in\" />\n  </form>\n</div>\n```\n\nThe test user is portal.tester@example.com, password example-only-password. Please write the sign-in step and the two page tests.",
+      "rubric": [
+        "Finds the username field, password field and sign-in button on the hosted page in a way that only matches the visible copy of the form, so the hidden copy cannot cause an ambiguous match.",
+        "Before saving the session, waits for the return to the portal's /app/home address or for an element only a signed-in user sees.",
+        "Signs in once before the suite and has both page tests reuse the saved session instead of going through the hosted page in each test.",
+        "Sets the portal address in the test configuration from PORTAL_URL, so tests can open pages by path, instead of assuming the variable is read automatically.",
+        "Excludes the file that holds the saved session from version control, and says it contains live session tokens.",
+        "Takes the test user's username and password from environment variables, and neither value is written in the setup or test code."
+      ],
+      "why_skill_matters": "A redirect through another domain breaks the usual shortcuts: waiting for the starting address resolves too early or never, and the hosted form exists twice, so a plain locator matches two elements. A good answer limits the locators to the visible form, waits for the return to the portal before saving, signs in once and keeps the saved session out of version control."
+    },
+    {
+      "id": "playwright-test-implementation-rules-3",
+      "title": "Specs for the sign-in screen in a project that already reuses a login",
+      "target_section": "Step 5: Opt out of the global session for login-flow specs",
+      "prompt": "Our shop admin app already has Playwright tests. The project signs in once before the run and every test starts with that saved login, which is what we want for nearly everything. Now I need specs for the sign-in screen itself:\n\n1. A wrong password shows \"Incorrect email or password\".\n2. An email nobody registered shows the same message.\n3. Correct details land on the Orders page, which shows the heading \"Orders\" and the account menu (data-testid=\"account-menu\").\n4. The \"Forgot password?\" link opens /reset.\n\nThe sign-in screen at /signin:\n\n```html\n<main>\n  <h1>Admin sign in</h1>\n  <form aria-label=\"Sign in\">\n    <label>Email <input type=\"email\" name=\"email\" /></label>\n    <label>Password <input type=\"password\" name=\"password\" /></label>\n    <p role=\"alert\" hidden></p>\n    <button type=\"submit\">Sign in</button>\n  </form>\n  <a href=\"/reset\">Forgot password?</a>\n</main>\n<footer>\n  <form aria-label=\"Newsletter\">\n    <label>Email <input type=\"email\" name=\"newsletter\" /></label>\n    <button type=\"submit\">Subscribe</button>\n  </form>\n</footer>\n```\n\nFor the correct-login case use admin.tester@example.com with the password example-only-password. The wrong-password cases can use any other password.",
+      "rubric": [
+        "The specs for the sign-in screen start from an explicitly empty saved session (no cookies, no stored data), so the browser is not already signed in when it opens the sign-in screen.",
+        "The empty-session setting applies only to the sign-in specs, set in their own file or through a separate test project, and the saved session stays in use for the rest of the suite.",
+        "The email and password fields of the sign-in form are found in a way that cannot also match the newsletter email field in the footer, by limiting the lookup to the form or using the field name or a test id.",
+        "The error message and the Sign in button are found through stable hooks such as the alert role, a test id, or a role and name within the form, not through brittle structural CSS paths.",
+        "The email and password for the correct-login case are read from environment variables rather than written in the spec."
+      ],
+      "why_skill_matters": "The request mentions the shared login only in passing, as something the user likes. The sign-in screen specs need the opposite: no saved login at all, otherwise each test opens an already signed-in app and never sees the form. The footer repeats an Email field, so a label lookup without a container matches twice. A good answer clears the saved session for these specs only, and scopes the form lookups."
+    },
+    {
+      "id": "playwright-test-implementation-rules-4",
+      "title": "Projects list with three different Delete buttons",
+      "target_section": "Step 3: Pick selectors using this fallback chain, in order",
+      "prompt": "I need Playwright tests for the Projects page of our admin app. Signed-in users only: sign-in is an email and password form at /login, with fields labelled Email and Password, and after it you land on /projects. The test user is admin.tester@example.com with the password example-only-password. The app's address changes per environment and is in an environment variable called ADMIN_BASE. Please include whatever sign-in setup is needed.\n\nThe Projects page, trimmed:\n\n```html\n<div data-testid=\"toolbar\">\n  <button>New project</button>\n  <button disabled>Delete</button>\n</div>\n<table data-testid=\"projects-table\">\n  <tbody>\n    <tr><td><input type=\"checkbox\" aria-label=\"Select Atlas\" /></td><td>Atlas</td><td>Updated 2 min ago</td><td><button>Delete</button></td></tr>\n    <tr><td><input type=\"checkbox\" aria-label=\"Select Borealis\" /></td><td>Borealis</td><td>Updated yesterday</td><td><button>Delete</button></td></tr>\n    <tr><td><input type=\"checkbox\" aria-label=\"Select Cascade\" /></td><td>Cascade</td><td>Updated last week</td><td><button>Delete</button></td></tr>\n  </tbody>\n</table>\n<div role=\"dialog\" aria-label=\"Delete project\" hidden>\n  <p>Delete this project? This cannot be undone.</p>\n  <button>Cancel</button>\n  <button>Delete</button>\n</div>\n```\n\nThe test I want: delete the most recently updated project, which is always the first row because the list is sorted by last update, newest first. Project names differ between environments, so don't hardcode the name. Click that row's Delete, confirm in the dialog, and check the row count goes down by one.",
+      "rubric": [
+        "The row's Delete button is found within the projects list, so it cannot match the toolbar's Delete button or the dialog's Delete button.",
+        "The confirming Delete button is found within the dialog, so it cannot match the Delete buttons in the list or the toolbar.",
+        "Sets the app address in the test configuration from ADMIN_BASE, so tests can use relative paths, instead of assuming the variable is read automatically.",
+        "Signs in once before the suite and reuses the saved session in the Projects test instead of logging in inside the test.",
+        "Where the test takes the first of several matching rows, a comment next to it says why several rows match and why the first one is the right one (newest first).",
+        "The email and password for the test user come from environment variables, and neither value is written in the setup or test code."
+      ],
+      "why_skill_matters": "Three buttons on the page are all called Delete, and the test must click the one in the first row and then the one in the dialog. A lookup by role and name without a container clicks the wrong one or fails on ambiguity. The user asks for the first row by position, which is exactly where a reader needs to see why picking the first match is correct."
+    },
+    {
+      "id": "playwright-test-implementation-rules-5",
+      "title": "First browser tests in a project that lists a test script but no framework",
+      "target_section": "Playwright is a prerequisite, not something this skill installs",
+      "prompt": "Can you set up end-to-end tests for our booking site and write the first two? Here is what the project looks like from the terminal.\n\nThe npm scripts:\n\n```text\n  dev\n    vite\n  build\n    vite build\n  test\n    vitest\n  e2e\n    playwright test\n```\n\nThe installed dependencies:\n\n```text\nbooking-web@0.1.0\n├── react-dom@18.3.1\n├── react@18.3.1\n├── typescript@5.5.4\n├── vite@5.4.2\n└── vitest@2.0.5\n```\n\nSign-in is a form at /signin; after it the site moves to /bookings. The first two tests: the Bookings page shows its heading, and the New booking form saves a booking and shows it in the list. The site runs at http://localhost:5173 locally; in CI the address of the preview deployment is in an environment variable called PREVIEW_URL. The test user is booking.tester@example.com with the password example-only-password. We want the saved login kept in e2e/.auth, which isn't in the repo yet. Nobody on the team has done browser tests on this project before.",
+      "rubric": [
+        "Points out that the browser test framework is not among the installed dependencies shown, despite the e2e script, and gives the command to add it as a development dependency.",
+        "Tells the user to run the separate step that downloads the browsers, and says tests fail at launch without it.",
+        "Signs in once before the suite and has both tests reuse the saved session instead of logging in inside each test.",
+        "Makes sure the e2e/.auth folder exists before the sign-in step writes the session into it, by creating it in the setup or by telling the user to create it.",
+        "Sets the site address in the test configuration from PREVIEW_URL, so tests can open pages by path, instead of assuming the variable is read automatically.",
+        "Excludes the e2e/.auth folder from version control and says it holds live session tokens.",
+        "The test user's email and password come from environment variables, and neither value is written in the setup or test code."
+      ],
+      "why_skill_matters": "The project has an e2e script, which makes it look as if the framework is there; the list of installed dependencies says otherwise. Installing software is the team's decision, and the browser download is a second step that is commonly missed, so the answer should name both. The new auth folder needs creating and ignoring."
+    },
+    {
+      "id": "playwright-test-implementation-rules-6",
+      "title": "Dashboard behind a sign-in form that keeps the same address",
+      "target_section": "Verification",
+      "prompt": "Our task tracker is a single-page app. The address / shows a sign-in form when nobody is signed in and the dashboard when somebody is, so the address stays / the whole time. The sign-in form:\n\n```html\n<form id=\"auth\">\n  <label for=\"user\">Email</label><input id=\"user\" type=\"email\" />\n  <label for=\"secret\">Password</label><input id=\"secret\" type=\"password\" />\n  <button type=\"submit\">Sign in</button>\n</form>\n```\n\nAfter pressing the button a spinner shows for one to three seconds, then the form is replaced by the dashboard: a greeting like \"Good morning, Sam\", a Log out button, an Open tasks card and a Recent activity list. I want Playwright tests for the Open tasks card (shows a count) and the Recent activity list (shows at least one entry), signed in as tasks.tester@example.com with the password example-only-password. They run in CI on a fresh checkout. The app address is in an environment variable called TASKS_URL. We want the saved login in playwright/.auth, which doesn't exist in the repo, and our .gitignore has dist and test-results in it.",
+      "rubric": [
+        "Before saving the session, waits for an element only a signed-in user sees, such as the Log out button, since the address does not change at sign-in.",
+        "Makes sure playwright/.auth exists before the sign-in step writes the session into it, by creating it in the setup or by telling the user to create it.",
+        "Adds the playwright/.auth folder to the ignore list and says it holds live session tokens.",
+        "Signs in once before the suite and has both dashboard tests reuse the saved session.",
+        "Sets the app address in the test configuration from TASKS_URL, so tests can use relative paths, instead of assuming the variable is read automatically.",
+        "Reads the test user's email and password from environment variables, and neither value is written in the setup or test code."
+      ],
+      "why_skill_matters": "When the address never changes, the usual wait for a new address cannot work, and a wait for the page to settle may pass while the spinner is still showing. A good answer waits for an element that exists only after sign-in. A fresh CI checkout also has no folder for the saved login, and the ignore list does not cover it."
+    },
+    {
+      "id": "playwright-test-implementation-rules-7",
+      "title": "Hosted sign-in journey tests and a second saved login for a read-only user",
+      "target_section": "Quality Gate",
+      "prompt": "Our team signs in on a page hosted by our identity provider, on its own domain (https://login.example-sso.com). A teammate has already set up the signed-in feature tests, which start from a saved login for the editor account. Two things are still missing.\n\nFirst, specs for the whole journey of signing in and out: (a) a wrong password shows \"Incorrect username or password\" on the hosted page; (b) the right details bring you back to the app's /home page, which greets you by name; (c) pressing Sign out in the app returns you to the hosted page.\n\nSecond, a sign-in step for a read-only account, so that the tests of what read-only users can't do can start signed in as that user.\n\nThe hosted page repeats its form, once in a block hidden on small screens:\n\n```html\n<div class=\"auth-narrow\" hidden>\n  <input name=\"username\" type=\"text\" />\n  <input name=\"password\" type=\"password\" />\n  <button type=\"submit\">Sign in</button>\n</div>\n<div class=\"auth-wide\">\n  <input name=\"username\" type=\"text\" />\n  <input name=\"password\" type=\"password\" />\n  <button type=\"submit\">Sign in</button>\n</div>\n```\n\nThe accounts are viewer.tester@example.com for the read-only user and editor.tester@example.com for the editor, both with the password example-only-password.",
+      "rubric": [
+        "The tests for the wrong password and for the successful sign-in start from an explicitly empty saved session, so the browser is not already signed in when they open the hosted page.",
+        "Finds the username field, password field and sign-in button on the hosted page in a way that only matches the visible copy of the form.",
+        "In the read-only account's sign-in step, waits until the browser is back on the app (the /home address or the greeting) before saving the session, and does not save straight after pressing the button.",
+        "Keeps the read-only account's saved session file out of version control and says it holds live session tokens.",
+        "The tests for the read-only account reuse its saved session, which is created once before they run, instead of signing in inside each test.",
+        "The usernames and the shared password come from environment variables, and none of those values is written in the setup or test code."
+      ],
+      "why_skill_matters": "Two jobs pull in opposite directions: the sign-in journey tests must start with no saved login, and the read-only tests must start with a second saved login that is written only after the return from the hosted page. The hidden duplicate form affects both. A good answer keeps the two apart, limits the lookups to the visible form and treats the second session file like the first."
+    },
+    {
+      "id": "playwright-test-implementation-rules-8",
+      "title": "First browser tests for a server-rendered orders list",
+      "target_section": "Step 1: Confirm the project can run a spec at all",
+      "prompt": "We've never had browser tests. The app is Express with server-rendered pages, and this is everything the project has installed:\n\n```text\norders-portal@1.0.0\n├── ejs@3.1.10\n├── express@4.19.2\n├── jest@29.7.0\n└── supertest@7.0.0\n```\n\nPlease write Playwright tests for the Orders page. Sign-in is a form at /login with fields labelled Work email and Password, then the app opens /orders. The test user is orders.tester@example.com with the password example-only-password; the app address is in an environment variable called ORDERS_HOST.\n\nThe Orders page lists the latest orders, newest first:\n\n```html\n<div class=\"page\"><div class=\"panel\"><div class=\"grid\">\n  <div class=\"row\"><span>#1042</span><span class=\"badge\">Shipped</span><a href=\"/orders/1042\">View</a></div>\n  <div class=\"row\"><span>#1041</span><span class=\"badge\">Processing</span><a href=\"/orders/1041\">View</a></div>\n  <div class=\"row\"><span>#1040</span><span class=\"badge\">Shipped</span><a href=\"/orders/1040\">View</a></div>\n</div></div></div>\n<aside id=\"drawer\" hidden><button>Close</button></aside>\n```\n\nTests: (1) open the newest order from the list through its View link and check that the details page heading starts with \"Order #\"; (2) check that at least one row on the list shows the Shipped badge. The order numbers change all the time, so please don't hardcode them.",
+      "rubric": [
+        "Says the browser test framework is not among the installed dependencies shown and gives the steps to get it running: adding the package as a development dependency and running the separate browser download.",
+        "Finds the View link through a stable hook (role and name, text or a test id) and not through a chain of structural selectors on the nested div classes.",
+        "Signs in once before the suite and has both tests reuse the saved session.",
+        "Sets the app address in the test configuration from ORDERS_HOST, so tests can use relative paths, instead of assuming the variable is read automatically.",
+        "Before saving the session, waits for the move to /orders (or an element only visible once signed in) instead of saving right after pressing the button.",
+        "Where a test takes the first of several matching elements, a comment next to it says why several match and why the first one is the right one (newest first).",
+        "The email and password for the test user come from environment variables, and neither value is written in the setup or test code."
+      ],
+      "why_skill_matters": "A project with no browser tests needs the framework added and its browsers downloaded, which the answer should say rather than assume. The markup is nested divs with no hooks, so a lookup needs a stable handle, and the newest order is the first of several matching links, which a comment should justify."
+    }
+  ]
+}

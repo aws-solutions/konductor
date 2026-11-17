@@ -1,0 +1,289 @@
+{
+  "format_version": 1,
+  "skill": "pre-planning-analysis",
+  "batch": "rules-b6",
+  "rules": {
+    "pre-planning-analysis-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "pre-planning-analysis-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "pre-planning-analysis-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "pre-planning-analysis-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "pre-planning-analysis-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "pre-planning-analysis-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "pre-planning-analysis-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "pre-planning-analysis-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "pre-planning-analysis-r09": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "pre-planning-analysis-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "pre-planning-analysis-r11": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "pre-planning-analysis-r12": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    }
+  },
+  "scenarios": {
+    "pre-planning-analysis-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r02"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "pre-planning-analysis-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r11"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "pre-planning-analysis-r12"
+      }
+    },
+    "pre-planning-analysis-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r11"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "pre-planning-analysis-r12"
+      }
+    },
+    "pre-planning-analysis-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r07"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r08"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "pre-planning-analysis-r09"
+      }
+    },
+    "pre-planning-analysis-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r10"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r01"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "pre-planning-analysis-r12"
+      }
+    },
+    "pre-planning-analysis-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r11"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "pre-planning-analysis-r12"
+      }
+    },
+    "pre-planning-analysis-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r11"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "pre-planning-analysis-r12"
+      }
+    },
+    "pre-planning-analysis-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r10"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r03"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r11"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "pre-planning-analysis-r12"
+      }
+    },
+    "pre-planning-analysis-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "pre-planning-analysis-r11"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "pre-planning-analysis-r12"
+      }
+    }
+  }
+}

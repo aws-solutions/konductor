@@ -1,0 +1,134 @@
+{
+  "format_version": 1,
+  "skill": "pre-planning-analysis",
+  "batch": "rules-b6",
+  "generated_at": "2026-11-10T00:05:19.297Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "86797b7ac27a5a91618dae9fd50ae8bbd954d143b4839e7038c04571717f26ff",
+  "scenarios": [
+    {
+      "id": "pre-planning-analysis-rules-1",
+      "title": "Make checkout code better before release",
+      "target_section": "Phase 0: Intent Classification",
+      "prompt": "my manager just said \"make the checkout code better before the release\" and walked off. it's one 900 line file, checkout.py, in our Flask shop. it does cart totals, tax calc, discount codes and the Stripe calls all in the same functions. there are only 3 tests, all about discount codes. the PM also mentioned she'd love a gift-wrap option at some point, and honestly it'd be easy to slip in while I'm in there.\n\nI don't really know where to start. how would you approach this, and who should do what? the assistants we have are a developer, a product manager, an architect and a researcher.",
+      "rubric": [
+        "Commits to one kind of work for \"make the checkout code better\" (most plausibly restructuring of existing code), states how sure it is, and justifies this from the user's wording and the description of checkout.py.",
+        "Keeps the gift-wrap idea out of the cleanup work and does not fold it into the same change.",
+        "Says the existing behavior of totals, tax, discount codes and Stripe calls must be pinned down (e.g. by adding tests beyond the 3 discount tests) and re-checked after each small change, with a way to back out.",
+        "Points out that \"better\" is undefined (readability, bugs, speed, testability?) and asks the user targeted questions about it, such as what the manager actually cares about.",
+        "States what the effort includes, what it excludes (gift-wrap) and what is postponed until after the release.",
+        "Lists the assumptions it is making, for example that no behavior change is intended or that the release date limits the depth of the cleanup."
+      ],
+      "why_skill_matters": "The vague manager request hides a restructuring job with an untested 900-line file, and the gift-wrap temptation invites mixing a feature into it. Makes the classification, behavior preservation, scope bounds and unclear points matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-2",
+      "title": "Saved searches feature in an existing app",
+      "target_section": "Build from Scratch",
+      "prompt": "We want to add \"saved searches\" to our job board app: a logged-in user can save the current search filters under a name and rerun it later. Before anyone codes, give me the plan.\n\nContext on the codebase (FastAPI + SQLAlchemy). We already shipped \"favorites\" last quarter and it's laid out like this:\n\n```\napp/features/favorites/\n  models.py      # Favorite(user_id, job_id)\n  repo.py        # FavoriteRepo with add/remove/list_for_user\n  service.py     # FavoriteService, takes repo via constructor\n  routes.py      # APIRouter, uses Depends(get_favorite_service)\ntests/features/favorites/\n  test_service.py   # pytest, uses fixtures from tests/conftest.py\n```\n\nSomeone on the team already said we should do it with a new event-sourcing approach \"since it's cleaner\", and someone else wants to also let users share saved searches and get email alerts. I just want it done properly.",
+      "rubric": [
+        "Directs studying the favorites feature first (repo, service, routes, tests layout) and building saved searches to follow the same structure, naming those files or layers.",
+        "Rejects the proposed event-sourcing approach as a new pattern not justified for this feature, or at least requires explicit justification before departing from the favorites pattern.",
+        "Defines what finished means for saved searches (e.g. save, list, rerun and delete work for a logged-in user, with tests in the same style).",
+        "Flags sharing and email alerts as unrequested extras that risk growing the work, and says to confirm they are needed before including them.",
+        "States what is included (save, name, rerun filters), what is excluded (sharing, alerts) and what is deferred.",
+        "Lists assumptions, such as the filters being stored as a serializable set of parameters or one user owning their own saved searches."
+      ],
+      "why_skill_matters": "Existing code gives a clear pattern to reuse, while teammates push a novel architecture and extra features. Makes pattern reuse, done criteria, extras and bounds matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-3",
+      "title": "Figuring out a database migration",
+      "target_section": "Collaborative",
+      "prompt": "help me figure out how to approach migrating our database. we're on a self-hosted Postgres 11 box that's about 400GB, serving a B2B invoicing app with roughly 3k business customers. people have thrown around moving to a managed cloud Postgres, upgrading in place, or even splitting reporting off to a separate store. I'm the only one who's been on call for it and there are 3 devs total. I haven't talked to the CEO about downtime tolerance yet. We also lean on a few extensions (pg_trgm, pgcrypto, one PostGIS thing) and somebody should find out if the managed options support them, but I have no idea how deep that digging should go. I don't want a finished answer from you, I want to think this through step by step and not get railroaded into something.",
+      "rubric": [
+        "Presents the options (managed move, in-place upgrade, separate reporting store) as choices for the user to weigh, with their key trade-offs, instead of picking one for them.",
+        "Restates its understanding of the situation (400GB, Postgres 11, 3 devs, unknown downtime tolerance) and asks the user to confirm or correct it.",
+        "Breaks the work into checkpoints where the user decides before moving on, for example first fixing downtime tolerance, then choosing target, then rehearsal.",
+        "Names the work as joint planning or an early-stage decision problem rather than an implementation task, and says how sure it is.",
+        "Frames the extension check as a bounded investigation: a specific question (are pg_trgm, pgcrypto and the PostGIS piece supported), a point at which it is good enough, a time limit, and the form of the result.",
+        "Warns against building on unvalidated guesses, such as assuming downtime tolerance, and says to check it with the business before choosing.",
+        "Asks targeted questions with reasons, such as acceptable downtime, budget, compliance, and what matters most."
+      ],
+      "why_skill_matters": "An open-ended \"help me think\" request where the user explicitly wants to keep control, with a side question of unbounded digging on extensions. Makes interactive planning, options, checkpoints, bounded investigation and unchecked assumptions matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-4",
+      "title": "Structuring a notification service",
+      "target_section": "Architecture",
+      "prompt": "We're building a notifications service for our fitness app (push, email, in-app). Currently ~40k monthly active users, maybe 150k by next year's end. 4 engineers, all comfortable with Node and Postgres. Our tech lead wants Kafka plus separate microservices per channel with autoscaling from day one \"so we never have to redo it\". I'm worried that's heavy but I'm not sure. I'd like to make the calls myself with the tech lead, so walk me through the big decisions rather than handing me a finished design. How should we structure this? Our assistants: product manager, developer, architect, researcher. Tell me who should get involved and in what order.",
+      "rubric": [
+        "Treats this as a system-design question and brings in design expertise (the architect) for the structure decision.",
+        "Compares at least two structural options (e.g. simple queue-backed module in the existing app vs Kafka and per-channel services) with their trade-offs.",
+        "Pushes back on building for large scale from day one, given 40k users growing to 150k and four engineers, while noting how to leave room to evolve later.",
+        "Presents the major decisions (broker choice, one service vs per channel, scaling approach) as choices for the user and tech lead, and does not settle them unilaterally.",
+        "Proposes an ordered sequence using only the four listed assistants, each with a stated purpose.",
+        "Commits to architecture/system design as the kind of work, states confidence, and ties it to the \"how should we structure\" wording.",
+        "Lists assumptions, for example about delivery guarantees, peak send volume or ownership of the service."
+      ],
+      "why_skill_matters": "Design question with a heavy-handed premature-scaling proposal, a user who wants to keep the decisions, and a defined set of assistants. Makes design involvement, trade-offs, restraint on optimization, decision points and chain order matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-5",
+      "title": "Can Postgres replace Elasticsearch",
+      "target_section": "Research",
+      "prompt": "Our product search runs on Elasticsearch and the cluster costs us about $2.3k a month, plus someone babysits it. Roughly 2M product documents, we need typo tolerance, faceted filters and sub-300ms responses. A dev suggested Postgres full-text search with trigram indexes might be enough. Can you look into whether that's viable? I have a planning meeting on Thursday and I honestly don't know where the investigation would even end. I could see us reading about this for weeks.",
+      "rubric": [
+        "States the specific question to answer (can Postgres meet typo tolerance, facets and sub-300ms at 2M documents) rather than a general survey.",
+        "Defines when the investigation is good enough, such as a go/no-go on a small trial against these requirements.",
+        "Sets a time limit tied to the Thursday meeting, and says what form the findings should take (for example a short recommendation with numbers).",
+        "Guards against open-ended reading by naming the risk and the stop rule, instead of exploring every alternative search engine.",
+        "States what is investigated, what is excluded (e.g. performing the migration, evaluating other engines) and what is postponed.",
+        "Lists assumptions such as the cost figure being the main driver or the query load being similar to production."
+      ],
+      "why_skill_matters": "An investigation with unclear end and stated fear of endless reading. Makes exit criteria, time limits, output format and boundedness matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-6",
+      "title": "Invoice PDF extraction ticket",
+      "target_section": "Refactoring",
+      "prompt": "Pasting a ticket from our board, can you tell me how to plan it?\n\n---\nBILL-482: Extract invoice PDF generation from billing_service.py\nbilling_service.py has grown to ~1,400 lines. Move the PDF rendering functions (render_invoice, build_line_table, format_totals, add_footer) into a new module billing/pdf.py. Rename a few of the unclear helpers (e.g. fmt2 -> format_money). Update imports in the 6 call sites. Since we're touching add_footer anyway, make the footer show the currency per line item for multi-currency customers, finance has asked for that twice. Notes: finance's nightly job compares a hash of each generated PDF against the archive to detect tampering. Estimated 2 days. Priority: medium.\n---\n\nWe have developer, product manager, architect and researcher assistants.",
+      "rubric": [
+        "Notices that the multi-currency footer is a behavior change hidden inside a move-and-rename ticket, and recommends separating it from the extraction.",
+        "Connects the nightly hash comparison to the need to preserve output exactly, and requires checking that PDFs stay identical after each step (move, rename, import updates), with a way to revert.",
+        "Classifies the main work as restructuring existing code, with confidence, justifying it from the extract/move/rename wording.",
+        "Lists the concrete deliverables (new pdf.py with the four functions, renamed helpers, 6 call sites updated) and a check for each, and names the footer change as excluded.",
+        "States that the footer change is deferred to its own follow-up ticket rather than dropped or merged.",
+        "Lists assumptions, such as the hash covering the full PDF bytes or the helper renames not being used outside the six call sites."
+      ],
+      "why_skill_matters": "The ticket reads as a refactor, but one clause adds a feature that would also break finance's hash check. Makes separation, behavior preservation and bounds matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-7",
+      "title": "Customer feedback portal from idea to launch",
+      "target_section": "Recommended Agent Chain",
+      "prompt": "Our startup wants a customer feedback portal where customers submit feature ideas, vote on them, and we mark them planned/shipped. Nothing like it exists yet; we'd integrate with our existing Django app and its login. One camp wants a separate Next.js app with its own database and API so it can scale on its own, another camp says just add a Django app inside the monolith. It needs to go from idea through requirements, UX, building, testing, and launch in about 6 weeks. For this I can use these AI assistants: a product manager, an architect, a developer and a researcher. That's all we have set up, no designer or QA bot. Please lay out who does what and in what order.",
+      "rubric": [
+        "Gives an ordered sequence using only the four listed assistants (product manager, architect, developer, researcher), each with a stated purpose.",
+        "Does not invent a designer or QA assistant; instead assigns UX and testing work to the available ones or flags them as needing a human.",
+        "Weighs the separate Next.js app against the in-monolith Django app with trade-offs, considers long-term impact, and does not endorse scaling independently before there is a reason.",
+        "Classifies the work as building something new in an existing codebase, with confidence and a reason.",
+        "Calls for studying how the existing Django app handles login, models and conventions before building, and requires the portal to follow them.",
+        "States what is in the six-week effort (submit, vote, status marking), what is out, and what is deferred.",
+        "Lists assumptions, such as who can vote, whether submissions are moderated, or whether customers use the existing login."
+      ],
+      "why_skill_matters": "A multi-phase request where the user lists exactly which assistants exist and mentions phases (UX, testing) that no listed assistant covers; easy to invent extra roles. A structural dispute is tucked in mid-text. Makes the chain, design trade-offs, bounds and pattern discovery matter."
+    },
+    {
+      "id": "pre-planning-analysis-rules-8",
+      "title": "CSV export on the admin orders page",
+      "target_section": "Mid-sized Task",
+      "prompt": "small one for this sprint: on the admin Orders page (Rails app), add an \"Export CSV\" button that downloads the orders matching whatever filters are currently applied. Admins only. Columns: order id, date, customer email, status, total. Cap at 50,000 rows. We've got a similar export on the Customers page already in customers_controller#export, so it'd be nice to match that. I could also see us doing scheduled emailed exports and Excel format down the road, and maybe a column picker. What's the plan?",
+      "rubric": [
+        "Lists the exact deliverables (button, filtered export action, admin-only access, five columns, 50,000-row cap) and a way to verify each.",
+        "Names explicit exclusions: scheduled emails, Excel format and column picker are not part of this sprint item.",
+        "Says to read customers_controller#export first and reuse its approach, rather than designing a new export mechanism.",
+        "Flags the risk of extras creeping in (scheduling, Excel, column picker) and of over-engineering such as background jobs, unless the 50,000 cap demands it.",
+        "Puts the scheduled exports, Excel and column picker as deferred items.",
+        "Lists assumptions, such as filters being passed as query params or what happens when the cap is exceeded."
+      ],
+      "why_skill_matters": "A well-defined small task with tempting future extras and an existing similar export. Makes exact deliverables, exclusions, pattern reuse and restraint matter."
+    }
+  ]
+}

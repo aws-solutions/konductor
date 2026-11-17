@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "playwright-test-implementation",
+  "skill_md_sha256": "4d8cf5b5dc99e332a5379558739625e2bf52352e176a1a0cb88dc229698e0337",
+  "request_context": "A request to write browser end-to-end tests for a web app that requires sign-in, including the sign-in setup so the tests can run unattended.",
+  "rules": [
+    {
+      "id": "playwright-test-implementation-r01",
+      "source_quote": "Read credentials from `process.env.TEST_USERNAME` / `process.env.TEST_PASSWORD` in both the setup script and specs — never hardcode them.",
+      "class": "generic",
+      "outcome": "Test account credentials come from the environment, and no username or password is written into the test code or setup script.",
+      "why": "Secrets in source end up in version control.",
+      "scenario_hint": "The user supplies an example test username and password in the request and asks for working tests."
+    },
+    {
+      "id": "playwright-test-implementation-r02",
+      "source_quote": "sign in once in a global setup script and reuse that session across every spec — don't re-authenticate per test",
+      "class": "useful",
+      "outcome": "Sign-in happens once before the suite runs and the saved session is reused by every test, instead of each test logging in again.",
+      "why": "Repeated logins slow the suite and add a failure point to every test.",
+      "scenario_hint": "The app has five pages behind sign-in and the user wants a test for each."
+    },
+    {
+      "id": "playwright-test-implementation-r03",
+      "source_quote": "Add `fixtures/auth/` to `.gitignore` too; it holds live session tokens and must never be committed.",
+      "class": "useful",
+      "outcome": "The file that stores the saved session is excluded from version control, and the answer says why: it holds live session tokens.",
+      "why": "A committed session file leaks access to the app.",
+      "scenario_hint": "The user asks for the sign-in setup that saves the logged-in session to a file in the repository."
+    },
+    {
+      "id": "playwright-test-implementation-r04",
+      "source_quote": "Wait for the redirect to actually finish before saving state.",
+      "class": "useful",
+      "outcome": "The sign-in setup waits for a concrete sign of success, such as the address of the page shown after sign-in or an element only visible when signed in, before saving the session; it does not rely on the starting address, a match-anything pattern or network idle.",
+      "why": "Saving too early stores a session that is not signed in, and every test then fails in confusing ways.",
+      "scenario_hint": "Sign-in goes through a redirect to an identity provider and back to the app."
+    },
+    {
+      "id": "playwright-test-implementation-r05",
+      "source_quote": "`context.storageState()` throws `ENOENT` if `fixtures/auth/` doesn't exist yet",
+      "class": "useful",
+      "outcome": "The folder the saved session is written into is created before the sign-in step writes to it, or the answer notes that it must exist.",
+      "why": "Saving into a missing folder fails on the first run.",
+      "scenario_hint": "The user wants the saved session stored in a new folder that is not in the repository yet."
+    },
+    {
+      "id": "playwright-test-implementation-r06",
+      "source_quote": "Playwright does not auto-read `PLAYWRIGHT_BASE_URL`",
+      "class": "useful",
+      "outcome": "The app's base address is set explicitly in the test configuration (read from an environment variable if one is used), not assumed to be picked up automatically, so tests can use relative paths.",
+      "why": "Otherwise relative navigation fails or every test must repeat the full address.",
+      "scenario_hint": "The user says the app address is provided through an environment variable."
+    },
+    {
+      "id": "playwright-test-implementation-r07",
+      "source_quote": "A spec that tests the login page itself, or authentication behavior in general, has to opt out of the global `storageState`",
+      "class": "useful",
+      "outcome": "Tests of the sign-in page itself start without the saved session, with an explicitly empty one, so they reach the page they are meant to test.",
+      "why": "A test that begins already signed in never sees the sign-in page.",
+      "scenario_hint": "Besides feature tests, the user wants tests for invalid password and successful login."
+    },
+    {
+      "id": "playwright-test-implementation-r08",
+      "source_quote": "`page.getByTestId('...')` — preferred; needs a `data-testid` attribute on the element",
+      "class": "useful",
+      "outcome": "Elements are located through stable, user-facing hooks (a dedicated test id first, then role, label or placeholder), with role lookups limited to a container so they cannot match elsewhere on the page; brittle structural CSS paths are avoided.",
+      "why": "Stable and scoped locators keep tests from breaking on layout changes or matching the wrong element.",
+      "scenario_hint": "A page with a table, a toolbar and a dialog that each contain a button labelled Delete."
+    },
+    {
+      "id": "playwright-test-implementation-r09",
+      "source_quote": "add a comment explaining why the selector is ambiguous and why the first match is the right one",
+      "class": "style",
+      "outcome": "Wherever a test takes the first of several matching elements, a nearby comment explains why more than one element matches and why picking the first one is correct.",
+      "why": "",
+      "scenario_hint": "A list page where several rows match the same locator and the test must pick the first."
+    },
+    {
+      "id": "playwright-test-implementation-r10",
+      "source_quote": "Hosted SSO pages often render a hidden duplicate form.",
+      "class": "useful",
+      "outcome": "On a hosted sign-in page, the field and button locators are limited to visible elements, because such pages can contain a hidden duplicate of the form.",
+      "why": "Without that restriction the locator matches two elements and the step times out.",
+      "scenario_hint": "Sign-in is a hosted page from an identity provider such as Cognito or Okta."
+    },
+    {
+      "id": "playwright-test-implementation-r11",
+      "source_quote": "If it's missing, tell the customer how to add it — do not install it on their behalf",
+      "class": "useful",
+      "outcome": "If the test framework looks like it is not installed, the answer gives the install steps, including the separate download of browser binaries, instead of silently installing it or assuming it is present.",
+      "why": "Installing software is the user's decision, and the browser download is a commonly missed second step.",
+      "scenario_hint": "The user's project has no test framework in its dependencies yet."
+    },
+    {
+      "id": "playwright-test-implementation-r12",
+      "source_quote": "Table row selection:** `row.locator('input[type=\"radio\"]').click({ force: true })` — not `row.click()`.",
+      "class": "useful",
+      "outcome": "For a Cloudscape table or tile selection, the test clicks the underlying radio input with a forced click, instead of clicking the visible row or relying on role-and-name lookups that do not match.",
+      "why": "The component hides its real input behind an overlay, so ordinary locators and clicks miss.",
+      "scenario_hint": "The app is built with Cloudscape components and the test must select a table row and a tile."
+    }
+  ]
+}

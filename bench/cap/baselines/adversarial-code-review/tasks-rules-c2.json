@@ -1,0 +1,127 @@
+{
+  "format_version": 1,
+  "skill": "adversarial-code-review",
+  "batch": "rules-c2",
+  "generated_at": "2026-11-09T04:44:43.697Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "60203277da9dc6d0191fd5c7f18dc799e06c7c67a3643913ee4b0881009ee341",
+  "scenarios": [
+    {
+      "id": "adversarial-code-review-rules-1",
+      "title": "Warehouse stock reservation with stale read",
+      "target_section": "Data Integrity",
+      "prompt": "We're a small warehouse software shop. This is the new stock reservation function for our DynamoDB-backed inventory service. It goes out Thursday and I'd like it picked apart before then. Python, boto3 resource API.\n\n```python\ndef reserve_stock(sku, qty, order_id):\n    item = stock_table.get_item(Key={\"sku\": sku})[\"Item\"]\n    if item[\"available\"] < qty:\n        raise OutOfStock(sku)\n    stock_table.put_item(Item={**item, \"available\": item[\"available\"] - qty})\n    stock_table.put_item(Item={\n        \"sku\": f\"RES#{order_id}\",\n        \"reserved_sku\": sku,\n        \"qty\": qty,\n        \"created\": now_iso(),\n    })\n    return {\"reservation\": order_id, \"qty\": qty}\n```\n\nTests added in this PR (tests/test_reserve.py):\n\n```python\ndef test_out_of_stock_raises(stock_table):\n    stock_table.put_item(Item={\"sku\": \"A1\", \"available\": 1})\n    with pytest.raises(OutOfStock):\n        reserve_stock(\"A1\", 5, \"o-1\")\n\ndef test_get_item_shape(stock_table):\n    ...\n```\n\nWe get a few hundred reservations a minute during sales, often on the same hot SKUs.",
+      "rubric": [
+        "Identifies that the full-item put after reading `available` can overwrite a concurrent reservation on a hot SKU (lost update, overselling), and proposes a conditional or atomic decrement (e.g. condition on available >= qty or a version check).",
+        "Points out that decrementing stock and creating the RES# record are two separate writes, so a failure between them leaves stock reduced with no reservation (or the reverse), and suggests a single transaction.",
+        "Notes that the two tests only cover the out-of-stock error and an item shape check, so the successful decrement and the reservation record write are never exercised, and asks for a specific test of them (ideally including a concurrent or conflicting case).",
+        "Treats the overselling race as serious enough to hold up Thursday's release rather than a minor note.",
+        "Each problem is tied to a specific line or statement of reserve_stock and comes with a concrete code-level fix, not generic advice such as \"add locking\".",
+        "Blocking problems (race, partial write) appear before the test-coverage point, with the more minor items last."
+      ],
+      "why_skill_matters": "The function does a read, then two unconditional puts to different keys. This makes the stale overwrite, the non-atomic double write and the missing write-path tests matter, all in a plain inventory domain."
+    },
+    {
+      "id": "adversarial-code-review-rules-2",
+      "title": "Appointment booking lambda returning errors",
+      "target_section": "Security",
+      "prompt": "can you review this before I push? TypeScript lambda for our clinic booking API, behind API Gateway. I changed the get-booking handler to show the provider's name.\n\n```ts\nexport const handler = async (event: APIGatewayProxyEvent) => {\n  logger.info(\"booking request\", { body: event.body, headers: event.headers });\n  try {\n    const id = event.pathParameters!.id;\n    const res = await ddb.get({ TableName: process.env.BOOKINGS_TABLE!, Key: { pk: `BOOKING#${id}` } }).promise();\n    const item = res.Item!;\n    const providerName = item.details.provider.name;\n    return {\n      statusCode: 200,\n      body: JSON.stringify({ id, start: item.start, provider: providerName, patient: item.patientEmail }),\n    };\n  } catch (e: any) {\n    return {\n      statusCode: 500,\n      body: JSON.stringify({ error: e.message, stack: e.stack }),\n    };\n  }\n};\n```\n\nOlder bookings from before March were created without a `details` block at all. Nothing else changed in this PR.",
+      "rubric": [
+        "Flags that the catch block returns e.message and e.stack to the API caller, and says it should return a generic error while logging the detail server-side; treats it as something to block on.",
+        "Flags the logger.info call that records the whole event body and headers for every booking request (which can carry patient data or auth headers), and suggests logging only a few safe fields.",
+        "Flags that item.details.provider.name will throw for bookings predating March that have no details block (and possibly no provider), and proposes a guard or a default value.",
+        "Links the missing-details failure to the catch block, so those old bookings would return a 500 with a stack trace to the client.",
+        "Each finding points to the specific statement in the handler and gives a concrete replacement, not just a warning."
+      ],
+      "why_skill_matters": "The handler logs the full body and headers, exposes the stack on error, and dereferences a nested path that is explicitly absent on old data. It tests the disclosure, logging and map guard rules together."
+    },
+    {
+      "id": "adversarial-code-review-rules-3",
+      "title": "Library catalogue search with page token",
+      "target_section": "Codebase Awareness",
+      "prompt": "Reviewing my own change to our library catalogue service (Flask + psycopg2) and I'd like someone nastier than me to look at it. I added a /search endpoint with paging.\n\nExisting helper in the repo, utils/paging.py (already used by /loans and /members):\n\n```python\ndef encode_token(last_id: int) -> str:\n    return sign(base64.urlsafe_b64encode(json.dumps({\"after\": last_id}).encode()))\n\ndef decode_token(token: str) -> int:\n    payload = verify(token)  # raises BadToken if signature or shape is wrong\n    return int(json.loads(base64.urlsafe_b64decode(payload))[\"after\"])\n```\n\nMy new code, api/search.py:\n\n```python\ndef search_books():\n    q = request.args.get(\"q\", \"\")\n    token = request.args.get(\"page_token\")\n    after = 0\n    if token:\n        after = json.loads(base64.urlsafe_b64decode(token))[\"after\"]\n    cur.execute(\n        f\"SELECT id, title, author FROM books WHERE title ILIKE '%{q}%' AND id > {after} ORDER BY id LIMIT 25\"\n    )\n    rows = cur.fetchall()\n    next_token = base64.urlsafe_b64encode(json.dumps({\"after\": rows[-1][0]}).encode()).decode() if rows else None\n    return jsonify({\"items\": rows, \"next\": next_token})\n```\n\nAnd in app.py, next to the other routes:\n\n```python\n@app.route(\"/loans\")\n@require_auth\ndef loans(): return list_loans()\n\n@app.route(\"/members\")\n@require_auth\ndef members(): return list_members()\n\napp.add_url_rule(\"/search\", view_func=search_books)\n```",
+      "rubric": [
+        "Flags that the page token is base64-decoded and its \"after\" value inserted straight into the SQL string with no check, and that q is also concatenated into the query; says to validate or parameterize before it reaches the query and treats this as a blocking issue.",
+        "Points out that decode_token and encode_token already exist in utils/paging.py (signed and validated) and that search_books reimplements both unsigned, and says to use the helpers.",
+        "Notices that /search is registered with add_url_rule without the require_auth wrapper that /loans and /members have, so the endpoint may be reachable unauthenticated, and says to add it.",
+        "Explains that since the token is unsigned, a caller can forge an arbitrary cursor value to change what rows are returned or to inject SQL.",
+        "Each finding names the specific line or construct in search_books or app.py and gives a concrete fix (e.g. the helper call, bound parameters, the decorator).",
+        "The injection-via-token problem is listed ahead of the lower-priority items, with the separation between must-fix and should-fix clear."
+      ],
+      "why_skill_matters": "The change decodes a token inline despite a shared helper, uses it in an f-string query, and registers the route without the auth wrapper its siblings use. It makes the cursor-validation, reuse and wiring rules matter."
+    },
+    {
+      "id": "adversarial-code-review-rules-4",
+      "title": "Hotel check-in webhook with trace helper",
+      "target_section": "Schema / Validation",
+      "prompt": "Hi, I need a second pair of eyes on this webhook from our channel manager into the hotel PMS (Node 20, Express). Code is long, so I pasted the relevant bits of the diff. The partner sends us check-in events.\n\n```js\n// lib/trace.js (new)\nexports.trace = (req) => {\n  logger.info(`[webhook] ${req.method} ${req.path}`, JSON.stringify(req.body));\n};\n\n// routes/checkin.js (new)\nconst { trace } = require(\"../lib/trace\");\nconst { saveGuestStay, notifyHousekeeping } = require(\"../services/stays\");\n\nrouter.post(\"/webhooks/checkin\", verifySignature, async (req, res) => {\n  trace(req);\n  const ev = req.body;\n  const stay = await saveGuestStay({\n    reservationId: ev.reservation_id,\n    guestName: ev.guest.name,\n    passport: ev.guest.passport_no,\n    room: ev.room,\n    nights: ev.nights,\n  });\n  await notifyHousekeeping(stay.room);\n\n  if (!ev.reservation_id || !ev.room || !Number.isInteger(ev.nights) || ev.nights < 1) {\n    return res.status(400).json({ error: \"invalid event\" });\n  }\n  res.status(201).json({ ok: true });\n});\n```\n\nSignature verification is solid, so I'm not worried about spoofing. Everything else is the usual boilerplate.",
+      "rubric": [
+        "Flags that saveGuestStay and notifyHousekeeping run before the reservation_id, room and nights validation, so an invalid event is stored and housekeeping is notified before the 400 is returned; proposes moving validation to the top of the handler.",
+        "Recognises that trace(req) logs the whole request body at info level, including guest names and passport numbers, even though the handler itself has no explicit log line, and suggests dropping it or logging only safe fields.",
+        "Flags that ev.guest.name and ev.guest.passport_no are read without checking that ev.guest exists, so an event without a guest object throws before the validation is reached.",
+        "States that the invalid-event response is misleading because side effects have already happened by the time the client sees the 400.",
+        "Findings refer to specific statements such as trace(req), the saveGuestStay call or the validation if-condition and give concrete fixes."
+      ],
+      "why_skill_matters": "The logging of the body hides inside a helper, and the check runs after the save and notification. The ev.guest map access is also unguarded. This makes the ordering, the payload logging and the nested access matter."
+    },
+    {
+      "id": "adversarial-code-review-rules-5",
+      "title": "New refunds endpoint, serverless config",
+      "target_section": "Output Format",
+      "prompt": "Last look before I open the PR for our storefront backend (Serverless Framework, Python lambdas). I added a refund endpoint. Here's everything I touched.\n\nhandlers/refunds.py:\n\n```python\ndef create_refund(event, context):\n    body = json.loads(event[\"body\"])\n    order = orders.get_item(Key={\"order_id\": body[\"order_id\"]})[\"Item\"]\n    refunds.put_item(Item={\n        \"refund_id\": str(uuid4()),\n        \"order_id\": order[\"order_id\"],\n        \"amount\": body[\"amount\"],\n        \"status\": \"pending\",\n    })\n    orders.update_item(\n        Key={\"order_id\": order[\"order_id\"]},\n        UpdateExpression=\"SET refunded = :t\",\n        ExpressionAttributeValues={\":t\": True},\n    )\n    return {\"statusCode\": 201, \"body\": json.dumps({\"ok\": True})}\n```\n\nserverless.yml diff:\n\n```yaml\n functions:\n   getOrder:\n     handler: handlers/orders.get\n     events:\n       - http:\n           path: orders/{id}\n           method: get\n           authorizer: staffAuthorizer\n+  createRefund:\n+    handler: handlers/refunds.create_refund\n+    events:\n+      - http:\n+          path: refunds\n+          method: post\n```\n\ntests/test_refunds.py:\n\n```python\ndef test_list_refunds_empty(client):\n    assert client.get(\"/refunds\").json() == []\n\ndef test_get_refund_404(client):\n    assert client.get(\"/refunds/xyz\").status_code == 404\n```\n\nRefunds move real money so I'd like this to be airtight.",
+      "rubric": [
+        "Flags that the createRefund function has no authorizer in serverless.yml, unlike getOrder, so anyone could call POST /refunds; proposes adding staffAuthorizer.",
+        "Notes that the tests only cover listing and a 404 read, and no test exercises create_refund writing the refund record or setting refunded on the order; asks for specific tests.",
+        "Flags that the refunds put_item and the orders update_item are separate calls, so a failure between them leaves a refund without the order flagged (or the reverse), and suggests a transaction.",
+        "Points out that nothing stops a second refund request for the same order, since the order update has no condition on refunded being unset and the refund put is not guarded, and proposes a condition.",
+        "Each issue names the specific function, call or config block and gives a concrete fix.",
+        "The unauthenticated money endpoint and other blocking issues come first, with lower-priority items placed after them."
+      ],
+      "why_skill_matters": "The yml diff shows a sibling function with an authorizer while the new one has none. The handler makes two separate writes with no condition, and the tests are read-only. This makes the wiring, atomicity, concurrent-write and coverage rules matter."
+    },
+    {
+      "id": "adversarial-code-review-rules-6",
+      "title": "Gym membership freeze with existing tx helper",
+      "target_section": "Codebase Awareness",
+      "prompt": "Can you do a skeptical review of this? It's a Python change to the membership service of our gym chain app. I pasted the new function plus the bit of the db module that's in the same PR context, since the diff shows it as unchanged context lines.\n\n```python\n# db/helpers.py  (unchanged, context)\ndef transact_write(items: list[dict]) -> None:\n    \"\"\"Runs all items in one DynamoDB transaction; raises TxFailed on cancel.\"\"\"\n    client.transact_write_items(TransactItems=items)\n\ndef tx_update(table, key, expr, values, cond=None) -> dict:\n    ...\n```\n\n```python\n# services/freeze.py  (new)\nfrom db.helpers import transact_write, tx_update  # imported but see below\n\ndef freeze_membership(member_id, days):\n    m = members.get_item(Key={\"member_id\": member_id}).get(\"Item\")\n    if not m or m[\"status\"] != \"active\":\n        raise NotFreezable(member_id)\n    new_end = add_days(m[\"end_date\"], days)\n    members.update_item(\n        Key={\"member_id\": member_id},\n        UpdateExpression=\"SET #s = :f, end_date = :e\",\n        ExpressionAttributeNames={\"#s\": \"status\"},\n        ExpressionAttributeValues={\":f\": \"frozen\", \":e\": new_end},\n    )\n    billing.update_item(\n        Key={\"member_id\": member_id},\n        UpdateExpression=\"SET paused_until = :p\",\n        ExpressionAttributeValues={\":p\": new_end},\n    )\n    audit.put_item(Item={\"member_id\": member_id, \"event\": \"freeze\", \"days\": days, \"ts\": now_iso()})\n```\n\nTests in the PR:\n\n```python\ndef test_freeze_rejects_inactive(members_table): ...\ndef test_freeze_unknown_member(members_table): ...\n```\n\nProduct says the freeze button gets double-tapped a lot on mobile.",
+      "rubric": [
+        "Notes that db/helpers.py already provides transact_write and tx_update, which freeze_membership imports but never uses, and says to use them instead of raw update_item/put_item calls.",
+        "Flags that the members update, the billing update and the audit put are three separate writes, so a mid-way failure leaves a frozen member with billing not paused or no audit record; recommends one transaction.",
+        "Points out that both tests only cover rejection paths and nothing exercises the successful freeze writes to the members, billing and audit tables; asks for a specific test of them.",
+        "Warns that a double-tapped freeze can run twice because the update has no condition on the status still being active, extending end_date twice, and proposes a condition.",
+        "Each finding names the freeze_membership statement involved and gives a concrete fix (e.g. a transact_write call with a status condition)."
+      ],
+      "why_skill_matters": "The helper that already offers transactions sits in the context lines and is imported with a comment hinting it is unused. The function writes to three tables with raw calls, with only rejection tests. This makes the reuse, atomicity and coverage rules matter."
+    },
+    {
+      "id": "adversarial-code-review-rules-7",
+      "title": "Feature flag service mixed handler",
+      "target_section": "Quality Gate",
+      "prompt": "Hey, I own the internal feature-flag service (Go, chi router, Postgres) and a contractor sent this PR. I'd like an honest read on whether to approve. Only the list handler is new; the rest is context.\n\nExisting in internal/httpx/errors.go:\n\n```go\n// MapError turns any internal error into a safe public response.\nfunc MapError(w http.ResponseWriter, err error) {\n    switch {\n    case errors.Is(err, store.ErrNotFound):\n        writeJSON(w, 404, apiErr{\"not_found\", \"flag not found\"})\n    default:\n        log.Error(\"request failed\", \"err\", err)\n        writeJSON(w, 500, apiErr{\"internal\", \"something went wrong\"})\n    }\n}\n```\n\nNew in internal/api/list.go:\n\n```go\nfunc (h *Handler) ListFlags(w http.ResponseWriter, r *http.Request) {\n    env := chi.URLParam(r, \"env\")\n    raw := r.URL.Query().Get(\"cursor\")\n    after := \"0\"\n    if raw != \"\" {\n        b, _ := base64.StdEncoding.DecodeString(raw)\n        after = string(b)\n    }\n    rows, err := h.db.Query(\n        \"SELECT key, enabled FROM flags WHERE env = $1 AND id > \" + after + \" ORDER BY id LIMIT 50\", env)\n    if err != nil {\n        http.Error(w, fmt.Sprintf(\"query failed: %v (table flags, host %s)\", err, h.cfg.DBHost), 500)\n        return\n    }\n    defer rows.Close()\n    // ... scan and write JSON\n}\n```\n\nEnv is parameterized so I think we're good there.",
+      "rubric": [
+        "Flags that the decoded cursor string is concatenated into the SQL after the placeholder-based env filter, with no validation, so a crafted cursor can inject SQL; says to parse it as an integer or bind it as a parameter, and treats it as blocking. It does not accept the remark that env is parameterized as enough.",
+        "Flags that the query-failure branch writes the raw error, the table name and the DB host into the HTTP response; treats it as blocking and proposes a generic public error with details kept in the server log.",
+        "Points out that httpx.MapError already exists for this purpose and the new handler bypasses it with its own http.Error call, and says to call MapError.",
+        "Mentions that the ignored error from base64 DecodeString means bad cursors are silently turned into something unintended rather than rejected with a clean client error.",
+        "Each finding refers to a specific statement in ListFlags and gives a concrete replacement.",
+        "The findings are sorted so that the SQL injection and the information disclosure come before the lesser items."
+      ],
+      "why_skill_matters": "One handler has two serious problems: a cursor used in a query and internal details in the error response, while a shared error mapper exists. The user's remark pulls attention towards the parameterized env. It makes the disclosure, cursor, and reuse rules matter."
+    },
+    {
+      "id": "adversarial-code-review-rules-8",
+      "title": "Thermostat device config update",
+      "target_section": "Data Integrity",
+      "prompt": "quick one, firmware cloud team here. we have a lambda that devices call to push their config and i changed it to also store wifi info. tell me what's wrong with it, we ship tomorrow\n\n```python\ndef update_config(event, ctx):\n    cfg = json.loads(event[\"body\"])\n    device_id = event[\"pathParameters\"][\"device_id\"]\n\n    ssid = cfg[\"network\"][\"wifi\"][\"ssid\"]\n    devices.put_item(Item={\n        \"device_id\": device_id,\n        \"ssid\": ssid,\n        \"target_temp\": cfg.get(\"target_temp\"),\n        \"schedule\": cfg.get(\"schedule\", []),\n    })\n\n    if not isinstance(cfg.get(\"target_temp\"), (int, float)) or not (5 <= cfg[\"target_temp\"] <= 35):\n        return {\"statusCode\": 400, \"body\": \"bad temp\"}\n    return {\"statusCode\": 200, \"body\": \"ok\"}\n```\n\nFYI the phone app also writes to the same device record (schedule, name, owner) at any time, and older firmware doesn't send a network block at all.",
+      "rubric": [
+        "Flags that put_item replaces the whole device record, so it wipes fields the phone app writes (name, owner, schedule changes made concurrently), and proposes an update of only the needed attributes or a conditional/versioned write.",
+        "Flags that cfg[\"network\"][\"wifi\"][\"ssid\"] raises a KeyError for older firmware that sends no network block, and proposes a guard or a default.",
+        "Flags that the temperature range check runs after devices.put_item, so a request returning 400 has already stored the bad target_temp; says to validate before writing.",
+        "Notes the missing-network crash also occurs before any validation response, so older firmware would get an unhandled error instead of a clean 400.",
+        "Each problem points to the specific line in update_config and offers a concrete fix."
+      ],
+      "why_skill_matters": "A short, casual request with a whole-record overwrite, an unguarded nested lookup, and validation after the write. The note about the phone app and old firmware sets up the concurrency and missing-map situations."
+    }
+  ]
+}

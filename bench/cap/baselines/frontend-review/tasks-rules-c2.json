@@ -1,0 +1,123 @@
+{
+  "format_version": 1,
+  "skill": "frontend-review",
+  "batch": "rules-c2",
+  "generated_at": "2026-11-09T05:00:42.800Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "0fa77cbf1942b8b45f3a460dfe0417e023b0a0a4d57f283b95727dd2e4b21a36",
+  "scenarios": [
+    {
+      "id": "frontend-review-rules-1",
+      "title": "Support ticket reply form with reducer state",
+      "target_section": "Pattern Compliance",
+      "prompt": "I added a reply box to the support ticket page so agents can answer from the detail view. No tests yet, I'll add them after the review. Can you take a look?\n\n```tsx\nimport React, { useReducer } from 'react';\nimport { Container, Header, Button, Textarea } from '@cloudscape-design/components';\nimport { sendReply } from '../api/tickets';\n\ntype S = { subject: string; body: string; errors: Record<string, string> };\ntype A =\n  | { type: 'set'; field: 'subject' | 'body'; value: string }\n  | { type: 'errors'; errors: Record<string, string> };\n\nfunction reducer(s: S, a: A): S {\n  if (a.type === 'set') return { ...s, [a.field]: a.value };\n  return { ...s, errors: a.errors };\n}\n\nexport function ReplyForm({ ticketId }: { ticketId: string }) {\n  const [s, dispatch] = useReducer(reducer, { subject: '', body: '', errors: {} });\n\n  const submit = async () => {\n    const errors: Record<string, string> = {};\n    if (!s.subject.trim()) errors.subject = 'Subject is required';\n    if (s.body.length < 10) errors.body = 'Reply must be at least 10 characters';\n    if (s.body.length > 2000) errors.body = 'Reply is too long';\n    dispatch({ type: 'errors', errors });\n    if (Object.keys(errors).length) return;\n    await sendReply(ticketId, { subject: s.subject, body: s.body });\n  };\n\n  return (\n    <Container>\n      <input\n        className=\"reply-subject\"\n        value={s.subject}\n        onChange={(e) => dispatch({ type: 'set', field: 'subject', value: e.target.value })}\n      />\n      <Textarea value={s.body} onChange={({ detail }) => dispatch({ type: 'set', field: 'body', value: detail.value })} />\n      <Button variant=\"primary\" onClick={submit}>Send reply</Button>\n    </Container>\n  );\n}\n```",
+      "rubric": [
+        "Objects to the reply form keeping subject, body and errors in a hand-built reducer rather than the project's form library, and treats this as a blocking problem.",
+        "Points out that the subject-required, 10-character minimum and 2000-character maximum checks inside the submit function are hand-written, and recommends putting these rules in a schema.",
+        "Flags the plain input element used for the subject field and says it should be a design-system input.",
+        "Notes that the empty subject, too-short body and too-long body paths have no tests and recommends adding tests for them.",
+        "Points out that the Header import in the reply form is never used and should be removed."
+      ],
+      "why_skill_matters": "A reply form with reducer-managed fields, if-statement validation, a native input and an unused import, and the author says tests are missing. This makes the form library, schema validation, native element and unused code rules matter, plus untested failure paths."
+    },
+    {
+      "id": "frontend-review-rules-2",
+      "title": "Instance metrics panel with existence-only tests",
+      "target_section": "Cloudscape Compliance",
+      "prompt": "Please review my metrics panel for the instance detail page, it shows CPU per host and highlights anything hot. PR is going out this afternoon so I'd like a hard look.\n\n```tsx\nimport { Container, Header } from '@cloudscape-design/components';\nimport type { HostMetric } from './types';\n\nexport const InstanceMetrics = ({ metrics }: { metrics: HostMetric[] }) => (\n  <Container header={<Header variant=\"h2\">Metrics</Header>}>\n    <div style={{ display: 'flex', gap: 16 }}>\n      {metrics.map((m) => (\n        <div key={m.id} style={{ marginBottom: 8 }}>\n          <span style={{ color: m.cpu > 90 ? 'red' : 'inherit' }}>{m.name}</span>\n          <span>{m.cpu}%</span>\n        </div>\n      ))}\n    </div>\n  </Container>\n);\n```\n\n```tsx\ndescribe('InstanceMetrics', () => {\n  it('renders', () => {\n    const { container } = render(<InstanceMetrics metrics={[{ id: '1', name: 'web-01', cpu: 95 }]} />);\n    expect(container).toBeTruthy();\n  });\n  it('shows host name', () => {\n    render(<InstanceMetrics metrics={[{ id: '1', name: 'web-01', cpu: 95 }]} />);\n    expect(screen.getByText('web-01')).toBeInTheDocument();\n  });\n});\n```",
+      "rubric": [
+        "Flags the plain containers and text spans used to lay out each host's name and CPU value and says to use the design system's layout and text components instead, naming a replacement.",
+        "Flags the inline style objects (flex gap, bottom margin, red color for hot hosts) as a blocking problem and recommends design-system spacing, layout or status components in their place.",
+        "Says the two tests only check that something rendered or that the host name appears, and asks for assertions on actual content such as the 95% CPU value.",
+        "Notes that nothing tests the hot-host threshold at 90 or an empty metrics list, and recommends adding such tests.",
+        "Presents the blocking problems (plain elements, inline styles) before the lesser test and coverage points, with the severity groups clearly separated."
+      ],
+      "why_skill_matters": "A small panel built from divs, spans and inline styles with two weak tests. Raw elements, inline styles and existence-only assertions all matter, as does missing coverage for the 90 threshold."
+    },
+    {
+      "id": "frontend-review-rules-3",
+      "title": "Deploy history list with a loose helper type",
+      "target_section": "Type Safety",
+      "prompt": "Deploy history list for the service page. It's the usual Table setup, I mostly copied from the audit log page. Feedback welcome, especially on anything that'd bounce in review.\n\n```tsx\nimport { Table, Header, Box, Link } from '@cloudscape-design/components';\n\nexport interface DeployRow {\n  id: string;\n  at: string;\n  actor?: { name: string };\n  state: 'succeeded' | 'failed' | 'rolled_back';\n}\n\n// vendor payloads differ a bit so keep it loose\nconst formatRow = (row: any) => ({\n  id: row.id,\n  when: new Date(row.at).toLocaleString(),\n  who: row.actor?.name ?? 'system',\n  status: row.state,\n});\n\nexport function DeployHistory({ rows }: { rows: DeployRow[] }) {\n  const items = rows.map(formatRow);\n  return (\n    <Table\n      header={<Header counter={`(${items.length})`}>Deploy history</Header>}\n      items={items}\n      empty={<Box textAlign=\"center\">No deploys yet</Box>}\n      columnDefinitions={[\n        { id: 'when', header: 'When', cell: (i) => i.when },\n        { id: 'who', header: 'Who', cell: (i) => i.who },\n        { id: 'status', header: 'Status', cell: (i) => i.status },\n      ]}\n    />\n  );\n}\n```\n\n```tsx\nit('shows the history', () => {\n  render(<DeployHistory rows={[{ id: 'd1', at: '2026-01-02T10:00:00Z', state: 'failed' }]} />);\n  expect(screen.getByText('Deploy history')).toBeVisible();\n});\nit('has rows', () => {\n  const { container } = render(<DeployHistory rows={[{ id: 'd1', at: '2026-01-02T10:00:00Z', state: 'failed' }]} />);\n  expect(container.querySelectorAll('tr').length).toBeGreaterThan(0);\n});\n```",
+      "rubric": [
+        "Flags the any-typed parameter of the row formatting helper as a blocking problem despite the vendor comment, and suggests typing it with the existing DeployRow interface.",
+        "Says the first test only checks that the title text is visible and not any row content such as the failed status or the system fallback for the actor.",
+        "Says the second test only checks that some row elements exist (a length above zero) and asks for assertions on the real cell values.",
+        "Notes that the empty-list message and the missing-actor fallback to system have no test of their own and recommends adding tests.",
+        "Points out that the Link import is unused and should be removed."
+      ],
+      "why_skill_matters": "The component is almost fully compliant, so the issues are easy to wave through: an any type excused by a comment, tests that only check presence, and an unused import. The assistant must not be pulled by the \"keep it loose\" comment."
+    },
+    {
+      "id": "frontend-review-rules-4",
+      "title": "Billing contact card with a stray anchor and image",
+      "target_section": "Cloudscape Compliance",
+      "prompt": "Small PR: billing contact card on the account page. Most of it follows the other cards so I think it's fine, but can you go through it properly?\n\n```tsx\nimport { Container, Header, Box, Link, Button } from '@cloudscape-design/components';\nimport { useBillingContact } from './useBillingContact';\n\nexport function BillingContactCard({ supportUrl }: { supportUrl: string }) {\n  const { contact, isAdmin, edit } = useBillingContact();\n\n  return (\n    <Container header={<Header variant=\"h2\" actions={<Button onClick={edit}>Edit</Button>}>Billing contact</Header>}>\n      <Box variant=\"awsui-key-label\">Name</Box>\n      <Box padding={{ bottom: 's' }}>{contact.name}</Box>\n      <Box variant=\"awsui-key-label\">Email</Box>\n      <Box padding={{ bottom: 's' }}>{contact.email}</Box>\n      <Box padding={{ bottom: 's' }}>\n        <img src=\"/icons/mail.svg\" alt=\"\" style={{ width: 20 }} /> Invoices go to this address.\n      </Box>\n      <Box>\n        Wrong details? <a href={supportUrl}>Contact support</a>\n      </Box>\n    </Container>\n  );\n}\n```\n\n```tsx\nit('shows the contact email', () => {\n  render(<BillingContactCard supportUrl=\"/help\" />);\n  expect(screen.getByText('billing@acme.test')).toBeInTheDocument();\n});\n```",
+      "rubric": [
+        "Flags the plain anchor for Contact support and says it should be the design-system link component, which is already imported.",
+        "Flags the plain img element next to the invoice sentence as a native element where a design-system icon should be used.",
+        "Flags the inline width style on the img as a blocking problem and does not accept it as a harmless one-off.",
+        "Points out that the admin flag pulled from the contact hook is never used, and that the design-system Link import is left unused while a native anchor is used instead.",
+        "Notes that the only test covers the happy path with an email present and nothing covers a missing contact or the support link."
+      ],
+      "why_skill_matters": "The card looks compliant because nearly everything uses the design-system components; one anchor and one image with a width style are the only problems, and the author says it follows the other cards."
+    },
+    {
+      "id": "frontend-review-rules-5",
+      "title": "Quota increase form with if-statement checks",
+      "target_section": "Pattern Compliance",
+      "prompt": "Quota increase request form, review please. We use react-hook-form and zod across the app (both in package.json). Submit handler and tests below, the JSX is just the standard fields.\n\n```tsx\nconst onSubmit = (values: QuotaValues) => {\n  if (!values.region) {\n    setError('region', { message: 'Pick a region' });\n    return;\n  }\n  if (values.requested < 1 || values.requested > 500) {\n    setError('requested', { message: 'Must be between 1 and 500' });\n    return;\n  }\n  if (values.reason.trim().length < 20) {\n    setError('reason', { message: 'Please explain in at least 20 characters' });\n    return;\n  }\n  submitQuota(values);\n};\n```\n\n```tsx\nit('renders the form', () => {\n  render(<QuotaForm />);\n  expect(screen.getByLabelText('Region')).toBeInTheDocument();\n  expect(screen.getByLabelText('Requested limit')).toBeInTheDocument();\n});\n\nit('submits a valid request', async () => {\n  render(<QuotaForm />);\n  await fillValidForm();\n  await userEvent.click(screen.getByRole('button', { name: 'Submit' }));\n  expect(submitQuota).toHaveBeenCalled();\n});\n```",
+      "rubric": [
+        "Points out that the region, 1 to 500 and 20-character reason checks are written by hand in the submit handler even though the project already uses zod, and recommends a schema holding those rules.",
+        "Says the render test only checks that two labelled fields are present and asks for assertions on real values such as defaults or field content.",
+        "Says the submit test only checks that the mock was called and asks it to verify the values sent to submitQuota.",
+        "Notes that no test triggers the error messages for a missing region, an out-of-range limit or a short reason, and recommends adding them.",
+        "Orders the feedback from the most serious problems to the least, with the schema issue ahead of test-strength points."
+      ],
+      "why_skill_matters": "The form uses the right library but validates by hand, and its tests are shallow and skip every error path. Schema validation, test assertion depth and error coverage matter."
+    },
+    {
+      "id": "frontend-review-rules-6",
+      "title": "API key actions with native button and any prop",
+      "target_section": "Quality Gate",
+      "prompt": "Need a review on the API keys row actions + rotate dialog. Code:\n\n```tsx\nimport { Modal, Button, Input, Box } from '@cloudscape-design/components';\nimport { useRotateFields } from './useRotateFields';\n\nexport function KeyActions({ k, onRevoke }: { k: any; onRevoke: (id: string) => void }) {\n  const { label, setLabel, expiry, setExpiry, error, validate } = useRotateFields(k.label);\n  const rotatedAt = k.rotatedAt;\n\n  return (\n    <Box>\n      <button className=\"link-button\" onClick={() => onRevoke(k.id)}>Revoke</button>\n      <Modal visible header=\"Rotate key\" onDismiss={() => {}}>\n        <Box variant=\"awsui-key-label\">Label</Box>\n        <Input value={label} onChange={({ detail }) => setLabel(detail.value)} />\n        <Box color=\"text-status-error\">{error.label}</Box>\n        <Box variant=\"awsui-key-label\">Expiry (days)</Box>\n        <Input value={expiry} onChange={({ detail }) => setExpiry(detail.value)} />\n        <Box color=\"text-status-error\">{error.expiry}</Box>\n        <Button onClick={validate}>Rotate</Button>\n      </Modal>\n    </Box>\n  );\n}\n```\n\nuseRotateFields.ts is a hook I wrote that holds label, expiry and the error object in a reducer and has a validate() that returns a boolean.",
+      "rubric": [
+        "Flags the plain button element for Revoke and says it should be the design-system button, which is already imported.",
+        "Flags the key prop typed as any in the component signature as a blocking problem and suggests an explicit key type with fields such as id, label and rotatedAt.",
+        "Objects to the rotate dialog's label, expiry and errors being managed by the custom useRotateFields hook instead of the project's form library.",
+        "Points out that the rotatedAt constant is assigned and never used and should be removed.",
+        "Separates the must-fix problems from the lesser ones and lists the more severe first."
+      ],
+      "why_skill_matters": "A short component mixes a native button, an any-typed prop, a custom form hook and a dead variable. The request mentions the hook only briefly."
+    },
+    {
+      "id": "frontend-review-rules-7",
+      "title": "Onboarding step with hook state and wrapper section",
+      "target_section": "Review Checklist",
+      "prompt": "hey, onboarding step 3 (company contact). can u look it over, nothing fancy\n\n```tsx\nimport { Container, Header, Input, Box, Button } from '@cloudscape-design/components';\nimport { Tooltip } from '../ui/Tooltip';\nimport { useFormFields } from '../hooks/useFormFields';\n\nexport default function ContactStep({ onNext }: { onNext: (v: Record<string, string>) => void }) {\n  const { values, errors, setField, setErrors } = useFormFields({ email: '', phone: '' });\n\n  const next = () => {\n    const e: Record<string, string> = {};\n    if (!/^\\S+@\\S+\\.\\S+$/.test(values.email)) e.email = 'Enter a valid email';\n    if (!/^\\+?[0-9 ()-]{7,15}$/.test(values.phone)) e.phone = 'Enter a valid phone number';\n    setErrors(e);\n    if (!Object.keys(e).length) onNext(values);\n  };\n\n  return (\n    <section style={{ margin: '0 auto', maxWidth: 600 }}>\n      <Container header={<Header>Company contact</Header>}>\n        <Box variant=\"awsui-key-label\">Email</Box>\n        <Input value={values.email} onChange={({ detail }) => setField('email', detail.value)} />\n        <Box color=\"text-status-error\">{errors.email}</Box>\n        <Box variant=\"awsui-key-label\">Phone</Box>\n        <Input value={values.phone} onChange={({ detail }) => setField('phone', detail.value)} />\n        <Box color=\"text-status-error\">{errors.phone}</Box>\n        <Button variant=\"primary\" onClick={next}>Continue</Button>\n      </Container>\n    </section>\n  );\n}\n```",
+      "rubric": [
+        "Flags the inline margin and maxWidth style on the outer section and recommends design-system layout instead.",
+        "Flags the plain section element wrapping the container and says it should be a design-system layout or box component.",
+        "Objects to the email and phone values and their errors living in the shared useFormFields hook instead of the project's form library.",
+        "Points out that the email and phone regex checks in next are hand-written and recommends a schema.",
+        "Points out that the Tooltip import is never used and should be removed."
+      ],
+      "why_skill_matters": "A casual request for a small wizard step. It holds an inline-styled native wrapper, hook-managed fields, manual regex validation and an unused import."
+    },
+    {
+      "id": "frontend-review-rules-8",
+      "title": "Notification preferences with native checkbox and thin tests",
+      "target_section": "Testing",
+      "prompt": "Reviewing notification preferences for the profile page before I merge. It lists channels with a toggle each and saves on click. Component and test file:\n\n```tsx\nimport { Header, Container, Box, Toggle } from '@cloudscape-design/components';\nimport { savePrefs } from '../api/prefs';\nimport { track } from '../analytics';\n\nexport function NotificationPrefs(props: any) {\n  const { channels, userId } = props;\n  const [saving, setSaving] = [false, () => {}];\n\n  const onToggle = async (name: string, on: boolean) => {\n    await savePrefs(userId, { [name]: on });\n  };\n\n  return (\n    <Container header={<Header>Notifications</Header>}>\n      {channels.map((c: { name: string; on: boolean }) =>\n        c.name === 'sms' ? (\n          <label key={c.name}>\n            <input type=\"checkbox\" defaultChecked={c.on} onChange={(e) => onToggle(c.name, e.target.checked)} /> SMS\n          </label>\n        ) : (\n          <Box key={c.name} padding={{ bottom: 'm' }}>\n            <Toggle checked={c.on} onChange={({ detail }) => onToggle(c.name, detail.checked)}>\n              {c.name}\n            </Toggle>\n          </Box>\n        )\n      )}\n    </Container>\n  );\n}\n```\n\n```tsx\nconst channels = [{ name: 'email', on: true }, { name: 'sms', on: false }];\n\nit('renders', () => {\n  const { container } = render(<NotificationPrefs channels={channels} userId=\"u1\" />);\n  expect(container.firstChild).not.toBeNull();\n});\nit('has toggles', () => {\n  render(<NotificationPrefs channels={channels} userId=\"u1\" />);\n  expect(screen.getAllByRole('checkbox')).toBeTruthy();\n});\nit('saves', async () => {\n  render(<NotificationPrefs channels={channels as any} userId=\"u1\" />);\n  await userEvent.click(screen.getAllByRole('checkbox')[0]);\n  expect(savePrefs).toHaveBeenCalled();\n});\n```",
+      "rubric": [
+        "Flags the component's props typed as any in the production code as a blocking problem and suggests a typed props interface with the channels list and the user id.",
+        "Flags the plain label and checkbox input used for the sms channel and says it should use the same design-system toggle as the other channels.",
+        "Says the three tests only assert that something rendered, that checkboxes exist, or that the save mock was called, and asks for assertions on actual values such as the checked state or the arguments passed to savePrefs.",
+        "Notes that nothing tests a failing save or the sms channel path and recommends tests for these.",
+        "Points out that the track import and the saving placeholder are unused and should be removed."
+      ],
+      "why_skill_matters": "A component with an any props bag, a native checkbox in one branch, dead code, and tests that only check existence and that a mock ran. The any in the test file is a nearby distraction; the production any matters."
+    }
+  ]
+}

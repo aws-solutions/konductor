@@ -1,0 +1,129 @@
+{
+  "format_version": 1,
+  "skill": "frontend-development",
+  "batch": "rules-b5",
+  "generated_at": "2026-11-09T21:40:17.529Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "602f78ccfa0d7b3ea292226ebcc32df8422f29ac3d4717b026e33b014989dfed",
+  "scenarios": [
+    {
+      "id": "frontend-development-rules-1",
+      "title": "Invite banner written with raw HTML and inline styles",
+      "target_section": "Cloudscape Compliance",
+      "prompt": "Hey, can you clean up this component? We use AWS Cloudscape everywhere else in the app but I think someone wrote this one in a hurry. Just fix what's wrong with how it's built, don't redo the logic.\n\n```tsx\n// src/components/team/InviteBanner.tsx\nimport React from 'react';\nimport { Button } from '@cloudscape-design/components';\n\ninterface Props {\n  teamName: string;\n  pendingCount: number;\n  onInvite: () => void;\n}\n\nexport function InviteBanner({ teamName, pendingCount, onInvite }: Props) {\n  return (\n    <div style={{ padding: '16px', backgroundColor: '#f2f3f3', borderRadius: 8 }}>\n      <span style={{ fontWeight: 'bold', fontSize: 18 }}>{teamName}</span>\n      <div style={{ marginTop: 8, color: '#5f6b7a' }}>\n        {pendingCount} pending invitations\n      </div>\n      <div style={{ marginTop: 12 }}>\n        <button onClick={onInvite}>Invite teammate</button>\n        <a href=\"/team/settings\" style={{ marginLeft: 16 }}>Team settings</a>\n      </div>\n    </div>\n  );\n}\n```",
+      "rubric": [
+        "Replaces or flags the plain container, the bold team-name text wrapper, the native invite button and the native settings anchor in InviteBanner, using Cloudscape equivalents (for example Box, Button, Link).",
+        "The padding, background color, font weight/size and grey text color set through style objects are removed and are not re-added as new inline styles in the proposed code.",
+        "The gaps between the team name, the pending count line, and the invite button and Team settings link are produced by a spacing component rather than by marginTop/marginLeft values.",
+        "The grey pending-invitations line and the emphasized team name are rendered through Cloudscape text props (variant, color, fontWeight or similar) rather than hand-styled elements.",
+        "Keeps the Props interface, the onInvite behavior and the /team/settings link target unchanged and adds no unrelated features.",
+        "Gives the file path, the problems with line references, the replacement code, how to verify it and what else might be affected."
+      ],
+      "why_skill_matters": "The component imports one Cloudscape Button but is otherwise raw div, span, button and anchor elements with inline styles for padding, color and margins. Native HTML, inline style and manual spacing all matter."
+    },
+    {
+      "id": "frontend-development-rules-2",
+      "title": "Signup validation buried in the submit function",
+      "target_section": "Form Patterns",
+      "prompt": "We have a signup form in our React + TS app. React Hook Form is already installed and so is zod. The validation lives in the submit function and it's getting messy. Can you fix it up properly? The form is created with a plain, untyped call of react-hook-form's hook (no type argument, no resolver), and the labelled fields are rendered further down, which I've left out. Here's the handler part:\n\n```tsx\n// src/pages/SignupForm.tsx\nexport function SignupForm({ onDone }: { onDone: (v: any) => void }) {\n  // const { register, handleSubmit, setError } = <hook call, untyped>\n\n  const submit = (values: any) => {\n    if (!values.email || !values.email.includes('@')) {\n      setError('email', { message: 'Enter a valid email' });\n      return;\n    }\n    if (!values.username || values.username.length < 3 || values.username.length > 20) {\n      setError('username', { message: 'Username must be 3-20 characters' });\n      return;\n    }\n    if (values.password.length < 8) {\n      setError('password', { message: 'Password must be at least 8 characters' });\n      return;\n    }\n    if (values.password !== values.confirmPassword) {\n      setError('confirmPassword', { message: 'Passwords do not match' });\n      return;\n    }\n    onDone(values);\n  };\n  // ...\n}\n```",
+      "rubric": [
+        "Moves the email, username length and password length checks out of the submit function into a declarative zod schema connected to the form through a resolver.",
+        "The password versus confirmPassword match is written as a cross-field refinement on the schema with the error placed on confirmPassword, not as a data transform.",
+        "The username limits 3 and 20 and the password minimum 8 come from named constants used in both the rule and its message text, not literals typed into message strings.",
+        "Replaces the any on the onDone parameter and on the submit values with a type inferred from the schema, and gives the form hook call an explicit type parameter.",
+        "Keeps the same fields, the same intent of the error wording and the onDone callback contract rather than redesigning the signup flow."
+      ],
+      "why_skill_matters": "A chain of ifs in the handler, a password match check, literal limits embedded in message strings and any types. Schema validation, cross-field refinement, constants and any removal all matter."
+    },
+    {
+      "id": "frontend-development-rules-3",
+      "title": "Extract shipping section from checkout form",
+      "target_section": "Form Architecture",
+      "prompt": "I'm splitting our big checkout form. Below is the current parent. I want the shipping address part pulled into its own `ShippingSection` component in another file. Show me the new component and the updated parent.\n\n```tsx\n// CheckoutPage.tsx\nimport { zodResolver } from '@hookform/resolvers/zod';\nimport { z } from 'zod';\nimport { Container, Header, Input, Button } from '@cloudscape-design/components';\n\nconst schema = z.object({\n  street: z.string().min(1, 'Street is required'),\n  city: z.string().min(1, 'City is required'),\n  zip: z.string().length(5, 'ZIP must be 5 digits'),\n  note: z.string().optional(),\n});\ntype CheckoutValues = z.infer<typeof schema>;\n\nexport default function CheckoutPage() {\n  // const form = <react-hook-form hook, typed with CheckoutValues, zodResolver(schema)>\n  const { handleSubmit, formState: { errors } } = form;\n\n  return (\n    <form onSubmit={handleSubmit((v) => console.log(v))}>\n      {/* stack of sections with large spacing */}\n      <Container header={<Header>Shipping</Header>}>\n        {/* each Input has a label and shows errors.street / errors.city / errors.zip */}\n        <Input value=\"\" onChange={({ detail }) => form.setValue('street', detail.value)} />\n        <Input value=\"\" onChange={({ detail }) => form.setValue('city', detail.value)} />\n        <Input value=\"\" onChange={({ detail }) => form.setValue('zip', detail.value)} />\n      </Container>\n      <Button variant=\"primary\">Place order</Button>\n    </form>\n  );\n}\n```",
+      "rubric": [
+        "ShippingSection obtains the form methods and errors from shared form context inside the component and takes no register, errors or form object as props.",
+        "The updated parent wraps its content in the form provider so that the extracted shipping section can reach the form.",
+        "The context access in ShippingSection is typed with CheckoutValues and no any is introduced.",
+        "Flags or moves the literal messages 'Street is required', 'City is required', 'ZIP must be 5 digits' and the length 5 into shared constants, or at least notes them.",
+        "Leaves the note field, the Place order button and the overall schema shape alone and extracts only the shipping block."
+      ],
+      "why_skill_matters": "An extraction request where the child needs errors and form methods, which invites passing them as props. The schema also carries literal messages."
+    },
+    {
+      "id": "frontend-development-rules-4",
+      "title": "Reservation dates silently swapped",
+      "target_section": "Form Patterns",
+      "prompt": "Reservation form for our booking tool. Users report that if they pick a checkout date before check-in, the form just silently flips the dates around and nobody notices. Product wants an actual error shown on the checkout field instead. Fix it please. Schema file:\n\n```ts\n// reservationSchema.ts\nimport { z } from 'zod';\n\nexport const reservationSchema = z\n  .object({\n    guestName: z.string().min(2, 'Name is too short').max(60, 'Name is too long'),\n    checkIn: z.string().min(1, 'Check-in required'),\n    checkOut: z.string().min(1, 'Check-out required'),\n    guests: z.number().min(1).max(8),\n  })\n  .transform((v) => {\n    if (new Date(v.checkOut) < new Date(v.checkIn)) {\n      return { ...v, checkIn: v.checkOut, checkOut: v.checkIn };\n    }\n    return v;\n  });\n\nexport type ReservationValues = z.infer<typeof reservationSchema>;\n```\n\nThe page that uses it calls react-hook-form's hook with just the zod resolver and no type argument, renders a couple of Cloudscape inputs, and has one weird spot where there's `<div style={{ marginBottom: 12 }}>` around the guests input. Only fix the bug please.",
+      "rubric": [
+        "Replaces the date-swapping transform with a refinement on the object that rejects checkOut earlier than checkIn and reports the error on the checkOut field.",
+        "Notes or fixes that the page's form hook call has no explicit type parameter, suggesting ReservationValues.",
+        "The new date error message is taken from a named constant, and the name length messages and the guests 1 and 8 limits are flagged or moved to constants.",
+        "Mentions the inline marginBottom style on the div around the guests input as something to remove, rather than silently ignoring it.",
+        "Makes the date check the main change and reports any extra items separately instead of silently rewriting unrelated parts of the schema."
+      ],
+      "why_skill_matters": "The bug is a transform that swaps dates; the real fix is a refinement. Nearby are an untyped hook, magic limits, and a one-line mention of an inline-styled div that \"only fix the bug\" pulls the reader to skip."
+    },
+    {
+      "id": "frontend-development-rules-5",
+      "title": "Account summary card review",
+      "target_section": "Cloudscape Compliance",
+      "prompt": "Can you review this PR snippet before I merge? It's the read-only account summary on the settings page.\n\n```tsx\n// AccountSummary.tsx\nimport { Container, Header } from '@cloudscape-design/components';\n\ntype Props = { account: any; plan: any };\n\nexport const AccountSummary = ({ account, plan }: Props) => {\n  return (\n    <Container header={<Header variant=\"h2\">Account</Header>}>\n      <div className=\"pair\">\n        <span style={{ color: 'grey' }}>Owner</span>\n        <p>{account.ownerName}</p>\n      </div>\n      <div className=\"pair\">\n        <span style={{ color: 'grey' }}>Region</span>\n        <p>{account.region}</p>\n      </div>\n      <div className=\"pair\">\n        <span style={{ color: 'grey' }}>Plan</span>\n        <p>{plan.name}</p>\n      </div>\n    </Container>\n  );\n};\n```",
+      "rubric": [
+        "Flags the raw div, span and p elements used for the Owner, Region and Plan pairs and recommends Cloudscape components instead.",
+        "Flags the grey color inline style on the label spans and proposes a component prop or equivalent instead.",
+        "Flags the any types on account and plan as blocking and proposes precise types (for example ownerName and region on account, name on plan).",
+        "Recommends a Cloudscape label-and-value display component for the Owner, Region and Plan pairs instead of hand-built stacks.",
+        "Ties the proposed changes to the given snippet and does not demand a redesign of the settings page.",
+        "Each reported item gives the file path, the problem with line numbers, the fix code, how to verify and what else could be affected."
+      ],
+      "why_skill_matters": "A review request with raw HTML, inline styles and any props in a short read-only card."
+    },
+    {
+      "id": "frontend-development-rules-6",
+      "title": "Bio section still receiving drilled props",
+      "target_section": "Form Architecture",
+      "prompt": "quick one. our profile edit page got a refactor last week and I'm reviewing what landed. The page file creates the form and passes stuff down. Can you tell me if anything about it is off and give me the corrected version of BioSection? I don't care about the other sections, they're fine.\n\n```tsx\n// ProfilePage.tsx (excerpt)\n// form = react-hook-form hook typed with ProfileValues + zodResolver(profileSchema)\nreturn (\n  <RhfProvider {...form}>\n    <NameSection />\n    <BioSection register={form.register} errors={form.formState.errors} watch={form.watch} />\n  </RhfProvider>\n);\n```\n\n```tsx\n// BioSection.tsx\ntype Props = { register: any; errors: any; watch: any };\n\nexport function BioSection({ register, errors, watch }: Props) {\n  const bio = watch('bio') ?? '';\n  return (\n    <LabelledField label=\"Bio\" description={`${bio.length}/280`} errorText={errors.bio?.message}>\n      <textarea {...register('bio')} style={{ width: 480 }} rows={4} />\n    </LabelledField>\n  );\n}\n```\n\n(RhfProvider and LabelledField are just our local names for the form provider and Cloudscape's labelled field wrapper.)",
+      "rubric": [
+        "Rewrites BioSection to get register, errors and watch from the shared form context instead of props, and updates the BioSection call site in the page.",
+        "Removes the any typings for register, errors and watch and types the context access with ProfileValues.",
+        "Replaces the native textarea in BioSection with the Cloudscape Textarea component.",
+        "Removes the width inline style on the textarea.",
+        "Mentions that the 280 character limit shown in the description should be a constant shared with the schema rather than a literal.",
+        "Limits changes to BioSection and its call site, leaving NameSection and the provider wrapper as they are."
+      ],
+      "why_skill_matters": "The parent already has a provider but the child still receives drilled props typed any; inside the child a native textarea with an inline style hides in a short component."
+    },
+    {
+      "id": "frontend-development-rules-7",
+      "title": "New notification preferences form",
+      "target_section": "Implementation Standards",
+      "prompt": "Need a new \"Notification preferences\" form for our admin console (React, TypeScript, Cloudscape, react-hook-form, zod). Fields: email address (required, valid format), digest frequency (select: daily/weekly/never), and a \"quiet hours\" start and end time as HH:MM strings where end must be later than start. Also a free-text \"reason for change\" up to 200 chars. On submit it calls `savePreferences(values)` which already exists and takes the form values. Give me the full component and schema. Keep it reasonably short, and don't touch anything outside the new file.",
+      "rubric": [
+        "Validation for email, frequency, quiet hours and reason is defined in a zod schema connected through a resolver, with no hand-written checks in the submit function.",
+        "The end-later-than-start rule for quiet hours is a refinement on the schema with the error attached to the end time field.",
+        "The 200 character limit and the validation messages are defined as named constants and referenced from the schema.",
+        "The component is built only from Cloudscape elements (Input, Select, Textarea, Button and similar) with no raw div, span, input or button.",
+        "Vertical spacing between the fields is created with a spacing component, not margin or padding.",
+        "The form hook call carries an explicit values type derived from the schema and no any appears, including for the savePreferences call.",
+        "Delivers only the requested form component and schema, using the existing savePreferences(values) as is, without inventing extra features or changing that function."
+      ],
+      "why_skill_matters": "A greenfield form with a cross-field rule and a length limit. Schema, refinement, constants, Cloudscape-only elements, spacing and typing all matter."
+    },
+    {
+      "id": "frontend-development-rules-8",
+      "title": "Legacy order filter bar cleanup",
+      "target_section": "Quality Gate",
+      "prompt": "Our order list filter bar is ugly and I've been asked to bring it up to standard. Look at it and tell me what needs to change, with the changes. Scope is just this one file.\n\n```tsx\n// OrderFilters.tsx\nimport { Button, Select } from '@cloudscape-design/components';\n\nexport function OrderFilters({ onApply, statuses }: { onApply: (f: any) => void; statuses: string[] }) {\n  // status and min are each kept in their own local state hook (default 'all' and '')\n  const handle = () => {\n    if (min && isNaN(Number(min))) { alert('Minimum must be a number'); return; }\n    onApply({ status, min: min ? Number(min) : undefined });\n  };\n  return (\n    <div style={{ display: 'flex', gap: 12, padding: 8 }}>\n      <Select\n        selectedOption={{ value: status, label: status }}\n        options={statuses.map((s) => ({ value: s, label: s }))}\n        onChange={({ detail }) => setStatus(detail.selectedOption.value!)}\n      />\n      <input value={min} placeholder=\"Min total\" onChange={(e) => setMin(e.target.value)} />\n      <button onClick={handle}>Apply</button>\n    </div>\n  );\n}\n```",
+      "rubric": [
+        "Replaces the wrapper div, the native input and the native Apply button with Cloudscape components.",
+        "Removes the flex, gap and padding inline style and replaces the layout with design system components.",
+        "The 12px gap between the select, the minimum input and the Apply button is expressed with a spacing component in the horizontal direction instead of gap or padding.",
+        "The minimum-must-be-a-number check is moved out of the handler into a declarative schema, with its message in a named constant.",
+        "Replaces the any in the onApply filter parameter with a defined filter type (status and optional numeric min), with the form hook typed explicitly.",
+        "Keeps the onApply call shape (status and numeric min) and the statuses prop so existing callers do not break."
+      ],
+      "why_skill_matters": "A raw div, input and button, an inline flex style, hand-written validation with alert, and any on the callback."
+    }
+  ]
+}

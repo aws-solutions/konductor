@@ -1,0 +1,123 @@
+{
+  "format_version": 1,
+  "skill": "adversarial-code-review-pass-integrity",
+  "batch": "rules-b4",
+  "generated_at": "2026-11-09T09:54:04.961Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "30611f956736151c71889bc29f67a40f22e90477c5377c44b4d7a75b21ff0d75",
+  "scenarios": [
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-1",
+      "title": "Stock reservation read-then-write",
+      "target_section": "What to look for",
+      "prompt": "Can you look over this PR before I merge? It's the flash-sale stock reservation for our shop (DynamoDB, Python). Mostly I care about whether it will behave under real traffic, we expect a few hundred checkouts a minute on popular SKUs.\n\n```python\ndef reserve(sku, qty, order_id):\n    item = table.get_item(Key={\"pk\": f\"SKU#{sku}\"})[\"Item\"]\n    if item[\"available\"] < qty:\n        raise OutOfStock(sku)\n    table.put_item(Item={**item, \"available\": item[\"available\"] - qty})\n    log.info(\"reserved %s x%s for %s\", sku, qty, order_id)\n    return {\"ok\": True}\n\ndef set_display_name(sku, name):\n    table.update_item(\n        Key={\"pk\": f\"SKU#{sku}\"},\n        UpdateExpression=\"SET display_name = :n\",\n        ExpressionAttributeValues={\":n\": name},\n    )\n```\n\nThe items have a `version` number attribute that the catalog importer already bumps. No test changes in this PR, I tested it by hand in staging and it worked fine.",
+      "rubric": [
+        "Identifies that `reserve` reads the SKU and then writes the whole item back unconditionally, so two simultaneous checkouts can both pass the stock check and one decrement overwrites the other (overselling), and treats this as a most-serious problem.",
+        "Proposes a concrete guard for `reserve`, such as a conditional update that decrements `available` only if it is still at least `qty`, or a check on the existing `version` attribute with retry on conflict.",
+        "Notes that the new reservation write path has no automated test (including no concurrency or out-of-stock case) and rates this as a should-fix item that is less severe than the overwrite problem.",
+        "Does not ask for a transaction around `set_display_name` or around the single write in `reserve`, or explicitly leaves `set_display_name` alone as a lone update.",
+        "Each concern points to the function or line in the pasted code, describes the concrete failure (for example two buyers getting the last unit), and offers a specific code-level fix."
+      ],
+      "why_skill_matters": "A read-modify-write with a whole-item put on a hot record, an existing version attribute that could serve as the guard, no tests, and a harmless lone update that tempts a needless transaction demand."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-2",
+      "title": "Refund endpoint with retry loop",
+      "target_section": "Codebase awareness",
+      "prompt": "Reviewing a teammate's PR for our Node API and I want a second opinion on the new refund route. Here's the new code, and below it the middleware we already use on the other money routes.\n\n```js\n// routes/refunds.js (new)\nrouter.post(\"/refunds\", async (req, res) => {\n  const { chargeId, amount } = req.body;\n  let lastErr;\n  for (let i = 0; i < 3; i++) {\n    try {\n      const refund = await gateway.refund({ chargeId, amount });\n      await db.refunds.insert({ id: refund.id, chargeId, amount });\n      return res.json(refund);\n    } catch (e) {\n      lastErr = e;\n      await sleep(500 * (i + 1));\n    }\n  }\n  res.status(502).json({ error: lastErr.message });\n});\n```\n\n```js\n// existing, used by /charges and /payouts\nrouter.post(\"/charges\", withIdempotency({ header: \"Idempotency-Key\", ttlHours: 24 }), chargeHandler);\nrouter.post(\"/payouts\", withIdempotency({ header: \"Idempotency-Key\", ttlHours: 24 }), payoutHandler);\n```\n\nThere are no tests in the PR yet, the author says they'll follow up. Anything worrying here?",
+      "rubric": [
+        "Flags that the loop re-calls `gateway.refund` after a failure (including a timeout after the gateway already processed it, or a failure of the db insert) without a key, so the customer can be refunded two or three times.",
+        "Points out that `withIdempotency` already exists and is applied to `/charges` and `/payouts`, and says the refund route skips or bypasses it, rather than saying idempotency support is missing from the codebase.",
+        "Notes that the refund path has no tests and rates this as something to fix but not as severe as the duplicate-refund risk.",
+        "Gives a concrete fix such as wrapping the route in `withIdempotency` and/or passing a stable key to the gateway call, and ties it to the refund route code.",
+        "Describes the leftover inconsistency where the gateway refund succeeds but the `db.refunds.insert` fails, so a retry issues another refund while no record of the first exists."
+      ],
+      "why_skill_matters": "A retry loop around a money-moving call in a codebase that already has idempotency middleware used on sibling routes; tests absent."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-3",
+      "title": "Order status events over a queue",
+      "target_section": "Overview",
+      "prompt": "We split order processing into services. Payments publishes `order.paid` and warehouse publishes `order.shipped` to a standard SQS queue (not FIFO), and this consumer in the order service keeps the order's status current. Please review it.\n\n```ts\nexport async function handle(evt: OrderEvent) {\n  await ddb.update({\n    TableName: \"orders\",\n    Key: { id: evt.orderId },\n    UpdateExpression: \"SET #s = :s, updatedAt = :t\",\n    ExpressionAttributeNames: { \"#s\": \"status\" },\n    ExpressionAttributeValues: { \":s\": evt.type === \"order.paid\" ? \"PAID\" : \"SHIPPED\", \":t\": evt.ts },\n  });\n}\n```\n\nOrders can go paid -> shipped within seconds for digital goods. The orders table also has a `version` column that the admin tool increments when support edits an order.",
+      "rubric": [
+        "Explains that `order.paid` and `order.shipped` come from different services over a non-FIFO queue and can arrive reversed, so a late paid event can set the status back from SHIPPED to PAID.",
+        "Flags that the update is unconditional, so it can overwrite concurrent changes (including support edits from the admin tool or another event), and rates this as a top-severity concern.",
+        "Proposes a sequencing mechanism, such as a monotonic sequence number or state-machine check in the update's condition, or ordered delivery per order id, rather than only \"add retries\".",
+        "Suggests a concrete guard on the write, for example a conditional update that only moves status forward or compares the `version`/timestamp, and states what happens when the condition fails.",
+        "Cites the handler code, walks through a concrete sequence of events producing the wrong final status, and offers a specific change."
+      ],
+      "why_skill_matters": "Two independent events with an ordering assumption and an unguarded status update on a shared order record."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-4",
+      "title": "Checkout failure cleanup",
+      "target_section": "What to look for",
+      "prompt": "Hey, quick review please. This is our checkout service (TypeScript). We have `lib/db` with an `OrderRepo` class and a `db.transact(ops)` helper that every other service uses for multi-record writes. This PR adds order creation:\n\n```ts\nexport async function createOrder(userId: string, cart: Cart) {\n  const orderId = newId();\n  try {\n    await client.put({ TableName: \"orders\", Item: { id: orderId, userId, total: cart.total } });\n    for (const line of cart.lines) {\n      await client.put({ TableName: \"order_lines\", Item: { orderId, ...line } });\n    }\n    await chargeCard(userId, cart.total);\n    return orderId;\n  } catch (err) {\n    await client.delete({ TableName: \"carts\", Key: { userId } });\n    log.error(\"order failed\", err);\n    throw err;\n  }\n}\n```\n\nThe author's note: \"cleaning up the cart on failure so users don't get stuck with a broken cart.\"",
+      "rubric": [
+        "Flags that the catch block deletes the user's cart on any failure (including a declined card), destroying the customer's data with no restore, and rates it as a top-severity issue.",
+        "Notes that the code calls the raw `client` directly, bypassing the existing `OrderRepo` and `db.transact`, and frames the fix as using them rather than as building a transaction facility.",
+        "Describes the leftover state after failure: order and some order lines are written but never removed or marked failed, so orphaned partial orders remain, and suggests compensation or ordering the charge and writes sensibly.",
+        "Recommends routing the order and order-line writes through `db.transact` or `OrderRepo` so they succeed or fail together, instead of the loop of separate `client.put` calls.",
+        "Each point names the place in `createOrder`, gives a failure scenario (for example a declined card leaving an empty cart and half an order), and a specific fix."
+      ],
+      "why_skill_matters": "A catch branch that deletes the cart, plus separate writes where the repo and transact helper exist and are bypassed."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-5",
+      "title": "Credit transfer with test fixtures",
+      "target_section": "Out of scope",
+      "prompt": "Can you review this test + code from a PR? We're adding credit transfers between accounts (Python, DynamoDB). I'm only interested in real problems, not nitpicks about test plumbing.\n\n```python\n# tests/test_transfer.py\n@pytest.fixture(autouse=True)\ndef seed():\n    with table.batch_writer() as bw:\n        for i in range(200):\n            bw.put_item(Item={\"pk\": f\"ACC#{i}\", \"credits\": 100})\n    yield\n    with table.batch_writer() as bw:\n        for i in range(200):\n            bw.delete_item(Key={\"pk\": f\"ACC#{i}\"})\n\ndef test_transfer_moves_credits():\n    transfer(\"ACC#1\", \"ACC#2\", 30)\n    assert get(\"ACC#1\")[\"credits\"] == 70\n    assert get(\"ACC#2\")[\"credits\"] == 130\n\n# src/transfer.py\ndef transfer(src, dst, amount):\n    table.update_item(Key={\"pk\": src}, UpdateExpression=\"SET credits = credits - :a\",\n                      ExpressionAttributeValues={\":a\": amount})\n    table.update_item(Key={\"pk\": dst}, UpdateExpression=\"SET credits = credits + :a\",\n                      ExpressionAttributeValues={\":a\": amount})\n\ndef touch_last_seen(acc):\n    table.update_item(Key={\"pk\": acc}, UpdateExpression=\"SET last_seen = :t\",\n                      ExpressionAttributeValues={\":t\": now()})\n```",
+      "rubric": [
+        "Does not criticize the `seed` fixture's bulk unguarded puts or its teardown deletes.",
+        "Flags that `transfer`, which is the code the test asserts on, debits and credits in two separate updates, so a failure between them loses or creates credits, and asks for the two writes to be made all-or-nothing.",
+        "Does not demand a transaction for `touch_last_seen`, which is a single-item update.",
+        "Notes that the debit has no check on the source balance and nothing guarding against concurrent transfers, so balances can go negative or lose updates.",
+        "Findings cite `transfer` specifically, describe the concrete partial-failure outcome, and give a concrete fix such as a transactional write with a balance condition."
+      ],
+      "why_skill_matters": "Test file scaffolding that should be ignored sits next to a genuinely non-atomic path under test, plus a harmless lone update."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-6",
+      "title": "Profile plan change with weak guard",
+      "target_section": "Severity guidance",
+      "prompt": "Our tech lead said \"anything touching billing data in this PR must be in a transaction, flag it if not.\" Here's the one function the PR changes. Please review it with that in mind, and tell me how bad each thing is.\n\n```python\ndef change_plan(account_id, new_plan):\n    table.update_item(\n        Key={\"pk\": f\"ACCT#{account_id}\"},\n        UpdateExpression=\"SET plan = :p, plan_changed_at = :t\",\n        ExpressionAttributeValues={\":p\": new_plan, \":t\": now()},\n        ConditionExpression=Attr(\"pk\").exists(),\n    )\n\ndef rename_account(account_id, name, expected_version):\n    table.update_item(\n        Key={\"pk\": f\"ACCT#{account_id}\"},\n        UpdateExpression=\"SET #n = :n, version = version + :one\",\n        ConditionExpression=Attr(\"version\").eq(expected_version),\n        ExpressionAttributeNames={\"#n\": \"name\"},\n        ExpressionAttributeValues={\":n\": name, \":one\": 1},\n    )\n```\n\n`rename_account` is old code in the same file. Both customers and our support staff can change a plan from different screens.",
+      "rubric": [
+        "Says `change_plan` is one write to one record and does not need a transaction, pushing back on the blanket instruction rather than complying with it.",
+        "Observes that `change_plan` only checks the account exists, while `rename_account` in the same file uses a version match, and recommends a version check for the plan change.",
+        "Rates the existence-only guard as a minor improvement rather than a blocking or top-severity defect.",
+        "Explains the scenario where a customer and a support agent change the plan at about the same time and the later write silently wins.",
+        "Points at `change_plan` and gives a specific change, such as adding a version attribute to the condition and incrementing it."
+      ],
+      "why_skill_matters": "An instruction that pulls toward demanding a transaction for a lone write; the real issue is a weak guard whose stronger sibling pattern is in the same file."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-7",
+      "title": "Team signup service bypasses repository",
+      "target_section": "Codebase awareness",
+      "prompt": "Please review this Kotlin diff for our team-signup flow. Context: all our services go through `TeamRepository` (it has `createTeamWithOwner(...)`, which does a transactional write of the team and the owner membership). This diff is from a newer dev and I suspect they didn't know that.\n\n```kotlin\n// TeamService.kt\nfun register(name: String, ownerId: String): Team {\n    val team = Team(newId(), name)\n    dynamo.putItem(teamsTable, team.toItem())\n    dynamo.putItem(membersTable, Member(team.id, ownerId, \"OWNER\").toItem())\n    return team\n}\n\n// TeamServiceTest.kt\n@BeforeEach fun seed() {\n    dynamo.batchWriteItem(fixtureUsers(50))   // test users\n}\n@AfterEach fun cleanup() {\n    dynamo.batchWriteItem(deleteAll(fixtureUsers(50)))\n}\n@Test fun registerCreatesTeam() {\n    val t = service.register(\"acme\", \"u1\")\n    assertEquals(\"acme\", dynamo.getItem(teamsTable, t.id).name)\n}\n```",
+      "rubric": [
+        "Says `register` calls `dynamo` directly and should use the existing `TeamRepository.createTeamWithOwner`, rather than saying a transaction mechanism needs to be built.",
+        "Leaves the `@BeforeEach` and `@AfterEach` bulk fixture writes alone.",
+        "Flags that the two puts in `register` (team, then OWNER member) are not atomic and the test exercises that path, so a failure after the first put leaves an ownerless team.",
+        "Notes that the test checks only the team record and never asserts the membership write or a failure midway, so the owner write is effectively untested.",
+        "Names the location in `TeamService.kt`, a concrete failure scenario, and the specific replacement call."
+      ],
+      "why_skill_matters": "A bypass of a shared repository with a transactional method, along with test scaffolding that should be ignored."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-8",
+      "title": "Webhook invoice creation triage",
+      "target_section": "Output format",
+      "prompt": "I have a small PR for our billing webhook handler (Python, Postgres-ish pseudo code below) and I want it ranked: what must be fixed before merge and what can wait? Be direct.\n\n```python\ndef on_usage_event(evt):\n    try:\n        for attempt in range(4):\n            try:\n                inv = billing_api.create_invoice(customer=evt.customer, amount=evt.amount)\n                break\n            except Timeout:\n                continue\n        db.invoices.save(inv)\n    except Exception:\n        db.usage_counters.reset(evt.customer)\n        raise\n\n# consumer: counters are set from \"period.closed\" and \"usage.recorded\" events,\n# both published by different services to the same topic\ndef on_period_closed(evt):\n    db.usage_counters.reset(evt.customer)\n\ndef on_usage_recorded(evt):\n    db.usage_counters.set(evt.customer, evt.running_total)\n```\n\nOnly the happy path of `on_usage_event` has a test.",
+      "rubric": [
+        "Flags that `create_invoice` is retried on timeout without a key, so an invoice that was actually created can be created again for the same usage and the customer is billed twice.",
+        "Flags that the outer except resets the customer's usage counter on any failure, losing unbilled usage without restoring it, and ranks this among the must-fix items.",
+        "Flags that `usage.recorded` and `period.closed` come from different publishers with no ordering guarantee, so a late running_total can overwrite a reset (or vice versa), and proposes a sequence number or ordered delivery.",
+        "Mentions that only the happy path is tested and the failure and retry branches are untested, ranking this below the data-loss and double-billing items.",
+        "Provides a ranked list in which each item points to a function in the snippet, a concrete failure scenario, and a specific fix."
+      ],
+      "why_skill_matters": "Three different integrity hazards (unkeyed retry of a billing call, destructive error handler, unordered events) plus a test gap, requiring priority ordering."
+    }
+  ]
+}

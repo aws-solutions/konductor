@@ -1,0 +1,285 @@
+{
+  "format_version": 1,
+  "skill": "program-planning",
+  "batch": "rules-b4",
+  "rules": {
+    "program-planning-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-planning-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-planning-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-planning-r04": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "program-planning-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-planning-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-planning-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-planning-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-planning-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-planning-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-planning-r11": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "program-planning-r12": {
+      "class": "style",
+      "kept": false,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "program-planning-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-planning-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-planning-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-planning-r10"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-planning-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "program-planning-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "program-planning-r04"
+      }
+    },
+    "program-planning-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-planning-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-planning-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-planning-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-planning-r05"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "program-planning-r11"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "program-planning-r01"
+      }
+    },
+    "program-planning-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-planning-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-planning-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-planning-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-planning-r07"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "program-planning-r04"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "program-planning-r03"
+      }
+    },
+    "program-planning-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-planning-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-planning-r10"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-planning-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-planning-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "program-planning-r07"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "program-planning-r11"
+      }
+    },
+    "program-planning-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-planning-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-planning-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-planning-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-planning-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "program-planning-r05"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "program-planning-r04"
+      }
+    },
+    "program-planning-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-planning-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-planning-r01"
+      },
+      "3": {
+        "bucket": "guard",
+        "rule_id": "program-planning-r11"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-planning-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "program-planning-r07"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "program-planning-r03"
+      }
+    },
+    "program-planning-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-planning-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-planning-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-planning-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-planning-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "program-planning-r06"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "program-planning-r02"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "program-planning-r11"
+      }
+    },
+    "program-planning-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-planning-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-planning-r08"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-planning-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-planning-r07"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "program-planning-r11"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "program-planning-r03"
+      },
+      "7": {
+        "bucket": "value",
+        "rule_id": "program-planning-r05"
+      }
+    }
+  }
+}

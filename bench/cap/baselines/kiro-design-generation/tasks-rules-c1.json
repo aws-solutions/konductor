@@ -1,0 +1,143 @@
+{
+  "format_version": 1,
+  "skill": "kiro-design-generation",
+  "batch": "rules-c1",
+  "generated_at": "2026-11-09T04:09:28.253Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "0b23de8d2e5c3e13957ed7abf976b1aad9af19391bddb70d608fd0a7e3117c4b",
+  "scenarios": [
+    {
+      "id": "kiro-design-generation-rules-1",
+      "title": "Appointment reminders for a dental clinic chain",
+      "target_section": "Requirement Mapping",
+      "prompt": "We run a chain of 40 dental clinics and I need the design for appointment reminders. Requirements are approved:\n\nR1. Patients receive an SMS reminder 48h and 4h before an appointment.\nR2. Patients can reply C to confirm or X to cancel; a cancel frees the slot in the booking calendar.\nR3. Clinic staff can see reminder status (sent, delivered, failed, confirmed, cancelled) per appointment.\nR4. Patients can opt out of reminders, and the opt-out must be honoured within 1 minute and kept for at least 7 years for compliance.\nR5. Every reminder send and every patient reply is written to an audit trail that staff cannot edit.\nR6. When an appointment is rescheduled, pending reminders for the old time are dropped and new ones scheduled.\n\nWhat the platform gives us: an existing Booking Service (REST, owns appointments and the calendar), an SMS provider called by a shared Messaging Gateway (already handles provider auth, rate limiting per sender number, and delivery receipts via webhook), and a shared Staff Portal with its own SSO. Data is in DynamoDB. EventBridge Scheduler is available. Please write the full design for the feature.",
+      "rubric": [
+        "The audit trail for sends and replies (R5) and the 7-year opt-out retention (R4) are each handled by a named component or store, not just mentioned in passing.",
+        "The design states which of R1 to R6 it covers, including the reschedule handling of R6.",
+        "The Booking Service, Messaging Gateway and Staff Portal SSO are used by reference; the design does not redesign provider auth, rate limiting or calendar storage.",
+        "Components such as the reminder scheduler and reply handler have operations with typed parameters and return values.",
+        "The reminder, opt-out and audit records list fields with types and constraints (key roles, allowed status values, required versus optional).",
+        "Tests are split into isolated checks, cross-component checks, and end-to-end journeys such as remind, reply X, slot freed.",
+        "A developer could build from the design plus the six requirements without asking what the audit trail, scheduling or opt-out flow looks like.",
+        "At least one diagram shows the flow from scheduled reminder through the gateway to a patient reply."
+      ],
+      "why_skill_matters": "Six requirements include cross-cutting ones (immutable audit trail, long-retention opt-out) that are easy to skip, plus shared services to reference. Makes mapping, scoping, typed interfaces, data fields and tests matter."
+    },
+    {
+      "id": "kiro-design-generation-rules-2",
+      "title": "Live driver location on a delivery app with batch pipeline",
+      "target_section": "Requirement Mapping",
+      "prompt": "Need the design doc for \"live order tracking\" in our food delivery app. Approved requirements below, then the architecture notes from our platform lead.\n\nREQ-1 Customers see the courier's position on a map, updated at least every 5 seconds while an order is out for delivery.\nREQ-2 Customers see an ETA that is recalculated whenever the courier's position changes.\nREQ-3 Tracking stops and location data is hidden from the customer once the order is delivered.\nREQ-4 Support agents can view the full route of a finished order for 30 days.\nREQ-5 Couriers can pause location sharing during a break without ending their shift.\n\nArchitecture notes (from Dana, platform):\n- Courier app uploads GPS points in batches to the Telemetry API every 2 minutes to save battery. Points land in S3 as parquet.\n- A Glue job runs every 15 minutes, builds route tables in Athena. ETA service reads route tables and is used by the checkout page today.\n- Orders live in the Order Service (already has an order-state event stream on Kinesis).\n- Auth is the shared gateway authorizer. Customers and agents have different scopes, couriers use a device token.\n- Stack: Lambda, DynamoDB for anything transactional, S3 + Athena for analytics.\n\nWrite the design for this feature using that setup.",
+      "rubric": [
+        "The design states openly that the 5-second map updates in REQ-1 cannot be met by 2-minute GPS batches.",
+        "The design states that REQ-2 recalculation on every position change conflicts with an ETA built from precomputed routes refreshed every 15 minutes.",
+        "Each of REQ-1 to REQ-5 maps to a named component, including pause (REQ-5) and 30-day route viewing (REQ-4).",
+        "The design explains the choice it makes to resolve the conflict (for example a streaming path or a shorter upload interval with its battery cost) and what is left out of scope.",
+        "The Order Service event stream and gateway authorizer are referenced rather than redesigned.",
+        "Failure cases such as lost courier connectivity say what the customer sees on the map and whether the system retries or falls back.",
+        "The design is concrete enough to build from, naming the transport, stores and component operations."
+      ],
+      "why_skill_matters": "The notes' batch pipeline contradicts the 5-second and per-change requirements. A careful design flags this rather than pretending the batch pipeline suffices."
+    },
+    {
+      "id": "kiro-design-generation-rules-3",
+      "title": "Gym class booking waitlist",
+      "target_section": "3. Components and Interfaces",
+      "prompt": "hey, can you do the technical design for the class waitlist in our gym app? when a class is full people join a waitlist, and when somebody cancels the first person gets offered the spot for 10 minutes. if they don't accept it goes to the next.\n\nrequirements (approved):\n1. Member can join the waitlist for a full class, once per class.\n2. Member can leave the waitlist.\n3. When a spot opens, the first waitlisted member gets a push notification and 10 minutes to accept.\n4. If the offer expires, the next member is offered the spot.\n5. Members see their position in the waitlist.\n6. Premium members jump ahead of standard members, but keep first-come order inside each group.\n\nexisting stuff: Class Catalog service owns classes and capacity, Booking service owns bookings (it exposes `bookClass(memberId, classId)` and emits `BookingCancelled` events). Push goes through the shared Notification service. Membership tier comes from the Membership service. Everything is Node, Postgres is our DB, API is REST behind our usual auth.\n\nkeep it practical, the dev team is 3 people.",
+      "rubric": [
+        "The waitlist and offer components have operations with parameter and return types, e.g. joining, leaving, offering the next spot, accepting, expiring.",
+        "The waitlist entry and offer records list field types and constraints, including the tier and the join time used for ordering, and a rule that a member appears once per class.",
+        "Failure cases include joining twice or a full-class check failing, an unauthorised member, a missing class, and two people accepting the same spot at once.",
+        "For the concurrent accept and the failed push notification, the design says what the member sees and whether it retries or moves to the next member.",
+        "Booking, Notification, Membership and Class Catalog are called through their interfaces, not redesigned.",
+        "The design states what is not included and gives reasons for choices such as how offers expire (timer versus polling).",
+        "Requirements 1 to 6 can each be located in a named component.",
+        "The document goes from a feature summary, to architecture, components, data, errors, then testing."
+      ],
+      "why_skill_matters": "Casual request with concurrency (double accept) and an external notification. Makes error coverage, recovery behaviour, typed interfaces and data constraints matter."
+    },
+    {
+      "id": "kiro-design-generation-rules-4",
+      "title": "Invoice approval workflow, one clause on deletion",
+      "target_section": "Feature Scoping",
+      "prompt": "Please write the design for invoice approvals in our finance tool. Here are the approved requirements pasted from the ticket:\n\n\"Invoice approval - v1\n\nApprovers receive invoices over 1,000 EUR in an approval queue. An approver can approve or reject with a mandatory comment. Invoices over 25,000 EUR need two different approvers. Finance admins can reassign a pending approval to another approver. Approvers get an email when a new invoice arrives and a reminder after 3 working days. Rejected invoices return to the submitter with the comment. Every decision is shown on the invoice's history tab. Where an approver leaves the company and their account is erased under our GDPR process, their name on past decisions must be replaced with 'Former employee' while the decision itself remains.\"\n\nContext from the team wiki:\n- The Invoice Service owns invoices (Aurora Postgres) and the invoice history tab renders from its `invoice_events` table.\n- The Identity service handles sign-in, roles (approver, finance_admin) and the GDPR erasure job, which publishes `UserErased` events.\n- Email is sent through the shared Mailer service, which offers `send(templateId, to, vars)`.\n- Working-day calendar is provided by the shared Calendar library.\n\nOnly the approval part is new; don't redo the rest.",
+      "rubric": [
+        "The GDPR clause is mapped to a named component that reacts to the user-erasure event and rewrites the approver name to \"Former employee\" while keeping the decision.",
+        "The two-approver rule above 25,000 EUR, reassignment, and the 3-working-day reminder each map to named components.",
+        "Invoice Service storage, Identity sign-in and roles, the Mailer and the Calendar library are referenced and built on, not redesigned.",
+        "Approval records list fields with types and constraints, such as mandatory comment, decision values, and that the two approvers must differ.",
+        "Failure cases include a missing comment, a non-approver trying to decide, an already-decided invoice, and the same approver approving twice on a high-value invoice.",
+        "Tests include concrete cases for the threshold logic and for the erasure rewrite.",
+        "The design is understandable without the wiki, stating how it uses the invoice history events."
+      ],
+      "why_skill_matters": "The erasure rule is a single sentence at the end of a long paragraph; an assistant may overlook it. The wiki lists shared parts to reuse."
+    },
+    {
+      "id": "kiro-design-generation-rules-5",
+      "title": "Photo upload for a real-estate listing site",
+      "target_section": "5. Error Handling",
+      "prompt": "We're a small real-estate listing site. Write the design for agents uploading photos to a listing. Approved requirements:\n\n- Agents upload up to 30 photos per listing, JPEG or PNG, max 15 MB each.\n- Photos are resized into 3 sizes (thumbnail, gallery, full) and virus scanned before being visible.\n- Agents can reorder photos and set one as the cover.\n- Agents can delete a photo; it disappears from the listing immediately.\n- Only the agent who owns the listing (or an office admin) can change photos.\n\nPlatform: S3 + CloudFront, Lambda, DynamoDB for listing metadata, a third-party virus scanning API (ClamAPI) that sometimes goes down with server errors and is rate limited to 20 requests/second across the whole company. Auth is Cognito with groups `agent` and `office_admin`. The listing record itself belongs to the Listing service; we only add the photo part.\n\nPlease give me the design.",
+      "rubric": [
+        "Failure cases cover oversize or wrong-format files, a non-owner agent, a missing listing or photo, concurrent reorder conflicts, ClamAPI failing, and the company-wide rate limit being hit.",
+        "For ClamAPI outages and throttling, the design says that photos stay hidden and what the agent sees, and states the retry or queue behaviour.",
+        "Upload, scan, resize, reorder and delete components have typed operations.",
+        "Photo records list fields with types and constraints such as the 30-photo limit, the status values (pending, clean, infected), and the cover flag.",
+        "The Listing service and Cognito auth are referenced, not redesigned.",
+        "Tests separate isolated checks, interaction checks with scanner and S3, and a journey such as upload, scan, appear in gallery.",
+        "The design is concrete about where files and metadata are stored and how the lifecycle of a photo proceeds."
+      ],
+      "why_skill_matters": "An external API with outages and a shared rate limit makes failure handling and recovery central; typed interfaces and data constraints also matter."
+    },
+    {
+      "id": "kiro-design-generation-rules-6",
+      "title": "Library book hold system extending an existing loans design",
+      "target_section": "Cross-Feature References",
+      "prompt": "Our city library system already has a design for Loans (below, abridged). I now need the design for Holds (reserving a book that is out on loan). Don't repeat the loans design, just build on it.\n\nLoans design (abridged):\n- LoanService: checkOut(patronId, copyId): Loan; returnCopy(copyId): ReturnResult; renew(loanId): Loan\n- Tables (Postgres): patrons(id, card_no, status), copies(id, title_id, status in AVAILABLE|ON_LOAN|LOST), loans(id, patron_id, copy_id, due_date, returned_at)\n- returnCopy emits a CopyReturned event on the internal bus.\n- Patron sign-in uses the library SSO; staff and patron roles exist.\n\nHolds requirements (approved):\nH1. A patron can place a hold on a title when no copy is available; max 5 active holds per patron.\nH2. Holds are served in the order placed.\nH3. When a copy is returned and a hold exists, the copy is set aside for the first patron for 7 days and the patron gets an email.\nH4. Patron can cancel a hold.\nH5. If the 7 days pass without checkout, the hold moves to the next patron.\nH6. Branch staff can see and manage the holds queue for a title.\nH7. Patrons with blocked status cannot place holds.\n\nEmail goes through the city's shared Mailer API.",
+      "rubric": [
+        "The design builds on LoanService, copies and the CopyReturned event by reference instead of restating or recreating them.",
+        "H1 to H7 each trace to a component, including the blocked-status rule and the staff queue management.",
+        "HoldService and related components have typed operations, for example placeHold(patronId, titleId) with return types.",
+        "The holds records list fields with types and constraints, including queue order, expiry timestamp, status values and a link to patrons and titles.",
+        "The design states what is out of scope (for example changes to loans) and why it chooses event-driven set-aside over polling or similar.",
+        "Failure cases include the 5-hold limit reached, blocked patron, duplicate hold on the same title, and the Mailer failing.",
+        "A developer holding only the holds requirements and this design can tell which new storage, operations and events to build, without opening the loans design.",
+        "At least one diagram shows the flow from copy return through to the patron being notified."
+      ],
+      "why_skill_matters": "An existing loans design is supplied and the user explicitly wants reuse. Tests referencing rather than copying plus mapping of H1-H7."
+    },
+    {
+      "id": "kiro-design-generation-rules-7",
+      "title": "Sync vs async report generation for an HR tool",
+      "target_section": "1. Overview",
+      "prompt": "Design request for \"headcount reports\" in our HR analytics app. Approved reqs:\n\n1. HR managers choose a department, date range and format (PDF or CSV) and get a report of headcount, hires and leavers.\n2. Reports covering more than 5,000 employees must still complete; the manager shouldn't have to keep the page open.\n3. Managers only see departments they are responsible for.\n4. A manager can download a finished report for 14 days after it was generated.\n5. Salary data must never appear in these reports.\n6. Any report, including for our largest department, is ready within 30 seconds of the request.\n\nFacts: the HRIS (Workday) exposes a REST API with a limit of 10 calls/minute for our tenant and returns 200 employees per page. We have Lambda (15 minute max), Step Functions, SQS, S3 and DynamoDB. Department responsibility comes from the Org service. Median department has 300 people but the largest has 22,000. Auth is via the company SSO.\n\nI'm not sure whether this should be synchronous or not. Make a call and write the design.",
+      "rubric": [
+        "The design commits to a choice (sync, async or hybrid by size) and gives reasons tied to the 10 calls/minute Workday limit, the 22,000-person department, or the Lambda limit.",
+        "The design says plainly that requirement 6 cannot be met for the largest department, since about 110 pages at 10 calls/minute takes around 11 minutes, unless data is cached or synced ahead of time.",
+        "The design states what is out of scope, for example report types other than headcount, or salary reporting.",
+        "Requirement 5 (no salary data) and requirement 4 (14-day retention) are each handled by a named component or rule, such as field filtering at the HRIS fetch and an S3 lifecycle.",
+        "Failure cases include invalid date ranges, a manager requesting a department they do not own, an unknown report id, Workday errors or rate limiting.",
+        "For Workday throttling the design says what the manager sees (for example report status) and whether it retries with backoff.",
+        "Report request, fetch and render components have typed operations.",
+        "The numbers (page size, rate limit, largest department) are used to show the design is feasible, so a developer can build without guessing."
+      ],
+      "why_skill_matters": "The user leaves sync versus async open, so the design must pick and justify it using the figures. The 30-second requirement collides with the Workday rate limit for the largest department and should be flagged. Also covers the salary exclusion, retention and throttling."
+    },
+    {
+      "id": "kiro-design-generation-rules-8",
+      "title": "Pet adoption inquiry form for a shelter",
+      "target_section": "6. Testing Strategy",
+      "prompt": "Volunteer here, so bear with me. Our animal shelter website needs an \"adoption inquiry\" feature. The board approved this list:\n\n- A visitor fills in a form about a specific animal (name, email, phone, household info, free text).\n- The shelter coordinator gets the inquiry in a list and can mark it new, contacted, approved or declined.\n- The visitor gets an automatic confirmation email.\n- When an animal is marked adopted, new inquiries for it are refused and open ones are marked declined automatically.\n- The coordinator can export inquiries as CSV.\n\nWe have a small Node/Express app with a Postgres database, the animals table already exists (id, name, species, status), and emails go out through SendGrid. Login for staff exists already (coordinator role). Visitors are anonymous, so spam is a worry.\n\nPlease write the design, including how we should test it, since we've never done automated tests before.",
+      "rubric": [
+        "Testing separates isolated checks (for example status transitions), interaction checks (form to database to email) and end-to-end journeys (visitor submits, coordinator marks approved).",
+        "Test cases are concrete for this feature, such as submitting for an adopted animal being refused, and open inquiries becoming declined.",
+        "Failure cases cover invalid form fields, spam or rate limiting on anonymous submissions, a non-coordinator accessing the list, an unknown animal, and a SendGrid failure.",
+        "The inquiry record lists fields with types and constraints, including the four status values and the link to the animals table.",
+        "The auto-decline on adoption and the CSV export each map to a named component.",
+        "A volunteer developer could build the feature from the design without asking what the data or flow look like.",
+        "At least one diagram shows how the form submission flows through the app."
+      ],
+      "why_skill_matters": "The user is a novice asking explicitly for test guidance; makes the three-level testing approach with concrete cases matter, alongside data and error coverage."
+    }
+  ]
+}

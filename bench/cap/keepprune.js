@@ -246,9 +246,10 @@ function deepNoData(A, aa) {
  *   bWaiting       batches whose B waits for a refreshed baseline
  *   store          a judgmentStore; replicates and rejudge as in checkSubject
  * Returns { depth, entry, summary, seats, controls }, where entry is labelSkill's result with every extra no-data
- * cause added in front of his own (SR-24 first, then SR-25, then the deep rule).
+ * cause added in front of his own: SR-24 first, then `subjectNoData` (a stale loaded unit, an unapproved rename or
+ * fold), then SR-25, then the deep rule. `subjectNoData` lists reasons the subject cannot be read; falsy ones are skipped.
  */
-function checkDepth({ depth, subject, convention = null, ladder = null, provider, subjectModel, judges, bWaiting = [], store = judgmentStore(null), replicates = DEFAULT_REPLICATES, rejudge = false }) {
+function checkDepth({ depth, subject, convention = null, ladder = null, provider, subjectModel, judges, bWaiting = [], subjectNoData = [], store = judgmentStore(null), replicates = DEFAULT_REPLICATES, rejudge = false }) {
   if (!DEPTHS[depth]) throw new Error(`depth must be quick or deep, not ${JSON.stringify(depth)}`);
   const seatInfo = judgeSeats({ subjectModel, judges });
   const seats = seatInfo.judged ? seatInfo.seats.filter((s) => s.seated).map((s) => s.model) : [];
@@ -263,6 +264,7 @@ function checkDepth({ depth, subject, convention = null, ladder = null, provider
   const entry = labelSkill({ summary, batches, bWaiting });
   const extra = [];
   if (!seatInfo.judged) extra.push(seatInfo.why);
+  extra.push(...subjectNoData.filter(Boolean));
   if (!trust.trusted) extra.push(trust.status === 'NONE' ? 'the run includes no control, so no verdict is read (SR-25)' : `a control did not pass (${trust.evaluations.filter((e) => !e.pass).map((e) => `${e.control} ${e.status}`).join(', ')}), so no verdict is read (SR-25)`);
   const aaWhy = deepNoData(summary.A, summary.aa);
   if (aaWhy) extra.push(aaWhy);

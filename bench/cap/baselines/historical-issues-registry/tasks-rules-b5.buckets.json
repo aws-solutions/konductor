@@ -1,0 +1,269 @@
+{
+  "format_version": 1,
+  "skill": "historical-issues-registry",
+  "batch": "rules-b5",
+  "rules": {
+    "historical-issues-registry-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "historical-issues-registry-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "historical-issues-registry-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "historical-issues-registry-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "historical-issues-registry-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "historical-issues-registry-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "historical-issues-registry-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "historical-issues-registry-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "historical-issues-registry-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "historical-issues-registry-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "historical-issues-registry-r11": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "historical-issues-registry-r12": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    }
+  },
+  "scenarios": {
+    "historical-issues-registry-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r03"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r05"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r11"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "historical-issues-registry-r12"
+      }
+    },
+    "historical-issues-registry-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r10"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "historical-issues-registry-r12"
+      }
+    },
+    "historical-issues-registry-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r03"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r05"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "historical-issues-registry-r12"
+      }
+    },
+    "historical-issues-registry-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "historical-issues-registry-r12"
+      }
+    },
+    "historical-issues-registry-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "historical-issues-registry-r12"
+      }
+    },
+    "historical-issues-registry-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r01"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "historical-issues-registry-r12"
+      }
+    },
+    "historical-issues-registry-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r11"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r11"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "historical-issues-registry-r12"
+      }
+    },
+    "historical-issues-registry-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "historical-issues-registry-r07"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "historical-issues-registry-r12"
+      }
+    }
+  }
+}

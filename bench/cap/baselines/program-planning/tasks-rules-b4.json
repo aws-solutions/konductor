@@ -1,0 +1,133 @@
+{
+  "format_version": 1,
+  "skill": "program-planning",
+  "batch": "rules-b4",
+  "generated_at": "2026-11-09T09:53:28.535Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "ec36bc6fc4ddee7768349c86b8e6c2b7d02010d692863766a1ec51c6bc30b70d",
+  "scenarios": [
+    {
+      "id": "program-planning-rules-1",
+      "title": "Payments migration with vendor and holiday crunch",
+      "target_section": "Timeline Estimation",
+      "prompt": "I need a plan for moving our checkout from the old payment gateway to Stripe. Kickoff is Monday Nov 16, 2026 and the CFO wants it live by Jan 15, 2027. I'm the TPM; sponsor is Dana Ortiz (VP Eng).\n\nWork items with sizes from the eng leads:\n- Stripe contract + security review (legal/security, vendor-dependent): M\n- API integration in checkout service (Payments team, 4 engineers; they've never used Stripe): L\n- Ledger reconciliation rewrite (Finance Eng, 2 engineers; new design, nobody has done this): XL\n- Admin refund UI changes (Payments team, well-understood React work): S\n- Load test + PCI scope review (SRE + Security): M\n- Staged rollout 5% → 50% → everyone: M\n\nNotes: the company is closed Dec 24 - Jan 1. Two of the four Payments engineers are on the on-call rotation in December and the lead says on-call eats about a third of their time. Reconciliation can't start until the contract is signed. Integration also needs the signed contract. Load test needs integration done. Rollout needs load test and reconciliation both done.\n\nCan you lay out the schedule and tell me whether Jan 15 is realistic?",
+      "rubric": [
+        "Gives the integration work (L) as a calendar range of roughly 3-4 weeks before any padding, and the reconciliation rewrite (XL) as roughly 5-8 weeks, rather than one fixed number each.",
+        "Pads the Stripe integration and the reconciliation rewrite with a noticeably larger contingency than the refund UI work, since the team is new to Stripe and the ledger design is novel; the refund UI still gets some padding.",
+        "Removes the Dec 24 - Jan 1 closure from working time and reduces Payments capacity in December for the two on-call engineers, shifting dates or durations as a result.",
+        "Compares the computed finish of the contract → reconciliation → rollout chain against Jan 15, 2027 and states plainly whether it fits, showing the gap or offering options if it does not.",
+        "States that the contract/security review depends on an outside vendor, and that reconciliation and integration cannot start until it finishes, with a risk level for a slip.",
+        "The ordering of contract, integration, load test, reconciliation and rollout has no loops."
+      ],
+      "why_skill_matters": "Sized items, a hard CFO deadline, a closure window and on-call drag. Makes size conversion, differentiated buffers, holiday/on-call adjustments, deadline feasibility and vendor dependency matter."
+    },
+    {
+      "id": "program-planning-rules-2",
+      "title": "Warehouse robotics rollout, many small tasks",
+      "target_section": "Milestone Definition",
+      "prompt": "We're rolling out pick-assist robots at our Reno warehouse and I've been asked to put together a plan for leadership. Here's the brain dump from the ops meeting:\n\n- order 40 robots from Locus-type vendor\n- pour charging pad concrete\n- install wifi APs on floor 2\n- write SOP for robot-human zones\n- hire 2 robot technicians\n- train 30 pickers\n- map warehouse in robot software\n- paint floor lanes\n- integrate robot software with WMS\n- pilot in aisles 1-10\n- run pilot for 3 weeks, compare pick rates\n- decide go/no-go for full floor\n- roll out to aisles 11-60\n- sign off with safety committee\n\nOwners: Facilities does concrete, wifi, and lanes. Ops does SOP, training, pilot. IT does WMS integration. HR does hiring. Procurement does the order. Target: pilot start Feb 2, 2027, full rollout done by June 30, 2027. About 14 people touch this overall.\n\nPlease turn this into a proper plan for the steering committee. They only want to see the big picture, not 14 lines of chores.",
+      "rubric": [
+        "The top-level plan has a handful of phase-transition milestones (such as site readiness, pilot start, pilot go/no-go, full rollout complete) rather than listing each chore like painting lanes or pouring concrete as a milestone.",
+        "Each milestone carries a checkable done-condition with this request's facts, e.g. a number of robots on site, 30 pickers trained, pick-rate comparison completed, or safety committee sign-off obtained.",
+        "Notes at least one dependency on another team or outside party (e.g. vendor robot delivery gating the pilot, Facilities work gating robot mapping) and states its ordering type and a delay risk.",
+        "Names the longest chain of dependent milestones in order from the order/delivery through pilot and go/no-go to full rollout.",
+        "Shows how much of each team's or person's time is committed (Facilities, Ops, IT, HR, Procurement) and does not put anyone above full capacity.",
+        "Every milestone names its owning team and a target date consistent with the Feb 2, 2027 pilot start and June 30, 2027 finish."
+      ],
+      "why_skill_matters": "User dumps many small tasks but wants big picture. Tests milestone vs task separation and measurable exit criteria with owners."
+    },
+    {
+      "id": "program-planning-rules-3",
+      "title": "Replan of a slipping mobile app relaunch",
+      "target_section": "Critical Path",
+      "prompt": "Replanning our mobile app relaunch. Launch is hard-locked for Mar 29, 2027 because of a trade show. Today is Nov 9, 2026. Here is the current state, durations in working weeks, all already include whatever padding the teams added:\n\nA. Design system refresh (Design) - 4 wks, can start now\nB. Backend API v3 (Platform) - 8 wks, can start now\nC. iOS app rebuild (Mobile-iOS) - 7 wks, starts after A finishes AND B is 3 wks in\nD. Android app rebuild (Mobile-Android) - 7 wks, same start conditions as C\nE. Analytics SDK swap (Data) - 3 wks, starts after B finishes\nF. Beta program (Product) - 4 wks, starts after C and D finish\nG. App store review + launch prep (Release) - 2 wks, starts after F and E finish\n\nAssume no company closures. Assume weeks are consecutive starting Mon Nov 9.\n\nWhich items are actually driving the date? I suspect everything is, since the whole team is stressed, but I'd like to know where there's any breathing room.",
+      "rubric": [
+        "Identifies the driving chain as A → C/D → F → G (about 4+7+4+2 = 17 weeks from Nov 9) or an equivalent correct chain given B's partial overlap, and lists it in order.",
+        "States that analytics SDK swap (E) has slack and gives an approximate amount, rather than treating everything as urgent.",
+        "Calls out which items have no slack (e.g. design system refresh, iOS and Android rebuilds, beta, launch prep) as schedule-critical.",
+        "Compares the computed end (about early March, roughly 17 weeks from Nov 9, counting any B constraint) with the Mar 29, 2027 lock and states whether there is margin.",
+        "The start conditions are treated as an acyclic ordering; no item is made to wait on something that waits on it.",
+        "Describes the C/D start condition as a partial-overlap ordering relative to B (starts once B is 3 weeks in) rather than finish-before-start, with the lag stated."
+      ],
+      "why_skill_matters": "Parallel workstreams with a partial dependency; user guesses everything is critical. Tests path, float, and deadline comparison."
+    },
+    {
+      "id": "program-planning-rules-4",
+      "title": "Data platform consolidation with a buried on-call clause",
+      "target_section": "Timeline Estimation",
+      "prompt": "Hey, can you draft the schedule for our data warehouse consolidation? Context from my notes so far:\n\nWe're merging the Redshift and BigQuery estates into Snowflake. Sponsor is Priya Raman, I'm TPM. Team: Data Eng (5 people), Analytics Eng (3), and Infra (2, shared with other things). Start Jan 4, 2027, we want to finish by end of April.\n\nWork items: inventory + schema mapping (Data Eng, S, well-known stuff), Snowflake account/network setup (Infra, S), pipeline migration for 140 pipelines (Data Eng, XL, we have done bulk migrations before but never at this scale or between these engines), dbt model port (Analytics Eng, L), dual-run validation (both, M), cutover and decommission (Data Eng, M).\n\nPipeline migration can start after mapping and setup. dbt port starts after mapping. Dual-run needs both migration and dbt port. Cutover needs dual-run.\n\nMisc notes: Presidents' Day Feb 15 is a company holiday. Spring break week in March is when a lot of people take off, usually about half the team. Oh and Infra and two of the Data Eng folks are in the SRE-style pager rotation, the Data Eng ones are on primary during weeks of Feb 1 and Mar 8 per the rota. Budget approved already.\n\nWould like the table and timeline, thanks.",
+      "rubric": [
+        "Accounts for Feb 15 and for the March spring-break week with reduced availability (about half the team out), lengthening that period or moving dates.",
+        "Reflects that two Data Eng engineers are on primary pager during the weeks of Feb 1 and Mar 8 and reduces their capacity in those weeks.",
+        "Gives the 140-pipeline migration a larger contingency than the inventory/mapping or network setup work, because of its new scale and engine pair, while still adding some to the easy items.",
+        "Presents each sized item as a range of calendar time (e.g. the XL migration at roughly 5-8 weeks, L dbt port 3-4 weeks) rather than single dates.",
+        "Checks whether the adjusted chain from mapping through migration, dual-run and cutover fits within end of April and says so, with the margin or shortfall.",
+        "Infra's two people, shared elsewhere, are not allocated at full time to this program; utilization is shown below their full capacity or the overload flagged."
+      ],
+      "why_skill_matters": "On-call weeks are hidden in the last paragraph of notes, separate from holidays. Sized items with a novel-scale one. Tests holiday/on-call, buffering, ranges, feasibility."
+    },
+    {
+      "id": "program-planning-rules-5",
+      "title": "Small team office move, informal tone",
+      "target_section": "Dependency Mapping",
+      "prompt": "ok so we're moving our 60-person office to a new floor in the same building. i got volun-told to run it lol. rough stuff:\n\n- landlord has to finish construction on the new floor (they say mid-Feb, they've slipped before)\n- we need a certificate of occupancy from the city after construction, usually takes 1-2 weeks after landlord is done\n- IT can pre-wire cabling while construction is finishing but only once drywall is up (about 2 weeks before landlord is done)\n- furniture vendor needs 6 weeks lead time from order, order can't be placed until floor plan is approved by our exec team\n- floor plan approval by execs — Facilities Lead Marcus is drafting, execs meet Jan 12\n- internet provider install needs certificate of occupancy\n- movers booked after cert of occupancy, and also need furniture delivered and cabling done\n- we want to move over the weekend of Mar 6-7\n\nCan you map out how these things depend on each other and tell me if the Mar 6-7 weekend is doable? I'm not a PM so keep it plain.",
+      "rubric": [
+        "Labels each dependency as internal, on another team, or on an outside party (landlord, city, furniture vendor, internet provider), covering at least those four outside ones.",
+        "Describes the ordering and lag for key links, including the cabling start about 2 weeks before landlord finish (start-together style overlap) and the 1-2 week wait for the certificate.",
+        "Assigns a delay-risk level, with the landlord's construction finish marked high given their slip history.",
+        "Works out whether Mar 6-7 is achievable, noting that the furniture 6-week lead time from a Jan 12 approval lands around Feb 23 or later, and states the margin or the problem.",
+        "Names the sequence that sets the earliest move date (landlord finish → certificate → movers, or the furniture chain, whichever is longer) in order.",
+        "The dependency list has no loops; movers sit at the end, not feeding earlier items."
+      ],
+      "why_skill_matters": "Casual user with outside parties and lead/lag details. Tests dependency typing, lag, risk, critical chain, and feasibility."
+    },
+    {
+      "id": "program-planning-rules-6",
+      "title": "ERP rollout with an overloaded lead",
+      "target_section": "Quality Gate",
+      "prompt": "Reviewing a draft plan one of my PMs wrote for our regional finance ERP rollout (sponsor: CFO Helen Park). Please check it and tell me what you'd change. Pasted below.\n\nProgram: ERP Finance Module, Jun 1 – Oct 30, 2026... correction, 2027. Same dates, just next year. End date is Oct 29, 2027 (the PM was told to leave one day).\n\nMilestones (owner, weeks, depends on):\nM1 Requirements signed off — Finance Ops — 4 wks — none\nM2 Vendor config environment ready — Vendor (SAP partner) — 6 wks — none\nM3 Data migration design — Data Team — 5 wks — M1\nM4 Config build — Vendor — 10 wks — M1, M2\nM5 Data migration build + test — Data Team — 8 wks — M3, M4\nM6 UAT — Finance Ops — 6 wks — M4, M5\nM7 Training — Finance Ops — 3 wks — M6\nM8 Go-live — Finance Ops — 2 wks — M7, M5\n\nResourcing: Anika (Finance Ops lead) is allocated 60% to M1, then 70% to M4 oversight, 70% to M6 and 50% to M7. She is also the named reviewer for M3 (45% of her time) and M5 (30%). M3 runs in the same weeks as her M4 oversight.\n\nRisk: PM says \"all good, no real risks, vendor is reliable.\"\n\nThe PM's critical path: M1 → M3 → M5 → M6 → M7 → M8.",
+      "rubric": [
+        "Recomputes the longest chain and finds the PM's path wrong: M2 (6 wks) then M4 (10 wks) feeding M5 makes M2 → M4 → M5 → M6 → M7 → M8 (about 35 weeks) far longer than the chain via M1 and M3, and says so.",
+        "Points out that milestones like \"Go-live\" or \"Training\" have no stated done-condition that can be measured, and proposes concrete ones for this ERP program.",
+        "Adds up Anika's concurrent commitments (M4 oversight 70% plus M3 review 45%, about 115%) and flags that she exceeds her capacity in those weeks.",
+        "Notes the plan shows no contingency on durations, especially on the vendor config build and data migration, and suggests a larger allowance for them than for routine items.",
+        "Checks the real longest chain (about 35 weeks, plus any added allowance) against the Jun 1 to Oct 29, 2027 window (about 21-22 weeks) and states the end date is too early.",
+        "Observes that the vendor-owned items are outside-party dependencies and the all-good risk statement underrates the delay risk on them."
+      ],
+      "why_skill_matters": "A review task with a flawed path, a roughly 21-week window versus a 35-week chain, overload hidden in overlapping percentages, and no buffers. Subtle: the date window mismatch and Anika's overlap are easy to miss."
+    },
+    {
+      "id": "program-planning-rules-7",
+      "title": "Compliance program, two hard dates",
+      "target_section": "Output Format",
+      "prompt": "We have to get SOC 2 Type II ready and I need a plan I can take to our CEO tomorrow. Audit window opens Sep 1, 2027 and the auditors told us the controls have to be operating for at least 90 days before the window starts, so everything must be live by Jun 3, 2027. Today is Nov 9, 2026.\n\nTeam: Security (3 people), Platform (6), IT (2), and an outside consultancy for the gap assessment. TPM is me, sponsor is the CTO, Wen Zhao.\n\nWork:\n- Gap assessment by consultancy (they say 6 weeks, they are booked starting Jan 11)\n- Policy writing (Security, M) after gap assessment\n- Access control + logging tooling rollout (Platform, XL, new vendor tool nobody has used)\n- Endpoint management for all laptops (IT, L)\n- Vendor risk program setup (Security, M)\n- Employee security training (IT, S)\n- Evidence collection automation (Platform, L)\n- Readiness review with auditor (Security, S)\n\nTooling rollout and endpoint management start after the gap assessment. Evidence automation needs tooling. Readiness review needs everything else.\n\nGive me the full plan: summary, milestones, timeline chart, critical path, dependencies, who does what, risks, and a task list I can import with sprints and points.",
+      "rubric": [
+        "Identifies the longest chain as gap assessment → tooling rollout → evidence automation → readiness review and lists it in order.",
+        "Adds up the chain (6 weeks from Jan 11, plus the XL at 5-8 weeks, L at 3-4 weeks, S) with padding and tells the CEO whether Jun 3, 2027 is met, with the margin.",
+        "Gives the XL tooling rollout a range of about 5-8 weeks and the L items 3-4 weeks before padding, not single values.",
+        "Pads the unfamiliar tooling rollout more heavily than the training and endpoint work, and gives every item some padding.",
+        "Shows that items such as vendor risk program, policy writing and training have slack and gives it, while the critical chain items have none.",
+        "Keeps the milestone list at phase level (assessment done, controls live, evidence automated, readiness review passed) and puts the individual work items in the separate import-ready task list with assignee, sprint and points.",
+        "Allocations for Security (3) and IT (2) stay within capacity or overloads are flagged."
+      ],
+      "why_skill_matters": "Full-plan request with a fixed date derived from a 90-day window, an XL novel item, and a booked consultancy start. Tests critical chain, deadline fit, estimates, slack, milestone-vs-task."
+    },
+    {
+      "id": "program-planning-rules-8",
+      "title": "Hospital scheduling system, holiday trap in the schedule",
+      "target_section": "Timeline Estimation",
+      "prompt": "Planning rollout of a new nurse scheduling system across 3 hospitals. I've got these durations from the vendor and the clinical leads:\n\n1. Requirements workshops with nursing leadership — S — all three hospital teams\n2. Vendor configuration — L — vendor, rely on them entirely\n3. HL7 interface to our payroll system — M — our Integration team, they've built a dozen of these\n4. Pilot at Hospital A (unit 4 West only) — M\n5. Pilot evaluation + fixes — M\n6. Rollout to Hospital B — L\n7. Rollout to Hospital C — L\nRollouts B and C can run at the same time if clinical educators allow, but there are only 2 clinical educators and each rollout takes both of them full time.\n\nKickoff Dec 7, 2026. Sponsor wants Hospital C live by Mar 31, 2027. Clinical educators are on a rota that has one of them out Dec 21 - Jan 3 for leave and the nursing leadership is unavailable for workshops the week of Dec 21. US holidays apply (Dec 25, Jan 1, Jan 18, Feb 15).\n\nGive me a plan with milestones and tell me what you'd do about B and C.",
+      "rubric": [
+        "Avoids scheduling workshops the week of Dec 21, accounts for Dec 25, Jan 1, Jan 18 and Feb 15, and notes one educator out Dec 21 - Jan 3.",
+        "Converts the S, M and L items to calendar ranges (about 3-5 days, 1-2 weeks, 3-4 weeks) instead of single durations.",
+        "Pads vendor configuration and the first-time pilot more than the well-practiced HL7 interface, with some allowance on everything.",
+        "Totals the chain through to Hospital C against Mar 31, 2027 and says whether the sponsor's date works, in both parallel and sequential cases for B and C.",
+        "Recognizes that two educators fully consumed by one rollout means B and C in parallel would require double their available time, and flags or resolves it (e.g. sequence B then C).",
+        "Marks the vendor configuration as an outside-party dependency with a delay risk, and the pilot evaluation gating both rollouts as an internal ordering.",
+        "Names the longest chain given the resource constraint (workshops → configuration → pilot → evaluation → B → C) in order."
+      ],
+      "why_skill_matters": "Holiday-laden schedule with an educator capacity constraint that makes the parallel option infeasible. Tests calendar adjustments, ranges, buffers, deadline, resource overload."
+    }
+  ]
+}

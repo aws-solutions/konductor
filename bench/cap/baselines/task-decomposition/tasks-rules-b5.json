@@ -1,0 +1,134 @@
+{
+  "format_version": 1,
+  "skill": "task-decomposition",
+  "batch": "rules-b5",
+  "generated_at": "2026-11-09T21:40:24.796Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "908e4856a68faa8839ded2d16154ebb77092d6baf37bdebc256d26812fa04ea9",
+  "scenarios": [
+    {
+      "id": "task-decomposition-rules-1",
+      "title": "Food delivery app breakdown into tasks",
+      "target_section": "Usage",
+      "prompt": "We're starting a food delivery app next sprint and I have 4 engineers. Can you break this down into implementation tasks? Here's the design summary and stories.\n\nDesign: React Native customer app, a Node/Postgres backend with REST API, a restaurant tablet web app, Stripe for payments, Twilio for SMS.\n\nStories:\nS1 Customer browses restaurants by cuisine and location\nS2 Customer views a menu and adds items to a cart\nS3 Customer pays by card and gets a receipt\nS4 Customer tracks order status live\nS5 Restaurant staff accept or reject incoming orders\nS6 Restaurant staff edit menu items and mark items sold out\nS7 Customer receives SMS when the order status changes\nS8 Customer rates an order after delivery\n\nThanks, need it by end of day.",
+      "rubric": [
+        "Splits the work into end-to-end slices such as browsing/menu, checkout and payment, order tracking, and restaurant-side order handling, each carrying its own backend and UI parts, rather than listing database, backend, API and mobile app as separate work areas.",
+        "Every one of the eight stories (browse, cart, pay, track, accept/reject, menu editing, SMS, rating) is placed in at least one feature, including the easy-to-forget rating and SMS stories.",
+        "Notes that the order entity and its status are touched by checkout, tracking, restaurant handling and SMS, and either merges those or names a common order contract to settle first.",
+        "Gives a suggested sequence or effort view for the four engineers, saying which shared contract (such as order status or menu data) is agreed before the rest begin.",
+        "Each proposed slice can be checked on its own, for example by stubbing Stripe or Twilio or using a mock order, without waiting for other slices.",
+        "Presents the split as a proposal and asks the user to confirm or adjust before it is treated as final."
+      ],
+      "why_skill_matters": "A plain \"break this down into implementation tasks\" request for a multi-component app invites a layer-by-layer breakdown. The order entity is shared by several stories, and the story set includes minor ones that are easy to drop."
+    },
+    {
+      "id": "task-decomposition-rules-2",
+      "title": "Mutual calls between billing and entitlements",
+      "target_section": "Quality Gate",
+      "prompt": "Need to split our SaaS subscription revamp across the team. Here's the HLD excerpt, please decompose into features for individual engineers.\n\nComponents:\n- Billing service: creates subscriptions, handles upgrades/downgrades, issues invoices. On upgrade it calls Entitlements to grant the new plan's limits immediately. On failed payment it calls Entitlements to suspend features.\n- Entitlements service: stores what each account may use (seats, API quota, modules). When a user hits a limit it calls Billing's \"quote upgrade\" endpoint to show the price in the in-app upsell dialog. On trial expiry it calls Billing to create the first invoice.\n- Admin console: support staff can view and override subscriptions and entitlements.\n- Usage metering: counts API calls per account, feeds Entitlements.\n\nStories:\nA1 Customer upgrades or downgrades plan\nA2 Customer is suspended after failed payment and restored after paying\nA3 Customer sees an upsell quote when hitting a quota\nA4 Trial converts to paid automatically at expiry\nA5 Support staff overrides a customer's limits\nA6 API usage is counted and shown to customer\nA7 Customer downloads past invoices",
+      "rubric": [
+        "Spots that billing and entitlements call each other (upgrade and suspension from billing, quote and trial invoice from entitlements) and does not hand them out as two features that wait on each other; resolves it by merging them or extracting a plan/limits contract that both sides use.",
+        "Identifies the plan/limit data or quote and grant endpoints as the thing several features rely on and says which features use it and that it is settled before work starts.",
+        "All seven stories A1 to A7 are assigned, including invoice download and usage display.",
+        "Each feature says what it takes in and what it exposes, for example the grant-limits call, the quote call, or the usage counts handed to entitlements.",
+        "Each feature can be tested alone, for instance with a fake of the other service, and the answer does not rely on the other side being finished.",
+        "Each feature is given its own section with scope, stories, components, dependencies and owner or TBD, followed by a separate closing list of the contracts that several features use."
+      ],
+      "why_skill_matters": "The HLD contains a cycle spread over several bullet points: Billing calls Entitlements and Entitlements calls Billing. A split by service would produce cyclic dependence."
+    },
+    {
+      "id": "task-decomposition-rules-3",
+      "title": "Everything revolves around the order entity",
+      "target_section": "Shared Interfaces",
+      "prompt": "We're rebuilding the order management part of our B2B wholesale portal. Please split the project into features my team of five can each take. Design notes below.\n\nCore entity: Order (id, customer, lines, status, totals, shipping address, payment state).\n\nParts that touch Order:\n- Order creation from cart / reorder from history\n- Pricing and discount calculation (writes totals)\n- Fulfilment: warehouse picks, packs, ships (writes status, shipping)\n- Invoicing and payment reconciliation (writes payment state)\n- Returns and refunds (writes status, totals)\n- Customer order history & search (reads everything)\n- Email notifications on status changes\n- Sales rep dashboard showing open orders by customer\n\nStories:\n1 Buyer places an order from cart\n2 Buyer reorders a past order\n3 Buyer sees volume discounts applied\n4 Warehouse marks order shipped with tracking\n5 Finance reconciles payments to invoices\n6 Buyer requests a return and gets a refund\n7 Buyer searches order history\n8 Buyer is emailed when status changes\n9 Sales rep sees open orders for their accounts",
+      "rubric": [
+        "Notes that many features write the same Order record (pricing, fulfilment, invoicing, returns) and proposes a dedicated first piece of work that defines the Order schema and status lifecycle, rather than having each feature edit it.",
+        "Names the common contract (Order fields and status values, or events on status change) and lists which features use it.",
+        "All nine stories are placed in a feature.",
+        "Features are vertical business capabilities such as fulfilment or returns and refunds with their own storage, logic and screens, not layers.",
+        "Says the Order definition is done first and proposes an order of the other features or who can start in parallel afterwards.",
+        "Features such as returns or search can be verified against sample orders without the other features being complete.",
+        "Asks the user to confirm or adjust the proposed split."
+      ],
+      "why_skill_matters": "Four features write one entity and three read it, so the situation calls for a dedicated first piece of work over the shared data model."
+    },
+    {
+      "id": "task-decomposition-rules-4",
+      "title": "One huge area and several trivial ones",
+      "target_section": "Quality Gate",
+      "prompt": "Hey, can you decompose this internal HR portal project into tasks for our engineers? We have 3 devs and roughly 8 weeks.\n\nRough scope with my own guesses at effort:\n- Payroll engine: tax rules for 6 countries, overtime, bonuses, retro-pay, payslip generation, bank file export. (I'd say 3 months for one person, maybe more)\n- Update personal details form (half a day)\n- Show company holiday calendar (1 day)\n- Leave requests and approval by manager (2 weeks)\n- Download employment letter as PDF (1 day)\n- Org chart view (3 days)\n- Single sign-on with our identity provider (1 week)\n\nStories:\nH1 Employee updates their address and phone\nH2 Employee sees holiday calendar\nH3 Employee requests leave and manager approves\nH4 Employee downloads employment letter\nH5 Employee browses org chart\nH6 Employee views and downloads payslips\nH7 Payroll admin runs monthly payroll\nH8 Employee logs in with company SSO",
+      "rubric": [
+        "Does not leave the payroll engine as one assignment of about three months; breaks it into pieces such as country tax rules, overtime and bonuses, payslips, and bank export that fit a couple of weeks each.",
+        "Combines the tiny items (personal details, holiday calendar, employment letter, org chart) into one or two employee self-service features instead of giving each its own owner.",
+        "All eight stories H1 to H8 are placed, including payslip download and SSO.",
+        "Offers an order or effort view across the three developers within the eight weeks, such as SSO early because others need login.",
+        "Says what the payroll pieces consume and produce, for example tax rule output feeding payslip generation.",
+        "Payroll pieces and self-service features can each be checked on their own, for example with fixed sample pay data."
+      ],
+      "why_skill_matters": "The effort guesses show a very large item and several tiny ones, so the sizing of each feature matters alongside coverage."
+    },
+    {
+      "id": "task-decomposition-rules-5",
+      "title": "Ride-sharing notes with overlooked cross-cutting stories",
+      "target_section": "Execution",
+      "prompt": "ok so here's our ride share MVP planning doc, pasted straight from Notion. can you split it up into features so we can hand them out? we are 4 people.\n\nArchitecture: mobile apps (rider, driver), API gateway, Trips service, Matching service, Payments (Stripe Connect), Notifications (push), Postgres + Redis.\n\nUser stories\nR1 Rider requests a ride with pickup and drop-off\nR2 Rider sees nearby drivers and a fare estimate before requesting\nR3 Driver goes online/offline and receives ride offers\nR4 Driver accepts, navigates, completes trip\nR5 Rider pays automatically at trip end; driver gets payout weekly\nR6 Rider and driver rate each other\nR7 Rider gets push notification when driver arrives\nR8 Rider can cancel; cancellation fee after 2 minutes\nR9 Support can look up any trip and issue a refund\nR10 Driver onboarding: upload licence and vehicle docs, admin approves\nR11 All personally identifiable data (phone, location history) is deleted on account deletion request\nR12 Rider can share live trip link with a friend\n\nNote from PM: R11 and R12 are \"later but must be in the plan\". Also, trips and matching both need to read driver location in Redis.",
+      "rubric": [
+        "All twelve stories appear in the split, including cross-cutting R11 (data deletion) and later items R12 and R10, and none is dropped for being later.",
+        "Picks up that trip and matching features both rely on driver location in Redis and either merges them or names a driver-location contract and the features that use it.",
+        "Features are vertical flows such as rider booking, driver side and onboarding, payments and payout, support tools, and not layers like apps, API, services, database.",
+        "States inputs, outputs or interfaces for the main features, such as ride offer, trip status, payment event.",
+        "Suggests what is defined first and a rough sequence, and treats R11 and R12 as later in the order but still covered.",
+        "Each feature can be verified alone, for instance using a fake location feed or a stub payment."
+      ],
+      "why_skill_matters": "Twelve stories include cross-cutting deletion, an onboarding flow far from the core, and a shared Redis location note buried in a footer. Coverage and shared-data are easy to miss."
+    },
+    {
+      "id": "task-decomposition-rules-6",
+      "title": "Small team, user account core shared by three tracks",
+      "target_section": "Overview",
+      "prompt": "I run a small edtech startup. We're building a learning platform and I need the work divided up so three contractors can work without stepping on each other. Design is below.\n\nEverything hangs off the User table (id, role: student/teacher/admin, email, profile, org_id).\n\nModules:\n1. Courses: teachers create courses, lessons, quizzes (reads User for teacher ownership)\n2. Enrollment & progress: students enroll, progress percentages, certificates (reads/writes User profile completion field, reads Course)\n3. Classroom messaging: threads between students and teachers (reads User)\n4. Billing: course purchases and teacher payouts (writes User billing status)\n5. Admin: user management, roles, suspensions (writes User)\n\nStories:\nE1 Teacher builds a course with video lessons and quizzes\nE2 Student enrolls and tracks progress\nE3 Student gets a certificate on completion\nE4 Student messages the teacher\nE5 Student buys a course\nE6 Teacher receives monthly payout\nE7 Admin suspends a user\nE8 Admin changes a user's role",
+      "rubric": [
+        "Sees that enrollment, billing and admin all write the User record and proposes one early dedicated piece of work that fixes the User fields, roles and statuses so contractors do not each alter the record.",
+        "Names the User contract (and possibly the Course reference) and lists which of the three contractors' features consume it.",
+        "Gives three contractors self-contained feature tracks, for example courses and quizzes, learning and certificates, commerce and payouts, not data/backend/frontend groupings.",
+        "All eight stories E1 to E8 are covered, including messaging and role changes.",
+        "Does not create a loop such as courses needing enrollment while enrollment needs courses; if mentioned, resolves it with a shared contract.",
+        "Presents the split as something for the user to confirm or change before assigning contractors."
+      ],
+      "why_skill_matters": "A User record that three modules write is the key situation; with three contractors the split must avoid collisions."
+    },
+    {
+      "id": "task-decomposition-rules-7",
+      "title": "IoT fleet monitoring split with sizing and order",
+      "target_section": "Output Format",
+      "prompt": "We're doing a fleet monitoring platform for refrigerated trucks. Please break the project down into pieces my five engineers can pick up, and tell me what should happen first. Design below:\n\n- Device firmware gateway ingests MQTT temperature/GPS messages, validates and writes to a time-series store (Timescale). Estimated 4 weeks, includes device provisioning and certificates.\n- Alert rules engine: thresholds per truck/cargo type, evaluates the stream, raises alerts. 3 weeks.\n- Notifications: sends SMS/email for alerts and escalates if unacknowledged. 1 week.\n- Live map dashboard: truck positions, filters. 3 weeks.\n- Temperature history reports with PDF export for compliance audits. 2 weeks.\n- Customer-facing API with API keys for third parties to pull data. 2 weeks.\n- Account and fleet management (customers, trucks, drivers, permissions). 3 weeks.\n\nStories:\nF1 Dispatcher sees live truck positions\nF2 Dispatcher gets alerted when cargo temp leaves range\nF3 Alert escalates if nobody acknowledges\nF4 Compliance officer exports temperature history for an audit\nF5 Fleet manager adds trucks and assigns drivers\nF6 Third-party system pulls telemetry via API\nF7 Admin configures thresholds per cargo type\nF8 New device is provisioned and starts reporting",
+      "rubric": [
+        "Gives an order based on dependencies, for example telemetry message format and fleet/truck identity settled first, ingestion and account management early, alerts and dashboard after.",
+        "Identifies the telemetry record format and truck/fleet identity as used by ingestion, alerts, map, reports and API, and says to define them up front.",
+        "Because several features read the same truck and telemetry data, proposes a dedicated first piece of work that defines it.",
+        "All eight stories F1 to F8 are mapped, with thresholds (F7) and provisioning (F8) in a feature.",
+        "Says what each piece consumes and produces, such as the alert event passed to notifications.",
+        "Each piece can be tested alone, for example with recorded telemetry replayed into the alert engine.",
+        "Each feature is its own section with scope, stories, components, dependencies and owner or TBD, then a separate closing list of the contracts that several features use."
+      ],
+      "why_skill_matters": "Sizes are already given and mostly within range; the question stresses order and the shared telemetry and truck data across many parts."
+    },
+    {
+      "id": "task-decomposition-rules-8",
+      "title": "Merged mega-feature hidden in a long retail brief",
+      "target_section": "Splitting Criteria",
+      "prompt": "Our retail chain wants to replace its in-store point of sale. I've pasted the planning notes; please split this into tasks for the dev team (6 engineers). The sponsor wants \"checkout\" as one workstream because that's how the business thinks about it, so that's probably how we should do it.\n\nNotes:\n\"Checkout\" covers: barcode scanning and cart, price lookup with promotions (buy-2-get-1, coupons, staff discount), tax calculation by region, card terminal integration (3 vendors), cash handling and till reconciliation, split payments, receipts (print and email), returns at till, gift cards and loyalty points, offline mode when the network is down with later sync. Previous system took a team of four about six months for these.\n\nOther areas:\n- Product and price catalog sync from head office (nightly)\n- Inventory updates after each sale\n- Store manager reports (daily sales, till variance)\n- Staff login and permissions\n\nStories:\nP1 Cashier scans items and sees running total\nP2 Cashier applies promotions and coupons\nP3 Customer pays by card, cash or split\nP4 Customer gets printed or emailed receipt\nP5 Customer returns an item\nP6 Customer pays with gift card and earns loyalty points\nP7 Till keeps working offline and syncs later\nP8 Manager sees daily sales and till variance\nP9 Catalog and prices update from head office\nP10 Stock levels update after sales\nP11 Cashier logs in with role-based permissions",
+      "rubric": [
+        "Does not accept checkout as one assignment for a single engineer; breaks it into several features of about two weeks or less each, such as scanning and pricing, tax, card terminals, cash and till, returns, loyalty and gift cards, offline sync.",
+        "Pieces are vertical capabilities that one engineer owns end to end, instead of layers of the point of sale.",
+        "All eleven stories P1 to P11 are placed, with offline mode and stock updates in a feature.",
+        "Spots that pricing, receipts, returns and inventory all depend on the sale/cart structure, and names a shared sale record to define first with the features that use it.",
+        "Offline sync is not allowed to form a loop where it needs every feature and they need it; the dependency is one-way through a shared contract.",
+        "Explains the departure from the sponsor's single checkout workstream and invites the user to confirm or adjust.",
+        "Each feature can be checked without the others, for example the tax feature against sample baskets."
+      ],
+      "why_skill_matters": "The sponsor framing and the \"six months for four people\" detail pull towards keeping checkout as one lump. A careful split must override that and break it up while sharing the sale record."
+    }
+  ]
+}

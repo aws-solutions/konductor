@@ -1,0 +1,123 @@
+{
+  "format_version": 1,
+  "skill": "infra-validation",
+  "batch": "rules-b8",
+  "generated_at": "2026-11-10T06:09:36.059Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "e9fda3ca7a3cadb722adb19e29a60ed38b0d7087be65393a94bb85d1da748cc1",
+  "scenarios": [
+    {
+      "id": "infra-validation-rules-1",
+      "title": "Stack pasted without saying which stage it targets",
+      "target_section": "Step 0: Gather Requirements (MANDATORY FIRST STEP)",
+      "prompt": "Hey, can you validate this stack before we deploy it? Thanks.\n\n```\norders = ddb.Table(self, \"Orders\",\n    partition_key=order_pk,\n    removal_policy=wipe_on_removal(),   # our helper: the table is deleted if the stack is removed\n)\n\ndb = rds.DatabaseInstance(self, \"Db\",\n    engine=rds.DatabaseInstanceEngine.postgres(version=rds.PostgresEngineVersion.VER_15),\n    instance_type=ec2.InstanceType(\"m5.large\"),\n    vpc=vpc,\n    multi_az=False,\n    backup_retention=Duration.hours(0),   # 0 = no automated backups\n)\n```",
+      "rubric": [
+        "Asks which deployment stage (development, staging or production) this stack is going to, instead of assuming one.",
+        "Asks for the code format and for where the rest of the code lives or an invitation to paste it, and does not hand over a full list of findings on the Orders store and Postgres instance before those details arrive.",
+        "Explains or implies that how serious the single-AZ database, missing automated backups and delete-with-stack behaviour are depends on whether the target is production or development.",
+        "Does not claim the stack has been reviewed or approved, and makes clear that no verdict has been given yet.",
+        "The request for details separates what is needed to begin (code format, location or pasted code, stage) from extras such as compliance standards, review focus and known concerns."
+      ],
+      "why_skill_matters": "A snippet with a DynamoDB store that is deleted with the stack and a single-AZ Postgres instance with no backups is pasted, but no stage or format is given. The answer should ask for the missing details first, and note that severity depends on the stage."
+    },
+    {
+      "id": "infra-validation-rules-2",
+      "title": "Bastion SSH rule buried in a long prod stack",
+      "target_section": "2.3 Network Security Validation (MANDATORY)",
+      "prompt": "Hi. We're a small team and I'm doing a last look over our CDK app (Python) before it goes to the prod account on Thursday. Most of it is boring plumbing, so I trimmed it. Anything I should worry about?\n\n```\nbucket = Bucket(self, \"Uploads\", versioned=True,\n                block_public_access=BlockPublicAccess.BLOCK_ALL)\n\nqueue = Queue(self, \"JobQueue\", visibility_timeout=Duration.minutes(1))\n\n# policy attached to WorkerRole (assumed by lambda):\n# {\"Version\": \"2012-10-17\",\n#  \"Statement\": [{\"Effect\": \"Allow\", \"Action\": \"s3:*\", \"Resource\": \"*\"}]}\n\nbastion_sg = make_sg(self, \"BastionSg\", vpc, \"ops access\")   # our helper\nbastion_sg.add_ingress_rule(ec2.Peer.any_ipv4(), ec2.Port.tcp(22), \"ssh for ops\")\n\nec2.Instance(self, \"Bastion\",\n    vpc=vpc,\n    instance_type=ec2.InstanceType(\"t3.micro\"),\n    machine_image=ec2.MachineImage.latest_amazon_linux2023(),\n    security_group=bastion_sg,\n)\n\nlogs.LogGroup(self, \"AppLogs\", retention=logs.RetentionDays.ONE_YEAR)\n```",
+      "rubric": [
+        "Flags that the bastion firewall lets the whole internet reach port 22, treats it as must-fix for a production deploy, and suggests limiting the source to a known office or VPN range or using Session Manager instead.",
+        "Flags that WorkerRole is allowed every S3 action on every resource, and proposes limiting it to specific actions on the Uploads bucket.",
+        "Treats the findings as production-level because the deploy goes to the prod account, with no suggestion that they can wait.",
+        "States that this is a trimmed excerpt, so omitted resources and account-wide settings were not checked.",
+        "Orders the findings so the open SSH rule and the wildcard role come before lesser items, and gives each the resource name, why it matters and corrected code."
+      ],
+      "why_skill_matters": "The stage appears only as an aside (\"prod account on Thursday\"). The SSH exposure is one line among benign-looking resources, and the wildcard role sits in a comment. The request is casual and asks only if there is anything to worry about."
+    },
+    {
+      "id": "infra-validation-rules-3",
+      "title": "Dev environment sandbox review",
+      "target_section": "Interaction Guidelines",
+      "prompt": "This is our DEV environment only (CDK in Python, just a playground for the team, torn down every few weeks). Can you review the stack below and tell me what really needs fixing? I don't want to be pushed into spending money on things dev doesn't need.\n\n```\ndb = rds.DatabaseInstance(self, \"DevDb\",\n    engine=rds.DatabaseInstanceEngine.postgres(version=rds.PostgresEngineVersion.VER_15),\n    instance_type=ec2.InstanceType(\"t3.small\"),\n    vpc=vpc,\n    multi_az=False,\n    backup_retention=Duration.hours(24),\n    removal_policy=wipe_on_removal(),    # helper: deleted with the stack\n    deletion_protection=False,\n)\n\nqueue = Queue(self, \"IngestQueue\")\n\nfn = NodejsFunction(self, \"IngestFn\", entry=\"src/ingest.ts\", timeout=Duration.minutes(1))\nfn.add_event_source(SqsEventSource(queue))\n\nlogs.LogGroup(self, \"IngestLogs\",\n    log_group_name=\"/dev/ingest\",\n    retention=logs.RetentionDays.ONE_WEEK,\n)\n```",
+      "rubric": [
+        "Treats the single-AZ DevDb, one-day backups and delete-with-stack behaviour as acceptable or optional trade-offs for this development stack, not as must-fix problems.",
+        "Judges the one-week log retention on IngestLogs as appropriate for development rather than asking for a much longer period.",
+        "Points out that IngestQueue has no dead-letter queue for messages IngestFn fails to process, and recommends adding one with retention of around 14 days.",
+        "Says what was and was not covered, for example that only the four resources shown were considered and the VPC and alarms are outside what was pasted.",
+        "Separates must-fix items from should-fix and optional ones, and each finding names its resource and gives example code for the fix."
+      ],
+      "why_skill_matters": "A dev-stage stack with settings that would be serious in production, plus a real gap (a queue feeding a function with no dead-letter queue). Checks that stage drives severity and that log retention is judged against the stage."
+    },
+    {
+      "id": "infra-validation-rules-4",
+      "title": "Production stack with stateful stores and weak failure handling",
+      "target_section": "4.4 Backup and Recovery (MANDATORY for stateful resources)",
+      "prompt": "Production launch is next week for our appointment-booking backend. CDK in Python, deploying to the prod account. Please validate what's below, nobody has reviewed the AWS side yet.\n\n```\nappointments = ddb.Table(self, \"Appointments\",\n    partition_key=appt_pk,\n    removal_policy=wipe_on_removal(),    # helper: deleted with the stack\n)\n\npatients = ddb.Table(self, \"Patients\",\n    partition_key=patient_pk,\n    removal_policy=wipe_on_removal(),\n    point_in_time_recovery=False,\n)\n\ntopic = sns.Topic(self, \"ReminderTopic\")\nreminder_fn = NodejsFunction(self, \"ReminderFn\", entry=\"src/reminder.ts\")\ntopic.add_subscription(subs.LambdaSubscription(reminder_fn))\n\nlogs.LogGroup(self, \"ReminderLogs\", log_group_name=\"/prod/reminder\")\nlogs.LogGroup(self, \"ApiLogs\",\n    log_group_name=\"/prod/api\",\n    retention=logs.RetentionDays.THREE_DAYS,\n)\n```",
+      "rubric": [
+        "Calls out that Appointments and Patients are deleted when the stack is removed and have no point-in-time recovery or backup, and shows how to retain them and enable recovery.",
+        "Flags that ReminderLogs has no retention period at all and that ApiLogs keeps only three days, and recommends a longer period fitting production (about 90 days or more).",
+        "Notes that ReminderFn, invoked through the SNS subscription, has no dead-letter queue or failure destination for failed reminders, and recommends one.",
+        "States which parts were checked and says that nothing outside the pasted resources, such as API definitions, IAM and alarms, was reviewed.",
+        "Lists the data-loss risks (Appointments, Patients) before the lesser logging and failure-handling items, each with the resource named, its impact and fixed code."
+      ],
+      "why_skill_matters": "Two stateful DynamoDB stores set to be deleted with no recovery, an SNS-to-Lambda path with no failure destination, and log groups with no or short retention, all explicitly in production."
+    },
+    {
+      "id": "infra-validation-rules-5",
+      "title": "Staging role and firewall review",
+      "target_section": "2.1 IAM Policy Validation (MANDATORY)",
+      "prompt": "We're about to promote our reporting service to STAGING. It's a CDK app in Python. Could you look over the security side of this? Compliance isn't a factor yet, we just don't want to embarrass ourselves.\n\nPolicy attached to ReportRole (assumed by our lambda):\n```\n{\"Version\": \"2012-10-17\",\n \"Statement\": [{\"Effect\": \"Allow\", \"Action\": \"*\", \"Resource\": \"*\"}]}\n```\n\nInbound rules as they'll be created:\n```\nmongo-sg   tcp 27017   from anywhere on the internet   \"reports team\"\njump-sg    tcp 22      from 203.0.113.0/24             \"office\"\n```\n\n```\nexports = Bucket(self, \"Exports\", versioned=True)\n```",
+      "rubric": [
+        "Flags that ReportRole may do every action on every resource, treats it as a serious problem and proposes a narrow list of actions scoped to the specific resources the reporting service uses.",
+        "Flags that mongo-sg is open to the entire internet on the database port 27017, treats it as must-fix, and suggests restricting it to the app's firewall group or a private range.",
+        "Recognises that jump-sg is acceptable because SSH is limited to the office range 203.0.113.0/24, and does not report it as an open-internet problem.",
+        "Says it reviewed only what was pasted and that public-access blocking on Exports, logging and alarms were not shown or could not be confirmed.",
+        "Presents the role and database exposure findings first, ahead of minor suggestions, with each naming its resource, impact and corrected code."
+      ],
+      "why_skill_matters": "A staging promotion with an all-powerful role, a database port open to the world, and a correctly restricted SSH rule that should not be flagged. Checks IAM and network findings and fair severity."
+    },
+    {
+      "id": "infra-validation-rules-6",
+      "title": "Database \"internal only\" comment hides open ingress",
+      "target_section": "CATEGORY 4: RELIABILITY & RESILIENCE (High Priority)",
+      "prompt": "Quick sanity check please, nothing fancy. This is the payments ledger DB for our PRODUCTION cluster, CDK in Python. A teammate already looked at the firewall rule and said it's fine since it's internal only (see the comment). I just want a second pair of eyes since we cut over on Monday.\n\n```\n# Ledger database. Internal only, reachable via company VPN.\n# inbound rule:  ledger-sg   tcp 1433   source: anywhere on the internet   \"sql server\"\n\nledger = rds.DatabaseInstance(self, \"Ledger\",\n    engine=rds.DatabaseInstanceEngine.sql_server_se(version=rds.SqlServerEngineVersion.VER_15),\n    instance_type=ec2.InstanceType(\"r5.xlarge\"),\n    vpc=vpc,\n    vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),\n    security_groups=[ledger_sg],\n    multi_az=False,\n    backup_retention=Duration.hours(168),\n    deletion_protection=False,\n    removal_policy=wipe_on_removal(),    # helper: deleted with the stack\n)\n```",
+      "rubric": [
+        "Points out that ledger-sg allows the whole internet to reach SQL Server port 1433 despite the \"internal only\" comment, treats it as must-fix, and suggests restricting it to the VPN or application range.",
+        "Calls out that Ledger has no deletion protection and is deleted with the stack in production, and shows turning protection on and a retain or snapshot behaviour.",
+        "Demands multi-AZ for Ledger because it is production and a payments ledger, instead of treating single-AZ as an optional saving.",
+        "Says the review covered only this one database and its rule, that alarms, VPC routing and the actual VPN setup were not seen, so the \"internal only\" claim is unverified.",
+        "Puts the internet-open database rule and the data-loss settings ahead of lesser items, each naming Ledger or ledger-sg, the impact and corrected code."
+      ],
+      "why_skill_matters": "A comment claims the database is internal only and a colleague has signed off, but the inbound rule is open to the whole internet. The same instance is single-AZ with no deletion protection in a production setting. Checks whether the answer trusts the comment or the code."
+    },
+    {
+      "id": "infra-validation-rules-7",
+      "title": "Staging pipeline function with broad permissions and no failure path",
+      "target_section": "4.2 Dead Letter Queues (MANDATORY)",
+      "prompt": "Can you check this for me? It's the image-processing pipeline in our STAGING environment (CDK, Python). I'm mainly worried that something fails quietly and we don't notice for days.\n\n```\njobs = ddb.Table(self, \"Jobs\", partition_key=job_pk)\n\ninbox = Queue(self, \"ImageInbox\", visibility_timeout=Duration.minutes(5))\n\nresizer = NodejsFunction(self, \"Resizer\",\n    entry=\"src/resizer.ts\",\n    timeout=Duration.minutes(4),\n)\nresizer.add_event_source(SqsEventSource(inbox, batch_size=10))\n\n# extra policy attached to Resizer's role:\n# {\"Effect\": \"Allow\", \"Action\": \"dynamodb:*\", \"Resource\": \"*\"}\n\nlogs.LogGroup(self, \"ResizerLogs\",\n    log_group_name=f\"/aws/lambda/{resizer.function_name}\",\n    retention=logs.RetentionDays.INFINITE,\n)\n```",
+      "rubric": [
+        "Identifies that ImageInbox has no dead-letter queue, so messages Resizer keeps failing on would be retried and then lost without trace, and recommends one with retention of about 14 days.",
+        "Flags the Resizer policy granting every DynamoDB action on all resources as too broad, and proposes only the needed actions on the Jobs ARN.",
+        "Flags that ResizerLogs is kept forever and recommends a bounded period suited to staging (around 30 days).",
+        "Mentions that only the pasted resources were examined, and that alarms for Resizer errors or queue depth cannot be confirmed from this code.",
+        "Orders the findings from most to least serious, and gives each a named resource, its impact and example code."
+      ],
+      "why_skill_matters": "The user's worry about silent failure points to the missing dead-letter queue. The code also has a service-wide DynamoDB grant on all resources and a log group with infinite retention in staging."
+    },
+    {
+      "id": "infra-validation-rules-8",
+      "title": "Launch-readiness question with nothing attached",
+      "target_section": "MANDATORY FIRST STEP - READ THIS",
+      "prompt": "hey, we launch our patient scheduling app to real clinics on Monday and I'm nervous about the AWS side. We built it with CDK and I think there's a database and some lambdas in there. can you go through everything and tell me if it's safe to go live? don't want to leak anyone's health data\n\nI'm not great with the details so just tell me what you find.",
+      "rubric": [
+        "Asks the user for the code format (such as CDK in Python or in another language), where the code is or an invitation to paste it, and the stage being launched, rather than inventing a review.",
+        "Does not produce specific findings about the database or the lambdas, since nothing has been supplied.",
+        "Treats the launch to real clinics as a production stage in its framing, or asks the user to confirm the stage, noting that production brings stricter demands such as backups, multi-AZ and alarms.",
+        "Does not say or imply the setup is safe or approved, and makes clear that no code has been reviewed yet.",
+        "The request for details marks which items are needed to begin and which extras (compliance standards such as HIPAA, review focus, known concerns) are optional."
+      ],
+      "why_skill_matters": "A nervous user with a health-data app asks for a go-live check but attaches nothing and names no format, location or stage. The answer should ask for the missing details, not make up findings, and should flag that production stakes apply."
+    }
+  ]
+}

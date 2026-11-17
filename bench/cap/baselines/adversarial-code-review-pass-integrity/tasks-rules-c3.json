@@ -1,0 +1,123 @@
+{
+  "format_version": 1,
+  "skill": "adversarial-code-review-pass-integrity",
+  "batch": "rules-c3",
+  "generated_at": "2026-11-10T09:25:02.558Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "30611f956736151c71889bc29f67a40f22e90477c5377c44b4d7a75b21ff0d75",
+  "scenarios": [
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-1",
+      "title": "Gift card redemption shared by a family",
+      "target_section": "What to look for",
+      "prompt": "hey, can you sanity check this before I push it? we're adding gift card redemption to checkout. cards can be shared across a household so two people could easily be paying at the same time from different phones. no tests yet, I'll add them \"later\" lol\n\n```js\n// giftcards/redeem.js\nasync function redeem(cardId, amount) {\n  const { Item: card } = await ddb.get({ TableName: 'GiftCards', Key: { cardId } });\n  if (!card || card.balance < amount) throw new Error('insufficient_balance');\n  card.balance -= amount;\n  card.lastRedeemedAt = Date.now();\n  await ddb.put({ TableName: 'GiftCards', Item: card });\n  return card.balance;\n}\n\n// routes/checkout.js\nrouter.post('/checkout/giftcard', async (req, res) => {\n  const remaining = await redeem(req.body.cardId, req.body.amount);\n  res.json({ remaining });\n});\n```\n\nThe GiftCards table has a `version` number attribute that the admin tool bumps on every edit, if that matters.",
+      "rubric": [
+        "Identifies that redeem reads the card, subtracts in memory and writes the whole item back, so two simultaneous redemptions on the same card can both pass the balance check and one deduction is lost (the card is overspent), and treats this as a must-fix problem.",
+        "Proposes a concrete guard on the write in redeem, such as a conditional put/update that requires the balance or the version attribute to still match what was read (or an atomic decrement conditioned on balance >= amount), with a retry or error when it fails.",
+        "Points out that the new redemption write path has no test, and suggests a test covering concurrent or competing redemptions of the same card, ranking the missing test as a should-fix rather than as the most severe item.",
+        "Each finding names the location (redeem.js or the put line) and gives a specific scenario, for example two household members each redeeming against the same starting balance, plus a specific code change.",
+        "Does not ask for a multi-item transaction around the single put on the GiftCards item; the fix is a guard on that one write."
+      ],
+      "why_skill_matters": "A read-modify-write on a shared gift card record with a blind put, the user stating concurrent use, a version attribute available, and no tests. This makes the lost-update, the guard, and the missing-test rules matter, and the single-record write checks that the answer does not over-ask for a transaction."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-2",
+      "title": "SMS reminder sender with retries",
+      "target_section": "Output format",
+      "prompt": "Need a review of this Python worker for appointment reminders. Our SMS provider bills per message and does not dedupe anything. Timeouts from them are common, and sometimes the text actually went out even though we got a timeout.\n\n```python\ndef send_reminder(reminder_id):\n    r = db.reminders.get(reminder_id)\n    sent = False\n    for attempt in range(4):\n        try:\n            sms.send(to=r.phone, body=r.text)\n            sent = True\n            break\n        except TimeoutError:\n            time.sleep(2 ** attempt)\n    if sent:\n        db.reminders.update(reminder_id, status=\"sent\", sent_at=now())\n    else:\n        # give up, clean it out so the queue doesn't clog\n        db.reminders.delete(reminder_id)\n        log.warning(\"reminder %s dropped\", reminder_id)\n```\n\nThe status update on success is a normal single row update, nothing else is touched there.",
+      "rubric": [
+        "Flags that the retry loop around sms.send can send the same text to the patient up to four times, because a timeout may follow a message that was already delivered, and that the provider does not dedupe; recommends a dedupe or idempotency token per reminder (or checking delivery status before resending).",
+        "Flags that the give-up branch deletes the reminder row, so a reminder that failed to send disappears with no record or way to retry; suggests marking it failed or keeping it for retry or a dead-letter instead, and rates this as a serious problem.",
+        "Does not require a transaction for the success-path status update, which is a lone single-row write.",
+        "Each concern refers to a specific place in the snippet (the retry loop, the delete in the else branch), describes what goes wrong for a concrete reminder or patient, and states a specific change.",
+        "Does not raise a lost-update or concurrency concern for the single-row status update that the code does not actually exhibit, or at most mentions it as a minor aside."
+      ],
+      "why_skill_matters": "The request contains retry around a non-repeatable send, a failure branch that deletes state, and an explicitly single-row update that tempts an over-eager transaction demand."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-3",
+      "title": "Ride dispatch event handlers",
+      "target_section": "Usage",
+      "prompt": "We're moving ride dispatch to events (SNS fanning into one standard SQS queue, consumers scaled to ~12 instances). Please review the handlers below. Product says RideRequested always happens first, then DriverAccepted, and a rider can cancel at any time.\n\n```ts\n// handlers/rideEvents.ts\nexport async function onDriverAccepted(e: DriverAccepted) {\n  await rides.update(e.rideId, { status: 'ASSIGNED', driverId: e.driverId });\n}\n\nexport async function onRideCancelled(e: RideCancelled) {\n  await rides.update(e.rideId, { status: 'CANCELLED', cancelledAt: e.at });\n}\n\nexport async function onRideRequested(e: RideRequested) {\n  await rides.put({ rideId: e.rideId, status: 'REQUESTED', riderId: e.riderId, version: 1 });\n}\n```\n\n`rides` is a thin wrapper over the table client. Each ride item already has a numeric `version` field that nobody increments yet, and the wrapper's `update` takes an optional `ifVersion` argument.",
+      "rubric": [
+        "Points out that the handlers assume RideRequested, DriverAccepted and RideCancelled are processed in that order although a standard queue with many consumers gives no ordering, and describes a concrete outcome such as an accepted event processed before the request creating the ride, or a cancelled ride being flipped back to ASSIGNED.",
+        "Proposes a sequencing mechanism, for example per-ride ordered delivery (FIFO with the ride id as group), event sequence numbers or timestamps compared on write, or a state machine that rejects invalid transitions.",
+        "Recommends using the existing version field with the wrapper's ifVersion option (or an equivalent conditional write), incrementing it on each transition, so a stale or late event cannot overwrite a newer state.",
+        "Notes that onRideRequested does an unconditional put and the other handlers unconditionally update the status, so a late RideRequested can overwrite a ride that was already assigned or cancelled.",
+        "Findings cite the specific handler and give a scenario with specific events in a specific order, with a concrete fix rather than general advice to be careful about ordering."
+      ],
+      "why_skill_matters": "Three event handlers that depend on arrival order, blind status writes, and an unused version field with an ifVersion option available."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-4",
+      "title": "Project archive with test fixtures",
+      "target_section": "Out of scope",
+      "prompt": "PR review please, TypeScript. This adds `archiveProject` and a test for it. Context: we already have `db/tx.ts` which exports `runInTransaction(fn)` and the billing code uses it for everything multi-write.\n\n```ts\n// projects/archive.ts\nexport async function archiveProject(projectId: string, actor: string) {\n  await db.projects.update(projectId, { status: 'ARCHIVED' });\n  await db.auditLog.put({ id: uuid(), projectId, actor, action: 'ARCHIVE', at: Date.now() });\n  await db.memberships.deleteByProject(projectId);\n}\n```\n\n```ts\n// projects/archive.test.ts\nbeforeEach(async () => {\n  await db.projects.batchPut(range(50).map(i => ({ id: `p${i}`, status: 'ACTIVE' })));\n  await db.memberships.batchPut(fixtureMemberships);\n});\n\nafterEach(async () => {\n  await db.projects.deleteAll();\n  await db.memberships.deleteAll();\n  await db.auditLog.deleteAll();\n});\n\nit('archives a project and removes memberships', async () => {\n  await archiveProject('p7', 'user-1');\n  expect((await db.projects.get('p7')).status).toBe('ARCHIVED');\n  expect(await db.memberships.listByProject('p7')).toHaveLength(0);\n});\n```",
+      "rubric": [
+        "Does not criticize the beforeEach batch seeding or the afterEach deleteAll cleanup in the test file as integrity defects.",
+        "Still flags that archiveProject itself performs three related writes (status update, audit entry, membership deletion) as separate calls, so a failure midway leaves, for example, an archived project with members still attached or no audit record, even though the test being present exercises it.",
+        "Notes that the repo already has runInTransaction in db/tx.ts used by billing, and recommends wrapping the three writes in it rather than just saying a transaction mechanism is missing or inventing a new one.",
+        "The finding about archiveProject cites the file and function, names the concrete partial-failure outcome, and gives a specific fix.",
+        "Does not claim the archive path lacks any test, since it has one; if anything notes that the test only covers the happy path and not a mid-sequence failure."
+      ],
+      "why_skill_matters": "A test file with heavy fixture seeding and teardown sits next to a production function that does three non-atomic writes, and a transaction helper exists in the repo. The test scaffolding tempts the reviewer to flag or to skip the whole file."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-5",
+      "title": "Account merge in a layered codebase",
+      "target_section": "Codebase awareness",
+      "prompt": "Hi, this is a review of PR #482 \"Account tidy-ups\" from a new hire on our TS backend. Description from the PR: \"Adds `touchLastLogin` for the session refresh and `mergeAccounts` for the support tool's duplicate-account merge. Used the db client directly since I couldn't find examples.\" For context, our data access normally goes through `AccountRepo` (src/repos/accountRepo.ts) and it exposes `withTransaction(fn)`, which `AccountRepo.closeAccount` uses. Nobody else calls `dynamo` directly outside the repo folder.\n\n```ts\n// src/services/accountMaintenance.ts\nimport { dynamo } from '../clients/dynamo';\n\nexport async function touchLastLogin(accountId: string) {\n  await dynamo.update({\n    TableName: 'Accounts',\n    Key: { accountId },\n    UpdateExpression: 'SET lastLoginAt = :now',\n    ExpressionAttributeValues: { ':now': Date.now() },\n  });\n}\n\nexport async function mergeAccounts(keepId: string, dropId: string) {\n  const drop = await dynamo.get({ TableName: 'Accounts', Key: { accountId: dropId } });\n  await dynamo.update({\n    TableName: 'Accounts',\n    Key: { accountId: keepId },\n    UpdateExpression: 'ADD loyaltyPoints :p',\n    ExpressionAttributeValues: { ':p': drop.Item.loyaltyPoints },\n  });\n  await dynamo.update({\n    TableName: 'Accounts',\n    Key: { accountId: dropId },\n    UpdateExpression: 'SET #s = :closed, loyaltyPoints = :zero',\n    ExpressionAttributeNames: { '#s': 'status' },\n    ExpressionAttributeValues: { ':closed': 'MERGED', ':zero': 0 },\n  });\n}\n```\n\nTests are in the next PR, per the author.",
+      "rubric": [
+        "Calls out that the new service reaches for the dynamo client directly instead of going through AccountRepo and its withTransaction, and asks for the code to be moved or rewritten through the repo layer.",
+        "Does not ask for a transaction around touchLastLogin, which is a lone single-item update; any transaction demand is limited to mergeAccounts.",
+        "Names the failure in mergeAccounts: if the second update fails or the process dies after points are added to keepId, the points exist on both accounts (or are duplicated on retry), and the merge is half done.",
+        "Each concern cites the function and gives a concrete suggestion, such as doing the point transfer and the close of dropId inside AccountRepo.withTransaction.",
+        "Notes that mergeAccounts, a new write path that moves points, ships without a test, and treats this as worth fixing though less severe than the atomicity problem, even though the author promises tests in a later PR."
+      ],
+      "why_skill_matters": "Contains a lone single-item update that must not be flagged, a multi-write merge that bypasses a repo with a transaction helper, and an easily overlooked line saying tests will come later."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-6",
+      "title": "Legacy customer import cleanup",
+      "target_section": "Overview",
+      "prompt": "Python + Postgres. This is a one-off-ish import job that copies rows from `legacy_customers` into `customers`, run nightly. I added the failure handling and a `requeue_failed` helper. Please review.\n\n```python\ndef import_batch(conn, batch_id):\n    cur = conn.cursor()\n    try:\n        cur.execute(\"INSERT INTO customers (id, email, balance) \"\n                    \"SELECT id, email, balance FROM legacy_customers WHERE batch_id=%s\", (batch_id,))\n        cur.execute(\"UPDATE import_batches SET state='done' WHERE id=%s\", (batch_id,))\n        conn.commit()\n    except Exception:\n        conn.rollback()\n        # clear out so tomorrow's run starts clean\n        cur.execute(\"DELETE FROM legacy_customers WHERE batch_id=%s\", (batch_id,))\n        cur.execute(\"UPDATE customers SET balance = 0 WHERE id IN \"\n                    \"(SELECT id FROM legacy_customers WHERE batch_id=%s)\", (batch_id,))\n        conn.commit()\n        raise\n\ndef requeue_failed(conn):\n    cur = conn.cursor()\n    cur.execute(\"UPDATE import_batches SET state='pending' WHERE state='failed'\")\n    conn.commit()\n```\n\ntests/conftest.py has a fixture that bulk-inserts 1000 fake legacy rows before each test and TRUNCATEs customers, legacy_customers and import_batches afterwards. The only test file so far is `test_parse_row.py`.",
+      "rubric": [
+        "Flags that the except branch deletes the batch's rows from legacy_customers after a failed import, destroying the only source copy so the failed batch can never be retried, and rates it as a severe problem.",
+        "Notes that the cleanup resets balances to 0 on customers, and that because the delete runs first the subquery matches nothing; either way, overwriting balances on an error path is risky, and suggests leaving data untouched or marking the batch failed.",
+        "Points out that import_batch and requeue_failed write data but only test_parse_row exists, so neither mutation is tested, and ranks this as a should-fix item below the data-destroying error path.",
+        "Does not treat the conftest bulk insert and TRUNCATE teardown as a problem.",
+        "Each finding gives the function or line, the concrete outcome for the nightly job (for example lost legacy rows after a failure), and a specific fix."
+      ],
+      "why_skill_matters": "A failure branch that deletes source rows and zeroes balances, new write functions with no covering tests, and test fixtures with bulk seeding and truncation that should be left alone."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-7",
+      "title": "Wiki page save with a half-guard",
+      "target_section": "Severity guidance",
+      "prompt": "Quick one. Our internal wiki lets several people edit the same page, and last week two folks lost edits. I \"fixed\" it in this Go change and want a review. Pages have a `version` int column that the loader already returns to the editor.\n\n```go\nfunc (s *PageStore) Save(ctx context.Context, id string, body string) error {\n    res, err := s.db.ExecContext(ctx,\n        `UPDATE pages SET body = $1, updated_at = now()\n         WHERE id = $2 AND deleted_at IS NULL`, body, id)\n    if err != nil {\n        return err\n    }\n    n, _ := res.RowsAffected()\n    if n == 0 {\n        return ErrPageNotFound\n    }\n    return nil\n}\n```\n\nThe handler passes the editor's body straight to Save. I haven't added a test for Save since it's \"just an update\".",
+      "rubric": [
+        "Says Save still lets one editor overwrite another's changes: the update only checks the page exists and is not deleted, so a save based on an older copy replaces newer text, which means the reported lost edits are not fixed; rates this as a top-severity problem.",
+        "Recommends requiring the version in the WHERE clause (UPDATE ... WHERE id = $2 AND version = $3, incrementing it, and returning a conflict when zero rows match), which means the handler must pass the version the editor loaded.",
+        "Recognizes the existing deleted_at/exists check as a guard that is present but weaker than what the situation needs, rather than treating the write as completely unguarded.",
+        "Says Save should have a test despite being a simple update, ideally covering two saves racing from the same starting version, and ranks the missing test as a should-fix.",
+        "Gives a concrete scenario (editor A and B both load version 5, A saves, B saves and wipes A's text) tied to the Save function, and a specific code-level fix."
+      ],
+      "why_skill_matters": "The change has a partial guard (deleted_at check) on a contested record, an unused version column, and no test. It makes the lost-update, stronger guard, and test-coverage rules matter."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-rules-8",
+      "title": "Subscription charge route and payment webhooks",
+      "target_section": "Codebase awareness",
+      "prompt": "Reviewing a PR for our Express payments service. Background: `middleware/idempotency.js` stores the response keyed by the client's Idempotency-Key header and replays it on duplicates. `POST /orders` and `POST /refunds` both use it via `router.post('/orders', idempotency(), ...)`.\n\nNew in this PR:\n\n```js\n// routes/subscriptions.js\nrouter.post('/subscriptions/:id/charge', async (req, res) => {\n  const sub = await subs.get(req.params.id);\n  let charge;\n  for (let i = 0; i < 3; i++) {\n    try {\n      charge = await gateway.charges.create({ amount: sub.amount, customer: sub.customerId });\n      break;\n    } catch (err) {\n      if (err.status < 500) throw err;\n    }\n  }\n  await subs.update(sub.id, { lastChargeId: charge.id, status: 'PAID' });\n  res.json(charge);\n});\n\n// webhooks/payments.js\nexport async function onPaymentEvent(evt) {\n  if (evt.type === 'payment.authorized') {\n    await payments.update(evt.paymentId, { state: 'AUTHORIZED' });\n  } else if (evt.type === 'payment.captured') {\n    // authorized always arrives first\n    await payments.update(evt.paymentId, { state: 'CAPTURED', capturedAt: evt.at });\n  }\n}\n```\n\nThe gateway has been returning 502s now and then, sometimes after it already took the money.",
+      "rubric": [
+        "Flags the retry loop around gateway.charges.create: a 5xx can arrive after the charge went through, so the retry can bill the customer two or three times; asks for a stable idempotency token passed to the gateway for the charge.",
+        "Points out that the repo already has idempotency middleware used by /orders and /refunds, and that the new charge route skips it, recommending adding idempotency() to the route rather than writing a new mechanism.",
+        "Flags that onPaymentEvent assumes payment.authorized is processed before payment.captured, and describes a race where a late authorized event overwrites CAPTURED with AUTHORIZED (or captured lands first and is later reverted).",
+        "Suggests a way to guard against reordering, such as only allowing forward state transitions, comparing event timestamps or sequence numbers, or a version check on the payments update.",
+        "Each concern names the route or handler and gives a concrete failure for a customer or payment record, with a specific suggested fix."
+      ],
+      "why_skill_matters": "A retry loop that creates charges, an existing idempotency middleware that the new route bypasses, and webhook handlers that assume event order."
+    }
+  ]
+}

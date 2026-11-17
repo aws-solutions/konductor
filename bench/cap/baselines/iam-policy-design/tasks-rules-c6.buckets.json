@@ -1,0 +1,297 @@
+{
+  "format_version": 1,
+  "skill": "iam-policy-design",
+  "batch": "rules-c6",
+  "rules": {
+    "iam-policy-design-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "iam-policy-design-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "iam-policy-design-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "iam-policy-design-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "iam-policy-design-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "iam-policy-design-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "iam-policy-design-r07": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "iam-policy-design-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "iam-policy-design-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "iam-policy-design-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "iam-policy-design-r11": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "iam-policy-design-r12": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "iam-policy-design-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r10"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r04"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r05"
+      },
+      "7": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r09"
+      },
+      "8": {
+        "bucket": "guard",
+        "rule_id": "iam-policy-design-r07"
+      }
+    },
+    "iam-policy-design-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r09"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "iam-policy-design-r07"
+      }
+    },
+    "iam-policy-design-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r08"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "iam-policy-design-r12"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "iam-policy-design-r07"
+      }
+    },
+    "iam-policy-design-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r11"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r02"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "iam-policy-design-r07"
+      }
+    },
+    "iam-policy-design-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r10"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r11"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r02"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r08"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "iam-policy-design-r07"
+      }
+    },
+    "iam-policy-design-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r10"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r03"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "iam-policy-design-r12"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "iam-policy-design-r07"
+      }
+    },
+    "iam-policy-design-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r08"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r02"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r09"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "iam-policy-design-r07"
+      }
+    },
+    "iam-policy-design-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "iam-policy-design-r03"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "iam-policy-design-r12"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "iam-policy-design-r07"
+      }
+    }
+  }
+}

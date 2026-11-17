@@ -1,0 +1,289 @@
+{
+  "format_version": 1,
+  "skill": "code-review",
+  "batch": "rules-b6",
+  "rules": {
+    "code-review-r01": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "code-review-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "code-review-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "code-review-r04": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "code-review-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "code-review-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "code-review-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "code-review-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "code-review-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "code-review-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "code-review-r11": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "code-review-r12": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "code-review-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "code-review-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "code-review-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "code-review-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "code-review-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "code-review-r06"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "code-review-r05"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "code-review-r11"
+      }
+    },
+    "code-review-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "code-review-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "code-review-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "code-review-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "code-review-r06"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "code-review-r11"
+      }
+    },
+    "code-review-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "code-review-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "code-review-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "code-review-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "code-review-r06"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "code-review-r07"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "code-review-r11"
+      }
+    },
+    "code-review-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "code-review-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "code-review-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "code-review-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "code-review-r06"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "code-review-r07"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "code-review-r11"
+      }
+    },
+    "code-review-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "code-review-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "code-review-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "code-review-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "code-review-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "code-review-r06"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "code-review-r10"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "code-review-r11"
+      }
+    },
+    "code-review-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "code-review-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "code-review-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "code-review-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "code-review-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "code-review-r06"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "code-review-r11"
+      }
+    },
+    "code-review-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "code-review-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "code-review-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "code-review-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "code-review-r06"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "code-review-r11"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "code-review-r11"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "code-review-r12"
+      }
+    },
+    "code-review-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "code-review-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "code-review-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "code-review-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "code-review-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "code-review-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "code-review-r11"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "code-review-r12"
+      }
+    }
+  }
+}

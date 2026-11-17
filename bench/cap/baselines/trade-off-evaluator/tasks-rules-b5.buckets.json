@@ -1,0 +1,285 @@
+{
+  "format_version": 1,
+  "skill": "trade-off-evaluator",
+  "batch": "rules-b5",
+  "rules": {
+    "trade-off-evaluator-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "trade-off-evaluator-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "trade-off-evaluator-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "trade-off-evaluator-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "trade-off-evaluator-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "trade-off-evaluator-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "trade-off-evaluator-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "trade-off-evaluator-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "trade-off-evaluator-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "trade-off-evaluator-r10": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "trade-off-evaluator-r11": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    },
+    "trade-off-evaluator-r12": {
+      "class": "style",
+      "kept": false,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "trade-off-evaluator-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r08"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "trade-off-evaluator-r10"
+      }
+    },
+    "trade-off-evaluator-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r08"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "trade-off-evaluator-r10"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "trade-off-evaluator-r11"
+      }
+    },
+    "trade-off-evaluator-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r09"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "trade-off-evaluator-r10"
+      }
+    },
+    "trade-off-evaluator-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r07"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "trade-off-evaluator-r10"
+      }
+    },
+    "trade-off-evaluator-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r03"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r08"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "trade-off-evaluator-r10"
+      }
+    },
+    "trade-off-evaluator-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r08"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "trade-off-evaluator-r11"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "trade-off-evaluator-r10"
+      }
+    },
+    "trade-off-evaluator-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r08"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r09"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "trade-off-evaluator-r10"
+      }
+    },
+    "trade-off-evaluator-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "trade-off-evaluator-r04"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "trade-off-evaluator-r10"
+      }
+    }
+  }
+}

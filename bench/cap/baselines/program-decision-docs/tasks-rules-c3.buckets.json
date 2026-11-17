@@ -1,0 +1,285 @@
+{
+  "format_version": 1,
+  "skill": "program-decision-docs",
+  "batch": "rules-c3",
+  "rules": {
+    "program-decision-docs-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-decision-docs-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-decision-docs-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-decision-docs-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-decision-docs-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-decision-docs-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-decision-docs-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-decision-docs-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-decision-docs-r09": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "program-decision-docs-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "program-decision-docs-r11": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    },
+    "program-decision-docs-r12": {
+      "class": "style",
+      "kept": false,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "program-decision-docs-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r10"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r07"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "program-decision-docs-r09"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "program-decision-docs-r11"
+      }
+    },
+    "program-decision-docs-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "program-decision-docs-r09"
+      }
+    },
+    "program-decision-docs-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r06"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "program-decision-docs-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r04"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "program-decision-docs-r11"
+      }
+    },
+    "program-decision-docs-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r06"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "program-decision-docs-r09"
+      }
+    },
+    "program-decision-docs-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r10"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r06"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "program-decision-docs-r09"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "program-decision-docs-r11"
+      }
+    },
+    "program-decision-docs-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "program-decision-docs-r09"
+      }
+    },
+    "program-decision-docs-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r10"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r07"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "program-decision-docs-r09"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "program-decision-docs-r11"
+      }
+    },
+    "program-decision-docs-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r03"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "program-decision-docs-r09"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "program-decision-docs-r08"
+      }
+    }
+  }
+}

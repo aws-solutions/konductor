@@ -1,0 +1,129 @@
+{
+  "format_version": 1,
+  "skill": "policy-validation",
+  "batch": "rules-b8",
+  "generated_at": "2026-11-10T06:00:53.029Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "826e3d2cbcc871acc90e528ace4531c64bfeca6964ad8ca2692bdb185dec2296",
+  "scenarios": [
+    {
+      "id": "policy-validation-rules-1",
+      "title": "Design doc with one concrete role and several named roles",
+      "target_section": "CATEGORY 1: IAM POLICY DESIGN (Critical Priority)",
+      "prompt": "Hey, can you look over the IAM section of our design doc for the invoicing service before we deploy Thursday? Pasting it below.\n\n**Roles in the system**\n\n| Role | Purpose |\n|---|---|\n| invoice-api-role | Lambda execution role for the API |\n| invoice-batch-role | Nightly batch job, reads/writes invoices, probably needs a lot of S3 |\n| finance-admin-role | Humans in finance who fix up bad records |\n| audit-reader-role | Read-only access for auditors |\n| ops-breakglass-role | Emergency access for on-call |\n\nOnly invoice-api-role has been written up so far; the others will get policies once we've agreed the access patterns.\n\n**invoice-api-role policy**\n\n```json\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\"dynamodb:GetItem\", \"dynamodb:PutItem\", \"dynamodb:Query\"],\n      \"Resource\": \"arn:aws:dynamodb:eu-west-1:111122223333:table/invoices\"\n    },\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"s3:*\",\n      \"Resource\": \"*\"\n    },\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\"logs:CreateLogStream\", \"logs:PutLogEvents\"],\n      \"Resource\": \"arn:aws:logs:eu-west-1:111122223333:log-group:/aws/lambda/invoice-api:*\"\n    }\n  ]\n}\n```\n\nThanks!",
+      "rubric": [
+        "Flags the s3 statement in the invoice-api-role policy (all s3 actions on every resource, no justification) as a top-severity, must-fix problem.",
+        "Suggests replacing it with a short list of specific s3 actions and a named bucket or prefix ARN for the invoices use case.",
+        "Does not criticize the permissions of invoice-batch-role, finance-admin-role, audit-reader-role or ops-breakglass-role as over-broad, since no policy is shown; at most notes they cannot be assessed until written.",
+        "The s3 finding explains the impact (e.g. any bucket in the account readable or deletable via this Lambda) and shows the current statement next to a corrected one with remediation steps.",
+        "Presents the s3 wildcard issue as the most severe item and places lesser items (such as missing conditions) in lower-priority groups."
+      ],
+      "why_skill_matters": "The doc has five named roles but only one real policy, which contains a service-wide wildcard on all resources. The note \"probably needs a lot of S3\" tempts a reviewer to flag the batch role. Matters for r01 and r02."
+    },
+    {
+      "id": "policy-validation-rules-2",
+      "title": "Cross-account vendor role trust policy",
+      "target_section": "CATEGORY 1: IAM POLICY DESIGN (Critical Priority)",
+      "prompt": "We're onboarding a third-party analytics vendor and they need to read our clickstream data. I wrote this role and want a sanity check before I send the ARN to them. Their AWS account is 123456789012.\n\nTrust policy: one statement, Effect Allow, Principal AWS = arn:aws:iam::123456789012:root, Action = the standard sts role-assume action. No Condition block.\n\nPermissions policy attached to the role:\n```json\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [{\n    \"Effect\": \"Allow\",\n    \"Action\": \"*\",\n    \"Resource\": \"*\"\n  }]\n}\n```\n\nI figured I'd start broad so they don't come back to us with access errors, and tighten later. The data lives in s3://acme-clickstream-prod/events/ and they only need to read it.",
+      "rubric": [
+        "Flags the trust policy for account 123456789012 as a must-fix problem because anyone in that account could assume the role with no external identifier or condition.",
+        "Provides a corrected trust policy that adds a shared external ID condition (and optionally further restrictions) for the vendor account.",
+        "Flags the allow-everything permissions policy as the most severe kind of issue, rejecting the \"start broad, tighten later\" plan.",
+        "Proposes read-only s3 actions scoped to the acme-clickstream-prod bucket and the events/ prefix as the replacement.",
+        "Each problem is explained with its impact and shown as current versus corrected JSON with concrete steps."
+      ],
+      "why_skill_matters": "Unconditioned cross-account trust plus a full wildcard permissions policy for a vendor who needs only read on one prefix. Matters for r03 and r02."
+    },
+    {
+      "id": "policy-validation-rules-3",
+      "title": "KMS key policy for PHI data",
+      "target_section": "CATEGORY 2: ENCRYPTION COVERAGE (Critical Priority)",
+      "prompt": "Reviewing our patient-records platform's CDK before the HIPAA audit. Here's the KMS key we use for the records bucket. Please check it.\n\n```ts\nconst key = new kms.Key(this, 'PhiKey', {\n  policy: new iam.PolicyDocument({\n    statements: [\n      new iam.PolicyStatement({\n        sid: 'KeyAdmins',\n        principals: [new iam.ArnPrincipal('arn:aws:iam::444455556666:role/phi-key-admin')],\n        actions: ['kms:Create*','kms:Put*','kms:Update*','kms:Disable*','kms:Delete*','kms:Decrypt','kms:Encrypt'],\n        resources: ['*'],\n      }),\n      new iam.PolicyStatement({\n        sid: 'AppAccess',\n        principals: [new iam.ArnPrincipal('arn:aws:iam::444455556666:role/records-app')],\n        actions: ['kms:*'],\n        resources: ['*'],\n      }),\n    ],\n  }),\n});\n\nconst bucket = new s3.Bucket(this, 'RecordsBucket', {\n  encryptionKey: key,\n});\n```\n\nThe bucket holds PHI. Anything we should fix?",
+      "rubric": [
+        "Flags that the phi-key-admin role can also decrypt and encrypt, breaking separation between key management and key use.",
+        "Flags that the records-app role is granted every KMS action, and proposes limiting it to decrypt, encrypt and data-key style use actions only.",
+        "Notes the bucket has no deny for plain-HTTP requests and gives a concrete bucket policy or CDK setting (e.g. enforceSSL) to fix it.",
+        "Ties the findings to a specific HIPAA Security Rule section (such as 164.312 technical safeguards) rather than only saying \"HIPAA\".",
+        "Findings include the current CDK next to a corrected version and remediation steps."
+      ],
+      "why_skill_matters": "KMS policy with the admin able to decrypt, the app holding every KMS action, a PHI bucket without transport enforcement. Matters for r04, r06, r08."
+    },
+    {
+      "id": "policy-validation-rules-4",
+      "title": "Design with justified AWS-managed keys and existing gaps list",
+      "target_section": "CATEGORY 5: COMPLIANCE GAPS (Critical Priority)",
+      "prompt": "Second pair of eyes please on the security design for our internal HR-survey tool (EU employees, hosted in eu-central-1). I only want to hear about things we haven't already caught. Design summary:\n\n**Data classification:** Internal / Confidential (survey responses, employee IDs).\n\n**Encryption:** S3 and DynamoDB use AWS-managed keys (aws/s3, aws/dynamodb). Decision: AWS-managed keys are sufficient for Internal/Confidential data; we don't need customer-managed keys' extra control and cost. TLS 1.2+ enforced via bucket policy denying non-secure transport.\n\n**Access:** Lambda role scoped to the survey table and the responses bucket prefix; no wildcards.\n\n**Logging:** Multi-region trail with log validation and KMS encryption, 400-day retention in S3.\n\n**Compliance Gaps Identified (already tracked)**\n\n| Gap | Owner | Status |\n|---|---|---|\n| No automated deletion of responses after 24 months (GDPR Art. 17) | HR-Eng | Planned Q1 |\n| No DPIA on file | Legal | In progress |\n| Access reviews are manual | IT | Open |\n\n**Next Steps:** implement S3 lifecycle + DynamoDB TTL for deletion; complete DPIA; schedule quarterly access reviews.\n\nOne more detail: the responses bucket replicates to a bucket in us-east-1 for DR.",
+      "rubric": [
+        "Does not restate the three listed gaps (deletion, DPIA, manual access reviews) as new findings; refers to them as already tracked at most.",
+        "Treats the AWS-managed key choice as a documented design decision for the stated data classification, not as an unjustified gap, even if it suggests customer-managed keys as optional hardening.",
+        "Raises the us-east-1 replica as a new GDPR data residency or transfer concern, citing a specific article or chapter (e.g. Article 44 transfers or Article 32) rather than just \"GDPR\".",
+        "The new residency finding states its impact and gives a concrete fix (e.g. replicate to another EU region) with steps.",
+        "Orders what it reports by severity, with must-fix items before optional ones."
+      ],
+      "why_skill_matters": "The doc already lists gaps and justifies keys; the real new issue is a single sentence about a US replica. Matters for r07, r05, r08."
+    },
+    {
+      "id": "policy-validation-rules-5",
+      "title": "CloudFormation with unencrypted stores and loose key policy",
+      "target_section": "CATEGORY 2: ENCRYPTION COVERAGE (Critical Priority)",
+      "prompt": "Quick review of this template for a new customer-portal stack please, shipping tomorrow. It handles customer names and billing addresses.\n\n```yaml\nResources:\n  UploadsBucket:\n    Type: AWS::S3::Bucket\n    Properties:\n      BucketName: portal-uploads-prod\n      VersioningConfiguration:\n        Status: Enabled\n\n  PortalDb:\n    Type: AWS::RDS::DBInstance\n    Properties:\n      Engine: postgres\n      DBInstanceClass: db.t3.medium\n      AllocatedStorage: 50\n      MasterUsername: portaladmin\n      MasterUserPassword: !Ref DbPassword\n      PubliclyAccessible: false\n\n  SessionsTable:\n    Type: AWS::DynamoDB::Table\n    Properties:\n      TableName: portal-sessions\n      BillingMode: PAY_PER_REQUEST\n      AttributeDefinitions:\n        - AttributeName: sid\n          AttributeType: S\n      KeySchema:\n        - AttributeName: sid\n          KeyType: HASH\n\n  PortalKey:\n    Type: AWS::KMS::Key\n    Properties:\n      KeyPolicy:\n        Version: '2012-10-17'\n        Statement:\n          - Sid: AppFull\n            Effect: Allow\n            Principal: { AWS: 'arn:aws:iam::123456789012:role/portal-app' }\n            Action: 'kms:*'\n            Resource: '*'\n          - Sid: Admins\n            Effect: Allow\n            Principal: { AWS: 'arn:aws:iam::123456789012:role/portal-admin' }\n            Action: ['kms:Create*', 'kms:Put*', 'kms:Disable*', 'kms:Decrypt']\n            Resource: '*'\n```\n\nI made the key for later; nothing uses it yet. No other security config yet, we were going to add it if there's time.",
+      "rubric": [
+        "Reports the RDS instance as lacking encryption at rest and gives the property fix (storage encryption with a KMS key).",
+        "Reports that the uploads bucket has no default encryption and no policy denying plain-HTTP requests, with a concrete fix for each.",
+        "Reports that the sessions table has no explicit server-side encryption configuration and shows the setting to add.",
+        "Flags that portal-app holds every KMS action on the key and recommends limiting it to use-only actions.",
+        "Flags that portal-admin can both manage the key and decrypt with it, and recommends removing decrypt from the admin role.",
+        "Connects the unencrypted personal data to a named regulation provision (e.g. GDPR Article 32 or PCI requirement 3) rather than generic compliance talk.",
+        "Findings include current versus corrected YAML and what to do."
+      ],
+      "why_skill_matters": "Three data stores with no encryption and no transport policy, plus a key policy that merges admin and use rights. Matters for r06, r04, r08."
+    },
+    {
+      "id": "policy-validation-rules-6",
+      "title": "Audit logging setup for payment environment",
+      "target_section": "CATEGORY 3: AUDIT LOGGING (High Priority)",
+      "prompt": "We're prepping for PCI assessment of our checkout system. Here's our logging setup from the Terraform; tell me where we stand.\n\n```hcl\nresource \"aws_cloudtrail\" \"main\" {\n  name                          = \"checkout-trail\"\n  s3_bucket_name                = aws_s3_bucket.trail_logs.id\n  is_multi_region_trail         = false\n  enable_log_file_validation    = false\n  include_global_service_events = true\n}\n\nresource \"aws_cloudwatch_log_group\" \"app\" {\n  name              = \"/checkout/app\"\n  retention_in_days = 30\n}\n```\n\nNotes from the team:\n- We run in us-east-1 mainly but the DR stack lives in us-west-2.\n- Nobody set up any alerts. We figure we'd notice if something happened.\n- Someone mentioned the root user was used last month to change a billing setting.\n- Trail log bucket is a plain S3 bucket, default settings.",
+      "rubric": [
+        "Flags the single-region trail as a severe gap given the us-west-2 DR stack, recommending all-region coverage.",
+        "Flags that log file validation is off and the trail logs are not KMS-encrypted, and recommends enabling both.",
+        "Flags the 30-day application log retention as insufficient and gives a longer retention target (at least 90 days, with longer archive).",
+        "Calls for alarms on security events including root account use and IAM policy changes, linking to the root use mentioned in the notes.",
+        "Cites specific PCI-DSS requirement numbers (e.g. Requirement 10 for logging) rather than just naming PCI.",
+        "Findings give the corrected Terraform or filter configuration and concrete steps."
+      ],
+      "why_skill_matters": "Single-region trail, no validation, no encryption, short retention, no alarms, root use. Matters for r09 and r08."
+    },
+    {
+      "id": "policy-validation-rules-7",
+      "title": "Long platform doc with buried public bucket policy and a contractor trust",
+      "target_section": "Validation Workflow",
+      "prompt": "Please do a pre-launch security pass on this section of our design for the \"Atlas\" media-sharing platform. It's long, sorry. Our security lead already wrote up findings in the doc so I only need what's missing.\n\n**Architecture:** users upload to S3, thumbnails made by Lambda, metadata in DynamoDB (SSE with customer key, rotation on). RDS Postgres for accounts, encrypted with a customer key.\n\n**Roles:** thumbnail-fn-role, uploader-role, moderation-role, support-readonly-role, release-pipeline-role (see wiki for responsibilities).\n\n**Known issues (from security lead):**\n1. No WAF in front of the API (tracked, ATLAS-212)\n2. Managed threat detection not yet enabled (tracked, ATLAS-214)\n3. Quarterly access review not documented (SOC 2 CC6.2, tracked)\n\n**Next steps:** enable WAF, enable threat detection, write the access review procedure.\n\n**Policies as drafted:**\n\nthumbnail-fn-role permissions:\n```json\n{\"Version\":\"2012-10-17\",\"Statement\":[\n {\"Effect\":\"Allow\",\"Action\":[\"sqs:ReceiveMessage\",\"sqs:DeleteMessage\"],\"Resource\":\"arn:aws:sqs:us-east-1:123456789012:atlas-thumbs\"},\n {\"Effect\":\"Allow\",\"Action\":[\"dynamodb:UpdateItem\"],\"Resource\":\"arn:aws:dynamodb:us-east-1:123456789012:table/atlas-media-meta\"}\n]}\n```\n\nrelease-pipeline-role trust (our contractor builds the releases from their own account 111122223333): Effect Allow, Principal AWS = arn:aws:iam::111122223333:root, standard sts role-assume action, no Condition block. Its permissions aren't written yet.\n\nBucket policy for atlas-media (so the web app can show images):\n```json\n{\"Version\":\"2012-10-17\",\"Statement\":[\n {\"Effect\":\"Allow\",\"Principal\":\"*\",\"Action\":\"s3:Get*\",\"Resource\":\"arn:aws:s3:::atlas-media/*\"}\n]}\n```\n\nLogging: multi-region trail, validation on, KMS, 1-year retention.",
+      "rubric": [
+        "Does not re-report the missing WAF, the missing threat detection service or the undocumented access review as new findings; at most references them as already tracked.",
+        "Does not criticize the permissions of uploader-role, moderation-role, support-readonly-role or release-pipeline-role as over-broad, since no permission policies are shown for them.",
+        "Flags that the atlas-media bucket policy lets anyone (principal \"*\") read every object, including uploads, and recommends a private bucket with scoped access.",
+        "Flags the contractor account 111122223333 trust on release-pipeline-role as a must-fix because it has no external identifier or condition, and shows a corrected trust policy.",
+        "The public-read finding explains impact (all uploaded media exposed) and shows current versus corrected policy with steps.",
+        "The public-read bucket policy and the contractor trust are placed in the must-fix tier, above lesser suggestions."
+      ],
+      "why_skill_matters": "The doc lists known issues to skip, names five roles with few policies, hides a public-read bucket policy mid-document and an unconditioned contractor trust. Matters for r07, r01, r06, r03."
+    },
+    {
+      "id": "policy-validation-rules-8",
+      "title": "Healthcare startup full review request",
+      "target_section": "CATEGORY 5: COMPLIANCE GAPS (Critical Priority)",
+      "prompt": "Hi! We're a small telehealth startup going live with US patients next month. I'm the only engineer so my security knowledge is patchy. Can you review the setup below and tell me what to fix first?\n\n- Patient notes stored in S3 bucket `tele-notes-prod`, default encryption with the AWS-managed key. We chose that because it was one click and we figured it was good enough; no real reasoning beyond that.\n- Our app logs full request bodies to a log group (they include patient name, DOB and symptoms) with retention set to \"never expire\".\n- Doctors log in with email + password only.\n- No signed agreement with AWS yet, we'll \"sort the paperwork later\".\n- Trail: one trail, multi-region, validation on, KMS-encrypted.\n- Lambda role policy:\n```json\n{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"dynamodb:Query\",\"dynamodb:PutItem\"],\"Resource\":\"arn:aws:dynamodb:us-east-1:123456789012:table/tele-notes-index\"}]}\n```",
+      "rubric": [
+        "Cites specific HIPAA Security Rule sections or provisions (e.g. 164.312 access, encryption and audit controls, 164.308) for the findings.",
+        "Identifies patient data in application logs as a severe violation and recommends redaction or removing the request bodies from logs.",
+        "Treats the AWS-managed key choice as a gap with no justification (only \"one click\"), not as a documented design decision, and recommends customer-managed keys for PHI.",
+        "Checks the bucket for transport security and notes there is no policy denying plain-HTTP requests, providing a statement.",
+        "Does not claim the audit trail is deficient in region coverage, validation or encryption, since it is described as multi-region, validated and encrypted.",
+        "Top findings include a problem, impact, concrete fix example and ordered steps.",
+        "Orders the output from most to least severe so the user knows what to fix first."
+      ],
+      "why_skill_matters": "Weak justification for AWS-managed keys should not count as a design decision; PHI in logs, missing agreement with AWS, no MFA, no transport deny, and a good trail. Matters for r08, r05, r06, r09."
+    }
+  ]
+}

@@ -1,0 +1,129 @@
+{
+  "format_version": 1,
+  "skill": "historical-issues-registry",
+  "batch": "rules-b5",
+  "generated_at": "2026-11-09T21:41:00.073Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "568812d845e17bd41a6245abef2ac660967fa890246e9e786f80b95e34302769",
+  "scenarios": [
+    {
+      "id": "historical-issues-registry-rules-1",
+      "title": "Revision 5 of a ledger service, mixed history",
+      "target_section": "Output",
+      "prompt": "I'm about to post the automated review on revision 5 of our payments ledger change. Before I do, I need you to go through the new candidate findings against the earlier comment history and tell me what actually goes into the report and what gets left out, with a short reason for each. Please also tell me how many you left out.\n\nEarlier comment history (revisions 1-4):\n\n- #101, posted rev 2, src/ledger/writeback.py line 88: \"Data Integrity: unconditional overwrite of settled balance\". Marked resolved. Author reply: \"fixed in a3f9c1, now uses compare-and-set\".\n- #102, posted rev 3, src/api/export.py line 40: \"Security: unvalidated pagination token\". Author reply: \"internal-only, not worth it\". Reviewer Dana (not the author) replied: \"agreed, tokens are signed upstream, no change needed\". Marked resolved.\n- #103, posted rev 4, src/ledger/writeback.py line 150: \"Schema/Contract: silent default for missing currency field\". Marked resolved. Only reply is from the author: \"won't fix, intended behaviour\". Nobody else replied.\n- #104, posted rev 4, src/api/auth.py line 20: \"Security: token logged at info level\". Marked resolved. One reply from someone: \"ok\".\n\nNew candidate findings from revision 5:\n\nA. src/ledger/writeback.py line 92, Data Integrity: unconditional overwrite of settled balance (the refactor dropped the compare-and-set).\nB. src/api/export.py line 44, Security: unvalidated pagination token.\nC. src/ledger/writeback.py line 155, Schema/Contract: silent default for missing currency field.\nD. src/api/export.py line 38, Security: SQL query assembled by string concatenation.\nE. src/api/auth.py line 22, Security: token logged at info level.",
+      "rubric": [
+        "Keeps finding A in the report and says it is a defect that came back after the author's earlier fix in thread #101, rather than treating it as a plain duplicate.",
+        "Leaves finding B (pagination token in export.py) out of the report because Dana, someone besides the change's author, had agreed it needed no change.",
+        "For the omitted finding B, names thread #102 as the earlier comment it matched and gives the reason it was dropped.",
+        "States that exactly one finding was left out.",
+        "Keeps finding D as a new finding even though it sits in export.py a couple of lines from the old #102 comment, because the defect (string-built SQL) is different.",
+        "Keeps finding C because the only reply on #103 came from the author, so the dismissal was never confirmed by anyone else.",
+        "Keeps finding E in the report, since the lone \"ok\" on #104 does not make clear whether the issue was fixed or dismissed."
+      ],
+      "why_skill_matters": "The history has one comment fixed by the author, one dismissed with another person's agreement, one dismissed by the author alone, and one murky comment. The new list has a reintroduced defect, a true repeat of the dismissed one, an author-only-dismissal repeat, a nearby unrelated defect and a murky repeat. This exercises regression handling, dropping decided items, logging with a count, three-part matching and defaulting to keep."
+    },
+    {
+      "id": "historical-issues-registry-rules-2",
+      "title": "Export from an older review tool, revision numbers patchy",
+      "target_section": "Load phase",
+      "prompt": "We use a self-hosted review tool that only records which revision a comment was posted on for some comments (the newer ones). For the older ones the export has nothing there. We're on a new pass of the same review now. Can you work out which of the new findings should go in the report, and annotate any that were already raised before so the reviewer knows where they stand?\n\nExport of earlier comments:\n\n1. id K-8, revision 2, services/sync/merge.rs line 210: \"Data Integrity: missing map guard before merge of remote entries\". Open, no replies.\n2. id K-19, revision not recorded, services/sync/merge.rs line 214: \"Data Integrity: missing map guard before merge of remote entries\". Open, no replies.\n3. id K-23, revision not recorded, services/sync/queue.rs line 60: \"Data Integrity: stale lock held across await point\". Open, no replies.\n4. id K-30, revision 3, services/sync/merge.rs line 120: \"Security: unbounded recursion on nested payload\". Resolved by a reviewer after the author's fix commit.\n\nNew findings this pass:\n\n- N1: services/sync/merge.rs line 208, Data Integrity: missing map guard before merge of remote entries.\n- N2: services/sync/queue.rs line 63, Data Integrity: stale lock held across await point.\n- N3: services/sync/merge.rs line 122, Data Integrity: integer overflow in entry counter.\n\nGive me the final list with your annotations.",
+      "rubric": [
+        "Keeps N1 and labels it as still open from an earlier revision, citing revision 2 as the origin.",
+        "Does not let the comment with no recorded revision (K-19) alter or replace the revision cited for N1; revision 2 is the number used and no number is invented.",
+        "Keeps N2 and labels it as still open from an earlier revision in generic wording, without stating any revision number, since K-23 has none recorded.",
+        "Treats N3 as a new finding with no earlier-issue label, even though it is two lines from the old K-30 comment in the same file, because the defect is different.",
+        "Does not drop anything silently: either nothing is dropped and says so, or any omission is named with the matching comment id.",
+        "Keeps all three findings in the report rather than dropping any on thin evidence."
+      ],
+      "why_skill_matters": "Two open comments match N1, one with revision 2 and one with none, which tests picking the known revision. N2 matches only a comment without a revision, which tests generic labelling. N3 is a coincidence of place with a different defect."
+    },
+    {
+      "id": "historical-issues-registry-rules-3",
+      "title": "Renamed and moved file, shifted lines",
+      "target_section": "Matching Protocol",
+      "prompt": "Our auth module got reorganised between revisions 3 and 6 of this review, so paths and line numbers have moved. Please check my new findings against what reviewers already decided and tell me which ones are repeats that shouldn't be posted again. Explain your matching for each.\n\nEarlier comments (revision 3):\n\n- T-5: lib/auth/session_store.go line 72, \"Security: session token compared with non-constant-time equality\". Author argued it's fine; reviewer Priya (not the author) replied \"fair, tokens are random 256-bit, leave it\". Resolved.\n- T-6: lib/auth/session_store.go line 130, \"Data Integrity: expiry not checked on refresh\". Author argued against; reviewer Priya replied \"no, this is guarded by the caller, drop it\". Resolved.\n\nRevision 6 layout: the file is now internal/auth/session_store.go.\n\nNew findings:\n\n1. internal/auth/session_store.go line 84, Security: session token compared with non-constant-time equality.\n2. internal/auth/session_store.go line 195, Data Integrity: expiry not checked on refresh.\n3. internal/auth/session_store.go line 12, Security: session token compared with non-constant-time equality in the test helper.\n\nTell me which go into the report and which are dropped.",
+      "rubric": [
+        "Recognises finding 1 as the same issue as T-5 despite the move from lib/ to internal/ and the shift from line 72 to 84, and omits it.",
+        "Omits finding 1 because Priya, a non-author reviewer, had agreed it needed no change.",
+        "Keeps finding 2 as new because line 195 is far (about 65 lines) from the old line 130, outside any reasonable drift.",
+        "For each omitted finding, names the earlier comment (T-5) it was matched with and the reason.",
+        "Explains that matching needs file, nearby line and same defect together, not just the file or line alone.",
+        "Does not drop a finding where the match is doubtful; finding 3 (line 12, test helper wording) is kept or flagged as uncertain rather than silently dropped."
+      ],
+      "why_skill_matters": "Finding 1 moved directory and drifted 12 lines; finding 2 drifted far; finding 3 is far in line but same wording. Tests tolerance both ways and logging."
+    },
+    {
+      "id": "historical-issues-registry-rules-4",
+      "title": "Terse finding wording vs longer old comments",
+      "target_section": "Matching Protocol",
+      "prompt": "Quick one. Reviewing a Go API change (revision 4). Earlier comments from revision 2 are below. Reviewer Sam (not the author) signed off on dropping both after the author pushed back. Which of the new findings are just repeats of those and shouldn't be posted again?\n\nOld comments, both resolved, both with Sam's agreement:\n\n- C-1, handlers/list.go line 55: \"Security: unvalidated pagination token on the export endpoint\"\n- C-2, handlers/list.go line 90: \"Data Integrity: missing nil guard on cached entry before dereference in list rendering\"\n\nNew findings, all in handlers/list.go:\n\n- F1, line 57, Security: unvalidated pagination token\n- F2, line 92, Data Integrity: missing guard\n- F3, line 60, Security: unvalidated pagination token on the export endpoint when the cursor is empty\n\nPlease give me the post / don't-post call for F1-F3 and why.",
+      "rubric": [
+        "Keeps F2 (\"missing guard\") in the report because a two-word generic description is not enough to equate it with the longer C-2 comment.",
+        "Leaves F1 out as a repeat of C-1, which Sam had agreed to drop.",
+        "Explains that F1 can match C-1 because it is a three-word description contained in the longer one, unlike F2.",
+        "Checks file, line proximity and defect together for each finding rather than judging on wording alone.",
+        "Names C-1 as the comment that justified omitting F1.",
+        "F3 is not dropped without a stated basis; if omitted, it is tied to C-1, and if it is uncertain it is kept."
+      ],
+      "why_skill_matters": "F2 is a short generic phrase near a longer related old comment; F1 is a three-word phrase that is contained in the old one. Tests the short-phrase exact-match rule."
+    },
+    {
+      "id": "historical-issues-registry-rules-5",
+      "title": "Same thread listed in several revision dumps",
+      "target_section": "Load phase",
+      "prompt": "Our review tool gives me the whole comment history per revision, so the same comment shows up again in each later dump with its state at that time. Below is what I pulled for revisions 2, 3 and 4. We're now on revision 5 and I need the list of new findings that should go in the report. Skip what's already settled; keep what isn't.\n\nRev 2 dump:\n- thread 31, billing/invoice.py line 140, \"Schema/Contract: amount field accepts negative values\". Open.\n- thread 40, billing/invoice.py line 300, \"Data Integrity: unconditional overwrite of invoice total\". Resolved; author said it's intended; reviewer Lena (not author) agreed.\n\nRev 3 dump:\n- thread 31, same place, still open.\n- thread 52, billing/invoice.py line 305, \"Data Integrity: unconditional overwrite of invoice total\". Resolved with author's note \"fixed in 9be21\".\n\nRev 4 dump:\n- thread 31, same place. Now resolved. Author argued the field is validated elsewhere; reviewer Lena replied \"yes, agreed, no change\".\n\nNew findings, revision 5:\n- X1: billing/invoice.py line 142, Schema/Contract: amount field accepts negative values.\n- X2: billing/invoice.py line 302, Data Integrity: unconditional overwrite of invoice total.\n\nWhat goes in?",
+      "rubric": [
+        "Treats thread 31 as a single earlier decision in its latest state (agreed by Lena in rev 4), not as three separate comments, one of which is still open.",
+        "Leaves X1 out because thread 31's latest state is a dismissal agreed by someone other than the author.",
+        "Keeps X2 even though thread 40 had been dismissed with Lena's agreement, because thread 52 on the same defect was fixed.",
+        "Presents X2 as a defect that came back after a fix (thread 52), not as a first-time or already-settled finding.",
+        "Names thread 31 as the reason X1 was omitted.",
+        "Does not drop X2 merely because one of its matching threads was dismissed."
+      ],
+      "why_skill_matters": "Thread 31 appears three times with changing state, which can look like disagreement; the latest state is a dismissal. X2 matches two distinct threads, one dismissed and one fixed."
+    },
+    {
+      "id": "historical-issues-registry-rules-6",
+      "title": "Several open threads and a fix, which revision to cite",
+      "target_section": "Filter phase",
+      "prompt": "Pass 6 of the review on our scheduling service. I've got the earlier comments listed and two new findings. For anything that was raised before and still deserves attention, tell me how to describe its history in the report, and drop anything that a reviewer already ruled out.\n\nEarlier comments:\n\n- S-4, revision 2, sched/planner.ts line 410, \"Security: unvalidated cron expression from tenant config\". Open.\n- S-9, revision 4, sched/planner.ts line 418, \"Security: unvalidated cron expression from tenant config\". Open.\n- S-12, revision not known, sched/planner.ts line 405, \"Security: unvalidated cron expression from tenant config\". Open.\n- S-15, revision 3, sched/store.ts line 77, \"Data Integrity: unconditional overwrite of job state\". Resolved with author note \"fixed in 77ac1\".\n- S-18, revision 5, sched/store.ts line 80, \"Data Integrity: unconditional overwrite of job state\". Open, no replies.\n\nNew findings:\n\n- P1: sched/planner.ts line 412, Security: unvalidated cron expression from tenant config.\n- P2: sched/store.ts line 78, Data Integrity: unconditional overwrite of job state.",
+      "rubric": [
+        "Keeps P1 and cites revision 4 (the highest known one) as the origin of the still-open issue, not revision 2 and not the comment without a revision.",
+        "Describes P1 as a repeat of something still unaddressed from an earlier revision.",
+        "Keeps P2 even though one matching comment (S-18) is still open, and gives it the framing of a defect that returned after a fix (S-15), not just an open carry-over.",
+        "States that P2's defect had been fixed in an earlier revision and has reappeared.",
+        "Does not omit either finding."
+      ],
+      "why_skill_matters": "P1 matches three open threads with revisions 2, 4 and unknown. P2 matches one fixed and one open thread, where the fix-and-reappear framing should win."
+    },
+    {
+      "id": "historical-issues-registry-rules-7",
+      "title": "Author declared won't fix, nobody answered",
+      "target_section": "Resolution classification",
+      "prompt": "I maintain a small payments gateway and the review bot keeps nagging. Revision 7 findings are below; some are things I already dealt with in earlier revisions, so please trim the report to what's new or still live. The old threads are here:\n\n- Thread 201 (rev 3), gateway/webhook.py line 44: \"Security: webhook signature not verified before parsing body\". I replied \"won't fix, our load balancer verifies it\" and clicked resolve. No one else commented.\n- Thread 202 (rev 4), gateway/refund.py line 120: \"Data Integrity: refund amount not capped at original charge\". I replied \"doesn't apply, capped in the DB\". Reviewer Tomas (not me) replied: \"Confirmed, there's a CHECK constraint, ok to drop.\" Resolved.\n- Thread 203 (rev 5), gateway/refund.py line 200: \"Schema/Contract: currency code not normalized\". Marked resolved, someone replied \"ok\".\n\nNew findings, rev 7:\n1. gateway/webhook.py line 46, Security: webhook signature not verified before parsing body.\n2. gateway/refund.py line 123, Data Integrity: refund amount not capped at original charge.\n3. gateway/refund.py line 203, Schema/Contract: currency code not normalized.\n\nGive me the trimmed list plus a note for anything you remove.",
+      "rubric": [
+        "Keeps finding 1 in the report because thread 201 was only dismissed by the author and no other reviewer weighed in.",
+        "Removes finding 2 because Tomas, who is not the author, confirmed the dismissal on thread 202.",
+        "The note for the removed finding 2 points to thread 202 and states why it was removed.",
+        "Says explicitly that marking the thread resolved or writing \"won't fix\" does not settle it without a second reviewer.",
+        "Keeps finding 3 because thread 203's closing reply (\"ok\", with no stated decision or fix) leaves it unclear what was decided."
+      ],
+      "why_skill_matters": "The user is the author and asks to trim. Thread 201 looks dismissed but only by the author; thread 202 has a genuine reviewer endorsement; thread 203 is vague."
+    },
+    {
+      "id": "historical-issues-registry-rules-8",
+      "title": "Renamed file, bug returns, terse wording",
+      "target_section": "Quality Gate",
+      "prompt": "hey, final pass on rev 6 of the settings sync PR. can you screen these new findings against the old comments? the thing is utils got renamed so paths changed. my notes:\n\nold comments (platform doesn't tell me revision numbers, ignore that):\n- m-3 (listed in the rev 2 export as open, then in the rev 4 export as resolved): prefs/sync_utils.py line 66, \"Data Integrity: stale cache entry served after logout\". Resolved, author comment \"fixed, cache cleared on logout, commit d41\".\n- m-7: prefs/sync_utils.py line 140, \"Data Integrity: unconditional overwrite of user preferences\". Author argued, reviewer Jo (not the author) replied \"yeah agree, intended behavior\". Resolved.\n\nnew stuff, file is now prefs/preferences_sync_utils.py:\n- n1: line 72, Data Integrity: stale cache entry served after logout\n- n2: line 145, Data Integrity: overwrite\n- n3: line 300, Security: preference key interpolated into shell command\n\nwhat should I post and what's the story for each one?",
+      "rubric": [
+        "Matches n1 to m-3 despite the rename to preferences_sync_utils.py and the move from line 66 to 72.",
+        "Treats m-3 as one comment whose latest state is fixed, not as two separate comments (one open, one resolved).",
+        "Keeps n1 and says it is a defect that returned after the commit d41 fix, using generic wording and no invented revision number.",
+        "Keeps n2 as new because the one-word description \"overwrite\" is too generic to equate with the longer m-7 comment unless identical.",
+        "Keeps n3 as a new finding with no history attached."
+      ],
+      "why_skill_matters": "A renamed file with a returning bug, a thread listed in two exports, and a one-word finding near a longer dismissed comment."
+    }
+  ]
+}

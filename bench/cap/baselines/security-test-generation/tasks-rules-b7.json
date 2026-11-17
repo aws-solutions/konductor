@@ -1,0 +1,127 @@
+{
+  "format_version": 1,
+  "skill": "security-test-generation",
+  "batch": "rules-b7",
+  "generated_at": "2026-11-10T03:21:36.798Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "24c02f333f5f1500961dc0352ba00e0101cd4188f051382111e12d856958d66e",
+  "scenarios": [
+    {
+      "id": "security-test-generation-rules-1",
+      "title": "Internal lab inventory API with login, transfers and admin routes",
+      "target_section": "Stage 5: Security Test Category Extraction",
+      "prompt": "Our platform team is building a defensive security test suite for an internal lab inventory service. It will run in CI against our own staging copy before the next internal review, and I need the test plan for it first. Nobody had time to write a threat write-up or any API documentation, so all I have are the routes as they are today (Postgres behind it, JWT auth, roles are `staff` and `admin`):\n\n```\nPOST /auth/login            {email, password} -> {accessToken (JWT, 15 min), refreshToken}\nPOST /auth/refresh          {refreshToken}\nGET  /labs/:labId/loans?from=&to=&note=\nPOST /transfers             {fromLabId, toLabId, assetId, quantity, note}\nGET  /admin/users?search=\nPOST /admin/users/:id/deactivate\n```\n\nStaff members manage several labs each. Admins can see everything. The note filter and the admin search are both passed into Postgres queries. Please write up what we should test, organised so my team can start working through it.",
+      "rubric": [
+        "Includes attempts to reach /transfers or /labs/:labId/loans with no token, an expired token, a token with a tampered signature or altered role claim, and a forged or replayed refresh token, expecting all to be rejected.",
+        "Includes injection tests for each input that feeds SQL here, naming at least the note filter, the admin search and the login email, and also the from/to dates or transfer fields rather than just one sample field.",
+        "Includes a staff member reading or transferring from another staff member's labId (horizontal) and a staff token calling /admin/users or /admin/users/:id/deactivate (vertical), expecting denial.",
+        "Within the login or transfer area, the cases start with valid behaviour (correct credentials, legitimate transfer succeed) before rejection of bad input and then boundary or expiry edge cases.",
+        "Notes that no threat write-up or API documentation exists and builds the plan from the pasted routes instead of stopping or demanding those documents.",
+        "Ties the cases to OWASP risk categories such as broken access control, injection and authentication failures, and notes which categories do not apply to this API."
+      ],
+      "why_skill_matters": "Manual safety replacement after repeated model refusal of the original request. An internal lab inventory API with login tokens, multiple labs per staff member and an admin role, with several database-bound inputs and no design documents. It keeps the same checks mattering as the original task: authentication bypass, full-input injection coverage, horizontal and vertical authorization, test ordering, OWASP mapping and the missing-documents handling. This makes the set mixed-source."
+    },
+    {
+      "id": "security-test-generation-rules-2",
+      "title": "Automated plan request for a Lambda upload service",
+      "target_section": "Unattended and Parallel Callers",
+      "prompt": "This request comes from an automated pipeline that drafts test plans per service. No person is watching and nobody can answer questions, so please don't ask any; make reasonable assumptions and say what you assumed.\n\nService: \"invoice-intake\". Customers upload scanned invoices (PDF) through an API Gateway endpoint; a Lambda function stores them in an S3 bucket, extracts the supplier name, tax ID and bank account number, and writes a record to DynamoDB. A second Lambda emails a summary to the finance team. Errors are logged to CloudWatch with the full event payload. The Lambda execution role currently has `s3:*` and `dynamodb:*` on `*`. There is a security group on a small EC2 bastion that allows SSH from 0.0.0.0/0. No design docs exist for this service.\n\nProduce the security test plan for it.",
+      "rubric": [
+        "Does not pose questions to the requester about stack, tooling or approach; it states its own assumptions (for example serverless on AWS, and the test approach chosen) in the answer.",
+        "Includes infrastructure checks for the invoice bucket being publicly readable or writable, the SSH rule open to 0.0.0.0/0 on the bastion, and the Lambda role's s3:* and dynamodb:* on * being too broad.",
+        "Includes tests that CloudWatch logs and error responses do not contain the full event payload, tax IDs, bank account numbers or other invoice contents.",
+        "Maps cases to OWASP risk categories and says which are not relevant to this service.",
+        "Lists gaps or weak areas found in its own plan from most to least serious and reports them without asking the requester whether to fix them.",
+        "States that no design documents exist and proceeds from the description given."
+      ],
+      "why_skill_matters": "Automated, unattended request describing a serverless upload service with obvious infrastructure problems and sensitive fields in logs. It makes no-question behaviour, infrastructure checks, log leakage, OWASP mapping, self-review reported without a prompt, and missing-documents handling matter."
+    },
+    {
+      "id": "security-test-generation-rules-3",
+      "title": "Warehouse inventory service on DynamoDB",
+      "target_section": "Stage 4: Source Code Analysis",
+      "prompt": "Need security tests for our inventory service before we onboard a second customer. It's a DynamoDB-backed REST API. No spec written, just the code, so here's the gist:\n\n- `GET /items?sku=` look up by SKU\n- `GET /items/:id`\n- `PUT /items/:id` update quantity and location\n- `POST /items/import` multipart CSV upload, each row is written to the table as is (columns: sku, name, qty, bin, notes)\n- `DELETE /items/:id`\n- `GET /reports/stock` returns totals for the caller's warehouse\n\nAuth is a Cognito JWT. Groups: `picker`, `warehouse-manager`, `tenant-admin`. Pickers can only read and update qty. Managers can import and delete. Items belong to a tenant and a warehouse, and the list filters read the tenant and warehouse from the `X-Warehouse` header, which gets dropped into a filter expression string by the data layer (the dev said it was \"just convenience\").\n\nGive me the plan.",
+      "rubric": [
+        "Includes NoSQL injection or filter-expression tampering tests that go beyond the sku query parameter, covering the X-Warehouse header and the CSV import columns (sku, name, notes, bin) and the id path values.",
+        "Includes a picker calling import or delete (vertical), and a user from one tenant or warehouse reading or changing another's items or report by changing X-Warehouse or the id (horizontal).",
+        "Includes requests without a token, with an expired token, or with an altered group claim in the Cognito JWT, expecting rejection.",
+        "For at least one area, valid operations are listed first, then rejected malicious or unauthorised inputs, then optional edge cases such as boundary quantities or oversized CSVs.",
+        "Acknowledges there is no spec and works from the described endpoints and roles."
+      ],
+      "why_skill_matters": "The injection surface is spread over query string, header and CSV columns, with the header one buried clause. Roles and tenant isolation require both escalation directions. Missing spec triggers the guard."
+    },
+    {
+      "id": "security-test-generation-rules-4",
+      "title": "Patient portal plan for an audit review",
+      "target_section": "Quality Gate",
+      "prompt": "I'm giving a security test plan to our compliance auditor next Friday, so I want it to hold up. The system is a patient portal: patients log in with email and password plus an SMS code, view lab results and appointment history, message their clinician, and download PDF statements. Clinicians and front-desk staff use the same web app with different menus. Backend is Python/FastAPI on ECS with Postgres and an S3 bucket for PDFs. We have a vendor pen test report from last year but no threat model, and I haven't looked at our logging setup in a while (I think request bodies get logged when something 500s).\n\nI only really care about the login flow and the PDF downloads, so just plan around those. Make it something I can hand over as is.",
+      "rubric": [
+        "Reviews its own plan for gaps and lists them ordered from most to least serious, and asks the user whether to fix them (or offers to), rather than handing the plan over silently.",
+        "Includes tests that error responses and logs from 500s do not expose request bodies, lab results, tokens or stack traces.",
+        "Maps coverage to OWASP risk categories and points out which categories remain uncovered or not applicable given the login and PDF focus.",
+        "Includes a patient fetching another patient's PDF statement or lab results by changing an identifier, and a patient or front-desk account performing clinician actions.",
+        "Includes login bypass attempts such as skipping the SMS step, reusing or guessing codes, and forged or expired session tokens.",
+        "Notes there is no threat model and proceeds using the described system (and possibly the earlier pen test report)."
+      ],
+      "why_skill_matters": "The user narrows scope to login and PDFs, but a sound plan still has gaps such as messaging, S3 bucket exposure and log leakage. It makes self-review with a fix prompt, log leakage, OWASP mapping, both escalation types and authentication bypass matter."
+    },
+    {
+      "id": "security-test-generation-rules-5",
+      "title": "Batch-drafted plan for password reset and partner tokens",
+      "target_section": "Unattended and Parallel Callers",
+      "prompt": "Feature 7 of 12 in the batch run. Whoever reads this later won't be around to reply, results are collected at the end of the night, so work with what is below.\n\nFeature: password reset via emailed link, plus long-lived API tokens issued to partner integrators.\n\nNotes pulled from the ticket:\n\n```\n- POST /password/forgot {email} -> emails link with reset token (valid 1h)\n- POST /password/reset {token, newPassword}\n- POST /partners/tokens  (admin only) -> issues token, no expiry unless \"ttlDays\" is set\n- Partner calls: Authorization: Bearer <partner token> on /partner/v1/orders\n- Python, pytest in the repo already\n```\n\nNo threat model, no spec for this one.",
+      "rubric": [
+        "Makes no request for clarification (stack, tool, approach); it proceeds on the pytest/Python information given and lists the assumptions it made.",
+        "Includes attempts using a missing, expired, reused, altered or another user's reset token on /password/reset, and invalid, forged or revoked partner bearer tokens on /partner/v1/orders, expecting rejection.",
+        "Within the reset or partner token area, valid flows come first, then rejected bad inputs, then optional edge cases such as a token at the 1h boundary or a token without ttlDays.",
+        "Includes a non-admin calling /partners/tokens and a partner token reading orders of a different partner.",
+        "States that the threat model and spec are absent and goes ahead using the ticket notes."
+      ],
+      "why_skill_matters": "The unattended nature is a single remark in the opening lines. The feature mixes token-based credentials and a role-gated issuing endpoint, so bypass, ordering and escalation matter too."
+    },
+    {
+      "id": "security-test-generation-rules-6",
+      "title": "Review of pasted CDK stack before launch",
+      "target_section": "Stage 5: Security Test Category Extraction",
+      "prompt": "Can you turn this into a set of security tests for our infra? We deploy with CDK and I'm not very confident in it.\n\n```ts\nconst bucket = new s3.Bucket(this, 'Uploads', {\n  publicReadAccess: true,\n  blockPublicAccess: s3.BlockPublicAccess.BLOCK_ACLS,\n});\nconst sg = new ec2.SecurityGroup(this, 'DbSg', { vpc, allowAllOutbound: true });\nsg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(5432));\nconst role = new iam.Role(this, 'AppRole', { assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com') });\nrole.addToPolicy(new iam.PolicyStatement({ actions: ['*'], resources: ['*'] }));\nconst db = new rds.DatabaseInstance(this, 'Db', { engine, vpc, storageEncrypted: false, publiclyAccessible: true });\n```\n\nIt backs a customer web app (React frontend, REST backend). I don't have any architecture docs. Also tell me anything you think is missing from your own plan.",
+      "rubric": [
+        "Includes checks that the Uploads bucket is not publicly readable, that port 5432 is not open to the whole internet, and that AppRole does not allow all actions on all resources.",
+        "Relates the plan to OWASP risk categories (such as security misconfiguration and cryptographic failures) and says which of the ten are out of scope for an infrastructure-only plan.",
+        "Names gaps in its own plan (for example application-level auth, injection or logging tests not covered by infra checks) in order from most to least serious.",
+        "Includes checks that logs and error output do not leak credentials or database details, or notes this as a gap.",
+        "Says no architecture documents were given and works from the pasted stack code."
+      ],
+      "why_skill_matters": "Stack code with a public bucket, open database port, wildcard role, unencrypted and publicly accessible database. Makes infrastructure checks, OWASP mapping, gap self-review and a note on missing docs matter."
+    },
+    {
+      "id": "security-test-generation-rules-7",
+      "title": "Single-page app storing tokens in the browser",
+      "target_section": "Stage 7: Task List Generation",
+      "prompt": "Our Vue SPA talks to a Go API. Here's how the front end handles auth, from the code review notes:\n\n- After login the API returns `{access_token, refresh_token, user: {id, email, role}}`; both tokens are saved to localStorage\n- Role (`member`, `manager`) is read from the stored user object and decides which menu items and pages show\n- Route guard only checks that a token exists\n- On a 401, the app shows the raw server message in a toast, which sometimes includes the SQL error text\n- Idle timeout is a 30 min JS timer; the server token lasts 24 hours\n- The API has `/teams/:teamId/members` and `/teams/:teamId/billing` (managers only)\n\nNo API spec in the repo. Please draft a test plan covering the browser side and the API side. I'd like the cases ordered the way we would actually run them in a sprint.",
+      "rubric": [
+        "Cases are sequenced so that normal working behaviour is checked first, then rejection of attacks or bad input, then optional edge cases, in at least the login and token areas.",
+        "Includes tests where the stored token is removed, expired, altered or replaced with one carrying a different role, and the API must reject it rather than relying on the route guard.",
+        "Includes a member editing the role in localStorage or calling /teams/:teamId/billing directly (vertical), and a user accessing a team that is not theirs by changing teamId (horizontal).",
+        "Includes a test that the toast and API error responses do not reveal SQL error text, internals or tokens.",
+        "Says there is no API spec and uses the notes and endpoints described.",
+        "Connects cases to OWASP risk categories and says if any category is not applicable."
+      ],
+      "why_skill_matters": "Client-side-only access control, tokens in localStorage, raw SQL errors in the UI, and a mismatch between timeouts. Makes bypass tests, escalation in both directions, error leakage and ordering matter."
+    },
+    {
+      "id": "security-test-generation-rules-8",
+      "title": "Quick plan for a small Flask admin tool",
+      "target_section": "Stage 5: Security Test Category Extraction",
+      "prompt": "quick one. internal Flask tool, ~6 endpoints, want a security test plan i can hand to a junior to work through. code is below, no docs besides this.\n\n```python\n@app.route(\"/login\", methods=[\"POST\"])\ndef login():\n    row = db.execute(f\"SELECT * FROM users WHERE name='{request.form['name']}' AND pw='{hash(request.form['pw'])}'\").fetchone()\n    ...\n@app.route(\"/orders/<oid>\")\n@login_required\ndef order(oid):\n    return db.execute(f\"SELECT * FROM orders WHERE id={oid}\").fetchone()\n@app.route(\"/orders/search\")\n@login_required\ndef search():\n    q = request.args[\"q\"]\n    return db.execute(\"SELECT * FROM orders WHERE customer LIKE '%\" + q + \"%'\").fetchall()\n@app.route(\"/users/<uid>/promote\", methods=[\"POST\"])\n@login_required\ndef promote(uid): ...   # sets role='admin'\n@app.route(\"/export\")\n@login_required\ndef export(): ...       # dumps all orders as CSV\n```\n\nAny user with an account can log in; staff and admins are the two roles. Keep it practical.",
+      "rubric": [
+        "Includes injection tests for each of the concatenated queries: the login name and password fields, the oid path value and the q search parameter.",
+        "Includes a staff user calling /users/<uid>/promote or /export (vertical) and a staff user fetching orders that are not theirs via /orders/<oid> (horizontal).",
+        "Maps tests to OWASP risk categories such as injection and broken access control, and notes unaddressed or non-applicable ones.",
+        "Gives the cases for at least one endpoint as valid use first, then malicious or invalid input, then optional boundary cases.",
+        "Notes there are no design documents and builds the plan from the pasted code."
+      ],
+      "why_skill_matters": "Small tool with string-built SQL in four places and role-gated actions with no role check. Makes full injection coverage, escalation, OWASP mapping and case ordering matter, with the no-docs note."
+    }
+  ]
+}

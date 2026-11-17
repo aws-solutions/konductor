@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "test-coverage-analysis",
+  "skill_md_sha256": "8e817745d83de71e33a6f6a8df1a459a807fd02d1811f40a3cae028daab538d0",
+  "request_context": "A request to analyze how well an existing automated test suite covers a software project's requirements, find missing tests, and judge whether the project is ready to release.",
+  "rules": [
+    {
+      "id": "test-coverage-analysis-r01",
+      "source_quote": "Always use test case count from test runner, not file count",
+      "class": "useful",
+      "outcome": "Test totals and percentages are based on the number of individual test cases reported by actually running the test suite, not on the number of test files, and the answer makes clear which of the two is being quoted.",
+      "why": "One file holds many test cases, so counting files badly distorts totals and distribution percentages.",
+      "scenario_hint": "Project with many test files, each containing dozens of test cases, where the user wants coverage numbers."
+    },
+    {
+      "id": "test-coverage-analysis-r02",
+      "source_quote": "The testing model determines what \"good coverage\" means.",
+      "class": "useful",
+      "outcome": "The answer identifies the application's architecture (frontend, backend, serverless, microservices, full-stack) and chooses a matching testing approach, with a target split between unit, integration and end-to-end tests, before judging coverage.",
+      "why": "A single universal target misjudges suites; UI apps and backend APIs need different test balances.",
+      "scenario_hint": "React single-page app or Express API whose suite is dominated by one kind of test."
+    },
+    {
+      "id": "test-coverage-analysis-r03",
+      "source_quote": "Compare Against Expected Distribution:",
+      "class": "useful",
+      "outcome": "The answer compares the actual share of unit, integration and end-to-end tests with the target for that architecture, shows the differences, and says whether the suite is balanced or skewed, with advice on what to shift.",
+      "why": "Without the comparison, an imbalanced suite such as too many shallow component tests goes unnoticed.",
+      "scenario_hint": "Suite where most tests are unit-level but the application is a UI-heavy frontend."
+    },
+    {
+      "id": "test-coverage-analysis-r04",
+      "source_quote": "For each acceptance criterion: find tests with matching requirement refs",
+      "class": "useful",
+      "outcome": "Each requirement's acceptance criteria are mapped to the specific tests that cover them, and the answer lists which criteria are covered, partially covered or have no automated test, with coverage percentages per feature.",
+      "why": "Aggregate numbers hide untested requirements that the release depends on.",
+      "scenario_hint": "User supplies user stories with acceptance criteria and asks what is not tested."
+    },
+    {
+      "id": "test-coverage-analysis-r05",
+      "source_quote": "Performance NFRs with no load tests",
+      "class": "useful",
+      "outcome": "Non-functional requirements such as performance, security, reliability and scalability are each checked for a test of the appropriate kind, and gaps are called out, including cases where only a mismatched kind of test (e.g. a unit test for a latency target) exists.",
+      "why": "Functional tests do not prove quality targets, so these gaps would otherwise ship untested.",
+      "scenario_hint": "Project with a documented response-time or security requirement but only functional tests."
+    },
+    {
+      "id": "test-coverage-analysis-r06",
+      "source_quote": "Integration tests use mocks instead of real services (not true integration tests)",
+      "class": "useful",
+      "outcome": "Integration points between components and services are enumerated and each is checked for a test; the answer flags points with no test, tests covering only the success path, and tests that mock the very service they claim to integrate.",
+      "why": "Mocked or happy-path-only integration tests give false confidence about real system behavior.",
+      "scenario_hint": "Serverless or multi-service system with database, queue and auth integrations."
+    },
+    {
+      "id": "test-coverage-analysis-r07",
+      "source_quote": "Error scenarios with no negative tests",
+      "class": "useful",
+      "outcome": "The answer specifically looks for missing negative and error-path tests (invalid input, service failures, timeouts, boundary conditions) and names the places where they are absent.",
+      "why": "Happy-path-only suites miss the failures that most often hit production.",
+      "scenario_hint": "Service whose tests only exercise valid inputs and successful responses."
+    },
+    {
+      "id": "test-coverage-analysis-r08",
+      "source_quote": "Rationale for why this test type is recommended",
+      "class": "useful",
+      "outcome": "Each gap comes with concrete advice: the file or function to test, the recommended kind of test and why, a sketch of the test, and a rough effort estimate; scenarios not worth automating get step-by-step manual test procedures.",
+      "why": "Vague advice like \"add more tests\" cannot be acted on.",
+      "scenario_hint": "Request to find missing tests and say what to write."
+    },
+    {
+      "id": "test-coverage-analysis-r09",
+      "source_quote": "Identify Low-Value Tests to Consider Removing",
+      "class": "useful",
+      "outcome": "The answer points out existing tests of little value, such as snapshot or rendering-only component tests, trivial getter tests, tests without assertions, or duplicates across levels, and suggests removing or converting them.",
+      "why": "Low-value tests inflate counts and maintenance cost without adding confidence.",
+      "scenario_hint": "Frontend suite with many shallow rendering and snapshot tests."
+    },
+    {
+      "id": "test-coverage-analysis-r10",
+      "source_quote": "No failing tests",
+      "class": "useful",
+      "outcome": "For a release-readiness question, the answer gives an explicit verdict (ready, at risk or not ready) justified by concrete conditions: failing tests, uncovered critical gaps, coverage versus targets, and test quality. Any failing test or critical gap is named as blocking.",
+      "why": "A release decision without stated gates or blockers is not actionable or defensible.",
+      "scenario_hint": "User asks \"can we ship?\" and the suite has one failing test and an untested login flow."
+    },
+    {
+      "id": "test-coverage-analysis-r11",
+      "source_quote": "Risk Score: Probability × Impact",
+      "class": "generic",
+      "outcome": "For a release assessment, the answer weighs the risks of the identified gaps by likelihood and impact and gives mitigations for the most serious ones, including what to do before release.",
+      "why": "Teams need to prioritize limited time on the gaps most likely to cause serious harm.",
+      "scenario_hint": "Any request to assess whether a project is ready for release based on its tests."
+    },
+    {
+      "id": "test-coverage-analysis-r12",
+      "source_quote": "Present findings as: CRITICAL → IMPORTANT → SUGGESTION.",
+      "class": "style",
+      "outcome": "Findings are ordered from most to least severe, with must-fix issues clearly separated from should-fix and optional ones, and the answer ends by asking whether the user wants the issues fixed.",
+      "why": "",
+      "scenario_hint": "Any request to analyze test coverage and report gaps."
+    }
+  ]
+}

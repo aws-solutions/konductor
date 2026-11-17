@@ -1,0 +1,146 @@
+{
+  "format_version": 1,
+  "skill": "security-remediation",
+  "batch": "rules-v2",
+  "generated_at": "2026-11-08T22:00:00.000Z",
+  "model": "hand-authored-outcome",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "2544cf8b2e4e32039d96d7d00d41ac871c874d4057b5be1e7c12d109ac1c5141",
+  "scenarios": [
+    {
+      "id": "security-remediation-rules-1",
+      "title": "Four dependency scan findings on a live Node service",
+      "target_section": "Step 2: Remediation Planning",
+      "prompt": "Our dependency scan flagged four things in the order-api service (Node 18, npm). Can you tell me how to fix them? The scanner output, in the order it printed:\n\n```text\n1. minimist 1.2.5 (comes in through mkdirp 0.5.5, used by our test tooling)\n   Severity: Low. Prototype pollution in argument parsing. Fixed in: 1.2.6\n2. lodash 4.17.15 (direct dependency)\n   Severity: Medium. Command injection through the template function. Fixed in: 4.17.21\n3. jsonwebtoken 8.5.1 (direct dependency)\n   Severity: High. Token verification accepts weaker key and algorithm settings than it should. Fixed in: 9.0.0\n4. lodash 4.17.15 (direct dependency)\n   Severity: High. Prototype pollution in a deep-set helper. Fixed in: 4.17.21\n```\n\nWe use jsonwebtoken to verify tokens issued by a partner's login service, with a public key we were handed years ago. lodash is mostly debounce and merge. The service is live and handles every customer order, so I want to be sure we don't break it while fixing this.",
+      "rubric": [
+        "States the target version and the install command or manifest edit for each direct dependency finding: jsonwebtoken 9.0.0 and lodash 4.17.21.",
+        "For the minimist finding, says it comes in through another package and gives a concrete way to reach 1.2.6, such as refreshing that entry in the lockfile or adding an override.",
+        "Treats the two lodash findings as one change, because the same upgrade to 4.17.21 closes both.",
+        "Gives a way to confirm each fix worked, such as listing the installed version of each package, re-running the scan or running the test suite.",
+        "Says how to undo the jsonwebtoken upgrade or what to watch after it goes live, since a major version change can start rejecting tokens that were accepted before, for example ones checked with an old or weak key.",
+        "Explains what someone could do with the token verification weakness, such as getting forged or wrongly accepted tokens treated as valid.",
+        "Suggests a way to catch this kind of problem earlier, such as running the dependency scan in the build pipeline or turning on automated update proposals.",
+        "Handles the two high-severity findings (jsonwebtoken and the lodash prototype pollution) before the medium and low ones, even though the scanner listed a low one first."
+      ],
+      "why_skill_matters": "Four findings arrive in scanner order, with the least serious first, and two of them are the same package. The major upgrade of the token library is the one that can break a live service, so it needs a way back or something to watch. A good answer puts the high findings first, fixes both lodash findings with one upgrade, names exact versions and commands, shows how to confirm each fix and says what a forged token would allow."
+    },
+    {
+      "id": "security-remediation-rules-2",
+      "title": "Search endpoint that builds its query from user input",
+      "target_section": "Step 1: Finding Analysis",
+      "prompt": "A reviewer on our application security team sent back two findings on the product search endpoint. First, severity High: the handler builds its SQL by joining the q parameter into the query text. Second, severity Low: database error text is returned to the client when a query fails. The ticket is SEC-4821 (https://tickets.example-corp.com/SEC-4821) and the reviewer is Priya Raman. This service is open source on GitHub, so whatever you propose gets committed there. The handler (node-postgres, db is a pool):\n\n```js\nrouter.get('/search', async (req, res) => {\n  const q = req.query.q || '';\n  try {\n    const rows = await db.query(\n      \"SELECT id, name, price FROM products WHERE name LIKE '%\" + q + \"%' ORDER BY name LIMIT 50\"\n    );\n    res.json(rows.rows);\n  } catch (err) {\n    res.status(500).json({ error: err.message });\n  }\n});\n```\n\nPlease write up how to fix both findings.",
+      "rubric": [
+        "Replaces the joined query text with a parameterized query in which the search term is passed as a separate value.",
+        "Fixes the error finding by returning a generic message to the client and keeping the error details in the server log.",
+        "Gives a way to confirm the fix, such as a test that sends a search term containing a quote character and checks that the request completes normally with no database error.",
+        "Explains what someone could do through the flaw, such as reading or changing data beyond the product list by altering the query.",
+        "The proposed code and its comments carry no ticket number, link, reviewer name or mention of a security review.",
+        "Suggests further protections, such as a database account limited to reading the products data, checks on the length and type of the search term, or one shared error handler.",
+        "Shows the vulnerable handler followed by the corrected handler.",
+        "Deals with the high-severity query finding before the low-severity error message finding."
+      ],
+      "why_skill_matters": "The request pastes a ticket number, a link and a reviewer's name and says the fix goes to a public repository, so any of those that end up in a comment or commit text leak. The handler has two problems of different weight. A good answer fixes the query first, then the error text, with code that reads as if the problem was never there, a test to confirm it and the wider defences."
+    },
+    {
+      "id": "security-remediation-rules-3",
+      "title": "Public invoice bucket and over-broad processing role in production",
+      "target_section": "Fix Verification",
+      "prompt": "Our scanner reported two findings on the invoice service's AWS setup. Both resources are in the CDK app below, and the stack is deployed to production.\n\nFinding A, severity High: the bucket acme-invoices-prod lets anyone read its objects.\nFinding B, severity Medium: the Lambda role that processes invoices can perform any S3 action on any bucket.\n\n```ts\nconst invoices = new s3.Bucket(this, 'Invoices', {\n  bucketName: 'acme-invoices-prod',\n  blockPublicAccess: new s3.BlockPublicAccess({\n    blockPublicAcls: false,\n    ignorePublicAcls: false,\n    blockPublicPolicy: false,\n    restrictPublicBuckets: false,\n  }),\n});\ninvoices.addToResourcePolicy(new iam.PolicyStatement({\n  actions: ['s3:GetObject'],\n  resources: [invoices.arnForObjects('*')],\n  principals: [new iam.AnyPrincipal()],\n}));\n\nconst processor = new lambda.Function(this, 'Processor', { /* runtime, handler, code */ });\nprocessor.addToRolePolicy(new iam.PolicyStatement({\n  actions: ['s3:*'],\n  resources: ['*'],\n}));\n```\n\nTwo facts: our customer portal links straight to the invoice PDFs in this bucket, and the processor reads from acme-invoices-prod and writes to a second bucket, acme-invoice-archive, which another stack manages. I need a plan I can roll out safely this week.",
+      "rubric": [
+        "Gives a concrete change to the bucket definition: turning on all four public access blocks and removing the statement that lets anyone read.",
+        "Gives a concrete change to the role: replacing the all-actions, all-buckets statement with the specific actions needed on acme-invoices-prod and acme-invoice-archive.",
+        "Says that closing public read will break the portal's direct links to the PDFs and offers another way to serve them, such as time-limited links or a restricted content delivery front.",
+        "Includes a way to undo the change or a note on what to watch after rollout, such as denied requests from the portal or from the processor.",
+        "Gives a way to confirm the fix worked, such as showing that an unauthenticated request for an invoice object is denied, or a command that prints the bucket's public access settings.",
+        "Explains what someone could do with a publicly readable invoice bucket, such as downloading customers' invoices.",
+        "Shows the bucket and role definitions as they are now and as they should be after the change.",
+        "Puts the publicly readable bucket (High) ahead of the over-broad role (Medium)."
+      ],
+      "why_skill_matters": "Closing a public bucket in production is the kind of fix that works and breaks a customer feature at the same time: the portal links to the files directly. The role fix can also cut off the processor if the archive bucket is left out. A good answer fixes the bucket first, names what will stop working and the replacement, gives a way to undo or watch, and verifies from outside."
+    },
+    {
+      "id": "security-remediation-rules-4",
+      "title": "Exports bucket that is not in the stack, and an open SSH rule that is",
+      "target_section": "Step 3: False Positive Assessment for AWS Configuration Findings",
+      "prompt": "Our scanner raised two findings against the team-reports stack. Please tell me what to do about them.\n\n1. Severity High: the S3 bucket acme-team-exports-tmp allows public read.\n2. Severity Medium: the security group for the bastion host allows SSH (port 22) from 0.0.0.0/0.\n\nThis is all of the infrastructure code the stack deploys (CDK, TypeScript):\n\n```ts\nconst assets = new s3.Bucket(this, 'Assets', {\n  bucketName: 'acme-team-reports-assets',\n  encryption: s3.BucketEncryption.S3_MANAGED,\n});\n\nconst bastionSg = new ec2.SecurityGroup(this, 'BastionSg', {\n  vpc,\n  description: 'bastion access',\n});\nbastionSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'ssh');\n```\n\nI don't recognise the exports bucket. Our AWS account is shared with a couple of other teams. The bastion is how our admins reach the production database, so please don't plan anything that cuts them off.",
+      "rubric": [
+        "Notices that the exports bucket is not defined anywhere in the infrastructure code shown, and says the report could be a false alarm for this project.",
+        "Explains how to find out where the bucket comes from, such as its tags, its creation history or the list of resources the stack owns.",
+        "Still gives the steps to remove public read from the bucket, to use if the check shows it really is this team's problem.",
+        "For the security group, gives a concrete change that replaces the open SSH rule with a narrower source in the definition shown, such as a specific address range or a managed access method.",
+        "Warns that narrowing SSH access could lock out the admins who use the bastion, and gives a way to undo the change or a check to make before and after rollout.",
+        "Explains what someone could do with SSH open to the whole internet, such as repeated login attempts against the bastion.",
+        "Handles the High bucket finding first, even if only to check where it comes from, before the Medium security group finding."
+      ],
+      "why_skill_matters": "The bucket in the High finding is not in the project's infrastructure code, in an account shared with other teams, so changing this project cannot fix it and the report may be wrong. The security group is in the code and is a real finding, but cutting off the bastion hurts the people who run production. A good answer questions the bucket before acting, still has a fix ready, and treats the SSH rule as a real change that needs a way back."
+    },
+    {
+      "id": "security-remediation-rules-5",
+      "title": "Missing ownership check repeated across three endpoints",
+      "target_section": "Remediation Prioritization",
+      "prompt": "A review of our customer API came back with four findings:\n\n- Severity High: GET /orders/:id returns any order to any signed-in user.\n- Severity High: GET /invoices/:id returns any invoice to any signed-in user.\n- Severity Medium: PATCH /profiles/:id lets a signed-in user edit any profile.\n- Severity Low: the API sends a header that names the web framework.\n\nThe handlers (Express; requireLogin puts the signed-in user on req.user as { id, role }; orders and invoices have an ownerId, and a profile's id is the user's id):\n\n```js\nrouter.get('/orders/:id', requireLogin, async (req, res) => {\n  const order = await orders.findById(req.params.id);\n  if (!order) return res.sendStatus(404);\n  res.json(order);\n});\n\nrouter.get('/invoices/:id', requireLogin, async (req, res) => {\n  const invoice = await invoices.findById(req.params.id);\n  if (!invoice) return res.sendStatus(404);\n  res.json(invoice);\n});\n\nrouter.patch('/profiles/:id', requireLogin, async (req, res) => {\n  const profile = await profiles.update(req.params.id, req.body);\n  res.json(profile);\n});\n```\n\nThe repo is public on GitHub and the ticket is SEC-5120 at https://tickets.example-corp.com/SEC-5120. How should we fix these?",
+      "rubric": [
+        "Treats the three record-access findings as one problem, a missing check that the signed-in user owns the record, and fixes them with one shared check rather than three separate patches.",
+        "Gives the code for the ownership check, comparing the record's owner with the signed-in user's id and returning a not-found or forbidden response when they differ.",
+        "Explains what a signed-in customer could do through the flaw, such as reading other customers' orders and invoices or editing their profiles.",
+        "Gives a way to confirm the fix, such as a test in which one user requests another user's order and gets a not-found or forbidden response.",
+        "Suggests further protections, such as denying access by default on new routes, using hard-to-guess identifiers or logging refused access attempts.",
+        "The proposed code and comments carry no ticket number, link or mention of the review.",
+        "Shows one of the vulnerable handlers next to its corrected version.",
+        "Handles the two High record-access findings before the Medium profile edit and the Low framework-name finding."
+      ],
+      "why_skill_matters": "Three of the four findings are one defect, copied into three routes. Fixing each route on its own repeats the same lines and leaves the next route unprotected. A good answer names the common cause, puts one check in a shared place, orders the work by severity, shows how to confirm it and keeps the ticket out of the public code."
+    },
+    {
+      "id": "security-remediation-rules-6",
+      "title": "Report download endpoint and a request for comments on where the change came from",
+      "target_section": "Quality Gate",
+      "prompt": "Our security review flagged the report download endpoint. The finding says: Severity High, the file name from the URL is joined to the reports folder without any check, so a request can reach files outside that folder. A second item says: Severity Low, responses from this endpoint lack a header that stops browsers guessing the content type. It is ticket SEC-2291, raised by Priya Raman, details at https://tickets.example-corp.com/SEC-2291. The repo is public on GitHub.\n\n```js\nconst REPORT_DIR = '/var/app/reports';\n\nrouter.get('/reports/:name', requireLogin, (req, res) => {\n  const filePath = path.join(REPORT_DIR, req.params.name);\n  res.sendFile(filePath);\n});\n```\n\nPlease give me the fixed handler. I'd like short comments on the changed lines so that whoever reads the code later knows why it changed and where the change came from.",
+      "rubric": [
+        "The proposed code and its comments contain no ticket number, link, reviewer name or mention of a security review, although the user asked for comments saying where the change came from.",
+        "The comments explain the technical reason for the check, for example that the requested path must stay inside the reports folder, instead of the history of the change.",
+        "Gives concrete code that rejects any requested path that resolves outside the reports folder.",
+        "Gives a way to confirm the fix, such as a test that a file name containing parent-folder segments is rejected while a normal report name is still served.",
+        "Explains what someone could do with the flaw, such as reading files outside the reports folder that the service account can access.",
+        "Suggests further protections, such as limiting the service account's file permissions, serving reports by looking up an id instead of a file name, or logging rejected names.",
+        "Shows the original handler followed by the fixed handler.",
+        "Handles the High path finding before the Low content-type finding."
+      ],
+      "why_skill_matters": "The user asks for comments that say where the change came from, which is an invitation to write the ticket number or the reviewer into public code. The fix has to read as if the problem had never been there, with the reason given in technical terms. A good answer writes comments about the path check itself and nothing about the review."
+    },
+    {
+      "id": "security-remediation-rules-7",
+      "title": "Open origin policy and session cookie settings on a live API",
+      "target_section": "Core Concepts",
+      "prompt": "A penetration test of our web API produced these findings, and I need to fix them without breaking the apps that use the API:\n\n- Severity Medium: the API answers cross-origin requests from any website and allows credentials.\n- Severity Medium: the session cookie has no Secure attribute.\n- Severity Medium: the session cookie has no HttpOnly attribute.\n- Severity Medium: the session cookie has no SameSite attribute.\n- Severity Low: the API returns its server software version in a response header.\n\nThe configuration (Express):\n\n```js\napp.use(cors({ origin: true, credentials: true }));\n\napp.use(session({\n  name: 'sid',\n  secret: process.env.SESSION_SECRET,\n  resave: false,\n  saveUninitialized: false,\n  cookie: { maxAge: 8 * 60 * 60 * 1000 },\n}));\n```\n\nWho calls the API: our web app at https://app.example.com, our marketing site at https://www.example.com (it shows a signed-in greeting by calling /me), and a partner widget at https://widget.partner-example.net that we don't control. The API sits behind a load balancer that terminates TLS. This is live.",
+      "rubric": [
+        "Treats the three session cookie findings as one change to the cookie settings and fixes them together.",
+        "Gives the concrete cookie settings in the session configuration: Secure, HttpOnly and a chosen SameSite value.",
+        "Replaces the reflect-any-origin setting with an explicit list of allowed origins that includes the callers that need credentials.",
+        "Warns that the stricter origin and cookie settings can break a legitimate caller (the marketing site greeting, the partner widget, or sessions behind the TLS-terminating load balancer) and gives a way to undo or monitor the change.",
+        "Gives a way to confirm the fix, such as checking the response headers of a request or a test for the cookie attributes and the allowed origin.",
+        "Explains what another website could do to a signed-in user under the open origin setting, such as reading responses made with the user's session.",
+        "Shows the configuration as it is now and as it should be after the change.",
+        "Handles the Medium findings before the Low server-version finding."
+      ],
+      "why_skill_matters": "Four of the five findings sit in two settings objects, and the user lists them separately. The fixes can break callers: SameSite and the origin list decide whether the partner widget and the marketing site keep working, and a Secure cookie behind a load balancer that ends TLS is not sent unless the app trusts the proxy. A good answer groups the cookie settings, names the callers at risk, and says how to undo or watch the change."
+    },
+    {
+      "id": "security-remediation-rules-8",
+      "title": "Public legacy database that is not in the stack, and an unencrypted queue that is",
+      "target_section": "Overview",
+      "prompt": "Two findings came out of the cloud security scan of our orders stack:\n\n1. Severity Critical: the RDS instance orders-db-legacy is publicly accessible.\n2. Severity Medium: the SQS queue orders-events is not encrypted at rest.\n\nOur CDK app defines the following, and no other database or queue:\n\n```ts\nconst db = new rds.DatabaseInstance(this, 'OrdersDb', {\n  instanceIdentifier: 'orders-db',\n  engine: rds.DatabaseInstanceEngine.postgres({ version: rds.PostgresEngineVersion.VER_15 }),\n  vpc,\n  vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },\n  publiclyAccessible: false,\n});\n\nconst events = new sqs.Queue(this, 'OrdersEvents', { queueName: 'orders-events' });\n```\n\nThe queue is written by the checkout service (an ECS task role) and read by the fulfilment Lambda function. The AWS account is shared with another team. What should we do?",
+      "rubric": [
+        "Notices that orders-db-legacy is not defined in the infrastructure code shown, which has only orders-db, and says the report could be a false alarm for this project.",
+        "Explains how to find out who owns the legacy database, such as its tags, its creation history or the owning team, and gives the steps to make it private if it turns out to be real.",
+        "Gives a concrete change to the queue definition that turns on encryption at rest, such as the service-managed key option or a named key.",
+        "Says how to undo the change or what to watch after rollout, such as failed sends or reads caused by missing key permissions.",
+        "Gives a way to confirm the fix worked, such as a command that describes the queue's encryption setting or a test message sent and received afterwards.",
+        "Explains what could happen with a database reachable from the internet, such as login attempts or attacks on it from anywhere, and with messages stored unencrypted.",
+        "Shows the queue definition as it is now and as it should be after the change.",
+        "Treats the Critical database finding first, even if only to check whether it is real, before the queue encryption."
+      ],
+      "why_skill_matters": "The Critical finding names a database that the project's code does not define, in a shared account, while the Medium finding is a real gap in the code. A good answer handles the Critical one first by checking who owns the database and what to do if it is real, then gives the queue fix with its key permissions and a way back."
+    }
+  ]
+}

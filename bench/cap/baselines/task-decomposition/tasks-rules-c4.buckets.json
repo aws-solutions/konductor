@@ -1,0 +1,261 @@
+{
+  "format_version": 1,
+  "skill": "task-decomposition",
+  "batch": "rules-c4",
+  "rules": {
+    "task-decomposition-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "task-decomposition-r02": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "task-decomposition-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "task-decomposition-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "task-decomposition-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "task-decomposition-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "task-decomposition-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "task-decomposition-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "task-decomposition-r09": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "task-decomposition-r10": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "task-decomposition-r11": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "task-decomposition-r12": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "task-decomposition-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r06"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "task-decomposition-r09"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "task-decomposition-r10"
+      },
+      "7": {
+        "bucket": "format",
+        "rule_id": "task-decomposition-r12"
+      }
+    },
+    "task-decomposition-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r11"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "task-decomposition-r09"
+      }
+    },
+    "task-decomposition-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r05"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "task-decomposition-r10"
+      }
+    },
+    "task-decomposition-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r08"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r11"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r05"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "task-decomposition-r09"
+      }
+    },
+    "task-decomposition-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r11"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "task-decomposition-r10"
+      }
+    },
+    "task-decomposition-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r01"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "task-decomposition-r09"
+      }
+    },
+    "task-decomposition-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r08"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "task-decomposition-r09"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "task-decomposition-r12"
+      }
+    },
+    "task-decomposition-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "task-decomposition-r11"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "task-decomposition-r09"
+      }
+    }
+  }
+}

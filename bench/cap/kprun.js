@@ -9,10 +9,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { BENCH_DIR } = require('../runner/lib/tasks.js');
-const { loadBaseline, loadConvention, loadDoseLadder } = require('./frozen.js');
+const { loadBaseline, loadConvention, loadDoseLadder, BASELINES_DIR } = require('./frozen.js');
 const { checkDepth, judgmentStore, DEFAULT_REPLICATES } = require('./keepprune.js');
 const { blockFromCheck, buildRecord, writeRecord, renderRecord } = require('./kprecord.js');
 const { createStubProvider, assertStubRun } = require('./stubprovider.js');
+const { assertSkillSubject } = require('./subjectunit.js');
 
 /** The stub's default agent and judges: a Claude agent judged by three other families, as SR-24 needs. */
 const STUB_SUBJECT_MODEL = 'claude-sonnet-5.5';
@@ -26,7 +27,7 @@ const commitOf = (repo) => {
 
 /**
  * Runs the check and writes `<outDir>/<runId>/records/<skill>.json` (and .md). Options:
- *   name          the skill; it needs a frozen baseline under bench/cap/baselines
+ *   name          the skill (or the old name of a renamed or folded one); it needs a frozen baseline
  *   repo          the repository whose skills/<name>/SKILL.md is the skill under test
  *   runId         must be stub or stub-<name>; judgments are stored under the run folder and reused when current
  *   outDir        where run folders go
@@ -36,13 +37,17 @@ const commitOf = (repo) => {
  *   judges        judge model ids
  *   replicates    runs per arm and task in the deep check
  *   rejudge       make stale judgments again instead of refusing them
+ *   baselinesDir  the frozen baselines folder (default bench/cap/baselines)
  * Returns { record, file, markdown }.
  */
-function runKeepPrune({ name, repo, runId, outDir, depth = 'both', provider = 'stub', subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES, replicates = DEFAULT_REPLICATES, rejudge = false, createdAt }) {
+function runKeepPrune({ name, repo, runId, outDir, depth = 'both', provider = 'stub', subjectModel = STUB_SUBJECT_MODEL, judges = STUB_JUDGES, replicates = DEFAULT_REPLICATES, rejudge = false, baselinesDir = BASELINES_DIR, createdAt }) {
   if (provider !== 'stub') throw new Error(`provider ${JSON.stringify(provider)} is not available: phase A has only the stub provider, and a live provider needs the owner's spend cap first`);
   if (!DEPTH_CHOICES[depth]) throw new Error(`--depth takes quick, deep or both (got ${JSON.stringify(depth)})`);
   assertStubRun(runId);
-  const baseline = loadBaseline({ name, skillFile: path.join(repo, 'skills', name, 'SKILL.md') });
+  const skillsDir = path.join(repo, 'skills');
+  // A renamed or folded name has no folder of its own; the baseline loader checks its identity entry.
+  if (!fs.existsSync(path.join(baselinesDir, name)) || fs.existsSync(path.join(skillsDir, name))) assertSkillSubject({ repo, name });
+  const baseline = loadBaseline({ name, skillsDir, dir: baselinesDir });
   const ladder = loadDoseLadder();
   const stub = createStubProvider({ ladder });
   const runDir = path.join(outDir, runId);
@@ -50,7 +55,7 @@ function runKeepPrune({ name, repo, runId, outDir, depth = 'both', provider = 's
   const commit = commitOf(repo);
   const blocks = { quick: null, deep: null };
   for (const d of DEPTH_CHOICES[depth]) {
-    const check = checkDepth({ depth: d, subject: baseline, convention: loadConvention(), ladder, provider: stub, subjectModel, judges, bWaiting: baseline.bWaiting, store, replicates, rejudge });
+    const check = checkDepth({ depth: d, subject: baseline, convention: loadConvention(), ladder, provider: stub, subjectModel, judges, bWaiting: baseline.bWaiting, subjectNoData: [baseline.staleWhy, baseline.identityWhy], store, replicates, rejudge });
     blocks[d] = blockFromCheck(check, { commit, runId, provider: stub.name, replicates: d === 'deep' ? replicates : null, bWaiting: baseline.bWaiting });
   }
   const record = buildRecord({ skill: baseline.skill, quick: blocks.quick, deep: blocks.deep, baseline, createdAt });

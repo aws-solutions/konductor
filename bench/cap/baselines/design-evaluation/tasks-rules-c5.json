@@ -1,0 +1,137 @@
+{
+  "format_version": 1,
+  "skill": "design-evaluation",
+  "batch": "rules-c5",
+  "generated_at": "2026-11-10T11:43:28.369Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "42c52006478e3f785f3ae0720321d3a799abae3ec79f7cd22cbfe780fbd14ac6",
+  "scenarios": [
+    {
+      "id": "design-evaluation-rules-1",
+      "title": "Telehealth video visits with a vendor SDK and stolen-session worry",
+      "target_section": "Tech Design Reviewer",
+      "prompt": "We're a 25-person startup building a telehealth app (patients book and join video visits with doctors). Design is mostly done and I want a hard review before engineering starts next sprint. Here's the summary.\n\nServices: api-gateway, visit-service, user-service. Postgres for everything, Redis for sessions.\n\nVideo: we use a third-party video vendor (TwilioLike Video). visit-service calls their REST API to create a room when a visit is booked, and requests an access token for each participant when they click Join. Flow: patient clicks Join -> visit-service calls vendor -> returns token to client. That's the flow.\n\nAuth: patients log in with email+password, we issue a JWT (24h expiry) that the mobile app stores in AsyncStorage. Refresh tokens are 90 days and also stored there. Threat model lists \"stolen device or token exfiltration gives attacker access to patient visit history and live visits\" as high severity. Mitigation column says \"TBD - revisit post-launch\".\n\nData: visits table (visit_id, patient_id, doctor_id, start_time, notes). Doctors need \"my visits today\" and patients need \"my upcoming visits\". Primary key is visit_id, no other indexes defined yet.\n\nCost: estimated $400/month, which is 3 small EC2 instances.\n\nMonitoring: not decided yet.\n\nPlease review it and tell me what has to change before we build.",
+      "rubric": [
+        "Treats the stolen-device/token-exfiltration threat (24h JWT and 90-day refresh token in AsyncStorage, mitigation \"TBD post-launch\") as something that must be fixed before building, not after launch.",
+        "Calls out that visit-service's calls to the video vendor (room creation, token issuing on Join) have no behavior defined for vendor outage, timeout or retry, and treats it as must-fix before build.",
+        "Notes that visits is keyed only by visit_id with no index, so the doctor's \"today\" and patient's \"upcoming\" lookups are not served efficiently, and asks for indexes or keys on doctor_id/patient_id plus start_time.",
+        "Points out that monitoring is undecided and recommends specific signals, such as join-failure rate, vendor call latency and errors, and structured logs with visit ids.",
+        "Observes that the $400 estimate covers only three EC2 instances and ignores Postgres hosting, Redis, vendor per-minute video charges and data transfer.",
+        "Where it skips or lightly treats something not needed for a three-service startup (e.g. multi-region, service mesh), says so and explains why that is reasonable.",
+        "Must-fix items appear before should-fix items, and optional improvements come last."
+      ],
+      "why_skill_matters": "A small telehealth design with an explicit unmitigated serious threat, a vendor call with only a happy path, a key that cannot serve the listed lookups, undefined monitoring and a compute-only cost figure. Makes r01, r02, r03, r05, r07 matter, plus omitted-section reasoning and ordering."
+    },
+    {
+      "id": "design-evaluation-rules-2",
+      "title": "Lean two-service internal tool, tempted to add more",
+      "target_section": "Scope-Tailored Feedback",
+      "prompt": "hi! I run the IT side of a small accounting firm (12 people). I'm designing an internal tool so staff can request and track software licenses. Two pieces: a small web app (Flask) and a worker that sends reminder emails when a license is about to expire. One Postgres db on a managed instance, a nightly backup. Login is through our existing Google Workspace SSO. Expected load is maybe 20 requests a day.\n\nMy colleague who used to work at a big bank read my draft and said I should add Kubernetes, a service mesh, event sourcing, and a full distributed tracing stack, and that I should write a runbook for every failure mode. I think that sounds like a lot. Cost: I budgeted $30/month for the managed db plus the small VM.\n\nThe worker calls our email provider's API to send reminders. If it fails I figured I'd just look at it when someone complains.\n\nCan you review the design and tell me what you actually think matters? I'm the only one maintaining it.",
+      "rubric": [
+        "Gives simple, focused advice for a two-piece, 20-requests-a-day tool and explicitly warns that Kubernetes, a service mesh and event sourcing would be over-engineering here.",
+        "Flags that the reminder worker's email-provider calls have no failure handling and recommends something simple such as retries and a failure log or alert instead of waiting for complaints.",
+        "Recommends a short, proportionate operational note for the sole maintainer (restore from backup, rerun worker) rather than a runbook for every failure mode.",
+        "Checks the $30/month figure against the VM plus managed database plus email provider fees and states whether it is plausible.",
+        "Mentions optional later improvements, such as basic uptime alerting or a restore test, and marks them as nice-to-have rather than required.",
+        "Explains that distributed tracing, a mesh and similar sections are not applicable at this size, and justifies the omission instead of demanding them."
+      ],
+      "why_skill_matters": "A tiny design where the colleague pushes heavy patterns. Tests size-tailored advice, the real gap (email failure handling), a proportionate ops note, cost check, optional extras and reasoned omissions."
+    },
+    {
+      "id": "design-evaluation-rules-3",
+      "title": "Subtle: lookup by SKU barcode buried in warehouse notes",
+      "target_section": "Quality Gate",
+      "prompt": "Posting the design notes for our warehouse inventory system (internal, 3 services: receiving, inventory, picking). Want a sanity check before we commit to the schema. I've kept the notes as they are, a bit rambly, sorry.\n\nInventory is in DynamoDB. Table `StockItem`: partition key `locationId` (like A-14-03), sort key `itemId`. Each row has qty, lastCountedAt, and the item's barcode. Receiving scans a pallet, which gives us a locationId and writes rows, nice and fast. We chose this because the main read is \"what's in this bin\", which is a single Query.\n\nPicking: pickers get a pick list from the order system, which contains item barcodes and quantities. The picking service needs to find where each barcode currently lives and how much is there, then build a route through the warehouse. Pick lists are around 40 lines and we run roughly 300 per hour at peak. We'll probably just handle that in the picking service code.\n\nCycle counts happen nightly and update lastCountedAt. A report for managers lists bins not counted in 30 days.\n\nDeploys through CodePipeline, blue/green on ECS. Logs go to CloudWatch, no dashboards yet. Alarms: CPU only. We wrote a runbook for deploy rollback; nothing for stuck pick lists or scanner outages.\n\nCosts: ~$900/month, based on the ECS tasks and an estimate of DynamoDB reads from \"what's in this bin\" traffic.\n\nPick routes depend on the order system's API but it's internal and never goes down, honestly.\n\nThoughts?",
+      "rubric": [
+        "Identifies that StockItem keyed by locationId cannot efficiently find where a given barcode lives, which picking needs for every pick line, and that handling it in service code means scans or scatter queries; recommends a secondary index or a barcode-keyed access path.",
+        "Also notes the manager report of bins not counted in 30 days cannot be served by the current keys without a scan or an index on lastCountedAt.",
+        "Challenges the claim that the order-system API never goes down, asking for defined behavior for its timeouts or outages when building pick routes.",
+        "Notes the observability is thin (CPU-only alarms, no dashboards) and recommends specific signals such as pick-list latency, queue of stuck lists and scanner errors.",
+        "Points out the $900 estimate only models bin-lookup reads and ignores the barcode and picking access load (about 300 lists of 40 lines per hour) and index or storage costs.",
+        "Does not demand sections irrelevant to this internal warehouse system, and says which usual items are fine to omit.",
+        "Places the schema/access-pattern problem in the most severe group of findings, ahead of monitoring and cost points."
+      ],
+      "why_skill_matters": "The key design is explained as fine for the headline read, and the barcode lookup is mentioned only as something done \"in code\". Hidden gaps: report access pattern, \"never goes down\" dependency, thin ops, cost model based on one pattern."
+    },
+    {
+      "id": "design-evaluation-rules-4",
+      "title": "Public developer API v1 with SDK customers and no change plan",
+      "target_section": "Core Concepts",
+      "prompt": "Looking for a tough review of our API design before we publish the developer portal. We're a maps/geocoding startup; customers (about 300 paying developers, some with mobile apps in app stores that can't be updated quickly) call us directly.\n\nEndpoints right now:\nGET /geocode?q=...\nGET /reverse?lat=..&lng=..\nPOST /batch  (returns a job id)\nGET /batch/{id}\n\nResponses are JSON like {\"lat\":..., \"lng\":..., \"label\":...}. We plan to change \"label\" into a structured object soon, since customers complain it's just a string. Auth is an API key in the query string (?key=...). Rate limit is 10 requests per second per key, enforced at the gateway.\n\nArchitecture: gateway -> geocoder service -> a licensed address data provider (we pay per lookup) and our own Postgres/PostGIS for fallback. The geocoder calls the provider with no timeout configured at the moment; if the provider returns an error we return a 500.\n\nObservability: we have Prometheus metrics for request count and p95 latency per endpoint. Logs are plain text. No tracing. No on-call process yet; the two founders just answer the phone.\n\nPricing model: we assumed $2k/month infra. That's for 2 app servers and the Postgres box.\n\nWhat should we fix before this goes out?",
+      "rubric": [
+        "Flags that the unversioned endpoints, with plans to change \"label\" from a string to an object, would break paying customers (including app-store apps that update slowly), and requires a versioning and deprecation approach before launch.",
+        "Flags the provider call with no timeout and a 500 on error as unacceptable, and recommends timeouts, retries and falling back to the PostGIS data or a degraded response.",
+        "Identifies the API key in the query string as a leak risk (logs, proxies, referrers) and recommends moving it to a header, treating it as a serious issue.",
+        "Notes that the only on-call arrangement is the two founders answering the phone and recommends a written incident playbook and rotation.",
+        "Questions the $2k/month figure because it leaves out the per-lookup data provider fees and batch job and bandwidth costs.",
+        "Says that things like multi-region deployment or a service mesh are not needed for this two-component setup, with a reason.",
+        "Separates blockers from lesser items and puts the versioning and provider-failure issues in the most severe group."
+      ],
+      "why_skill_matters": "Public API with explicit upcoming breaking change, no timeout on the paid provider, a key in query strings, founders-only ops and a cost figure missing per-lookup fees."
+    },
+    {
+      "id": "design-evaluation-rules-5",
+      "title": "Eleven-service retail platform with a solid design and a few quiet gaps",
+      "target_section": "Overview",
+      "prompt": "Architecture review request for our retail order platform rebuild. Org context: 6 teams, ~45 engineers. I'll paste the key points.\n\nServices (11): catalog, pricing, cart, checkout, orders, inventory, fulfillment, notifications, loyalty, returns, search-indexer. Kafka between most of them; orders and inventory also share a synchronous gRPC call. Each service has its own datastore.\n\nResilience: every outbound call has timeouts, retries with jittered backoff and circuit breakers; checkout falls back to \"pay later\" holding if the payment provider is down; notifications dead-letter queue is monitored. Multi-AZ everywhere. DR: warm standby in a second region, tested twice a year.\n\nSecurity: threat model done; the two top-severity items (account takeover via credential stuffing, card data exposure) both have listed mitigations (bot detection and lockout, tokenized payments with the PSP hosting fields).\n\nData: access patterns table reviewed per service, all covered by keys or indexes.\n\nAPI: all external APIs under /v2/ with a deprecation policy of 12 months; internal events carry schema versions in a registry.\n\nObservability: OpenTelemetry traces, RED metrics, central logs, SLO dashboards for checkout and orders.\n\nOps: on-call rotation per team, but there's one shared incident wiki page that is currently empty. Team leads said they'd \"fill it in after launch\".\n\nCost: a spreadsheet exists with per-service numbers. Nobody has compared it against the Kafka cluster size, cross-AZ and cross-region data transfer, or the OpenTelemetry vendor ingestion fees.\n\nWe feel good about it. Anything we're missing?",
+      "rubric": [
+        "Highlights that the shared incident wiki is empty and the content deferred until after launch, and recommends playbooks for key scenarios (checkout, Kafka lag, regional failover) before launch.",
+        "Says the cost spreadsheet must be checked against Kafka sizing, cross-AZ and cross-region transfer and observability ingestion fees, naming these as likely underestimated.",
+        "Gives analysis suited to eleven services across six teams: interactions between services (the orders-inventory synchronous gRPC coupling, Kafka event flows) and organizational or operational maturity (ownership, on-call across teams).",
+        "Offers optional extras such as chaos or game-day experiments and formal error budgets for the existing SLOs, clearly presented as nice-to-have given the strong resilience.",
+        "Acknowledges the observability setup is in good shape and does not invent a blocker there.",
+        "Does not demand sections that do not apply or that are already covered, and states which areas it considers adequate."
+      ],
+      "why_skill_matters": "A strong design with two open gaps: empty incident wiki and unvalidated costs. Extras like chaos tests and error budgets fit as optional. Tests large-scope tailoring and not manufacturing blockers."
+    },
+    {
+      "id": "design-evaluation-rules-6",
+      "title": "Education platform with grading webhooks and a hurried deadline",
+      "target_section": "Execution",
+      "prompt": "Need this reviewed fast, kickoff is Thursday. Online course platform \"LearnLoop\", 4 services: courses, enrollment, grading, certificates. Around 80k students, bursts at semester start.\n\n- Enrollment stores to DynamoDB: PK studentId, SK courseId. Instructors need \"all students in course X\" for rosters, and grading needs \"all submissions for assignment Y\". Submissions are stored as items under PK studentId, SK submissionId.\n- Grading uses an external plagiarism-check service. On each submission, grading posts the text and waits for the result before saving the grade. Their docs say they have occasional slowdowns.\n- Certificates are generated as PDFs by a Lambda and emailed via a third-party email API. If email fails the Lambda throws and the whole job is retried by SQS forever.\n- Threat model, top severity: students can read other students' submissions by guessing submissionId in GET /submissions/{id}. Mitigation: \"ids are UUIDs so unguessable.\" There's no check that the caller owns the submission.\n- Public API: /api/submissions, /api/courses. No versions. Mobile app uses it; instructors use it through web.\n- Monitoring: CloudWatch default metrics. Cost: $1,500/month estimated from Lambda and DynamoDB on-demand; nothing included for the plagiarism or email providers.\n\nWhat are the biggest problems?",
+      "rubric": [
+        "Identifies that relying on unguessable UUIDs with no ownership check on GET /submissions/{id} leaves the cross-student read threat unmitigated, and requires an authorization check before build.",
+        "Flags that grading blocks on the plagiarism service with no timeout or degraded path, and that the certificate email failure causes endless SQS retries; asks for timeouts, bounded retries and a dead-letter queue.",
+        "Observes that rosters (all students in course X) and submissions per assignment cannot be served by keys that start with studentId, and recommends indexes or inverted keys.",
+        "Notes the mobile app and web clients use unversioned /api paths, so later changes risk breaking them, and asks for a versioning approach.",
+        "Says $1,500 leaves out the plagiarism and email provider fees and the semester-start burst load.",
+        "Briefly says which usual design areas are not needed for a four-service product (for example a mesh or multi-region), with a reason.",
+        "Presents the authorization, dependency-failure and access-pattern problems before cost and monitoring remarks."
+      ],
+      "why_skill_matters": "Multiple blockers in compact form: weak auth reasoning, two external dependencies with poor failure paths, access patterns not served by keys, unversioned API, partial cost."
+    },
+    {
+      "id": "design-evaluation-rules-7",
+      "title": "Subtle: dispatch backend where the mitigation is a pointer to open items",
+      "target_section": "Usage",
+      "prompt": "Here's the design doc text for our driver-dispatch backend (ride-hailing for medical transport). 5 services. I've copied relevant parts; the full doc is longer but this is the stuff reviewers usually ask about.\n\n\"3.2 Threats. T1 (high): attacker spoofs driver location updates to hijack dispatches. Mitigation: see section 9. T2 (medium): rider PII leak from logs. Mitigation: log scrubber library. T3 (low): DoS on public API. Mitigation: gateway rate limit.\n\n3.4 Dispatch. dispatch-service receives driver pings over MQTT, matches rides, and calls the maps provider for ETAs and the SMS provider to notify riders. Provider calls use the shared HTTP client library with default settings.\n\n5.1 Data. Rides table in Postgres with indexes on rider_id and status. Dispatch matching queries drivers by geohash and last_ping_at; the drivers table has an index on driver_id only. Billing queries rides by date range and facility_id.\n\n7. API. Versioned under /v1, with a sunset header policy and contract tests.\n\n9. Open items. Driver device attestation: owner TBD. Signed ping payloads: not scheduled. Runbook: link to be added.\n\n11. Cost. $3,200/month, itemized: ECS, RDS, MQTT broker, maps API at 400k ETA lookups/month, SMS at 120k messages/month.\"\n\nCan you review it? I mostly want to know if it's ready to hand over.",
+      "rubric": [
+        "Sees that T1 (high severity, driver location spoofing) points to section 9, where the mitigations (device attestation and signed pings) are unowned or unscheduled, so it is effectively unmitigated and blocks handover.",
+        "Notes that dispatch matching by geohash and last_ping_at cannot be served by an index on driver_id alone, and that billing by date range and facility_id has no matching index on rides; recommends indexes.",
+        "Points out that \"default settings\" on the shared HTTP client for the maps and SMS providers means no deliberate timeout, retry or fallback behavior, which matters for time-critical medical dispatch.",
+        "Notes that the runbook is only \"link to be added\", and recommends dispatch-specific incident procedures.",
+        "Credits the /v1 versioning with sunset policy and contract tests as adequate and does not raise it as a blocker.",
+        "Says which areas it is treating as out of scope or fine because the excerpt does not cover them, instead of inventing demands.",
+        "Gives the not-ready-to-hand-over reasons first, ahead of minor suggestions."
+      ],
+      "why_skill_matters": "The top threat's mitigation is a pointer to an open items list with no owner, the indexes mismatch is spread over two paragraphs, and the provider failure is hidden in \"default settings\". The API versioning is fine and should not be flagged. Cost is itemized and plausible."
+    },
+    {
+      "id": "design-evaluation-rules-8",
+      "title": "Event ticketing flash-sale design with no observability or ops text",
+      "target_section": "10 Evaluation Dimensions",
+      "prompt": "hey, can you do a design review for our ticketing site? we sell concert tickets, flash sales where 50k people hit the page in the first minute. there are 3 services: catalog, inventory (holds seats for 10 min), checkout. Postgres, Redis for seat holds, a CDN in front of the catalog.\n\nhow it works: user picks seats, inventory sets a Redis key per seat with 10 min TTL, checkout takes payment through a card processor and then writes the order. If the processor call times out we show the user an error and they can retry (the hold may have expired by then, so they might lose seats, and we don't check whether the first charge went through).\n\norders table: order_id PK, user_id, event_id, seats (JSON), total. Support looks up orders by the customer's email and by event_id for refunds. Users come from a separate login service so the orders table has no email.\n\ntokens: sessions are cookies, HttpOnly, 30 min. Threat model hasn't been done, we figure the CDN and cloud provider handle security.\n\nBudget: we think $2,000/month - 4 app servers and a Postgres instance. Sale days maybe 12 per year.\n\nNothing written for monitoring or on-call yet. Honestly not sure what we need there. What would you tell us to change before building?",
+      "rubric": [
+        "Flags that a card-processor timeout leaves the outcome unknown, so retries could double-charge or take payment without an order, and requires a defined behavior such as idempotency keys and status reconciliation.",
+        "Points out that having no threat model is itself a gap, and names concrete risks such as seat-hold abuse by bots or hoarding and order data access, rather than relying on the CDN and cloud provider.",
+        "Notes that orders is keyed by order_id and holds no email, so support lookup by customer email and by event_id for refunds is not supported, and recommends an index on event_id and a way to resolve email to user_id.",
+        "Notes that nothing is defined for monitoring and recommends signals for flash sales, such as checkout error rate, hold expiry rate, payment timeouts and Redis latency, with logs and traces tied to order ids.",
+        "Recommends an on-call plan and playbook for sale days, such as handling payment-provider trouble or a queue of failed charges.",
+        "Challenges the $2,000/month estimate for leaving out Redis, CDN and data transfer, payment processing fees and burst capacity for the 12 sale days.",
+        "Explains that things like multi-region active-active are probably not needed for a three-service system, with a reason, rather than demanding them."
+      ],
+      "why_skill_matters": "A burst-traffic design with multiple gaps: unknown payment outcome, no threat model, orders access patterns unserved, no ops text, partial cost. Several value rules matter without being named."
+    }
+  ]
+}

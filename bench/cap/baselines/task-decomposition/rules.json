@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "task-decomposition",
+  "skill_md_sha256": "a4977318d440962f755b4ccc56dedd6fe553a5fa111736d2eae3da9af2512bbd",
+  "request_context": "A request to split a project's user stories and high-level design into separate work streams that individual engineers can build largely independently.",
+  "rules": [
+    {
+      "id": "task-decomposition-r01",
+      "source_quote": "this phrasing means produce the Feature Split format below, NOT a generic layer-by-layer technical breakdown",
+      "class": "useful",
+      "outcome": "The answer divides the work into vertical, self-contained features, each owned by one engineer, rather than horizontal technical layers such as data model, backend, API and frontend.",
+      "why": "A layer-by-layer breakdown forces engineers to wait on each other and defeats the goal of independent tracks.",
+      "scenario_hint": "User asks to break a feature or project down into implementation tasks."
+    },
+    {
+      "id": "task-decomposition-r02",
+      "source_quote": "Be independently implementable** — one engineer can complete it without blocking on others",
+      "class": "useful",
+      "outcome": "Each proposed feature can be completed by a single engineer without waiting for another feature to be finished first.",
+      "why": "Features that block each other serialize the team and cause idle time.",
+      "scenario_hint": "Splitting a design where some parts naturally build on others."
+    },
+    {
+      "id": "task-decomposition-r03",
+      "source_quote": "Features have circular dependencies",
+      "class": "useful",
+      "outcome": "No two or more features depend on each other in a cycle; any such cycle is removed by merging features or extracting a shared interface.",
+      "why": "Circular dependencies make it impossible to start or finish the work in any order.",
+      "scenario_hint": "Design where two components call each other's functionality."
+    },
+    {
+      "id": "task-decomposition-r04",
+      "source_quote": "User stories are missing from the split (every story must map to a feature)",
+      "class": "useful",
+      "outcome": "Every user story supplied is assigned to at least one feature, and each feature names the stories it serves, so nothing is left uncovered.",
+      "why": "Unmapped stories are silently dropped from implementation.",
+      "scenario_hint": "A set of many user stories, some of which are cross-cutting or easy to overlook."
+    },
+    {
+      "id": "task-decomposition-r05",
+      "source_quote": "Have clear boundaries** — well-defined inputs, outputs, and interfaces",
+      "class": "useful",
+      "outcome": "Each feature states its scope and its inputs, outputs and the interfaces it exposes or consumes, so its boundary is unambiguous.",
+      "why": "Vague boundaries lead to overlapping work and integration surprises.",
+      "scenario_hint": "Splitting a design with several services and endpoints."
+    },
+    {
+      "id": "task-decomposition-r06",
+      "source_quote": "if two features touch the same data model or API, consider merging or defining a shared interface",
+      "class": "useful",
+      "outcome": "Where several features rely on a common entity or endpoint, the answer either merges them or identifies a common contract to be defined up front and says which features use it.",
+      "why": "Uncoordinated changes to shared data or endpoints cause conflicts and rework.",
+      "scenario_hint": "Design in which several features read and write the same entity."
+    },
+    {
+      "id": "task-decomposition-r07",
+      "source_quote": "More than 2 features share the same data model (consider a shared-interfaces feature)",
+      "class": "useful",
+      "outcome": "When more than two features share one data model, the answer proposes a dedicated foundational piece of work that defines it first instead of letting each feature change it.",
+      "why": "Many features editing one model concurrently creates contention and inconsistent changes.",
+      "scenario_hint": "Three or more features all depend on one core entity such as a user or order."
+    },
+    {
+      "id": "task-decomposition-r08",
+      "source_quote": "A feature is too large (>2 weeks of work for one engineer)",
+      "class": "useful",
+      "outcome": "No feature is sized beyond roughly a fortnight of effort for a single person, and very small pieces of a few days or less are combined with related ones.",
+      "why": "Oversized features cannot be owned by one person and tiny ones add coordination overhead.",
+      "scenario_hint": "Design containing one very large area and several trivial ones."
+    },
+    {
+      "id": "task-decomposition-r09",
+      "source_quote": "Be testable in isolation** — can be verified without other features being complete",
+      "class": "generic",
+      "outcome": "Each feature can be verified on its own, without needing other features to be finished.",
+      "why": "Features that can only be tested together hide defects until late integration.",
+      "scenario_hint": "Any request to split a project into engineer-sized features."
+    },
+    {
+      "id": "task-decomposition-r10",
+      "source_quote": "Present to user for approval",
+      "class": "generic",
+      "outcome": "The answer presents the split as a proposal and invites the user to confirm or adjust it before further work proceeds.",
+      "why": "Committing the team to an unreviewed split risks wasted effort.",
+      "scenario_hint": "Any request to split a project into engineer-sized features."
+    },
+    {
+      "id": "task-decomposition-r11",
+      "source_quote": "Could suggest implementation order based on dependencies",
+      "class": "useful",
+      "outcome": "The answer suggests an order or effort estimate for the features, based on their dependencies, noting which interfaces must be defined first.",
+      "why": "Without ordering guidance, engineers may start work that depends on undefined interfaces.",
+      "scenario_hint": "Split where some features rely on shared interfaces."
+    },
+    {
+      "id": "task-decomposition-r12",
+      "source_quote": "- **Engineer**: [Assigned or TBD]",
+      "class": "style",
+      "outcome": "Each feature is presented as its own section listing scope, mapped stories, key components, dependencies and owner (or undecided), followed by a separate list of shared interfaces.",
+      "why": "",
+      "scenario_hint": "Any request to split a project into engineer-sized features."
+    }
+  ]
+}

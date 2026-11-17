@@ -1,0 +1,127 @@
+{
+  "format_version": 1,
+  "skill": "dynamodb-validation",
+  "batch": "rules-c6",
+  "generated_at": "2026-11-10T11:56:25.976Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "9262af213503cb54c9983c660a4bd23e5ea7f9a5556566e1953279c296dfeb37",
+  "scenarios": [
+    {
+      "id": "dynamodb-validation-rules-1",
+      "title": "Racing game daily leaderboard",
+      "target_section": "CATEGORY 1: PARTITION KEY DESIGN (Critical Priority)",
+      "prompt": "We're building leaderboards for a mobile racing game. About 600k players a day, and every finished race writes a score. At evening peak that's roughly 3,500 writes/sec. Here's the draft, on-demand billing, no indexes yet (figured we'd add them if needed):\n\n```\nTable: Scores\npk: boardDay        (string, e.g. \"2026-11-10\")\nsk: score#playerId  (zero-padded score, then player id)\nattrs: playerId, displayName, score, track, clanId, region, raceId\n```\n\nScreens we need:\n1. Top 100 scores on today's board\n2. Top 100 today for one specific track\n3. A player's personal best across all days\n4. Everyone in a clan with their best score\n5. A player's last 20 races\n\nCan you review this before we write the infrastructure code? Mostly worried we're missing something obvious.",
+      "rubric": [
+        "Flags boardDay as the primary partition key because every score written during a given day lands on one key value, so the roughly 3,500 writes/sec at peak all hit a single partition.",
+        "Proposes a fix for the day-based key, such as adding a shard suffix or computed bucket to the board key, or leading with a high-variety attribute such as playerId or raceId, and says how the top-100 read would still work (for example merging across shards).",
+        "Goes through the five screens and says which are served by the current key (the top 100 for today's board) and which are not.",
+        "Specifically calls out that personal best across all days, clan members with best score, and last 20 races for a player have no key or index serving them (and the per-track top 100 only through filtering), so they would need scans or new indexes.",
+        "Backs the findings with this design's own attribute names and numbers and gives a concrete corrected key layout and index definitions, with steps, rather than generic advice."
+      ],
+      "why_skill_matters": "A date-valued partition key on a very write-heavy table, plus a list of five screens where only one is served by the table's keys. Makes the hot-key rule and the access-pattern mapping rule matter, and requires specific fixes."
+    },
+    {
+      "id": "dynamodb-validation-rules-2",
+      "title": "Ride-hailing driver ping table",
+      "target_section": "CATEGORY 11: CRITICAL PITFALLS DETECTION (Critical Priority)",
+      "prompt": "Reviewing a teammate's setup for the driver-location table in our ride-hailing app. Provisioned mode because traffic is steady. Pasted config:\n\n```\ntable DriverPings   pk driverId (S)   sk pingTs (N)   RCU 600  WCU 2400\nGSI byCity   pk city    sk pingTs   projection ALL   RCU 300  WCU 300\nGSI byTrip   pk tripId  sk pingTs   projection ALL   RCU 200  WCU 400\n```\n\nEach driver pings every 4 seconds and we peak around 9,600 active drivers, so about 2,400 pings/sec. Each item has driverId, pingTs, lat, lng, speed, heading, battery, appVersion, deviceModel, city, and tripId (only while on a trip), around 600 bytes. Route replay by tripId only needs lat, lng and pingTs. Dispatch reads the latest ping per driver from the base table. The city index feeds an ops map with driver counts per city; we operate in 14 cities.\n\nHe says it's fine and we'll just watch the dashboards after launch and tune. I have a vague feeling something is off but can't point to it. Can you take a look?",
+      "rubric": [
+        "Points out that the city index (300 write units) and the trip index (400) have far less write capacity than the base table's 2400, and explains that when an index runs out, writes to the base table get rejected too even though the table itself has room.",
+        "Shows the numbers for this design (2,400 pings/sec against each index's provisioned writes, with every ping also written to the city index and trip pings to the trip index) and recommends raising index write capacity to at least the table's level, or using on-demand.",
+        "Notes that both indexes copy every attribute, while route replay needs only lat, lng and pingTs, and recommends projecting only the needed attributes, with an estimate of storage or write-cost savings based on the roughly 600-byte items.",
+        "Says that relying on dashboards after launch is not enough and recommends alarms for throttling on the table and on each index, plus latency and capacity-utilization alarms, so that a throttled index is noticed when it happens.",
+        "Gives a corrected configuration for this table (new write units per index, trimmed projection, alarm thresholds) with the consequences spelled out, rather than just saying capacity is too low."
+      ],
+      "why_skill_matters": "A short config in which the index write capacity numbers are buried among other details and the teammate's reassurance pulls toward approving. Makes the index throttling cascade, over-projection and missing alarms matter."
+    },
+    {
+      "id": "dynamodb-validation-rules-3",
+      "title": "Library lending with too many indexes",
+      "target_section": "CATEGORY 2: INDEX COVERAGE (High Priority)",
+      "prompt": "Our regional library network is moving its lending records to DynamoDB. One table, Loans, pk loanId. Roughly 3 million loans so far, growing about 40k a month. Each loan item carries around 25 attributes (member name, book title, ISBN, branch, dates, fines, notes...).\n\nIndexes the previous dev sketched, all projecting everything:\n- byMember (memberId, borrowedOn)\n- byBook (isbn, borrowedOn)\n- byBranch (branchId, borrowedOn)\n- byDueDate (dueDate)\n- byStatus (status, dueDate)\n- byLibrarian (librarianId, borrowedOn), \"in case an audit asks\"\n- byIsbnPrefix (first 4 digits of isbn), \"might be handy for genre stats someday\"\n\nWhat the app needs:\n- A member's current loans\n- A book's loan history\n- Staff page \"all overdue loans\" across the whole network, refreshed every minute by about 30 branch terminals\n- Loans at one branch today\n- Monthly fine totals per branch\n\nFor the overdue page the dev's plan is to scan and filter on status = overdue, since \"it's only 3M rows\". Please review the index setup and tell me what to change.",
+      "rubric": [
+        "Counts seven global indexes on the Loans table, says that is above a sensible ceiling, and explains that each index adds write cost and upkeep on every loan write.",
+        "Names the indexes with no stated use (byLibrarian \"in case an audit asks\", byIsbnPrefix \"someday\", and probably byDueDate which overlaps byStatus) as candidates to remove or merge.",
+        "Identifies the network-wide overdue page as a full scan of about 3 million loans, repeated by around 30 terminals every minute, notes that cost and time grow with table size, and recommends a query on an index (for example one keyed on an overdue marker, sparse, or a constant grouping key) instead.",
+        "Notes that all seven indexes copy every one of the 25 or so attributes while the listed screens need only a few, and recommends narrower projections, with some quantification of the extra storage or write cost.",
+        "Maps each of the five listed needs to an index or the primary key, noting that monthly fine totals per branch is an aggregation not served by any index.",
+        "Gives a concrete trimmed index set and a revised definition for the overdue lookup, with steps and reasoning tied to this library's numbers."
+      ],
+      "why_skill_matters": "A table with seven indexes, several speculative, and an overdue page that the author plans to scan. Makes index count, scan avoidance, projection waste and pattern mapping matter."
+    },
+    {
+      "id": "dynamodb-validation-rules-4",
+      "title": "Payments ledger with thin security",
+      "target_section": "CATEGORY 5: SECURITY & COMPLIANCE (Critical Priority)",
+      "prompt": "We're a small fintech (peer-to-peer payments) and I'm about to sign off on the ledger table for production. About 40M entries expected in year one. Design summary from the wiki:\n\n```\nTable: Ledger (on-demand)\npk: ACCT#<customer email>\nsk: TXN#<iso timestamp>#<txnId>\nattrs: amountMinor, currency, counterpartyEmail, cardLast4, memo, status\nGSI: byTxn (pk txnId)\nAccess: service role \"ledger-svc\" has dynamodb:* on arn:...:table/Ledger*\nBackups: Rahul exports to S3 manually when he remembers (monthly-ish)\nMonitoring: ops will \"keep an eye on it\"\n```\n\nThe auditors visit in six weeks and asked about data protection and recovery. Wiki says nothing about encryption settings; I assume defaults. Support staff also use a read-only console that uses the same ledger-svc role. Is this good to go? Tell me what you'd want changed before sign-off.",
+      "rubric": [
+        "Notes that the design never states how encryption at rest is configured, and treats confirming it (including a decision on customer-managed keys for a financial ledger) as something to settle before launch rather than assuming defaults.",
+        "Flags customer email embedded in the partition key (and the counterparty email in the data) as personal data that shows up in logs and metrics, and suggests an opaque account identifier instead.",
+        "Calls out the role with all dynamodb actions on Ledger* as overly broad, and especially that the read-only support console shares it, recommending least-privilege separate roles.",
+        "Flags that recovery relies on Rahul's manual, irregular exports, and recommends enabling point-in-time recovery, scheduled backups with a stated retention, written recovery time and recovery point targets, and a cross-region copy since this is critical financial data.",
+        "Says \"keep an eye on it\" is not monitoring and recommends alarms for throttling on the table and on the byTxn index, along with latency and capacity alarms.",
+        "Ties each problem to this table's actual details (the ACCT#email key, the wildcard policy, the manual exports) and gives corrected examples such as a revised key layout and a scoped policy."
+      ],
+      "why_skill_matters": "A pre-audit ledger with email in keys, a wildcard role shared with a support console, ad-hoc backups and no alarms. Makes security, backup and monitoring rules matter."
+    },
+    {
+      "id": "dynamodb-validation-rules-5",
+      "title": "Real estate listings with search and photos",
+      "target_section": "CATEGORY 7: ANTI-PATTERNS & USE CASE FIT (Critical Priority)",
+      "prompt": "Hi, we run a property listings site (about 800k active listings) and the CTO wants everything on DynamoDB to cut our database bill. My draft:\n\n```\nTable: Listings\npk: listingId\nGSI byZip: pk zip, sk price\nItem attrs: listingId, agentId, zip, price, beds, baths, description (up to 8 KB of text),\n            photos (list of base64 strings, 5-12 photos, ~250 KB each), lat, lng, listedOn\n```\n\nThings the product team wants:\n1. Open a listing by id\n2. Listings in a zip code between a min and max price\n3. A keyword box that searches the description text (\"sunny\", \"walkout basement\", \"near transit\")\n4. \"Within 5 km of this point\" map search\n5. All listings by one agent\n6. A weekly report: average price per zip per bedroom count, month over month\n\nIs DynamoDB a good fit for all of this? What would you change?",
+      "rubric": [
+        "Says the keyword search over description text is not something DynamoDB does well and recommends a dedicated search service for it.",
+        "Identifies the weekly average-price-per-zip-per-bedroom report as an analytics workload and recommends a warehouse or query service (or a precomputed export) rather than running it on the table.",
+        "Flags the base64 photos at about 250 KB each (five to twelve per listing) as a problem for a store with a 400 KB item size ceiling, and recommends keeping the images in object storage with only references in the item.",
+        "Maps the six requests: open by id is served by the primary key and zip plus price range by byZip, while all listings by one agent, keyword search, and radius search have no key or index serving them.",
+        "Recommends an index keyed on agentId for the agent page, and suggests where radius search could live (a geospatial-capable search service) instead of scanning.",
+        "Gives a concrete restructured design (slimmed Listings item, agent index, which requirement goes to which service) tied to these attribute names and sizes, not a general statement that DynamoDB has limits."
+      ],
+      "why_skill_matters": "Requirements that include free-text search, geo search, aggregations and large embedded images, mixed with simple ones that suit the database. Makes the fit rule and access-pattern mapping matter."
+    },
+    {
+      "id": "dynamodb-validation-rules-6",
+      "title": "HR directory with a tucked-in list-all page",
+      "target_section": "CATEGORY 2: INDEX COVERAGE (High Priority)",
+      "prompt": "We're a 2,000-person company and I'm replacing our old HR directory with a DynamoDB table. Single table design, short notes below. Looking for a quick sanity pass before I hand it to the contractor.\n\n```\npk: EMP#<employeeId>          sk: PROFILE | PAY#<year> | REVIEW#<year>\npk: CON#<national tax number> sk: PROFILE | INVOICE#<yyyy-mm>      (contractors)\nGSI byManager: pk managerId, sk employeeId  (direct reports)\nProfile attrs: name, title, department, managerId, startDate, workEmail, phone, salary\n```\n\nPages: employee profile by id; \"my direct reports\" via the manager index; contractor invoices by tax number (the finance team types it in); and the company directory page, which just loads everyone alphabetically and filters in the browser. That one's tiny, so I'm just scanning it, we're only 2,000 people (headcount will probably reach 3,500 once we finish the acquisition). Access is through one app role with full table permissions, used by the web app and also by the payroll batch job. Encryption settings are whatever the console gives you.\n\nAnything you'd change?",
+      "rubric": [
+        "Identifies the company directory page as a full-table scan, and does not wave it through as small: the table holds profile, pay, review and invoice items so a scan reads far more than 2,000 rows, it grows with the acquisition to 3,500 people, and cost and latency rise with table size.",
+        "Recommends serving the directory with a query on an index (for example a constant grouping key or a department/name key for a profile item type) instead of a scan, ideally returning only profile items in alphabetical order.",
+        "Flags the contractor partition key built from the national tax number as sensitive data placed in a key, which shows up in logs and metrics, and suggests an internal contractor id with the tax number kept as a protected attribute.",
+        "Points out that one all-powerful app role shared by the web app and payroll batch job, with salary and review data in the table, violates least privilege, and says encryption configuration should be checked and stated deliberately instead of left to console defaults.",
+        "Names this design's own items (the CON# key, the directory page, the shared role) and shows what the corrected key or index and a scoped permission set would look like."
+      ],
+      "why_skill_matters": "The list-everyone page appears as one clause that downplays itself as tiny, and the sensitive-key problem sits in a side-note about contractors. Makes the list-all and sensitive-data rules matter."
+    },
+    {
+      "id": "dynamodb-validation-rules-7",
+      "title": "Parcel tracking keyed by status",
+      "target_section": "CATEGORY 12: DESIGN SMELL DETECTION (High Priority)",
+      "prompt": "Parcel tracking system for a courier company, about 1,800 scan events written per second on a normal day, more in the holiday peak. I'm reviewing the plan the architects gave us:\n\n```\nTable: Shipments  (provisioned: RCU 1200, WCU 1500)\npk: shipmentStatus   (CREATED | PICKED_UP | IN_TRANSIT | OUT_FOR_DELIVERY | DELIVERED)\nsk: trackingNumber\nGSI byCarrier: pk carrierCode, sk trackingNumber   RCU 200, WCU 200   (projection: all)\nAttrs: trackingNumber, shipmentStatus, carrierCode, origin, destination, eventLog (list), weight\n```\n\nThe reasoning in the doc was \"we mostly list shipments by status for the depot screens, so status as the main key makes the screen a single query\". Status is updated as the parcel moves, so we delete and re-insert the item under the new status each time.\n\nBackups section says \"TBD with platform team\". Alerts section is empty. Peak plan is 2.5x normal. Is this OK to build? What would you change?",
+      "rubric": [
+        "Flags shipmentStatus as the main partition key because it has only five values, so the 1,800 writes/sec (more at peak) pile onto a handful of partitions, and notes that DELIVERED or IN_TRANSIT would be especially hot.",
+        "Recommends a key with many distinct values (such as trackingNumber) and moving the status lookup to an index, ideally with a depot or sharded component so that screens remain a query, and mentions the delete-and-reinsert on every status change as an additional cost.",
+        "Compares the byCarrier index's 200 write units to the table's 1500 (and 2.5x peak) and says the index would throttle and block table writes, recommending matching or exceeding the table's write capacity.",
+        "Treats \"TBD\" backups as a gap for a production table and asks for point-in-time recovery, retention period, recovery time and point objectives, and cross-region protection, since shipment history is business-critical.",
+        "Flags the empty alerts section and asks for alarms on throttling for both the table and the byCarrier index, plus latency and capacity-use alarms, and some runbook for handling throttling.",
+        "Backs each finding with this design's numbers (five status values, 1,800 and 2.5x writes/sec, 200 versus 1500 units) and shows a corrected key and index layout."
+      ],
+      "why_skill_matters": "A status-valued primary key justified by a screen, an under-provisioned index, an undecided backup plan and an empty alerts section. Makes the hot-key, throttling cascade, backup and monitoring rules matter."
+    },
+    {
+      "id": "dynamodb-validation-rules-8",
+      "title": "Ad click events and reporting",
+      "target_section": "CATEGORY 7: ANTI-PATTERNS & USE CASE FIT (Critical Priority)",
+      "prompt": "We're an ad network startup and want to log ad events in DynamoDB and serve our advertiser dashboards from it. Approx 12k events/sec at peak. Here's what we came up with, be as blunt as you like:\n\n```\nTable: AdEvents (on-demand)\npk: eventType   (\"impression\" | \"click\" | \"conversion\")\nsk: ts#eventId\nAttrs: advertiserId, campaignId, publisherId, creativeId, country, device, costMicros, revenueMicros\n\nGSIs (all project everything):\n byAdvertiser (advertiserId, ts)\n byCampaign (campaignId, ts)\n byPublisher (publisherId, ts)\n byCreative (creativeId, ts)\n byCountry (country, ts)\n byDevice (device, ts)\n byCampaignDevice (campaignId, device)\n```\n\nDashboards must show: spend per advertiser per day, click-through rate per campaign per hour, top 50 publishers by revenue this week, conversions by country and device, and a raw event drill-down for one campaign. Query volume is a few hundred dashboard loads a minute.\n\nThe idea is that each GSI answers one dashboard widget. Does this hold up?",
+      "rubric": [
+        "Flags eventType as the main partition key because it has only three values, so 12k events/sec land on three key values (impressions being the bulk), which cannot spread across partitions, and proposes a high-variety or sharded key.",
+        "Counts seven global indexes on the table, says that exceeds a sensible limit, and explains that every event is written to all seven so write cost multiplies at 12k events/sec, recommending consolidation or removal.",
+        "Recognizes that spend per day, click-through rate per hour, top publishers by revenue, and conversions by country and device are aggregations, which an index of raw events does not compute, and recommends an analytics service or a pre-aggregation pipeline (stream into a warehouse or query engine) for the dashboards.",
+        "Suggests keeping DynamoDB for ingestion or raw drill-down by campaign and moving the reporting workload elsewhere, rather than adding yet more indexes.",
+        "Uses this table's own attributes and numbers to show the consequence (for example seven index writes per event at 12k/sec) and gives a concrete alternative layout for the key and the reporting path."
+      ],
+      "why_skill_matters": "A three-valued partition key, seven indexes each meant to answer one dashboard widget, and reports that are aggregations. Makes the hot-key, index count and fit-for-purpose rules matter."
+    }
+  ]
+}

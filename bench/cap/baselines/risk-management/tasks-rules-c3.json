@@ -1,0 +1,126 @@
+{
+  "format_version": 1,
+  "skill": "risk-management",
+  "batch": "rules-c3",
+  "generated_at": "2026-11-10T09:23:15.628Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "92151fdf2fc40676756d307cba6d3b266e663f5c154126bd7c9fc19a865e2341",
+  "scenarios": [
+    {
+      "id": "risk-management-rules-1",
+      "title": "Smart water meter rollout for a city utility",
+      "target_section": "Probability × Impact Scoring",
+      "prompt": "I'm the project manager for our city utility's smart water meter rollout: 48,000 meters, installs begin 2 February. I've got three worries and need them written up properly so I can show the steering group how serious each one is and what we do about it.\n\n1. The meter vendor says the firmware certification could slip by about 3 weeks. They've already slipped twice on us, so I'd put the odds at 75% that it happens again. Installs can't start without certified firmware.\n\n2. The installer crews' union contract expires in January. If talks fail there could be a strike. I think the odds are about 1 in 5, and it would halt installs for roughly 5 working days.\n\n3. The billing system vendor may need extra integration testing, around 10 days more than planned. I'd say it's a coin flip. Billing is run by Marcus Oyelaran's team, and the firmware piece sits with our vendor manager Ines Duarte.\n\nCan you rate each one, decide how we should respond, and tell me who should own what? Also give me something short I can put in front of the steering group.",
+      "rubric": [
+        "Gives each of the three worries (firmware, strike, billing testing) both a likelihood rating and an impact rating, plus a single combined priority for each.",
+        "Rates the firmware slip as high likelihood and high impact, explicitly because 75% odds and a 3-week slip exceed the upper bands.",
+        "Rates the strike as low likelihood and low impact (about 20% odds, 5 working days, under a week), and the billing testing as medium on both (coin-flip odds, 10 days).",
+        "The firmware slip has a response that is clearly one of: remove the cause, reduce likelihood or impact, shift it to another party (e.g. contractual penalties on the vendor), or accept it with a contingency plan.",
+        "Each response names a responsible person (using Ines Duarte for firmware and Marcus Oyelaran for billing, or flags that the strike has no owner yet) and states the condition that would activate it, such as a missed certification milestone.",
+        "Includes a brief steering-group summary with one line per worry stating the response status."
+      ],
+      "why_skill_matters": "The user pastes three risks with stated odds and slip durations, each landing in a different band. The answer must rate both dimensions, justify the ratings from the numbers, pick a response type and attach owners and activation conditions."
+    },
+    {
+      "id": "risk-management-rules-2",
+      "title": "Clinical trial kickoff with open assumptions",
+      "target_section": "RAID Log Format",
+      "prompt": "Kicking off a Phase II oncology trial program on Monday. 14 sites across 5 countries, target is first patient dosed by 15 February. I'm the TPM and need the initial picture of what could go wrong before I present to the sponsor team.\n\nWhat I know so far:\n- Ethics approvals for all sites are expected within about 3 weeks of submission. Regulatory affairs says that's normal.\n- The central lab contract is still in legal review. Without it, no samples can be processed.\n- The drug product comes from one contract manufacturer who promised a release batch by 20 January. Nobody else is qualified to make it.\n- We're counting on each site having at least two trained coordinators. I haven't verified it with all sites.\n- The randomization module in the data capture system is new, and we're assuming it works with our dosing schedule. Not tested yet.\n- Two of the sites are in a region where customs clearance for drug shipments has been slow lately.\n\nCan you turn this into a proper initial assessment I can walk the team through, and tell me how we should keep an eye on it from here?",
+      "rubric": [
+        "Treats the coordinator staffing and the randomization-module compatibility as unconfirmed beliefs separate from risks, and gives each a way to confirm it (e.g. site survey, a test run) with a time before first dosing.",
+        "For the manufacturer batch and the central lab contract, states what happens if they are not delivered, such as a second qualified manufacturer or interim lab arrangements.",
+        "Every genuine risk (ethics approvals, customs delays, and similar) gets both a likelihood and an impact rating and a combined priority; none is left unrated.",
+        "Recommends a revisit rhythm that depends on priority, with the most serious items reviewed most often (weekly) and the least serious much less often.",
+        "Includes a short executive list of the five most serious items, one line each, with state of response."
+      ],
+      "why_skill_matters": "A kickoff with six items mixing dependencies, unvalidated assumptions and a risk. It makes the answer separate assumptions, give fallbacks for the single-source manufacturer and the lab contract, rate risks, and propose review frequency."
+    },
+    {
+      "id": "risk-management-rules-3",
+      "title": "Payments API migration with a blocker and an overdue sign-off",
+      "target_section": "Escalation Criteria",
+      "prompt": "I run the core payments API migration at a retail bank. Today is 10 November. Here's what's on my plate, can you log these properly and tell me what has to go up the chain and to whom?\n\n- Last Thursday the sandbox certificate expired, so partner banks can't run integration tests. Still blocked. Priya from platform said she'd look into it. No date given.\n- The data mapping sign-off was due 5 November. Owner is Tomás. Not signed. He says compliance needs another look.\n- The failover test in the December window might not pass. Our infra lead thinks it's about a 40% chance, and a fail would push go-live by about 2 weeks. First tuning run happened last week and went badly, so the plan to fix it by tuning hasn't worked.\n- The partner bank's API gateway upgrade has to be live by 30 November for us to test against. They've said \"should be fine\" but nothing in writing.\n\nGo-live is 14 January. I report to a program lead, who reports to a director and then the VP of payments.",
+      "rubric": [
+        "The expired-certificate blocker has a named owner (Priya) and gets a concrete resolution date, or the answer insists one be set immediately because none was given.",
+        "Says the overdue mapping sign-off (5 November, now 5 days late) should be escalated, and sets out the route from the PM to program lead to director to VP.",
+        "Flags the failover test as escalation-worthy because the tuning response already failed, and flags the partner gateway upgrade because the dependency is at risk.",
+        "For the partner gateway upgrade due 30 November, gives a fallback if it is not live (e.g. mock environment, shifted test window).",
+        "Responses for the failover test name a responsible person and a condition for switching to the next step.",
+        "Gives a short top-risks summary with one line per item and the state of its response."
+      ],
+      "why_skill_matters": "An already-happened blocker without a date, an overdue item, a failed mitigation and a shaky external dependency, with the reporting chain given. Makes issue ownership, escalation conditions, chain and a dependency fallback matter."
+    },
+    {
+      "id": "risk-management-rules-4",
+      "title": "Indie studio console launch tracking",
+      "target_section": "Output Format",
+      "prompt": "We're a 14-person game studio launching on console 12 March. Never done this before so we're a bit chaotic. I want to set up a simple way to track what could go wrong and keep it alive until launch. Here are the five things worrying us:\n\n1. Platform holder certification fails on first submission. We think ~40% chance. A resubmission cycle takes 2 weeks.\n2. Our lead graphics engineer might leave (said they're interviewing). Maybe 15%. We'd lose about 3 weeks.\n3. Save-file corruption bug on one console. Quite likely to remain until late, say 60%, but the fix is about 4 days.\n4. Publisher's marketing assets arrive late. Almost certain, 85%, and it would cost us a week of store page prep... we'd just work around it.\n5. Our one QA contractor is booked elsewhere from mid-February. 50% that we can't extend, and we'd need a replacement trained, about 10 days of lost testing.\n\nPlease score these, say what to do about each, and tell me how often we should look at the list. Chip (producer) can own most things but I'm happy to assign.",
+      "rubric": [
+        "Ratings follow stated bands: certification failure medium likelihood and medium impact (2-week resubmission), engineer departure low likelihood and high impact (3 weeks).",
+        "Save-file bug is medium likelihood with low impact (4 days) and marketing assets are high likelihood with low impact (workaround, about a week).",
+        "All five items end with a combined priority, and the priorities are ranked so the studio can see which matters most.",
+        "Gives a different review frequency to each priority level, with higher priorities checked more often, and says which of the five fall in which frequency.",
+        "Each response is attached to an owner (Chip or someone else assigned) and a condition for when it activates (e.g. engineer gives notice).",
+        "Ends with a brief top-five style summary, one line per item, with the state of its response."
+      ],
+      "why_skill_matters": "Five risks with probabilities and slip durations that hit different bands, a casual user wanting ongoing tracking. Makes banded scoring, priority ranking, tiered review frequency and owners with activation conditions matter."
+    },
+    {
+      "id": "risk-management-rules-5",
+      "title": "Campus Wi-Fi refresh status buried in a long update",
+      "target_section": "Mitigation Strategies",
+      "prompt": "Can you tidy this into a proper list for my boss? I'm leading the campus Wi-Fi refresh (22 buildings, has to be done before fall term starts 24 August). Here's my update from the weekly call:\n\n\"Switch order is placed, PO signed in April, vendor lead time is 10 weeks so we're fine as long as nothing changes. Building survey is done for 19 of 22 buildings, Kwame is finishing the rest by end of May. Access point licensing is sorted until 2028. Facilities will finish the cabling in Dorm B by 30 June, we're counting on that, there's no other crew lined up and the install in Dorm B can't start without it. The old APs can stay up until cutover, I assume. Residence life wants installs out of the dorms between 10 and 20 July for the summer camp. The vendor's installers have 3 teams, one team might get pulled to another customer in July, maybe 30-40% likely, and that would add about 2 weeks. I'd like Neha to look at the camp conflict. Budget is approved but contingency is only 3%.\"\n\nPlease list the risks and what we'll do about each one.",
+      "rubric": [
+        "Identifies the Dorm B cabling by Facilities as an external dependency with no backup crew, and provides a fallback such as a contracted electrician or re-sequencing Dorm B last.",
+        "Gives the installer-team reassignment a responsible person and a clear signal that activates the response (e.g. vendor notice of resourcing change by a set date).",
+        "Points out that \"old APs can stay up until cutover\" is an unverified belief and says how to confirm it (e.g. check hardware support or lifecycle status with the vendor).",
+        "The installer-team reassignment (about 2 weeks) has a response clearly labelled as eliminating, reducing, shifting to the vendor (e.g. contract commitment), or accepting with a contingency.",
+        "Provides a brief list of the most serious items, one line each, with the state of their response."
+      ],
+      "why_skill_matters": "A paragraph with a dependency buried in a clause (\"we're counting on that, there's no other crew lined up\"), an assumption stated casually and a vendor staffing risk. The answer has to notice the unprotected dependency by itself."
+    },
+    {
+      "id": "risk-management-rules-6",
+      "title": "Airline loyalty platform risks before the VP review",
+      "target_section": "Usage",
+      "prompt": "VP review of our loyalty platform migration is tomorrow and I need to decide what to bring up and what to keep at my level. I'm the TPM; I report to Alana (program lead), then Giorgos (director), then the VP. Status of everything open:\n\nA. Points ledger reconciliation is off by 0.4%. Second fix attempt failed yesterday. Rated high impact (could force a 3-week delay), probability high. Owner: Ravi. No fallback beyond \"keep trying\".\nB. Partner airline feed: they said they might miss 1 December delivery. We need it for end-to-end testing.\nC. Mobile SDK update, likelihood medium, 1 week slip. Owner: Lee. Plan is to re-sequence the work.\nD. Data privacy review in the EU: low likelihood, but if it blocks we lose about 4 weeks. Plan: accept, pre-booked a legal reviewer.\nE. Test environment capacity shortage. Probability medium, impact medium. Owner: Sam. Due date for the fix was 3 November. Not done.\nF. Call center training materials ready late: low, low. Absorbed.\n\nWhich of these should go up, how far, and what do I say? Also tell me how I should treat the rest going forward.",
+      "rubric": [
+        "Says A should go up because the fix already failed, and E because it is past its 3 November date, and B because a dependency is at risk; ties each to a reason.",
+        "Lays out the route from the TPM through Alana and Giorgos to the VP, and says how far each item goes (A reaches the VP, smaller items stop earlier).",
+        "Points out that item A has no real response beyond repeating the failed attempts and proposes one that is clearly categorised (e.g. reduce impact via a parallel reconciliation path, or accept with a contingency).",
+        "Gives the \"rest\" of the items a review rhythm that depends on priority, with weekly for the most severe, down to rarely for item F.",
+        "Provides a short, executive-ready summary of the five most serious items, one line each with response state."
+      ],
+      "why_skill_matters": "Six items prior to a VP review with a failed fix, an overdue item, a shaky dependency, and explicit names for the chain. The user asks what to escalate and how far, which makes the escalation conditions, the chain, and review frequency matter."
+    },
+    {
+      "id": "risk-management-rules-7",
+      "title": "Offshore wind commissioning with a damaged blade",
+      "target_section": "Mitigation Strategies",
+      "prompt": "I'm the program manager for commissioning an offshore wind farm (30 turbines). Grid connection date is fixed at 1 April by contract with penalties after that. Need help with these:\n\n1. The blade shipment vessel has been delayed and the shipping agent now expects it 4 weeks late. They say it's already confirmed that it's delayed, but the full impact on installation is unclear. Our installation crew has weather windows through March only.\n2. The cable-laying vessel charter ends 15 March and an extension would only be a 2-week slip if weather turns bad. Chance of bad weather is likely, maybe 60%.\n3. One blade got damaged in the port last week. The port authority is disputing liability. We need a replacement blade made, and the manufacturer quoted 6 weeks. Nobody on our side has taken it on yet.\n4. Our insurer offered a delay-in-start-up cover for an extra premium. We haven't decided.\n\nPlease assess these, say how we should respond, and flag whatever I'm missing.",
+      "rubric": [
+        "Rates the vessel delay with its stated 4-week slip as high impact, and the cable-vessel weather problem (60% chance, 2-week slip) as medium likelihood with medium impact.",
+        "Treats the damaged blade as something that has already happened, not a future possibility, and assigns it an owner and a resolution date, noting that no one currently has it.",
+        "Treats the insurer cover as shifting the delay risk to another party, and explains the remaining exposure or when to accept it with contingency instead.",
+        "Each numbered concern gets both a likelihood and impact rating and a combined priority.",
+        "Includes a short summary of the most serious items, one line each with the state of their response."
+      ],
+      "why_skill_matters": "Four items: a vessel delay with a stated slip, a probabilistic weather risk, a damaged blade that already happened with no owner, and an insurance option. Makes thresholds, issue ownership, response type and complete rating matter."
+    },
+    {
+      "id": "risk-management-rules-8",
+      "title": "Volunteer conference with a cancelled keynote",
+      "target_section": "RAID Log Format",
+      "prompt": "hey, I'm organizing our nonprofit's annual conference, 1,200 people, 18 October next year, all volunteers plus me. I just dumped my notes below, can you make a list of what could go wrong and what to do? keep it practical, I'm not a pro at this stuff 😅\n\n- venue is booked, capacity 1,500, so we're good on space (I think the contract says that, haven't looked at it since the tour)\n- keynote speaker cancelled yesterday, Dana is chasing replacements\n- AV company quoted us but hasn't confirmed the date yet, if they can't do it we'd have to find someone else\n- early-bird ticket sales are slower than last year, we're at 35% of where we were this time last year, I'd say 70-ish% chance we miss the break-even number and it'd mean cutting a day-two track\n- catering deposit is due in 3 weeks, treasurer Jo says funds will be there\n- we're assuming the hotel block rate holds through June\n- sponsors usually pay late, maybe a month, it's happened every year, it just squeezes cash for about a week\n\nThanks!!",
+      "rubric": [
+        "Treats the cancelled keynote as an existing problem rather than a possibility, notes that Dana is working on it, and asks for a deadline for finding a replacement.",
+        "Separates the venue capacity, hotel block rate and treasurer's funds claims as unconfirmed beliefs and gives a way to confirm each (read the contract, get the rate in writing, confirm balance).",
+        "The slow ticket sales, AV confirmation and sponsor lateness each get a likelihood and an impact rating, with a priority; ticket sales is the most serious.",
+        "Gives the AV company dependency a fallback, such as a backup quote and a date by which to switch.",
+        "Provides a brief list of the five most serious items, one line each, with the state of the response."
+      ],
+      "why_skill_matters": "A chatty note mixing an existing problem (cancelled keynote) with a named person but no date, assumptions hidden in casual phrases (\"I think the contract says that\"), a dependency with a built-in alternative but no plan, and risks with soft numbers."
+    }
+  ]
+}

@@ -174,7 +174,8 @@ What it cannot show: a section moved to references may never be opened (the move
 
 1. `node bench/runner/bench.js cap keep-prune --skill plan-review --run stub-pilot --out DIR` (free). Phase A has only the stub provider, so the record is a test of the pipeline, never a measurement.
 2. Read `DIR/stub-pilot/records/plan-review.md`. Check the controls row first: no verdict is read unless the convention control and the dose ladder both passed.
-3. When `agree` is false, the two depths disagree. Read both; do not average them. A person who is not the skill's author fills `signoff`.
+3. A stale baseline is NO DATA, with the reason named: the loaded unit (SKILL.md, its references and scripts, and shared references it names) changed after the baseline was frozen. Do not refresh it in place; a person writes and reviews a new baseline with `source` filled. A renamed or folded skill stays NO DATA until a person records an approved migration in `MANIFEST.json` `identities`.
+4. When `agree` is false, the two depths disagree. Read both; do not average them. A person who is not the skill's author fills `signoff`.
 
 `cap decide` writes the same record format beside each call (`decisions/records/`). Its deep block stays NO DATA until the study's runs carry the A and B readings (phase B). Until then the call itself is in `capCall`, for a person to read, and the 0.10 margin is not used for a keep-or-prune verdict.
 

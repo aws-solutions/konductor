@@ -1,0 +1,261 @@
+{
+  "format_version": 1,
+  "skill": "dynamodb-validation",
+  "batch": "rules-c6",
+  "rules": {
+    "dynamodb-validation-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "dynamodb-validation-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "dynamodb-validation-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "dynamodb-validation-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "dynamodb-validation-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "dynamodb-validation-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "dynamodb-validation-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "dynamodb-validation-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "dynamodb-validation-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "dynamodb-validation-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "dynamodb-validation-r11": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "dynamodb-validation-r12": {
+      "class": "style",
+      "kept": false,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "dynamodb-validation-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r03"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "dynamodb-validation-r11"
+      }
+    },
+    "dynamodb-validation-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r10"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "dynamodb-validation-r11"
+      }
+    },
+    "dynamodb-validation-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "dynamodb-validation-r11"
+      }
+    },
+    "dynamodb-validation-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "dynamodb-validation-r11"
+      }
+    },
+    "dynamodb-validation-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r03"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "dynamodb-validation-r11"
+      }
+    },
+    "dynamodb-validation-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r07"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "dynamodb-validation-r11"
+      }
+    },
+    "dynamodb-validation-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "dynamodb-validation-r11"
+      }
+    },
+    "dynamodb-validation-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "dynamodb-validation-r09"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "dynamodb-validation-r11"
+      }
+    }
+  }
+}

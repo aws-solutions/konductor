@@ -1,0 +1,123 @@
+{
+  "format_version": 1,
+  "skill": "security-test-generation",
+  "batch": "rules-c3",
+  "generated_at": "2026-11-10T09:23:58.813Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "24c02f333f5f1500961dc0352ba00e0101cd4188f051382111e12d856958d66e",
+  "scenarios": [
+    {
+      "id": "security-test-generation-rules-1",
+      "title": "Vet clinic booking API with three roles",
+      "target_section": "Error Handling Principles",
+      "prompt": "We're about to put a booking API for a chain of vet clinics into pilot. It's Python (FastAPI) on Postgres. Login returns a JWT that clients send in the Authorization header. There are three roles: receptionist, vet, and admin.\n\nEndpoints right now:\n- POST /auth/login\n- GET /appointments?clinic_id=&owner_name=\n- POST /appointments (owner name, pet name, notes, time slot)\n- GET /pets/{pet_id}/records (medical history, vets only)\n- PUT /pets/{pet_id}/records\n- GET /owners/{owner_id}\n- POST /admin/clinics and DELETE /admin/users/{user_id}\n\nOwners' phone numbers and addresses are stored, and vets write free-text notes. Nobody has written a threat model, and there's no API spec either. The code is the only truth. Can you put together a security test plan the QA person can work through? Each test should say what to do and what result we expect.",
+      "rubric": [
+        "Includes tests that call endpoints such as /appointments or /pets/{pet_id}/records with no token, a forged or tampered JWT, or an expired JWT, and expects each to be rejected.",
+        "Includes a horizontal check, such as a receptionist or vet at one clinic reading or editing another clinic's appointments or records or an owner's data they shouldn't see, and a vertical check, such as a receptionist or vet calling /admin/clinics or DELETE /admin/users/{user_id}.",
+        "Covers injection against the database for each input that gets stored or queried (owner_name and clinic_id filters, appointment fields, the free-text record notes, and the id path parameters), not only login.",
+        "In at least the authentication or input area, orders the cases from valid behaviour (a correct login or a legitimate request succeeds) to rejection of bad or malicious input, then to edge cases such as boundary values or token expiry timing.",
+        "Notes that there is no written threat model and no API spec, and builds the plan from the endpoint list and the description given, without stopping."
+      ],
+      "why_skill_matters": "A small API with roles, per-clinic data and several inputs that reach the database. It makes authentication bypass, horizontal and vertical escalation, injection across every input, and ordered test cases matter. No design documents exist, so the missing-docs guard applies."
+    },
+    {
+      "id": "security-test-generation-rules-2",
+      "title": "Pipeline-drafted plan for an e-book lending service",
+      "target_section": "Unattended and Parallel Callers",
+      "prompt": "Automated run 4411. No person is watching this and nobody can answer questions, so the output goes straight into the release review report.\n\nService: e-book lending for public libraries. Java Spring Boot behind an API Gateway, Cognito for patron sign-in, RDS Postgres for loans and holds, an S3 bucket for cover images and sample chapters, and an EC2 admin host reached over SSH. Terraform defines the security groups and the IAM roles. Patrons borrow and return titles, librarians manage the catalogue, and a system admin manages libraries.\n\nProduce the security test plan for this service for the release review. Use whatever the description and the stack imply. Cover this release's scope: loans, holds, catalogue management, cover image delivery, and the admin host.",
+      "rubric": [
+        "Does not ask the reader any clarifying question and does not wait for input; it proceeds on what the description implies and says what it assumed (for example the Spring Boot, Cognito, RDS and S3 stack, and the choice of how to base the plan).",
+        "Includes infrastructure checks that the cover-image S3 bucket is not publicly listable or writable, that the EC2 admin host's SSH security group is not open to the world, and that IAM roles are not broader than needed.",
+        "Ties its tests to the OWASP Top 10 risk categories, such as broken access control, injection, cryptographic failures, misconfiguration, vulnerable components and logging failures, marking any that do not apply to this service.",
+        "Reviews its own plan for missing coverage, lists the gaps found from most to least serious, and reports them without asking whether to fix them.",
+        "States that no design documents (threat analysis, API definition) were supplied and proceeds from the described components rather than stopping."
+      ],
+      "why_skill_matters": "An unattended caller with a clear scope but no one to ask. The assistant must not ask questions, must state assumptions, and should cover infrastructure and the OWASP categories. The self-review should be reported rather than put as a question. No design docs exist."
+    },
+    {
+      "id": "security-test-generation-rules-3",
+      "title": "Payroll list endpoint with log lines in the handler",
+      "target_section": "Quality Gate",
+      "prompt": "Our payroll service is in Go. My teammate is going to write the tests for the employee list endpoint and wants to know what to test. Here is the handler. We have nothing written beyond this code, no design notes at all.\n\n```go\nfunc ListEmployees(w http.ResponseWriter, r *http.Request) {\n    user := auth.FromContext(r.Context())\n    dept := r.URL.Query().Get(\"dept\")\n    sortBy := r.URL.Query().Get(\"sort\")\n    q := \"SELECT id, name, ssn, salary FROM employees WHERE dept = '\" + dept +\n        \"' ORDER BY \" + sortBy\n    rows, err := db.Query(q)\n    if err != nil {\n        log.Printf(\"list failed q=%s user=%s auth=%s\", q, user.Email, r.Header.Get(\"Authorization\"))\n        http.Error(w, err.Error(), http.StatusInternalServerError)\n        return\n    }\n    defer rows.Close()\n    var out []Employee\n    for rows.Next() {\n        var e Employee\n        rows.Scan(&e.ID, &e.Name, &e.SSN, &e.Salary)\n        out = append(out, e)\n    }\n    json.NewEncoder(w).Encode(out)\n}\n```\n\nIt's behind a middleware that checks a bearer token. The sort and dept filters are what product keeps changing, so I want those tested well. Write up the test plan for this endpoint.",
+      "rubric": [
+        "Includes injection tests against the dept value and the sort value, noting that both are concatenated into the SQL string, and expects them to be rejected or neutralised.",
+        "Includes tests that failed queries do not return raw database error text to the client, and that logs do not contain the Authorization header or token, the full SQL, or employee data such as SSN.",
+        "Orders the cases so that valid dept and sort values return correct results first, then malicious or invalid values are rejected, then edge cases such as empty values, very long values or special characters.",
+        "Includes tests that call the endpoint with a missing, invalid or expired bearer token and expects rejection, rather than assuming the middleware works.",
+        "Acknowledges that there are no design documents and works from the handler code alone."
+      ],
+      "why_skill_matters": "The user asks mainly about filter and sort. The handler also logs the Authorization header and returns err.Error(), and returns SSN. Those leak points are easy to overlook. The injection points are plain, and ordering and auth matter too. Missing docs trigger the guard."
+    },
+    {
+      "id": "security-test-generation-rules-4",
+      "title": "Photo-sharing infrastructure in Terraform",
+      "target_section": "Stage 5: Security Test Category Extraction",
+      "prompt": "Devops wants security test cases for this stack before we go to prod. It's a photo-sharing app, and I don't have a threat model for it, just the Terraform and what I know.\n\n```hcl\nresource \"aws_s3_bucket\" \"photos\" {\n  bucket = \"snapshare-photos-prod\"\n  acl    = \"public-read\"\n}\n\nresource \"aws_security_group\" \"db\" {\n  name = \"snapshare-db\"\n  ingress {\n    from_port   = 5432\n    to_port     = 5432\n    protocol    = \"tcp\"\n    cidr_blocks = [\"0.0.0.0/0\"]\n  }\n}\n\nresource \"aws_iam_policy\" \"api_role\" {\n  name   = \"snapshare-api\"\n  policy = jsonencode({\n    Version = \"2012-10-17\"\n    Statement = [{\n      Effect   = \"Allow\"\n      Action   = \"s3:*\"\n      Resource = \"*\"\n    }]\n  })\n}\n```\n\nAlso, the API writes the full request body to CloudWatch for debugging, and uploads can include user captions with email addresses and sometimes phone numbers in them. The web app is a normal login-plus-feed site. Please write the plan so my team can check this thoroughly. I'd like to make sure we haven't missed anything.",
+      "rubric": [
+        "Includes checks that target the three problems in the code: the photos bucket being public-read, the database security group allowing 5432 from anywhere, and the API role granting every S3 action on every resource.",
+        "Includes a test that the request bodies written to CloudWatch do not expose captions containing emails or phone numbers or any credentials, and that error responses do not leak internals.",
+        "Maps its coverage to the OWASP Top 10 risk categories and notes which are covered here and which do not apply or fall outside infrastructure.",
+        "Reviews its own plan for gaps, listing what is still missing (for example application-level access control or injection tests for the login-plus-feed site) from most to least serious, and asks whether the user wants those fixed.",
+        "Says there is no threat model and bases the plan on the Terraform and the description provided."
+      ],
+      "why_skill_matters": "A Terraform sample with three clear infra faults plus a logging habit that stores PII. The user wants completeness, so OWASP mapping and a self-review of gaps matter. No threat model, so the guard applies."
+    },
+    {
+      "id": "security-test-generation-rules-5",
+      "title": "Express and Mongo community app, focus on login",
+      "target_section": "Stage 4: Source Code Analysis",
+      "prompt": "We run a neighbourhood marketplace app, Express with MongoDB. I need the test plan for authentication, mainly login and password reset, because that's what the auditors asked about. No design documents exist for it.\n\nRoutes as they are today:\n\n```js\napp.post('/login', async (req, res) => {\n  const u = await users.findOne({ email: req.body.email, password: hash(req.body.password) });\n  if (!u) return res.status(401).json({ error: 'bad login' });\n  res.json({ token: sign({ id: u._id, role: u.role }) });\n});\napp.post('/reset/request', ...)   // emails a link with a token, token valid 24h\napp.post('/reset/confirm', ...)   // token + new password\napp.get('/listings/search', async (req, res) => {\n  res.json(await listings.find(req.query).limit(50).toArray());\n});\napp.post('/listings/:id/comments', ...)  // stores req.body.text and req.body.author\napp.put('/profile', ...)                  // updates fields from req.body\n```\n\nTokens from /login go in a header on everything except search. I want the plan to be usable by a junior tester, so please make it clear what to run first and what comes after.",
+      "rubric": [
+        "Includes login and token tests: missing, forged, tampered or expired tokens rejected on the protected routes, and reset tokens that are expired, reused or tampered rejected on /reset/confirm.",
+        "Extends injection testing beyond login to the other inputs that reach MongoDB, naming the unauthenticated /listings/search that passes req.query straight to find, the comment text and author, and the /profile body fields.",
+        "Sequences the cases from a valid login or reset succeeding, to rejection of bad credentials and malicious payloads, to edge cases such as the 24-hour reset window, repeated attempts or odd characters.",
+        "Relates the tests to OWASP Top 10 risks and says which categories (such as access control or injection) the plan covers beyond authentication, or which are left out and why.",
+        "States that no design documents exist and works from the pasted routes."
+      ],
+      "why_skill_matters": "The user scopes the request to authentication, but the unauthenticated search route and the other writes make injection and access issues matter beyond login. The login also takes an object from the body, so operator payloads matter. Ordering is requested for a junior tester."
+    },
+    {
+      "id": "security-test-generation-rules-6",
+      "title": "Nightly job drafting a plan for a school grades app",
+      "target_section": "Unattended and Parallel Callers",
+      "prompt": "This request is sent by a nightly cron job that posts whatever it gets back to our team wiki. Nobody is at the keyboard and there's no way to reply, so please don't wait on answers.\n\nService: school grades portal, Django with a Postgres database, session cookies for sign-in. Roles:\n- student: sees only their own grades and attendance\n- parent: sees the grades of their linked children only\n- teacher: enters and edits grades only for classes they teach\n- admin: creates accounts, runs the yearly grade export to CSV\n\nTeachers can attach comments to a grade, which the student and parent can read. Failed requests currently show the Django debug page in the staging environment, and we plan to copy the config to production. Nothing has been written down about threats, and there is no endpoint documentation.\n\nDraft the security test plan for this service.",
+      "rubric": [
+        "Contains no questions to the requester and does not hold back for answers; it states the stack and approach assumptions it made (for instance Django with session cookies, and basing the plan on the description).",
+        "Includes horizontal tests (a student reading another student's grades, a parent reading an unlinked child, a teacher editing another teacher's class) and vertical tests (a student, parent or teacher reaching account creation or the CSV export).",
+        "Includes a test that error responses in production do not show the debug page, stack traces, settings or SQL, and that logs and the exported CSV do not expose sensitive details beyond what is needed.",
+        "Reviews its own plan for gaps, lists any found from most serious to least, and reports them rather than asking whether to fix them.",
+        "Notes that no threat write-up or endpoint documentation was given and proceeds from the described roles and behaviour."
+      ],
+      "why_skill_matters": "An unattended caller with a role-based service and a debug page that may reach production. Makes no-questions behaviour, both escalation directions, error leakage, and a reported self-review matter. Missing docs trigger the guard."
+    },
+    {
+      "id": "security-test-generation-rules-7",
+      "title": "Gym check-in backend handed to a contractor",
+      "target_section": "Stage 7: Task List Generation",
+      "prompt": "gym app backend, Rails + Postgres. members open the mobile app and show a QR code that rotates every 60 seconds, front desk scans it. the app keeps a refresh token on the phone for 30 days. staff use a web dashboard (sign in with email + password, can freeze memberships and refund payments). payments go through a third party, we only store the last 4 digits and a customer id.\n\nno threat model, nothing written down really.\n\nI'm hiring a contractor to run security testing on this next month and I want to hand them something concrete so they don't wander, and so nothing important is left out. they'll go in a sensible order. can you write that up? for each area give the actual test cases. also the rails logs currently print params for every request, not sure if that matters",
+      "rubric": [
+        "Includes tests of the QR code and tokens: a replayed or expired QR code, a forged or tampered one, and a stolen or revoked refresh token, plus dashboard login without credentials; each expected to be rejected.",
+        "Within the QR/login area, orders cases from valid check-in and login working, to rejection of invalid or malicious attempts, to edge cases such as the 60-second rotation boundary or the 30-day refresh expiry.",
+        "Includes a test or check that the params logged for every request do not contain passwords, tokens or payment identifiers, and that error responses do not leak internals.",
+        "Links the plan to the OWASP Top 10 risk categories so the contractor can see which are covered and which are not relevant here.",
+        "Says that no threat model exists and builds the plan from the described flows (QR check-in, refresh token, dashboard, payments)."
+      ],
+      "why_skill_matters": "A terse, informal request with concrete flows (rotating QR, long-lived refresh token, staff dashboard with refunds) and a passing mention of param logging. Authentication tests, ordered cases, log leakage and OWASP coverage matter. No design docs."
+    },
+    {
+      "id": "security-test-generation-rules-8",
+      "title": "Multi-tenant invoicing SaaS pasted from a design chat",
+      "target_section": "Stage 5: Security Test Category Extraction",
+      "prompt": "Pasting our design chat from this morning, then I need a security test plan out of it.\n\n> Dana: every request carries a JWT with tenant_id and role (member / accountant / owner)\n> Lee: GET /invoices/{id} loads by id, then the service checks nothing else, the DB row has tenant_id though\n> Dana: /tenants/{id}/users lets owners invite and remove people\n> Lee: coupon lookup is GET /coupons?code= and it builds a LIKE query by hand, I know, I know\n> Priya: invoice PDFs live in an S3 bucket, we hand out presigned URLs good for 7 days\n> Priya: bucket policy was copied from a tutorial, nobody has re-read it\n> Dana: no threat model yet, we'll do one after launch\n\nWe launch in three weeks. Please produce the plan, and when you're done look it over and tell me whether anything important is still missing.",
+      "rubric": [
+        "Includes a horizontal test where a user from tenant A requests tenant B's invoice by id on GET /invoices/{id} and /tenants/{id}/users, and a vertical test where a member or accountant attempts the owner's invite and remove actions.",
+        "Includes injection tests on the hand-built LIKE query in GET /coupons?code= and on the other inputs that reach the database, such as the invoice and tenant id parameters and the invite fields.",
+        "Includes checks on the invoice PDF bucket: that the policy does not allow public access or overly broad principals, that the 7-day presigned URLs cannot be used for other objects, and that expiry holds.",
+        "Reviews the finished plan for gaps, lists what is still missing from most to least serious, and asks whether the user wants those fixed.",
+        "Notes that the threat model is absent (to come after launch) and proceeds using the chat contents."
+      ],
+      "why_skill_matters": "A design chat with a missing tenant check, a hand-built LIKE query, an unreviewed bucket policy and 7-day presigned URLs. Makes cross-tenant and role escalation, injection, storage checks and a self-review matter. The user explicitly postpones a threat model."
+    }
+  ]
+}

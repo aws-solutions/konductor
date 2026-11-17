@@ -1,0 +1,124 @@
+{
+  "format_version": 1,
+  "skill": "infra-validation",
+  "batch": "rules-c6",
+  "generated_at": "2026-11-10T11:57:55.117Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "e9fda3ca7a3cadb722adb19e29a60ed38b0d7087be65393a94bb85d1da748cc1",
+  "scenarios": [
+    {
+      "id": "infra-validation-rules-1",
+      "title": "Founder asks if inherited AWS setup is safe, no code",
+      "target_section": "CRITICAL: STOP AND READ THIS FIRST",
+      "prompt": "Hi, I run a small bookkeeping startup. A contractor set up our AWS stuff last year and then left. We keep customers' invoices and bank statement PDFs in there and I honestly have no idea whether it's set up safely. Can you go through it and tell me what's wrong with it? I need an answer today because an investor asked me about security and I don't want to bluff.",
+      "rubric": [
+        "Asks the user to say what format the contractor's infrastructure code is in (CDK in some language, or CloudFormation in YAML or JSON) instead of assuming one.",
+        "Asks where the code is or invites the user to paste it, and asks which stage it targets, rather than starting a review of the bookkeeping setup.",
+        "Makes clear that the stage the setup serves (development, staging or production) changes how strict the review will be, and treats it as something it needs before judging.",
+        "Does not give any verdict on whether the invoice and bank-statement storage is safe or unsafe and does not list invented findings, and says it cannot judge without seeing the code.",
+        "Separates the details it must have from those that are helpful extras, such as financial compliance standards that apply to the bank statements, a review focus, or concerns the user already has."
+      ],
+      "why_skill_matters": "The user has a worry and sensitive data but gives no code, no format and no stage. A good answer must ask for those details and not produce a generic security lecture. The optional extras (compliance, focus, known concerns) are natural to offer given the investor pressure."
+    },
+    {
+      "id": "infra-validation-rules-2",
+      "title": "Experiment store open to the internet with a dev-only comment",
+      "target_section": "2.3 Network Security Validation (MANDATORY)",
+      "prompt": "Our data science team spun up a scratch environment for model experiments. It's our dev account, nobody outside the team uses it. CDK in JavaScript. Quick look before I run deploy?\n\n```js\nconst { Instance, InstanceType, Peer, Port, MachineImage } = require('aws-cdk-lib/aws-ec2');\nconst { DatabaseCluster } = require('aws-cdk-lib/aws-docdb');\nconst { LogGroup, RetentionDays } = require('aws-cdk-lib/aws-logs');\n\n// dev only - we'll lock this down before anything goes near prod\nconst notebook = new Instance(this, 'NotebookHost', {\n  vpc,\n  instanceType: new InstanceType('m5.xlarge'),\n  machineImage: MachineImage.latestAmazonLinux2023(),\n});\nnotebook.connections.allowFrom(Peer.anyIpv4(), Port.tcp(22));\n\n// single node, wiped when the stack is deleted, no backups configured\nconst store = new DatabaseCluster(this, 'ExperimentStore', {\n  vpc,\n  masterUser: { username: 'admin' },\n  instances: 1,\n  instanceType: new InstanceType('r5.large'),\n});\nstore.connections.allowFrom(Peer.anyIpv4(), Port.tcp(27017));\n\nnew LogGroup(this, 'NotebookLogs', {\n  retention: RetentionDays.ONE_WEEK,\n});\n```",
+      "rubric": [
+        "Flags the notebook host's port 22 rule and the experiment store's port 27017 rule, both open to any IPv4 address, as problems to fix before deploying.",
+        "Does not accept the \"dev only, lock down before prod\" comment as a reason to leave the rules open, and proposes narrowing the source to the team's address range, a VPN, or the notebook's own group.",
+        "Treats the single-node experiment store that is wiped on deletion and has no backups as acceptable for a dev scratch environment, calling such items optional or a cost trade-off rather than must-fix.",
+        "Judges the one-week retention on the notebook log group as reasonable for dev, or notes that production would need a longer period.",
+        "States what it could not judge from the snippet, such as the VPC definition or how the admin database password is handled."
+      ],
+      "why_skill_matters": "A dev scratch setup with a reassuring comment sits next to two world-open admin and database ports. The stage is dev, so production-only items should be softened while the network exposure should not be."
+    },
+    {
+      "id": "infra-validation-rules-3",
+      "title": "Production claims intake stack with weak failure and recovery setup",
+      "target_section": "Step 4: Operational Readiness",
+      "prompt": "Production stack for our insurance claims intake, deploys Thursday, prod account, CDK in JavaScript. Claims include policyholders' health details. Here's the summary our build printed of what the stack creates. Thoughts?\n\n```\nClaimsTable        DynamoDB, key = claimId (string), on-demand billing\n                   removed together with the stack if the stack is deleted\n                   no recovery or backup settings\nClaimsIntakeQueue  SQS standard queue, visibility timeout 120s\n                   no other queue attached to it\nClaimsWorker       Lambda, node 22, timeout 60s, triggered by ClaimsIntakeQueue\n                   inline role policy \"WorkerAccess\":\n                     allows every action on every resource\nLog group          /claims/worker, retention 3 days\n```",
+      "rubric": [
+        "Flags the worker's inline policy that allows every action on every resource as a serious problem, and proposes limiting it to the specific data-store actions and queue actions the claims worker needs, scoped to the claims data store and ClaimsIntakeQueue.",
+        "Points out that the claims data store, holding health claims in production, is removed with the stack and has no point-in-time recovery or backups, and shows retain-on-delete plus recovery settings.",
+        "Notes that ClaimsIntakeQueue has no dead-letter queue for messages the worker keeps failing on, and recommends adding one with about 14 days of retention and a receive limit.",
+        "Flags the three-day retention on the /claims/worker log group as too short for production and suggests a much longer period such as 90 days or more.",
+        "Says what it could not verify from this summary, such as encryption details, alarms elsewhere in the app, or the rest of the account.",
+        "Orders the findings from most to least severe, and each one names the affected resource, its impact and a fix with example code."
+      ],
+      "why_skill_matters": "A production stack with a wildcard role, a data store that is removed with the stack and has no recovery, a queue with no failure path, and short log retention. Several rules apply together."
+    },
+    {
+      "id": "infra-validation-rules-4",
+      "title": "Cost-trimming pull request that quietly weakens production",
+      "target_section": "4.2 Dead Letter Queues (MANDATORY)",
+      "prompt": "I'm reviewing a PR from a teammate titled \"cost trims for ordering service\". Description says \"no functional change, just tidying\". This is our prod account. CDK in JavaScript. Here's the change summary from the PR, should I approve?\n\n```diff\n OrdersQueue\n   visibility timeout 60s\n-  failed messages move to OrdersDlq after 3 receive attempts\n-OrdersDlq (separate queue, messages kept 14 days)   [deleted]\n\n OrderApiLogs\n-  retention 3 months\n+  retention 1 week\n\n FulfilmentBucketAccess (role policy on the fulfilment function)\n-  actions: s3 get object, s3 put object\n-  resources: invoice bucket, orders/ prefix only\n+  actions: all s3 actions            // simpler\n+  resources: the invoice bucket and every object in it\n```",
+      "rubric": [
+        "Objects to the fulfilment role being widened from two named object actions on the orders/ prefix to every s3 action on the whole invoice bucket, and says to keep or restore the narrow actions and prefix.",
+        "Objects to deleting the failure queue and its three-attempt hand-off from OrdersQueue, because messages that keep failing would then be retried or lost with no place to inspect them, and wants it restored with 14-day retention.",
+        "Says cutting OrderApiLogs from three months to one week is too short for a production service, and suggests restoring it or keeping at least a production-level period.",
+        "Because the target is production, does not accept the \"no functional change\" description and recommends not approving as is, instead of treating the changes as harmless cost savings.",
+        "States that it only sees the change summary and not the rest of the stack, so it cannot confirm other effects."
+      ],
+      "why_skill_matters": "The description reassures, but the change removes failure handling, shortens production retention and broadens a role. These are easy to overlook in a short summary that reads as tidying."
+    },
+    {
+      "id": "infra-validation-rules-5",
+      "title": "Production SQL Server instance with no safety net",
+      "target_section": "4.4 Backup and Recovery (MANDATORY for stateful resources)",
+      "prompt": "Finance reporting database for our production account, CloudFormation in JSON. We migrate onto it next weekend. One more thing: the vendor's reporting tool connects from changing IPs, so in the console I added an inbound rule on the database's firewall letting the whole internet in on port 1433. Please look it over. Here is what the template defines for the database:\n\n```\nReportingDb: AWS::RDS::DBInstance\n  engine: sqlserver-se, class db.m5.xlarge, 500 GB storage\n  single availability zone\n  automated backups: off (retention 0 days)\n  delete protection: off\n  on stack deletion: the instance is deleted\n  reachable from the public internet: yes\n  admin user: sa, password passed in as a stack parameter\n```",
+      "rubric": [
+        "Flags that the production ReportingDb has delete protection off, is deleted on stack removal and has automated backups switched off (retention 0), and shows turning protection on, keeping the instance on removal and setting a backup retention of several days.",
+        "Flags the inbound rule open to the whole internet on port 1433, together with the instance being publicly reachable, as must-fix, and suggests restricting the source to the vendor's published ranges, a VPN or private connectivity.",
+        "Because this is production, says single-AZ should be fixed before the migration, rather than treating it as an optional saving.",
+        "Is open about not seeing everything, for example the encryption of the storage, the parameter group, alarms and the console rule's actual definition.",
+        "Ranks the problems from most to least severe, and for each one names the resource, the impact and a concrete corrected setting or snippet."
+      ],
+      "why_skill_matters": "A production database with every safety setting off, plus an internet-open SQL Server port that the user mentions in prose but which is not in the template."
+    },
+    {
+      "id": "infra-validation-rules-6",
+      "title": "Hobby greenhouse backend headed to a customer's prod next month",
+      "target_section": "Interaction Guidelines",
+      "prompt": "Solo dev here building a greenhouse sensor backend. I'm deploying this to my personal dev account tonight just to try it, but the same code is going into a real customer's prod account next month. CDK in JavaScript. What should I care about now versus what only matters for prod? What the stack creates:\n\n- ReadingsTable: DynamoDB, key = sensor id plus timestamp. Deleted when the stack is deleted. No backup or recovery settings.\n- IncomingReadings: SQS queue, nothing else attached to it.\n- IngestFn: Lambda reading from IncomingReadings and writing to ReadingsTable, with write access only to that one table.\n- IngestLogs: log group, retention 1 week, deleted with the stack.",
+      "rubric": [
+        "Gives separate advice for tonight's dev deploy and for the customer's prod, saying the current settings are fine or optional in dev and that specific items become required for prod.",
+        "Says that for prod, ReadingsTable must not be deleted with the stack and needs retain-on-delete with point-in-time recovery or backups, while accepting the current behaviour in dev.",
+        "Points out that IncomingReadings feeds IngestFn with no dead-letter queue, and says this should be added for prod (about 14 days of retention), optional in dev.",
+        "Says one week of log retention suits dev but is too short for the customer's prod, and gives a longer period such as 90 days or more.",
+        "Notes that it only saw part of the app, so it cannot judge things like alarms, the rest of the permissions or encryption that live elsewhere."
+      ],
+      "why_skill_matters": "One stack, two stages. The answer must tell apart what is acceptable now from what must change before prod, across stateful data, failure handling and log retention."
+    },
+    {
+      "id": "infra-validation-rules-7",
+      "title": "Media transcoding staging stack with broad role and open worker ports",
+      "target_section": "2.1 IAM Policy Validation (MANDATORY)",
+      "prompt": "We're putting our video transcoding pipeline into staging this week (CDK in JavaScript). Can you check it before my lead sees it? I'm pasting our design notes since the code is spread over several files:\n\n- TranscodeJobs: SQS queue, visibility timeout 15 minutes. Nothing is configured for jobs that fail repeatedly.\n- TranscodeFn: Lambda triggered by TranscodeJobs, 14-minute timeout, 3008 MB of memory.\n- TranscodeAccess: role policy on TranscodeFn. It allows every s3 action and every sqs action, on all resources.\n- RenderBox: one c5.4xlarge EC2 instance. Redis runs on it for now. Its security group lets any IPv4 address connect on port 22 and on 6379 (Redis).",
+      "rubric": [
+        "Flags the TranscodeAccess policy that grants every s3 and sqs action on all resources, and proposes only the specific object and message actions the function uses, scoped to the named bucket and the TranscodeJobs queue.",
+        "Flags the RenderBox rules open to any IPv4 on port 22 and on 6379 (Redis) as must-fix, even in staging, and recommends restricting the source to a known range or the pipeline's own group.",
+        "Notes that TranscodeJobs has no dead-letter queue for jobs that keep failing, and recommends one with about 14 days of retention.",
+        "Calibrates for staging: security items are demanded as strictly as in production, but items such as multi-AZ or full alarm coverage are called lighter or optional trade-offs.",
+        "Says which parts of the pipeline were not shown, such as the buckets, the VPC, or alarms, so it cannot give a complete result."
+      ],
+      "why_skill_matters": "A staging stack with an everything-allowed role, an open Redis and SSH exposure, and a job queue with no failure path. The stage is named, so the answer must apply the right strictness."
+    },
+    {
+      "id": "infra-validation-rules-8",
+      "title": "Rushed one-liner asking if the usual stuff is fine",
+      "target_section": "MANDATORY FIRST STEP - READ THIS",
+      "prompt": "need a fast review of our AWS setup before the 3pm call. it's the usual stuff, a few lambdas, a couple of queues and a database. we deploy it with code, not by clicking around. just tell me the main things that usually go wrong and whether we're good",
+      "rubric": [
+        "Asks which kind of infrastructure code the team uses (CDK in a given language, or CloudFormation YAML or JSON) before saying anything about whether they are good.",
+        "Asks where the code is or offers to take pasted code, and which stage it is for, instead of answering from the \"lambdas, queues, database\" description alone.",
+        "States or implies that how serious the problems are depends on the stage, for example that production would require more than development.",
+        "Does not tell the user \"you're good\" or \"you're not good\" and does not present a list of findings as if it had reviewed their system.",
+        "Presents the mandatory details apart from the optional ones, such as compliance requirements, areas to focus on, or known concerns."
+      ],
+      "why_skill_matters": "A time-pressured user gives only a vague description and asks for a verdict. The right response is to ask for the missing details, not to give a generic top-ten list."
+    }
+  ]
+}

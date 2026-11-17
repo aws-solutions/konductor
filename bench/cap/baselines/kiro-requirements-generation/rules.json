@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "kiro-requirements-generation",
+  "skill_md_sha256": "e341c301c8eb0367e5ae976387f50c855c17b559ddaa547d076fb3073a68015d",
+  "request_context": "A request to turn approved user stories for one feature into a requirements document that a design and build team can work from, with testable acceptance criteria.",
+  "rules": [
+    {
+      "id": "kiro-requirements-generation-r01",
+      "source_quote": "No vague terms without measurable values",
+      "class": "useful",
+      "outcome": "Vague qualities such as fast, many or secure are replaced with measurable values (a time, a count, a status code), and any value the source stories did not supply is marked as an assumption to confirm.",
+      "why": "A criterion without a number cannot be tested, and an invented number looks like a commitment.",
+      "scenario_hint": "The user stories say things like 'the page should load fast' and 'support many users'."
+    },
+    {
+      "id": "kiro-requirements-generation-r02",
+      "source_quote": "Add edge case criteria that may not be in the original stories (error handling, boundary conditions, concurrent access)",
+      "class": "useful",
+      "outcome": "Beyond the happy path in the stories, the requirements cover relevant failure cases and boundaries, such as invalid input, empty states and simultaneous changes to the same item.",
+      "why": "Stories usually describe success; the build team still has to decide the rest.",
+      "scenario_hint": "The stories describe only the successful flow of creating and editing records."
+    },
+    {
+      "id": "kiro-requirements-generation-r03",
+      "source_quote": "Missing error/failure scenarios for a requirement that involves external calls or user input",
+      "class": "useful",
+      "outcome": "Every requirement that takes user input or calls an outside service also states what the system does when the input is invalid or the outside service fails.",
+      "why": "Unspecified failure behaviour gets decided ad hoc during implementation.",
+      "scenario_hint": "A story where users upload a file that is then sent to a third-party scanning service."
+    },
+    {
+      "id": "kiro-requirements-generation-r04",
+      "source_quote": "Preserve the original user story statement",
+      "class": "useful",
+      "outcome": "The original who, what and why of each user story is kept with its requirement, not rewritten or dropped.",
+      "why": "Readers can see the intent behind each requirement and check it against the source.",
+      "scenario_hint": "Several approved stories are supplied, each written as a role, a wanted capability and a benefit."
+    },
+    {
+      "id": "kiro-requirements-generation-r05",
+      "source_quote": "Each requirement maps to one user story",
+      "class": "useful",
+      "outcome": "Each requirement traces back to one source story, and every in-scope story ends up in some requirement.",
+      "why": "Traceability both ways shows what is covered and what was invented.",
+      "scenario_hint": "Three to five stories are supplied and the user wants a complete requirements document."
+    },
+    {
+      "id": "kiro-requirements-generation-r06",
+      "source_quote": "filter to only those in scope for this invocation's feature before continuing",
+      "class": "useful",
+      "outcome": "When the supplied stories belong to several features, only the stories for the feature being specified are turned into requirements, and the others are left out or noted for separate documents.",
+      "why": "Mixing features makes the document unusable as a single source of truth for one design.",
+      "scenario_hint": "The user pastes stories for two different features but asks for the requirements of one of them."
+    },
+    {
+      "id": "kiro-requirements-generation-r07",
+      "source_quote": "Acceptance criteria describe implementation details instead of observable behavior",
+      "class": "useful",
+      "outcome": "Criteria describe behaviour that an outside observer can see or test, not how it should be built internally (no choice of table, class or framework).",
+      "why": "Implementation choices belong in the design and constrain it too early here.",
+      "scenario_hint": "The stories mention a specific database and queue technology in passing."
+    },
+    {
+      "id": "kiro-requirements-generation-r08",
+      "source_quote": "Untestable criteria — no measurable outcome or observable behavior",
+      "class": "generic",
+      "outcome": "Each criterion names a condition and an observable result, so a tester can say clearly whether it is met.",
+      "why": "Acceptance criteria exist to be checked.",
+      "scenario_hint": "Any request to write requirements from user stories."
+    },
+    {
+      "id": "kiro-requirements-generation-r09",
+      "source_quote": "Every criterion MUST contain the keyword `SHALL`",
+      "class": "style",
+      "outcome": "Each acceptance criterion states the required behaviour as a firm obligation using the word 'shall'.",
+      "why": "",
+      "scenario_hint": "Any request to write requirements from user stories."
+    },
+    {
+      "id": "kiro-requirements-generation-r10",
+      "source_quote": "Every criterion uses one of the 6 EARS patterns",
+      "class": "style",
+      "outcome": "Each criterion has a consistent shape: an optional leading condition (an event, a state, an option or a failure) followed by the required response.",
+      "why": "",
+      "scenario_hint": "Any request to write requirements from user stories."
+    },
+    {
+      "id": "kiro-requirements-generation-r11",
+      "source_quote": "Directory names MUST be kebab-case",
+      "class": "style",
+      "outcome": "The requirements are saved in a per-feature location whose folder name is a short, lowercase, hyphen-separated name derived from the feature.",
+      "why": "",
+      "scenario_hint": "The feature is called 'Network Monitoring Dashboard' and the user does not give a path."
+    },
+    {
+      "id": "kiro-requirements-generation-r12",
+      "source_quote": "2-4 sentence summary of the feature, its purpose, and the primary user persona it serves",
+      "class": "style",
+      "outcome": "The document opens with a few sentences on what the feature is for and who mainly uses it, and says which source stories it came from.",
+      "why": "",
+      "scenario_hint": "Any request to write requirements from user stories."
+    }
+  ]
+}

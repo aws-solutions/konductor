@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "security-remediation",
+  "skill_md_sha256": "d8dcd09b6898232d6c24de8b663e02504e3c5e91ab5e940dc7c08ffbf2460bf7",
+  "request_context": "A request to analyze a security finding reported against a project and produce a plan to fix it.",
+  "rules": [
+    {
+      "id": "security-remediation-r01",
+      "source_quote": "Remediation steps are vague (\"update the library\") without specific versions or commands",
+      "class": "useful",
+      "outcome": "Fix steps are specific enough to carry out: exact versions, commands or code changes, not advice such as 'update the library'.",
+      "why": "Vague steps leave the real work, and the chance of a wrong fix, to the reader.",
+      "scenario_hint": "A scanner reports a vulnerable version of a dependency used by the project."
+    },
+    {
+      "id": "security-remediation-r02",
+      "source_quote": "Every remediation step includes a verification command or test to confirm the fix is effective.",
+      "class": "useful",
+      "outcome": "Each fix comes with a way to confirm it worked, such as a command, a test or an observable check.",
+      "why": "Without verification nobody knows whether the issue is actually closed.",
+      "scenario_hint": "A reviewer reports that a search endpoint builds database queries by joining user input into the query text."
+    },
+    {
+      "id": "security-remediation-r03",
+      "source_quote": "Rollback plans are required for fixes that could cause regressions.",
+      "class": "useful",
+      "outcome": "A fix that could break existing behaviour comes with a way to undo it or a note on what to watch after rollout.",
+      "why": "Security changes such as stricter validation or tighter permissions can block legitimate use.",
+      "scenario_hint": "The finding asks for a storage bucket policy or an access role to be tightened in a live system."
+    },
+    {
+      "id": "security-remediation-r04",
+      "source_quote": "Each finding gets a risk context explaining what an attacker could do with the vulnerability.",
+      "class": "useful",
+      "outcome": "For each finding the answer explains what an attacker could actually do with it and what the impact would be.",
+      "why": "Risk context lets the team judge urgency and effort.",
+      "scenario_hint": "A finding reports a missing authorization check on an endpoint that returns customer records."
+    },
+    {
+      "id": "security-remediation-r05",
+      "source_quote": "CRITICAL severity first (active exploitation risk)",
+      "class": "generic",
+      "outcome": "When several findings are given, the most severe and most easily exploited ones are handled first.",
+      "why": "Limited time goes to the largest risks.",
+      "scenario_hint": "Four findings of different severity are submitted together."
+    },
+    {
+      "id": "security-remediation-r06",
+      "source_quote": "Related findings not grouped for efficient remediation",
+      "class": "useful",
+      "outcome": "Findings that share a root cause or the same fix are grouped and fixed together instead of being treated as unrelated.",
+      "why": "One change can close several findings and avoids repeated work.",
+      "scenario_hint": "Three findings all come from the same missing input check, repeated in different endpoints."
+    },
+    {
+      "id": "security-remediation-r07",
+      "source_quote": "Flag as potential false positive if not defined in the solution's IaC",
+      "class": "useful",
+      "outcome": "For a finding about a cloud resource, the answer checks whether that resource is defined in the project's own infrastructure code. If it is not, the answer says the report could be a false alarm, explains how to verify that, and still offers the fix in case the problem is real.",
+      "why": "Resources made by hand or by another team are not fixed by changing this project, and chasing them wastes effort.",
+      "scenario_hint": "A finding names a storage bucket that does not appear anywhere in the project's infrastructure definitions."
+    },
+    {
+      "id": "security-remediation-r08",
+      "source_quote": "NEVER include references to internal ticket IDs, user aliases, URLs, or ticket information",
+      "class": "useful",
+      "outcome": "Code and comments proposed as the fix carry no ticket numbers, reviewer names, internal links or mention of the security review process.",
+      "why": "Code may be published, and internal details would leak with it.",
+      "scenario_hint": "The request includes a ticket link and the reviewer's name, and the fix will be committed to a public repository."
+    },
+    {
+      "id": "security-remediation-r09",
+      "source_quote": "Additional defensive measures",
+      "class": "useful",
+      "outcome": "Besides fixing the reported issue, the answer suggests related defences or prevention steps that would stop the same kind of problem from recurring.",
+      "why": "Fixing one instance leaves the class of problem open.",
+      "scenario_hint": "A finding about unvalidated input in one request handler."
+    },
+    {
+      "id": "security-remediation-r10",
+      "source_quote": "Code examples showing before/after changes",
+      "class": "style",
+      "outcome": "For a code issue, the answer shows the vulnerable code and the corrected code so the change is easy to see.",
+      "why": "",
+      "scenario_hint": "A finding about unsafe handling of user input in application code."
+    },
+    {
+      "id": "security-remediation-r11",
+      "source_quote": "Present only the requested analysis and remediation plan without any preamble or additional explanations.",
+      "class": "style",
+      "outcome": "The answer goes straight to the analysis and plan, with no introduction or commentary around it.",
+      "why": "",
+      "scenario_hint": "Any request to analyze a security finding."
+    },
+    {
+      "id": "security-remediation-r12",
+      "source_quote": "You MUST end every security-remediation response with EXACTLY this text (no substitutions):",
+      "class": "style",
+      "outcome": "The answer ends with a short yes-or-no question asking whether to go ahead and apply the fixes.",
+      "why": "",
+      "scenario_hint": "Any request to analyze a security finding."
+    }
+  ]
+}

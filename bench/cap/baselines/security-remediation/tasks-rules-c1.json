@@ -1,0 +1,132 @@
+{
+  "format_version": 1,
+  "skill": "security-remediation",
+  "batch": "rules-c1",
+  "generated_at": "2026-11-09T04:08:16.885Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "2544cf8b2e4e32039d96d7d00d41ac871c874d4057b5be1e7c12d109ac1c5141",
+  "scenarios": [
+    {
+      "id": "security-remediation-rules-1",
+      "title": "Outdated image library flagged in a Python photo service",
+      "target_section": "Step 2: Remediation Planning",
+      "prompt": "Our nightly scan flagged Pillow in the thumbnailer service (Python 3.10, deployed as a Docker image on ECS). Scanner output:\n\n```\nPackage: Pillow\nInstalled: 9.5.0\nFinding: buffer overflow when decoding crafted WebP images; remote code execution possible when processing untrusted uploads\nFixed in: 10.3.0\nReported severity: high\n```\n\nrequirements.txt has `Pillow==9.5.0` and `numpy==1.24.4`. Users upload images through a public form and the thumbnailer processes them automatically. I'm not sure what else might break if we bump it. Can you give me a plan to fix it?",
+      "rubric": [
+        "Names a concrete target for Pillow (at least 10.3.0, with an exact pinned version in requirements.txt) and gives the actual command or line change, not just \"upgrade Pillow\".",
+        "Gives a way to confirm the fix, such as printing the installed Pillow version in the rebuilt image, rerunning the scan, or running a test that decodes a WebP file.",
+        "Includes a way to roll back the upgrade (revert the pin, redeploy the previous image tag) or says what to watch after rollout, given that thumbnails are produced from live uploads.",
+        "Explains that an attacker could upload a crafted WebP through the public form and get code to run on the thumbnailer container, with the resulting impact.",
+        "Suggests additional defences against this kind of issue, such as sandboxing or least privilege for the processing container, restricting accepted file types, or automated dependency scanning.",
+        "Treats the single issue as urgent given exposure to untrusted uploads rather than as routine maintenance."
+      ],
+      "why_skill_matters": "A single dependency finding with an exact fixed version, on an internet-facing upload path. It makes specific versions, verification, rollback, attacker impact and prevention matter."
+    },
+    {
+      "id": "security-remediation-rules-2",
+      "title": "String-built SQL in a reporting handler for a clinic app",
+      "target_section": "Fix Verification",
+      "prompt": "pen test came back, they say the appointment lookup in our clinic scheduling backend is injectable. Here's the handler (Java, Spring, JdbcTemplate):\n\n```java\n@GetMapping(\"/appointments\")\npublic List<Appointment> find(@RequestParam String patientName,\n                              @RequestParam String status) {\n    String sql = \"SELECT * FROM appointments WHERE patient_name = '\" + patientName\n        + \"' AND status = '\" + status + \"' ORDER BY slot\";\n    return jdbc.query(sql, new AppointmentMapper());\n}\n```\n\nThe tester pasted `' OR '1'='1` in patientName and got every patient's appointments back. Please show me how to fix it. We have a few other handlers written the same way I think, but I only care about this one right now.",
+      "rubric": [
+        "Gives a way to confirm the fix, such as sending the `' OR '1'='1` payload and checking no extra rows return, or a unit/integration test with that input.",
+        "Explains that an attacker could read other patients' appointment data and possibly modify or extract more from the database, beyond the one demonstrated payload.",
+        "Recommends broader prevention such as auditing the other handlers built the same way, least-privilege database account, or static analysis rules against string-built SQL.",
+        "Treats the other similarly written handlers as part of the same fix rather than ignoring them, suggesting they be fixed together.",
+        "Shows the vulnerable handler and the corrected version using parameterized queries (`?` placeholders with arguments) so the change is visible.",
+        "Treats the demonstrated data exposure as a high-priority fix to do first."
+      ],
+      "why_skill_matters": "One injectable handler with a hint of identical sibling handlers. Verification, attacker impact, grouping, prevention and before/after code matter."
+    },
+    {
+      "id": "security-remediation-rules-3",
+      "title": "Tightening a shared S3 policy, plus a second bucket not in Terraform",
+      "target_section": "Step 3: False Positive Assessment for AWS Configuration Findings",
+      "prompt": "Cloud review finding on our analytics platform: the S3 bucket `acme-analytics-landing` has a policy granting `s3:*` on `*` to principal `arn:aws:iam::111122223333:root`... and also a statement with `\"Principal\": \"*\"` for `s3:GetObject`. Reviewer wants public read removed and the account-wide grant scoped down. The same report lists `acme-analytics-landing-old` with the same public statement.\n\nContext: `acme-analytics-landing` is defined in our Terraform (modules/landing/main.tf). I can't find `acme-analytics-landing-old` anywhere in our modules. Three things use the main bucket in production: a Glue crawler role, a nightly Lambda that writes parquet files under `incoming/`, and a partner who downloads from `exports/` using a presigned URL setup. I don't fully know whether the partner uses presigned URLs or the public statement. It's live, so I can't afford an outage. What should the new policy look like and how do I roll it out?",
+      "rubric": [
+        "Provides a rollback or safe-rollout approach for the live bucket, such as keeping the previous policy version in Terraform state/git, testing the new policy first, or watching access errors after apply.",
+        "Gives a concrete replacement policy or Terraform change, with specific actions and resource paths (e.g. `incoming/*`, `exports/*`) and named principals, not just \"restrict access\".",
+        "Gives a check for the result, such as an unauthenticated request to `exports/` failing, the Lambda write and Glue read still working, or an access analyzer/policy simulator run.",
+        "Points out that `acme-analytics-landing-old` is not defined in the Terraform modules, so the finding on it may be a leftover or another team's resource, says how to check (tags, creation date, CloudTrail, asking account owners), and still offers the fix if it is real.",
+        "Suggests lasting protections such as enabling S3 Block Public Access, access logging, or an automated policy check in CI.",
+        "Puts removing the public read statement ahead of the lower-risk tightening of the account-root grant."
+      ],
+      "why_skill_matters": "A live bucket with unknown partner access, plus a second flagged bucket missing from the IaC. Rollback, specific policy, verification, false-alarm check and prevention matter."
+    },
+    {
+      "id": "security-remediation-rules-4",
+      "title": "Missing role check on a customer export endpoint, ticket text pasted",
+      "target_section": "Step 1: Finding Analysis",
+      "prompt": "Ticket text, copying it in:\n\n\"AppSec-48213 filed by jdoyle-sec. Severity: critical. The endpoint GET /api/v2/customers/export returns the full customer CSV (name, email, phone, address) for any authenticated user, including role=viewer. See https://wiki.corp-internal.example/appsec/authz-standard for the required pattern.\"\n\nOur code is an Express app:\n\n```js\nrouter.get('/customers/export', requireLogin, async (req, res) => {\n  const rows = await db.customers.findAll();\n  res.type('text/csv').send(toCsv(rows));\n});\n```\n\nWe have a `requireRole('admin')` middleware used elsewhere. This repo is open source on GitHub so whatever I commit is public. Write me the fix and the code comments I should put in the commit.",
+      "rubric": [
+        "The proposed code and comments contain no ticket number AppSec-48213, no reviewer alias jdoyle-sec, no internal wiki link, and no mention of a security review or pen test.",
+        "Explains that any logged-in low-privilege user could download all customers' personal data, and the consequences (privacy breach, bulk data theft).",
+        "Offers a check such as calling the endpoint as a viewer and expecting 403, and as an admin expecting 200.",
+        "Suggests related defences such as checking other routes for missing role checks, default-deny routing, audit logging of exports, or rate limiting.",
+        "Shows the original route and the corrected route with `requireRole('admin')` added.",
+        "Treats the issue as the top priority given the critical rating and bulk personal data exposure."
+      ],
+      "why_skill_matters": "Ticket text with an ID, alias and internal URL; public repo; fix to be committed. Privacy of code and comments, impact, verification and prevention matter."
+    },
+    {
+      "id": "security-remediation-rules-5",
+      "title": "Mixed batch of four findings from a pen test of a booking site",
+      "target_section": "Remediation Prioritization",
+      "prompt": "We got four results back from the pen test on the bookings site and I have until Friday to do what I can. Not sure of the order.\n\n1. Missing `X-Content-Type-Options` header on static pages (low).\n2. Password reset tokens are 6-digit numeric codes, valid for 24 hours, no attempt limit. Tester took over a test account in about 10 minutes with a script (high).\n3. Server banner reveals nginx version (informational).\n4. `/admin/logs` is reachable without login and shows booking confirmations with guest emails and phone numbers (critical).\n\nStack is Django behind nginx. Give me a plan for all four, with the things I should do and how to check each one worked.",
+      "rubric": [
+        "Orders the work with the unauthenticated /admin/logs exposure first, then the reset token weakness, and the header and banner items last.",
+        "Each of the four fixes has a way to check it, such as requesting /admin/logs unauthenticated and getting 401/403, trying many reset codes and being blocked, or curl -I for headers.",
+        "Fixes are concrete: e.g. nginx `server_tokens off;`, `add_header X-Content-Type-Options nosniff;`, Django login-required/permission on the logs view, longer random tokens with shorter expiry and attempt limits.",
+        "Explains the harm an intruder can cause through the logs page (harvesting guest personal data) and through the reset tokens (account takeover by guessing).",
+        "Groups the two nginx configuration items (header and banner) into one change.",
+        "Suggests prevention such as default-deny on admin routes, rate limiting on auth endpoints, or a scan in CI."
+      ],
+      "why_skill_matters": "Four findings of mixed severity. Ordering, grouping of two nginx items, specifics, verification and impact matter."
+    },
+    {
+      "id": "security-remediation-rules-6",
+      "title": "Cloud finding on a bucket missing from the Terraform repo",
+      "target_section": "Step 3: False Positive Assessment for AWS Configuration Findings",
+      "prompt": "Got this from the cloud security team for our ticketing product:\n\n\"Finding: S3 bucket `tmp-demo-upload-test-0412` allows public listing and has no default encryption. Account 444455556666. Severity: medium.\"\n\nI went through our Terraform repo. The buckets we define there are `ticketing-attachments-prod`, `ticketing-attachments-staging`, and `ticketing-logs-prod`. I did a grep for \"demo\" and \"tmp\" and got nothing. The account is shared with a couple of other teams and I know someone ran a sales demo a while back. Anyway, I'd like to just get it closed, tell me what to do.",
+      "rubric": [
+        "Notes that `tmp-demo-upload-test-0412` is not among the Terraform-defined buckets and may therefore be a false alarm (a demo or test leftover, or another team's resource in the shared account).",
+        "Explains how to verify ownership, for example checking bucket tags, creation date, CloudTrail for the creator, or asking the other teams in the account.",
+        "Still provides the concrete fix if the bucket turns out to be real: block public access settings and enabling default SSE with the specific CLI commands or configuration.",
+        "Gives a check after the fix, such as confirming public access block status and encryption configuration via CLI, or that anonymous listing fails.",
+        "Explains what anonymous listing allows (enumerating and possibly reading object names or contents) and the dependence on what the bucket holds.",
+        "Does not simply dismiss or ignore the finding; recommends confirming before closing since public listing could still be real exposure."
+      ],
+      "why_skill_matters": "The bucket name is absent from the IaC and the account is shared, so it may be a false positive. The user wants to close it quickly, pulling toward a dismissal or a blind fix."
+    },
+    {
+      "id": "security-remediation-rules-7",
+      "title": "Same missing validation in three upload handlers of a Flask app",
+      "target_section": "Quality Gate",
+      "prompt": "Code review notes from our security person on the media-share Flask app. Three separate comments:\n\n- upload_avatar(): \"filename from request is used directly in os.path.join(UPLOAD_DIR, filename), can write outside the directory\"\n- upload_attachment(): \"same, file.filename joined into the path, saw `../../app/config.py` work in testing\"\n- import_archive(): \"extracts each zip member name into UPLOAD_DIR without checking, same traversal\"\n\nCode for the first one:\n\n```python\n@app.route('/avatar', methods=['POST'])\ndef upload_avatar():\n    f = request.files['file']\n    path = os.path.join(UPLOAD_DIR, f.filename)\n    f.save(path)\n    return 'ok'\n```\n\nThe other two are basically the same few lines. Production is running this now with real users. Can you write up how I should handle these? I was going to just patch them one at a time as separate PRs this week.",
+      "rubric": [
+        "Recognizes the three comments share one root cause (unsanitized filenames used in paths) and proposes a single shared helper or common fix applied to all three, rather than three unrelated patches.",
+        "Gives concrete code, such as `werkzeug.utils.secure_filename`, generating random filenames, and a resolved-path check that the result stays inside UPLOAD_DIR.",
+        "Provides a test or command to confirm, such as uploading a file named `../../app/config.py` and verifying it lands inside UPLOAD_DIR or is rejected.",
+        "Mentions regression risk (e.g. existing files with unusual names, renamed uploads breaking links) and a rollback or what to monitor after deploying to production.",
+        "Explains that an attacker could overwrite application files like config.py, potentially leading to code execution or tampering.",
+        "Treats the traversal, already shown to work against config.py on a live system, as urgent rather than something to spread over a week of separate PRs.",
+        "Shows the vulnerable upload_avatar code next to the corrected version."
+      ],
+      "why_skill_matters": "Three comments with a common cause hidden among separate items, with a plan to patch separately. Grouping, specifics, verification, rollback, urgency and impact matter."
+    },
+    {
+      "id": "security-remediation-rules-8",
+      "title": "Unvalidated redirect parameter in a login flow, public repo",
+      "target_section": "Step 2: Remediation Planning",
+      "prompt": "Reviewer Priya Natarajan (pnatarajan@ourcorp.example) left this on our open source Rails auth gem, tracked at https://tracker.ourcorp.example/issue/SEC-9921:\n\n\"After login, the `return_to` query param is passed to redirect_to without validation. An attacker can send a victim a link to our login page with return_to=https://evil.example and they land on a phishing site that looks like a post-login page.\"\n\nCurrent code in sessions_controller.rb:\n\n```ruby\ndef create\n  user = User.authenticate(params[:email], params[:password])\n  if user\n    session[:user_id] = user.id\n    redirect_to params[:return_to] || root_path\n  else\n    render :new\n  end\nend\n```\n\nPlease give me the patch and a short explanation I can paste in the PR description. It's going on the public repo.",
+      "rubric": [
+        "The patch, code comments and suggested PR text do not contain the SEC-9921 ID, the tracker URL, Priya's name or email, or any mention that a reviewer or security review found it.",
+        "Provides a concrete fix, such as allowing only relative paths starting with a single `/` (rejecting `//` and schemes) or using `url_from`/`redirect_to ..., allow_other_host: false`, with exact code.",
+        "Offers a test or command to confirm, such as requesting login with return_to=https://evil.example and checking the redirect goes to root_path, plus a test that a legitimate relative path still works.",
+        "Suggests further defences such as an allowlist of redirect targets, checking other redirect_to uses with user input, or a framework setting for open redirects.",
+        "Shows the original `create` action and the corrected version.",
+        "Does not treat the issue as trivial; recognizes the phishing risk and advises prompt fix."
+      ],
+      "why_skill_matters": "The request has a reviewer name, email and tracker link while asking for text bound for a public repo. Privacy of the patch, specifics, verification and prevention matter."
+    }
+  ]
+}

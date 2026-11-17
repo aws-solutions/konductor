@@ -1,0 +1,131 @@
+{
+  "format_version": 1,
+  "skill": "design-quality-check",
+  "batch": "rules-c4",
+  "generated_at": "2026-11-10T10:04:45.547Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "0c81e509e2044d9e53dce4b513325b834c6a7d32a436eafe39da8126f14b44f5",
+  "scenarios": [
+    {
+      "id": "design-quality-check-rules-1",
+      "title": "Offline sync doc that reads well but lacks needs and decisions",
+      "target_section": "Steps",
+      "prompt": "Can you give this a hard read before I post it in the platform channel? I think it's good but I've stared at it too long.\n\n**Offline sync for the Inspector field app**\n\n*Context.* Our inspectors work at remote substations with no signal for hours. Right now a form filled out offline is lost if the app is closed before connectivity returns, and support gets about ten tickets a week about it. This design makes offline work safe.\n\n*Approach.* The app writes every form edit to a local SQLite queue. When the device reconnects, a background worker replays the queue to the sync API in order. Conflicts are resolved per field, latest timestamp wins. The server stores the merged record and returns a version number, which the app saves locally.\n\n*How it flows.* Edit -> local queue -> reconnect detected -> batch upload -> merge -> version ack. Figure 1 in the wiki page shows this as a sequence diagram.\n\n*Performance.* Batching uploads will cut sync time by 60% compared to today, and the extra server load will keep us under $300 a month.\n\n*Plan.*\n1. Week 1-2: local queue and schema migration.\n2. Week 3: sync worker and retry logic.\n3. Week 4: conflict merge on the server, beta with two crews.\n\nThanks!",
+      "rubric": [
+        "Says the document has no section stating what the sync feature must satisfy (needs such as how much data, how long offline, or what counts as success).",
+        "Says the document records no decisions (for example last-write-wins per field or SQLite as the local store) with their alternatives and reasons.",
+        "Flags the \"60% faster sync\" statement and the \"under $300 a month\" statement as claims given without any measurement or source, and suggests adding a test measurement, estimate basis, or link.",
+        "Gives the lowest score (1), or at most 2 with an explicit reason, because several significant issues combine with absent parts, even though the prose is clear.",
+        "States that the document should not advance to the next review stage and needs revision or a rewrite before it does.",
+        "For each problem raised, points to where in the document it sits (for example the Performance paragraph) and proposes a concrete fix rather than only naming the fault."
+      ],
+      "why_skill_matters": "The doc is fluent and has context, approach, a flow with a diagram reference and a plan, but no needs section and no decision records. It also contains two numeric claims (60%, $300) without evidence. A reader who enjoys the prose may wave it through; a careful check finds missing parts and unsupported figures, producing a low score and a block."
+    },
+    {
+      "id": "design-quality-check-rules-2",
+      "title": "Feature flag service with circular reasoning and extra extensibility",
+      "target_section": "When to Use",
+      "prompt": "Reviewing a design from one of our newer engineers for an internal feature flag service. Tell me whether it's in shape to go forward. I'm mostly worried it's overbuilt but can't put my finger on it.\n\n**Feature flags service**\n\n**Background:** Six engineers on the billing team ship behind flags using a hardcoded config file. Redeploying to flip a flag is slow.\n\n**What we need:** One service, used only by the billing team, holding about 12 boolean flags. Flips must be visible to the app within a minute. Nobody outside billing will use it this year.\n\n**Overview:** A small HTTP service reads flags from storage and the billing app polls it every 30 seconds.\n\n**How it works:** See diagram `flags-flow.png`. The app polls, the service answers from storage, and an admin page writes changes.\n\n**Design choices:**\n- Storage: We chose Redis because Redis is the best choice for storing flags.\n- We will define a `FlagProvider` interface with adapters for Redis, Postgres, DynamoDB and a file backend so the store can be swapped in future.\n- Flags can carry a per-tenant targeting rule written in a small custom DSL with its own parser, so any team can express percentage rollouts and segment rules.\n\n**Plan:** Week 1 service and Redis storage. Week 2 admin page. Week 3 provider adapters and the DSL parser.",
+      "rubric": [
+        "Calls out the Redis choice as justified only by saying Redis is best, and asks for real reasons (for example operational familiarity, expected load, or comparison with simply keeping a database table).",
+        "Flags the swappable storage interface with four backends as unnecessary for a 12-flag service used by one team, and recommends a single store or asks for a requirement that justifies it.",
+        "Flags the custom rule language with its own parser and per-tenant targeting as going beyond the stated needs (boolean flags, one team), recommending removal or deferral.",
+        "Gives a score of 2 (or clearly explains a different number tied to three significant issues with no absent parts).",
+        "States that the document is blocked from moving forward until the over-building and weak justification are addressed.",
+        "Each flagged problem comes with its place in the document and a specific fix, such as which design-choice bullet to cut or what reasoning to add."
+      ],
+      "why_skill_matters": "The doc has all its parts, so the trouble is content: one decision justified circularly, a four-backend provider interface and a custom DSL that the stated needs (12 booleans, one team) never call for. This makes circular rationale and unneeded complexity matter, and the count of significant issues drives score and gate."
+    },
+    {
+      "id": "design-quality-check-rules-3",
+      "title": "Short complete hook doc that should be left alone",
+      "target_section": "Pitfalls",
+      "prompt": "I tried to keep this one tight on purpose. Reviewers on my last doc complained about length. Is it ready to submit? Please be honest, not nice.\n\n**Secret scanner pre-commit hook**\n\n**Context:** Two leaked API keys in the last quarter were found in commit history after the fact. We want to catch them before they leave the laptop.\n\n**Needs:** Block commits containing known secret patterns. Add no more than a second of waiting on normal commits. Work on macOS and Linux.\n\n**Overview:** A pre-commit hook runs a Python script over staged files and rejects the commit on a match.\n\n**How it works:** See `hook-flow.svg`. Git calls the hook, the script reads the staged diff, matches it against the ruleset, and exits non-zero on a hit.\n\nA secret is defined as any string that matches a pattern in the ruleset.\n\n**Latency:** The scan typically adds 100-500ms per commit on a mid-sized diff, and larger on first run while the ruleset compiles.\n\n**Plan:** Day 1 script and ruleset. Day 2 installer. Day 3 team rollout. In order to keep the rollout safe, the first week runs in warn-only mode.\n\n**Decision 1 - Python script:** We chose Python because the team already maintains other Python tooling and nobody needs to learn a new language. Alternative considered: a Go binary, rejected as extra build work for a hook this small.",
+      "rubric": [
+        "Does not treat \"typically 100-500ms\" as an unsupported claim or a hedge; accepts it as an honest range (or at most remarks on it without counting it against the document).",
+        "Does not count the passive wording in the definition of a secret, or the Python rationale given without a link, as problems, and does not mark the document down for being short.",
+        "Notes at most the wordy \"In order to\" in the Plan as a small issue, with a shorter rewording such as \"To keep\".",
+        "Gives a score of 4 or 5, consistent with there being no significant issues and at most one or two small ones.",
+        "States the document is ready to go forward to the next review stage.",
+        "Any issue it does raise has its location in the document and a concrete suggestion."
+      ],
+      "why_skill_matters": "The document is brief but has context, needs, overview, a diagram reference, plan and a recorded decision with an alternative. It contains an honest typical range, a formal definition in passive form, qualitative rationale without links, and one filler phrase. The traps are over-flagging those items or penalizing brevity."
+    },
+    {
+      "id": "design-quality-check-rules-4",
+      "title": "Log retention doc padded with filler and hedges",
+      "target_section": "Steps",
+      "prompt": "here's the log retention design, going to the infra review tomorrow. my manager says my writing is \"mushy\". can you tell me where, specifically?\n\n**Log retention and archival**\n\n**Background:** Application logs currently stay in hot storage forever, which is costly and makes search slow.\n\n**Needs:** Keep 30 days searchable, 1 year archived, then deleted. Archive restores must be possible by the on-call engineer.\n\n**Overview:** Logs move from hot storage to an archive bucket after 30 days and are deleted after a year.\n\n**How it works:** See `retention.png`. It is worth noting that a nightly job lists objects older than 30 days. Needless to say, those objects are then copied to the archive bucket, and as mentioned above, the originals are removed once the copy is verified.\n\n**Implementation:** In order to reduce risk, we might potentially run the job in dry-run mode first. The migration could possibly take somewhat longer on the largest services. Note that the on-call restore script may or may not need extra permissions.\n\n**Rollout:** Old logs are scanned. A manifest is generated. Objects are copied. Copies are verified. Originals are deleted. Failures are logged. A report is sent to the channel. The schedule is reviewed weekly.\n\n**Decision 1 - Lifecycle job vs. storage-native rules:** Storage-native rules cannot verify the copy before deleting, and the company's compliance policy requires verification, so we use our own job.",
+      "rubric": [
+        "Identifies the wordy throat-clearing in How it works and the \"In order to\" opener in Implementation, and gives a shorter replacement for each.",
+        "Identifies the noncommittal wording in the Implementation paragraph (the \"might potentially\", \"could possibly\", \"somewhat\" and the permissions uncertainty) and asks for a firm statement or a stated condition for each.",
+        "Flags the Rollout section as almost entirely passive with no named actor (job, engineer, or on-call) and suggests rewriting with who does each step.",
+        "Gives a score of 3, because the issues are all small but numerous, and no significant issues are found.",
+        "States that the document may go ahead to review with revision notes rather than being blocked.",
+        "Each wording problem is tied to a section and a rewrite suggestion rather than a general remark that the writing is mushy."
+      ],
+      "why_skill_matters": "The doc is structurally complete with a justified decision, so the only problems are many small wording ones: stock filler, hedges, and a passive Rollout section. The user asks where it is mushy, which makes locating and rewording matter, and the count of minor issues sets a middle score that still advances."
+    },
+    {
+      "id": "design-quality-check-rules-5",
+      "title": "Invoice OCR doc with a buried abstraction and cost figure",
+      "target_section": "Verification",
+      "prompt": "Finance wants us to automate invoice entry and I've written the design. It's long because I tried to be thorough. Anything I should fix before I put it on the review calendar?\n\n**Invoice capture pipeline**\n\n**Background:** The accounts payable team keys in roughly 800 supplier invoices a month by hand. Errors in amounts caused three payment corrections last quarter.\n\n**Needs:** Extract supplier, date, total and line items from PDF invoices. One finance team, about 800 invoices a month. A human confirms any invoice where extraction confidence is low. Results land in the existing ledger import file.\n\n**Overview:** Invoices arrive in a shared mailbox. A scheduled job pulls attachments, sends each to the OCR vendor, and writes confident results to the ledger import file. Low-confidence results go to a review queue in the AP team's existing ticketing tool. The vendor's published accuracy on printed invoices is 97.8% ([vendor accuracy report](https://example.com/ocr-accuracy)), which is above our manual error rate. At the vendor's volume tier, per-document cost should land around $0.002.\n\n**How it works:** See `invoice-flow.png`. Mailbox -> fetcher -> OCR call -> confidence check -> ledger file or review queue.\n\n**Implementation:** The fetcher runs every 15 minutes and records processed message IDs so nothing is handled twice. The OCR call is retried three times with backoff. Confidence below 0.9 sends the invoice to review. We will also build a vendor-neutral OCR abstraction layer with a provider registry so that other OCR providers can be added later, although only one vendor is planned. Ledger file writes are atomic.\n\n**Plan:** Week 1 fetcher. Week 2 OCR integration and confidence routing. Week 3 abstraction layer. Week 4 pilot on one supplier group.\n\n**Decision 1 - Vendor OCR vs. self-hosted model:** Self-hosting needs GPU capacity and an owner for model updates; for 800 documents a month the vendor is simpler. We chose the vendor.",
+      "rubric": [
+        "Flags the vendor-neutral OCR layer with a provider registry (mentioned in Implementation and given a week in the Plan) as unrequired, since one vendor and one finance team are all the needs call for, and suggests dropping it or tying it to a stated need.",
+        "Flags the per-document cost of about $0.002 as a figure with no source or calculation, while not flagging the 97.8% accuracy figure that comes with a link.",
+        "Gives a score of 3, reflecting two significant issues in an otherwise complete document.",
+        "States that the document can go forward with revision notes, not blocked.",
+        "Names where each issue sits (Implementation/Plan for the abstraction layer, Overview for the cost) and gives a concrete fix for each."
+      ],
+      "why_skill_matters": "A long, thorough, well-structured document hides two significant problems in single clauses: an abstraction layer for providers that will never be used and an unsourced per-document cost, next to a properly linked accuracy claim and a well-justified decision. The count lands at a middle score that advances."
+    },
+    {
+      "id": "design-quality-check-rules-6",
+      "title": "Warehouse scheduler doc with many problems and gaps",
+      "target_section": "Rubric",
+      "prompt": "Need a go/no-go on this before it goes to the architecture board. Be blunt.\n\n**Robot fleet scheduler**\n\n**Background:** Our warehouse runs 40 pick robots on a first-come queue. Robots idle while others are overloaded, and pickers wait.\n\n**Approach:** A central scheduler assigns tasks to robots based on location and battery. It will respond in under 20ms and save the company around $1M a year in labor. The scheduler talks to robots over gRPC because gRPC is the best protocol for this kind of system. State lives in a distributed database cluster so that we never lose an assignment.\n\n**Details:** The scheduler gets order events from the warehouse system. Robot positions are polled every second. An assignment is computed and then pushed to the nearest free robot. If the robot fails to acknowledge, the task is reassigned.\n\n**Plan:** Build the scheduler in Q1. Integrate with the robots in Q2. Roll out to all floors in Q3.",
+      "rubric": [
+        "Says the document has no section on what the scheduler must achieve (needs/targets) and no recorded decisions with alternatives, naming both as absent.",
+        "Notes that no diagram is referenced in the explanation of how assignments flow.",
+        "Flags the \"under 20ms\" response time and the \"$1M a year\" savings as claims with no measurement, model or source, and asks for evidence.",
+        "Flags \"gRPC because gRPC is the best protocol\" as a justification that only repeats the choice, and asks for reasons or alternatives considered.",
+        "Gives the lowest score (1), since there are three or more significant issues and parts of the document are absent.",
+        "States that the document is blocked and needs a rewrite or substantial revision before the board.",
+        "Each issue is located (for example the Approach paragraph) and has a concrete suggestion."
+      ],
+      "why_skill_matters": "A short, thin document with unsupported latency and savings claims, a circular protocol justification, a distributed cluster nobody asked for, and no needs section or decision records or diagram. The user wants blunt go/no-go. This tests missing parts, unsupported figures, circular rationale, and a lowest score that blocks."
+    },
+    {
+      "id": "design-quality-check-rules-7",
+      "title": "Report export doc with passive section among valid passive and range",
+      "target_section": "Pitfalls",
+      "prompt": "Posting this to the clinic systems group on Monday. Can you check it over? I've had comments that it \"sounds robotic\" but I can't see why.\n\n**Appointment report export**\n\n**Background:** Clinic managers request a monthly appointment report from IT, which a developer builds by hand each time. It takes half a day.\n\n**Needs:** Managers can download a CSV of the previous month's appointments by clinic. No patient names are included. The export finishes while the manager waits.\n\n**Overview:** A new \"Export\" button on the manager dashboard calls an endpoint that builds the CSV from the appointments table.\n\n**How it works:** See `export-sequence.png`. The dashboard calls the endpoint, the endpoint queries the database and streams the file back.\n\n**Terms:** An anonymized record is defined as a record from which all direct identifiers have been removed.\n\n**Data handling:** Appointments are queried by clinic and month. Patient identifiers are stripped. Rows are sorted by date. Dates are converted to the clinic's time zone. The file is streamed to the browser. The result is logged for audit. Access is checked against the manager's role. Failures are reported to the support inbox.\n\n**Latency:** For a typical clinic the export usually takes 2-5 seconds, and longer in the busiest week.\n\n**Plan:** Week 1 endpoint and query. Week 2 dashboard button and role check. Week 3 pilot with three clinics.\n\n**Decision 1 - Stream vs. generate-and-email:** Streaming meets the \"while the manager waits\" need and avoids storing files that contain appointment data, so we stream.",
+      "rubric": [
+        "Identifies the Data handling section as almost entirely passive with no actor named, and suggests naming who or what does each step (for example \"The endpoint strips identifiers\").",
+        "Does not flag the \"usually 2-5 seconds\" statement as vague or unsupported.",
+        "Does not flag the passive phrasing of the anonymized-record definition in Terms.",
+        "Gives a score of 4 (or 5 with an explanation), since only a single small wording issue exists and no significant ones.",
+        "States that the document can go forward to the next stage.",
+        "The wording issue found is located by section and comes with a concrete rewrite suggestion."
+      ],
+      "why_skill_matters": "Everything needed is present. The one real problem is the all-passive Data handling section, which explains the \"robotic\" feel. Next to it are a formal passive definition and an honest typical range that should be left alone. The answer must separate the real passive overuse from acceptable ones, then give a high score and let it advance."
+    },
+    {
+      "id": "design-quality-check-rules-8",
+      "title": "Onboarding automation doc, casual ask, two real problems",
+      "target_section": "When to Use",
+      "prompt": "hey, is this doc ready? it's the new-hire account setup automation. I have to submit tonight so tell me what's blocking and what's just polish\n\n**New-hire account automation**\n\n**Background:** IT creates accounts for each new hire by hand across email, chat and the HR portal. It takes about 45 minutes and often gets delayed.\n\n**Needs:** On the start date minus two days, all three accounts exist. Managers see status. HR can re-run a failed step.\n\n**Overview:** When HR marks a hire as confirmed, a workflow creates the three accounts and posts the result to the manager.\n\n**How it works:** See `onboarding-flow.png`. HR confirms, the workflow calls three APIs in order, and a status message is sent.\n\n**Implementation:** The workflow can handle 5,000 hires per hour, so volume will never be a concern. Note that a failed step might be retried somewhat later. In order to let HR re-run steps, a button is added to the HR portal. It is worth noting that the manager message could potentially include a link.\n\n**Plan:** Week 1 email account step. Week 2 chat and portal steps. Week 3 status message and re-run button.\n\n**Decision 1 - Workflow engine:** We use the Temporal engine because Temporal is the right engine for this workflow.",
+      "rubric": [
+        "Flags the \"5,000 hires per hour\" statement as a throughput claim with no measurement or source (and notes it far exceeds the stated hiring needs), and asks for evidence or removal.",
+        "Flags the workflow engine choice as justified only by calling it the right engine, and asks for reasons or alternatives.",
+        "Lists the wordy openers and the noncommittal wording in Implementation (the retry \"might ... somewhat later\", the \"In order to\" opener, the \"worth noting\" aside, \"could potentially\") as polish items, separate from the blocking ones.",
+        "Gives a score of 3 (two significant issues plus several small ones).",
+        "Says the document can advance with revisions rather than being blocked, and states which fixes are most important before submitting tonight.",
+        "Each issue is located (Implementation or Decision 1) and has a concrete proposed fix."
+      ],
+      "why_skill_matters": "The user asks what blocks and what is polish. The doc has every part but contains one unsupported throughput claim, one circular decision, and a cluster of filler and hedges. This makes the split between significant and small issues, the middle score, and the advance-with-notes verdict matter."
+    }
+  ]
+}

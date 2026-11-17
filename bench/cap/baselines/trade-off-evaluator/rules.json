@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "trade-off-evaluator",
+  "skill_md_sha256": "9460678444df6c303367d29324579198051dac897777d276eec5a6c69e77c212",
+  "request_context": "A request to compare several design options for an engineering decision and recommend one, scoring them against common quality criteria.",
+  "rules": [
+    {
+      "id": "trade-off-evaluator-r01",
+      "source_quote": "Options** — at least 2, at most 5; each with a name and brief description",
+      "class": "useful",
+      "outcome": "The comparison covers between two and five distinct options, each identified by a name and a short description of what it is.",
+      "why": "A single option is not a comparison, and too many options dilute the analysis and make the choice unreadable.",
+      "scenario_hint": "Engineer asks which of several architectural alternatives to pick for a given workload."
+    },
+    {
+      "id": "trade-off-evaluator-r02",
+      "source_quote": "Score each option 1–5 per dimension. Higher is better.",
+      "class": "useful",
+      "outcome": "Every option receives a numeric score from one to five on each of cost, latency, complexity, scalability and operability, where a higher number is always better (so a more complex option gets a lower complexity score).",
+      "why": "Mixed scales or inverted meanings make totals misleading and options incomparable.",
+      "scenario_hint": "Request to score two or three options across cost, latency, complexity, scalability and operability."
+    },
+    {
+      "id": "trade-off-evaluator-r03",
+      "source_quote": "Write a one-line justification",
+      "class": "useful",
+      "outcome": "Each individual score is accompanied by a brief reason tied to the decision context, so a reader can see why that number was given.",
+      "why": "Bare numbers cannot be challenged or reviewed and look arbitrary.",
+      "scenario_hint": "Any request to compare design options with scores."
+    },
+    {
+      "id": "trade-off-evaluator-r04",
+      "source_quote": "When `aws-service-validator` is not used, you MUST note the assumption explicitly.",
+      "class": "useful",
+      "outcome": "When scores rely on assumed characteristics of cloud services (limits, pricing, latency, throughput) that were not verified against current documentation, the answer states those assumptions explicitly.",
+      "why": "Unverified service facts presented as certain can silently drive a wrong architecture choice.",
+      "scenario_hint": "Comparing two managed cloud messaging or storage services, such as a queue versus an event bus, from general knowledge."
+    },
+    {
+      "id": "trade-off-evaluator-r05",
+      "source_quote": "omit a dimension only if it is genuinely not applicable (state why)",
+      "class": "useful",
+      "outcome": "All five criteria are scored by default; if any is left out, the answer says why it does not apply to this decision.",
+      "why": "Silently dropping a criterion hides a weakness of a favoured option.",
+      "scenario_hint": "Decision where latency seems irrelevant, such as a nightly batch job, and one criterion is tempting to skip."
+    },
+    {
+      "id": "trade-off-evaluator-r06",
+      "source_quote": "a hard constraint (e.g., \"must be synchronous\") can disqualify an option regardless of score.",
+      "class": "useful",
+      "outcome": "When the stated context contains a hard requirement that an option cannot meet, that option is not recommended even if its total score is highest, and the answer explains the override.",
+      "why": "Following the arithmetic over a mandatory constraint yields an unusable recommendation.",
+      "scenario_hint": "Request where the highest-scoring option is asynchronous but the caller requires a synchronous response."
+    },
+    {
+      "id": "trade-off-evaluator-r07",
+      "source_quote": "a score of 1 requires a specific justification",
+      "class": "useful",
+      "outcome": "Every option is assessed fairly; any lowest score is backed by a concrete, specific reason rather than a vague dismissal, and no option is set up as a strawman.",
+      "why": "Unfair low scores bias the result toward a pre-chosen option.",
+      "scenario_hint": "Comparison where one option is clearly the engineer's favourite and another is a less familiar alternative."
+    },
+    {
+      "id": "trade-off-evaluator-r08",
+      "source_quote": "The recommendation names the chosen option and references at least 2 dimension scores",
+      "class": "useful",
+      "outcome": "The answer recommends one named option and supports it by citing at least two of its specific scores or dimensions, not just stating a preference.",
+      "why": "A recommendation detached from the scoring does not show the analysis supports it.",
+      "scenario_hint": "Any request to compare options and recommend one."
+    },
+    {
+      "id": "trade-off-evaluator-r09",
+      "source_quote": "Risks are specific, not generic (\"may be slower\" is not a risk; \"adds ~80ms per hop under fan-out\" is)",
+      "class": "useful",
+      "outcome": "Each option has its own risks that are concrete and quantified or conditional (a trigger, a load level, a magnitude, a mitigation or check), rather than generic remarks such as 'may be slower'.",
+      "why": "Generic risks give the team nothing to monitor or test.",
+      "scenario_hint": "Request to compare options and list the downsides of each."
+    },
+    {
+      "id": "trade-off-evaluator-r10",
+      "source_quote": "Higher total = better overall fit.",
+      "class": "generic",
+      "outcome": "Each option's total is the correct sum of its five scores, and the totals are consistent with the ranking discussed in the answer.",
+      "why": "Arithmetic errors undermine trust in the whole comparison.",
+      "scenario_hint": "Any request to score and compare design options."
+    },
+    {
+      "id": "trade-off-evaluator-r11",
+      "source_quote": "| Option   | Cost | Latency | Complexity | Scalability | Operability | Total |",
+      "class": "style",
+      "outcome": "The scores are shown in one table with a row per option, a column per criterion and a final total column, followed by a note explaining the scale.",
+      "why": "",
+      "scenario_hint": "Any request to compare design options with scores."
+    },
+    {
+      "id": "trade-off-evaluator-r12",
+      "source_quote": "Write the full trade-off report to",
+      "class": "style",
+      "outcome": "The full analysis is saved as a document in the project's design documentation area, with a name derived from the decision, or embedded in the relevant decision record's alternatives section.",
+      "why": "",
+      "scenario_hint": "Any request to evaluate trade-offs for a design decision in a project repository."
+    }
+  ]
+}

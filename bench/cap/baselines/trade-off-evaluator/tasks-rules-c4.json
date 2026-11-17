@@ -1,0 +1,134 @@
+{
+  "format_version": 1,
+  "skill": "trade-off-evaluator",
+  "batch": "rules-c4",
+  "generated_at": "2026-11-10T09:38:45.007Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "32f2e1b5aeacdb18ae8fe9d1789c8713248a2cc50515a7df53b867bfd00113af",
+  "scenarios": [
+    {
+      "id": "trade-off-evaluator-rules-1",
+      "title": "Video thumbnail generation approach",
+      "target_section": "Step 2: Score Each Option",
+      "prompt": "We run a small video-hosting startup on AWS. When a creator uploads a video (avg 400MB, around 3,000 uploads a day, spikes to maybe 10k during a campaign), we need to generate 5 thumbnails. Nobody is waiting on the result in real time, but creators expect to see them within a couple of minutes. We have 4 engineers, all comfortable with Lambda and S3 triggers, nobody has touched Kubernetes.\n\nOptions we're debating:\n1. Lambda triggered by S3 upload, running ffmpeg from a layer\n2. AWS Elemental MediaConvert job per upload\n3. A fleet of Fargate tasks pulling from an SQS queue\n\nCan you compare them and tell us which to go with? I'd like scores so I can paste it into our design doc.",
+      "rubric": [
+        "Compares exactly the three named approaches (Lambda with ffmpeg, MediaConvert, Fargate workers from a queue), each briefly described, without inventing extra options.",
+        "Gives each of the three approaches a 1-5 score on all five criteria, with the scoring direction consistent (e.g. the Fargate-plus-queue option, with the most moving parts, gets a lower complexity score than the Lambda option).",
+        "Each score comes with a short reason tied to this workload (400MB files, 3k-10k uploads/day, team knows Lambda).",
+        "States that Lambda limits (timeout, memory, ephemeral storage) and MediaConvert/Fargate pricing or throughput figures are assumed from general knowledge and should be checked against current docs.",
+        "Recommends one named approach and cites at least two of its specific scores or criteria as the basis.",
+        "Each total equals the sum of that option's five scores and the recommended option agrees with the totals or the answer explains the departure.",
+        "Scores appear in one comparison table, a row per option, a column per criterion plus a total, with a note on what the scale means."
+      ],
+      "why_skill_matters": "A standard multi-option AWS comparison with a team-skill constraint. It makes option count, scoring, justifications, unverified service assumptions and a cited recommendation matter."
+    },
+    {
+      "id": "trade-off-evaluator-rules-2",
+      "title": "Hosting for a tiny internal admin tool",
+      "target_section": "Step 1: Identify Decision and Options",
+      "prompt": "We need to host a small internal admin tool for our ops team: 6 people use it, a few dozen page loads a day, it will never have more than 10 users because it's literally for our warehouse supervisors. It's a Flask app with a Postgres database holding maybe 2GB of data. Our infra person is part-time on this.\n\nOptions so far:\nA) Lambda behind API Gateway, with the app adapted to run serverless and data moved to Aurora Serverless\nB) One small EC2 instance running the app under systemd, with RDS Postgres\nC) ECS Fargate service behind an ALB, with RDS Postgres\n\nGive me a scored comparison for the doc. Keep it tight, I'm not going to read a novel.",
+      "rubric": [
+        "Either scores growth/scale handling for all three options with reasoning that reflects the 10-user ceiling, or leaves it out and explicitly says why it does not apply; it must not silently drop any criterion.",
+        "All three options have numeric 1-5 scores on every criterion that is not explicitly excluded, with higher always better (the Lambda rework gets a lower complexity score than the single instance).",
+        "Every score has a short reason tied to the 6-user load, the part-time infra person or the 2GB database.",
+        "Each option has its own concrete downside with a trigger or magnitude (e.g. single instance patching/outage with no failover, always-on ALB and Fargate cost for near-zero traffic, Aurora serverless minimum cost or cold-start delay), not just \"may be slower\".",
+        "Totals match the sums of the shown scores and the stated winner is consistent with them.",
+        "One table with a row per option, a column per criterion and a total, plus a scale note."
+      ],
+      "why_skill_matters": "The tiny fixed user base tempts the answerer to quietly drop scale as irrelevant, and the request asks for brevity. It makes criteria coverage, scoring, justifications and specific risks matter."
+    },
+    {
+      "id": "trade-off-evaluator-rules-3",
+      "title": "Chat feature must be synchronous",
+      "target_section": "Pitfalls",
+      "prompt": "Product wants a \"smart reply suggestions\" feature in our support chat widget. Agent clicks the button, and the suggestions must appear in the same UI action, so the API call has to return the suggestions in its response (the front end is a single fetch and there's no websocket channel; adding one is out of scope this quarter). Our p95 budget for that endpoint is 1.5s.\n\nOptions I'm considering:\n1. Call the LLM provider directly from the API handler, with a prompt built from the last 10 messages\n2. Push the request on a Kafka topic, have workers generate suggestions, and the UI polls/gets notified later\n3. Precompute suggestions for every incoming customer message in the background and store them in Redis, API reads from Redis\n\nWe have Kafka already and a good on-call setup for it. Redis is also in use. Which should we pick? Score them please.",
+      "rubric": [
+        "Does not recommend the Kafka worker option, or explains that the single-fetch, no-push-channel requirement rules it out even if its scores or totals look strong.",
+        "Names one recommended option and cites at least two of its scores or criteria in support.",
+        "Scores the Kafka option on its real merits (existing Kafka operations, scalability) rather than dismissing it, and any score of 1 has a specific reason.",
+        "Each score has a brief reason tied to the 1.5s budget, the last-10-messages prompt, or existing Kafka/Redis.",
+        "Totals are arithmetically correct and the ranking discussed matches them, with any override explained."
+      ],
+      "why_skill_matters": "The Kafka option may total highest because of existing operations but conflicts with a hard in-response requirement. It makes disqualification, fair scoring, justification and recommendation matter."
+    },
+    {
+      "id": "trade-off-evaluator-rules-4",
+      "title": "Feature flag service for a mobile app",
+      "target_section": "Step 3: Produce Comparison Table",
+      "prompt": "hey, we're a 12-person team shipping a fitness app (iOS + Android, ~300k MAU). We want feature flags and gradual rollouts. Thinking about:\n\n- LaunchDarkly (SaaS)\n- Unleash self-hosted on our existing EKS cluster\n- rolling our own with a DynamoDB table + a small config endpoint cached at the edge\n- AWS AppConfig\n\nI'm leaning toward rolling our own because I think it'd be cheap, but I want a proper side by side first. Flag evaluation shouldn't slow app start noticeably. Please rate each one on price, speed, how complex it is to adopt, how well it grows with us, and how easy it is to run day to day, then give me a recommendation.",
+      "rubric": [
+        "Covers the four named options, each with a short description, and does not add a fifth.",
+        "Each of the four options has a 1-5 score on all five aspects asked about, with higher always better (the DIY option's high build burden shows as a low complexity score).",
+        "The engineer's favored DIY option is not rigged either way: its scores are justified, and any 1 is backed by a concrete reason such as ongoing maintenance of targeting rules and SDKs.",
+        "Recommends one named option and cites at least two of its scores or criteria; does not simply endorse the lean toward DIY without evidence.",
+        "Each of the four options has its own concrete risk with a trigger or magnitude (e.g. SaaS price growth at MAU tiers, DIY build time).",
+        "Each option's total is the correct sum of its five scores and the option recommended is consistent with those totals, or any departure is explained.",
+        "One comparison table with a row per option, a column for each criterion and a total, followed by a scale note."
+      ],
+      "why_skill_matters": "Four options with a favorite stated by the user. Makes option coverage, scoring, fair treatment, recommendation and risks matter."
+    },
+    {
+      "id": "trade-off-evaluator-rules-5",
+      "title": "Search backend for an internal wiki",
+      "target_section": "Step 2: Score Each Option",
+      "prompt": "We're a 40-person consultancy with a Confluence-style internal wiki we built ourselves on Postgres (about 25k pages, maybe 200 searches a day, and honestly it'll stay that size). Search is currently ILIKE and it's awful. Our one platform engineer, Priya, says she doesn't want another cluster to babysit.\n\nOptions:\n1. Postgres full-text search with tsvector + GIN index\n2. Amazon OpenSearch Service (managed domain)\n3. Typesense on a single small instance\n\nWrite up a scored comparison I can forward to the team. Be explicit about anything you're not sure of, since I'll be quoting your numbers.",
+      "rubric": [
+        "Flags which numbers (OpenSearch minimum instance pricing, Typesense memory needs, Postgres FTS ranking limits) are assumptions from general knowledge to confirm, instead of presenting them as verified.",
+        "Scores all three options 1-5 on cost, latency, complexity, scalability and operability, higher always better.",
+        "Each score has a reason tied to 25k pages, 200 searches/day and a single platform engineer.",
+        "Given the small, stable size, the answer still addresses growth handling for each option, or explicitly says why it is left out; it is not dropped silently.",
+        "Recommends one named option and cites at least two of its scores or criteria.",
+        "Totals equal the sum of the five scores per option and agree with the ranking in the text.",
+        "Scores in a single table with a row per option, a column per criterion and a total column, followed by a scale note."
+      ],
+      "why_skill_matters": "Small scale and a one-engineer team, with an explicit request to flag uncertainty. Makes assumption disclosure, scoring, justification, criteria coverage and recommendation matter."
+    },
+    {
+      "id": "trade-off-evaluator-rules-6",
+      "title": "Cross-region DR strategy, risk-focused",
+      "target_section": "Step 4: Recommendation and Risks",
+      "prompt": "Our B2B invoicing system (RDS Postgres, ~600GB, 40 writes/sec, everything in eu-west-1) needs a DR story after a customer audit. Target is RPO under 5 minutes and RTO under 1 hour. Budget is tight, finance already grumbles about the AWS bill.\n\nCandidates:\n(a) Cross-region RDS read replica in eu-central-1, promote manually on disaster\n(b) Aurora Global Database (would need migrating off RDS Postgres)\n(c) Automated snapshot copy to eu-central-1 every hour plus restore runbook\n\nI need to present this to the CTO. For each one tell me what the scores are and, more importantly, what could go wrong with each so I'm not blindsided in the meeting.",
+      "rubric": [
+        "Each of (a), (b) and (c) has its own concrete risk with a number, trigger or check (e.g. snapshot every hour cannot meet a 5-minute RPO, replica lag under write bursts, migration downtime for Aurora).",
+        "Scores each option 1-5 on all five criteria, with higher always better.",
+        "Treats the 5-minute RPO and 1-hour RTO as hard requirements: the hourly snapshot option is not recommended, or the answer explains that its totals cannot override failing the RPO.",
+        "Recommends one named option and cites at least two of its scores or criteria.",
+        "Notes which replication-lag, failover-time and pricing figures are assumed from general knowledge and not verified.",
+        "Totals are correct sums and consistent with the stated ranking."
+      ],
+      "why_skill_matters": "Risk-focused request with RPO/RTO that works as a hard constraint on one cheap option. Makes risks, scoring, disqualification, recommendation and assumptions matter."
+    },
+    {
+      "id": "trade-off-evaluator-rules-7",
+      "title": "CI cache strategy, terse and casual",
+      "target_section": "Verification",
+      "prompt": "ci is slow. monorepo, ~90 packages, builds take 28 min on GitHub Actions. thinking either\n- actions/cache keyed on lockfile hash\n- Turborepo remote cache (vercel hosted)\n- Bazel with a self-hosted remote cache (buildbarn)\n- just buy bigger runners\n\nour devs are all JS people, no one knows Bazel. we do ~150 CI runs a day. which one? scores pls, and don't give me a wall of text",
+      "rubric": [
+        "Compares the four named options, each identified with a brief description.",
+        "All four options get 1-5 scores on every criterion that is not explicitly excluded, with higher meaning better (Bazel gets a low complexity score).",
+        "Each score carries a brief reason, kept short but tied to the facts (28 min builds, 90 packages, JS-only team, 150 runs/day).",
+        "Bazel's lowest scores are supported by specific reasons (team has no Bazel experience, remote cache infrastructure to run) and not by a vague dismissal; its scalability strength is acknowledged.",
+        "Each option has its own concrete risk or trigger (e.g. cache poisoning, hosted cache cost at larger artifact sizes, runner cost growth) rather than generic remarks.",
+        "Totals match the sums of the shown scores and the pick is consistent with them."
+      ],
+      "why_skill_matters": "Casual request that asks for brevity, so justifications and per-option risks are likely to be dropped, and Bazel is an easy strawman. Makes coverage, scoring, reasons, fairness and risks matter."
+    },
+    {
+      "id": "trade-off-evaluator-rules-8",
+      "title": "Email delivery provider for a SaaS",
+      "target_section": "Step 1: Identify Decision and Options",
+      "prompt": "We send transactional email (password resets, receipts, ~2M/month, rising maybe 3x by next year) from our SaaS. Currently on a self-run Postfix relay that keeps getting our IPs blocklisted. Deliverability matters a lot, and password resets need to arrive within seconds. One ops person handles everything infra.\n\nI've been told to compare Amazon SES, SendGrid, Postmark, and Mailgun. Honestly SES looks like the obvious winner to me because it's so cheap, but I want to see it holds up before I commit. Please produce a scored comparison and a recommendation. I'll paste it into our vendor decision record.",
+      "rubric": [
+        "Covers the four named providers, each with a brief description, and keeps the set to those four (or at most five if one is added with a reason).",
+        "Scores every provider 1-5 on cost, latency, complexity, scalability and operability, with higher always better.",
+        "SES is not treated as the foregone winner; its operational burden (reputation management, dedicated IPs) is scored fairly, and any 1 for another provider has a concrete reason.",
+        "States that pricing per thousand emails, delivery speed and sending limits are assumed from general knowledge and should be confirmed with current vendor pricing.",
+        "Recommends one named provider and cites at least two of its scores or criteria, tied to seconds-level password reset delivery or the one-person ops team.",
+        "Each provider's total is the correct sum of its five scores and the recommendation agrees with the totals or explains the departure.",
+        "One table with a row per provider, a column per criterion and a total, followed by a scale note."
+      ],
+      "why_skill_matters": "A favorite option with a cost bias and a lean ops team, plus unverified vendor pricing. Makes coverage, scoring, fairness, assumptions and the recommendation matter."
+    }
+  ]
+}

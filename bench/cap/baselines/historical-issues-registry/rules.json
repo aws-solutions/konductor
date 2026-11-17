@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "historical-issues-registry",
+  "skill_md_sha256": "80ff8c70af2cbb9fd6773b268d76bdbeca215132291369053dc970d03e8a0ca8",
+  "request_context": "A request to filter newly found code-review issues against the comments and decisions from earlier revisions of the same review, so already-settled issues are not re-posted but real problems still reach the reviewer.",
+  "rules": [
+    {
+      "id": "historical-issues-registry-r01",
+      "source_quote": "**Surface** the finding (do NOT suppress it)",
+      "class": "useful",
+      "outcome": "A new finding that matches a prior issue which the author had fixed is kept in the report and flagged as a regression of that earlier fix, not dropped as a duplicate.",
+      "why": "Dropping a reintroduced defect hides exactly the problem a reviewer most needs to see.",
+      "scenario_hint": "New finding repeats a defect whose earlier comment thread was resolved with a fix, and the diff now reintroduces it."
+    },
+    {
+      "id": "historical-issues-registry-r02",
+      "source_quote": "**suppress** the new finding",
+      "class": "useful",
+      "outcome": "A new finding matching an earlier issue that a reviewer decided was a false positive or would not be fixed is removed from the report rather than posted again.",
+      "why": "Re-posting settled issues teaches reviewers to ignore automated comments.",
+      "scenario_hint": "Later revision produces a finding identical to one a non-author reviewer previously rejected."
+    },
+    {
+      "id": "historical-issues-registry-r03",
+      "source_quote": "Log the suppression with the matched historical thread id and reason.",
+      "class": "useful",
+      "outcome": "Every suppressed finding is accompanied by a record naming the earlier comment thread it matched and the reason it was dropped, and the number suppressed is reported.",
+      "why": "Silent suppression leaves reviewers unable to verify the filter or notice wrongly dropped findings.",
+      "scenario_hint": "Filtering run in which one or more new findings are suppressed."
+    },
+    {
+      "id": "historical-issues-registry-r04",
+      "source_quote": "if that field is `null` (the host platform recorded no revision), use the unqualified \"carried over from a prior revision\" instead",
+      "class": "useful",
+      "outcome": "A finding matching an earlier comment that is still unresolved is kept and labelled as carried over from the earlier revision it was raised on, and if no revision number is known the label is generic without an invented number.",
+      "why": "Reviewers need to see that an issue went unaddressed, and a made-up revision number misleads them.",
+      "scenario_hint": "New finding matches an open thread from a prior revision, on a platform that may not record revision numbers."
+    },
+    {
+      "id": "historical-issues-registry-r05",
+      "source_quote": "A finding matches a historical thread when file path fuzzy-matches, line number is within tolerance, AND the semantic fingerprint matches. All three are required",
+      "class": "useful",
+      "outcome": "A new finding is treated as a repeat only when the file, nearby line position and the nature of the defect all agree; a same-file or same-line coincidence with a different defect is kept as new.",
+      "why": "Matching on one signal alone wrongly suppresses genuinely different issues.",
+      "scenario_hint": "Prior comment in the same file near the same line but about an unrelated defect."
+    },
+    {
+      "id": "historical-issues-registry-r06",
+      "source_quote": "Accept a match within ±20 lines of the historical line.",
+      "class": "useful",
+      "outcome": "A finding whose file was moved or renamed or whose lines shifted by up to about twenty lines is still recognised as the same issue as an earlier comment, and one far outside that range is not.",
+      "why": "Without tolerance for drift, repeats slip through; without a limit, unrelated issues get merged.",
+      "scenario_hint": "Earlier comment on a file that has since been renamed and whose code moved a few lines."
+    },
+    {
+      "id": "historical-issues-registry-r07",
+      "source_quote": "A phrase shorter than 3 significant words (e.g. \"missing guard\", \"overwrite\") is common enough across unrelated defects",
+      "class": "useful",
+      "outcome": "When defect descriptions differ in wording, a short generic description of fewer than three meaningful words is matched only if it is identical; partial overlap with a longer description does not count as the same issue.",
+      "why": "Generic short phrases would otherwise merge unrelated defects and hide real findings.",
+      "scenario_hint": "New finding described as 'missing guard' while an earlier comment concerned a longer, different missing-guard problem."
+    },
+    {
+      "id": "historical-issues-registry-r08",
+      "source_quote": "Require unanimous agreement to suppress.",
+      "class": "useful",
+      "outcome": "When a new finding resembles several earlier comments and any of them was fixed or left open, the finding is kept instead of suppressed, even if another match was rejected; if a fixed and an open one both match, the regression framing is used.",
+      "why": "An old rejection must not hide a defect that another thread shows is live or reintroduced.",
+      "scenario_hint": "New finding matches one rejected thread and one unresolved or previously fixed thread."
+    },
+    {
+      "id": "historical-issues-registry-r09",
+      "source_quote": "Dedup by `thread_id` first.",
+      "class": "useful",
+      "outcome": "Multiple copies of the same earlier comment thread, seen across revisions, are counted as one decision using its latest state, rather than as several independent decisions.",
+      "why": "Counting re-fetched copies as separate threads creates false disagreement or false consensus.",
+      "scenario_hint": "Same earlier thread appears in the history of several revisions with an updated state."
+    },
+    {
+      "id": "historical-issues-registry-r10",
+      "source_quote": "take the highest INTEGER `revision` among the matches, ignoring any `null` entries",
+      "class": "useful",
+      "outcome": "When several earlier comments justify the same kept label, the label cites the most recent known revision, ignoring matches with unknown revision, and only goes generic if none has a known revision.",
+      "why": "Citing a stale or invented revision misdirects the reviewer.",
+      "scenario_hint": "Finding matches two open threads, one from revision 2, one from revision 4, and one with unknown revision."
+    },
+    {
+      "id": "historical-issues-registry-r11",
+      "source_quote": "is NOT `rejected` or `wontfix`, even if the thread is marked resolved",
+      "class": "useful",
+      "outcome": "An earlier comment dismissed only by the code author, with nobody else having replied, is not treated as a settled decision, so a matching new finding is still shown.",
+      "why": "Otherwise authors could veto any finding, including security ones, just by asserting it.",
+      "scenario_hint": "Earlier thread where only the author replied 'won't fix' and marked it resolved."
+    },
+    {
+      "id": "historical-issues-registry-r12",
+      "source_quote": "If classification is ambiguous, default to `unresolved`",
+      "class": "generic",
+      "outcome": "When the history of an earlier comment is unclear about whether it was accepted, fixed or dismissed, the matching finding is kept rather than dropped.",
+      "why": "Showing a settled issue once more costs little; silently hiding a real one costs a lot.",
+      "scenario_hint": "Any request to filter new review findings against prior review history where some earlier thread outcomes are unclear."
+    }
+  ]
+}

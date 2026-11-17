@@ -1,0 +1,261 @@
+{
+  "format_version": 1,
+  "skill": "frontend-review",
+  "batch": "rules-b3",
+  "rules": {
+    "frontend-review-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-review-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-review-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-review-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-review-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-review-r06": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "frontend-review-r07": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "frontend-review-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-review-r09": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "frontend-review-r10": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "frontend-review-r11": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "frontend-review-r12": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "frontend-review-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r02"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "frontend-review-r11"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "frontend-review-r12"
+      }
+    },
+    "frontend-review-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r04"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "frontend-review-r10"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r03"
+      }
+    },
+    "frontend-review-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r08"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "frontend-review-r10"
+      }
+    },
+    "frontend-review-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r08"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "frontend-review-r10"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "frontend-review-r12"
+      }
+    },
+    "frontend-review-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r01"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "frontend-review-r11"
+      }
+    },
+    "frontend-review-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r08"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "frontend-review-r10"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "frontend-review-r11"
+      }
+    },
+    "frontend-review-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r08"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r08"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "frontend-review-r10"
+      }
+    },
+    "frontend-review-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "frontend-review-r08"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "frontend-review-r10"
+      }
+    }
+  }
+}

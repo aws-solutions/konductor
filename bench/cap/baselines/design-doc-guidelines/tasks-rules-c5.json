@@ -1,0 +1,124 @@
+{
+  "format_version": 1,
+  "skill": "design-doc-guidelines",
+  "batch": "rules-c5",
+  "generated_at": "2026-11-10T11:43:36.274Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "403df5ee649fc95ced683cb6a4e21cc283ae917f9664e2f8d6041e013da6b672",
+  "scenarios": [
+    {
+      "id": "design-doc-guidelines-rules-1",
+      "title": "Invoice export intro that reads like a brochure",
+      "target_section": "Writing Rules",
+      "prompt": "Can you tighten the top of this design doc? Leads read it Monday and I want it to land.\n\nTitle: Invoice Export Service\n\n\"In today's fast-paced SaaS landscape, Invoice Export Service is a powerful, scalable, and robust solution that leverages cutting-edge streaming to revolutionize how finance teams access their data. It provides a scheduled exporter, a CSV/Parquet formatter, and an S3 delivery connector. The scheduled exporter runs nightly. The formatter supports two formats. The connector pushes files to customer buckets. It may potentially be the case that some customers could possibly benefit from faster exports.\n\nApproval requested: approve the scheduled exporter, approve the formatter, approve the S3 connector.\"\n\nBackground from support that didn't make it into the draft: finance admins at Northwind and three other accounts download invoices by hand at every month-end, about 2 hours each. Last quarter we got 14 tickets about invoices missing from the manual CSV. The current export times out above 20k invoices.",
+      "rubric": [
+        "The rewritten opening starts with the finance admins' pain using the supplied facts (about 2 hours of manual month-end downloads, 14 missing-invoice tickets, timeout above 20k invoices) before describing the service.",
+        "The exporter, formatter and S3 connector are each tied to the problem they fix (for example the connector removes the manual download, the nightly run avoids the 20k timeout) instead of only stating what each one does.",
+        "The approval request is rewritten as outcomes the leads are agreeing to (for example finance admins get complete invoices without manual month-end work), not as three component names.",
+        "Phrases such as \"fast-paced landscape\", \"powerful, scalable, and robust\", \"leverages\", \"revolutionize\" and the stacked hedge about \"may potentially ... possibly\" are removed, and vague benefit claims are replaced with the concrete numbers from the support background.",
+        "CSV, Parquet and S3 are explained in plain words or avoided in the opening, so a non-engineer reading the first paragraph is not lost."
+      ],
+      "why_skill_matters": "The draft opens with marketing language and the tool description, never states the pain, lists components in the approval request, and is full of hedges. The pain facts sit in a separate note, so the assistant must pull them into the opening. This makes the problem-first opening, problem-based feature framing, outcome-based approval and slop removal matter."
+    },
+    {
+      "id": "design-doc-guidelines-rules-2",
+      "title": "Mobile sync diagram that won't render",
+      "target_section": "Diagram Accuracy",
+      "prompt": "My mermaid diagram won't render in our wiki. Can you fix it so it shows up? The text under it is from the same doc, pasting for context.\n\n```mermaid\nflowchart LR\n    Push[Push Service] -- wake --> API\n    API -- notify --> Push\n    Worker -- sync results --> App\n    App -- pull changes --> API\n    API -- hands edits --> Worker\n    App - uploads edits -> API\n```\n\n\"Sync stops whenever the user backgrounds the app. The app uploads queued edits to the API, which hands them to the Worker. The Worker writes merged results to the database and sends them straight to the app. Three things trigger a sync: opening the app, a push, and a manual pull.\"\n\n(fyi the iOS app registers a background fetch task so it syncs about every 15 min even when backgrounded, and there's also a 5-minute foreground timer. The push is a silent push that only pings the app; the app then calls the API. The Worker never talks to the app, results come back in the API response.)",
+      "rubric": [
+        "Points out that the arrows do not match the behavior described in the parenthesis: the push service should wake the app, not call the API, and the API should not send a \"notify\" back to the push service.",
+        "The corrected diagram has the Worker's results returned through the API to the app, not sent straight from the Worker to the app, and shows the app as the one that calls the API after a push.",
+        "Flags \"Sync stops whenever the user backgrounds the app\" as wrong, since background fetch keeps syncing about every 15 minutes.",
+        "Flags \"Three things trigger a sync\" as inaccurate because the foreground timer and background fetch are additional triggers, so the count and list need fixing.",
+        "Explains \"silent push\" or \"background fetch\" in a half-sentence on first use in any rewritten text."
+      ],
+      "why_skill_matters": "The user only asks for a render fix, but the diagram has arrows that contradict the runtime behavior given in a trailing parenthesis. The prose also has two claims that the same parenthesis contradicts. An answer that just fixes syntax passes the request but misses the point."
+    },
+    {
+      "id": "design-doc-guidelines-rules-3",
+      "title": "Support bundle upload design lost the PM",
+      "target_section": "Structure (outside-in)",
+      "prompt": "Our PM said she \"got lost at line 3\" of this design section for support-bundle upload. Can you rework it so she and the EMs can follow it, while engineers still get what they need? The doc never says why we're doing this: support spends about 20 minutes per ticket asking customers to email logs, and last month three customers sent 400MB attachments that bounced.\n\n\"## Design\nThe CLI collects the bundle and ships it via presigned PUT to the vendor's shared S3 bucket (acme-support-shared). Redaction uses `(?i)(password|token|secret)\\s*[=:]\\s*\\S+` and `\\b\\d{3}-\\d{2}-\\d{4}\\b`. Config:\n\n```yaml\nbundle:\n  max_mb: 200\n  redact: true\n  retention_days: 30\n```\n\nSupport engineers across three teams then pull bundles with `aws s3 cp s3://acme-support-shared/$ID ./` onto their laptops. OOM-killer logs and mTLS handshakes are included by default, and PII scrubbing is applied by the DLP hook.\"\n\nCustomers run this inside their own clusters, by the way.",
+      "rubric": [
+        "Opens with the pain using the given facts (about 20 minutes per ticket chasing logs, three 400MB attachments that bounced) before any mechanism.",
+        "The regex patterns, the YAML config and the `aws s3 cp` command are moved to a clearly labeled, skippable detail section, and the main design text describes redaction and upload in plain concepts.",
+        "The reworked structure lets a reader get the problem, the overall flow (customer cluster to shared bucket to support laptops) and what is being approved without reading the detail section.",
+        "Notes the unaddressed risks where data crosses a boundary: secrets or personal data slipping past the regexes into the shared bucket, and one customer's data exposed to support engineers on laptops. Each gets a mitigation and a residual risk, including any accepted one.",
+        "Expands or defines CLI, OOM, mTLS, PII and DLP on first use, or replaces them with plain words in the sections the PM reads."
+      ],
+      "why_skill_matters": "The section mixes regex, YAML and shell into the design text, has no stated problem, and is dense with acronyms. It also sends customer data from their clusters into a shared bucket and onto laptops with no threat discussion."
+    },
+    {
+      "id": "design-doc-guidelines-rules-4",
+      "title": "38-page expense platform proposal for a Friday vote",
+      "target_section": "Multi-Feature Design Structure",
+      "prompt": "Our Ledger expense proposal grew into one 38-page doc covering four features: spend alerts, CSV import, approval flow, receipt matching. Directors vote Friday and said they won't read past page 5. How should I restructure it? Contents and the main diagram below.\n\n1. Intro (2 pp): \"Ledger is a modern expense platform...\"\n2. Spend alerts: 2.1 What it does, 2.2 Components (Gateway: Go service that terminates TLS and routes requests; Auth: issues JWTs; Event Bus: Kafka), 2.3 Rule schema\n3. CSV import: 3.1 Components (Gateway: Go service, terminates TLS, rate limits; Auth: issues JWTs, 15 min expiry; Event Bus: Kafka), 3.2 Parser rules\n4. Approval flow: 4.1 Components (same three, described again), 4.2 State rules\n5. Receipt matching: 5.1 Components (same three again), 5.2 Matching rules\n6. Open questions\n\n```mermaid\nflowchart LR\n  CSVImport --> ApprovalFlow\n  SpendAlerts --> CSVImport\n  ReceiptMatching --> Gateway\n```\n\nFor reference, in reality uploads and approval clicks both enter through the Gateway. The Gateway puts events on the Event Bus. The alert evaluator, approval service and matcher read from the bus. Alerts don't depend on CSV import.",
+      "rubric": [
+        "Recommends defining Gateway, Auth and Event Bus once in a shared top-level document with the whole-system picture, rather than re-describing them in sections 2 to 5 (where the Gateway and Auth descriptions already differ).",
+        "Each of the four feature documents is to name which shared components it uses and add only what is new for it (rule schema, parser rules, state rules, matching rules), without copying component descriptions.",
+        "Puts the problem, a one-picture overview and the decision the directors are voting on within the first few pages, so the vote can be made without the feature detail.",
+        "Says the diagram's arrows (CSV import to approval flow, alerts to CSV import) do not match reality, and redraws it so uploads and approval clicks converge at the Gateway, then the Event Bus, then the consumers.",
+        "The directors' pages explain Kafka, JWT and TLS in plain words or avoid them."
+      ],
+      "why_skill_matters": "A monolithic multi-feature doc repeats component descriptions with small differences, buries the vote after many pages, and has a diagram whose arrows link features that do not depend on each other. The true flow is given in a closing paragraph."
+    },
+    {
+      "id": "design-doc-guidelines-rules-5",
+      "title": "PR description after renaming a playbook file",
+      "target_section": "Rename Propagation",
+      "prompt": "I renamed docs/deploy-checklist.md to docs/release-playbook.md and updated the README link. I ran `git grep -n deploy-checklist docs/` and it returned nothing, so I think we're done. Can you write the PR description? I want to say:\n\n\"All references now point to the new name. The pipeline no longer runs the checklist step after deploy, so nothing depends on the old file.\"\n\nOur release workflow, pasted so you know how things fit together:\n\n```yaml\n# .github/workflows/release.yml\njobs:\n  deploy:\n    steps:\n      - run: ./scripts/deploy.sh\n      - name: Post-deploy checklist\n        run: ./scripts/check.sh docs/deploy-checklist.md\n```\n\nTeam is small, so keep the description short. Two reviewers, both on the platform team.",
+      "rubric": [
+        "Points out that searching only `docs/` is not enough and says to search the entire repository for the old file name, including scripts, workflows, other docs, templates, ignore files and the changelog.",
+        "Identifies `.github/workflows/release.yml` as a stale reference to `docs/deploy-checklist.md` that will break or mislead after the rename, and says to update it.",
+        "Rejects the sentence \"The pipeline no longer runs the checklist step\" because the pasted workflow still runs that step against the old path, and corrects the PR text.",
+        "The PR description is short and states what changed and what was verified directly, without filler or overclaiming like \"all references\".",
+        "Any acronym or jargon in the PR text, such as CI or the workflow name, is understandable to a reader who is not on the platform team, or is expanded once."
+      ],
+      "why_skill_matters": "The user is sure the rename is complete because of a search limited to one folder, and wants a PR description that asserts completeness. The pasted workflow contradicts both the \"all references\" claim and the \"pipeline no longer runs it\" claim."
+    },
+    {
+      "id": "design-doc-guidelines-rules-6",
+      "title": "Support copilot proposal before the architecture board",
+      "target_section": "Threat Model Completeness",
+      "prompt": "Architecture board is tomorrow. Does this proposal hold together? Be blunt.\n\n\"Support Copilot v1. Copilot reads incoming tickets, drafts replies, and agents click Send. Copilot can also update the customer's record in the CRM. Every night, resolved ticket summaries are synced to the shared team knowledge base so other agents benefit. Agents can type standing instructions (for example 'always offer a refund under $20') that Copilot follows on later tickets.\n\nSecurity: all traffic uses TLS and access requires SSO.\n\nApproval requested: approve Copilot drafting, approve CRM write-back, approve KB sync.\"\n\nContext that isn't in the doc: agents currently spend about 9 minutes per ticket writing the first reply and looking up the customer. We have 140 agents. Tickets include card last-4 digits, addresses and occasionally health details.",
+      "rubric": [
+        "Flags that nightly summaries going into the shared knowledge base can leak customer personal data (card digits, addresses, health details) to agents who never handled that ticket, and asks for a mitigation and a stated residual risk.",
+        "Flags that standing instructions typed by agents (the under-$20 refund example) can be abused or poisoned and then drive later tickets, and that CRM write-back could change the wrong customer's record. Each needs a mitigation and a residual risk, and any accepted risk stated openly.",
+        "Rewrites the approval request as outcomes (for example agents spend less time on first replies while customer data stays protected), not as the three feature names.",
+        "Ties drafting, CRM write-back and KB sync to the 9-minutes-per-ticket pain across 140 agents rather than only describing what Copilot does.",
+        "CRM, KB, TLS and SSO are expanded or defined where the board first meets them."
+      ],
+      "why_skill_matters": "The proposal has several flows that cross boundaries (tickets to shared knowledge base, agent instructions to the model, model to the CRM), yet its security note is a one-line claim about TLS and SSO. The approval is a feature list and the pain figure sits outside the doc."
+    },
+    {
+      "id": "design-doc-guidelines-rules-7",
+      "title": "ADR on moving partners from polling to webhooks",
+      "target_section": "Cut the AI Slop",
+      "prompt": "Tone-check my ADR draft. It goes to the whole eng org plus PMs. Numbers from monitoring if you need them: we poll 11,000 partner endpoints every 30s, 41% of polls return nothing, p95 event delay is 18s, and polling is 62% of our egress bill (about $7k/mo).\n\nADR-14: Moving to Webhooks\nStatus: Proposed\n\nContext: It's worth mentioning that in today's ever-evolving integration landscape, polling may potentially pose certain challenges. Additionally, webhooks could arguably be a robust, scalable, and seamless paradigm. Furthermore, we are excited to unlock a powerful new capability for our partners.\n\nDecision: We will adopt webhooks, leveraging HMAC signing and exponential backoff.\n\nConsequences: Partners might possibly need to expose endpoints in certain scenarios. Ultimately, this will empower our teams.",
+      "rubric": [
+        "Removes the filler openers and stacked transitions (\"It's worth mentioning\", \"Additionally\", \"Furthermore\", \"Ultimately\") and the marketing words (\"excited\", \"powerful new capability\", \"empower\", \"seamless paradigm\").",
+        "Replaces the vague hedged claims with direct statements backed by the supplied numbers (41% empty polls, 18s p95 delay, $7k/mo egress) and states the real consequence plainly: partners must expose a public endpoint.",
+        "The Context starts with the concrete problem (11,000 endpoints polled every 30s, most of them returning nothing, events arriving about 18s late) rather than a statement about the landscape.",
+        "HMAC signing and exponential backoff are explained by the problem each solves (partners can verify a call came from us; failed deliveries get retried without flooding a partner), not just named.",
+        "HMAC and p95 are defined or replaced with plain words on first use since PMs will read the ADR."
+      ],
+      "why_skill_matters": "The ADR draft is saturated with filler, hedges and marketing tone, names two techniques without explaining their purpose, and has no concrete pain. The monitoring numbers are offered on the side and the assistant has to use them."
+    },
+    {
+      "id": "design-doc-guidelines-rules-8",
+      "title": "OTA doc and fleet overview drifting apart",
+      "target_section": "Companion Documents",
+      "prompt": "I have a Fleet Platform overview and a separate OTA firmware update doc. I renamed `rollout.batch_pct` to `rollout.wave_pct` in the OTA doc's config example. Can you update the overview paragraph so they're consistent, and tell me if anything else needs touching? Excerpts:\n\nOverview: \"Device Registry: a Postgres-backed service storing each device's id, hardware rev and last-seen time. It retries failed writes 3 times. OTA updates (see OTA doc) roll out firmware in waves; the default `rollout.batch_pct` is 10.\"\n\nOTA doc, \"How OTA works\":\n\"The Device Registry is a Postgres-backed service that stores device id, hardware rev and last-seen time. It retries failed writes 5 times. The updater picks devices from the registry and tells them to download the new image:\n\n```bash\nfor id in $(psql -Atc \"select id from devices where rev='B' limit 500\"); do\n  mosquitto_pub -t fleet/$id/ota -m \"$URL\"\ndone\n```\nWaves are controlled by `rollout.wave_pct: 10`.\"",
+      "rubric": [
+        "Updates the stale `rollout.batch_pct` in the overview to the new field name.",
+        "Says to search the whole repo for the old name `batch_pct`, including other docs, guides, scripts, templates, ignore files and the changelog, and fix stale hits.",
+        "Says the Device Registry should be defined in one place (the overview) and the OTA doc should refer to it by name without redefining it, and points out the conflict of 3 versus 5 write retries as a result of the duplication.",
+        "The psql and mosquitto_pub loop is moved out of the \"How OTA works\" explanation into a labeled implementation section, leaving the explanation at the level of what the updater does.",
+        "The updated overview paragraph is short and direct, stating the registry's role and the rollout default with specifics instead of generic wording.",
+        "OTA is expanded on first use and MQTT or Postgres is explained briefly, in any rewritten text."
+      ],
+      "why_skill_matters": "A parent and companion doc are being kept in sync after a rename. The rename is only half propagated, one component is defined twice with conflicting values, and a shell loop sits inside a design explanation."
+    }
+  ]
+}
