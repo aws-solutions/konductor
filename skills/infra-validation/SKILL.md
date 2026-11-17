@@ -391,8 +391,8 @@ Check EVERY IAM policy statement for:
 
 2. **Wildcard Actions** - CRITICAL for `*` and the services named below, IMPORTANT for any other `service:*`
    - Search for: `"Action": "*"` or `actions: ["*"]`
-   - Search for: `"Action": "service:*"` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, which includes `lambda:UpdateFunctionCode`, `iam:*`, `sts:*`), or `ec2:*`, which covers EBS snapshots, security-group ingress and instance userData
-   - Any other `service:*`, such as `cloudwatch:*`, `xray:*`, `sqs:*`, `sns:*` or `ssm:*`, is IMPORTANT
+   - Search for: `"Action": "service:*"` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`, `ssm:*`, `secretsmanager:*`, `dynamodb:*`), or `ec2:*`, which covers EBS snapshots, security-group ingress and instance userData. `lambda:*` includes `lambda:UpdateFunctionCode`, and `ssm:*` includes `ssm:SendCommand` and SecureString parameters
+   - Any other `service:*`, such as `cloudwatch:*`, `xray:*`, `sqs:*` or `sns:*`, is IMPORTANT
 
 3. **Overly Permissive Actions** - Flag as IMPORTANT
    - A list of named actions broader than the code needs, with no wildcard. For example, a read-only Lambda granted `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject`
@@ -1165,14 +1165,14 @@ Provide thorough, actionable feedback that improves infrastructure quality and e
 - Security groups with `0.0.0.0/0` ingress on non-HTTP ports
 - No deletion protection, or a destroy-on-delete removal policy, on stateful resources (RDS, DynamoDB) in production
 - Hardcoded passwords, keys or tokens in code or environment variables
-- IAM statements with wildcard actions (`*`, `ec2:*`, or `service:*` on a data, credential, code or permission service: `s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) or wildcard resources
+- IAM statements with wildcard actions (`*`, `ec2:*`, or `service:*` on a data, credential, code or permission service: `s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`, `ssm:*`, `secretsmanager:*`, `dynamodb:*`) or wildcard resources
 - Cross-account trust with no condition that limits which principal can assume the role, such as `sts:ExternalId`, `aws:PrincipalOrgID`, `aws:PrincipalArn`, or `aws:SourceAccount`/`aws:SourceArn` for service principals. Transport or time conditions (`aws:SecureTransport`, `aws:CurrentTime`) do not count
 
 **IMPORTANT (should fix):**
 
 - CloudWatch alarms not defined for key metrics
 - No backup configuration for stateful resources
-- IAM `service:*` on any other service, such as `cloudwatch:*`, `xray:*`, `sqs:*`, `sns:*` or `ssm:*`
+- IAM `service:*` on any other service, such as `cloudwatch:*`, `xray:*`, `sqs:*` or `sns:*`
 - Cross-account trust with a condition that limits the principal but whose intent is unverified
 - Lambda functions without reserved concurrency limits, DLQ or tracing
 - Low-cardinality partition keys that create hot partitions

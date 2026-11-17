@@ -40,7 +40,7 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 
 **CRITICAL:** one of the findings below.
 
-- `*` action, `*` resource, `ec2:*` (it covers EBS snapshots, security-group ingress and instance userData), or `service:*` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) without a documented justification
+- `*` action, `*` resource, `ec2:*` (it covers EBS snapshots, security-group ingress and instance userData), or `service:*` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`, `ssm:*`, `secretsmanager:*`, `dynamodb:*`) without a documented justification
 - Cross-account trust with no condition that limits which principal can assume the role, such as `sts:ExternalId`, `aws:PrincipalOrgID`, `aws:PrincipalArn`, or `aws:SourceAccount`/`aws:SourceArn` for service principals. Transport or time conditions (`aws:SecureTransport`, `aws:CurrentTime`) do not count
 - `kms:*` granted to a non-admin principal
 - S3 bucket open to the public, an RDS instance or EBS volume with no encryption at rest, S3 or DynamoDB data that needs SSE-KMS or a customer managed key left on default keys, or no TLS enforcement where sensitive data moves
@@ -56,7 +56,7 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 - A trail that is single-region or skips global service events
 - CloudTrail logs not encrypted or without log file validation
 - KMS key rotation off for sensitive data where nothing requires it
-- Any other `service:*`, such as `cloudwatch:*`, `xray:*`, `sqs:*`, `sns:*` or `ssm:*`, without a documented justification
+- Any other `service:*`, such as `cloudwatch:*`, `xray:*`, `sqs:*` or `sns:*`, without a documented justification
 - Cross-account trust with a condition that limits the principal but whose intent is unverified
 - Named actions beyond what the role needs, with no wildcard
 - Key administrators who can also decrypt
