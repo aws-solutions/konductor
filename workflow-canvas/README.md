@@ -80,7 +80,10 @@ A workflow in this version has a `format`, a `version`, an `intent` with an
 `outcome` and optional `accept` checks, optional `params` (the goal only) and
 `stages`. A stage has a `name`, an `agent` and optionally a `prompt` or a
 `prompt_file`. Keys that later releases add, such as `outputs` and `done_when`,
-are refused by name with the slice that adds them. The file also holds what a
+are refused by name with the slice that adds them. Each stage of a parsed view
+also has a `kind` (`agent`, the one kind in this version) and a `range`, the
+lines of the text it takes up, so a client can draw a stage and mark its lines
+without reading YAML. The file also holds what a
 backend needs to implement the calls: the accepted workflow text, the checks
 that make a text invalid, the list of diagnostic codes, how a file that is not
 a plain file is handled, and what a run does stage by stage. A client follows a
@@ -117,7 +120,8 @@ know, and requests with a field the contract does not name are refused.
 - checks that request schemas refuse unknown fields and response schemas do not;
 - validates every example, including the ones inside schemas, against its schema;
 - checks that the examples agree with the rules in the contract: a hash is the
-  SHA-256 of its text, a view is its text read as YAML, a diagnostic that names
+  SHA-256 of its text, a view is its text read as YAML (with each stage's kind
+  and lines worked out by a second reader), a diagnostic that names
   a key points at that key, the counts of a check add up, and a run's stages
   follow its status;
 - checks that the session example lists every `operationId` as a capability

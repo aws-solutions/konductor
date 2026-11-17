@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.2.1
+  version: 1.3.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -30,7 +30,8 @@ info:
     `capabilities` and `limits`. Version 1.2.1 adds nothing and removes
     nothing: it says that an `operationId` is not renamed, and it widens the
     pattern of a capability, which a client already treats as a value it may
-    not know.
+    not know. Version 1.3.0 only adds: each stage of a view gains `kind` and
+    `range`.
 
     **Conventions**
 
@@ -335,7 +336,10 @@ info:
 
     The `view` in a response is the parsed text. It has the keys of the file
     that this version reads, and `name` is filled in from the file name when the
-    file has none.
+    file has none. Each stage of the view also has two fields that are not
+    keys of the file: its `kind`, the key that names its kind, and its
+    `range`, the lines of the text that it takes up. A client draws a stage by
+    its `kind` and marks the stage's lines with its `range`.
 
     **Check.** A check reads the text and reports every problem it finds, each
     as a `Diagnostic`. The text has a problem when a diagnostic has severity
@@ -516,10 +520,14 @@ paths:
                             file: README.md
                       stages:
                         - name: write
+                          kind: agent
                           agent: k-developer
                           prompt: Add the greeting to README.md.
+                          range: { line: 10, end_line: 12 }
                         - name: review
+                          kind: agent
                           agent: k-quality-assurance
+                          range: { line: 13, end_line: 14 }
                     diagnostics: []
                 new:
                   summary: The root, which has no file yet
@@ -625,10 +633,14 @@ paths:
                         file: README.md
                   stages:
                     - name: write
+                      kind: agent
                       agent: k-developer
                       prompt: Add the greeting to README.md.
+                      range: { line: 10, end_line: 12 }
                     - name: review
+                      kind: agent
                       agent: k-quality-assurance
+                      range: { line: 13, end_line: 14 }
                 diagnostics: []
         '400':
           headers:
@@ -792,7 +804,9 @@ paths:
                         outcome: Add a greeting to the README
                       stages:
                         - name: write
+                          kind: agent
                           agent: k-developer
+                          range: { line: 7, end_line: 8 }
                     diagnostics: []
                     summary:
                       valid: true
@@ -1523,11 +1537,16 @@ components:
           type: boolean
     Stage:
       type: object
-      required: [name, agent]
-      description: One unit of work, done by one agent in a fresh session.
+      required: [name, kind, agent, range]
+      description: |
+        One unit of work, done by one agent in a fresh session. It has the
+        keys of the stage in the file, and `kind` and `range`, which the
+        server works out from the text.
       properties:
         name:
           $ref: '#/components/schemas/StageName'
+        kind:
+          $ref: '#/components/schemas/StageKind'
         agent:
           $ref: '#/components/schemas/Name'
         prompt:
@@ -1550,13 +1569,39 @@ components:
           items:
             $ref: '#/components/schemas/Name'
           description: The ids of the checks that must pass before the stage does.
+        range:
+          $ref: '#/components/schemas/LineRange'
       examples:
         - name: plan
+          kind: agent
           agent: k-architect
           prompt: Write a short plan for the goal to PLAN.md.
           outputs:
             plan: PLAN.md
           done_when: [plan-exists]
+          range: { line: 12, end_line: 17 }
+    StageKind:
+      type: string
+      enum: [agent]
+      description: |
+        The key of the file that names the kind of the stage. This version
+        knows one kind, `agent`. A later version may add kinds, so a client
+        draws a stage of a kind it does not know as a plain stage.
+    LineRange:
+      type: object
+      required: [line, end_line]
+      description: |
+        The lines of the workflow text that a stage takes up, counted from 1
+        as a diagnostic counts them. `line` holds the stage's first key and
+        `end_line` the end of its last value. Both are included, and a comment
+        or blank line after the stage is not.
+      properties:
+        line:
+          type: integer
+          minimum: 1
+        end_line:
+          type: integer
+          minimum: 1
     Intent:
       type: object
       required: [outcome]
@@ -1580,6 +1625,7 @@ components:
         The parsed workflow, ready to draw. It has the keys of the file, and
         `name` is filled in from the file name when the file has none. The
         `intent` is always the mapping. A key the file leaves out is left out.
+        Each stage also has its `kind` and `range`.
       properties:
         format:
           type: string

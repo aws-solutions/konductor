@@ -29,7 +29,14 @@ const ONE_STAGE_VIEW = {
   version: '0.1.0',
   name: 'hello',
   intent: { outcome: 'Say hello' },
-  stages: [{ name: 'only', agent: 'k-developer' }],
+  stages: [
+    {
+      name: 'only',
+      kind: 'agent',
+      agent: 'k-developer',
+      range: { line: 7, end_line: 8 },
+    },
+  ],
 };
 
 async function load(reply: Promise<Reply>): Promise<Loaded> {
@@ -63,8 +70,18 @@ describe('GET /api/workflow', () => {
           },
         },
         stages: [
-          { name: 'draft', agent: 'k-developer' },
-          { name: 'review', agent: 'k-quality-assurance' },
+          {
+            name: 'draft',
+            kind: 'agent',
+            agent: 'k-developer',
+            range: { line: 14, end_line: 15 },
+          },
+          {
+            name: 'review',
+            kind: 'agent',
+            agent: 'k-quality-assurance',
+            range: { line: 16, end_line: 17 },
+          },
         ],
       },
       diagnostics: [],
@@ -116,15 +133,24 @@ describe('GET /api/workflow for a fixture with stage keys', () => {
     expect((reply.body as Loaded).view?.stages).toEqual([
       {
         name: 'draft',
+        kind: 'agent',
         agent: 'k-developer',
         prompt: 'Write the greeting to README.md.',
+        range: { line: 14, end_line: 16 },
       },
       {
         name: 'review',
+        kind: 'agent',
         agent: 'k-quality-assurance',
         prompt_file: 'review.md',
+        range: { line: 17, end_line: 19 },
       },
-      { name: 'wrap-up', agent: 'k-developer' },
+      {
+        name: 'wrap-up',
+        kind: 'agent',
+        agent: 'k-developer',
+        range: { line: 20, end_line: 21 },
+      },
     ]);
   });
 });

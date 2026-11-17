@@ -36,6 +36,7 @@ import type {
   Check,
   CheckResult,
   Intent,
+  LineRange,
   Param,
   Stage,
   WorkflowView,
@@ -58,6 +59,7 @@ const NAME_RULE =
 interface Context {
   reporter: Reporter;
   workflowName: string;
+  source: SourceMap;
 }
 
 /**
@@ -68,8 +70,9 @@ export function checkWorkflowText(
   text: string,
   workflowName: string,
 ): CheckResult {
-  const reporter = new Reporter(`${workflowName}.yml`, new SourceMap(text));
-  const view = readWorkflow(text, { reporter, workflowName });
+  const source = new SourceMap(text);
+  const reporter = new Reporter(`${workflowName}.yml`, source);
+  const view = readWorkflow(text, { reporter, workflowName, source });
   const diagnostics = reporter.diagnostics();
   const errors = diagnostics.length;
   const checkedView = errors === 0 && view ? view : null;
@@ -520,7 +523,21 @@ function readStage(
   const agentEntry = entries.get('agent');
   const agent = agentEntry && readName(agentEntry, [...path, 'agent'], ctx);
   const prompts = readPrompts(entries, path, ctx);
-  return name && agent ? { name, agent, ...prompts } : undefined;
+  if (!name || !agent) return undefined;
+  const range = lineRangeOf(item, ctx.source);
+  return { name, kind: 'agent', agent, ...prompts, range };
+}
+
+// From the line of the stage's first key to the last line that holds its text.
+function lineRangeOf(item: YAMLMap, source: SourceMap): LineRange {
+  const [start, end] = spanOf(item);
+  const text = source.text;
+  let last = end;
+  while (last > start && /\s/.test(text.charAt(last - 1))) last--;
+  return {
+    line: source.position(start).line,
+    end_line: source.position(Math.max(start, last - 1)).line,
+  };
 }
 
 // A stage has exactly one key that names its kind. A kind of a later slice
