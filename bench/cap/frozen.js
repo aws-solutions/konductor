@@ -93,8 +93,9 @@ function statusOf(b, manifest, skillsDir) {
  * @param {string} o.skillsDir the skills/ folder of the tree under test
  * @param {string} [o.dir] the baselines folder (default bench/cap/baselines)
  * @returns {object} { name, skill: { name, text, sha256 }, unit, batches, bWaiting, staleWhy, identity, identityWhy,
- *   recorded: { legacy, unitSha256, source }, manifestSha256 }. `unit` is today's subject manifest; `bWaiting` lists
- *   batches whose reading B waits (stale rules or tasks).
+ *   recorded: { legacy, unitSha256, source }, selection, manifestSha256 }. `unit` is today's subject manifest;
+ *   `bWaiting` lists batches whose reading B waits (stale rules or tasks); `selection` is { set, sha256 } for a frozen
+ *   selection.json, or null.
  */
 function loadBaseline({ name, skillsDir, dir = BASELINES_DIR }) {
   const v = verifiedBaselines(dir, skillsDir);
@@ -107,6 +108,7 @@ function loadBaseline({ name, skillsDir, dir = BASELINES_DIR }) {
     name, skill: { name: s.unitName, text: s.skillText, sha256: s.skillSha }, unit: s.unit, batches, bWaiting,
     staleWhy: s.freshness.why, identity: s.identity, identityWhy: s.identityWhy,
     recorded: { legacy: s.freshness.legacy, unitSha256: s.freshness.recordedSha256, source: b.rules.source ? { commit: b.rules.source.commit, tree: b.rules.source.tree } : null },
+    selection: b.selection ? { set: b.selection, sha256: sha256(fs.readFileSync(path.join(dir, name, 'selection.json'))) } : null,
     manifestSha256: sha256(fs.readFileSync(path.join(dir, MANIFEST_NAME))),
   };
 }

@@ -2,14 +2,14 @@
 
 All 35 baselines are copied from Michael Lin's `bench/baselines/` (pull requests #268 to #271, commit `33b385f9`), same repository, Apache-2.0. The skill folders are byte-identical to his. `MANIFEST.json` holds his hashes for them, plus one cap field, `identities`.
 
-Each skill folder has `rules.json` (the skill's rules and the hash of the SKILL.md they came from) and two batches of 8 tasks (`tasks-<batch>.json`, with `.buckets.json` sidecars).
+Each skill folder has `rules.json` (the skill's rules and the hash of the SKILL.md they came from) and two batches of 8 tasks (`tasks-<batch>.json`, with `.buckets.json` sidecars). A folder may also have `selection.json`, the requests for the selection test (`cap select`): at least 3 that should load the skill and 3 that should not, none naming it. None of the 35 has one yet; each is drafted and checked as the baseline rule in design 20.10 says.
 
 ## The check before every run
 
 `cap/baselineverify.js` is his baseline verifier, ported. `cap keep-prune` runs it on the whole folder before it reads any baseline, and one problem anywhere refuses every run. It checks:
 
 - only skill folders, `MANIFEST.json` and this README are here, and each file is `rules.json`, `tasks-<batch>.json` or `tasks-<batch>.buckets.json`;
-- every file is listed in the manifest with its hash, and every listed file exists;
+- every file (`selection.json` included) is listed in the manifest with its hash, and every listed file exists;
 - every file passes its format (`cap/baselineformats.js`) and agrees with the others: skill and batch names, rule ids, buckets, and the quotes of a current `rules.json` against `SKILL.md`;
 - no file holds credential-shaped text, a home-directory path or a real-looking account number;
 - a JSON file never repeats a key (`cap/checkedjson.js`);

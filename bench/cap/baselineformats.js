@@ -15,6 +15,8 @@
  *                           (subjectunit.js). A rules file without it is a legacy baseline that hashed SKILL.md only.
  *   manifest.sources        { <skill>: { commit, tree, subject_sha256 } }: the same provenance, one entry per skill
  *                           whose rules carry `source`, so a reviewer sees the Git range in one file.
+ *   selection.json          the skill's selection requests (cap, 2026-11-17): requests where the skill should load
+ *                           and requests where it should not, for the selection test (selection.js). Optional.
  *   manifest.identities     { <old skill>: { replaced_by, how, note, migration: { approved_by, date, note } } }: a
  *                           skill that was renamed or folded into another. Its old tasks prove nothing about the
  *                           new skill, so it is NO DATA until a person records an approved migration.
@@ -604,18 +606,59 @@ const validateBuckets = makeValidator(
   },
 );
 
+// ---- selection requests (cap addition, 2026-11-17) ----------------------------------------------
+
+/** The fewest requests of each kind (should load, should not load) a selection set may have. */
+const MIN_SELECTION_EACH = 3;
+const SELECTION_REQUEST = createShapeCheck(
+  {
+    id: checkTaskId,
+    prompt: createStringCheck({ min: LIMITS.minItemChars }),
+    expect: createOneOfCheck(['load', 'none']),
+  },
+  { note: checkText },
+);
+
+/**
+ * selection.json: { format_version, skill, requests: [{ id, prompt, expect: load | none, note? }] }.
+ * context: { skill } the folder name. A prompt must not name the skill, as for task prompts, so a load is earned by
+ * the request and the skill's description, not by its name.
+ */
+const validateSelection = makeValidator(
+  {
+    skill: checkSkillName,
+    requests: createArrayCheck(SELECTION_REQUEST, { min: 2 * MIN_SELECTION_EACH }),
+  },
+  {},
+  (file, context, errors) => {
+    if (context.skill !== undefined && file.skill !== context.skill)
+      errors.push(`skill: "${file.skill}" does not match the folder "${context.skill}"`);
+    for (const id of findDuplicates(file.requests.map((r) => r.id)))
+      errors.push(`requests: id "${id}" is used twice`);
+    for (const kind of ['load', 'none']) {
+      const n = file.requests.filter((r) => r.expect === kind).length;
+      if (n < MIN_SELECTION_EACH)
+        errors.push(`requests: needs at least ${MIN_SELECTION_EACH} with expect "${kind}", got ${n}`);
+    }
+    file.requests.forEach((r, index) => {
+      if (namesSkill(normalizeForMatch(r.prompt), file.skill))
+        errors.push(`requests[${index}].prompt: names "${file.skill}"; a selection request must not name the skill`);
+    });
+  },
+);
+
 // ---- the manifest of the committed baseline files ---------------------------------------------
 
 // Every key is the path of one baseline file below bench/baselines/, and nothing else is a key.
 const MANIFEST_KEY =
-  /^[a-z0-9][a-z0-9-]{0,127}\/(?:rules|tasks-[a-z0-9][a-z0-9-]{0,127}(?:\.buckets)?)\.json$/;
+  /^[a-z0-9][a-z0-9-]{0,127}\/(?:rules|selection|tasks-[a-z0-9][a-z0-9-]{0,127}(?:\.buckets)?)\.json$/;
 
 const validateManifest = makeValidator(
   {
     files: createRecordCheck(
       checkSha256Hex,
       MANIFEST_KEY,
-      'must be <skill>/rules.json, <skill>/tasks-<batch>.json or <skill>/tasks-<batch>.buckets.json',
+      'must be <skill>/rules.json, <skill>/selection.json, <skill>/tasks-<batch>.json or <skill>/tasks-<batch>.buckets.json',
     ),
   },
   {
@@ -639,6 +682,7 @@ const VALIDATORS = Object.freeze({
   tasks: validateTasks,
   buckets: validateBuckets,
   manifest: validateManifest,
+  selection: validateSelection,
 });
 
 class FormatError extends Error {
@@ -653,7 +697,7 @@ class FormatError extends Error {
 }
 
 /**
- * Parses `file` and checks it as `kind` ('rules', 'tasks', 'buckets' or 'manifest'). Bad content throws
+ * Parses `file` and checks it as `kind` ('rules', 'tasks', 'buckets', 'manifest' or 'selection'). Bad content throws
  * FormatError; a file that cannot be read throws the system error from `fs`, with `path` set.
  */
 function loadChecked(kind, file, context = {}) {
@@ -680,6 +724,8 @@ module.exports = {
   validateTasks,
   validateBuckets,
   validateManifest,
+  validateSelection,
+  MIN_SELECTION_EACH,
   MANIFEST_KEY,
   loadChecked,
 };

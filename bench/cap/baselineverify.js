@@ -6,7 +6,7 @@
  *
  *   verifyBaselines   problems that stop every keep-or-prune run:
  *                       - an entry that is not a skill folder, MANIFEST.json or README.md, or a file that is not
- *                         rules.json, tasks-<batch>.json or tasks-<batch>.buckets.json;
+ *                         rules.json, selection.json, tasks-<batch>.json or tasks-<batch>.buckets.json;
  *                       - a file the manifest does not list, a listed file that is gone, a changed hash;
  *                       - credential-shaped text, a home-directory path, or a 12-digit number that is not an AWS
  *                         documentation account id, in any file;
@@ -90,10 +90,11 @@ const batchesOf = (folder) => (fs.existsSync(folder) ? fs.readdirSync(folder).fi
  * @param {string} o.dir the baselines folder
  * @param {string} o.skillsDir the skills/ folder of the tree under test, for SKILL.md
  * @param {string} o.skill the skill folder name
- * @returns {{ skill, hasBaseline, rules, rulesStale, skillMissing, batches: {batch, tasks, buckets, stale}[], problems, warnings }}
+ * @returns {{ skill, hasBaseline, rules, rulesStale, skillMissing, batches: {batch, tasks, buckets, stale}[], selection, problems, warnings }}
+ *   `selection` is the checked selection.json, or null when the baseline has none.
  */
 function readSkillBaseline({ dir, skillsDir, skill }) {
-  const out = { skill, hasBaseline: false, rules: null, rulesStale: false, skillMissing: false, batches: [], problems: [], warnings: [] };
+  const out = { skill, hasBaseline: false, rules: null, rulesStale: false, skillMissing: false, batches: [], selection: null, problems: [], warnings: [] };
   const folder = path.join(dir, skill);
   const rulesFile = path.join(folder, 'rules.json');
   const batchNames = batchesOf(folder);
@@ -130,6 +131,9 @@ function readSkillBaseline({ dir, skillsDir, skill }) {
     const buckets = readChecked(path.join(folder, `tasks-${batch}.buckets.json`), 'buckets', { rules, tasks });
     if (tasks) out.batches.push({ batch, tasks, buckets: buckets || null, stale: rulesSha !== null && tasks.rules_sha256 !== rulesSha });
   }
+  // cap: the selection requests, when the baseline has them (null otherwise).
+  const selectionFile = path.join(folder, 'selection.json');
+  out.selection = fs.existsSync(selectionFile) ? readChecked(selectionFile, 'selection', { skill }) ?? null : null;
   return out;
 }
 
@@ -148,7 +152,7 @@ function listBaselineFiles(dir) {
       const key = `${entry.name}/${file.name}`;
       if (!file.isFile() || !MANIFEST_KEY.test(key)) {
         unchecked.add(entry.name);
-        problems.push(`${key}: not a baseline file (rules.json, tasks-<batch>.json or tasks-<batch>.buckets.json)`);
+        problems.push(`${key}: not a baseline file (rules.json, selection.json, tasks-<batch>.json or tasks-<batch>.buckets.json)`);
       } else files.set(key, path.join(dir, entry.name, file.name));
     }
   }
