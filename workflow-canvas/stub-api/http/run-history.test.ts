@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /** Calls GET /api/runs over HTTP; time is a fake clock. */
 import { describe, expect, it } from 'vitest';
+import { MAX_GOAL_CHARS } from '../core/contract.ts';
 import { DEFAULT_STAGE_MS } from '../core/runs.ts';
 import { expectContract, expectError } from '../test-support/contract.ts';
 import { expectGuardedGet } from '../test-support/guarded.ts';
@@ -14,6 +15,7 @@ interface Row {
   started_at: string;
   status: string;
   goal: string;
+  goal_truncated: boolean;
 }
 
 // Starts a run and lets it pass, so the next one may start.
@@ -46,14 +48,22 @@ describe('GET /api/runs', () => {
         started_at: '2026-10-24T04:12:11Z',
         status: 'passed',
         goal: 'Add a changelog line',
+        goal_truncated: false,
       },
       {
         run_id: first,
         started_at: '2026-10-24T04:12:05Z',
         status: 'passed',
         goal: 'Add a greeting',
+        goal_truncated: false,
       },
     ]);
+  });
+
+  it('carries a goal of the full limit whole, in code points', async () => {
+    const goal = '😀'.repeat(MAX_GOAL_CHARS);
+    await stub().client.post('/api/run', { params: { goal } });
+    expect(await rows(stub())).toMatchObject([{ goal, goal_truncated: false }]);
   });
 
   it('lists the active run as running', async () => {

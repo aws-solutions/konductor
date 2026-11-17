@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.7.0
+  version: 1.8.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -38,7 +38,8 @@ info:
     Version 1.6.1 adds nothing: the `status` of a `stage_state` event gets
     its own enum without `pending`. The event was already described as never
     `pending`, so no answer a server sends changes. Version 1.7.0 only adds:
-    the operation `listRuns`.
+    the operation `listRuns`. Version 1.8.0 only adds: a run in that list
+    gains `goal_truncated`.
 
     **Conventions**
 
@@ -1339,10 +1340,12 @@ paths:
                     started_at: '2026-10-24T04:30:11Z'
                     status: running
                     goal: Add a changelog line
+                    goal_truncated: false
                   - run_id: 20261024-0412-a7b3c
                     started_at: '2026-10-24T04:12:05Z'
                     status: halted
                     goal: Add a greeting to the README
+                    goal_truncated: false
         '400':
           headers:
             X-Konductor-Api:
@@ -2450,7 +2453,7 @@ components:
             $ref: '#/components/schemas/RunSummary'
     RunSummary:
       type: object
-      required: [run_id, started_at, status, goal]
+      required: [run_id, started_at, status, goal, goal_truncated]
       description: One run in the history.
       properties:
         run_id:
@@ -2463,7 +2466,15 @@ components:
           type: string
           minLength: 1
           maxLength: 2048
-          description: The goal the run was started with.
+          description: |
+            The goal the person typed when they started the run, so that a
+            person can tell runs apart. It is cut to at most `goal_chars` of
+            the session's `limits`, at a character boundary, with nothing
+            added. It is in this answer only, which needs the session token,
+            and the server never writes it to a log.
+        goal_truncated:
+          type: boolean
+          description: True when `goal` was cut, so it is shorter than the goal the run was started with.
     RunEventsResponse:
       type: object
       required: [events, next, finished]

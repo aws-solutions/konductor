@@ -98,7 +98,7 @@ run by polling `GET /api/runs/{id}`, or with the long poll of
 run and console lines. A client resumes from the last number it read. Console
 lines are live only: a finished run's events have none. `GET /api/runs` lists
 the runs of the workflow, newest first, with each run's start time, status and
-goal. The session response also says which
+goal (cut to the goal limit, with `goal_truncated` saying so). The session response also says which
 server it is: `konductor_version`, the `capabilities` it supports (the
 `operationId` of each operation, which is not renamed within an API major
 version) and its `limits` (text bytes, stages, outcome, prompt and goal

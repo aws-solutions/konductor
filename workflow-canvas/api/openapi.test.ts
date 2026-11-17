@@ -1037,7 +1037,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.7.0');
+      expect(info.version).toBe('1.8.0');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1374,6 +1374,28 @@ describe('workflow canvas API contract', () => {
         Schema
       >;
       expect(list['runs']!['maxItems']).toBe(200);
+    });
+
+    it('caps the goal of a run at the goal limit of the session', () => {
+      const summary = spec.components.schemas['RunSummary']![
+        'properties'
+      ] as Record<string, Schema>;
+      const session = jsonBodyOf(spec, 'POST /api/session', '200').example as {
+        limits: { goal_chars: number };
+      };
+      expect(summary['goal']!['maxLength']).toBe(session.limits.goal_chars);
+      expect(words(summary['goal']!['description'] as string)).toMatch(
+        /never writes it to a log/,
+      );
+      expect(spec.components.schemas['RunSummary']!['required']).toContain(
+        'goal_truncated',
+      );
+    });
+
+    it('says that version 1.8.0 only adds goal_truncated', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.8\.0 only adds: a run in that list gains `goal_truncated`/,
+      );
     });
 
     it('says that version 1.7.0 only adds the history of runs', () => {

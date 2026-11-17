@@ -145,7 +145,9 @@ export interface RunSummary {
   run_id: string;
   started_at: string;
   status: RunStatus;
+  /** At most the session's goal limit, in code points. */
   goal: string;
+  goal_truncated: boolean;
 }
 
 export interface Run {

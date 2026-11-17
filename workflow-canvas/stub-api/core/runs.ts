@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Clock } from './clock.ts';
-import { HARNESS } from './contract.ts';
+import { HARNESS, MAX_GOAL_CHARS } from './contract.ts';
 import type {
   Run,
   RunEvent,
@@ -113,7 +113,7 @@ export class RunSimulator {
         run_id: run.runId,
         started_at: formatTimestamp(run.startedAt),
         status: this.describe(run).status,
-        goal: run.goal,
+        ...cappedGoal(run.goal),
       }));
   }
 
@@ -191,6 +191,14 @@ export class RunSimulator {
     while (this.runs.has(runId)) runId = `${prefix}-${this.suffix()}`;
     return runId;
   }
+}
+
+// The list carries at most the session's goal limit, cut between code points.
+function cappedGoal(goal: string): Pick<RunSummary, 'goal' | 'goal_truncated'> {
+  const chars = [...goal];
+  const goal_truncated = chars.length > MAX_GOAL_CHARS;
+  const kept = goal_truncated ? chars.slice(0, MAX_GOAL_CHARS).join('') : goal;
+  return { goal: kept, goal_truncated };
 }
 
 // A blocked stage past the end of the list is the last one.

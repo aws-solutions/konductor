@@ -2,7 +2,7 @@
 /** Checks the simulated run against a clock that the test moves. */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { countingSuffix, FakeClock } from '../test-support/fake-clock.ts';
-import { RUN_ID_PATTERN } from './contract.ts';
+import { MAX_GOAL_CHARS, RUN_ID_PATTERN } from './contract.ts';
 import { STAGE_REASONS } from './model.ts';
 import { RunSimulator } from './runs.ts';
 
@@ -188,5 +188,22 @@ describe('a simulated run that never ends', () => {
       stages: { draft: { status: 'running' }, review: { status: 'pending' } },
     });
     expect(runs.activeRunId()).toBe(runId);
+  });
+});
+
+describe('the history of simulated runs', () => {
+  it('cuts a goal over the limit between code points, and says so', () => {
+    const long = '😀'.repeat(MAX_GOAL_CHARS + 5);
+    runs.start('hello', ['only'], long);
+    const [row] = runs.list(10);
+    expect(row?.goal).toBe('😀'.repeat(MAX_GOAL_CHARS));
+    expect(row?.goal_truncated).toBe(true);
+  });
+
+  it('keeps a goal within the limit as it is', () => {
+    runs.start('hello', ['only'], GOAL);
+    expect(runs.list(10)).toMatchObject([
+      { goal: GOAL, goal_truncated: false },
+    ]);
   });
 });
