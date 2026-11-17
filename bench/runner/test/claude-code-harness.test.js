@@ -444,6 +444,29 @@ test('a credential error with no result line (killed or timed out) is still an i
   }
 });
 
+test('an expired AWS token is a login failure: charged 0, and consecutive ones stop the chunk', async () => {
+  const s = setup('synthetic-expired-token', { exitCode: 1 });
+  try {
+    const r = await run(s);
+    assert.equal(r.status, 'error');
+    assert.match(r.authFailure, /403 The security token included in the request is expired/);
+    assert.match(r.infraError, /login not valid/);
+    const { runAll } = require('../lib/orchestrate.js');
+    const logs = [];
+    const out = await withEnv(CREDS, () => runAll({
+      tasks: [s.task], arms: [CC_VANILLA], prepared: new Map(), prepErrors: new Map(), replicates: 5, parallel: 1, budgetCredits: null, censoredFloor: 0,
+      seed: 1, outDir: path.join(s.root, 'out-all'), ctx: s.ctx, state: { results: [], spent: 0, charged: 0 }, log: (m) => logs.push(m), maxAuthFailures: 3,
+      costOf: require('../lib/orchestrate.js').USD, unit: 'usd',
+    }));
+    assert.equal(out.authStop.tripped, true);
+    assert.match(out.authStop.reason, /3 consecutive runs could not log in/);
+    assert.equal(out.authStop.skipped, 2);
+    assert.equal(out.results.filter((x) => x.status === 'budget_skipped').length, 2);
+  } finally {
+    s.cleanup();
+  }
+});
+
 test('a result line with no cost and a stream with a broken line are flagged, not silently zero', async () => {
   const s = setup('vanilla-success');
   try {
