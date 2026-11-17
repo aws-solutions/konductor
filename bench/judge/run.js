@@ -9,7 +9,7 @@ const { loadRun } = require('../report/load.js');
 const { checkJudgeModel, checkPanel, families, effectiveLimits, maxPromptBytes: promptBytesFor } = require('./config.js');
 const { buildBundle } = require('./bundle.js');
 const { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix } = require('./prompts.js');
-const { parseJsonStrict, validateRubricReply, validatePairReply, validateGradedReply } = require('./validate.js');
+const { parseJsonReply, validateRubricReply, validatePairReply, validateGradedReply } = require('./validate.js');
 const { rubricScore, pairOutcome, combineOrderings, combineGraded } = require('./score.js');
 const { withCache, hasCachedReply } = require('./model.js');
 const { cacheSaltOf } = require('./opencode.js');
@@ -51,15 +51,17 @@ async function judgeOnce({ caller, model, prompt, check, maxPromptBytes = prompt
   let reason = '';
   for (let attempt = 0; attempt < 2; attempt++) {
     if (Buffer.byteLength(p) > maxPromptBytes) return { error: 'prompt too large for one argument; lower the bundle limits', calls, parseFailures };
-    const r = await caller({ model, prompt: p, accept: (text) => { const parsed = parseJsonStrict(text); return parsed.ok && check(parsed.value).ok; } });
+    const r = await caller({ model, prompt: p, accept: (text) => { const parsed = parseJsonReply(text); return parsed.ok && check(parsed.value).ok; } });
     calls.push({
       credits: r.credits === undefined ? 0 : r.credits, latencyMs: r.latencyMs ?? null, cached: Boolean(r.cached), ...(r.cached ? { originalCredits: r.originalCredits ?? null } : {}),
       ...(r.usd !== undefined ? { usd: r.usd, ...(r.cached ? { originalUsd: r.originalUsd ?? null } : {}), tokens: r.tokens ?? null, ...(r.retries ? { retries: r.retries } : {}) } : {}),
       ok: !r.error,
     });
     if (r.error) return { error: r.error, calls, parseFailures };
-    const parsed = parseJsonStrict(r.text);
+    const parsed = parseJsonReply(r.text);
     const checked = parsed.ok ? check(parsed.value) : parsed;
+    // A reply read only after repairStrings (validate.js) fixed a stray quote mark or escape is marked, so a report can count them.
+    if (checked.ok && parsed.repaired) calls[calls.length - 1].jsonRepaired = true;
     if (checked.ok) return { value: checked, calls, parseFailures };
     parseFailures++;
     calls[calls.length - 1].ok = false;
@@ -201,7 +203,7 @@ function planJudging(o) {
     byMode[kind]++;
     const { prompt, check } = p.specOf(u);
     if (Buffer.byteLength(prompt) > maxPromptBytes) { tooLarge++; continue; }
-    const accept = (text) => { const parsed = parseJsonStrict(text); return parsed.ok && check(parsed.value).ok; };
+    const accept = (text) => { const parsed = parseJsonReply(text); return parsed.ok && check(parsed.value).ok; };
     if (hasCachedReply(cacheDir, { model: u.judge, prompt, salt, accept })) cached++;
     else liveBy.set(`${u.judge}|${kind}`, { judge: u.judge, kind, live: (liveBy.get(`${u.judge}|${kind}`)?.live ?? 0) + 1 });
   }
