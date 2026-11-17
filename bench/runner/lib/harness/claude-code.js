@@ -157,14 +157,18 @@ function envSetup({ arm, ctx, home, tmpdir, baseEnv = process.env }) {
   return { env, set, unset: PROFILE_VARS.filter((k) => baseEnv[k] !== undefined), keys: Object.keys(env).sort() };
 }
 
-const env = (o) => envSetup(o).env;
+// With --aws-profile (ctx.awsCreds) each run reads the profile's keys when the cached ones are close to expiry; they
+// go into this run's environment only, on top of the caller's (whose own AWS_* keys they replace).
+const env = (o) => envSetup({ ...o, baseEnv: o.ctx?.awsCreds ? { ...(o.baseEnv ?? process.env), ...o.ctx.awsCreds.current() } : o.baseEnv }).env;
 
 // ---- Command ----
 
+// The prompt goes on stdin (`claude -p` reads it there when no prompt argument is given), not in argv: an agent that
+// runs `pkill -f <text from its task>` would otherwise match, and kill, its own claude process.
 function buildCommand({ arm, task, config, ctx, resume = null }) {
   if (resume) throw new Error('multi-turn (autonomy) tasks are not supported on the Claude Code harness yet; the resume flags have not been verified');
   const args = [
-    '-p', promptFor(arm, task),
+    '-p',
     '--output-format', 'stream-json', '--verbose',
     '--model', config.model,
     '--max-budget-usd', String(ctx.runBudgetUsd ?? DEFAULT_RUN_BUDGET_USD),
@@ -174,7 +178,7 @@ function buildCommand({ arm, task, config, ctx, resume = null }) {
   if (!arm.vanilla && ctx.claude?.supportsHookEvents) args.push('--include-hook-events');
   // Last: the tool list is variadic.
   args.push('--allowedTools', ...ALLOWED_TOOLS);
-  return { file: ctx.claude.bin, args, display: `claude ${args.map((a) => JSON.stringify(a)).join(' ')}` };
+  return { file: ctx.claude.bin, args, stdin: promptFor(arm, task), display: `claude ${args.map((a) => JSON.stringify(a)).join(' ')} < prompt.txt` };
 }
 
 // ---- Arm ----
@@ -384,11 +388,12 @@ function collectArtifacts(home, outDir) {
   }
 }
 
-const secrets = () => CREDENTIAL_VARS.map((k) => process.env[k]).filter((v) => typeof v === 'string' && v.length >= 8);
+// Every key handed to a run, from the environment or read from --aws-profile, is a secret.
+const secrets = (ctx) => [...CREDENTIAL_VARS.map((k) => process.env[k]), ...(ctx?.awsCreds ? ctx.awsCreds.values() : [])].filter((v) => typeof v === 'string' && v.length >= 8);
 
 // A model can print its environment, so exact credential values are scrubbed from every output file.
-function finalize(outDir) {
-  return scrubTreeDetailed(outDir, secretLiterals(process.env, secrets()), { shapes: true });
+function finalize(outDir, ctx) {
+  return scrubTreeDetailed(outDir, secretLiterals(process.env, secrets(ctx)), { shapes: true });
 }
 
 /** What run-config.json records about a Claude Code batch: names and settings, never credential values. */
@@ -400,7 +405,9 @@ function runConfigRecord({ ctx, config, region, runBudgetUsd, arms = [] }) {
     permissionMode: PERMISSION_MODE, allowedTools: ALLOWED_TOOLS, maxBudgetUsdPerRun: runBudgetUsd ?? DEFAULT_RUN_BUDGET_USD,
     flags: ['-p', '--output-format stream-json', '--verbose', '--model', '--max-budget-usd', '--permission-mode', '--allowedTools', '--agent (konductor arms)', ...(ctx.claude.supportsHookEvents ? ['--include-hook-events (konductor arms)'] : [])],
     effort: { applied: false, note: 'claude --effort is not passed; the effort field of a result is "default"' },
-    credentials: { mode: 'environment (exported keys; no profile variables)', variableNames: credentialNames(), notPassedWhenSet: PROFILE_VARS.filter((k) => process.env[k] !== undefined) },
+    credentials: ctx.awsCreds
+      ? { mode: 'profile (keys read with aws configure export-credentials and exported to each run; no profile variables)', profile: ctx.awsCreds.profile, refresh: 'read again before a run when the cached keys carry no expiry or expire within 15 minutes', variableNames: CREDENTIAL_VARS, notPassedWhenSet: PROFILE_VARS.filter((k) => process.env[k] !== undefined) }
+      : { mode: 'environment (exported keys; no profile variables)', variableNames: credentialNames(), notPassedWhenSet: PROFILE_VARS.filter((k) => process.env[k] !== undefined) },
     envVarNames: konductor.keys,
     configDir: '<run>/home/.claude with an empty rules/empty.md', hooks: 'the SessionStart hook of the konductor install fires under -p (empty output in auto orchestration mode)',
     builtins: { agents: BUILTIN_AGENTS, note: 'Claude Code starts built-in agents and skills even with an empty config directory, so the vanilla arm is not empty' },

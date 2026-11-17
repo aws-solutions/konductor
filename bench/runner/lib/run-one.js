@@ -271,13 +271,16 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
         fs.appendFileSync(path.join(outDir, 'command.txt'), `--- turn ${turn} (resumed) ---\n${cmd.display}\n`);
       }
       const w = iso.wrap(cmd.file, cmd.args);
+      // A harness that takes its prompt on stdin keeps it out of argv; the runner opens the file, so the mask on outDir does not matter.
+      const stdinPath = typeof cmd.stdin === 'string' ? path.join(outDir, multi ? `prompt-${turn}.txt` : 'prompt.txt') : null;
+      if (stdinPath) fs.writeFileSync(stdinPath, cmd.stdin);
       const stdoutPath = path.join(outDir, streamFile(multi, turn));
       // The stop watcher reads the stream while the child runs, so it follows the live file.
       const benchStop = ctx.stopOn || ctx.maxToolCalls ? makeStopWatcher(liveStdioPath(stdoutPath, stdioDir), { runtime: harness.id, stopOn: ctx.stopOn ?? 'end_turn', maxToolCalls: ctx.maxToolCalls ?? null }) : null;
       const stop = plantRun ? plantRun.watcher(benchStop) : benchStop;
       const exec = await spawnWithTimeout(w.file, w.args, {
         cwd, env, timeoutMs: Math.max(1, remaining),
-        stdoutPath, stderrPath: path.join(outDir, stderrFile(multi, turn)), stdioDir,
+        stdoutPath, stderrPath: path.join(outDir, stderrFile(multi, turn)), stdinPath, stdioDir,
         creditLimit: ctx.runCreditLimit == null ? null : Math.max(0, ctx.runCreditLimit - spent), creditPollMs: ctx.creditPollMs, stop,
         onSpawn: plantRun ? (pid) => plantRun.onSpawn(pid) : null,
       });

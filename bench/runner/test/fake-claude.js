@@ -24,6 +24,7 @@ fs.writeFileSync(path.join(cfg.dir, 'started.json'), JSON.stringify({
   pid: process.pid, cwd: process.cwd(), home: process.env.HOME, configDir: cfgDir, args, env: process.env, envKeys: Object.keys(process.env),
   rules: list(path.join(cfgDir, 'rules')), agents: list(path.join(cfgDir, 'agents')), configFiles: list(cfgDir),
   stdinIsTty: require('tty').isatty(0),
+  stdin: require('tty').isatty(0) ? null : fs.readFileSync(0, 'utf8'),
 }));
 const slug = process.cwd().replace(/[^A-Za-z0-9]/g, '-');
 const made = [];

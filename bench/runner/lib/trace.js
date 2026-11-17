@@ -330,8 +330,9 @@ function buildTrace(runDir, { instructions = false, repoRoot = null } = {}) {
   const { events } = parseStream(streamText);
   const entries = (TIMELINES[desc.streamFormat] ?? kiroTimeline)(events);
   const command = readText(path.join(runDir, 'command.txt'));
-  // The prompt is the longest quoted argument of the saved command line.
-  const promptArg = command ? [...command.split('\n')[0].matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => { try { return JSON.parse(`"${m[1]}"`); } catch { return m[1]; } }).sort((a, b) => b.length - a.length)[0] ?? null : null;
+  // The prompt is in prompt.txt when the harness passed it on stdin, else the longest quoted argument of the saved command line.
+  const promptFile = readText(path.join(runDir, 'prompt.txt'));
+  const promptArg = promptFile !== null ? promptFile : command ? [...command.split('\n')[0].matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => { try { return JSON.parse(`"${m[1]}"`); } catch { return m[1]; } }).sort((a, b) => b.length - a.length)[0] ?? null : null;
   const entry = entryAgentOf(result, installed);
   const loaded = entries.filter((e) => e.kind === 'skill-load' && !e.deferred && !e.failed && e.status !== 'failed' && (e.result == null || e.result.length > 0)).map((e) => e.input.name).filter(Boolean);
   const filter = desc.trace.skillsListing === 'agent-filter' ? skillFilterOf(installed) : null;

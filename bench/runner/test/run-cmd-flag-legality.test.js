@@ -49,8 +49,7 @@ const CC_NO = {
   effort: 'the effort level is not passed to claude, so a value would be recorded but not applied',
   'stop-on': 'the early-stop watcher reads kiro-cli and opencode events only',
   'max-tool-calls': 'the early-stop watcher reads kiro-cli and opencode events only',
-  'aws-creds-file': 'credentials come from the AWS_* variables in the environment that starts the bench',
-  'aws-profile': 'credentials come from the AWS_* variables in the environment that starts the bench',
+  'aws-creds-file': 'credentials come from the AWS_* variables in the environment that starts the bench, or from --aws-profile',
 };
 const VALUE = { effort: 'high', 'stop-on': 'end_turn', 'max-tool-calls': '3', 'aws-creds-file': 'x', 'aws-profile': 'p' };
 
@@ -102,6 +101,20 @@ test('the first refused Claude Code flag in table order is the one reported', ()
   try {
     const r = run(s, ['--arms', 'cc-vanilla', '--aws-profile', 'p', '--stop-on', 'end_turn', '--effort', 'high']);
     assert.equal(refusal(r), `--effort does not apply to Claude Code arms (${CC_NO.effort})`);
+  } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
+});
+
+test('a Claude Code arm accepts --aws-profile and reads the keys from that profile instead of the environment', () => {
+  const s = setup();
+  try {
+    const bin = path.join(s.root, 'fakebin');
+    fs.mkdirSync(bin, { recursive: true });
+    fs.writeFileSync(path.join(bin, 'aws'), '#!/bin/sh\necho "The config profile (bench) could not be found" >&2\nexit 255\n', { mode: 0o755 });
+    const r = run(s, ['--arms', 'cc-vanilla', '--aws-profile', 'bench'], { PATH: `${bin}${path.delimiter}${process.env.PATH}` });
+    assert.notEqual(r.status, 0);
+    assert.equal(refusal(r), undefined, r.stderr);
+    assert.match(r.stderr, /aws configure export-credentials --profile bench failed: The config profile \(bench\) could not be found/);
+    assert.doesNotMatch(r.stderr, /missing AWS_ACCESS_KEY_ID/);
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
 });
 
