@@ -90,9 +90,10 @@ EDITS = [
      "├── skills/                       80 skills (<name>/SKILL.md"),
     # ---- aws-mcp launches a pinned version, not a floating @latest ----------
     ('reference MCP registry note: pinned aws-mcp',
-     'note":"MCP registry entries — aws-mcp (k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1.'
-     ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code these agents request the corresponding tools via globs — mcp__aws-mcp__* and mcp__playwright-mcp__* — rather than launching the servers themselves.',
      'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1.'
+     ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
+     ' konductor requests only three read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation and aws___read_documentation.',
+     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
      ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
      ' konductor requests only three read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation and aws___read_documentation.'),
     ("architect card: pinned aws-mcp",

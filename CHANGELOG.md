@@ -341,6 +341,8 @@ not per individual commit.
     read-only documentation, skill and Region tools. On Claude Code `konductor` is granted only
     `aws___retrieve_skill`, `aws___search_documentation` and `aws___read_documentation`, and its
     prompt forbids `aws___run_script` and requires confirmation before any mutating AWS action.
+    All three start the server with `--skip-auth`, so documentation search and skills work
+    without AWS credentials; calls that act on an account still need them.
     The skill-name test now also checks aws-mcp skill names in table cells and prose.
 
 ### Fixed
