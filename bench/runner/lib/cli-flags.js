@@ -24,6 +24,7 @@ const FLAGS = {
   'probe-report': ['run', 'out', 'scoring', 'arms-file', 'canary-token-file'],
   'canary-report': ['run', 'out', 'layers-file'],
   'plant-report': ['run', 'release', 'out'],
+  'plant-trace': ['run', 'vs', 'out'],
   'plant-policy-test': ['release', 'python'],
   report: ['run', 'baseline', 'out', 'bench-dir', 'extra-tasks', 'detail', 'format', 'scoring', 'profile', 'verdict', 'phases', 'test-arms', 'changed-skills', 'criteria-pack', 'allow-stale-pack'],
   'report-2x2': ['kiro-vanilla', 'kiro-konductor', 'cc-vanilla', 'cc-konductor', 'out', 'json', 'bench-dir', 'extra-tasks', 'scoring', 'criteria-pack'],
