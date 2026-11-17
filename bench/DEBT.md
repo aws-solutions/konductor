@@ -1,0 +1,17 @@
+# Bench debt
+
+Known debt in the bench code. Each open item has an owner, a next step and a due date. Fix an item in the same stretch of work that touches it, or add it here. Never leave it silent.
+
+Last code review: 2026-11-15, plant code review 1 (`council/code-review-plant-1.txt`, kept outside the repo). Next review due by 2026-11-29.
+
+| Item | Where | Owner | Next step | Due | Status |
+| --- | --- | --- | --- | --- | --- |
+| The archive restore race: `Premature close` from the gunzip pipe into `tar`, flaky under load | `bench/runner/lib/archive.js:147` | bench owner | Reproduce under load, find which stream closes first, and fix the pipe so `tar` closing early is not read as a failure | 2026-12-01 | open |
+| The `cx-review-then-fix` hidden test leaks `led-hidden-*` temp dirs (about 240 to 320 per suite run) and `led-cfg-*` dirs (about 80) | `bench/complex/hidden/cx-review-then-fix/hidden/ledger.test.js:11`, `:121` | bench owner | Remove each dir in `test.after`, as the `cx-feature-across-layers` hidden test now does | 2026-12-01 | open |
+| The `cx-notes` fixture tests leak `notes-*` temp dirs, about 240 to 320 per suite run | `bench/complex/fixtures/cx-notes/test/cli.test.js:10`, `bench/complex/fixtures/cx-notes/test/store.test.js:11` | bench owner | These files are visible to the agent, so decide first whether a fix changes the task; then clean up in the fixture or point the validator's `TMPDIR` at a dir it removes | 2026-12-01 | open |
+| About 8400 old `/tmp/notes-hidden-*` dirs left by earlier suite runs, before the hidden test cleaned up after itself | `bench/complex/hidden/cx-feature-across-layers/hidden/tags.test.js` (fixed) | bench owner | A person deletes them on the dev host; the agent's delete is blocked by policy | 2026-12-01 | open |
+| `cap-p2-runner` `--auth-db` and `run-cmd-flag-legality` opencode tests fail on a host that blocks `unshare`: the run stops at the isolation check before the message the test expects | `bench/runner/test/cap-p2-runner.test.js:378`, `bench/runner/test/run-cmd-flag-legality.test.js:108` | bench owner | Pass `--isolate none --allow-unisolated` in these tests, or skip them with a reason when `unshare` is blocked | 2026-12-01 | open |
+| The pilot 2x2 SIGTERM test kills the script after a fixed 800 ms, which can be too short on a slow host | `bench/runner/test/pilot-2x2-script.test.js:373` | bench owner | Send SIGTERM after the script logs that its run started, not on a timer | 2026-12-01 | open |
+| The plant walls have not run in a real sandbox since the boundary checklist began reading B-4 and B-5 from the prober's trial | `bench/runner/lib/plant/walls.js:108` | bench owner | Run the wall prober control suite on the quiet host and check that `plantBoundaryChecklist` in `summary.json` shows B-4 and B-5 held | 2026-12-01 | open |
+| More temp dir leaks seen in a full suite run on 2026-11-17: `exp-*` (about 56) and `sd-test-*` (18) | `bench/complex/fixtures/cx-ledger/test/exports.test.js:11`, `bench/complex/solutions/cx-review-then-fix/test/regressions.test.js:18`, `bench/runner/test/state-dir.test.js:15` | bench owner | Remove each dir after its test; for the fixture file, decide first whether a fix changes the task | 2026-12-01 | open |
+| The autonomy timeout test is flaky under the full suite (it passes alone): a 1.2 s turn against a 2 s task timeout | `bench/runner/test/autonomy-run.test.js:199` | bench owner | Widen the margin between the turn delay and the timeout, or wait on an event instead of the clock | 2026-12-01 | open |
