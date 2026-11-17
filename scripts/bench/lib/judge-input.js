@@ -8,6 +8,9 @@
  *   2. redact     the redactor (redact.js) replaces secret-shaped values, the run's canary and the exact credential
  *                 values in `literals`, so lookalike strings never reach a judge. `redacted` says the text changed.
  *   3. cap        text over `maxChars` is cut after redaction, so a cut cannot split a secret. `truncated` says so.
+ *                 The cut never lands inside a surrogate pair (one character outside the Basic Multilingual Plane, such
+ *                 as an emoji, takes two UTF-16 units): it moves back one unit, so the kept text is never longer than
+ *                 `maxChars` and never ends in half a character.
  *   4. leak scan  looks for narration that is still there. A hit makes the answer not eligible.
  *
  * Two more things make an answer not eligible. `removed_share` is the share of the answer's non-whitespace characters
@@ -65,6 +68,20 @@ const MAX_ANSWER_CHARS = 50000;
  */
 const MAX_REMOVED_SHARE = 0.25;
 const SAMPLE_CHARS = 60;
+const isHighSurrogate = (unit) => unit >= 0xd800 && unit <= 0xdbff;
+const isLowSurrogate = (unit) => unit >= 0xdc00 && unit <= 0xdfff;
+
+/**
+ * How many UTF-16 units of `text` to keep when it is cut to at most `limit`: `limit`, or one less when the cut would
+ * fall between the two halves of a surrogate pair. A high surrogate with no low one after it (a lone unit already in
+ * the text) is not half of a pair, so the cut stays where it is.
+ */
+function cutLength(text, limit) {
+  return isHighSurrogate(text.charCodeAt(limit - 1)) &&
+    isLowSurrogate(text.charCodeAt(limit))
+    ? limit - 1
+    : limit;
+}
 
 // The leak patterns as data, so the provenance hash covers them. Tokens are filled per call from the settings and the
 // skill. `prose` patterns skip fenced code; `all` patterns do not. An entry with a `matcher` also reports every sentence
@@ -290,7 +307,9 @@ function createJudgeInput({
     const sanitized = sanitizer.sanitize(stored, { skill, request });
     const redacted = redactor(sanitized.text, { maxChars: Infinity });
     const text =
-      redacted.length > maxChars ? redactor(redacted, { maxChars }) : redacted;
+      redacted.length > maxChars
+        ? redactor(redacted, { maxChars: cutLength(redacted, maxChars) })
+        : redacted;
     const leaks = scanLeaks(text, {
       skill,
       settings: sanitizer.settings,

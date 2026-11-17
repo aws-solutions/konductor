@@ -18,6 +18,7 @@ const {
 } = judgeInput;
 const {
   newCanary,
+  createRedactor,
   RULES: REDACT_RULES,
   INPUT_CEILING,
 } = require('../../../scripts/bench/lib/redact');
@@ -409,6 +410,103 @@ test('size cap: cut after redaction so a cut cannot split a secret; flagged trun
       () => createJudgeInput({ maxChars: invalidMaxChars }),
       TypeError,
     );
+});
+
+/** True when `text` holds a surrogate unit that is not one half of a pair. */
+const hasLoneSurrogate = (text) =>
+  /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/.test(
+    text,
+  );
+
+test('size cap: the cut never lands between the two halves of a surrogate pair', () => {
+  const small = createJudgeInput({ maxChars: 10 });
+  const emoji = '\u{1F600}';
+  assert.equal(emoji.length, 2);
+  // The pair sits at units 9 and 10: a cut at 10 would keep the first half only, so the cut moves back one unit.
+  const split = prepare(`${'x'.repeat(9)}${emoji}${'y'.repeat(5)}`, small);
+  assert.equal(split.truncated, true);
+  assert.equal(split.text, `${'x'.repeat(9)}[truncated 7 characters]`);
+  assert.equal(hasLoneSurrogate(split.text), false);
+  // The pair ends exactly at the cap: it is kept whole.
+  const whole = prepare(`${'x'.repeat(8)}${emoji}${'y'.repeat(5)}`, small);
+  assert.equal(whole.text, `${'x'.repeat(8)}${emoji}[truncated 5 characters]`);
+  // A pair that starts at the cap is cut off whole.
+  const after = prepare(`${'x'.repeat(10)}${emoji}`, small);
+  assert.equal(after.text, `${'x'.repeat(10)}[truncated 2 characters]`);
+  // Text that fits is not touched, a pair at its very end included.
+  const fits = prepare(`${'x'.repeat(8)}${emoji}`, small);
+  assert.deepEqual(
+    [fits.truncated, fits.text],
+    [false, `${'x'.repeat(8)}${emoji}`],
+  );
+  // The first and the last pair of the range: U+10000 is D800 DC00, U+10FFFF is DBFF DFFF.
+  for (const edge of ['\u{10000}', '\u{10FFFF}']) {
+    const result = prepare(`${'x'.repeat(9)}${edge}tail`, small);
+    assert.equal(result.text, `${'x'.repeat(9)}[truncated 6 characters]`, edge);
+  }
+  // The default cap of 50,000 units behaves the same.
+  const long = prepare(
+    `${'a'.repeat(MAX_ANSWER_CHARS - 1)}${emoji}${'b'.repeat(10)}`,
+  );
+  assert.equal(
+    long.text,
+    `${'a'.repeat(MAX_ANSWER_CHARS - 1)}[truncated 12 characters]`,
+  );
+  assert.equal(hasLoneSurrogate(long.text), false);
+});
+
+test('size cap: wherever the cut falls in a text of pairs, no half of a pair is kept and the kept part is at most the cap', () => {
+  const emoji = '\u{1F680}';
+  for (let cap = 1; cap <= 9; cap += 1) {
+    for (const lead of ['', 'a']) {
+      const input = createJudgeInput({ maxChars: cap });
+      const result = prepare(`${lead}${emoji.repeat(8)}`, input);
+      const kept = result.text.replace(/\[truncated \d+ characters\]$/, '');
+      assert.equal(hasLoneSurrogate(result.text), false, `${cap}/${lead}`);
+      assert.ok(kept.length <= cap, `${cap}/${lead}: kept ${kept.length}`);
+      // The cut moves back by at most the one unit that would have split a pair.
+      assert.ok(kept.length >= cap - 1, `${cap}/${lead}: kept ${kept.length}`);
+    }
+  }
+});
+
+test('size cap: a surrogate unit that is not half of a pair is not moved, so only a real pair is protected', () => {
+  const small = createJudgeInput({ maxChars: 4 });
+  // A high surrogate with no low one after it, and a low one with no high one before it, sit at the cut.
+  const loneHigh = prepare('abc\ud83dxyz', small);
+  assert.equal(loneHigh.text, 'abc\ud83d[truncated 3 characters]');
+  const loneLow = prepare('abcd\ude00xyz', small);
+  assert.equal(loneLow.text, 'abcd[truncated 4 characters]');
+  const lowAtCut = prepare('abc\ude00xyz', small);
+  assert.equal(lowAtCut.text, 'abc\ude00[truncated 3 characters]');
+  // Units next to the two ranges are not surrogates: U+D7FF and U+E000 are ordinary characters, a low surrogate before
+  // a low one and a high surrogate after a high one are no pair.
+  for (const [before, after] of [
+    ['\ud7ff', '\udc00'],
+    ['\ud83d', '\ue000'],
+    ['\udc00', '\udc00'],
+    ['\ud83d', '\ud83d'],
+    ['\ud83d', '\udbff'],
+    ['\udbff', '\udbff'],
+  ]) {
+    const result = prepare(`abc${before}${after}xyz`, small);
+    assert.equal(
+      result.text,
+      `abc${before}[truncated 4 characters]`,
+      `${before.charCodeAt(0).toString(16)} ${after.charCodeAt(0).toString(16)}`,
+    );
+  }
+});
+
+test('size cap: the cut is placed in the redacted text, where a redacted secret has changed the length', () => {
+  const marker = createRedactor()(KEY, { maxChars: Infinity });
+  assert.notEqual(marker.length, KEY.length);
+  // In the redacted text the pair straddles the cap; in the stored text it does not.
+  const small = createJudgeInput({ maxChars: marker.length + 1 });
+  const result = prepare(`${KEY}\u{1F600}tail`, small);
+  assert.equal(result.redacted, true);
+  assert.equal(result.text, `${marker}[truncated 6 characters]`);
+  assert.equal(hasLoneSurrogate(result.text), false);
 });
 
 test('deterministic: the same stored answer gives the same result, and the input is not changed', () => {

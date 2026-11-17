@@ -335,7 +335,7 @@ Every drop is counted, with the share of the answer's non-whitespace characters 
 
 1. Sanitize, as above.
 2. Redact: the redactor replaces secret-shaped values, so lookalike strings never reach a judge. The result says whether the text changed.
-3. Cap: text over 50,000 characters is cut after redaction, so a cut cannot split a secret. The result says whether it was cut.
+3. Cap: text over 50,000 characters is cut after redaction, so a cut cannot split a secret, and never inside a surrogate pair (one character such as an emoji takes two units of the count, and the cut moves back one so that no half of it is kept). The result says whether it was cut.
 4. Leak scan: a second look for what is still there: names, agent ids, harness paths, tool markers and the same narration check the sanitizer runs. A hit means the answer is not eligible, because a judge that reads it would learn the arm. Both arms are scanned the same way, and text the task's request holds is not a leak.
 
 An answer is also not eligible when the sanitizer removed more than a quarter of it (a judge would score what is left), when nothing is left, when it is too long to sanitize, or when it ends inside a code fence that was never closed (the sanitizer and the scan skip fenced code, so an open fence would hide the rest of the answer). The judge job added in a later PR does not send an answer that is not eligible. The result also carries the counts of what was removed, so the report added later can show a loss that differs between the arms. One provenance hash covers everything that can change what a judge sees or whether an answer is eligible: the sanitizer's specification, the redactor patterns, the leak patterns and the limits.
