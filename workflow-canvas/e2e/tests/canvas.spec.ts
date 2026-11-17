@@ -111,7 +111,7 @@ test('hides the dots at rest and shows them on hover, focus and select', async (
 
   await canvas.page.mouse.move(0, 0);
   await expect(canvas.outPort(review)).toHaveCSS('opacity', '0');
-  await canvas.tab('Designer').focus();
+  await canvas.tab('Design').focus();
   await canvas.tabToNextNode();
   await expect(canvas.outPort('node-intent')).toHaveCSS('opacity', '1');
 });
