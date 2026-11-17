@@ -13,6 +13,7 @@ const { ANSWER_KEY } = require('../runner/lib/sandbox.js');
 const { redact } = require('./redact.js');
 const { scrubStringCounted, secretLiterals } = require('../runner/lib/scrub.js');
 const { isEphemeralDir, isEphemeralFile } = require('./ephemeral.js');
+const { delegatedSessions, delegatedBlock } = require('./delegated.js');
 
 // Tool state, not deliverables; listing it would also reveal the arm. Deliverables such as
 // .kiro/specs/** are kept. Names match at any depth, paths from the workspace root.
@@ -87,8 +88,8 @@ function checkLine(c) {
 }
 
 // Builds the only view of a run that a judge sees. It is assembled from the
-// final text, the files that differ from the fixture, and the check results;
-// the transcript and tool calls are never read. Credential-shaped text, and the exact values in `literals`, is scrubbed from
+// final text, the files that differ from the fixture, the tool calls of any child session the run started (see
+// delegated.js), and the check results; the main session's transcript and tool calls are never read. Credential-shaped text, and the exact values in `literals`, is scrubbed from
 // the text and the file texts last, so nothing the run output scrubber missed reaches a model. `literals` defaults to the
 // credential values of this process's environment, the same set the run scrubber uses, so a caller cannot leave it out by
 // accident. Callers that build the same bundle twice (judging, quote matching, rescoring) get the same text. meta.credsScrubbed
@@ -139,6 +140,10 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions, literals 
   }
   if (meta.omittedFiles.length) fileParts.push(`[omitted: bundle limit reached, ${meta.omittedFiles.length} more changed file(s): ${meta.omittedFiles.join(', ')}]`);
   parts.push(`## Files created or changed (${changed.length})\n${fileParts.length ? fileParts.join('\n\n') : '(none)'}`);
+  // The child sessions' work comes after the deliverables and shares their limit: it gets what the files left, at most one file's worth.
+  const delegated = delegatedBlock(delegatedSessions(runDir, result), Math.max(0, Math.min(maxFileChars, maxBundleChars - used)));
+  if (delegated) parts.push(delegated.text);
+  meta.delegatedCalls = delegated ? { calls: delegated.calls, shown: delegated.shown } : null;
   if (deleted.length) parts.push(`## Files deleted\n${deleted.map((d) => `- ${d}`).join('\n')}`);
   // After `recheck` the judge keeps seeing the results recorded at run time, so a rechecked run
   // builds the same bundle and its cached judge calls stay valid.
