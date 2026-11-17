@@ -23,6 +23,7 @@ const {
   removeArms,
   stripSkillReferences,
   stripSkillReferencesReport,
+  stripDescriptionReport,
   assertOnlyTargetDiffers,
   loadInstruction,
   loadAgentSpec,
@@ -62,7 +63,13 @@ function withArms(skill, options, check) {
 /** A repo in a temp dir: skills/<name>/SKILL.md for each skill and one agent that declares `declared`. */
 function makeRepo(
   dir,
-  { skills, declared = skills, prompt, agent = 'k-developer' },
+  {
+    skills,
+    declared = skills,
+    prompt,
+    agent = 'k-developer',
+    description = 'Fixture agent.',
+  },
 ) {
   for (const skill of skills) {
     fs.mkdirSync(path.join(dir, 'skills', skill), { recursive: true });
@@ -75,7 +82,7 @@ function makeRepo(
   helpers.write(path.join(dir, 'agents', `${agent}.agent-spec.json`), {
     name: agent,
     config: {
-      description: 'Fixture agent.',
+      description,
       systemPrompt:
         prompt ??
         declared.map((skill) => `- **${skill}**: a skill.`).join('\n'),
@@ -615,8 +622,8 @@ test('the fixture WITHOUT prompt for brew-log keeps the rest of every list and r
     );
     assert.equal(
       description,
-      '',
-      'the one description line names the skill, so it goes',
+      'Kitchen helper agent. Pantry notes with pantry-note.',
+      'the clause that names the skill goes and the rest of the line stays',
     );
   });
 });
@@ -624,9 +631,7 @@ test('the fixture WITHOUT prompt for brew-log keeps the rest of every list and r
 test('buildArms reports what it removed from the WITHOUT prompt and description', () => {
   withArms('brew-log', { agent: 'k-developer' }, (built) => {
     assert.deepEqual(built.stripped.description, {
-      dropped: [
-        'Kitchen helper agent. Writes brew logs with brew-log and pantry notes with pantry-note.',
-      ],
+      dropped: ['Writes brew logs with brew-log'],
       loose: [],
     });
     assert.deepEqual(built.stripped.prompt.dropped, [
@@ -1338,4 +1343,256 @@ test('skillSourceDir refuses a skill name that is not a safe name', () => {
       TypeError,
       JSON.stringify(bad),
     );
+});
+
+// ---- A description that names the skill keeps what does not ---------------------------------------------------------
+
+test('stripDescriptionReport cuts the clause that names the skill, not the whole description', () => {
+  const strip = (text, skill = 'brew-log') =>
+    stripDescriptionReport(text, skill);
+  // The one-line fixture description: the first clause goes, the second stays, capitalized.
+  assert.deepEqual(
+    strip('Writes brew logs with brew-log and pantry notes with pantry-note.'),
+    {
+      text: 'Pantry notes with pantry-note.',
+      dropped: ['Writes brew logs with brew-log'],
+      loose: [],
+    },
+  );
+  // The last clause goes: the sentence keeps its closing mark.
+  assert.equal(
+    strip(
+      'Writes brew logs with brew-log and pantry notes with pantry-note.',
+      'pantry-note',
+    ).text,
+    'Writes brew logs with brew-log.',
+  );
+  // Other sentences stay; a sentence with nothing left goes with its whitespace.
+  assert.equal(
+    strip('Kitchen helper. Runs brew-log. Does the dishes!').text,
+    'Kitchen helper. Does the dishes!',
+  );
+  assert.equal(strip('Runs brew-log. Kitchen helper.').text, 'Kitchen helper.');
+  // Commas and "and" around a cut clause do not double up.
+  assert.equal(
+    strip('Plans, then runs brew-log, and tidies up.').text,
+    'Plans, and tidies up.',
+  );
+  assert.equal(strip('A, B, and runs brew-log.').text, 'A, B.');
+  assert.equal(strip('Runs brew-log; plans the day!').text, 'Plans the day!');
+  // "or" and "but" end a clause too, and a comma before the word is not part of the removed text.
+  assert.equal(strip('Does X with brew-log or Y. Does Z.').text, 'Y. Does Z.');
+  assert.equal(strip('Runs brew-log but not the rest.').text, 'Not the rest.');
+  assert.deepEqual(strip('A, B with brew-log, and C.'), {
+    text: 'A, and C.',
+    dropped: ['B with brew-log'],
+    loose: [],
+  });
+  // A sentence that began in lower case stays in lower case; a trailing comma goes with the cut last clause.
+  assert.equal(strip('runs brew-log and writes notes.').text, 'writes notes.');
+  assert.equal(strip('A, B, runs brew-log.').text, 'A, B.');
+  assert.deepEqual(strip('  Runs brew-log and x.').dropped, ['Runs brew-log']);
+  // A clause that is kept and still uses a spaced name as plain words is listed as loose.
+  assert.deepEqual(
+    stripDescriptionReport(
+      'Use Test Coverage Analysis, and do a test coverage analysis.',
+      'test-coverage-analysis',
+    ),
+    {
+      text: 'Do a test coverage analysis.',
+      dropped: ['Use Test Coverage Analysis'],
+      loose: ['Do a test coverage analysis.'],
+    },
+  );
+  // Nothing left, nothing to cut, and a description with no name are told apart.
+  assert.equal(strip('Runs brew-log.').text, '');
+  assert.deepEqual(strip('Kitchen helper.'), {
+    text: 'Kitchen helper.',
+    dropped: [],
+    loose: [],
+  });
+  assert.equal(strip('').text, '');
+  assert.deepEqual(
+    strip('Checks for a pre-brew-log step.'),
+    { text: 'Checks for a pre-brew-log step.', dropped: [], loose: [] },
+    'a longer name stays',
+  );
+  assert.equal(
+    strip('Use bench:brew-log first, then relax.').text,
+    'Then relax.',
+    'plugin-qualified',
+  );
+});
+
+test('a one-line description that names the skill is cut, not emptied, and the without arm keeps the rest', () => {
+  helpers.withTmp((dir) => {
+    const repo = makeRepo(dir, {
+      skills: ['brew-log', 'pantry-note'],
+      description:
+        'Writes brew logs with brew-log and pantry notes with pantry-note.',
+    });
+    const built = buildArms('brew-log', { ...repo, agent: 'k-developer' });
+    try {
+      const without = parseAgent(built.agentsJson.without, 'k-developer');
+      const withArm = parseAgent(built.agentsJson.with, 'k-developer');
+      assert.equal(without.description, 'Pantry notes with pantry-note.');
+      assert.equal(
+        withArm.description,
+        'Writes brew logs with brew-log and pantry notes with pantry-note.',
+      );
+      assert.deepEqual(built.stripped.description.dropped, [
+        'Writes brew logs with brew-log',
+      ]);
+    } finally {
+      removeArms(built);
+    }
+  });
+});
+
+test('a description that names the skill in every clause is refused, naming the agent and the file, and leaves no scratch folder', () => {
+  helpers.withTmp((dir) => {
+    const repo = makeRepo(dir, {
+      skills: ['brew-log'],
+      description: 'Writes brew logs with brew-log. Runs brew-log daily.',
+    });
+    assert.throws(
+      () => buildArms('brew-log', { ...repo, agent: 'k-developer' }),
+      (error) =>
+        error instanceof AgentSpecError &&
+        /k-developer\.agent-spec\.json/.test(error.message) &&
+        /config\.description/.test(error.message) &&
+        /without arm of k-developer would have no description/.test(
+          error.message,
+        ),
+    );
+    assert.deepEqual(
+      fs.readdirSync(dir).filter((name) => name.startsWith('bench-arms-')),
+      [],
+    );
+  });
+});
+
+test('an empty description is allowed, and stays empty in both arms', () => {
+  helpers.withTmp((dir) => {
+    const repo = makeRepo(dir, {
+      skills: ['brew-log', 'pantry-note'],
+      description: '',
+    });
+    const built = buildArms('brew-log', { ...repo, agent: 'k-developer' });
+    try {
+      for (const arm of ['with', 'without'])
+        assert.equal(
+          parseAgent(built.agentsJson[arm], 'k-developer').description,
+          '',
+        );
+    } finally {
+      removeArms(built);
+    }
+  });
+});
+
+// ---- Blinding finds the spaced and Title Case forms of a several-word name -------------------------------------------
+
+test('a several-word name is also found spaced, in Title Case or capitals, and in any mix of separators', () => {
+  const skill = 'test-coverage-analysis';
+  const dropped = [
+    '- **Test Coverage Analysis**: finds gaps',
+    'Use `test coverage analysis` before you finish',
+    'Use the test coverage analysis skill here',
+    'Use the skill test coverage analysis here',
+    'Run a Test Coverage Analysis of the diff',
+    'Run the TEST COVERAGE ANALYSIS',
+    'Run the E2E Test Coverage Analysis',
+    'Load bench:test coverage analysis first',
+    'run test_coverage_analysis now',
+    'run Test_Coverage_Analysis now',
+    'run test-coverage-analysis now',
+    'run test-coverage_analysis now',
+  ];
+  for (const line of dropped)
+    assert.equal(
+      stripSkillReferences(`keep\n${line}\nkeep too`, skill),
+      'keep\nkeep too',
+      line,
+    );
+  // A plain lowercase phrase is an everyday phrase: kept, and listed as loose.
+  const plain = 'Please run a test coverage analysis of the diff.';
+  assert.deepEqual(
+    stripSkillReferencesReport(`keep\n${plain}\nkeep too`, skill),
+    { text: `keep\n${plain}\nkeep too`, dropped: [], loose: [plain] },
+  );
+  // A longer name or a name with another word between stays.
+  for (const line of [
+    'a pre-test-coverage-analysis step',
+    'test coverage analysis-tool',
+    'Test Coverage and Analysis',
+    'Test Coverage Analyses',
+  ])
+    assert.deepEqual(
+      stripSkillReferencesReport(`keep\n${line}\nkeep too`, skill).dropped,
+      [],
+      line,
+    );
+  // The section under a dropped Title Case heading goes with it.
+  assert.equal(
+    stripSkillReferences(
+      '# Tools\n## Test Coverage Analysis\ndetails\n## Other\nstays',
+      skill,
+    ),
+    '# Tools\n## Other\nstays',
+  );
+});
+
+test('a spaced name is cut out of a list entry like the slug is, and listed as loose when kept', () => {
+  assert.equal(
+    stripSkillReferences(
+      '`Test Coverage Analysis` and `lint` can run.',
+      'test-coverage-analysis',
+    ),
+    '`lint` can run.',
+  );
+  assert.equal(
+    stripDescriptionReport(
+      'Finds gaps with Test Coverage Analysis and writes plans.',
+      'test-coverage-analysis',
+    ).text,
+    'Writes plans.',
+  );
+  const loose = stripDescriptionReport(
+    'Does a test coverage analysis of the code.',
+    'test-coverage-analysis',
+  );
+  assert.deepEqual(loose.dropped, []);
+  assert.deepEqual(loose.loose, ['Does a test coverage analysis of the code.']);
+});
+
+test('buildArms lists a prompt line that uses a several-word name as plain words in stripped.loose', () => {
+  helpers.withTmp((dir) => {
+    const repo = makeRepo(dir, {
+      skills: ['test-coverage-analysis', 'lint'],
+      prompt:
+        '- **test-coverage-analysis**: finds gaps\n- **lint**: lints\nPlease run a test coverage analysis of the diff.\nOpen the Test Coverage Analysis heading.',
+    });
+    const built = buildArms('test-coverage-analysis', {
+      ...repo,
+      agent: 'k-developer',
+    });
+    try {
+      const without = parseAgent(built.agentsJson.without, 'k-developer');
+      assert.equal(
+        without.prompt,
+        '- **lint**: lints\nPlease run a test coverage analysis of the diff.' +
+          ANSWER_STYLE_RULE,
+      );
+      assert.deepEqual(built.stripped.prompt.dropped, [
+        '- **test-coverage-analysis**: finds gaps',
+        'Open the Test Coverage Analysis heading.',
+      ]);
+      assert.deepEqual(built.stripped.prompt.loose, [
+        'Please run a test coverage analysis of the diff.',
+      ]);
+    } finally {
+      removeArms(built);
+    }
+  });
 });
