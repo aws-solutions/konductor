@@ -323,7 +323,8 @@ not per individual commit.
   `external-research` drop terms that do not apply in this repo.
 - `git-merge` shows the merge log and diff and asks before pushing to the default branch, and
   only when the repo merges locally; otherwise, or if the user declines, it opens a PR. Tagging
-  and branch cleanup wait for a successful push. `git-workflow` now merges the default branch in
+  and branch cleanup wait for a successful push. The merge into the default branch never runs in
+  a dispatched pane. `git-workflow` now merges the default branch in
   before a PR instead of rebasing, matching `git-merge`.
 - `cmux-dispatch` and `mux-dispatch` no longer claim every task, and say that Claude Code panes
   skip permission prompts, so dispatch only tasks you would approve unattended.
