@@ -8,6 +8,7 @@ import Input, { type InputProps } from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
+import Textarea from '@cloudscape-design/components/textarea';
 import type { ReactNode, Ref } from 'react';
 import {
   agentChoices,
@@ -15,12 +16,15 @@ import {
   canRemoveStage,
   errorsOf,
   joinMessages,
+  MAX_PROMPT_CHARS,
   notesOf,
   problemsFor,
   problemsOfDraft,
+  promptFieldOf,
   type DraftStage,
   type EditState,
   type Problem,
+  type PromptField,
 } from './core';
 import { MessageText } from '../workflow/MessageText';
 
@@ -110,6 +114,87 @@ function StageFields({
   );
 }
 
+const TRUST_NOTE = 'Saving a prompt ends trust. The next Run asks again.';
+const READS_A_FILE = 'This stage reads its prompt from a file.';
+const HAS_BOTH =
+  'This stage has both a prompt and a prompt file, so the editor changes neither. The check says what to fix.';
+
+// The characters of the text, as the contract counts them: code points.
+const lengthOf = (text: string) => [...text].length;
+
+// Why the text area is off, or `undefined` when the text can be typed.
+function offReason(field: PromptField): string | undefined {
+  switch (field.kind) {
+    case 'file':
+      return READS_A_FILE;
+    case 'both':
+      return HAS_BOTH;
+    case 'blocked':
+      return field.reason;
+    case 'text':
+      return undefined;
+  }
+}
+
+/**
+ * The prompt of a stage: a text area with the count of its characters against
+ * the limit, or, for a stage that reads a file, the path of the file and a
+ * text area that is off, with the reason. The text is shown as typed and never
+ * as HTML.
+ */
+function PromptFields({
+  stage,
+  field,
+  locked,
+  problems,
+  onPrompt,
+}: {
+  stage: DraftStage;
+  field: PromptField;
+  locked: boolean;
+  problems: Problem[];
+  onPrompt: (prompt: string) => void;
+}) {
+  const promptProblems = problemsFor(problems, stage.id, 'prompt');
+  const fileProblems = problemsFor(problems, stage.id, 'prompt_file');
+  const errors = errorsOf([...promptProblems, ...fileProblems]);
+  const notes = notesOf([...promptProblems, ...fileProblems]);
+  const off = offReason(field);
+  const count = lengthOf(stage.prompt);
+  return (
+    <SpaceBetween size="m">
+      <FormField
+        label="prompt"
+        description={TRUST_NOTE}
+        constraintText={
+          off === undefined ? (
+            `${count} of ${MAX_PROMPT_CHARS} characters`
+          ) : (
+            <MessageText text={off} />
+          )
+        }
+        errorText={messageNode(errors)}
+        warningText={messageNode(notes)}
+      >
+        <Textarea
+          value={stage.prompt}
+          rows={6}
+          spellcheck={false}
+          disabled={off !== undefined}
+          readOnly={locked}
+          invalid={errors.length > 0 || count > MAX_PROMPT_CHARS}
+          onChange={({ detail }) => onPrompt(detail.value)}
+        />
+      </FormField>
+      {(field.kind === 'file' || field.kind === 'both') && (
+        <FormField label="prompt_file">
+          <Input value={field.path} readOnly spellcheck={false} />
+        </FormField>
+      )}
+    </SpaceBetween>
+  );
+}
+
 // Whether the stage is complete, needs a fix (an error) or has a note.
 function StageStatus({ problems }: { problems: Problem[] }) {
   if (errorsOf(problems).length > 0) {
@@ -122,8 +207,8 @@ function StageStatus({ problems }: { problems: Problem[] }) {
 }
 
 /**
- * The Properties of the selected stage: its name and its agent, both of which
- * change the draft at once, and a button to delete the stage. A problem that
+ * The Properties of the selected stage: its name, its agent and its prompt,
+ * all of which change the draft at once, and a button to delete the stage. A problem that
  * the check found with a field shows under the field.
  */
 export function PropertiesPane({
@@ -131,12 +216,14 @@ export function PropertiesPane({
   nameRef,
   onRename,
   onAgent,
+  onPrompt,
   onRemove,
 }: {
   state: EditState;
   nameRef: Ref<InputProps.Ref>;
   onRename: (id: string, name: string) => void;
   onAgent: (id: string, agent: string) => void;
+  onPrompt: (id: string, prompt: string) => void;
   onRemove: (id: string) => void;
 }) {
   const stage = state.draft.stages.find((s) => s.id === state.selectedId);
@@ -169,6 +256,16 @@ export function PropertiesPane({
               nameRef={nameRef}
               onRename={(name) => onRename(stage.id, name)}
               onAgent={(agent) => onAgent(stage.id, agent)}
+            />
+          </SpaceBetween>
+          <SpaceBetween size="m">
+            <Header variant="h3">Prompt</Header>
+            <PromptFields
+              stage={stage}
+              field={promptFieldOf(state, stage)}
+              locked={!editable}
+              problems={problems}
+              onPrompt={(prompt) => onPrompt(stage.id, prompt)}
             />
           </SpaceBetween>
           <Button

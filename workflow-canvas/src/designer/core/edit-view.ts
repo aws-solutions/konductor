@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { EditableDocument, EditState } from './edit-state';
-import { sameStages, stagesOf, type Draft } from './draft';
+import { sameStages, stagesOf, type Draft, type DraftStage } from './draft';
 import { hasErrors, withEchoes, type Problem } from './problems';
+import { savedPrompts } from './saved-prompts';
 import { inPlaceBlocker, withStages, type Written } from './stage-text';
 
 /** The words that say why a read-only workflow cannot be changed. */
@@ -23,7 +24,13 @@ export function changeBlocker(state: EditState): string | undefined {
 
 /** Whether the draft differs from the saved workflow. */
 export function isDirty(state: EditState): boolean {
-  return !sameStages(stagesOf(state.draft), state.saved.view.stages);
+  if (!sameStages(stagesOf(state.draft), state.saved.view.stages)) return true;
+  // A file whose prompts cannot be read has none that the draft could change.
+  const spots = savedPrompts(state.saved);
+  return (
+    spots !== undefined &&
+    state.draft.stages.some((stage, i) => stage.prompt !== spots[i]?.text)
+  );
 }
 
 // The writer reads the whole file, which takes a few milliseconds for a large
@@ -49,9 +56,14 @@ export function writtenOf(state: EditState): Written {
   const { saved, draft, bases } = state;
   const kept = written.get(draft);
   if (kept && kept.saved === saved && kept.bases === bases) return kept.result;
-  const stages = draft.stages.map(({ id, name, agent }) => {
+  const spots = savedPrompts(saved);
+  const stages = draft.stages.map(({ id, name, agent, prompt }) => {
     const from = bases.indexOf(id);
-    return from < 0 ? { name, agent } : { name, agent, from };
+    // A stage of the file asks for a prompt only when it was typed over; a new
+    // stage asks for its own, which may take the item of a deleted one.
+    if (from < 0) return { name, agent, prompt };
+    const changed = prompt !== (spots?.[from]?.text ?? '');
+    return changed ? { name, agent, from, prompt } : { name, agent, from };
   });
   const result = withStages(saved.text, saved.view, stages);
   written.set(draft, { saved, bases, result });
@@ -147,4 +159,40 @@ export function saveStatus(state: EditState): {
     return { kind: 'success', text: 'Loaded again from the server' };
   }
   return { kind: 'pending', text: 'No changes' };
+}
+
+/** What the Properties pane offers for the prompt of a stage. */
+export type PromptField =
+  /** The text can be typed. */
+  | { kind: 'text' }
+  /** The stage reads a file, whose path is shown and not changed. */
+  | { kind: 'file'; path: string }
+  /** The stage has `prompt` and `prompt_file`, which the check reports. */
+  | { kind: 'both'; path: string }
+  /** The editor cannot tell the prompt, for the `reason`. */
+  | { kind: 'blocked'; reason: string };
+
+const UNREAD =
+  'The editor cannot tell where the prompts of this file are, so it cannot change them.';
+
+/** The way the prompt of the stage is shown in Properties. */
+export function promptFieldOf(
+  state: EditState,
+  stage: DraftStage,
+): PromptField {
+  const spots = savedPrompts(state.saved);
+  if (!spots) return { kind: 'blocked', reason: UNREAD };
+  const from = state.bases.indexOf(stage.id);
+  const spot = from < 0 ? undefined : spots[from];
+  if (spot?.refuse) return { kind: 'blocked', reason: spot.refuse };
+  switch (spot?.state) {
+    case 'file':
+      return { kind: 'file', path: spot.file ?? '' };
+    case 'both':
+      return { kind: 'both', path: spot.file ?? '' };
+    case 'blocked':
+      return { kind: 'blocked', reason: spot.reason ?? UNREAD };
+    default:
+      return { kind: 'text' };
+  }
 }

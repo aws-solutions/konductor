@@ -6,6 +6,12 @@ export interface DraftStage {
   id: string;
   name: string;
   agent: string;
+  /**
+   * The text of the stage's `prompt` as typed, or the empty string for none.
+   * A stage that reads its prompt from a file has the empty string and no
+   * way to change it here.
+   */
+  prompt: string;
 }
 
 /** The stages of the workflow as edited, in run order. */
@@ -18,6 +24,9 @@ export interface Draft {
 /** The most stages a workflow may have, as the API allows. */
 export const MAX_STAGES = 40;
 
+/** The most characters a prompt may have, as the API and the spec allow. */
+export const MAX_PROMPT_CHARS = 32768;
+
 /** The agent of a stage that was just added. */
 export const DEFAULT_AGENT = 'k-developer';
 
@@ -25,10 +34,20 @@ function idOf(number: number): string {
   return `s${number}`;
 }
 
-/** A draft that starts as the stages of a saved workflow. */
-export function draftOf(stages: readonly StageView[]): Draft {
+/**
+ * A draft that starts as the stages of a saved workflow, each with the prompt
+ * of the same place in `prompts` (none when the list is short).
+ */
+export function draftOf(
+  stages: readonly StageView[],
+  prompts: readonly string[] = [],
+): Draft {
   return {
-    stages: stages.map((stage, index) => ({ ...stage, id: idOf(index + 1) })),
+    stages: stages.map((stage, index) => ({
+      ...stage,
+      id: idOf(index + 1),
+      prompt: prompts[index] ?? '',
+    })),
     nextId: stages.length + 1,
   };
 }
@@ -82,6 +101,7 @@ export function addStage(draft: Draft): Draft {
     id: idOf(draft.nextId),
     name: nextStageName(draft),
     agent: DEFAULT_AGENT,
+    prompt: '',
   };
   return { stages: [...draft.stages, stage], nextId: draft.nextId + 1 };
 }
@@ -89,7 +109,7 @@ export function addStage(draft: Draft): Draft {
 function change(
   draft: Draft,
   id: string,
-  edit: Partial<Pick<DraftStage, 'name' | 'agent'>>,
+  edit: Partial<Pick<DraftStage, 'name' | 'agent' | 'prompt'>>,
 ): Draft {
   return {
     ...draft,
@@ -107,6 +127,11 @@ export function renameStage(draft: Draft, id: string, name: string): Draft {
 /** Gives the stage another agent. */
 export function setAgent(draft: Draft, id: string, agent: string): Draft {
   return change(draft, id, { agent });
+}
+
+/** Gives the stage the prompt as typed; the writer and the check judge it. */
+export function setPrompt(draft: Draft, id: string, prompt: string): Draft {
+  return change(draft, id, { prompt });
 }
 
 /** Deletes the stage; the last one stays, and an unknown id changes nothing. */

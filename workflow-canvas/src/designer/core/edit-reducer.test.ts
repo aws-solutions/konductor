@@ -949,3 +949,82 @@ describe('revisions across a document that cannot be edited', () => {
     }
   });
 });
+
+describe('set-prompt', () => {
+  const PROMPT = 'Write the greeting to README.md.';
+
+  it('changes the prompt of the draft stage, counts a revision and leaves the check for it', () => {
+    const state = opened();
+
+    const next = run(state, { type: 'set-prompt', id: 's1', prompt: 'Hi.' });
+
+    expect(next.draft.stages[0]?.prompt).toBe('Hi.');
+    expect(next.draft.stages[1]?.prompt).toBe('');
+    expect(next.revision).toBe(state.revision + 1);
+    expect(next.check.revision).toBe(state.revision);
+  });
+
+  it('starts with the prompts of the saved text', () => {
+    expect(opened().draft.stages.map((s) => s.prompt)).toEqual([PROMPT, '']);
+  });
+
+  it('changes nothing for the text the stage has, or for a stage that is not there', () => {
+    const state = opened();
+
+    expect(
+      reduce(state, { type: 'set-prompt', id: 's1', prompt: PROMPT }),
+    ).toBe(state);
+    expect(reduce(state, { type: 'set-prompt', id: 's9', prompt: 'x' })).toBe(
+      state,
+    );
+  });
+
+  it('is refused while the workflow is read-only', () => {
+    const state = openDocument({ ...HELLO_DOCUMENT, readOnly: true })!;
+
+    expect(reduce(state, { type: 'set-prompt', id: 's1', prompt: 'x' })).toBe(
+      state,
+    );
+  });
+
+  it('forgets that a save finished, as any change does', () => {
+    const saved = run(
+      opened(),
+      { type: 'set-prompt', id: 's1', prompt: 'Hi.' },
+      { type: 'save' },
+      {
+        type: 'saved',
+        text: textOf(
+          run(opened(), { type: 'set-prompt', id: 's1', prompt: 'Hi.' }),
+        )!,
+        result: savedResult(),
+      },
+    );
+    expect(saved.save.phase).toBe('saved');
+
+    const next = run(saved, { type: 'set-prompt', id: 's1', prompt: 'Hello.' });
+
+    expect(next.save.phase).toBe('idle');
+  });
+
+  it('keeps what a save wrote as the prompt the file has', () => {
+    const typed = run(opened(), {
+      type: 'set-prompt',
+      id: 's1',
+      prompt: 'One.\nTwo.',
+    });
+    const text = textOf(typed)!;
+
+    const saved = run(
+      typed,
+      {
+        type: 'save',
+      },
+      { type: 'saved', text, result: savedResult() },
+    );
+
+    expect(saved.saved.text).toBe(text);
+    expect(textOf(saved)).toBe(text);
+    expect(canSave(saved)).toBe(false);
+  });
+});
