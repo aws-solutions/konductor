@@ -1,0 +1,103 @@
+{
+  "format_version": 1,
+  "skill": "e2e-test-strategy",
+  "batch": "rules-b8",
+  "generated_at": "2026-11-10T06:01:53.078Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "97ac76e8309666c00c5990610eb052349490fd9d2965e04022ace062f04fdb59",
+  "scenarios": [
+    {
+      "id": "e2e-test-strategy-rules-1",
+      "title": "Ranking journeys for a ticketing app release",
+      "target_section": "Stage 7: Prioritization Matrix Generation",
+      "prompt": "hey, we're shipping a minor release of Gigly (event ticketing, web + API) in about three weeks. It's an enhancement release, mostly the new guest checkout. I have budget for maybe 6-7 automated browser-level tests and my PM wants to know what we should pick and in what order. Here's the long list of stuff people have asked to be covered:\n\n1. Guest checkout paying by card (brand new this release)\n2. Account registration and login\n3. Refund request: buyer submits, support agent reviews, finance approves\n4. Organizer edits an event's description text\n5. Admin adds a new venue category (just a name field and save)\n6. Nightly job that emails reminders to ticket holders 24h before an event\n7. Dark mode toggle in the footer (client-side only, saved in localStorage)\n8. Buyer searches events, filters by city, opens details\n\nPlease give me a ranked plan I can defend to the PM, i.e. show me why #1 comes before #8 and so on. And tell me what to do about the things that shouldn't get a browser test.",
+      "rubric": [
+        "Gives each listed item (at least guest checkout, refund approval and search) its own numeric ratings for business importance, technical risk and how much the enhancement change matters, and shows the resulting combined number.",
+        "The final order follows from those numbers, with guest checkout and registration/login ranked above the event-description edit, venue category and dark mode toggle, so the PM could check why one outranks another.",
+        "Places guest card checkout and registration/login in the top priority tier as must-have tests before release.",
+        "Treats the three-party refund flow (buyer, support, finance) as a core money-handling transaction that is included at a high priority rather than dropped.",
+        "Leaves out the venue category save and the organizer description edit from the browser-level set, saying they are single-step record operations that lower-level tests cover.",
+        "Leaves out the nightly reminder job and the dark mode toggle, stating the job belongs to integration-level tests and the toggle to component-level tests because it has no backend interaction.",
+        "Goes straight to the ranked plan using the stated facts (enhancement, minor release) without asking the user for document paths or the kind of change and release."
+      ],
+      "why_skill_matters": "Eight candidates of very different criticality are pasted: a payment flow, a multi-role refund, login, plain admin record creation, a scheduled job and a client-only toggle. The user wants a defensible ranking, so visible scoring, top-tier placement of core flows and exclusion of low-level behavior all matter. Change and release kind are given, so no questions are needed."
+    },
+    {
+      "id": "e2e-test-strategy-rules-2",
+      "title": "How much browser-level coverage do we actually have",
+      "target_section": "Stage 2: Gap Analysis Review",
+      "prompt": "We're a team of six on a React storefront with a REST API behind it. My lead wants to know where our end-to-end coverage really stands before we plan the next batch of tests, and which tool we should use for the new ones. Pasting the bits of our gap report:\n\n```\nTest inventory\n- unit: 902 tests\n- integration: 214 tests\n- e2e/ folder: 31 spec files (checkout, account, search, admin)\n\nGaps: no e2e for returns, no e2e for gift cards\n\nCI, last night, step \"npx cypress run\":\n  Specs: 31 | Tests: 187 | Passing: 171 | Failing: 12 | Pending: 4\n\nTeam notes\n- 4 of 6 devs have written Cypress tests for ~2 years\n- nobody has used Playwright; one person tried Selenium years ago\n- we deploy the API as a separate service, so we also poke it with curl scripts\n```\n\nSo how much E2E do we have, and what should we use going forward? Keep it short, I need to paste it in a doc.",
+      "rubric": [
+        "Reports existing browser-level coverage as 187 test cases across 31 spec files, giving both figures and not describing 31 as the number of tests.",
+        "Uses the runner result (171 passing, 12 failing, 4 pending) to say only part of the 187 currently gives working protection, rather than treating all as healthy.",
+        "Does not mix the 902 unit or 214 integration tests into the browser-level count.",
+        "Recommends one tool for the new storefront browser tests and justifies it with the team's two years of Cypress experience (or addresses the switching cost if it suggests another tool), not only generic popularity.",
+        "Addresses the separate REST API, suggesting the same tool or a lighter API-level option in place of the ad hoc curl scripts, tied to this stack.",
+        "Answers from the pasted report without asking for further files, paths, or change/release details, and keeps it short as requested."
+      ],
+      "why_skill_matters": "The report headlines 31 spec files, but the CI line shows 187 test cases with failures. A careless answer reports 31 or ignores failures. The tool question adds a team-experience angle (Cypress known, Playwright unknown) with a separate API service."
+    },
+    {
+      "id": "e2e-test-strategy-rules-4",
+      "title": "Wiring planned tests into the pipeline",
+      "target_section": "Test Execution Timing",
+      "prompt": "We run a booking platform for dental clinics (Vue front end, Node API on Lambda + DynamoDB, deployed with GitHub Actions to staging, then production). We've already decided the critical flows to automate: patient booking an appointment, clinic staff login, rescheduling, and an insurance-claim submission that has to leave an audit trail. We also have a longer set of about 20 lesser checks (profile edits, notification preferences, etc.).\n\nOur current pipeline is: PR opened -> unit tests -> merge to main -> deploy to staging -> manual QA -> deploy to production. Nothing browser-level runs automatically. Devs complain if PR checks take more than a few minutes.\n\nHow should we wire the browser tests into this pipeline? Which ones run where, and roughly how long should each stage take? Also which tool do you suggest given our stack?",
+      "rubric": [
+        "Gives a stage-by-stage plan covering at least before merge, after merge, before or at staging deploy, and after production deploy, stating which tests run at each.",
+        "Puts only a small critical-path smoke set (booking, staff login) in the PR check with a time budget of a few minutes, and keeps the fuller set for later stages with longer approximate durations.",
+        "Adds a scheduled (nightly or similar) full run or a production smoke check after deployment, with approximate time.",
+        "Classifies booking, staff login and the insurance claim submission with audit trail as must-have top-priority tests, including the audit-trail requirement as compliance-related.",
+        "Recommends a tool for the Vue front end and an approach for the Lambda API, with reasons tied to this stack (for example multi-browser UI tool plus API-level checks against real endpoints).",
+        "Answers without asking for document locations or change/release type, using the pipeline described."
+      ],
+      "why_skill_matters": "The user asks how to place decided tests in a GitHub Actions pipeline with a time constraint on PR checks, which makes stage timing matter. The claim submission with audit trail adds a compliance flow, and the stack question invites a tool choice."
+    },
+    {
+      "id": "e2e-test-strategy-rules-6",
+      "title": "Small startup, spreadsheet gap list, wants everything",
+      "target_section": "Stage 8: Strategy Recommendations",
+      "prompt": "Founder here, not a tester. We have a meal-kit subscription app (React web app, Express API, Postgres, we use Stripe for payments, 3 developers). Nobody has written any browser tests. Customer support says these cause the most pain:\n\n- sign up + choose a plan + enter card\n- skip a week / pause subscription\n- change delivery address\n- update the \"dietary notes\" text box on the profile\n- failed card payment retry\n- weekly menu page loads\n\nOne of the devs thinks we should just write tests for all six and run them all in parallel on every commit on a shared staging server that also the support team uses to demo. I'm not sure. What would you do? We have about 2 weeks of one dev's time. Please be concrete.",
+      "rubric": [
+        "Recommends an execution mode appropriate for about six tests (mostly in order or with a simple split) rather than complex parallel orchestration, explaining the reason by count and dependencies.",
+        "Challenges the shared staging server used for support demos and recommends either a dedicated test environment or at least separate data, with a test database and Stripe test mode.",
+        "Mentions test accounts and a way to simulate the failed card payment through Stripe's test mode instead of real cards.",
+        "Recommends a browser tool for the React app with reasons tied to the team (three developers, no prior testing experience, two weeks) rather than listing options neutrally.",
+        "Suggests the dietary notes text edit and possibly the menu page load do not need a browser-level test (single-step update or read, covered lower down), with a reason.",
+        "Ranks sign-up with plan and card, and the failed payment retry, as the first tests to build.",
+        "Answers from the description without asking for paths, change type, or release type, and states any assumption about them."
+      ],
+      "why_skill_matters": "The founder asks for a decision on a developer's proposal: all tests, all parallel, shared staging. The answer should weigh count and dependencies, environment isolation and the Stripe sandbox, tool choice for a novice team, and drop low-value items."
+    },
+    {
+      "id": "e2e-test-strategy-rules-7",
+      "title": "Marketplace release strategy with ratings and coverage count",
+      "target_section": "Stage 5: Change Impact Assessment",
+      "prompt": "Planning a major release (v3.0) of our freelancer marketplace: new escrow payments, new identity verification at registration, and a rebuilt messaging inbox. Change type is enhancement. Here is what test tooling reported last week:\n\n```\n$ find e2e -name \"*.spec.ts\" | wc -l\n58\n$ npx playwright test --list | tail -1\nTotal: 412 tests in 58 files\n```\n\nCandidate journeys I've listed with my own gut feel (1-10) for business value:\n- Client funds escrow, freelancer delivers, client releases funds: 10\n- Registration with ID verification: 9\n- Inbox: send message and see it delivered: 5\n- Freelancer updates hourly rate in profile: 3\n- Client leaves a review after release: 6\n\nGive me a ranked test plan I can show my director, and tell me honestly how much E2E we already have so the director doesn't think we're starting from scratch.",
+      "rubric": [
+        "States the existing browser suite as 412 test cases in 58 files, giving both numbers, and not saying there are 58 tests.",
+        "For each of the five journeys, gives separate technical risk and change-type ratings beside the user's business value figures, and shows a combined result per journey.",
+        "The ranking follows the computed scores, with escrow and verified registration at the top and the hourly-rate update at the bottom, so the director can see why.",
+        "Treats escrow payments and registration with ID verification as must-have tests at the top tier.",
+        "Marks the hourly-rate profile update as a simple single-step record edit that does not warrant a browser test, with a reason.",
+        "Uses the stated major release and enhancement without asking for paths or the kind of change, and proceeds directly."
+      ],
+      "why_skill_matters": "The user supplies their own business-value numbers and a test runner list that shows 58 files containing 412 tests. The answer must count correctly and extend the scoring to the other components. Escrow and verification are core flows; the rate update is trivial."
+    },
+    {
+      "id": "e2e-test-strategy-rules-8",
+      "title": "Serverless booking app, one clause about a vendor",
+      "target_section": "Test Framework Recommendations",
+      "prompt": "I'm a tech lead at a ferry-booking company. Stack: Angular front end served from a CDN, API Gateway + Lambda + DynamoDB, and a third-party port-authority API we call to confirm passenger manifests (they only give us a live endpoint; their sandbox was shut down last year). Our five devs know Selenium well, and have never touched anything else. We need browser tests for: book a ticket and pay (card), cancel and refund, and the manifest submission that must succeed before boarding opens.\n\nPlease recommend a framework and a plan for environment and data. We deploy via GitHub Actions and have about 20 minutes per pipeline for tests. I'd like the plan to be realistic for us, not a textbook.",
+      "rubric": [
+        "Recommends a framework for the Angular front end and justifies it against the team's Selenium-only experience (for example keeping Selenium for now, or weighing a move with its learning cost).",
+        "Specifies a separate test database and DynamoDB tables, test user accounts, and a payment test mode, matched to the serverless setup.",
+        "Handles the port-authority API having no sandbox, proposing a stub or mock for the manifest call in most tests, with the real endpoint touched only carefully (for example a limited check), and flags the risk.",
+        "Fits the plan into the 20-minute pipeline budget by saying which tests run on which pipeline stage, with a quick smoke on earlier stages and the full set later.",
+        "Describes creating bookings through the app's API or UI with unique identifiers per run and cleanup afterwards, not by writing into DynamoDB directly.",
+        "Proceeds from the described setup without asking for files or release details."
+      ],
+      "why_skill_matters": "The stack and team skills are given, but a clause in the middle says the third-party sandbox is gone, which changes environment and data choices. The tool choice is pulled toward fashionable options by the textbook, while the team knows only Selenium."
+    }
+  ]
+}

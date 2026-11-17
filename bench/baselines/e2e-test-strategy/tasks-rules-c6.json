@@ -1,0 +1,132 @@
+{
+  "format_version": 1,
+  "skill": "e2e-test-strategy",
+  "batch": "rules-c6",
+  "generated_at": "2026-11-10T11:55:53.286Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "97ac76e8309666c00c5990610eb052349490fd9d2965e04022ace062f04fdb59",
+  "scenarios": [
+    {
+      "id": "e2e-test-strategy-rules-1",
+      "title": "Grocery delivery slots and substitutions ranking",
+      "target_section": "Stage 7: Prioritization Matrix Generation",
+      "prompt": "We run an online grocery delivery shop (web storefront plus REST API). This sprint we're adding scheduled delivery slots and a \"pick my substitutes\" option at checkout. It's an enhancement. I haven't decided what size of release it'll ship as, so don't wait on me for that.\n\nThings we could cover with browser-level automated tests:\n\n1. Customer logs in, picks a slot, pays by card, gets an order confirmation\n2. Customer sets substitution preferences, then the picker app shows them\n3. Admin edits a product's price on the single \"Edit product\" screen\n4. Nightly job syncs supplier prices into the catalogue\n5. Postcode field shows a red error if it's not 5 digits (pure front-end check)\n6. Customer cancels an order and gets a refund to the card\n7. Admin lists all orders in a table with a status filter\n\nWe have time for maybe a handful of tests. Which should get automated at that level, in what order, and why? I want to be able to show my manager how you decided on the order, not just the order.",
+      "rubric": [
+        "Gives each kept candidate (e.g. slot checkout, refund on cancel, substitution preferences) separate scores for business impact, technical risk and change weight, plus a combined number, so the order can be checked.",
+        "The final order is consistent with the numbers shown, with the card checkout/slot flow ranked above the substitution-preference flow.",
+        "Leaves out the single-screen admin price edit, the nightly supplier price sync and the 5-digit postcode check from the browser-level set, naming a lower level (integration, component or unit) for each.",
+        "Puts login plus card payment with slot booking (and the refund path if kept) in the top tier as must-have tests.",
+        "Does not stop to ask for the release size; picks a reasonable assumption (e.g. a minor release) and says it is an assumption."
+      ],
+      "why_skill_matters": "A mixed list of true multi-step flows and plain single-step screens, a job and a client-only check, with a gap in the release size. It makes ranking with visible scores, exclusion of low-level items, must-have payment/auth flows and defaulting of missing inputs matter."
+    },
+    {
+      "id": "e2e-test-strategy-rules-2",
+      "title": "Banking web app test run plan for the pipeline",
+      "target_section": "Test Execution Timing",
+      "prompt": "Our team (5 devs, 1 QA) builds a retail banking web portal: Angular front end, Spring Boot REST API, Oracle DB, all deployed via GitLab CI to a staging box, then prod. Everyone on the team writes Java daily; only one person has touched browser automation, and that was Selenium years ago.\n\nWe've agreed 14 end-to-end tests to build. Some depend on earlier ones: \"open account\" has to happen before \"first deposit\", which has to happen before \"transfer between accounts\", and \"statement download\" needs a transfer to exist. The other tests (login failure lockout, password reset, change address, etc.) don't depend on anything.\n\nPipeline today: merge request -> build/unit -> merge to main -> deploy to staging -> manual approval -> prod.\n\nNobody has decided which tool to use or when the tests should run. Can you lay out which tests go at which pipeline stage, how long each stage should take roughly, whether we run them in series or parallel, and what tool you'd choose for us?",
+      "rubric": [
+        "Assigns a small quick set of the most critical tests to run before merge, a larger set after merge/on staging, and a minimal check after prod deployment, with the fuller suite scheduled later (e.g. nightly).",
+        "Gives approximate durations per stage (a few minutes for the early checks, tens of minutes for the fuller runs).",
+        "Recommends a mixed approach for 14 tests: the open account → deposit → transfer → statement chain runs in order, the independent tests (lockout, password reset, address change) run in parallel.",
+        "Notes that parallel tests need separate data/accounts so they don't collide.",
+        "Picks a browser automation tool for the Angular portal and ties the choice to the team's situation (Java-heavy team, one person with old Selenium experience), not just generic merits.",
+        "Works from the stack and pipeline given without asking for documents or file locations first."
+      ],
+      "why_skill_matters": "Pipeline-wiring request with a dependency chain among 14 tests and a team-experience detail for tool choice."
+    },
+    {
+      "id": "e2e-test-strategy-rules-3",
+      "title": "How much end-to-end coverage do we really have",
+      "target_section": "Stage 2: Gap Analysis Review",
+      "prompt": "I'm new on a travel-booking site team and my lead asked me to tell them how much end-to-end coverage we already have before planning more. Here's what I found.\n\nFrom the old gap report:\n\"e2e/ folder: 11 spec files (search.spec, booking.spec, login.spec, payment.spec, ...). Unit: 140 files. Integration: 38 files. Looks like E2E is about 6% of test files.\"\n\nAnd I ran the Cypress job locally last night, the tail of output:\n\n```\n(Run Finished)\n  Spec            Tests  Passing  Failing  Pending\n  search.cy.ts      14      14       0        0\n  booking.cy.ts     22      19       3        0\n  login.cy.ts        9       9       0        0\n  payment.cy.ts     17      12       0        5\n  ... (7 more specs)\n  All specs        96      81       3       12\n```\n\nThe site is a React front end with a REST backend, and the team has mostly used one person's Cypress setup so far. Can you tell me what our current end-to-end situation is, whether it's in line with a sensible split for this kind of app, and which tool we should keep using for new tests? Please keep it short.",
+      "rubric": [
+        "Reports both figures: 11 spec files and 96 individual test cases from the Cypress run, and says the case count from the runner is the one to trust.",
+        "Does not state the 6% figure as the end-to-end share without caveat; points out that it is based on counting files and the other layers' file counts do not equal case counts.",
+        "Mentions the run's real state: 81 passing, 3 failing (in booking) and 12 pending/skipped (5 in payment), rather than treating all 96 as working coverage.",
+        "Gives a keep-or-switch recommendation for the React/REST app tied to the facts that the existing setup is Cypress and one person maintains it.",
+        "Answers from the pasted report and output without asking for the repository or files."
+      ],
+      "why_skill_matters": "The gap report counts files while the pasted runner output has test cases; the pull is toward the 6% file figure. Also a short framework question with team context."
+    },
+    {
+      "id": "e2e-test-strategy-rules-4",
+      "title": "Telehealth scheduler with sandbox payments and parallel runs",
+      "target_section": "Environment Configuration",
+      "prompt": "I'm setting up automated browser/API tests for a telehealth appointment app. Architecture: single-page front end on a CDN, API Gateway + Lambda functions, DynamoDB, Cognito for sign-in, Stripe for copays (they give us a test mode), and SendGrid for appointment reminder emails. We'll deploy to AWS accounts via CDK.\n\nAbout 28 tests are planned. Each one registers its own patient, books a visit, pays a copay, and some check the reminder email shows up. We want them to run 4 at a time to keep the suite under half an hour, and we absolutely cannot have anything touching real patient data.\n\nWhat do we need in place for the test environment, and how should test data be handled so parallel runs don't trip over each other? Which kind of environment would you use given the architecture?",
+      "rubric": [
+        "Requires a test database/tables separate from production (separate DynamoDB tables or account) with no real patient data.",
+        "Covers Stripe test mode / sandbox keys and a mock or sandbox mailbox for SendGrid reminders, plus pre-made test users/Cognito pool with proper roles.",
+        "Picks an environment type and justifies it using the serverless architecture (e.g. a dedicated test stack deployed via CDK, or per-run stack).",
+        "Creates patients and appointments through the app's API/sign-up flow rather than writing directly to DynamoDB, with unique identifiers per run (timestamps/UUIDs in emails).",
+        "Describes cleaning up created records after each test or run and keeping data isolated between the 4 concurrent workers.",
+        "Explains that with 28 tests the parallel/grouped approach fits, with any dependent steps ordered within a test and isolation making concurrency safe.",
+        "Proceeds on the architecture given without asking for design documents."
+      ],
+      "why_skill_matters": "Serverless app with external payment and email providers and parallel workers; makes environment requirements and data isolation matter."
+    },
+    {
+      "id": "e2e-test-strategy-rules-5",
+      "title": "Patch release notes with one buried compliance line",
+      "target_section": "Stage 6: E2E Test Candidate Identification",
+      "prompt": "Patch 2.8.3 of our clinic records system goes live next Thursday. Pasting the release notes, can you tell me which ones deserve proper browser-level automated tests (we only have bandwidth for about four) and which don't? Security fix mode: no, it's a bug fix release.\n\n- Fixed typo in \"Referral\" label on the patient summary page\n- Fixed the \"Add allergy\" form saving blank notes (single form, one API call)\n- Fixed the nightly export job sometimes skipping the last row\n- Date picker on the intake form no longer accepts a date before 1900 (browser-side only)\n- Fixed missing entries in the activity trail so every view or edit of a patient chart by a nurse or doctor is recorded with user and time (needed for our annual HIPAA audit)\n- Fixed the \"Print summary\" button being greyed out on Safari\n- Fixed receptionist role being able to open billing screens after the session was idle (role check ran before the session refresh)\n- Fixed the patient list pagination showing page 0\n- Internal: upgraded logging library\n\nPlease rank the ones you'd automate and give a reason for each, and tell me what to do with the rest.",
+      "rubric": [
+        "Selects the chart-access activity trail fix (view/edit recorded with user and time) as a must-have top-priority test, citing the audit requirement.",
+        "Selects the receptionist-role billing access fix as a must-have top-priority test because it concerns access control.",
+        "Leaves the Add allergy blank-notes fix, the pagination page 0 fix and the label typo out of the browser-level set, stating they are covered by lower-level (API/integration/component) tests or review.",
+        "Leaves the nightly export job and the browser-side pre-1900 date check out of the browser-level set with a reason (background job; client-only validation).",
+        "Orders the chosen tests with a stated basis combining impact, risk and the bug-fix nature, with scores or a clear weighted comparison.",
+        "Takes the stated \"bug fix, patch\" context as given and does not ask for further inputs before ranking."
+      ],
+      "why_skill_matters": "A noisy release-notes list in which two items (audit trail, role check) are compliance/access control flows that must be top tier, while many others are trivial or low-level. The audit line is easy to treat as a minor logging fix."
+    },
+    {
+      "id": "e2e-test-strategy-rules-6",
+      "title": "Indie game studio asking what to run when",
+      "target_section": "When to Run E2E Tests",
+      "prompt": "hey, tiny studio (4 people) making a browser-based multiplayer card game. Stack: Svelte front end, a Go API, Postgres, Docker compose for everything, GitHub Actions for CI. We use Stripe for buying cosmetic card backs and have a feature flag service for rolling out new modes.\n\nWe're about to add end-to-end tests and I have no idea where to start. I'm planning around 8 tests: sign up, log in, join a match, play a full round, buy a card back, equip it, reconnect after dropping, and report a player. Our designer said \"just run everything on every commit\" but a full run will probably take 25 mins.\n\nWhen should each test run, so we don't annoy ourselves? And what tool would you pick, and what does the test setup need (we don't want to charge real cards and we turn on new modes by flag)? Keep it friendly, we're not enterprise people.",
+      "rubric": [
+        "Pushes back on running the whole 25-minute suite on every commit; proposes a quick critical-path subset (sign up/log in/join a match) before merge and fuller runs after merge, before release and on a schedule.",
+        "Gives rough run times for each stage (e.g. under about 5 minutes for the early check, longer for fuller runs).",
+        "Names a browser automation tool for the Svelte front end and gives reasons connected to this project (small team, Docker/GitHub Actions setup, multi-browser or debugging needs).",
+        "Says to use Stripe test mode/sandbox rather than real cards, a Postgres database separate from production, and test accounts.",
+        "Includes the feature flags (setting which modes are on during tests) and logging/monitoring in the environment needs, and suggests a fitting environment (e.g. compose-based ephemeral stack per run).",
+        "With 8 tests, favors simple sequential running or a light split, mentioning order for signup before login.",
+        "Answers from what is stated without asking for documents or change/release type; if it assumes either, it says so."
+      ],
+      "why_skill_matters": "Casual short request from a small team with a pipeline question, tool choice and environment needs including payments and flags."
+    },
+    {
+      "id": "e2e-test-strategy-rules-7",
+      "title": "Learning platform major release with 40 tests",
+      "target_section": "Execution Strategy",
+      "prompt": "Our learning platform (React front end, Django REST backend, Postgres) ships v5.0 in six weeks. Major release: new single sign-on for universities, a rebuilt gradebook, timed quizzes, and certificate PDFs on course completion.\n\nThe QA team drafted around 40 end-to-end test ideas. Here's a sample so you see the flavour:\n\n- SSO login through a university identity provider, first-time account creation\n- Student starts timed quiz, answers, submits, grade appears in gradebook\n- Teacher overrides a grade; student sees the update and gets notified\n- Student completes final lesson, certificate PDF is generated and downloadable\n- Teacher creates a course (needs the SSO teacher account to exist)\n- Student enrols in the course (needs the course to exist)\n- Admin changes the site banner text (one field)\n- Weekly digest email job\n\nQuestions: how should we group and run these 40 so the run stays fast, how do we rank the full list in a way I can defend to the product owner, and how do we deal with the data - tests create courses, students and grades and I'm worried they'll stomp on each other when they run concurrently.",
+      "rubric": [
+        "Recommends running mostly in parallel with groups for a suite over 30 tests, while keeping chain tests (teacher account → create course → enrol student) ordered inside a group.",
+        "Explains the choice by test count and the dependencies named in the sample, not just \"parallel is faster\".",
+        "Has each test create its own unique courses, students and grades through the app's API with unique identifiers per run, not writing into Postgres directly.",
+        "Covers cleanup after tests and separation so concurrent tests don't share records; may keep read-only reference data static.",
+        "Offers a scoring approach for ranking the 40 ideas using business impact, technical risk and a weight for the change (major release), with example scores for several of the sampled tests so the product owner can follow.",
+        "Flags the banner text change and the weekly digest job as better handled by lower-level tests, not browser-level ones.",
+        "Uses the given stack, major release and sample without asking for document paths."
+      ],
+      "why_skill_matters": "A large suite with explicit dependency chains and concurrency worry, plus ranking and a couple of low-level items in the sample."
+    },
+    {
+      "id": "e2e-test-strategy-rules-8",
+      "title": "Fleet tracker authorization fix with pytest counts",
+      "target_section": "Stage 5: Change Impact Assessment",
+      "prompt": "We maintain a fleet-tracking web app (Vue front end, FastAPI backend, Postgres). We just fixed a security hole: a dispatcher from company A could view vehicle locations of company B by changing the vehicle id in the URL. Fix goes out as a patch release this week.\n\nCurrent tests, from our CI:\n\n```\n$ ls tests/e2e | wc -l\n6\n$ pytest tests/e2e --collect-only -q | tail -1\n73 tests collected\n$ pytest tests/ --collect-only -q | tail -1\n611 tests collected\n```\n\nCandidates we're considering for browser-level tests:\na) Dispatcher logs in and opens own vehicle map, then tries another company's vehicle URL and gets denied\nb) Dispatcher assigns driver to a vehicle (single form, one API call)\nc) Driver mobile page marks delivery complete, customer gets a tracking-link email\nd) Admin adds a new company and invites its first dispatcher\ne) Hourly job purges GPS points older than 90 days\nf) \"Dark mode\" toggle in settings\n\nWhich of these should be automated end-to-end and in what order? Also, is our end-to-end proportion ok, and how big should the effort be for a patch?",
+      "rubric": [
+        "Puts the cross-company access denial test (a) at the very top as a must-have, tied to the authorization nature of the fix.",
+        "Shows per-candidate scores for impact, risk and change weight with a combined result, giving the security change a high weight so (a) clearly comes first.",
+        "Excludes the single-form driver assignment (b), the GPS purge job (e) and the dark mode toggle (f) from the browser-level set, with a lower-level destination and reason.",
+        "Reports the end-to-end count as 73 test cases across 6 files (not 6 tests), and works out the proportion from 73 of 611 cases (about 12%).",
+        "Notes that 6 is the number of files and should not be used as the test count.",
+        "Takes the stated security fix and patch release as given and proceeds without asking for files."
+      ],
+      "why_skill_matters": "A security fix on a patch release with six candidates, pytest collection output distinguishing file and case counts, and mixed single-step items."
+    }
+  ]
+}

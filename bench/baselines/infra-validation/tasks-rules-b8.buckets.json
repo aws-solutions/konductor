@@ -1,0 +1,223 @@
+{
+  "format_version": 1,
+  "skill": "infra-validation",
+  "batch": "rules-b8",
+  "rules": {
+    "infra-validation-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "infra-validation-r02": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "infra-validation-r03": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    },
+    "infra-validation-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "infra-validation-r05": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "infra-validation-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "infra-validation-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "infra-validation-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "infra-validation-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "infra-validation-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "infra-validation-r11": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "infra-validation-r12": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "infra-validation-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r10"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "infra-validation-r11"
+      },
+      "5": {
+        "bucket": "format",
+        "rule_id": "infra-validation-r03"
+      }
+    },
+    "infra-validation-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r10"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "infra-validation-r11"
+      },
+      "5": {
+        "bucket": "format",
+        "rule_id": "infra-validation-r12"
+      }
+    },
+    "infra-validation-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r08"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "infra-validation-r11"
+      },
+      "5": {
+        "bucket": "format",
+        "rule_id": "infra-validation-r12"
+      }
+    },
+    "infra-validation-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r08"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "infra-validation-r11"
+      },
+      "5": {
+        "bucket": "format",
+        "rule_id": "infra-validation-r12"
+      }
+    },
+    "infra-validation-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r06"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "infra-validation-r11"
+      },
+      "5": {
+        "bucket": "format",
+        "rule_id": "infra-validation-r12"
+      }
+    },
+    "infra-validation-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r09"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "infra-validation-r11"
+      },
+      "5": {
+        "bucket": "format",
+        "rule_id": "infra-validation-r12"
+      }
+    },
+    "infra-validation-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "infra-validation-r10"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "infra-validation-r11"
+      },
+      "5": {
+        "bucket": "format",
+        "rule_id": "infra-validation-r03"
+      }
+    }
+  }
+}

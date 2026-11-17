@@ -1,0 +1,217 @@
+{
+  "format_version": 1,
+  "skill": "policy-validation",
+  "batch": "rules-b8",
+  "rules": {
+    "policy-validation-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "policy-validation-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "policy-validation-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "policy-validation-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "policy-validation-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "policy-validation-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "policy-validation-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "policy-validation-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "policy-validation-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "policy-validation-r10": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "policy-validation-r11": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "policy-validation-r12": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "policy-validation-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r01"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "policy-validation-r10"
+      },
+      "5": {
+        "bucket": "format",
+        "rule_id": "policy-validation-r12"
+      }
+    },
+    "policy-validation-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r08"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "policy-validation-r10"
+      }
+    },
+    "policy-validation-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r08"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "policy-validation-r10"
+      },
+      "5": {
+        "bucket": "format",
+        "rule_id": "policy-validation-r12"
+      }
+    },
+    "policy-validation-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r04"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r08"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "policy-validation-r10"
+      }
+    },
+    "policy-validation-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r08"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "policy-validation-r10"
+      }
+    },
+    "policy-validation-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r01"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "policy-validation-r03"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "policy-validation-r10"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "policy-validation-r12"
+      }
+    }
+  }
+}

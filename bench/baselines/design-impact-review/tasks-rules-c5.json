@@ -1,0 +1,113 @@
+{
+  "format_version": 1,
+  "skill": "design-impact-review",
+  "batch": "rules-c5",
+  "generated_at": "2026-11-10T11:41:45.378Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "d27ec823c911d384f72df5aa952926e4e361b7281035b5f8d356358b1b0b599e",
+  "scenarios": [
+    {
+      "id": "design-impact-review-rules-1",
+      "title": "Add salary field to employee records",
+      "target_section": "Procedure",
+      "prompt": "We have an internal HR tool (Postgres + a REST API + a React admin screen). I'm adding a `base_salary` numeric column to the `employees` table so payroll can see it. The existing GET /employees/:id endpoint serializes the whole row via a generic `row_to_json` style helper, and the admin list screen shows every field it receives in a details drawer. Managers with the \"team_lead\" role can already call GET /employees/:id for their reports. We also have a security review doc from last year that says \"employee records contain only contact and job-title data, classified Internal\". Here's the migration I'm about to run:\n\n```sql\nALTER TABLE employees ADD COLUMN base_salary NUMERIC(12,2);\n```\n\nGo ahead and write the migration and the model change, and tell me anything I should know before I ship.",
+      "rubric": [
+        "Looks beyond the migration to the endpoint, the admin drawer and the old security review document that depend on the employees table.",
+        "Points out that the generic serialization will now return base_salary to team_lead callers of GET /employees/:id, so exposure of the new field must be decided.",
+        "Notes the salary data raises sensitivity above the \"contact and job-title, Internal\" classification, so the security analysis is outdated, and says tests are needed for who may see salary.",
+        "Judges the artifacts separately with reasons, e.g. the security document and endpoint as needing change, versus the migration itself or unrelated parts as fine.",
+        "Tells the user about the invalidated security classification/exposure issue and asks for a decision (and suggests involving security or design owners) rather than just shipping it.",
+        "Gives recommendations while leaving the decision about whether to hold the migration, restrict the field or proceed to the user."
+      ],
+      "why_skill_matters": "A new sensitive column lands in a system where a generic serializer and an admin UI will leak it to a broader role, and the old security doc assumes no such data. Makes r01, r02, r06, r07 matter."
+    },
+    {
+      "id": "design-impact-review-rules-2",
+      "title": "Rename response fields in shipping API",
+      "target_section": "Step 2 — Trace impact",
+      "prompt": "Mobile team here. Backend wants to change the response of GET /shipments/{id} from\n\n```json\n{ \"id\": \"s_88\", \"eta\": \"2026-12-01\", \"carrier\": \"DHL\", \"events\": [ {\"ts\": 1733000000, \"code\": \"OUT\"} ] }\n```\n\nto\n\n```json\n{ \"id\": \"s_88\", \"estimatedDelivery\": { \"date\": \"2026-12-01\", \"confidence\": \"high\" }, \"carrier\": { \"name\": \"DHL\", \"trackingUrl\": \"https://...\" }, \"events\": [ {\"timestamp\": \"2026-11-30T10:00:00Z\", \"status\": \"OUT_FOR_DELIVERY\"} ] }\n```\n\nOur iOS and Android apps parse `eta` as a string and show the carrier as plain text on the tracking screen, and the events timeline sorts by integer `ts`. The shipments table stores carrier as a varchar and eta as a date. There's also a partner webhook that re-sends this same shape to retailers. The new trackingUrl comes from user-supplied carrier config. Can you just tell me what the backend should do to roll this out?",
+      "rubric": [
+        "Identifies that the iOS/Android tracking screen and the timeline sorting on integer ts will break with the new shape.",
+        "Addresses the data model mismatch: carrier stored as varchar and no place for confidence or trackingUrl, so the storage must change or be mapped.",
+        "Flags the trackingUrl built from user-supplied config as a fresh attack surface (e.g. injection/open redirect) needing review, and test updates for the new shape.",
+        "Also considers the partner webhook that re-sends this shape to retailers as a dependent consumer.",
+        "Says the contract change invalidates existing consumers and should be raised with the owners/user before rollout rather than done silently.",
+        "Offers options (versioning, parallel fields, proceed) and leaves the rollout decision to the user."
+      ],
+      "why_skill_matters": "Contract change with mobile consumers, a webhook, a varchar column and a new URL field from user input."
+    },
+    {
+      "id": "design-impact-review-rules-3",
+      "title": "Dropping guest checkout requirement",
+      "target_section": "Step 1 — Identify the change's origin layer",
+      "prompt": "Product just decided: from January, every purchase on our ticketing site requires a registered account. Guest checkout is going away. The original story said \"As a visitor I can buy tickets with just an email so I don't have to sign up\", with acceptance criteria about email-only purchase and a confirmation email with a magic link to view tickets.\n\nCurrently: orders table has a nullable user_id and a guest_email column; the checkout API accepts either a session token or an email; the FE has a three-step checkout with a \"continue as guest\" button; the threat model covers rate limiting on guest email lookups; and the QA suite has about 40 guest-flow end-to-end tests. Account creation today is a separate /register page and a POST /register endpoint that returns no session.\n\nI'm the dev who got this ticket. My idea: replace the guest button with an inline \"create account\" form right in step 1 of checkout, so buyers never leave the page. How should I start? I was thinking just do that and hide the guest button and move on.",
+      "rubric": [
+        "Treats this as a requirement-level change and walks through all downstream artifacts: the overall design, the screens, the security analysis, the API, the stored data and the tests, not just hiding the button.",
+        "Names specifics: nullable user_id/guest_email, the checkout API accepting an email, the magic-link confirmation, the guest lookup rate limiting, and the ~40 guest tests.",
+        "Notes the inline create-account form needs API support that does not exist yet (POST /register returns no session, so a new or changed endpoint is needed) and checks it still fits the new account-required requirement.",
+        "Gives a separate verdict per artifact (e.g. API and tests needing update, threat model partly outdated, something fine) with reasons.",
+        "Recommends involving the product owner for the requirement and design owners for design artifacts before continuing, rather than just hiding the button.",
+        "Leaves sequencing and go/no-go to the user instead of dictating.",
+        "Opens with a one-line statement of the change, that it originates at the requirement level, and the reason, then lists each artifact with status, impact and action."
+      ],
+      "why_skill_matters": "A requirement change that cascades everywhere, with a tempting local shortcut and a proposed UI flow the API cannot yet support."
+    },
+    {
+      "id": "design-impact-review-rules-5",
+      "title": "Subtle PII in log refactor",
+      "target_section": "Anti-patterns this method catches",
+      "prompt": "Cleanup PR for our Go notification service, mostly internal. Summary of what I did:\n\n- Moved `sender.go` into a `delivery` package, split `Send()` into `buildPayload()` and `dispatch()`.\n- Renamed a few private vars.\n- Replaced the custom retry loop with the standard backoff lib.\n- In `dispatch()` I now log the full request via `log.Printf(\"dispatch %+v\", req)` so ops can debug failures faster (before it only logged req.ID). `req` contains `Recipient` (email/phone), `Body`, and `Template`.\n\nNo public function signatures changed, the HTTP API is the same, DB schema untouched. Can you give me a quick sanity check on whether this is safe to merge? Our threat model doc says logs contain only IDs and status codes and are shipped to a third-party log vendor.",
+      "rubric": [
+        "Looks past the refactor to the dependent threat model document and the log shipping pipeline rather than calling it purely local.",
+        "Says the package move, function split, renames and retry library swap are contained to implementation, with a reason, without alarm.",
+        "Distinguishes the logging change (invalidates the \"IDs and status codes only\" assumption) from the other refactor parts, judging each separately.",
+        "Flags the logging of recipient contact data and body to the third-party vendor as a conflict with the threat model and asks the user to decide/involve security before merge.",
+        "Presents the finding and options (log only ID, redact fields, update threat model) while leaving the merge decision to the user."
+      ],
+      "why_skill_matters": "A mostly-internal refactor hides one clause that changes data flow to a third party."
+    },
+    {
+      "id": "design-impact-review-rules-6",
+      "title": "Stale runbook after timeout change",
+      "target_section": "Recommendation",
+      "prompt": "I'm changing the default HTTP client timeout in our internal reporting service from 30s to 45s because a slow upstream keeps timing out. It's a single config constant. Nothing in the API, schema or UI changes, and the behavior is all still correct. But I know our README says \"requests time out after 30 seconds\", our ops runbook has an alert threshold set to fire at 35s latency, and there's a test `test_timeout_30s` that asserts the value. Nobody has said I can't change it. What should I do about all that, and should I just merge?",
+      "rubric": [
+        "Concludes that nothing is broken but the README, runbook alert threshold and test are now out of sync.",
+        "Proposes tracking the doc/runbook/test updates as follow-up items and asks whether to go ahead with the merge.",
+        "Treats items individually: the 35s alert becoming misleading, the README being wrong, the test needing update, versus API/schema/UI unaffected.",
+        "Checks the dependents of the constant (docs, alerting, tests) instead of just changing the number.",
+        "Does not escalate this into a heavy design review or involve architects/product owners."
+      ],
+      "why_skill_matters": "Drift without invalidation: follow-ups and a question."
+    },
+    {
+      "id": "design-impact-review-rules-7",
+      "title": "Subtle retention change buried in sprint notes",
+      "target_section": "When to apply it",
+      "prompt": "Can you turn these standup notes into a short task list for me? Just the tasks.\n\n- Maria: fixing the date picker off-by-one on the invoices page, spec already says inclusive end date so it's just a bug\n- Dev: renaming `usr_nm` to `userName` in the internal helper, no behavior change\n- Tomas: bumping the eslint config\n- Priya: to cut storage costs, we'll start deleting uploaded scan files after 30 days instead of keeping them for 7 years. Just a cron change, one line. Legal said 7 years in the contract template, and the audit export screen lets customers download scans up to 7 years back.\n- Lena: update the footer copyright year",
+      "rubric": [
+        "Notices that the 30-day deletion conflicts with the 7-year retention requirement from the contract and the audit export that promises 7 years of downloads.",
+        "Warns the user about Priya's item rather than listing it as a plain cron task, and suggests involving the business/legal owner before it proceeds.",
+        "Notes the audit export screen and its data would be impacted by the deletion, requiring tests or screen changes.",
+        "Lists the date picker bug fix, rename, eslint bump and footer year as simple tasks without extra analysis.",
+        "Flags the issue and leaves the decision to the user instead of dropping or rewriting the task on its own."
+      ],
+      "why_skill_matters": "A plain formatting request with one hidden requirement-level change among trivial items."
+    },
+    {
+      "id": "design-impact-review-rules-8",
+      "title": "Add nullable column used only internally",
+      "target_section": "Step 3 — Classify each impacted artifact",
+      "prompt": "Working on a scheduling service. I want to add a `last_synced_at` timestamp column (nullable) to the `calendar_connections` table so our background sync worker can skip connections synced in the last 5 minutes. The API never selects that table directly: the public endpoints go through a `ConnectionDTO` that lists fields explicitly, and the admin UI only calls those endpoints. The worker is the only reader and writer. The data is not personal. Our design doc describes the sync worker as \"polls every connection every cycle\". Plan is migration plus worker change. Anything else I should look at, or can I go?",
+      "rubric": [
+        "Concludes the API and UI are unaffected because the DTO lists fields explicitly, and gives that reason, without raising alarms.",
+        "Notes the design doc's \"polls every connection every cycle\" statement is now out of date but still harmless, suggests tracking a doc update and asks whether to proceed.",
+        "Considers exposure through the API, data sensitivity (not personal) and test coverage for the skip-if-recent logic.",
+        "Gives a separate verdict per artifact (API, UI, threat model, design doc, tests) rather than one overall verdict.",
+        "Gives its assessment and leaves the proceed decision to the user."
+      ],
+      "why_skill_matters": "A data-model change with mostly no impact and one stale doc."
+    }
+  ]
+}

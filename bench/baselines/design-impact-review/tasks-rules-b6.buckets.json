@@ -1,0 +1,255 @@
+{
+  "format_version": 1,
+  "skill": "design-impact-review",
+  "batch": "rules-b6",
+  "rules": {
+    "design-impact-review-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-impact-review-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-impact-review-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-impact-review-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-impact-review-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-impact-review-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-impact-review-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-impact-review-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-impact-review-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-impact-review-r10": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "design-impact-review-r11": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "design-impact-review-r12": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "design-impact-review-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r06"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r01"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-impact-review-r11"
+      }
+    },
+    "design-impact-review-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r06"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r02"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "design-impact-review-r11"
+      },
+      "8": {
+        "bucket": "format",
+        "rule_id": "design-impact-review-r12"
+      }
+    },
+    "design-impact-review-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r02"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-impact-review-r11"
+      }
+    },
+    "design-impact-review-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r06"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "design-impact-review-r10"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r01"
+      }
+    },
+    "design-impact-review-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r08"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r03"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "design-impact-review-r11"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "design-impact-review-r12"
+      }
+    },
+    "design-impact-review-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r06"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r09"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-impact-review-r11"
+      }
+    },
+    "design-impact-review-rules-8": {
+      "1": {
+        "bucket": "guard",
+        "rule_id": "design-impact-review-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r06"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-impact-review-r01"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-impact-review-r11"
+      }
+    }
+  }
+}

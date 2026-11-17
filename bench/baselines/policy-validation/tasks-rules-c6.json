@@ -1,0 +1,129 @@
+{
+  "format_version": 1,
+  "skill": "policy-validation",
+  "batch": "rules-c6",
+  "generated_at": "2026-11-10T11:57:01.547Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "826e3d2cbcc871acc90e528ace4531c64bfeca6964ad8ca2692bdb185dec2296",
+  "scenarios": [
+    {
+      "id": "policy-validation-rules-1",
+      "title": "Lambda role with an allow-everything statement",
+      "target_section": "CATEGORY 1: IAM POLICY DESIGN (Critical Priority)",
+      "prompt": "hey, our data team is about to ship a nightly report generator. Here's the role policy Terraform creates for the Lambda. can you tell me if anything is off before I merge?\n\n```json\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"ReadSourceData\",\n      \"Effect\": \"Allow\",\n      \"Action\": [\"dynamodb:Query\", \"dynamodb:GetItem\"],\n      \"Resource\": \"arn:aws:dynamodb:us-east-1:123456789012:table/sales-raw\"\n    },\n    {\n      \"Sid\": \"DoEverythingForNow\",\n      \"Effect\": \"Allow\",\n      \"Action\": \"*\",\n      \"Resource\": \"*\"\n    },\n    {\n      \"Sid\": \"SendReport\",\n      \"Effect\": \"Allow\",\n      \"Action\": \"ses:SendEmail\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n```\n\nDev said the \"DoEverythingForNow\" statement was just to get the first deploy through. Nobody wrote down why it's still there. The reports also get archived somewhere, I think a bucket Priya is setting up, but that's not in this policy.",
+      "rubric": [
+        "Identifies the DoEverythingForNow statement (every action on every resource) as the most severe problem, to be fixed before merge, and notes that no justification for it exists.",
+        "Proposes replacing the allow-everything statement with specific actions and named resource identifiers (for example the sales-raw table ARN and the report destination) rather than another wildcard.",
+        "Points out that SendReport permits ses:SendEmail on all resources and suggests limiting it to a specific verified sender identity ARN.",
+        "Notes that the report archive bucket is undefined here and advises that it be encrypted at rest and refuse non-TLS requests once it is created.",
+        "Shows the current offending statement next to a corrected version, states the impact of leaving it (a compromised function gets control of the whole account), and gives concrete remediation steps.",
+        "Presents the allow-everything problem first and lesser items such as SES scoping after it, clearly separated from optional tightening."
+      ],
+      "why_skill_matters": "A short policy with an explicit allow-all statement and an unscoped SES statement, plus a mention of an archive bucket that is not defined. Makes the wildcard rule matter, with a side hook toward storage encryption and the ordering of findings."
+    },
+    {
+      "id": "policy-validation-rules-2",
+      "title": "Partner role in CDK with open trust",
+      "target_section": "CATEGORY 1: IAM POLICY DESIGN (Critical Priority)",
+      "prompt": "We're a small logistics company and a freight-tracking partner needs to push shipment updates into our account. Their account ID is 123456789012. Our contractor wrote this CDK for the role they'll use:\n\n```ts\nconst partnerRole = new iam.Role(this, 'PartnerRole', {\n  assumedBy: new iam.AccountPrincipal('123456789012'),\n});\n\npartnerRole.addToPolicy(new iam.PolicyStatement({\n  actions: ['dynamodb:*'],\n  resources: ['*'],\n}));\n```\n\nThe partner only ever needs to write rows to our `ShipmentEvents` table in us-east-2 (our account is 111122223333). Is this fine to hand over? We're not doing anything fancy on the monitoring side yet.",
+      "rubric": [
+        "Flags the role's trust of the partner account 123456789012 as a must-fix because it has no external ID or other restricting condition, so any principal in that account could use the role.",
+        "Supplies a corrected version of the role definition that adds an external ID condition (optionally also a narrower principal or another condition).",
+        "Flags dynamodb:* on all resources as severe and replaces it with write-only actions (such as PutItem or BatchWriteItem) on the ShipmentEvents table ARN in us-east-2 for account 111122223333.",
+        "Recommends auditing use of this role, such as an all-region audit trail and alarms for unexpected role assumptions or policy changes.",
+        "For each problem explains the impact (for example the partner side could read or delete every table) and gives current versus corrected code with remediation steps."
+      ],
+      "why_skill_matters": "Concrete CDK role trusting a partner account with no conditions plus a service-wide permission on all resources. Matches the cross-account trust and wildcard rules, with an audit hook in the closing remark."
+    },
+    {
+      "id": "policy-validation-rules-3",
+      "title": "Survey stack with mixed encryption decisions",
+      "target_section": "CATEGORY 2: ENCRYPTION COVERAGE (Critical Priority)",
+      "prompt": "Can someone sanity check this Terraform for our new patient-feedback survey app (EU customers, names and emails stored, eu-west-1)? Going to deploy this afternoon.\n\n```hcl\n# Decision: S3-managed keys for the bucket. DPO approved 2026-10-12,\n# survey answers are free text and judged low sensitivity.\nresource \"aws_s3_bucket\" \"responses\" {\n  bucket = \"feedback-responses-prod\"\n}\n\nresource \"aws_s3_bucket_server_side_encryption_configuration\" \"responses\" {\n  bucket = aws_s3_bucket.responses.id\n  rule {\n    apply_server_side_encryption_by_default {\n      sse_algorithm = \"AES256\"\n    }\n  }\n}\n\nresource \"aws_db_instance\" \"responses\" {\n  engine              = \"postgres\"\n  instance_class      = \"db.t3.medium\"\n  allocated_storage   = 50\n  username            = \"admin\"\n  password            = \"Sur3yPass2024!\"\n  publicly_accessible = false\n}\n\nresource \"aws_ebs_volume\" \"app\" {\n  availability_zone = \"eu-west-1a\"\n  size              = 100\n}\n\nresource \"aws_iam_role_policy\" \"app\" {\n  role = aws_iam_role.app.id\n  policy = jsonencode({\n    Version = \"2012-10-17\"\n    Statement = [{\n      Effect   = \"Allow\"\n      Action   = \"s3:*\"\n      Resource = \"*\"\n    }]\n  })\n}\n```\n\nThere is no bucket policy file in the repo.",
+      "rubric": [
+        "Acknowledges the S3-managed key choice on the responses bucket as a documented, DPO-approved decision rather than an unexplained gap, treating any move to a customer-managed key as optional.",
+        "Reports that the database and the EBS volume have no encryption at rest, as severe, with the specific setting to enable on each (and that an existing database must be restored from an encrypted snapshot).",
+        "Notes that nothing denies non-TLS requests to the responses bucket and gives a concrete bucket policy fix.",
+        "Ties the problems to named GDPR provisions, such as Article 32 on security of processing, because EU personal data is stored.",
+        "Flags the app role's s3:* on all resources as an unjustified wildcard and proposes specific bucket actions on the feedback-responses-prod ARN.",
+        "Each finding explains impact and shows before and after Terraform with remediation steps."
+      ],
+      "why_skill_matters": "Terraform with one explicitly justified encryption choice, two stores with no encryption and no justification, a missing transport rule, and an app role with a service-wide wildcard, all in an EU personal data context."
+    },
+    {
+      "id": "policy-validation-rules-4",
+      "title": "Order-history key policy with app role over-granted",
+      "target_section": "CATEGORY 2: ENCRYPTION COVERAGE (Critical Priority)",
+      "prompt": "Reviewing the encryption key for our order-history DynamoDB table before go-live. Key policy statements (account 123456789012):\n\n```json\n{\n  \"Statement\": [\n    {\n      \"Sid\": \"RootAccess\",\n      \"Effect\": \"Allow\",\n      \"Principal\": {\"AWS\": \"arn:aws:iam::123456789012:root\"},\n      \"Action\": \"kms:*\",\n      \"Resource\": \"*\"\n    },\n    {\n      \"Sid\": \"KeyAdmins\",\n      \"Effect\": \"Allow\",\n      \"Principal\": {\"AWS\": \"arn:aws:iam::123456789012:role/SecurityAdmin\"},\n      \"Action\": [\"kms:Create*\",\"kms:Put*\",\"kms:Update*\",\"kms:Disable*\",\"kms:Decrypt\",\"kms:Encrypt\"],\n      \"Resource\": \"*\"\n    },\n    {\n      \"Sid\": \"AppUse\",\n      \"Effect\": \"Allow\",\n      \"Principal\": {\"AWS\": \"arn:aws:iam::123456789012:role/OrderServiceRole\"},\n      \"Action\": \"kms:*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n```\n\nAutomatic rotation is on. Anything you'd change?",
+      "rubric": [
+        "Flags that OrderServiceRole is granted every key action, including administration and deletion, and recommends limiting it to use-only actions such as decrypt and data key generation.",
+        "Flags that SecurityAdmin can both manage the key and use it for Decrypt and Encrypt, breaking separation of duties, and proposes removing the use actions from that statement.",
+        "Provides a corrected key policy with separate administrator and user statements.",
+        "Recommends alarms for the key being disabled or scheduled for deletion and for changes to this key's policy.",
+        "Explains the impact (a compromised order service could disable or delete the key and lose all order data) and shows before and after with remediation steps.",
+        "Places the application-role over-grant and the admin-decrypt problem ahead of nice-to-have suggestions."
+      ],
+      "why_skill_matters": "A key policy with two separation-of-duties breaches. Matters for the key policy rule and for alarming on key lifecycle events."
+    },
+    {
+      "id": "policy-validation-rules-5",
+      "title": "Internal booking tool with approved key decision and known gaps",
+      "target_section": "CATEGORY 2: ENCRYPTION COVERAGE (Critical Priority)",
+      "prompt": "Please review the security section of our design for the facilities-booking tool (internal staff only, room and desk reservations). I pasted the relevant bits.\n\n**Data classification:** Internal. No personal data beyond work email and employee ID.\n\n**Encryption decision:** DynamoDB table `Bookings` and S3 bucket `bookings-exports` use AWS-managed keys. Rationale: data is classified Internal, key-level audit separation is not required by our policy, and customer-managed keys would add roughly $1/key/month plus operational overhead with no control we need. Approved by the security lead on 2026-09-30.\n\n**Known gaps (from our own review):**\n| ID | Gap | Owner |\n|----|-----|-------|\n| G1 | No VPC endpoint for DynamoDB | Platform |\n| G2 | Log retention on the API log group is 14 days | Platform |\n\n**Next steps:** add DynamoDB gateway endpoint (G1); raise log retention to 90 days (G2).\n\n**Role policy for the export Lambda:**\n```json\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\"Effect\":\"Allow\",\"Action\":[\"dynamodb:Scan\"],\"Resource\":\"arn:aws:dynamodb:us-east-1:123456789012:table/Bookings\"},\n    {\"Effect\":\"Allow\",\"Action\":[\"ses:SendRawEmail\"],\"Resource\":\"arn:aws:ses:us-east-1:123456789012:identity/exports.example-corp.com\"}\n  ]\n}\n```\n\nThe export files land in the bookings-exports bucket, but the bucket policy is not shown. We deploy next week.",
+      "rubric": [
+        "Acknowledges the AWS-managed key choice as a documented, approved decision rather than an unexplained gap; any suggestion of customer-managed keys is framed as optional.",
+        "Does not restate the missing DynamoDB endpoint or the 14-day log retention as new findings; refers to them as already known, or leaves them out.",
+        "Finds no real problem in the shown Lambda policy beyond minor tightening, and does not invent permission complaints about roles that are not shown.",
+        "Notes that the bucket policy is not shown so TLS-only access to bookings-exports cannot be confirmed, and suggests a rule denying non-TLS requests.",
+        "Any finding that is raised has a current versus corrected version and concrete steps."
+      ],
+      "why_skill_matters": "A design with an explicit approved key decision and a known-gaps list. A careful review defers to the decision, avoids repeating known gaps, and finds the one new hole: the unseen bucket policy."
+    },
+    {
+      "id": "policy-validation-rules-6",
+      "title": "Clinic scheduling logging set-up before HIPAA readiness review",
+      "target_section": "CATEGORY 3: AUDIT LOGGING (High Priority)",
+      "prompt": "We run a small telehealth scheduling product and our compliance consultant wants us to check logging before the HIPAA readiness review. This is how it's configured today:\n\n- One audit trail named clinic-trail, covering only us-east-1, with global service events switched off.\n- Log file validation: off. The trail logs are not encrypted.\n- Application log group `/clinic/app`: retention 30 days.\n- No alarms of any kind.\n\nWe operate only in us-east-1 right now, but a contractor once spun up something in us-west-2 by accident. The app logs include appointment notes, which can contain patient details.\n\nThe key that is supposed to protect the log bucket has this policy:\n\n```json\n{\n  \"Statement\": [\n    {\"Sid\":\"Root\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::123456789012:root\"},\"Action\":\"kms:*\",\"Resource\":\"*\"},\n    {\"Sid\":\"AppAccess\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::123456789012:role/ClinicAppRole\"},\"Action\":\"kms:*\",\"Resource\":\"*\"}\n  ]\n}\n```\n\nWhat would you flag?",
+      "rubric": [
+        "Flags that the trail covers only one region and omits global service events, and recommends a multi-region trail, citing the us-west-2 incident as the reason.",
+        "Flags that log file validation is off, the trail logs are unencrypted, and 30-day retention is too short, recommending at least 90 days in the log group plus long-term archive.",
+        "Flags the absence of alarms and names specific events to alert on, such as root account use, IAM policy changes or unauthorized API calls.",
+        "Cites specific HIPAA Security Rule sections for audit controls or encryption (for example §164.312(b)) and treats patient details in the app logs as a serious issue.",
+        "Flags that ClinicAppRole holds every key action on the log key, including administration, and recommends separating key administrators from use-only principals.",
+        "Gives corrected configuration for the trail, retention and key policy, with impact and remediation steps."
+      ],
+      "why_skill_matters": "An audit set-up with several weaknesses, no alarms, a HIPAA context, and a key policy that gives the app role every key action."
+    },
+    {
+      "id": "policy-validation-rules-7",
+      "title": "Manifest portal design with many named roles and a buried wildcard",
+      "target_section": "Validation Workflow",
+      "prompt": "Pasting the access section from our design for the \"Harbor\" shipping-manifest portal. Looking for any problems we haven't spotted. We already know about the items in our own list.\n\n**Roles in the system**\n| Role | Purpose |\n|------|---------|\n| PortalWebRole | Serves the web UI |\n| ManifestIngestRole | Loads manifests from partners |\n| AuditorReadRole | Read-only access for auditors |\n| BillingSyncRole | Syncs charges to finance system |\n| PlatformAdminRole | Manages infrastructure |\n\n**Definition of ManifestIngestRole (only one defined so far):**\n```ts\nconst ingestRole = new iam.Role(this, 'ManifestIngestRole', {\n  assumedBy: new iam.AccountPrincipal('123456789012'), // partner account\n});\ningestRole.addToPolicy(new iam.PolicyStatement({\n  actions: ['firehose:PutRecord'],\n  resources: ['arn:aws:firehose:eu-west-1:111122223333:deliverystream/manifests-in'],\n}));\ningestRole.addToPolicy(new iam.PolicyStatement({\n  actions: ['sqs:*'],\n  resources: ['*'],\n}));\n```\nThe sqs statement was added by a former dev; the ticket just says \"queue stuff\".\n\n**Our known issues list (Compliance Gaps Identified)**\n1. No MFA on PlatformAdminRole console login: tracked, due next sprint.\n2. Manifest data is not yet covered by a retention policy: tracked.\n3. Incident response plan not written: tracked.\n\n**Next steps:** enable MFA, write retention policy, draft IR plan.\n\nAlso note PlatformAdminRole will probably need broad IAM rights, so we'll want to lock that down properly later.",
+      "rubric": [
+        "Flags sqs:* on all resources in ManifestIngestRole as a serious problem, noting that the ticket gives no justification, and proposes specific queue actions on a named queue ARN.",
+        "Flags that ManifestIngestRole trusts partner account 123456789012 with no external ID or other condition and supplies a corrected role definition.",
+        "Does not raise permission findings against PortalWebRole, AuditorReadRole, BillingSyncRole or PlatformAdminRole, since no policies for them are shown; at most notes they should be reviewed once defined.",
+        "Does not restate the missing MFA, retention policy or incident response plan as new findings; refers to them as already tracked.",
+        "The sqs finding and the trust finding each include impact, current versus corrected code and remediation steps."
+      ],
+      "why_skill_matters": "A list of five roles with only one defined, a known-issues list, an unjustified service-wide wildcard in the defined role, and an unconditioned partner trust that sits in a code comment."
+    },
+    {
+      "id": "policy-validation-rules-8",
+      "title": "Card payment stack review with vendor role and weak logging",
+      "target_section": "CATEGORY 5: COMPLIANCE GAPS (Critical Priority)",
+      "prompt": "Hi, we're about to take card payments in our boutique booking platform and I need to sign off. Our dev pasted this summary. Can you tell me what stands in the way?\n\n- Card tokens and last-4 digits are stored in an RDS Postgres instance. The Terraform has no encryption setting at all, so defaults.\n- Web tier and database share one subnet and one security group that allows port 5432 from 0.0.0.0/0 (needed for the reporting vendor).\n- The reporting vendor (account 123456789012) uses this role:\n\n```ts\nnew iam.Role(this, 'ReportingRole', {\n  assumedBy: new iam.AccountPrincipal('123456789012'),\n  inlinePolicies: {\n    p: new iam.PolicyDocument({ statements: [\n      new iam.PolicyStatement({ actions: ['rds:*'], resources: ['*'] }),\n    ]}),\n  },\n});\n```\n\n- Audit trail: one trail in eu-west-1, log validation off, logs kept 30 days.\n- No alarms configured.\n\nWe're in the EU but customers pay from all over the world.",
+      "rubric": [
+        "Flags the RDS instance holding card data as unencrypted at rest and gives the specific setting to enable it with a customer-managed key, noting the instance must be recreated from an encrypted snapshot.",
+        "Flags the vendor role's trust of account 123456789012 as a must-fix for lacking an external ID or condition and offers a corrected definition.",
+        "Flags rds:* on all resources for the vendor role as severe and replaces it with the minimal read-only actions on the specific reporting database.",
+        "Cites specific PCI-DSS requirement numbers (for example Requirement 1 for segmentation, 3 for stored data protection, 10 for logging) and, for EU personal data, GDPR Article 32.",
+        "Flags the single-region trail, disabled validation, 30-day retention and absence of alarms as audit logging deficiencies, with fixes.",
+        "Findings explain impact and give before and after configuration with remediation steps, including closing 5432 to the internet and separating the database subnet.",
+        "Orders must-fix issues (unencrypted card data, open 5432, unconditioned trust) before lesser improvements."
+      ],
+      "why_skill_matters": "A payment context with several simultaneous problems; makes encryption, trust, wildcard permissions, logging and regulation citations matter."
+    }
+  ]
+}

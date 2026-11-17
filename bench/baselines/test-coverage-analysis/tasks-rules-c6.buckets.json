@@ -1,0 +1,217 @@
+{
+  "format_version": 1,
+  "skill": "test-coverage-analysis",
+  "batch": "rules-c6",
+  "rules": {
+    "test-coverage-analysis-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "test-coverage-analysis-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "test-coverage-analysis-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "test-coverage-analysis-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "test-coverage-analysis-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "test-coverage-analysis-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "test-coverage-analysis-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "test-coverage-analysis-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "test-coverage-analysis-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "test-coverage-analysis-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "test-coverage-analysis-r11": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "test-coverage-analysis-r12": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "test-coverage-analysis-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r09"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "test-coverage-analysis-r11"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "test-coverage-analysis-r12"
+      }
+    },
+    "test-coverage-analysis-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r07"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r08"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "test-coverage-analysis-r11"
+      }
+    },
+    "test-coverage-analysis-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r08"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "test-coverage-analysis-r11"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "test-coverage-analysis-r12"
+      }
+    },
+    "test-coverage-analysis-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r10"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r02"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "test-coverage-analysis-r11"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "test-coverage-analysis-r12"
+      }
+    },
+    "test-coverage-analysis-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r08"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "test-coverage-analysis-r11"
+      }
+    },
+    "test-coverage-analysis-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "test-coverage-analysis-r04"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "test-coverage-analysis-r11"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "test-coverage-analysis-r12"
+      }
+    }
+  }
+}

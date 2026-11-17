@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "iam-policy-design",
+  "skill_md_sha256": "f781897f94f9bcbc1e0822f6a02174c0bb7384870c1fd9b30d5d52d8b6d916a7",
+  "request_context": "A request to design least-privilege access controls and related security configuration for a cloud-hosted service on AWS, including role permissions, resource access rules, encryption and audit logging.",
+  "rules": [
+    {
+      "id": "iam-policy-design-r01",
+      "source_quote": "Use specific actions and resource ARNs (avoid wildcards)",
+      "class": "useful",
+      "outcome": "Permissions name specific actions and specific resource identifiers rather than broad wildcards; any wildcard that remains is explicitly justified, and wildcard resources are not used on sensitive services such as object storage, key management or databases.",
+      "why": "Wildcard permissions grant far more than the workload needs and widen the blast radius of a compromised identity.",
+      "scenario_hint": "Request for a role policy for a serverless function that reads a bucket and writes to a table."
+    },
+    {
+      "id": "iam-policy-design-r02",
+      "source_quote": "Add IAM conditions for fine-grained control",
+      "class": "useful",
+      "outcome": "Policies add conditions that narrow when access applies, such as restricting to approved regions, requiring encrypted transport, requiring multi-factor authentication for human users, or limiting to a private network endpoint, rather than relying only on action and resource lists.",
+      "why": "Without conditions, stolen credentials or misrouted traffic can use the permissions from anywhere.",
+      "scenario_hint": "Request for access policies for a service handling confidential customer data."
+    },
+    {
+      "id": "iam-policy-design-r03",
+      "source_quote": "Enforce TLS/SSL, enforce encryption at rest, use explicit principal ARNs, deny takes precedence over allow",
+      "class": "useful",
+      "outcome": "The storage bucket policy explicitly denies requests not made over encrypted transport and denies uploads lacking the required server-side encryption, and names specific principals rather than a wildcard principal in allow statements.",
+      "why": "A bucket without these denies can accept plaintext traffic or unencrypted objects, and a wildcard allow exposes data.",
+      "scenario_hint": "Request to secure an S3 bucket used by an application."
+    },
+    {
+      "id": "iam-policy-design-r04",
+      "source_quote": "Separate key administrators from key users",
+      "class": "useful",
+      "outcome": "The encryption key policy separates people who manage the key from principals who use it to encrypt and decrypt, so administrators cannot read data and users cannot change or delete the key; service access is limited to calls made through the intended service.",
+      "why": "Merged admin and usage rights let one compromised identity both control and exploit the key.",
+      "scenario_hint": "Request for a customer-managed encryption key policy for a data store."
+    },
+    {
+      "id": "iam-policy-design-r05",
+      "source_quote": "Apply permission boundaries for roles that can create other roles",
+      "class": "useful",
+      "outcome": "Where any role can create or modify other roles or policies, the design caps that delegation with a permission boundary that excludes security-critical services and blocks self-escalation; if no role has such ability, this is stated.",
+      "why": "Without a cap, a delegated administrator can grant themselves unlimited privileges.",
+      "scenario_hint": "Request for access design where a team lead role may create roles for developers."
+    },
+    {
+      "id": "iam-policy-design-r06",
+      "source_quote": "Implement cross-account access controls with explicit trust",
+      "class": "useful",
+      "outcome": "Cross-account access names the trusted external account or role explicitly and is further restricted by conditions; it never trusts an entire account or all principals without constraints.",
+      "why": "Unconstrained cross-account trust lets other accounts, or confused intermediaries, reach the resource.",
+      "scenario_hint": "Request to let a partner or another account read from a shared bucket or queue."
+    },
+    {
+      "id": "iam-policy-design-r07",
+      "source_quote": "Start with minimum required permissions",
+      "class": "generic",
+      "outcome": "Each role's permissions are tied to a stated purpose and access pattern, with a brief justification for why the permissions are needed, and no role is granted broader rights than described.",
+      "why": "Unexplained permissions cannot be reviewed and tend to creep beyond need.",
+      "scenario_hint": "Any request to design access controls for an AWS service."
+    },
+    {
+      "id": "iam-policy-design-r08",
+      "source_quote": "If no threat model provided, infer threats from system design.",
+      "class": "useful",
+      "outcome": "The answer identifies the threats relevant to the described system (stated or inferred) and maps each to a specific control, with whether it is fully, partly or not addressed and how it would be verified.",
+      "why": "Controls not linked to threats leave gaps unnoticed and cannot be validated.",
+      "scenario_hint": "Request for access controls where the user lists a few threats or none at all."
+    },
+    {
+      "id": "iam-policy-design-r09",
+      "source_quote": "Production readiness tier explicitly stated",
+      "class": "useful",
+      "outcome": "The answer states the assurance level it targets (basic, standard or hardened) and shapes encryption, logging and monitoring depth accordingly, defaulting to the middle level when none is given.",
+      "why": "Without a stated level, the design may be over- or under-built for the data's sensitivity.",
+      "scenario_hint": "Request for security design where the user does not say how strict it should be."
+    },
+    {
+      "id": "iam-policy-design-r10",
+      "source_quote": "HIPAA:** PHI encryption with KMS, access controls with RBAC and audit logging, BAA signed with AWS, encryption in transit, audit logging with 6-year retention, ensure PHI not logged, MFA for PHI access",
+      "class": "useful",
+      "outcome": "For a regulated workload, the answer maps controls to the named framework's requirements, such as encryption, multi-factor access, a signed business associate agreement, six-year log retention and keeping health data out of logs, and lists remaining gaps with remediation steps.",
+      "why": "Missing framework-specific items causes audit failures even when general security is good.",
+      "scenario_hint": "Request to design access for an application storing patient health records."
+    },
+    {
+      "id": "iam-policy-design-r11",
+      "source_quote": "Generate production-ready CDK (TypeScript) or CloudFormation (YAML) code implementing all security controls.",
+      "class": "useful",
+      "outcome": "The answer includes deployable infrastructure-as-code covering the roles, encryption keys, bucket policies, audit trail, monitoring alarms and private endpoints it designed.",
+      "why": "Prose-only designs leave implementers to reinterpret controls, introducing drift and errors.",
+      "scenario_hint": "Request for a complete security design for a new application stack."
+    },
+    {
+      "id": "iam-policy-design-r12",
+      "source_quote": "All identity-based policies include trust policies",
+      "class": "style",
+      "outcome": "Each role comes with its permissions policy and a separate trust policy stating who may assume it, shown as distinct blocks.",
+      "why": "",
+      "scenario_hint": "Any request to design IAM roles for compute services."
+    }
+  ]
+}
