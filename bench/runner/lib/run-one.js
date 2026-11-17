@@ -386,6 +386,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
     const conv = task.autonomy ? newConversation(task.autonomy) : null;
     try {
       Object.assign(meta, harness.installInto(home, { arm, prepared, ctx, config, outDir }));
+      ctx.taskInputs?.check(task);
       if (task.real) real.materializeInto(task, cwd, { cache: ctx.realCache });
       else sandbox.copyFixture(task.fixtureDir, cwd);
       const leaked = sandbox.findAnswerKey(cwd);

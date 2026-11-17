@@ -40,6 +40,8 @@ const { makeIso } = require('./run-one.js');
 const { pinConflicts, describeConflicts } = require('./study-pins.js');
 const { profileCredentials } = require('./aws-creds.js');
 const { writeRunConfig, readRunConfigs } = require('./run-configs.js');
+const { preloadSchemas } = require('./schema.js');
+const { snapshotTaskInputs } = require('./task-inputs.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -149,6 +151,8 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
 const repoRootOf = (opts) => path.resolve(opts['repo-root'] && opts['repo-root'] !== true ? opts['repo-root'] : process.env.BENCH_REPO_ROOT || DEFAULT_REPO);
 
 async function cmdRun(opts, deps = {}) {
+  // Everything the runner reads from its own checkout later is read or hashed now, so a branch switch mid-study fails fast.
+  preloadSchemas();
   const benchDir = opts['bench-dir'] ? path.resolve(opts['bench-dir']) : BENCH_DIR;
   const suitesDir = opts['suites-dir'] && opts['suites-dir'] !== true ? path.resolve(opts['suites-dir']) : null;
   if (opts['suites-dir'] !== undefined && (!suitesDir || !fs.existsSync(suitesDir) || !fs.statSync(suitesDir).isDirectory())) throw new Error(`--suites-dir directory not found: ${suitesDir ?? '(no value)'}`);
@@ -321,6 +325,7 @@ async function cmdRun(opts, deps = {}) {
       log(login.unavailable ? `warning: login check unavailable: ${login.unavailable}` : 'kiro-cli login ok');
     }
     const ctx = {
+      taskInputs: snapshotTaskInputs(tasks),
       kiroBin: kiro?.bin, repo: REPO, cacheDir, realCache, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb, config, envKeep,
       envInfo: null,
       installsGate: createInstallsGate(),
@@ -453,6 +458,7 @@ async function cmdRun(opts, deps = {}) {
       ...(plantSuite ? { plant: { release: plantSuite.release.manifest.release, manifestSha256: plantSuite.release.manifestSha256, keyId: plantSuite.release.keyId, control: plantSuite.control, counted: plantSuite.counted, comparable: plantSuite.comparable, notCounted: plantSuite.notCounted, hostNoise: plantSuite.hostNoise, cgroup: ctx.cgroup ? (ctx.cgroup.ok ? ctx.cgroup.caps : `missing: ${ctx.cgroup.reason}`) : 'not checked (no namespace isolation)', boundaryChecklist: plantSuite.walls?.checklist ?? null } } : {}),
       ...rc.benchGit(REPO),
       contentHash: rc.hashTree(benchDir, ['tasks', 'fixtures', 'suites', 'real']),
+      taskInputHashes: ctx.taskInputs.hashes(),
       ...(suitesDir ? { suitesDir, suiteFile: suiteFile(opts.suite, benchDir, suitesDir) } : {}),
       ...(realPins ? {
         real: {
