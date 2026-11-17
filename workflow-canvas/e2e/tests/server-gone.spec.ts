@@ -43,7 +43,7 @@ test('says what to do when the server is down as a run starts', async ({
   canvas,
 }) => {
   await canvas.page.route('**/api/run', (route) => route.fulfill(badGateway));
-  await canvas.selectTab('Execution');
+  await canvas.selectTab('Run');
 
   await canvas.runButton.click();
 
@@ -55,7 +55,7 @@ test('says what to do when the server forgot the session as a run starts', async
   canvas,
 }) => {
   await canvas.page.route('**/api/run', (route) => route.fulfill(sessionGone));
-  await canvas.selectTab('Execution');
+  await canvas.selectTab('Run');
 
   await canvas.runButton.click();
 
