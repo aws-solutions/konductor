@@ -4,13 +4,13 @@ A browser UI for designing and running Konductor workflows. This folder is an
 independent npm project (Vite, React, TypeScript, Cloudscape) and is not part
 of the agent package or the CLI.
 
-The page has Designer and Execution views, picked with a switch in the page
-header. The Designer view loads the workflow
+The page has Design and Run views, picked with a switch in the page
+header. The Design view loads the workflow
 from the API and draws it: the intent, each stage in list order (name, agent
 and harness) and the end, joined by run-order edges. You can pick the agent of
 a stage, rename it, add a stage, delete one and save the file. It shows a
 loading message, an error message or an empty message when there is nothing to
-draw. The Execution tab draws the saved workflow and runs it: a Run button
+draw. The Run view draws the saved workflow and runs it: a Run button
 starts a run, and each node shows its live state until the run ends. The
 contract, the stub that serves it and the tests around both are in this
 folder.
@@ -351,8 +351,8 @@ The rest wraps the core, so the rules can be tested without a browser:
   section).
 - `canvas/` draws the graph with [React Flow](https://reactflow.dev)
   (`@xyflow/react`). Nodes cannot be moved or connected; the view can be
-  panned, and zoomed with the controls. On the Designer tab a stage can be
-  selected, with a click or with Enter or Space on the node; the Execution tab
+  panned, and zoomed with the controls. In the Design view a stage can be
+  selected, with a click or with Enter or Space on the node; the Run view
   is read-only. Each node can be reached with the Tab key and has a name for
   screen readers, which ends with "selected" for the selected stage. The view
   fits the graph again when a stage is added or deleted. The view starts zoomed out
@@ -361,7 +361,7 @@ The rest wraps the core, so the rules can be tested without a browser:
   outcome short, and keeps the whole text in its `title`; an outcome too long
   for the node is also written out in full under the graph.
 
-## The Designer tab
+## The Design view
 
 The tab has the graph on the left, with **Add stage** above it and the save
 line and **Save** in its header, and **Properties** on the right. Properties
@@ -449,8 +449,8 @@ says so before you save.
   tooltip, so focus stays on the button that was pressed, for instance Save
   while it saves.
 - **The two tabs.** The draft lives in `App`, so it is kept when you switch
-  tabs. The Execution tab draws the saved workflow, because a run uses the
-  saved file, and says so when the Designer holds changes that are not saved.
+  tabs. The Run view draws the saved workflow, because a run uses the
+  saved file, and says so when the Design view holds changes that are not saved.
 
 While the draft differs from the saved file, closing or reloading the page
 makes the browser ask whether to leave (`useLeaveGuard`, a `beforeunload`
@@ -458,7 +458,7 @@ handler that is on only then), because the draft lives in the page. A change
 that is put back, so the draft equals the file again, does not ask, and nor
 does a draft that has been saved.
 
-The code follows the split of the Execution tab:
+The code follows the split of the Run view:
 
 - `src/designer/core/` is the core and does no IO: the draft of the stages, the
   text that a save writes (`stage-text.ts`), the findings put on the stage and
@@ -478,11 +478,11 @@ The code follows the split of the Execution tab:
   while it is renamed, and the node is named from that id, so two stages with
   one name for a moment still have two nodes.
 - The API contract is unchanged. `test-support/editing-contract.test.ts`
-  checks the limits and calls that the Designer assumes against it.
+  checks the limits and calls that the Design view assumes against it.
 
-## The Execution tab
+## The Run view
 
-The tab draws the same graph as the Designer, read-only, with a **Goal** box
+The view draws the same graph as the Design view, read-only, with a **Goal** box
 and a **Run** button beside it. The goal starts as the outcome of the
 intent, because the API needs one (1 to 2048 characters) to start a run.
 
@@ -530,12 +530,12 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   shows the result: **Passed** or **Halted**.
 - A line under the button says where the run is ("Running draft. 0 of 2 stages
   done."). A screen reader hears each change from a polite live region that
-  `App` keeps outside the tabs, so it is announced while the Designer tab is
+  `App` keeps outside the tabs, so it is announced while the Design view is
   open too. Each node's name for a screen reader ends with its state.
 - An error from the API, whether the run does not start or a read fails, shows
   in one alert under the Run button, with the sentence the server gave. A
   screen reader hears it from an alert region that `App` keeps outside the
-  tabs, so it is read when it appears even if the Designer tab is open; the
+  tabs, so it is read when it appears even if the Design view is open; the
   status line on the tab says only "See the error below.", which the live status region leaves out. When a read fails, the
   nodes are cleared and the alert adds that the run (with its id) may still be
   going on the server. A failed stage is a result, not an error, so it has no
@@ -543,11 +543,11 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   spaces, and Enter that ends an input method composition starts no run.
 - A workflow can be saved while a run goes on, so the run may have other stages
   than the graph. The graph is the saved workflow, and it is drawn again when
-  the Designer saves, while a run works from the file as it was saved when the
+  the Design view saves, while a run works from the file as it was saved when the
   run started. Node states attach by stage name, so a warning
   above the graph names the stages that are not drawn and those that are not in
   the run.
-- A run goes on while the Designer tab is open, and the tab shows it again when
+- A run goes on while the Design view is open, and the tab shows it again when
   you come back, with the goal box as it was: what you typed, or the goal of
   the run in flight. Closing the page stops the reading, not the run.
 - The colours of the states are in `src/canvas/canvas.css` and match the theme
@@ -570,7 +570,7 @@ The code follows the ports-and-adapters split of the graph:
   `loadWorkflow` turns the 409 `already_running`, which carries the `run_id`,
   into the core's `RunAlreadyActive` so the core can follow that run.
 - `useExecution` keeps the state in `App`, and `Execution` draws it. The
-  Designer and Execution tabs share `WorkflowGate` (loading, error and empty
+  Design and Run views share `WorkflowGate` (loading, error and empty
   states) and `WorkflowGraphCard` (the card with the graph).
 
 ## Theme
@@ -605,7 +605,7 @@ corner radii, in a light and a dark mode.
 - The page header is a dark band with the breadcrumb `Workflows > <workflow>`
   (the page has no list of workflows yet, so no crumb is a link), the name of
   the workflow as the title ("Workflow canvas" until one has loaded) and, on
-  the same row, the switch between Designer and Execution
+  the same row, the switch between Design and Run
   (`src/chrome/ModeSwitch.tsx`). The switch is a tab list drawn as segments:
   Tab reaches the selected one, and the arrow keys, Home and End select
   another.
@@ -668,8 +668,8 @@ A test that says a save "writes nothing" counts the `PUT` requests that the page
 sent; the file is checked only where a request reaches the stub. The HTML report
 is written to `playwright-report/`; open it with `npx playwright show-report`.
 Accessibility is checked with axe-core on each tab, on the error state, on the
-Execution tab with a stage running, a failed stage, a passed run, the error of
-the API and a goal that cannot be run, on the Designer tab while editing, with
+Run view with a stage running, a failed stage, a passed run, the error of
+the API and a goal that cannot be run, on the Design view while editing, with
 problems shown and with a conflict shown, and in both theme modes.
 
 The stub runs one run at a time and never fails a stage. So the one test that
@@ -688,15 +688,15 @@ the app.
 ## Screenshots
 
 `npm run screenshots` saves full-page PNGs to `e2e/screenshots/`, drawn from
-the stub, at 1280x800 with animations frozen. The runs in the Execution
+the stub, at 1280x800 with animations frozen. The runs in the Run view
 captures answer with fixed replies, so no capture depends on the clock of the
-stub. The Designer tab is in the light
+stub. The Design view is in the light
 theme (`designer-tab.png`) and in the dark one (`designer-tab-dark.png`, after
-the theme button is pressed). The Execution tab is saved before a run
+the theme button is pressed). The Run view is saved before a run
 (`execution-tab-idle.png`), while the first stage runs
 (`execution-tab-running.png`) and after the run passed
 (`execution-tab-finished.png`), all in the light theme, and while the first
-stage runs in the dark theme (`execution-tab-dark.png`). The Designer tab is
+stage runs in the dark theme (`execution-tab-dark.png`). The Design view is
 also saved with unsaved edits (`designer-editing.png`, and
 `designer-editing-dark.png` in the dark theme), after a save
 (`designer-saved.png`), with a problem the server found
