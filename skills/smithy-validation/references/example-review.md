@@ -5,7 +5,7 @@ Read this when writing a review report and you want to see the Output Format fil
 ````markdown
 ## Smithy Model Review: WeatherService
 
-### Critical Issues
+### CRITICAL
 
 **Type Safety** - WeatherData.temperature
 Issue: Temperature field is untyped String without constraints
@@ -37,7 +37,7 @@ operation GetForecast {
 }
 ```
 
-### Warnings
+### IMPORTANT
 
 **Documentation** - ListLocations operation
 Issue: Missing documentation on pagination behavior
@@ -65,7 +65,7 @@ structure User {
 }
 ```
 
-### Suggestions
+### SUGGESTION
 
 **Performance** - ListLocations operation
 Observation: No default page size specified
