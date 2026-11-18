@@ -23,6 +23,9 @@ PILLAR_XY_MM = (220, -20)
 PILLAR_RADIUS_MM = 15
 PILLAR_HEIGHT_MM = 120
 HOME_MM = (150, 0, 200)
+# The intruder: a box that waits under the table and, when an `obstacle` fault fires, stands on it at the given x, y.
+INTRUDER_SIZE_MM = (40, 40, 80)
+INTRUDER_PARK_Z_MM = -500
 
 # The keep-out volume, as the two opposite corners of a box. The policy's sensor-limits.json holds the same numbers.
 KEEPOUT_MIN_MM = (-250, 60, 0)
@@ -88,6 +91,10 @@ def arm_xml(block_xy_mm):
     {_tray_walls()}
     <site name="keepout" type="box" pos="{(keep_lo[0] + keep_hi[0]) / 2} {(keep_lo[1] + keep_hi[1]) / 2} {(keep_lo[2] + keep_hi[2]) / 2}"
           size="{(keep_hi[0] - keep_lo[0]) / 2} {(keep_hi[1] - keep_lo[1]) / 2} {(keep_hi[2] - keep_lo[2]) / 2}" rgba="1 0 0 0.15"/>
+    <body name="intruder" mocap="true" pos="0 0 {_m(INTRUDER_PARK_Z_MM)}">
+      <geom name="{STATIC_GEOM_PREFIX}intruder" type="box" size="{_m(INTRUDER_SIZE_MM[0]) / 2} {_m(INTRUDER_SIZE_MM[1]) / 2} {_m(INTRUDER_SIZE_MM[2]) / 2}"
+            contype="2" conaffinity="5" rgba="0.9 0.2 0.2 1"/>
+    </body>
     <body name="base" pos="0 0 0">
       <geom name="{ARM_GEOM_PREFIX}base" type="cylinder" fromto="0 0 0 0 0 {_m(BASE_HEIGHT_MM)}" size="0.05"/>
       <body name="turret" pos="0 0 {_m(BASE_HEIGHT_MM)}" gravcomp="1">

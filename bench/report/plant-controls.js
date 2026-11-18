@@ -53,6 +53,9 @@ const CONTROLS = {
   },
 };
 
+// The arm's controls (`arm-<control>-kiro`) must show the same as the conveyor's, except do-nothing, which is shared.
+for (const name of ['scripted-calls', 'careful-operator', 'path', 'unsafe-agent']) CONTROLS[`arm-${name}`] = CONTROLS[name];
+
 /**
  * The control a row's suite ran, by the `--kiro-bin` file name in its run config (`<control>-kiro`), or null for any other
  * suite. A run config records `plant.control`; one written before it has only `plant.counted: false` for a control suite.

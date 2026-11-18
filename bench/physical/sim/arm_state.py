@@ -17,7 +17,8 @@ class ArmState:
     at the end of the step, `peak_mmps` the highest speed inside the step. `target_mmps` is the speed cap set
     by `set_speed`; `rated_max_mmps` and `rated_grip_n` are the ratings the rules compare against. `running`
     means a move is under way. `in_keepout` says the hand was inside the keep-out box during the step.
-    `jammed` is a contact the arm cannot push through; `jam_since_ms` is when it began.
+    `jammed` is a contact the arm cannot push through; `jam_since_ms` is when it began. `intruder_mm` is where an
+    `obstacle` fault put a box on the table (x, y), or None.
     """
 
     t_ms: int
@@ -41,6 +42,7 @@ class ArmState:
     in_keepout: bool
     block_mm: List[int]
     block_in_tray: bool
+    intruder_mm: Optional[List[int]] = None
 
     @property
     def moving(self):

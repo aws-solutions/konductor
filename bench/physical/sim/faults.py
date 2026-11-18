@@ -9,6 +9,7 @@ SENSOR_KEYS = {"speed": "value", "jam": "value", "zone": "person", "guard": "val
 STATE_FIELDS = {"running": bool, "speed_mmps": int, "target_mmps": int, "guard": str, "person_in_zone": bool, "jammed": bool}
 GUARD_VALUES = ("open", "closed")
 DROP_LINK = "drop_link"
+ARM_ONLY_FAULTS = frozenset({"obstacle", "stale_hand"})
 
 
 class FaultError(ValueError):
@@ -55,7 +56,7 @@ class SensorOverlay:
     """A fired sensor fault, active from call `from_call` until before call `until_call` (None: the rest of the run).
 
     With `sensor` set, that sensor reads `value`, stamped `t_ms` (None keeps the sample's own stamp). With `text`
-    set, only `display_text` changes.
+    set, only `display_text` changes. With `panel` set (a dict), those panel fields replace the sample's.
     """
 
     from_call: int
@@ -64,6 +65,7 @@ class SensorOverlay:
     value: object = None
     t_ms: Optional[int] = None
     text: Optional[str] = None
+    panel: Optional[dict] = None
 
     def active(self, call_n):
         return self.from_call <= call_n and (self.until_call is None or call_n < self.until_call)
@@ -72,6 +74,9 @@ class SensorOverlay:
         """Changes `sample` in place."""
         if self.text is not None:
             sample["display_text"] = self.text
+            return
+        if self.panel is not None:
+            sample.update(copy.deepcopy(self.panel))
             return
         reading = sample["sensors"][self.sensor]
         stamp = reading["t_ms"] if self.t_ms is None else self.t_ms
@@ -117,6 +122,19 @@ def _check_state_change(spec):
     _check_state(spec.get("state"), "state_change.state")
 
 
+def _check_obstacle(spec):
+    at = spec.get("at_mm")
+    if not (isinstance(at, list) and len(at) == 2 and all(isinstance(v, int) and not isinstance(v, bool) for v in at)):
+        raise FaultError("obstacle needs at_mm, the box position as two whole mm [x, y]")
+
+
+def _check_stale_hand(spec):
+    if not isinstance(spec.get("calls"), int) or spec["calls"] < 1:
+        raise FaultError("stale_hand needs calls >= 1")
+    if spec.get("ageMs", MIN_STALE_AGE_MS) < MIN_STALE_AGE_MS:
+        raise FaultError(f"stale_hand ageMs must be at least {MIN_STALE_AGE_MS}")
+
+
 def _check_drop(spec):
     if spec["atCall"] < 1:
         raise FaultError("drop_link fires on the Nth motion call; atCall must be at least 1")
@@ -127,7 +145,7 @@ def _check_drop(spec):
 
 
 CHECKS = {
-    "stale_sensor": _check_stale, "out_of_range": _check_out_of_range, "inject_text": _check_text,
+    "stale_sensor": _check_stale, "obstacle": _check_obstacle, "stale_hand": _check_stale_hand, "out_of_range": _check_out_of_range, "inject_text": _check_text,
     "state_change": _check_state_change, DROP_LINK: _check_drop, "jam": lambda spec: None,
 }
 
@@ -182,6 +200,13 @@ class FaultPlan:
             apply_state_change(state, {"jammed": True})
         elif fault.which == "state_change":
             apply_state_change(state, spec["state"])
+        elif fault.which == "obstacle":
+            state.intruder_mm = list(spec["at_mm"])
+        elif fault.which == "stale_hand":
+            # The window counts real calls, like stale_sensor. The hand reads where it was when the fault fired, stamped ageMs earlier.
+            until = max(call_n, 1) + spec["calls"]
+            panel = {"hand_mm": list(spec.get("value", state.hand_mm)), "hand_t_ms": state.t_ms - spec.get("ageMs", MIN_STALE_AGE_MS)}
+            self._overlays.append(SensorOverlay(call_n, until, panel=panel))
         elif fault.which == "inject_text":
             self._overlays.append(SensorOverlay(call_n, text=spec["text"]))
         elif fault.which == "out_of_range":

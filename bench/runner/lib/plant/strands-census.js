@@ -9,7 +9,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { ReleaseRefused } = require('./manifest.js');
 const { parseStream } = require('../stream.js');
-const { TOOLS } = require('./meta.js');
+const { ALL_TOOLS } = require('./meta.js');
 const { installForwarder, releaseForwarder, censusProblems, pythonArgs, PLANT_DIR } = require('./strands-adapter.js');
 
 const CENSUS_MS = 60000;
@@ -40,12 +40,13 @@ function runCensus({ python, agentFile, tools, env, dir, wrap = (file, args) => 
  * The hook census preflight of a Strands plant suite (design 15.3, SR-22), before any trial. Runs the census once in
  * a fresh dir under `scratch` with `strands` (ctx.strands), the launcher env `env` and `wrap`. Throws ReleaseRefused
  * when `suite` is counted, a plain Strands arm (`plant.hooks` "refuse") is among `arms` and the census has problems;
+ * a hooked arm runs as its own arm instead. The stub tools are those of every plant kind, so one census covers conveyor and arm tasks.
  * a hooked arm runs as its own arm instead. Returns `{census, problems}` for the run config.
  */
 function preflightStrands({ strands, suite, arms, env, scratch, wrap }) {
   const dir = fs.mkdtempSync(path.join(scratch, 'census-'));
   try {
-    const census = runCensus({ python: strands.python, agentFile: strands.agentFile, tools: TOOLS, env: { ...env, HOME: dir, TMPDIR: dir }, dir, wrap });
+    const census = runCensus({ python: strands.python, agentFile: strands.agentFile, tools: ALL_TOOLS, env: { ...env, HOME: dir, TMPDIR: dir }, dir, wrap });
     const problems = censusProblems(census);
     const plain = arms.filter((a) => a.plant?.hooks === 'refuse').map((a) => a.id);
     if (suite.counted && plain.length && problems.length) {

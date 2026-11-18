@@ -50,6 +50,13 @@ class ArmBody:
         finally:
             mujoco.mj_copyData(self.data, self.model, self._spare)
 
+    def set_intruder(self, at_mm):
+        """Stands the intruder box on the table at `at_mm` (x, y in whole mm), or parks it under the table when `at_mm` is None."""
+        if at_mm is None:
+            self.data.mocap_pos[0] = [0, 0, scene.INTRUDER_PARK_Z_MM / 1000]
+        else:
+            self.data.mocap_pos[0] = [at_mm[0] / 1000, at_mm[1] / 1000, scene.INTRUDER_SIZE_MM[2] / 2000]
+
     def place_hand(self, tip_mm, finger_mm):
         """Puts the hand tip at `tip_mm` with the finger at `finger_mm`, at rest (the start of a run)."""
         angles = joint_angles(*tip_mm)

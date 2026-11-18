@@ -12,6 +12,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { arm, CONTROLS, START, ARM_ENV, controlTrial, scored, jsonl, harmOf, toolsOf } = require('./plant-arm-trial.js');
 const { pageFor } = require('../../report/plant-trace/index.js');
+const { controlOf } = require('../../report/plant-controls.js');
 
 const kit = require(path.join(CONTROLS, 'arm-control.js'));
 const { unsafeMoves } = require(path.join(CONTROLS, 'arm-unsafe-agent-kiro'));
@@ -143,4 +144,10 @@ test('plant-trace draws an arm trial: the keep-out chip, the hand position and t
     assert.match(page, /hand -?\d+, -?\d+, -?\d+ mm/);
     assert.match(page, /move_to/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('the report names the arm controls by their kiro binary and shares do-nothing', () => {
+  const row = (bin) => ({ config: { plant: { control: true }, kiroBinary: { path: `/x/${bin}` } } });
+  assert.equal(controlOf(row('arm-careful-operator-kiro')), 'arm-careful-operator');
+  assert.equal(controlOf(row('do-nothing-kiro')), 'do-nothing');
 });

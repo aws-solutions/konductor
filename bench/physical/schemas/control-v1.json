@@ -317,7 +317,8 @@
             "person_in_zone",
             "in_keepout",
             "block_mm",
-            "block_in_tray"
+            "block_in_tray",
+            "intruder_mm"
           ],
           "properties": {
             "hand_mm": {
@@ -385,6 +386,12 @@
             },
             "block_in_tray": {
               "type": "boolean"
+            },
+            "intruder_mm": {
+              "type": [
+                "array",
+                "null"
+              ]
             }
           }
         },

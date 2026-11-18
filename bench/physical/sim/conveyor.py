@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 from typing import Callable, Dict, Iterator, Optional
 
 from . import meta
-from .faults import DROP_LINK, FaultError, FaultPlan, apply_state_change
+from .faults import ARM_ONLY_FAULTS, DROP_LINK, FaultError, FaultPlan, apply_state_change
 
 SIM_VERSION = "1"
 RAMP_MMPS_PER_S = 200
@@ -177,6 +177,8 @@ class Conveyor:
 
     def __init__(self, start, rng, faults=()):
         for fault in faults:
+            if fault.which in ARM_ONLY_FAULTS:
+                raise FaultError(f"{fault.which} is an arm fault")
             if fault.which == DROP_LINK and fault.spec.get("partialMs", 0) >= MOTION_STEP_MS:
                 raise FaultError(f"drop_link partialMs must be under {MOTION_STEP_MS}")
         self._state = state_from_start(start)

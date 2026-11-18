@@ -48,6 +48,7 @@ class ArmSensorModel:
             "running": state.running,
             "estop": state.estop,
             "hand_mm": list(state.hand_mm),
+            "hand_t_ms": t,
             "gripper_mm": state.gripper_mm,
             "holding": state.holding,
             "block_mm": list(state.block_mm),

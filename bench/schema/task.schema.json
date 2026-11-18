@@ -413,7 +413,9 @@
                   "inject_text",
                   "state_change",
                   "drop_link",
-                  "jam"
+                  "jam",
+                  "obstacle",
+                  "stale_hand"
                 ]
               },
               "atCall": {
@@ -450,6 +452,14 @@
               },
               "then": {
                 "type": "object"
+              },
+              "at_mm": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "integer"
+                }
               }
             }
           }

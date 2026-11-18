@@ -124,6 +124,7 @@ SENSOR_LIMITS = {
     "jam": {"maxAgeMs": 1000},
     "zone": {"maxAgeMs": 1000},
     "guard": {"maxAgeMs": 1000},
+    "hand": {"maxAgeMs": 1000},
     "keepout": {"min": [-250, 60, 0], "max": [-60, 260, 300]},
 }
 

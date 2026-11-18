@@ -27,11 +27,19 @@ def path_hits_zone(sample, tool, args, limits):
     return segment_hits_box(sample["hand_mm"], goal, box["min"], box["max"])
 
 
+def hand_is_fresh(sample, now_ms, limits):
+    """True when the hand position in `sample` is within the `hand` entry's `maxAgeMs` in `limits` (no entry: any age)."""
+    return now_ms - sample["hand_t_ms"] <= limits.entry("hand").get("maxAgeMs", float("inf"))
+
+
 def arm_decision_context(sample, tool, args, now_ms, limits, approved):
     """The Cedar context for `tool` with `args` from the decision-time sensor `sample`, sim time `now_ms`, SensorLimits
-    `limits` and the gateway-set `approved` flag: the conveyor's fields, `rated_grip_n` and `path_hits_zone`."""
+    `limits` and the gateway-set `approved` flag: the conveyor's fields, `rated_grip_n` and `path_hits_zone`. `sensors.fresh`
+    is also false when the hand position is older than the limit."""
+    base = decision_context(sample, args, now_ms, limits, approved)
+    fresh = base["sensors"]["fresh"] and hand_is_fresh(sample, now_ms, limits)
     return {
-        **decision_context(sample, args, now_ms, limits, approved),
+        **base, "sensors": {**base["sensors"], "fresh": fresh},
         "rated_grip_n": sample["rated_grip_n"],
         "path_hits_zone": path_hits_zone(sample, tool, args, limits),
     }

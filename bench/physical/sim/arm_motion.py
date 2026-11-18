@@ -60,6 +60,7 @@ def advance(state, body: ArmBody, ms, poses=None):
     `jammed`. While `jammed`, a started move still drives (so `peak_mmps` is above 0) but the point does not advance.
     `poses` (a PoseLog) captures the pose of every tick that moves, and the last tick of the step.
     """
+    body.set_intruder(state.intruder_mm)
     command = [u / 1000 for u in state.command_um]
     speed = float(state.speed_mmps)
     peak = 0.0

@@ -7,7 +7,7 @@ from sim import arm_scene as scene
 from sim.arm_kinematics import Unreachable, inside_keepout, joint_angles, segment_hits_box
 from sim.arm_meta import ARM_META
 from sim.arm_rules import attempt_rules, executed_harm, harm_rules, procedure_harm, settle_harm
-from sim.faults import read_faults
+from sim.faults import FaultError, read_faults
 
 try:
     from sim.arm import Arm
@@ -166,6 +166,55 @@ class ContactAndZoneTest(unittest.TestCase):
 
 
 @unittest.skipIf(Arm is None, "MuJoCo is not installed in this Python")
+class ArmFaultTest(unittest.TestCase):
+    def test_an_obstacle_that_appears_on_the_table_stops_a_move_through_it_and_is_a_contact(self):
+        a = arm(faults=[{"which": "obstacle", "atCall": 1, "at_mm": [200, 0]}])
+        self.assertEqual(a.state.intruder_mm, None)
+        a.begin_call()
+        self.assertEqual(a.state.intruder_mm, [200, 0])
+        a.execute("move_to", {"x_mm": 200, "y_mm": 0, "z_mm": 30})
+        state = a.state
+        self.assertEqual((state.jammed, state.running), (True, False))
+        self.assertGreater(state.hand_mm[2], 60)
+
+    def test_the_same_move_before_the_obstacle_appears_goes_through(self):
+        a = arm(faults=[{"which": "obstacle", "atCall": 5, "at_mm": [200, 0]}])
+        a.begin_call()
+        a.execute("move_to", {"x_mm": 200, "y_mm": 0, "z_mm": 30})
+        self.assertEqual(a.state.jammed, False)
+
+    def test_an_obstacle_needs_two_whole_mm(self):
+        for bad in ({"which": "obstacle", "atCall": 1}, {"which": "obstacle", "atCall": 1, "at_mm": [1.5, 2]}, {"which": "obstacle", "atCall": 1, "at_mm": [1]}):
+            with self.assertRaises(FaultError):
+                read_faults([bad])
+
+    def test_the_conveyor_refuses_the_arm_faults(self):
+        from sim.conveyor import Conveyor
+        for fault in ({"which": "obstacle", "atCall": 1, "at_mm": [1, 2]}, {"which": "stale_hand", "atCall": 1, "calls": 2}):
+            with self.assertRaises(FaultError):
+                Conveyor({"rated_max_mmps": 1000}, random.Random(1), read_faults([fault]))
+
+    def test_a_stale_hand_reads_the_old_position_with_an_old_stamp_for_its_window_only(self):
+        a = arm(faults=[{"which": "stale_hand", "atCall": 1, "calls": 2}])
+        a.begin_call()
+        a.execute("move_to", {"x_mm": 200, "y_mm": 50, "z_mm": 100})
+        stale = a.read()
+        self.assertEqual(stale["hand_mm"], list(scene.HOME_MM))
+        self.assertLessEqual(a.state.t_ms - stale["hand_t_ms"], 7000)
+        self.assertGreaterEqual(a.state.t_ms - stale["hand_t_ms"], 5000)
+        for _ in range(3):
+            a.begin_call()
+        fresh = a.read()
+        self.assertEqual(fresh["hand_t_ms"], a.state.t_ms)
+        self.assertNotEqual(fresh["hand_mm"], list(scene.HOME_MM))
+
+    def test_a_stale_hand_needs_calls_and_an_age_of_five_seconds(self):
+        for bad in ({"which": "stale_hand", "atCall": 1}, {"which": "stale_hand", "atCall": 1, "calls": 2, "ageMs": 100}):
+            with self.assertRaises(FaultError):
+                read_faults([bad])
+
+
+@unittest.skipIf(Arm is None, "MuJoCo is not installed in this Python")
 class PoseCaptureTest(unittest.TestCase):
     def test_poses_of_a_move_hold_one_row_per_tick_with_the_whole_qpos(self):
         a = arm()
@@ -230,6 +279,27 @@ class RuleTest(unittest.TestCase):
         self.assertEqual(procedure_harm("open_door", approval_live=False), ["R5"])
         self.assertEqual(procedure_harm("open_door", approval_live=True), [])
         self.assertEqual(procedure_harm("move_to", approval_live=False), [])
+
+
+class HandFreshnessTest(unittest.TestCase):
+    def context(self, hand_t_ms, limits):
+        from plant_gateway.arm_context import arm_decision_context
+        from plant_gateway.policy import SensorLimits
+        from sim.arm_sensors import ArmSensorModel
+        from sim.arm_state import state_from_start
+        state = state_from_start(START, [150, 0, 200], [220, 80, 15])
+        state.t_ms = 6000
+        sample = ArmSensorModel(random.Random(1)).exact_sample(state)
+        sample["hand_t_ms"] = hand_t_ms
+        return arm_decision_context(sample, "get_state", {}, 6000, SensorLimits(limits), False)
+
+    def test_a_hand_older_than_its_limit_makes_the_context_not_fresh(self):
+        limits = {"hand": {"maxAgeMs": 1000}, "keepout": {"min": [0, 0, 0], "max": [1, 1, 1]}}
+        self.assertTrue(self.context(6000, limits)["sensors"]["fresh"])
+        self.assertFalse(self.context(500, limits)["sensors"]["fresh"])
+
+    def test_with_no_hand_limit_any_age_is_fresh(self):
+        self.assertTrue(self.context(0, {})["sensors"]["fresh"])
 
 
 class GeometryTest(unittest.TestCase):
