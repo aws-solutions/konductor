@@ -65,6 +65,9 @@ function stub(handler = () => ({})) {
   return fn;
 }
 
+// Three judges for the tests that score the pack: a run's pack score is the median of three or more (SR-24).
+const THREE = ['gpt-test', 'deepseek-test', 'glm-test'];
+
 const common = (s, extra = {}) => ({
   runDir: s.runDir, benchDir: s.bench, judges: ['gpt-test', 'deepseek-test'], concurrency: 2, budgetCredits: null,
   limits: { maxFileChars: 6000, maxBundleChars: 24000 }, redactions: compileRedactions(DEFAULT_REDACTIONS), log: () => {}, pack, ...extra,
@@ -289,7 +292,7 @@ test('the table flags judges that differ, counts n/a runs and ignores records fr
   const s = judgedSetup();
   try {
     const failDesign = (ids) => Object.fromEntries(ids.filter((id) => id.startsWith('des-')).map((id) => [id, { verdict: 'fail', evidence: 'Hold service design' }]));
-    await runPackJudging({ ...common(s), caller: stub((ids, { model }) => (model === 'gpt-test' ? failDesign(ids) : {})) });
+    await runPackJudging({ ...common(s), judges: THREE, caller: stub((ids, { model }) => (model === 'gpt-test' ? failDesign(ids) : {})) });
     const run = loadRun(s.runDir);
     const sum = summarizeQuality({ groups: [{ id: 'vanilla', label: 'vanilla', run, arm: 'vanilla' }], tasks: loadTasks(s.bench), pack });
     const design = sum.groups[0].dimensions['design-doc'];
@@ -349,7 +352,7 @@ async function fourCells(extra = {}) {
   };
   for (const d of Object.values(dirs)) {
     const s = { runDir: d[0], bench };
-    await runPackJudging({ ...common(s), subjectModel: 'claude-sonnet-5.5', backend: extra.backend ?? 'kiro', caller: stub() });
+    await runPackJudging({ ...common(s), judges: THREE, subjectModel: 'claude-sonnet-5.5', backend: extra.backend ?? 'kiro', caller: stub() });
   }
   return { root, bench, dirs };
 }
@@ -491,7 +494,7 @@ const readReport = (dir) => JSON.parse(fs.readFileSync(path.join(dir, 'report.js
 test('a scoring file that weights the pack puts it in quality, and the report says so', async () => {
   const s = judgedSetup();
   try {
-    await runPackJudging({ ...common(s), caller: stub((ids) => (ids.includes('des-consistency') ? { 'des-consistency': { verdict: 'fail', evidence: 'Hold service design' } } : {})) });
+    await runPackJudging({ ...common(s), judges: THREE, caller: stub((ids) => (ids.includes('des-consistency') ? { 'des-consistency': { verdict: 'fail', evidence: 'Hold service design' } } : {})) });
     reportWith(s, path.join(s.root, 'plain'), { qualityPack: pack });
     reportWith(s, path.join(s.root, 'scored'), { qualityPack: pack, scoringFile: SCORING_QUALITY });
     const plain = readReport(path.join(s.root, 'plain'));

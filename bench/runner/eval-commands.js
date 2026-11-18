@@ -9,6 +9,7 @@ const path = require('node:path');
 const { loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, realDir, BENCH_DIR } = require('./lib/tasks.js');
 const sandbox = require('./lib/sandbox.js');
 const { DEFAULTS, MIN_PANEL_FAMILIES, checkPanel, checkJudgeModel, families, modelFamily } = require('../judge/config.js');
+const { familyOf, judgeSeats } = require('../judge/family.js');
 const { resolveIsolation } = require('./lib/isolate.js');
 const procs = require('./lib/procs.js');
 const { loadRedactions } = require('../judge/redact.js');
@@ -103,8 +104,31 @@ function adaptPanel(judges, subjectModel) {
   return { judges: [...kept, ...added], substituted: { dropped, added } };
 }
 
-// --judges wins, then the suite file, then the default three-family panel. Fewer than three
-// distinct families is refused unless --allow-small-panel is passed.
+/**
+ * The judges of `judges` that SR-24 seats for an agent running `subjectModel` (judge/family.js): known family, not the
+ * agent's, one per family. With no subject model recorded, every judge of a known family that no earlier judge has.
+ * Returns `{ eligible, refused: ['judge: why'] }`.
+ */
+function eligibleJudges(judges, subjectModel) {
+  if (subjectModel && familyOf(subjectModel)) {
+    const { seats } = judgeSeats({ subjectModel, judges });
+    return { eligible: seats.filter((s) => s.seated).map((s) => s.model), refused: seats.filter((s) => !s.seated).map((s) => `${s.model}: ${s.why}`) };
+  }
+  const seen = new Set();
+  const eligible = [];
+  const refused = [];
+  for (const j of judges) {
+    const fam = familyOf(j);
+    if (!fam) refused.push(`${j}: its model family is unknown`);
+    else if (seen.has(fam)) refused.push(`${j}: another seat already has the ${fam} family`);
+    else { seen.add(fam); eligible.push(j); }
+  }
+  return { eligible, refused };
+}
+
+// --judges wins, then the suite file, then the default three-family panel. A panel with fewer than three eligible
+// families (SR-24: distinct, none the agent's) is refused unless --allow-small-panel is passed; every run judged by such
+// a panel is then NO DATA in the reports, which take the median of three or more judges.
 function resolveJudges({ cliJudges, suiteJudges, subjectModel = null, allowSmallPanel = false }) {
   let judges = cliJudges ? String(cliJudges).split(',').filter(Boolean) : null;
   let substituted;
@@ -115,8 +139,14 @@ function resolveJudges({ cliJudges, suiteJudges, subjectModel = null, allowSmall
   }
   judges.forEach((j) => checkJudgeModel(j, subjectModel));
   checkPanel(judges, { minFamilies: allowSmallPanel ? 1 : MIN_PANEL_FAMILIES });
-  return { judges, small: families(judges).length < MIN_PANEL_FAMILIES, ...(substituted ? { substituted } : {}) };
+  const { eligible, refused } = eligibleJudges(judges, subjectModel);
+  if (eligible.length < MIN_PANEL_FAMILIES && !allowSmallPanel) {
+    throw new Error(`the judge panel has ${eligible.length} eligible model family(ies) (${eligible.join(', ') || 'none'}); SR-24 needs at least ${MIN_PANEL_FAMILIES} distinct families other than the agent's (${subjectModel ?? 'model not recorded'})${refused.length ? `; not eligible: ${refused.join('; ')}` : ''}. Add judges, or pass --allow-small-panel (every score is then NO DATA)`);
+  }
+  return { judges, small: eligible.length < MIN_PANEL_FAMILIES, ...(substituted ? { substituted } : {}) };
 }
+
+const SMALL_PANEL_WARNING = `warning: panel has fewer than ${MIN_PANEL_FAMILIES} eligible model families (--allow-small-panel); the reports give NO DATA for every run it judged, since they take the median of ${MIN_PANEL_FAMILIES} or more judges (SR-24)`;
 
 const flagValue = (opts, name) => (opts[name] !== undefined && opts[name] !== true ? String(opts[name]) : null);
 
@@ -238,7 +268,7 @@ async function cmdJudge(opts) {
   const last = j.invocations[j.invocations.length - 1];
   const spend = viaOpencode ? `live spend $${last.spentUsd.toFixed(4)} USD (all invocations: $${j.spentUsd.toFixed(4)}), 0 credits` : `live spend ${last.spentCredits.toFixed(3)} credits (all invocations: ${j.spentCredits.toFixed(3)})`;
   console.log(`judged ${j.rubric.length} rubric, ${j.pairwise.length} pairwise and ${j.graded.length} graded record(s); ${errors.length + j.graded.filter((r) => r.judgeError).length} with judgeError; ${spend}; ${j.notJudged.length} run(s) not judged`);
-  if (small) console.log(`warning: panel has fewer than ${MIN_PANEL_FAMILIES} model families (--allow-small-panel)`);
+  if (small) console.log(SMALL_PANEL_WARNING);
   console.log(j.ledgerLine);
   if (j.guardState === 'hard') {
     console.error(viaOpencode
@@ -335,7 +365,7 @@ async function cmdJudgePack(opts, { runDir, benchDir, run, judges, small }) {
   const last = j.invocations[j.invocations.length - 1];
   const spend = viaOpencode ? `live spend $${last.spentUsd.toFixed(4)} USD (all invocations: $${j.spentUsd.toFixed(4)}), 0 credits` : `live spend ${last.spentCredits.toFixed(3)} credits (all invocations: ${j.spentCredits.toFixed(3)})`;
   console.log(`quality pack ${thePack.id}: ${j.records.length} record(s), ${j.records.filter((r) => r.judgeError).length} with judgeError; ${spend}; ${j.notJudged.length} run(s) not judged`);
-  if (small) console.log(`warning: panel has fewer than ${MIN_PANEL_FAMILIES} model families (--allow-small-panel)`);
+  if (small) console.log(SMALL_PANEL_WARNING);
   console.log(j.ledgerLine);
   if (j.guardState === 'hard') {
     console.error(viaOpencode ? 'usd guard: HARD STOP, this command spent past 100% of --budget-usd; no further call started' : 'credit guard: HARD STOP, this command spent past 100% of --budget-credits; no further call started');

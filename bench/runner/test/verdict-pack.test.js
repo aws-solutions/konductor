@@ -30,11 +30,12 @@ function setup({ judgePack = true } = {}) {
       for (const task of ['t1', 't2']) {
         for (let rep = 1; rep <= 3; rep++) {
           const verdict = arm === 'vanilla' || rep === 1 ? 'pass' : 'fail';
-          records.push({ judge: 'j1', armId: arm, taskId: task, replicate: rep, taskRevision: taskRevision(tasks.get(task)), packRevision: pack.revision, dimensions: {}, judgeError: null, criteria: [{ id: 'chg-scoped', dimension: 'change-discipline', status: 'judged', verdict }], na: [] });
+          // Three judges agree, since a pack score is the median of three or more (SR-24).
+          for (const judge of ['j1', 'j2', 'j3']) records.push({ judge, armId: arm, taskId: task, replicate: rep, taskRevision: taskRevision(tasks.get(task)), packRevision: pack.revision, dimensions: {}, judgeError: null, criteria: [{ id: 'chg-scoped', dimension: 'change-discipline', status: 'judged', verdict }], na: [] });
         }
       }
     }
-    write(path.join(dir, 'judgments-quality.json'), JSON.stringify({ schemaVersion: 1, kind: 'quality-pack', pack: { id: pack.id, revision: pack.revision }, backend: 'kiro', judges: ['j1'], notJudged: [], records }));
+    write(path.join(dir, 'judgments-quality.json'), JSON.stringify({ schemaVersion: 1, kind: 'quality-pack', pack: { id: pack.id, revision: pack.revision }, backend: 'kiro', judges: ['j1', 'j2', 'j3'], notJudged: [], records }));
   }
   const scoring = path.join(root, 'scoring-pack.json');
   write(scoring, JSON.stringify({ weights: WEIGHTS }));

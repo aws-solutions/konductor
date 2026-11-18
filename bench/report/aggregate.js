@@ -3,7 +3,7 @@
 
 const { median, medianCI, mean } = require('./stats.js');
 const { summarizeSkills, rowsFromResults } = require('./skills.js');
-const { rubricScore } = require('../judge/score.js');
+const { rubricScore, panelScore, MIN_JUDGES } = require('../judge/score.js');
 const { taskRevision } = require('../judge/revision.js');
 const { MIN_RECALL, fetchUnchecked } = require('../runner/lib/contamination.js');
 const { RUBRIC_POLICY, exclusionClassOfRun, reasonLabel } = require('../judge/exclusion.js');
@@ -225,6 +225,7 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
     const scoresByJudge = Object.fromEntries(judges.map((j) => [j, []]));
     const rawByJudge = Object.fromEntries(judges.map((j) => [j, []]));
     const perRunRaw = [];
+    let noData = 0;
     for (const e of executed) {
       const got = [];
       const gotRaw = [];
@@ -238,11 +239,13 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
           gotRaw.push(raw); rawByJudge[j].push(raw);
         }
       }
-      if (got.length) {
-        perRun.push(mean(got)); perRunRaw.push(mean(gotRaw));
+      // SR-24: the run's rubric score is the median of its judges; with fewer than MIN_JUDGES it is NO DATA.
+      const panel = panelScore(got);
+      if (panel !== null) {
+        perRun.push(panel); perRunRaw.push(panelScore(gotRaw));
         const bytes = lengthByKey?.get(keyOf(e))?.artifactBytes;
-        if (typeof bytes === 'number') lengthPoints.push({ task: e.taskId, x: bytes, y: mean(got) });
-      }
+        if (typeof bytes === 'number') lengthPoints.push({ task: e.taskId, x: bytes, y: panel });
+      } else if (got.length) noData++;
       if (got.length > 1) diffs.push(Math.max(...got) - Math.min(...got));
     }
     for (const j of judges) {
@@ -252,7 +255,7 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
     }
     rubric = {
       byJudge,
-      meanOfJudges: { n: perRun.length, mean: avg(perRun), meanRaw: avg(perRunRaw) },
+      medianOfJudges: { n: perRun.length, mean: avg(perRun), meanRaw: avg(perRunRaw), noData, minJudges: MIN_JUDGES },
       disagreement: { n: diffs.length, meanAbsDiff: avg(diffs), runsOver: diffs.filter((d) => d > disagreeScore).length },
     };
     series.rubricScore = perRun;
@@ -270,6 +273,7 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
         scrubGapCount: scrubGaps.length,
       };
     }
+    if (noData) flags.push(`${noData} run(s) have rubric scores from fewer than ${MIN_JUDGES} judges: NO DATA, left out of the rubric (SR-24 needs the median of ${MIN_JUDGES})`);
     if (rubric.disagreement.meanAbsDiff !== null && rubric.disagreement.meanAbsDiff > disagreeScore) {
       flags.push(`judges disagree: mean difference ${rubric.disagreement.meanAbsDiff.toFixed(2)} > ${disagreeScore} on ${diffs.length} run(s)`);
     }

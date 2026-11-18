@@ -136,8 +136,8 @@ function setup() {
   const specs = Object.entries(mixes).flatMap(([arm, reps]) => reps.map((m, i) => ({ arm, rep: i + 1, credits: 2 + i, checks: m.map((x) => P(Boolean(x))) })));
   const runDir = makeRun(path.join(root, 'run'), bench, specs);
   const rubric = [];
-  for (const arm of Object.keys(mixes)) for (let rep = 1; rep <= 3; rep++) for (const judge of ['j1', 'j2']) rubric.push({ judge, arm, rep, score: 0.5 });
-  writeJudgments(runDir, { judges: ['j1', 'j2'], rubric });
+  for (const arm of Object.keys(mixes)) for (let rep = 1; rep <= 3; rep++) for (const judge of ['j1', 'j2', 'j3']) rubric.push({ judge, arm, rep, score: 0.5 });
+  writeJudgments(runDir, { judges: ['j1', 'j2', 'j3'], rubric });
   return { root, bench, runDir };
 }
 const report = (s, out, extra = {}) => {

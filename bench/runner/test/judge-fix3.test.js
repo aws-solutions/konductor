@@ -208,7 +208,7 @@ test('judge CLI refuses a small panel and records the override in judgments.json
     assert.equal(fs.existsSync(path.join(runDir, 'judgments.json')), false);
     const ok = spawnSync('node', [BENCH_JS, ...args, '--allow-small-panel'], { encoding: 'utf8' });
     assert.equal(ok.status, 0, ok.stderr);
-    assert.match(ok.stdout, /fewer than 3 model families/);
+    assert.match(ok.stdout, /fewer than 3 eligible model families \(--allow-small-panel\); the reports give NO DATA/);
     const j = JSON.parse(fs.readFileSync(path.join(runDir, 'judgments.json'), 'utf8'));
     assert.deepEqual(j.panel, { families: ['gpt'], small: true });
     const md = renderMarkdown(buildReport({ run: loadRun(runDir), tasks: loadTasks(bench), baseline: 'vanilla' }).report);

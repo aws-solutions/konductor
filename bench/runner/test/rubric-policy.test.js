@@ -87,9 +87,9 @@ test('stamped: rubricJudged is the number the legacy report gave for the same da
   const s = stamped();
   try {
     for (const arm of ['vanilla', 'v1']) {
-      const old = LEGACY.json.arms[arm].overall.rubric.meanOfJudges;
-      assert.deepEqual(s.report.arms[arm].overall.rubricJudged, old);
-      assert.deepEqual(s.report.arms[arm].overall.rubric.meanOfJudges, old);
+      const { n, mean, meanRaw } = LEGACY.json.arms[arm].overall.rubric.medianOfJudges;
+      assert.deepEqual(s.report.arms[arm].overall.rubricJudged, { n, mean, meanRaw });
+      assert.deepEqual(s.report.arms[arm].overall.rubric.medianOfJudges, LEGACY.json.arms[arm].overall.rubric.medianOfJudges);
     }
   } finally { rm(s.root); }
 });
@@ -98,7 +98,7 @@ test('stamped: the table has the main column, the judged-only column and the exc
   const s = stamped();
   try {
     assert.match(s.md, /\| rubric \(excluded runs = 0\), scored \(raw\) \| rubric \(judged runs only\), scored \(raw\) \| excluded runs \(counted as 0\) \|/);
-    assert.match(s.md, /\| v1 \| 4 \|.*\| mean 0\.44 \(raw 0\.44\) over 4 run\(s\) \| j1 0\.88 \(raw 0\.88\)<br>j2 0\.88 \(raw 0\.88\)<br>mean 0\.88 \(raw 0\.88\) \| 2 \|/);
+    assert.match(s.md, /\| v1 \| 4 \|.*\| mean 0\.44 \(raw 0\.44\) over 4 run\(s\) \| j1 0\.88 \(raw 0\.88\)<br>j2 0\.88 \(raw 0\.88\)<br>j3 0\.88 \(raw 0\.88\)<br>median of judges 0\.88 \(raw 0\.88\) \| 2 \|/);
     assert.match(s.md, /\| vanilla \| 4 \|.*\| mean 0\.75 \(raw 0\.75\) over 3 run\(s\) \|.*\| 0 \|/);
     assert.ok(!s.md.includes('legacy: excluded runs are gaps'));
     assert.match(s.md, /\| credsUnscrubbed \[link\] \| integrity \| counted as 0 \|/);
@@ -118,7 +118,7 @@ test('stamped: an arm whose runs were all excluded scores 0 in the main number a
     assert.deepEqual(c.rubricAll, { n: 2, mean: 0, meanRaw: 0 });
     assert.deepEqual(c.rubricJudged, { n: 0, mean: null, meanRaw: null });
     assert.equal(c.excludedCount, 2);
-    assert.match(s.md, /\| v1 \| 2 \|.*\| mean 0\.00 \(raw 0\.00\) over 2 run\(s\) \| j1 n\/a \(raw n\/a\)<br>j2 n\/a \(raw n\/a\)<br>mean n\/a \(raw n\/a\) \| 2 \|/);
+    assert.match(s.md, /\| v1 \| 2 \|.*\| mean 0\.00 \(raw 0\.00\) over 2 run\(s\) \| j1 n\/a \(raw n\/a\)<br>j2 n\/a \(raw n\/a\)<br>j3 n\/a \(raw n\/a\)<br>median of judges n\/a \(raw n\/a\) \| 2 \|/);
   } finally { rm(s.root); }
 });
 
@@ -185,7 +185,7 @@ function judgeFixture(specs) {
   const runDir = makeRun(path.join(root, 'run'), bench, specs);
   const caller = async ({ prompt }) => ({ text: JSON.stringify({ criteria: [...prompt.matchAll(/^- id: (\S+)/gm)].map((m) => ({ id: m[1], verdict: 'pass', evidence: 'a.txt' })) }), credits: 0.1, latencyMs: 10 });
   const common = {
-    runDir, benchDir: bench, judges: ['gpt-test'], modes: ['rubric'], baseline: 'vanilla', concurrency: 1, budgetCredits: null, caller,
+    runDir, benchDir: bench, judges: ['gpt-test', 'deepseek-test', 'glm-test'], modes: ['rubric'], baseline: 'vanilla', concurrency: 1, budgetCredits: null, caller,
     limits: { maxFileChars: 6000, maxBundleChars: 24000 }, redactions: compileRedactions(DEFAULT_REDACTIONS), log: () => {},
   };
   return { root, runDir, common };

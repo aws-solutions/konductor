@@ -15,7 +15,7 @@ const { effectiveLimits } = require('./config.js');
 const { writeAtomic } = require('../runner/lib/owned.js');
 const { buildBundle } = require('./bundle.js');
 const { makeQuoteMatcher, MAX_UNSUPPORTED_LETTERS } = require('./quote.js');
-const { rubricScore, DOWNGRADE } = require('./score.js');
+const { rubricScore, panelScore, DOWNGRADE } = require('./score.js');
 
 const LENIENT_FILE = 'judgments-lenient.json';
 const NO_EVIDENCE = /^\(nothing in the output\)/i;
@@ -50,9 +50,11 @@ function perArm(records) {
   for (const r of records.filter((x) => !x.judgeError && typeof x.score === 'number')) (arms[r.armId] ??= []).push(r);
   const out = {};
   for (const [arm, recs] of Object.entries(arms)) {
-    // mean over judges of the mean over the arm's runs
-    const byJudge = [...new Set(recs.map((r) => r.judge))].map((j) => mean(recs.filter((r) => r.judge === j).map((r) => r.score)));
-    out[arm] = mean(byJudge);
+    // SR-24: per run the median of its judges (NO DATA under three), then the mean over the arm's runs.
+    const byRun = new Map();
+    for (const r of recs) byRun.set(`${r.taskId}\u0000${r.replicate}`, [...(byRun.get(`${r.taskId}\u0000${r.replicate}`) ?? []), r.score]);
+    const panel = [...byRun.values()].map(panelScore).filter((v) => v !== null);
+    out[arm] = panel.length ? mean(panel) : null;
   }
   return out;
 }

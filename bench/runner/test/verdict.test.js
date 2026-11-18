@@ -270,12 +270,12 @@ test('graded judging and a controls check are carried into the verdict when pres
   try {
     const { dir, benchDir } = fixtureRun(root, 'r1', { arms: ARMS() });
     const rec = (o) => ({ kind: 'graded', judge: 'j1', armId: 'a', taskId: 't1', replicate: 1, baselineId: 'vanilla', armGrade: 4, baseGrade: 2, delta: 2, orderDisagreement: false, shift: 0, judgeError: null, ...o });
-    fs.writeFileSync(path.join(dir, 'judgments.json'), JSON.stringify({ schemaVersion: 1, baseline: 'vanilla', judges: ['j1'], modes: ['graded'], rubric: [], pairwise: [], graded: [rec({}), rec({ replicate: 2, orderDisagreement: true })] }));
+    fs.writeFileSync(path.join(dir, 'judgments.json'), JSON.stringify({ schemaVersion: 1, baseline: 'vanilla', judges: ['j1'], modes: ['graded'], rubric: [], pairwise: [], graded: ['j1', 'j2', 'j3'].flatMap((judge) => [rec({ judge }), rec({ judge, replicate: 2, orderDisagreement: judge === 'j1' })]) }));
     fs.writeFileSync(path.join(dir, 'controls-check.json'), JSON.stringify({ trusted: true, summary: 'The planted lift was found and the decoy showed no effect, so the skill verdicts from this study can be trusted.' }));
     const v = V.buildVerdict({ dirs: [dir], benchDir });
     const a = verdictFor(v, 'a@aaaaaaa');
-    assert.equal(a.graded.n, 2);
-    assert.equal(a.graded.orderDisagreements, 1);
+    // Two runs, each graded by three judges (the panel median, SR-24); one of the six records flipped with order.
+    assert.deepEqual([a.graded.n, a.graded.records, a.graded.orderDisagreements], [2, 6, 1]);
     assert.equal(v.dirs[0].controls.trusted, true);
   } finally { cleanup(root); }
 });

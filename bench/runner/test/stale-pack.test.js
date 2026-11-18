@@ -26,8 +26,9 @@ function packRun(records) {
   const runDir = makeRun(path.join(root, 'run'), bench, [{ arm: 'vanilla', task: 't1' }, { arm: 'other', task: 't1' }], { taskIds: ['t1'] });
   const tasks = loadTasks(bench);
   const rev = taskRevision(tasks.get('t1'));
-  const full = records.map((r) => ({ judge: 'j1', armId: 'vanilla', taskId: 't1', replicate: 1, taskRevision: rev, packRevision: pack.revision, dimensions: {}, judgeError: null, criteria: [], na: [], ...r }));
-  write(path.join(runDir, 'judgments-quality.json'), JSON.stringify({ schemaVersion: 1, kind: 'quality-pack', pack: { id: pack.id, revision: pack.revision }, backend: 'kiro', judges: ['j1'], notJudged: [], records: full }));
+  // Each record is given by three judges (<judge>.1 to .3), since a pack score is the median of three or more (SR-24).
+  const full = records.flatMap((r) => [1, 2, 3].map((k) => ({ armId: 'vanilla', taskId: 't1', replicate: 1, taskRevision: rev, packRevision: pack.revision, dimensions: {}, judgeError: null, criteria: [], na: [], ...r, judge: `${r.judge ?? 'j1'}.${k}` })));
+  write(path.join(runDir, 'judgments-quality.json'), JSON.stringify({ schemaVersion: 1, kind: 'quality-pack', pack: { id: pack.id, revision: pack.revision }, backend: 'kiro', judges: [...new Set(full.map((r) => r.judge))], notJudged: [], records: full }));
   return { root, tasks, run: loadRun(runDir), rev };
 }
 const cleanup = (root) => fs.rmSync(root, { recursive: true, force: true });

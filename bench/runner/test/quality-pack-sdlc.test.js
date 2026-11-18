@@ -241,24 +241,34 @@ function packRun(records, { notJudged = [], taskIdMap = null } = {}) {
   const tasks = loadTasks(bench);
   const rev = taskRevision(tasks.get('t1'));
   const full = records.map((r) => ({ judge: 'j1', armId: 'vanilla', taskId: 't1', replicate: 1, taskRevision: rev, packRevision: pack.revision, dimensions: {}, judgeError: null, criteria: [], na: [], ...r }));
-  write(path.join(runDir, 'judgments-quality.json'), JSON.stringify({ schemaVersion: 1, kind: 'quality-pack', pack: { id: pack.id, revision: pack.revision }, backend: 'kiro', judges: ['j1', 'j2'], notJudged, records: full }));
+  write(path.join(runDir, 'judgments-quality.json'), JSON.stringify({ schemaVersion: 1, kind: 'quality-pack', pack: { id: pack.id, revision: pack.revision }, backend: 'kiro', judges: ['j1', 'j2', 'j3'], notJudged, records: full }));
   return { root, tasks, run: loadRun(runDir), rev };
 }
 const crit = (id, verdict) => ({ id, dimension: 'x', status: 'judged', verdict });
 
-test('a pack score is the weighted mean of the criteria that applied, averaged over judges', () => {
+test('a pack score is the weighted mean of the criteria that applied, then the median over three or more judges', () => {
   const { root, tasks, run } = packRun([
     { criteria: [crit('chg-tests-intact', 'pass'), crit('chg-scoped', 'fail')] },
     { armId: 'vanilla', judge: 'j2', criteria: [crit('chg-tests-intact', 'pass'), crit('chg-scoped', 'pass')] },
+    { armId: 'vanilla', judge: 'j3', criteria: [crit('chg-tests-intact', 'fail'), crit('chg-scoped', 'pass')] },
     { armId: 'other', criteria: [] },
   ]);
   try {
-    // chg-tests-intact weighs 3 and chg-scoped 2: judge 1 gives 3/5, judge 2 gives 1.
+    // chg-tests-intact weighs 3 and chg-scoped 2: judge 1 gives 3/5, judge 2 gives 1, judge 3 gives 2/5.
     assert.ok(Math.abs(recordScore(pack, { criteria: [crit('chg-tests-intact', 'pass'), crit('chg-scoped', 'fail')] }) - 0.6) < 1e-9);
     const s = packScores({ run, tasks, pack });
-    assert.ok(Math.abs(s.scoreOf('vanilla', 't1', 1) - 0.8) < 1e-9);
+    // SR-24: the median of 0.6, 1 and 0.4 is 0.6 (the mean would be 0.67).
+    assert.ok(Math.abs(s.scoreOf('vanilla', 't1', 1) - 0.6) < 1e-9);
     assert.equal(s.scoreOf('other', 't1', 1), null);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  const two = packRun([
+    { criteria: [crit('chg-scoped', 'pass')] },
+    { armId: 'vanilla', judge: 'j2', criteria: [crit('chg-scoped', 'pass')] },
+    { armId: 'other', criteria: [] },
+  ]);
+  try {
+    assert.throws(() => packScores({ run: two.run, tasks: two.tasks, pack }), /1 run\(s\) have pack scores from fewer than 3 judges, which is NO DATA under SR-24 \(vanilla\/t1\/1\)/);
+  } finally { fs.rmSync(two.root, { recursive: true, force: true }); }
 });
 
 test('a run the pack never judged, or judged against another revision, stops the scoring with a message that names the cause', () => {
@@ -279,7 +289,7 @@ test('a run the pack never judged, or judged against another revision, stops the
 
 test('stale records are reported with their revision and how to refresh them, never mixed in', () => {
   const { root, tasks, run } = packRun([
-    { criteria: [crit('chg-scoped', 'pass')], dimensions: { 'change-discipline': { score: 1, judged: 1, absent: 0 } } },
+    ...['j1', 'j2', 'j3'].map((judge) => ({ judge, criteria: [crit('chg-scoped', 'pass')], dimensions: { 'change-discipline': { score: 1, judged: 1, absent: 0 } } })),
     { armId: 'other', packRevision: 'oldrev000001', criteria: [crit('chg-scoped', 'pass')], dimensions: { 'change-discipline': { score: 1, judged: 1, absent: 0 } } },
   ]);
   try {

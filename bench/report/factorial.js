@@ -21,6 +21,7 @@ const { pairedCellCI, MIN_CELLS } = require('./stats.js');
 const D = require('./doc.js');
 const { mergeQuote, STRICT_ONLY, ruleLine } = require('./quotes.js');
 const { otherRule } = require('../judge/views.js');
+const { MIN_JUDGES } = require('../judge/score.js');
 const C = require('./charts.js');
 
 const SPECS = [
@@ -120,13 +121,18 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack, quoteR
   });
   if (partial.length) throw new Error(`${where}: ${partial.length} run(s) were scored by only part of the panel of ${panel.judges.length} judges (${partial.slice(0, 3).map((row) => `${row.task} rep ${row.rep}`).join(', ')}${partial.length > 3 ? ', ...' : ''}). Finish judging that cell first`);
 
+  // Each judge's own mean rubric score (0 to 100) over the cell's runs it scored, shown beside the panel median.
+  const judgeRubric = Object.fromEntries(panel.judges.map((jd) => {
+    const own = rubric.filter((x) => x.judge === jd && x.armId === armId && fin(x.score)).map((x) => x.score);
+    return [jd, own.length ? mean(own) * 100 : null];
+  }));
   const model = canonicalModel(run.config.canonicalModel ?? rows.find((r) => r.model)?.model ?? run.config.model);
   const shas = uniq(executed.map((e) => e.result.commitSha).filter(Boolean));
   // The effort level each run was started at. A Claude Code run from before bench passed --effort to claude records "default".
   const efforts = uniq(executed.map((e) => e.result.effort ?? 'unrecorded')).sort();
   if (efforts.length > 1) throw new Error(`${where}: its runs were started at more than one effort level (${efforts.join(', ')}); a cell holds one effort level`);
   const modelsSeen = uniq(executed.flatMap((e) => (e.result.claudeCode?.modelsSeen ?? [e.result.sessionModel ?? e.result.model]).filter(Boolean))).sort();
-  return { run, spec, dirs: run.dirs ?? [run.dir], quote: a.quote, armId, rows, unit: a.scores.unit, panel, revisions, model, modelsSeen, pin: a.facts.pin ?? null, shas, effort: efforts[0], harnessVersion: executed[0].result.harnessVersion ?? executed[0].result.kiroCliVersion ?? null };
+  return { run, spec, dirs: run.dirs ?? [run.dir], quote: a.quote, armId, rows, unit: a.scores.unit, panel, revisions, model, modelsSeen, pin: a.facts.pin ?? null, shas, effort: efforts[0], judgeRubric, harnessVersion: executed[0].result.harnessVersion ?? executed[0].result.kiroCliVersion ?? null };
 }
 
 const sameJson = (x, y) => JSON.stringify(x) === JSON.stringify(y);
@@ -195,6 +201,7 @@ function summarizeCell(c, tasks) {
     delegation: { runs: spawns.length, meanSpawns: mean(spawns), share: spawns.length ? spawns.filter((s) => s > 0).length / spawns.length : null },
     wallS: mean(rows.map((r) => r.wallMs).filter(fin)) === null ? null : mean(rows.map((r) => r.wallMs).filter(fin)) / 1000,
     modelIdentity: { models: c.modelsSeen, pin: c.pin },
+    judgeRubric: c.judgeRubric,
   };
 }
 
@@ -405,6 +412,9 @@ function renderFactorial(res, { charts = null } = {}) {
       ['**mean over tasks**', ...cols.map((c) => `**${f1(c.quality)}**`)],
       ['mean excluding timed-out runs', ...cols.map((c) => f1(c.qualityExclTimeouts))]]),
     ...chart('quality-by-cell', 'Quality by cell: bars are the mean over tasks, dots are single tasks'),
+    D.h(2, 'Rubric by judge (0 to 100)'),
+    D.table(['judge', ...cols.map((c) => `${HARNESS_NAME[c.harness]} ${c.role}`)], res.judges.panel.map((jd) => [jd, ...cols.map((c) => f1(c.judgeRubric?.[jd] ?? null))])),
+    D.note(`Each judge's mean rubric score over the cell's runs. The quality score uses the panel score of each run: the median of these judges (SR-24); a run scored by fewer than ${MIN_JUDGES} judges is NO DATA.`),
     D.h(2, 'Effects on quality (points)'),
     D.table(['contrast', 'estimate', 'per task', 'interval'], Object.values(res.contrasts).map((c) => [
       c.label, signed(c.delta), c.perTask.map((x) => `${x.task} ${signed(x.value)}`).join('; ') || 'n/a',

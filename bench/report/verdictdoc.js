@@ -80,7 +80,7 @@ function buildVerdictDocument(v) {
     ['arm', 'runs (arm / baseline)', 'cells (task x directory)', 'replicates in the smallest cell', 'runs without a score (arm, baseline)', 'A/A noise', 'diligence rating', 'graded judge (arm, baseline; order disagreements)'],
     heads.map((a) => [
       a.label, `${a.quality.n} / ${a.quality.baseN}`, a.cells, a.minReps, `${a.nonScored.head.n} / ${a.nonScored.base.n}`, noiseCell(a.noise), a.diligence.rating,
-      a.graded ? `${f(a.graded.armGrade, 2)}, ${f(a.graded.baseGrade, 2)}; ${a.graded.orderDisagreements} of ${a.graded.n}` : 'not run',
+      a.graded ? `${f(a.graded.armGrade, 2)}, ${f(a.graded.baseGrade, 2)}; ${a.graded.orderDisagreements} of ${a.graded.records ?? a.graded.n}` : 'not run',
     ]),
   ));
   const anecdotal = decided.filter((a) => a.diligence.rating === 'anecdotal');
@@ -98,7 +98,7 @@ function buildVerdictDocument(v) {
   const gradedArms = heads.filter((a) => a.graded);
   if (gradedArms.length) {
     blocks.push(D.h(2, 'Graded judging (1 to 5)'));
-    const summary = { arms: Object.fromEntries(gradedArms.map((a) => [a.label, { n: a.graded.n, errors: a.graded.errors, armGrade: a.graded.armGrade, baseGrade: a.graded.baseGrade, delta: a.graded.delta, orderDisagreements: a.graded.orderDisagreements, disagreementRate: a.graded.disagreementRate, shift: null }])), total: { disagreementRate: gradedArms.reduce((s, a) => s + a.graded.orderDisagreements, 0) / gradedArms.reduce((s, a) => s + a.graded.n, 0) } };
+    const summary = { arms: Object.fromEntries(gradedArms.map((a) => [a.label, { n: a.graded.n, records: a.graded.records, errors: a.graded.errors, armGrade: a.graded.armGrade, baseGrade: a.graded.baseGrade, delta: a.graded.delta, orderDisagreements: a.graded.orderDisagreements, disagreementRate: a.graded.disagreementRate, shift: null }])), total: { disagreementRate: gradedArms.reduce((s, a) => s + a.graded.orderDisagreements, 0) / gradedArms.reduce((s, a) => s + (a.graded.records ?? a.graded.n), 0) } };
     const t = gradedTable(summary);
     blocks.push(D.table(t.head, t.rows));
     blocks.push(D.note(t.note));

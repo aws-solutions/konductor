@@ -108,11 +108,11 @@ test('cells are split by task class and overall', () => {
   } finally { done(r.root); }
 });
 
-test('rubric means per judge and across judges, with a disagreement flag', () => {
+test('rubric means per judge and the median across judges, with a disagreement flag', () => {
   const r = build([{ arm: 'a', rep: 1 }, { arm: 'a', rep: 2 }, { arm: 'a', rep: 3 }], {
     judgments: {
-      judges: ['j1', 'j2'],
-      rubric: [1, 2, 3].flatMap((rep) => [{ judge: 'j1', arm: 'a', rep, score: 0.9 }, { judge: 'j2', arm: 'a', rep, score: 0.3 }])
+      judges: ['j1', 'j2', 'j3'],
+      rubric: [1, 2, 3].flatMap((rep) => [{ judge: 'j1', arm: 'a', rep, score: 0.9 }, { judge: 'j2', arm: 'a', rep, score: 0.3 }, { judge: 'j3', arm: 'a', rep, score: 0.4 }])
         .concat([{ judge: 'j1', arm: 'a', rep: 4, error: 'x' }]),
     },
   });
@@ -120,7 +120,8 @@ test('rubric means per judge and across judges, with a disagreement flag', () =>
     const c = r.report.arms.a.overall;
     assert.ok(Math.abs(c.rubric.byJudge.j1.mean - 0.9) < 1e-9);
     assert.ok(Math.abs(c.rubric.byJudge.j2.mean - 0.3) < 1e-9);
-    assert.ok(Math.abs(c.rubric.meanOfJudges.mean - 0.6) < 1e-9);
+    // SR-24: the median of 0.9, 0.3 and 0.4 is 0.4 (the mean would be 0.53).
+    assert.ok(Math.abs(c.rubric.medianOfJudges.mean - 0.4) < 1e-9);
     assert.ok(Math.abs(c.rubric.disagreement.meanAbsDiff - 0.6) < 1e-9);
     assert.match(c.flags.join(' '), /judges disagree/);
   } finally { done(r.root); }

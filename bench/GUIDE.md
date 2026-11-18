@@ -103,7 +103,7 @@ One run is a directory `<out>/<arm>/<task>/<replicate>/`:
 | Fixture | A small project the task starts from, copied fresh for every run. |
 | Check | A deterministic test on the final workspace: a regex, a file test, a command or hidden tests. |
 | Rubric | Three to six weighted criteria a judge scores for each output. |
-| Judge panel | At least three judge models from different families. The subject model's own family is excluded. |
+| Judge panel | At least three judge models from different families. The subject model's own family is excluded. A run's score is the median of its judges, and NO DATA when fewer than three scored it (SR-24); the report shows each judge's score beside the median. |
 | Replicate | One more run of the same task on the same arm. Replicates measure run-to-run spread. |
 | A/A arm | The same ref run twice under two names. The gap between them is the noise floor. |
 | Credit ledger | `credit-ledger.jsonl`: one line per agent run and per judge call. |
@@ -183,7 +183,7 @@ node bench/runner/bench.js trace   --run $OUT --arm main --task simple-fix-faili
 
 | Column | Meaning |
 | --- | --- |
-| Quality /100 [95% CI] | Per run, the weighted mean of what the run has: hidden tests, checks and the judges' rubric score. Default weights are 0.5, 0.2 and 0.3. Without hidden tests they become checks 0.4 and rubric 0.6. |
+| Quality /100 [95% CI] | Per run, the weighted mean of what the run has: hidden tests, checks and the judges' rubric score (the median over judges). Default weights are 0.5, 0.2 and 0.3. Without hidden tests they become checks 0.4 and rubric 0.6. |
 | n | Runs that contributed. Infrastructure errors and model mismatches are left out and counted separately. |
 | Reliability /100 | 100 minus the share of runs that timed out, errored or hit an infrastructure problem. |
 | Cost ratio | Cost per successful run, as arm over baseline. A ratio, never a 0 to 100 score. |

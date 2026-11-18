@@ -2,7 +2,8 @@
 'use strict';
 
 // The quality-pack score of a run, for a scoring file that gives the pack a weight. One number per run, 0..1: the weighted mean over
-// every criterion that applied to it (pass 1, partial 0.5, fail 0, weighted by criterion), averaged over the judges. It does not
+// every criterion that applied to it (pass 1, partial 0.5, fail 0, weighted by criterion), then the median over the judges
+// (SR-24; a run with fewer than three judges' scores is NO DATA, and that is an error here, as below). It does not
 // depend on how many dimensions or criteria apply, so a one-line fix and a design document are scored on the same scale.
 // A run where nothing applied has no pack score. A run the pack never judged, or judged against another pack or task revision,
 // is an error here: a score that quietly dropped the component for some runs would compare arms on different inputs.
@@ -14,9 +15,9 @@ const { VERDICT_VALUE } = require('../judge/config.js');
 const { notJudgedReason } = require('../judge/run.js');
 const { FILE } = require('../judge/packrun.js');
 const { recordsOf } = require('./quality.js');
+const { panelScore, MIN_JUDGES } = require('../judge/score.js');
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
-const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const runKey = (arm, task, rep) => `${arm}\u0000${task}\u0000${rep}`;
 
 const staleLabel = (revision, packChanged) => `stale pack revision ${revision}${packChanged ? '' : ' (the task changed since it was judged)'}`;
@@ -74,7 +75,7 @@ function packScores({ run, tasks, pack, allowStale = false }) {
     usable.get(k).push(recordScore(pack, r));
   }
   const out = new Map();
-  const missing = { never: [], stale: [] };
+  const missing = { never: [], stale: [], few: [] };
   const stale = [];
   for (const e of run.runs) {
     if (e.result.status === 'budget_skipped' || notJudgedReason(e)) continue;
@@ -87,11 +88,14 @@ function packScores({ run, tasks, pack, allowStale = false }) {
     }
     if (!judged) { (seen.has(k) ? missing.stale : missing.never).push(`${e.armId}/${e.taskId}/${e.replicate}`); continue; }
     const scores = judged.filter(fin);
-    out.set(k, { arm: e.armId, task: e.taskId, rep: e.replicate, score: scores.length ? mean(scores) : null, judges: judged.length });
+    // A run where no criterion applied has no pack score; one where criteria applied but under MIN_JUDGES judges scored it is NO DATA.
+    if (scores.length && scores.length < MIN_JUDGES) { missing.few.push(`${e.armId}/${e.taskId}/${e.replicate}`); continue; }
+    out.set(k, { arm: e.armId, task: e.taskId, rep: e.replicate, score: panelScore(scores), judges: judged.length });
   }
   const gaps = [];
   if (missing.never.length) gaps.push(`${missing.never.length} run(s) were never judged by the pack (${missing.never.slice(0, 3).join(', ')}${missing.never.length > 3 ? ', ...' : ''})`);
   if (missing.stale.length) gaps.push(`${missing.stale.length} run(s) were judged against another pack revision or another task revision (${missing.stale.slice(0, 3).join(', ')}${missing.stale.length > 3 ? ', ...' : ''}); the current pack revision is ${pack.revision}${allowStale ? '' : ' (--allow-stale-pack scores them anyway and labels them)'}`);
+  if (missing.few.length) gaps.push(`${missing.few.length} run(s) have pack scores from fewer than ${MIN_JUDGES} judges, which is NO DATA under SR-24 (${missing.few.slice(0, 3).join(', ')}${missing.few.length > 3 ? ', ...' : ''})`);
   if (gaps.length) throw new Error(`the scoring file weights the quality pack, so every run needs a current pack judgment: ${gaps.join('; ')}. Run bench.js judge --criteria-pack ${pack.id} --run DIR to refresh them.`);
   return { scoreOf: (arm, task, rep) => out.get(runKey(arm, task, rep))?.score ?? null, runs: [...out.values()], stale };
 }

@@ -226,8 +226,10 @@ function combineGraded(parts) {
   if (!ok.length) return null;
   const n = ok.reduce((s, p) => s + p.n, 0);
   const w = (k) => ok.reduce((s, p) => s + p[k] * p.n, 0) / n;
+  // `n` counts runs with a panel grade (the median of three or more judges); order disagreements count judge records.
   const dis = ok.reduce((s, p) => s + p.orderDisagreements, 0);
-  return { n, armGrade: w('armGrade'), baseGrade: w('baseGrade'), delta: w('delta'), orderDisagreements: dis, disagreementRate: dis / n, errors: parts.reduce((s, p) => s + (p?.errors || 0), 0) };
+  const records = ok.reduce((s, p) => s + (p.records ?? p.n), 0);
+  return { n, records, armGrade: w('armGrade'), baseGrade: w('baseGrade'), delta: w('delta'), orderDisagreements: dis, disagreementRate: dis / records, errors: parts.reduce((s, p) => s + (p?.errors || 0), 0) };
 }
 
 // A timed-out or killed run is charged an estimate, so a ratio that includes one is not a precise cost.

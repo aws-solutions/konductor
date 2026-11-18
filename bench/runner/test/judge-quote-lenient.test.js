@@ -149,7 +149,8 @@ test('rescoring recomputes verdicts and scores, writes a new file, and leaves ju
     assert.deepEqual([r.before.j1.downgraded, r.after.j1.downgraded], [1, 0], 'the pasted table row is found');
     assert.deepEqual([r.before.j3.downgraded, r.after.j3.downgraded], [1, 1], 'the invented quote is still lowered');
     assert.ok(Math.abs(r.after.j1.meanScore - 1) < 1e-9);
-    assert.ok(Math.abs(r.armAfter.vanilla - (1 + 1 + 0.625) / 3) < 1e-9);
+    // SR-24: the run's panel score is the median of its three judges, 1 (the mean would be 0.875).
+    assert.ok(Math.abs(r.armAfter.vanilla - 1) < 1e-9);
     const file = JSON.parse(fs.readFileSync(r.file, 'utf8'));
     assert.equal(file.quoteMatch.mode, 'lenient');
     assert.equal(file.quoteMatch.maxUnsupportedLetters, 20);

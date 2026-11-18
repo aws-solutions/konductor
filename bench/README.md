@@ -773,9 +773,15 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   scratch HOME and empty cwd, inside the same read-only namespace as the agent (`--isolate`, `--hide`).
   `--kiro-bin PATH` picks the binary; each call's raw stream is kept in `<out>/judge/raw/`.
 - Judges come from `--judges`, else the suite file, else `gpt-5.6-luna`, `deepseek-3.2`, `glm-5`
-  (`qwen3-coder-next`, `minimax-m2.5` also work). The judge phase refuses fewer than 3 model families
-  unless `--allow-small-panel` (recorded in `judgments.json`, flagged in the report). One judge per
-  family; Claude models and the subject model's family are refused.
+  (`qwen3-coder-next`, `minimax-m2.5` also work). The judge phase refuses a panel with fewer than 3 eligible
+  families (SR-24, `judge/family.js`: a known family, not the agent's, one judge each) unless `--allow-small-panel`
+  (recorded in `judgments.json`, flagged in the report). Claude models and the subject model's family are refused.
+- Aggregation (SR-24): a run's rubric score, graded grade and quality-pack score is the median over its judges, and NO
+  DATA when fewer than 3 judges scored it. NO DATA runs are left out of the means and counted in a report flag, so a
+  `--allow-small-panel` pass yields NO DATA everywhere. With an even number of judges the median is the mean of the middle
+  two. Each judge's own mean is shown beside the median in the report, `explain`, the graded table, the quality-pack
+  tables and `report-2x2`. A graded record already averages that judge's two answer orders; pairwise keeps its rule that
+  two orders that disagree are a tie.
 - A judge sees the task, rubric, the fixture's `.bench-answer-key.md` and one output bundle: final text,
   files changed versus the fixture (`.kiro/specs/**` included; tool state and test or lint caches such as `.pytest_cache`
   and `__pycache__` are skipped, see `judge/ephemeral.js`), the tool calls and results of the run, and check results.
@@ -1137,7 +1143,7 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   A run without judgments still renders; the charts that need them are listed under "Not shown". New JSON keys (`scores`, `diligence`, `detail`) are additive.
 - Scores (`report/scores.js`; every one has n and a 95% bootstrap CI, and is "anecdotal" below 3 runs; a failed run is never hidden):
   - Quality /100: per run, the weighted mean of the components it has: hidden tests (FAIL_TO_PASS, hiddenTests or intendedTests as passed/total), checks (all pass = 1), rubric
-    (mean over judges of the verified score; raw shown beside it). Weights come from `profiles/scoring.json` (0.5, 0.2, 0.3; `--scoring FILE`).
+    (median over judges of the verified score, NO DATA under 3 judges; raw shown beside it). Weights come from `profiles/scoring.json` (0.5, 0.2, 0.3; `--scoring FILE`).
     With no hidden tests the weights renormalise to checks 0.4 and rubric 0.6, so one failed check out of many costs 40 points. `--scoring bench/profiles/scoring-fractional.json` (same weights) scores the checks
     term as passed / total instead, and `profiles/scoring-quality-fractional.json` does the same with the quality pack. A scoring file opts in with `"checks": "fraction"`; the default is `"all"`. The report's weights line and
     quality formula say which mode was used, and the default output is unchanged. A missing component is dropped and the

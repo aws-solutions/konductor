@@ -13,36 +13,49 @@ const { loadTasks } = require('../lib/tasks.js');
 
 const rec = (o) => ({ kind: 'graded', judge: 'j1', armId: 'a', taskId: 't1', replicate: 1, baselineId: 'vanilla', armGrade: 4, baseGrade: 2, delta: 2, orderDisagreement: false, shift: 0, judgeError: null, ...o });
 
-test('gradedSummary reports mean grades, the mean difference and the order disagreement rate per arm', () => {
-  const s = gradedSummary({ graded: [rec({}), rec({ replicate: 2, armGrade: 3, baseGrade: 3, delta: 0, orderDisagreement: true, shift: 2 }), rec({ replicate: 3, judgeError: 'x', armGrade: null, baseGrade: null, delta: null })] });
+// Three judges on each run: the panel takes the median per run (SR-24).
+const three = (o, grades) => ['j1', 'j2', 'j3'].map((judge, i) => rec({ judge, ...o, ...grades[i] }));
+
+test('gradedSummary takes the median of three judges per run, then the mean over runs; each judge keeps its own means', () => {
+  const s = gradedSummary({ graded: [
+    ...three({}, [{ armGrade: 4, baseGrade: 2, delta: 2 }, { armGrade: 5, baseGrade: 2, delta: 3 }, { armGrade: 1, baseGrade: 3, delta: -2 }]),
+    ...three({ replicate: 2, orderDisagreement: true, shift: 2 }, [{ armGrade: 3, baseGrade: 3, delta: 0 }, { armGrade: 3, baseGrade: 3, delta: 0 }, { armGrade: 3, baseGrade: 3, delta: 0 }]),
+    rec({ replicate: 3, judgeError: 'x', armGrade: null, baseGrade: null, delta: null }),
+  ] });
   assert.equal(s.present, true);
   assert.equal(s.baselineId, 'vanilla');
   const a = s.arms.a;
-  assert.equal(a.n, 2);
-  assert.equal(a.errors, 1);
-  assert.equal(a.armGrade, 3.5);
-  assert.equal(a.baseGrade, 2.5);
-  assert.equal(a.delta, 1);
-  assert.equal(a.orderDisagreements, 1);
-  assert.equal(a.disagreementRate, 0.5);
-  assert.equal(a.shift, 1);
-  assert.deepEqual(Object.keys(a.judges), ['j1']);
-  assert.deepEqual([s.total.n, s.total.errors, s.total.orderDisagreements], [2, 1, 1]);
+  // run 1: medians arm 4, base 2, delta 2 (the means would be 3.33, 2.33, 1); run 2: 3, 3, 0.
+  assert.deepEqual([a.n, a.records, a.noData, a.errors], [2, 6, 0, 1]);
+  assert.deepEqual([a.armGrade, a.baseGrade, a.delta], [3.5, 2.5, 1]);
+  assert.deepEqual([a.orderDisagreements, a.disagreementRate], [3, 0.5]);
+  assert.deepEqual(Object.keys(a.judges), ['j1', 'j2', 'j3']);
+  assert.deepEqual([a.judges.j3.armGrade, a.judges.j3.delta], [2, -1]);
+  assert.deepEqual([s.total.n, s.total.errors, s.total.orderDisagreements], [6, 1, 3]);
+});
+
+test('a run graded by fewer than three judges is NO DATA in the panel grade, but each judge still shows', () => {
+  const s = gradedSummary({ graded: [rec({}), rec({ judge: 'j2', armGrade: 5, delta: 3 })] });
+  const a = s.arms.a;
+  assert.deepEqual([a.n, a.noData, a.armGrade, a.records], [0, 1, null, 2]);
+  assert.deepEqual(Object.keys(a.judges), ['j1', 'j2']);
+  assert.match(gradedTable(s).rows[0].join(' | '), /0 \(2\), NO DATA 1 \| n\/a \| n\/a \| n\/a \| j1 4\.00 vs 2\.00 \(\+2\.00\); j2 5\.00 vs 2\.00 \(\+3\.00\)/);
 });
 
 test('gradedSummary is not present without graded records, and skips stale ones', () => {
   assert.equal(gradedSummary({ rubric: [] }).present, false);
   assert.equal(gradedSummary(null).present, false);
-  const s = gradedSummary({ graded: [rec({ taskRevision: 'old' }), rec({ replicate: 2, taskRevision: 'new' })] }, { isStale: (r) => r.taskRevision === 'old' });
+  const s = gradedSummary({ graded: [...three({ taskRevision: 'old' }, [{}, {}, {}]), ...three({ replicate: 2, taskRevision: 'new' }, [{}, {}, {}])] }, { isStale: (r) => r.taskRevision === 'old' });
   assert.equal(s.arms.a.n, 1);
 });
 
-test('gradedTable has one row per arm, the disagreement as n of m, and a caveat when judges follow position', () => {
-  const s = gradedSummary({ graded: [rec({ orderDisagreement: true }), rec({ replicate: 2, orderDisagreement: true })] });
+test('gradedTable has one row per arm, the disagreement as n of m records, and a caveat when judges follow position', () => {
+  const s = gradedSummary({ graded: [...three({ orderDisagreement: true }, [{}, {}, {}]), ...three({ replicate: 2, orderDisagreement: true }, [{}, {}, {}])] });
   const t = gradedTable(s);
-  assert.deepEqual(t.head.slice(0, 2), ['arm', 'records']);
+  assert.deepEqual(t.head.slice(0, 3), ['arm', 'runs (records)', 'median grade (arm, 1-5)']);
   assert.equal(t.rows.length, 1);
-  assert.match(t.rows[0].join(' | '), /2 of 2 \(100%\)/);
+  assert.match(t.rows[0].join(' | '), /6 of 6 \(100%\)/);
+  assert.match(t.note, /median over judges per run/);
   assert.match(t.note, /follow position/);
 });
 

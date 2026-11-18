@@ -9,6 +9,7 @@ const path = require('node:path');
 const { readQuality, FILE } = require('../judge/packrun.js');
 const { taskRevision } = require('../judge/revision.js');
 const { DEFAULTS } = require('../judge/config.js');
+const { panelScore, MIN_JUDGES } = require('../judge/score.js');
 const D = require('./doc.js');
 const { summarizeProcess, processBlocks } = require('./process.js');
 
@@ -83,20 +84,26 @@ function summarizeQuality({ groups, tasks, pack, disagreeScore = DEFAULTS.disagr
         const mine = recs.flatMap((r) => r.na.filter((x) => x.dimension === d.id));
         // A criterion that only a task naming its type can use (a plan's assignments) is not why the dimension is n/a.
         const reasons = (mine.some((x) => !declaredOnlyIds.has(x.id)) ? mine.filter((x) => !declaredOnlyIds.has(x.id)) : mine).map((x) => x.reason);
-        return { score: scores.length ? mean(scores) : null, spread: scores.length > 1 ? Math.max(...scores) - Math.min(...scores) : null, reasons };
+        // SR-24: the median over judges; scored by fewer than MIN_JUDGES judges it is NO DATA, counted apart from n/a.
+        return { score: panelScore(scores), noData: scores.length > 0 && scores.length < MIN_JUDGES, spread: scores.length > 1 ? Math.max(...scores) - Math.min(...scores) : null, reasons };
       });
       const scored = perRun.filter((x) => x.score !== null);
       const spreads = perRun.map((x) => x.spread).filter(fin);
       const reasonCounts = {};
       // Criteria of one dimension differ in how many artifact types their reason lists ("not asked for comments" and "not asked for comments or readme"); the longest names them all.
-      for (const x of perRun.filter((y) => y.score === null && y.reasons.length)) {
+      for (const x of perRun.filter((y) => y.score === null && !y.noData && y.reasons.length)) {
         const reason = [...x.reasons].sort((a, b) => b.length - a.length || (a < b ? -1 : 1))[0];
         reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
       }
       dimensions[d.id] = {
         score: scored.length ? mean(scored.map((x) => x.score)) * 100 : null,
-        n: scored.length, na: perRun.length - scored.length,
+        n: scored.length, noData: perRun.filter((x) => x.noData).length, na: perRun.length - scored.length - perRun.filter((x) => x.noData).length,
         spread: spreads.length ? mean(spreads) : null, disagree: spreads.length > 0 && mean(spreads) > disagreeScore,
+        // Each judge's own mean over the runs it scored, 0 to 100, so the report shows every judge beside the panel median.
+        byJudge: Object.fromEntries(uniq(usable.map((r) => r.judge)).sort().map((j) => {
+          const own = usable.filter((r) => r.judge === j).map((r) => r.dimensions[d.id]?.score).filter(fin);
+          return [j, own.length ? mean(own) * 100 : null];
+        })),
         naReasons: Object.entries(reasonCounts).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).map(([reason, count]) => ({ reason, count })),
       };
     }
@@ -115,8 +122,9 @@ function summarizeQuality({ groups, tasks, pack, disagreeScore = DEFAULTS.disagr
 const f1 = (v) => (fin(v) ? v.toFixed(1) : 'n/a');
 
 function cellText(c) {
-  if (c.score === null) return `n/a (${c.na} run${c.na === 1 ? '' : 's'})`;
-  return `${f1(c.score)} (n=${c.n}${c.na ? `, n/a ${c.na}` : ''})${c.disagree ? ' JUDGES DIFFER' : ''}`;
+  const noData = c.noData ? `NO DATA ${c.noData}` : '';
+  if (c.score === null) return c.noData && !c.na ? `NO DATA (${c.noData} run${c.noData === 1 ? '' : 's'})` : `n/a (${[`${c.na} run${c.na === 1 ? '' : 's'}`, noData].filter(Boolean).join(', ')})`;
+  return `${f1(c.score)} (n=${c.n}${c.na ? `, n/a ${c.na}` : ''}${noData ? `, ${noData}` : ''})${c.disagree ? ' JUDGES DIFFER' : ''}`;
 }
 
 /** Markdown blocks for a summary. */
@@ -128,8 +136,9 @@ function qualityBlocks(s) {
     D.p(PACK_QUOTE_LINE),
     D.note(s.note),
     D.table(head, rows, 'quality pack quotes: strict'),
-    D.p(`Score is 0 to 100: the mean over runs of the judge mean of pass 1, partial 0.5, fail 0, weighted by criterion. n is the number of runs where the dimension applied. JUDGES DIFFER marks a mean spread between the highest and lowest judge above ${s.disagreeScore} on a 0 to 1 scale. Pack ${s.pack.id}, revision ${s.pack.revision}; judges: ${s.judges.join(', ')}.`),
+    D.p(`Score is 0 to 100: the mean over runs of the median over judges of pass 1, partial 0.5, fail 0, weighted by criterion (SR-24). n is the number of runs where the dimension applied; NO DATA counts runs scored by fewer than ${MIN_JUDGES} judges, which are left out. JUDGES DIFFER marks a mean spread between the highest and lowest judge above ${s.disagreeScore} on a 0 to 1 scale. Pack ${s.pack.id}, revision ${s.pack.revision}; judges: ${s.judges.join(', ')}.`),
   ];
+  blocks.push(D.h(3, 'Each judge (mean over the runs it scored)'), D.table(head, s.dimensions.map((d) => [d.label, ...s.groups.map((g) => Object.entries(g.dimensions[d.id].byJudge ?? {}).map(([j, v]) => `${j} ${f1(v)}`).join('<br>') || 'n/a')])));
   const reasons = s.dimensions.flatMap((d) => s.groups.flatMap((g) => g.dimensions[d.id].naReasons.slice(0, 2).map((r) => `${d.label}, ${g.label}: ${r.count} run(s) n/a, ${r.reason}`)));
   if (reasons.length) blocks.push(D.h(3, 'Why a dimension was n/a'), D.list(reasons));
   blocks.push(D.p(`Pack judging spend: ${s.spend.usd !== null ? `$${s.spend.usd.toFixed(4)} USD` : `${s.spend.credits.toFixed(2)} credits`}, kept in judgments-quality.json and not in the credit ledger.`));

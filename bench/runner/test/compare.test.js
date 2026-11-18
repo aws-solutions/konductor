@@ -70,7 +70,9 @@ test('quality worse is a regression; better is reported as an improvement', () =
 
 test('rubric score drop is a regression', () => {
   const specs = reps('a', () => ({}));
-  const j = (s) => ({ judges: ['j'], rubric: [1, 2, 3].map((rep) => ({ judge: 'j', arm: 'a', rep, score: s })) });
+  // Three judges, since a run's rubric score is the median of three or more (SR-24).
+  const J = ['j1', 'j2', 'j3'];
+  const j = (s) => ({ judges: J, rubric: [1, 2, 3].flatMap((rep) => J.map((judge) => ({ judge, arm: 'a', rep, score: s }))) });
   const p = pair(specs, specs, { baseJ: j(0.9), headJ: j(0.5) });
   try {
     const r = run(p);

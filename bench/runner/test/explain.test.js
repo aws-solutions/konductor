@@ -41,6 +41,7 @@ function multiArm(root) {
   judgments(runDir, [
     { judge: 'j1', arm: 'vanilla', verdicts: { c1: ['pass'], c2: ['partial', 'pass'] } },
     { judge: 'j2', arm: 'vanilla', verdicts: { c1: ['pass'], c2: ['pass'] } },
+    { judge: 'j3', arm: 'vanilla', verdicts: { c1: ['fail'], c2: ['pass'] } },
     { judge: 'j1', arm: 'vanilla', rep: 2, verdicts: { c1: ['pass'], c2: ['pass'] } },
     { judge: 'j1', arm: 'other', verdicts: { c1: ['fail'], c2: ['partial'] } },
   ]);
@@ -73,12 +74,13 @@ test('the full explanation shows each check with what was observed, the rubric p
     assert.match(text, /c2 \(weight 3\)/);
     assert.match(text, /j1 {13}partial {2}\[judge said pass; evidence quote not found, dropped one level\] {2}"quote for c2"/);
     assert.match(text, /j1 {13}verified=0\.625 \(stored 0\.625, ok\) {2}raw=1 \(stored 1\) {2}downgraded 1 of 2/);
-    assert.match(text, /rubric mean over 2 judge\(s\) = 0\.8125/);
+    // SR-24: the median of 0.625, 1 and 0.75 is 0.75 (the mean would be 0.792).
+    assert.match(text, /rubric median over 3 judge\(s\) = 0\.75 /);
     assert.match(text, /renormalised weights \(each \/ 0\.5\): checks 0\.4, rubric 0\.6/);
-    // checks term 0 (one failed), rubric 0.8125: 100 * (0.4*0 + 0.6*0.8125) = 48.75
-    assert.match(text, /= 48\.75\n {3}qualityOfRun\(\) = 48\.75 {2}\(agrees with the line above\)/);
-    assert.match(text, /\[A\] checks scored as a fraction \(1\/2 = 0\.5.*quality 48\.75 -> 68\.8/);
-    assert.match(text, /\[B\] every check passed: quality 48\.75 -> 88\.8/);
+    // checks term 0 (one failed), rubric 0.75: 100 * (0.4*0 + 0.6*0.75) = 45
+    assert.match(text, /= 45\.00\n {3}qualityOfRun\(\) = 45\.00 {2}\(agrees with the line above\)/);
+    assert.match(text, /\[A\] checks scored as a fraction \(1\/2 = 0\.5.*quality 45\.00 -> 65\.0/);
+    assert.match(text, /\[B\] every check passed: quality 45\.00 -> 85\.0/);
   } finally { cleanup(root); }
 });
 
@@ -103,7 +105,7 @@ test('a fractional scoring file changes the checks term and the label', () => {
     const text = explain(root, runDir, bench, { filter: { arm: 'vanilla', rep: 1 }, scoringFile: frac });
     assert.match(text, /Component score \(fraction passed\): checks = 0\.5/);
     assert.match(text, /\(checks scored as fraction\)/);
-    assert.match(text, /= 68\.75\n/);
+    assert.match(text, /= 65\.00\n/);
   } finally { cleanup(root); }
 });
 

@@ -56,7 +56,7 @@ test('lenient is the default; strict is selectable and the loaded object carries
  * Judgments for every run of runDir: judge j1 (and j2 when two) record c1 pass and c2 pass raw. For runs where lower(arm, task, rep)
  * is true the strict rule lowers c2 to partial (the lenient rule keeps it); `old` writes the record as it was before the dual view.
  */
-function writeJudged(runDir, { lower, judges = ['j1', 'j2'], old = false }) {
+function writeJudged(runDir, { lower, judges = ['j1', 'j2', 'j3'], old = false }) {
   const run = loadRun(runDir);
   const rubric = [];
   for (const e of run.runs) {

@@ -15,11 +15,10 @@ const { ruleLine } = require('./quotes.js');
 const { hasViews } = require('../judge/views.js');
 const { qualityOfRun, componentsOf } = require('./scores.js');
 const { normalize } = require('./verdict.js');
-const { rubricScore } = require('../judge/score.js');
+const { rubricScore, panelScore, MIN_JUDGES } = require('../judge/score.js');
 const { VERDICT_VALUE } = require('../judge/config.js');
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
-const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const f1 = (v) => (fin(v) ? v.toFixed(1) : 'n/a');
 const f3 = (v) => (fin(v) ? String(Math.round(v * 1e4) / 1e4) : 'n/a');
 const cut = (s, n = 120) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 3)}...` : t; };
@@ -125,7 +124,8 @@ function rubricSection(L, { run, row, task }) {
     L(`     ${rec.judge.padEnd(14)} verified=${f3(calc)} (stored ${f3(rec.score)}, ${agree})  raw=${f3(rawCalc)} (stored ${f3(rec.scoreRaw)})  downgraded ${down} of ${(rec.criteria || []).length}`);
     if (fin(rec.score)) verified.push(rec.score);
   }
-  L(`   rubric mean over ${verified.length} judge(s) = ${f3(mean(verified))}   (report value: ${f3(row.rubric)}; VERDICT_VALUE ${JSON.stringify(VERDICT_VALUE)})`);
+  const panel = panelScore(verified);
+  L(`   rubric median over ${verified.length} judge(s) = ${panel === null ? `NO DATA (fewer than ${MIN_JUDGES} judges, SR-24)` : f3(panel)}   (report value: ${f3(row.rubric)}; VERDICT_VALUE ${JSON.stringify(VERDICT_VALUE)})`);
 }
 
 function arithmeticSection(L, { n, q, weights, scoringFile, dir, row, executed, reportJson }) {

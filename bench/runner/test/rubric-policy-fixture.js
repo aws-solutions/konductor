@@ -3,13 +3,15 @@
 
 // A small judged study with runs kept out of judging, built on disk, and the report outputs read from it. The legacy
 // snapshot in fixtures/rubric-policy-legacy.snapshot.json was taken from this study with the code from before the
-// rubric policy existed.
+// rubric policy existed, and taken again on 2026-11-18 with three judges for the SR-24 median rule (every judge gives
+// a run the same score, so only the judge list and the "median of judges" label changed).
 
 const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write, makeBench, makeRun, withViews } = require('./helpers.js');
 
-const JUDGES = ['j1', 'j2'];
+// Three judges: a run's rubric score is the median of three or more (SR-24).
+const JUDGES = ['j1', 'j2', 'j3'];
 
 // arm -> rep -> score the judges give; a rep with no score is not judged.
 const DEFAULT_SCORES = { vanilla: { 1: 0.5, 2: 0.75, 3: 1 }, v1: { 1: 1, 2: 0.75 } };

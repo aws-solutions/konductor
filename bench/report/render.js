@@ -19,7 +19,8 @@ const table = (head, rows) => [`| ${head.join(' | ')} |`, `|${head.map(() => '--
 function rubricCell(c) {
   if (!c.rubric) return 'n/a';
   const parts = Object.entries(c.rubric.byJudge).map(([j, s]) => `${j} ${f(s.mean)} (raw ${f(s.meanRaw)})${s.errors ? ` (${s.errors} err)` : ''}`);
-  return [...parts, `mean ${f(c.rubric.meanOfJudges.mean)} (raw ${f(c.rubric.meanOfJudges.meanRaw)})`].join('<br>');
+  const panel = c.rubric.medianOfJudges;
+  return [...parts, `median of judges ${f(panel.mean)} (raw ${f(panel.meanRaw)})${panel.noData ? `, NO DATA ${panel.noData} (under ${panel.minJudges} judges)` : ''}`].join('<br>');
 }
 
 // A stamped study (report.rubricPolicy) shows the main rubric number with excluded runs as 0, the judged-only number

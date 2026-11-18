@@ -1,7 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-const { VERDICT_VALUE } = require('./config.js');
+const { VERDICT_VALUE, MIN_PANEL_FAMILIES } = require('./config.js');
+
+// SR-24: a run's panel score is the median over judges from at least this many distinct families other than the agent's.
+const MIN_JUDGES = MIN_PANEL_FAMILIES;
+
+/**
+ * The panel score of one run from its judges' scores `scores` (one per judge; non-numbers are skipped): the median, or
+ * null (NO DATA) when fewer than MIN_JUDGES judges scored it. With an even count the median is the mean of the middle two.
+ */
+function panelScore(scores) {
+  const xs = scores.filter((v) => typeof v === 'number' && Number.isFinite(v)).sort((a, b) => a - b);
+  if (xs.length < MIN_JUDGES) return null;
+  const mid = xs.length >> 1;
+  return xs.length % 2 ? xs[mid] : (xs[mid - 1] + xs[mid]) / 2;
+}
 
 // A verdict whose evidence quote is not found in the output drops one level.
 const DOWNGRADE = { pass: 'partial', partial: 'fail', fail: 'fail' };
@@ -49,4 +63,4 @@ function combineGraded(first, second) {
   };
 }
 
-module.exports = { DOWNGRADE, rubricScore, pairOutcome, combineOrderings, combineGraded };
+module.exports = { DOWNGRADE, MIN_JUDGES, panelScore, rubricScore, pairOutcome, combineOrderings, combineGraded };

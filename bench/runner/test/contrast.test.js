@@ -169,8 +169,8 @@ test('checks pass share, flags (askedUser, externalFetch, fixRecall) and rubric 
     ...reps('pr', 3, (i) => ({ askedUser: false, ...(i === 1 ? { checks: FAIL } : {}), contamination: { externalFetch: [], fixRecallChars: 0 } })),
   ], { tasks: {} });
   writeJudgments(s.runDir, {
-    judges: ['j1'],
-    rubric: [1, 2, 3].flatMap((rep) => [{ judge: 'j1', arm: 'base', rep, score: 0.4 }, { judge: 'j1', arm: 'pr', rep, score: 0.9 }]),
+    judges: ['j1', 'j2', 'j3'],
+    rubric: [1, 2, 3].flatMap((rep) => ['j1', 'j2', 'j3'].flatMap((judge) => [{ judge, arm: 'base', rep, score: 0.4 }, { judge, arm: 'pr', rep, score: 0.9 }])),
   });
   try {
     const cell = cellOf(analyze(s, { base: 'base' }), 'pr', 'overall');
