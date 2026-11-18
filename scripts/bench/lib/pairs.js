@@ -353,7 +353,7 @@ const jobLabel = (job) => `${job.skill}/${job.batch}/${job.task.id}:${job.arm}`;
  *   dry-run   the pending runs were listed
  *   done      every pending run gave a valid answer
  *   partial   at least one run failed or was not loaded; the rest are kept
- *   stopped   a stop ended the job (`stop`: { kind, message }, kind one of model, setup, credentials, spend, ledger,
+ *   stopped   a stop ended the job (`stop`: { kind, message }, kind one of model, setup, systemic, credentials, spend, ledger,
  *             security)
  * and results is [{ skill, batch, task_id, arm, status }] with status ok, not_loaded, failed or skipped. `estimated`
  * (once runs were made) is null, or { calls, models } for the calls charged at their mean because Claude Code
