@@ -625,7 +625,7 @@ test('blinding: the rendered judge prompt holds the request and the numbered che
   const {
     createJudgeInput,
   } = require('../../../scripts/bench/lib/judge-input');
-  const judgeInput = createJudgeInput();
+  const judgeInput = createJudgeInput({ literals: [] });
   const prepare = (text) => judgeInput.prepare(text, { skill: SKILL });
   for (const scale of ['items', 'outcome']) {
     for (const arm of ['with', 'without']) {
