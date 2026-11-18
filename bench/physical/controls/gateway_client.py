@@ -90,9 +90,9 @@ class GatewayProcess:
         """Sends `peer` with `pidns`, by default this process's own pid namespace."""
         self.control.send({"op": "peer", "token": self.token, "pidns": pidns or os.readlink("/proc/self/ns/pid")})
 
-    def set_state(self, state, sensors, now_ms, approval, token=None):
-        """Sends a test-mode `set_state`; `token` replaces the real token to test a refusal."""
-        self.control.send({"op": "set_state", "token": token or self.token, "state": state, "sensors": sensors,
+    def set_state(self, state, sensors, now_ms, approval, token=None, op="set_state"):
+        """Sends a test-mode state frame (`set_state`, or `set_arm_state` for the arm); `token` replaces the real token to test a refusal."""
+        self.control.send({"op": op, "token": token or self.token, "state": state, "sensors": sensors,
                            "now_ms": now_ms, "approval": approval})
 
     def connect(self):

@@ -11,7 +11,8 @@ from gateway_client import GatewayProcess  # noqa: E402
 
 RELEASE_FILES = ("policy/plant.cedar", "policy/plant.cedarschema", "sensor-limits.json")
 TRUTH_TABLE = "truth-table.json"
-TEST_TASK = {"environment": {"start": {"rated_max_mmps": 1000}, "operator": {}}}
+CONVEYOR_ENVIRONMENT = {"start": {"rated_max_mmps": 1000}, "operator": {}}
+TEST_OPS = {"conveyor": "set_state", "arm": "set_arm_state"}
 BAD_TOKEN = "f" * 64
 
 
@@ -27,9 +28,9 @@ def classify(reply):
     return "unknown"
 
 
-def run_row(gateway, client, number, row):
-    """Sets the row's state, makes its call, and returns `(passed, line)` for row `number`."""
-    gateway.set_state(row["state"], row["sensors"], row["now_ms"], row["approval"])
+def run_row(gateway, client, number, row, test_op):
+    """Sets the row's state with control frame `test_op`, makes its call, and returns `(passed, line)` for row `number`."""
+    gateway.set_state(row["state"], row["sensors"], row["now_ms"], row["approval"], op=test_op)
     gateway.control.read_op("state_set", "error")
     client.send({"jsonrpc": "2.0", "id": number, "method": "tools/call", "params": {"name": row["action"], "arguments": row["args"]}})
     got = classify(client.read())
@@ -37,20 +38,26 @@ def run_row(gateway, client, number, row):
     return passed, f"{'PASS' if passed else 'FAIL'} row {number}: {row['action']} {json.dumps(row['args'])} approval={row['approval']} expect={row['expect']} got={got} ({row['why']})"
 
 
-def wrong_token_is_refused(gateway, row):
-    """True when a `set_state` with a wrong token gets `bad_token`."""
-    gateway.set_state(row["state"], row["sensors"], row["now_ms"], row["approval"], token=BAD_TOKEN)
+def wrong_token_is_refused(gateway, row, test_op):
+    """True when a test-state frame `test_op` with a wrong token gets `bad_token`."""
+    gateway.set_state(row["state"], row["sensors"], row["now_ms"], row["approval"], token=BAD_TOKEN, op=test_op)
     return gateway.control.read_op("state_set", "error").get("code") == "bad_token"
 
 
 def run(release, python):
-    """Runs every row of `release`/truth-table.json against a gateway started with `python`. Returns `(ok, lines)`."""
+    """Runs every row of `release`/truth-table.json against a gateway started with `python`. Returns `(ok, lines)`.
+
+    The table may name its `environment` (an arm table carries `plant: "arm"`); the default is the conveyor's.
+    """
     with open(os.path.join(release, TRUTH_TABLE), encoding="utf-8") as f:
-        rows = json.load(f)["rows"]
+        table = json.load(f)
+    rows = table["rows"]
+    environment = table.get("environment", CONVEYOR_ENVIRONMENT)
+    test_op = TEST_OPS[environment.get("plant", "conveyor")]
     with tempfile.TemporaryDirectory(prefix="tt") as run_dir:
         task = os.path.join(run_dir, "task.json")
         with open(task, "w", encoding="utf-8") as f:
-            json.dump(TEST_TASK, f)
+            json.dump({"environment": environment}, f)
         gateway = GatewayProcess(task, run_dir, files=[os.path.join(release, p) for p in RELEASE_FILES], test_mode=True, python=python)
         try:
             ready = gateway.ready()
@@ -58,9 +65,9 @@ def run(release, python):
                 return False, [f"FAIL gateway refused the release: {ready['code']} {ready['detail']}"]
             gateway.peer()
             client = gateway.mcp_client()
-            results = [run_row(gateway, client, n, row) for n, row in enumerate(rows, 1)]
-            token_ok = wrong_token_is_refused(gateway, rows[0])
-            results.append((token_ok, f"{'PASS' if token_ok else 'FAIL'} wrong token: set_state refused with bad_token"))
+            results = [run_row(gateway, client, n, row, test_op) for n, row in enumerate(rows, 1)]
+            token_ok = wrong_token_is_refused(gateway, rows[0], test_op)
+            results.append((token_ok, f"{'PASS' if token_ok else 'FAIL'} wrong token: the test-state frame is refused with bad_token"))
             gateway.stop()
         finally:
             gateway.close()

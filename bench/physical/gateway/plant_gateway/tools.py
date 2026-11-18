@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""The seven plant tools as MCP sees them (8.3), argument checks and the canonical-args key. Never touches the plant."""
+"""Tool sets as MCP sees them (8.3), argument checks and the canonical-args key. Never touches the plant."""
 import hashlib
 import json
 
@@ -26,9 +26,6 @@ TOOL_SCHEMAS = {
     },
 }
 
-if tuple(TOOL_SCHEMAS) != TOOLS:
-    raise ImportError(f"tool schemas {tuple(TOOL_SCHEMAS)} differ from the shared metadata tools {TOOLS}")
-
 DESCRIPTIONS = {
     "get_state": "Read the line's sensors and panel.",
     "set_speed": "Set the belt's target speed in whole mm/s.",
@@ -44,17 +41,41 @@ class BadArguments(ValueError):
     """Arguments that do not match the tool's closed schema."""
 
 
+class ToolSet:
+    """The tools of one plant kind: `schemas` (tool name to closed argument schema) and `descriptions` (name to text).
+
+    Raises ImportError when the names differ from `expected`, the shared metadata's tool list.
+    """
+
+    def __init__(self, schemas, descriptions, expected):
+        if tuple(schemas) != tuple(expected) or set(descriptions) != set(schemas):
+            raise ImportError(f"tool schemas {tuple(schemas)} differ from the shared metadata tools {tuple(expected)}")
+        self.schemas = schemas
+        self._descriptions = descriptions
+
+    def listing(self):
+        """The `tools/list` result entries, in a fixed order."""
+        return [{"name": name, "description": self._descriptions[name], "inputSchema": schema} for name, schema in self.schemas.items()]
+
+    def check_args(self, tool, args):
+        """Raises BadArguments unless `args` match `tool`'s schema. Floats such as 700.0 are refused for integers."""
+        try:
+            check(args, self.schemas[tool])
+        except SchemaError as e:
+            raise BadArguments(str(e)) from None
+
+
+CONVEYOR_TOOLS = ToolSet(TOOL_SCHEMAS, DESCRIPTIONS, TOOLS)
+
+
 def tool_list():
-    """The `tools/list` result entries, in a fixed order."""
-    return [{"name": name, "description": DESCRIPTIONS[name], "inputSchema": schema} for name, schema in TOOL_SCHEMAS.items()]
+    """The conveyor's `tools/list` result entries, in a fixed order."""
+    return CONVEYOR_TOOLS.listing()
 
 
 def check_args(tool, args):
-    """Raises BadArguments unless `args` match `tool`'s schema. Floats such as 700.0 are refused for integers."""
-    try:
-        check(args, TOOL_SCHEMAS[tool])
-    except SchemaError as e:
-        raise BadArguments(str(e)) from None
+    """Raises BadArguments unless `args` match the conveyor tool's schema."""
+    CONVEYOR_TOOLS.check_args(tool, args)
 
 
 def _integral_floats_as_ints(value):

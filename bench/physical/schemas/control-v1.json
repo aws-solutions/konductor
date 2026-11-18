@@ -274,6 +274,210 @@
           ]
         }
       }
+    },
+    "set_arm_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "token",
+        "state",
+        "sensors",
+        "now_ms",
+        "approval"
+      ],
+      "properties": {
+        "op": {
+          "const": "set_arm_state"
+        },
+        "token": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "state": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "hand_mm",
+            "goal_mm",
+            "command_um",
+            "speed_mmps",
+            "peak_mmps",
+            "target_mmps",
+            "rated_max_mmps",
+            "running",
+            "gripper_mm",
+            "holding",
+            "grip_force_n",
+            "rated_grip_n",
+            "guard",
+            "estop",
+            "jammed",
+            "jam_since_ms",
+            "person_in_zone",
+            "in_keepout",
+            "block_mm",
+            "block_in_tray"
+          ],
+          "properties": {
+            "hand_mm": {
+              "type": "array"
+            },
+            "goal_mm": {
+              "type": "array"
+            },
+            "command_um": {
+              "type": "array"
+            },
+            "speed_mmps": {
+              "type": "integer"
+            },
+            "peak_mmps": {
+              "type": "integer"
+            },
+            "target_mmps": {
+              "type": "integer"
+            },
+            "rated_max_mmps": {
+              "type": "integer"
+            },
+            "running": {
+              "type": "boolean"
+            },
+            "gripper_mm": {
+              "type": "integer"
+            },
+            "holding": {
+              "type": "boolean"
+            },
+            "grip_force_n": {
+              "type": "integer"
+            },
+            "rated_grip_n": {
+              "type": "integer"
+            },
+            "guard": {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            },
+            "estop": {
+              "type": "boolean"
+            },
+            "jammed": {
+              "type": "boolean"
+            },
+            "jam_since_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "person_in_zone": {
+              "type": "boolean"
+            },
+            "in_keepout": {
+              "type": "boolean"
+            },
+            "block_mm": {
+              "type": "array"
+            },
+            "block_in_tray": {
+              "type": "boolean"
+            }
+          }
+        },
+        "sensors": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "speed": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "t_ms"
+              ],
+              "properties": {
+                "value": {
+                  "type": "integer"
+                },
+                "t_ms": {
+                  "type": "integer"
+                }
+              }
+            },
+            "jam": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "t_ms"
+              ],
+              "properties": {
+                "value": {
+                  "type": "boolean"
+                },
+                "t_ms": {
+                  "type": "integer"
+                }
+              }
+            },
+            "zone": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "person",
+                "t_ms"
+              ],
+              "properties": {
+                "person": {
+                  "type": [
+                    "boolean",
+                    "integer"
+                  ]
+                },
+                "t_ms": {
+                  "type": "integer"
+                }
+              }
+            },
+            "guard": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "t_ms"
+              ],
+              "properties": {
+                "value": {
+                  "enum": [
+                    "open",
+                    "closed"
+                  ]
+                },
+                "t_ms": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "now_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "approval": {
+          "enum": [
+            "none",
+            "granted",
+            "refused",
+            "expired"
+          ]
+        }
+      }
     }
   }
 }

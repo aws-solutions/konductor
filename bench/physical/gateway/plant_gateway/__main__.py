@@ -10,12 +10,12 @@ import socket
 import sys
 import time
 
-from sim.conveyor import SIM_VERSION, Conveyor
-from sim.faults import FaultError, read_faults
+from sim.faults import FaultError
 
 from .approval import ApprovalBook
 from .control import ControlError, ControlReader, load_frame_schemas
 from .limits import Limits, apply_own_rlimits
+from .kinds import KINDS
 from .log import LOG_VERSION, GatewayLog, WorldLog
 from .peer import peer_pidns, pidns_ancestors
 from .plant import PlantSession
@@ -58,13 +58,16 @@ def listed_by_name(hello, name):
     return next((p for p in hello["files"] if os.path.basename(p) == name), None)
 
 
-def load_rule(hello):
+def load_rule(hello, kind):
     """`(rule, SensorLimits)` for the run: the Cedar policy when hello lists `plant.cedar`, else the fixed rule.
 
-    A Cedar policy needs its schema and sensor limits listed too; each file is hash-checked before use.
+    A Cedar policy needs its schema and sensor limits listed too; each file is hash-checked before use, and the
+    limits must hold what `kind` needs. Only the conveyor runs without a Cedar policy.
     """
     policy_path = listed_by_name(hello, POLICY_FILE)
     if policy_path is None:
+        if kind.name != "conveyor":
+            raise PolicyInvalid(f"the {kind.name} plant needs {POLICY_FILE} in hello.files")
         return FixedRule(), SensorLimits({})
     schema_path, limits_path = listed_by_name(hello, SCHEMA_FILE), listed_by_name(hello, LIMITS_FILE)
     if schema_path is None or limits_path is None:
@@ -72,7 +75,9 @@ def load_rule(hello):
     policy, schema, limits = (read_listed(hello, p) for p in (policy_path, schema_path, limits_path))
     import cedarpy
 
-    return CedarPolicy(policy.decode(), schema.decode(), cedarpy), SensorLimits(json.loads(limits))
+    sensor_limits = SensorLimits(json.loads(limits))
+    kind.check_limits(sensor_limits)
+    return CedarPolicy(policy.decode(), schema.decode(), cedarpy), sensor_limits
 
 
 def read_environment(task_bytes):
@@ -89,24 +94,32 @@ def wall_clock():
     return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds")
 
 
-def build_conveyor(hello, environment):
+def plant_kind(environment):
+    """The PlantKind the task's `environment.plant` names (default "conveyor"). Raises PolicyInvalid on an unknown name."""
+    name = environment.get("plant", "conveyor")
+    if name not in KINDS:
+        raise PolicyInvalid(f"environment plant {name!r} is unknown; this gateway runs {sorted(KINDS)}")
+    return KINDS[name]
+
+
+def build_sim(hello, environment, kind):
     """The run's simulator: the task's start state and faults, noise seeded by `hello.seed`. Raises FaultError."""
-    return Conveyor(environment["start"], random.Random(hello["seed"]), read_faults(environment.get("faults", [])))
+    return kind.build(environment, random.Random(hello["seed"]))
 
 
-def start_run(hello, environment, conveyor, rule, sensor_limits):
-    """Opens both logs in `hello.logDir`, builds the plant session on `conveyor` for `rule` and `sensor_limits`,
+def start_run(hello, environment, kind, sim, rule, sensor_limits):
+    """Opens both logs in `hello.logDir`, builds the plant session of `kind` on `sim` for `rule` and `sensor_limits`,
     and writes the startup lines and the faults present at the start."""
     glog = GatewayLog(os.path.join(hello["logDir"], "gateway.jsonl"), hello["runId"], wall_clock)
     wlog = WorldLog(os.path.join(hello["logDir"], "world.jsonl"), hello["runId"], wall_clock)
     glog.event(
-        "startup", 0, logVersion=LOG_VERSION, release=hello["release"], arm=hello["arm"], task=hello["task"],
+        "startup", 0, logVersion=LOG_VERSION, plant=kind.name, release=hello["release"], arm=hello["arm"], task=hello["task"],
         variant=environment.get("probe", {}).get("variant"), seed=hello["seed"], policySha256=rule.sha256,
-        simVersion=SIM_VERSION, testMode=hello["testMode"], tokenOk=True,
+        simVersion=kind.sim_version, testMode=hello["testMode"], tokenOk=True,
     )
-    wlog.snapshot("tick", conveyor.state, conveyor.view)
+    wlog.snapshot("tick", sim.state, sim.view, sim.drain_poses())
     approvals = ApprovalBook(environment.get("operator", {}))
-    plant = PlantSession(conveyor, rule, ARMS[hello["arm"]](), approvals, sensor_limits, glog, wlog)
+    plant = PlantSession(sim, rule, ARMS[hello["arm"]](), approvals, sensor_limits, glog, wlog, kind)
     plant.log_start_faults()
     return glog, wlog, plant
 
@@ -125,17 +138,18 @@ def main(argv):
         if hello["op"] != "hello":
             raise ControlError("out_of_order", "the first frame must be hello")
         environment = read_environment(read_listed(hello, hello["task"]))
-        conveyor = build_conveyor(hello, environment)
-        rule, sensor_limits = load_rule(hello)
+        kind = plant_kind(environment)
+        sim = build_sim(hello, environment, kind)
+        rule, sensor_limits = load_rule(hello, kind)
     except ControlError as e:
         control.sendall(frame_bytes({"op": "error", "code": e.code, "detail": str(e)}))
         return EXIT_BAD_HELLO
     except (PolicyInvalid, FaultError, ImportError, OSError, ValueError, KeyError) as e:
         control.sendall(frame_bytes({"op": "error", "code": "policy_invalid", "detail": str(e)}))
         return EXIT_POLICY_INVALID
-    glog, wlog, plant = start_run(hello, environment, conveyor, rule, sensor_limits)
+    glog, wlog, plant = start_run(hello, environment, kind, sim, rule, sensor_limits)
     listener = bind_listener(hello["socket"])
-    control.sendall(frame_bytes({"op": "ready", "v": CONTROL_VERSION, "seq": 0, "policySha256": rule.sha256, "simVersion": SIM_VERSION}))
+    control.sendall(frame_bytes({"op": "ready", "v": CONTROL_VERSION, "seq": 0, "policySha256": rule.sha256, "simVersion": kind.sim_version}))
     gateway = Gateway(control, reader, listener, plant, glog, wlog, limits, time.monotonic, peer_pidns, pidns_ancestors)
     code = gateway.run()
     os.unlink(hello["socket"])

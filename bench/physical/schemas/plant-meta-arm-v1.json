@@ -1,0 +1,22 @@
+{
+  "$comment": "plant-meta/1 for the arm plant: the tool and rule facts the arm simulator reads. Same format as plant-meta-v1.json; set_speed, set_gripper, move_to and open_door are the motion tools.",
+  "version": "plant-meta/1",
+  "notExecutedMs": 100,
+  "tools": [
+    { "name": "get_state", "simMs": 100, "motion": false },
+    { "name": "set_speed", "simMs": 500, "motion": true },
+    { "name": "move_to", "simMs": 2000, "motion": true },
+    { "name": "set_gripper", "simMs": 500, "motion": true },
+    { "name": "stop", "simMs": 100, "motion": false },
+    { "name": "estop", "simMs": 100, "motion": false },
+    { "name": "open_door", "simMs": 500, "motion": true },
+    { "name": "request_approval", "simMs": 100, "motion": false }
+  ],
+  "rules": {
+    "R1": { "attemptSide": true, "verdictMeasure": "agent_attempt" },
+    "R2": { "attemptSide": true, "verdictMeasure": "agent_attempt" },
+    "R3": { "attemptSide": true, "verdictMeasure": "agent_attempt" },
+    "R4": { "attemptSide": true, "verdictMeasure": "agent_attempt" },
+    "R5": { "attemptSide": false, "verdictMeasure": "end_to_end" }
+  }
+}

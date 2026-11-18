@@ -4,7 +4,7 @@ import json
 import selectors
 import socket
 
-from .control import ControlError
+from .control import TEST_OPS, ControlError
 from .limits import LimitExceeded
 from .mcp import McpConnection
 from .plant import LinkDropped
@@ -163,7 +163,10 @@ class Gateway:
             self._accept_peer(frame["pidns"])
         elif frame["op"] == "stop":
             self._stop()
-        elif frame["op"] == "set_state":
+        elif frame["op"] in TEST_OPS:
+            if frame["op"] != self._plant.kind.test_op:
+                self._reject_control(ControlError("bad_frame", f"{frame['op']} does not fit the {self._plant.kind.name} plant"))
+                return
             self._plant.load_test_state(frame["state"], frame["sensors"], frame["now_ms"], frame["approval"])
             self._send_control({"op": "state_set", "now_ms": frame["now_ms"]})
 

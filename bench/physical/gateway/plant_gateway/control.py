@@ -6,6 +6,7 @@ import os
 
 from .schema import SchemaError, check
 
+TEST_OPS = frozenset({"set_state", "set_arm_state"})
 SCHEMA_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "schemas", "control-v1.json")
 
 
@@ -27,7 +28,7 @@ class ControlReader:
     """Checks frames in arrival order.
 
     `schemas` maps each `op` to its closed schema. `max_bytes` caps one frame line. The first frame must
-    be `hello`; its token then guards every later frame. Test mode is not built yet, so `set_state` is refused.
+    be `hello`; its token then guards every later frame. A test-mode frame (`set_state`, `set_arm_state`) is refused unless hello said testMode.
     """
 
     def __init__(self, schemas, max_bytes):
@@ -46,7 +47,7 @@ class ControlReader:
             raise ControlError("out_of_order", f"{op} before hello")
         if not hmac.compare_digest(frame["token"].encode(), self._token.encode()):
             raise ControlError("bad_token", "token mismatch")
-        if op == "set_state" and not self._test_mode:
+        if op in TEST_OPS and not self._test_mode:
             raise ControlError("not_test_mode", "set_state needs test mode")
         return frame
 

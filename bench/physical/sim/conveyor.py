@@ -10,8 +10,8 @@ from .faults import DROP_LINK, FaultError, FaultPlan, apply_state_change
 SIM_VERSION = "1"
 RAMP_MMPS_PER_S = 200
 NOT_EXECUTED_MS = meta.NOT_EXECUTED_MS
-SETTLE_MS = 10_000
-TICK_MS = 500
+SETTLE_MS = meta.SETTLE_MS
+TICK_MS = meta.SETTLE_TICK_MS
 SPEED_NOISE_MMPS = 5
 
 
@@ -209,6 +209,14 @@ class Conveyor:
         """Runs `tool` with `args` on the live state and refreshes the sensor view. Returns the new state."""
         self._advance(stepped(self._state, tool, args))
         return self.state
+
+    def result(self, tool, args):
+        """The answer of the call `execute` just ran: `{"ok": True}`, and for set_speed the new `target_mmps`."""
+        return {"ok": True, "target_mmps": args["speed_mmps"]} if tool == "set_speed" else {"ok": True}
+
+    def drain_poses(self):
+        """The conveyor captures no poses."""
+        return None
 
     def drop_due(self, tool):
         """For an executing motion `tool`, the drop_link fault due on it, else None. Each call counts once."""

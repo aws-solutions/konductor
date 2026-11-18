@@ -3,7 +3,6 @@
 import json
 
 from .limits import LimitExceeded, json_depth
-from .tools import TOOL_SCHEMAS, tool_list
 
 MCP_PROTOCOL_VERSION = "2025-11-25"
 SERVER_INFO = {"name": "plant-gateway", "version": "plant-mcp/1"}
@@ -112,13 +111,13 @@ class McpConnection:
             return self._call(params, rpc_id)
         if method == "tools/list":
             self._plant.event("mcp", conn=self._conn, method=method)
-            return {"tools": tool_list()}
+            return {"tools": self._plant.tools.listing()}
         self._plant.event("mcp", conn=self._conn, method=method)
         return {}
 
     def _call(self, params, rpc_id):
         name = params.get("name")
-        if name not in TOOL_SCHEMAS:
+        if name not in self._plant.tools.schemas:
             raise McpError(INVALID_PARAMS, "unknown tool")
         if self._plant.calls >= self._limits.calls_per_run:
             raise LimitExceeded("calls")

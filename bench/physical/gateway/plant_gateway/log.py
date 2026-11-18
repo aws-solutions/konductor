@@ -71,9 +71,14 @@ class GatewayLog(RunLog):
 class WorldLog(RunLog):
     """`world.jsonl`: one line per state change (9.2). `cause` is a call_id, "tick" or "settle"."""
 
-    def snapshot(self, cause, state, sensors):
-        """Writes the true `state` and the `sensors` view after `cause`. Returns its seq."""
+    def snapshot(self, cause, state, sensors, poses=None):
+        """Writes the true `state` and the `sensors` view after `cause`. Returns its seq.
+
+        `poses` (`{"t_ms": [...], "qpos": [[...], ...]}`, from a simulator that draws a body) is kept on the line when given.
+        """
         record = {"cause": cause, "state": state.to_dict(), "sensors": sensors}
+        if poses:
+            record["poses"] = poses
         if self.lines == 0:
             record["logVersion"] = LOG_VERSION
         return self.write(record, state.t_ms)

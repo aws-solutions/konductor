@@ -25,6 +25,10 @@ class SensorLimits:
     def __init__(self, limits):
         self._limits = limits
 
+    def entry(self, name):
+        """The limits file's entry `name` (a sensor's limits, or another section such as `keepout`), or {} when absent."""
+        return self._limits.get(name, {})
+
     def fresh(self, sensors, now_ms):
         """True when every reading in `sensors` is fresh at `now_ms` (see `fresh_each`)."""
         return all(self.fresh_each(sensors, now_ms).values())

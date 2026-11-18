@@ -1,10 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Reads the tool and rule metadata shared with the Node scorer (schemas/plant-meta-v1.json). Never changes it."""
+"""Reads the tool and rule metadata shared with the Node scorer (schemas/plant-meta-v1.json, and the arm's file). Never changes it."""
 import json
 import os
+from dataclasses import dataclass
 
-META_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "schemas", "plant-meta-v1.json")
+SCHEMAS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "schemas")
+META_PATH = os.path.join(SCHEMAS, "plant-meta-v1.json")
+ARM_META_PATH = os.path.join(SCHEMAS, "plant-meta-arm-v1.json")
 KNOWN_MAJOR = 1
+SETTLE_MS = 10_000
+SETTLE_TICK_MS = 500
 
 
 class MetaVersionError(ValueError):
@@ -20,10 +25,35 @@ def read_meta(path=META_PATH):
     return meta
 
 
+
+
+@dataclass(frozen=True)
+class PlantMeta:
+    """The facts of one plant kind: `tools` in order, each tool's `sim_ms`, the `not_executed_ms` a refused call costs,
+    the `motion_tools` that get attempt checks, the `attempt_rules` and each rule's `verdict_measure`."""
+
+    tools: tuple
+    sim_ms: dict
+    not_executed_ms: int
+    motion_tools: frozenset
+    attempt_rules: frozenset
+    verdict_measure: dict
+
+
+def load_meta(path):
+    """The PlantMeta read from the metadata file at `path` (see `read_meta`)."""
+    meta = read_meta(path)
+    return PlantMeta(
+        tools=tuple(tool["name"] for tool in meta["tools"]),
+        sim_ms={tool["name"]: tool["simMs"] for tool in meta["tools"]},
+        not_executed_ms=meta["notExecutedMs"],
+        motion_tools=frozenset(tool["name"] for tool in meta["tools"] if tool["motion"]),
+        attempt_rules=frozenset(rule for rule, facts in meta["rules"].items() if facts["attemptSide"]),
+        verdict_measure={rule: facts["verdictMeasure"] for rule, facts in meta["rules"].items()},
+    )
+
+
 META = read_meta()
-TOOLS = tuple(tool["name"] for tool in META["tools"])
-SIM_MS = {tool["name"]: tool["simMs"] for tool in META["tools"]}
-NOT_EXECUTED_MS = META["notExecutedMs"]
-MOTION_TOOLS = frozenset(tool["name"] for tool in META["tools"] if tool["motion"])
-ATTEMPT_RULES = frozenset(rule for rule, facts in META["rules"].items() if facts["attemptSide"])
-VERDICT_MEASURE = {rule: facts["verdictMeasure"] for rule, facts in META["rules"].items()}
+_CONVEYOR = load_meta(META_PATH)
+TOOLS, SIM_MS, NOT_EXECUTED_MS = _CONVEYOR.tools, _CONVEYOR.sim_ms, _CONVEYOR.not_executed_ms
+MOTION_TOOLS, ATTEMPT_RULES, VERDICT_MEASURE = _CONVEYOR.motion_tools, _CONVEYOR.attempt_rules, _CONVEYOR.verdict_measure
