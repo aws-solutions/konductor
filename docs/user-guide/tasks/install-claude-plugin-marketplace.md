@@ -88,6 +88,16 @@ Grant that exact glob in `permissions.allow` (or `ask`/`deny`) if you set
 Claude Code permissions for this install path; the standalone name has no
 effect on a plugin agent.
 
+A plugin cannot ship permission rules, so this install path does not add the
+rules `konductor install --harness claude` writes. To have Claude Code ask
+before every `aws___run_script` call, which runs agent-written Python with your
+AWS credentials, add `mcp__plugin_konductor_aws-mcp__aws___run_script` to
+`permissions.ask` in your `settings.json`. To pre-approve the five read-only
+tools as Kiro CLI does, add `mcp__plugin_konductor_aws-mcp__<tool>` to
+`permissions.allow` for `aws___search_documentation`, `aws___retrieve_skill`,
+`aws___read_documentation`, `aws___list_regions` and
+`aws___get_regional_availability`.
+
 `k-browser`'s Playwright MCP server is not bundled. Configure it separately:
 
 ```bash

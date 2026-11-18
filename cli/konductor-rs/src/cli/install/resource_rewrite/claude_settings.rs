@@ -3,7 +3,8 @@
 // install/resource_rewrite/claude_settings.rs — merges Konductor's
 // entries into a Claude Code target's settings files: the
 // `permissions.allow` grant for the `konductor-skills` MCP server's tools
-// (in `.claude/settings.json`), and the telemetry hooks (in the file
+// and the `aws-mcp` `ask`/`allow` rules (both in `.claude/settings.json`),
+// and the telemetry hooks (in the file
 // `claude_hooks_settings_relative_path` picks). Also strips those hooks
 // for `--no-telemetry` and uninstall. None of this is a
 // `ResourceRewritePass`: it runs once per install run against
@@ -39,7 +40,10 @@ use super::mcp_server::{MCP_SERVER_ALLOWED_TOOLS_GRANTS, MCP_SERVER_NAME};
 //
 // Known gap: nothing registers `konductor-skills` as an MCP server for
 // Claude Code, so the grant is inert unless the server is registered
-// some other way. That is why `ClaudeInstallStrategy` skips it.
+// some other way. That is why `ClaudeInstallStrategy` skips it. That
+// strategy writes the `aws-mcp` rules instead
+// (`apply_claude_settings_mcp_rules`), since its agents register that
+// server in their own frontmatter.
 
 /// Claude Code's shared project settings file (the "Shared project" tier,
 /// <https://code.claude.com/docs/en/settings>). Carries the
@@ -94,19 +98,19 @@ fn claude_mcp_permission_grants() -> Vec<String> {
         .collect()
 }
 
-/// Whether `deny_entry` (a string already present in an existing
-/// `permissions.deny` array) would shadow the allow-grant `grant` (an
-/// exact `mcp__<server>__<tool>` string this pass is about to add) --
-/// the three ways Claude's own deny syntax can cover an MCP tool (see
-/// <https://code.claude.com/docs/en/permissions#mcp>): an exact match,
-/// this server's own bare-name or `__*`-wildcard forms, and the global
-/// `mcp__*` wildcard that denies every MCP tool from every server.
-fn deny_entry_shadows_grant(deny_entry: &str, grant: &str) -> bool {
-    if deny_entry == grant || deny_entry == "mcp__*" {
+/// Whether the settings rule `rule` (an entry already in a user's
+/// `permissions.deny`, `ask` or `allow` array) covers `tool_rule`, an exact
+/// `mcp__<server>__<tool>` string for a tool of `server`. These are the
+/// ways Claude's rule syntax can cover an MCP tool (see
+/// <https://code.claude.com/docs/en/permissions#mcp>): an exact match, the
+/// server's bare-name or `__*`-wildcard forms, and the global `mcp__*`
+/// wildcard.
+fn rule_covers_mcp_tool(rule: &str, server: &str, tool_rule: &str) -> bool {
+    if rule == tool_rule || rule == "mcp__*" {
         return true;
     }
-    let server_prefix = format!("mcp__{MCP_SERVER_NAME}");
-    deny_entry == server_prefix || deny_entry == format!("{server_prefix}__*")
+    let server_prefix = format!("mcp__{server}");
+    rule == server_prefix || rule == format!("{server_prefix}__*")
 }
 
 /// Errors if `path` exists and is a symlink (of any kind, dangling or
@@ -307,7 +311,7 @@ fn write_settings_file(
 /// `.claude` or `settings.json` is a symlink (`reject_symlink`), when
 /// the file, `permissions`, `permissions.deny` or `permissions.allow` is
 /// not the expected JSON shape, or when a `permissions.deny` entry
-/// shadows a grant (`deny_entry_shadows_grant`, reported as
+/// shadows a grant (`rule_covers_mcp_tool`, reported as
 /// `ClaudeGrantError::DenyShadowed`).
 ///
 /// Returns the bytes now on disk: the new content, or the original bytes
@@ -367,9 +371,9 @@ fn merge_claude_settings_permissions(
         };
         for grant in grants {
             let shadowed = deny_array.iter().any(|entry| {
-                entry
-                    .as_str()
-                    .is_some_and(|deny_entry| deny_entry_shadows_grant(deny_entry, grant))
+                entry.as_str().is_some_and(|deny_entry| {
+                    rule_covers_mcp_tool(deny_entry, MCP_SERVER_NAME, grant)
+                })
             });
             if shadowed {
                 return Err(ClaudeGrantError::DenyShadowed(format!(
@@ -442,6 +446,243 @@ pub(super) fn apply_claude_settings_grant(
         CLAUDE_SETTINGS_RELATIVE_PATH.to_string(),
         super::super::artifact::sha256_hex(&bytes),
     ))
+}
+
+// ── Claude Code permission rules for the AWS MCP server ─────────────────
+//
+// `ClaudeInstallStrategy` merges these into `<target_dir>/.claude/settings.json`
+// when an installed agent declares the `aws-mcp` server: an `ask` rule for
+// each `AWS_MCP_ASK_TOOLS` tool, and `allow` rules matching the agents' Kiro
+// `allowedTools`. Claude Code evaluates deny, then ask, then allow, so the
+// ask rule prompts even under a broad `mcp__aws-mcp__*` allow. Unlike the
+// `konductor-skills` grant, a conflicting user entry skips only the entry it
+// covers. Uninstall leaves the entries in place, like the grant.
+
+pub(in crate::cli::install) const AWS_MCP_SERVER_NAME: &str = "aws-mcp";
+
+/// AWS MCP tools that must prompt before every call. `aws___run_script`
+/// runs agent-written Python with the user's AWS credentials.
+pub(in crate::cli::install) const AWS_MCP_ASK_TOOLS: &[&str] = &["aws___run_script"];
+
+/// Full `mcp__<server>__<tool>` rules for one MCP server.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(in crate::cli::install) struct McpPermissionRules {
+    pub(in crate::cli::install) server: String,
+    pub(in crate::cli::install) allow: Vec<String>,
+    pub(in crate::cli::install) ask: Vec<String>,
+}
+
+impl McpPermissionRules {
+    pub(in crate::cli::install) fn is_empty(&self) -> bool {
+        self.allow.is_empty() && self.ask.is_empty()
+    }
+}
+
+pub(in crate::cli::install) fn mcp_tool_rule(server: &str, tool: &str) -> String {
+    format!("mcp__{server}__{tool}")
+}
+
+/// A rule left out because one of the user's entries already covers it.
+#[derive(Debug, PartialEq, Eq)]
+struct SkippedRule {
+    rule: String,
+    list: &'static str,
+    user_entry: String,
+}
+
+/// `bytes` is what is on disk after the merge, empty when no file exists.
+#[derive(Debug)]
+struct MergeOutcome {
+    bytes: Vec<u8>,
+    skipped: Vec<SkippedRule>,
+}
+
+/// The string entries of `permissions.<key>`, or an error naming the key
+/// when it is present but not an array.
+fn permission_entries(
+    permissions: &serde_json::Map<String, serde_json::Value>,
+    key: &str,
+    settings_path: &Path,
+) -> Result<Vec<String>, ClaudeGrantError> {
+    match permissions.get(key) {
+        None => Ok(Vec::new()),
+        Some(serde_json::Value::Array(entries)) => Ok(entries
+            .iter()
+            .filter_map(|entry| entry.as_str().map(str::to_string))
+            .collect()),
+        Some(_) => Err(format!(
+            "{}'s \"permissions.{key}\" key is not a JSON array -- fix or remove the file \
+             before installing",
+            settings_path.display()
+        )
+        .into()),
+    }
+}
+
+/// The first of `lists` holding an entry that covers `rule`, as
+/// `(list name, entry)`.
+fn covering_user_entry(
+    lists: &[(&'static str, &[String])],
+    server: &str,
+    rule: &str,
+) -> Option<(&'static str, String)> {
+    lists.iter().find_map(|(name, entries)| {
+        entries
+            .iter()
+            .find(|entry| rule_covers_mcp_tool(entry, server, rule))
+            .map(|entry| (*name, entry.clone()))
+    })
+}
+
+/// Appends `rules.ask` to `permissions.ask` and `rules.allow` to
+/// `permissions.allow` in `<target_dir>/.claude/settings.json`, skipping
+/// entries already present. Never removes or reorders an existing entry.
+///
+/// An ask rule is skipped when a `deny` entry covers it, or when `allow`
+/// holds that exact rule (a broad allow glob does not count: the ask rule
+/// exists to take precedence over it). An allow rule is skipped when a
+/// `deny` or `ask` entry covers it. Each skip is reported in `skipped`.
+///
+/// Same lock, symlink refusal, mode preservation and no-op behavior as
+/// `merge_claude_settings_permissions`.
+fn merge_claude_settings_mcp_rules(
+    target_dir: &Path,
+    rules: &McpPermissionRules,
+) -> Result<MergeOutcome, ClaudeGrantError> {
+    let (settings_path, claude_dir) = settings_paths(target_dir, CLAUDE_SETTINGS_RELATIVE_PATH)?;
+    let _lock_guard = crate::cli::config_lock::acquire_named(&claude_dir, ".settings.lock")
+        .map_err(|source| format!("failed to lock {}: {source}", claude_dir.display()))?;
+
+    let SettingsFileState {
+        mut root,
+        original_text,
+        original_mode,
+    } = read_settings_file(&settings_path, &claude_dir)?;
+
+    let Some(root_obj) = root.as_object_mut() else {
+        return Err(format!(
+            "{} does not contain a JSON object at its top level -- fix or remove the file \
+             before installing",
+            settings_path.display()
+        )
+        .into());
+    };
+    let empty_permissions = serde_json::Map::new();
+    let permissions = match root_obj.get("permissions") {
+        None => &empty_permissions,
+        Some(serde_json::Value::Object(permissions)) => permissions,
+        Some(_) => {
+            return Err(format!(
+                "{}'s \"permissions\" key is not a JSON object -- fix or remove the file before \
+                 installing",
+                settings_path.display()
+            )
+            .into())
+        }
+    };
+    let deny = permission_entries(permissions, "deny", &settings_path)?;
+    let ask = permission_entries(permissions, "ask", &settings_path)?;
+    let allow = permission_entries(permissions, "allow", &settings_path)?;
+
+    let mut skipped = Vec::new();
+    let mut ask_additions = Vec::new();
+    for rule in &rules.ask {
+        let user_allow_exact = allow.iter().find(|entry| *entry == rule);
+        let cover = covering_user_entry(&[("deny", &deny)], &rules.server, rule)
+            .or_else(|| user_allow_exact.map(|entry| ("allow", entry.clone())));
+        match cover {
+            Some((list, user_entry)) => skipped.push(SkippedRule {
+                rule: rule.clone(),
+                list,
+                user_entry,
+            }),
+            None if !ask.contains(rule) && !ask_additions.contains(rule) => {
+                ask_additions.push(rule.clone())
+            }
+            None => {}
+        }
+    }
+    let mut allow_additions = Vec::new();
+    for rule in &rules.allow {
+        match covering_user_entry(&[("deny", &deny), ("ask", &ask)], &rules.server, rule) {
+            Some((list, user_entry)) => skipped.push(SkippedRule {
+                rule: rule.clone(),
+                list,
+                user_entry,
+            }),
+            None if !allow.contains(rule) && !allow_additions.contains(rule) => {
+                allow_additions.push(rule.clone())
+            }
+            None => {}
+        }
+    }
+
+    if ask_additions.is_empty() && allow_additions.is_empty() {
+        let bytes = original_text.map(String::into_bytes).unwrap_or_default();
+        return Ok(MergeOutcome { bytes, skipped });
+    }
+
+    let permissions = root_obj
+        .entry("permissions")
+        .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()))
+        .as_object_mut()
+        .expect("permissions was checked to be an object or absent above");
+    for (key, additions) in [("ask", ask_additions), ("allow", allow_additions)] {
+        if additions.is_empty() {
+            continue;
+        }
+        permissions
+            .entry(key)
+            .or_insert_with(|| serde_json::Value::Array(Vec::new()))
+            .as_array_mut()
+            .expect("the list was checked to be an array or absent above")
+            .extend(additions.into_iter().map(serde_json::Value::String));
+    }
+
+    let bytes = write_settings_file(&settings_path, &claude_dir, &root, original_mode)?;
+    Ok(MergeOutcome { bytes, skipped })
+}
+
+/// Merges `rules` into `<target_dir>/.claude/settings.json` and returns the
+/// file for the manifest, or `None` when nothing is on disk. Never fails
+/// the install: each skipped rule and any error is reported on stderr.
+pub(in crate::cli::install) fn apply_claude_settings_mcp_rules(
+    target_dir: &Path,
+    rules: &McpPermissionRules,
+) -> Option<ManifestFile> {
+    if rules.is_empty() {
+        return None;
+    }
+    match merge_claude_settings_mcp_rules(target_dir, rules) {
+        Ok(outcome) => {
+            let settings_path = target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH);
+            for skip in &outcome.skipped {
+                eprintln!(
+                    "konductor install: left {} out of {}: your \"permissions.{}\" entry \"{}\" \
+                     already covers it",
+                    skip.rule,
+                    settings_path.display(),
+                    skip.list,
+                    skip.user_entry
+                );
+            }
+            if outcome.bytes.is_empty() {
+                return None;
+            }
+            Some(ManifestFile {
+                path: CLAUDE_SETTINGS_RELATIVE_PATH.to_string(),
+                sha256: Some(super::super::artifact::sha256_hex(&outcome.bytes)),
+                provenance: Provenance::Created,
+            })
+        }
+        Err(err) => {
+            eprintln!(
+                "warning: Claude Code AWS MCP permission rules skipped ({err}) -- the rest of \
+                 this install is unaffected"
+            );
+            None
+        }
+    }
 }
 
 // ── V3/Claude Code telemetry hook wiring ──
@@ -1766,6 +2007,327 @@ mod tests {
         );
         fs::remove_dir_all(&dir).ok();
         fs::remove_dir_all(&real_elsewhere).ok();
+    }
+
+    // ── Claude settings.json aws-mcp ask/allow rules ─────────────────
+
+    const RUN_SCRIPT: &str = "mcp__aws-mcp__aws___run_script";
+    const READ_TOOLS: &[&str] = &[
+        "aws___get_regional_availability",
+        "aws___list_regions",
+        "aws___read_documentation",
+        "aws___retrieve_skill",
+        "aws___search_documentation",
+    ];
+
+    fn aws_rules() -> McpPermissionRules {
+        McpPermissionRules {
+            server: AWS_MCP_SERVER_NAME.to_string(),
+            allow: READ_TOOLS
+                .iter()
+                .map(|tool| mcp_tool_rule(AWS_MCP_SERVER_NAME, tool))
+                .collect(),
+            ask: AWS_MCP_ASK_TOOLS
+                .iter()
+                .map(|tool| mcp_tool_rule(AWS_MCP_SERVER_NAME, tool))
+                .collect(),
+        }
+    }
+
+    fn aws_allow_rules() -> Vec<serde_json::Value> {
+        aws_rules()
+            .allow
+            .into_iter()
+            .map(serde_json::Value::String)
+            .collect()
+    }
+
+    fn settings_dir_with(name: &str, settings: serde_json::Value) -> PathBuf {
+        let dir = scratch_dir(name);
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        fs::write(
+            dir.join(CLAUDE_SETTINGS_RELATIVE_PATH),
+            serde_json::to_vec_pretty(&settings).unwrap(),
+        )
+        .unwrap();
+        dir
+    }
+
+    #[test]
+    fn aws_mcp_rules_create_fresh_file() {
+        let dir = scratch_dir("aws-rules-fresh");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+
+        let file = apply_claude_settings_mcp_rules(&dir, &aws_rules())
+            .expect("a fresh target must get a settings file");
+        assert_eq!(file.path, CLAUDE_SETTINGS_RELATIVE_PATH);
+
+        let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
+        assert_eq!(
+            parsed["permissions"]["ask"],
+            serde_json::json!([RUN_SCRIPT])
+        );
+        assert_eq!(
+            parsed["permissions"]["allow"],
+            serde_json::Value::Array(aws_allow_rules())
+        );
+        assert_eq!(
+            file.sha256,
+            Some(super::super::super::artifact::sha256_hex(
+                &fs::read(dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap()
+            ))
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn aws_mcp_rules_preserve_existing_keys_and_append_after_them() {
+        let dir = settings_dir_with(
+            "aws-rules-preserve",
+            serde_json::json!({
+                "env": {"FOO": "bar"},
+                "permissions": {
+                    "allow": ["Bash(npm test)"],
+                    "ask": ["Bash(git push:*)"],
+                    "deny": ["Read(./.env)"],
+                    "defaultMode": "default"
+                },
+                "hooks": {"Stop": []}
+            }),
+        );
+
+        apply_claude_settings_mcp_rules(&dir, &aws_rules()).expect("the merge must write");
+
+        let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
+        assert_eq!(parsed["env"], serde_json::json!({"FOO": "bar"}));
+        assert_eq!(parsed["hooks"], serde_json::json!({"Stop": []}));
+        assert_eq!(parsed["permissions"]["defaultMode"], "default");
+        assert_eq!(
+            parsed["permissions"]["deny"],
+            serde_json::json!(["Read(./.env)"])
+        );
+        assert_eq!(
+            parsed["permissions"]["ask"],
+            serde_json::json!(["Bash(git push:*)", RUN_SCRIPT])
+        );
+        let mut expected_allow = vec![serde_json::json!("Bash(npm test)")];
+        expected_allow.extend(aws_allow_rules());
+        assert_eq!(
+            parsed["permissions"]["allow"],
+            serde_json::Value::Array(expected_allow)
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn aws_mcp_rules_rerun_is_byte_identical_and_skips_the_write() {
+        let dir = scratch_dir("aws-rules-idempotent");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        let path = dir.join(CLAUDE_SETTINGS_RELATIVE_PATH);
+
+        let first = apply_claude_settings_mcp_rules(&dir, &aws_rules()).unwrap();
+        let bytes_before = fs::read(&path).unwrap();
+        let mtime_before = fs::metadata(&path).unwrap().modified().unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(20));
+
+        let second = apply_claude_settings_mcp_rules(&dir, &aws_rules()).unwrap();
+        assert_eq!(fs::read(&path).unwrap(), bytes_before);
+        assert_eq!(
+            fs::metadata(&path).unwrap().modified().unwrap(),
+            mtime_before
+        );
+        assert_eq!(first.sha256, second.sha256);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn aws_mcp_rules_keep_a_narrow_file_mode() {
+        let dir = settings_dir_with("aws-rules-mode", serde_json::json!({}));
+        let path = dir.join(CLAUDE_SETTINGS_RELATIVE_PATH);
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+
+        apply_claude_settings_mcp_rules(&dir, &aws_rules()).unwrap();
+
+        assert_eq!(
+            fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn aws_mcp_rules_respect_an_exact_user_allow_of_run_script() {
+        let dir = settings_dir_with(
+            "aws-rules-user-allow",
+            serde_json::json!({"permissions": {"allow": [RUN_SCRIPT]}}),
+        );
+
+        let outcome = merge_claude_settings_mcp_rules(&dir, &aws_rules()).unwrap();
+
+        assert_eq!(
+            outcome.skipped,
+            vec![SkippedRule {
+                rule: RUN_SCRIPT.to_string(),
+                list: "allow",
+                user_entry: RUN_SCRIPT.to_string(),
+            }]
+        );
+        let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
+        assert!(parsed["permissions"].get("ask").is_none());
+        assert_eq!(parsed["permissions"]["allow"][0], RUN_SCRIPT);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn aws_mcp_rules_still_ask_under_a_broad_user_allow() {
+        let dir = settings_dir_with(
+            "aws-rules-broad-allow",
+            serde_json::json!({"permissions": {"allow": ["mcp__aws-mcp__*"]}}),
+        );
+
+        let outcome = merge_claude_settings_mcp_rules(&dir, &aws_rules()).unwrap();
+
+        assert!(outcome.skipped.is_empty());
+        let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
+        assert_eq!(
+            parsed["permissions"]["ask"],
+            serde_json::json!([RUN_SCRIPT])
+        );
+        assert_eq!(parsed["permissions"]["allow"][0], "mcp__aws-mcp__*");
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn aws_mcp_rules_skip_entries_a_user_deny_covers_and_remove_nothing() {
+        for (deny, covers_reads) in [
+            (RUN_SCRIPT, false),
+            ("mcp__aws-mcp__*", true),
+            ("mcp__aws-mcp", true),
+            ("mcp__*", true),
+        ] {
+            let dir = settings_dir_with(
+                "aws-rules-deny",
+                serde_json::json!({"permissions": {"deny": [deny]}}),
+            );
+
+            let outcome = merge_claude_settings_mcp_rules(&dir, &aws_rules())
+                .unwrap_or_else(|err| panic!("deny {deny} must not fail the merge: {err}"));
+
+            let expected_skips = if covers_reads {
+                1 + READ_TOOLS.len()
+            } else {
+                1
+            };
+            assert_eq!(outcome.skipped.len(), expected_skips, "deny {deny}");
+            assert!(outcome
+                .skipped
+                .iter()
+                .all(|skip| skip.list == "deny" && skip.user_entry == deny));
+            let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
+            assert_eq!(parsed["permissions"]["deny"], serde_json::json!([deny]));
+            assert!(parsed["permissions"].get("ask").is_none(), "deny {deny}");
+            if covers_reads {
+                assert!(parsed["permissions"].get("allow").is_none(), "deny {deny}");
+            } else {
+                assert_eq!(
+                    parsed["permissions"]["allow"],
+                    serde_json::Value::Array(aws_allow_rules())
+                );
+            }
+            fs::remove_dir_all(&dir).ok();
+        }
+    }
+
+    #[test]
+    fn aws_mcp_rules_skip_allow_rules_a_user_ask_covers() {
+        let dir = settings_dir_with(
+            "aws-rules-user-ask",
+            serde_json::json!({"permissions": {"ask": ["mcp__aws-mcp__*"]}}),
+        );
+
+        let outcome = merge_claude_settings_mcp_rules(&dir, &aws_rules()).unwrap();
+
+        assert_eq!(outcome.skipped.len(), READ_TOOLS.len());
+        assert!(outcome
+            .skipped
+            .iter()
+            .all(|skip| skip.list == "ask" && skip.user_entry == "mcp__aws-mcp__*"));
+        let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
+        assert_eq!(
+            parsed["permissions"]["ask"],
+            serde_json::json!(["mcp__aws-mcp__*", RUN_SCRIPT])
+        );
+        assert!(parsed["permissions"].get("allow").is_none());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn aws_mcp_rules_reject_a_non_array_ask_key() {
+        let original = serde_json::json!({"permissions": {"ask": "mcp__aws-mcp__*"}});
+        let dir = settings_dir_with("aws-rules-bad-ask", original.clone());
+
+        let err = merge_claude_settings_mcp_rules(&dir, &aws_rules())
+            .expect_err("a non-array ask key must be refused");
+        assert!(matches!(err, ClaudeGrantError::Other(_)));
+        assert!(err.contains("permissions.ask"));
+        assert!(apply_claude_settings_mcp_rules(&dir, &aws_rules()).is_none());
+        assert_eq!(
+            read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)),
+            original
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn aws_mcp_rules_refuse_a_symlinked_claude_directory() {
+        let dir = scratch_dir("aws-rules-symlink-dir");
+        let real_elsewhere = scratch_dir("aws-rules-symlink-dir-target");
+        std::os::unix::fs::symlink(&real_elsewhere, dir.join(".claude")).unwrap();
+
+        let err = merge_claude_settings_mcp_rules(&dir, &aws_rules())
+            .expect_err("a symlinked .claude directory must be refused");
+        assert!(err.contains("symlink"));
+        assert!(apply_claude_settings_mcp_rules(&dir, &aws_rules()).is_none());
+        assert!(!real_elsewhere.join("settings.json").exists());
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&real_elsewhere).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn aws_mcp_rules_refuse_a_symlinked_settings_file() {
+        let dir = scratch_dir("aws-rules-symlink-file");
+        let claude_dir = dir.join(".claude");
+        fs::create_dir_all(&claude_dir).unwrap();
+        let real_elsewhere = scratch_dir("aws-rules-symlink-file-target");
+        let real_file = real_elsewhere.join("real-settings.json");
+        fs::write(&real_file, "{}").unwrap();
+        std::os::unix::fs::symlink(&real_file, claude_dir.join("settings.json")).unwrap();
+
+        let err = merge_claude_settings_mcp_rules(&dir, &aws_rules())
+            .expect_err("a symlinked settings.json must be refused");
+        assert!(err.contains("symlink"));
+        assert_eq!(fs::read_to_string(&real_file).unwrap(), "{}");
+        assert!(fs::symlink_metadata(claude_dir.join("settings.json"))
+            .unwrap()
+            .file_type()
+            .is_symlink());
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&real_elsewhere).ok();
+    }
+
+    #[test]
+    fn aws_mcp_rules_that_are_empty_leave_no_file() {
+        let dir = scratch_dir("aws-rules-empty");
+        let rules = McpPermissionRules {
+            server: AWS_MCP_SERVER_NAME.to_string(),
+            ..Default::default()
+        };
+
+        assert!(apply_claude_settings_mcp_rules(&dir, &rules).is_none());
+        assert!(!dir.join(".claude").exists());
+        fs::remove_dir_all(&dir).ok();
     }
 
     // ── Claude telemetry hook wiring ─────────────────────────────────

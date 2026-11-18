@@ -26,11 +26,17 @@
 // `.sop.md` files directly, so each SOP becomes its own slash-invokable,
 // non-model-triggered skill instead (`disable-model-invocation: true`).
 //
+// When a staged agent declares the `aws-mcp` server, install merges
+// Claude Code permission rules into `<target_dir>/.claude/settings.json`:
+// `permissions.ask` for `aws___run_script`, and `permissions.allow` for the
+// agents' Kiro `allowedTools`, read from synth's `_mcp_allowed_tools.json`.
+//
 // `ClaudeTransformer`, the synth side that produces `dist/claude/...`,
 // lives on a separate, unmerged branch and is not imported here.
 // `CLAUDE_HARNESS_DIR` below is a hand-kept copy of its `name()` value;
 // tests seed a `dist/claude/...` fixture tree directly instead.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use super::kiro_cli::{
@@ -40,10 +46,14 @@ use super::kiro_cli::{
 };
 use super::manifest::{classify_provenance, ManifestFile, Status, StrategyManifest};
 use super::phases::{run_all_phases, InstallPhase, PhaseOutputs, SopInstallPhase};
-use super::resource_rewrite::apply_claude_settings_hooks_only;
+use super::resource_rewrite::{
+    apply_claude_settings_hooks_only, apply_claude_settings_mcp_rules, mcp_tool_rule,
+    McpPermissionRules, AWS_MCP_ASK_TOOLS, AWS_MCP_SERVER_NAME, CLAUDE_SETTINGS_RELATIVE_PATH,
+};
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
 use super::InstallStrategy;
+use crate::cli::synth::claude::MCP_ALLOWED_TOOLS_SIDECAR_FILE;
 use crate::cli::synth::kiro_cli_v2::{
     AGENTS_CONTENT_TYPE_DIR, SKILLS_CONTENT_TYPE_DIR, SOPS_CONTENT_TYPE_DIR,
 };
@@ -161,6 +171,23 @@ impl InstallStrategy for ClaudeInstallStrategy {
             target_dir,
             prior_manifest.as_ref(),
         ));
+        // Computed before anything is written, so a malformed sidecar
+        // fails the install up front like a planning error.
+        let aws_mcp = claude_aws_mcp_permission_rules(&harness_dir)?;
+        if !aws_mcp.rules.is_empty()
+            && !plan
+                .iter()
+                .any(|planned| planned.manifest_path == CLAUDE_SETTINGS_RELATIVE_PATH)
+        {
+            plan.push(PlannedFile {
+                manifest_path: CLAUDE_SETTINGS_RELATIVE_PATH.to_string(),
+                provenance: classify_provenance(
+                    &target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH),
+                    CLAUDE_SETTINGS_RELATIVE_PATH,
+                    prior_manifest.as_ref(),
+                ),
+            });
+        }
 
         let in_progress_files: Vec<ManifestFile> = plan
             .iter()
@@ -210,6 +237,26 @@ impl InstallStrategy for ClaudeInstallStrategy {
             apply_claude_settings_hooks_only(target_dir, no_telemetry)
         {
             raw_files.push(claude_settings_file);
+        }
+
+        // The `aws-mcp` ask/allow rules go into `.claude/settings.json`.
+        // On a `$HOME` install that is also the hooks file, so this later
+        // write's hash replaces the hooks entry.
+        if let Some(settings_file) = apply_claude_settings_mcp_rules(target_dir, &aws_mcp.rules) {
+            raw_files.retain(|file| file.path != settings_file.path);
+            raw_files.push(settings_file);
+            if aws_mcp.sidecar_missing {
+                eprintln!(
+                    "konductor install: {} not found (synthed by an older konductor); wrote \
+                     only the aws___run_script ask rule to {}; re-run konductor synth to add \
+                     the AWS MCP allow rules",
+                    harness_dir
+                        .join(AGENTS_CONTENT_TYPE_DIR)
+                        .join(MCP_ALLOWED_TOOLS_SIDECAR_FILE)
+                        .display(),
+                    target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH).display()
+                );
+            }
         }
 
         let files = attach_provenance(raw_files, &plan)?;
@@ -342,6 +389,140 @@ fn plan_claude_settings_hooks_only(
     let mut plan = Vec::new();
     plan_claude_hooks_file(&mut plan, target_dir, prior_manifest);
     plan
+}
+
+// ── AWS MCP permission rules ───────────────────────────────────────────────
+
+/// The `aws-mcp` permission rules for the staged agents, and whether the
+/// synth sidecar that supplies the allow list was missing.
+struct AwsMcpRulePlan {
+    rules: McpPermissionRules,
+    sidecar_missing: bool,
+}
+
+/// Per agent, per MCP server, the Kiro `allowedTools` tool names synth
+/// recorded in `_mcp_allowed_tools.json`.
+type McpAllowedTools = BTreeMap<String, BTreeMap<String, Vec<String>>>;
+
+/// Builds the rules from the staged agents under `<harness_dir>/agents/`.
+/// Empty when no agent's frontmatter declares `aws-mcp`. Otherwise `ask`
+/// holds the `AWS_MCP_ASK_TOOLS` rules and `allow` the union of those
+/// agents' sidecar tools, minus any ask tool.
+fn claude_aws_mcp_permission_rules(harness_dir: &Path) -> Result<AwsMcpRulePlan, String> {
+    let agents_dir = harness_dir.join(AGENTS_CONTENT_TYPE_DIR);
+    let mut aws_agents = Vec::new();
+    for file_name in list_agent_files_md(&agents_dir)? {
+        let path = agents_dir.join(&file_name);
+        let md = std::fs::read_to_string(&path)
+            .map_err(|e| format!("failed to read {}: {e}", path.display()))?;
+        if agent_declares_mcp_server(&md, AWS_MCP_SERVER_NAME) {
+            let agent = file_name.trim_end_matches(".md").to_string();
+            aws_agents.push(agent);
+        }
+    }
+
+    let mut rules = McpPermissionRules {
+        server: AWS_MCP_SERVER_NAME.to_string(),
+        ..Default::default()
+    };
+    if aws_agents.is_empty() {
+        return Ok(AwsMcpRulePlan {
+            rules,
+            sidecar_missing: false,
+        });
+    }
+    rules.ask = AWS_MCP_ASK_TOOLS
+        .iter()
+        .map(|tool| mcp_tool_rule(AWS_MCP_SERVER_NAME, tool))
+        .collect();
+
+    let Some(sidecar) = read_mcp_allowed_tools_sidecar(&agents_dir)? else {
+        return Ok(AwsMcpRulePlan {
+            rules,
+            sidecar_missing: true,
+        });
+    };
+    let allowed: BTreeSet<&str> = aws_agents
+        .iter()
+        .filter_map(|agent| sidecar.get(agent)?.get(AWS_MCP_SERVER_NAME))
+        .flatten()
+        .map(String::as_str)
+        .filter(|tool| !AWS_MCP_ASK_TOOLS.contains(tool))
+        .collect();
+    rules.allow = allowed
+        .into_iter()
+        .map(|tool| mcp_tool_rule(AWS_MCP_SERVER_NAME, tool))
+        .collect();
+    Ok(AwsMcpRulePlan {
+        rules,
+        sidecar_missing: false,
+    })
+}
+
+/// Whether the agent Markdown's YAML frontmatter lists `server` under
+/// `mcpServers` (a sequence of single-key maps, as synth renders it). A
+/// detection check, not validation: no frontmatter or bad YAML is `false`.
+fn agent_declares_mcp_server(md: &str, server: &str) -> bool {
+    let Some(rest) = md.strip_prefix("---\n") else {
+        return false;
+    };
+    let end = if rest.starts_with("---\n") {
+        0
+    } else {
+        match rest.find("\n---\n") {
+            Some(newline) => newline + 1,
+            None => return false,
+        }
+    };
+    let Ok(frontmatter) = serde_yaml::from_str::<serde_yaml::Value>(&rest[..end]) else {
+        return false;
+    };
+    frontmatter
+        .get("mcpServers")
+        .and_then(serde_yaml::Value::as_sequence)
+        .is_some_and(|servers| {
+            servers.iter().any(|entry| {
+                entry
+                    .as_mapping()
+                    .is_some_and(|map| map.contains_key(server))
+            })
+        })
+}
+
+/// Reads `<agents_dir>/_mcp_allowed_tools.json`. `Ok(None)` when the file
+/// is absent (a dist synthed by an older konductor). Every server and tool
+/// name must match `[A-Za-z0-9_-]+`, since each becomes part of a rule
+/// written into the user's settings file.
+fn read_mcp_allowed_tools_sidecar(agents_dir: &Path) -> Result<Option<McpAllowedTools>, String> {
+    let path = agents_dir.join(MCP_ALLOWED_TOOLS_SIDECAR_FILE);
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let text = std::fs::read_to_string(&path)
+        .map_err(|e| format!("failed to read {}: {e}", path.display()))?;
+    let sidecar: McpAllowedTools = serde_json::from_str(&text)
+        .map_err(|e| format!("failed to parse {}: {e}", path.display()))?;
+    let is_rule_safe = |name: &str| {
+        !name.is_empty()
+            && name
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    };
+    for (agent, servers) in &sidecar {
+        for (server, tools) in servers {
+            if let Some(bad) = std::iter::once(server)
+                .chain(tools)
+                .find(|name| !is_rule_safe(name))
+            {
+                return Err(format!(
+                    "{} lists {bad:?} for agent '{agent}'; MCP server and tool names may only \
+                     contain letters, digits, '_' and '-'",
+                    path.display()
+                ));
+            }
+        }
+    }
+    Ok(Some(sidecar))
 }
 
 /// Builds the full write-ahead plan across both content types (skills,
@@ -1667,6 +1848,270 @@ mod tests {
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
+    }
+
+    // ── AWS MCP permission rules ──────────────────────────────────────
+
+    const AWS_AGENT_MD: &[u8] =
+        b"---\nname: k-x\nmcpServers:\n- aws-mcp:\n    command: uvx\n---\n\nBody\n";
+    const RUN_SCRIPT_RULE: &str = "mcp__aws-mcp__aws___run_script";
+
+    fn seed_mcp_allowed_tools_sidecar(repo_root: &Path, sidecar: serde_json::Value) {
+        let dir = repo_root
+            .join("dist")
+            .join(CLAUDE_HARNESS_DIR)
+            .join("agents");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join(MCP_ALLOWED_TOOLS_SIDECAR_FILE),
+            serde_json::to_vec(&sidecar).unwrap(),
+        )
+        .unwrap();
+    }
+
+    fn install(target_dir: &Path, repo_root: &Path) -> Result<(), InstallError> {
+        ClaudeInstallStrategy.install_from_local(
+            target_dir,
+            Some(repo_root.to_str().unwrap()),
+            "2026-01-01T00:00:00Z",
+            false,
+        )
+    }
+
+    fn read_project_settings(target_dir: &Path) -> serde_json::Value {
+        serde_json::from_slice(&fs::read(target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap())
+            .unwrap()
+    }
+
+    fn settings_manifest_entry(target_dir: &Path) -> Option<ManifestFile> {
+        super::super::manifest::read_manifest(target_dir)
+            .unwrap()
+            .expect("manifest must exist after install")
+            .strategies[0]
+            .files
+            .iter()
+            .find(|file| file.path == CLAUDE_SETTINGS_RELATIVE_PATH)
+            .cloned()
+    }
+
+    #[test]
+    fn install_writes_aws_mcp_ask_and_allow_rules_and_tracks_the_file() {
+        let target_dir = scratch_dir("aws-rules-install-target");
+        let repo_root = scratch_dir("aws-rules-install-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({"k-x": {"aws-mcp": ["aws___list_regions"]}}),
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        let settings = read_project_settings(&target_dir);
+        assert_eq!(
+            settings["permissions"]["ask"],
+            serde_json::json!([RUN_SCRIPT_RULE])
+        );
+        assert_eq!(
+            settings["permissions"]["allow"],
+            serde_json::json!(["mcp__aws-mcp__aws___list_regions"])
+        );
+        let entry = settings_manifest_entry(&target_dir).expect("settings.json must be tracked");
+        assert_eq!(
+            entry.sha256,
+            Some(super::super::artifact::sha256_hex(
+                &fs::read(target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap()
+            ))
+        );
+        assert_eq!(
+            entry.provenance,
+            super::super::manifest::Provenance::Created
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_without_the_sidecar_writes_only_the_ask_rule() {
+        let target_dir = scratch_dir("aws-rules-no-sidecar-target");
+        let repo_root = scratch_dir("aws-rules-no-sidecar-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        let settings = read_project_settings(&target_dir);
+        assert_eq!(
+            settings["permissions"]["ask"],
+            serde_json::json!([RUN_SCRIPT_RULE])
+        );
+        assert!(settings["permissions"].get("allow").is_none());
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_without_aws_mcp_agents_writes_no_project_settings_file() {
+        let target_dir = scratch_dir("aws-rules-none-target");
+        let repo_root = scratch_dir("aws-rules-none-repo");
+        seed_synthed_agent(
+            &repo_root,
+            "k-example",
+            b"---\nname: k-example\n---\nBody\n",
+        );
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({"k-example": {"aws-mcp": ["aws___list_regions"]}}),
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        assert!(!target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH).exists());
+        assert!(settings_manifest_entry(&target_dir).is_none());
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_allows_only_tools_of_staged_agents_that_declare_aws_mcp() {
+        let target_dir = scratch_dir("aws-rules-scope-target");
+        let repo_root = scratch_dir("aws-rules-scope-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_synthed_agent(&repo_root, "k-plain", b"---\nname: k-plain\n---\nBody\n");
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({
+                "k-x": {"aws-mcp": ["aws___list_regions"]},
+                "k-plain": {"aws-mcp": ["aws___read_documentation"]},
+                "k-not-staged": {"aws-mcp": ["aws___search_documentation"]}
+            }),
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        assert_eq!(
+            read_project_settings(&target_dir)["permissions"]["allow"],
+            serde_json::json!(["mcp__aws-mcp__aws___list_regions"])
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_fails_on_a_sidecar_tool_name_unsafe_for_a_rule() {
+        let target_dir = scratch_dir("aws-rules-bad-name-target");
+        let repo_root = scratch_dir("aws-rules-bad-name-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({"k-x": {"aws-mcp": ["aws___run_script(x)"]}}),
+        );
+
+        let err = install(&target_dir, &repo_root).expect_err("an unsafe tool name must fail");
+        assert!(err.contains(MCP_ALLOWED_TOOLS_SIDECAR_FILE), "{err}");
+        assert!(!target_dir.join(".claude/agents/k-x.md").exists());
+        assert!(!target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH).exists());
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn reinstall_leaves_the_settings_file_unchanged_and_records_replaced_ours() {
+        let target_dir = scratch_dir("aws-rules-reinstall-target");
+        let repo_root = scratch_dir("aws-rules-reinstall-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({"k-x": {"aws-mcp": ["aws___list_regions"]}}),
+        );
+
+        install(&target_dir, &repo_root).expect("first install must succeed");
+        let before = fs::read(target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap();
+        install(&target_dir, &repo_root).expect("second install must succeed");
+
+        assert_eq!(
+            fs::read(target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap(),
+            before
+        );
+        assert_eq!(
+            settings_manifest_entry(&target_dir).unwrap().provenance,
+            super::super::manifest::Provenance::ReplacedOurs
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn agent_declares_mcp_server_reads_the_frontmatter_only() {
+        let md = std::str::from_utf8(AWS_AGENT_MD).unwrap();
+        assert!(agent_declares_mcp_server(md, "aws-mcp"));
+        assert!(!agent_declares_mcp_server(md, "other"));
+        assert!(!agent_declares_mcp_server(
+            "---\nname: k\n---\nmcpServers:\n- aws-mcp: {}\n",
+            "aws-mcp"
+        ));
+        assert!(!agent_declares_mcp_server("no frontmatter\n", "aws-mcp"));
+        assert!(!agent_declares_mcp_server(
+            "---\nmcpServers: [aws-mcp: {\n---\nBody\n",
+            "aws-mcp"
+        ));
+    }
+
+    /// The allow rules come from the real agent specs: the union of the
+    /// aws-mcp agents' Kiro `allowedTools`, none of which may be an ask tool.
+    #[test]
+    fn real_agent_specs_allow_five_read_only_aws_mcp_tools_and_never_an_ask_tool() {
+        let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let model = crate::cli::synth::parse_canonical::parse_canonical(&repo_root)
+            .expect("the repo's own specs must parse");
+
+        let mut allowed = BTreeSet::new();
+        for agent in &model.agents {
+            let kiro_allowed = agent
+                .client_config
+                .kiro_cli
+                .as_ref()
+                .map(|kiro| kiro.allowed_tools.clone())
+                .unwrap_or_default();
+            for ask_tool in AWS_MCP_ASK_TOOLS {
+                assert!(
+                    !kiro_allowed.contains(&format!("@{AWS_MCP_SERVER_NAME}/{ask_tool}")),
+                    "agent '{}' allows the ask-only tool {ask_tool}",
+                    agent.name
+                );
+            }
+            if !agent
+                .dependencies
+                .mcp_registry
+                .contains_key(AWS_MCP_SERVER_NAME)
+            {
+                continue;
+            }
+            let prefix = format!("@{AWS_MCP_SERVER_NAME}/");
+            allowed.extend(
+                kiro_allowed
+                    .iter()
+                    .filter_map(|entry| entry.strip_prefix(&prefix).map(str::to_string)),
+            );
+        }
+
+        assert_eq!(
+            allowed,
+            BTreeSet::from(
+                [
+                    "aws___get_regional_availability",
+                    "aws___list_regions",
+                    "aws___read_documentation",
+                    "aws___retrieve_skill",
+                    "aws___search_documentation",
+                ]
+                .map(String::from)
+            )
+        );
     }
 
     #[test]

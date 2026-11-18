@@ -138,6 +138,10 @@ Only if you set these for Konductor and want them gone. Edit `~/.claude/settings
 
 - `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`
 - the `permissions.allow` entries you added
+- the AWS MCP rules `konductor install --harness claude` added, which `uninstall` leaves in place:
+  `mcp__aws-mcp__aws___run_script` under `permissions.ask`, and the `mcp__aws-mcp__aws___*`
+  read-only tools under `permissions.allow`. With `--target`, they are in
+  `<target>/.claude/settings.json` instead.
 - `teammateMode`, if you set it
 
 ```bash

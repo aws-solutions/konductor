@@ -262,8 +262,11 @@ Code). Full details, including each agent's tools, are in the
 
 `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each specialist with permission
 checks off (`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so a
-dispatched agent runs shell commands and MCP tools, AWS API calls included, without asking. Use them
-only in a workspace and with AWS credentials you are willing to let an agent act on. With
+dispatched agent runs shell commands and MCP tools, AWS API calls included, without asking. The
+exception on Claude Code is `aws___run_script`: `konductor install` sets an ask rule for it, so a
+dispatched agent cannot call it (see
+[What each agent can do to your machine](docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine)).
+Use them only in a workspace and with AWS credentials you are willing to let an agent act on. With
 `konductor`, Claude Code specialists follow your `~/.claude/settings.json`; on Kiro CLI,
 `k-developer`, `k-architect` and `k-quality-assurance` already run shell commands without asking.
 See [What each agent can do to your machine](docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine).

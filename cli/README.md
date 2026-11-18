@@ -234,6 +234,39 @@ versions the agents' explicit v2 tool lists were checked against (2.36.0 and 3.0
 the `/tools` command that re-checks them on another version against the installed
 `<target>/.kiro/agents/k-developer.json`; it informs only and gates nothing.
 
+### Claude Code permission rules for the AWS MCP server
+
+When a `--harness claude` install includes an agent that declares the `aws-mcp` server
+(`k-architect` and `k-developer` today), it merges two kinds of rules into
+`<target>/.claude/settings.json` (`~/.claude/settings.json` for the default `$HOME` target):
+
+- `mcp__aws-mcp__aws___run_script` in `permissions.ask`, so Claude Code asks before every
+  call. That tool runs agent-written Python with your AWS credentials. Claude Code checks
+  ask rules before allow rules, so it still asks under a broad `mcp__aws-mcp__*` allow.
+- The union of those agents' Kiro `allowedTools` for `aws-mcp` in `permissions.allow`, as
+  `mcp__aws-mcp__<tool>`, so Claude Code pre-approves the same read-only tools Kiro CLI
+  does. `synth` records them in `dist/claude/agents/_mcp_allowed_tools.json`. A dist
+  without that file (synthed by an older konductor) gets only the ask rule, and install
+  says so.
+
+The merge only appends. It never removes or reorders your entries, and a reinstall that
+adds nothing leaves the file untouched. If one of your entries already covers a rule (a
+`deny` rule, an exact `allow` of `aws___run_script`, or an `ask` rule covering a read-only
+tool), install keeps yours, leaves that rule out and prints one line naming your entry. A
+symlinked `.claude` or `settings.json` is refused with a warning. `uninstall` leaves the
+rules in place, like the rest of `settings.json`.
+
+Under `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`, each pane runs
+`claude -p --dangerously-skip-permissions`. Claude Code's
+[permission modes](https://code.claude.com/docs/en/permission-modes) docs say an explicit ask
+rule is still enforced in `bypassPermissions`, and that a `-p` run denies a call that would
+prompt. So a dispatched pane cannot call `aws___run_script`. Run work that needs it from
+`konductor`, where you can approve each call.
+
+The Claude Code plugin cannot ship permission rules. Plugin users add
+`mcp__plugin_konductor_aws-mcp__aws___run_script` to `permissions.ask` themselves (see
+[Install from the Claude plugin marketplace](../docs/user-guide/tasks/install-claude-plugin-marketplace.md)).
+
 ### `--version <v>` and `--force`: content-version tracking
 
 Before a no-`--from` `install` writes anything, it compares the incoming release's

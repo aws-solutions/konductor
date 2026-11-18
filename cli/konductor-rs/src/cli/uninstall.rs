@@ -2817,6 +2817,54 @@ mod tests {
         fs::remove_dir_all(&target).ok();
     }
 
+    /// Like the `konductor-skills` grant, the aws-mcp `ask`/`allow` rules a
+    /// Claude install merges into `.claude/settings.json` stay after uninstall.
+    #[test]
+    fn uninstall_keeps_the_aws_mcp_permission_rules_a_claude_install_wrote() {
+        use super::super::install::InstallStrategy;
+
+        let _home = HomeGuard::new("uninstall-keeps-aws-rules-home");
+        let target = scratch_home("uninstall-keeps-aws-rules");
+        let repo_root = scratch_home("uninstall-keeps-aws-rules-repo");
+        let agents_dir = repo_root.join("dist/claude/agents");
+        fs::create_dir_all(&agents_dir).unwrap();
+        fs::write(
+            agents_dir.join("k-x.md"),
+            "---\nname: k-x\nmcpServers:\n- aws-mcp:\n    command: uvx\n---\n\nBody\n",
+        )
+        .unwrap();
+        fs::write(
+            agents_dir.join("_mcp_allowed_tools.json"),
+            r#"{"k-x": {"aws-mcp": ["aws___list_regions"]}}"#,
+        )
+        .unwrap();
+        super::super::install::claude::ClaudeInstallStrategy
+            .install_from_local(
+                &target,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                true,
+            )
+            .expect("install must succeed");
+
+        uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+
+        assert!(!target.join(".claude/agents/k-x.md").exists());
+        let settings: serde_json::Value =
+            serde_json::from_slice(&fs::read(target.join(".claude/settings.json")).unwrap())
+                .unwrap();
+        assert_eq!(
+            settings["permissions"]["ask"],
+            serde_json::json!(["mcp__aws-mcp__aws___run_script"])
+        );
+        assert_eq!(
+            settings["permissions"]["allow"],
+            serde_json::json!(["mcp__aws-mcp__aws___list_regions"])
+        );
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
     #[test]
     fn deletes_created_file_even_when_hash_has_diverged() {
         let _home = HomeGuard::new("delete-diverged-home");

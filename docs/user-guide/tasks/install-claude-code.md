@@ -33,6 +33,8 @@ Install also wires a session-start hook for `konductor`, a `SessionStart` block 
 
 Install also copies the context files to `.konductor/context/` under the install target, where the hook reads the routing rules and the coordinator digest. No agent loads them from there, and `uninstall` removes them.
 
+Install also adds permission rules for the AWS MCP server to `~/.claude/settings.json` (or `<target>/.claude/settings.json` with `--target`): `mcp__aws-mcp__aws___run_script` under `permissions.ask`, and the five read-only tools Kiro CLI pre-approves under `permissions.allow`. It only appends, keeps any of your entries that already cover a rule, and `uninstall` leaves the rules in place. See [Tool grant](#optional-integrations) below.
+
 Agent files land in `~/.claude/agents/`:
 
 ```bash
@@ -234,7 +236,11 @@ exposes: the five AWS knowledge/documentation tools (`aws___search_documentation
 `aws___retrieve_skill`, `aws___read_documentation`, `aws___list_regions`,
 `aws___get_regional_availability`) and the three AWS-API-acting tools (`aws___run_script`,
 which runs sandboxed Python with AWS API access; `aws___get_presigned_url`; `aws___get_tasks`).
-Once a tool call runs, it uses your own IAM credentials. Use the `aws:ViaAWSMCPService`
+`konductor install --harness claude` puts `mcp__aws-mcp__aws___run_script` in
+`permissions.ask`, so Claude Code asks before every call in an interactive session. In a `-p`
+or background run, which cannot ask, the call is denied, so a mux or cmux pane cannot run it.
+It also puts the five read-only tools in `permissions.allow`, so they run without asking, as on
+Kiro CLI. Once a tool call runs, it uses your own IAM credentials. Use the `aws:ViaAWSMCPService`
 (boolean) and `aws:CalledViaAWSMCP` (string, `aws-mcp.amazonaws.com` for this server) global IAM
 condition keys to scope or audit what an agent can do through the MCP server specifically; see
 [Understanding IAM for managed AWS MCP servers](https://aws.amazon.com/blogs/security/understanding-iam-for-managed-aws-mcp-servers/).

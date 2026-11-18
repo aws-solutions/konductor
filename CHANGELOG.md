@@ -57,6 +57,13 @@ not per individual commit.
   this shell's PATH, is reported as warn, not as missing. Under `coordinator` it runs the same
   persona load the session-start hook runs, so a digest over the hook's output budget is
   `failed`, and an install root outside the home that is not a git checkout root is `warn`.
+- `konductor install --harness claude` adds the `aws-mcp` tools that the installed agents'
+  Kiro `allowedTools` pre-approve (the five read-only documentation and region tools) to
+  `permissions.allow` in `.claude/settings.json`, as `mcp__aws-mcp__<tool>`, so Claude Code
+  runs them without asking, as Kiro CLI does. `konductor synth` records the list in
+  `dist/claude/agents/_mcp_allowed_tools.json`; a dist without that file gets only the
+  `aws___run_script` ask rule. A user `deny` or `ask` entry that covers a tool is kept and
+  that tool is left out.
 
 ### Changed
 
@@ -387,6 +394,16 @@ not per individual commit.
 - `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
   GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
   GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.
+- `konductor install --harness claude` adds `mcp__aws-mcp__aws___run_script` to
+  `permissions.ask` in `.claude/settings.json` when an installed agent declares the `aws-mcp`
+  server, so Claude Code asks before every call. That tool runs agent-written Python with your
+  AWS credentials. Mux and cmux panes run `claude -p --dangerously-skip-permissions`, where an
+  ask rule is still enforced and a call that would prompt is denied, so a pane cannot call it;
+  run that work from `konductor`. The merge only appends, keeps any user entry that already
+  covers the rule and says so, refuses a symlinked `.claude` or `settings.json`, and
+  `uninstall` leaves the rule in place. The Claude Code plugin cannot ship permission rules;
+  plugin users add `mcp__plugin_konductor_aws-mcp__aws___run_script` to `permissions.ask`
+  themselves.
 
 ## [1.2.0] - 2026-10-26
 
