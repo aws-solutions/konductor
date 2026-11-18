@@ -21,8 +21,12 @@
  * The spend ledger (lib/ledger.js) is read, never written: its total and live reservations are shown, and a plan
  * whose pending p90 cost would take the ledger past total_cap_usd is refused. max_usd is counted
  * as the ledger counts it: the run's settled spend and live reservations (ledger rows with this run id) plus the
- * pending p90 cost, which is what the ledger reserves, so a resumed run cannot pass `plan` and then be refused by the
- * ledger.
+ * pending p90 cost. The p90 is what the plan checks, and the ledger reserves a subject call at its p90, but a judge or
+ * checklist writer call with token prices in the cost profile at its ceiling (call-ceiling.js: the prompt and the
+ * output limit at the model's prices), which is higher. Only the calls in flight hold that ceiling, so the plan does
+ * not price every pending call at it (that would refuse runs the ledger accepts); instead it warns when the room left
+ * below a limit is smaller than what one such call reserves above its p90, because the ledger can then stop the run near
+ * its end while the spend is still below the limit.
  *
  * Not in the offline plan, and said so in its output: the credential check and the Bedrock model list.
  * They belong to stage 1 of a run.
@@ -34,6 +38,7 @@
 const fs = require('fs');
 const { ARMS, LayoutError } = require('./layout');
 const { seatsOf, rubricWriterModel } = require('./config');
+const { callCeiling, judgeMaxOutputTokens } = require('./call-ceiling');
 const {
   callCost,
   defaultProfile,
@@ -343,6 +348,42 @@ function pricePending(
     }
   return cost;
 }
+/**
+ * The largest amount one pending judge or checklist writer call reserves in the ledger above its p90, as
+ * { usd, label, model, ceilingUsd, p90Usd }, or null when no pending call has token prices (it is then reserved at
+ * its p90). The ceiling is figured for an empty prompt, so it is a floor: a real prompt reserves more.
+ */
+function largestReservationMargin({ config, costProfile, pendingByModel }) {
+  let largest = null;
+  for (const kind of ['judgeB', 'judgeA', 'writer'])
+    for (const model of Object.keys(pendingByModel[kind])) {
+      const label = CALL_LABEL[kind];
+      const reserved = callCeiling({
+        config,
+        callKind: label,
+        modelId: model,
+        prompt: '',
+        maxOutputTokens: judgeMaxOutputTokens(config, { modelId: model }),
+        costProfile,
+      });
+      if (!reserved.ceiling) continue;
+      const p90Usd = callCost(config, label, model, costProfile).p90;
+      const usd = reserved.usd - p90Usd;
+      if (usd > MONEY_EPSILON && (largest === null || usd > largest.usd))
+        largest = { usd, label, model, ceilingUsd: reserved.usd, p90Usd };
+    }
+  return largest;
+}
+
+/**
+ * The warning for a plan that passes its limits at the p90 but leaves less room than one call reserves above its p90,
+ * or null. `room` is the smaller of the room below max_usd and below total_cap_usd.
+ */
+function describeReservationMargin(margin, room) {
+  if (margin === null || room + MONEY_EPSILON >= margin.usd) return null;
+  return `cost: the ledger reserves a ${margin.label} call at its ceiling, not its p90 (${margin.model}: at least ${formatMoney(margin.ceilingUsd, 3)} against a p90 of ${formatMoney(margin.p90Usd, 3)}); this plan leaves ${formatMoney(Math.max(room, 0), 3)} below a limit, so the ledger can stop the run near its end while the spend is still below it; raise max_usd by about ${formatMoney(margin.usd - Math.max(room, 0), 3)} for each call that runs at once`;
+}
+
 const sumCalls = (calls, kinds) =>
   kinds.reduce(
     (sums, kind) => ({
@@ -521,6 +562,19 @@ function buildPlan({ layout, config, skills, costProfile = defaultProfile() }) {
     ledgerHit,
   });
   const noHistoryWarning = describeNoHistory(context.noHistory);
+  const marginWarning =
+    refused.length === 0
+      ? describeReservationMargin(
+          largestReservationMargin(context),
+          Math.min(
+            config.max_usd - (runUsd + pendingP90Usd),
+            ledger
+              ? config.total_cap_usd -
+                  (ledger.total_usd + ledger.reserved_usd + pendingP90Usd)
+              : Infinity,
+          ),
+        )
+      : null;
   return {
     run_id: layout.runId,
     max_usd: config.max_usd,
@@ -548,6 +602,7 @@ function buildPlan({ layout, config, skills, costProfile = defaultProfile() }) {
       ),
       ...warnings,
       ...(noHistoryWarning ? [noHistoryWarning] : []),
+      ...(marginWarning ? [marginWarning] : []),
     ],
     refused,
     ok: refused.length === 0,

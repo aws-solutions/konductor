@@ -36,8 +36,7 @@ const proc = require('./proc');
 const { childEnv, CREDENTIAL_VARS } = require('./child-env');
 const { redact, createRedactor } = require('./redact');
 const { readOpenCodeTrace } = require('./opencode-trace');
-const { reservationFor } = require('./ledger');
-const { defaultProfile, tokenPrices } = require('./cost-profile');
+const { callCeiling, judgeMaxOutputTokens } = require('./call-ceiling');
 
 const MODEL_ID = /^[A-Za-z0-9._:/-]{3,120}$/;
 // A reasoning-effort level is appended to the model as OpenCode's `#<variant>` suffix, so it gets its own
@@ -75,11 +74,6 @@ const DEFAULT_CONTEXT_TOKENS = 200000;
 /** The range both output limit settings may take (config.js checks the same one). */
 const MIN_OUTPUT_TOKENS = 256;
 const MAX_OUTPUT_TOKENS = 128000;
-// The token estimate of a prompt for the reservation: its bytes over 3 (a token is at least 3 bytes in the stored
-// judge calls, so this is not low) plus what OpenCode adds around it (its own system prompt), 4000 tokens, a little
-// above the smallest call in the paid runs measured (1810 to 4061 input tokens with a prompt of a few words).
-const BYTES_PER_TOKEN_ESTIMATE = 3;
-const OPENCODE_INPUT_OVERHEAD_TOKENS = 4000;
 
 // Tools denied by name as well as by "*", so a reader of the config sees what is closed.
 const DENIED_TOOLS = Object.freeze([
@@ -192,62 +186,6 @@ function modelArg(modelId, reasoningEffort = null) {
 function judgeTimeoutMs(config, seat) {
   const bySeat = config.judge_timeout_ms_by_seat || {};
   return Object.hasOwn(bySeat, seat) ? bySeat[seat] : config.judge_timeout_ms;
-}
-
-/**
- * The output limit of one call: the entry of `seat` in config.judge_max_output_tokens_by_seat, else (for a seat in
- * models.judges with no entry) judge_max_output_tokens. With no judge seat given, the first seat whose model is
- * `modelId` decides in the same way. A checklist writer model that no seat uses gets the largest of
- * judge_max_output_tokens and every by-seat entry, so a reply is never cut shorter than the longest any seat may give.
- * loadConfig has checked both settings, so this only reads them.
- */
-function judgeMaxOutputTokens(config, { seat, modelId } = {}) {
-  const base = config.judge_max_output_tokens;
-  if (typeof base !== 'number')
-    throw new TypeError(
-      'judgeCall: config.judge_max_output_tokens is required (loadConfig)',
-    );
-  const bySeat = config.judge_max_output_tokens_by_seat || {};
-  const judges = config.models?.judges || {};
-  const ofSeat = (name) => (Object.hasOwn(bySeat, name) ? bySeat[name] : base);
-  if (seat !== undefined && Object.hasOwn(bySeat, seat)) return bySeat[seat];
-  if (seat !== undefined && Object.hasOwn(judges, seat)) return base;
-  const owner = Object.keys(judges).find((name) => judges[name] === modelId);
-  return owner === undefined
-    ? Math.max(base, ...Object.values(bySeat))
-    : ofSeat(owner);
-}
-
-/**
- * What one call reserves in the ledger, its ceiling: the tokens of the prompt (its bytes over 3, plus
- * OpenCode's own overhead) at the model's input price and `maxOutputTokens` at its output price, both from the cost
- * profile, rounded up to a millionth of a dollar. No reply can run past `maxOutputTokens`, so no call can cost more.
- * A model with no prices in the profile is reserved at its p90, as before, with `ceiling` false. The call's kind,
- * model, mean and cliReportsLow options are those of reservationFor.
- */
-function callCeiling({
-  config,
-  callKind,
-  modelId,
-  prompt,
-  maxOutputTokens,
-  costProfile,
-}) {
-  const base = reservationFor(config, callKind, modelId, costProfile);
-  const prices = tokenPrices(
-    costProfile ?? defaultProfile(),
-    callKind,
-    modelId,
-  );
-  if (!prices) return { ...base, ceiling: false };
-  const inputTokens =
-    Math.ceil(Buffer.byteLength(prompt, 'utf8') / BYTES_PER_TOKEN_ESTIMATE) +
-    OPENCODE_INPUT_OVERHEAD_TOKENS;
-  // Tokens times USD per million tokens is millionths of a dollar.
-  const micros =
-    inputTokens * prices.inputUsdPerMTok +
-    maxOutputTokens * prices.outputUsdPerMTok;
-  return { ...base, usd: Math.ceil(micros) / 1e6, ceiling: true };
 }
 
 /**
