@@ -34,6 +34,7 @@ test('the fixed paths, with run data under bench/out/<run-id> and the ledger out
     [RUN_LAYOUT.ledgerFile, 'bench/out/ledger.jsonl'],
     [RUN_LAYOUT.reportJson, 'bench/out/r1/report.json'],
     [RUN_LAYOUT.reportMd, 'bench/out/r1/report.md'],
+    [RUN_LAYOUT.jobsDir, 'bench/out/r1/jobs'],
     [RUN_LAYOUT.skillMd('s'), 'skills/s/SKILL.md'],
     [RUN_LAYOUT.skillDir('s'), 'skills/s'],
     [RUN_LAYOUT.agentsDir, 'agents'],
