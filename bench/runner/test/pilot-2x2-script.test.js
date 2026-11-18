@@ -8,7 +8,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const { tmp, write } = require('./helpers.js');
 const { makeFakeClaude } = require('./fake-claude.js');
 
@@ -370,14 +370,37 @@ test('no credential source at all is a usage error, and a wrong account is refus
   noSecrets(wrong);
 });
 
-test('SIGTERM during a run still removes the scratch directory', () => {
+// D-5: SIGTERM goes out once the fake bench has logged its first call, so the script is mid-run, not on a timer.
+test('SIGTERM during a run still removes the scratch directory', async () => {
   const s = setup();
-  const r = spawnSync('bash', [SCRIPT, ...BASE(s), '--kiro-credit-limit', '15', '--cells', 'kiro'], {
-    encoding: 'utf8', timeout: 800, killSignal: 'SIGTERM',
+  const child = spawn('bash', [SCRIPT, ...BASE(s), '--kiro-credit-limit', '15', '--cells', 'kiro'], {
+    stdio: 'ignore',
     env: { PATH: `${s.bin}:${process.env.PATH}`, HOME: s.home, TMPDIR: process.env.TMPDIR, PILOT_BENCH_JS: FAKE_BENCH, PILOT_FAKE_LOG: s.log, PILOT_FAKE_MODE: 'sleep:1500', PILOT_SCRATCH_ROOT: s.scratch, PILOT_CLAUDE_TMP_BASE: s.claudeTmp, PILOT_PROC_PATTERN: 'pilot-2x2-no-such-process', PILOT_MIN_FREE_GB: '1' },
   });
-  assert.notEqual(r.status, 0);
-  assert.deepEqual(fs.readdirSync(s.scratch), []);
+  const closed = new Promise((resolve) => child.on('close', (code, signal) => resolve({ code, signal })));
+  try {
+    const end = Date.now() + 60000;
+    while (s.calls().length === 0) {
+      assert.equal(child.exitCode, null, 'the script ended before it started a run');
+      assert.ok(Date.now() < end, 'the fake bench was never called');
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    child.kill('SIGTERM');
+    const r = await closed;
+    assert.notEqual(r.code, 0);
+    assert.deepEqual(fs.readdirSync(s.scratch), []);
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+  }
+});
+
+test('the cleanup and TERM traps are set before the scratch directory is made, so no signal can leave it behind', () => {
+  const lines = fs.readFileSync(SCRIPT, 'utf8').split('\n');
+  const at = (re) => lines.findIndex((l) => re.test(l));
+  const mk = at(/^SCRATCH="\$\(mktemp -d/);
+  assert.ok(mk > 0, 'the mktemp line is still there');
+  assert.ok(at(/^trap cleanup EXIT$/) < mk, 'the EXIT trap comes first');
+  assert.ok(at(/^trap "kill_children \$\$; exit 143" TERM$/) < mk, 'the TERM trap comes first');
 });
 
 test('the script is the 2x2-only path: a second --konductor-ref is refused, and --help points to bench.js run and report-2x2 DIR:ARM', () => {

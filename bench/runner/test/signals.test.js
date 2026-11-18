@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const { tmp, makeBench } = require('./helpers.js');
 const { makeFakeKiro, writeFakeAuth } = require('./fake-kiro.js');
 const { spawnWithTimeout } = require('../lib/run-one.js');
@@ -59,6 +59,27 @@ for (const signal of ['SIGTERM', 'SIGHUP']) test(`${signal} to the runner kills 
     assert.equal(summary.interrupted, signal);
   } finally {
     if (runner.exitCode === null) runner.kill('SIGKILL');
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// D-16: the test above parses started.json as soon as it exists. An in-place write would expose a half-written
+// file; a rename gives the path a new inode, so this fails if the fake goes back to writing in place.
+test('the fake agent replaces started.json by a rename, so a poller never reads it half written', () => {
+  const root = tmp();
+  try {
+    const probe = path.join(root, 'probe');
+    fs.mkdirSync(probe);
+    const bin = makeFakeKiro(path.join(root, 'bin'), { dir: probe });
+    const file = path.join(probe, 'started.json');
+    fs.writeFileSync(file, 'old');
+    const before = fs.statSync(file).ino;
+    const r = spawnSync(process.execPath, [bin, 'chat'], { cwd: root, env: { PATH: process.env.PATH, HOME: path.join(root, 'home') } });
+    assert.equal(r.status, 0, String(r.stderr));
+    assert.notEqual(fs.statSync(file).ino, before, 'started.json was rewritten in place');
+    assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).pid > 0, true);
+    assert.deepEqual(fs.readdirSync(probe).filter((n) => n.includes('.tmp')), []);
+  } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });

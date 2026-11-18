@@ -7,11 +7,14 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { defaultAuthDb } = require('../lib/sandbox.js');
+const { writeAtomic } = require('../lib/backfill.js');
 
 const SCRIPT = `#!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
 const net = require('net');
+// started.json is replaced by a rename, so a test that polls for it never parses a half-written file.
+${writeAtomic.toString()}
 const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'fake-kiro.config.json'), 'utf8'));
 const args = process.argv.slice(2);
 const engine = args.includes('--agent-engine') ? args[args.indexOf('--agent-engine') + 1] : 'v2';
@@ -30,7 +33,7 @@ try { turn = fs.readdirSync(cfg.dir).filter((f) => /^started-\\d+\\.json$/.test(
 const tc = { ...cfg, ...((cfg.turns || [])[Math.min(turn, (cfg.turns || []).length - 1)] || {}) };
 const authFile = path.join(process.env.HOME, process.platform === 'darwin' ? 'Library/Application Support/kiro-cli' : '.local/share/kiro-cli', 'data.sqlite3');
 const started = JSON.stringify({ pid: process.pid, cwd: process.cwd(), home: process.env.HOME, args, envKeys: Object.keys(process.env), authPresent: fs.existsSync(authFile), turn: turn + 1 });
-try { fs.writeFileSync(path.join(cfg.dir, 'started.json'), started); fs.writeFileSync(path.join(cfg.dir, 'started-' + (turn + 1) + '.json'), started); } catch { /* the probe directory is read-only inside a namespace */ }
+try { writeAtomic(path.join(cfg.dir, 'started.json'), started); writeAtomic(path.join(cfg.dir, 'started-' + (turn + 1) + '.json'), started); } catch { /* the probe directory is read-only inside a namespace */ }
 if (tc.plantFile) { fs.mkdirSync(path.dirname(tc.plantFile), { recursive: true }); fs.writeFileSync(tc.plantFile, tc.plantText || ''); }
 if (tc.missingBinary) { console.error('sh: 1: ' + process.argv[1] + ': No such file or directory'); process.exit(127); }
 if (tc.exitCode) { if (tc.stderrText) console.error(tc.stderrText); process.exit(tc.exitCode); }

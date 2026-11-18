@@ -319,6 +319,7 @@ V=$(study_dir) || die "no study directory ($STUDYFILE)"
 say "run-skill-bench started, pid $$, study $V"
 run_node cap skill-study --study "$V" ${TIER:+--tier "$TIER"} ${SKILLS:+--only "$SKILLS"} "${SF[@]}" "${RF[@]}"
 rc=$?
-rm -f -- "$PIDFILE"
+# The last line goes to the log before the pid file goes, so a missing pid file means the log is complete.
 if [ "$rc" = 0 ]; then say "DONE: decisions are in $V/decisions/decisions.md (nothing was applied)"; else say "FAILED or stopped (exit $rc). Rerun $SELF to resume."; fi
+rm -f -- "$PIDFILE"
 exit "$rc"

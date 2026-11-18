@@ -279,6 +279,14 @@ test('the default mode daemonizes: it returns at once, the child runs the study,
   } finally { s.done(); }
 });
 
+test('the child logs its last line before it removes the pid file, so a missing pid file means the log is complete', () => {
+  const lines = fs.readFileSync(SCRIPT, 'utf8').split('\n');
+  const done = lines.findIndex((l) => l.includes('say "DONE: decisions are in'));
+  const rm = lines.findIndex((l) => /^rm -f -- "\$PIDFILE"$/.test(l));
+  assert.ok(done > 0 && rm > 0, 'both lines are still there');
+  assert.ok(done < rm, 'the DONE line is written first');
+});
+
 test('SIGTERM while the runner is busy: the script waits for the runner to finish, then removes its scratch dirs', async () => {
   const s = sandbox();
   try {

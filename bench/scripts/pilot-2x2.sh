@@ -193,10 +193,9 @@ INIT="$(node "$HELPER" init-out "$OUT" "${INIT_ARGS[@]}")" || die "${INIT#FAIL }
 case "$INIT" in fresh | resume) ;; *) die "${INIT#FAIL }" ;; esac
 
 # ---------------------------------------------------------------- scratch and cleanup
-SCRATCH="$(mktemp -d "$SCRATCH_ROOT/pilot-2x2.XXXXXX")"
-SCRATCH_SLUG="$(cd "$SCRATCH" && pwd -P | sed 's/[^A-Za-z0-9]/-/g')"
-node "$REPO/bench/runner/lib/owned.js" mark "$SCRATCH" scratch --id pilot-2x2 >/dev/null 2>&1 || true
-mkdir -p "$SCRATCH/home" "$SCRATCH/tmp"
+# The traps go in before mktemp, so a TERM at any point after it still removes the directory.
+SCRATCH=""
+SCRATCH_SLUG=""
 
 own_claude_tmp() {
   local d="$CLAUDE_TMP_BASE/claude-$UID_NUM"
@@ -209,7 +208,7 @@ cleanup() {
   trap - EXIT INT TERM
   set +e
   AWS_ACCESS_KEY_ID="" AWS_SECRET_ACCESS_KEY="" AWS_SESSION_TOKEN=""
-  rm -rf -- "$SCRATCH/judge-aws"
+  if [ -n "$SCRATCH" ]; then rm -rf -- "$SCRATCH/judge-aws"; fi
   if [ -n "$SCRATCH" ] && [ "$KEEP" -eq 1 ]; then
     say "kept scratch directory: $SCRATCH"
   elif [ -n "$SCRATCH" ]; then
@@ -232,6 +231,10 @@ trap cleanup EXIT
 trap "kill_children $$; exit 143" TERM
 # shellcheck disable=SC2064
 trap "kill_children $$; exit 130" INT
+SCRATCH="$(mktemp -d "$SCRATCH_ROOT/pilot-2x2.XXXXXX")"
+SCRATCH_SLUG="$(cd "$SCRATCH" && pwd -P | sed 's/[^A-Za-z0-9]/-/g')"
+node "$REPO/bench/runner/lib/owned.js" mark "$SCRATCH" scratch --id pilot-2x2 >/dev/null 2>&1 || true
+mkdir -p "$SCRATCH/home" "$SCRATCH/tmp"
 
 # ---------------------------------------------------------------- credentials (same handling as claude-code-smoke.sh)
 CRED_ERR=""
