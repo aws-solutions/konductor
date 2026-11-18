@@ -28,8 +28,13 @@ By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, ch
 | Extensibility | changed code of a task that says a new case comes later | one line from each file that lists every case by name |
 | Non-functional requirements in code | changed code of a task whose design names targets | the cache, limit, retry or index line together with the target it serves |
 | Enterprise patterns | changed code of a task whose answer key asks for one | the line that crosses the boundary the Pattern key names |
+| Ideation and problem framing | a problem framing a task asks for | the problem sentence and the data line behind it, the option that differs most from the request |
+| Proof of concept and spike | a spike a task asks for | the question with its threshold, a result with its unit and the command that made it |
+| Architecture deliberation | a decision record a task asks for | the matrix row of the chosen option and of one it ruled out, the review trigger |
+| Production readiness in code | product code and runbook of a task that asks for readiness | the structured log on a failure path, the configuration check, the drain bound, the cost line |
+| Review findings | reviews | a finding's severity with the impact that justifies it |
 
-`bench/criteria/quality-pack.json` holds 88 criteria. Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
+`bench/criteria/quality-pack.json` holds 106 criteria, each in one of 11 SDLC phases (see SDLC phases). Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
 
 ### Criteria
 
@@ -123,6 +128,24 @@ By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, ch
 | code-nfr-bounded | Non-functional requirements in code | nfr-code | 2 | judge | Is every cache, queue, retry and concurrency limit in the change bounded by a named number? |
 | mod-pattern-missing | Modularity and design patterns | pattern-key | 2 | judge | Does the change use each pattern the answer key names under Pattern key, or an equivalent the key accepts? |
 | ent-pattern-applied | Enterprise patterns | enterprise-pattern | 2 | judge | Does the change use the enterprise pattern the Pattern key asks for, at the boundary the key names? |
+| idea-problem-evidence | Ideation and problem framing | framing | 3 | judge | Does the framing state the problem the evidence shows, with the numbers that show it? |
+| idea-options-range | Ideation and problem framing | framing | 2 | judge | Are at least three options weighed, including doing nothing and one that is not the requested solution? |
+| idea-success-measure | Ideation and problem framing | framing | 2 | judge | Is success defined by a measure with a baseline, a target and a way to read it? |
+| idea-kill-criteria | Ideation and problem framing | framing | 1 | judge | Does the framing list the assumptions to test first and a signal that would stop the work? |
+| spike-question | Proof of concept and spike | spike | 2 | judge | Does the spike state one question, the decision it informs and the threshold for an answer before the results? |
+| spike-evidence | Proof of concept and spike | spike | 3 | judge | Are the results measured numbers with units, input size and a command that reproduces them? |
+| spike-scope-throwaway | Proof of concept and spike | spike | 1 | judge | Is the spike code kept apart from product code and marked as throwaway? |
+| spike-recommendation | Proof of concept and spike | spike | 2 | judge | Does the recommendation follow from the measured numbers and state the limits of the measurement? |
+| arch-criteria-explicit | Architecture deliberation | decision | 2 | judge | Are the decision criteria listed, each tied to a stated constraint with its number, and ranked? |
+| arch-tradeoff-matrix | Architecture deliberation | decision | 3 | judge | Is every option rated against every criterion, with a reason for each rating? |
+| arch-option-fair | Architecture deliberation | decision | 2 | judge | Is each rejected option given the conditions under which it would win? |
+| arch-reversibility | Architecture deliberation | decision | 2 | judge | Does the record say what reversing the decision costs and which signal would trigger a review? |
+| prod-observability | Production readiness in code | production | 3 | judge | Does every failure path log a structured record with an id and the cause, and count the outcome? |
+| prod-config-secrets | Production readiness in code | production | 3 | judge | Is configuration read and checked at start, with no secret written in the code? |
+| prod-graceful-lifecycle | Production readiness in code | production | 2 | judge | Does the code report its health and shut down by draining in-flight work within a bound? |
+| prod-cost-estimate | Production readiness in code | production | 2 | judge | Does the runbook estimate the monthly cost from the stated volume and unit price, and name the biggest cost driver? |
+| prod-runbook-actions | Production readiness in code | production | 2 | judge | Does each alarm in the runbook have a metric, a threshold and the action an operator takes? |
+| rev-severity-impact | Review findings | review | 2 | judge | Does each finding's severity come with the impact that justifies it? |
 
 ## Code-quality criteria for concurrency, extension, targets and patterns
 
@@ -177,6 +200,44 @@ The change discipline, requirements, non-functional, design scalability and task
 - Task breakdown follows the task decomposition and plan review skills. It rates independent tasks, a done check for each, explicit dependencies, coverage of the request, sizing and risks. It also rates tests for functional and non-functional parts, and owners that fit the work.
 
 A review document uses the threat model criteria that make sense for a code review (scope, mitigations, residual risk, grounding). `tm-stride` applies only to a document the task asked to be a threat model.
+
+## SDLC phases
+
+The pack lists 11 phases in `phases`, and each criterion sits in exactly one (the lint refuses a gap or a double). `report-2x2 --criteria-pack quality` scores each phase on its own (see Reports).
+
+| Phase | Criteria | Ids |
+|---|---|---|
+| Ideation and problem framing | 6 | `des-problem-first`, `des-goals-nongoals`, `idea-problem-evidence`, `idea-options-range`, `idea-success-measure`, `idea-kill-criteria` |
+| Proof of concept and spike | 4 | `spike-question`, `spike-evidence`, `spike-scope-throwaway`, `spike-recommendation` |
+| Architecture and design deliberation | 15 | `des-alternatives`, `des-decision-rationale`, `des-adr-consequences`, `des-architecture`, `des-consistency`, `des-technical-accuracy`, `des-conflicts-surfaced`, `des-testable-acceptance`, `des-diagram-present`, `des-diagram-fit`, `des-diagram-labels`, `arch-criteria-explicit`, `arch-tradeoff-matrix`, `arch-option-fair`, `arch-reversibility` |
+| Requirements | 8 | `req-unambiguous`, `req-testable`, `req-failure-and-edge-cases`, `req-no-solution-leak`, `req-conflicts-and-gaps`, `req-assumptions-and-questions`, `req-prioritized`, `req-traceable` |
+| Non-functional requirements | 5 | `req-nfr-coverage`, `req-nfr-measurable`, `des-nfr-addressed`, `code-nfr-mechanism`, `code-nfr-bounded` |
+| Production readiness | 14 | `tm-scope`, `tm-stride`, `tm-mitigations`, `tm-residual`, `tm-grounded`, `des-operability`, `des-rollout-migration`, `des-scale-bottleneck`, `des-failure-modes`, `prod-observability`, `prod-config-secrets`, `prod-graceful-lifecycle`, `prod-cost-estimate`, `prod-runbook-actions` |
+| Implementation | 16 | `mod-single-responsibility`, `mod-no-duplication`, `mod-isolation`, `mod-pattern-fit`, `mod-pattern-missing`, `maint-naming`, `maint-size-nesting`, `maint-dead-code`, `maint-error-handling`, `maint-magic-constants`, `conc-shared-state`, `conc-async-errors`, `conc-timeout-cancel`, `ext-one-place`, `ext-closed-core`, `ent-pattern-applied` |
+| Testing | 8 | `test-asserts-behavior`, `test-rule-would-fail`, `test-scenario-spread`, `test-no-tautology`, `test-one-scenario`, `test-names`, `test-deterministic`, `scn-traced` |
+| Documentation | 18 | `doc-why-not-what`, `doc-accuracy`, `doc-no-stale-or-noise`, `doc-concise`, `cq-plain-typography`, `cq-no-filler-terms`, `cq-sentence-length`, `cq-lead-with-point`, `cq-concrete`, `cq-human-voice`, `cq-no-repetition`, `cq-reader-order`, `cq-direct-instructions`, `guide-accuracy`, `guide-audience-fit`, `guide-troubleshooting`, `guide-scannability`, `guide-consistent-terms` |
+| Change discipline and review | 4 | `chg-no-leftovers`, `chg-tests-intact`, `chg-scoped`, `rev-severity-impact` |
+| Delegation and planning | 8 | `plan-independent-tasks`, `plan-done-criteria`, `plan-dependencies-order`, `plan-coverage`, `plan-sizing`, `plan-risks`, `plan-test-tasks`, `plan-delegation-fit` |
+
+Coverage before this map. Requirements, non-functional targets, implementation, testing, documentation and planning each had 5 or more criteria and a task. Four phases were thin or missing:
+
+- Ideation had 2 criteria, both inside a design document, and no task.
+- Proof of concept had none.
+- Architecture deliberation had alternatives, rationale and consequences, but no trade-off matrix, no fair case for rejected options and no reversal cost.
+- Production readiness had threat model and design-document criteria, and nothing for configuration, secrets, logs, health, shutdown or cost in code.
+
+Review had only the threat model criteria and gains `rev-severity-impact`.
+
+Each new criterion applies to one declared-only type (`framing`, `spike`, `decision`, `production`) or to `review`. Each of the four types has its own task in `bench/sdlc/`:
+
+| Task | Phase | Declares | Deterministic checks |
+|---|---|---|---|
+| `sdlc-problem-framing` | ideation | framing | 11 checks: the 41 of 66 tickets cited, findability named near export, the hidden print button, a do-nothing option, 3 options, a success number, a stop signal |
+| `sdlc-spike-dedupe` | proof of concept | spike | 11 checks: `node spike/run.js` finishes and prints at least 2 measurements with `sameOutput` true at 50,000, the command and units in the write-up, `src/` and `test/` unchanged |
+| `sdlc-arch-decision` | architecture | decision | 10 checks: 3 options, the 120 partners without an endpoint near webhooks, a decision that serves both kinds of partner, a matrix of 4 or more rows, consequences and a review trigger |
+| `sdlc-prod-readiness` | production readiness | code, tests, production | 12 hidden tests (settings and their errors, no key literal, structured failure logs with no key, health, a drained and a timed-out stop) and a runbook cost of 600 USD |
+
+`suites/sdlc.json` runs the four with eight earlier tasks, so every phase has at least one task. `runner/test/sdlc-report.test.js` checks that coverage.
 
 ## Written content
 
@@ -283,13 +344,21 @@ Without `--criteria-pack`, every command behaves and writes exactly as before.
 
 `report` and `report-2x2` add a "Quality dimensions" section when `--criteria-pack quality` is given. Rows are dimensions, columns are arms (or the four cells). Each cell shows the 0 to 100 score, the number of runs where the dimension applied, and the number where it was n/a. `JUDGES DIFFER` appears when the mean spread between the highest and lowest judge exceeds 0.2 on the 0 to 1 scale. A list under the table gives the n/a reasons. The section says in its first line that the scores are not human-calibrated and are not part of the quality score. `report-2x2` refuses cells whose pack judgments come from different panels or backends. The SVG charts are unchanged.
 
+`report-2x2 --criteria-pack quality` also adds the SDLC view (`report/sdlc.js`):
+
+- **Quality, cost and time.** One row per cell: quality mean, median, sd and range over the per-task means, cost per run in the cell's own unit, and seconds per run. Quality is each run's repository score: the median of the three judges' rubric scores with the hidden tests and checks.
+- **By SDLC phase.** One row per phase. For each cell it gives the quality of the tasks in that phase, the pack score of that phase's criteria alone (median over the judges, mean over runs), the cost and the seconds. A task counts in every phase whose criteria apply to what it declares, so a code task also counts in change discipline. A phase with no task says so.
+- **Paired by task.** One table per harness: each task's vanilla and konductor mean with its sd and n, the quality difference, and the cost and time ratios inside the harness. Under it: the median, mean, sd and range of the differences, and how many tasks konductor won, lost or tied (within 0.5 points).
+
+Credits and USD are never compared; only ratios inside one harness are.
+
 ## Calibration
 
 No pack score has been compared with a person's rating. Until that happens, treat dimension scores as a way to find where arms differ, not as a measure.
 
 `calibrate export --run RUN --criteria-pack quality` adds a `pack` block to each sampled item in `sheet.json` and `sheet.md`: the criteria a judge was asked, their three anchors, the quote rule, the agent's diff, and empty `labels`. It also lists the criteria scored by a program or as absent, so a person does not rate those. After labeling, `calibrate score --labels sheet.json --criteria-pack quality` reports judge versus human agreement and kappa per judge and per dimension. No rating is filled in by the tool.
 
-New criteria have no run to sample yet. `calibrate export-reference` builds a blind sheet from the bench's own trees instead: the reference solution and each partial solution of the named tasks, laid over the fixture. It calls no model and runs no agent.
+New criteria have no run to sample yet. `calibrate export-reference` builds a blind sheet from the bench's own trees instead: the reference solution, each partial solution and the keyword stub of the named tasks, laid over the fixture. A stub is laid over the reference, as the validator lays it. `--extra-tasks bench/sdlc` reads the SDLC tasks. It calls no model and runs no agent.
 
 ```
 node bench/runner/bench.js calibrate export-reference --out DIR --seed 7 \
@@ -298,6 +367,16 @@ node bench/runner/bench.js calibrate export-reference --out DIR --seed 7 \
 ```
 
 It writes 9 items (3 trees per task) with each tree's diff, the task, the answer key, the criteria that apply and empty labels. `key.json` says which tree each item is. The partial solutions carry no comment that names them, so the diff does not give the tree away. Comparing a judge with these labels needs a judge pass over the same trees. No command does that yet, and it spends credits, so it needs the owner's approval first. At the panel of three judges it is 27 pack calls (9 items, 3 judges). At the observed cost per call in `profiles/judge-cost-observed.json` that is about 4 to 8 credits on the kiro backend (0.16 credits per call, 0.29 at p90), or about 0.25 USD on opencode.
+
+For the SDLC criteria:
+
+```
+node bench/runner/bench.js calibrate export-reference --out DIR --seed 11 --extra-tasks bench/sdlc \
+  --tasks sdlc-problem-framing,sdlc-spike-dedupe,sdlc-arch-decision,sdlc-prod-readiness,review-inventory-security \
+  --criteria idea-problem-evidence,idea-options-range,idea-success-measure,idea-kill-criteria,spike-question,spike-evidence,spike-scope-throwaway,spike-recommendation,arch-criteria-explicit,arch-tradeoff-matrix,arch-option-fair,arch-reversibility,prod-observability,prod-config-secrets,prod-graceful-lifecycle,prod-cost-estimate,prod-runbook-actions,rev-severity-impact
+```
+
+It writes 12 items. A judge pass over them would be 36 pack calls, about 6 to 10 credits on kiro; it needs the owner's approval first.
 
 `cap review` (the side-by-side page) is not extended. Its ratings file, import and scoring are built around the task rubric ids, and adding pack ids there would either be dropped silently on import or mix with the rubric score. Use `calibrate export` for pack ratings.
 

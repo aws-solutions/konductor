@@ -363,7 +363,8 @@ test('report-2x2 adds the dimensions table per cell only with the flag, and the 
     const plain = buildFactorial({ dirs, benchDir: bench });
     const withPack = buildFactorial({ dirs, benchDir: bench, qualityPack: pack });
     assert.equal(plain.qualityDimensions, undefined);
-    const { qualityDimensions, ...rest } = withPack;
+    const { qualityDimensions, sdlc, ...rest } = withPack;
+    assert.ok(sdlc.phases.length > 0);
     assert.deepEqual(rest, plain);
     assert.deepEqual(qualityDimensions.groups.map((g) => g.label), ['Kiro CLI vanilla', 'Kiro CLI konductor', 'Claude Code vanilla', 'Claude Code konductor']);
     const md = toMarkdown(renderFactorial(withPack));

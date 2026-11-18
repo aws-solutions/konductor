@@ -157,6 +157,21 @@ never names hidden tests, grading, agents, skills or reviewers.
   - `hard-catalog-limits` (fixture `hard-catalog`): meet four design targets and an anti-corruption layer. 14 hidden tests that count supplier calls, calls in flight, waits and listing work.
   - Partial solutions keep no comment that names them, because `calibrate export-reference` shows their diffs to raters blind.
 
+## SDLC tasks
+
+Suite `suites/sdlc.json` (also `--suite sdlc`; arms vanilla and main, 2 replicates, `--parallel 1`, the usual judge panel) holds one or more tasks per SDLC phase of the quality pack, so `report-2x2 --criteria-pack quality` can score every phase. The suite file declares the extra directory `bench/sdlc/`, laid out like `bench/complex/`, with four new tasks; the other eight come from `bench/tasks/`.
+
+| task | class | fixture (visible files) | asks for | checked by |
+| --- | --- | --- | --- | --- |
+| `sdlc-problem-framing` | design | `sd-feedback` (5) | `docs/framing.md` for a PDF export request whose data shows that users cannot find the export that exists | 11 checks; answer key F1 to F5 |
+| `sdlc-spike-dedupe` | design | `sd-dedupe` (5) | a throwaway spike in `spike/run.js` and `docs/spike.md`: can a keyed dedupe handle 50,000 contacts in under 300 ms with the same output | 11 checks, one runs the spike and reads its JSON lines; answer key S1 to S3 |
+| `sdlc-arch-decision` | design | `sd-notify` (3) | `docs/adr/0001-order-event-delivery.md`: criteria, at least three options in a matrix, decision, consequences, reversal and review trigger | 10 checks; answer key A1 to A5 |
+| `sdlc-prod-readiness` | complex | `sd-worker` (7) | the readiness checklist in `docs/READINESS.md` for a background worker, and `docs/RUNBOOK.md` | 12 hidden tests and 10 checks; partials `config-only` 5/12, `lifecycle-only` 7/12 |
+
+The three document tasks follow the `design` rules (a keyword stub that fails a `min_matches` or `cmd` check, a `fixture_unchanged` check for every file the prompt forbids editing). The production task follows the complex rules. Each declares its pack type in `taskArtifacts` (`framing`, `spike`, `decision`, `production`), so only it gets the new criteria. Validate with `node bench/tasks/validate-tasks.js --only-extra --extra-tasks bench/sdlc`. `bench/runner/test/sdlc-report.test.js` checks that the suite covers every phase.
+
+Cost: not measured. The three document tasks are about the size of `req-vague-request` (7.7 credits per konductor run in the rootcause table) and the production task about the size of a hard task (3.3 credits per vanilla run, about 3.4 times that for konductor). Twelve tasks, 2 arms and 2 replicates is 48 runs: plan on 150 to 300 credits for the Kiro side before judging, and run one task first with `--tasks` and `--budget-credits`.
+
 ## Complex tasks
 
 Class `complex`, tier `full` (they are not in the `full` suite), `timeoutSec` 1800, suite `suites/complex.json` (also `--suite complex`; 3 arms, 1 replicate, `--parallel 1`, the usual judge panel). The suite file declares the extra directory `bench/complex/`, which holds `cx-*.json` beside `fixtures/`, `solutions/`, `stubs/`, `partials/` and `hidden/`, and the agent never sees it (it is masked like the other bench directories). Where a hard task is one contract with hidden defects, a complex task asks for several steps in order, so one run shows whether the work holds together: a design and then the code that follows it, a refactor across many files, a feature through every layer plus its docs, a review and then only the fixes it justifies.

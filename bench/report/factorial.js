@@ -271,6 +271,8 @@ function buildFactorial({ dirs, arms = {}, benchDir, extraDirs = [], scoringFile
     const { summarizeQuality } = require('./quality.js');
     qualityDimensions = summarizeQuality({ groups: loaded.map((c) => ({ id: c.spec.id, label: labelOf(c.spec), run: c.run })), tasks, pack: qualityPack, strictPanel: true, scoredWeight: weights.pack ?? null });
   }
+  // The SDLC view needs the pack's phase map, so it comes with --criteria-pack like the dimensions table.
+  const sdlc = qualityPack ? require('./sdlc.js').summarizeSdlc({ cells: loaded, tasks, pack: qualityPack, taskIds }) : null;
   const quote = mergeQuote(loaded.map((c) => c.quote));
   const result = {
     schemaVersion: 1, kind: 'factorial-2x2', quote, tasks: taskIds, replicates: { min: reps.min, perTask: reps.perTask },
@@ -278,6 +280,7 @@ function buildFactorial({ dirs, arms = {}, benchDir, extraDirs = [], scoringFile
     judges: { backend: loaded[0].panel.backend, panel: loaded[0].panel.judges, models: loaded[0].panel.models },
     weights, cells, contrasts, costRatios, notes: out,
     ...(qualityDimensions ? { qualityDimensions } : {}),
+    ...(sdlc ? { sdlc } : {}),
   };
   if (withSensitivity) result.sensitivity = factorialSensitivity(result, buildFactorial({ dirs, arms, benchDir, extraDirs, scoringFile, qualityPack, quoteRule: otherRule(quote.requested), withSensitivity: false }));
   return result;
@@ -440,6 +443,7 @@ function renderFactorial(res, { charts = null } = {}) {
   }
   if (res.notes.length) blocks.push(D.h(2, 'Notes'), D.list(res.notes));
   if (res.qualityDimensions) blocks.push(...require('./quality.js').qualityBlocks(res.qualityDimensions));
+  if (res.sdlc) blocks.push(...require('./sdlc.js').sdlcBlocks(res.sdlc, (id) => labelOf(SPECS.find((x) => x.id === id))));
   blocks.push(D.h(2, 'Inputs'), D.list(cols.map((c) => `${HARNESS_NAME[c.harness]} ${c.role}: ${c.dirs.map((d) => path.basename(d)).join(', ')} (${c.unit})`)));
   return blocks;
 }

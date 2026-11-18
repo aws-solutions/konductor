@@ -200,6 +200,8 @@ A run is a clean pass when its status is success, there is no infrastructure err
 
 **Thin n.** Fewer than three runs on a side is labelled anecdotal. A cell with fewer than three replicates is flagged. Five paired task cells are the minimum for a platform verdict.
 
+**Quality across the SDLC.** To show where konductor wins and what it costs, run `--suite sdlc`, judge it with and without `--criteria-pack quality`, and read `report-2x2 --criteria-pack quality`. Three sections answer it: quality, cost and time per cell; the same per SDLC phase; and konductor minus vanilla paired by task, with the spread and the count of tasks won, lost and tied. A claim that konductor wins on quality needs the paired median above zero and more wins than losses, not only a higher mean.
+
 **Censored runs.** A run that timed out has unobserved spend. The ledger charges it the median of the arm's completed runs, or `--censored-floor` (default 1.0), never 0. `result.json` keeps the known floor as `creditsLowerBound` and the charge as `creditsCharged`. Treat the cost of an arm with many censored runs as a lower bound.
 
 **Judge agreement.** The scorecard shows how far the judges agree with each other (within-one agreement of 0.9 or more and exact agreement of 0.6 or more pass). It also shows the share of quotes the judges could not back with evidence. Human calibration is a separate step: `cap review` writes a page for a person to rate a sample, `cap review-import` scores the ratings, and a kappa of 0.6 or more passes. See [Calibration](README.md#calibration).
@@ -273,7 +275,7 @@ node bench/runner/bench.js run --suite cap --extra-tasks DIR --tasks guide-title
 
 The example above, with a copy of `tasks/solutions/simple-add-function/` as its reference solution, passes the validator. The full format, the check types and the rules for hidden-test tasks are in [README-tasks.md](README-tasks.md).
 
-A task can also ask the quality pack to rate concurrency, extensibility, targets in code or a design pattern. List the type for the task id under `taskArtifacts` in `criteria/quality-pack.json` (`concurrency`, `extension`, `nfr-code`, `pattern-key` or `enterprise-pattern`). For the two pattern types, add a `## Pattern key` section to the answer key with `- needed:` lines, plus an `- enterprise:` line for an enterprise pattern. The validator fails the task without them. `hard-seat-holds`, `hard-export-formats` and `hard-catalog-limits` are worked examples.
+A task can also ask the quality pack to rate concurrency, extensibility, targets in code or a design pattern. List the type for the task id under `taskArtifacts` in `criteria/quality-pack.json` (`concurrency`, `extension`, `nfr-code`, `pattern-key` or `enterprise-pattern`). For the two pattern types, add a `## Pattern key` section to the answer key with `- needed:` lines, plus an `- enterprise:` line for an enterprise pattern. The validator fails the task without them. `hard-seat-holds`, `hard-export-formats` and `hard-catalog-limits` are worked examples. For a problem framing, a spike, a decision record or production readiness, declare `framing`, `spike`, `decision` or `production`; the four tasks in `bench/sdlc/` are worked examples.
 
 ---
 
