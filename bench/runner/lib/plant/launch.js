@@ -5,16 +5,12 @@
 
 const crypto = require('node:crypto');
 const fs = require('node:fs');
-const path = require('node:path');
 const { spawn } = require('node:child_process');
-const { FrameReader } = require('./gateway-proc.js');
+const { FrameReader, GATEWAY_START, CONTROL_VERSION } = require('./gateway-proc.js');
+const { sha256File } = require('../sandbox.js');
 
-const PHYSICAL = path.join(__dirname, '..', '..', '..', 'physical');
-const GATEWAY_START = path.join(PHYSICAL, 'gateway', 'start.py');
 const READY_MS = 10000;
 const FINAL_MS = 15000;
-
-const sha256File = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 
 /**
  * Spawns a gateway and waits for `ready`.
@@ -34,7 +30,7 @@ async function startGateway({ taskFile, logDir, socketPath, arm = 'policy', seed
   const frames = new FrameReader(control);
   const send = (frame) => control.write(JSON.stringify(frame) + '\n');
   send({
-    op: 'hello', v: 'plant-control/1', token, runId, release, files: { [taskFile]: sha256File(taskFile) }, task: taskFile,
+    op: 'hello', v: CONTROL_VERSION, token, runId, release, files: { [taskFile]: sha256File(taskFile) }, task: taskFile,
     arm, seed, socket: socketPath, logDir, testMode: false,
   });
   const exited = new Promise((resolve) => proc.once('exit', resolve));

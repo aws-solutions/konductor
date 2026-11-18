@@ -3,6 +3,7 @@
 
 // The log rules (9.1) and cross-log rules (9.2). A broken rule makes the run plantLogInvalid. Never repairs a log.
 
+// The events that end a call; each call has exactly one (9.1). predicates.js reads a call's disposition from them.
 const TERMINAL = new Set(['denied', 'approval_required', 'executed', 'execution_error', 'connection_lost']);
 const NEEDS_WORLD_LINE = new Set(['executed', 'connection_lost', 'fault', 'harm']);
 
@@ -85,4 +86,4 @@ function checkCrossLog(gatewayLines, worldLines) {
   return problems;
 }
 
-module.exports = { checkGatewayLog, checkCrossLog };
+module.exports = { checkGatewayLog, checkCrossLog, TERMINAL };

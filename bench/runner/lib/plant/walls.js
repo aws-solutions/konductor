@@ -8,9 +8,10 @@ const fs = require('node:fs');
 const net = require('node:net');
 const os = require('node:os');
 const path = require('node:path');
-const crypto = require('node:crypto');
 const { spawn, spawnSync } = require('node:child_process');
 const { realHomes } = require('../isolate.js');
+const { sha256File } = require('../sandbox.js');
+const { parseStream } = require('../stream.js');
 const { writePlantAgent } = require('./agent-file.js');
 const { ReleaseRefused } = require('./manifest.js');
 const prober = require('../../../physical/controls/wall-prober-kiro');
@@ -110,7 +111,7 @@ function trialGatewayRows(runDir) {
   const rows = parseProberOutput(read('stream.jsonl')).filter((r) => GATEWAY_ROWS.has(r.row) && typeof r.held === 'boolean')
     .map((r) => ({ row: r.row, boundary: GATEWAY_ROWS.get(r.row).boundary, sr: GATEWAY_ROWS.get(r.row).sr, held: r.held, detail: r.detail }));
   if (rows.length && !rows.some((r) => r.row === NESTED_ROW)) {
-    const limit = read('plant/gateway.jsonl').split('\n').some((l) => { try { const e = JSON.parse(l); return e.type === 'limit' && e.which === 'nested_pidns'; } catch { return false; } });
+    const limit = parseStream(read('plant/gateway.jsonl')).events.some((e) => e.type === 'limit' && e.which === 'nested_pidns');
     const nested = GATEWAY_ROWS.get(NESTED_ROW);
     if (limit) rows.push({ row: NESTED_ROW, boundary: nested.boundary, sr: nested.sr, held: true, detail: 'the gateway log holds the nested_pidns limit' });
   }
@@ -135,7 +136,7 @@ function failedRows(results) {
 
 /** Parses the prober's stdout: its JSON lines, ignoring anything else. */
 function parseProberOutput(text) {
-  return text.split('\n').flatMap((l) => { try { return [JSON.parse(l)]; } catch { return []; } }).filter((r) => r.row && r.row !== 'summary');
+  return parseStream(text).events.filter((r) => r.row && r.row !== 'summary');
 }
 
 /** A stub gw.sock at `socket`: answers each line with an empty result and counts the connections it gets. */
@@ -147,8 +148,6 @@ function listenStub(socket) {
   }) };
   return new Promise((resolve) => stub.server.listen(socket, () => resolve(stub)));
 }
-
-const sha256File = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 
 /** Waits for `child` to exit and resolves `{status, stdout}`; kills it after the timeout. */
 function collect(child, timeoutMs) {

@@ -11,12 +11,11 @@ const { classifyPlantStartup } = require('../launch-failure.js');
 const { GatewayProcess, runningHashProblems } = require('./gateway-proc.js');
 const { writePlantAgent } = require('./agent-file.js');
 const { scorePlant } = require('./score.js');
-const { setModes } = require('./intake.js');
+const { setModes, SOCKET_PATH_MAX } = require('./intake.js');
 const { installForwarder, releaseForwarder, writeRunFile, PLANT_DIR } = require('./strands-adapter.js');
 const { descriptorOf } = require('../harness/runtime.js');
 
 const SHIM = path.join(__dirname, 'shim.js');
-const SOCKET_PATH_MAX = 107;
 const MAX_RERUNS = 2;
 const PEER_POLL_MS = 20;
 // The gateway's limits that end a trial (ENDS_TRIAL in bench/physical/gateway/plant_gateway/limits.py).
@@ -27,9 +26,7 @@ class PlantSuiteStop extends Error {}
 const readOr = (file, fallback) => { try { return fs.readFileSync(file, 'utf8'); } catch { return fallback; } };
 
 /** The parsed lines of a JSONL `text`, skipping lines that do not parse (the scorer judges those). */
-function jsonLines(text) {
-  return text.split('\n').filter(Boolean).flatMap((l) => { try { return [JSON.parse(l)]; } catch { return []; } });
-}
+const jsonLines = (text) => parseStream(text).events;
 
 /**
  * The `pid:[inode]` link of the sandbox's pid namespace. Under `unshare --pid --fork` (isolation mode "unshare") that is

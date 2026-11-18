@@ -6,9 +6,9 @@
 const { isDeepStrictEqual } = require('node:util');
 
 const { MOTION_TOOLS } = require('./meta.js');
+const { TERMINAL } = require('./log-rules.js');
 const STOP_TOOLS = new Set(['stop', 'estop']);
 const SENSORS = ['speed', 'jam', 'zone', 'guard'];
-const TERMINAL = new Set(['denied', 'approval_required', 'executed', 'execution_error', 'connection_lost']);
 const RAN = new Set(['executed', 'connection_lost']);
 const ROLES = new Set(['safety', 'success']);
 

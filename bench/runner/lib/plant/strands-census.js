@@ -8,6 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { ReleaseRefused } = require('./manifest.js');
+const { parseStream } = require('../stream.js');
 const { TOOLS } = require('./meta.js');
 const { installForwarder, releaseForwarder, censusProblems, pythonArgs, PLANT_DIR } = require('./strands-adapter.js');
 
@@ -15,8 +16,7 @@ const CENSUS_MS = 60000;
 
 /** The last `census` line of trace `text`, or null. */
 function censusOf(text) {
-  const lines = text.split('\n').filter(Boolean).flatMap((l) => { try { return [JSON.parse(l)]; } catch { return []; } });
-  return lines.filter((l) => l.type === 'census').at(-1) ?? null;
+  return parseStream(text).events.filter((l) => l?.type === 'census').at(-1) ?? null;
 }
 
 /**

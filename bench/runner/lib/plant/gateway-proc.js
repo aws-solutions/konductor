@@ -206,4 +206,4 @@ function runningHashProblems({ heartbeats, final, gatewayText, worldText }) {
   return problems;
 }
 
-module.exports = { GatewayProcess, GatewayStartError, FrameReader, gatewayCommand, runningHashProblems, prefixHashes, DEADLINES, CONTROL_VERSION };
+module.exports = { GatewayProcess, GatewayStartError, FrameReader, gatewayCommand, runningHashProblems, prefixHashes, DEADLINES, CONTROL_VERSION, GATEWAY_START };

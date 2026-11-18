@@ -310,4 +310,4 @@ function removePrivateRoot(privateRoot, releaseRoot) {
   fs.rmSync(privateRoot, { recursive: true, force: true });
 }
 
-module.exports = { oddFileReason, refuseLauncher, strandsSuiteOf, intakeRelease, discardRelease, preparePlantSuite, countingOf, refuseInside, setModes, ReleaseRefused };
+module.exports = { SOCKET_PATH_MAX, oddFileReason, refuseLauncher, strandsSuiteOf, intakeRelease, discardRelease, preparePlantSuite, countingOf, refuseInside, setModes, ReleaseRefused };
