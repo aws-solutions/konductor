@@ -26,7 +26,9 @@
 // `.sop.md` files directly, so each SOP becomes its own slash-invokable,
 // non-model-triggered skill instead (`disable-model-invocation: true`).
 //
-// When a staged agent declares the `aws-mcp` server, install merges
+// When a staged agent declares the `aws-mcp` server or grants one of its
+// tools in frontmatter `tools`, install merges
+// tools in frontmatter `tools`, install merges Claude Code permission rules intotall merges
 // Claude Code permission rules into `<target_dir>/.claude/settings.json`:
 // `permissions.ask` for `aws___run_script`, and `permissions.allow` for the
 // agents' Kiro `allowedTools`, read from synth's `_mcp_allowed_tools.json`.
@@ -405,7 +407,8 @@ struct AwsMcpRulePlan {
 type McpAllowedTools = BTreeMap<String, BTreeMap<String, Vec<String>>>;
 
 /// Builds the rules from the staged agents under `<harness_dir>/agents/`.
-/// Empty when no agent's frontmatter declares `aws-mcp`. Otherwise `ask`
+/// Empty when no agent's frontmatter uses `aws-mcp` (see
+/// `agent_uses_mcp_server`). Otherwise `ask`
 /// holds the `AWS_MCP_ASK_TOOLS` rules and `allow` the union of those
 /// agents' sidecar tools, minus any ask tool.
 fn claude_aws_mcp_permission_rules(harness_dir: &Path) -> Result<AwsMcpRulePlan, String> {
@@ -415,9 +418,15 @@ fn claude_aws_mcp_permission_rules(harness_dir: &Path) -> Result<AwsMcpRulePlan,
         let path = agents_dir.join(&file_name);
         let md = std::fs::read_to_string(&path)
             .map_err(|e| format!("failed to read {}: {e}", path.display()))?;
-        if agent_declares_mcp_server(&md, AWS_MCP_SERVER_NAME) {
-            let agent = file_name.trim_end_matches(".md").to_string();
-            aws_agents.push(agent);
+        match agent_uses_mcp_server(&md, AWS_MCP_SERVER_NAME) {
+            Ok(true) => aws_agents.push(file_name.trim_end_matches(".md").to_string()),
+            Ok(false) => {}
+            Err(reason) => eprintln!(
+                "konductor install: warning: could not read the frontmatter of {}: {reason}; \
+                 it is not checked for {AWS_MCP_SERVER_NAME}, so it adds no AWS MCP \
+                 permission rules",
+                path.display()
+            ),
         }
     }
 
@@ -459,25 +468,28 @@ fn claude_aws_mcp_permission_rules(harness_dir: &Path) -> Result<AwsMcpRulePlan,
     })
 }
 
-/// Whether the agent Markdown's YAML frontmatter lists `server` under
-/// `mcpServers` (a sequence of single-key maps, as synth renders it). A
-/// detection check, not validation: no frontmatter or bad YAML is `false`.
-fn agent_declares_mcp_server(md: &str, server: &str) -> bool {
-    let Some(rest) = md.strip_prefix("---\n") else {
-        return false;
-    };
+/// Whether the agent Markdown's YAML frontmatter uses `server`: it lists the
+/// server under `mcpServers` (a sequence of single-key maps, as synth renders
+/// it), or its `tools` grants `mcp__<server>` or any `mcp__<server>__<tool>`.
+/// The tools check covers a custom synth that bundled no MCP servers, where
+/// the agent keeps its tool grant. `Err` describes frontmatter that is
+/// missing, unclosed or not YAML. CRLF line endings are accepted.
+fn agent_uses_mcp_server(md: &str, server: &str) -> Result<bool, String> {
+    let md = md.replace("\r\n", "\n");
+    let rest = md
+        .strip_prefix("---\n")
+        .ok_or("no YAML frontmatter (the file does not start with a '---' line)")?;
     let end = if rest.starts_with("---\n") {
         0
     } else {
-        match rest.find("\n---\n") {
-            Some(newline) => newline + 1,
-            None => return false,
-        }
+        rest.find("\n---\n")
+            .map(|newline| newline + 1)
+            .ok_or("the YAML frontmatter has no closing '---' line")?
     };
-    let Ok(frontmatter) = serde_yaml::from_str::<serde_yaml::Value>(&rest[..end]) else {
-        return false;
-    };
-    frontmatter
+    let frontmatter = serde_yaml::from_str::<serde_yaml::Value>(&rest[..end])
+        .map_err(|e| format!("the YAML frontmatter does not parse: {e}"))?;
+
+    let declares_server = frontmatter
         .get("mcpServers")
         .and_then(serde_yaml::Value::as_sequence)
         .is_some_and(|servers| {
@@ -486,7 +498,27 @@ fn agent_declares_mcp_server(md: &str, server: &str) -> bool {
                     .as_mapping()
                     .is_some_and(|map| map.contains_key(server))
             })
-        })
+        });
+    Ok(declares_server || frontmatter_tools_grant_mcp_server(&frontmatter, server))
+}
+
+/// Whether the frontmatter `tools` (a YAML sequence, or Claude Code's
+/// comma-separated string form) names `mcp__<server>` or a tool under it.
+fn frontmatter_tools_grant_mcp_server(frontmatter: &serde_yaml::Value, server: &str) -> bool {
+    let whole_server = format!("mcp__{server}");
+    let tool_prefix = format!("{whole_server}__");
+    let grants = |tool: &str| {
+        let tool = tool.trim();
+        tool == whole_server || tool.starts_with(&tool_prefix)
+    };
+    match frontmatter.get("tools") {
+        Some(serde_yaml::Value::Sequence(tools)) => tools
+            .iter()
+            .filter_map(serde_yaml::Value::as_str)
+            .any(grants),
+        Some(serde_yaml::Value::String(tools)) => tools.split(',').any(grants),
+        _ => false,
+    }
 }
 
 /// Reads `<agents_dir>/_mcp_allowed_tools.json`. `Ok(None)` when the file
@@ -2040,19 +2072,98 @@ mod tests {
     }
 
     #[test]
-    fn agent_declares_mcp_server_reads_the_frontmatter_only() {
+    fn agent_uses_mcp_server_reads_the_frontmatter_only() {
         let md = std::str::from_utf8(AWS_AGENT_MD).unwrap();
-        assert!(agent_declares_mcp_server(md, "aws-mcp"));
-        assert!(!agent_declares_mcp_server(md, "other"));
-        assert!(!agent_declares_mcp_server(
-            "---\nname: k\n---\nmcpServers:\n- aws-mcp: {}\n",
-            "aws-mcp"
-        ));
-        assert!(!agent_declares_mcp_server("no frontmatter\n", "aws-mcp"));
-        assert!(!agent_declares_mcp_server(
+        assert_eq!(agent_uses_mcp_server(md, "aws-mcp"), Ok(true));
+        assert_eq!(agent_uses_mcp_server(md, "other"), Ok(false));
+        assert_eq!(
+            agent_uses_mcp_server(
+                "---\nname: k\n---\nmcpServers:\n- aws-mcp: {}\ntools: [mcp__aws-mcp__*]\n",
+                "aws-mcp"
+            ),
+            Ok(false)
+        );
+    }
+
+    #[test]
+    fn agent_uses_mcp_server_accepts_crlf_frontmatter() {
+        let md = std::str::from_utf8(AWS_AGENT_MD)
+            .unwrap()
+            .replace('\n', "\r\n");
+        assert_eq!(agent_uses_mcp_server(&md, "aws-mcp"), Ok(true));
+    }
+
+    #[test]
+    fn agent_uses_mcp_server_detects_a_tools_only_grant() {
+        for md in [
+            "---\nname: k\ntools:\n- Read\n- mcp__aws-mcp__*\n---\nBody\n",
+            "---\nname: k\ntools:\n- mcp__aws-mcp__aws___list_regions\n---\nBody\n",
+            "---\nname: k\ntools:\n- mcp__aws-mcp\n---\nBody\n",
+            "---\nname: k\ntools: Read, mcp__aws-mcp__aws___run_script\n---\nBody\n",
+        ] {
+            assert_eq!(agent_uses_mcp_server(md, "aws-mcp"), Ok(true), "{md}");
+        }
+        assert_eq!(
+            agent_uses_mcp_server(
+                "---\nname: k\ntools:\n- mcp__aws-mcp-other__x\n---\nBody\n",
+                "aws-mcp"
+            ),
+            Ok(false)
+        );
+    }
+
+    #[test]
+    fn agent_uses_mcp_server_reports_unreadable_frontmatter() {
+        for md in [
+            "no frontmatter\n",
+            "---\nname: k\nBody without a closing line\n",
             "---\nmcpServers: [aws-mcp: {\n---\nBody\n",
-            "aws-mcp"
-        ));
+        ] {
+            assert!(agent_uses_mcp_server(md, "aws-mcp").is_err(), "{md}");
+        }
+    }
+
+    #[test]
+    fn install_writes_the_ask_rule_for_a_tools_only_aws_mcp_grant() {
+        let target_dir = scratch_dir("aws-rules-tools-only-target");
+        let repo_root = scratch_dir("aws-rules-tools-only-repo");
+        seed_synthed_agent(
+            &repo_root,
+            "k-x",
+            b"---\r\nname: k-x\r\ntools:\r\n- mcp__aws-mcp__*\r\n---\r\nBody\r\n",
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        assert_eq!(
+            read_project_settings(&target_dir)["permissions"]["ask"],
+            serde_json::json!([RUN_SCRIPT_RULE])
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_succeeds_past_an_agent_with_malformed_frontmatter() {
+        let target_dir = scratch_dir("aws-rules-malformed-target");
+        let repo_root = scratch_dir("aws-rules-malformed-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_synthed_agent(
+            &repo_root,
+            "k-broken",
+            b"---\nmcpServers: [aws-mcp: {\n---\nBody\n",
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        assert_eq!(
+            read_project_settings(&target_dir)["permissions"]["ask"],
+            serde_json::json!([RUN_SCRIPT_RULE])
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
     }
 
     /// The allow rules come from the real agent specs: the union of the

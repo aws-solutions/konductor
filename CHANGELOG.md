@@ -552,8 +552,11 @@ not per individual commit.
   GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
   GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.
 - `konductor install --harness claude` adds `mcp__aws-mcp__aws___run_script` to
-  `permissions.ask` in `.claude/settings.json` when an installed agent declares the `aws-mcp`
-  server, so Claude Code asks before every call. That tool runs agent-written Python with your
+  `permissions.ask` in `.claude/settings.json` when an installed agent uses the `aws-mcp`
+  server, so Claude Code asks before every call. An agent uses it when its frontmatter lists
+  it under `mcpServers` or its `tools` grants `mcp__aws-mcp` or a tool under it, and CRLF
+  frontmatter is read too; an agent file whose frontmatter cannot be read is skipped with a
+  warning naming the file. That tool runs agent-written Python with your
   AWS credentials. Mux and cmux panes run `claude -p --dangerously-skip-permissions`, where an
   ask rule is still enforced and a call that would prompt is denied, so a pane cannot call it;
   run that work from `konductor`. The merge only appends, keeps any user entry that already

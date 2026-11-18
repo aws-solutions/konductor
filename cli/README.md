@@ -247,9 +247,14 @@ the `/tools` command that re-checks them on another version against the installe
 
 ### Claude Code permission rules for the AWS MCP server
 
-When a `--harness claude` install includes an agent that declares the `aws-mcp` server
+When a `--harness claude` install includes an agent that uses the `aws-mcp` server
 (`konductor`, `k-architect` and `k-developer` today), it merges two kinds of rules into
-`<target>/.claude/settings.json` (`~/.claude/settings.json` for the default `$HOME` target):
+`<target>/.claude/settings.json` (`~/.claude/settings.json` for the default `$HOME` target).
+An agent uses the server when its frontmatter lists it under `mcpServers` or its `tools`
+grants `mcp__aws-mcp` or any `mcp__aws-mcp__<tool>`, so a custom synth without
+`--claude-bundled-mcp-servers aws-mcp` still gets the ask rule. CRLF frontmatter is read
+the same way. An agent file whose frontmatter cannot be read (missing, unclosed or not
+YAML) is skipped with a `konductor install: warning:` naming the file.
 
 - `mcp__aws-mcp__aws___run_script` in `permissions.ask`, so Claude Code asks before every
   call. That tool runs agent-written Python with your AWS credentials. Claude Code checks
