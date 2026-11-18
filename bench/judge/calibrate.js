@@ -17,6 +17,7 @@ const { notJudgedReason } = require('./run.js');
 
 const VERDICTS = ['pass', 'partial', 'fail'];
 
+/** A copy of `list` in a seeded order: the same `seed` always gives the same order (Fisher-Yates on mulberry32). */
 function shuffle(list, seed) {
   const rng = mulberry32(seed);
   const a = [...list];
@@ -34,14 +35,18 @@ function drawSample(runs, n, seed) {
   return shuffle(runs.filter((r) => r.result.status !== 'budget_skipped' && !notJudgedReason(r)), seed).slice(0, n);
 }
 
+/** `text` in a Markdown code fence one backtick longer than any backtick run inside it, so the text cannot close it. */
 function fence(text) {
   const longest = Math.max(2, ...[...text.matchAll(/`+/g)].map((m) => m[0].length));
   const f = '`'.repeat(longest + 1);
   return `${f}\n${text}\n${f}`;
 }
 
+/** The Markdown a rater reads for one pack criterion `c` (`{id, dimension, question, levels, quote}`): its question, three levels and quote rule. */
+const criterionMarkdown = (c) => [`- **${c.id}** (${c.dimension}): ${c.question}`, `  - fail: ${c.levels.fail}`, `  - partial: ${c.levels.partial}`, `  - pass: ${c.levels.pass}`, `  - quote: ${c.quote}`].join('\n');
+
 function packMarkdown(pk) {
-  const rows = pk.criteria.map((c) => [`- **${c.id}** (${c.dimension}): ${c.question}`, `  - fail: ${c.levels.fail}`, `  - partial: ${c.levels.partial}`, `  - pass: ${c.levels.pass}`, `  - quote: ${c.quote}`].join('\n'));
+  const rows = pk.criteria.map(criterionMarkdown);
   const lines = [`Quality pack ${pk.id} (revision ${pk.revision}). Rate each criterion pass, partial or fail using only its three descriptions, and fill in \`pack.labels\` in sheet.json. Count where a description gives a number.`, rows.join('\n') || '(no criterion needs a rating for this output)'];
   if (pk.computed.length) lines.push(`Scored by a program, not rated: ${pk.computed.join(', ')}.`);
   if (pk.absent.length) lines.push(`Scored fail because the task asked for the artifact and none was produced: ${pk.absent.join(', ')}.`);
@@ -277,4 +282,4 @@ function scorePackLabels({ labelsFile, keyFile, thresholds }) {
   return out;
 }
 
-module.exports = { exportSheet, scoreLabels, scorePackLabels, formatCalibration, formatPackCalibration, drawSample, raterKappas, formatRaterKappas };
+module.exports = { shuffle, fence, criterionMarkdown, exportSheet, scoreLabels, scorePackLabels, formatCalibration, formatPackCalibration, drawSample, raterKappas, formatRaterKappas };

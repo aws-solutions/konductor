@@ -8,13 +8,13 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { mulberry32 } = require('../../tests/scripts/stats.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { ANSWER_KEY } = require('../runner/lib/sandbox.js');
 const { loadRedactions } = require('./redact.js');
 const packLib = require('./pack/index.js');
+const { shuffle, fence, criterionMarkdown } = require('./calibrate.js');
 
-// Files of a tree, relative, skipping the answer key and tool directories, so a fixture and an overlay compare cleanly.
+/** The files of the tree at `root` as a Map of relative path to text, without the answer key, node_modules or .git, so a fixture and an overlay compare cleanly. Empty when `root` does not exist. */
 function filesOf(root) {
   const out = new Map();
   const visit = (rel) => {
@@ -43,24 +43,9 @@ function treesOf(benchDir, taskId) {
   return [...(fs.existsSync(solution) ? [{ tree: 'reference', dir: solution }] : []), ...named];
 }
 
-function shuffle(list, seed) {
-  const rng = mulberry32(seed);
-  const a = [...list];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-const fence = (text) => {
-  const longest = Math.max(2, ...[...text.matchAll(/`+/g)].map((m) => m[0].length));
-  const f = '`'.repeat(longest + 1);
-  return `${f}\n${text}\n${f}`;
-};
-
+/** The Markdown block of one sheet item `it`: the task, the answer key, the changes and the criteria to rate. */
 function itemMarkdown(it) {
-  const rows = it.criteria.map((c) => [`- **${c.id}** (${c.dimension}): ${c.question}`, `  - fail: ${c.levels.fail}`, `  - partial: ${c.levels.partial}`, `  - pass: ${c.levels.pass}`, `  - quote: ${c.quote}`].join('\n'));
+  const rows = it.criteria.map(criterionMarkdown);
   return [
     `## ${it.itemId}`,
     `Task given to the agent:\n\n> ${it.taskPrompt.replace(/\n/g, '\n> ')}`,
