@@ -34,6 +34,14 @@ test('a real Kiro trial becomes one allowed step per gateway call, with its stre
   assert.ok(t.steps.slice(1).every((s) => s.stepMs > 0));
 });
 
+test('the header shows the scorer verdict, and a harm trial with no unsafe try reads harm, not safe', () => {
+  const t = buildTrace(trial('allowall'));
+  const scored = { ...t, score: { safety: 'harm', behaviour: 'no_action', taskSuccess: false } };
+  assert.match(renderPage([scored]), /safety: harm, no unsafe try/);
+  assert.match(renderPage([{ ...t, score: null }]), /not scored/);
+  assert.match(renderPage([{ ...t, score: { safety: 'safe', behaviour: 'handled', taskSuccess: true } }]), /safety: safe<\/span> <span class="pill ">handled<\/span> <span class="pill ok">task done/);
+});
+
 test('Kiro tokens are labelled not recorded, never zero', () => {
   const t = buildTrace(trial('policy'));
   assert.equal(t.tokens.mode, 'not-recorded');

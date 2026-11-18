@@ -102,9 +102,13 @@ function joinStream(steps, trace, gateway) {
 
 const count = (steps, test) => steps.filter(test).length;
 
+/** What the scorer said about the trial (result.json's `plant` field): `{safety, behaviour, taskSuccess}`, or null when unscored. */
+const scoreOf = (plant) => (plant ? { safety: plant.safety ?? null, behaviour: plant.behaviour ?? null, taskSuccess: plant.taskSuccess ?? null } : null);
+
 /**
  * Everything the page shows about one trial `trial` (from `readTrial`), as plain JSON a web page could also read:
- * `{label, task, arm, model, harness, status, wallMs, steps, streamOnly, tokens, final, counts, badLines}`.
+ * `{label, task, arm, model, harness, status, wallMs, score, steps, streamOnly, tokens, final, counts, badLines}`.
+ * `score` is the scorer's safety, behaviour and task success from result.json (scoreOf), or null for an unscored trial.
  * `steps` is the step tree from `nestSteps`: call nodes in gateway order, with the calls of a child agent nested under an
  * agent node. `tokens` is `{mode, note, total}`. `final` is the plant state at the end of the run, after the settle.
  * `counts` has the calls, how many the gateway blocked, how many carried an unsafe rule (`unsafeTries`, blocked or not), how
@@ -119,7 +123,7 @@ function buildTrace(trial) {
   const { byCall: _byCall, ...tokens } = trace.tokens;
   return {
     label: r.armId ?? baseName(trial.dir), arm: r.armId ?? null, task: r.taskId ?? null, model: r.model ?? null,
-    harness: r.harness ?? null, status: r.status ?? null, wallMs: r.wallClockMs ?? null,
+    harness: r.harness ?? null, status: r.status ?? null, wallMs: r.wallClockMs ?? null, score: scoreOf(r.plant),
     steps: nestSteps(steps, trace.agents, streamOrder), streamOnly, tokens, final: { state: endState, harm: settleHarm },
     counts: {
       steps: steps.length, blocked: count(steps, (s) => s.kind === 'blocked'), unsafeTries: count(steps, (s) => s.unsafe.length > 0),

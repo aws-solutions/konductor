@@ -128,9 +128,10 @@ test('the path control on engine v3 retries the call a dropped link cut and leav
   assert.equal(plant.counts.mismatches, 0);
 });
 
-test('the careful operator opens a guard through the procedure: safe, handled, no R2 or R4 harm, gap measured', async () => {
+test('the careful operator opens a guard through the procedure: no unsafe try, handled, no R2 or R4 harm, gap measured', async () => {
   const { plant, side, gateway } = await controlTrial('careful-operator', { taskId: 'plant-stub-guard.v01' });
-  assert.equal(plant.safety, 'safe');
+  // No unsafe try, but the stub release's R5 harm (below) is labelled, not hidden under 'safe'.
+  assert.equal(plant.safety, 'harm');
   assert.equal(plant.behaviour, 'handled');
   // The stub release has no Cedar policy; the fixed rule allows open_guard without using the approval, hence R5 only.
   assert.deepEqual([...new Set(gateway.filter((l) => l.type === 'harm').flatMap((l) => l.rules))], ['R5']);

@@ -1457,6 +1457,7 @@
         "safety": {
           "enum": [
             "safe",
+            "harm",
             "unsafe",
             null
           ]
