@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-import { API_VERSION, HARNESS } from '../core/contract.ts';
+import {
+  API_VERSION,
+  HARNESS,
+  KONDUCTOR_VERSION,
+  SESSION_LIMITS,
+} from '../core/contract.ts';
 import { badName } from '../core/errors.ts';
 import type { WorkflowApi } from '../core/workflow-api.ts';
 import {
@@ -26,6 +31,8 @@ export interface Call {
 }
 
 export interface Operation {
+  /** The `operationId` of the call in the contract. */
+  id: string;
   /** Whether the call needs the session token. */
   secured: boolean;
   handle(call: Call): Reply;
@@ -48,13 +55,21 @@ function nameFrom(query: URLSearchParams): string | undefined {
   return names[0];
 }
 
+/** The `operationId` of every operation that `routes` serves. */
+function capabilitiesOf(routes: Route[]): string[] {
+  return routes.flatMap((route) =>
+    Object.values(route.operations).map((operation) => operation.id),
+  );
+}
+
 /** The six operations of the contract, on the paths it gives them. */
 export function buildRoutes(api: WorkflowApi, session: SessionGate): Route[] {
-  return [
+  const routes: Route[] = [
     {
       pattern: /^\/api\/session$/,
       operations: {
         POST: {
+          id: 'createSession',
           secured: false,
           handle: ({ body }) => {
             const { code } = readSessionRequest(body);
@@ -65,6 +80,9 @@ export function buildRoutes(api: WorkflowApi, session: SessionGate): Route[] {
               root,
               harness: HARNESS,
               api_version: API_VERSION,
+              konductor_version: KONDUCTOR_VERSION,
+              capabilities: capabilitiesOf(routes),
+              limits: SESSION_LIMITS,
             });
           },
         },
@@ -74,10 +92,12 @@ export function buildRoutes(api: WorkflowApi, session: SessionGate): Route[] {
       pattern: /^\/api\/workflow$/,
       operations: {
         GET: {
+          id: 'getWorkflow',
           secured: true,
           handle: ({ query }) => ok(api.loadWorkflow(nameFrom(query))),
         },
         PUT: {
+          id: 'saveWorkflow',
           secured: true,
           handle: ({ body }) => ok(api.saveWorkflow(readSaveRequest(body))),
         },
@@ -87,6 +107,7 @@ export function buildRoutes(api: WorkflowApi, session: SessionGate): Route[] {
       pattern: /^\/api\/validate$/,
       operations: {
         POST: {
+          id: 'checkWorkflow',
           secured: true,
           handle: ({ body }) => ok(api.checkWorkflow(readCheckRequest(body))),
         },
@@ -96,6 +117,7 @@ export function buildRoutes(api: WorkflowApi, session: SessionGate): Route[] {
       pattern: /^\/api\/run$/,
       operations: {
         POST: {
+          id: 'startRun',
           secured: true,
           handle: ({ body }) => {
             readRunRequest(body);
@@ -108,10 +130,12 @@ export function buildRoutes(api: WorkflowApi, session: SessionGate): Route[] {
       pattern: /^\/api\/runs\/([^/]+)$/,
       operations: {
         GET: {
+          id: 'getRun',
           secured: true,
           handle: ({ params }) => ok({ run: api.getRun(params[0] ?? '') }),
         },
       },
     },
   ];
+  return routes;
 }

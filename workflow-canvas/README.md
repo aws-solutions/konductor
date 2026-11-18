@@ -84,7 +84,10 @@ are refused by name with the slice that adds them. The file also holds what a
 backend needs to implement the calls: the accepted workflow text, the checks
 that make a text invalid, the list of diagnostic codes, how a file that is not
 a plain file is handled, and what a run does stage by stage. A client follows a
-run by polling `GET /api/runs/{id}`. The format itself is described in
+run by polling `GET /api/runs/{id}`. The session response also says which
+server it is: `konductor_version`, the `capabilities` it supports (the
+`operationId` of each operation) and its `limits` (text bytes, stages, outcome,
+prompt and goal lengths). The page does not read these yet. The format itself is described in
 [`docs/design/workflows-spec.md`](../docs/design/workflows-spec.md).
 
 A run uses the `kiro-cli` or `claude` harness, or `fake` in tests. A stage
@@ -116,6 +119,8 @@ know, and requests with a field the contract does not name are refused.
   SHA-256 of its text, a view is its text read as YAML, a diagnostic that names
   a key points at that key, the counts of a check add up, and a run's stages
   follow its status;
+- checks that the session example lists every `operationId` as a capability
+  and reports the limits that the rest of the file states;
 - checks the format rules that a schema can hold: a version is `X.Y.Z`, a path
   follows the specification's path rule (no empty, `.` or `..` segment, no `\`,
   no drive letter, no control character), and a check has exactly one of `file`

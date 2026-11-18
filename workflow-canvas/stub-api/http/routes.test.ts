@@ -42,6 +42,13 @@ describe('the routes of the stub and api/openapi.yaml', () => {
     },
   );
 
+  it.each(operations.map((op) => [`${op.method} ${op.path}`, op] as const))(
+    'gives %s the operationId of the contract',
+    (_name, { id, method, path }) => {
+      expect(routeFor(samplePath(path))?.operations[method]?.id).toBe(id);
+    },
+  );
+
   it('documents every route the stub serves', () => {
     const served = routes.flatMap((route) =>
       Object.keys(route.operations).map((method) => {
