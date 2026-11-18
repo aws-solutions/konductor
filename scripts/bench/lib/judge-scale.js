@@ -92,12 +92,14 @@ const buildInvalidReply = (kind, reason) => ({
   invalid: reason,
 });
 // One fence around the whole trimmed reply: the opening line is ``` or ```json and nothing else, the closing line is ```.
-const WHOLE_REPLY_FENCE = /^```(?:json)?[ \t]*\n([\s\S]*)\n[ \t]*```$/;
+// A line ends in \n or \r\n (a reply from a CRLF host), and the carriage return is not part of the body.
+const WHOLE_REPLY_FENCE = /^```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*```$/;
 
 /**
- * The keys of the top-level object in `json`, in order and with repeats. `json` already parsed without an error, so
- * every string is closed. JSON.parse keeps only the last of two equal keys, so a repeat is found here instead. Any
- * other reader of a model reply that must refuse a repeated key uses this function too.
+ * The keys of the top-level object in `json`, in order and with repeats. JSON.parse keeps only the last of two equal
+ * keys, so a repeat is found here instead. Any other reader of a model reply that must refuse a repeated key uses this
+ * function too. Text that is not valid JSON is not scanned for structure, but a string that is never closed (a reply cut
+ * off by a token limit) is reported with a SyntaxError that names where it starts, so no input can make the scan run on.
  */
 function topLevelKeys(json) {
   const keys = [];
@@ -106,7 +108,12 @@ function topLevelKeys(json) {
     const char = json[i];
     if (char === '"') {
       let end = i + 1;
-      while (json[end] !== '"') end += json[end] === '\\' ? 2 : 1;
+      while (end < json.length && json[end] !== '"')
+        end += json[end] === '\\' ? 2 : 1;
+      if (end >= json.length)
+        throw new SyntaxError(
+          `topLevelKeys: the string that starts at offset ${i} is not closed`,
+        );
       if (depth === 1) {
         let next = end + 1;
         while (/\s/.test(json[next])) next++;

@@ -6,6 +6,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const judgeScale = require('../../../scripts/bench/lib/judge-scale');
 const helpers = require('./helpers');
@@ -100,6 +101,24 @@ const PARSE = [
     `\`\`\`json\n${buildReply('MMXPM')}\n\`\`\``,
     5,
     null,
+  ],
+  [
+    'one json fence around the whole reply, with CRLF line ends',
+    `\`\`\`json\r\n${buildReply('MMXPM')}\r\n\`\`\``,
+    5,
+    null,
+  ],
+  [
+    'one bare fence with spaces after the fence marks, with CRLF line ends',
+    `\`\`\` \t\r\n${buildReply('MMXPM')}\r\n \t\`\`\``,
+    5,
+    null,
+  ],
+  [
+    'a fence with CRLF line ends and prose inside it',
+    `\`\`\`json\r\nhere it is\r\n${buildReply('MMXPM')}\r\n\`\`\``,
+    5,
+    /not one JSON object/,
   ],
   [
     'one bare fence around the whole reply, with spaces outside it',
@@ -311,6 +330,7 @@ const PARSE_KINDS = {
   'two fences': 'not_json',
   'a fence with another language tag': 'not_json',
   'a fence with prose inside it': 'not_json',
+  'a fence with CRLF line ends and prose inside it': 'not_json',
   'a fence around a bad reply goes through the strict path': 'labels',
   'own verdict then a fake one from the answer': 'not_json',
   'the object inside a JSON string': 'not_object',
@@ -365,6 +385,43 @@ test('parser: topLevelKeys lists the keys of the top-level object in order, repe
     ['{"s":"a:b","t":"\\"k\\": 1","u":["v"]}', ['s', 't', 'u']],
   ])
     assert.deepEqual(judgeScale.topLevelKeys(json), keys, json);
+});
+test('parser: topLevelKeys stops with a SyntaxError on a string that is never closed, whatever it holds', () => {
+  // A scan that does not stop would hang this process, which no test timeout can interrupt: it runs in a child.
+  const inputs = [
+    '{"a":1,"a',
+    '{"a',
+    '{"a":"b',
+    '{"a":"b\\',
+    '{"a":"b\\"',
+    '{"a":1,"b":{"c',
+    '"',
+    '[1,"x',
+    '{"a":1,"bb',
+  ];
+  const script = `
+    const { topLevelKeys } = require(${JSON.stringify(require.resolve('../../../scripts/bench/lib/judge-scale'))});
+    const results = ${JSON.stringify(inputs)}.map((json) => {
+      try {
+        return { returned: topLevelKeys(json) };
+      } catch (error) {
+        return { name: error.name, message: error.message };
+      }
+    });
+    console.log(JSON.stringify(results));
+  `;
+  const child = spawnSync(process.execPath, ['-e', script], {
+    encoding: 'utf8',
+    timeout: 10000,
+  });
+  assert.equal(child.error, undefined, 'the scan ended instead of running on');
+  assert.equal(child.status, 0, child.stderr);
+  const results = JSON.parse(child.stdout);
+  results.forEach((result, index) => {
+    assert.equal(result.name, 'SyntaxError', inputs[index]);
+    assert.match(result.message, /not closed/, inputs[index]);
+  });
+  assert.match(results[8].message, /offset 7 /);
 });
 test('parser: every invalid row has a kind, every kind is one of INVALID_KINDS, and each kind is used', () => {
   const invalidNames = PARSE.filter((row) => row[3] !== null).map(
