@@ -89,8 +89,10 @@ pub enum ConfigLockError {
         path: PathBuf,
         source: std::io::Error,
     },
-    /// Another process held the lock for the entire `DEFAULT_TIMEOUT`
-    /// bounded wait. Not a crash/bug -- just a sibling `config set` (or
+    /// The lock was not acquired within the `DEFAULT_TIMEOUT` bounded
+    /// wait: another process held it the whole time, or the lock file
+    /// kept being replaced so every lock taken was on a stale inode.
+    /// Not a crash/bug -- usually a sibling `config set` (or
     /// `init`, if it ever takes this same lock) that did not finish in
     /// time, or a stale lock from a killed process (advisory locks are
     /// released automatically by the OS when the holding process exits
@@ -113,7 +115,10 @@ impl std::fmt::Display for ConfigLockError {
                 write!(f, "could not open config lock {}: {source}", path.display())
             }
             ConfigLockError::Contended { .. } => {
-                write!(f, "config is locked by another process, try again")
+                write!(
+                    f,
+                    "config lock not acquired: another process holds it or the lock file kept changing, try again"
+                )
             }
         }
     }
@@ -390,6 +395,17 @@ mod tests {
         let err = acquire(&dir).expect_err("second acquisition must be contended");
         assert!(matches!(err, ConfigLockError::Contended { .. }));
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn contended_message_names_both_causes() {
+        let err = ConfigLockError::Contended {
+            path: PathBuf::from("/x/.config.lock"),
+        };
+        assert_eq!(
+            err.to_string(),
+            "config lock not acquired: another process holds it or the lock file kept changing, try again"
+        );
     }
 
     #[test]

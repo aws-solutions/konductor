@@ -394,7 +394,8 @@ not per individual commit.
 - The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
   agents no longer carry an `mcpServers` block that Claude Code ignores.
 - The config lock gives up with a contention error at its 5-second deadline when the lock file
-  keeps being replaced under it, instead of retrying without a limit.
+  keeps being replaced under it, instead of retrying without a limit. The error now says the lock
+  is held by another process or the lock file kept changing.
 - The plugin README link rewrite handles `[label]: <target>` reference definitions: it pins a
   relative target to the release tag and leaves an absolute one alone, keeping the brackets.
 - `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
