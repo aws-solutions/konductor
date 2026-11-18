@@ -130,7 +130,12 @@ function referenceMatchers(skill, plugin) {
       markedOrQualified.test(line) ||
       nextToSkillWord.test(line) ||
       Boolean(titleCase && titleCase.test(line)));
-  return { name, token, mentions, refersToSkill };
+  // The line (after its list marker or number) opens with the skill's own name: its entry in a list of skills.
+  const entryOfSkill = new RegExp(
+    `^\\s*(?:[-*+]\\s+|\\d+\\.\\s+)?${token}`,
+    'i',
+  );
+  return { name, token, mentions, refersToSkill, entryOfSkill };
 }
 
 /**
@@ -140,21 +145,26 @@ function referenceMatchers(skill, plugin) {
  * wherever it appears. A single-word name such as `verification` is also an everyday word, so a line counts as a
  * reference only when the name is in backticks or bold, is plugin-qualified, or stands next to the word "skill".
  * A line that mentions the name in any other way stays and is listed in `loose`. Per line:
- *   - a leading or trailing list entry ("`a` and `b` can run", "`b`, `a`") is cut out so the rest of the sentence
- *     stays;
- *   - any line that still refers to the skill (a bullet describing it, a numbered workflow step) is dropped, with
- *     the lines indented under it (sub-bullets, wrapped text, the rest of a shell command) and, for a heading, the
- *     section below it up to the next heading of the same or a higher level;
+ *   - a list entry ("`a` and `b` can run", "`b`, `a`", "through a or b") is cut out, at the start, the end or in the
+ *     middle of the sentence, so the rest of the sentence stays and the other skill it names is still named;
+ *   - a line that still refers to the skill keeps the sentences that do not ("Implement the change. Run `x` first."
+ *     keeps the first), so an instruction that is not about the skill stays in the `without` arm too;
+ *   - a line whose every sentence refers to the skill (a bullet describing it, a numbered workflow step) is dropped,
+ *     with the lines indented under it (sub-bullets, wrapped text, the rest of a shell command) and, for a heading,
+ *     the section below it up to the next heading of the same or a higher level;
  *   - the numbered items after a dropped numbered item are renumbered, up to the next blank line or the next line
  *     that is not part of the numbered item. Only items at the indent of the block's first item are renumbered.
- * `dropped` lists the lines removed (the lines as they were) and `loose` the lines kept that still use the name as
- * an ordinary word.
+ * `dropped` lists the lines removed (the lines as they were), `cut` the sentences and list entries removed from lines
+ * that stayed, and `loose` the lines kept that still use the name as an ordinary word.
  *
- * @returns {{ text: string, dropped: string[], loose: string[] }}
+ * @returns {{ text: string, dropped: string[], cut: string[], loose: string[] }}
  */
 function stripSkillReferencesReport(text, skill, plugin = PLUGIN) {
   const source = String(text);
-  const { token, mentions, refersToSkill } = referenceMatchers(skill, plugin);
+  const { token, mentions, refersToSkill, entryOfSkill } = referenceMatchers(
+    skill,
+    plugin,
+  );
   const leadingEntry = new RegExp(
     `^(\\s*(?:[-*]\\s+|\\d+\\.\\s+)?)${token}\\s*(?:,\\s*|\\s+(?:and|or)\\s+)`,
     'i',
@@ -163,9 +173,18 @@ function stripSkillReferencesReport(text, skill, plugin = PLUGIN) {
     `\\s*(?:,|\\s+and|\\s+or)\\s+${token}(?=\\s*[.,;:)]|\\s|$)`,
     'i',
   );
+  // An entry of a list that is not the skill: a backticked or bold name, or a hyphenated name. The entry before it is
+  // cut with its conjunction ("a or b" keeps b); the trailing entry above covers the skill after another entry.
+  const otherEntry =
+    '(?:[`*]+[\\w:.-]+[`*]+|[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)+)';
+  const entryBefore = new RegExp(
+    `${token}\\s*(?:,\\s*|\\s+(?:and|or)\\s+)(?=${otherEntry})`,
+    'i',
+  );
   const dropped = [];
+  const cut = [];
   const loose = [];
-  if (!mentions.test(source)) return { text: source, dropped, loose };
+  if (!mentions.test(source)) return { text: source, dropped, cut, loose };
   const kept = [];
   let block = null; // the numbered items being renumbered: { indent, removed }
   let droppedIndent = null; // while set, lines indented deeper than this belong to the line just dropped
@@ -192,8 +211,19 @@ function stripSkillReferencesReport(text, skill, plugin = PLUGIN) {
       droppedIndent = null;
     }
     let line = original;
-    if (refersToSkill(line))
-      line = line.replace(leadingEntry, '$1').replace(trailingEntry, '');
+    for (const entry of [leadingEntry, trailingEntry, entryBefore])
+      if (refersToSkill(line))
+        line = line.replace(entry, (match, lead) => {
+          cut.push(match.trim());
+          return entry === leadingEntry ? lead : '';
+        });
+    if (refersToSkill(line) && !heading && !inFence && !isFence) {
+      const trimmed = dropReferringSentences(line, refersToSkill, entryOfSkill);
+      if (trimmed) {
+        cut.push(...trimmed.cut);
+        line = trimmed.text;
+      }
+    }
     const wasNumbered = NUMBERED_ITEM.exec(original);
     if (wasNumbered && (!block || indent < block.indent))
       block = { indent, removed: 0 };
@@ -212,7 +242,42 @@ function stripSkillReferencesReport(text, skill, plugin = PLUGIN) {
     } else if (blank || (block && indent <= block.indent)) block = null;
     kept.push(line);
   }
-  return { text: kept.join('\n'), dropped, loose };
+  return { text: kept.join('\n'), dropped, cut, loose };
+}
+
+// A sentence ends at . ! or ? and its whitespace, and the next one starts with a capital, a digit, a quote, a bracket or a
+// mark of bold or code. "e.g. a skill" and "i.e. one" do not end a sentence. The capture keeps the whitespace.
+const PROMPT_SENTENCES =
+  /(?<!\b(?:e\.g|i\.e|etc|vs)\.)(?<=[.!?])(\s+)(?=[A-Z0-9`*"'(\[])/;
+
+// A sentence that opens with a pronoun for the sentence before it.
+const PRONOUN = /^(?:It|Its|This|These|They|Their|Those)\b/;
+
+/**
+ * `line` without the sentences that refer to the skill, or null when the whole line goes: when every sentence refers
+ * to the skill, or when the line is the skill's own entry (its first sentence refers to the skill and the line opens
+ * with the skill's name, as `- **name**: What it does. Use when ...` or `- name captures ...: no confirmation. Write,
+ * then notify.`). The rest of such an entry describes the skill and would stay as a nameless fragment ("- Use when
+ * handling Word documents."), so it goes with the first sentence. The line's list marker or number stays in front of
+ * what is left. { text, cut } where `cut` lists the sentences removed.
+ */
+function dropReferringSentences(line, refersToSkill, entryOfSkill) {
+  const prefix = /^\s*(?:[-*+]\s+|\d+\.\s+)?/.exec(line)[0];
+  const parts = line.slice(prefix.length).split(PROMPT_SENTENCES);
+  if (entryOfSkill.test(line) && refersToSkill(parts[0])) return null;
+  const cut = [];
+  let text = '';
+  let previousCut = false;
+  for (let i = 0; i < parts.length; i += 2) {
+    // A sentence that starts with a pronoun right after a cut sentence points at the skill that was cut ("Its SKILL.md
+    // resolves the path."), so it goes too.
+    previousCut = previousCut && PRONOUN.test(parts[i]);
+    if (previousCut || refersToSkill(parts[i])) {
+      cut.push(parts[i]);
+      previousCut = true;
+    } else text += (text ? parts[i - 1] : '') + parts[i];
+  }
+  return text ? { text: prefix + text, cut } : null;
 }
 
 /** stripSkillReferencesReport without the report: the prompt text for the `without` arm. */
@@ -285,6 +350,21 @@ function stripDescriptionReport(text, skill, plugin = PLUGIN) {
     .join('')
     .trim();
   return { text: result, dropped, loose };
+}
+
+/**
+ * The other declared skills that the removed text names: [{ skill, text }]. A line or sentence that names the skill
+ * under test and another skill takes the other skill's instruction out of the `without` arm too, so the arms then
+ * differ by more than the skill. A caller that cares reads this list.
+ */
+function lostSkillReferences(removed, otherSkills) {
+  const lost = [];
+  for (const skill of otherSkills) {
+    const { refersToSkill } = referenceMatchers(skill, PLUGIN);
+    for (const text of removed)
+      if (refersToSkill(text)) lost.push({ skill, text });
+  }
+  return lost;
 }
 
 /**
@@ -454,11 +534,16 @@ function assertOnlyTargetDiffers(withDir, withoutDir, target) {
  *                      `with` is the original prompt plus the same ANSWER_STYLE_RULE, plus (only with
  *                      { explicitInstruction: true }) the load instruction last.
  *   manifests          { with, without }: armManifest of each arm
- *   stripped           { description, prompt }: what stripSkillReferencesReport removed (`dropped`) and which
- *                      lines still mention the name as an ordinary word (`loose`), for the `without` arm
+ *   stripped           { description, prompt, lostSkills }: what stripSkillReferencesReport removed (`dropped`
+ *                      lines, `cut` sentences and entries) and which lines still mention the name as an ordinary
+ *                      word (`loose`), for the `without` arm; `lostSkills` lists the other declared skills that a
+ *                      removed line or sentence named, [{ skill, text }], so a pair that loses another skill's
+ *                      instruction can be seen and not run silently
  *   agent, plugin, explicitInstruction
  *
- * Options: `skillsDir` and `agentsDir` (layout.js createLayout gives both), `agent` (required), `controlSkillsDir`
+ * Options: `allowLostSkills` (default false: a pair whose `without` prompt loses the instruction about another
+ * declared skill is refused, see `lostSkills`; only tests set it, no config key or flag does, so a refused pair is
+ * fixed by rewording the agent's prompt), `skillsDir` and `agentsDir` (layout.js createLayout gives both), `agent` (required), `controlSkillsDir`
  * (the benchmark's own control skills), `tmpRoot` (where the scratch folder goes, the system temp folder by
  * default; a relative path is made absolute). A control skill that the agent does not declare is added to the
  * `with` arm. The checks that need no copied file run before the scratch folder is made. The copy and
@@ -472,6 +557,7 @@ function buildArms(
     agent,
     controlSkillsDir = CONTROL_SKILLS_DIR,
     explicitInstruction = false,
+    allowLostSkills = false,
     tmpRoot = os.tmpdir(),
   } = {},
 ) {
@@ -481,6 +567,8 @@ function buildArms(
     throw new TypeError('buildArms needs skillsDir and agentsDir');
   if (typeof explicitInstruction !== 'boolean')
     throw new TypeError('explicitInstruction must be true or false');
+  if (typeof allowLostSkills !== 'boolean')
+    throw new TypeError('allowLostSkills must be true or false');
   const spec = loadAgentSpec(agentsDir, agent);
   let { skillNames } = spec;
   if (!skillNames.includes(targetSkill)) {
@@ -505,6 +593,21 @@ function buildArms(
   const strippedPrompt = stripSkillReferencesReport(spec.prompt, targetSkill);
   const withoutDescription = strippedDescription.text;
   const withoutPrompt = strippedPrompt.text + ANSWER_STYLE_RULE;
+  const lostSkills = lostSkillReferences(
+    [
+      ...strippedPrompt.dropped,
+      ...strippedPrompt.cut,
+      ...strippedDescription.dropped,
+    ],
+    withoutNames,
+  );
+  // Taking the skill under test out of a line or sentence that also names another declared skill takes that skill's
+  // instruction out of the `without` arm, so the arms would differ by more than the skill. Refused unless acknowledged.
+  if (lostSkills.length && !allowLostSkills)
+    throw new AgentSpecError(
+      path.join(agentsDir, agent + SPEC_SUFFIX),
+      `config.systemPrompt: removing every reference to ${targetSkill} for the without arm also removes the instruction about ${[...new Set(lostSkills.map((entry) => entry.skill))].join(', ')} (${JSON.stringify(lostSkills[0].text.slice(0, 120))}); reword the prompt so that skill has a line of its own`,
+    );
   const agentsJson = {
     with: JSON.stringify({
       [agent]: {
@@ -546,8 +649,10 @@ function buildArms(
         },
         prompt: {
           dropped: strippedPrompt.dropped,
+          cut: strippedPrompt.cut,
           loose: strippedPrompt.loose,
         },
+        lostSkills,
       },
       agent,
       plugin: PLUGIN,
@@ -603,6 +708,7 @@ module.exports = {
   stripSkillReferences,
   stripSkillReferencesReport,
   stripDescriptionReport,
+  lostSkillReferences,
   assertOnlyTargetDiffers,
   loadInstruction,
   loadAgentSpec,

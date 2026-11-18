@@ -473,6 +473,7 @@ test('stripSkillReferencesReport lists the lines it dropped and the lines that s
   assert.deepEqual(stripSkillReferencesReport('nothing here', 'x'), {
     text: 'nothing here',
     dropped: [],
+    cut: [],
     loose: [],
   });
   assert.equal(
@@ -1519,7 +1520,7 @@ test('a several-word name is also found spaced, in Title Case or capitals, and i
   const plain = 'Please run a test coverage analysis of the diff.';
   assert.deepEqual(
     stripSkillReferencesReport(`keep\n${plain}\nkeep too`, skill),
-    { text: `keep\n${plain}\nkeep too`, dropped: [], loose: [plain] },
+    { text: `keep\n${plain}\nkeep too`, dropped: [], cut: [], loose: [plain] },
   );
   // A longer name or a name with another word between stays.
   for (const line of [
@@ -1595,4 +1596,269 @@ test('buildArms lists a prompt line that uses a several-word name as plain words
       removeArms(built);
     }
   });
+});
+
+// ---- what else a drop takes out of the without prompt ----------------------------------------------------------------
+
+test('a line that names the skill keeps its sentences that are not about it', () => {
+  const step =
+    '2. Implement the requested change with minimal, surgical edits. If the change is design-bearing, run `design-impact-review` first and surface any breaking impact. Then run the tests.';
+  const report = stripSkillReferencesReport(
+    `1. Read the code\n${step}\n3. Report`,
+    'design-impact-review',
+  );
+  assert.equal(
+    report.text,
+    '1. Read the code\n2. Implement the requested change with minimal, surgical edits. Then run the tests.\n3. Report',
+  );
+  assert.deepEqual(report.dropped, []);
+  assert.deepEqual(report.cut, [
+    'If the change is design-bearing, run `design-impact-review` first and surface any breaking impact.',
+  ]);
+  // A bullet whose every sentence is about the skill still goes whole, with its numbering repaired.
+  const whole = stripSkillReferencesReport(
+    '1. Plan\n2. Run `design-impact-review` first.\n3. Report',
+    'design-impact-review',
+  );
+  assert.equal(whole.text, '1. Plan\n2. Report');
+  assert.deepEqual(whole.dropped, ['2. Run `design-impact-review` first.']);
+});
+
+test('a bullet for another skill keeps its own text when its last sentence points at the skill', () => {
+  const bullet =
+    '- **deliberation-panel**: Use for high-stakes decisions. Derives axes and returns a scored recommendation. Not a substitute for `socratic-elicitation`.';
+  const report = stripSkillReferencesReport(
+    `${bullet}\n- **socratic-elicitation**: Asks questions before work begins.`,
+    'socratic-elicitation',
+  );
+  assert.equal(
+    report.text,
+    '- **deliberation-panel**: Use for high-stakes decisions. Derives axes and returns a scored recommendation.',
+  );
+  assert.deepEqual(report.dropped, [
+    '- **socratic-elicitation**: Asks questions before work begins.',
+  ]);
+  assert.deepEqual(report.cut, [
+    'Not a substitute for `socratic-elicitation`.',
+  ]);
+});
+
+test('a list entry in the middle of a sentence is cut and the other skill stays named', () => {
+  for (const [line, expected] of [
+    [
+      'Always route operations through persistent-memory or workspace-skills skills, never raw file writes.',
+      'Always route operations through workspace-skills skills, never raw file writes.',
+    ],
+    [
+      'At these checkpoints, load and apply the persistent-memory or workspace-skills skill:',
+      'At these checkpoints, load and apply the workspace-skills skill:',
+    ],
+    [
+      'Use `workspace-skills`, `persistent-memory` and `other-skill` often.',
+      'Use `workspace-skills` and `other-skill` often.',
+    ],
+    [
+      'Use `workspace-skills` and `persistent-memory` often.',
+      'Use `workspace-skills` often.',
+    ],
+  ]) {
+    const report = stripSkillReferencesReport(line, 'persistent-memory');
+    assert.equal(report.text, expected, line);
+    assert.deepEqual(report.dropped, [], line);
+  }
+});
+
+test('"e.g." does not end a sentence, so a bullet is not cut in the middle of one', () => {
+  const report = stripSkillReferencesReport(
+    '- Notes are short, e.g. `brew-log` entries. Use more.',
+    'brew-log',
+  );
+  assert.equal(report.text, '- Use more.');
+});
+
+test('lostSkillReferences names the other skill that a removed text mentions', () => {
+  assert.deepEqual(
+    arms.lostSkillReferences(
+      ['Run `a-skill` and `b-skill` together.', 'Nothing else.'],
+      ['b-skill', 'c-skill'],
+    ),
+    [{ skill: 'b-skill', text: 'Run `a-skill` and `b-skill` together.' }],
+  );
+});
+
+test('buildArms refuses a pair whose without prompt would lose the instruction about another declared skill, unless that is allowed', () => {
+  helpers.withTmp((dir) => {
+    const repo = makeRepo(dir, {
+      skills: ['brew-log', 'pantry-note'],
+      prompt:
+        '- **brew-log**: Writes brew logs. Pair with `pantry-note` for the shelf.',
+    });
+    // The sentence that names both is cut whole, so the instruction about pantry-note goes with it.
+    const prompt = '- Do the work. Run brew-log, which then feeds pantry-note.';
+    helpers.write(path.join(dir, 'agents', 'k-developer.agent-spec.json'), {
+      name: 'k-developer',
+      config: { description: 'Fixture agent.', systemPrompt: prompt },
+      dependencies: { skills: { skillNames: ['brew-log', 'pantry-note'] } },
+    });
+    assert.throws(
+      () => buildArms('brew-log', { ...repo, agent: 'k-developer' }),
+      /also removes the instruction about pantry-note/,
+    );
+    assert.deepEqual(
+      fs.readdirSync(dir).filter((name) => name.startsWith('bench-arms-')),
+      [],
+      'no scratch folder was made',
+    );
+    const built = buildArms('brew-log', {
+      ...repo,
+      agent: 'k-developer',
+      allowLostSkills: true,
+    });
+    try {
+      assert.deepEqual(
+        built.stripped.lostSkills.map((entry) => entry.skill),
+        ['pantry-note'],
+      );
+    } finally {
+      removeArms(built);
+    }
+    assert.throws(
+      () =>
+        buildArms('brew-log', {
+          ...repo,
+          agent: 'k-developer',
+          allowLostSkills: 'yes',
+        }),
+      /allowLostSkills must be true or false/,
+    );
+  });
+});
+
+test("a line that opens with the skill's own name goes whole, so no tail of its description stays", () => {
+  for (const [line, skill] of [
+    [
+      '- **document-formats**: Read and write .docx files via pandoc. Use when handling Word documents.',
+      'document-formats',
+    ],
+    [
+      '- `document-formats`: Read and write .docx files. Use when handling Word documents.',
+      'document-formats',
+    ],
+    [
+      '- persistent-memory captures (facts, preferences): no confirmation. Write, then notify ("Saved: x").',
+      'persistent-memory',
+    ],
+    [
+      '2. bench:document-formats reads .docx. Use for Word.',
+      'document-formats',
+    ],
+  ]) {
+    const report = stripSkillReferencesReport(
+      `- **other**: Does work.\n${line}\n- **last**: Does more.`,
+      skill,
+    );
+    assert.equal(
+      report.text,
+      '- **other**: Does work.\n- **last**: Does more.',
+      line,
+    );
+    assert.deepEqual(report.dropped, [line], line);
+    assert.deepEqual(report.cut, [], line);
+  }
+  // A one-word name used as a plain word at the start of a line is not the skill's entry.
+  assert.equal(
+    stripSkillReferencesReport(
+      'Verification matters here. Run `verification` before release.',
+      'verification',
+    ).text,
+    'Verification matters here.',
+  );
+  // A line that only mentions the skill after its own start keeps what is not about it.
+  const report = stripSkillReferencesReport(
+    '- **other**: Does work. Pair it with `document-formats` for Word.',
+    'document-formats',
+  );
+  assert.equal(report.text, '- **other**: Does work.');
+});
+
+test('a sentence that starts with a pronoun right after a cut sentence goes with it', () => {
+  const report = stripSkillReferencesReport(
+    'Always call `dispatch.sh`. Invoke the mux-dispatch skill first. Its SKILL.md resolves the path. It is short. They differ. Do not guess a path.',
+    'mux-dispatch',
+  );
+  assert.equal(report.text, 'Always call `dispatch.sh`. Do not guess a path.');
+  assert.deepEqual(report.cut, [
+    'Invoke the mux-dispatch skill first.',
+    'Its SKILL.md resolves the path.',
+    'It is short.',
+    'They differ.',
+  ]);
+  // A pronoun after a sentence that stays is not touched, also when the same text was cut earlier in the line.
+  assert.equal(
+    stripSkillReferencesReport(
+      'It is short. Run `brew-log` first. It is short. Read the code. It is short.',
+      'brew-log',
+    ).text,
+    'It is short. Read the code. It is short.',
+  );
+  // And one that follows a sentence that stays.
+  assert.equal(
+    stripSkillReferencesReport(
+      'Read the code. It is short. Run `brew-log` first.',
+      'brew-log',
+    ).text,
+    'Read the code. It is short.',
+  );
+});
+
+// The one pair of the agent specs that the lostSkills check refuses: the entry of `deliberation-panel` ends with a pointer to
+// `socratic-elicitation`, and the whole entry goes with the skill, so the check refuses the pair.
+const REFUSED_REAL_PAIRS = ['k-product-manager / deliberation-panel'];
+
+function realPairs() {
+  const agentsDir = path.join(__dirname, '..', '..', '..', 'agents');
+  return fs
+    .readdirSync(agentsDir)
+    .filter((name) => name.endsWith('.agent-spec.json'))
+    .flatMap((file) => {
+      const agent = file.replace('.agent-spec.json', '');
+      const spec = loadAgentSpec(agentsDir, agent);
+      return spec.skillNames.map((skill) => ({ agent, skill, spec }));
+    });
+}
+
+test('the real agent specs: only the pairs that are named lose another skill, and the others are not refused', () => {
+  const refused = [];
+  for (const { agent, skill, spec } of realPairs()) {
+    const prompt = stripSkillReferencesReport(spec.prompt, skill);
+    const description = stripDescriptionReport(spec.description, skill);
+    const others = spec.skillNames.filter((name) => name !== skill);
+    if (
+      arms.lostSkillReferences(
+        [...prompt.dropped, ...prompt.cut, ...description.dropped],
+        others,
+      ).length
+    )
+      refused.push(`${agent} / ${skill}`);
+  }
+  assert.deepEqual(refused, REFUSED_REAL_PAIRS);
+});
+
+test('the real agent specs: no line of a without prompt is a fragment of the skill that was removed', () => {
+  // A line that was changed (a sentence cut) must not start with the tail of a skill's own entry ("- Use when ...",
+  // "- Loads automatically ...") or with a pronoun for it ("Its SKILL.md ..."), and must not hold a SKILL.md.
+  const fragment =
+    /^\s*(?:[-*+]\s+|\d+\.\s+)?(?:It|Its|This|These|They|Their|Those|Use when|Use after|Use before|Use for|Use to|Use as|Loads?|Operates|Derives)\b/;
+  let changedLines = 0;
+  for (const { agent, skill, spec } of realPairs()) {
+    const original = new Set(spec.prompt.split('\n'));
+    const report = stripSkillReferencesReport(spec.prompt, skill);
+    for (const line of report.text.split('\n')) {
+      if (original.has(line)) continue;
+      changedLines += 1;
+      assert.doesNotMatch(line, fragment, `${agent} / ${skill}: ${line}`);
+      assert.doesNotMatch(line, /SKILL\.md/, `${agent} / ${skill}: ${line}`);
+    }
+  }
+  assert.ok(changedLines > 0, 'the check saw no changed line');
 });
