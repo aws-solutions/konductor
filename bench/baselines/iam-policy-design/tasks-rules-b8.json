@@ -1,0 +1,133 @@
+{
+  "format_version": 1,
+  "skill": "iam-policy-design",
+  "batch": "rules-b8",
+  "generated_at": "2026-11-10T06:07:34.502Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "2235c8ad1ad2ae1719ab5d24d874714d58480a2b47e60ce2b7371138718517c1",
+  "scenarios": [
+    {
+      "id": "iam-policy-design-rules-1",
+      "title": "Image thumbnail Lambda role",
+      "target_section": "Identity-Based Policy (Least Privilege)",
+      "prompt": "Hey, I'm setting up a small Lambda that fires when a photo lands in our uploads bucket (`acme-photo-uploads`), makes a thumbnail, writes the thumbnail to `acme-photo-thumbs`, and records the result in a DynamoDB table called `PhotoMeta` (we only ever put new items and update the status attribute). Account is 111122223333, region eu-west-1. Function name is `thumbMaker`. It also needs to write its own logs.\n\nCan you write the IAM role for it? I was going to just attach AmazonS3FullAccess and AmazonDynamoDBFullAccess to get moving but my colleague said that's lazy. Give me whatever I need to actually deploy the role.",
+      "rubric": [
+        "Read access to the uploads bucket is limited to object-read on objects in acme-photo-uploads, and writes to acme-photo-thumbs are limited to object-write there; no all-actions or all-resources grant on S3.",
+        "The DynamoDB permissions are limited to item put and update on the PhotoMeta table ARN in eu-west-1 account 111122223333, not table-wide full access or a wildcard resource.",
+        "At least one narrowing condition is added to the permissions (for example restricting to eu-west-1, requiring encrypted transport, or limiting write keys), rather than only action and resource lists.",
+        "Gives a brief reason for each permission group (read uploads, write thumbs, table writes, logs) tied to the described function behavior.",
+        "The role is shown with a permissions policy and a separate trust policy letting the Lambda service assume it, as distinct JSON blocks.",
+        "Provides deployable infrastructure code (CDK or a YAML template) that creates the thumbMaker role with these permissions."
+      ],
+      "why_skill_matters": "A small serverless role request where the user is tempted by managed full-access policies. Makes specific actions/resources, conditions, justification, trust policy and IaC matter."
+    },
+    {
+      "id": "iam-policy-design-rules-2",
+      "title": "Patient records portal on AWS",
+      "target_section": "HIPAA Checklist",
+      "prompt": "We're a small clinic software startup building a patient portal. Patients log in and view their lab results and visit notes, clinicians view and edit records for their own patients. Stack: API Gateway -> Lambda -> DynamoDB (table `PatientRecords`, partition key is the patient id) plus an S3 bucket `clinic-docs-prod` for scanned PDFs. Everything is in us-east-1, single AWS account. We have a few real customers signing next month and their lawyers keep asking about HIPAA.\n\nI need the access control and security design: IAM roles, bucket and encryption setup, logging, and what we still need to do to be able to say we're compliant. Our CTO worries about someone with a clinician login reading other doctors' patients, and about leaked logs. Not sure what else to worry about. Please include the code to deploy it.",
+      "rubric": [
+        "Maps controls to HIPAA requirements for this portal: encryption of PHI at rest and in transit, multi-factor authentication for people reaching PHI, and audit logging retained for six years.",
+        "Calls out that a signed business associate agreement with AWS is needed and that patient data must be kept out of application logs (responding to the CTO's leaked-logs worry), and lists remaining gaps with remediation steps.",
+        "Lambda and clinician permissions on PatientRecords and clinic-docs-prod use specific actions and the actual table and bucket ARNs, with no wildcard resource on those stores.",
+        "Patient-facing access to DynamoDB is narrowed by a condition tying rows to the caller's own patient id (or equivalent), and other conditions such as encrypted transport are used.",
+        "Identifies threats including clinician reading other doctors' patients and log leakage, and maps each to a specific control with status (fully, partly, not addressed) and how to verify it.",
+        "Includes deployable infrastructure code for the roles, encryption key, bucket policy, audit trail and alarms.",
+        "Each role (patient, clinician, Lambda) has a stated purpose and justification and none is given broader rights than described."
+      ],
+      "why_skill_matters": "Regulated health workload with two stated threats and an invitation to find more. Makes HIPAA mapping, threat mapping, scoped policies, conditions and code matter."
+    },
+    {
+      "id": "iam-policy-design-rules-3",
+      "title": "Partner reads from shared bucket",
+      "target_section": "Resource-Based Policy: S3 Bucket",
+      "prompt": "One of our logistics partners (their AWS account is 444455556666) needs to pull daily CSV manifests from our bucket `shipco-manifests-prod` in account 123456789012. They said \"just give our account access\". Files are under the prefix `outbound/`. Our bucket is currently private with SSE-S3 default encryption. The partner's pull job runs as a role called `ManifestPuller` in their account and comes in from their NAT addresses 203.0.113.10 and 203.0.113.11.\n\nCan you write the bucket policy and tell me what else, if anything, I should set up on our side? I'd rather not be the reason there's a data leak, the manifests have customer addresses in them.",
+      "rubric": [
+        "The policy trusts the specific ManifestPuller role in account 444455556666 rather than the whole account or a wildcard principal.",
+        "Cross-account access is further constrained by conditions, such as the partner's two source IP addresses, so a leaked credential elsewhere cannot use it.",
+        "The bucket policy denies requests not over encrypted transport and does not allow wildcard principals in any allow statement.",
+        "Partner access is limited to listing and reading under the outbound/ prefix only, not all actions or the whole bucket.",
+        "Notes that if the bucket moves to a customer-managed key, the partner role needs decrypt rights only via a key policy that keeps administrators separate from users, with usage limited to calls through S3.",
+        "Briefly justifies why the partner is given each permission, tied to the daily manifest pull."
+      ],
+      "why_skill_matters": "Cross-account sharing where the user suggests granting a whole account. Makes explicit trust, conditions, bucket transport/encryption controls and scoping matter."
+    },
+    {
+      "id": "iam-policy-design-rules-4",
+      "title": "Team lead creating developer roles",
+      "target_section": "Permission Boundary for Delegated Administration",
+      "prompt": "Platform team here. We're moving to a model where each product team lead can spin up IAM roles for their own developers and Lambda functions without filing a ticket with us. Org is a single account for the \"orders\" product, region eu-central-1. Here's the statement from my draft of the lead role's policy, can you tidy it up and make it production-ready?\n\n```\n{\n  \"Sid\": \"TeamLeadManage\",\n  \"Effect\": \"Allow\",\n  \"Action\": [\n    \"iam:CreateRole\",\n    \"iam:Attach*\",\n    \"iam:Put*Policy\",\n    \"iam:PassRole\",\n    \"lambda:*\",\n    \"dynamodb:*\",\n    \"logs:*\"\n  ],\n  \"Resource\": \"*\"\n}\n```\n\nThe leads are trusted, and we want them fast. Developers' roles should be able to use Lambda, DynamoDB tables prefixed `orders-`, and logs. Keep it simple, we don't have much time to spend on it.",
+      "rubric": [
+        "Identifies that the lead can create roles and attach policies, so a limit on what those created roles can ever do is required, and that limit stops security-critical services (identity, key management, audit) and blocks the lead from lifting their own rights.",
+        "Role creation and policy attachment by the lead are only allowed when the new role carries the limit, and the lead cannot remove or edit the limit.",
+        "Replaces the all-actions Lambda, DynamoDB and logs grants and the wildcard resource with specific actions and ARNs, scoping DynamoDB to tables prefixed orders- in eu-central-1.",
+        "Role-passing is restricted to named role ARNs or a path/prefix and to the Lambda service rather than any role.",
+        "Adds conditions such as region eu-central-1 and multi-factor authentication for the human lead.",
+        "Explains why each retained permission is needed for the stated lead and developer duties and does not grant more than described."
+      ],
+      "why_skill_matters": "The draft contains role creation, policy attachment and pass-role under \"trusted leads\", easy to tidy without noticing the escalation path. Makes delegation limit, wildcard removal and conditions matter."
+    },
+    {
+      "id": "iam-policy-design-rules-5",
+      "title": "Queue and key for an internal tool",
+      "target_section": "Resource-Based Policy: KMS Key",
+      "prompt": "Internal tool, nothing fancy: an ECS service in account 123456789012 (task role `report-worker`) consumes messages from an SQS queue `report-jobs` and writes finished reports into DynamoDB table `reports`. A separate Lambda (`report-enqueue`, execution role `enqueue-exec`) owned by another team in account 111122223333 sends messages to the queue. We want the queue and the table encrypted with our own KMS key because the reports contain salary data. Two people in the platform group (role `PlatformAdmins`) manage keys. Region us-west-2.\n\nPlease write the key policy, the queue policy, and the task role policy. We don't have a set requirement for how strict this has to be, so you pick a sensible level and tell me what you picked.",
+      "rubric": [
+        "The key policy gives PlatformAdmins management permissions without the ability to encrypt or decrypt, and gives report-worker and enqueue-exec only encrypt/decrypt-type use without management or deletion.",
+        "Service access to the key is limited to calls made through the intended services (SQS and DynamoDB) in us-west-2.",
+        "The queue and key policies let the specific enqueue-exec role in account 111122223333 send, rather than trusting that whole account, and add a condition such as the source function or queue ARN.",
+        "Explicitly states the assurance level chosen (standard, being the middle level, unless a different one is justified) and ties the depth of encryption, logging and monitoring to it.",
+        "The queue policy and task role policy name specific queue and table ARNs and actions (receive/delete for the worker, send for the enqueue role), with no wildcard resources.",
+        "Each of report-worker and enqueue-exec is given only what its described behavior needs, with a brief reason."
+      ],
+      "why_skill_matters": "The user leaves strictness to the assistant, salary data requires a key policy with admin/user split, and the sender lives in another account. Makes key separation, tier statement, explicit cross-account trust and scoping matter."
+    },
+    {
+      "id": "iam-policy-design-rules-6",
+      "title": "Card payments microservice review request",
+      "target_section": "PCI-DSS Checklist",
+      "prompt": "Writing up access controls for our checkout service before the security review next week. Short version of what exists: ALB -> ECS Fargate service `checkout-api` -> RDS Postgres (encrypted) holding tokenized card references plus last-4 digits, and an S3 bucket `checkout-receipts` with PDF receipts. Payment processor handles the actual PANs; we never see them. Account 123456789012, eu-west-1. Three roles today: `checkout-task`, `receipt-job` (nightly, reads DB, writes receipts), and `support-readonly` (humans, read receipts to answer customer queries).\n\nOur existing notes say: \"Application logs are kept for 14 days. Support engineers sign in with SSO password. Task role has s3:* on the receipts bucket since it was easier.\" Security review is going to be run against PCI-DSS because the auditors treat anything near payments that way.\n\nGive me the redesigned policies and a rundown of what we'd be flagged for.",
+      "rubric": [
+        "Maps the design to PCI-DSS requirements (encryption, strong access control with multi-factor for people, logging with sufficient retention, network separation) and lists the gaps with remediation steps.",
+        "Flags the notes' 14-day log retention and password-only support sign-in as gaps against the framework, with a concrete fix for each.",
+        "Replaces the s3:* on checkout-receipts for the task role with only the specific object actions it needs, on that bucket's ARN.",
+        "support-readonly requires multi-factor authentication and other conditions (encrypted transport, region eu-west-1 or private endpoint) narrow when access applies.",
+        "Infers relevant threats from the architecture (e.g. unauthorized receipt access by support, credential misuse, data exfiltration) and gives each a control, a status and a verification method.",
+        "The purpose of checkout-task, receipt-job and support-readonly is stated with justification and none receives more than its described duties."
+      ],
+      "why_skill_matters": "The buried clauses in the notes (14-day logs, password SSO, s3:*) are easy to miss; framework named only as \"PCI-DSS\". Makes gap analysis, scoping, MFA conditions and inferred threats matter."
+    },
+    {
+      "id": "iam-policy-design-rules-7",
+      "title": "Full security stack for a new analytics app",
+      "target_section": "Implementation Code",
+      "prompt": "Starting a greenfield analytics product on AWS and I want the security side done properly from day one. Architecture: users upload CSV files through a web app to S3 (`insightly-ingest`), a Step Functions workflow triggers Lambda functions in a VPC that parse them and write aggregates to DynamoDB (`InsightAggregates`), and users query results through API Gateway. Customer data is business-confidential. Regions: eu-west-1 only because of customer contracts. One AWS account for now.\n\nPlease give me the complete thing: roles, key and bucket policies, encryption, audit trail, alarms for the nasty stuff, private connectivity to AWS services from the VPC, and the infra code (CDK or YAML templates, your pick) so I can deploy it. I'll write the threat model later; for now just use your judgement.",
+      "rubric": [
+        "Provides infra code (CDK or YAML templates) covering the Lambda roles, customer-managed key, ingest bucket policy, audit trail, alarms and VPC endpoints for S3 and DynamoDB.",
+        "Infers threats for this system (e.g. unauthorized data access across customers, exfiltration from the ingest bucket, tampering with uploads) and gives each a mapped control, a status and a verification method.",
+        "States the assurance level used and, as no strictness was given, defaults to the middle (standard) level with matching encryption and logging depth.",
+        "Conditions restrict access to eu-west-1, require encrypted transport and limit S3/DynamoDB access to the private endpoint.",
+        "The insightly-ingest bucket policy denies non-encrypted transport and uploads missing the required server-side encryption, with allows naming specific roles.",
+        "Each Lambda and workflow role has a stated purpose and justification, with no broader rights than its pipeline step needs."
+      ],
+      "why_skill_matters": "Broad \"complete thing\" request with no threat model and no strictness stated. Makes IaC, inferred threats, tier default, conditions and bucket policy matter."
+    },
+    {
+      "id": "iam-policy-design-rules-8",
+      "title": "GDPR user-content app with team roles",
+      "target_section": "GDPR Checklist",
+      "prompt": "We run a small Berlin-based photo-book service (about 20k EU customers). Customers' photos and addresses sit in S3 bucket `fotobook-user-media` and Aurora, region eu-central-1. Our dev team has a role called `dev-power` that right now has AdministratorAccess in the prod account, and the marketing contractor has an access key that can read the whole bucket. We got a data-subject deletion request last week and honestly did not know how to prove everything was deleted or who had touched the data.\n\nCan you redesign the access so devs can deploy and debug but not read customer photos by default, the contractor only sees what they need for campaigns (a folder `public-showcase/`), and we can answer GDPR questions? Keep the deployment code short but real, we're a tiny team.",
+      "rubric": [
+        "Maps the redesign to GDPR requirements (encryption, access control with audit logging, EU-only residency, deletion capability, data minimization) and lists remaining gaps with remediation steps.",
+        "The contractor policy grants only read on the public-showcase/ prefix of fotobook-user-media, not the whole bucket or all actions.",
+        "Conditions narrow access, such as restricting to eu-central-1 and requiring multi-factor authentication or encrypted transport for the developers' elevated actions.",
+        "Addresses that developers who deploy infrastructure may create roles, and caps what those roles can do with a limit that excludes identity, key and audit services and prevents self-escalation (or states that deploy permissions avoid role creation).",
+        "Includes short deployable infrastructure code for the new roles, the bucket protections and the audit trail.",
+        "Identifies relevant threats (developers reading customer photos, leaked contractor key, untracked access) and gives each a control, status and verification method.",
+        "The role for developers and the contractor each carry a stated purpose and justification, with nothing broader than their described tasks."
+      ],
+      "why_skill_matters": "Small EU company with admin devs and a bucket-wide contractor key, plus deletion proof worry. Makes GDPR mapping, scoping, conditions, delegation limit, threats and IaC matter."
+    }
+  ]
+}

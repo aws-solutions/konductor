@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "infra-validation",
+  "skill_md_sha256": "aecde42ec40e68047ebd2bd1f76b953f83f80bc2c6c880bf3cbc66e975353ac5",
+  "request_context": "A request to review cloud infrastructure-as-code (CDK or CloudFormation) for security, cost, reliability and compliance problems before it is deployed.",
+  "rules": [
+    {
+      "id": "infra-validation-r01",
+      "source_quote": "If the user has NOT provided items 1–3, the ONLY acceptable first response is:",
+      "class": "useful",
+      "outcome": "When the request does not say what kind of infrastructure code it is, where it is, or which deployment stage it targets, the answer asks for those three details instead of starting a review or guessing.",
+      "why": "Reviewing without knowing the format, location and stage leads to wrong assumptions and misjudged severity.",
+      "scenario_hint": "User asks to validate their infrastructure without saying the code format, location or target stage."
+    },
+    {
+      "id": "infra-validation-r02",
+      "source_quote": "**DO NOT SEARCH FOR CODE IN THE WORKSPACE WITHOUT ASKING FIRST**",
+      "class": "useful",
+      "outcome": "When the code location is not given, the answer does not browse or read the user's project on its own and asks the user to point to the code or paste it.",
+      "why": "Unrequested scanning of a workspace can review the wrong code and oversteps what the user agreed to.",
+      "scenario_hint": "Vague request such as 'check my setup before I deploy' with no path or pasted code."
+    },
+    {
+      "id": "infra-validation-r03",
+      "source_quote": "Optional (helps me provide better feedback):",
+      "class": "style",
+      "outcome": "The request for details separates the mandatory items from optional ones such as compliance standards, review focus and known concerns.",
+      "why": "",
+      "scenario_hint": "Any request to validate infrastructure code where details are missing."
+    },
+    {
+      "id": "infra-validation-r04",
+      "source_quote": "Check EVERY IAM policy statement for:",
+      "class": "useful",
+      "outcome": "Flags permissions that use wildcard actions or wildcard resources, or broad service-wide actions, as serious problems and proposes narrowly scoped permissions limited to the specific actions and resources needed.",
+      "why": "Over-broad permissions let a compromised function reach far more than intended.",
+      "scenario_hint": "Template where a function role is granted all actions on all resources."
+    },
+    {
+      "id": "infra-validation-r05",
+      "source_quote": "Encryption at rest not configured for data stores",
+      "class": "useful",
+      "outcome": "Identifies every storage resource (buckets, tables, databases, volumes) lacking encryption at rest and treats each as a must-fix problem with a concrete corrected configuration.",
+      "why": "Unencrypted data stores violate security and compliance baselines and are costly to fix after data exists.",
+      "scenario_hint": "Code defining a bucket, a table and a database without any encryption settings."
+    },
+    {
+      "id": "infra-validation-r06",
+      "source_quote": "Security groups with `0.0.0.0/0` ingress on non-HTTP ports",
+      "class": "useful",
+      "outcome": "Flags network rules open to the whole internet on administrative or database ports (remote login, database access) as must-fix, and suggests restricting the source range.",
+      "why": "Open admin or database ports invite brute force and direct exploitation.",
+      "scenario_hint": "Network rules allowing the entire internet to reach SSH or a database port."
+    },
+    {
+      "id": "infra-validation-r07",
+      "source_quote": "No deletion protection on stateful resources (RDS, DynamoDB)",
+      "class": "useful",
+      "outcome": "Calls out production databases and tables that lack deletion protection, retain-on-delete behaviour or point-in-time recovery and backups, and shows how to add them.",
+      "why": "An accidental stack deletion or replacement would destroy production data permanently.",
+      "scenario_hint": "Production database or table defined with destroy-on-removal behaviour and no backups."
+    },
+    {
+      "id": "infra-validation-r08",
+      "source_quote": "Verify DLQ is SQS queue with 14-day retention",
+      "class": "useful",
+      "outcome": "Notes async functions and queues with no dead-letter queue for failed messages, and recommends one with long (about two weeks) retention.",
+      "why": "Without it, failed events vanish and cannot be diagnosed or replayed.",
+      "scenario_hint": "Event-driven functions or queues with no failure destination configured."
+    },
+    {
+      "id": "infra-validation-r09",
+      "source_quote": "Verify appropriate retention: 7 days (dev), 30 days (staging), 90+ days (prod)",
+      "class": "useful",
+      "outcome": "Checks that log groups have bounded retention and judges the period against the deployment stage, with longer retention expected in production than in development.",
+      "why": "Indefinite or too-short retention raises cost or breaks audit needs.",
+      "scenario_hint": "Production stack with log groups lacking a retention period or set to a few days."
+    },
+    {
+      "id": "infra-validation-r10",
+      "source_quote": "**Consider Context**: Understand project constraints and requirements (dev vs production)",
+      "class": "useful",
+      "outcome": "Severity and recommendations depend on the stated stage: production-only items such as multi-AZ, recovery and alarms are demanded for production but treated as optional or cost-saving trade-offs for development.",
+      "why": "Applying production standards to a dev sandbox wastes money and obscures real problems.",
+      "scenario_hint": "Same template reviewed as a development environment versus a production one."
+    },
+    {
+      "id": "infra-validation-r11",
+      "source_quote": "**IMPORTANT**: If you did not systematically check ALL resources of a type, explicitly state this limitation in the report.",
+      "class": "generic",
+      "outcome": "The review states honestly any resources or categories it could not fully check, rather than implying complete coverage.",
+      "why": "Readers may deploy believing everything was verified when parts were skipped.",
+      "scenario_hint": "Any request to validate infrastructure code, especially partial or very large input."
+    },
+    {
+      "id": "infra-validation-r12",
+      "source_quote": "Present findings as: CRITICAL → IMPORTANT → SUGGESTION.",
+      "class": "style",
+      "outcome": "Findings are ordered from most to least severe, with must-fix issues clearly separated from should-fix and optional ones, and each finding names the affected resource, its impact and a concrete fix with example code.",
+      "why": "",
+      "scenario_hint": "Any request to validate infrastructure code."
+    }
+  ]
+}

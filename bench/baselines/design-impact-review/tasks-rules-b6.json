@@ -1,0 +1,117 @@
+{
+  "format_version": 1,
+  "skill": "design-impact-review",
+  "batch": "rules-b6",
+  "generated_at": "2026-11-10T00:03:16.106Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "d27ec823c911d384f72df5aa952926e4e361b7281035b5f8d356358b1b0b599e",
+  "scenarios": [
+    {
+      "id": "design-impact-review-rules-2",
+      "title": "Change checkout response shape",
+      "target_section": "Step 2 — Trace impact",
+      "prompt": "Our checkout service returns this from POST /orders:\n\n```json\n{ \"orderId\": \"o_123\", \"total\": 4599, \"currency\": \"USD\", \"status\": \"paid\" }\n```\n\nI want to change it to nest things so it's cleaner:\n\n```json\n{ \"order\": { \"id\": \"o_123\", \"status\": \"paid\" }, \"payment\": { \"amount\": 4599, \"currency\": \"USD\", \"cardLast4\": \"4242\" } }\n```\n\nConsumers: our web checkout (Next.js) reads `orderId` and `total` to render the confirmation page, the iOS app (released builds can't be force-updated for ~6 weeks) does the same, and a partner webhook relay forwards the body to a third party. We have OpenAPI spec v3 and contract tests against it. The orders table stores total as integer cents and doesn't store card last4; we'd fetch it from the payment provider.\n\nPlease do the response change in the handler. Quick turnaround please, I'm in a hurry.",
+      "rubric": [
+        "Identifies that the Next.js confirmation page and the already-released iOS builds read orderId and total and will break with the nested shape.",
+        "Raises the new cardLast4 data: it is not in the orders table (needs a provider fetch) and forwarding it via the partner relay creates a new exposure to review.",
+        "Says that the old shape being invalidated for consumers (notably iOS builds that cannot be updated for weeks) must be surfaced and decided on by the user before the handler change goes ahead, and suggests involving the API or design owner.",
+        "Distinguishes artifacts individually, e.g. OpenAPI spec and contract tests need updating, the orders table is unaffected for existing fields, with reasons.",
+        "Treats the change as more than a handler edit, covering spec, contract tests, web, iOS and partner relay together.",
+        "Offers options (e.g. versioned endpoint, additive fields) and leaves the choice to the user instead of unilaterally deciding."
+      ],
+      "why_skill_matters": "An API shape change with released clients and a new sensitive field. Makes r01, r03, r06, r07 matter."
+    },
+    {
+      "id": "design-impact-review-rules-3",
+      "title": "Acceptance criteria change mid-sprint",
+      "target_section": "Step 1 — Identify the change's origin layer",
+      "prompt": "PM just pinged us. The story \"Users can reset their password\" had this acceptance criterion: \"User receives an email with a reset link valid for 24 hours.\" They now want: \"User can choose to receive the reset code by email OR SMS; code is 6 digits valid for 10 minutes; max 3 attempts.\"\n\nWhat we have today: a design doc describing an email-only flow with a signed JWT link, an API with POST /auth/reset-request and GET /auth/reset?token=..., a users table with only `email`, a threat model that covers email link interception, a React reset page that reads the token from the URL, and Cypress + unit tests for the link flow.\n\nI'm the dev on this. How do I approach this change? Where do I start and what's going to be affected?",
+      "rubric": [
+        "Treats this as a requirement-level change and walks through each downstream item present: design doc, API endpoints, users table, threat model, React page and tests.",
+        "Calls out specifics: the link/JWT flow becomes a code flow, a GET with the token in the URL no longer fits, and the users table lacks a phone number.",
+        "Checks whether the React reset page still matches the new requirement and whether existing endpoints can support entering a code, noting a code-verification endpoint and channel choice are needed.",
+        "Recommends telling the product owner and design/architecture owners and getting decisions (e.g. SMS provider, phone storage, fallback) before coding, rather than starting implementation.",
+        "Gives each artifact its own verdict with a reason, with at least one judged as needing a rewrite and another judged less affected.",
+        "Flags that storing phone numbers adds personal data that the threat model and API exposure need to consider, and that SMS adds new attack concerns such as code brute force and SIM-swap.",
+        "Presents the affected areas and next steps as a proposal and leaves the choice of how to proceed with the user.",
+        "Opens with a one-line statement of the change, its originating level (requirement) and why, then lists each artifact with a status, impact and action."
+      ],
+      "why_skill_matters": "A requirement change cascades through everything listed, including the reset screen. Makes r02, r04, r05, r06, r07 matter."
+    },
+    {
+      "id": "design-impact-review-rules-4",
+      "title": "Redesign onboarding flow screens",
+      "target_section": "Step 2 — Trace impact",
+      "prompt": "I'm the front-end lead on a fitness app. Design wants to change onboarding from a 4-step wizard (goals → body stats → schedule → plan preview) to a single scrolling page, plus a new step at the end: \"Connect your wearable\" which shows the user's last 7 days of heart-rate data pulled from their Fitbit.\n\nCurrent backend: POST /onboarding/step/{n} saves each step separately; GET /plan/preview takes the saved answers and returns a plan. There's no endpoint that touches wearable data. The original requirement doc says \"Onboarding must take under 60 seconds and must not require third-party accounts.\"\n\nI'm going to start building the new page in React tomorrow. Anything I should check first?",
+      "rubric": [
+        "Notes that the wearable heart-rate view needs backend support that does not exist yet (no endpoint, no Fitbit integration), so new endpoints must be planned.",
+        "Notes that the requirement \"must not require third-party accounts\" conflicts with the Fitbit connection, so alignment with requirements needs to be confirmed (optional vs required).",
+        "Examines whether the per-step save endpoints still fit a single-page flow (save granularity, partial progress).",
+        "Advises raising the requirement conflict with the product owner before building, and involving whoever owns the API design.",
+        "Raises that heart-rate data is sensitive health data requiring consideration in the security and privacy analysis and tests.",
+        "Presents the findings as input for the user to decide on rather than refusing or ordering them to stop work."
+      ],
+      "why_skill_matters": "A UI flow change that relies on a missing API and conflicts with the requirement. Makes r02, r05, r07 matter."
+    },
+    {
+      "id": "design-impact-review-rules-5",
+      "title": "Split service module internally",
+      "target_section": "Step 3 — Classify each impacted artifact",
+      "prompt": "Quick one. In our Python inventory service, `inventory/service.py` has grown to 1,400 lines. I want to split it into `inventory/stock.py`, `inventory/reservations.py` and `inventory/reports.py`, and have `service.py` re-export the same public functions so imports elsewhere keep working. No changes to function signatures, DB schema, or the REST layer. All behavior stays identical, and the existing unit tests will keep running against the same public names.\n\nJust give me a plan for doing it safely. I don't want a big process around this, it's an internal cleanup.",
+      "rubric": [
+        "States that the change is contained to internal code since no interface, schema or REST behavior changes, and gives that reason.",
+        "Proceeds to give the practical split plan (move functions, re-export from service.py, run existing tests) without raising unnecessary design-level alarms.",
+        "Briefly judges the REST layer, DB schema and tests as unaffected (or only needing a rerun), with reasons tied to the re-export and unchanged signatures.",
+        "Does not produce a heavy cross-artifact review, long escalation, or demand sign-offs for this refactor.",
+        "Checks the one thing that could make it non-local: circular imports, or code and tests that import private names or patch the old module paths."
+      ],
+      "why_skill_matters": "A control: purely internal refactor. Makes r01, r06, r09 matter while testing over-escalation."
+    },
+    {
+      "id": "design-impact-review-rules-6",
+      "title": "Docs drift after adding optional filter",
+      "target_section": "Recommendation",
+      "prompt": "We have a GET /articles endpoint for our CMS. I added an optional `?language=` query param that filters by language code. If omitted, behavior is exactly as before (returns all). Implementation is done and tested at the unit level.\n\nWhat's left that I know of: the OpenAPI file doesn't mention the param, the public developer docs page lists the params, and the integration test suite only covers the unfiltered call. The admin UI doesn't use it yet and nothing else consumes it. Nothing about auth or data model changed (the `language` column already existed and was already returned).\n\nCan you review where this stands and tell me what to do next before I open the PR?",
+      "rubric": [
+        "Concludes that nothing is broken but the OpenAPI file, developer docs and integration tests are out of sync, and says so plainly.",
+        "Proposes tracking the doc, spec and test updates as follow-up items and asks whether the user wants to open the PR as is or fix them first.",
+        "Gives distinct verdicts: auth and data model unaffected with reasons (column already existed and was returned), admin UI unaffected, spec/docs/tests lagging.",
+        "Confirms existing consumers are not broken since omitting the param keeps the old behavior, and mentions the new filter as a small new input to be tested.",
+        "Leaves the decision on PR timing to the user.",
+        "Opens with a one-line statement of the change, its originating level (API) and why, then lists each artifact with status, impact and action."
+      ],
+      "why_skill_matters": "Additive change with drift only. Makes r03, r06, r08 matter."
+    },
+    {
+      "id": "design-impact-review-rules-7",
+      "title": "Quiet identifier change in long notes",
+      "target_section": "Anti-patterns this method catches",
+      "prompt": "Here are my notes from the sprint for the analytics export feature. Can you turn them into a clean implementation plan for me and the other dev? Tone: casual is fine.\n\n- Export job: nightly, writes CSV of events to S3 bucket `acme-exports`, one file per customer.\n- Use the existing `events` table; paginate by id, 50k rows per chunk.\n- Filename pattern `customer-{id}-{date}.csv`.\n- Add a retry with exponential backoff on S3 upload failures, max 5.\n- Emails customer admins a pre-signed link when done. Link valid 7 days.\n- Logging: use structured logs, include job id.\n- Since customers asked, I'm also going to add `user_email` and `ip_address` columns into the CSV, straight from events (they're already in the table, we just never exported them before).\n- Add a metric for job duration.\n- Tests: unit test chunking, integration test with localstack.\n- Rollout behind a flag `analytics_export_v1`.\n- Docs: add a section to the customer help center.\n\nDesign doc from March says: \"Exports contain only anonymized event data; no direct identifiers leave the platform.\"",
+      "rubric": [
+        "Spots that adding user_email and ip_address to exported files conflicts with the March design statement that no direct identifiers leave the platform, and that these fields are personal data.",
+        "Tells the user this contradiction must be settled (design or privacy owner, product decision) before building continues, rather than folding it silently into the plan.",
+        "Considers dependent items beyond the export code: the March design doc, privacy/threat review, the 7-day pre-signed link exposure, help center docs and tests covering the new fields.",
+        "Gives different verdicts to different artifacts, e.g. the design doc and privacy review as invalidated, help center docs and tests as needing additions, instead of one blanket concern.",
+        "Treats chunking, retry with backoff, structured logging and the duration metric as internal job details that proceed as planned without extra concern.",
+        "Still delivers the implementation plan, or offers it conditional on the decision, leaving the choice to the user."
+      ],
+      "why_skill_matters": "One bullet in a routine plan quietly deviates from the design doc. Makes r01, r02, r06, r07, r09 matter."
+    },
+    {
+      "id": "design-impact-review-rules-8",
+      "title": "Bug fix versus spec deviation",
+      "target_section": "When to skip",
+      "prompt": "Two things on our invoicing service, I'd like to knock both out today.\n\n1. Spec section 4.2 says: \"Late fee is 1.5% per month on the overdue balance, rounded to the nearest cent.\" The code does `balance * 0.15` by mistake (typo, 15%). Fix it to 0.015.\n\n2. While I'm there: finance asked us to cap the late fee at $50 per invoice. It isn't in the spec. I'd just add `min(fee, 50)` in the same function. Customers see the fee on the PDF invoice and in the customer portal's \"amount due\" field, and our accounting export computes expected totals from the spec formula to reconcile.\n\nHere's the function:\n\n```python\ndef late_fee(balance, months_overdue):\n    return round(balance * 0.15 * months_overdue, 2)\n```\n\nGive me the new function and whatever notes I need.",
+      "rubric": [
+        "Treats the 0.15 to 0.015 fix as restoring the documented behavior and applies it directly without extra process or analysis.",
+        "Recognizes the $50 cap as a new rule that deviates from spec 4.2 and traces it to the spec, invoice PDF, portal amount due, accounting reconciliation and tests.",
+        "Says the cap should be confirmed with the spec owner and finance or product before being treated as final, and does not simply merge it silently.",
+        "Judges the two changes separately: the typo fix as conforming with nothing else affected, and the cap as affecting reconciliation and spec documentation.",
+        "Notes that the accounting export computing expected totals from the uncapped formula will mismatch with the cap, and that tests need new cases for capped and uncapped fees.",
+        "Provides the function (possibly with the cap pending the decision) and leaves the call on the cap to the user."
+      ],
+      "why_skill_matters": "Two changes bundled: a conforming bug fix and a spec deviation. Makes r01, r04, r06, r07 matter, with a guard against over-analyzing the typo fix."
+    }
+  ]
+}

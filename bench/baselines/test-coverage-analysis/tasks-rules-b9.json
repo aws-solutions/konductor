@@ -1,0 +1,136 @@
+{
+  "format_version": 1,
+  "skill": "test-coverage-analysis",
+  "batch": "rules-b9",
+  "generated_at": "2026-11-10T07:39:40.986Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "0b09f96f3535fdb2a1951a80c4e080e45f92f3dbcaa39ca35928a6b88d0f4d3f",
+  "scenarios": [
+    {
+      "id": "test-coverage-analysis-rules-1",
+      "title": "React dashboard with many files and shallow tests",
+      "target_section": "Stage 3: Test Distribution Analysis",
+      "prompt": "Hey, I need a quick read on our test situation before sprint planning. It's a React + Vite + Zustand app (customer analytics dashboard). Here's the output of our test run and the folder listing:\n\n```\n$ npm test\n PASS  src/components/__tests__/unit/KpiCard.test.tsx (14 tests)\n PASS  src/components/__tests__/unit/ChartLegend.test.tsx (11 tests)\n PASS  src/components/__tests__/unit/FilterBar.test.tsx (18 tests)\n PASS  src/components/__tests__/unit/DataTable.test.tsx (22 tests)\n PASS  src/components/__tests__/unit/Sidebar.test.tsx (9 tests)\n PASS  src/components/__tests__/unit/Header.test.tsx (7 tests)\n PASS  src/store/__tests__/unit/filters.test.ts (16 tests)\n PASS  src/utils/__tests__/unit/formatters.test.ts (25 tests)\n PASS  src/flows/__tests__/integration/exportReport.test.tsx (6 tests)\n PASS  src/flows/__tests__/integration/dateRange.test.tsx (5 tests)\n PASS  cypress/e2e/login.cy.ts (3 tests)\nTest Suites: 11 passed, 11 total\nTests: 136 passed, 136 total\n```\n\nSeveral of the component tests are just `expect(container).toMatchSnapshot()` plus checks like \"has class kpi-card--large\". We have 11 test files. My manager asked \"how many tests do we have and are we balanced?\" Give me an honest answer and what I should do about it.",
+      "rubric": [
+        "States the total as 136 individual test cases from the run and distinguishes it from the 11 test files, rather than quoting 11 as the number of tests.",
+        "Identifies the app as a frontend React single-page application and picks a UI-oriented approach that favours integration tests over unit tests, giving target shares for unit, integration and end-to-end.",
+        "Computes the real split from the listing (about 122 unit, 11 integration, 3 end-to-end, roughly 90/8/2) and says it is heavily skewed toward unit tests, with integration and end-to-end well below target, advising to shift effort toward user-flow integration tests and critical journeys.",
+        "Flags the snapshot and CSS-class-name component tests (e.g. in KpiCard) as low-value implementation-detail tests and suggests removing or converting them into behaviour-level integration tests.",
+        "Does not claim the suite is healthy or balanced simply because all 136 tests pass; notes that passing tests do not offset the missing integration and end-to-end coverage.",
+        "Orders findings from most to least severe and ends by asking whether the user wants these issues fixed."
+      ],
+      "why_skill_matters": "Pasted run output with 11 files but 136 cases, a frontend stack, a unit-dominated split, and snapshot/class-name tests. It makes the case-versus-file count, architecture target, distribution comparison and low-value tests matter."
+    },
+    {
+      "id": "test-coverage-analysis-rules-2",
+      "title": "Can we ship the payments release",
+      "target_section": "Stage 9: Readiness Assessment (Readiness Mode Only)",
+      "prompt": "We're planning to cut the release Thursday for our Express/Postgres billing API. Can we ship? Here's what I have.\n\nLast CI run (jest):\n```\nTests: 1 failed, 412 passed, 413 total\nFAIL test/integration/refund.test.ts\n  ● refunds › partial refund updates ledger balance\n    expected 4500, received 5000\n```\nTest split by folder: test/unit 310 cases, test/integration 85 cases, test/e2e 18 cases.\n\nFeatures shipping this release:\n1. Create invoice (tests in unit + integration, fine)\n2. Partial refunds (the failing one above; ledger logic changed last week)\n3. Customer login via JWT + refresh tokens: no test files reference auth at all. Only tested by hand by Priya last month.\n4. Webhook receiver for the card processor, has a happy-path integration test only.\n\nNo known perf tests. Our SLA says invoice creation p95 under 300ms.\n\nGive me a straight answer I can take to my lead.",
+      "rubric": [
+        "Gives an explicit verdict that the release is not ready (or at minimum at risk leaning not ready), justified by named conditions: the failing partial refund ledger test and the untested login/token flow.",
+        "Names the failing refund test (4500 vs 5000 ledger balance) and the missing authentication tests as blocking items that must be resolved before Thursday.",
+        "Goes through the four shipping features and says which have automated tests (invoice creation), which are partial or failing (refunds, webhook) and which have none (login), rather than giving only an overall number.",
+        "Points out that the 300ms p95 invoice creation target has no performance or load test, and that functional tests cannot confirm it.",
+        "Notes the webhook receiver has only a happy-path test and names missing failure cases such as bad signatures, duplicate delivery or malformed payloads.",
+        "Assesses the risks of the gaps by likelihood and impact (e.g. auth and ledger errors being high impact on money and access) and offers mitigations to do before release.",
+        "Suggests specific tests to write for the biggest gaps, such as login and refresh-token flow tests, with a rough effort estimate."
+      ],
+      "why_skill_matters": "Failing test, an untested auth flow, a happy-path-only webhook and an SLA without perf tests in one release question, with a feature list that invites a per-feature mapping."
+    },
+    {
+      "id": "test-coverage-analysis-rules-3",
+      "title": "Serverless order pipeline integration mocks",
+      "target_section": "Stage 6: Integration Point Analysis",
+      "prompt": "Reviewing our order-intake service before the audit. AWS, all Lambda. Design in short: API Gateway (Cognito authorizer) → `createOrder` Lambda → DynamoDB `Orders` table; `createOrder` also publishes to an SQS queue `fulfilment-q`; `fulfil` Lambda consumes the queue, reads a carrier API key from Secrets Manager and calls the carrier's HTTPS API; every function also ships its logs to the cloud log service.\n\nTests we have (jest):\n\n```\ntest/unit/createOrder.test.ts      - validates payload, 12 cases\ntest/unit/fulfil.test.ts           - 9 cases\ntest/integration/createOrder.int.test.ts\n   jest.mock('@aws-sdk/client-dynamodb')\n   jest.mock('@aws-sdk/client-sqs')\n   it('writes order and publishes message')   // asserts mocked send() called twice\ntest/integration/fulfil.int.test.ts\n   uses localstack SQS + real Secrets Manager stub\n   it('processes a message and calls carrier (nock stubbed 200)')\ntest/e2e/order.e2e.test.ts\n   POST /orders against staging with a real Cognito token, 2 cases (201 and 400 on bad body)\n```\n\nWhich of the connections are actually covered? We were told we \"have integration tests\" but I'm not sure that's true.",
+      "rubric": [
+        "Lists the integrations from the design (gateway to authorizer, gateway to createOrder, createOrder to DynamoDB, createOrder to SQS, SQS to fulfil, fulfil to Secrets Manager, fulfil to carrier API, logging) and gives a verdict for each.",
+        "Says the createOrder integration test is not a true integration test because DynamoDB and SQS clients are mocked, so the table write and queue publish are unverified against real services.",
+        "Notes the carrier call in fulfil is tested only with a stubbed 200 success, so error responses and timeouts are untested.",
+        "Names missing failure scenarios such as DynamoDB write failure, SQS publish failure, carrier 5xx or timeout, and message redelivery or dead-letter handling.",
+        "Recommends specific tests (e.g. createOrder against localstack DynamoDB and SQS) with the test type and a sketch or effort estimate.",
+        "Weighs the unverified order write and queue publish by likelihood and impact ahead of the audit and says what to fix first.",
+        "Separates must-fix gaps from should-fix and optional ones in severity order, and finishes by asking whether the user wants these fixed."
+      ],
+      "why_skill_matters": "The word \"integration\" in file names invites an assistant to count them as covered; one has mocked clients and one stubs only success. Implicit connections like auth and logging are easy to skip."
+    },
+    {
+      "id": "test-coverage-analysis-rules-4",
+      "title": "Booking stories mapped to tests",
+      "target_section": "Stage 4: Functional Test Coverage Analysis",
+      "prompt": "We're a small team building a room-booking backend (NestJS). Product wrote these criteria for the \"Cancel booking\" story and I need to know which are tested:\n\nC1. A guest can cancel a booking up to 48h before check-in and gets a full refund.\nC2. Cancelling within 48h refunds half the amount.\nC3. Cancelling after check-in is rejected with a 409.\nC4. A confirmation email is sent after cancellation.\nC5. Cancelling an already-cancelled booking is idempotent (returns 200, no second refund).\n\nOur test names (grep of the test declarations):\n\n```\ncancellation.service.spec.ts:  refunds in full when cancelled 3 days before check-in\ncancellation.service.spec.ts:  refunds half when cancelled 12 hours before check-in\ncancellation.service.spec.ts:  throws ConflictException when check-in has passed\nbookings.controller.spec.ts:   DELETE /bookings/:id returns 200 for owner\nbookings.controller.spec.ts:   DELETE /bookings/:id returns 403 for another guest\nmailer.service.spec.ts:        renders the confirmation template\n```\nNo integration or e2e tests exist yet. Give me the mapping and percentages, and tell me what I should write for what's missing.",
+      "rubric": [
+        "Maps C1, C2 and C3 to the specific refund and conflict tests listed, marking them covered by unit-level tests only.",
+        "Marks C4 as not really covered (template rendering does not prove an email is sent after cancel) and C5 as having no test, and gives a coverage figure consistent with that (e.g. 3 of 5 covered, or lower if C1-C3 are judged partial).",
+        "For the missing criteria, names what to test (e.g. cancellation service sends mail on success; second cancel returns 200 with no refund), the test type, and a sketch or effort estimate.",
+        "Points out untested boundary and error behaviour, such as exactly 48 hours before check-in, and that the controller's 403 test is not tied to any criterion.",
+        "Identifies the project as a backend API and frames the gap using a unit-heavy pyramid-style target, noting the absence of integration and end-to-end tests.",
+        "Does not state the criteria are all covered just because test names look related; distinguishes name similarity from tests that actually verify the criterion."
+      ],
+      "why_skill_matters": "Story criteria and test names allow fuzzy matching; one match is deceptive (template rendering) and one criterion has none. The 48h boundary is a classic untested edge."
+    },
+    {
+      "id": "test-coverage-analysis-rules-5",
+      "title": "Latency and security requirements with only functional tests",
+      "target_section": "Stage 5: Non-Functional Test Coverage Analysis",
+      "prompt": "Our search service (Go, gRPC, several internal services behind it) has a requirements doc with these quality targets:\n\n- NFR-1: Search responses p95 < 200 ms at 500 concurrent users.\n- NFR-2: All PII fields encrypted at rest with KMS keys.\n- NFR-3: Only users with role `analyst` can call `ExportResults`.\n- NFR-4: Service recovers within 60s if the index node dies; queries retry up to 3 times.\n- NFR-5: Must handle 10x traffic during sales events via autoscaling.\n\nExisting tests (`go test ./...` finds 640 cases):\n\n```\nsearch/query_test.go           TestQueryParsing (30 cases)\nsearch/ranker_test.go          TestRankerBenchmarkOrdering  (asserts ranking function runs under 5ms on 1 doc)\nexport/export_test.go          TestExportReturnsCSV, TestExportEmptyResult\ncrypto/envelope_test.go        TestEncryptDecryptRoundTrip (uses in-memory fake KMS)\nclient/retry_test.go           TestRetriesThreeTimes (mock server returns 500)\n```\nNothing under a load, chaos or authz folder. What's our status against these quality requirements before we go live?",
+      "rubric": [
+        "Says NFR-1 has no load test: the 5ms single-document ranker timing is a wrong-type test that cannot show p95 under 200 ms at 500 concurrent users.",
+        "Says NFR-3 (analyst-only export) has no authorization test since the export tests only check CSV output, and rates it a serious security gap.",
+        "Says NFR-5 autoscaling and the 10x traffic requirement have no scalability or stress test, and NFR-4 recovery within 60s has no failure-injection test, while the retry-three-times test only partly covers NFR-4.",
+        "Treats NFR-2 as only partially covered because the round-trip test uses a fake KMS, so real key behaviour and encryption at rest are unverified.",
+        "Identifies missing negative tests, e.g. export by a non-analyst, an unauthenticated caller, or an index node timeout.",
+        "Recommends concrete tests for the largest gaps, such as a load test at 500 concurrent clients measuring p95 and an RBAC test for ExportResults, with a type and rough effort.",
+        "Weighs the untested security and performance requirements by likelihood and impact for go-live and gives mitigations to do before launch.",
+        "Presents security and performance gaps as the most severe items first, separated from lesser items, and closes by asking whether to proceed with fixing them."
+      ],
+      "why_skill_matters": "Each NFR has a decoy or no test; one is a wrong-type timing test, one uses a fake. Makes NFR mapping and negative tests matter."
+    },
+    {
+      "id": "test-coverage-analysis-rules-6",
+      "title": "Storefront release with a skipped login test in a long log",
+      "target_section": "Stage 9: Readiness Assessment (Readiness Mode Only)",
+      "prompt": "Release candidate for our storefront (Next.js frontend + Node API in one monorepo) is due Monday. Pasting the tail of CI, I'm told it's \"green enough\":\n\n```\npackages/web:   Tests: 284 passed, 284 total\npackages/api:   Tests: 198 passed, 1 skipped, 199 total\ne2e (playwright): \n  ✓ browse catalogue\n  ✓ add to cart\n  ✓ apply discount code\n  ✓ checkout with saved card\n  - login with expired session redirects to /login   (test.skip: flaky, TODO)\n  ✓ order history loads\n8 test suites OK\n```\n\nNotes from the team channel:\n- \"payment webhook retries were reworked Thursday, only unit tests touched\"\n- \"coverage badge says 91% line coverage\"\n- Guest checkout with a declined card has no tests; we only test approved cards.\n- Web package: 210 of the 284 tests are `render` + `toMatchSnapshot` on presentational components.\n\nAre we good to release Monday? Please give a recommendation.",
+      "rubric": [
+        "Gives an explicit verdict (at risk or not ready, not a clean ready) with named reasons rather than accepting the green summary at face value.",
+        "Counts the skipped expired-session login redirect test as a problem to resolve or consciously accept, since it hides a critical login-related path behind a skip.",
+        "Flags that declined-card checkout and payment webhook retry failures have no negative tests, and that only approved cards are covered.",
+        "Notes that 210 of 284 web tests are snapshot-style rendering tests, which give little real confidence, and the passing count therefore overstates safety.",
+        "Notes the reworked payment webhook retries are covered only by unit tests with no integration test between API and the payment processor or queue.",
+        "Weighs the risks (payment failures, session handling) by likelihood and impact and states what to do before Monday, such as unskipping or fixing the login test and adding declined-card tests, instead of relying on the 91% line coverage badge."
+      ],
+      "why_skill_matters": "Surface looks green; the skip, the happy-path-only payments, snapshot bulk and recently changed untested integration are easily overlooked. The coverage badge pulls toward a wrong conclusion."
+    },
+    {
+      "id": "test-coverage-analysis-rules-7",
+      "title": "Microservices test report with file counts only",
+      "target_section": "Stage 2: Artifact Collection & Parsing",
+      "prompt": "I inherited a Java/Spring microservices platform (orders-service, inventory-service, pricing-service, each deployed on its own, talking over REST and Kafka). I can't run the build from where I am, so I counted files:\n\n```\norders-service/src/test:     unit 14 files, integration 6 files, no e2e\ninventory-service/src/test:  unit 9 files,  integration 3 files\npricing-service/src/test:    unit 22 files, integration 0 files\nrepo-level e2e/ folder:      2 files (checkout journey, stock-out journey)\n```\nTotal = 56 files. A rough look says each unit test file has maybe 8-15 @Test methods, integration ones around 5-8.\n\nMy director wants a one-line stat: \"we have N tests, X% unit\". And is the shape of our testing right for this kind of system? Also contracts between services: I saw nothing named pact or contract anywhere.",
+      "rubric": [
+        "Does not report 56 as the number of tests; explains that files are not test cases, estimates a range of test cases from the per-file @Test counts, and recommends running the suite to get the real count.",
+        "Makes clear in its stated percentages whether they refer to files or estimated cases.",
+        "Identifies the system as microservices and gives a target mix that includes contract tests between services alongside unit, integration and end-to-end.",
+        "Compares the rough split (unit-dominated, few integration, 2 e2e files, zero contract tests) with the target and says what to shift, e.g. pricing-service lacks integration tests and cross-service contracts are absent.",
+        "Flags the REST and Kafka links between orders, inventory and pricing as lacking contract or integration tests.",
+        "Avoids presenting the director's one-line figure as precise or release-ready evidence; states the uncertainty from counting files instead of running tests."
+      ],
+      "why_skill_matters": "Only file counts are available, tempting a file-based headline number; the architecture is microservices with a contracts angle."
+    },
+    {
+      "id": "test-coverage-analysis-rules-8",
+      "title": "Python data API with trivial and duplicate tests",
+      "target_section": "Stage 8: Pattern Analysis",
+      "prompt": "We have a FastAPI + SQLAlchemy service for inventory. I'm tidying the test suite and want to know which tests are worth keeping and what's actually missing. Pytest summary and some samples:\n\n```\ntests/unit:        180 tests\ntests/integration:  34 tests (real Postgres via testcontainers)\ntests/e2e:           6 tests\n\n# tests/unit/test_models.py\ndef test_item_name_getter():\n    item = Item(name=\"x\")\n    assert item.name == \"x\"\n\ndef test_item_sku_setter():\n    item = Item(); item.sku = \"A1\"\n    assert item.sku == \"A1\"\n\n# tests/unit/test_api.py\ndef test_get_item_returns_200(client): \n    r = client.get(\"/items/1\")      # no assertion on body\n\n# tests/integration/test_items.py\ndef test_get_item_returns_200(db, client):\n    r = client.get(\"/items/1\"); assert r.status_code == 200\n    assert r.json()[\"name\"] == \"Widget\"\n\n# tests/unit/test_stock.py\ndef test_reserve_reduces_stock(): ...   # reserve(5) from 10 -> 5\n# (no test for reserve(15) from 10, reserve(0), or negative qty)\n```\nWhich tests would you cut or rewrite, and what should I add?",
+      "rubric": [
+        "Identifies the getter and setter tests (item name, sku) as trivial and suggests deleting them.",
+        "Identifies the unit get-item test with no body assertion as weak or assertion-free and as duplicated by the stronger integration test, and suggests removing or strengthening it.",
+        "Names missing negative and boundary tests for stock reservation: reserving more than available, zero, and negative quantities.",
+        "Proposes specific tests to add (e.g. reserve beyond stock raises an error, 404 for missing item) with the test type and a code sketch or effort estimate.",
+        "Compares the 180/34/6 split to a backend pyramid-style target and judges the balance, noting the unit share is within or near range while integration or e2e might be slightly thin.",
+        "Prioritizes which missing tests carry the most impact (e.g. overselling stock through unvalidated reservations) and says what to add first.",
+        "Orders the recommendations from must-do to optional and closes by asking if the user wants these changes made."
+      ],
+      "why_skill_matters": "Suite has obvious trivial tests, a duplicate across levels, an assertion-free test and an untested boundary, plus a numerically checkable split."
+    }
+  ]
+}

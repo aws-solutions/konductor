@@ -1,0 +1,120 @@
+{
+  "format_version": 1,
+  "skill": "iam-policy-design",
+  "batch": "rules-c6",
+  "generated_at": "2026-11-10T11:56:26.692Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "2235c8ad1ad2ae1719ab5d24d874714d58480a2b47e60ce2b7371138718517c1",
+  "scenarios": [
+    {
+      "id": "iam-policy-design-rules-1",
+      "title": "Genomics lab sample pipeline with PHI",
+      "target_section": "STEP 5: Validate Compliance",
+      "prompt": "Hi, I'm the sole devops person at a small diagnostics lab. We're moving our sample-result pipeline to AWS and I need the access design sorted before we go live in about six weeks.\n\nFlow: the lab's LIMS pushes result files (contain patient name, DOB, test results) to an S3 bucket `genolab-results-raw`. A Lambda `normalize-results` picks each file up, cleans it, and writes rows into a DynamoDB table `PatientResults`. A second Lambda `report-builder` reads from that table and writes PDF reports to `genolab-reports-out`, which the clinicians' portal (running as role `PortalBackend` in the same account) downloads from. Our compliance lead says we are covered by HIPAA and we have not signed anything with AWS yet. Region is us-east-1. Two humans, me and a lab director, need occasional console access to look at things. The lab director also wants to be able to onboard new technicians by creating their roles directly, without waiting on me.\n\nPlease design the roles, bucket policies, key policy and whatever else is needed, and tell me where we stand against what the regulation wants. I don't have a threat model, nobody's written one.",
+      "rubric": [
+        "Maps the design to HIPAA needs for this lab: encryption of the patient data, multi-factor sign-in for the two console users, long (six-year) log retention, and keeping patient identifiers out of application logs.",
+        "Flags that no agreement with AWS has been signed yet as an open gap, with a remediation step before go-live, and lists other remaining gaps with fixes.",
+        "Infers threats from the described pipeline (e.g. exposure of patient files in the raw bucket, over-broad portal access to reports, misuse by the two console users) and ties each to a specific control with its status and how to verify it.",
+        "The two Lambda roles name the exact buckets and the PatientResults table (with specific actions) instead of wildcards on S3 or DynamoDB.",
+        "The key policy keeps key administration apart from encrypt/decrypt use, so that the Lambda and portal roles cannot manage the key and administrators cannot read data.",
+        "The lab director's ability to create technician roles is capped by a boundary that excludes security-critical services and prevents the director from granting themselves more access.",
+        "States which assurance level it targets for this regulated health-data workload (the strictest rather than the default middle level, or explains the choice) and shapes logging and monitoring to it.",
+        "Each role (normalize-results, report-builder, PortalBackend, console users) is given a stated purpose and a short reason for its permissions, with nothing broader than the described flow."
+      ],
+      "why_skill_matters": "A regulated health-data pipeline with no threat model, an unsigned vendor agreement, human console users and a director who should create roles. It makes the framework mapping, inferred threats, key separation, delegation cap, tier choice, and precise permissions matter."
+    },
+    {
+      "id": "iam-policy-design-rules-2",
+      "title": "Newsletter static site bucket",
+      "target_section": "Resource-Based Policy: S3 Bucket",
+      "prompt": "quick one. we have an S3 bucket `bloomletter-assets` with images and PDFs for our newsletter. A CI role `arn:aws:iam::123456789012:role/gh-deploy` uploads files, and our web app role `arn:aws:iam::123456789012:role/web-app` reads them. Nothing sensitive in there, internal marketing stuff, we're just trying not to be sloppy. Someone on the team suggested I just open the policy to everyone to keep it simple. Can you write the bucket policy for me? Also if there's anything else I should do on the bucket itself, tell me.",
+      "rubric": [
+        "The bucket policy denies any request to bloomletter-assets that is not over encrypted transport.",
+        "The policy denies uploads that lack the required server-side encryption setting.",
+        "The allow statements name the gh-deploy and web-app role ARNs and do not open access to everyone, and the answer pushes back on the suggestion to do so.",
+        "The deploy role gets only write-type actions and the web-app role only read, on this bucket's objects, with no blanket s3 wildcard in the allow statements.",
+        "Notes the low sensitivity and states a lighter assurance level (or the default middle one) and explains what that means for key choice and logging.",
+        "Gives a short reason why each of the two roles needs its particular permissions."
+      ],
+      "why_skill_matters": "Small, low-sensitivity bucket with a tempting open-access suggestion. It makes the bucket policy hardening, explicit principals, tight actions, and tier statement matter."
+    },
+    {
+      "id": "iam-policy-design-rules-3",
+      "title": "Intern-onboarding role factory",
+      "target_section": "Permission Boundary for Delegated Administration",
+      "prompt": "We're a 40-person fintech and our engineering managers keep asking us (the cloud team) to create IAM roles for their teams. We want to hand that off. Idea: a role called `TeamProvisioner` that each engineering manager can assume and which lets them create roles and attach policies for their own team's services (Lambda and DynamoDB mostly, some S3). We obviously don't want them to be able to give themselves admin or turn off our audit stuff. Single account, eu-west-1, managers sign in through SSO. Can you design the policy for TeamProvisioner and whatever else is needed to keep this safe? Please include a trust policy too.",
+      "rubric": [
+        "Caps the roles that TeamProvisioner creates with a permission boundary that allows Lambda, DynamoDB and S3 and excludes IAM, key management, audit trail and other security services.",
+        "TeamProvisioner's own policy requires that any role it creates carries the boundary and denies removing or changing the boundary or editing its own policy, so managers cannot escalate to admin.",
+        "Adds conditions such as requiring multi-factor sign-in or restricting to eu-west-1 on the provisioner's actions.",
+        "Scopes the iam actions to a naming path or prefix for team roles rather than a wildcard resource across all roles.",
+        "Names threats such as a manager granting themselves admin or disabling audit logging, mapped to controls with a status and how to verify (for example access analyzer or policy simulator).",
+        "The TeamProvisioner role is shown with its permissions policy and, as a separate block, a trust policy saying which SSO principals may assume it.",
+        "States the purpose of TeamProvisioner and why each permission group is needed."
+      ],
+      "why_skill_matters": "Delegated role creation with explicit worries about escalation. It makes boundaries, scoping, conditions, and threat mapping matter."
+    },
+    {
+      "id": "iam-policy-design-rules-4",
+      "title": "Vendor reconciliation drop queue",
+      "target_section": "Implementation Code",
+      "prompt": "Hey, context: we're a mid-size retailer. Our bank-reconciliation vendor, who has their own AWS account, needs to drop reconciliation messages into an SQS queue of ours (`recon-inbound`, account 123456789012, us-east-2), and our `recon-processor` Lambda consumes them. Messages are encrypted with a KMS key we own because they include account numbers.\n\nHere's the draft the vendor sent over, they say \"just paste this as the queue policy\":\n\n```json\n{\n  \"Statement\": [{\n    \"Effect\": \"Allow\",\n    \"Principal\": {\"AWS\": \"*\"},\n    \"Action\": \"sqs:SendMessage\",\n    \"Resource\": \"arn:aws:sqs:us-east-2:123456789012:recon-inbound\"\n  }]\n}\n```\n\nTheir account id is 111122223333 and they use a role called `recon-sender`. Can you give me the real version of the queue policy, the key policy changes needed, the Lambda role, and the CDK (in TS) to deploy it all? Keep it reasonably short, I'm busy.",
+      "rubric": [
+        "The queue policy trusts the vendor's recon-sender role in account 111122223333 explicitly rather than every principal, and adds further conditions (such as limiting by source account or requiring encrypted transport).",
+        "The key policy lets the vendor role use the key only to generate data keys / encrypt (not decrypt or manage), lets the Lambda role decrypt, and keeps key administration separate.",
+        "Provides CDK code that actually defines the recon-inbound queue with its policy, the customer key with its policy, and the Lambda role.",
+        "The recon-processor role is limited to receiving and deleting from the recon-inbound queue ARN and using the key, with no wildcard resource.",
+        "Includes a condition such as secure transport enforcement or account scoping on the queue or key access.",
+        "Gives a brief reason for each grant and does not give the vendor any right beyond sending messages."
+      ],
+      "why_skill_matters": "A pasted vendor draft trusts any principal; the cross-account trust and the key permission for the sender are easy to overlook, especially given the \"keep it short\" push. Makes cross-account, key policy, code, scoping matter."
+    },
+    {
+      "id": "iam-policy-design-rules-5",
+      "title": "Ride-sharing telemetry with sparse brief",
+      "target_section": "Production Readiness Tiers",
+      "prompt": "Building the backend for a scooter-sharing app in Lisbon. Phones post trip telemetry (GPS points, battery, user id) through API Gateway into a Lambda `ingest-telemetry`, which writes to DynamoDB table `trips` and drops raw batches in S3 bucket `scootr-telemetry-raw`. Ops analysts (about 6 people) query the table through the console. We have EU customers so GDPR applies, we're in eu-west-1, one AWS account. That's all I've got, no one told me how strict to be. What should the access controls and security setup look like? I'd like the policies and the infrastructure code too.",
+      "rubric": [
+        "Explicitly states the assurance level chosen and why (the middle level by default, since none was specified), and scales key type, logging retention and monitoring to it.",
+        "Maps controls to GDPR for location-and-user data: EU-only region restriction, encryption, access logging, deletion capability and data portability, with gaps and remediation listed.",
+        "Provides deployable CDK or YAML code covering the ingest role, customer-managed key, bucket policy, audit trail, alarms and private endpoints for S3 and DynamoDB.",
+        "Adds conditions: region restriction to eu-west-1, secure transport, multi-factor for the analysts, or a private endpoint restriction.",
+        "Infers threats (e.g. location data leak from the raw bucket, analyst over-access to all users' trips) and ties each to a control with status and verification.",
+        "Gives the ingest-telemetry role only the specific write actions on trips and scootr-telemetry-raw, with a short reason."
+      ],
+      "why_skill_matters": "Sparse brief and no strictness stated. Makes the tier statement, GDPR mapping, code delivery and inferred threats matter."
+    },
+    {
+      "id": "iam-policy-design-rules-6",
+      "title": "Billing exports with a stray wildcard in the notes",
+      "target_section": "Identity-Based Policy (Least Privilege)",
+      "prompt": "Reviewing our infra wiki page before I turn it into real policy. Here is the relevant excerpt, written by a former colleague:\n\n> Role `invoice-exporter` (Lambda, nightly): reads invoices from DynamoDB table `invoices`, writes CSV to bucket `finco-billing-exports`, decrypts with the billing key. Easiest is to give it full DynamoDB and S3 access on every resource for now, we'll tighten later. Finance analysts (group of 12) also need to download from the exports bucket. External auditor firm (account 123456789012) wants read access to the exports bucket once a quarter. We're SOC 2 audited next quarter.\n\nPlease turn this into the actual policies. I'd rather not carry the \"tighten later\" debt into prod, but I also don't want to over-engineer. Region is ap-southeast-2.",
+      "rubric": [
+        "Replaces the full DynamoDB and S3 access with specific read actions on the invoices table and write actions on finco-billing-exports, and does not grant wildcard resources on those services.",
+        "The auditor access names account 123456789012 (preferably a specific role) with conditions, not the whole account trusted openly or any principal.",
+        "Adds conditions such as region ap-southeast-2, secure transport, or multi-factor for the analysts' downloads.",
+        "Maps controls to SOC 2 for the upcoming audit (least privilege, encryption, monitoring, log retention, access reviews) and lists gaps with remediation.",
+        "The exports bucket policy denies non-encrypted transport and unencrypted uploads and uses explicit principals.",
+        "The invoice-exporter role has a permissions policy and a separate trust policy for the Lambda service.",
+        "Explains why each of exporter, analysts and auditor gets what it gets and nothing more."
+      ],
+      "why_skill_matters": "The broad grant is framed as acceptable debt, and the auditor access is a single sentence. Makes tight actions, cross-account trust, bucket policy and SOC 2 mapping matter."
+    },
+    {
+      "id": "iam-policy-design-rules-7",
+      "title": "Card tokenization service review",
+      "target_section": "Compliance Gap Workflow",
+      "prompt": "I'm a security engineer at a payments company reviewing a design before it ships. Service: `tokenizer` runs on ECS Fargate in a private VPC in us-west-2, takes card numbers over HTTPS from our checkout, encrypts them, stores tokens and ciphertext in an Aurora Postgres cluster, and keeps the data key material in KMS. A separate `detok-service` role can reverse tokens for settlement. Logs go to a log group with default retention (never expire). Admins reach the box via SSM Session Manager with a shared break-glass user. Threats the architect listed: stolen DB snapshot, insider calling detok directly, and compromised container exfiltrating via the internet.\n\nWrite the access controls and security setup, and tell me what's missing versus PCI-DSS. I want a gap list I can hand to the team with fixes and rough effort.",
+      "rubric": [
+        "Maps controls to PCI-DSS requirements and gives a gap list with remediation and effort, covering the shared break-glass user (unique IDs and MFA), the quarterly scans and annual penetration testing, and the log handling.",
+        "Each of the three listed threats (stolen snapshot, insider calling detok, container exfiltration) is mapped to a specific control with a status and a verification method.",
+        "The key policy lets the tokenizer encrypt only and the detok-service role decrypt, keeps administrators apart from users, and limits use to calls via the intended service.",
+        "Uses conditions or private endpoints to restrict the container's route out (e.g. a private endpoint condition) and enforces MFA for human access.",
+        "States an assurance level suited to cardholder data (the strictest) and shapes encryption, logging and monitoring to it.",
+        "The tokenizer and detok-service roles each get only the narrow actions their purpose needs, with a stated reason."
+      ],
+      "why_skill_matters": "Review of a payments design with explicit flaws and listed threats. Makes PCI gap mapping, threat tracking, key separation, conditions, and tier matter."
+    }
+  ]
+}

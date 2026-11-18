@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "e2e-test-strategy",
+  "skill_md_sha256": "671afbc44d0fb7fcbb8a383e3c22f0024361f86df2d43f041fce7a4e1f62752d",
+  "request_context": "A request to plan which end-to-end tests a team should write for a change, ranking them by importance and recommending how to run them, based on coverage gaps, user stories, architecture and the nature of the release.",
+  "rules": [
+    {
+      "id": "e2e-test-strategy-r01",
+      "source_quote": "Priority Score = (Business Impact × 0.4) + (Technical Risk × 0.3) + (Change Type Weight × 0.3)",
+      "class": "useful",
+      "outcome": "Each proposed test gets a priority derived from a weighted combination of business impact, technical risk and the weight of the change type, with the individual scores and the resulting number shown so the ranking can be checked.",
+      "why": "Without a transparent scoring basis, rankings are arbitrary and the team cannot challenge or reproduce them.",
+      "scenario_hint": "Plan for a release with several candidate journeys of differing criticality that must be ranked."
+    },
+    {
+      "id": "e2e-test-strategy-r02",
+      "source_quote": "Security: 10",
+      "class": "useful",
+      "outcome": "The assessment weights the change by both its kind and the size of the release, treating security fixes and major releases as demanding the heaviest regression coverage and patch releases as needing only affected journeys plus smoke checks.",
+      "why": "Ignoring change and release context leads to over-testing small patches or under-testing security or major changes.",
+      "scenario_hint": "Plan for a security fix shipped as a patch, or an enhancement shipped as a major release."
+    },
+    {
+      "id": "e2e-test-strategy-r03",
+      "source_quote": "Simple CRUD Operations** (Integration Tests Sufficient)",
+      "class": "useful",
+      "outcome": "Simple single-step data operations, internal service calls, client-only UI behavior and background jobs are explicitly left out of the end-to-end set and assigned to lower-level tests, with a stated reason.",
+      "why": "Putting everything in end-to-end tests makes the suite slow, flaky and expensive.",
+      "scenario_hint": "Feature set mixing multi-step user flows with plain single-step record screens and scheduled jobs."
+    },
+    {
+      "id": "e2e-test-strategy-r04",
+      "source_quote": "Authentication and authorization flows",
+      "class": "useful",
+      "outcome": "Authentication, core business transactions, payments, registration and compliance-related flows such as audit logging or access control are included as must-have tests at the top priority tier.",
+      "why": "Missing the highest-risk flows leaves the most damaging failures untested.",
+      "scenario_hint": "Application with login, checkout or submission flows and audit requirements."
+    },
+    {
+      "id": "e2e-test-strategy-r05",
+      "source_quote": "**< 10 E2E tests**: Sequential execution (simplicity over speed)",
+      "class": "useful",
+      "outcome": "Recommends running tests one after another, partly in parallel, or fully in parallel according to the number of tests and their dependencies, and explains the choice, including keeping dependent tests ordered and isolating data for parallel ones.",
+      "why": "A wrong execution model causes either slow pipelines or flaky shared-state failures.",
+      "scenario_hint": "Plan containing a given number of tests, some depending on earlier setup such as registration then login."
+    },
+    {
+      "id": "e2e-test-strategy-r06",
+      "source_quote": "Use API calls to create test data (not direct database manipulation)",
+      "class": "useful",
+      "outcome": "Describes how test data is created, kept unique per run, isolated between tests and cleaned up afterwards, preferring creation through the application's own interfaces rather than writing directly into storage.",
+      "why": "Without data creation, isolation and cleanup guidance, tests collide, leave residue and become flaky.",
+      "scenario_hint": "Plan where tests create users and records and may run in parallel."
+    },
+    {
+      "id": "e2e-test-strategy-r07",
+      "source_quote": "Test database (separate from production)",
+      "class": "useful",
+      "outcome": "Specifies the test environment requirements: a database separate from production, test accounts with proper permissions, mocks or sandbox accounts for external services, feature toggles, and logging or monitoring, and picks an environment type suited to the architecture.",
+      "why": "Unspecified environments lead to tests hitting production data or being blocked by missing dependencies.",
+      "scenario_hint": "Serverless or containerized application with a payment or email provider."
+    },
+    {
+      "id": "e2e-test-strategy-r08",
+      "source_quote": "Run: Smoke tests only (P0 critical path)",
+      "class": "useful",
+      "outcome": "Gives a pipeline plan stating which tests run at which stage (before merge, after merge, before deployment, after deployment, scheduled), with the quick critical-path checks early and the fuller suites later, and approximate run times.",
+      "why": "Without a stage-by-stage plan, the tests are not integrated into delivery and feedback is either too slow or too thin.",
+      "scenario_hint": "Request asking how to wire the planned tests into CI/CD."
+    },
+    {
+      "id": "e2e-test-strategy-r09",
+      "source_quote": "Framework selection not justified against team experience",
+      "class": "useful",
+      "outcome": "Recommends a test framework matched to the technology stack (browser UI, API, serverless) and justifies the choice with reasons tied to the project and the team's experience.",
+      "why": "An unjustified tool choice may not fit the stack or skills and creates adoption risk.",
+      "scenario_hint": "Team with a React front end and REST API asking which tool to use."
+    },
+    {
+      "id": "e2e-test-strategy-r10",
+      "source_quote": "**Always use test runner output** as source of truth (not file system scanning)",
+      "class": "useful",
+      "outcome": "Existing test counts distinguish test files from individual test cases and are based on actual runner results rather than counting files, reporting both figures.",
+      "why": "Counting files understates real coverage by an order of magnitude and distorts the gap assessment.",
+      "scenario_hint": "Gap report that lists test files but the user asks how much end-to-end coverage already exists."
+    },
+    {
+      "id": "e2e-test-strategy-r11",
+      "source_quote": "Ask nothing when all of them were supplied",
+      "class": "generic",
+      "outcome": "When required inputs such as document locations, change kind or release kind are already provided, the answer proceeds without re-asking; when something is missing or invalid it asks for or reasonably defaults it and says so.",
+      "why": "Needless questions stall the work, while silent guesses hide assumptions.",
+      "scenario_hint": "Any request to produce a test strategy where some inputs are given and others are not."
+    },
+    {
+      "id": "e2e-test-strategy-r12",
+      "source_quote": "Present findings as: CRITICAL → IMPORTANT → SUGGESTION.",
+      "class": "style",
+      "outcome": "Review findings about the strategy's weaknesses are ordered from must-fix to should-fix to optional improvements.",
+      "why": "",
+      "scenario_hint": "Any request to produce an end-to-end test strategy."
+    }
+  ]
+}

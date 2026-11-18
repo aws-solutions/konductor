@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "design-impact-review",
+  "skill_md_sha256": "aa4bb9f442981af9fd8c8ab95905aa4c1f9cfd28a7931e85b9501d61ba0c966c",
+  "request_context": "A request to assess what a proposed change to a data model, API contract, system interface or design decision will affect downstream before the change is carried out.",
+  "rules": [
+    {
+      "id": "design-impact-review-r01",
+      "source_quote": "Agents tend to make a local change — add a database column, alter a response shape — and continue without re-evaluating the artifacts that depend on it.",
+      "class": "useful",
+      "outcome": "Before or alongside making the change, the answer examines the related documents and components that depend on the changed item (such as API, UI, tests, security analysis) instead of treating the change as purely local.",
+      "why": "A local change made without re-checking dependents leaves other artifacts inconsistent or broken.",
+      "scenario_hint": "Request to add a database column or alter a response shape in a system with an API and front end."
+    },
+    {
+      "id": "design-impact-review-r02",
+      "source_quote": "| Data Model     | API (exposure), threat model (data sensitivity), tests            |",
+      "class": "useful",
+      "outcome": "For a data-model change, the answer considers whether the API now exposes the new or changed data, whether the data's sensitivity changes the security/threat analysis, and what test coverage is needed.",
+      "why": "Data changes silently widen API surface and sensitive-data exposure if these are not reassessed.",
+      "scenario_hint": "Adding a field, such as personal data, to a stored entity."
+    },
+    {
+      "id": "design-impact-review-r03",
+      "source_quote": "| API / Contract | UX (consumer), data model, tests, threat model (new surface)      |",
+      "class": "useful",
+      "outcome": "For an API contract change, the answer assesses the effect on consuming front-end or client screens, the underlying data model, tests, and any new attack surface.",
+      "why": "Consumers and security posture break or drift when contract changes are not traced to them.",
+      "scenario_hint": "Modifying a request or response shape of an existing endpoint."
+    },
+    {
+      "id": "design-impact-review-r04",
+      "source_quote": "| Requirement    | System design, UX, threat model, API, data model, tests — all     |",
+      "class": "useful",
+      "outcome": "When a requirement or scope changes, the answer re-examines all downstream artifacts: system design, UX, security analysis, API, data model and tests, not just the code.",
+      "why": "Requirement changes cascade everywhere; reviewing only part leaves hidden inconsistencies.",
+      "scenario_hint": "Acceptance criteria of a user story are changed mid-project."
+    },
+    {
+      "id": "design-impact-review-r05",
+      "source_quote": "| UX / FE        | Requirements (still aligned?), API (new endpoints needed?)        |",
+      "class": "useful",
+      "outcome": "For a UI flow change, the answer checks whether the change is still aligned with the requirements and whether the API supports it or needs new endpoints.",
+      "why": "A UX flow the backend cannot support results in unworkable designs.",
+      "scenario_hint": "Request to change a screen flow that relies on existing endpoints."
+    },
+    {
+      "id": "design-impact-review-r06",
+      "source_quote": "| BREAKING   | Assumptions are invalidated; the artifact must be updated |",
+      "class": "useful",
+      "outcome": "Each affected artifact is judged individually as either invalidated and requiring update, inconsistent but still working, or not affected, with a reason given for each rather than a blanket verdict.",
+      "why": "Without per-artifact grading, readers cannot tell what must be fixed now versus later.",
+      "scenario_hint": "Change touching several artifacts with different degrees of impact."
+    },
+    {
+      "id": "design-impact-review-r07",
+      "source_quote": "Do not silently proceed past a breaking impact.",
+      "class": "useful",
+      "outcome": "When some artifact is invalidated by the change, the answer tells the user about it and pauses for their decision, suggesting that design owners be involved for design changes and the business-side owner for changes to requirements, rather than carrying on.",
+      "why": "Proceeding silently builds on invalidated assumptions and hides costly rework.",
+      "scenario_hint": "A change that invalidates an existing design document or API contract."
+    },
+    {
+      "id": "design-impact-review-r08",
+      "source_quote": "inform the user, propose tracking the updates as follow-ups, and ask whether to proceed.",
+      "class": "useful",
+      "outcome": "When artifacts are only drifting out of sync and none is invalidated, the answer informs the user, proposes tracking the updates as follow-up items, and asks whether to go ahead.",
+      "why": "Drift accumulates unnoticed unless it is recorded and the user decides.",
+      "scenario_hint": "Change that leaves docs or tests out of date but nothing broken."
+    },
+    {
+      "id": "design-impact-review-r09",
+      "source_quote": "impact is limited to the implementation layer; record the rationale and continue.",
+      "class": "useful",
+      "outcome": "When the change affects only internal code, the answer says the impact is contained, gives the rationale, and continues without raising needless alarms.",
+      "why": "Over-escalating contained changes wastes the user's time.",
+      "scenario_hint": "Internal refactor that does not alter any interface or schema."
+    },
+    {
+      "id": "design-impact-review-r10",
+      "source_quote": "Bug fixes that restore the original design intent (conforming, not deviating).",
+      "class": "generic",
+      "outcome": "For purely cosmetic edits or bug fixes that restore the documented design intent, the answer does not run a heavy cross-artifact analysis and simply proceeds.",
+      "why": "Needless analysis on trivial or conforming changes is wasteful.",
+      "scenario_hint": "Request to rename a variable or fix a bug that returns behavior to what the spec says."
+    },
+    {
+      "id": "design-impact-review-r11",
+      "source_quote": "This skill reports and recommends; it does not enforce.",
+      "class": "generic",
+      "outcome": "The answer presents findings and recommendations but leaves the choice of whether to stop, update artifacts or go ahead to the user.",
+      "why": "Taking the decision away from the user oversteps the assistant's role.",
+      "scenario_hint": "Any request to assess the impact of a design-level change."
+    },
+    {
+      "id": "design-impact-review-r12",
+      "source_quote": "**Change:** <one line: what is changing>",
+      "class": "style",
+      "outcome": "The report opens with a one-line statement of the change, its originating level (requirement, design, API, data, UI, security or code) and the reason, followed by a table listing each artifact with its status, impact and action.",
+      "why": "",
+      "scenario_hint": "Any request to assess the downstream impact of a change."
+    }
+  ]
+}
