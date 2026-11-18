@@ -79,18 +79,7 @@ pub(crate) fn dispatch_metrics(
         );
     }
 
-    let in_window: Vec<&Record> = cache
-        .values()
-        .filter(|r| r.last_ts.unwrap_or(0) >= cutoff)
-        .collect();
-    let unparsed = in_window
-        .iter()
-        .filter(|r| r.status == Status::Unparsed)
-        .count();
-    let counted: Vec<&Record> = in_window
-        .into_iter()
-        .filter(|r| r.status == Status::Ok && r.konductor_agent.is_some() && !r.models.is_empty())
-        .collect();
+    let (counted, unparsed) = select(&cache, cutoff);
 
     let ctx = report::Context {
         since: &since,
@@ -191,6 +180,25 @@ fn plugin_agent_names(plugins_dir: &Path) -> Vec<(String, String)> {
         }
     }
     out
+}
+
+/// Records to report, plus how many in-window files couldn't be parsed.
+/// Records without session timestamps (unparsed files, stubs) fall back
+/// to the file's mtime, so a format change still shows up in the footer.
+fn select(cache: &HashMap<String, Record>, cutoff: i64) -> (Vec<&Record>, usize) {
+    let in_window: Vec<&Record> = cache
+        .values()
+        .filter(|r| r.last_ts.unwrap_or(r.mtime as i64) >= cutoff)
+        .collect();
+    let unparsed = in_window
+        .iter()
+        .filter(|r| r.status == Status::Unparsed)
+        .count();
+    let counted = in_window
+        .into_iter()
+        .filter(|r| r.status == Status::Ok && r.konductor_agent.is_some() && !r.models.is_empty())
+        .collect();
+    (counted, unparsed)
 }
 
 struct Source {
@@ -702,6 +710,23 @@ mod tests {
                 ),
             ]
         );
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn unparseable_file_in_window_is_counted_by_mtime() {
+        let d = tmp("select-unparsed");
+        let f = d.join("sessions/cli/bad.json");
+        put(&f, "{ not the v2 shape");
+        let sources = vec![Source {
+            harness: Harness::KiroCliV2,
+            path: f.clone(),
+        }];
+        let mut cache = HashMap::new();
+        refresh(&mut cache, &sources, 0, &agents());
+        let mtime = cache[&f.to_string_lossy().into_owned()].mtime as i64;
+        assert_eq!(select(&cache, mtime - 60).1, 1);
+        assert_eq!(select(&cache, mtime + 60).1, 0);
         std::fs::remove_dir_all(&d).ok();
     }
 

@@ -7,7 +7,7 @@ a Konductor-managed repository. It handles installation, configuration, and diag
 for the agent, skill and SOP content that Konductor manages — it does not itself run
 SDLC workflows (that's the Konductor Kiro agent's job).
 
-> **Status:** all seven commands perform real work (see [Current state](#current-state)).
+> **Status:** all commands perform real work (see [Current state](#current-state)).
 > `metrics` is a proof of concept (see [`metrics`](#metrics)).
 
 ---
@@ -1313,7 +1313,8 @@ like any other usage error.
   no runtime discovery path for them yet.
 - `metrics` is a proof of concept: Kiro session formats are undocumented, Claude Code
   subagent output tokens are not reported (their transcripts hold placeholder values),
-  and Kiro v3 subagent credits are not split from the parent session.
+  and Kiro v3 subagent credits are not split from the parent session (whether the parent
+  includes them is still being verified, see #289).
 - `update` and `uninstall` have no same-target concurrency protection: running two
   `konductor` invocations against the same target directory at once is unsupported and
   can corrupt the manifest, index, or on-disk files. Serialize invocations per target.

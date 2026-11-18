@@ -175,6 +175,15 @@ fn tables(records: &[&Record], ctx: &Context) -> Vec<Table> {
         for r in &rows {
             total.add_row(r);
         }
+        // With --by model one record spans several rows, so count records,
+        // not row sums.
+        let harness_records: Vec<&&Record> =
+            records.iter().filter(|r| r.harness == harness).collect();
+        total.files = harness_records.len() as u64;
+        total.subagent_runs = harness_records
+            .iter()
+            .filter_map(|r| r.subagent_runs)
+            .reduce(|a, b| a + b);
         out.push(Table {
             harness: harness.as_str(),
             unit: if harness == Harness::Claude {
@@ -330,7 +339,7 @@ pub(super) fn render_text(records: &[&Record], ctx: &Context, color: ColorMode) 
                 let _ = writeln!(
                     out,
                     "  {}",
-                    dim("subagent credits are included in the parent session, not split")
+                    dim("subagent credits can't be split from the parent session, and whether the parent includes them is unverified (#289)")
                 );
             }
         }
@@ -464,6 +473,10 @@ mod tests {
         let t = tables(&[&a], &ctx(GroupBy::Model));
         assert_eq!(t[0].rows.len(), 2);
         assert_eq!(t[0].total.output_tokens, Some(6));
+        assert_eq!(
+            t[0].total.files, 1,
+            "one session, even across two model rows"
+        );
         assert_eq!(t[0].rows[0].key, "opus");
     }
 
