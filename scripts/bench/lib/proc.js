@@ -5,8 +5,8 @@
  * so callers can record the failure before deciding what to do. A command that cannot be started
  * resolves with code -1 and a `spawn error: ...` line in stderr.
  *
- * Process-wide side effect: the first run() installs an 'exit' hook and SIGINT and SIGTERM handlers that kill the
- * children still running (see installExitHooks), so a host that has its own signal handlers should know.
+ * Process-wide side effect: the first run() installs an 'exit' hook and SIGINT, SIGTERM and SIGHUP handlers that kill
+ * the children still running (see installExitHooks), so a host that has its own signal handlers should know.
  *
  * GOTCHA: `opencode run` finds its project config (opencode.json, which carries the Bedrock provider and
  * the judge lockdown) from the PWD environment variable, not from process.cwd(). Node's spawn({ cwd })
@@ -51,7 +51,7 @@ function killChild(child) {
   }
 }
 
-// Children still running when this process exits (an abort thrown from one pool worker, a SIGTERM) must
+// Children still running when this process exits (an abort thrown from one pool worker, a SIGTERM, a hangup) must
 // not be left behind: a stale model process holding old credentials keeps calling the provider.
 const liveChildren = new Set();
 const killLiveChildren = () => {
@@ -59,10 +59,12 @@ const killLiveChildren = () => {
 };
 let exitHooksInstalled = false;
 /**
- * Installed once, by the first run(): an 'exit' hook that kills the live children, and a SIGINT and a SIGTERM handler.
- * The handler kills the live children and then ends the process with the usual code (130, 143) only when it is the
- * one listener for the signal. A host that registers its own handler owns shutdown (it may flush a ledger or write run
- * state first): its handler runs too, and the children are already gone whether it exits or not.
+ * Installed once, by the first run(): an 'exit' hook that kills the live children, and a SIGINT, a SIGTERM and a SIGHUP
+ * handler. SIGHUP is what a dropped ssh session or a closed terminal sends: the terminal signals its foreground process
+ * group, which does not include a child in its own group, and Node ends on an unhandled SIGHUP without running the
+ * 'exit' hook. The handler kills the live children and then ends the process with the usual code (130, 143, 129) only
+ * when it is the one listener for the signal. A host that registers its own handler owns shutdown (it may flush a
+ * ledger or write run state first): its handler runs too, and the children are already gone whether it exits or not.
  */
 function installExitHooks() {
   if (exitHooksInstalled) return;
@@ -71,6 +73,7 @@ function installExitHooks() {
   for (const [signal, exitCode] of [
     ['SIGINT', 130],
     ['SIGTERM', 143],
+    ['SIGHUP', 129],
   ])
     process.on(signal, () => {
       killLiveChildren();
