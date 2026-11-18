@@ -377,11 +377,21 @@ function largestReservationMargin({ config, costProfile, pendingByModel }) {
 
 /**
  * The warning for a plan that passes its limits at the p90 but leaves less room than one call reserves above its p90,
- * or null. `room` is the smaller of the room below max_usd and below total_cap_usd.
+ * or null. `rooms` holds the room below each limit, `max` below max_usd and `total` below total_cap_usd (Infinity when
+ * the ledger cannot say). The smaller room is the one the ledger meets first, so the text names that limit, and only
+ * raising that one helps. For N calls at once the room must be N x the margin, so the raise needed is the margin less
+ * the room for the first call and one more margin for each further call.
  */
-function describeReservationMargin(margin, room) {
+function describeReservationMargin(margin, rooms) {
+  const room = Math.min(rooms.max, rooms.total);
   if (margin === null || room + MONEY_EPSILON >= margin.usd) return null;
-  return `cost: the ledger reserves a ${margin.label} call at its ceiling, not its p90 (${margin.model}: at least ${formatMoney(margin.ceilingUsd, 3)} against a p90 of ${formatMoney(margin.p90Usd, 3)}); this plan leaves ${formatMoney(Math.max(room, 0), 3)} below a limit, so the ledger can stop the run near its end while the spend is still below it; raise max_usd by about ${formatMoney(margin.usd - Math.max(room, 0), 3)} for each call that runs at once`;
+  const limit =
+    Math.abs(rooms.max - rooms.total) <= MONEY_EPSILON
+      ? 'max_usd and total_cap_usd'
+      : rooms.total < rooms.max
+        ? 'total_cap_usd'
+        : 'max_usd';
+  return `cost: the ledger reserves a ${margin.label} call at its ceiling, not its p90 (${margin.model}: at least ${formatMoney(margin.ceilingUsd, 3)} against a p90 of ${formatMoney(margin.p90Usd, 3)}); this plan leaves ${formatMoney(room, 3)} below ${limit}, so the ledger can stop the run near its end while the spend is still below it; raise ${limit} by at least ${formatMoney(margin.usd - room, 3)} to run one call at a time, and by ${formatMoney(margin.usd, 3)} more for each further call that runs at once`;
 }
 
 const sumCalls = (calls, kinds) =>
@@ -564,16 +574,13 @@ function buildPlan({ layout, config, skills, costProfile = defaultProfile() }) {
   const noHistoryWarning = describeNoHistory(context.noHistory);
   const marginWarning =
     refused.length === 0
-      ? describeReservationMargin(
-          largestReservationMargin(context),
-          Math.min(
-            config.max_usd - (runUsd + pendingP90Usd),
-            ledger
-              ? config.total_cap_usd -
-                  (ledger.total_usd + ledger.reserved_usd + pendingP90Usd)
-              : Infinity,
-          ),
-        )
+      ? describeReservationMargin(largestReservationMargin(context), {
+          max: config.max_usd - (runUsd + pendingP90Usd),
+          total: ledger
+            ? config.total_cap_usd -
+              (ledger.total_usd + ledger.reserved_usd + pendingP90Usd)
+            : Infinity,
+        })
       : null;
   return {
     run_id: layout.runId,

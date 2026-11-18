@@ -625,9 +625,27 @@ test('plan warns when the room below max_usd is smaller than what one call reser
   const tight = planFor(ROOT, { max_usd: p90 + margin - 0.01 });
   assert.equal(tight.ok, true);
   assert.equal(marginWarningsOf(tight).length, 1);
+  const usd = (amount) => `$${amount.toFixed(3)}`;
+  // The room is 0.01 short of the margin: the first call needs 0.01 more, each further call at once needs a margin more.
   assert.match(
     marginWarningsOf(tight)[0],
-    /at least \$0\.\d{3} against a p90 of \$0\.\d{3}\); this plan leaves \$0\.\d{3} below a limit, so the ledger can stop the run near its end while the spend is still below it; raise max_usd by about \$0\.\d{3} for each call that runs at once$/,
+    /at least \$0\.\d{3} against a p90 of \$0\.\d{3}\); this plan leaves \$0\.\d{3} below max_usd, so the ledger can stop the run near its end while the spend is still below it; /,
+  );
+  assert.ok(
+    marginWarningsOf(tight)[0].endsWith(
+      `raise max_usd by at least $0.010 to run one call at a time, and by ${usd(margin)} more for each further call that runs at once`,
+    ),
+    marginWarningsOf(tight)[0],
+  );
+  assert.doesNotMatch(marginWarningsOf(tight)[0], /total_cap_usd/);
+  // A plan that lands on max_usd within the checker's tolerance has a room below zero by float noise: shown as $0.000.
+  const onTheLimit = marginWarningsOf(planFor(ROOT, { max_usd: p90 - 1e-10 }));
+  assert.equal(onTheLimit.length, 1);
+  assert.match(
+    onTheLimit[0],
+    new RegExp(
+      `this plan leaves \\$0\\.000 below max_usd, .*; raise max_usd by at least ${usd(margin).replace('$', '\\$')} to run`,
+    ),
   );
   assert.match(renderPlan(tight), /\n {2}cost: the ledger reserves a /);
   // Room of the margin and a cent over: not warned.
@@ -671,9 +689,43 @@ test('plan warns about the reservation margin against total_cap_usd too, using t
   const near = planWithLedgerAt(cap - p90 - margin + 0.01);
   assert.equal(near.ok, true, near.refused.join('; '));
   assert.equal(marginWarningsOf(near).length, 1);
+  // The ledger cap is the limit that binds, so the text names total_cap_usd: raising max_usd would not give any room.
+  const text = marginWarningsOf(near)[0];
+  const [, left, raise, more] =
+    /this plan leaves \$(\d\.\d{3}) below total_cap_usd, so .*; raise total_cap_usd by at least \$(\d\.\d{3}) to run one call at a time, and by \$(\d\.\d{3}) more for each further call that runs at once$/.exec(
+      text,
+    ) || [];
+  assert.ok(left, text);
+  // The ledger rounds its total to the cent, so the room is only known to about a cent.
+  assert.ok(Math.abs(Number(left) - (margin - 0.01)) < 0.006, text);
+  assert.ok(Math.abs(Number(raise) - (margin - Number(left))) < 0.0015, text);
+  assert.equal(more, margin.toFixed(3));
+  assert.doesNotMatch(text, /max_usd/);
   const roomy = planWithLedgerAt(cap - p90 - margin - 0.01);
   assert.equal(roomy.ok, true, roomy.refused.join('; '));
   assert.deepEqual(marginWarningsOf(roomy), []);
+});
+
+test('plan names both limits when the room below each is the same, and the one that is smaller when they differ', () => {
+  const margin = largestMargin(helpers.exampleConfig());
+  const p90 = planFor(ROOT).pending_usd_p90_unrounded;
+  const limit = p90 + margin - 0.01;
+  // max_usd equal to total_cap_usd and no spend: the same room below both.
+  const equal = marginWarningsOf(
+    planFor(ROOT, { max_usd: limit, total_cap_usd: limit }),
+  );
+  assert.equal(equal.length, 1);
+  assert.match(
+    equal[0],
+    /below max_usd and total_cap_usd, so .*; raise max_usd and total_cap_usd by at least \$0\.010 to run one call at a time, /,
+  );
+  // max_usd below a larger total_cap_usd: only max_usd can be raised to help.
+  const maxBinds = marginWarningsOf(
+    planFor(ROOT, { max_usd: limit, total_cap_usd: limit + 50 }),
+  );
+  assert.equal(maxBinds.length, 1);
+  assert.match(maxBinds[0], /below max_usd, so .*; raise max_usd by at least /);
+  assert.doesNotMatch(maxBinds[0], /total_cap_usd/);
 });
 
 test('plan.js does not say that the ledger reserves the p90 of every call', () => {
