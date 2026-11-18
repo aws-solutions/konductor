@@ -22,11 +22,19 @@ Use this skill when:
 
 ## Review Workflow
 
-The rules live in `frontend-development` (its `## Rules` section). Load that skill, then:
+The rules live in `frontend-development` (its `## Rules` section). Skills install side by side, so it sits next to this skill's directory. Load that skill, then:
 
 1. Read every changed frontend file and its tests in full.
 2. Check each change against every rule group: form patterns, Cloudscape compliance, type safety, component quality, and testing.
 3. Classify each violation with the Quality Gate below.
+
+If it is not there, use these minimums, and say in the report that the full rule set was unavailable:
+
+- **Form patterns**: React Hook Form for form state, Zod for validation, `useFormContext` in sub-components, wizard pages wrapped in `FormProvider`
+- **Cloudscape compliance**: Cloudscape components only, no native HTML and no inline styles, `SpaceBetween` for spacing, `FormField` around every labelled input
+- **Type safety**: no `any` in production code, an explicit type on every `useForm` call, no redundant type assertions
+- **Component quality**: event handlers memoized with `useCallback`, defensive checks on array index access, no unused code or imports
+- **Testing**: helper functions and form components covered, assertions on actual values, tests exercising behaviour rather than DOM structure or internal hook calls
 
 ## Quality Gate
 
