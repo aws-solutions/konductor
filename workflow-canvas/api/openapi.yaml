@@ -2471,9 +2471,10 @@ components:
           type: string
           maxLength: 2048
           description: |
-            The goal the person typed when they started the run, so that a
-            person can tell runs apart. It may be empty, for a run that used a
-            workflow's empty default goal. It is cut to at most `goal_chars` of
+            The goal the run was started with, so that a person can tell runs
+            apart: the goal the caller gave, or the workflow's default goal
+            when the run took that, as for a run another program started. It
+            may be empty, for a run that used a workflow's empty default goal. It is cut to at most `goal_chars` of
             the session's `limits`, at a character boundary, with nothing
             added. It is in this answer only, which needs the session token,
             and the server never writes it to a log.

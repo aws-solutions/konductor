@@ -138,7 +138,7 @@ describe('the events of a simulated run', () => {
       'stage_state',
     ]);
     for (const plan of [{}, { block: { at: 1, reason: 'TIMEOUT' as const } }]) {
-      const runId = runs.start('hello', ORDER, plan);
+      const runId = runs.start('hello', ORDER, GOAL, plan);
       for (let step = 0; step <= ORDER.length * 3; step++) {
         for (const event of runs.events(runId)!.events) {
           expect(known.has(event.type), event.type).toBe(true);

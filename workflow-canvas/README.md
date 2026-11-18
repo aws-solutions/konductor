@@ -522,9 +522,9 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
 - If the server answers 409 `already_running`, as it does when a run from
   another tab is going, the tab follows the run named in that answer instead
   of starting one. The line under the button says so, and the goal typed is not
-  used for that run. The API does not give the goal of a run, so while the tab
-  follows a run that was already going the Goal box is empty, says "Not known"
-  and is labelled so. When that run ends, the status line still says it was
+  used for that run. `GET /api/runs` gives the goal of each run, but the Run
+  view does not call `listRuns` yet, so while the tab follows a run that was
+  already going the Goal box is empty, says "Not known" and is labelled so. When that run ends, the status line still says it was
   already in progress.
 - Resume works after a reload, though the launch code works once: the page
   resumes from the session it kept (see above). If the server was started
