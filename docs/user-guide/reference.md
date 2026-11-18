@@ -329,7 +329,7 @@ konductor synth: /path/to/agents/broken.agent-spec.json: invalid JSON: key must 
 konductor/
 ├── agents/                       11 agent specs (*.agent-spec.json)
 ├── agent-sops/                   19 SOPs (*.sop.md)
-├── skills/                       80 skills (<name>/SKILL.md, plus optional helper files)
+├── skills/                       79 skills (<name>/SKILL.md, plus optional helper files)
 ├── context/                      Loaded at agent startup
 │   ├── k-core-rules.md
 │   ├── k-direct-work.md
