@@ -6,6 +6,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
@@ -363,6 +364,134 @@ test('judge env: XDG dirs and OPENCODE_CONFIG point into the sandbox; ambient cr
     assert.equal(pinned.MISE_DATA_DIR, '/own', 'a value the user set is kept');
   });
 });
+
+test('sandbox: its root is a git root and its HOME is its own, so nothing outside it is read as OpenCode config', () => {
+  helpers.withTmp((dir) => {
+    const sandbox = oc.makeSandbox({ region: 'us-west-2', tmpRoot: dir });
+    assert.equal(sandbox.home, path.join(sandbox.root, 'home'));
+    assert.equal(mode(sandbox.home), 0o700);
+    assert.deepEqual(fs.readdirSync(sandbox.home), []);
+    const gitDir = path.join(sandbox.root, '.git');
+    assert.equal(mode(gitDir), 0o700);
+    assert.equal(
+      fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8'),
+      'ref: refs/heads/main\n',
+    );
+    for (const sub of ['objects', 'refs'])
+      assert.ok(fs.statSync(path.join(gitDir, sub)).isDirectory(), sub);
+    // git itself must accept it as a repository root: that is what OpenCode asks.
+    const git = spawnSync('git', ['rev-parse', '--show-toplevel'], {
+      cwd: sandbox.project,
+      encoding: 'utf8',
+    });
+    if (git.error) return; // no git on this machine: the layout above is what is checked
+    assert.equal(git.status, 0, git.stderr);
+    assert.equal(
+      fs.realpathSync(git.stdout.trim()),
+      fs.realpathSync(sandbox.root),
+    );
+  });
+});
+
+test('judge env: HOME is the sandbox home, and the AWS files and the OpenCode cache stay where they were', () => {
+  helpers.withTmp((dir) => {
+    const sandbox = oc.makeSandbox({ region: 'us-west-2', tmpRoot: dir });
+    const env = oc.judgeEnv(sandbox, {
+      region: 'us-west-2',
+      base: { PATH: '/bin', HOME: '/h' },
+    });
+    assert.equal(env.HOME, sandbox.home);
+    assert.equal(env.AWS_CONFIG_FILE, '/h/.aws/config');
+    assert.equal(env.AWS_SHARED_CREDENTIALS_FILE, '/h/.aws/credentials');
+    assert.equal(env.XDG_CACHE_HOME, '/h/.cache');
+    const own = oc.judgeEnv(sandbox, {
+      region: 'us-west-2',
+      base: {
+        HOME: '/h',
+        AWS_CONFIG_FILE: '/own/config',
+        AWS_SHARED_CREDENTIALS_FILE: '/own/credentials',
+        XDG_CACHE_HOME: '/own/cache',
+      },
+    });
+    assert.equal(own.HOME, sandbox.home);
+    assert.equal(own.AWS_CONFIG_FILE, '/own/config');
+    assert.equal(own.AWS_SHARED_CREDENTIALS_FILE, '/own/credentials');
+    assert.equal(own.XDG_CACHE_HOME, '/own/cache');
+  });
+});
+
+// Needs a real OpenCode: BENCH_OPENCODE_BIN=/path/to/opencode. `opencode debug config` prints the merged config
+// and calls no model, so nothing is spent.
+test(
+  'sandbox (live): a config and a plugin planted in the temp dir or in HOME are not loaded',
+  {
+    skip: process.env.BENCH_OPENCODE_BIN
+      ? false
+      : 'set BENCH_OPENCODE_BIN to an opencode binary to run this check',
+  },
+  () => {
+    helpers.withTmp((dir) => {
+      const bin = process.env.BENCH_OPENCODE_BIN;
+      const planted = (folder) => {
+        fs.mkdirSync(path.join(folder, '.opencode', 'plugin'), {
+          recursive: true,
+        });
+        fs.writeFileSync(
+          path.join(folder, '.opencode', 'plugin', 'planted.js'),
+          'export default async () => ({});\n',
+        );
+      };
+      // Another user's files in the shared temp dir (where the sandbox is made), and the user's own ~/.opencode.
+      const plantedConfig = JSON.stringify({ username: 'PLANTED_IN_TMP' });
+      const tmpRoot = path.join(dir, 'tmp');
+      fs.mkdirSync(tmpRoot);
+      fs.writeFileSync(path.join(tmpRoot, 'opencode.json'), plantedConfig);
+      planted(tmpRoot);
+      const realHome = path.join(dir, 'real-home');
+      fs.mkdirSync(realHome);
+      planted(realHome);
+      const resolve = (cwd, env) => {
+        const result = spawnSync(bin, ['debug', 'config'], {
+          cwd,
+          env: { ...env, PWD: cwd },
+          encoding: 'utf8',
+          timeout: 60000,
+        });
+        assert.equal(result.status, 0, result.stderr);
+        return JSON.parse(result.stdout);
+      };
+      const sandbox = oc.makeSandbox({ region: 'us-west-2', tmpRoot });
+      const env = oc.judgeEnv(sandbox, {
+        region: 'us-west-2',
+        base: {
+          PATH: process.env.PATH,
+          HOME: realHome,
+          // A warm cache: with an empty one OpenCode downloads its model catalog first, which needs the network.
+          XDG_CACHE_HOME:
+            process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'),
+        },
+      });
+      const inside = resolve(sandbox.project, env);
+      assert.equal(inside.share, 'disabled', 'its own config is read');
+      assert.notEqual(inside.username, 'PLANTED_IN_TMP');
+      assert.deepEqual(inside.plugin, []);
+      // The same layout without the git root finds the planted config, so the check above can fail. (A planted plugin is
+      // not part of this control: loading one makes OpenCode install its dependencies, which needs the network.)
+      fs.writeFileSync(path.join(dir, 'opencode.json'), plantedConfig);
+      const open = path.join(dir, 'open', 'project');
+      fs.mkdirSync(open, { recursive: true });
+      fs.copyFileSync(
+        path.join(sandbox.project, 'opencode.json'),
+        path.join(open, 'opencode.json'),
+      );
+      const outside = resolve(open, {
+        ...env,
+        OPENCODE_CONFIG: path.join(open, 'opencode.json'),
+      });
+      assert.equal(outside.username, 'PLANTED_IN_TMP');
+    });
+  },
+);
 
 test('judge env: exported credentials leave none of the parent credential variables behind', () => {
   helpers.withTmp((dir) => {
