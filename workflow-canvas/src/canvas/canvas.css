@@ -6,7 +6,7 @@
  * The --wf-state-* pairs colour the state of a node in a run: the text and the
  * outline of a state, and the fill behind its label.
  * A test (canvas-contrast.test.ts) reads this file, checks that the text, the
- * edges and the ports reach WCAG AA in both modes, and that the colours and
+ * edges and the port dots reach WCAG AA in both modes, and that the colours and
  * radii match the theme module.
  */
 .wf-canvas {
@@ -18,13 +18,6 @@
   --wf-node-border: #7a7490;
   --wf-text: #16131f;
   --wf-text-muted: #56516a;
-  /* The ports are the same in both modes. The fill and the letters carry the
-     contrast; the rim only outlines them. */
-  --wf-port-fill: #5f6b7a;
-  --wf-port-rim: #16191f;
-  --wf-port-letter-out: #ffffff;
-  --wf-port-notch-bg: #ffffff;
-  --wf-port-letter-in: #414d5c;
   --wf-controls-bg: #ffffff;
   --wf-controls-bg-hover: #efebff;
   --wf-controls-border: #cfc7ba;
@@ -76,23 +69,21 @@
 
 /*
  * The ring that shows which node the keyboard is on. It is drawn in the SVG
- * of the node (see nodes.tsx), around the outline, so it follows the tab
- * and does not cut across it. The gap is the canvas colour.
+ * of the node (see nodes.tsx), around the outline, so it follows the rounded
+ * card. The gap is the canvas colour.
  */
 .wf-canvas .react-flow__node:focus-visible {
   outline: none;
 }
 
 .wf-focus-ring,
-.wf-focus-ring-port,
 .wf-focus-gap {
   fill: none;
   stroke-linejoin: round;
   visibility: hidden;
 }
 
-.wf-focus-ring,
-.wf-focus-ring-port {
+.wf-focus-ring {
   stroke: var(--wf-focus);
 }
 
@@ -101,7 +92,6 @@
 }
 
 .react-flow__node:focus-visible .wf-focus-ring,
-.react-flow__node:focus-visible .wf-focus-ring-port,
 .react-flow__node:focus-visible .wf-focus-gap {
   visibility: visible;
 }
@@ -114,7 +104,6 @@
   }
 
   .react-flow__node:focus-visible .wf-focus-ring,
-  .react-flow__node:focus-visible .wf-focus-ring-port,
   .react-flow__node:focus-visible .wf-focus-gap {
     visibility: hidden;
   }
@@ -164,13 +153,7 @@
   justify-content: center;
 }
 
-/*
- * A run order port is a piece of a jigsaw: the S out tab hangs from the
- * bottom edge of a card and the S in notch sits in the top edge, both in the
- * middle, so a tab lines up with the notch of the card under it. The card, the tab and
- * the notch are one SVG (see nodes.tsx and jigsaw.ts); this file only gives
- * them colours.
- */
+/* The card is one SVG (see nodes.tsx); this file only gives it colours. */
 .wf-node-shape {
   position: absolute;
   top: 0;
@@ -187,65 +170,51 @@
   stroke-width: 2px;
 }
 
-/* A dark line around the tab and the notch, so they read on any background. */
-.wf-port-rim {
-  fill: var(--wf-port-rim);
-  stroke: var(--wf-port-rim);
-  stroke-linejoin: round;
-}
-
-.wf-port-tab-body {
-  fill: var(--wf-port-fill);
-}
-
-/* The notch is white inside, with a ring in the colour of the tab. */
-.wf-port-notch-inside {
-  fill: var(--wf-port-notch-bg);
-}
-
-.wf-port-notch-ring {
-  fill: none;
-  stroke: var(--wf-port-fill);
-  stroke-linejoin: round;
-}
-
-.wf-port-letter {
-  /* The pinned page font, not a system family, so the letter looks the same
-     on every machine. */
-  font-family: inherit;
-  font-size: 9px;
-  font-weight: 700;
-  text-anchor: middle;
-  dominant-baseline: central;
-}
-
-.wf-port-letter-tab {
-  fill: var(--wf-port-letter-out);
-}
-
-.wf-port-letter-notch {
-  fill: var(--wf-port-letter-in);
-}
-
-/* The title of a node starts below its notch. */
-.wf-node-notched {
-  padding-top: 18px;
-}
-
-.wf-node-end.wf-node-notched {
-  padding-top: 20px;
-  padding-bottom: 4px;
-}
-
-/* The handle is only the box that a link measures from. */
+/*
+ * A run order port is a small dot on the middle of the top edge (in) or the
+ * bottom edge (out). It shows while the node is hovered, focused or selected,
+ * so the cards stay quiet at rest. The size matches PORT_DOT_SIZE in
+ * card-shape.ts.
+ */
 .react-flow .wf-port {
+  /* The handle has no height, so a link starts and ends on the border of
+     the card. The dot is drawn around it. */
+  width: 10px;
   min-width: 0;
+  height: 0;
   min-height: 0;
   padding: 0;
   border: none;
   border-radius: 0;
   background: none;
+  opacity: 0;
   pointer-events: none;
+  transition: opacity 120ms ease-out;
+}
+
+.react-flow .wf-port::before {
+  position: absolute;
+  top: -5px;
+  left: 0;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--wf-edge);
+  border-radius: 50%;
+  background: var(--wf-node-bg);
+  content: '';
+}
+
+.react-flow__node:hover .wf-port,
+.react-flow__node:focus-visible .wf-port,
+.react-flow__node.selected .wf-port {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .react-flow .wf-port {
+    transition: none;
+  }
 }
 
 /*
@@ -317,6 +286,11 @@
 
   .wf-node {
     color: CanvasText;
+  }
+
+  .react-flow .wf-port::before {
+    border-color: CanvasText;
+    background: Canvas;
   }
 }
 

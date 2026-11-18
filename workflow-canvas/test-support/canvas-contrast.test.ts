@@ -66,21 +66,11 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
     }
   });
 
-  it('keeps the port letters readable on their ports', () => {
-    expect(
-      ratio('--wf-port-letter-out', '--wf-port-fill'),
-    ).toBeGreaterThanOrEqual(AA_TEXT);
-    // The notch is white inside, and its letter is a dark gray.
-    expect(
-      ratio('--wf-port-letter-in', '--wf-port-notch-bg'),
-    ).toBeGreaterThanOrEqual(AA_TEXT);
-  });
-
-  it('keeps the tab visible on the canvas and on the node', () => {
-    expect(ratio('--wf-port-fill', '--wf-canvas-bg')).toBeGreaterThanOrEqual(
+  it('keeps the port dots visible on the canvas and on the node', () => {
+    expect(ratio('--wf-edge', '--wf-canvas-bg')).toBeGreaterThanOrEqual(
       AA_GRAPHIC,
     );
-    expect(ratio('--wf-port-fill', '--wf-node-bg')).toBeGreaterThanOrEqual(
+    expect(ratio('--wf-edge', '--wf-node-bg')).toBeGreaterThanOrEqual(
       AA_GRAPHIC,
     );
   });
@@ -119,11 +109,6 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
       '--wf-controls-bg-hover': c.infoBg,
       '--wf-canvas-dots': k.dots,
       '--wf-edge': k.edge,
-      '--wf-port-fill': k.portFill,
-      '--wf-port-rim': k.portRim,
-      '--wf-port-letter-out': k.portLetterOut,
-      '--wf-port-letter-in': k.portLetterIn,
-      '--wf-port-notch-bg': k.portNotchBg,
       '--wf-state-queued': c.textMuted,
       '--wf-state-queued-bg': c.surfaceAlt,
       '--wf-state-running': c.link,
