@@ -182,7 +182,7 @@ test('run refuses a --claude-tools-dir that now resolves a newer claude than the
     const out = path.join(root, 'out');
     write(path.join(out, 'run-config.json'), JSON.stringify({ startedAt: '2030-01-01T00:00:00Z', claudeCode: { version: '1.0.0', binarySha256: oldSha } }));
     await withEnv(CREDS, () => assert.rejects(
-      cmdRun({ suite: 'lite', arms: 'cc-vanilla', 'bench-dir': bench, 'repo-root': root, out, cache: path.join(root, 'cache'), 'claude-tools-dir': tools }),
+      cmdRun({ suite: 'lite', arms: 'cc-vanilla', 'bench-dir': bench, 'repo-root': root, out, cache: path.join(root, 'cache'), 'claude-tools-dir': tools, isolate: 'none', 'allow-unisolated': true }),
       (e) => { assert.match(e.message, /One study must use one claude binary/); assert.ok(e.message.includes(`--claude-bin ${oldBin}`), e.message); return true; },
     ));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }

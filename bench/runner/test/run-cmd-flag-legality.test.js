@@ -133,7 +133,7 @@ test('a Strands Bedrock run needs a pinned model, --budget-usd and --aws-profile
 test('opencode arms are not refused --effort, --stop-on or --max-tool-calls; the run goes on to ask for credentials', () => {
   const s = setup();
   try {
-    const r = run(s, ['--arms', 'oc-vanilla', '--effort', 'high', '--stop-on', 'end_turn', '--max-tool-calls', '3']);
+    const r = run(s, ['--arms', 'oc-vanilla', '--effort', 'high', '--stop-on', 'end_turn', '--max-tool-calls', '3', '--isolate', 'none', '--allow-unisolated']);
     assert.notEqual(r.status, 0);
     assert.doesNotMatch(r.stderr, /does not apply to/);
     assert.match(r.stderr, /--aws-creds-file is required for opencode arms/);
