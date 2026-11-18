@@ -17,7 +17,12 @@ name: Validate PR
 on:
   pull_request:
     # The stacked verify-run/gate PRs target feat/sop-gates-* branches, not main.
-    branches: [main, 'feat/sop-gates-*']
+    # feat/** covers every feature-branch base, so coverage is explicit rather than
+    # resting on behaviour nobody can account for: a run fired on a PR whose base was
+    # feat/claude-preload-docs, which neither pattern below matched, even though this
+    # filter matches the base branch name as a string. feat/sop-gates-* is redundant
+    # under feat/** and stays put; removing it is a separate decision.
+    branches: [main, 'feat/sop-gates-*', 'feat/**']
     types: [opened, edited, reopened, synchronize]
 
 permissions:
