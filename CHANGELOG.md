@@ -86,6 +86,17 @@ reference.
   A `tools` value that continues on an indented line is shown as unreadable, and an item `*` is shown as every tool.
   The summary names the file of each agent, the keys such as `hooks` and `mcpServers` that a
   Claude agent file sets (by name only), and `tools: unreadable` with the reason for a list it cannot read.
+- `konductor flow run --harness kiro-cli-acp` and `--harness claude-acp` run each stage in an ACP adapter,
+  `kiro-cli acp` or `claude-agent-acp`, over newline-delimited JSON on its standard input and output (ACP version 1).
+  Neither is ever chosen without its name, and the CLI harnesses stay the default. The runner answers each permission
+  request from the allow rules of the agent file only, by the one-time option, and a refused request blocks the stage
+  with `SESSION_FAILED` and names the tool. Rules that Kiro keeps in its own stores are applied by Kiro first. A session
+  that does not run as the stage's agent fails the stage, and so does a stage during which the adapter rewrites the
+  agent file. Kiro builds that rewrite a writable agent file at session start therefore fail every `kiro-cli-acp` stage,
+  and a read-only agent file avoids it. For Claude Code the runner sets the permission mode `default` and reads project
+  settings only. Ctrl-C, SIGTERM and SIGHUP end the adapter's process group and halt the run, as on the CLI harnesses. A
+  missing adapter ends the run as a missing CLI does, and an adapter that serves only ACP version 2 is refused.
+  `konductor doctor` has a row for each adapter and warns below `kiro-cli` 3.5.0 and `claude-agent-acp` 0.108.1.
 
 ### Changed
 
