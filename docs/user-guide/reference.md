@@ -404,7 +404,9 @@ per runtime, delegation targets, and the full per-agent breakdown, see the
 Every agent runs `claude-sonnet-5.5`, the Kiro CLI form of the ID. On Claude Code, `konductor synth`
 writes it as `claude-sonnet-5-5`. The SOP column is each spec's
 `dependencies.agentSops.agentSopNames`; the skill count is
-`dependencies.skills.skillNames`, every skill the agent may load. The preload column is
+`dependencies.skills.skillNames`, the skills its own agent file lists as loadable. Only Kiro CLI
+holds an agent to that list; a Claude Code install puts every skill under `.claude/skills/`, where
+any of them stays reachable. The preload column is
 `clientConfig.claudeCli.skills`, the 1 to 4 skills Claude Code injects when the agent runs as a
 subagent; everything else loads on demand through the `Skill` tool. A top-level Claude Code
 agent, and every agent on Kiro CLI, loads skills on demand. `konductor` additionally preloads

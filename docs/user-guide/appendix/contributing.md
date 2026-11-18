@@ -75,7 +75,10 @@ context before its first turn. Claude Code injects every skill in that list into
 subagent, so `konductor synth` warns when an agent's list passes 32 KiB or 32 names. Claude Code
 silently drops the names past 32, and the warning lists them.
 
-`skillNames` is the set of skills an agent can load on demand, on both runtimes.
+`skillNames` is the set of skills the agent's own file lists as loadable. Kiro CLI holds the agent
+to that list, through the name filter it passes the bundled `skill-lookup` server. A Claude Code
+install copies every skill into `.claude/skills/` with no per-agent filter, so there any installed
+skill stays reachable through the `Skill` tool.
 `claudeCli.skills` is the Claude Code preload, so it is normally a subset of `skillNames`. The one
 exception is a skill that applies only on Claude Code and says so in its description, with the
 words "Claude Code only" or "only in Claude Code". It goes in `claudeCli.skills` alone and is not
