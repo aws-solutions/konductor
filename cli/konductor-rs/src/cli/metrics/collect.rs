@@ -209,11 +209,11 @@ pub(crate) fn collect_claude(path: &Path, mtime: u64, size: u64) -> Record {
     };
     // Last write per message id wins: records repeat per content block.
     let mut by_message: HashMap<String, (String, ClaudeUsage)> = HashMap::new();
-    let (mut parsed, mut failed) = (0u64, 0u64);
     for line in BufReader::new(file).lines() {
+        // A line we can't read may have carried usage; skipping it would
+        // silently undercount the session.
         let Ok(line) = line else {
-            failed += 1;
-            continue;
+            return rec.unparsed();
         };
         rec.touch_ts(str_field(&line, "timestamp").and_then(parse_iso_secs));
         if rec.repo.is_none() {
@@ -239,19 +239,20 @@ pub(crate) fn collect_claude(path: &Path, mtime: u64, size: u64) -> Record {
                         usage: Some(usage),
                     }),
             }) => {
-                parsed += 1;
                 if model != "<synthetic>" {
                     by_message.insert(id, (normalize_model(&model), usage));
                 }
             }
+            // Usage we can't key by message id and model can't be counted.
+            Ok(ClaudeLine {
+                message: Some(ClaudeMessage { usage: Some(_), .. }),
+            }) => return rec.unparsed(),
+            // "usage" appeared elsewhere in the line, not as message usage.
             Ok(_) => {}
             // Only usage-carrying lines get here, so one we can't read
             // would silently undercount the session.
             Err(_) => return rec.unparsed(),
         }
-    }
-    if parsed == 0 && failed > 0 {
-        return rec.unparsed();
     }
 
     let mut models: HashMap<String, ModelUsage> = HashMap::new();
@@ -389,6 +390,49 @@ mod tests {
         ]
         .join("\n");
         let p = write(&d, "proj/s.jsonl", &body);
+        assert_eq!(collect_claude(&p, 0, 0).status, Status::Unparsed);
+    }
+
+    #[test]
+    fn claude_usage_without_message_id_or_model_marks_record_unparsed() {
+        let d = tmp("claude-no-id");
+        for (name, message) in [
+            (
+                "no-id",
+                r#"{"model":"claude-opus-5-5","usage":{"output_tokens":5}}"#,
+            ),
+            ("no-model", r#"{"id":"a","usage":{"output_tokens":5}}"#),
+        ] {
+            let p = write(
+                &d,
+                &format!("proj/{name}.jsonl"),
+                &format!(r#"{{"type":"assistant","message":{message}}}"#),
+            );
+            assert_eq!(collect_claude(&p, 0, 0).status, Status::Unparsed, "{name}");
+        }
+    }
+
+    #[test]
+    fn claude_usage_mentioned_outside_message_is_ignored() {
+        let d = tmp("claude-usage-text");
+        let p = write(
+            &d,
+            "proj/s.jsonl",
+            r#"{"type":"assistant","meta":{"usage":"n/a"},"message":{"id":"a","model":"claude-opus-5-5"}}"#,
+        );
+        let r = collect_claude(&p, 0, 0);
+        assert_eq!(r.status, Status::Ok);
+        assert!(r.models.is_empty());
+    }
+
+    #[test]
+    fn claude_unreadable_line_marks_record_unparsed() {
+        let d = tmp("claude-bad-utf8");
+        let p = d.join("proj/s.jsonl");
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        let mut bytes = br#"{"type":"assistant","timestamp":"2026-11-01T10:00:00Z","message":{"id":"a","model":"claude-opus-5-5","usage":{"output_tokens":5}}}"#.to_vec();
+        bytes.extend_from_slice(b"\n\xff\xfe not utf-8\n");
+        std::fs::write(&p, bytes).unwrap();
         assert_eq!(collect_claude(&p, 0, 0).status, Status::Unparsed);
     }
 
