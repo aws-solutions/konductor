@@ -205,7 +205,7 @@ ${
   // The host registers its own handler after the first run(), which is what installed the helper's handlers.
   hostHandler
     ? `
-for (const signal of ['SIGINT', 'SIGTERM'])
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'])
   process.on(signal, () => {
     fs.writeFileSync(${JSON.stringify(`${pidFile}.host`)}, signal);
     ${hostHandler === 'exit' ? 'process.exit(7);' : ''}
@@ -282,6 +282,7 @@ for (const [name, options, source] of [
 for (const [signal, exitCode] of [
   ['SIGINT', 130],
   ['SIGTERM', 143],
+  ['SIGHUP', 129],
 ])
   test(`exit hooks: ${signal} stops the host with exit code ${exitCode} and kills its running child`, async () => {
     await helpers.withTmpAsync(async (dir) => {
@@ -305,7 +306,7 @@ for (const [signal, exitCode] of [
     });
   });
 
-for (const signal of ['SIGINT', 'SIGTERM'])
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'])
   test(`exit hooks: a host handler for ${signal} added after the first run() still runs, and decides the exit`, async () => {
     await helpers.withTmpAsync(async (dir) => {
       const pidFile = path.join(dir, 'pid');
