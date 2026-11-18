@@ -14,8 +14,8 @@ import { STEP_TIMEOUT_MS } from '../support/workflow-canvas-page';
 // it, and it waits for the end; the others answer the run calls themselves.
 
 test.beforeEach(async ({ canvas }) => {
-  await canvas.selectTab('Execution');
-  await canvas.expectTabLoaded('Execution');
+  await canvas.selectTab('Run');
+  await canvas.expectTabLoaded('Run');
 });
 
 test('draws the same graph as the Designer, read-only, with a Run button and no states', async ({
@@ -78,7 +78,7 @@ test('resumes the run that is going when the page is reloaded, though the launch
 
   await canvas.page.reload();
   await canvas.title.waitFor();
-  await canvas.selectTab('Execution');
+  await canvas.selectTab('Run');
 
   await expect(canvas.runStatus).toContainText(
     'Following the run that was already in progress.',
@@ -236,7 +236,7 @@ test('announces a failure to follow the run while the Designer tab is open', asy
   );
   await canvas.runButton.click();
   await expect(canvas.runStatus).toContainText('Running draft.');
-  await canvas.selectTab('Designer');
+  await canvas.selectTab('Design');
   await canvas.page.route('**/api/runs/*', (route) =>
     route.fulfill({
       status: 404,
@@ -259,12 +259,12 @@ test('keeps following the run while the Designer tab is open', async ({
   await canvas.runButton.click();
   await canvas.expectBadges(['Done', 'Running', 'Queued', 'Queued']);
 
-  await canvas.selectTab('Designer');
+  await canvas.selectTab('Design');
   await expect
     .poll(server.reads, { timeout: STEP_TIMEOUT_MS })
     .toBeGreaterThanOrEqual(2);
   await expect(canvas.page.getByTestId('status-badge')).toHaveCount(0);
-  await canvas.selectTab('Execution');
+  await canvas.selectTab('Run');
 
   await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
 });
@@ -274,8 +274,8 @@ test('keeps the goal that was typed when the person comes back from the Designer
 }) => {
   await canvas.goal.fill('Fix the typo');
 
-  await canvas.selectTab('Designer');
-  await canvas.selectTab('Execution');
+  await canvas.selectTab('Design');
+  await canvas.selectTab('Run');
 
   await expect(canvas.goal).toHaveValue('Fix the typo');
   await expect(canvas.runButton).toBeEnabled();
@@ -297,8 +297,8 @@ test('shows the goal of the run in flight, read-only, when the person comes back
     params: { goal: 'Fix the typo' },
   });
 
-  await canvas.selectTab('Designer');
-  await canvas.selectTab('Execution');
+  await canvas.selectTab('Design');
+  await canvas.selectTab('Run');
 
   await expect(canvas.goal).toHaveValue('Fix the typo');
   await expect(canvas.goal).not.toBeEditable();
@@ -332,7 +332,7 @@ test('shows the run that is still going when the page is opened again', async ({
 
   await canvas.page.reload();
   await canvas.title.waitFor();
-  await canvas.selectTab('Execution');
+  await canvas.selectTab('Run');
 
   await canvas.expectBadges(['Done', 'Running', 'Queued', 'Queued']);
   await expect(canvas.runStatus).toContainText(
@@ -352,7 +352,7 @@ test('shows Ready when the page is opened again after the run has ended', async 
 
   await canvas.page.reload();
   await canvas.title.waitFor();
-  await canvas.selectTab('Execution');
+  await canvas.selectTab('Run');
 
   await expect(canvas.runStatus).toContainText('Ready. Press Run to start.');
   await canvas.expectBadges([null, null, null, null]);
@@ -379,7 +379,7 @@ test('has no Execution tab after a reload when the server no longer knows the se
   await expect(
     canvas.page.getByText(/server no longer knows this session/),
   ).toBeVisible();
-  await canvas.selectTab('Execution');
+  await canvas.selectTab('Run');
   await expect(canvas.runButton).toHaveCount(0);
 });
 

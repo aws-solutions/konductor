@@ -1,15 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 import { AA_GRAPHIC, AA_TEXT, blend, contrastRatio } from './contrast';
-import {
-  APP_THEME,
-  BAND,
-  colorsOf,
-  TAB_STRIP_STYLE,
-  TAB_STRIP_THEME,
-  WHITE,
-  type ThemeMode,
-} from './tokens';
+import { APP_THEME, BAND, colorsOf, WHITE, type ThemeMode } from './tokens';
 
 const MODES: ThemeMode[] = ['light', 'dark'];
 
@@ -78,20 +70,16 @@ describe('the header band', () => {
     },
   );
 
-  it('draws the selected-tab indicator at 3:1 or more on the band', () => {
+  it('draws the selected segment of the view switch at 3:1 or more on the band', () => {
     expect(contrastRatio(BAND.link, BAND.background)).toBeGreaterThanOrEqual(
       AA_GRAPHIC,
     );
   });
-});
 
-describe('TAB_STRIP_THEME', () => {
-  it('colours the selected-tab indicator from the band', () => {
-    expect(TAB_STRIP_THEME.tokens.colorBorderItemSelected).toBe(BAND.link);
-  });
-
-  it('colours the line between tabs from the band', () => {
-    expect(TAB_STRIP_STYLE.tabSeparator.color).toBe(BAND.divider);
+  it('has AA contrast for the label of the selected segment', () => {
+    expect(contrastRatio(BAND.background, BAND.link)).toBeGreaterThanOrEqual(
+      AA_TEXT,
+    );
   });
 });
 

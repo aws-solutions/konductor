@@ -2,7 +2,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 /** Tab labels in display order; also used to look up each tab and its panel. */
-export const TAB_NAMES = ['Designer', 'Execution'] as const;
+export const TAB_NAMES = ['Design', 'Run'] as const;
 /** The label of one tab. */
 export type TabName = (typeof TAB_NAMES)[number];
 
@@ -187,7 +187,7 @@ export class WorkflowCanvasPage {
   async expectTabLoaded(name: TabName): Promise<void> {
     await this.expectTabShown(name);
     await this.expectWorkflowDrawn();
-    if (name === 'Execution') await expect(this.runButton).toBeVisible();
+    if (name === 'Run') await expect(this.runButton).toBeVisible();
   }
 
   /** Asserts the whole graph is on screen: every node and every edge. */

@@ -349,31 +349,3 @@ export const APP_THEME: Theme = {
     },
   },
 };
-
-/**
- * Where the strip of the page tabs is, for `TAB_STRIP_THEME`: the element
- * that holds the tab list, found through its role so no library class is
- * needed. `chrome.css` paints the same element with the band.
- */
-export const TAB_STRIP_SELECTOR = '.wf-tab-strip :has(> * > [role="tablist"])';
-
-/**
- * The same roles for the strip of the Designer and Execution tabs, which is
- * page content that sits on the band, so the header context does not reach
- * it. The selected-tab indicator is set too.
- */
-export const TAB_STRIP_THEME: Theme = {
-  tokens: {
-    ...headerBandTokens(),
-    colorBorderItemSelected: BAND.link,
-  },
-};
-
-/**
- * The `style` of the page tabs: the line between two tabs, in the colour of
- * the other hairlines of the band. (The rule under the strip is set in
- * `chrome.css`.)
- */
-export const TAB_STRIP_STYLE = {
-  tabSeparator: { color: BAND.divider },
-} as const;

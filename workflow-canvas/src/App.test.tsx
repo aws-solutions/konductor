@@ -37,8 +37,8 @@ afterEach(() => {
 });
 
 describe('App', () => {
-  it('renders the page title inside a main landmark', () => {
-    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+  it('shows "Workflow canvas" as the title until a workflow loads', () => {
+    render(<App load={new Promise<LoadResult>(() => {})} />);
 
     const main = screen.getByRole('main');
     expect(
@@ -49,18 +49,68 @@ describe('App', () => {
     ).toBeTruthy();
   });
 
+  it('titles the page with the name of the loaded workflow', async () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+
+    const main = screen.getByRole('main');
+    expect(
+      await within(main).findByRole('heading', { level: 1, name: 'hello' }),
+    ).toBeTruthy();
+  });
+
+  it('keeps "Workflow canvas" as the title when the load failed', async () => {
+    render(<App load={settled(failed('The launch code is not valid.'))} />);
+
+    await screen.findByText('The launch code is not valid.');
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Workflow canvas' }),
+    ).toBeTruthy();
+  });
+
+  it('moves between the views with the arrow keys, Home and End', () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+    const designer = screen.getByRole('tab', { name: 'Design' });
+    const execution = screen.getByRole('tab', { name: 'Run' });
+    designer.focus();
+
+    fireEvent.keyDown(designer, { key: 'ArrowRight' });
+    expect(execution.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(execution);
+    expect(screen.getByRole('tabpanel', { name: 'Run' })).toBeTruthy();
+
+    fireEvent.keyDown(execution, { key: 'ArrowRight' });
+    expect(designer.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(designer);
+
+    fireEvent.keyDown(designer, { key: 'End' });
+    expect(execution.getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(execution, { key: 'Home' });
+    expect(designer.getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(designer, { key: 'ArrowLeft' });
+    expect(execution.getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('lets Tab reach only the selected view in the switch', () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+
+    expect(
+      screen.getByRole('tab', { name: 'Design' }).getAttribute('tabindex'),
+    ).toBe('0');
+    expect(
+      screen.getByRole('tab', { name: 'Run' }).getAttribute('tabindex'),
+    ).toBe('-1');
+  });
+
   it('renders the Designer and Execution tabs with Designer selected', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
 
     expect(
-      screen
-        .getByRole('tab', { name: 'Designer' })
-        .getAttribute('aria-selected'),
+      screen.getByRole('tab', { name: 'Design' }).getAttribute('aria-selected'),
     ).toBe('true');
     expect(
-      screen
-        .getByRole('tab', { name: 'Execution' })
-        .getAttribute('aria-selected'),
+      screen.getByRole('tab', { name: 'Run' }).getAttribute('aria-selected'),
     ).toBe('false');
   });
 
@@ -95,9 +145,9 @@ describe('App', () => {
   it('draws the workflow with a Run button on the Execution tab', async () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
 
-    const panel = screen.getByRole('tabpanel', { name: 'Execution' });
+    const panel = screen.getByRole('tabpanel', { name: 'Run' });
     expect(await within(panel).findByTestId('node-stage-draft')).toBeTruthy();
     expect(within(panel).getByRole('button', { name: 'Run' })).toBeTruthy();
   });
@@ -106,8 +156,8 @@ describe('App', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
     await screen.findByTestId('node-end');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Designer' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }));
 
     expect(screen.getByTestId('node-end')).toBeTruthy();
     expect(screen.queryByText('Loading the workflow')).toBeNull();
@@ -203,7 +253,7 @@ describe('App and the risk of opening another workflow', () => {
       />,
     );
     await screen.findByTestId('node-end');
-    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Run' }));
 
     fireEvent.click(await screen.findByRole('button', { name: 'Run' }));
 

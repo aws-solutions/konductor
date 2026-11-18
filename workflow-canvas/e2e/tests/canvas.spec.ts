@@ -227,8 +227,8 @@ test('removes the launch code from the address', async ({ canvas }) => {
 test('keeps the graph when the tabs are switched', async ({ canvas }) => {
   await canvas.expectWorkflowDrawn();
 
-  await canvas.selectTab('Execution');
-  await canvas.selectTab('Designer');
+  await canvas.selectTab('Run');
+  await canvas.selectTab('Design');
 
   await canvas.expectWorkflowDrawn();
 });
@@ -258,7 +258,7 @@ test('does not let a node be dragged', async ({ canvas }) => {
 
 test('reaches each node with the Tab key and names it', async ({ canvas }) => {
   await canvas.expectWorkflowDrawn();
-  await canvas.tab('Designer').focus();
+  await canvas.tab('Design').focus();
 
   for (const name of NODE_NAMES) {
     await canvas.tabToNextNode();
@@ -275,7 +275,7 @@ test('draws the focus ring around the tab, not across it', async ({
   canvas,
 }) => {
   await canvas.expectWorkflowDrawn();
-  await canvas.tab('Designer').focus();
+  await canvas.tab('Design').focus();
 
   await canvas.tabToNextNode();
   const focused = canvas.page.locator('.react-flow__node:focus');

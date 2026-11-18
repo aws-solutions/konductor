@@ -6,8 +6,6 @@ import {
   BAND,
   FONT_CODE,
   FONT_TEXT,
-  TAB_STRIP_SELECTOR,
-  TAB_STRIP_THEME,
   type ThemeMode,
 } from './tokens';
 
@@ -15,6 +13,9 @@ import {
 const BAND_VARIABLES = {
   '--wf-band-background': BAND.background,
   '--wf-band-divider': BAND.divider,
+  '--wf-band-text': BAND.text,
+  '--wf-band-text-muted': BAND.textMuted,
+  '--wf-band-link': BAND.link,
   '--wf-font-code': FONT_CODE,
 } as const;
 
@@ -29,7 +30,6 @@ export function installTheme(body: HTMLElement): void {
     body.style.setProperty(name, value);
   }
   applyTheme({ theme: APP_THEME });
-  applyTheme({ theme: TAB_STRIP_THEME, selector: TAB_STRIP_SELECTOR });
 }
 
 /**
