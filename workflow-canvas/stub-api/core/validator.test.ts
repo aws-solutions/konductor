@@ -71,6 +71,33 @@ describe('the kind and the lines of a stage', () => {
     expect(rangesOf(text)).toEqual([['agent', 7, 11]]);
   });
 
+  it('keeps the blank lines of a |+ block scalar, before the next stage', () => {
+    const text = `${HEAD}stages:\n  - name: a\n    agent: k-developer\n    prompt: |+\n      one\n\n\n  - name: b\n    agent: k-developer\n`;
+    expect(rangesOf(text)).toEqual([
+      ['agent', 7, 12],
+      ['agent', 13, 14],
+    ]);
+  });
+
+  it.each(['|-', '|'])(
+    'ends a %s block scalar at its last line of text',
+    (indicator) => {
+      const text = `${HEAD}stages:\n  - name: a\n    agent: k-developer\n    prompt: ${indicator}\n      one\n\n  - name: b\n    agent: k-developer\n`;
+      expect(rangesOf(text)).toEqual([
+        ['agent', 7, 10],
+        ['agent', 12, 13],
+      ]);
+    },
+  );
+
+  it('keeps a comment after a plain last value on its line', () => {
+    const text = `${HEAD}stages:\n  - name: a\n    agent: k-developer # tail\n\n  - name: b\n    agent: k-developer\n`;
+    expect(rangesOf(text)).toEqual([
+      ['agent', 7, 8],
+      ['agent', 10, 11],
+    ]);
+  });
+
   it('counts CRLF line ends and a last line with no line end', () => {
     const text =
       `${HEAD}stages:\n  - name: a\n    agent: k-developer`.replaceAll(
