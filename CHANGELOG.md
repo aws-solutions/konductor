@@ -130,10 +130,6 @@ not per individual commit.
   rules that served one draw.io-based tool. It places S3 with the regional services, since each
   bucket lives in one region, and treats AWS WAF as global only for CloudFront-scoped web ACLs.
   A Lambda function with VPC config is drawn in its subnets.
-- Three skills are renamed and their old names are removed: `asdlc-aspect-review` is now
-  `k-aspect-review`, `asdlc-code-simplifier` is now `k-code-simplifier`, and `document-formats`
-  is now `docx-conversion`, whose description names `.docx`. Custom agent specs must use the
-  new names: `konductor synth` rejects a spec that still declares an old one.
 - The published HTML guide's FAQ now gives the current skill count (81) instead of 75.
 - `infra-validation` and `iam-policy-design` read as one instruction set each, without a pasted
   second prompt and role. `infra-validation` asks for scope once, and skips the questions when
@@ -348,6 +344,14 @@ not per individual commit.
     without AWS credentials; calls that act on an account still need them.
     The skill-name test now also checks aws-mcp skill names in table cells and prose.
 
+### Removed
+
+- Breaking: three skills are renamed and their old names are removed, with no aliases:
+  `asdlc-aspect-review` is now `k-aspect-review`, `asdlc-code-simplifier` is now
+  `k-code-simplifier`, and `document-formats` is now `docx-conversion`, whose description names
+  `.docx`. Custom agent specs must use the new names: `konductor synth` rejects a spec that still
+  declares an old one.
+
 ### Fixed
 
 - Skill bodies no longer contradict themselves or the codebase. `backend-development` and
@@ -365,7 +369,8 @@ not per individual commit.
   report sections, so a SOP's confidence score averages only the eight.
   Missing artifacts are listed apart from findings and carry no severity, and the PE review and
   design-doc SOPs evaluate a single document without asking for the rest of a package, so a
-  one-doc review can reach PE-READY.
+  one-doc review can reach PE-READY. In `k-existing-design-review` a missing threat model rules
+  out READY FOR IMPLEMENTATION.
   `plan-review` has a SHIP IT template and star rules that don't overlap, and
   `trade-off-evaluator` writes to the caller's output directory or reports inline. The
   `external-research` AWS example states a checked fact instead of a wrong one.
@@ -421,7 +426,8 @@ not per individual commit.
   `external-research` drop terms that do not apply in this repo.
 - `git-merge` shows the merge log and diff and asks before pushing to the default branch, and
   only when the repo merges locally; otherwise, or if the user declines, it opens a PR. Tagging
-  and branch cleanup wait for a successful push. `git-workflow` now merges the default branch in
+  and branch cleanup wait for a successful push. The merge into the default branch never runs in
+  a dispatched pane. `git-workflow` now merges the default branch in
   before a PR instead of rebasing, matching `git-merge`.
 - `cmux-dispatch` and `mux-dispatch` no longer claim every task, and say that Claude Code panes
   skip permission prompts, so dispatch only tasks you would approve unattended.

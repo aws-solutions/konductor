@@ -91,10 +91,10 @@ Policy-level IAM depth (condition keys, permission boundaries, KMS key policies,
    - Search for: `"Resource": "arn:aws:*:*:*:*"` patterns
    - Exception: Only acceptable for service-level actions (e.g., `sts:GetCallerIdentity`)
 
-2. **Wildcard Actions** - CRITICAL, except `service:*` on a low-risk service
+2. **Wildcard Actions** - CRITICAL for `*` and the services named below, IMPORTANT for any other `service:*`
    - Search for: `"Action": "*"` or `actions: ["*"]`
-   - Search for: `"Action": "service:*"` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, which includes `lambda:UpdateFunctionCode`, `iam:*`, `sts:*`), or `ec2:*`, which covers EBS snapshots, security-group ingress and instance userData
-   - `service:*` on a low-risk service (`cloudwatch:*`, `xray:*`) is IMPORTANT
+   - Search for: `"Action": "service:*"` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`, `ssm:*`, `secretsmanager:*`, `dynamodb:*`), or `ec2:*`, which covers EBS snapshots, security-group ingress and instance userData. `lambda:*` includes `lambda:UpdateFunctionCode`, and `ssm:*` includes `ssm:SendCommand` and SecureString parameters
+   - Any other `service:*`, such as `cloudwatch:*`, `xray:*`, `sqs:*` or `sns:*`, is IMPORTANT
 
 3. **Overly Permissive Actions** - Flag as IMPORTANT
    - A list of named actions broader than the code needs, with no wildcard. For example, a read-only Lambda granted `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject`
@@ -102,8 +102,8 @@ Policy-level IAM depth (condition keys, permission boundaries, KMS key policies,
 
 4. **Cross-Account Access**
    - Check for `Principal` with external account IDs
-   - CRITICAL when the trust has no `sts:ExternalId` or other condition key
-   - IMPORTANT when it is conditioned but its intent is unverified
+   - CRITICAL when the trust has no condition that limits which principal can assume the role, such as `sts:ExternalId`, `aws:PrincipalOrgID`, `aws:PrincipalArn`, or `aws:SourceAccount`/`aws:SourceArn` for service principals. Transport or time conditions (`aws:SecureTransport`, `aws:CurrentTime`) do not count
+   - IMPORTANT when it has such a condition but its intent is unverified
 
 5. **Privilege escalation and condition edge cases** (from `aws-iam`)
    - `iam:PassRole` on `Resource: "*"` is CRITICAL. With a compute create or update action (`ec2:RunInstances`, `lambda:CreateFunction`, `lambda:UpdateFunctionConfiguration`, `ecs:RegisterTaskDefinition`) it lets the principal run code as any passable role; alone it is still a wildcard resource
@@ -177,16 +177,16 @@ End the report with its limits: the inputs you did not inspect (Lambda handler c
 - Security groups with `0.0.0.0/0` ingress on non-HTTP ports
 - No deletion protection, or a destroy-on-delete removal policy, on stateful resources (RDS, DynamoDB) in production
 - Hardcoded passwords, keys or tokens in code or environment variables
-- IAM statements with wildcard actions (`*`, `ec2:*`, or `service:*` on a data, credential, code or permission service: `s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) or wildcard resources, including `iam:PassRole` on `*`
-- Cross-account trust with no `sts:ExternalId` or other condition key
+- IAM statements with wildcard actions (`*`, `ec2:*`, or `service:*` on a data, credential, code or permission service: `s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`, `ssm:*`, `secretsmanager:*`, `dynamodb:*`) or wildcard resources, including `iam:PassRole` on `*`
+- Cross-account trust with no condition that limits which principal can assume the role, such as `sts:ExternalId`, `aws:PrincipalOrgID`, `aws:PrincipalArn`, or `aws:SourceAccount`/`aws:SourceArn` for service principals. Transport or time conditions (`aws:SecureTransport`, `aws:CurrentTime`) do not count
 - An unsharded low-cardinality partition key (status, type, day, boolean) on a DynamoDB table or GSI that takes production writes. This is the `dynamodb-design` quality gate's hot-partition CRITICAL: throttling on that key blocks writes
 
 **IMPORTANT (should fix):**
 
 - CloudWatch alarms not defined for key metrics
 - No backup configuration for stateful resources
-- IAM `service:*` on a low-risk service, such as `cloudwatch:*` or `xray:*`
-- Cross-account trust that has a condition key but whose intent is unverified
+- IAM `service:*` on any other service, such as `cloudwatch:*`, `xray:*`, `sqs:*` or `sns:*`
+- Cross-account trust with a condition that limits the principal but whose intent is unverified
 - IAM escalation actions scoped to named resources, `ForAllValues` with no `Null` check, or a Deny that matches `aws:TagKeys` case-sensitively
 - Lambda functions without reserved concurrency limits, DLQ or tracing
 
