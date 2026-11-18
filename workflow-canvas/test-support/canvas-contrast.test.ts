@@ -123,10 +123,6 @@ describe('canvas.css colours come only from the checked variables', () => {
   });
 
   it('writes no colour outside the two variable blocks', () => {
-    const outside = sheet.text
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\.wf-canvas \{[^}]*\}/g, '');
-
-    expect(outside).not.toMatch(COLOUR_LITERAL);
+    expect(sheet.outside('.wf-canvas')).not.toMatch(COLOUR_LITERAL);
   });
 });

@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: Apache-2.0
+import './code-pane.css';
+
+/** One numbered line of text. */
+export interface CodeLine {
+  readonly n: number;
+  readonly text: string;
+}
+
+/**
+ * Numbered lines of plain text in a box that scrolls and takes keyboard
+ * focus, so the arrow keys can scroll it. Text is rendered as text, never as
+ * markup. The numbers are hidden from a screen reader, which reads the lines.
+ */
+export function CodeLines({
+  lines,
+  label,
+  describedBy,
+}: {
+  lines: readonly CodeLine[];
+  /** The name of the box for a screen reader. */
+  label: string;
+  /** The id of the element that says more about the box. */
+  describedBy?: string;
+}) {
+  return (
+    <div
+      className="wf-code-scroll"
+      role="region"
+      tabIndex={0}
+      aria-label={label}
+      aria-describedby={describedBy}
+    >
+      <ol className="wf-code-lines">
+        {lines.map((line) => (
+          <li key={line.n} className="wf-code-line">
+            <span className="wf-code-n" aria-hidden="true">
+              {line.n}
+            </span>
+            <span className="wf-code-text">{line.text}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}

@@ -8,11 +8,24 @@ export interface StyleSheet {
   block(selector: string): string;
   /** Every `--wf-*` declaration of the rule, whatever its value. */
   declarations(selector: string): Record<string, string>;
+  /**
+   * The sheet without its comments and without each rule whose selector ends
+   * in `root`, such as `.wf-canvas` and `:root[data-theme='dark'] .wf-canvas`.
+   */
+  outside(root: string): string;
+}
+
+function escaped(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /** Reads the style sheet at `url`. */
 export function readStyleSheet(url: URL): StyleSheet {
-  const text = readFileSync(url, 'utf8');
+  return parseStyleSheet(readFileSync(url, 'utf8'));
+}
+
+/** The style sheet of `text`. */
+export function parseStyleSheet(text: string): StyleSheet {
   const block = (selector: string) =>
     text.split(`${selector} {`)[1]?.split('}')[0] ?? '';
   return {
@@ -25,6 +38,10 @@ export function readStyleSheet(url: URL): StyleSheet {
           m[2]!.trim(),
         ]),
       ),
+    outside: (root) =>
+      text
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(new RegExp(`${escaped(root)} \\{[^}]*\\}`, 'g'), ''),
   };
 }
 
