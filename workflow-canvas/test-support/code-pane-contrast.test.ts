@@ -34,6 +34,17 @@ describe.each(MODES)('code-pane.css colours in %s', (mode, v) => {
     );
   });
 
+  it('keeps marked lines readable and their bar visible', () => {
+    for (const text of ['--wf-code-text', '--wf-code-text-muted']) {
+      expect(ratio(text, '--wf-code-mark-bg')).toBeGreaterThanOrEqual(AA_TEXT);
+    }
+    for (const backing of ['--wf-code-mark-bg', '--wf-code-bg']) {
+      expect(ratio('--wf-code-mark-edge', backing)).toBeGreaterThanOrEqual(
+        AA_GRAPHIC,
+      );
+    }
+  });
+
   it('uses the colours of the theme module, and names every one it uses', () => {
     const c = colorsOf(mode);
 
@@ -43,6 +54,8 @@ describe.each(MODES)('code-pane.css colours in %s', (mode, v) => {
       '--wf-code-text': c.text,
       '--wf-code-text-muted': c.textMuted,
       '--wf-code-focus': c.link,
+      '--wf-code-mark-bg': c.infoBg,
+      '--wf-code-mark-edge': c.link,
     });
   });
 });
