@@ -308,6 +308,55 @@ not per individual commit.
     of the requests they cover, such as finishing a change test-first or syncing a branch.
   - `git-merge` checks the staged merge before it commits and recovers from a rejected push
     without force-pushing or rebasing.
+- AWS guidance comes from the AWS MCP server's skills instead of local copies:
+  - `dynamodb-design` is now a short skill: access patterns first, keys and per-partition
+    limits, GSI write sharding for low-cardinality keys with a worked example, capacity, and a
+    review gate that rates a hot partition or an unsharded low-cardinality GSI key CRITICAL, with
+    six checks that each state their fact and severity: throttle alarm metrics, sharding a
+    deployed GSI key, PITR and deletion protection, TTL, the capacity-mode switch limit and
+    price provenance. It points to the server's `amazon-dynamodb` skill, loaded through `find-aws-skills`, which
+    `k-architect` now declares, for Streams, backup, security and cost depth.
+    `dynamodb-validation` is removed; `dynamodb-design`'s gate reviews a finished design. Custom
+    agent specs that declare it must drop it: `konductor synth` rejects a spec that names a skill
+    that does not exist.
+  - `find-aws-skills` now loads for any AWS service guidance, even when a local skill covers part
+    of the task, and `architecture-advisor`, `kiro-design-generation` and `system-design-patterns`
+    load `dynamodb-design` and apply its quality gate before designing DynamoDB keys and indexes.
+    When a lookup fails, `find-aws-skills` offers direct API calls through `aws___run_script` only
+    when the agent has that tool.
+  - `infra-validation` runs the server's `aws-cloudformation`, `aws-cdk` and
+    `aws-well-architected-review` checks (cfn-lint, cfn-guard, cdk-nag, a pillar review)
+    read-only and rates their findings CRITICAL, IMPORTANT or SUGGESTION. It runs `cdk synth`
+    only after the user confirms the code is trusted; otherwise it reads the template in
+    `cdk.out/` or the constructs and lists synth and cdk-nag as not run. An unsharded
+    low-cardinality DynamoDB partition key is CRITICAL, matching `dynamodb-design`. Without the server it
+    runs the local tools the project has and checks its quality gate items by reading the code.
+    `k-code-review-workflow` passes it `scope_confirmed`, the infra files and a new optional
+    `environment` parameter, so the review does not stop to ask for scope.
+  - `iam-policy-design` generates policies with `aws-iam` and takes S3, secrets and CloudTrail
+    settings from the server's skills for them. `policy-validation` checks statements against
+    `aws-iam`'s edge cases and S3 buckets against `securing-s3-buckets`. It and
+    `infra-validation` rate `iam:PassRole` or an IAM escalation action on `*` CRITICAL, a scoped
+    escalation action or `ForAllValues` without a `Null` check IMPORTANT, and map the S3
+    checklist's tiers onto their own scale. The `iam-policy-design` tenant isolation example
+    pairs its `LeadingKeys` condition with a `Null` check and limits the actions.
+  - `cost-estimation` prices through Price List API calls on the AWS MCP server, guided by
+    `aws-billing-and-cost-management`, instead of the separate AWS Pricing MCP server. With a
+    shell, it prices DynamoDB with the `amazon-dynamodb` cost calculator, fetched from the
+    server, shown to the user and run locally only after the user confirms. When the server is available it requires a Price List lookup for
+    each line item and labels any figure it did not look up "recalled, unverified".
+  - `policy-validation` checks the API Gateway `SecurityPolicy` property, treats the KMS key
+    rotation period as configurable, uses the Security Hub CSPM name, and, when the user asks,
+    runs IAM Access Analyzer `ValidatePolicy` in the user's AWS account.
+  - `konductor` declares `aws-mcp` and `find-aws-skills`, like `k-architect` and `k-developer`,
+    so it can run `infra-validation`'s AWS checks. On Kiro CLI the three agents pre-approve only the server's
+    read-only documentation, skill and Region tools. On both harnesses `konductor` is granted only
+    those five tools by name (`aws___retrieve_skill`, `aws___search_documentation`,
+    `aws___read_documentation`, `aws___list_regions`, `aws___get_regional_availability`), so it
+    has no `aws___run_script`, and its prompt requires confirmation before any mutating AWS action.
+    All three start the server with `--skip-auth`, so documentation search and skills work
+    without AWS credentials; calls that act on an account still need them.
+    The skill-name test now also checks aws-mcp skill names in table cells and prose.
 
 ### Removed
 
@@ -344,8 +393,9 @@ not per individual commit.
   not prompt when a SOP runs it. `trade-off-evaluator` writes no file standalone unless asked.
 - `infra-validation` and `policy-validation` no longer flag an S3 bucket or DynamoDB table as
   unencrypted for lacking an encryption setting, since both encrypt at rest by default. They
-  flag them only when the data needs SSE-KMS or a customer managed key. The `infra-validation`
-  Graviton example cites the published Lambda arm64 figure.
+  flag them only when the data needs SSE-KMS or a customer managed key. For a customer managed
+  key, `iam-policy-design` adds a bucket policy statement that denies `s3:PutObject` under any
+  other key, and `policy-validation` asks for one; only the deny on unencrypted uploads is gone.
 - `smithy-modeling` and `smithy-validation` describe current Smithy rules: `enum` and `intEnum`
   shapes instead of the deprecated `@enum` trait, the full `@paginated` rules, required
   `@httpLabel` members, the DANGER severity, `smithy validate --severity` and
