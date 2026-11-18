@@ -227,9 +227,10 @@ instead: the plugin ships a plugin-level `.mcp.json` for the same server, with t
 tool rewritten to its real plugin-scoped name Claude Code resolves for a plugin subagent. The
 server auto-starts as soon as the plugin (or standalone install) is enabled, launching
 `mcp-proxy-for-aws-cli==1.7.0`. The proxy is pinned for repeatable client behavior; AWS
-service documentation and skills still come from the managed endpoint at request time. Install `uvx`
-and configure AWS credentials (`~/.aws/credentials` or environment variables) so the agent has
-something to authenticate with; it degrades gracefully if credentials are absent.
+service documentation and skills still come from the managed endpoint at request time. Install `uvx`.
+The server starts with `--skip-auth`, so documentation search and skills work without AWS
+credentials; configure credentials (`~/.aws/credentials` or environment variables) only for calls
+that act on an AWS account.
 
 **Tool grant: the whole server for `k-architect` and `k-developer`.** These two grant every tool
 the server exposes: the five AWS knowledge/documentation tools (`aws___search_documentation`,

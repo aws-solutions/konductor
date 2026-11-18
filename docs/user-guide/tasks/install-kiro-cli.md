@@ -148,12 +148,32 @@ Choosing among the three orchestrators:
 
 ## Optional integrations
 
-Two are pre-configured in the agent specs and need only their local dependency.
+Two are declared in the agent specs.
 
-**AWS documentation lookups** — `konductor`, `k-architect` and `k-developer`. Install `uvx` and
-configure
-AWS credentials in `~/.aws/credentials` or environment variables. All three work without
-credentials, just without AWS lookups.
+**AWS documentation lookups** — `konductor`, `k-architect` and `k-developer`. Install `uvx` and add
+`aws-mcp` to `.kiro/settings/mcp.json` for one project or `~/.kiro/settings/mcp.json` for all
+projects, since Kiro CLI does not start MCP servers from the agent specs:
+
+```json
+{
+  "mcpServers": {
+    "aws-mcp": {
+      "command": "uvx",
+      "args": [
+        "mcp-proxy-for-aws-cli==1.7.0",
+        "https://aws-mcp.us-east-1.api.aws/mcp",
+        "--metadata",
+        "AWS_REGION=us-east-1",
+        "--skip-auth"
+      ]
+    }
+  }
+}
+```
+
+With `--skip-auth`, documentation search and skills work without AWS credentials. Configure
+credentials in `~/.aws/credentials` or environment variables only for calls that act on an AWS
+account.
 
 **Browser automation** — `k-browser`. Install the browser binary:
 

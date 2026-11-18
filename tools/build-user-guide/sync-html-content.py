@@ -545,6 +545,45 @@ EDITS = [
      "but degrades rather than blocks (the Security dimension is capped at 3)"),
 ]
 
+_PREREQ_MONO = "<span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">{}</span>"
+_PREREQ_UVX = _PREREQ_MONO.format("uvx")
+_PREREQ_CREDS = _PREREQ_MONO.format("~/.aws/credentials")
+
+
+def _UC_CODE(text):
+    """Inline code span in the use-case callouts."""
+    return f"<code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em\">{text}</code>"
+
+
+def _code_block(label, body):
+    """A copyable code block in the install pages' markup."""
+    return (
+        '\n            <div style="border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--code);margin-bottom:18px">\n'
+        '              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--bd)">'
+        f"<span style=\"font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--mu2)\">{label}</span>"
+        "<button data-copy=\"1\" style=\"all:unset;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu2)\" style-hover=\"color:var(--sig)\">copy</button></div>\n"
+        "              <pre style=\"margin:0;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:#E8E4F5;overflow-x:auto\">"
+        f"{body}</pre>\n"
+        "            </div>"
+    )
+
+
+_AWS_MCP_KIRO_CONFIG = """{
+  "mcpServers": {
+    "aws-mcp": {
+      "command": "uvx",
+      "args": [
+        "mcp-proxy-for-aws-cli==1.7.0",
+        "https://aws-mcp.us-east-1.api.aws/mcp",
+        "--metadata",
+        "AWS_REGION=us-east-1",
+        "--skip-auth"
+      ]
+    }
+  }
+}"""
+
+
 # Per-agent roster figures, verified against agents/*.agent-spec.json.
 # (label, old, new) -- model · SOPs declared · skills · MCP
 #
@@ -715,6 +754,50 @@ ROSTER = [
     ("code-review-workflow step 03: infra-validation scope",
      'backend-review · frontend-review · infra-validation.',
      'backend-review · frontend-review · infra-validation, given scope_confirmed, the infra files and any environment, so it does not stop to ask.'),
+    # ---- aws-mcp starts with --skip-auth: credentials only for account calls ----
+    ("prerequisites: AWS credentials optional",
+     "AWS credentials are optional</strong> — needed only for the AWS documentation integration below.",
+     "AWS credentials are optional</strong> — needed only for AWS MCP calls that act on an AWS account."),
+    ("prerequisites integrations: agent count",
+     "Four agents can use external tool servers.",
+     "Five agents can use external tool servers."),
+    ("prerequisites integrations: aws-mcp agents",
+     "k-architect<br>k-developer</div>",
+     "konductor<br>k-architect<br>k-developer</div>"),
+    ("prerequisites integrations: aws-mcp needs",
+     _PREREQ_UVX + " installed, plus AWS credentials in " + _PREREQ_CREDS
+     + " or environment variables. Both agents work without credentials, just without AWS lookups.</div>",
+     _PREREQ_UVX + " installed. Documentation search and skills work without AWS credentials; calls that"
+     " act on an AWS account need credentials in " + _PREREQ_CREDS + " or environment variables.</div>"),
+    ("install-kiro-cli integrations: intro",
+     "Two are pre-configured in the agent specs and need only their local dependency.</p>",
+     "Two are declared in the agent specs.</p>"),
+    ("install-kiro-cli integrations: aws-mcp config",
+     _mono("k-developer") + ". Install " + _mono("uvx") + " and configure AWS credentials in "
+     + _mono("~/.aws/credentials") + " or environment variables. Both agents work without credentials,"
+     " just without AWS lookups.</p>",
+     _mono("k-developer") + ". Install " + _mono("uvx") + " and add " + _mono("aws-mcp") + " to "
+     + _mono(".kiro/settings/mcp.json") + " for one project or " + _mono("~/.kiro/settings/mcp.json")
+     + " for all projects, since Kiro CLI does not start MCP servers from the agent specs:</p>"
+     + _code_block("JSON", _AWS_MCP_KIRO_CONFIG)
+     + '\n            <p style="margin:0 0 14px;font-size:16px;line-height:1.75;color:var(--mu)">With '
+     + _mono("--skip-auth") + ", documentation search and skills work without AWS credentials. Configure"
+     " credentials in " + _mono("~/.aws/credentials") + " or environment variables only for calls that"
+     " act on an AWS account.</p>"),
+    ("design-a-system: phase 3 aws-mcp callout",
+     "server. In Kiro CLI that server is declared and launched from the agent spec. "
+     '<strong style="color:var(--tx);font-weight:600">In Claude Code the agent only requests the tools via the '
+     + _UC_CODE("mcp__aws-mcp__*") + " glob — you must configure an " + _UC_CODE("aws-mcp")
+     + " server yourself</strong> or those tools will not resolve. Either way, with no AWS credentials the"
+     " step degrades to UNVERIFIED findings rather than failing.",
+     "server. In Claude Code the install launches that server. "
+     '<strong style="color:var(--tx);font-weight:600">In Kiro CLI you add ' + _UC_CODE("aws-mcp")
+     + " to your own MCP config</strong> (Install for Kiro CLI, Optional integrations) or those tools will"
+     " not resolve. The server starts with " + _UC_CODE("--skip-auth") + ", so the lookups work without"
+     " AWS credentials. Without the server, the step degrades to UNVERIFIED findings rather than failing."),
+    ("faq: aws-mcp needs uvx only",
+     "It needs uvx and credentials present.",
+     "It needs uvx present."),
 ]
 
 

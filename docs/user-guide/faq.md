@@ -228,7 +228,7 @@ Three things to be aware of nonetheless:
    behavior, not Konductor's, and it applies whether or not Konductor is installed.
 2. **The AWS MCP integration reaches an AWS endpoint** — `https://aws-mcp.us-east-1.api.aws/mcp`,
    declared in the `konductor`, `k-architect` and `k-developer` specs — when those agents look up AWS
-   documentation. It is opt-in in the sense that it needs `uvx` and credentials present.
+   documentation. It is opt-in in the sense that it needs `uvx` present.
 3. **The project's `README.md` includes a data-collection notice** stating that the solution sends
    operational metrics to AWS about its use, subject to the
    [AWS Privacy Notice](https://aws.amazon.com/privacy/).
