@@ -69,7 +69,7 @@ Credits are Kiro credits; the opencode and Claude Code harnesses and the opencod
 ### Start each process
 
 Run these from the repository root. Add `--budget-credits N` to any `run` to stop new runs at 90% of N; `run` prints the worst-case wall clock first.
-`--prepare-only` builds and trial-installs every arm and spends nothing. The arms, replicates and cost per suite are in [Suites and arms](#suites-and-arms).
+`--prepare-only` builds and trial-installs every arm and spends nothing. It first makes the flag and arm checks a real run makes before it needs credentials (harness flags, `--effort` levels, budget flags, plant suite shape), so a flag the real run would refuse fails here too. The arms, replicates and cost per suite are in [Suites and arms](#suites-and-arms).
 
 | Process | Start it with | Note |
 | --- | --- | --- |

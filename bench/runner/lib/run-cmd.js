@@ -34,7 +34,7 @@ const { ensureOwnedDir, writeAtomic } = require('./owned.js');
 const { studyInfraCheck } = require('./infra-check.js');
 const { maxAuthFailuresOf, AUTH_EXIT_CODE } = require('./auth-failure.js');
 const { makeLoginCheck } = require('./login-check.js');
-const { preparePlantSuite } = require('./plant/intake.js');
+const { preparePlantSuite, checkSuiteShape } = require('./plant/intake.js');
 const { preflightWalls, trialGatewayRows, checklistWithTrials } = require('./plant/walls.js');
 const { preflightStrands } = require('./plant/strands-census.js');
 const { makeIso } = require('./run-one.js');
@@ -154,6 +154,45 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
   }
 }
 
+/**
+ * The flag and arm checks of `run` that need no credentials, binary or network, so `--prepare-only` makes them too and
+ * fails where the real run would. `opts` are the run flags; `tasks` the selected tasks; `runtime` the arms' harness id.
+ * Throws on the first refusal.
+ * Returns the parsed values the run uses: `{budgetFlag, budgetCredits, censoredFloor, runCreditLimit, stopOn}`.
+ */
+function checkHarnessFlags({ opts, tasks, runtime }) {
+  const desc = descriptorOf(runtime);
+  const isUsd = desc.costUnit === 'usd';
+  const unitName = isUsd ? 'USD' : 'credits';
+  const budgetFlag = isUsd ? 'budget-usd' : 'budget-credits';
+  const otherBudgetFlag = isUsd ? 'budget-credits' : 'budget-usd';
+  if (opts[otherBudgetFlag] !== undefined) throw new Error(`--${otherBudgetFlag} does not apply here: ${runtime} runs are costed in ${unitName}, use --${budgetFlag}`);
+  for (const [flag, why] of Object.entries(desc.flags.refused)) {
+    if (opts[flag] !== undefined) throw new Error(`--${flag} does not apply to ${desc.proseName} arms (${why})`);
+  }
+  if (runtime === 'claude-code') cc.effortOf(opts.effort || DEFAULT_EFFORT);
+  if (!desc.supports.multiTurn) {
+    const multiTurn = tasks.filter((t) => t.autonomy).map((t) => t.id);
+    if (multiTurn.length) throw new Error(`multi-turn (autonomy) tasks are not supported on the ${desc.proseName} harness yet: ${multiTurn.join(', ')}; ${desc.multiTurnNote}. Choose other tasks with --tasks`);
+  }
+  const budgetCredits = opts[budgetFlag] ? Number(opts[budgetFlag]) : null;
+  if (budgetCredits !== null && !(budgetCredits > 0)) throw new Error(`--${budgetFlag} must be a positive number`);
+  const censoredFloor = opts['censored-floor'] ? Number(opts['censored-floor']) : isUsd ? DEFAULT_CENSORED_FLOOR_USD : DEFAULT_CENSORED_FLOOR;
+  if (!(censoredFloor >= 0)) throw new Error('--censored-floor must be a non-negative number');
+  let runCreditLimit = null;
+  if (opts['run-credit-limit'] !== undefined) {
+    runCreditLimit = Number(opts['run-credit-limit']);
+    if (opts['run-credit-limit'] === true || !(runCreditLimit > 0)) throw new Error('--run-credit-limit must be a positive number');
+    if (!desc.supports.runCreditLimit) throw new Error(`--run-credit-limit applies to ${joinNames(supporting('runCreditLimit').map((d) => d.proseName))} arms only; ${runtime} runs are costed in ${unitName}${desc.flags.perRunCapFlag ? ` (use --${desc.flags.perRunCapFlag} for a per-run cap)` : ''}`);
+  }
+  let stopOn = null;
+  if (opts['stop-on'] !== undefined) {
+    stopOn = opts['stop-on'];
+    if (!STOP_ON.includes(stopOn)) throw new Error(`--stop-on takes ${STOP_ON.slice(0, -1).join(', ')} or ${STOP_ON.at(-1)}`);
+  }
+  return { budgetFlag, budgetCredits, censoredFloor, runCreditLimit, stopOn };
+}
+
 async function cmdRun(opts, deps = {}) {
   // Everything the runner reads from its own checkout later is read or hashed now, so a branch switch mid-study fails fast.
   preloadSchemas();
@@ -205,7 +244,12 @@ async function cmdRun(opts, deps = {}) {
     if (runtimes.includes(d.id)) continue;
     for (const flag of d.flags.own) if (opts[flag] !== undefined) throw new Error(`--${flag} applies to ${d.proseName}${d.armPrefix ? ` (${d.armPrefix})` : ''} arms only`);
   }
-  if (prepareOnly) return prepareOnlyRun({ opts, arms, runtimes, repo: REPO, agentEngine, log: (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`) });
+  if (prepareOnly) {
+    // The checks a real run makes before it needs credentials or a binary; a plant suite's shape is checked at intake.
+    for (const runtime of runtimes) checkHarnessFlags({ opts, tasks, runtime });
+    if (arms.some((a) => a.plant)) checkSuiteShape({ arms, tasks, parallel });
+    return prepareOnlyRun({ opts, arms, runtimes, repo: REPO, agentEngine, log: (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`) });
+  }
   if (runtimes.length > 1) throw new Error(`arms from different harnesses cannot share one run (${arms.map((a) => `${a.id}: ${harnessFor(a).id}`).join(', ')}); run them separately with different --out`);
   const isOc = runtimes[0] === 'opencode';
   const isCc = runtimes[0] === 'claude-code';
@@ -213,36 +257,10 @@ async function cmdRun(opts, deps = {}) {
   const desc = descriptorOf(runtimes[0]);
   const unit = desc.costUnit;
   const isUsd = unit === 'usd';
-  const unitName = isUsd ? 'USD' : 'credits';
-  const budgetFlag = isUsd ? 'budget-usd' : 'budget-credits';
-  const otherBudgetFlag = isUsd ? 'budget-credits' : 'budget-usd';
-  if (opts[otherBudgetFlag] !== undefined) throw new Error(`--${otherBudgetFlag} does not apply here: ${runtimes[0]} runs are costed in ${unitName}, use --${budgetFlag}`);
-  for (const [flag, why] of Object.entries(desc.flags.refused)) {
-    if (opts[flag] !== undefined) throw new Error(`--${flag} does not apply to ${desc.proseName} arms (${why})`);
-  }
-  if (isCc) cc.effortOf(opts.effort || DEFAULT_EFFORT);
-  if (!desc.supports.multiTurn) {
-    const multiTurn = tasks.filter((t) => t.autonomy).map((t) => t.id);
-    if (multiTurn.length) throw new Error(`multi-turn (autonomy) tasks are not supported on the ${desc.proseName} harness yet: ${multiTurn.join(', ')}; ${desc.multiTurnNote}. Choose other tasks with --tasks`);
-  }
+  const { budgetFlag, budgetCredits, censoredFloor, runCreditLimit, stopOn } = checkHarnessFlags({ opts, tasks, runtime: runtimes[0] });
   // Claude Code takes exported keys: from the environment, or with --aws-profile read from that profile before each run that needs fresh ones.
   const ccCreds = isCc && opts['aws-profile'] !== undefined ? profileCredentials(opts['aws-profile'] === true ? '' : String(opts['aws-profile']), deps.readAwsProfile ? { read: deps.readAwsProfile } : {}) : null;
   if (isCc) cc.checkCredentials(ccCreds ? { ...process.env, ...ccCreds.current() } : process.env);
-  const budgetCredits = opts[budgetFlag] ? Number(opts[budgetFlag]) : null;
-  if (budgetCredits !== null && !(budgetCredits > 0)) throw new Error(`--${budgetFlag} must be a positive number`);
-  const censoredFloor = opts['censored-floor'] ? Number(opts['censored-floor']) : isUsd ? DEFAULT_CENSORED_FLOOR_USD : DEFAULT_CENSORED_FLOOR;
-  if (!(censoredFloor >= 0)) throw new Error('--censored-floor must be a non-negative number');
-  let runCreditLimit = null;
-  if (opts['run-credit-limit'] !== undefined) {
-    runCreditLimit = Number(opts['run-credit-limit']);
-    if (opts['run-credit-limit'] === true || !(runCreditLimit > 0)) throw new Error('--run-credit-limit must be a positive number');
-    if (!desc.supports.runCreditLimit) throw new Error(`--run-credit-limit applies to ${joinNames(supporting('runCreditLimit').map((d) => d.proseName))} arms only; ${runtimes[0]} runs are costed in ${unitName}${desc.flags.perRunCapFlag ? ` (use --${desc.flags.perRunCapFlag} for a per-run cap)` : ''}`);
-  }
-  let stopOn = null;
-  if (opts['stop-on'] !== undefined) {
-    stopOn = opts['stop-on'];
-    if (!STOP_ON.includes(stopOn)) throw new Error(`--stop-on takes ${STOP_ON.slice(0, -1).join(', ')} or ${STOP_ON.at(-1)}`);
-  }
   const maxAuthFailures = maxAuthFailuresOf(opts['max-auth-failures'], process.env.BENCH_MAX_AUTH_FAILURES);
   const maxToolCalls = opts['max-tool-calls'] === undefined ? null : intOpt(opts['max-tool-calls'], 'max-tool-calls');
   const seed = opts.seed === undefined ? Date.now() % 2147483647 : intOpt(opts.seed, 'seed', 0);

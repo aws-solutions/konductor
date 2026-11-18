@@ -89,8 +89,9 @@ test('a Claude Code arm with credentials set is refused --run-credit-limit, and 
   try {
     const r = run(s, ['--arms', 'cc-vanilla', '--run-credit-limit', '3'], CC_ENV);
     assert.equal(refusal(r), '--run-credit-limit applies to kiro-cli arms only; claude-code runs are costed in USD (use --run-budget-usd for a per-run cap)');
+    // A flag that can never apply is refused before credentials are read, so --prepare-only can make the same check.
     const without = run(s, ['--arms', 'cc-vanilla', '--run-credit-limit', '3']);
-    assert.match(without.stderr, /missing AWS_ACCESS_KEY_ID/, 'the credential check comes before the credit-limit check');
+    assert.equal(refusal(without), '--run-credit-limit applies to kiro-cli arms only; claude-code runs are costed in USD (use --run-budget-usd for a per-run cap)');
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
 });
 
@@ -107,6 +108,29 @@ test('a Claude Code arm takes --effort at a claude level, and refuses a level cl
   try {
     assert.match(run(s, ['--arms', 'cc-vanilla', '--effort', 'turbo']).stderr, /--effort turbo is not a claude --effort level \(use low, medium, high, xhigh, max\)/);
     assert.equal(refusal(run(s, ['--arms', 'cc-vanilla', '--effort', 'xhigh'])), undefined);
+  } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
+});
+
+test('--prepare-only makes the flag and arm checks a real run makes, and refuses the same way before building anything', () => {
+  const s = setup();
+  try {
+    for (const [args, want] of [
+      [['--arms', 'cc-vanilla', '--effort', 'turbo'], /--effort turbo is not a claude --effort level/],
+      [['--arms', 'cc-vanilla', '--stop-on', 'end_turn'], new RegExp(`--stop-on does not apply to Claude Code arms \\(${CC_NO['stop-on']}\\)`)],
+      [['--arms', 'vanilla', '--budget-usd', '3'], /--budget-usd does not apply here: kiro-cli runs are costed in credits/],
+      [['--arms', 'vanilla', '--stop-on', 'never'], /--stop-on takes/],
+    ]) {
+      const real = run(s, args);
+      const prep = run(s, [...args, '--prepare-only']);
+      assert.notEqual(prep.status, 0, `${args.join(' ')} --prepare-only exited 0`);
+      assert.match(prep.stderr, want, args.join(' '));
+      assert.match(real.stderr, want, `the real run refuses ${args.join(' ')} the same way`);
+      assert.doesNotMatch(prep.stdout, /prepare-only: \d+ arm\(s\) built/);
+    }
+    // A plant suite's shape (plant tasks only, one trial at a time) is checked at release intake in a real run; prepare-only checks it up front (DEBT D-21).
+    const plant = run(s, ['--arms', 'plant-policy,plant-allowall', '--prepare-only']);
+    assert.notEqual(plant.status, 0);
+    assert.match(plant.stderr, /plant arms run plant tasks only; t1 has no environment block/);
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
 });
 
