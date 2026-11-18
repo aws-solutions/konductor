@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_GOAL_CHARS } from '../core/contract.ts';
 import { DEFAULT_STAGE_MS } from '../core/runs.ts';
+import { SAMPLE_FILES } from '../core/sample.ts';
 import { expectContract, expectError } from '../test-support/contract.ts';
 import { expectGuardedGet } from '../test-support/guarded.ts';
 import { useStub, type TestStub } from '../test-support/harness.ts';
@@ -95,6 +96,20 @@ describe('GET /api/runs', () => {
 
   it('asks for the token, its own Host and Origin, and a GET', async () => {
     await expectGuardedGet(stub(), RUNS);
+  });
+});
+
+describe('GET /api/runs in a busy workspace whose default goal is empty', () => {
+  const text = (SAMPLE_FILES['busy'] ?? '').replace(
+    'default: Add a greeting to the README',
+    "default: ''",
+  );
+  const stub = useStub({ root: 'busy', files: { busy: text } });
+
+  it('lists the other run with an empty goal, not cut', async () => {
+    expect(await rows(stub())).toMatchObject([
+      { status: 'running', goal: '', goal_truncated: false },
+    ]);
   });
 });
 

@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.8.0
+  version: 1.8.1
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -39,7 +39,9 @@ info:
     its own enum without `pending`. The event was already described as never
     `pending`, so no answer a server sends changes. Version 1.7.0 only adds:
     the operation `listRuns`. Version 1.8.0 only adds: a run in that list
-    gains `goal_truncated`.
+    gains `goal_truncated`. Version 1.8.1 adds nothing: the `goal` of a run
+    in that list may be empty, because a workflow may declare an empty
+    default goal, and a client already shows whatever text it gets.
 
     **Conventions**
 
@@ -2465,11 +2467,11 @@ components:
           $ref: '#/components/schemas/RunStatus'
         goal:
           type: string
-          minLength: 1
           maxLength: 2048
           description: |
             The goal the person typed when they started the run, so that a
-            person can tell runs apart. It is cut to at most `goal_chars` of
+            person can tell runs apart. It may be empty, for a run that used a
+            workflow's empty default goal. It is cut to at most `goal_chars` of
             the session's `limits`, at a character boundary, with nothing
             added. It is in this answer only, which needs the session token,
             and the server never writes it to a log.

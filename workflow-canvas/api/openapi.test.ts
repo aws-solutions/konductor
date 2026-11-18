@@ -1037,7 +1037,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.8.0');
+      expect(info.version).toBe('1.8.1');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1389,6 +1389,24 @@ describe('workflow canvas API contract', () => {
       );
       expect(spec.components.schemas['RunSummary']!['required']).toContain(
         'goal_truncated',
+      );
+    });
+
+    it('accepts an empty goal in a run of the list', () => {
+      const summary = spec.components.schemas['RunSummary']!;
+      const row = {
+        run_id: '20261024-0412-a7b3c',
+        started_at: '2026-10-24T04:12:05Z',
+        status: 'running',
+        goal: '',
+        goal_truncated: false,
+      };
+      expect(valueMatchesSchema(summary, row)).toBe(true);
+    });
+
+    it('says that version 1.8.1 lets the goal of a run in the list be empty', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.8\.1 adds nothing: the `goal` of a run in that list may be empty/,
       );
     });
 
