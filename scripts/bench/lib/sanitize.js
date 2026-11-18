@@ -16,15 +16,33 @@
  * Every drop is counted: `removed_chars` (non-whitespace characters, by rule in `removed_by_rule`) and `removed_share`
  * of the answer, so the judge input can refuse an answer the drops emptied. A rewrite is not a removal.
  *
- * Known cost: a sentence that uses "skill" as an ordinary noun next to a cue word ("Follow the checklist to build a
- * skill that lasts.") is dropped, because it cannot be told from the arm's narration. Narration that names no skill
- * or guidance ("I answered directly.") passes. So does narration that names only "instructions" ("The provided
- * instructions were short."): the word is everyday prose ("Following instructions found in ticket content."), so it is
- * not a skill word. When a list or the code that applies it changes, bump SANITIZER_VERSION.
+ * What counts as narration: a sentence with a skill word and a cue word. The skill's own name and the plugin form
+ * ("bench:x") are named words: any cue next to one is narration. "skill" and "guidance" are generic words, everyday
+ * prose too ("Per AWS guidance, never create access keys for the root user."), so a generic word is narration only
+ * next to a strong cue (what the harness does with a skill: load, find, call, be available), or next to any cue when
+ * the sentence has a narrator: "I", "my", "the agent" ("I am using the skill's guidance"). A weak cue is a
+ * word that is also ordinary prose: per, using, without, following, provided, requires. A task whose request itself
+ * says "skill" or "guidance" is about the word, so for that word a strong cue is not enough and a narrator is needed.
+ * A few phrases are narration with no narrator and no cue pair. HARNESS_PHRASES are what only the harness can say
+ * ("Skills used: none.", "The skill was loaded.", "No skill matched this task.", "The Skill tool was not available."),
+ * so they count in every task. USE_PHRASES are the answer speaking of the skill it used ("Using the skill, here is the
+ * review.", "The skill provided a checklist."); they count unless the request itself says "skill".
+ *
+ * The check reads table cells one by one (a narrating cell is emptied, the row stays a row) and a paragraph that is
+ * hard-wrapped across lines as one text (a line that ends without a stop and the next one starting in lower case are
+ * one sentence).
+ *
+ * Known cost: a sentence that uses "skill" as an ordinary noun next to a strong cue ("Tests named after the skill they
+ * exercise are easy to find.") is dropped, because it cannot be told from the arm's narration. In an answer about
+ * skills, a past-tense sentence of HARNESS_PHRASES ("If the skill was not found, Claude falls back.") is dropped too. Narration that names
+ * no skill or guidance ("I answered directly.") passes, and so does "The skill's cap is five options.": with no cue and
+ * no phrase of the lists it cannot be told from "The skill of the team is clear." So does narration that names only "instructions" ("The
+ * provided instructions were short."): the word is everyday prose ("Following instructions found in ticket content."),
+ * so it is not a skill word. When a list or the code that applies it changes, bump SANITIZER_VERSION.
  */
 'use strict';
 
-const SANITIZER_VERSION = 9;
+const SANITIZER_VERSION = 10;
 /** Input over this many characters is not scanned: the answer is dropped whole (`too_long`), never cut and passed on. */
 const MAX_INPUT_CHARS = 1000000;
 
@@ -111,22 +129,59 @@ const NAME_WORDS = Object.freeze([
 ]);
 
 // prettier-ignore
-/** SKILL_WORDS: what narration is about. Not "skill level" or "skill-based", and not guidance that points at a source ("the guidance in the style guide"). */
+/** SKILL_WORDS: the generic words narration is about. Not "skill level" or "skill-based", and not guidance that points at a source ("the guidance in the style guide"). Ordinary prose too, so they need a strong cue or a narrator (see the header). */
 const SKILL_WORDS = Object.freeze([
   `\\bskills?\\b(?!\\s+(?:${HR_NOUNS})\\b)(?!-based)`,
   '\\b(?:guidance|directives?)\\b(?!\\s+(?:of|in|from|on|at|by|for|published|issued)\\b)',
+]);
+
+// prettier-ignore
+/** NAMED_WORDS: the plugin form and the skill's own name. The harness's own vocabulary, so any cue next to one is narration. */
+const NAMED_WORDS = Object.freeze([
   `\\b${PLUGIN}:[a-z0-9]`,
   `${NOT_IN_NAME}${SKILL}(?![A-Za-z0-9-])`,
 ]);
 
 // prettier-ignore
-/** CUE_WORDS: what the harness does with a skill: load, call, find, match, follow, use, attribute ("per the skill"), miss. */
+/** CUE_WORDS: the strong cues, what the harness does with a skill: load, call, find, match, be available, be missing, be attributed ("per the skill", "the skill says"). */
 const CUE_WORDS = Object.freeze([
   '\\b(?:load\\w*|invok\\w*|activat\\w*|launch\\w*|execut\\w*|call(?:s|ed|ing)?|blocked|denied|fail(?:s|ed)?)\\b',
   '\\b(?:found|find(?:s|ing)?|locat(?:e|es|ed|ing)|match\\w*|appl(?:y|ies|ied|ying)|lookups?|checked|checking|returned)\\b',
-  '\\b(?:(?:un)?available|installed|missing|relevant|without|follow(?:s|ed|ing)?|us(?:ed|ing)|per|provided|supplied|preloaded)\\b',
-  "\\b(?:says|states|instructs|tells|requires|recommends|directs|asks)\\b|\\bbased\\s+on\\b|\\bno\\s+such\\b|\\bi\\s+have\\s+no\\b|\\bnot\\s+use\\b|\\bi\\s+don't\\s+think\\b|\\blet\\s+me\\b",
+  '\\b(?:(?:un)?available|installed|missing|relevant|preloaded)\\b',
+  "\\bno\\s+such\\b|\\bi\\s+have\\s+no\\b|\\bnot\\s+use\\b|\\bi\\s+don't\\s+think\\b|\\blet\\s+me\\b",
   'skill\\([^)\\n]{0,200}\\)',
+  '\\b(?:no|not|none|never|zero|neither)\\b(?:\\s+\\w+){0,3}\\s+us(?:ed|ing)\\b',
+  "\\b(?:the|this|that|its|my)\\s+(?:(?:loaded|provided)\\s+)?(?:skills?|guidance)(?:['\u2019]s)?\\s+(?:says|states|instructs|tells|requires|recommends|directs|asks)\\b|\\b(?:per|based\\s+on)\\s+(?:(?:the|this|that|its|my)\\s+(?:(?:loaded|provided)\\s+)?skills?|SKILL\\.md)\\b",
+]);
+
+// prettier-ignore
+/** WEAK_CUE_WORDS: words that are cues in narration and ordinary prose too ("Using this guidance, set the policy."). They count only next to a named word or in a sentence with a narrator. */
+const WEAK_CUE_WORDS = Object.freeze([
+  '\\b(?:per|provided|supplied|without|follow(?:s|ed|ing)?|us(?:ed|ing)|says|states|instructs|tells|requires|recommends|directs|asks)\\b|\\bbased\\s+on\\b',
+]);
+
+// prettier-ignore
+/** NARRATOR_WORDS: who speaks in narration, as [source, flags]: the answering agent ("I", "my", "the agent"). */
+const NARRATOR_WORDS = Object.freeze([
+  Object.freeze(["\\bI(?:['\u2019](?:m|ve|ll|d))?\\b(?!\\.\\w)", 'g']),
+  Object.freeze(['\\bmy\\b|\\bthe\\s+(?:agent|assistant|model|harness|orchestrator|subagent)\\b', 'gi']),
+]);
+
+// prettier-ignore
+/** HARNESS_PHRASES: narration with no narrator and no cue pair, in every task, also one about skills: what only the harness can say about a skill, in the past tense or as a label ("The skill was loaded." is narration, "The skill is loaded when a request matches." is not). */
+const HARNESS_PHRASES = Object.freeze([
+  '\\bskills?\\s+(?:used|loaded|invoked)\\s*[:=]',
+  '\\bskills?\\s+(?:was|were|has\\s+been|have\\s+been|had\\s+been)\\s+(?:not\\s+|never\\s+)?(?:loaded|invoked|activated|called|available|unavailable|found|applied|used|missing|installed|preloaded)\\b',
+  "\\bskills?\\s+(?:\\w+\\s+)?(?:did\\s+not|didn['\u2019]t)\\s+(?:apply|match|load|fire|trigger)\\b",
+  "\\bskill\\s+tool\\s+(?:(?:was|were|is|are)\\s+not|was|were|(?:isn|aren|wasn|weren)['\u2019]t)\\b",
+  '\\bno\\s+(?:\\w+\\s+){0,2}skills?\\s+(?:matched|applied|found|existed|was|were)\\b',
+]);
+
+// prettier-ignore
+/** USE_PHRASES: the answer speaking of "the skill" as something it used or was given. Narration unless the request itself says "skill" (then the answer may be about skills). Not "the skill level" or "the skill-based". */
+const USE_PHRASES = Object.freeze([
+  `\\b(?:using|used|follow(?:s|ed|ing)?|without|per|applying|applied)\\s+(?:the|this|that|its|my)\\s+(?:(?:loaded|provided)\\s+)?skills?(?!\\s+(?:${HR_NOUNS})\\b)(?!-based)`,
+  `\\b(?:the|this|that|its|my)\\s+skill(?:['\u2019]s)?\\s+(?:\\w+\\s+)?(?:provided|supplied|gave|offered|suggested|recommended|said|says|states|instructs|tells|requires)\\b(?!\\s+(?:${HR_NOUNS})\\b)`,
 ]);
 
 // prettier-ignore
@@ -153,6 +208,16 @@ const NORMALIZE_SPEC = Object.freeze({
 // splits in two and the bold title is not dropped with the sentence after it. The bound keeps the lookbehind linear.
 const SENTENCE_SPLIT = /(?<=[.!?][*_`'")\]]{0,3})\s+/;
 const TABLE_ROW = /^\s*\|/;
+// Table cells are split at a pipe that is not escaped.
+const CELL_SPLIT = /(?<!\\)\|/;
+// Lines that start a block of their own, so they never continue the line above: a list item, a heading, a quote, a table
+// row or a rule.
+const BLOCK_START =
+  /^\s*(?:[-*+]\s|\d{1,9}[.)]\s|#{1,6}(?:\s|$)|>|\||(?:[-*_]\s*){3,}$)/;
+const HEADING = /^\s*#{1,6}(?:\s|$)/;
+// A hard-wrapped sentence: the line above ends without a stop, and this one goes on in lower case, a digit or a mark.
+const WRAPPED_END = /[.!?:;][*_`'")\]]{0,3}\s*$/;
+const WRAPPED_NEXT = /^\s*[\p{Ll}\d,;:)\]]/u;
 // A fence opens with 3 or more backticks or tildes, indented at most 3 spaces, and closes with the same character at least
 // as long (CommonMark). Four spaces make indented code, which is not tracked. A fence may sit in a blockquote: each `>`
 // prefix (up to 3 spaces before it, one space after) is stripped first, and the fence ends where the quote does.
@@ -358,72 +423,210 @@ function compileLists(skill, settings) {
         ),
       }),
     ),
-    skillWords: SKILL_WORDS.filter((source) => usable(source, true)).map(
+    skillWords: SKILL_WORDS.map((source) => compile(source)),
+    namedWords: NAMED_WORDS.filter((source) => usable(source, true)).map(
       (source) => compile(source),
     ),
     cueWords: CUE_WORDS.map((source) => compile(source)),
+    weakCueWords: WEAK_CUE_WORDS.map((source) => compile(source)),
+    harnessPhrases: HARNESS_PHRASES.map((source) => compile(source)),
+    usePhrases: USE_PHRASES.map((source) => compile(source)),
+    narrators: NARRATOR_WORDS.map(
+      ([source, flags]) => new RegExp(source, flags),
+    ),
   };
 }
 
+/** `text` with every run of whitespace as one space: what the request guard compares, so a wrapped line still matches. */
+const flatten = (text) => text.replace(/\s+/g, ' ');
+
 /**
- * Is the sentence narration? It is when it holds a SKILL_WORDS match and a CUE_WORDS match and the text from one to the other is
- * not in the request. Matches are read in order of position, each against the nearest earlier match of the other list, so the
- * cost is linear in the sentence.
+ * Is the sentence narration? It is when it holds a phrase of HARNESS_PHRASES, or of USE_PHRASES when the task is not about
+ * skills (a phrase the request holds does not count). Otherwise it is when a skill word and a cue word are in it, the pair is one the rules accept, and the
+ * text from one to the other is not in the request. A named word takes any cue; a generic word takes a strong cue, or any
+ * cue when the sentence has a narrator, and for a generic word the request itself uses ("topic": the task is about
+ * skills) only a narrator will do. Matches are read in order of position, each against the nearest earlier match of each
+ * kind of the other list (at most two), so the cost is linear in the sentence. `request` is flattened; `topic` is the set
+ * of generic skill words (by index) that the request uses.
  */
-function isNarration(sentence, lists, request) {
+function isNarration(sentence, lists, request, topic = new Set()) {
+  // The phrases that are narration alone. Index 0 of the skill words is "skill": a request that uses it is about skills.
+  const phrased = (regexes) =>
+    regexes.some((regex) =>
+      [...sentence.matchAll(regex)].some(
+        (match) => !request.includes(flatten(match[0])),
+      ),
+    );
+  if (
+    phrased(lists.harnessPhrases) ||
+    (!topic.has(0) && phrased(lists.usePhrases))
+  )
+    return true;
   const hits = [];
-  for (const [list, regexes] of [
-    [0, lists.skillWords],
-    [1, lists.cueWords],
-  ])
-    for (const regex of regexes)
+  const add = (regexes, kind, topical) =>
+    regexes.forEach((regex, index) => {
       for (const match of sentence.matchAll(regex))
-        hits.push([match.index, match.index + match[0].length, list]);
-  hits.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  const last = [null, null];
+        hits.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          kind,
+          topic: topical && topic.has(index),
+        });
+    });
+  add(lists.skillWords, 'generic', true);
+  add(lists.namedWords, 'named', false);
+  add(lists.cueWords, 'strong', false);
+  add(lists.weakCueWords, 'weak', false);
+  const narrated = lists.narrators.some((regex) => sentence.search(regex) >= 0);
+  const accepted = (skill, cue) =>
+    skill.kind === 'named' ||
+    narrated ||
+    (cue.kind === 'strong' && !skill.topic);
+  hits.sort((a, b) => a.start - b.start || a.end - b.end);
+  const last = {};
   for (const hit of hits) {
-    const other = last[1 - hit[2]];
-    if (
-      other &&
-      !request.includes(
-        sentence.slice(Math.min(other[0], hit[0]), Math.max(other[1], hit[1])),
+    const isSkill = hit.kind === 'generic' || hit.kind === 'named';
+    for (const other of isSkill
+      ? [last.strong, last.weak]
+      : [last.generic, last.named]) {
+      if (!other) continue;
+      const [skill, cue] = isSkill ? [hit, other] : [other, hit];
+      if (
+        accepted(skill, cue) &&
+        !request.includes(
+          flatten(
+            sentence.slice(
+              Math.min(other.start, hit.start),
+              Math.max(other.end, hit.end),
+            ),
+          ),
+        )
       )
-    )
-      return true;
-    last[hit[2]] = hit;
+        return true;
+    }
+    last[hit.kind] = hit;
   }
   return false;
 }
 
-/** { text, dropped }: `text` without its narration sentences, outside fenced code and table rows; `dropped` lists them. */
-function dropNarration(text, lists, request) {
+/** Splits `body` into sentences and keeps the ones that are not narration; the others go into `dropped`. */
+function splitNarration(body, lists, request, topic, dropped) {
+  const sentences = body.split(SENTENCE_SPLIT);
+  const survivors = sentences.filter(
+    (sentence) =>
+      !isNarration(sentence, lists, request, topic) || !dropped.push(sentence),
+  );
+  return { survivors, sentences };
+}
+
+/** A table row with its narrating cells emptied, so the row keeps its columns. */
+function dropTableRow(row, lists, request, topic, dropped) {
+  return row
+    .split(CELL_SPLIT)
+    .map((cell, i) => {
+      // Before the first pipe is the indent.
+      if (i === 0 || !cell.trim()) return cell;
+      const { survivors, sentences } = splitNarration(
+        cell.trim(),
+        lists,
+        request,
+        topic,
+        dropped,
+      );
+      if (survivors.length === sentences.length) return cell;
+      return ` ${survivors.join(' ')} `;
+    })
+    .join('|');
+}
+
+// A sentence ends at . ! or ? and up to 3 closing marks.
+const SENTENCE_END = /[.!?][*_`'")\]]{0,3}\s*$/;
+
+/** A line that is a label or a title: it ends in a colon, or has no stop and at most four words ("**Skills**", "Team skills"). */
+const isLabel = (line) =>
+  /:\s*$/.test(line) ||
+  (!SENTENCE_END.test(line) && line.trim().split(/\s+/).length <= 4);
+
+/**
+ * Does `next` carry on the paragraph that `previous` is in? `wrapped` is how sure the join must be (see dropNarration).
+ * "likely": the line above ends without a stop and this one goes on in lower case, a digit or a mark. "any" (the leak
+ * scan) joins every line of a paragraph, except a line that starts with a capital after a label: "**Skills**" followed
+ * by "Load testing is covered." are two paragraphs, and joining them would flag a heading and its first line.
+ */
+function continuesParagraph(previous, next, wrapped) {
+  if (!previous.trim() || !next.trim()) return false;
+  if (HEADING.test(previous) || BLOCK_START.test(next)) return false;
+  if (wrapped !== 'any')
+    return !WRAPPED_END.test(previous) && WRAPPED_NEXT.test(next);
+  return WRAPPED_NEXT.test(next) || !isLabel(previous);
+}
+
+/**
+ * { text, dropped }: `text` without its narration sentences, outside fenced code; `dropped` lists them. A table row is
+ * read cell by cell. A paragraph that is hard-wrapped over several lines is read as one text: with `wrapped` "likely"
+ * (the default, what the sanitizer drops) a line joins the one above when that ends without a stop and it starts in
+ * lower case, a digit or a mark; with "any" (the leak scan) every line of a paragraph joins, so a wrap before a capital
+ * cannot hide narration from the scan. A paragraph that loses a sentence is written back as one line.
+ */
+function dropNarration(text, lists, request, { wrapped = 'likely' } = {}) {
   const lines = text.split('\n');
   const { fenced } = fenceMap(lines);
+  const flatRequest = flatten(request);
+  const topic = new Set(
+    lists.skillWords.flatMap((regex, index) =>
+      flatRequest.search(regex) >= 0 ? [index] : [],
+    ),
+  );
   const kept = [];
   const dropped = [];
-  lines.forEach((line, i) => {
-    if (fenced[i] || TABLE_ROW.test(line)) return kept.push(line);
-    const indent = line.match(/^\s*/)[0];
-    const sentences = line.slice(indent.length).split(SENTENCE_SPLIT);
-    const survivors = sentences.filter(
-      (sentence) =>
-        !isNarration(sentence, lists, request) || !dropped.push(sentence),
+  let i = 0;
+  while (i < lines.length) {
+    if (fenced[i]) {
+      kept.push(lines[i++]);
+      continue;
+    }
+    if (TABLE_ROW.test(lines[i])) {
+      kept.push(dropTableRow(lines[i++], lists, flatRequest, topic, dropped));
+      continue;
+    }
+    let end = i + 1;
+    while (
+      end < lines.length &&
+      !fenced[end] &&
+      continuesParagraph(lines[end - 1], lines[end], wrapped)
+    )
+      end++;
+    const chunk = lines.slice(i, end);
+    i = end;
+    const indent = chunk[0].match(/^\s*/)[0];
+    const { survivors, sentences } = splitNarration(
+      chunk.join('\n').slice(indent.length),
+      lists,
+      flatRequest,
+      topic,
+      dropped,
     );
-    if (survivors.length === sentences.length) kept.push(line);
+    if (survivors.length === sentences.length) kept.push(...chunk);
     else if (survivors.length) kept.push(indent + survivors.join(' '));
-  });
+  }
   return { text: kept.join('\n'), dropped };
 }
 
-/** The narration sentences of `text`, as the sanitizer would drop them (the leak scan's second look). */
+/** The narration sentences of `text`, as the sanitizer would drop them (the leak scan's second look). `wrapped`: see dropNarration. */
 function findNarration(
   text,
-  { skill = '', settings = DEFAULT_SETTINGS, request = '' } = {},
+  {
+    skill = '',
+    settings = DEFAULT_SETTINGS,
+    request = '',
+    wrapped = 'likely',
+  } = {},
 ) {
   return dropNarration(
     String(text),
     compileLists(skill, settings),
     normalizeText(request).text,
+    { wrapped },
   ).dropped;
 }
 
@@ -446,13 +649,23 @@ function createSanitizer(overrides = {}) {
     code_patterns: [
       SENTENCE_SPLIT.source,
       TABLE_ROW.source,
+      CELL_SPLIT.source,
+      BLOCK_START.source,
+      HEADING.source,
+      WRAPPED_END.source,
+      WRAPPED_NEXT.source,
       FENCE_OPEN.source,
       FENCE_CLOSE.source,
       QUOTE_PREFIX.source,
     ],
     name_words: NAME_WORDS,
     skill_words: SKILL_WORDS,
+    named_words: NAMED_WORDS,
     cue_words: CUE_WORDS,
+    weak_cue_words: WEAK_CUE_WORDS,
+    narrator_words: NARRATOR_WORDS,
+    harness_phrases: HARNESS_PHRASES,
+    use_phrases: USE_PHRASES,
     path_patterns: PATH_PATTERNS,
     substitutions: SUBSTITUTIONS,
     protected_patterns: PROTECTED_PATTERNS,
@@ -566,7 +779,12 @@ module.exports = {
   DEFAULT_SETTINGS,
   NAME_WORDS,
   SKILL_WORDS,
+  NAMED_WORDS,
   CUE_WORDS,
+  WEAK_CUE_WORDS,
+  NARRATOR_WORDS,
+  HARNESS_PHRASES,
+  USE_PHRASES,
   PATH_PATTERNS,
   SUBSTITUTIONS,
   PROTECTED_PATTERNS,

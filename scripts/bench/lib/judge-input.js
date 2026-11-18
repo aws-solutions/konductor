@@ -27,7 +27,8 @@
  * An answer that ends inside a code fence that was never closed is not eligible either ("unclosed code fence"): the
  * sanitizer and the scan skip fenced code, so an open fence would hide the rest of the answer from both.
  *
- * The scan is a second look. It skips fenced code for narration (a code sample about a Skill tool is example content, as
+ * The scan is a second look. It reads a paragraph that is wrapped over several lines as one text, and the cells of a table
+ * one by one, so narration cannot hide in either. It skips fenced code for narration (a code sample about a Skill tool is example content, as
  * for the sanitizer). It does not look for a skill name or an agent id inside what the sanitizer's name rewrites leave
  * alone (fenced code, URLs, paths, file names and commands), because there the name is the content and not a mention.
  * It keeps the patterns narrow, because every false hit costs a judgment. For narration it runs the sanitizer's own check
@@ -84,6 +85,9 @@ function cutLength(text, limit) {
     ? limit - 1
     : limit;
 }
+
+/** How the leak scan joins the lines of a paragraph (sanitize.js dropNarration): every line, so a wrap cannot hide narration. */
+const LEAK_SCAN_WRAPPED = 'any';
 
 // The leak patterns as data, so the provenance hash covers them. Tokens are filled per call from the settings and the
 // skill. `prose` patterns skip fenced code; `names` patterns skip the spans the sanitizer's name rewrites leave alone
@@ -188,7 +192,8 @@ function scanLeaks(text, { skill = '', settings, request = '' } = {}) {
     );
   const lines = String(text).split('\n');
   const { fenced } = fenceMap(lines);
-  const proseLines = lines.filter((_line, i) => !fenced[i]);
+  // A fenced line is blanked, not removed, so the lines around a fence do not read as one paragraph.
+  const proseLines = lines.map((line, i) => (fenced[i] ? '' : line));
   const views = {
     all: String(text),
     prose: proseLines.join('\n'),
@@ -209,10 +214,13 @@ function scanLeaks(text, { skill = '', settings, request = '' } = {}) {
       if (!findSentences)
         throw new Error(`unknown leak scan matcher ${matcher}`);
       // A loop, not push(...spread): the number of sentences is not bounded by the stack.
+      // `wrapped: 'any'`: every line of a paragraph is read as one text, so narration wrapped over two lines is found
+      // whatever the next line starts with, and a table cell is read cell by cell.
       for (const sentence of findSentences(views[where], {
         skill,
         settings,
         request,
+        wrapped: LEAK_SCAN_WRAPPED,
       }))
         matches.push(sentence);
     }
@@ -266,6 +274,7 @@ function provenanceParts(options = {}) {
       entry.source,
       entry.matcher || '',
     ]),
+    leak_scan_wrapped: LEAK_SCAN_WRAPPED,
     max_chars: maxChars,
     max_removed_share: maxRemovedShare,
   };

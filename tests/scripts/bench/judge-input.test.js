@@ -263,8 +263,30 @@ test("leak scan: the narration check is the sanitizer's own, skips fenced code a
   );
   assert.deepEqual(
     scan('| Login | No skill could be found |'),
+    [{ id: 'skill-word', count: 1, sample: 'No skill could be found' }],
+    'a table cell is read like a sentence',
+  );
+  assert.deepEqual(
+    collectLeakIds(scan('Row 1.\nI used the\nskill to answer this.')),
+    ['skill-word'],
+    'a sentence wrapped over two lines is read whole',
+  );
+  assert.deepEqual(
+    collectLeakIds(
+      scan('No relevant skill was available, so I\nAnswered directly.'),
+    ),
+    ['skill-word'],
+    'the scan joins the lines of a paragraph whatever the next one starts with',
+  );
+  assert.deepEqual(
+    scan('I used the\n```\ncode\n```\nskill to answer this.'),
     [],
-    'a table row is left alone by the sanitizer and by the scan',
+    'a fence between two lines keeps them apart',
+  );
+  assert.deepEqual(
+    scan('- Rank by skill\n- found a gap'),
+    [],
+    'a list item is not the continuation of the one above',
   );
   assert.deepEqual(
     collectLeakIds(scan('   I looked for a matching skill and found none.')),
@@ -275,6 +297,39 @@ test("leak scan: the narration check is the sanitizer's own, skips fenced code a
     scan('Please load the skill now.', { request: 'Please load the skill' }),
     [],
     "a sentence the request holds is the user's own",
+  );
+});
+
+test('leak scan: it sees narration that has only a weak cue, and a label line is not narration', () => {
+  for (const [sentence, request] of [
+    ['Using the skill, here is the review.', ''],
+    ['Skills used: none.', ''],
+    ['The skill was loaded.', ''],
+    ['Skills used: none.', 'Write a Claude Code skill.'],
+    ['The skill was loaded.', 'Write a Claude Code skill.'],
+  ])
+    assert.deepEqual(
+      collectLeakIds(scan(`Review.\n\n${sentence}`, { request })),
+      ['skill-word'],
+      `${sentence} / ${request}`,
+    );
+  // A label or a title is not joined to the line under it, so "Skills" and "Load testing" are not one sentence.
+  for (const text of [
+    '**Skills**\nLoad testing and API testing are covered.',
+    'Team skills\nWe call each owner before the release.',
+    'Skills needed\nPlanning, execution.',
+    'Skills list:\nLoad testing and API testing are covered.',
+    'These are the skills this plan covers:\nLoad testing and API testing.',
+  ])
+    assert.deepEqual(scan(text), [], text);
+  // A longer line without a stop still joins the next one, whatever it starts with.
+  assert.deepEqual(
+    collectLeakIds(scan('I looked for the right skill and\nFound none.')),
+    ['skill-word'],
+  );
+  assert.equal(
+    prepare('**Skills**\nLoad testing and API testing are covered.').eligible,
+    true,
   );
 });
 
@@ -333,13 +388,16 @@ test('narration that the lists leave alone on purpose is caught by the other lea
   const row = prepare(
     `| Flow | Note |\n|---|---|\n| Login | Skill execution was blocked |\n${padding}`,
   );
-  assert.deepEqual(
-    [row.eligible, collectLeakIds(row.leaks)],
-    [false, ['tool-marker']],
-  );
+  assert.deepEqual([row.eligible, row.leaks], [true, []]);
   assert.ok(
-    row.text.includes('Skill execution was blocked'),
-    'the sanitizer left the row alone',
+    row.text.includes('| Login |  |'),
+    'the sanitizer emptied the narrating cell and kept the row',
+  );
+  assert.equal(row.counts['skill-narration'], 1);
+  // A raw marker in a cell the scan reads is still caught by its own entry, when the sanitizer was not run first.
+  assert.deepEqual(
+    collectLeakIds(scan('| Login | Skill execution was blocked |')),
+    ['skill-word', 'tool-marker'],
   );
   const label = prepare(
     `Under the WITHOUT ARM condition the plan reads the same.${padding}`,
@@ -543,10 +601,10 @@ test('deterministic: the same stored answer gives the same result, and the input
 // Pinned: the one provenance hash, for the default options. Any change to a covered rule or setting changes it; bump
 // SANITIZER_VERSION when it does. Then update this line.
 const PINNED_PROVENANCE_HASH =
-  '341c42300fa38eca413f7fcb979c2945dae80454252ce0e5c99c0b50014f1fa2';
+  '80d6c93fc926a45ef095191f5d8c49454f0fed84c62f8ab1ae038c51135ad008';
 
-test('provenance: version 9, pinned, one value from every path, changed by the cap and the settings, not by per-run literals', () => {
-  assert.equal(defaultInput.provenance.sanitizerVersion, 9);
+test('provenance: version 10, pinned, one value from every path, changed by the cap and the settings, not by per-run literals', () => {
+  assert.equal(defaultInput.provenance.sanitizerVersion, 10);
   assert.equal(
     defaultInput.provenance.sanitizerRulesSha256,
     PINNED_PROVENANCE_HASH,
@@ -586,7 +644,7 @@ test('provenance: version 9, pinned, one value from every path, changed by the c
   const result = prepare('x');
   assert.deepEqual(
     [result.sanitizer_version, result.rules_sha256],
-    [9, PINNED_PROVENANCE_HASH],
+    [10, PINNED_PROVENANCE_HASH],
   );
 });
 
@@ -669,6 +727,7 @@ test('provenance: the hash covers every rule and setting that changes the judge-
   );
   assert.deepEqual(Object.keys(parts).sort(), [
     'leak_scan',
+    'leak_scan_wrapped',
     'max_chars',
     'max_removed_share',
     'redactor',
@@ -712,6 +771,8 @@ test('provenance: the hash covers every rule and setting that changes the judge-
     'sanitizer.name_words',
     'sanitizer.skill_words',
     'sanitizer.cue_words',
+    'sanitizer.named_words',
+    'sanitizer.narrator_words',
     'sanitizer.path_patterns',
     'redactor.rules',
     'leak_scan',
@@ -927,7 +988,7 @@ test('behavior digest: a fixed corpus gives the same judge input', () => {
   });
   assert.equal(
     sha256(outputs),
-    '6c2ac8c3c37545b7827f98c4c3f9e4feb022ba93741cd63b2cdbf18d36c66c23',
+    '2097f00ab3a63a6aa19cdc8a25ff2490259c77590249381d023473b1b9803f4c',
   );
 });
 
@@ -1058,4 +1119,29 @@ test('prepare uses its settings for the rules and for the scan', () => {
   );
   // The default scan does not know those names.
   assert.deepEqual(scan('acme:foo and agent-smith and /my.box-subject-1'), []);
+});
+
+test('ordinary sentences with "guidance" or "skills" and a weak cue word reach the judge, and narration in a table cell or a wrapped line does not', () => {
+  const answer = [
+    'Harden a new AWS account.',
+    'Per AWS guidance, never create access keys for the root user.',
+    'Using this guidance, set the bucket policy to deny non-TLS requests.',
+    'The role requires skills in Terraform and Python.',
+  ].join('\n');
+  const kept = prepare(answer);
+  assert.deepEqual(
+    [kept.text, kept.eligible, kept.removed_chars],
+    [answer, true, 0],
+  );
+  const table = prepare(
+    `${answer}\n\n| Note | Detail |\n|---|---|\n| Source | No relevant skill was available, so I answered directly |`,
+  );
+  assert.deepEqual(
+    [table.eligible, table.counts['skill-narration']],
+    [true, 1],
+  );
+  assert.ok(table.text.endsWith('| Source |  |'), table.text);
+  const wrapped = prepare(`${answer}\n\nI used the\nskill to answer this.`);
+  assert.equal(wrapped.text.trim(), answer);
+  assert.equal(wrapped.counts['skill-narration'], 1);
 });

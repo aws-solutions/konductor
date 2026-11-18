@@ -35,13 +35,14 @@ const droppedSentences = [
   ...Object.values(CASES.drop).flat(),
   ...CASES.drop_shape,
   ...CASES.drop_named,
+  ...CASES.drop_weak_cue_narrator,
 ];
 
 // Pinned: the hash of the sanitizer's spec (the three lists, the guard, the normalization, the settings and the caps).
 // Any edit to one changes it; then bump SANITIZER_VERSION too. judge-input.js folds the same spec into the one
 // provenance hash, so there is no second sanitizer hash to disagree with it.
 const PINNED_SPEC_HASH =
-  'b3fae13f7093946658c8a0d54b83c2bf309dbe2ec179698a743c368726933e14';
+  '1030a530ec07ba10c00e2e927dfe0b6a4a5b62d3c3c182363f89dee8f7ba18ae';
 const hashSpec = (overrides) =>
   sha256(sanitizer.createSanitizer(overrides).spec);
 
@@ -73,7 +74,12 @@ test('every name and path entry has a case, and the lists are frozen data', () =
   for (const list of [
     sanitizer.NAME_WORDS,
     sanitizer.SKILL_WORDS,
+    sanitizer.NAMED_WORDS,
     sanitizer.CUE_WORDS,
+    sanitizer.WEAK_CUE_WORDS,
+    sanitizer.NARRATOR_WORDS,
+    sanitizer.HARNESS_PHRASES,
+    sanitizer.USE_PHRASES,
     sanitizer.PATH_PATTERNS,
     sanitizer.DEFAULT_SETTINGS,
   ])
@@ -132,9 +138,16 @@ test('every SKILL_WORDS and CUE_WORDS entry matches a sentence the cases drop', 
   for (const [name, list] of [
     ['SKILL_WORDS', sanitizer.SKILL_WORDS],
     ['CUE_WORDS', sanitizer.CUE_WORDS],
+    ['WEAK_CUE_WORDS', sanitizer.WEAK_CUE_WORDS],
+    ['NARRATOR_WORDS', sanitizer.NARRATOR_WORDS.map(([source]) => source)],
   ])
     for (const source of list.filter(tokenFree))
-      assert.ok(new RegExp(source, 'i').test(sentences), `${name}: ${source}`);
+      assert.ok(
+        new RegExp(source, name === 'NARRATOR_WORDS' ? '' : 'i').test(
+          sentences,
+        ),
+        `${name}: ${source}`,
+      );
   // The entries that carry the plugin name or the skill's own name are exercised by the named cases.
   assert.ok(
     sanitize('I will load bench:other-thing now.').counts['skill-narration'],
@@ -159,14 +172,174 @@ test('"Rank by skill level." is kept, and the human-resources nouns do not count
   );
 });
 
-test('narration in fenced code and in table rows is left alone', () => {
+test('narration in fenced code is left alone', () => {
   const fenced = '```\nI loaded the skill.\n```';
   assert.equal(clean(fenced), fenced);
-  const row = '| Login | The skill tool is not available |';
-  assert.equal(clean(`${row}\nRow 1`), `${row}\nRow 1`);
   assert.equal(
     clean("```\nI'll load the Skill tool\n```"),
     "```\nI'll load the Skill tool\n```",
+  );
+});
+
+test('a table is read cell by cell: a narrating cell is emptied and the row keeps its columns', () => {
+  const row = '| Login | The skill tool is not available |';
+  assert.equal(clean(`${row}\nRow 1`), '| Login |  |\nRow 1');
+  const result = sanitize(
+    '| Note | No relevant skill was available, so I answered directly |\n|---|---|\n| Python | 5 |',
+  );
+  assert.equal(result.text, '| Note |  |\n|---|---|\n| Python | 5 |');
+  assert.equal(result.counts['skill-narration'], 1);
+  assert.ok(result.removed_chars > 0);
+  // Cells that only hold words of a table about skills are kept.
+  const table = '| Skill | Level |\n|---|---|\n| Python | 5 |';
+  assert.equal(clean(table), table);
+  assert.equal(
+    clean('| Step | Note |\n| 1 | a | b; I loaded the skill. Then ok. |'),
+    '| Step | Note |\n| 1 | a | Then ok. |',
+  );
+});
+
+test('a sentence wrapped over lines is read whole when the next line goes on in lower case', () => {
+  assert.equal(
+    clean('Intro line.\nI used the\nskill to answer this.\nRank flows.'),
+    'Intro line.\nRank flows.',
+  );
+  assert.equal(
+    clean(
+      'No relevant skill was available, so I\nanswered directly. Rank flows.',
+    ),
+    'Rank flows.',
+  );
+  // A title line with no stop, followed by a capital, is two lines.
+  assert.equal(
+    clean('Skill loaded\nRank flows by risk first.'),
+    'Rank flows by risk first.',
+  );
+  assert.equal(
+    clean('Plan\nRank flows by risk first.'),
+    'Plan\nRank flows by risk first.',
+  );
+  // A line that ends with a stop is a sentence of its own, and only the paragraph that lost a sentence is written back whole.
+  assert.equal(
+    clean('First line.\nsecond part. No skill was found.'),
+    'First line.\nsecond part.',
+  );
+  assert.equal(
+    clean('# Plan\nno skill was found here.\nRank flows.'),
+    '# Plan\nRank flows.',
+  );
+  // A list item and a heading never join the line above.
+  assert.equal(
+    clean('Steps\n- no skill was found\n- rank flows'),
+    'Steps\n- rank flows',
+  );
+  // Text the request holds is kept even when wrapped.
+  assert.equal(
+    clean(
+      'Please load the\nskill first.',
+      SKILL,
+      'Please load the skill first.',
+    ),
+    'Please load the\nskill first.',
+  );
+});
+
+test('a generic skill word with only a weak cue is kept unless a narrator is in the sentence', () => {
+  for (const sentence of [
+    'Per AWS guidance, never create access keys for the root user.',
+    'The role requires skills in Terraform and Python.',
+    'Using this guidance, set the bucket policy to deny non-TLS requests.',
+  ])
+    assert.equal(clean(sentence), sentence);
+  // Its own name is narration with any cue.
+  assert.equal(clean('Using the e2e-test-strategy skill, rank flows.'), '');
+  assert.equal(clean("I'm using the skill's guidance for this."), '');
+});
+
+test('a task about skills: the word is the topic, so only a narrator makes it narration', () => {
+  const request = 'Write a Claude Code skill that formats commit messages.';
+  const answer = [
+    '# Commit message skill',
+    '',
+    'Claude Code finds a skill by matching its description.',
+    'A skill that is installed under ~/.claude/skills is available in every project.',
+    'The skill is loaded when a request matches, and its instructions are applied.',
+    'Skills without a description are not used by Claude.',
+    '',
+    'Format messages as type(scope): summary.',
+  ].join('\n');
+  const topical = sanitize(answer, { request });
+  assert.equal(topical.text, answer);
+  assert.equal(topical.removed_chars, 0);
+  // The same text, for a task that is not about skills, loses the sentences with a strong cue.
+  const other = sanitize(answer, { request: 'Format my commit messages.' });
+  assert.ok(other.removed_share > 0.3, String(other.removed_share));
+  // A narrator in the sentence still makes it narration.
+  assert.equal(clean('I found no skill for this.', SKILL, request), '');
+});
+
+test('narration that has a weak cue and no narrator is still dropped when it speaks of the skill the answer used', () => {
+  const request = 'Review this pull request.';
+  for (const sentence of [
+    'Using the skill, here is the review.',
+    "Following the skill's checklist, here is the review.",
+    'The skill provided a checklist for this.',
+    'Used the skill to structure this.',
+    'Without the skill the answer would be shorter.',
+    'Skills used: none.',
+    'Skill loaded: yes.',
+    'The skill was loaded.',
+    'The Skill tool was not available.',
+    'No skill matched this task.',
+    'The skills available did not apply.',
+  ]) {
+    const result = sanitize(`${sentence} Rank flows.`, { request });
+    assert.equal(result.text, 'Rank flows.', sentence);
+    assert.equal(result.counts['skill-narration'], 1, sentence);
+  }
+  // Ordinary sentences with a generic word and a weak cue are kept, in both kinds of task.
+  for (const sentence of [
+    'Per AWS guidance, never create access keys for the root user.',
+    'The role requires skills in Terraform and Python.',
+    'Using this guidance, set the bucket policy to deny non-TLS requests.',
+    'Hiring needs a skill matrix and a skill set per role.',
+    // Known gap: no cue and no phrase, so it cannot be told from "The skill of the team is clear."
+    "The skill's cap is five options.",
+  ])
+    for (const asked of [request, 'Write a Claude Code skill.'])
+      assert.equal(clean(sentence, SKILL, asked), sentence, sentence);
+});
+
+test('a task about skills: what only the harness says about a skill is narration without a narrator, a general statement is not', () => {
+  const request = 'Write a Claude Code skill that formats commit messages.';
+  for (const sentence of [
+    'The skill was loaded.',
+    'Skills used: none.',
+    'Skill loaded: yes.',
+    'The Skill tool was not available.',
+    'No skill matched this task.',
+    'The skills available did not apply.',
+  ])
+    assert.equal(
+      clean(`${sentence} Rank flows.`, SKILL, request),
+      'Rank flows.',
+      sentence,
+    );
+  // The present tense states how Claude Code works, and the plain use phrases may be part of the answer there.
+  for (const sentence of [
+    'The skill is loaded when a request matches.',
+    'The Skill tool is how Claude Code loads a skill.',
+    'Using the skill, Claude formats each message as type(scope): summary.',
+  ])
+    assert.equal(clean(sentence, SKILL, request), sentence, sentence);
+  // A phrase the request holds is the user's own.
+  assert.equal(
+    clean(
+      'The skill was loaded.',
+      SKILL,
+      'Explain why "The skill was loaded." shows.',
+    ),
+    'The skill was loaded.',
   );
 });
 
@@ -522,8 +695,8 @@ for (const unit of [
     ));
 }
 
-test('version and spec: version 9, stable, pinned, and free of per-run values', () => {
-  assert.equal(sanitizer.SANITIZER_VERSION, 9);
+test('version and spec: version 10, stable, pinned, and free of per-run values', () => {
+  assert.equal(sanitizer.SANITIZER_VERSION, 10);
   assert.equal(hashSpec(), PINNED_SPEC_HASH);
   assert.match(hashSpec(), /^[0-9a-f]{64}$/);
   const result = sanitize('x', { skill: 'code-review' });
@@ -542,7 +715,12 @@ test('the spec holds the three lists, the guard, the normalization, the caps and
   const { spec } = sanitizer.createSanitizer();
   assert.deepEqual(spec.name_words, sanitizer.NAME_WORDS);
   assert.deepEqual(spec.skill_words, sanitizer.SKILL_WORDS);
+  assert.deepEqual(spec.named_words, sanitizer.NAMED_WORDS);
   assert.deepEqual(spec.cue_words, sanitizer.CUE_WORDS);
+  assert.deepEqual(spec.weak_cue_words, sanitizer.WEAK_CUE_WORDS);
+  assert.deepEqual(spec.narrator_words, sanitizer.NARRATOR_WORDS);
+  assert.deepEqual(spec.harness_phrases, sanitizer.HARNESS_PHRASES);
+  assert.deepEqual(spec.use_phrases, sanitizer.USE_PHRASES);
   assert.deepEqual(spec.path_patterns, sanitizer.PATH_PATTERNS);
   assert.equal(spec.max_input_chars, sanitizer.MAX_INPUT_CHARS);
   assert.equal(spec.sanitizer_version, sanitizer.SANITIZER_VERSION);
@@ -554,6 +732,11 @@ test('the spec holds the three lists, the guard, the normalization, the caps and
     (copy) => copy.skill_words.push('x'),
     (copy) => (copy.cue_words[0] += 'x'),
     (copy) => copy.cue_words.reverse(),
+    (copy) => (copy.weak_cue_words[0] += 'x'),
+    (copy) => (copy.narrator_words[0][0] += 'x'),
+    (copy) => (copy.harness_phrases[0] += 'x'),
+    (copy) => (copy.use_phrases[0] += 'x'),
+    (copy) => (copy.named_words[0] += 'x'),
     (copy) => (copy.path_patterns[1][1] += 'x'),
     (copy) => (copy.request_guard += 'x'),
     (copy) => (copy.max_input_chars += 1),

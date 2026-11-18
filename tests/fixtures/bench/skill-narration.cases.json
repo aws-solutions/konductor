@@ -1,5 +1,5 @@
 {
-  "comment": "Sentences for the narration check of the sanitizer (a sentence with a SKILL_WORDS match and a CUE_WORDS match is dropped). `drop` are narration the lists must catch; `drop_shape` and `drop_named` are the same with a fixed shape or the skill's own name (e2e-test-strategy); `keep` are ordinary prose the lists leave alone; `keep_risky` have a negation or a lookup word near the noun and no cue word; `drop_cost` are ordinary prose that holds a skill word and a cue word, so the lists drop them too and the design accepts one lost sentence each; `drop_window` are narration-like sentences that the earlier distance rule kept (a cue too far from the noun) and the lists now drop; `miss` are narration the lists cannot see, a known gap. `rest` is real content that follows a dropped sentence.",
+  "comment": "Sentences for the narration check of the sanitizer (a sentence with a SKILL_WORDS match and a CUE_WORDS match is dropped). `drop` are narration the lists must catch; `drop_shape` and `drop_named` are the same with a fixed shape or the skill's own name (e2e-test-strategy); `keep` are ordinary prose the lists leave alone; `keep_risky` have a negation or a lookup word near the noun and no cue word; `drop_cost` are ordinary prose that holds a skill word and a cue word, so the lists drop them too and the design accepts one lost sentence each; `drop_window` are narration-like sentences that the earlier distance rule kept (a cue too far from the noun) and the lists now drop; `miss` are narration the lists cannot see, a known gap. `rest` is real content that follows a dropped sentence. `keep` also holds sentences with a generic skill word and only a weak cue (per, using, without, following, provided, requires) and no narrator; `drop_weak_cue_narrator` are the same kind of sentence with a narrator (I, my, the agent), which is narration.",
   "skill": "e2e-test-strategy",
   "drop": {
     "first_review": [
@@ -169,7 +169,16 @@
     "Searching the old team notes for a skill: none.",
     "She tried a skill.",
     "Show me a skill to try.",
-    "There is no skillset to match."
+    "There is no skillset to match.",
+    "Per the team plan, each hire needs one core skill.",
+    "Follow the checklist to build a skill that lasts.",
+    "Hire for attitude, then train skill based on gaps.",
+    "Per AWS guidance, never create access keys for the root user.",
+    "The role requires skills in Terraform and Python.",
+    "Using this guidance, set the bucket policy to deny non-TLS requests.",
+    "Following the guidance in the runbook, restart the service.",
+    "Without guidance, new hires guess.",
+    "The guidance provided by the vendor covers TLS."
   ],
   "keep_risky": [
     "No skill is needed for this step.",
@@ -186,9 +195,6 @@
   "drop_cost": [
     "He called out a lack of skill.",
     "This takes skill to find.",
-    "Per the team plan, each hire needs one core skill.",
-    "Follow the checklist to build a skill that lasts.",
-    "Hire for attitude, then train skill based on gaps.",
     "Tests named after the skill they exercise are easy to find.",
     "Skills are available in the course catalog for staff.",
     "The skill set of this team is wide, which I checked yesterday.",
@@ -219,5 +225,12 @@
     "The skill catalog has no entry for it.",
     "The provided instructions were short."
   ],
-  "rest": "Rank flows by risk first. Then test login. Then test checkout."
+  "rest": "Rank flows by risk first. Then test login. Then test checkout.",
+  "drop_weak_cue_narrator": [
+    "I am using the skill's guidance for this.",
+    "I proceeded without the skill.",
+    "The agent followed the skill step by step.",
+    "The model used the skill to plan it.",
+    "My answer follows the skill."
+  ]
 }
