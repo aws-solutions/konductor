@@ -1330,6 +1330,66 @@ describe('workflow canvas API contract', () => {
       );
     });
 
+    describe('an event of a later type', () => {
+      const runEvent = () => spec.components.schemas['RunEvent']!;
+      const common = {
+        seq: 7,
+        run_id: '20261024-0412-a7b3c',
+        at: '2026-10-24T04:12:05Z',
+      };
+
+      it('matches a run event, so a client can skip it', () => {
+        const later = { ...common, type: 'stage_note', stage: 'write' };
+        expect(valueMatchesSchema(runEvent(), later)).toBe(true);
+      });
+
+      it('still needs the common fields', () => {
+        const noSeq = {
+          run_id: common.run_id,
+          at: common.at,
+          type: 'stage_note',
+        };
+        expect(valueMatchesSchema(runEvent(), noSeq)).toBe(false);
+      });
+
+      it('does not let a known type with a bad shape through', () => {
+        const badStage = {
+          ...common,
+          type: 'stage_state',
+          stage: 'write',
+          status: 'pending',
+        };
+        const badConsole = {
+          ...common,
+          type: 'console',
+          stage: 'write',
+          n: 0,
+          text: 'x',
+        };
+        const badFinish = {
+          ...common,
+          type: 'run_finished',
+          status: 'running',
+          exit_code: 0,
+        };
+        for (const event of [badStage, badConsole, badFinish]) {
+          expect(valueMatchesSchema(runEvent(), event), event.type).toBe(false);
+        }
+      });
+
+      it('says a server of this version sends only the three known types', () => {
+        expect(words(runEvent()['description'] as string)).toMatch(
+          /A server of this version sends only the three known types/,
+        );
+      });
+    });
+
+    it('says that version 1.6.2 adds a branch for a later event type', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.6\.2 adds nothing: a run event gains a branch for a type that a later version adds/,
+      );
+    });
+
     it('says that version 1.6.1 only narrows the status of a stage event', () => {
       expect(words(spec.info.description)).toMatch(
         /Version 1\.6\.1 adds nothing: the `status` of a `stage_state` event gets its own enum without `pending`/,

@@ -37,10 +37,12 @@ info:
     `stage_fields`. Version 1.6.0 only adds: the operation `getRunEvents`.
     Version 1.6.1 adds nothing: the `status` of a `stage_state` event gets
     its own enum without `pending`. The event was already described as never
-    `pending`, so no answer a server sends changes. Version 1.7.0 only adds:
-    the operation `listRuns`. Version 1.8.0 only adds: a run in that list
-    gains `goal_truncated`. Version 1.8.1 adds nothing: the `goal` of a run
-    in that list may be empty, because a workflow may declare an empty
+    `pending`, so no answer a server sends changes. Version 1.6.2 adds
+    nothing: a run event gains a branch for a type that a later version adds,
+    which the description already told a client to skip. Version 1.7.0 only
+    adds: the operation `listRuns`. Version 1.8.0 only adds: a run in that
+    list gains `goal_truncated`. Version 1.8.1 adds nothing: the `goal` of a
+    run in that list may be empty, because a workflow may declare an empty
     default goal, and a client already shows whatever text it gets.
 
     **Conventions**
@@ -2502,11 +2504,32 @@ components:
       description: |
         One thing that happened in a run. Every event has `seq`, `run_id`,
         `at` and `type`. A later version may add types, and a client skips an
-        event of a type it does not know.
+        event of a type it does not know. The last branch is that event: it
+        has the four common fields and a `type` that is none of the three of
+        this version, and nothing else is checked. A server of this version
+        sends only the three known types.
       oneOf:
         - $ref: '#/components/schemas/StageStateEvent'
         - $ref: '#/components/schemas/ConsoleEvent'
         - $ref: '#/components/schemas/RunFinishedEvent'
+        - $ref: '#/components/schemas/LaterEvent'
+    LaterEvent:
+      type: object
+      required: [seq, run_id, at, type]
+      description: |
+        An event of a type that a later version adds. A client skips it.
+      properties:
+        seq:
+          $ref: '#/components/schemas/EventSeq'
+        run_id:
+          $ref: '#/components/schemas/RunId'
+        at:
+          $ref: '#/components/schemas/Timestamp'
+        type:
+          type: string
+          minLength: 1
+          not:
+            enum: [stage_state, console, run_finished]
     EventSeq:
       type: integer
       minimum: 1

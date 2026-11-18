@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /** Checks the events of a simulated run against its state, on a clock the test moves. */
 import { beforeEach, describe, expect, it } from 'vitest';
+import { schemaOf } from '../test-support/contract.ts';
 import { countingSuffix, FakeClock } from '../test-support/fake-clock.ts';
 import type { Run, RunEvent } from './model.ts';
 import { RunSimulator, type RunPlan } from './runs.ts';
@@ -119,6 +120,32 @@ describe('the events of a simulated run', () => {
     expect(stateOf(ORDER, events).stages['draft']).toEqual({
       status: 'running',
     });
+  });
+
+  it('are only of the types the contract names for this version', () => {
+    const known = new Set(
+      (
+        schemaOf('RunEvent').oneOf as {
+          properties: { type: { const?: string } };
+        }[]
+      )
+        .map((branch) => branch.properties.type.const)
+        .filter((type): type is string => type !== undefined),
+    );
+    expect([...known].sort()).toEqual([
+      'console',
+      'run_finished',
+      'stage_state',
+    ]);
+    for (const plan of [{}, { block: { at: 1, reason: 'TIMEOUT' as const } }]) {
+      const runId = runs.start('hello', ORDER, plan);
+      for (let step = 0; step <= ORDER.length * 3; step++) {
+        for (const event of runs.events(runId)!.events) {
+          expect(known.has(event.type), event.type).toBe(true);
+        }
+        clock.advance(STAGE_MS / 3);
+      }
+    }
   });
 
   it('are not there for a run that does not exist', () => {
