@@ -74,6 +74,7 @@ test('all 35 of Michael Lin\'s baselines pass the full verifier against this tre
   const by = Object.fromEntries(status.map((s) => [s.skill, s.status]));
   assert.equal(by['asana-sprint-planning'], 'folded');
   assert.equal(by['dynamodb-validation'], 'removed');
+  assert.equal(by['adr-generator'], 'folded', 'folded into decision-writing by main (#166)');
   assert.equal(by['sprint-planning'], 'stale');
   const count = (s) => status.filter((x) => x.status === s).length;
   assert.equal(count('fresh') + count('stale') + count('folded') + count('removed'), 35);

@@ -178,6 +178,16 @@
     "user-story-writing/tasks-rules-c2.json": "e22bb1d3a6cd336911e4329986399418f9679e002895d37edb056c8a985378f2"
   },
   "identities": {
+    "adr-generator": {
+      "replaced_by": "decision-writing",
+      "how": "folded",
+      "note": "folded in #166 (5464bf0a): decision-writing gained an ADR Mode with the generator's steps; the old ADR tasks and rule quotes do not establish equivalence with decision-writing",
+      "migration": {
+        "approved_by": null,
+        "date": null,
+        "note": ""
+      }
+    },
     "asana-sprint-planning": {
       "replaced_by": "sprint-planning",
       "how": "folded",
