@@ -145,7 +145,7 @@ bash "<MUX_DISPATCH_DIR>/zellij-dispatch.sh" \
 
 Every dispatch has one `.done` file:
 
-- Path: `/tmp/konductor-mux/<id>/<id>.done`, inside the dispatch's own directory. The script prints it as `done_file=` and exports it to the child as `KONDUCTOR_DONE_FILE`.
+- Path: `<registry>/<id>/<id>.done`, inside the dispatch's own directory. The script prints it as `done_file=` and exports it to the child as `KONDUCTOR_DONE_FILE`.
 - Format: `{"workspace_id": "...", "status": "done|error", "summary": "..."}`, plus `"exit_code"` once the session has ended.
 - The child writes it as its last step: the script's prompt tells it to. That is the completion signal, so an interactive Claude Code child completes without `/exit`; `/exit` only closes the pane.
 - On Kiro CLI the `mux-completion-hook.sh` stop hook may also write it, to `KONDUCTOR_DONE_FILE`.
@@ -155,7 +155,9 @@ Every dispatch has one `.done` file:
 
 Poll (glob-free — an unmatched `*.done` glob is a hard error under zsh, which
 aborts the whole compound command before `2>/dev/null` can apply):
-`find /tmp/konductor-mux -mindepth 2 -maxdepth 2 -name '*.done' 2>/dev/null`
+`find "${KONDUCTOR_MUX_REGISTRY_DIR:-/tmp/konductor-mux}" -mindepth 2 -maxdepth 2 -name '*.done' 2>/dev/null`
+
+That is the registry the dispatch script used. To check one dispatch, test the `done_file=` it printed.
 
 Running the dispatch script, polling, and reading result files are orchestrator direct work, as defined in the Orchestrator Direct Work table of `k-orchestrator-routing-rules.md`. Run them yourself; never dispatch them to another pane.
 
@@ -186,11 +188,11 @@ tmux capture-pane -t <pane-id> -p | tail -10
 # Pane IDs are NOT unique across concurrent zellij sessions, so pass the
 # session name recorded in the dispatch registry (dispatched.json) alongside
 # pane_id.
-zellij --session <session-name> action dump-screen --pane-id <pane-id> -f --path /tmp/konductor-mux/dump-<pane-id>.txt
-cat /tmp/konductor-mux/dump-<pane-id>.txt
+zellij --session <session-name> action dump-screen --pane-id <pane-id> -f --path "${KONDUCTOR_MUX_REGISTRY_DIR:-/tmp/konductor-mux}/dump-<pane-id>.txt"
+cat "${KONDUCTOR_MUX_REGISTRY_DIR:-/tmp/konductor-mux}/dump-<pane-id>.txt"
 ```
 
-Registry entries in `/tmp/konductor-mux/dispatched.json` record `session`
+Registry entries in `<registry>/dispatched.json` record `session`
 alongside `pane_id` for exactly this reason — always pass both when peeking.
 
 ## Worktree Provisioning for Write Agents

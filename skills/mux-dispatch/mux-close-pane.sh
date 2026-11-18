@@ -46,9 +46,8 @@ if [[ "$BACKEND" == "zellij" ]]; then
   [[ -z "$SESSION" ]] && { echo "ERROR: no live zellij session found" >&2; exit 1; }
 fi
 
-# KONDUCTOR_MUX_REGISTRY_DIR lets tests point at an isolated directory
-# instead of the real shared production registry; unset (the default) for
-# every real usage. Must match tmux-dispatch.sh/zellij-dispatch.sh's default
+# KONDUCTOR_MUX_REGISTRY_DIR overrides the registry: a per-user one on a shared host,
+# or an isolated one in tests. Must match tmux-dispatch.sh/zellij-dispatch.sh's default
 # and override so this script locks/reads the same registry they write.
 REGISTRY_DIR="${KONDUCTOR_MUX_REGISTRY_DIR:-/tmp/konductor-mux}"
 REGISTRY_FILE="$REGISTRY_DIR/dispatched.json"

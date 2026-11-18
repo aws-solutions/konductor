@@ -118,7 +118,7 @@ bash "<CMUX_DISPATCH_DIR>/cmux-dispatch.sh" \
 
 Every dispatch has one `.done` file:
 
-- Path: `/tmp/konductor-cmux/<id>/<id>.done`, inside the dispatch's own directory. The script prints it as `done_file=` and exports it to the child as `KONDUCTOR_DONE_FILE`.
+- Path: `<registry>/<id>/<id>.done`, inside the dispatch's own directory. The script prints it as `done_file=` and exports it to the child as `KONDUCTOR_DONE_FILE`.
 - Format: `{"workspace_id": "...", "status": "done|error", "summary": "..."}`, plus `"exit_code"` once the session has ended.
 - The child writes it as its last step: the script's prompt tells it to. That is the completion signal, so an interactive Claude Code child completes without `/exit`; `/exit` only closes the surface.
 - `<id>` is the dispatch key: the surface id (`surface:3` becomes `surface_3`) plus a random suffix, since surface numbers repeat. In `--workspace` mode the workspace id is recorded in the file's `workspace_id` field. On Kiro CLI the `cmux-completion-hook.sh` stop hook may also write it, to `KONDUCTOR_DONE_FILE`.
@@ -128,7 +128,9 @@ Every dispatch has one `.done` file:
 
 Poll (glob-free — an unmatched `*.done` glob is a hard error under zsh, which
 aborts the whole compound command before `2>/dev/null` can apply):
-`find /tmp/konductor-cmux -mindepth 2 -maxdepth 2 -name '*.done' 2>/dev/null`
+`find "${KONDUCTOR_CMUX_REGISTRY_DIR:-/tmp/konductor-cmux}" -mindepth 2 -maxdepth 2 -name '*.done' 2>/dev/null`
+
+That is the registry the dispatch script used. To check one dispatch, test the `done_file=` it printed.
 
 Running the dispatch script, polling, and reading result files are orchestrator direct work, as defined in the Orchestrator Direct Work table of `k-orchestrator-routing-rules.md`. Run them yourself; never dispatch them to another surface.
 

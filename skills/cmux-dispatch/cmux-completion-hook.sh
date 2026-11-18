@@ -12,7 +12,7 @@ EVENT=$(printf '%s' "$INPUT" | python3 -c "import sys,json; print(json.load(sys.
 [ "$EVENT" != "stop" ] && exit 0
 [ -z "$KONDUCTOR_DONE_KEY" ] && [ -z "$CMUX_WORKSPACE_ID" ] && exit 0
 
-[ -n "${KONDUCTOR_DONE_FILE:-}" ] || mkdir -p /tmp/konductor-cmux
+[ -n "${KONDUCTOR_DONE_FILE:-}" ] || [ -d /tmp/konductor-cmux ] || mkdir -m 700 /tmp/konductor-cmux
 printf '%s' "$INPUT" | python3 -c "
 import sys, json, os
 data = json.load(sys.stdin)

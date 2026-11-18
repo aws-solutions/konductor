@@ -246,6 +246,9 @@ not per individual commit.
   adds the exit code when the session ends, so a non-zero exit is always recorded as `error`.
   `--brief <file>` passes a long brief. An existing registry that is group- or world-writable, such
   as one created under umask 002, is now refused with a message to `chmod 700` it.
+  The orchestrators write a long brief to a `mktemp` file outside the registry, and they poll
+  the registry the scripts use, including one set with `KONDUCTOR_MUX_REGISTRY_DIR` or
+  `KONDUCTOR_CMUX_REGISTRY_DIR`.
 - `k-adversarial-pull-request-review` now says "in Konductor" or "for Konductor" where it
   scopes the `pr_url` and historical-filtering limits, including the report's
   `Historical filtering:` line.

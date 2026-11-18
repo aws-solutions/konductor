@@ -153,9 +153,8 @@ cmux() { "$CMUX_BIN" "$@"; }
 
 LABEL="${NAME:-$AGENT: $(printf '%s' "$TASK_TEXT" | head -c 40 | tr '\n' ' ')}"
 WS_ID="${CMUX_WORKSPACE_ID:-}"
-# KONDUCTOR_CMUX_REGISTRY_DIR lets tests point at an isolated directory
-# instead of the real shared production registry; unset (the default) for
-# every real dispatch.
+# KONDUCTOR_CMUX_REGISTRY_DIR overrides the registry: a per-user one on a shared host,
+# or an isolated one in tests.
 REGISTRY_DIR="${KONDUCTOR_CMUX_REGISTRY_DIR:-/tmp/konductor-cmux}"
 REGISTRY_FILE="$REGISTRY_DIR/dispatched.json"
 # Sibling lock file guarding the read-modify-write of $REGISTRY_FILE below,

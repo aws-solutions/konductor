@@ -136,9 +136,8 @@ fi
 LABEL="${NAME:-$AGENT: $(printf '%s' "$TASK_TEXT" | head -c 40 | tr '\n' ' ')}"
 # Fix: python3 uuid is portable across macOS and Linux (date +%s%N and md5sum are GNU-only)
 WS_ID="zellij-$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")"
-# KONDUCTOR_MUX_REGISTRY_DIR lets tests point at an isolated directory
-# instead of the real shared production registry; unset (the default) for
-# every real dispatch.
+# KONDUCTOR_MUX_REGISTRY_DIR overrides the registry: a per-user one on a shared host,
+# or an isolated one in tests.
 REGISTRY_DIR="${KONDUCTOR_MUX_REGISTRY_DIR:-/tmp/konductor-mux}"
 REGISTRY_FILE="$REGISTRY_DIR/dispatched.json"
 # Sibling lock file guarding every read-modify-write of $REGISTRY_FILE below.

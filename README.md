@@ -538,8 +538,8 @@ own; servers such as Playwright MCP are yours to configure.
   | `headless` | `claude --add-dir <dispatch dir> --agent <agent> -p --permission-mode acceptEdits --permission-prompts none "<prompt>"` | Runs once without prompts and skips the workspace trust dialog, because of `-p`. It can edit files in its working directory and its dispatch dir; Bash, network and other calls that would prompt are denied unless `permissions.allow` in your `settings.json` (or `--allowedTools`) allows them, so `acceptEdits` alone does not allow build or test commands |
   | `bypass` | `claude --add-dir <dispatch dir> --agent <agent> --dangerously-skip-permissions -p "<prompt>"` | Opt-in. Skips every permission check, AWS API calls included. Use it only in an isolated environment |
 
-  `<dispatch dir>` is a 0700 directory of its own under `/tmp/konductor-mux` or
-  `/tmp/konductor-cmux`, holding that dispatch's brief, result and `.done`. It is the only directory
+  `<dispatch dir>` is a 0700 directory of its own under the registry, `/tmp/konductor-mux` or
+  `/tmp/konductor-cmux` unless `KONDUCTOR_MUX_REGISTRY_DIR` or `KONDUCTOR_CMUX_REGISTRY_DIR` is set, holding that dispatch's brief, result and `.done`. It is the only directory
   the child is granted; the shared registry and other dispatches' files stay outside it. `<prompt>`
   is a fixed instruction naming those files: the child writes its result there and, as its last
   step, its `.done` (`$KONDUCTOR_DONE_FILE`). That `.done` is the completion signal, and the launcher
@@ -559,7 +559,7 @@ own; servers such as Playwright MCP are yours to configure.
   every `SessionStart` and copies the option into the session environment. It prints nothing and
   writes only to the environment file Claude Code gives it. A mistyped option value is written as
   `invalid`, so dispatch stops with an error instead of quietly running `interactive`. The scripts
-  write each task and its `.done` status file under `/tmp/konductor-mux` or `/tmp/konductor-cmux`.
+  write each task and its `.done` status file under that registry.
   The `konductor` orchestrator does not dispatch this way; its specialists follow your Claude Code
   permission settings.
 

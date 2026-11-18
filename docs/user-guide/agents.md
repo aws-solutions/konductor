@@ -258,7 +258,8 @@ Kiro CLI v2 synth replaces that `@builtin` with the same explicit built-in list 
 so only `konductor` holds `subagent` on Kiro CLI v2. Shell
 is how they work: their `mux-dispatch` / `cmux-dispatch` skills ship shell scripts that open a
 pane or surface per specialist, run the runtime's CLI inside it, and poll for a `.done` marker
-file under `/tmp/konductor-mux/` or `/tmp/konductor-cmux/`.
+file in each dispatch's directory under the registry (`/tmp/konductor-mux/` or `/tmp/konductor-cmux/`
+by default; `KONDUCTOR_MUX_REGISTRY_DIR` or `KONDUCTOR_CMUX_REGISTRY_DIR` overrides it).
 
 That is why they are granted shell in Kiro CLI while the plain orchestrator is not. In Claude
 Code the distinction disappears — all three declare `Bash` there.
