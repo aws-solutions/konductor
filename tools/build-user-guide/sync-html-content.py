@@ -260,16 +260,16 @@ EDITS = [
      "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 38 of the package's 80 skills — close to half, and by far the largest share of any agent.",
      "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 37 of the package's 79 skills — close to half, and by far the largest share of any agent."),
     ("reference roster note",
-     "Every agent runs claude-sonnet-5.5. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",
-     "Every agent runs claude-sonnet-5.5 on Kiro CLI and claude-sonnet-5-5 on Claude Code. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",),
+     "Every agent runs claude-sonnet-5.5 on Kiro CLI and claude-sonnet-5-5 on Claude Code. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",
+     "Every agent runs claude-sonnet-5.5 on Kiro CLI and claude-sonnet-5-5 on Claude Code. Skill counts are from each spec's dependencies.skills.skillNames, the skills its agent file lists as loadable and the list Kiro CLI holds it to; on Claude Code every installed skill stays reachable. Claude Code preloads only 1 to 4 of them, clientConfig.claudeCli.skills, when the agent runs as a subagent; everything else loads on demand through the Skill tool. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. konductor's preload also includes claude-teams-behavior, which is not in its skillNames.",),
     # ---- git-merge targets the default branch and defers to PRs -------------
     ("skills catalog: git-merge row",
      '"k":"git-merge","v":"Branch merges — feature into mainline, dev into mainline, release merges. — REACH FOR IT: Merging anything.',
      '"k":"git-merge","v":"Branch merges into the default branch, release merges, merge conflicts. — REACH FOR IT: Merging locally; use code-review when merges go through PRs.'),
     # ---- humanize-writing is declared by every agent, preloaded by four -----
     ("skills catalog: humanize-writing row",
-     '"k":"humanize-writing","v":"Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. — REACH FOR IT: Writing or editing prose, or a draft reads machine-written. · DECLARED BY: architect, developer, product-manager, tpm preload it; every other agent loads it on demand"',
-     '"k":"humanize-writing","v":"Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. — REACH FOR IT: Writing or editing prose, or a draft reads machine-written. · DECLARED BY: all 11. On Claude Code, k-architect, k-developer, k-product-manager and k-tpm preload it when they run as subagents. Otherwise, and on Kiro CLI, it loads on demand"'),
+     '"k":"humanize-writing","v":"Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. \u2014 REACH FOR IT: Writing or editing prose, or a draft reads machine-written. · DECLARED BY: all 11. On Claude Code, k-architect, k-developer, k-product-manager and k-tpm preload it when they run as subagents. Otherwise, and on Kiro CLI, it loads on demand"',
+     '"k":"humanize-writing","v":"Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. \u2014 REACH FOR IT: Writing or editing prose, or a draft reads machine-written. · DECLARED BY: all 11. Loads on demand on every runtime"'),
     # ---- skills catalog rows that follow the reworded skill descriptions ----
     ("skills catalog: code-review row",
      '"k":"code-review","v":"Standard pull-request review workflow — creating PRs, reviewing diffs, addressing feedback, post-implementation cycles.',
@@ -296,8 +296,8 @@ EDITS = [
      '"k":"verification","v":"TDD workflow and evidence-collection protocol; nothing is declared complete without proof.',
      '"k":"verification","v":"Evidence-collection protocol: run the work, show the command and output, and run the matching checker skill. Covers TDD and the maker-checker pattern.'),
     ("skills catalog: verification reach",
-     'REACH FOR IT: Always on for orchestrators. It is what makes done mean something. · DECLARED BY',
-     'REACH FOR IT: Before calling any code, build, document or infrastructure task done. Always on for orchestrators. · DECLARED BY'),
+     'REACH FOR IT: Before calling any code, build, document or infrastructure task done. Always on for orchestrators. · DECLARED BY: all 3 orchestrators',
+     'REACH FOR IT: Before calling any code, build, document or infrastructure task done. Orchestrators carry it, and on Claude Code it is preloaded into k-architect, k-developer and k-quality-assurance subagents. · DECLARED BY: architect, developer, QA, all 3 orchestrators'),
     ("skills catalog: workspace-skills row",
      '"k":"workspace-skills","v":"Teaches agents when and how to create project-specific skills, with dedup and provenance protection.',
      '"k":"workspace-skills","v":"Captures a reusable procedure as a project-specific skill, with dedup and provenance protection.'),
@@ -305,14 +305,14 @@ EDITS = [
      'REACH FOR IT: A workflow you just did by hand is one you will repeat — capture it. · DECLARED BY',
      'REACH FOR IT: After trial-and-error that worked, a course or user correction, or an unexpected outcome you had to investigate. Also when you ask to save or repeat a workflow. · DECLARED BY'),
     ("skills most: k-media-analyzer and the preload note",
-     "k-media-analyzer carries constraints and humanize-writing, and preloads only constraints. Its capability is the model's ability to interpret PDFs and images, not a skill library.\",\"The counts are the skills Claude Code preloads (clientConfig.claudeCli.skills). Seven agents, the three orchestrators plus k-quality-assurance, k-researcher, k-browser and k-media-analyzer, also declare humanize-writing and load it on demand, so it is not counted for them.\"]",
-     "k-media-analyzer carries constraints and humanize-writing, and preloads only constraints. Its capability is the model's ability to interpret PDFs and images, not a skill library.\",\"The counts are clientConfig.claudeCli.skills, the list Claude Code preloads when the agent runs as a subagent. Seven agents, the three orchestrators plus k-quality-assurance, k-researcher, k-browser and k-media-analyzer, also declare humanize-writing and load it on demand, so it is not counted for them.\"]"),
+     "k-media-analyzer carries constraints and humanize-writing, and preloads only constraints. Its capability is the model's ability to interpret PDFs and images, not a skill library.\",\"The counts are clientConfig.claudeCli.skills, the list Claude Code preloads when the agent runs as a subagent. Seven agents, the three orchestrators plus k-quality-assurance, k-researcher, k-browser and k-media-analyzer, also declare humanize-writing and load it on demand, so it is not counted for them.\"]",
+     'k-media-analyzer carries constraints and humanize-writing, and preloads only constraints. Its capability is the model\'s ability to interpret PDFs and images, not a skill library.","The declared count is dependencies.skills.skillNames; the preloaded count is clientConfig.claudeCli.skills, the skills Claude Code injects when the agent runs as a subagent."]'),
     ("skills most: column header",
-     '"h1":"AGENT","h2":"SKILLS DECLARED"',
-     '"h1":"AGENT","h2":"SKILLS PRELOADED (CLAUDE CODE)"'),
+     '"h1":"AGENT","h2":"SKILLS PRELOADED (CLAUDE CODE)"',
+     '"h1":"AGENT","h2":"SKILLS DECLARED · PRELOADED ON CLAUDE CODE"'),
     ("agents bullet: humanize-writing loads on demand",
-     '"Five agents declare zero SOPs: product-manager',
-     '"humanize-writing loads on demand for seven agents. The three orchestrators, k-quality-assurance, k-researcher, k-browser and k-media-analyzer declare it but do not preload it, so the counts above leave it out for them.", "Five agents declare zero SOPs: product-manager'),
+     '"humanize-writing loads on demand for seven agents. The three orchestrators, k-quality-assurance, k-researcher, k-browser and k-media-analyzer declare it but do not preload it, so the counts above leave it out for them.", "Five agents declare zero SOPs: product-manager',
+     '"Skills is what an agent declares. Claude Code preloads only 1 to 4 of them into a subagent before its first turn; every other declared skill loads on demand through the Skill tool. Kiro CLI, and a top-level Claude Code agent, load every skill on demand.", "konductor declares 25 skills and preloads 2 on Claude Code (constraints, claude-teams-behavior). claude-teams-behavior is only in the spec\'s clientConfig.claudeCli block, so Kiro CLI never sees it.", "Five agents declare zero SOPs: product-manager'),
     # ---- Claude Code does not prefix agent names ----------------------------
     # Spent: the prefix sentences these edits produced have since been removed
     # from the guide entirely, so neither their `old` nor their `new` exists any
@@ -675,11 +675,11 @@ ROSTER = [
      '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor · 24 · aws-mcp"}',
      '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor · 25 · aws-mcp"}'),
     ("ref mux",
-     '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}',
-     '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 10 · —"}'),
+     '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 10 · —"}',
+     '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 11 · —"}'),
     ("ref cmux",
-     '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}',
-     '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 10 · —"}'),
+     '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 10 · —"}',
+     '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 11 · —"}'),
     ("ref architect",
      '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review · 38 · aws-mcp"}',
      '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review · 37 · aws-mcp"}'),
@@ -690,14 +690,14 @@ ROSTER = [
     # unusable (its step 6 needs the adversarial review, which QA cannot run),
     # so QA is down to one declared SOP.
     ("ref qa",
-     '{"k":"k-quality-assurance","v":"claude-sonnet-5.5 · k-test-coverage-review, k-code-review-workflow · 11 · —"}',
-     '{"k":"k-quality-assurance","v":"claude-sonnet-5.5 · k-test-coverage-review · 12 · —"}'),
+     '{"k":"k-quality-assurance","v":"claude-sonnet-5.5 · k-test-coverage-review · 12 · \u2014"}',
+     '{"k":"k-quality-assurance","v":"claude-sonnet-5.5 · k-test-coverage-review · 13 · \u2014"}'),
     ("ref pm",
      '{"k":"k-product-manager","v":"claude-sonnet-5.5 · none · 16 · —"}',
      '{"k":"k-product-manager","v":"claude-sonnet-5.5 · none · 16 · —"}'),
     ("ref researcher",
-     '{"k":"k-researcher","v":"claude-sonnet-5.5 · none · 7 · —"}',
-     '{"k":"k-researcher","v":"claude-sonnet-5.5 · none · 8 · —"}'),
+     '{"k":"k-researcher","v":"claude-sonnet-5.5 · none · 8 · \u2014"}',
+     '{"k":"k-researcher","v":"claude-sonnet-5.5 · none · 9 · \u2014"}'),
     ("sop owners: k-code-review-workflow",
      '{"k":"k-code-review-workflow","v":"k-developer, k-quality-assurance · source_dir"}',
      '{"k":"k-code-review-workflow","v":"k-developer · source_dir"}'),
@@ -714,22 +714,22 @@ ROSTER = [
      '{ agent: "k-quality-assurance", sops: "k-test-coverage-review, k-code-review-workflow" }',
      '{ agent: "k-quality-assurance", sops: "k-test-coverage-review" }'),
     ("agents card: QA SOPs + skill count",
-     '{ k: "k-quality-assurance", v: "SOPs: k-test-coverage-review, k-code-review-workflow (shared with the developer). 10 skills —',
-     '{ k: "k-quality-assurance", v: "SOPs: k-test-coverage-review. 12 skills —'),
+     '{ k: "k-quality-assurance", v: "SOPs: k-test-coverage-review. 12 skills \u2014',
+     '{ k: "k-quality-assurance", v: "SOPs: k-test-coverage-review. 13 skills \u2014'),
     ("agents card: k-media-analyzer skills",
-     "No SOPs. 1 skill \u2014 constraints only.",
-     "No SOPs. 1 skill, constraints. It also declares humanize-writing, loaded on demand."),
+     "No SOPs. 1 skill, constraints. It also declares humanize-writing, loaded on demand.",
+     'No SOPs. 2 skills, constraints and humanize-writing. On Claude Code only constraints is preloaded.'),
     ("skills-per-agent table",
-     '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"25"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
-     '"rows":[{"k":"k-architect","v":"37"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"25"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),
+     '"rows":[{"k":"k-architect","v":"38 · 2"},{"k":"k-developer","v":"27 · 4"},{"k":"konductor","v":"25 · 2"},{"k":"k-product-manager","v":"16 · 1"},{"k":"k-tpm","v":"14 · 1"},{"k":"k-quality-assurance","v":"13 · 2"},{"k":"konductor-cmux-orchestrator","v":"11 · 1"},{"k":"konductor-mux-orchestrator","v":"11 · 1"},{"k":"k-researcher","v":"9 · 2"},{"k":"k-browser","v":"5 · 4"},{"k":"k-media-analyzer","v":"2 · 1"}]',
+     '"rows":[{"k":"k-architect","v":"37 · 2"},{"k":"k-developer","v":"27 · 4"},{"k":"konductor","v":"25 · 2"},{"k":"k-product-manager","v":"16 · 1"},{"k":"k-tpm","v":"14 · 1"},{"k":"k-quality-assurance","v":"13 · 2"},{"k":"konductor-cmux-orchestrator","v":"11 · 1"},{"k":"konductor-mux-orchestrator","v":"11 · 1"},{"k":"k-researcher","v":"9 · 2"},{"k":"k-browser","v":"5 · 4"},{"k":"k-media-analyzer","v":"2 · 1"}]'),
     # at-a-glance cards
     ('card konductor',
      'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 24 skills · 11 SOPs · aws-mcp',
      'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 25 skills · 11 SOPs · aws-mcp'),
-    ("card mux", 'Same, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 10 SOPs',
-     'Coordinator. Delegates every change, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 10 SOPs'),
-    ("card cmux", 'Same, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 10 SOPs',
-     'Coordinator. Delegates every change, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 10 SOPs'),
+    ("card mux", 'Coordinator. Delegates every change, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 10 SOPs',
+     'Coordinator. Delegates every change, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 11 skills · 10 SOPs'),
+    ("card cmux", 'Coordinator. Delegates every change, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 10 SOPs',
+     'Coordinator. Delegates every change, dispatching into cmux surfaces. claude-sonnet-5.5 · 11 skills · 10 SOPs'),
     ("troubleshooting t-3: symptom names the mux orchestrators",
      'You asked konductor to implement something and it started editing files',
      'You asked konductor-mux-orchestrator or konductor-cmux-orchestrator to implement something and it started editing files'),
@@ -742,10 +742,10 @@ ROSTER = [
      'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 37 skills · 3 SOPs · aws-mcp'),
     ("card developer", 'Implementation, code review, git, builds. claude-sonnet-5.5 · 26 skills · 4 SOPs · aws-mcp',
      'Implementation, code review, git, builds. claude-sonnet-5.5 · 27 skills · 4 SOPs · aws-mcp'),
-    ("card qa", 'Test coverage, E2E strategy, security tests. claude-sonnet-5.5 · 11 skills · 2 SOPs',
-     'Test coverage, E2E strategy, security tests. claude-sonnet-5.5 · 12 skills · 1 SOP'),
-    ("card researcher", 'External documentation and web research. claude-sonnet-5.5 · 7 skills · 0 SOPs',
-     'External documentation and web research. claude-sonnet-5.5 · 8 skills · 0 SOPs'),
+    ("card qa", 'Test coverage, E2E strategy, security tests. claude-sonnet-5.5 · 12 skills · 1 SOP',
+     'Test coverage, E2E strategy, security tests. claude-sonnet-5.5 · 13 skills · 1 SOP'),
+    ("card researcher", 'External documentation and web research. claude-sonnet-5.5 · 8 skills · 0 SOPs',
+     'External documentation and web research. claude-sonnet-5.5 · 9 skills · 0 SOPs'),
     # ---- orchestration.mode docs: converted from a hand edit of the bundles ----
     ('faq: coordinator mode section',
      '      sec("faq-data", "Is my data sent anywhere?"',
@@ -879,6 +879,39 @@ ROSTER = [
 ]
 
 
+# Claude Code subagent preload trim: roster counts are the declared skillNames,
+# and prose no longer says a skill loads automatically.
+PRELOAD_EDITS = [
+    ('ref browser',
+     '{"k":"k-browser","v":"claude-sonnet-5.5 · none · 4 · playwright-mcp"}',
+     '{"k":"k-browser","v":"claude-sonnet-5.5 · none · 5 · playwright-mcp"}'),
+    ('ref media',
+     '{"k":"k-media-analyzer","v":"claude-sonnet-5.5 · none · 1 · ',
+     '{"k":"k-media-analyzer","v":"claude-sonnet-5.5 · none · 2 · '),
+    ('card browser',
+     'Browser automation via Playwright. claude-sonnet-5.5 · 4 skills',
+     'Browser automation via Playwright. claude-sonnet-5.5 · 5 skills'),
+    ('card media',
+     'Interprets PDFs, images, diagrams. claude-sonnet-5.5 · 1 skill ·',
+     'Interprets PDFs, images, diagrams. claude-sonnet-5.5 · 2 skills ·'),
+    ('agents card: k-browser skills',
+     'No SOPs. 4 skills: constraints, sdlc-navigator, app-discovery, dom-inspection.',
+     'No SOPs. 5 skills: constraints, sdlc-navigator, app-discovery, dom-inspection, humanize-writing. On Claude Code it preloads the first four.'),
+    ('agents card: k-researcher skill list',
+     'persistent-memory, workspace-skills, constraints. Kiro CLI: @builtin',
+     'persistent-memory, workspace-skills, socratic-elicitation, constraints, humanize-writing. Kiro CLI: @builtin'),
+    ('skills catalog: claude-teams-behavior reach',
+     'Claude Code only. Loaded automatically; relevant',
+     'Claude Code only. Preloaded when konductor is spawned as a subagent on Claude Code; relevant'),
+    ('install claude code: what claudeCli declares',
+     'which declares the Claude Code tool names it may use and the skills it may load.',
+     'which declares the Claude Code tool names it may use and the few skills a spawned subagent preloads.'),
+    ('contributing: where a skill is declared',
+     'A skill has to be declared in both runtime configurations or it will only load in one.',
+     "Declare a skill in dependencies.skills.skillNames; both runtimes load it on demand from there. Add it to clientConfig.claudeCli.skills only if a Claude Code subagent needs it in context before its first turn: konductor synth warns when an agent's preload passes 32 KiB or 32 names, and lists the names Claude Code would drop. The preload is a subset of skillNames, except for a skill that applies only on Claude Code, such as claude-teams-behavior on konductor."),
+]
+
+
 def apply_all(page, problems, edits=None):
     """Apply every edit exactly once, and never twice.
 
@@ -902,7 +935,7 @@ def apply_all(page, problems, edits=None):
     roster and card targets differ only by a little surrounding markup -- would
     be silently rewritten too. Counting first turns that into a loud failure.
     """
-    for label, old, new in (EDITS + ROSTER + SOP_EDITS if edits is None else edits):
+    for label, old, new in (EDITS + ROSTER + SOP_EDITS + PRELOAD_EDITS if edits is None else edits):
         hits = page.count(old)
         if hits > 1:
             problems.append(f"{label} (matched {hits}x, expected 1)")
@@ -959,13 +992,13 @@ def main():
         # Per-edit already-applied checks can't see two edits undoing each other.
         if not problems and apply_all(new, []) != new:
             failed = True
-            again = [e[0] for e in EDITS + ROSTER + SOP_EDITS if apply_all(new, [], [e]) != new]
+            again = [e[0] for e in EDITS + ROSTER + SOP_EDITS + PRELOAD_EDITS if apply_all(new, [], [e]) != new]
             print(f"  {rel}: NOT written — a second pass would change the result again; "
                   f"edit(s) still firing:")
             for label in again or ["(only in combination)"]:
                 print(f"      - {label}")
             continue
-        matched = len(EDITS) + len(ROSTER) + len(SOP_EDITS) - len(problems)
+        matched = len(EDITS) + len(ROSTER) + len(SOP_EDITS) + len(PRELOAD_EDITS) - len(problems)
         # Never write a partially-patched bundle. Without this guard an --apply
         # run with unmatched targets still saved the subset that did match and
         # only then exited 1, leaving a committed artifact half-updated -- worst
