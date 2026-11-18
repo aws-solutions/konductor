@@ -50,16 +50,19 @@
 //     passthrough isn't an option.
 //
 // There is no vendored copy of Kiro CLI's upgrade engine in this
-// repository. The `timeout_ms` -> whole-seconds conversion
-// (ceiling-divide, 1-second floor) and the `<trigger>-<index>` name
-// synthesis in `convert_hooks_for_v3` are this module's own choices,
-// not sourced from either kiro.dev page.
+// repository. The `<trigger>-<index>` names and the 10-second default
+// timeout in `convert_hooks_for_v3` match the hooks-migration page's
+// worked example (`agentSpawn-0`, `"timeout": 10`). The `timeout_ms`
+// -> whole-seconds conversion (ceiling-divide, 1-second floor) is this
+// module's own choice, not sourced from a kiro.dev page.
 //
 // `push_trusted_agent_rules`'s `trustedAgents`/`availableAgents` split
 // and `collect_dropped_tools_settings_warnings`'s diagnostic come from
 // a different evidence class: live testing against the installed Kiro
 // CLI `agent upgrade` engine (kiro-cli 2.29.0, run directly on
-// 2026-10-10). Running it on an agent with both fields set shows
+// 2026-10-10, and again with kiro-cli 3.4.0 on 2026-11-18; the second
+// run also backs the tool-ID notes on `TOOL_ID_TO_TAG` and
+// `TOOL_ID_TO_CAPABILITY`). Running it on an agent with both fields set shows
 // `trustedAgents` landing in `permissions.rules`' `subagent`
 // capability, while `availableAgents` becomes new `subagent/<name>`
 // tags appended to `tools` -- two different fields feeding two
@@ -177,10 +180,10 @@ struct PermissionRule {
     exclude: Vec<String>,
 }
 
-/// Confirmed old-tool-ID -> new-canonical-tag mappings for the `tools`
-/// field, drawn directly from the two sources below (both fetched
-/// 2026-09-06/07, see this module's header comment). Every entry here
-/// is independently confirmed on at least one of the two pages; entries
+/// Old-tool-ID -> new-canonical-tag mappings for the `tools` field.
+/// Most rows come from the two kiro.dev pages below (both fetched
+/// 2026-09-06/07, see this module's header comment); the per-row notes
+/// say which rows rest on a live engine run or on neither source. Entries
 /// NOT in this table (e.g. a bare individual MCP tool name, or a
 /// server-scoped `@<server-name>` tag -- V3's tag table only confirms
 /// the collective `@mcp`/`@builtin`/`*` forms, not per-server tags) pass
@@ -197,46 +200,33 @@ struct PermissionRule {
 ///     `web_search`: migration guide's "Old Tool ID (2.x)" / "New Tool
 ///     ID" table, confirmed verbatim (a second, stricter verbatim-only
 ///     fetch re-confirmed every row of this specific table).
-///   - `todo`/`task` -> `todo_list`, `agent_crew` -> `subagent`: not
-///     named on either public page above. Confirmed instead against
-///     a vendored, canonically-derived copy of Kiro CLI's own
-///     `/upgrade-agent` engine's `kiro_config_migration` module
-///     (`tool_table.rs`/`vendored_types.rs`; unlike
-///     `push_trusted_agent_rules`, which cites live `kiro-cli agent
-///     upgrade` testing instead -- see that function's docstring): the
-///     vendored `BuiltInToolName::Task`'s confirmed parse spellings are `todo`,
-///     `task`, and `todo_list` (canonical display `todo_list`, upstream
-///     `task/task_tool.rs`), and `BuiltInToolName::AgentCrew`'s are
-///     `agent_crew` and `use_subagent` (canonical display `subagent`,
-///     upstream `agent_crew.rs`). `todo` additionally has direct in-repo
-///     evidence -- four real agent-spec.json files across this workspace
-///     declare the literal `"todo"` tool (two in this repo's own
-///     `agents/`, two in a downstream internal package), and an
-///     unconverted `"todo"` in a V3
-///     agent's `tools` array is exactly the shape the real engine's own
-///     V2-authorship detection flags as still needing migration -- so
-///     `map_tool_tag` must convert it, the same way it already converts
-///     every other tag on those agents.
+///   - `agent_crew` -> `subagent`: not named on either public page
+///     above. Confirmed by live testing against the installed Kiro CLI
+///     `agent upgrade` engine (kiro-cli 3.4.0, run on 2026-11-18): an
+///     agent whose `tools` is `["agent_crew"]` comes out as
+///     `["subagent"]`, the same result as `["use_subagent"]`.
+///   - `todo`/`task` -> `todo_list`: not named on either public page
+///     above, and NOT confirmed by the live engine. The same kiro-cli
+///     3.4.0 run leaves `todo`, `task` and `todo_list` unchanged and
+///     reports each as a V2 tool with no V3 equivalent. These two rows
+///     are this module's own choice. Two agent specs in this repo's
+///     `agents/` (the mux and cmux orchestrators) declare the literal
+///     `"todo"` tool, so the rows are load-bearing.
 ///
-///     `agentCrew` (camelCase) remains deliberately absent: the vendored
-///     module's `BuiltInToolName::AgentCrew` accepts `agent_crew` and
-///     `use_subagent` as parse spellings, not `agentCrew`, and neither
-///     kiro.dev/docs/reference/built-in-tools/ nor any agent-spec.json
-///     file in this repo names it either. Treat it as an unconfirmed
-///     spelling, not an alias, unless a real source confirms otherwise.
+///     `agentCrew` (camelCase) remains deliberately absent: the same
+///     live run leaves it unchanged rather than renaming it, and
+///     neither kiro.dev/docs/reference/built-in-tools/ nor any
+///     agent-spec.json file in this repo names it. Treat it as an
+///     unconfirmed spelling, not an alias, unless a real source confirms
+///     otherwise.
 ///
-///     Known gap this table does NOT cover: the same vendored
-///     `tool_table.rs` also folds `WebFetch`/`WebSearch` into tag
-///     `"web"`, and `Grep`/`Glob`/`Code`/`Introspect` into tag `"read"`
-///     -- conflicting with this table's own `webFetch -> web_fetch`/
-///     `webSearch -> web_search` rows (confirmed verbatim against the
-///     public migration guide instead) and leaving bare `grep`/`glob`/
-///     `code`/`introspect` uncovered entirely. No agent spec in this
-///     package uses any of these five spellings literally (verified
-///     across every declared `clientConfig.kiroCli.tools` array), so
-///     only the `todo`/`task`/`agent_crew` rows above are currently
-///     load-bearing. Resolving the `web`/`read` conflict against the
-///     public guide is left to this module's doc owner.
+///     Known gap this table does NOT cover: in the same live run, the
+///     engine keeps `grep`/`glob`/`code`/`introspect` and adds a `read`
+///     tag next to each, and keeps `web_fetch`/`web_search` and adds a
+///     `web` tag. No agent spec in this package uses any of these
+///     spellings literally (verified across every declared
+///     `clientConfig.kiroCli.tools` array), so this module does not
+///     mirror that behavior.
 const TOOL_ID_TO_TAG: &[(&str, &str)] = &[
     ("fs_read", "read"),
     ("fsRead", "read"),
@@ -308,14 +298,11 @@ const TOOL_ID_TO_TAG: &[(&str, &str)] = &[
 /// `subagent`. Checked against kiro.dev's built-in-tools reference
 /// (confirms only `read<->fs_read/fsRead`,
 /// `shell<->execute_bash/execute_cmd`, `aws<->use_aws`,
-/// `subagent<->use_subagent`), a vendored, canonically-derived copy of
-/// Kiro CLI's own `/upgrade-agent` engine's
-/// `kiro_config_migration` module (`BuiltInToolName::AgentCrew`'s only
-/// confirmed parse spellings are `agent_crew`/`use_subagent`, and its
-/// `aliases()` returns only `agent_crew`), and the pinned
-/// `testdata/upstream-aliases.txt` fixture (`AgentCrew = [agent_crew]`,
-/// no `delegate`). Same treatment as the unconfirmed `agentCrew`
-/// camelCase spelling: left out rather than guessed at.
+/// `subagent<->use_subagent`) and against the installed Kiro CLI
+/// `agent upgrade` engine (kiro-cli 3.4.0, run on 2026-11-18), which
+/// leaves a `delegate` tool unchanged rather than renaming it to
+/// `subagent`. Same treatment as the unconfirmed `agentCrew` camelCase
+/// spelling: left out rather than guessed at.
 ///
 /// `use_aws`/`aws` are deliberately ABSENT from this table (they exist
 /// as tags in `TOOL_ID_TO_TAG`, mapping to the visibility tag `aws`, but
@@ -1175,13 +1162,11 @@ const DEFAULT_HOOK_TIMEOUT_MS: u64 = 10_000;
 /// agent content -- per its own module doc comment, its agents are
 /// always freshly synthesized JSON with no merge concern.
 ///
-/// The merge path that DOES carry the hazard (`adapter.rs`) lives
-/// entirely inside a different build tool (`aim-build`, driven by `aim
-/// agents install`/`aim plugins install`), which composes
-/// `clientConfig.kiroCli` fragments from agent-spec.json files
-/// directly and never reads this crate's `dist/` output. `adapter.rs`
-/// does not exist anywhere in this crate's own source tree. The two
-/// pipelines are genuinely separate, non-intersecting systems.
+/// The merge path that DOES carry the hazard (`adapter.rs`) belongs to
+/// a separate installer outside this crate, which composes
+/// `clientConfig.kiroCli` fragments from agent-spec.json files directly
+/// and never reads this crate's `dist/` output. `adapter.rs` does not
+/// exist anywhere in this crate's own source tree.
 fn convert_hooks_for_v3(
     hooks: &indexmap::IndexMap<String, serde_json::Value>,
 ) -> serde_json::Value {
@@ -1216,13 +1201,13 @@ fn convert_hooks_for_v3(
 /// `matcher` and a `permissions.rules[].match` entry are not the same
 /// kind of field despite the shared name: KAS treats the latter as
 /// glob syntax, converted from V2's regex via `regex_to_glob` before
-/// this crate ever emits it, but there's no basis for assuming the
-/// same treatment applies to `matcher`. Converting or splitting the
-/// string would risk breaking a `|`-separated regex alternation that
-/// already appears in a real agent spec elsewhere in this workspace (a
-/// security-gate hook's matcher combining multiple guard patterns) --
-/// the conservative, unconverted passthrough avoids that risk without
-/// requiring a confirmed source for how KAS itself treats the field.
+/// this crate ever emits it. The hooks-migration page says
+/// `/upgrade-agent` rewrites a known 2.x tool name in a matcher to its
+/// shared group (`fs_read` becomes `read`); this function does not do
+/// that rewrite. Converting or splitting the string would risk
+/// breaking a `|`-separated regex alternation, such as a guard hook's
+/// matcher that combines several patterns, so the matcher passes
+/// through unchanged.
 fn convert_hook_entry(
     trigger: &str,
     idx: usize,
@@ -1510,14 +1495,12 @@ mod tests {
     }
 
     /// The `todo`/`task` -> `todo_list`, `agent_crew` -> `subagent` rows
-    /// in `TOOL_ID_TO_TAG` (see that table's own doc comment). Regression
-    /// guard for a live agent-spec shape in this package
-    /// (`konductor-mux-orchestrator` et al. declare the literal `"todo"`
-    /// tool): an unconverted `"todo"` in a V3 agent's `tools` array is
-    /// exactly the shape the real Kiro CLI V3 engine's own
-    /// V2-authorship detection flags as still needing migration.
+    /// in `TOOL_ID_TO_TAG` (see that table's doc comment for which rows
+    /// are confirmed). Regression guard for a live agent-spec shape in
+    /// this package: the mux and cmux orchestrators declare the literal
+    /// `"todo"` tool.
     #[test]
-    fn map_tool_tag_converts_vendored_engine_sourced_ids() {
+    fn map_tool_tag_converts_todo_task_and_agent_crew() {
         assert_eq!(map_tool_tag("todo"), "todo_list");
         assert_eq!(map_tool_tag("task"), "todo_list");
         assert_eq!(map_tool_tag("agent_crew"), "subagent");
