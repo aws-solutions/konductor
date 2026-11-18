@@ -1720,12 +1720,15 @@ fn check_container_runtime_with_path(path_var: Option<std::ffi::OsString>) -> Ch
 }
 
 /// One runner tool that `flow run` starts, and the lowest version of it that Konductor's runner checks pass on (spec:
-/// "Versions"). There is one row for each runner tool: Kiro CLI and Claude Code.
+/// "Versions"). There is one row for each runner tool: Kiro CLI and Claude Code, and the ACP adapter of each.
 struct RunnerTool {
     /// The name of the check in the report.
     check: &'static str,
     /// The program, looked up on `PATH`.
     program: &'static str,
+    /// What the messages call the tool. It is the program, except for `kiro-cli acp`, which is the program `kiro-cli`
+    /// with a subcommand.
+    label: &'static str,
     /// The lowest version the conformance checks passed on, as `major.minor.patch`.
     minimum: &'static str,
 }
@@ -1734,12 +1737,28 @@ const RUNNER_TOOLS: &[RunnerTool] = &[
     RunnerTool {
         check: "kiro_cli_version",
         program: "kiro-cli",
+        label: "kiro-cli",
         minimum: "3.3.0",
     },
     RunnerTool {
         check: "claude_version",
         program: "claude",
+        label: "claude",
         minimum: "2.1.323",
+    },
+    // The ACP adapters. Kiro's is a subcommand of `kiro-cli`, so its version is the version of `kiro-cli`. The minimums
+    // are the releases the adapters were checked against: kiro-cli 3.5.0 and claude-agent-acp 0.108.1.
+    RunnerTool {
+        check: "kiro_cli_acp_version",
+        program: "kiro-cli",
+        label: "kiro-cli acp",
+        minimum: "3.5.0",
+    },
+    RunnerTool {
+        check: "claude_agent_acp_version",
+        program: "claude-agent-acp",
+        label: "claude-agent-acp",
+        minimum: "0.108.1",
     },
 ];
 
@@ -1835,32 +1854,39 @@ fn check_runner_tool_with(
     let Some(program) = find_binary_on_path(tool.program, path_var.as_deref()) else {
         return CheckResult::info(
             tool.check,
-            format!("{} not found on PATH", tool.program),
+            format!("{} not found on PATH", tool.label),
             format!(
                 "install {} if you plan to run workflows on it; not required otherwise",
-                tool.program
+                tool.label
             ),
         );
     };
     let minimum = parse_tool_version(tool.minimum).expect("the minimum version is a version");
+    // The version read is the version of the program, which for an adapter that is a subcommand names the adapter too.
+    let named = |found| {
+        if tool.label == tool.program {
+            format!("{} {}", tool.program, show_version(found))
+        } else {
+            format!(
+                "{} {} (for `{}`)",
+                tool.program,
+                show_version(found),
+                tool.label
+            )
+        }
+    };
     match read_tool_version(&program, timeout) {
         Ok(found) if found >= minimum => CheckResult::ok(
             tool.check,
             format!(
-                "{} {} is at or above the minimum {}",
-                tool.program,
-                show_version(found),
+                "{} is at or above the minimum {}",
+                named(found),
                 tool.minimum
             ),
         ),
         Ok(found) => CheckResult::warn(
             tool.check,
-            format!(
-                "{} {} is below the minimum {}",
-                tool.program,
-                show_version(found),
-                tool.minimum
-            ),
+            format!("{} is below the minimum {}", named(found), tool.minimum),
             format!(
                 "update {} to {} or later before running workflows on it",
                 tool.program, tool.minimum
@@ -5442,6 +5468,38 @@ mod runner_tool_tests {
         assert!(RUNNER_TOOLS
             .iter()
             .any(|t| t.program == "claude" && t.check == "claude_version"));
+    }
+
+    #[test]
+    fn each_acp_adapter_has_its_own_row_with_a_pinned_minimum() {
+        let kiro = RUNNER_TOOLS
+            .iter()
+            .find(|t| t.check == "kiro_cli_acp_version")
+            .expect("the kiro-cli acp row");
+        assert_eq!(
+            (kiro.program, kiro.label, kiro.minimum),
+            ("kiro-cli", "kiro-cli acp", "3.5.0")
+        );
+        let claude = RUNNER_TOOLS
+            .iter()
+            .find(|t| t.check == "claude_agent_acp_version")
+            .expect("the claude-agent-acp row");
+        assert_eq!(
+            (claude.program, claude.label, claude.minimum),
+            ("claude-agent-acp", "claude-agent-acp", "0.108.1")
+        );
+        // The checks of the CLI harnesses keep their rows and their wording.
+        for check in ["kiro_cli_version", "claude_version"] {
+            let tool = RUNNER_TOOLS.iter().find(|t| t.check == check).unwrap();
+            assert_eq!(tool.label, tool.program);
+        }
+    }
+
+    #[test]
+    fn a_bare_adapter_version_is_read() {
+        assert_eq!(parse_tool_version("0.108.1"), Some((0, 108, 1)));
+        assert!(parse_tool_version("0.108.1").unwrap() >= parse_tool_version("0.108.1").unwrap());
+        assert!(parse_tool_version("0.107.9").unwrap() < parse_tool_version("0.108.1").unwrap());
     }
 
     #[test]

@@ -235,6 +235,32 @@ fn capitalise(text: &str) -> String {
     }
 }
 
+/// Checks that the agent of every stage is one the `claude-acp` harness can run: a definition in the project. The
+/// adapter is told to read project settings only, so it does not find an agent that is defined in the home folder.
+/// `Err` is the message for the first stage that fails.
+pub(crate) fn check_claude_acp_agents(
+    stages: &[Stage],
+    catalog: &FileAgentCatalog,
+) -> Result<(), String> {
+    use workflow_core::ports::{AgentCatalog, Placement};
+    for stage in stages {
+        let in_home = catalog
+            .definitions(&stage.agent)
+            .iter()
+            .any(|d| d.runner == Runner::Claude && d.placement == Placement::Home);
+        if in_home {
+            return Err(format!(
+                "Stage `{}` names the agent `{}`, which is defined in the home folder. The `claude-acp` harness reads \
+                 project settings only, so it runs agents that are defined in the project root or in a folder above it \
+                 up to the git top folder.",
+                plain(&stage.name),
+                plain(&stage.agent)
+            ));
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -41,8 +41,8 @@ pub use clock::{SimulatedClock, SystemClock};
 pub use fake_harness::{FakeHarness, Script};
 pub use file_source::{FileSource, Skip};
 pub use harness_choice::{
-    choose_harness, resolve_harness, HarnessChoice, HarnessRefusal, InstalledRunners,
-    FAKE_SCRIPT_ENV,
+    choose_harness, choose_view_harness, resolve_harness, HarnessChoice, HarnessRefusal,
+    InstalledRunners, FAKE_SCRIPT_ENV,
 };
 pub use kiro_harness::{kiro_args, KiroHarness};
 pub use launcher::{SystemLauncher, TimeoutFlavor, NO_TIMEOUT_WARNING};
