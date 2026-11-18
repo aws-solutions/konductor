@@ -8,6 +8,7 @@ const assert = require('node:assert/strict');
 
 const {
   newCanary,
+  cutAtCodePoint,
   createRedactor,
   redact,
   classifySecrets,
@@ -195,6 +196,106 @@ test('size caps: output is cut after redaction, a secret on the cut is gone, and
     redact('z'.repeat(INPUT_CEILING + 1)),
     `[REDACTED: ${INPUT_CEILING + 1} characters is too long to scan]`,
   );
+});
+
+test('cutAtCodePoint: the cut never ends inside a surrogate pair', () => {
+  const emoji = '\u{1F600}'; // two UTF-16 units
+  assert.equal(emoji.length, 2);
+  assert.equal(cutAtCodePoint('abc', 3), 'abc');
+  assert.equal(cutAtCodePoint('abcdef', 3), 'abc');
+  assert.equal(
+    cutAtCodePoint(`ab${emoji}cd`, 3),
+    'ab',
+    'a pair on the cut goes whole',
+  );
+  assert.equal(
+    cutAtCodePoint(`ab${emoji}cd`, 4),
+    `ab${emoji}`,
+    'a pair that fits stays',
+  );
+  assert.equal(cutAtCodePoint(`ab${emoji}cd`, 5), `ab${emoji}c`);
+  assert.equal(
+    cutAtCodePoint(`${emoji}${emoji}`, 1),
+    '',
+    'a limit that splits the first pair leaves nothing',
+  );
+  assert.equal(cutAtCodePoint(`${emoji}ab`, 0), '');
+  assert.equal(cutAtCodePoint(`ab${emoji}`, Infinity), `ab${emoji}`);
+  assert.equal(cutAtCodePoint('', 0), '');
+  for (let limit = 0; limit <= 8; limit++) {
+    const cut = cutAtCodePoint(`a${emoji}b${emoji}c${emoji}`, limit);
+    assert.ok(cut.length <= limit);
+    assert.equal(
+      cut,
+      cut.toWellFormed(),
+      `limit ${limit} leaves no lone surrogate`,
+    );
+  }
+});
+
+test('cutAtCodePoint: a lone surrogate already in the text is kept, and only a split pair is dropped', () => {
+  assert.equal(
+    cutAtCodePoint('ab\ud83dcd', 3),
+    'ab\ud83d',
+    'a lone high half followed by a letter',
+  );
+  assert.equal(cutAtCodePoint('ab\ude00cd', 3), 'ab\ude00', 'a lone low half');
+  assert.equal(
+    cutAtCodePoint('ab\ud83d', 3),
+    'ab\ud83d',
+    'text that fits is returned as it is',
+  );
+  assert.equal(
+    cutAtCodePoint('ab\ud83d\ud83dcd', 3),
+    'ab\ud83d',
+    'two high halves in a row',
+  );
+  assert.equal(
+    cutAtCodePoint('\ude00\ud83d\ude00', 2),
+    '\ude00',
+    'a low half, then a pair split in the middle',
+  );
+});
+
+test('cutAtCodePoint: the first and the last pair of the surrogate ranges are kept whole too', () => {
+  const lowest = '\u{10000}'; // \ud800\udc00
+  const highest = '\u{10FFFF}'; // \udbff\udfff
+  assert.equal(lowest, '\ud800\udc00');
+  assert.equal(highest, '\udbff\udfff');
+  assert.equal(cutAtCodePoint(`a${lowest}b`, 2), 'a');
+  assert.equal(cutAtCodePoint(`a${highest}b`, 2), 'a');
+  assert.equal(cutAtCodePoint(`a${lowest}${highest}`, 3), `a${lowest}`);
+  assert.equal(cutAtCodePoint(`a${highest}${lowest}`, 3), `a${highest}`);
+});
+
+test('cutAtCodePoint: a lone low half after the cut, or a lone high half before a letter, is not a split pair', () => {
+  assert.equal(cutAtCodePoint('abc\ude00d', 3), 'abc');
+  assert.equal(cutAtCodePoint('ab\ud83dc', 3), 'ab\ud83d');
+  assert.equal(cutAtCodePoint('ab\ud83d', 3), 'ab\ud83d');
+});
+
+test('cutAtCodePoint: a limit that is not a whole number of 0 or more is a TypeError', () => {
+  for (const limit of [-1, 1.5, NaN, '3', null, undefined])
+    assert.throws(() => cutAtCodePoint('abcdef', limit), TypeError);
+});
+
+test('size caps: a cut that falls inside an emoji drops it whole and counts what was dropped', () => {
+  const emoji = '\u{1F600}';
+  const cut = redact(`${'a'.repeat(3999)}${emoji}tail`);
+  assert.equal(cut, `${'a'.repeat(3999)}[truncated 6 characters]`);
+  assert.equal(cut, cut.toWellFormed());
+  assert.equal(
+    redact(`ab${emoji}cd`, { maxChars: 3 }),
+    'ab[truncated 4 characters]',
+  );
+  assert.equal(
+    redact(`ab${emoji}cd`, { maxChars: 4 }),
+    `ab${emoji}[truncated 2 characters]`,
+  );
+});
+
+test('size caps: a limit below 0 is refused instead of cutting from the end', () => {
+  assert.throws(() => redact('abcdef', { maxChars: -2 }), TypeError);
 });
 
 test('newCanary: fresh each time, found by the redactor and by classifySecrets', () => {

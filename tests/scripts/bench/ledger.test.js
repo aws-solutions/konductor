@@ -532,6 +532,21 @@ test('settle, cancel and failure rows; a reservation closes once; an expired res
   });
 });
 
+test('a label cut at 120 characters never ends inside an emoji', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const ledger = makeLedger(dir);
+    (await ledger.reserve(1, `${'a'.repeat(119)}\u{1F600}tail`)).cancel();
+    const [reserveRow] = readRows(ledger.file);
+    assert.equal(reserveRow.label, 'a'.repeat(119));
+    (await ledger.reserve(1, `${'b'.repeat(118)}\u{1F600}tail`)).cancel();
+    assert.equal(
+      readRows(ledger.file)[2].label,
+      `${'b'.repeat(118)}\u{1F600}`,
+      'a pair that fits is kept',
+    );
+  });
+});
+
 test('the file and folder are private, and rows carry run, id and an ISO time', async () => {
   await helpers.withTmpAsync(async (dir) => {
     const ledger = makeLedger(dir);
@@ -1246,5 +1261,178 @@ test('a row whose run, label, status, cost_source, kind or model is not text is 
       `${JSON.stringify({ ...makeSettledRow(1), model: null })}\n`,
     );
     assert.equal(readLedger(file).total, 1, 'a null model is allowed');
+  });
+});
+
+// A write that fails must not close the reservation: the cleanup in the caller's `finally` is a cancel(), and it has to
+// find the reservation still open instead of an "already settled" error that hides the real I/O failure.
+const failSettleWrite = (
+  t,
+  error = Object.assign(new Error('no space left on device'), {
+    code: 'ENOSPC',
+  }),
+) => {
+  const realAppend = fs.appendFileSync;
+  return t.mock.method(fs, 'appendFileSync', (file, data, options) => {
+    if (String(data).includes('"type":"settle"')) throw error;
+    return realAppend(file, data, options);
+  });
+};
+
+test('a settle whose write fails leaves the reservation open: it can be retried or cancelled, and spend is not lost', async (t) => {
+  await helpers.withTmpAsync(async (dir) => {
+    const ledger = makeLedger(dir);
+    const reservation = await ledger.reserve(2, 'call');
+    const failing = failSettleWrite(t);
+    assert.throws(() => reservation.settle({ reportedUsd: 1.5 }), {
+      code: 'ENOSPC',
+    });
+    assert.equal(ledger.read().reserved, 2, 'the reservation still counts');
+    failing.mock.restore();
+    // The retry writes the settle row, once.
+    const charged = reservation.settle({ reportedUsd: 1.5 });
+    assert.equal(charged.usd, 1.5);
+    assert.deepEqual([ledger.read().total, ledger.read().reserved], [1.5, 0]);
+    assert.throws(() => reservation.cancel(), /already settled or cancelled/);
+    assert.deepEqual(
+      readRows(ledger.file).map((row) => [row.type, row.status]),
+      [
+        ['reserve', undefined],
+        ['settle', 'ok'],
+      ],
+    );
+  });
+});
+
+test('a cancel whose write fails reports the I/O error and can be tried again', async (t) => {
+  await helpers.withTmpAsync(async (dir) => {
+    const ledger = makeLedger(dir);
+    const first = await ledger.reserve(2);
+    const failing = failSettleWrite(t);
+    assert.throws(() => first.cancel(), { code: 'ENOSPC' });
+    assert.throws(
+      () => first.cancel(),
+      { code: 'ENOSPC' },
+      'the second call is the same I/O failure, not "already settled"',
+    );
+    failing.mock.restore();
+    first.cancel();
+    assert.deepEqual([ledger.read().total, ledger.read().reserved], [0, 0]);
+    assert.deepEqual(
+      readRows(ledger.file).map((row) => [row.id, row.type, row.status]),
+      [
+        ['r1-1', 'reserve', undefined],
+        ['r1-1', 'settle', 'cancelled'],
+      ],
+    );
+  });
+});
+
+test('a cancel after a settle was tried is refused, so a paid call is never booked at 0 and only a settle retry closes it', async (t) => {
+  await helpers.withTmpAsync(async (dir) => {
+    const ledger = makeLedger(dir);
+    const second = await ledger.reserve(3);
+    const failing = failSettleWrite(t);
+    assert.throws(() => second.settle({ reportedUsd: 1 }), { code: 'ENOSPC' });
+    failing.mock.restore();
+    // The disk is back, and the cleanup in `finally` cancels: that would book the paid call at 0.
+    assert.throws(() => second.cancel(), /cannot be cancelled after a settle/);
+    assert.deepEqual(
+      readRows(ledger.file).map((row) => [row.type, row.status]),
+      [['reserve', undefined]],
+      'no cancel row was written',
+    );
+    assert.deepEqual(
+      [ledger.read().total, ledger.read().reserved],
+      [0, 3],
+      'the reservation stays open, so its p90 is still counted',
+    );
+    // A settle retry still closes it, at the cost the CLI reported.
+    assert.equal(second.settle({ reportedUsd: 1 }).usd, 1);
+    assert.deepEqual([ledger.read().total, ledger.read().reserved], [1, 0]);
+  });
+});
+
+test('a settle that throws before it writes also blocks a later cancel', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const ledger = makeLedger(dir);
+    const reservation = await ledger.reserve(2);
+    assert.throws(() => reservation.settle({ model: 42 }), TypeError);
+    assert.throws(
+      () => reservation.cancel(),
+      /cannot be cancelled after a settle/,
+    );
+    assert.equal(ledger.read().reserved, 2);
+  });
+});
+
+test('a reservation whose settle never succeeds expires into the total at its reservation, not at 0', async (t) => {
+  await helpers.withTmpAsync(async (dir) => {
+    const ledger = makeLedger(dir);
+    const reservation = await ledger.reserve(2, 'call');
+    failSettleWrite(t);
+    assert.throws(() => reservation.settle({ reportedUsd: 1.5 }), {
+      code: 'ENOSPC',
+    });
+    assert.throws(() => reservation.cancel(), /cannot be cancelled/);
+    ledger.clock.nowMs += 24 * 3600 * 1000;
+    const state = ledger.read();
+    assert.equal(state.reserved, 0);
+    assert.equal(state.total, 2);
+    assert.equal(state.expired.count, 1);
+  });
+});
+
+test('reserve and settle refuse a kind or model that is not text, before anything is written', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const ledger = makeLedger(dir);
+    for (const [name, value] of [
+      ['kind', 42],
+      ['kind', null],
+      ['kind', {}],
+      ['kind', ['judge']],
+      ['model', 42],
+      ['model', null],
+      ['model', false],
+      ['model', { id: 'm' }],
+    ])
+      await assert.rejects(
+        ledger.reserve(1, 'x', { [name]: value }),
+        (error) =>
+          error instanceof TypeError &&
+          error.message.startsWith(`reserve: ${name} must be text or left out`),
+        `${name}: ${JSON.stringify(value)}`,
+      );
+    assert.equal(fs.existsSync(ledger.file), false, 'no row, no file');
+    // Text and "left out" pass, and the ledger stays readable.
+    const reservation = await ledger.reserve(1, 'x', {
+      kind: 'judge',
+      model: 'm1',
+    });
+    await ledger.reserve(1, 'no call fields').then((other) => other.cancel());
+    await ledger
+      .reserve(1, 'empty', { kind: '', model: '' })
+      .then((other) => other.cancel());
+    // settle: a model that is not text is refused and leaves the reservation open.
+    for (const value of [42, null, {}, true])
+      assert.throws(
+        () => reservation.settle({ model: value, reportedUsd: 0.5 }),
+        (error) =>
+          error instanceof TypeError &&
+          error.message.startsWith('settle: model must be text or left out'),
+        JSON.stringify(value),
+      );
+    assert.deepEqual(
+      readRows(ledger.file)
+        .filter((row) => row.type === 'settle')
+        .map((row) => row.status),
+      ['cancelled', 'cancelled'],
+      'only the two cancelled calls were written, the refused settles wrote nothing',
+    );
+    reservation.settle({ model: 'm1', reportedUsd: 0.5 });
+    assert.equal(ledger.read().total, 0.5);
+    // Every row the ledger wrote is one the strict reader accepts, and the next reserve is not refused.
+    await ledger.reserve(1).then((other) => other.cancel());
+    assert.equal(readLedger(ledger.file, { now: ledger.clock.now }).total, 0.5);
   });
 });

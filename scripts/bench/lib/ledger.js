@@ -16,6 +16,8 @@
  * charged 0 and its row says `cost_source: "none"`. A cancelled call has no cost source. A reserve row with no settle row counts as in flight
  * until `expires` (the call timeout). After that the call is unaccounted for: it may have been paid for and never
  * settled, so its reservation is counted as spent and readLedger reports how many there were (`expired`).
+ * cancel() is refused once settle() has been called: the call may have been paid for, so only a settle retry closes the
+ * reservation, and until then it stays open and expires as above.
  *
  * Limits are checked in this order: max_usd (this run), then total_cap_usd (the ledger total plus live reservations
  * plus this call). Check and reservation are one step under an exclusive
@@ -42,7 +44,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { redact } = require('./redact');
+const { redact, cutAtCodePoint } = require('./redact');
 const { callCost } = require('./cost-profile');
 
 const LIMITS = Object.freeze(['max_usd', 'total_cap_usd']);
@@ -91,6 +93,13 @@ class SpendStopError extends LedgerError {
 
 const isMoney = (value) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0;
+/** Throws a TypeError before any row is written when `value` is neither absent nor text: the reader refuses such a row. */
+function requireTextOrAbsent(where, name, value) {
+  if (value !== undefined && typeof value !== 'string')
+    throw new TypeError(
+      `${where}: ${name} must be text or left out, got ${typeof value === 'object' ? JSON.stringify(value) : typeof value}`,
+    );
+}
 const formatUsd = (amount) => `$${amount.toFixed(2)}`;
 /** A projected cost and a limit, with as many decimals as it takes to show two different amounts as different. */
 function formatUsdPair(projected, limit) {
@@ -471,13 +480,18 @@ function createLedger({
       );
     if (!isMoney(meanUsd))
       throw new TypeError('reserve: the mean cost must be a number, 0 or more');
+    requireTextOrAbsent('reserve', 'kind', kind);
+    requireTextOrAbsent('reserve', 'model', model);
     const callFields = {
       ...(kind === undefined ? {} : { kind }),
       ...(model === undefined ? {} : { model }),
     };
     fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
     const id = newId();
-    const shortLabel = redactLabel(label, { maxChars: Infinity }).slice(0, 120); // a label can carry a key by mistake
+    const shortLabel = cutAtCodePoint(
+      redactLabel(label, { maxChars: Infinity }),
+      120,
+    ); // a label can carry a key by mistake
     await withLock(
       lockFile,
       {
@@ -534,11 +548,17 @@ function createLedger({
       },
     );
     let isClosed = false;
+    // Set when settle() is called. settle() runs only after the model call, so from then on the call may have cost
+    // money and only a settle can close the reservation.
+    let settleTried = false;
     // Settling takes no lock: one short line appended in a single write. A reservation is settled once.
+    // The reservation is closed only once the row is written: a write that fails leaves it open, so the caller's
+    // cleanup can retry the settle instead of hitting "already settled" and losing the real error. A cancel is
+    // refused once a settle has been tried: it would book a paid call at 0. The open reservation then stays, and
+    // readLedger counts it at its reservation once it expires.
     const settleWith = (amount, extraFields) => {
       if (isClosed)
         throw new Error(`reservation ${id} was already settled or cancelled`);
-      isClosed = true;
       append({
         type: 'settle',
         id,
@@ -546,6 +566,7 @@ function createLedger({
         usd: amount,
         ...extraFields,
       });
+      isClosed = true;
     };
     return {
       id,
@@ -568,6 +589,8 @@ function createLedger({
         ok = true,
         modelStarted = true,
       } = {}) {
+        settleTried = true;
+        requireTextOrAbsent('settle', 'model', model);
         const tokens = usage
           ? Object.fromEntries(
               TOKEN_FIELDS.filter((field) => isMoney(usage[field])).map(
@@ -600,8 +623,17 @@ function createLedger({
           limit_passed: isOver ? limitPassedNow() : null,
         };
       },
-      /** The call never started, so it cost nothing. */
-      cancel: () => settleWith(0, { status: 'cancelled', ...callFields }),
+      /**
+       * The call never started, so it cost nothing. Refused once settle() has been called, because the call may have
+       * been paid for: retry the settle, or leave the reservation open.
+       */
+      cancel() {
+        if (settleTried && !isClosed)
+          throw new Error(
+            `reservation ${id} cannot be cancelled after a settle was tried: the call may have cost money, so retry the settle`,
+          );
+        settleWith(0, { status: 'cancelled', ...callFields });
+      },
     };
   }
 

@@ -46,9 +46,15 @@ const CREDENTIAL = [
   makeError(
     'The SSO session associated with this profile has expired or is otherwise invalid. To refresh this SSO session run aws sso login with the corresponding profile.',
   ),
-  makeError('Token has expired and refresh failed'),
+  // What the AWS CLI prints when an SSO token cannot be refreshed.
+  makeError(
+    'Error when retrieving token from sso: Token has expired and refresh failed',
+  ),
   makeError('the sso session is gone'),
-  makeError('refresh failed'),
+  makeError('aws: token has expired'),
+  makeError('Refresh failed for the AWS profile dev'),
+  makeError('SSO token refresh failed'),
+  makeError('Token has expired. Run aws sso login --profile dev'),
   // "unauthorized" and 401 count only in an AWS shape.
   makeError('UnrecognizedClientException: HTTP 401'),
   makeError('401 Unauthorized: InvalidSignatureException'),
@@ -64,6 +70,19 @@ const NOT_CREDENTIAL = [
   makeError('Request failed with status 401'),
   makeError('Unauthorized'),
   makeError('npm ERR! 401 Unauthorized - GET https://registry.example/pkg'),
+  // The two phrases of an SSO login count only next to the word AWS or SSO.
+  makeError('npm ERR! refresh failed for registry'),
+  makeError('git: token has expired for github'),
+  makeError('Token has expired and refresh failed'),
+  makeError('refresh failed'),
+  makeError('token has expired'),
+  makeError('npm ERR! refresh failed for registry aws.example.com'),
+  makeError('token has expired for the aws-sdk-mock server'),
+  // The word has to stand alone: "laws" and "cassowary" hold aws and sso.
+  makeError('git: token has expired for the laws repository'),
+  makeError('npm ERR! refresh failed for the cassowary registry'),
+  // The anchor and the phrase are on one line.
+  makeError('aws s3 sync finished\nnpm ERR! refresh failed for registry'),
 ];
 // Calls that can never work as they are. Paying for a second try would only buy the same answer.
 const PERMANENT = [
