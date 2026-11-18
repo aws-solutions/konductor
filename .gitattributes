@@ -1,9 +1,10 @@
 # The install manifest contract fixture is compared byte for byte.
 mcp/lib/skill-lookup-core/testdata/*.json text eol=lf
-# Skill benchmark baselines and fixtures are hashed by their bytes (SKILL.md,
-# rules.json, MANIFEST.json), so a checkout must not rewrite their line endings.
+# Skill benchmark baselines, fixtures and judge prompts are hashed by their bytes (SKILL.md,
+# rules.json, MANIFEST.json, prompt templates), so a checkout must not rewrite their line endings.
 # A rules file records the hash of its SKILL.md; a SKILL.md checked out with
 # CRLF line endings would make every baseline of that skill read as stale.
 bench/baselines/** text eol=lf
+scripts/bench/prompts/** text eol=lf
 tests/fixtures/bench/** text eol=lf
 skills/*/SKILL.md text eol=lf

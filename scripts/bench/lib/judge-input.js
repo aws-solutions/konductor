@@ -291,11 +291,20 @@ function sanitizerProvenance(options = {}) {
   };
 }
 
+// Every record prepare() has returned. A record is proof that its text went through the sanitizer only when it is in
+// this set: the stamps on it are plain data, which any code can copy onto a record it built itself.
+const PREPARED = new WeakSet();
+
+/** True when `record` is an object a judge-input builder's prepare() returned (and not a copy of one). */
+const isPrepared = (record) =>
+  record !== null && typeof record === 'object' && PREPARED.has(record);
+
 /**
  * A judge-input builder. `prepare(storedAnswer, { skill })` returns
  *   { text, eligible, reason, redacted, truncated, leaks, changes, counts, chars_in, removed_chars, removed_share,
  *     removed_by_rule, sanitizer_version, rules_sha256 }
- * `reason` is null when eligible, else why the answer must not reach a judge. `literals` are exact secret values (the
+ * The record is frozen and registered (isPrepared): a copy or a hand-built record is not one. `reason` is null when
+ * eligible, else why the answer must not reach a judge. `literals` are exact secret values (the
  * credentials given to the child). `settings` are the sanitizer settings (sanitize.js DEFAULT_SETTINGS). `maxRemovedShare`
  * is the most the sanitizer may delete (a share of non-whitespace characters, above 0 and at most 1).
  */
@@ -340,7 +349,7 @@ function createJudgeInput({
       reason = `sanitizer removed ${formatPercent(sanitized.removed_share)} of the answer`;
     else if (leaks.length)
       reason = `narration remains after sanitizing: ${leaks.map((leak) => leak.id).join(', ')}`;
-    return {
+    const record = Object.freeze({
       text,
       eligible: reason === null,
       reason,
@@ -355,7 +364,9 @@ function createJudgeInput({
       removed_by_rule: sanitized.removed_by_rule,
       sanitizer_version: provenance.sanitizerVersion,
       rules_sha256: provenance.sanitizerRulesSha256,
-    };
+    });
+    PREPARED.add(record);
+    return record;
   }
   return {
     prepare,
@@ -370,6 +381,7 @@ module.exports = {
   MAX_ANSWER_CHARS,
   MAX_REMOVED_SHARE,
   LEAK_TABLE,
+  isPrepared,
   scanLeaks,
   provenanceParts,
   sanitizerProvenance,
