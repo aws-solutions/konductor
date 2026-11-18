@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "program-decision-docs",
+  "skill_md_sha256": "50bbd4b60a8bf4ed15e58ef7fe64d7769eb71d3f3a1dfdb32a69047550232e34",
+  "request_context": "A request to write up a formal program-level decision document that compares options, weighs trade-offs and recommends a course of action for stakeholders.",
+  "rules": [
+    {
+      "id": "program-decision-docs-r01",
+      "source_quote": "Include a \"do nothing\" option as baseline.",
+      "class": "useful",
+      "outcome": "Among the options compared is an explicit option of taking no action or keeping the current state, analysed like the others and serving as the baseline for comparison.",
+      "why": "Without a status-quo baseline, readers cannot judge whether any change is worth its cost and risk.",
+      "scenario_hint": "Request to document a decision between two or more proposed changes to a program."
+    },
+    {
+      "id": "program-decision-docs-r02",
+      "source_quote": "Assign weights (must sum to 100%).",
+      "class": "useful",
+      "outcome": "The weights given to the evaluation criteria add up to exactly the whole (all of the importance), and the arithmetic is consistent.",
+      "why": "Weights that do not add up distort the weighted totals and undermine the ranking.",
+      "scenario_hint": "Request for a scored comparison of options against weighted criteria such as cost, time and risk."
+    },
+    {
+      "id": "program-decision-docs-r03",
+      "source_quote": "Score each option per criterion (1-5). Calculate weighted score.",
+      "class": "useful",
+      "outcome": "Each option is scored on every criterion using a small fixed numeric scale, and a weighted total per option is calculated and shown so the ranking can be verified.",
+      "why": "Unscored or uncalculated comparisons are subjective and cannot be checked.",
+      "scenario_hint": "Request to compare several options quantitatively before a recommendation."
+    },
+    {
+      "id": "program-decision-docs-r04",
+      "source_quote": "Recommendation contradicts evaluation matrix without stated rationale",
+      "class": "useful",
+      "outcome": "The recommended option is the one with the highest weighted score, or, if it differs, the answer explicitly states the overriding factors that justify departing from the scores.",
+      "why": "A recommendation that silently contradicts its own analysis destroys trust in the document.",
+      "scenario_hint": "Request where a qualitatively appealing option scores lower than another in the analysis."
+    },
+    {
+      "id": "program-decision-docs-r05",
+      "source_quote": "what happens if no decision is made (default outcome)",
+      "class": "useful",
+      "outcome": "The background states what will happen by default if no decision is taken, along with why the decision is needed now and the constraints such as budget, timeline or compliance.",
+      "why": "Without the cost of inaction and the trigger, urgency and constraints are unclear to decision makers.",
+      "scenario_hint": "Request to document a decision that has a deadline or a trigger event."
+    },
+    {
+      "id": "program-decision-docs-r06",
+      "source_quote": "Each option has: description, pros, cons, effort estimate (T-shirt size), risk level",
+      "class": "useful",
+      "outcome": "Every option has a description, both advantages and disadvantages, a rough effort size (small to large) and a risk rating, with none left blank for any option.",
+      "why": "Missing pros, cons, effort or risk for an option makes the comparison lopsided.",
+      "scenario_hint": "Request to lay out several candidate approaches with their trade-offs."
+    },
+    {
+      "id": "program-decision-docs-r07",
+      "source_quote": "Minimum 2 options, maximum 5.",
+      "class": "useful",
+      "outcome": "The document analyses a manageable number of alternatives, at least two and no more than five, rather than a single option or a sprawling list.",
+      "why": "One option is not a decision, and too many options dilute the analysis.",
+      "scenario_hint": "Request where many possible approaches exist and must be narrowed for decision makers."
+    },
+    {
+      "id": "program-decision-docs-r08",
+      "source_quote": "revisit conditions (what would trigger reconsideration), and expiry date (when to review regardless)",
+      "class": "useful",
+      "outcome": "The record states what circumstances would trigger reconsidering the decision and a date by which it will be reviewed regardless.",
+      "why": "Decisions made under assumptions go stale if there is no trigger or date for revisiting them.",
+      "scenario_hint": "Request to record a decision that rests on assumptions likely to change."
+    },
+    {
+      "id": "program-decision-docs-r09",
+      "source_quote": "Decision record missing decision maker or date",
+      "class": "generic",
+      "outcome": "The decision record names who made the decision and the date, together with the option selected and its rationale, and notes any dissenting views.",
+      "why": "An unattributed, undated decision cannot be audited or relied on later.",
+      "scenario_hint": "Any request to document a decision that has been made."
+    },
+    {
+      "id": "program-decision-docs-r10",
+      "source_quote": "Stakeholders not identified (DACI)",
+      "class": "useful",
+      "outcome": "Stakeholders are identified by role: who decides, who is consulted, who is informed, and who drives the process.",
+      "why": "Unclear ownership leaves it ambiguous who may decide and who must be heard.",
+      "scenario_hint": "Request for a decision document involving several teams or leaders."
+    },
+    {
+      "id": "program-decision-docs-r11",
+      "source_quote": "**Decision Title & Status** — Draft / Under Review / Decided / Superseded",
+      "class": "style",
+      "outcome": "The document opens with a title and a current status showing whether it is a draft, under review, decided or replaced.",
+      "why": "",
+      "scenario_hint": "Any request to produce a formal program decision document."
+    },
+    {
+      "id": "program-decision-docs-r12",
+      "source_quote": "Options Table** — columns: Option, Description, Pros, Cons, Effort, Risk",
+      "class": "style",
+      "outcome": "Options are shown in a table with a row per option and columns for description, advantages, disadvantages, effort and risk, followed by a separate scoring table with totals.",
+      "why": "",
+      "scenario_hint": "Any request to produce a formal program decision document."
+    }
+  ]
+}

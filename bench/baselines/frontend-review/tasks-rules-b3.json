@@ -1,0 +1,127 @@
+{
+  "format_version": 1,
+  "skill": "frontend-review",
+  "batch": "rules-b3",
+  "generated_at": "2026-11-09T01:45:09.184Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "0fa77cbf1942b8b45f3a460dfe0417e023b0a0a4d57f283b95727dd2e4b21a36",
+  "scenarios": [
+    {
+      "id": "frontend-review-rules-1",
+      "title": "Account summary card with plain layout markup",
+      "target_section": "Cloudscape Compliance",
+      "prompt": "Can you look over this before I put it up for code review? It's a small summary card on our billing page.\n\n```tsx\nimport { useMemo } from 'react';\nimport { Container, Header } from '@cloudscape-design/components';\nimport { formatDate } from '../utils/date';\n\nexport function AccountSummary({ account }: { account: Account }) {\n  return (\n    <Container header={<Header variant=\"h2\">Account</Header>}>\n      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>\n        <span style={{ color: '#5f6b7a' }}>Owner</span>\n        <span>{account.owner}</span>\n      </div>\n      <div style={{ display: 'flex', gap: 12 }}>\n        <span style={{ color: '#5f6b7a' }}>Plan</span>\n        <span>{account.plan}</span>\n      </div>\n    </Container>\n  );\n}\n```\n\nWe're on Cloudscape everywhere else. Tell me what you'd flag.",
+      "rubric": [
+        "Flags the plain div and span elements used for the Owner and Plan rows in AccountSummary as a blocking problem and names a Cloudscape replacement (for example Box).",
+        "Recommends a specific Cloudscape component for the Owner/Plan label-value pairs instead of hand-built flex rows.",
+        "Flags the inline style objects (flex display, gap, marginBottom, grey color) on the rows as a blocking problem.",
+        "Recommends Cloudscape spacing or layout components in place of the gap and marginBottom styling, and a Cloudscape way to get the muted label color instead of the hardcoded #5f6b7a.",
+        "Points out that useMemo and formatDate are imported in AccountSummary but never used and should be removed.",
+        "Blocking issues (plain elements, inline styles) come before the lesser issue about unused imports, and the blocking ones are clearly set apart."
+      ],
+      "why_skill_matters": "A short component renders label/value rows with plain div and span elements carrying inline styles, and has two unused imports. It makes r01, r02 and r11 matter, plus the ordering in r12."
+    },
+    {
+      "id": "frontend-review-rules-2",
+      "title": "Signup form with hand-rolled field state and checks",
+      "target_section": "Pattern Compliance",
+      "prompt": "Just finished the newsletter signup modal. Mostly worked on getting the UX right. Can you review? We use React Hook Form and Zod in the rest of the app, fwiw.\n\n```tsx\nexport function SignupForm({ onSubmit }: { onSubmit: (v: Values) => void }) {\n  const [email, setEmail] = useInputValue('');\n  const [name, setName] = useInputValue('');\n  const [errors, setErrors] = useInputValue<Record<string, string>>({});\n\n  const handleSubmit = () => {\n    const next: Record<string, string> = {};\n    if (!email.includes('@')) next.email = 'Enter a valid email';\n    if (name.trim().length < 2) next.name = 'Name is too short';\n    if (name.length > 50) next.name = 'Name is too long';\n    setErrors(next);\n    if (Object.keys(next).length === 0) onSubmit({ email, name });\n  };\n\n  return (\n    <Form actions={<Button variant=\"primary\" onClick={handleSubmit}>Subscribe</Button>}>\n      <Container>\n        <Box>Email</Box>\n        <Input value={email} invalid={!!errors.email} onChange={e => setEmail(e.detail.value)} />\n        <Box color=\"text-status-error\">{errors.email}</Box>\n        <Box>Name</Box>\n        <Input value={name} invalid={!!errors.name} onChange={e => setName(e.detail.value)} />\n        <Box color=\"text-status-error\">{errors.name}</Box>\n      </Container>\n    </Form>\n  );\n}\n```\n\nTest file only has \"renders the form\" and \"calls onSubmit with valid input\".",
+      "rubric": [
+        "Flags that email, name and errors are held in separate hand-rolled state hooks in SignupForm and should be managed by React Hook Form, treating it as a blocking problem.",
+        "Flags the if-statements in handleSubmit (the '@' check and the name length checks) as hand-written validation that should be a Zod schema.",
+        "Ties the manual checks to a concrete weakness, such as the two name checks writing to the same key so the too-long message can overwrite the too-short one, and says a schema would express name min/max and email format.",
+        "Notes that the tests cover only rendering and the valid-submit path, and recommends tests for the invalid email, short name and too-long name messages.",
+        "Recommends a concrete move: a form-library setup with a schema resolver that supplies the email and name error messages now stored in the errors object."
+      ],
+      "why_skill_matters": "A form with fields kept in a custom state hook and hand-written validation, with tests that skip errors. It makes r03, r04 and r10 matter."
+    },
+    {
+      "id": "frontend-review-rules-3",
+      "title": "Orders table filter with one loose handler type",
+      "target_section": "Type Safety",
+      "prompt": "PR for the orders list filter. Please review, I'd like to merge today. Diff of the main parts:\n\n```tsx\n// OrdersTable.tsx\ntype Props = {\n  items: Order[];\n  loading: boolean;\n  onFilterChange: (filter: OrderFilter) => void;\n};\n\nexport function OrdersTable({ items, loading, onFilterChange }: Props) {\n  const [status, setStatus] = React.useReducer(\n    (_: string, next: string) => next, 'all'\n  );\n\n  const handleStatusChange = ({ detail }: any) => {\n    setStatus(detail.selectedOption.value);\n    onFilterChange({ status: detail.selectedOption.value });\n  };\n\n  return (\n    <Table\n      items={items}\n      loading={loading}\n      header={\n        <Header\n          actions={\n            <Select\n              selectedOption={{ value: status, label: status }}\n              options={STATUS_OPTIONS}\n              onChange={handleStatusChange}\n            />\n          }\n        >\n          Orders\n        </Header>\n      }\n      columnDefinitions={COLUMNS}\n    />\n  );\n}\n```\n\n```tsx\n// OrdersTable.test.tsx\nit('renders the table', () => {\n  render(<OrdersTable items={orders} loading={false} onFilterChange={jest.fn()} />);\n  expect(screen.getByText('Orders')).toBeInTheDocument();\n});\n\nit('shows rows', () => {\n  render(<OrdersTable items={orders} loading={false} onFilterChange={jest.fn()} />);\n  expect(screen.getAllByRole('row')).toBeTruthy();\n});\n```",
+      "rubric": [
+        "Flags the `any` annotation on the handleStatusChange parameter as a blocking problem in production code.",
+        "Suggests a concrete type for that handler's event, such as Cloudscape's select change detail type or a typed object with detail.selectedOption.value.",
+        "Says the 'renders the table' test only checks that the Orders text is present and should assert real content such as particular rows or order values.",
+        "Says the 'shows rows' test is weak because toBeTruthy on getAllByRole('row') passes for any result, and asks for assertions on the actual row count or cell values.",
+        "Notes that nothing tests the status filter itself: choosing an option should call onFilterChange with the expected value, and the loading state is also untested."
+      ],
+      "why_skill_matters": "A single `any` sits in a handler inside an otherwise normal component, and the two tests only check presence. It makes r05, r08 and r10 matter."
+    },
+    {
+      "id": "frontend-review-rules-4",
+      "title": "Settings page with native controls and manual checks",
+      "target_section": "Cloudscape Compliance",
+      "prompt": "hey, quick review pls. This is the notification settings screen for the admin console. I wrote it fast because the deadline is tomorrow. The form object comes from the parent, which sets it up with React Hook Form.\n\n```tsx\nexport function NotificationSettings({ form, onSave }: {\n  form: UseFormReturn<Settings>;\n  onSave: (v: Settings) => void;\n}) {\n  const { register, handleSubmit, setError, formState: { errors } } = form;\n\n  const submit = (v: Settings) => {\n    if (!/^\\S+@\\S+\\.\\S+$/.test(v.email)) {\n      setError('email', { message: 'Bad email' });\n      return;\n    }\n    if (v.digestHour < 0 || v.digestHour > 23) {\n      setError('digestHour', { message: 'Hour must be 0-23' });\n      return;\n    }\n    onSave(v);\n  };\n\n  return (\n    <form onSubmit={handleSubmit(submit)}>\n      <label>Email</label>\n      <input type=\"text\" {...register('email')} />\n      {errors.email && <p>{errors.email.message}</p>}\n      <label>Digest hour</label>\n      <input type=\"number\" {...register('digestHour', { valueAsNumber: true })} />\n      <button type=\"submit\">Save</button>\n    </form>\n  );\n}\n```\n\n```tsx\nit('saves', async () => {\n  const onSave = jest.fn();\n  render(<Harness defaults={DEFAULTS} onSave={onSave} />);\n  await userEvent.click(screen.getByText('Save'));\n  expect(onSave).toHaveBeenCalled();\n});\n```",
+      "rubric": [
+        "Flags the native input, button, label and p elements in NotificationSettings as a blocking problem and names Cloudscape replacements (Input, Button, and a form field wrapper carrying the label and error text).",
+        "Flags the regex test on email and the 0-23 range check on digestHour inside submit as hand-written validation that belongs in a Zod schema.",
+        "Points out that these checks run only on submit and call setError by hand, and recommends passing a schema resolver so the library reports the errors.",
+        "Says the 'saves' test only checks that onSave was called and should assert the actual saved values (for example email and digestHour matching DEFAULTS).",
+        "Notes the suite has no case for an invalid email or an out-of-range digest hour.",
+        "Presents the native-element and manual-validation problems before the test improvements, with blocking items clearly separated from the rest."
+      ],
+      "why_skill_matters": "The form uses React Hook Form but renders native controls, validates by hand and has a single weak test. It makes r01, r04, r08 and r10 matter."
+    },
+    {
+      "id": "frontend-review-rules-5",
+      "title": "Create-project dialog with state per field and a style tweak",
+      "target_section": "Pattern Compliance",
+      "prompt": "Reviewing my own PR before I tag anyone. It's the \"new project\" modal from the ticket (\"let users name a project, pick an owner, and get immediate feedback\"). Thoughts?\n\n```tsx\nexport function NewProjectModal({ visible, onDismiss, onCreate }: Props) {\n  const [title, setTitle] = useInputValue('');\n  const [owner, setOwner] = useInputValue('');\n  const [titleError, setTitleError] = useInputValue('');\n\n  const onTitle = (v: string) => {\n    setTitle(v);\n    setTitleError(v.length === 0 ? 'Required' : '');\n  };\n\n  const onOwnerSelected = (e: any) => setOwner(e.detail.selectedOption.value);\n\n  return (\n    <Modal visible={visible} onDismiss={onDismiss} header=\"New project\">\n      <Box>Title</Box>\n      <Input value={title} invalid={!!titleError} onChange={e => onTitle(e.detail.value)} />\n      <Box color=\"text-status-error\">{titleError}</Box>\n      <div style={{ marginTop: 20 }}>\n        <Box>Owner</Box>\n        <Select selectedOption={{ value: owner }} options={OWNERS} onChange={onOwnerSelected} />\n      </div>\n      <Button variant=\"primary\" onClick={() => onCreate({ title, owner })}>Create</Button>\n    </Modal>\n  );\n}\n```",
+      "rubric": [
+        "Flags that title, owner and titleError live in separate hand-rolled state hooks and says they should move into React Hook Form, as a blocking problem.",
+        "Flags the marginTop inline style on the wrapper around the Owner select as a blocking problem.",
+        "Recommends a Cloudscape layout component for spacing between the Title and Owner sections in place of the margin style.",
+        "Flags `e: any` on onOwnerSelected as a blocking problem and suggests a concrete event type for the Select change.",
+        "Flags the plain div wrapper around the Owner section as a native element that a Cloudscape component should replace.",
+        "Notes the div wrapper exists only to add the margin and is an unnecessary wrapper that goes away with proper spacing."
+      ],
+      "why_skill_matters": "A modal with field state in a custom hook, an `any` handler and a div carrying a margin. It makes r03, r02, r05, r01 and r11 matter."
+    },
+    {
+      "id": "frontend-review-rules-6",
+      "title": "Resource picker with a lone native link",
+      "target_section": "Cloudscape Compliance",
+      "prompt": "Can you review this new resource picker panel? It's most of a PR so I'm pasting only the component and its test. I mostly followed the existing patterns, so I expect small stuff.\n\n```tsx\ntype PickerProps = {\n  resources: Resource[];\n  onSelect: (resource: any) => void;\n};\n\nexport function ResourcePicker({ resources, onSelect }: PickerProps) {\n  return (\n    <Container\n      header={\n        <Header variant=\"h2\" description=\"Choose the resource to attach\">\n          Resources\n        </Header>\n      }\n      footer={\n        <Box color=\"text-body-secondary\">\n          Can't find it? <a href=\"/resources/new\">Create a resource</a>\n        </Box>\n      }\n    >\n      <>\n        {resources.map(r => (\n          <Box key={r.id}>\n            <Button variant=\"link\" onClick={() => onSelect(r)}>{r.name}</Button>\n          </Box>\n        ))}\n      </>\n    </Container>\n  );\n}\n```\n\n```tsx\nit('lists resources', () => {\n  render(<ResourcePicker resources={RESOURCES} onSelect={jest.fn()} />);\n  expect(screen.getByRole('button', { name: RESOURCES[0].name })).toBeInTheDocument();\n});\n```",
+      "rubric": [
+        "Flags the plain anchor in the footer (\"Create a resource\") as a native element and recommends Cloudscape's Link component.",
+        "Flags `resource: any` in the onSelect prop type of PickerProps as a blocking problem and suggests the Resource type.",
+        "Says the 'lists resources' test only checks that one button exists and asks for assertions on real values, such as all resource names, or onSelect being called with the clicked resource.",
+        "Notes that there are no tests for the empty list case or for clicking a resource to select it.",
+        "Notes that the Box wrapping each Button in the map adds nothing and could be removed."
+      ],
+      "why_skill_matters": "A component that looks compliant: most elements are Cloudscape, with one plain anchor in a footer and an `any` in a prop type. The test checks only presence. It makes r01, r05, r08, r10 and r11 matter."
+    },
+    {
+      "id": "frontend-review-rules-7",
+      "title": "Invoice editor with custom form hook and colored text",
+      "target_section": "Testing",
+      "prompt": "Could you review the invoice editor changes below? Tone-wise, be blunt, I'd rather hear it now than from the team.\n\n```tsx\nexport function InvoiceEditor({ invoice, onSave }: Props) {\n  const form = useFormFields(invoice);\n\n  return (\n    <Container>\n      <Box>Customer</Box>\n      <Input\n        ariaLabel=\"Customer\"\n        value={form.values.customer}\n        onChange={e => form.set('customer', e.detail.value)}\n      />\n      <Box>Amount</Box>\n      <Input\n        ariaLabel=\"Amount\"\n        value={String(form.values.amount)}\n        onChange={e => form.set('amount', e.detail.value)}\n      />\n      <Box color=\"text-status-error\">{form.errors.amount}</Box>\n      <Box>\n        <span style={{ color: 'red', fontWeight: 'bold' }}>\n          {form.values.amount > 10000 ? 'Needs approval' : ''}\n        </span>\n      </Box>\n      <Button onClick={() => onSave(form.values)}>Save</Button>\n    </Container>\n  );\n}\n```\n\n`useFormFields` is our old in-house hook in `hooks/useFormFields.ts`; it keeps values and errors in a plain state object.\n\nTests:\n```tsx\nit('shows the customer', () => {\n  render(<InvoiceEditor invoice={INVOICE} onSave={jest.fn()} />);\n  expect(screen.getByLabelText('Customer')).toBeDefined();\n});\n\nit('shows approval notice', () => {\n  render(<InvoiceEditor invoice={{ ...INVOICE, amount: 20000 }} onSave={jest.fn()} />);\n  expect(screen.getByText('Needs approval')).toBeInTheDocument();\n});\n```",
+      "rubric": [
+        "Flags useFormFields (the in-house hook holding values and errors in a plain state object) as the wrong approach for InvoiceEditor and says React Hook Form should manage it.",
+        "Flags the inline style (red, bold) on the approval notice as a blocking problem.",
+        "Recommends Cloudscape alternatives for the notice, such as Box with color and fontWeight props or a StatusIndicator/Alert.",
+        "Says the 'shows the customer' test only checks the field exists (toBeDefined) and should check that its value equals INVOICE.customer.",
+        "Says the approval test checks only that the text is present and asks for a counterpart assertion that no notice shows for an amount under 10000, or an assertion on the saved values.",
+        "Notes there is no test for the amount error message (form.errors.amount) or for invalid amount input such as non-numeric text."
+      ],
+      "why_skill_matters": "A form with state in a legacy hook, an inline-styled span and presence-only tests. It makes r03, r02, r08 and r10 matter."
+    },
+    {
+      "id": "frontend-review-rules-8",
+      "title": "CSV import wizard step with any and manual checks",
+      "target_section": "Quality Gate",
+      "prompt": "Review request: step 2 of the CSV import wizard (column mapping). Context: product wants the Next button disabled until every required column is mapped, plus an error if the same column is mapped twice. The form object is created by the wizard parent with React Hook Form.\n\n```tsx\nexport function MappingStep({ form, headers, required, onNext }: {\n  form: UseFormReturn<{ mapping: Record<string, string> }>;\n  headers: string[];\n  required: string[];\n  onNext: (m: any) => void;\n}) {\n  const mapping = form.watch('mapping');\n\n  const used = Object.values(mapping).filter(Boolean);\n  const hasDuplicate = new Set(used).size !== used.length;\n  const missing = required.filter(r => !mapping[r]);\n  let error = '';\n  if (hasDuplicate) error = 'A column is mapped twice';\n  else if (missing.length > 0) error = 'Missing: ' + missing.join(', ');\n\n  return (\n    <form>\n      {required.map(r => (\n        <Box key={r}>\n          <Box>{r}</Box>\n          <Select\n            selectedOption={mapping[r] ? { value: mapping[r] } : null}\n            options={headers.map(h => ({ value: h, label: h }))}\n            onChange={e => form.setValue(`mapping.${r}`, e.detail.selectedOption.value!)}\n          />\n        </Box>\n      ))}\n      {error && <Alert type=\"error\">{error}</Alert>}\n      <button disabled={!!error} onClick={() => onNext(mapping)}>Next</button>\n    </form>\n  );\n}\n```\nTest: `it('renders selects for each required column', ...)` which checks `screen.getAllByRole('combobox').length > 0`.",
+      "rubric": [
+        "Flags `onNext: (m: any) => void` in MappingStep as a blocking problem and suggests a concrete type such as Record<string, string>.",
+        "Flags the native button for Next (and likely the form element) as a blocking problem and recommends Cloudscape Button (and Form).",
+        "Flags the duplicate-mapping and missing-required-column logic that builds the error string as hand-written validation that should be a Zod schema, for example a refine on the mapping.",
+        "Says the 'renders selects' test is weak because `length > 0` only proves some combobox exists, and asks for a count equal to the number of required columns or checks of their labels.",
+        "Notes that the duplicate-mapping error and the missing-columns error, which the product requirement calls out, have no test, nor does the disabled Next button."
+      ],
+      "why_skill_matters": "A wizard step mixing React Hook Form with hand-rolled validation, an `any` callback type, a native button and a weak test. It makes r05, r01, r04, r08 and r10 matter."
+    }
+  ]
+}

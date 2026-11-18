@@ -1,0 +1,223 @@
+{
+  "format_version": 1,
+  "skill": "adversarial-code-review-pass-integrity",
+  "batch": "rules-b4",
+  "rules": {
+    "adversarial-code-review-pass-integrity-r01": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "adversarial-code-review-pass-integrity-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-code-review-pass-integrity-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-code-review-pass-integrity-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-code-review-pass-integrity-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-code-review-pass-integrity-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-code-review-pass-integrity-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-code-review-pass-integrity-r08": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "adversarial-code-review-pass-integrity-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-code-review-pass-integrity-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-code-review-pass-integrity-r11": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "adversarial-code-review-pass-integrity-r12": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    }
+  },
+  "scenarios": {
+    "adversarial-code-review-pass-integrity-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r04"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r09"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "adversarial-code-review-pass-integrity-r12"
+      }
+    },
+    "adversarial-code-review-pass-integrity-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r11"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r04"
+      },
+      "4": {
+        "bucket": "guard",
+        "rule_id": "adversarial-code-review-pass-integrity-r12"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r05"
+      }
+    },
+    "adversarial-code-review-pass-integrity-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r03"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "adversarial-code-review-pass-integrity-r12"
+      }
+    },
+    "adversarial-code-review-pass-integrity-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r11"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r11"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "adversarial-code-review-pass-integrity-r12"
+      }
+    },
+    "adversarial-code-review-pass-integrity-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r10"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r02"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "adversarial-code-review-pass-integrity-r12"
+      }
+    },
+    "adversarial-code-review-pass-integrity-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r09"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r02"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "adversarial-code-review-pass-integrity-r12"
+      }
+    },
+    "adversarial-code-review-pass-integrity-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r11"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r10"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r10"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "adversarial-code-review-pass-integrity-r04"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "adversarial-code-review-pass-integrity-r12"
+      }
+    }
+  }
+}

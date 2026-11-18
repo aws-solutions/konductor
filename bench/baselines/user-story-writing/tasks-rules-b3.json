@@ -1,0 +1,134 @@
+{
+  "format_version": 1,
+  "skill": "user-story-writing",
+  "batch": "rules-b3",
+  "generated_at": "2026-11-09T01:44:47.449Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "00888b04f449d1e842c63fb8abf7133b8437a73cedc46ab0db858dc48e8c9d36",
+  "scenarios": [
+    {
+      "id": "user-story-writing-rules-1",
+      "title": "Product catalog search for a hardware retailer",
+      "target_section": "Execution",
+      "prompt": "We're a mid-size online hardware store (about 400k SKUs, roughly 3k concurrent shoppers on a normal day, 15k on Black Friday). Product wants a new search bar for the catalog. Here's what they sent me:\n\n\"Shoppers type a product name, brand, or part number into the search bar and get matching products. Results should come back fast. Suggestions should appear as they type. They should be able to narrow by brand, price range and in-stock status, and sort by price or popularity. Search needs to be built on Elasticsearch with an index per category, and the API should be GET /api/search?q=. Typos should still find stuff.\"\n\nCan you turn this into user stories for the dev team? Aim for something we can pull into the next two sprints. Our sprints are two weeks and the team is four devs.",
+      "rubric": [
+        "The criteria for search do not mandate Elasticsearch, per-category indexes, or the GET /api/search endpoint; they describe what a shopper sees (matches for name, brand, part number, suggestions while typing) rather than the technology.",
+        "\"Results should come back fast\" is turned into a concrete limit, such as results displayed within a stated number of seconds or milliseconds at a stated load, instead of staying as \"fast\".",
+        "Stories state load or volume expectations drawn from the request, such as the 400k-product catalog and the 3k normal / 15k Black Friday concurrent shoppers, as measurable targets for search.",
+        "Brand filter, price range filter, in-stock filter, price sort and popularity sort are written as separate stories rather than one combined narrowing-and-sorting story.",
+        "Criteria cover search with no matches, empty or whitespace-only queries, and a search service failure, with defined shopper-visible behavior.",
+        "Stories can be matched to the parts of the product note they come from, for example the typed-query matching, the suggestions, the narrowing options, the sorting and the typo tolerance.",
+        "Each story has a short title, a role-goal-benefit description, and a bulleted list of acceptance criteria numbering between three and eight."
+      ],
+      "why_skill_matters": "A search request with a tempting stack mandate, a vague \"fast\", several filters and sorts, and real scale numbers. It makes implementation-free criteria, measurable thresholds, scale, separate filter stories and edge cases matter, and the stories should map back to the product note."
+    },
+    {
+      "id": "user-story-writing-rules-2",
+      "title": "Receipt upload for expense app",
+      "target_section": "Quality Gate",
+      "prompt": "Writing stories for our expense reporting app's receipt upload. Notes from the kickoff:\n\n- Employees photograph a receipt on their phone or upload a PDF/JPG/PNG from desktop and attach it to an expense line.\n- Upload goes to our storage and then OCR pulls out merchant, date, total, and fills the expense form.\n- Employees can fix the OCR values before submitting.\n- Managers can open the receipt from the approval screen.\n- Finance wants receipts kept for 7 years.\n- Some employees travel a lot and have bad signal.\n\nPlease write the stories. After you write them, review them against the usual quality concerns and tell me what's wrong with them. I'm the one who decides about fixes, so just report what you find, don't ask me anything about fixing.",
+      "rubric": [
+        "Upload stories cover failure situations such as unsupported file type, oversized file, corrupted or unreadable image, OCR failing to extract values, and upload interrupted by poor connectivity.",
+        "Capture-and-upload, OCR prefill, correction of values, and manager viewing are split into separate stories rather than one large receipt-handling story.",
+        "Any statement about how quickly OCR prefill or upload completes is given as a measurable limit (for example seconds at a stated file size), not as words like quick.",
+        "Dependencies are called out explicitly, e.g. that OCR prefill and correction depend on an uploaded receipt, without the stories depending on each other in a loop.",
+        "Maximum file size or expected upload volume is stated with a number, or flagged as a missing number to confirm.",
+        "Stories link back to the kickoff notes, e.g. the retention note or the bad-signal note as the source of specific stories or criteria."
+      ],
+      "why_skill_matters": "Upload flow with external OCR, user input, travel connectivity, and retention. The user asks for a report of findings only. Makes failure paths, splitting, dependencies, and scale matter."
+    },
+    {
+      "id": "user-story-writing-rules-3",
+      "title": "Vague loyalty program idea",
+      "target_section": "Usage",
+      "prompt": "Our CEO wants a loyalty thing for our coffee shop chain app. Customers earn points and get rewards. That's all I have so far, the meeting was short. Can you write up the user stories so I can get the team started Monday? Maybe 8 or so.",
+      "rubric": [
+        "The answer names specific missing information, such as earn rate per dollar, what rewards exist, whether points expire, and whether it covers in-store and app purchases, rather than only generic remarks.",
+        "The answer states explicit assumptions for the stories it writes and asks targeted questions the user can take back to the CEO.",
+        "Criteria address cases like insufficient points for a reward, a failed redemption, or a purchase that is refunded after points were earned.",
+        "Earning points, viewing balance, and redeeming a reward are separate stories, not a single \"loyalty program\" story.",
+        "Dependencies are noted, such as redemption needing points earned first or a balance view, with no circular reliance.",
+        "Each story or epic is tied to the CEO's stated goal (customers earning points, customers getting rewards), and anything beyond that goal is labelled as an assumption rather than presented as source requirement.",
+        "Stories each have a short title, role-goal-benefit description, and three to eight bulleted criteria."
+      ],
+      "why_skill_matters": "A two-sentence requirement with no rules or limits. Makes gap-naming and assumptions matter, along with edge cases, splitting and dependencies, and keeping stories tied to the stated business goal."
+    },
+    {
+      "id": "user-story-writing-rules-4",
+      "title": "Account, login and profile cluster",
+      "target_section": "INVEST Principles",
+      "prompt": "We're building a members portal for a regional credit union. First release needs:\n\n1. Member registers with member number, last 4 of SSN and email, then sets a password\n2. Member logs in with email + password; locks after repeated failures\n3. Member resets a forgotten password via email link\n4. Member edits their profile (phone, mailing address, email); changing the email requires confirming the new address\n5. Member sees a list of their accounts with balances after login\n\nI'm worried the stories will all end up depending on each other, because login needs registration, profile needs login, etc. Write them so the team can actually pick them up in a sensible order. Security team will review so be careful on that side, but don't over-specify how it's built, the architects are still deciding.",
+      "rubric": [
+        "Dependencies between registration, login, reset, profile and account list are stated explicitly and form a one-directional chain, with no story needing another that needs it back.",
+        "Criteria for password and lockout describe observable outcomes (for example a message shown, account blocked for a stated period) and avoid naming hashing algorithms, token stores, frameworks or database design.",
+        "Criteria cover wrong member number or SSN digits, already registered email, expired or reused reset link, locked account, and unconfirmed new email.",
+        "Lockout and reset-link rules are given numbers, such as failed attempts allowed, lockout duration and link validity, or the missing numbers are flagged to be decided.",
+        "Registration, login/lockout, password reset, profile edit, email change confirmation and account list are each their own story, and none is a bundle of several of these.",
+        "Each story points back to the numbered requirement (1 to 5) it comes from."
+      ],
+      "why_skill_matters": "Tightly coupled account features where dependencies are the user's stated worry, plus security-sensitive criteria with implementation temptation and error paths."
+    },
+    {
+      "id": "user-story-writing-rules-5",
+      "title": "Deals screen buried in a long brief",
+      "target_section": "Execution",
+      "prompt": "Pasting the relevant part of our brief for the \"Deals\" screen in our B2B CRM. Please write stories for the dev team (we have 3 devs, one-week sprints).\n\n---\nBackground: Sales reps currently use spreadsheets. Leadership wants one place to see all open deals. Adoption is the metric that matters: 80% of reps weekly active within 60 days. The screen replaces the spreadsheet so it has to feel familiar. Brand colors are already settled in the design system. Reps in EMEA use the tool in German and French too, and the localization strings come from a separate vendor.\n\nDeals screen: A table of deals with columns for deal name, account, owner, stage, amount, close date. Reps can filter by stage, owner, close-date range, and amount range. Reps can sort by any column. They can switch between a table view and a kanban board grouped by stage, and a compact vs comfortable row density. Managers can see all deals, reps only see their own. Typical org has 20k open deals, and some power users have 2k. The page should load quickly, even with many deals. Saved filter sets would be nice later but are out of scope.\n---\n\nDon't worry about the adoption stuff, just the screen.",
+      "rubric": [
+        "Stage filter, owner filter, close-date range filter, amount range filter, sorting, the list/kanban view switch and row density are each written as their own story rather than grouped as \"filtering\" or \"view options\".",
+        "Stories use the 20k open deals and 2k per power user figures to set a measurable expectation for load or interaction time.",
+        "\"Load quickly\" is replaced by a stated time limit at a stated deal count.",
+        "Criteria cover an empty result after filtering, an empty deal list, and a rep attempting to see another rep's deals.",
+        "The kanban board and sorting on every field are not packed into single oversized stories; they are broken into pieces that fit a one-week sprint.",
+        "Stories are attributable to the brief, e.g. the manager vs rep visibility rule is reflected correctly and the saved filter sets are left out as stated."
+      ],
+      "why_skill_matters": "Long brief with a mix of noise; the load-time clause and the number of separate filters, sorts and display modes are easy to bundle. Saved filter sets are out of scope and the scale numbers sit in a late sentence."
+    },
+    {
+      "id": "user-story-writing-rules-6",
+      "title": "Weekly report export with notifications",
+      "target_section": "Core Concepts",
+      "prompt": "Need stories for a clinic scheduling product. Feature: \"Weekly utilization report\". Practice managers get a PDF/CSV report of provider utilization every Monday, can also run it on demand for any date range, and get an email when it's ready. The data comes from our existing appointments service which sometimes times out. Our engineers suggested a nightly Spark job writing to S3 and SendGrid for email, and they want the stories to reflect that so nobody argues later. Largest customer has 120 providers and about 6 months of data per on-demand run.\n\nPlease write them up as ready-for-sprint stories.",
+      "rubric": [
+        "Criteria describe what the practice manager receives and sees (report contents, email arriving, file downloadable) and do not require Spark, S3 or SendGrid.",
+        "Criteria cover the appointments service timing out, a date range with no appointments, an invalid or reversed date range, and email delivery not succeeding.",
+        "The 120-provider and six-month on-demand run is used as a measurable scale target, such as the report generating within a stated time.",
+        "Scheduled weekly generation, on-demand run, PDF export, CSV export and the ready email are split into separate stories.",
+        "The answer notes that the email and download depend on a generated report, and that the on-demand and scheduled runs share report content as an explicit assumption or dependency.",
+        "Stories can be matched to the parts of the feature description they come from: the Monday schedule, the on-demand date range, the PDF/CSV formats and the ready email.",
+        "Each story has a short title, a one-sentence role-goal-benefit description, and a bulleted list of three to eight criteria."
+      ],
+      "why_skill_matters": "Engineers ask for tech-stack names in stories; the request also has a flaky dependency and a scale figure. Makes implementation-free criteria, error paths, scale, splitting and dependencies matter, and the stories should map to the feature description."
+    },
+    {
+      "id": "user-story-writing-rules-7",
+      "title": "Checkout from a one-line ask",
+      "target_section": "Scope Options",
+      "prompt": "Hey, quick one. We're a small shop selling handmade candles and our dev (just one, part-time, maybe 2 days a week) is about to build the checkout. I wrote this down:\n\n\"Customer can check out: add to cart, enter shipping, pay by card or PayPal, apply a discount code, get an order confirmation email, and see the order in their account. Guest checkout is okay. We ship to the US and Canada only. Taxes need to be right.\"\n\nCan you give me the user stories? I'd like to be able to hand them to the dev as is. Keep it practical, she's not into long documents.",
+      "rubric": [
+        "Cart, shipping entry, card payment, PayPal payment, discount code, confirmation email, order history and guest checkout are separate stories, each sized for roughly a few days of one part-time developer, not a single checkout story.",
+        "Criteria cover declined card, abandoned PayPal approval, invalid or expired discount code, address outside US and Canada, and out-of-stock items at checkout.",
+        "\"Taxes need to be right\" is flagged as unclear (which jurisdictions, who calculates, shipping taxable or not), with an assumption stated and a question raised, rather than being silently implemented.",
+        "The answer states that payment stories depend on cart and shipping, and that guest checkout and order history relate through an account assumption, with no circular dependency.",
+        "Any promise like \"easy\" or \"quick\" checkout is given as a measurable limit such as number of steps or time, or no vague wording remains in criteria.",
+        "Stories correspond visibly to the items in the quoted note (for example guest checkout, US and Canada only, discount code)."
+      ],
+      "why_skill_matters": "Short brief that invites one giant checkout story or a handful of oversized ones for a one-person team. The tax sentence is the easily missed ambiguity, and failure paths in payment are expected."
+    },
+    {
+      "id": "user-story-writing-rules-8",
+      "title": "Hospital bed-board stories from a spec excerpt",
+      "target_section": "Overview",
+      "prompt": "Below is section 4 of our functional spec for a bed management board used by nursing coordinators at a 600-bed hospital. Please convert it to user stories we can estimate in planning. Keep the section numbers in mind so QA can match them to the spec.\n\n4.1 The board displays all beds grouped by ward with status: occupied, free, cleaning, blocked.\n4.2 A coordinator can change a bed's status. Status changes must appear for all other coordinators promptly.\n4.3 A coordinator can assign an admitted patient to a free bed. A bed cannot be double-booked.\n4.4 Coordinators can filter the board by ward, status, and isolation-capable beds.\n4.5 Every status change and assignment is recorded with who did it and when, viewable by the charge nurse.\n4.6 The board is used 24/7; at shift change up to 40 coordinators are on it at once.",
+      "rubric": [
+        "\"Promptly\" in 4.2 is replaced by a measurable propagation time, such as a number of seconds for other coordinators to see a change, or flagged as a number to be confirmed.",
+        "The 40 simultaneous coordinators and the 600-bed board are used as load and volume expectations in at least one story.",
+        "Criteria cover two coordinators assigning the same bed at once, assigning a non-free bed, a lost connection to the board, and a user without charge nurse rights viewing the history.",
+        "Filtering by ward, by status and by isolation-capable beds are written as three distinct stories.",
+        "Status change, assignment, audit trail and board display are separate stories rather than one bed-management story.",
+        "Each story cites its spec section number (4.1 to 4.6) so QA can match it."
+      ],
+      "why_skill_matters": "Spec excerpt with a vague \"promptly\", a concurrency requirement, three filter dimensions, and an explicit request for traceability. Makes measurable thresholds, scale, edge cases and splitting matter."
+    }
+  ]
+}

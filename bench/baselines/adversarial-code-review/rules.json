@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "adversarial-code-review",
+  "skill_md_sha256": "c0eb9e813605f32e2e18a854e5d15687b09fc143d6dd56c86500e377ff7ceb5e",
+  "request_context": "A request to review a code change for security, data-safety and input-validation problems before it is approved or submitted, especially when it touches authentication, database mutations or calls across public API surfaces.",
+  "rules": [
+    {
+      "id": "adversarial-code-review-r01",
+      "source_quote": "Information disclosure: stack trace, internal ID, or raw exception surfaced to caller",
+      "class": "useful",
+      "outcome": "Flags error responses that return stack traces, internal identifiers or raw exception text to callers as a serious problem that should block approval, and proposes returning a generic mapped error while logging details server-side.",
+      "why": "Leaked internals help attackers map the system and expose sensitive data.",
+      "scenario_hint": "Diff where an API handler catches an exception and returns its message or stack trace in the response body."
+    },
+    {
+      "id": "adversarial-code-review-r02",
+      "source_quote": "Non-atomic multi-item write without transaction (data corruption risk)",
+      "class": "useful",
+      "outcome": "Flags changes that write several related records in separate calls without making them all-or-nothing as a blocking problem, and suggests a transaction or equivalent atomic operation.",
+      "why": "A failure midway leaves partially written, inconsistent data.",
+      "scenario_hint": "Diff that updates two related database items in separate sequential calls."
+    },
+    {
+      "id": "adversarial-code-review-r03",
+      "source_quote": "Unconditional overwrite on a resource subject to concurrent writes",
+      "class": "useful",
+      "outcome": "Flags unconditional overwrites of records that concurrent requests may modify as a blocking problem, and proposes a conditional write or version check so a stale write is rejected.",
+      "why": "Concurrent writers silently clobber each other and corrupt state.",
+      "scenario_hint": "Diff that replaces a shared record with a plain put without any condition or version check."
+    },
+    {
+      "id": "adversarial-code-review-r04",
+      "source_quote": "Input used in a query before validation (injection or logic bypass risk)",
+      "class": "useful",
+      "outcome": "Flags user-supplied values, including decoded pagination cursors or opaque tokens, that reach a query without being validated first as a blocking problem, and proposes validating them before use.",
+      "why": "Unvalidated tokens allow injection or access to data the caller should not see.",
+      "scenario_hint": "Diff that base64-decodes a page token from the request and passes it directly into a database query."
+    },
+    {
+      "id": "adversarial-code-review-r05",
+      "source_quote": "Request payload logged at info/debug level",
+      "class": "useful",
+      "outcome": "Flags logging of full request or response payloads at routine log levels as a should-fix problem because they may contain sensitive data, and suggests logging only safe fields.",
+      "why": "Logs spread sensitive user data to systems with weaker access control.",
+      "scenario_hint": "Diff adding a log statement that dumps the whole incoming request body."
+    },
+    {
+      "id": "adversarial-code-review-r06",
+      "source_quote": "Write path with no test coverage",
+      "class": "useful",
+      "outcome": "Points out new or changed code that modifies stored data when no test exercises that write, and asks for a specific test.",
+      "why": "Untested writes let data-corrupting regressions ship unnoticed.",
+      "scenario_hint": "Diff adding a new write operation where the included tests only cover reads."
+    },
+    {
+      "id": "adversarial-code-review-r07",
+      "source_quote": "Map key accessed without existence guard",
+      "class": "useful",
+      "outcome": "Flags access to nested object or map keys without first checking that the parent exists, and proposes a guard or safe default.",
+      "why": "Missing parents cause runtime crashes on legitimate inputs.",
+      "scenario_hint": "Diff reading item['details']['owner'] where details may be absent."
+    },
+    {
+      "id": "adversarial-code-review-r08",
+      "source_quote": "Validate-then-act ordering violated (validation present but runs after side effect)",
+      "class": "useful",
+      "outcome": "Flags code where validation happens after a write, call or other side effect has already occurred, and proposes moving validation ahead of any business logic.",
+      "why": "Invalid input still causes side effects that cannot be undone.",
+      "scenario_hint": "Diff where a handler saves a record and then checks the request fields."
+    },
+    {
+      "id": "adversarial-code-review-r09",
+      "source_quote": "Integration wiring gap (handler registered but not connected to auth/middleware)",
+      "class": "useful",
+      "outcome": "Flags a newly added handler or route that is not connected to the router, authorization or middleware chain, noting that it may be unprotected or unreachable.",
+      "why": "An unwired endpoint can bypass authentication or silently never work.",
+      "scenario_hint": "Diff adding a new endpoint handler but no matching authorizer or route configuration."
+    },
+    {
+      "id": "adversarial-code-review-r10",
+      "source_quote": "Existing transaction helpers or batch-write utilities — flag reimplementation as a violation",
+      "class": "useful",
+      "outcome": "Notes when the change reimplements logic such as transactions, validation, error mapping or token handling that the codebase already provides in shared utilities, and recommends using the existing one.",
+      "why": "Bypassing shared utilities loses their safeguards and fragments behavior.",
+      "scenario_hint": "Diff hand-rolling cursor decoding although a shared encode/decode helper exists in the repository."
+    },
+    {
+      "id": "adversarial-code-review-r11",
+      "source_quote": "Every finding must make a case for blocking or conditioning approval.",
+      "class": "generic",
+      "outcome": "Each finding names the specific location, explains the defect and the risk it creates, and gives a concrete fix rather than vague advice.",
+      "why": "Vague findings waste the author's time and cannot be acted on.",
+      "scenario_hint": "Any request to review a code change before approval."
+    },
+    {
+      "id": "adversarial-code-review-r12",
+      "source_quote": "Present findings as: CRITICAL → IMPORTANT → SUGGESTION.",
+      "class": "style",
+      "outcome": "Findings are ordered from must-block issues to should-fix to optional improvements, with the groups clearly separated.",
+      "why": "",
+      "scenario_hint": "Any request to review a code change before approval."
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "frontend-review",
+  "skill_md_sha256": "cc3cc89a6fafd0ba8c88e939f1080ff945713d5c7aad6061fa2940561bebb48f",
+  "request_context": "A request to review a set of frontend code changes for design-system compliance, form handling patterns, type safety and test quality before they go to a teammate for approval.",
+  "rules": [
+    {
+      "id": "frontend-review-r01",
+      "source_quote": "Native HTML element used instead of Cloudscape component",
+      "class": "useful",
+      "outcome": "Flags raw HTML elements (generic containers, text spans, inputs, buttons, anchors) used where a design-system component exists as a blocking problem, and names the component that should replace each.",
+      "why": "Native elements bypass the design system's theming, accessibility and consistency, and they slip through if not called out.",
+      "scenario_hint": "Diff that renders layout or text with plain HTML containers and spans or native form controls."
+    },
+    {
+      "id": "frontend-review-r02",
+      "source_quote": "Inline style used (`style={{}}`)",
+      "class": "useful",
+      "outcome": "Flags inline style attributes in components as a blocking problem and recommends design-system spacing or layout components instead.",
+      "why": "Inline styles break design-system consistency and are hard to theme or maintain.",
+      "scenario_hint": "Diff where a component sets margins or colors through inline style objects."
+    },
+    {
+      "id": "frontend-review-r03",
+      "source_quote": "Form state managed with `useState` instead of React Hook Form",
+      "class": "useful",
+      "outcome": "Flags form values and validation tracked in hand-rolled component state or custom hooks, rather than the project's form library, as a blocking problem.",
+      "why": "Ad hoc form state duplicates library features and creates inconsistent, bug-prone validation and re-render behavior.",
+      "scenario_hint": "Diff adding a form whose fields are held in separate local state variables."
+    },
+    {
+      "id": "frontend-review-r04",
+      "source_quote": "Zod validation used — not manual validation",
+      "class": "useful",
+      "outcome": "Flags hand-written validation logic where a schema-based validation library should define the rules, and recommends moving the rules into a schema.",
+      "why": "Manual validation drifts from the schema and is inconsistent and untested.",
+      "scenario_hint": "Diff with if-statements checking field values and setting error messages by hand."
+    },
+    {
+      "id": "frontend-review-r05",
+      "source_quote": "`any` type in production code",
+      "class": "useful",
+      "outcome": "Flags use of the untyped escape-hatch type in non-test code as a blocking problem and suggests a concrete type.",
+      "why": "It disables type checking and hides bugs that compile cleanly.",
+      "scenario_hint": "Diff where a handler or prop is typed as any in production code."
+    },
+    {
+      "id": "frontend-review-r06",
+      "source_quote": "Missing explicit type on `useForm` call",
+      "class": "useful",
+      "outcome": "Notes form setup calls that lack an explicit form-values type argument as a should-fix issue, rather than relying on inference.",
+      "why": "Without explicit types, field names and values are not checked and type errors go unnoticed.",
+      "scenario_hint": "Diff creating a form instance without a generic type parameter."
+    },
+    {
+      "id": "frontend-review-r07",
+      "source_quote": "Dynamic column count in `ColumnLayout` (causes layout shift)",
+      "class": "useful",
+      "outcome": "Flags grid layouts whose column count changes with data or conditions as a should-fix issue because it shifts the layout, and recommends a fixed count.",
+      "why": "Variable columns cause visible layout jumps for users.",
+      "scenario_hint": "Diff where the number of columns is computed from the item count."
+    },
+    {
+      "id": "frontend-review-r08",
+      "source_quote": "Test assertions check existence but not actual values",
+      "class": "useful",
+      "outcome": "Points out tests that only assert something is present or rendered without checking the actual content or values, and asks for assertions on real values.",
+      "why": "Existence-only assertions pass even when the output is wrong.",
+      "scenario_hint": "Diff adding component tests that only check an element is in the document."
+    },
+    {
+      "id": "frontend-review-r09",
+      "source_quote": "Event handler not memoized (causes unnecessary re-renders)",
+      "class": "useful",
+      "outcome": "Flags event handlers recreated on every render and passed to children as a should-fix issue, recommending memoization.",
+      "why": "Unstable handlers cause unnecessary re-renders.",
+      "scenario_hint": "Diff with inline arrow-function handlers passed to child components."
+    },
+    {
+      "id": "frontend-review-r10",
+      "source_quote": "Error states tested",
+      "class": "generic",
+      "outcome": "Notes when error and edge-case paths, such as validation failures, have no test coverage and recommends adding tests for them.",
+      "why": "Untested failure paths regress silently.",
+      "scenario_hint": "Any request to review frontend changes that include tests."
+    },
+    {
+      "id": "frontend-review-r11",
+      "source_quote": "No unused code or imports",
+      "class": "generic",
+      "outcome": "Points out unused imports, variables, dead code and needless wrapper components that should be removed.",
+      "why": "Dead code adds noise and maintenance burden.",
+      "scenario_hint": "Any request to review frontend changes."
+    },
+    {
+      "id": "frontend-review-r12",
+      "source_quote": "Present findings as: CRITICAL → IMPORTANT → SUGGESTION.",
+      "class": "style",
+      "outcome": "Findings are ordered from most to least severe, with blocking issues clearly separated from should-fix and optional ones.",
+      "why": "",
+      "scenario_hint": "Any request to review frontend changes."
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "format_version": 1,
+  "skill": "kiro-task-generation",
+  "batch": "rules-c1",
+  "generated_at": "2026-11-09T04:08:22.294Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "63419b38f2fe1f49fac3378c8bc3cb56a0185afc0c557687a882603346c60c87",
+  "scenarios": [
+    {
+      "id": "kiro-task-generation-rules-1",
+      "title": "Library lending kiosk with a hidden permissions item",
+      "target_section": "Execution Steps",
+      "prompt": "We're building a self-checkout kiosk for a small public library. The requirements and design are approved. Can you turn them into a step-by-step coding plan that I can feed to a code assistant one piece at a time? The files live in specs/library-kiosk/ so please put the plan there.\n\nWhat it must do (numbered):\n1. Patron scan: the kiosk reads a library card barcode and loads the patron account.\n2. Checkout: patron scans item barcodes; each item is loaned for the period set by its item type.\n3. Blocks: a patron with fines over $10 or an expired card cannot check out; the kiosk shows the reason.\n4. Receipt: after checkout the kiosk prints a receipt listing items and due dates.\n5. Staff override: only users with the \"librarian\" role may clear a block, and each override is logged with staff id and reason.\n6. Offline mode: if the catalog server is unreachable, checkouts are queued locally and synced later; the patron sees a notice.\n7. Session timeout: the session ends after 60 seconds of inactivity and the screen resets.\n\nDesign summary: Python service with modules `catalog_client`, `patron_service`, `loan_service`, `block_policy`, `receipt_printer`, `offline_queue` (SQLite), `auth` (role check), and a `kiosk_ui` layer (Textual). `loan_service` depends on `block_policy` and `offline_queue`. `auth` is used by the override flow. An `audit_log` table stores overrides.",
+      "rubric": [
+        "The plan includes work for the librarian-only block clearing with logging of staff id and reason, not just the patron-facing flow.",
+        "The plan includes work for the offline queue with later sync and the patron notice.",
+        "The plan includes work for the 60-second inactivity timeout that resets the screen.",
+        "Tasks that build the block policy and the override flow point to the matching block and override items (3 and 5), not only to checkout.",
+        "The plan is placed in specs/library-kiosk/ and no other location is given for it.",
+        "The block policy and offline queue are built before the loan service that uses them, and the override flow comes after the role check."
+      ],
+      "why_skill_matters": "Seven numbered items and a design with extra modules (audit log, auth) make traceability and coverage matter. The permissions and offline items are easy to drop. The folder is named for placement."
+    },
+    {
+      "id": "kiro-task-generation-rules-2",
+      "title": "Fitness class booking, huge feature tempting big steps",
+      "target_section": "Quality Gate",
+      "prompt": "hey, need an implementation plan for the class booking feature of our gym app. approved docs are below. I want something I can hand to Claude one chunk at a time, so each chunk should be doable in one go. Docs are in .specs/class-booking/.\n\nWHAT IT MUST DO\n1. Members browse the weekly class schedule filtered by studio and instructor.\n2. Members book a class if spots remain; booking decrements capacity atomically.\n3. If a class is full, members join a waitlist; when someone cancels, the first waitlisted member is auto-booked and notified.\n4. Members cancel up to 2 hours before start without penalty; later cancels count as a late cancel.\n5. Three late cancels in 30 days suspends booking for 7 days.\n6. Instructors see a roster for their classes.\n7. Admins create, edit and cancel classes; cancelling a class notifies all booked members and refunds credits.\n8. Members hold class credits; each booking costs credits per class type.\n\nDESIGN\nNode/Express API, Postgres. Tables: members, classes, bookings, waitlist_entries, credit_ledger, late_cancel_events. Services: ScheduleService, BookingService, WaitlistService, CreditService, PenaltyService, RosterService, AdminClassService, NotificationService (email). React front end with Schedule, MyBookings, Roster and Admin pages.",
+      "rubric": [
+        "The work is split into many small steps (for example separate steps for the waitlist promotion, credit ledger, penalty rule and each page) rather than a few steps that each cover whole services or the whole front end.",
+        "The plan covers the 7-day suspension after three late cancels in 30 days and the credit refund when an admin cancels a class.",
+        "The plan is saved in .specs/class-booking/.",
+        "The waitlist, penalty and credit steps cite the items for waitlist, late cancels/suspension, and credits (3, 4, 5, 8) rather than only booking.",
+        "Each step states a concrete objective and names what to create or change, such as specific tables, services or pages from the design.",
+        "Steps are numbered and each has a tickable checkbox."
+      ],
+      "why_skill_matters": "A large feature with eight items and eight services tempts a plan of a few huge steps. Penalty and refund items are easy to overlook. A folder is named."
+    },
+    {
+      "id": "kiro-task-generation-rules-3",
+      "title": "Plant watering controller with later-dependent design",
+      "target_section": "Task Ordering",
+      "prompt": "Please write the coding plan for our greenhouse watering controller firmware. The spec and design are approved and pasted. Put it in firmware/specs/watering/ alongside them.\n\nWhat it must do:\n1.1 Read soil moisture from up to 8 sensors every 30 s.\n1.2 Discard readings outside 0-100% and flag the sensor as faulty after 3 bad readings in a row.\n2.1 Open a zone valve when its moisture is below the zone threshold, and close it when above threshold + 5.\n2.2 Never run more than 2 valves at once.\n2.3 Close all valves if the tank level sensor reads empty.\n3.1 Thresholds are configurable per zone over a serial command interface and stored in flash.\n3.2 Reject thresholds outside 10-90.\n\nDesign: C++ on ESP32. Components: `SensorBus` (I2C reads), `SensorValidator` (uses SensorBus output; fault counter), `ZoneController` (uses SensorValidator, `ConfigStore` and `ValveDriver`), `ValveScheduler` (enforces the 2-valve cap; ZoneController calls it), `TankMonitor`, `ConfigStore` (flash), `SerialCli` (writes to ConfigStore, validates range). A `Types.h` header defines Reading, ZoneConfig and ValveState used by all.",
+      "rubric": [
+        "Each task cites item numbers from the list (such as 1.2, 2.2, 3.2) that match what it builds.",
+        "The plan has work for the empty-tank emergency close and the 3-bad-readings fault flag.",
+        "Types and SensorBus come before SensorValidator, and ConfigStore, ValveScheduler and ValveDriver come before ZoneController, so no task needs a component built later.",
+        "The plan is placed in firmware/specs/watering/.",
+        "Components are built in separate focused steps rather than one step for all of the controller logic."
+      ],
+      "why_skill_matters": "A design with a clear dependency chain makes ordering matter; decimal-numbered items make references and coverage matter. Folder is named."
+    },
+    {
+      "id": "kiro-task-generation-rules-4",
+      "title": "Recipe app plan with a buried requirement and a different folder mention",
+      "target_section": "Execution Steps",
+      "prompt": "Recipe sharing app, mobile backend. Need the coding plan from the approved material. Our spec files for this feature are kept in docs/recipes-v2/ (the old v1 stuff in docs/recipes/ is archived, don't touch it). Context from the product channel is copied below, including the requirements and the design.\n\n> Req 1: Users create recipes with title, ingredients (name, qty, unit) and steps.\n> Req 2: Users upload up to 5 photos per recipe; each is resized to 1200px max.\n> Req 3: Users search recipes by title or ingredient.\n> Req 4: Users can save recipes into named collections.\n> Req 5: Recipes can be public or private; private recipes never appear in search results or to other users, including via direct link (return 404).\n> Req 6: Users can report a recipe; after 3 reports from different users the recipe is hidden pending review.\n> Req 7: Ingredient quantities can be scaled by servings, rounding sensibly.\n\nDesign: Kotlin + Ktor, Postgres with full-text index. Modules: RecipeRepo, PhotoService (image resize via library), SearchService, CollectionService, VisibilityGuard (checked by RecipeRepo reads, SearchService and the direct-link route), ReportService, ScalingUtil. Routes under /api/v2.\n\nThanks, keep it practical.",
+      "rubric": [
+        "The plan is written for docs/recipes-v2/ and not for the archived docs/recipes/ folder.",
+        "The plan includes work for the private-recipe rule including the 404 on direct link and exclusion from search.",
+        "The plan includes work for hiding a recipe after 3 reports from different users.",
+        "The visibility guard and report steps cite items 5 and 6, and scaling cites 7.",
+        "The visibility guard is built before the repository reads and search that use it.",
+        "Photo handling, search, collections and scaling are separate focused steps."
+      ],
+      "why_skill_matters": "The old folder is mentioned beside the right one, pulling toward the wrong location. Req 5's direct-link clause and Req 6's distinct-user threshold are buried in dense items. Visibility guard is used by several modules."
+    },
+    {
+      "id": "kiro-task-generation-rules-5",
+      "title": "Payroll tax rounding, short and terse request",
+      "target_section": "Format Rules",
+      "prompt": "plan pls. approved spec for payslip calc, in services/payroll/spec/.\n\nR1 Compute gross pay from hours and rate; overtime over 40h at 1.5x.\nR2 Apply tax brackets from a config table, progressive.\nR3 Round each line item to cents using banker's rounding, and the net must equal gross minus deductions exactly.\nR4 Generate payslip PDF.\nR5 Reject negative hours or rates with a clear error.\n\nDesign: Java 21, Spring. `PayCalculator`, `TaxBracketConfig` (YAML), `TaxService`, `Money` value type (BigDecimal, HALF_EVEN), `PayslipRenderer` (PDF lib), `ValidationService`, REST `POST /payslips`.",
+      "rubric": [
+        "Money type and rounding work cites R3, and validation work cites R5.",
+        "The plan covers the exact net equals gross minus deductions check and the negative-input rejection.",
+        "The plan is saved in services/payroll/spec/.",
+        "Overtime, tax brackets, rounding, rendering and the REST endpoint are separate focused steps.",
+        "Each step says what to create, such as the Money class with HALF_EVEN or the YAML bracket table, not just a vague label.",
+        "Sub-steps appear visibly nested under their parent steps."
+      ],
+      "why_skill_matters": "Short spec with a design that adds Money and config; a terse request. Matters for references, coverage of rounding/validation and location."
+    },
+    {
+      "id": "kiro-task-generation-rules-6",
+      "title": "Event ticketing with payments and a late cross-cutting note",
+      "target_section": "Quality Gate",
+      "prompt": "Following is the approved stuff for the event ticketing backend. Please turn it into a build plan we can run through a coding assistant one step at a time. Spec folder: product/ticketing/spec.\n\nWhat the system does\n1. Organizers create events with ticket tiers and capacities.\n2. Buyers purchase tickets; inventory is held for 10 minutes during checkout.\n3. Payment via a provider; on payment success tickets are issued with a QR code.\n4. If the hold expires, the inventory is released.\n5. Buyers can request a refund up to 48h before the event.\n6. Organizers see sales totals per tier.\n7. All endpoints require authentication; organizers can only see and edit their own events.\n\nDesign: Go, Postgres, Redis for holds. Packages: `events`, `inventory` (hold/release, Redis TTL), `orders`, `payments` (provider adapter), `tickets` (QR gen), `refunds`, `reports`, `authmw` (middleware). Note from the architect at the bottom of the design: \"authmw and the ownership check must be in place before any endpoint is added, otherwise we'll retrofit it everywhere.\"\n\nAlso, the orders package calls inventory, and payments calls orders to mark paid; tickets are issued from the payments success handler.",
+      "rubric": [
+        "The plan has work for the organizer-only ownership checks and for releasing inventory when a hold expires.",
+        "The auth and ownership work cites item 7, the hold work cites 2 and 4, and refunds cite 5.",
+        "Auth middleware appears before any endpoint-adding task, and inventory comes before orders, orders before payments, payments before ticket issuance.",
+        "The plan is placed in product/ticketing/spec.",
+        "Inventory holds, payments, ticket QR generation, refunds and reports are separate focused steps."
+      ],
+      "why_skill_matters": "The architect's note near the end pushes auth to the front, which a default order (events first) would miss. Item 7 cuts across everything and is easy to drop."
+    },
+    {
+      "id": "kiro-task-generation-rules-7",
+      "title": "Pet adoption site, friendly casual control",
+      "target_section": "Overview",
+      "prompt": "Hi! I volunteer for an animal shelter and we're getting a small adoption site built. The requirements and design were signed off by the board. Could you write the step-by-step coding plan? Everything for it sits in shelter-site/spec/ so that's where it should go.\n\nWhat the site must do:\n1. Visitors browse animals with photo, species, age and a short description.\n2. Visitors filter by species and age range.\n3. Visitors submit an adoption application form (name, email, phone, home type, other pets).\n4. Staff log in and see new applications in a list, and mark each as approved, declined or pending.\n5. When staff change an application status the applicant gets an email.\n6. Staff add, edit and archive animals.\n\nDesign: Python Django, SQLite, Django templates. Apps: `animals`, `applications`, `staffauth` (Django auth, staff group), `notifications` (email via SMTP). Tests with pytest.",
+      "rubric": [
+        "The plan includes the status-change email to applicants and the archive action for animals.",
+        "Application, email and staff animal management work cites items 3, 5 and 6 respectively (or the matching numbers).",
+        "The plan is placed in shelter-site/spec/.",
+        "Models, the filter, the application form, the staff list and email are separate focused steps.",
+        "Each step states what to create or change, for example the animals model fields or the staff group permission."
+      ],
+      "why_skill_matters": "A small friendly request with a clear structure, as a control: coverage, references, size and location all matter without traps."
+    },
+    {
+      "id": "kiro-task-generation-rules-8",
+      "title": "Data pipeline for sensor logs with long design",
+      "target_section": "Usage",
+      "prompt": "We need the coding task list for our log ingestion pipeline. Spec docs approved; they live in platform/specs/log-ingest/. I'm pasting both. Please keep every step small enough to review on its own.\n\nWHAT IT MUST DO\n1.1 Accept JSON log lines over HTTP POST in batches up to 1000 lines.\n1.2 Reject batches over 1000 lines with 413.\n2.1 Parse each line; lines that fail parsing go to a dead-letter store with the error reason.\n2.2 Normalize timestamps to UTC.\n2.3 Drop fields listed in a redaction config (e.g. \"password\", \"ssn\") at any nesting depth.\n3.1 Write parsed events to partitioned Parquet files by date and service.\n3.2 Flush files every 5 minutes or 128 MB, whichever first.\n4.1 Expose metrics: lines received, parsed, dead-lettered, and flush lag.\n4.2 Provide a /health endpoint reporting unhealthy if the last flush is older than 15 minutes.\n\nDESIGN\nRust, axum, tokio. Modules: `http_ingest`, `batch_limits`, `parser`, `timestamp`, `redactor` (recursive, reads RedactionConfig), `dead_letter` (local sled db), `parquet_writer` (uses `partitioner`, `flush_policy`), `metrics` (Prometheus), `health`. Shared `LogEvent` struct and `RedactionConfig` in a `model` crate.",
+      "rubric": [
+        "The plan includes the nested-depth redaction, the 413 rejection for oversize batches and the stale-flush health check.",
+        "Redaction work cites 2.3, the 413 work cites 1.2, and the health check cites 4.2.",
+        "Partitioning, flush policy, Parquet writing, dead-letter storage and metrics are each their own small step.",
+        "The plan is saved in platform/specs/log-ingest/.",
+        "The model crate comes before the parser, redactor and writer, and the partitioner and flush policy come before the Parquet writer.",
+        "The plan stays within two levels of nesting, with no sub-sub-steps."
+      ],
+      "why_skill_matters": "Nine decimal-numbered items and a long module list make small steps, dependency order and references matter; items like 1.2 and 4.2 are easy to drop."
+    }
+  ]
+}

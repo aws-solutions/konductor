@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "adversarial-code-review-pass-integrity",
+  "skill_md_sha256": "352d74bf5964dee23eacf370dddfe96e67056f53923aad62f5244f4a7a873a8e",
+  "request_context": "A request to review a code diff for data integrity problems such as partial writes, lost updates, ordering races and unsafe retries before the change is merged.",
+  "rules": [
+    {
+      "id": "adversarial-code-review-pass-integrity-r01",
+      "source_quote": "Perform a multi-item mutation without a transaction — two or more writes that must succeed or fail together",
+      "class": "useful",
+      "outcome": "Flags changes that write two or more related records in separate calls without making them all-or-nothing, describes the partial-write outcome if one call fails, and rates it as a top-severity problem.",
+      "why": "Partial writes leave the data inconsistent and are hard to detect or repair later.",
+      "scenario_hint": "Diff that updates two related records in separate calls."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-r02",
+      "source_quote": "Issue an unconditional `put` or `update` on a resource that can see concurrent writes",
+      "class": "useful",
+      "outcome": "Flags blind overwrites or updates on records that concurrent requests may modify, explains the lost-update scenario, and rates it as a top-severity problem.",
+      "why": "Concurrent writers silently clobber each other's changes.",
+      "scenario_hint": "Diff that does a read-modify-write on a shared record with no guard against concurrent changes."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-r03",
+      "source_quote": "Miss a condition expression, version check, or optimistic-lock guard on a contested resource",
+      "class": "useful",
+      "outcome": "Recommends a concrete guard such as a conditional write, version number check or optimistic lock for contested records, and treats a guard that is weaker than needed (for example only checking existence where a version match fits) as a minor improvement.",
+      "why": "Without a proper guard, stale writes succeed unnoticed.",
+      "scenario_hint": "Diff touching a contested record where the write has no guard or only a weak existence check."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-r04",
+      "source_quote": "Introduce a write path that has no test exercising the mutation",
+      "class": "useful",
+      "outcome": "Points out new or changed write paths that no test exercises, and rates this as a should-fix item rather than a critical one.",
+      "why": "Untested mutations let integrity regressions ship unnoticed.",
+      "scenario_hint": "Diff adding a new write operation with no accompanying test of that mutation."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-r05",
+      "source_quote": "Retry a non-idempotent operation without an idempotency key",
+      "class": "useful",
+      "outcome": "Flags retries of operations that are not safe to repeat (such as creating records or charging) that lack an idempotency key, and describes the duplicate effect a retry would cause.",
+      "why": "Retries create duplicate records or repeated side effects.",
+      "scenario_hint": "Diff adding retry logic around a create or payment call."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-r06",
+      "source_quote": "Depend on ordering across independent async events without a sequencing mechanism",
+      "class": "useful",
+      "outcome": "Flags logic that relies on independent asynchronous events arriving in a particular order, describes the race, and proposes a sequencing mechanism such as versioning or ordered delivery.",
+      "why": "Out-of-order events produce stale or inconsistent state.",
+      "scenario_hint": "Diff with event or queue handlers that assume messages arrive in order."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-r07",
+      "source_quote": "Delete or overwrite state on an error path where rollback or compensation is required",
+      "class": "useful",
+      "outcome": "Flags error-handling code that deletes or overwrites state without rollback or compensation, and rates it as a top-severity problem.",
+      "why": "A failure path that destroys state turns a transient error into data loss.",
+      "scenario_hint": "Diff whose catch or failure branch deletes or resets records."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-r08",
+      "source_quote": "Lose the return value of a write and then re-read the item redundantly",
+      "class": "useful",
+      "outcome": "Notes where the result returned by a write is discarded and the item is fetched again, suggests using the write's returned value, and rates it as a low-priority suggestion.",
+      "why": "The extra read costs performance and adds a window for inconsistent data.",
+      "scenario_hint": "Diff that updates an item and then immediately queries it again."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-r09",
+      "source_quote": "Do not flag a single-item write as requiring a transaction",
+      "class": "useful",
+      "outcome": "Does not demand a transaction for a lone single-record write, reserving that demand for groups of related writes that need to be all-or-nothing.",
+      "why": "Over-flagging produces false positives that waste reviewer time.",
+      "scenario_hint": "Diff containing only a single-record put or update."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-r10",
+      "source_quote": "This exempts setup/teardown specifically, not test files as a whole",
+      "class": "useful",
+      "outcome": "Leaves alone bulk or unguarded writes that seed or clean up test data, but still flags multiple related writes that are not atomic when they are in the code path the test actually exercises.",
+      "why": "Fixture scaffolding is harmless, but real defects in the tested path remain.",
+      "scenario_hint": "Diff with test files containing fixture seeding and also a multi-write code path under test."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-r11",
+      "source_quote": "Flag reimplementation or bypass, not absence",
+      "class": "useful",
+      "outcome": "Checks whether the codebase already provides a transaction helper, idempotency middleware or shared data-access layer, and flags code that reimplements or bypasses it rather than complaining that such a mechanism is missing.",
+      "why": "Recommending something that already exists, or missing a bypass of it, gives wrong advice.",
+      "scenario_hint": "Diff calling the database client directly in a codebase that has a shared repository layer and transaction helper."
+    },
+    {
+      "id": "adversarial-code-review-pass-integrity-r12",
+      "source_quote": "name the file:line, the concrete failure scenario (partial write, lost update, ordering race), and a specific fix",
+      "class": "generic",
+      "outcome": "Each concern cites the location in the code, describes a concrete failure scenario, and gives a specific suggested fix.",
+      "why": "Vague findings cannot be verified or acted on by the author.",
+      "scenario_hint": "Any request to review a diff for data integrity problems."
+    }
+  ]
+}

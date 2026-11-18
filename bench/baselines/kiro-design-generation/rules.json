@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "kiro-design-generation",
+  "skill_md_sha256": "e8aecce473953a6246a07c785676e539ddd92490f6e607cce9419358a43ed709",
+  "request_context": "A request to turn an approved requirements document and an existing system-level architecture into a design for one feature, detailed enough for a developer to build from.",
+  "rules": [
+    {
+      "id": "kiro-design-generation-r01",
+      "source_quote": "Each requirement from `requirements.md` MUST map to at least one component in the design",
+      "class": "useful",
+      "outcome": "Every requirement in the input is handled by at least one named component of the design, and the design says which requirements it covers.",
+      "why": "Gaps between what was asked and what is designed show up at design time instead of during build.",
+      "scenario_hint": "The requirements list includes a cross-cutting item that is easy to overlook, such as audit logging or data deletion."
+    },
+    {
+      "id": "kiro-design-generation-r02",
+      "source_quote": "If a requirement cannot be addressed by the design, flag it explicitly",
+      "class": "useful",
+      "outcome": "A requirement that the design cannot meet, or that conflicts with the supplied architecture, is called out openly instead of being left out or assumed to be satisfied.",
+      "why": "A silent gap becomes a surprise late in the project.",
+      "scenario_hint": "One requirement needs real-time updates but the supplied architecture only processes data in nightly batches."
+    },
+    {
+      "id": "kiro-design-generation-r03",
+      "source_quote": "reference them but do not duplicate their full design",
+      "class": "useful",
+      "outcome": "Only the components the feature needs are designed in detail. Parts owned by the wider system or by another feature, such as sign-in checks, logging or another feature's entities, are referred to and built upon, not redesigned or copied.",
+      "why": "Copied designs drift apart and bury the feature's own decisions.",
+      "scenario_hint": "The system architecture covers many features and the user wants a design for just one that reuses shared parts."
+    },
+    {
+      "id": "kiro-design-generation-r04",
+      "source_quote": "Component interfaces use typed signatures (not vague descriptions)",
+      "class": "useful",
+      "outcome": "Each component's public operations are given with parameter and return types, not only described in prose.",
+      "why": "A developer can start coding against a concrete contract and reviewers can check it.",
+      "scenario_hint": "Any request for a feature design that includes services or modules with several operations."
+    },
+    {
+      "id": "kiro-design-generation-r05",
+      "source_quote": "Data models include field types and constraints",
+      "class": "useful",
+      "outcome": "Stored and exchanged data structures list each field with its type and its constraints, such as required or optional, allowed values, format and key role.",
+      "why": "Ambiguous data shapes cause mismatches between components and in storage.",
+      "scenario_hint": "The feature stores records in a database and exposes them through an API."
+    },
+    {
+      "id": "kiro-design-generation-r06",
+      "source_quote": "Conflict/race conditions (409)",
+      "class": "useful",
+      "outcome": "Failure cases are covered for invalid input, missing or insufficient permission, missing resources, conflicting concurrent changes, failures of outside services and request throttling, wherever the feature can meet them.",
+      "why": "Unplanned failure paths are where most production defects hide.",
+      "scenario_hint": "The feature accepts user input, calls another service and writes to shared data."
+    },
+    {
+      "id": "kiro-design-generation-r07",
+      "source_quote": "Recovery strategy (retry, fallback, escalate)",
+      "class": "useful",
+      "outcome": "For each failure case the design says what the user or caller sees and whether the system retries, falls back or escalates.",
+      "why": "Naming the failure is not enough; the build team needs to know the intended behaviour.",
+      "scenario_hint": "The feature depends on an outside service that can time out or be rate limited."
+    },
+    {
+      "id": "kiro-design-generation-r08",
+      "source_quote": "Testing strategy missing one of the three levels (unit, integration, E2E)",
+      "class": "useful",
+      "outcome": "The test approach separates what is checked in isolation, what is checked across component interactions and which end-to-end user journeys are checked, with concrete example cases.",
+      "why": "Each level catches different defects and concrete cases make the plan actionable.",
+      "scenario_hint": "Any request for a feature design that should include how the feature will be tested."
+    },
+    {
+      "id": "kiro-design-generation-r09",
+      "source_quote": "Scope boundaries — what is and is not included",
+      "class": "useful",
+      "outcome": "The design states what is in and out of scope and gives the reasons for its main design choices.",
+      "why": "Readers can judge the choices and know what was left for later.",
+      "scenario_hint": "The requirements leave room for several designs, such as sync versus async processing."
+    },
+    {
+      "id": "kiro-design-generation-r10",
+      "source_quote": "A developer reading only this design.md (plus requirements.md) should understand what to build",
+      "class": "generic",
+      "outcome": "The design is self-contained: a developer with only the requirements and this design can tell what to build without needing extra context.",
+      "why": "A design that depends on unwritten knowledge cannot be handed over.",
+      "scenario_hint": "Any request for a feature design."
+    },
+    {
+      "id": "kiro-design-generation-r11",
+      "source_quote": "Mermaid diagrams (SHOULD include at least one)",
+      "class": "style",
+      "outcome": "The design includes at least one diagram that shows how the components interact or how a request flows through them.",
+      "why": "",
+      "scenario_hint": "Any request for a feature design."
+    },
+    {
+      "id": "kiro-design-generation-r12",
+      "source_quote": "Every `design.md` MUST contain exactly these 6 sections in this order",
+      "class": "style",
+      "outcome": "The design opens with a summary of the feature, then covers its architecture, the components with their interfaces, the data structures, the error cases and the test approach, in that order.",
+      "why": "",
+      "scenario_hint": "Any request for a feature design."
+    }
+  ]
+}
