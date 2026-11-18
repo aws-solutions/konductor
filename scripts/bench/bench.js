@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Driver for the skill benchmark. Its commands so far:
+ * Driver for the skill benchmark. Three commands:
  *
  *   node scripts/bench/bench.js plan --skills a,b [--run <id>] [--max-usd N] [--config <file>] [--root <dir>] [--json]
+ *   node scripts/bench/bench.js next --skills a,b [--run <id>] [--max-usd N] [--config <file>] [--root <dir>]
+ *                                   [--max-minutes N --started-at <UTC time>] [--provider live|stub]
  *   node scripts/bench/bench.js cost-profile [--ledger <file>] [--out <file>] [--root <dir>]
  *
  * `plan` is offline. It makes no network, model or AWS call, spends nothing and writes no file. With
  * no --skills it prints this usage and the skills that have a baseline, and does nothing else.
  * `--all` and `--changed-since` are not implemented yet and are refused.
+ *
+ * `next` (lib/next.js) prints ONE JSON line: the next job to run with its command, `done`, or `stop` with the reason.
+ * It works from the baseline and the files on disk, spends nothing and writes no file.
  *
  * `cost-profile` (lib/cost-profile-rebuild.js) reads the spend ledger and prints a cost profile built from the calls
  * whose cost the CLI reported, or writes it to --out. It needs no settings file and spends nothing.
@@ -16,10 +21,10 @@
  *
  * Exit codes (the values are the sysexits.h ones where one fits):
  *
- *   0   done
+ *   0   done (for next: a job to run, or done)
  *   1   the plan is refused: an invalid baseline or agent spec, a projected cost above max_usd, a plan that
  *       would take the spend ledger past total_cap_usd, or no selected skill that can be run
- *       (no baseline or no agent)
+ *       (no baseline or no agent); for next: stop (a limit is reached, or the plan is refused)
  *   64  usage error (EX_USAGE): a bad flag or value, an unknown skill, a settings file that
  *       cannot be read or is invalid, or a spend ledger that cost-profile cannot parse
  *   66  a file or folder the plan needs is missing (EX_NOINPUT)
@@ -42,23 +47,28 @@ const { LedgerError } = require('./lib/ledger');
 const { JsonFileError } = require('./lib/read-file');
 const { listSkills } = require('./lib/skills');
 const { buildPlan, renderPlan } = require('./lib/plan');
+const { redact } = require('./lib/redact');
 const {
   UsageError,
   parseFlags,
+  parseMaxMinutes,
   parseMaxUsd,
   parseSkillSelection,
+  parseStartedAt,
 } = require('./lib/cli-args');
 
 const EX_USAGE = 64;
 const EX_NOINPUT = 66;
 const EX_SOFTWARE = 70;
 const EX_IOERR = 74;
-const USAGE = `Usage: node scripts/bench/bench.js plan --skills <a,b> [options]
+const USAGE = `Usage: node scripts/bench/bench.js <plan|next> --skills <a,b> [options]
        node scripts/bench/bench.js cost-profile [--ledger <file>] [--out <file>] [--root <dir>]
 
 Commands
   plan    Show the stages a run would take for the selected skills, which are done, and what the
           rest would cost. Offline: no network, no model call, nothing spent.
+  next    Print one JSON line: the next job to run and its command, done, or stop with the reason.
+          Works from the files on disk; nothing spent, nothing written.
   cost-profile  Rebuild the cost profile (mean, median, p90 per call kind and model) from the
           spend ledger. Offline: nothing spent.
 
@@ -68,13 +78,16 @@ Options
   --max-usd <n>      Spend limit for this run in USD, a plain decimal such as 2.5 (default: 30). Cannot pass total_cap_usd in bench/config.json.
   --config <file>    Settings file to use instead of bench/config.json.
   --root <dir>       Repository root to read (default: this checkout).
-  --json             Print the plan as JSON.
+  --json             plan only: print the plan as JSON.
+  --max-minutes <n>  next only: time limit of the run; needs --started-at.
+  --started-at <t>   next only: when the run started, a UTC time such as 2026-11-12T15:30:00Z.
+  --provider <name>  next only: live (default) or stub, passed on to the job's command. A run id stub or stub-<name> takes only stub, and stub only there.
   --ledger <file>    cost-profile only: the spend ledger to read (default: bench/out/ledger.jsonl).
   --out <file>       cost-profile only: write the profile there instead of printing it.
 
 Exit codes
-  0   done
-  1   the plan is refused (an invalid baseline or agent spec, a projected cost above max_usd, a ledger past a limit, or no skill to run)
+  0   done (next: a job to run, or done)
+  1   the plan is refused (an invalid baseline or agent spec, a projected cost above max_usd, a ledger past a limit, or no skill to run); next: stop
   64  usage error: a bad flag or value, an unknown skill, an unreadable or invalid settings file, or (cost-profile) a corrupt ledger
   66  a file or folder the plan needs is missing
   70  internal error (a bug in the benchmark); set BENCH_DEBUG=1 to print the stack trace
@@ -155,12 +168,17 @@ const VALUE_FLAGS = {
   '--max-usd': 'maxUsd',
   '--config': 'config',
   '--root': 'root',
+  '--max-minutes': 'maxMinutes',
+  '--started-at': 'startedAt',
+  '--provider': 'provider',
   '--ledger': 'ledger',
   '--out': 'out',
 };
+/** Flags only `next` takes; `plan` refuses them, so a typo cannot pass quietly. */
+const NEXT_ONLY_FLAGS = ['maxMinutes', 'startedAt', 'provider'];
 /** Flags only `cost-profile` takes, and the only flags it takes besides --root. */
 const COST_PROFILE_FLAGS = ['ledger', 'out'];
-const COMMANDS = ['plan', 'cost-profile'];
+const COMMANDS = ['plan', 'next', 'cost-profile'];
 const BOOL_FLAGS = { '--json': 'json', '--help': 'help', '-h': 'help' };
 /** The command-line spelling of a parsed option name (`maxUsd` is `--max-usd`). */
 const flagOf = (name) =>
@@ -207,9 +225,18 @@ function samePath(first, second) {
 
 /**
  * Runs the driver. `io` is { out(text), err(text) }; `env` is where BENCH_DEBUG is read. Returns the
- * exit code and never calls process.exit or throws.
+ * exit code and never calls process.exit or throws. `plan` returns the code itself; `next` returns a
+ * promise of it, because its dry runs read the arms asynchronously. `nextOptions` are extra options
+ * for nextStep (tests: now, jobOptions).
  */
-function main(argv, io, env = process.env) {
+function main(argv, io, env = process.env, nextOptions = {}) {
+  const fail = (error) => {
+    const { code, text } = describeFailure(error, {
+      debug: env.BENCH_DEBUG === '1',
+    });
+    io.err(text);
+    return code;
+  };
   try {
     const { command, options } = parseArgs(argv);
     if (!command || command === '--help' || command === '-h' || options.help) {
@@ -227,6 +254,17 @@ function main(argv, io, env = process.env) {
     if (costProfileOnly.length)
       throw new UsageError(
         `${costProfileOnly.map(flagOf).join(', ')} is an option of cost-profile, not of ${command}`,
+      );
+    if (command === 'plan') {
+      const nextOnly = NEXT_ONLY_FLAGS.filter((name) => name in options);
+      if (nextOnly.length)
+        throw new UsageError(
+          `${nextOnly.map(flagOf).join(', ')} is an option of next, not of plan`,
+        );
+    }
+    if (command === 'next' && options.json)
+      throw new UsageError(
+        'next always prints JSON; --json is an option of plan',
       );
 
     const maxUsd =
@@ -267,6 +305,8 @@ function main(argv, io, env = process.env) {
     }
 
     if (!options.skills) {
+      if (command === 'next')
+        throw new UsageError('--skills is required: name the skills to run');
       const baselineSkillNames = listBaselineSkills(layout);
       io.out(
         `${USAGE}\nNo skills selected, so nothing was planned and nothing was spent.\nSkills with a baseline: ${baselineSkillNames.length ? baselineSkillNames.join(', ') : 'none'}\n`,
@@ -281,17 +321,18 @@ function main(argv, io, env = process.env) {
         `unknown skill(s) in --skills: ${unknownSkills.join(', ')} (no skills/<name>/SKILL.md)`,
       );
 
+    if (command === 'next')
+      return runNext({ layout, config, names, options, nextOptions, io }).catch(
+        fail,
+      );
+
     const plan = buildPlan({ layout, config, skills: names });
     io.out(
       options.json ? `${JSON.stringify(plan, null, 2)}\n` : renderPlan(plan),
     );
     return plan.ok ? 0 : 1;
   } catch (error) {
-    const { code, text } = describeFailure(error, {
-      debug: env.BENCH_DEBUG === '1',
-    });
-    io.err(text);
-    return code;
+    return fail(error);
   }
 }
 
@@ -370,10 +411,51 @@ function runCostProfile({ options, io }) {
   return 0;
 }
 
+/** The `next` command: one JSON line, exit 0 for a job or done and 1 for a stop. */
+async function runNext({ layout, config, names, options, nextOptions, io }) {
+  // Loaded here and not at the top: the jobs `next` dry-runs load the process and judge-call modules, and `plan`
+  // must never load those (plan.test.js checks it). Each line is marked so that check can tell them apart.
+  const { readProviderOption } = require('./lib/launch'); // next only
+  const { stubLayout } = require('./lib/stub-provider'); // next only
+  const { nextStep } = require('./lib/next'); // next only
+  if ((options.maxMinutes === undefined) !== (options.startedAt === undefined))
+    throw new UsageError(
+      '--max-minutes and --started-at go together: the limit counts from the start of the run',
+    );
+  const maxMinutes =
+    options.maxMinutes === undefined
+      ? null
+      : parseMaxMinutes(options.maxMinutes);
+  const startedAtMs =
+    options.startedAt === undefined ? null : parseStartedAt(options.startedAt);
+  const provider = readProviderOption(options.provider, layout.runId);
+  const result = await nextStep({
+    // A stub run's limits are read from its own ledger, the one its jobs write (stub-provider.js stubLayout).
+    layout: provider === 'stub' ? stubLayout(layout) : layout,
+    config,
+    skills: names,
+    provider,
+    maxMinutes,
+    startedAtMs,
+    maxUsdText: options.maxUsd,
+    configFile: options.config && path.resolve(options.config),
+    ...nextOptions,
+  });
+  // The line is JSON, so it is never cut: the one unbounded field, `reason`, is cut before it is serialized (next.js).
+  io.out(
+    `${redact(JSON.stringify(result), { maxChars: Number.POSITIVE_INFINITY })}\n`,
+  );
+  return result.next === 'stop' ? 1 : 0;
+}
+
 if (require.main === module) {
-  process.exitCode = main(process.argv.slice(2), {
-    out: (text) => process.stdout.write(text),
-    err: (text) => process.stderr.write(text),
+  Promise.resolve(
+    main(process.argv.slice(2), {
+      out: (text) => process.stdout.write(text),
+      err: (text) => process.stderr.write(text),
+    }),
+  ).then((code) => {
+    process.exitCode = code;
   });
 }
 

@@ -107,7 +107,7 @@ test('plan with no skills selected, or --help, shows usage and plans nothing', (
   assert.equal(result.code, 0);
   assert.match(
     result.out,
-    /^Usage: node scripts\/bench\/bench\.js plan --skills/,
+    /^Usage: node scripts\/bench\/bench\.js <plan\|next> --skills/,
   );
   assert.match(
     result.out,
@@ -129,13 +129,19 @@ test('plan writes nothing, and its sources use no network, process or AWS module
   });
   // The sources of `plan` are bench.js and every local module it loads, followed through their requires. The
   // judge client (lib/opencode.js) and its spawn helper start processes by design; plan must never load them.
+  // bench.js loads the modules of `next` inside that command only, on lines marked `// next only`; those are not
+  // plan's sources, and the run below shows plan does not load them.
   const planSources = new Set();
   const pending = [BENCH_JS];
   while (pending.length) {
     const file = pending.pop();
     if (planSources.has(file)) continue;
     planSources.add(file);
-    const text = fs.readFileSync(file, 'utf8');
+    const text = fs
+      .readFileSync(file, 'utf8')
+      .split('\n')
+      .filter((line) => !(file === BENCH_JS && /\/\/ next only$/.test(line)))
+      .join('\n');
     for (const [, relative] of text.matchAll(
       /require\(['"](\.{1,2}\/[^'"]+)['"]\)/g,
     ))
@@ -149,6 +155,27 @@ test('plan writes nothing, and its sources use no network, process or AWS module
   );
   for (const file of spawningModules)
     assert.ok(!planSources.has(file), `plan must not load ${file}`);
+  // At run time too: after a full plan, no spawning module, no next module and no child_process is loaded.
+  const probe = spawnSync(
+    process.execPath,
+    [
+      '-e',
+      `const bench = require(${JSON.stringify(BENCH_JS)});
+       const code = bench.main(['plan', '--skills', 'brew-log', '--root', ${JSON.stringify(ROOT)}], { out() {}, err() {} });
+       const loaded = Object.keys(require.cache);
+       process.stdout.write(JSON.stringify({ code, loaded, childProcess: process.moduleLoadList.some((name) => name === 'NativeModule child_process') }));`,
+    ],
+    { encoding: 'utf8' },
+  );
+  const loaded = JSON.parse(probe.stdout);
+  assert.equal(loaded.code, 0, probe.stderr);
+  for (const fileName of ['opencode.js', 'proc.js', 'next.js', 'launch.js'])
+    assert.ok(
+      !loaded.loaded.includes(path.join(lib, fileName)),
+      `plan loaded ${fileName} at run time`,
+    );
+  assert.ok(loaded.loaded.includes(path.join(lib, 'plan.js')));
+  assert.equal(loaded.childProcess, false, 'plan loaded child_process');
   for (const file of [
     BENCH_JS,
     ...fs
