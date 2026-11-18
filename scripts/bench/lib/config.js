@@ -20,6 +20,7 @@
 const path = require('path');
 const { readJsonFile, JsonFileError } = require('./read-file');
 const { SEAT_NAME } = require('./names');
+const { profileIds } = require('./runner');
 const { REPO_ROOT } = require('./layout');
 
 /** The committed example: every setting at its default. Its key structure is the list of known settings. */
@@ -223,6 +224,10 @@ function validateSettings(config, errors) {
         `estimate_usd_per_call.${callKind}: must be a number, 0 or more`,
       );
   }
+  if (!profileIds().includes(config.runner_profile))
+    errors.push(
+      `runner_profile: must be one of ${profileIds().join(', ')}, got ${JSON.stringify(config.runner_profile)}`,
+    );
 }
 
 const deepFreeze = (object) => {

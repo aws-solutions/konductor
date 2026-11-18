@@ -26,5 +26,6 @@
   "judge_max_output_tokens_by_seat": {
     "openai": 5000,
     "xai": 37500
-  }
+  },
+  "runner_profile": "legacy"
 }
