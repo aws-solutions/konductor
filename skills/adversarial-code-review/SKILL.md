@@ -68,7 +68,7 @@ Each lens has its own pass skill, which is the single source for that lens's che
 
 ## Quality Gate
 
-Severity for each finding comes from the pass skill that owns its lens. A CRITICAL finding blocks approval; IMPORTANT should be fixed before merge; SUGGESTION is optional.
+Severity for each finding comes from the pass skill that owns its lens. Running directly, with no pass skill loaded, rate a finding CRITICAL when it discloses internal detail to a caller, corrupts or loses data, or lets unvalidated input reach a query; IMPORTANT when a guarantee is weakened but still mostly held; SUGGESTION otherwise. A CRITICAL finding blocks approval; IMPORTANT should be fixed before merge; SUGGESTION is optional.
 
 Present findings as: CRITICAL → IMPORTANT → SUGGESTION. If invoked directly (not via SOP): Ask: "Fix these issues? [y/n]"
 

@@ -377,8 +377,9 @@ not per individual commit.
 
 - Overlapping skills now keep each rule set in one place. `decision-writing` gains an ADR Mode
   that replaces `adr-generator`, which is removed (79 skills). `adversarial-code-review` points
-  to its three pass skills for each lens's checklist and severities, and `frontend-review`
-  checks changes against the rules in `frontend-development`.
+  to its three pass skills for each lens's checklist and severities, keeping a severity rule
+  of its own for a run that loads no pass, and `frontend-review` checks changes against the
+  rules in `frontend-development`.
 - Two pass ratings now match the old `adversarial-code-review` gate: a new field missing
   validation or a default at any entry point is IMPORTANT (was SUGGESTION), and any unguarded
   map or optional access is IMPORTANT (was limited to access reached at runtime). The security
