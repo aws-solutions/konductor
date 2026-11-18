@@ -5,7 +5,8 @@
  *
  * No credential files (subjectEnv, createPrivateHome). The child's environment is built from nothing, never
  * from the parent's: it holds the three short-lived values the parent exported for this launch, the variables
- * that point Claude Code at Bedrock and turn off its other traffic, the region, PATH, and a HOME that is a fresh
+ * that point Claude Code at Bedrock and turn off its other traffic, the region, PATH, the launch's canary
+ * (BENCH_CANARY_TOKEN, a random value the secret sweep watches for), and a HOME that is a fresh
  * private folder inside the run's scratch area. So AWS_PROFILE, AWS_CONFIG_FILE, AWS_SHARED_CREDENTIALS_FILE, a
  * package registry or source host token left in the parent shell, and the real home folder (with ~/.aws and its
  * SSO token cache) never reach the child, by name or by inheritance.
@@ -23,6 +24,7 @@ const os = require('os');
 const path = require('path');
 
 const { REPO_ROOT } = require('./layout');
+const { CANARY_ENV, redact } = require('./redact');
 
 /** Every variable a subject child gets. Nothing else is passed. */
 const SUBJECT_ENV_NAMES = Object.freeze([
@@ -34,6 +36,7 @@ const SUBJECT_ENV_NAMES = Object.freeze([
   'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
   'PATH',
   'HOME',
+  CANARY_ENV,
 ]);
 /** Folders under a home folder (a path of one or more names) that hold credentials or tool settings. */
 const DENIED_HOME_FOLDERS = Object.freeze([
@@ -114,6 +117,9 @@ const isSameOrInside = (inner, outer) => {
  *   credentials  { accessKeyId, secretAccessKey, sessionToken }: the values exported for this launch
  *   region       AWS region, such as us-west-2
  *   home         the private home folder (createPrivateHome); refused when it is or holds the real home
+ *   canary       this launch's canary (redact.js newCanary), set as BENCH_CANARY_TOKEN. The secret sweep stops the
+ *                run when the value shows up in a stored file, so it must be exactly one value the redactor
+ *                knows as a canary.
  *   pathValue    PATH for the child (default: the parent's PATH)
  *   userHome     the real home folder (default os.homedir()), only to refuse it as `home`
  */
@@ -121,6 +127,7 @@ function subjectEnv({
   credentials,
   region,
   home,
+  canary,
   pathValue = process.env.PATH,
   userHome = os.homedir(),
 } = {}) {
@@ -152,6 +159,9 @@ function subjectEnv({
       'home must be a private folder, not the real home folder or a folder that holds it',
     );
   requireValue('pathValue', pathValue);
+  // The whole value must be one canary: a value the sweep would not recognize could leak without a stop.
+  if (typeof canary !== 'string' || redact(canary) !== '[REDACTED_CANARY]')
+    throw new TypeError('canary must be one value from newCanary()');
   const env = {
     AWS_ACCESS_KEY_ID: accessKeyId,
     AWS_SECRET_ACCESS_KEY: secretAccessKey,
@@ -161,6 +171,7 @@ function subjectEnv({
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
     PATH: pathValue,
     HOME: home,
+    [CANARY_ENV]: canary,
   };
   return env;
 }
