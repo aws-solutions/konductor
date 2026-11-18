@@ -9,7 +9,7 @@ const join = (...p) => p.join('');
 const MARKERS = [
   { name: 'internal host', re: new RegExp(`${join('amaz', 'on')}\\.(?:com|dev)|${join('aws', '\\.dev')}|${join('corp', '\\.')}`, 'i') },
   { name: 'internal code host', re: new RegExp(`${join('code', '\\.amaz', 'on')}|${join('git', '\\.amaz', 'on')}`, 'i') },
-  { name: 'internal tool', re: new RegExp(`\\b(?:${join('qu', 'ip')}|${join('bra', 'zil')}|${join('aim', '-build')}|${join('cr', 'ux')}|${join('mid', 'way')}|${join('isen', 'gard')}|${join('dev', '-dsk')})\\b`, 'i') },
+  { name: 'internal tool', re: new RegExp(`\\b(?:${join('qu', 'ip')}|${join('bra', 'zil')}|${join('aim', '-build')}|${join('cr', 'ux')}|${join('mid', 'way')}|${join('isen', 'gard')}|${join('dev', '-dsk')}|${join('tool', 'box-exec')}|${join('aim', ' sandbox')})\\b`, 'i') },
   { name: 'internal id', re: /\bCR-\d+|\bTD-\d+/ },
   { name: 'internal name', re: new RegExp(`${join('as', 'dlc')}|${join('sol', 'nexus')}|${join('nih', 'itkas')}`, 'i') },
   { name: 'local path', re: new RegExp(`${join('/local', '/home')}|${join('/Us', 'ers/')}`) },

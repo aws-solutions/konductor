@@ -251,9 +251,10 @@ function versionOf(cmd, args = ['--version']) {
 /** The `--version` line of the kiro-cli at `bin` (default: the one on PATH). */
 const kiroCliVersion = (bin = 'kiro-cli') => versionOf(bin);
 
-// A toolbox shim: <root>/bin/<tool> links to toolbox-exec, one launcher shared by every toolbox tool, which picks the
-// tool's current version and runs that version's executable. The launcher can refuse to run under the bench.
-const TOOLBOX_EXEC = 'toolbox-exec';
+// A launcher shim: <launcher-dir>/bin/<tool> links to one launcher executable shared by every tool it installs, which
+// picks the tool's current version and runs that version's executable. The launcher can refuse to run under the bench.
+// SHARED_LAUNCHER is that executable's file name.
+const SHARED_LAUNCHER = 'toolbox-exec';
 const NATIVE_MAGIC = ['7f454c46', 'cffaedfe', 'cefaedfe', 'cafebabe'];
 
 function readJsonFile(file) {
@@ -271,10 +272,11 @@ function isNativeBinary(file) {
 }
 
 /**
- * The executable a toolbox shim at `candidate` would run, from the tool's own records: tools/<name>/info.json names
- * the current version and tools/<name>/<version>.json its executable. Null when the layout is not there.
+ * The executable a launcher shim at `candidate` would run, from the launcher's records of the tool:
+ * <launcher-dir>/tools/<name>/info.json names the current version and tools/<name>/<version>.json its executable.
+ * Null when the layout is not there.
  */
-function toolboxExecutable(candidate, name = 'kiro-cli') {
+function launcherExecutable(candidate, name = 'kiro-cli') {
   const roots = [path.dirname(path.dirname(candidate))];
   try { roots.push(path.dirname(path.dirname(path.dirname(path.dirname(fs.realpathSync(candidate)))))); } catch { /* not resolvable */ }
   for (const root of roots) {
@@ -290,8 +292,8 @@ function toolboxExecutable(candidate, name = 'kiro-cli') {
 }
 
 /**
- * The kiro-cli a run uses, from PATH. Two known launchers are unwrapped to the native binary they start: a toolbox
- * shim (a link to toolbox-exec) and the `sandbox/kiro-cli` wrapper script, which routes through a sandboxing launcher
+ * The kiro-cli a run uses, from PATH. Two known launchers are unwrapped to the native binary they start: a launcher
+ * shim (a link to the shared launcher executable) and the `sandbox/kiro-cli` wrapper script, which routes through a sandboxing launcher
  * that depends on the invoking user's environment and can attach extra tools. When a known launcher does not lead
  * to a native binary, this throws and names --kiro-bin. Any other kiro-cli is used as found.
  */
@@ -301,9 +303,9 @@ function resolveKiroCli(pathEnv = process.env.PATH) {
     let real;
     try { real = fs.realpathSync(candidate); fs.accessSync(real, fs.constants.X_OK); } catch { continue; }
     const shims = [];
-    if (path.basename(real) === TOOLBOX_EXEC) {
-      const exe = toolboxExecutable(candidate);
-      if (!exe) throw new Error(`${candidate} is a toolbox shim (it resolves to ${real}) and the kiro-cli it starts could not be found from the toolbox records; pass the native kiro-cli binary with --kiro-bin PATH`);
+    if (path.basename(real) === SHARED_LAUNCHER) {
+      const exe = launcherExecutable(candidate);
+      if (!exe) throw new Error(`${candidate} is a launcher shim (it resolves to ${real}) and the kiro-cli it starts could not be found from the launcher's records; pass the native kiro-cli binary with --kiro-bin PATH`);
       shims.push(real);
       real = fs.realpathSync(exe);
     }
@@ -321,5 +323,5 @@ function resolveKiroCli(pathEnv = process.env.PATH) {
 
 module.exports = {
   prepareArm, synthArm, installInto, runKonductor, normalizeAgentModels, emptyKiroHome, kiroDataDir, copyAuthDb, removeAuthCopy, copyFixture, findAnswerKey,
-  exportRef, exportArm, readyMatches, buildDirOf, KIRO_REQUIRED, buildMcp, buildCli, sha256File, resolveKiroCli, isNativeBinary, toolboxExecutable, makeScratchRoot, defaultAuthDb, kiroCliVersion, versionOf, run, ANSWER_KEY,
+  exportRef, exportArm, readyMatches, buildDirOf, KIRO_REQUIRED, buildMcp, buildCli, sha256File, resolveKiroCli, isNativeBinary, launcherExecutable, SHARED_LAUNCHER, makeScratchRoot, defaultAuthDb, kiroCliVersion, versionOf, run, ANSWER_KEY,
 };

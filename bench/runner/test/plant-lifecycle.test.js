@@ -20,6 +20,7 @@ const { classifyPlantStartup } = require('../lib/launch-failure.js');
 const { checkManifest, ReleaseRefused } = require('../lib/plant/manifest.js');
 const { intakeRelease, preparePlantSuite, refuseLauncher, countingOf } = require('../lib/plant/intake.js');
 const { NOT_COUNTED } = require('../lib/plant/score.js');
+const { SHARED_LAUNCHER } = require('../lib/sandbox.js');
 const { hostNoise } = require('../lib/plant/walls.js');
 const { GatewayProcess, gatewayCommand, runningHashProblems } = require('../lib/plant/gateway-proc.js');
 const { runPlantCell, sandboxPidns, PlantSuiteStop, PlantRun } = require('../lib/plant/lifecycle.js');
@@ -218,16 +219,16 @@ test('hostNoise lists loopback and wildcard listeners outside the release allowl
   } finally { r.cleanup(); }
 });
 
-test('the pin refuses a toolbox shim and the sandbox wrapper, naming the real binary to pass with --kiro-bin', () => {
+test('the pin refuses a launcher shim and the sandbox wrapper, naming the real binary to pass with --kiro-bin', () => {
   const r = rig();
   try {
-    const exec = path.join(r.root, 'toolbox', '1.0', 'toolbox-exec');
+    const exec = path.join(r.root, 'launcher', '1.0', SHARED_LAUNCHER);
     fs.mkdirSync(path.dirname(exec), { recursive: true });
     fs.writeFileSync(exec, '#!/bin/sh\n', { mode: 0o755 });
     const shim = path.join(r.root, 'tbin', 'kiro-cli');
     fs.mkdirSync(path.dirname(shim));
     fs.symlinkSync(exec, shim);
-    assert.throws(() => refuseLauncher(shim), /toolbox shim .*toolbox-exec.*--kiro-bin/);
+    assert.throws(() => refuseLauncher(shim), new RegExp(`launcher shim .*${SHARED_LAUNCHER}.*--kiro-bin`));
     const real = path.join(r.root, 'tools', 'kiro-cli', '3.3.0', 'kiro-cli');
     const wrapper = path.join(path.dirname(real), 'sandbox', 'kiro-cli');
     fs.mkdirSync(path.dirname(wrapper), { recursive: true });
@@ -240,7 +241,7 @@ test('the pin refuses a toolbox shim and the sandbox wrapper, naming the real bi
     try {
       const v3 = { scratchDir: pinned.scratch, config: { ...CONFIG, agentEngine: 'v3' }, isolation: { mode: 'none' } };
       const prep = (kiroBin, versionOfBin) => () => suiteOf(pinned, { opts: { 'kiro-bin': kiroBin }, ctx: { ...v3, kiroBin }, versionOfBin });
-      assert.throws(prep(shim, () => 'kiro-cli 3.3.0'), /toolbox shim/);
+      assert.throws(prep(shim, () => 'kiro-cli 3.3.0'), /launcher shim/);
       // --kiro-bin naming the pinned version makes the suite counted, so the next refusal is the counted one.
       assert.throws(prep(real, () => 'kiro-cli 3.3.0'), /needs the Cedar files/);
       // A control suite is as before: not counted, not comparable, and no quiet-host check (so no noise and no reason).

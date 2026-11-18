@@ -9,7 +9,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { copyPlainFile } = require('../safe-copy.js');
-const { sha256File, versionOf } = require('../sandbox.js');
+const { sha256File, versionOf, SHARED_LAUNCHER } = require('../sandbox.js');
 const { isComparableMode } = require('../isolate.js');
 const { checkManifest, sha256Hex, ReleaseRefused, PINNED_KEYS, MANIFEST_FILE, SIGNATURE_FILE } = require('./manifest.js');
 const { DEADLINES } = require('./gateway-proc.js');
@@ -21,8 +21,6 @@ const { hostNoise } = require('./walls.js');
 const POLICY_FILES = ['policy/plant.cedar', 'policy/plant.cedarschema', 'sensor-limits.json'];
 const REFUSAL_RULE = 'refusal-rule.json';
 const SOCKET_PATH_MAX = 107;
-// What a toolbox shim on PATH (for example ~/.toolbox/bin/kiro-cli) resolves to.
-const TOOLBOX_EXEC = 'toolbox-exec';
 // The socket root is `<parent>/s-XXXXXX` and the socket `gw.sock` inside it.
 const SOCKET_SUFFIX_BYTES = '/s-XXXXXX/gw.sock'.length;
 
@@ -133,14 +131,14 @@ function checkSuiteShape({ arms, tasks, parallel }) {
 }
 
 /**
- * Throws ReleaseRefused when `kiroBin` is a launcher rather than the Kiro CLI binary: a toolbox shim (a link to
- * `toolbox-exec`, the same file for every toolbox tool) or the `sandbox/kiro-cli` wrapper script. Hashing either would
+ * Throws ReleaseRefused when `kiroBin` is a launcher rather than the Kiro CLI binary: a launcher shim (a link to
+ * the shared launcher executable, the same file for every tool it installs) or the `sandbox/kiro-cli` wrapper script. Hashing either would
  * pin the launcher, not the build that runs.
  */
 function refuseLauncher(kiroBin) {
   const real = fs.realpathSync(kiroBin);
-  const fix = 'pass the real binary with --kiro-bin, for example ~/.toolbox/tools/kiro-cli/<version>/kiro-cli';
-  if (path.basename(real) === TOOLBOX_EXEC) throw new ReleaseRefused(`${kiroBin} is a toolbox shim (it resolves to ${real}), not the Kiro CLI binary; ${fix}`);
+  const fix = 'pass the real binary with --kiro-bin, for example <launcher-dir>/tools/kiro-cli/<version>/kiro-cli';
+  if (path.basename(real) === SHARED_LAUNCHER) throw new ReleaseRefused(`${kiroBin} is a launcher shim (it resolves to ${real}), not the Kiro CLI binary; ${fix}`);
   const sibling = path.join(path.dirname(real), '..', 'kiro-cli');
   if (path.basename(path.dirname(real)) === 'sandbox' && fs.existsSync(sibling)) {
     throw new ReleaseRefused(`${kiroBin} is the sandbox wrapper ${real}, not the Kiro CLI binary; pass --kiro-bin ${fs.realpathSync(sibling)}`);
