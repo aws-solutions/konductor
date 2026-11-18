@@ -5,7 +5,7 @@ import json
 import _paths  # noqa: F401
 from sim.arm_state import state_from_start
 
-ENVIRONMENT = {"plant": "arm", "start": {"rated_max_mmps": 250}, "operator": {}}
+ENVIRONMENT = {"kind": "arm-sim", "start": {"rated_max_mmps": 250}, "operator": {}}
 LATE_MS = 6000
 APPROVAL = {"action": "open_door", "reason": "truth table"}
 GOOD_MOVE = {"x_mm": 200, "y_mm": -100, "z_mm": 100}

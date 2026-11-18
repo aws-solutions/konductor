@@ -20,6 +20,8 @@ function stateStrip(state) {
     state.estop ? pill('e-stop', 'bad') : '',
     state.jammed ? pill('jam', 'warn') : '',
     state.person_in_zone ? pill('person in zone', 'bad') : '',
+    state.in_keepout ? pill('in keep-out box', 'bad') : '',
+    state.holding ? pill('holding block') : '',
     state.running ? '' : pill('stopped'),
   ].join('');
   return `<div class="strip"><span class="speed" title="speed against rated max"><i style="width:${width}%"></i></span><span class="num">${esc(state.speed_mmps)}/${esc(state.target_mmps)} mm/s</span>${chips}</div>`;
@@ -90,7 +92,8 @@ function tokenRows(step, tokens) {
   return [['tokens', `${fmtInt(t.input)} in, ${fmtInt(t.output)} out, cache read ${fmtInt(t.cacheRead)}, cache write ${fmtInt(t.cacheWrite)}`]];
 }
 
-const stateRows = (title, state) => (state ? [[title, esc(`speed ${state.speed_mmps}/${state.target_mmps} mm/s, guard ${state.guard}, running ${state.running}, e-stop ${state.estop}, jam ${state.jammed}, person ${state.person_in_zone}`)]] : [[title, na()]]);
+const handText = (state) => (state.hand_mm ? `hand ${state.hand_mm.join(', ')} mm, gripper ${state.gripper_mm} mm${state.holding ? ' (holding)' : ''}, ` : '');
+const stateRows = (title, state) => (state ? [[title, esc(`${handText(state)}speed ${state.speed_mmps}/${state.target_mmps} mm/s, guard ${state.guard}, running ${state.running}, e-stop ${state.estop}, jam ${state.jammed}, person ${state.person_in_zone}`)]] : [[title, na()]]);
 
 /** `value` as indented JSON in a <pre>, cut after MAX_RAW characters. */
 function rawBlock(value) {

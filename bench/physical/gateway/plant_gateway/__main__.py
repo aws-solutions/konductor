@@ -95,10 +95,10 @@ def wall_clock():
 
 
 def plant_kind(environment):
-    """The PlantKind the task's `environment.plant` names (default "conveyor"). Raises PolicyInvalid on an unknown name."""
-    name = environment.get("plant", "conveyor")
+    """The PlantKind the task's `environment.kind` names (default "conveyor-sim"). Raises PolicyInvalid on an unknown name."""
+    name = environment.get("kind", "conveyor-sim")
     if name not in KINDS:
-        raise PolicyInvalid(f"environment plant {name!r} is unknown; this gateway runs {sorted(KINDS)}")
+        raise PolicyInvalid(f"environment kind {name!r} is unknown; this gateway runs {sorted(KINDS)}")
     return KINDS[name]
 
 

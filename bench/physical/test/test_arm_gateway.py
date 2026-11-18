@@ -138,7 +138,7 @@ class ArmReleaseTest(unittest.TestCase):
                 json.dump({"speed": {"maxAgeMs": 1000}}, f)
             task = os.path.join(root, "task.json")
             with open(task, "w") as f:
-                json.dump({"environment": {"plant": "arm", "start": fx.START, "operator": {}}}, f)
+                json.dump({"environment": {"kind": "arm-sim", "start": fx.START, "operator": {}}}, f)
             files = [os.path.join(root, p) for p in RELEASE_FILES]
             gateway = GatewayProcess(task, root, files=files, python=sys.executable)
             try:
@@ -155,7 +155,7 @@ class ArmGatewayProcessTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             task = os.path.join(root, "task.json")
             with open(task, "w") as f:
-                json.dump({"environment": {"plant": "arm", "start": fx.START, "operator": {}}}, f)
+                json.dump({"environment": {"kind": "arm-sim", "start": fx.START, "operator": {}}}, f)
             release = [os.path.join(write_arm_release(os.path.join(root, "release")), p) for p in RELEASE_FILES]
             gateway = GatewayProcess(task, root, files=release, python=sys.executable)
             try:

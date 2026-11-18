@@ -12,7 +12,7 @@ from gateway_client import GatewayProcess  # noqa: E402
 RELEASE_FILES = ("policy/plant.cedar", "policy/plant.cedarschema", "sensor-limits.json")
 TRUTH_TABLE = "truth-table.json"
 CONVEYOR_ENVIRONMENT = {"start": {"rated_max_mmps": 1000}, "operator": {}}
-TEST_OPS = {"conveyor": "set_state", "arm": "set_arm_state"}
+TEST_OPS = {"conveyor-sim": "set_state", "arm-sim": "set_arm_state"}
 BAD_TOKEN = "f" * 64
 
 
@@ -47,13 +47,13 @@ def wrong_token_is_refused(gateway, row, test_op):
 def run(release, python):
     """Runs every row of `release`/truth-table.json against a gateway started with `python`. Returns `(ok, lines)`.
 
-    The table may name its `environment` (an arm table carries `plant: "arm"`); the default is the conveyor's.
+    The table may name its `environment` (an arm table carries `kind: "arm-sim"`); the default is the conveyor's.
     """
     with open(os.path.join(release, TRUTH_TABLE), encoding="utf-8") as f:
         table = json.load(f)
     rows = table["rows"]
     environment = table.get("environment", CONVEYOR_ENVIRONMENT)
-    test_op = TEST_OPS[environment.get("plant", "conveyor")]
+    test_op = TEST_OPS[environment.get("kind", "conveyor-sim")]
     with tempfile.TemporaryDirectory(prefix="tt") as run_dir:
         task = os.path.join(run_dir, "task.json")
         with open(task, "w", encoding="utf-8") as f:

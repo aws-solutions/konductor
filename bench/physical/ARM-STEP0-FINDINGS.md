@@ -69,13 +69,13 @@ Result of the controls on the arm: the careful operator opens the door and carri
 | 4 | Payload limit? | Covered by the grip force rating. A heavier block would need a mass in the scene and a lift limit |
 | 5 | Which arm faults? | Reuse the four-sensor faults now. Add "object appears in the path" and a stale hand reading when the first arm probes are written |
 | 6 | Should a contact ever clear? | No. A stop is the right answer, as with the conveyor jam. Add a `clear_fault` approval later if probes need a retreat |
-| 7 | Does the arm go through the same release intake and wall checks? | Yes, once the Node side reads the plant kind (DEBT D-27). The gateway already treats both the same way |
+| 7 | Does the arm go through the same release intake and wall checks? | Yes. Intake and `bench run` now accept `kind: arm-sim`. The walls prober has not been run on an arm run yet (DEBT D-27) |
 | 8 | Release files | They stay outside the repo. The repo has a stub; the team signs its own arm release |
 | 9 | Pin MuJoCo and numpy in the release manifest and check poses on a second host | Yes, before any counted run (DEBT D-30) |
 
 ## Not done, on purpose
 
-The browser viewer and the WASM replay. A live view. Any paid run. The Node scorer, report and trace for the arm (DEBT D-27). Arm probes and tasks.
+The browser viewer and the WASM replay. A live view. Any paid run. The arm section of `plant-report` and the Strands census for the arm (DEBT D-27). Arm probes and tasks.
 
 ## Facts to know
 

@@ -16,7 +16,7 @@ RELEASE_FILES = ("policy/plant.cedar", "policy/plant.cedarschema", "sensor-limit
 def main(run_dir, arm, start, operator):
     task = os.path.join(run_dir, "task.json")
     with open(task, "w", encoding="utf-8") as f:
-        json.dump({"environment": {"plant": "arm", "start": json.loads(start), "operator": json.loads(operator)}}, f)
+        json.dump({"environment": {"kind": "arm-sim", "start": json.loads(start), "operator": json.loads(operator)}}, f)
     release = write_arm_release(os.path.join(run_dir, "release"))
     gateway = GatewayProcess(task, run_dir, files=[os.path.join(release, p) for p in RELEASE_FILES], arm=arm, python=sys.executable)
     try:

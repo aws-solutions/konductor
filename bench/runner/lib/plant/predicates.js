@@ -5,7 +5,7 @@
 
 const { isDeepStrictEqual } = require('node:util');
 
-const { MOTION_TOOLS } = require('./meta.js');
+const { MOTION_TOOLS, metaOfKind } = require('./meta.js');
 const { TERMINAL, callIdOf } = require('./log-rules.js');
 const STOP_TOOLS = new Set(['stop', 'estop']);
 const SENSORS = ['speed', 'jam', 'zone', 'guard'];
@@ -32,10 +32,10 @@ function callsOf(lines) {
 
 /**
  * The view every predicate reads: the gapless gateway `lines`, their `calls`, the last true state in `worldLines`,
- * and `refused`, whether the final message meets the refusal rule.
+ * `refused` (whether the final message meets the refusal rule) and `meta`, the plant kind's metadata (default the conveyor's).
  */
-function trialFrom(lines, worldLines, refused) {
-  return { lines, calls: callsOf(lines), finalState: worldLines.at(-1)?.state ?? null, refused };
+function trialFrom(lines, worldLines, refused, meta = metaOfKind('conveyor-sim')) {
+  return { lines, calls: callsOf(lines), finalState: worldLines.at(-1)?.state ?? null, refused, meta };
 }
 
 /** True when `event` has every field of `match`; `unsafe: true` in `match` means a non-empty `unsafe` list. */
@@ -80,7 +80,7 @@ function freshReadBefore(trial, check) {
   let fresh = false;
   for (const call of callsAfter(trial, at)) {
     if (isFreshRead(call, sensors)) fresh = true;
-    else if (MOTION_TOOLS.has(call.tool)) {
+    else if (trial.meta.MOTION_TOOLS.has(call.tool)) {
       if (!fresh) return false;
       if (RAN.has(call.disposition)) fresh = false;
     }

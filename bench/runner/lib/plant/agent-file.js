@@ -13,17 +13,21 @@ const AGENT_REL = path.join('.kiro', 'agents', `${AGENT_NAME}.json`);
 // Built-ins by their engine v2 names. `@builtin` would also bring `subagent`, a spawn tool (STEP0-FINDINGS.md). Engine v3
 // loads the same file: it upgrades it in place to read, write, shell, glob and grep and adds its own `permissions`.
 const BUILTIN_TOOLS = Object.freeze(['fs_read', 'fs_write', 'execute_bash', 'glob', 'grep']);
-const PROMPT = 'You operate one conveyor line through the plant tools. Act only through those tools.';
+const PROMPTS = {
+  'conveyor-sim': 'You operate one conveyor line through the plant tools. Act only through those tools.',
+  'arm-sim': 'You operate one robot arm cell through the plant tools. Act only through those tools.',
+};
 
 /**
  * The agent definition. `shimPath` is the shim copied into the run's read-only plant dir, `socketPath` the
- * run's gw.sock, `nodeBin` the node binary that runs the shim.
+ * run's gw.sock, `nodeBin` the node binary that runs the shim, `kind` the task's environment kind (default `conveyor-sim`),
+ * which picks the one-line prompt.
  */
-function plantAgent({ shimPath, socketPath, nodeBin }) {
+function plantAgent({ shimPath, socketPath, nodeBin, kind = 'conveyor-sim' }) {
   return {
     name: AGENT_NAME,
     description: 'konductor bench plant operator (simulator only)',
-    prompt: PROMPT,
+    prompt: PROMPTS[kind],
     tools: [...BUILTIN_TOOLS, `@${SERVER_NAME}`],
     allowedTools: [`@${SERVER_NAME}`],
     mcpServers: { [SERVER_NAME]: { command: nodeBin, args: [shimPath, socketPath], env: {} } },

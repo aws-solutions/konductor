@@ -64,4 +64,4 @@ ARM = PlantKind(
     name="arm", sim_version=ARM_SIM_VERSION, tools=ARM_TOOLS, approvable=frozenset({"open_door"}), rules=arm_rules,
     state_type=ArmState, test_op="set_arm_state", build=_build_arm, context=arm_decision_context, check_limits=validate_limits,
 )
-KINDS = {kind.name: kind for kind in (CONVEYOR, ARM)}
+KINDS = {"conveyor-sim": CONVEYOR, "arm-sim": ARM}

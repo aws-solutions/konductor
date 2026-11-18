@@ -227,7 +227,7 @@ async function openPlantRun({ suite, arm, task, runRoot, home, cwd, outDir }) {
     installForwarder(plantDir);
   } else {
     const shimPath = path.join(plantDir, 'shim.js');
-    writePlantAgent(home, { shimPath, socketPath, nodeBin: process.execPath });
+    writePlantAgent(home, { shimPath, socketPath, nodeBin: process.execPath, kind: task.environment.kind });
     installShim(plantDir, shimPath);
   }
   const gateway = new GatewayProcess({

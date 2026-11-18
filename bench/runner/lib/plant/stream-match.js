@@ -6,7 +6,7 @@
 
 const { argsSha256, canonicalArgs, streamArgs } = require('./canonical.js');
 const { SERVER_NAME } = require('./agent-file.js');
-const { TOOLS } = require('./meta.js');
+const { ALL_TOOLS } = require('./meta.js');
 const { censusProblems } = require('./strands-adapter.js');
 const { isV3Call, mcpCallOf, mcpInputOf } = require('../stream.js');
 const { callIdOf } = require('./log-rules.js');
@@ -53,7 +53,7 @@ function plantCallsInStream(events) {
   return calls;
 }
 
-const PLANT_TOOLS = new Set(TOOLS);
+const PLANT_TOOLS = new Set(ALL_TOOLS);
 const groupBy = (items, key) => {
   const map = new Map();
   for (const item of items) map.set(key(item), [...(map.get(key(item)) ?? []), item]);

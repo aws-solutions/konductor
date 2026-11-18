@@ -8,7 +8,7 @@
 const { argsSha256, streamArgs } = require('../../runner/lib/plant/canonical.js');
 const { streamCallsOf } = require('../../runner/lib/plant/stream-match.js');
 const { SERVER_NAME } = require('../../runner/lib/plant/agent-file.js');
-const { TOOLS } = require('../../runner/lib/plant/meta.js');
+const { ALL_TOOLS } = require('../../runner/lib/plant/meta.js');
 const { toolNameOf, subagentTargets, isV3Call, SUBAGENT_TOOL } = require('../../runner/lib/stream.js');
 const { SUBAGENT_TOOLS } = require('../../runner/lib/harness/claude-code-parse.js');
 const { PlantTraceError } = require('./load.js');
@@ -124,7 +124,7 @@ function claudeTrace(events) {
       if (SUBAGENT_TOOLS.has(b.name) && !agents.some((a) => a.id === b.id)) agents.push({ id: b.id, name: b.input?.subagent_type ?? '(unnamed)', parentId, order });
       if (!b.name?.startsWith(CLAUDE_PREFIX) || seen.has(b.id)) continue;
       const tool = b.name.slice(CLAUDE_PREFIX.length);
-      calls.push({ toolCallId: b.id, tool: TOOLS.includes(tool) ? tool : null, argsSha256: argsSha256(b.input ?? {}), engine: 'claude' });
+      calls.push({ toolCallId: b.id, tool: ALL_TOOLS.includes(tool) ? tool : null, argsSha256: argsSha256(b.input ?? {}), engine: 'claude' });
       seen.set(b.id, { ...newSeen(e, order, parentId), args: b.input ?? {} });
       const id = e.message.id;
       byCall.set(b.id, carried.has(id) || !usage.has(id) ? { sameCall: true } : usage.get(id));
