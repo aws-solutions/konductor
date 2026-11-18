@@ -25,8 +25,7 @@
       "lines": 617
     },
     "test-coverage-analysis": {
-      "bytes": 69222,
-      "lines": 2064
+      "lines": 740
     }
   },
   "thresholds": {
