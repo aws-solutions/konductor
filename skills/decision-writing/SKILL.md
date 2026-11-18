@@ -1,6 +1,6 @@
 ---
 name: decision-writing
-description: Use when drafting or reviewing a decision record (ADR, PDR, or UXDR), and to generate a complete inline ADR (Context, Decision, Status, Alternatives, Consequences) for a significant design decision during design doc creation. Covers structure, tone, alternatives framing, consequence articulation, and plain-writing tenets for data-driven, specific, and actionable decisions. Trigger phrases include "generate an ADR for this decision", "document this as an architecture decision record", and "create an ADR for choosing X over Y".
+description: 'Use when drafting or reviewing a decision record (ADR, PDR, or UXDR), or when a design decision needs one written up. Its ADR Mode produces a complete inline ADR covering Context, Decision, Status, Alternatives and Consequences. Covers structure, tone, alternatives framing, consequence articulation, and plain-writing tenets for data-driven, specific, and actionable decisions. Trigger phrases include "generate an ADR for this decision" and "create an ADR for choosing X over Y".'
 version: 1.1.0
 tags: [skill, adr, decision, architecture, design-doc, writing]
 ---

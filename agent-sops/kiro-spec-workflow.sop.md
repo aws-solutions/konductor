@@ -11,6 +11,8 @@ End-to-end workflow that transforms PM and design artifacts into Kiro IDE spec d
 
 > **Execution context:** Each skill below lives on the domain specialist who owns that artifact type, not on the orchestrator — this delegation buys capability specialization, since generating EARS requirements, a low-level design, or a Kiro task list each requires a different domain skill the orchestrator doesn't hold inline. The orchestrator delegates each step to the named agent and passes it the step's parameters; the specialist runs its skill and returns the output file.
 
+The orchestrator does not look these skills up or load them itself; the delegate named in each step runs its skill.
+
 > **No independent review exists for design.md today:** Steps 2 and 3 each run a lightweight self-check inside the same agent that generated the artifact. This catches clear defects but is not an independent review, since the generator and the checker share one context and one set of blind spots. `k-full-sdlc` runs `k-principal-engineer-design-review`, but against the earlier, project-wide `system-design.md` its own Step 3 produces, not against this SOP's per-feature `design.md`. Composing this SOP inside `k-full-sdlc` does not add an independent pass for the artifact this SOP produces. Whether run standalone or composed, this SOP's `design.md` gets only the self-check above until an independent review step is added after `k-full-sdlc`'s Step 6.
 
 ## Parameters

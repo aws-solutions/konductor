@@ -33,8 +33,8 @@ Another name for a **SOP**.
 ### `availableAgents`
 
 The list in a Kiro CLI agent spec (`clientConfig.kiroCli.toolsSettings.subagent.availableAgents`)
-naming exactly which agents that agent may spawn. An empty list means the agent holds the
-`subagent` tool but can spawn nothing. Only `konductor` is unrestricted. See
+naming exactly which agents that agent may spawn. Only `konductor` declares one; specialists
+hold no `subagent` tool at all. See
 [Who can delegate to whom](agents.md#who-can-delegate-to-whom).
 
 ### Canonical model
@@ -58,8 +58,10 @@ surfaces. See [github.com/manaflow-ai/cmux](https://github.com/manaflow-ai/cmux)
 ### Context file
 
 Markdown loaded into an **agent**'s memory at session start and kept active for the whole session,
-unlike a **skill**, which loads on demand. Two exist: `context/k-core-rules.md`, loaded by all 11
-**agents**, and `context/k-orchestrator-routing-rules.md`, loaded by all three **orchestrators**.
+unlike a **skill**, which loads on demand. Four exist: `context/k-core-rules.md`, loaded by all 11
+**agents**; `context/k-orchestrator-shared.md`, loaded by all three **orchestrators**;
+`context/k-direct-work.md`, loaded by `konductor`; and `context/k-orchestrator-routing-rules.md`,
+loaded by the mux and cmux **orchestrators**.
 
 ### CRITICAL / IMPORTANT / SUGGESTION
 
@@ -152,10 +154,11 @@ Renders as a diagram in GitHub, most Markdown viewers, and many IDEs.
 
 ### Orchestrator
 
-An **agent** that coordinates other agents and never implements directly. Three exist:
+An **agent** that coordinates other agents; `konductor` also does the work itself. Three exist:
 `konductor` (background subagents), `konductor-mux-orchestrator` (tmux/zellij panes), and
-`konductor-cmux-orchestrator` (**cmux** surfaces). All are read-only by rule — they delegate every
-file write and shell command.
+`konductor-cmux-orchestrator` (**cmux** surfaces). The mux and cmux orchestrators are read-only by
+rule and delegate every file write and shell command; `konductor` writes in its own session and
+spawns a reviewer at each phase gate in the default `auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators.
 
 ### Orphan skill
 
@@ -173,7 +176,7 @@ project is worked on. See [Initialize a project](tasks/initialize-a-project.md#t
 ### Read-only
 
 Applied to an **agent**, it means the agent never mutates state — no file writes, no shell
-commands, no git operations. The **orchestrators** are read-only by rule. Applied to a **SOP** (as
+commands, no git operations. The **mux and cmux orchestrators** are read-only by rule, and `konductor` is too in `coordinator` mode. Applied to a **SOP** (as
 with `k-pre-cr-critique`), it means the SOP never modifies source files, creates commits, or runs
 builds or tests.
 

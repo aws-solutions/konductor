@@ -1,6 +1,6 @@
 ---
 name: adversarial-code-review
-description: 'Targets the three gap categories standard review misses: information disclosure, data integrity, and schema validation. Use for a second-pass review after standard code review, as the checker in a maker-checker cycle, or before submitting a change that touches auth, data writes, or external API boundaries.'
+description: 'Targets the three gap categories standard review misses: information disclosure, data integrity, and schema validation. Use as a second pass after code review, as the checker in a maker-checker cycle, or before submitting a change to auth, data writes or external APIs.'
 version: 1.1.0
 tags:
   [
@@ -27,6 +27,8 @@ Use this skill when:
 - Running a second-pass review after standard code review is complete
 - Spawned by the orchestrator as the checker in a maker-checker cycle
 - Reviewing a change before submission when the change touches auth, data writes, or external API boundaries
+
+The full adversarial pull request review (`k-adversarial-pull-request-review`: four `k-developer` generator passes, then this skill's Validator Mode in a fresh `k-architect` session) is coordinated by the orchestrator, which alone declares that SOP. Asked for it directly, say to run it through `konductor` instead of running the passes yourself.
 
 ## Modes
 
@@ -56,9 +58,7 @@ Output for each finding: `KEEP` with the finding unchanged, or `REJECT` with a o
 
 ## Review Lenses
 
-Each lens has its own pass skill, which is the single source for that lens's checklist, codebase-awareness rules, out-of-scope exemptions, and severity guidance. In Generator Mode, load all three and apply each to the diff. A coordinator SOP such as `k-adversarial-pull-request-review` runs them as parallel subagents instead.
-
-When you run the passes inline, you are the coordinator: merge findings that share a file:line and root cause, and keep the highest severity. A direct run is Generator Mode only. The Validator Mode filter does not run on its output, because the two modes must not be mixed in one pass; the merged findings go to the user with the closing "Fix these issues?" prompt. To filter them, run Validator Mode separately, as a different persona, the way the coordinator SOP does.
+Each lens has its own pass skill, which is the single source for that lens's checklist, codebase-awareness rules, out-of-scope exemptions, and severity guidance. The coordinator SOP `k-adversarial-pull-request-review` spawns the three lens passes as parallel generator passes and then a fourth reuse pass, each in its own session. Per the Usage note above, this skill never runs a pass itself.
 
 | Lens                                   | Pass skill                               | Covers                                                                                                          |
 | -------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------- |

@@ -23,6 +23,7 @@ anstyle under the MIT OR Apache-2.0 license.
 anstyle-parse under the MIT OR Apache-2.0 license.
 anstyle-query under the MIT OR Apache-2.0 license.
 anstyle-wincon under the MIT OR Apache-2.0 license.
+async-trait under the MIT OR Apache-2.0 license.
 autocfg under the Apache-2.0 OR MIT license.
 backtrace under the MIT OR Apache-2.0 license.
 base64 under the MIT OR Apache-2.0 license.
@@ -42,6 +43,9 @@ core-foundation-sys under the MIT OR Apache-2.0 license.
 cpufeatures under the MIT OR Apache-2.0 license.
 crc32fast under the MIT OR Apache-2.0 license.
 crypto-common under the MIT OR Apache-2.0 license.
+darling under the MIT license.
+darling_core under the MIT license.
+darling_macro under the MIT license.
 digest under the MIT OR Apache-2.0 license.
 displaydoc under the MIT OR Apache-2.0 license.
 dyn-clone under the MIT OR Apache-2.0 license.
@@ -75,6 +79,7 @@ icu_normalizer_data under the Unicode-3.0 license.
 icu_properties under the Unicode-3.0 license.
 icu_properties_data under the Unicode-3.0 license.
 icu_provider under the Unicode-3.0 license.
+ident_case under the MIT/Apache-2.0 license.
 idna under the MIT OR Apache-2.0 license.
 idna_adapter under the Apache-2.0 OR MIT license.
 indexmap under the Apache-2.0 OR MIT license.
@@ -93,15 +98,17 @@ object under the Apache-2.0 OR MIT license.
 once_cell under the MIT OR Apache-2.0 license.
 once_cell_polyfill under the MIT OR Apache-2.0 license.
 owo-colors under the MIT license.
-paste under the MIT OR Apache-2.0 license.
+pastey under the MIT OR Apache-2.0 license.
 percent-encoding under the MIT OR Apache-2.0 license.
 pin-project-lite under the Apache-2.0 OR MIT license.
 potential_utf under the Unicode-3.0 license.
 proc-macro2 under the MIT OR Apache-2.0 license.
 quote under the MIT OR Apache-2.0 license.
+ref-cast under the MIT OR Apache-2.0 license.
+ref-cast-impl under the MIT OR Apache-2.0 license.
 ring under the Apache-2.0 AND ISC license.
-rmcp under the MIT/Apache-2.0 license.
-rmcp-macros under the MIT/Apache-2.0 license.
+rmcp under the Apache-2.0 license.
+rmcp-macros under the Apache-2.0 license.
 rustc-demangle under the MIT/Apache-2.0 license.
 rustix under the Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT license.
 rustls under the Apache-2.0 OR ISC OR MIT license.
