@@ -92,6 +92,59 @@ describe('App', () => {
     expect(execution.getAttribute('aria-selected')).toBe('true');
   });
 
+  it('announces nothing while the workflow is loading', () => {
+    render(<App load={new Promise<LoadResult>(() => {})} />);
+
+    expect(screen.getByTestId('run-live-status').textContent).toBe('');
+  });
+
+  it('announces nothing to run when the load failed', async () => {
+    render(<App load={settled(failed('The launch code is not valid.'))} />);
+
+    await screen.findByText('The launch code is not valid.');
+    expect(screen.getByTestId('run-live-status').textContent).toBe('');
+  });
+
+  it('says the run is ready once the workflow has loaded', async () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('run-live-status').textContent).toBe(
+        'Ready. Press Run to start.',
+      ),
+    );
+  });
+
+  it.each([
+    {
+      when: 'the workflow file is missing',
+      document: { ...HELLO_DOCUMENT, text: null, hash: null, view: null },
+      shown: 'The workflow has no file yet.',
+    },
+    {
+      when: 'the workflow file is not valid',
+      document: {
+        ...HELLO_DOCUMENT,
+        text: 'format: nope\n',
+        view: null,
+        diagnostics: [
+          {
+            message: 'The format is not known.',
+            line: 1,
+            path: 'format',
+            severity: 'error' as const,
+          },
+        ],
+      },
+      shown: 'The format is not known.',
+    },
+  ])('announces nothing to run when $when', async ({ document, shown }) => {
+    render(<App load={settled(loaded(document))} />);
+
+    await screen.findByText(shown, { exact: false });
+    expect(screen.getByTestId('run-live-status').textContent).toBe('');
+  });
+
   it('lets Tab reach only the selected view in the switch', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
 

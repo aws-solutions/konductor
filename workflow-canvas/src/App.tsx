@@ -29,6 +29,14 @@ import {
 type ViewId = 'designer' | 'execution';
 
 /**
+ * True when the Run view draws a workflow, so it has a Run button. A load
+ * can succeed with no view: no file yet, or a file with errors.
+ */
+function drawsWorkflow(result: LoadResult | undefined): boolean {
+  return result?.ok === true && result.workflow.document.view !== null;
+}
+
+/**
  * Root component: the top bar, then the page header (breadcrumbs, the name of
  * the workflow as the title, and the Designer and Execution switch), then the
  * selected view. Both views draw the workflow that `load` settles with, and
@@ -132,7 +140,10 @@ export function App({
             }
           >
             {notice}
-            <RunAnnouncements state={execution.state} />
+            <RunAnnouncements
+              state={execution.state}
+              loaded={drawsWorkflow(saved)}
+            />
             <ModePanels views={views} active={view} />
           </ContentLayout>
         }

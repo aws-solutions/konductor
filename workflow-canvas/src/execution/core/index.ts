@@ -33,4 +33,9 @@ export {
   type Scheduler,
 } from './ports';
 export { stageDrift, type StageDrift } from './stage-drift';
-export { statusKind, statusText, type StatusKind } from './status-text';
+export {
+  liveStatusText,
+  statusKind,
+  statusText,
+  type StatusKind,
+} from './status-text';
