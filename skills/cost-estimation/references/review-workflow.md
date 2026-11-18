@@ -73,19 +73,13 @@ Once they provide materials:
 
 ### Step 4: Current Pricing Validation (FIRST MCP calls)
 
-**NOW begin AWS Pricing MCP server usage for validation:**
+**NOW begin pricing calls through the AWS MCP server**, as `SKILL.md` describes under Available Tools:
 
-1. **USE get_pricing_service_codes()** to confirm all services in their estimate are available for pricing
+1. **Load `aws-billing-and-cost-management`** and its pricing lookup reference, and confirm each service in their estimate has a Price List service code.
 
-2. **For each service in their existing estimate:**
+2. **For each service in their existing estimate**, call `DescribeServices` and `GetAttributeValues` for the filters, then `GetProducts` for the current unit price.
 
-   ```
-   USE get_pricing_service_attributes(service_code)
-   USE get_pricing_attribute_values(service_code, [relevant_attributes])
-   USE get_pricing(service_code, region, current_filters, output_options)
-   ```
-
-If the pricing tools aren't available and you can't ask the user to add them (they said not to ask, or nobody is there to answer), use published list prices for the estimate's region. Say so at the top of the report and mark those figures unverified. Never invent a unit price you don't know: leave that line unpriced and say what would price it.
+If the AWS MCP server isn't available, or a pricing call is denied and you can't ask the user to fix it (they said not to ask, or nobody is there to answer), use published list prices for the estimate's region. Say so at the top of the report and mark those figures unverified. Never invent a unit price you don't know: leave that line unpriced and say what would price it.
 
 ### Step 5: Complete Validation and Gap Analysis
 
@@ -192,10 +186,10 @@ Your enhanced report will include:
 
 ### Step 8: Enhanced Cost Analysis Report Creation
 
-**Compile enhanced analysis using AWS Pricing MCP server data:**
+**Compile enhanced analysis using the Price List API data:**
 
 1. **Create comparison analysis:**
-   - Original estimate vs. current AWS pricing from get_pricing() calls
+   - Original estimate vs. current AWS pricing from the `GetProducts` calls
    - One row per original line with its original and corrected cost and the reason, including lines that were right; mark added lines as new
    - Identify pricing discrepancies and corrections needed
    - Calculate potential savings from optimization opportunities
@@ -204,7 +198,7 @@ Your enhanced report will include:
 2. **Generate enhanced cost analysis:**
    - Updated service-by-service breakdown with current pricing
    - Corrected assumptions and validated calculations
-   - The pricing source (Pricing MCP server or published list prices) and a confidence range for the corrected total
+   - The pricing source (Price List API or published list prices) and a confidence range for the corrected total
    - Optimization levers with estimated monthly savings, grouped by horizon (0-30 days, 1-6 months, 6+ months)
    - Risk assessment and implementation considerations
    - Professional executive summary for stakeholders
