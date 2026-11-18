@@ -11,7 +11,8 @@ const path = require('path');
 
 const judgePrompt = require('../../../scripts/bench/lib/judge-prompt');
 const judgeScale = require('../../../scripts/bench/lib/judge-scale');
-const { createJudgeInput } = require('../../../scripts/bench/lib/judge-input');
+const judgeInputModule = require('../../../scripts/bench/lib/judge-input');
+const { createJudgeInput } = judgeInputModule;
 const {
   judgmentInputs,
   checklistSha256,
@@ -233,11 +234,10 @@ for (const [name, text] of Object.entries(FAKE)) {
 }
 test('answers: control characters are removed, newlines and tabs stay', () => {
   const rendered = renderPrompt({
-    // The renderer cleans what it is given, even if a record's text was changed after prepare().
-    answer: {
-      ...prepareAnswer(ANSWER),
-      text: 'a\u0000b\u001b[31mc\u007f\td\u000be\u000cf\u000e\u001fg\nh',
-    },
+    // The renderer cleans what it is given: the text of a prepared record can still hold control characters.
+    answer: prepareAnswer(
+      'a\u0000b\u001b[31mc\u007f\td\u000be\u000cf\u000e\u001fg\nh',
+    ),
   });
   assert.equal(extractAnswerBlock(rendered.prompt), 'ab[31mc\tdefg\nh');
 });
@@ -245,9 +245,9 @@ test('marker collision: refuses when the marker is in the request, the checklist
   for (const overrides of [
     { request: `see ${MARKER}` },
     { checklist: [`mention ${MARKER}`] },
-    { answer: { ...prepareAnswer(ANSWER), text: MARKER } },
+    { answer: prepareAnswer(MARKER) },
     // The check runs on the cleaned text, so a marker split by a control character is found too.
-    { answer: { ...prepareAnswer(ANSWER), text: 'fixedmarker\u00010001' } },
+    { answer: prepareAnswer('fixedmarker\u00010001') },
   ]) {
     assert.throws(() => renderPrompt(overrides), /marker appears/);
   }
@@ -305,14 +305,11 @@ test('refusal: an answer that is not eligible is never rendered, and the reason 
 });
 test('allow-list: nothing but the answer text reaches the prompt', () => {
   const secret = 'SENTINEL-NOT-FOR-JUDGES';
-  const record = {
-    ...prepareAnswer(ANSWER),
-    changes: [secret],
-    counts: { [secret]: 1 },
-    leaks: [{ id: secret }],
-    removed_by_rule: { [secret]: 3 },
-    extra: secret,
-  };
+  // The record is frozen, but the list and the maps on it are not: the sentinel goes into each of them.
+  const record = prepareAnswer(ANSWER);
+  for (const name of ['counts', 'leaks', 'removed_by_rule'])
+    if (Array.isArray(record[name])) record[name].push({ id: secret });
+    else record[name][secret] = secret;
   assert.ok(!renderPrompt({ answer: record }).prompt.includes(secret));
 });
 test('arguments: a bad marker, request, checklist or scale is refused', () => {
@@ -430,6 +427,12 @@ test('refusal: a record not made by prepare() is never rendered, even when it sa
     { ...real, rules_sha256: real.rules_sha256.slice(1) },
     { ...real, rules_sha256: real.rules_sha256.toUpperCase() },
     { ...real, rules_sha256: undefined },
+    // Plausible stamps on an object prepare() did not return: a copy of a record, a hand-built one, a clone.
+    { ...real },
+    { ...real, text: 'raw answer that never went through the sanitizer' },
+    structuredClone(real),
+    JSON.parse(JSON.stringify(real)),
+    Object.create(real),
   ];
   for (const record of forged)
     assert.throws(
@@ -438,6 +441,16 @@ test('refusal: a record not made by prepare() is never rendered, even when it sa
       JSON.stringify({ ...record, text: undefined }),
     );
   assert.ok(renderPrompt({ answer: real }).prompt);
+  // A prepared record cannot be edited after the fact, so its text is the text the sanitizer returned.
+  assert.ok(Object.isFrozen(real));
+  assert.throws(() => {
+    real.text = 'edited after prepare()';
+  }, TypeError);
+  assert.ok(judgeInputModule.isPrepared(real));
+  for (const record of forged)
+    assert.equal(judgeInputModule.isPrepared(record), false);
+  for (const value of [null, undefined, 'text', 3])
+    assert.equal(judgeInputModule.isPrepared(value), false);
 });
 test('judgment provenance: refuses a record that another sanitizer prepared, or no record', () => {
   const other = createJudgeInput({ maxRemovedShare: 0.5 });
@@ -455,13 +468,14 @@ test('judgment provenance: refuses a record that another sanitizer prepared, or 
       }),
     /the without answer was prepared by sanitizer/,
   );
+  // Changing a stamp on a copy does not make it another sanitizer's record: a copy is not a prepared record at all.
   assert.throws(
     () =>
       judgePrompt.judgmentProvenance({
         ...PROVENANCE_ARGS,
         answer: { ...prepareAnswer(ANSWER), sanitizer_version: 99 },
       }),
-    /the with answer was prepared by sanitizer 99/,
+    /not a judge-input record \(it was not returned by createJudgeInput\(\)\.prepare/,
   );
   // The record, not the input argument, is what the stored provenance must agree with.
   assert.throws(
