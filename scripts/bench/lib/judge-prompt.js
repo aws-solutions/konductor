@@ -24,8 +24,8 @@
  * fills in. Only the `text` of the answer record reaches a judge; the renderer also reads the record's eligibility and
  * sanitizer stamps before it renders, and nothing else about the task or the record can reach the prompt.
  *
- * An answer is rendered only when its judge-input record is eligible (judge-input.js) and carries the sanitizer version
- * and rules hash that prepare() stamps on it. Otherwise this throws and the judge job records that arm's answer as not
+ * An answer is rendered only when its judge-input record is eligible (judge-input.js), is the object prepare() returned
+ * and carries the sanitizer version and rules hash that prepare() stamps on it. Otherwise this throws and the judge job records that arm's answer as not
  * judged.
  */
 'use strict';
@@ -36,6 +36,7 @@ const path = require('path');
 const { sha256, judgmentInputs, checklistSha256 } = require('./provenance');
 const { ARMS } = require('./layout');
 const { resolveScale } = require('./judge-scale');
+const { isPrepared } = require('./judge-input');
 
 const PROMPTS_DIR = path.join(__dirname, '..', 'prompts');
 const PLACEHOLDERS = Object.freeze(['task', 'rubric', 'answer', 'marker']);
@@ -114,8 +115,10 @@ const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 /**
  * Why `record` is not a judge-input record (createJudgeInput(...).prepare output), or null. A bare
- * { eligible: true, text } is refused: the fields prepare() stamps on every record are what show that the text went
- * through the sanitizer, so unsanitized text cannot reach a judge by carrying a flag.
+ * { eligible: true, text } is refused for the stamps it lacks (sanitizer_version and rules_sha256, which prepare() puts
+ * on every record). The stamps are plain data a caller could copy, so they only catch a record built by mistake: what
+ * shows that the text went through the sanitizer is that prepare() returned this very object (judge-input.js
+ * isPrepared). A copy of a record, or one built by hand with plausible stamps, is refused.
  */
 function findRecordProblem(record) {
   if (!record || typeof record !== 'object') return 'no judge-input record';
@@ -129,6 +132,8 @@ function findRecordProblem(record) {
     !SHA256_HEX.test(record.rules_sha256)
   )
     return 'not a judge-input record (rules_sha256 is missing or malformed)';
+  if (!isPrepared(record))
+    return 'not a judge-input record (it was not returned by createJudgeInput().prepare, so nothing shows that the sanitizer ran on its text)';
   return null;
 }
 
