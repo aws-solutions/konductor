@@ -1,7 +1,7 @@
 ---
 name: legacy-to-agentic-estimate
-description: 'Convert legacy all-human-coding effort estimates into agentic SDLC estimates that account for AI toolchains and agents. Use to turn a legacy estimate (one item or a batch) into an agentic one, re-baseline LOE for AI, or estimate from a legacy value plus a task description.'
-version: 1.0.0
+description: Converts legacy all-human effort estimates into agentic SDLC estimates. Use to turn a legacy estimate (one item or a batch) into an agentic one, re-baseline LOE for AI, or estimate from a legacy value plus a task description.
+version: 1.1.0
 tags: [skill, estimation, agentic-sdlc, loe, re-baseline, planning]
 ---
 
@@ -22,9 +22,7 @@ hand.
 > **The most important output is not the converted number** — it is that
 > **capability maturity is the dominant lever**. Every mature, evaluator-backed
 > capability you ship raises realized leverage (`L_eff`) and lowers the
-> verification tax (`τ`). Treat this skill as a **transitional tool**, not an
-> oracle: its credibility rests entirely on parameters measured from your own
-> history.
+> verification tax (`τ`).
 
 ## Input contract
 
@@ -117,6 +115,16 @@ realized output spread is narrower for low-leverage items and can be well below
 ±15% even at base confidence).
 Surface the guess, never hide it.
 
+The exact rule, from `convert` and `band_for` in the script:
+
+- `band = 0.15 + 0.30 × (1 − confidence)` (confidence 0.82 gives 0.204)
+- low = the formula with `L × (1 + band)` (capped at 1) and `τ × (1 − band)`
+- high = the formula with `L × (1 − band)` and `τ × (1 + band)`
+- mid uses the preset `L` and `τ`; `C` is not flexed. Round each to one decimal.
+
+The worked examples below all use confidence 1.0 (band 0.15). Don't reuse their
+low/high values for an item at a different confidence; recompute the corners.
+
 **Why the model step lives in the agent, not the script:** the bundled script is
 **deterministic and sandboxed (stdlib only, no network/LLM access)**. It exposes
 a **seam** — `prepare_batch` flags low-confidence items, the **agent** classifies
@@ -139,6 +147,14 @@ checkout (only when `.claude-plugin/marketplace.json` names `konductor`).
 If none matches, the block prints an error and exits 1 instead of running
 `python3` against an empty path. Every command block below is one
 that was run against this script.
+
+**No shell available?** If Bash is denied or `python3` can't run, Read
+`scripts/convert_estimates.py` and apply `infer_tier` and `convert` by hand,
+literally: score each description against `_TIER_SIGNALS` to get the tier and
+confidence, then compute the corners with the band rule above. Approximating
+the bands from the worked examples gets the low/high values wrong. Say in the
+output that the figures were hand-computed and should be re-run through the
+script.
 
 ### Step 1 — Parse the input estimates
 
@@ -248,7 +264,7 @@ Add a brief interpretation calling out:
 - (b) **low-leverage items can cost more** — a novel/security task costing more is
   a correct result, not an error;
 - (c) which tiers were **escalated to model judgment** (`inferred-llm`) and should
-  be reviewed;
+  be reviewed, or that none were (every keyword confidence ≥ 0.55);
 - (d) that `L`, `τ`, `v`, and `C` **must be recalibrated from the team's own
   telemetry** to be credible.
 
@@ -289,7 +305,9 @@ tier was reached), with a totals roll-up row:
 | Design multi-region failover arch.  | 60     | 🔴 low  | inferred·kw (100%) | 66   | 68.2 | 70.5 | +14%    |
 | **Total**                           | **84** |         |                    | …    | …    | …    | …       |
 
-Plus a short interpretation and the recalibration caveat.
+Label every Tier source cell `inferred·kw (NN%)` or `inferred·llm (NN%)`, with
+the numeric confidence. Follow the table with a short interpretation and the
+recalibration caveat.
 
 ## Operationalization lifecycle
 
@@ -307,6 +325,9 @@ Treat the presets as a starting point and calibrate against reality:
 
 ## Guardrails
 
+- **Not an oracle.** Treat this skill as a transitional tool: its credibility
+  rests entirely on `L`, `τ`, `v`, and `C` measured from your own cycle-time
+  telemetry.
 - **Weight the tail.** Agents accelerate the first ~90%; the last 10%
   (integration, edge cases, prod-hardening) can grow. That growth lives in `τ` —
   don't zero it out.
@@ -329,8 +350,6 @@ Treat the presets as a starting point and calibrate against reality:
 - Treat **capability maturity (`C`)** as the dominant lever — the same task swings
   from big savings (−42%) to **nearly break-even (−2%)** purely by dropping `C`,
   with τ still held at the tier default.
-- Always include the caveat that `L`, `τ`, `v`, and `C` must be **measured from
-  your own cycle-time telemetry** to be credible.
 
 ### Don't
 
@@ -344,8 +363,6 @@ Treat the presets as a starting point and calibrate against reality:
   security) — it doesn't shrink.
 - Don't present low-leverage increases as errors — a novel/security task costing
   more is a correct result.
-- Don't treat the output as an oracle — its credibility rests entirely on
-  parameters measured from your own history.
 
 ### Common Failures
 

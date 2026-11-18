@@ -391,6 +391,16 @@ def test_bare_path_to_missing_file_under_existing_dir_fails(tmp_path):
     assert "path" in _rules(skill)
 
 
+def test_bare_path_fetched_from_another_skill_bundle_is_ignored(tmp_path):
+    body = (
+        "Fetch it with `aws___retrieve_skill` and `file=\"references/schema.md\"`; "
+        "it is not on disk here.\n"
+    )
+    skill = _skill(tmp_path, body=body)
+    (skill / "references").mkdir()
+    assert _rules(skill) == set()
+
+
 # references/ shape, orphans, and read cues.
 
 

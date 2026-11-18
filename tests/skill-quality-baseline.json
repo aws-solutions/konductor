@@ -2,42 +2,30 @@
   "_comment": "Shrink-only ratchet read by tests/test_skill_quality.py. An entry is the exact measured value of a dimension that is over its threshold. Lower or delete an entry when you slim a skill; never raise one; never add one for an existing skill unless the threshold above was lowered in the same change. Renaming a skill adds an entry, so bring a renamed skill under every threshold first. Regenerate with: python3 tests/skill_quality.py --print-baseline",
   "skills": {
     "cypress-test-implementation": {
-      "bytes": 53895,
+      "bytes": 53878,
       "lines": 1944
     },
-    "dynamodb-design": {
-      "bytes": 75539,
-      "lines": 2195
-    },
-    "dynamodb-validation": {
-      "bytes": 64678,
-      "lines": 1903
-    },
     "e2e-test-strategy": {
-      "bytes": 46244,
-      "lines": 1595
+      "bytes": 32797,
+      "lines": 981
     },
     "humanize-writing": {
       "bytes": 38158,
       "lines": 561
     },
     "iam-policy-design": {
-      "bytes": 37071,
-      "lines": 933
-    },
-    "infra-validation": {
-      "bytes": 49149,
-      "lines": 1346
+      "bytes": 37292,
+      "lines": 810
     },
     "policy-validation": {
-      "bytes": 34231,
-      "lines": 906
+      "bytes": 40604,
+      "lines": 862
     },
     "security-test-generation": {
-      "lines": 615
+      "lines": 617
     },
     "test-coverage-analysis": {
-      "bytes": 69262,
+      "bytes": 69222,
       "lines": 2064
     }
   },

@@ -76,6 +76,11 @@ REFERENCE_DEFINITION = re.compile(r"^ {0,3}\[(?!\^)[^\]]+\]:\s*(\S+)")
 CODE_SPAN = re.compile(r"(`+)(?!`)(.+?)(?<!`)\1(?!`)")
 URL_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
 BARE_PATH = re.compile(r"(?<![\w/.-])((?:references|scripts|evals|templates|assets)/[\w./-]+)")
+# A line that names the AWS MCP server's skill-file fetch tool is describing a
+# path inside ANOTHER skill's bundle, which `file=` takes in the same
+# `references/...` shape. Those paths are never on this skill's disk, so the
+# on-disk check below would reject correct prose.
+EXTERNAL_BUNDLE_FETCH = re.compile(r"\baws___retrieve_skill\b")
 READ_VERB = re.compile(r"\b(read|open|consult|load)\b", re.IGNORECASE)
 READ_CONDITION = re.compile(r"\b(when|whenever|before|after|if|unless|during|only)\b", re.IGNORECASE)
 SKILL_NAME = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -345,6 +350,8 @@ def _check_links(report: SkillReport, skill_dir: Path, unfenced: list[str], star
 
 def _check_bare_paths(report: SkillReport, skill_dir: Path, unfenced: list[str], start: int) -> None:
     for offset, line in enumerate(unfenced):
+        if EXTERNAL_BUNDLE_FETCH.search(line):
+            continue
         for match in BARE_PATH.finditer(line):
             path = match.group(1).rstrip(".,;:)")
             if not (skill_dir / path.split("/", 1)[0]).is_dir():
