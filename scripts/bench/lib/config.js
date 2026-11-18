@@ -11,8 +11,9 @@
  * The known settings are the key structure of this package's own bench/config.example.json, not of the `--root`
  * repository. The settings file must have every known setting: a missing one is refused by name, and so is a
  * setting the example does not have, so a typo cannot pass silently. In overrides, objects merge key by key and
- * arrays replace. `models.judges` is an open map: it may hold any seat name, and in overrides a seat set to null is
- * removed.
+ * arrays replace. `models.judges`, `judge_timeout_ms_by_seat` and `judge_max_output_tokens_by_seat` are open maps:
+ * they may hold any key, and in overrides a key set to null is removed. `judge_max_output_tokens` is one number
+ * for every judge; `judge_max_output_tokens_by_seat` gives the seats that need another number.
  */
 'use strict';
 
@@ -37,7 +38,15 @@ const shellQuote = (text) => `'${String(text).replace(/'/g, `'\\''`)}'`;
 const missingConfigMessage = (file, example = EXAMPLE_CONFIG_FILE) =>
   `${file} not found: run cp ${shellQuote(example)} ${shellQuote(file)}, then edit it`;
 
-const OPEN_MAPS = new Set(['models.judges']);
+const OPEN_MAPS = new Set([
+  'models.judges',
+  'judge_timeout_ms_by_seat',
+  'judge_max_output_tokens_by_seat',
+]);
+// The output limit of a judge call, in tokens: opencode.js writes it into the model entry and prices the reservation
+// with it. Below 256 a reply cannot hold a verdict; 128000 is the largest output limit a pinned model has.
+const MIN_OUTPUT_TOKENS = 256;
+const MAX_OUTPUT_TOKENS = 128000;
 // Top-level settings this version does not have, each with the message a settings file that sets one gets in place
 // of the generic "unknown setting".
 const REPLACED_SETTINGS = Object.freeze({
@@ -168,6 +177,44 @@ function validateSettings(config, errors) {
   if (config.aws_profile !== null)
     checkNonEmptyString(config.aws_profile, 'aws_profile');
   checkNonEmptyString(config.aws_region, 'aws_region');
+  const checkTimeout = (value, settingPath) => {
+    if (!Number.isInteger(value) || value < 1000 || value > 3600000)
+      errors.push(
+        `${settingPath}: must be a whole number of milliseconds from 1000 to 3600000`,
+      );
+  };
+  checkTimeout(config.judge_timeout_ms, 'judge_timeout_ms');
+  for (const [seat, timeoutMs] of Object.entries(
+    config.judge_timeout_ms_by_seat,
+  )) {
+    // A seat that is not in models.judges is a typo or a leftover; it would be ignored without a word.
+    if (!Object.hasOwn(config.models.judges, seat))
+      errors.push(
+        `judge_timeout_ms_by_seat.${seat}: no such judge seat in models.judges (remove the entry)`,
+      );
+    checkTimeout(timeoutMs, `judge_timeout_ms_by_seat.${seat}`);
+  }
+  const checkOutputTokens = (value, settingPath) => {
+    if (
+      !Number.isInteger(value) ||
+      value < MIN_OUTPUT_TOKENS ||
+      value > MAX_OUTPUT_TOKENS
+    )
+      errors.push(
+        `${settingPath}: must be a whole number of tokens from ${MIN_OUTPUT_TOKENS} to ${MAX_OUTPUT_TOKENS}`,
+      );
+  };
+  checkOutputTokens(config.judge_max_output_tokens, 'judge_max_output_tokens');
+  for (const [seat, tokens] of Object.entries(
+    config.judge_max_output_tokens_by_seat,
+  )) {
+    // A seat that is not in models.judges is a typo or a leftover; it would be ignored without a word.
+    if (!Object.hasOwn(config.models.judges, seat))
+      errors.push(
+        `judge_max_output_tokens_by_seat.${seat}: no such judge seat in models.judges (remove the entry)`,
+      );
+    checkOutputTokens(tokens, `judge_max_output_tokens_by_seat.${seat}`);
+  }
   for (const [callKind, price] of Object.entries(
     config.estimate_usd_per_call,
   )) {

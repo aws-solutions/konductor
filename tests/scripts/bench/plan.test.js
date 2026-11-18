@@ -17,6 +17,10 @@ const {
 } = require('../../../scripts/bench/lib/config');
 const { callCost } = require('../../../scripts/bench/lib/cost-profile');
 const {
+  callCeiling,
+  judgeMaxOutputTokens,
+} = require('../../../scripts/bench/lib/call-ceiling');
+const {
   createLayout,
   LayoutError,
 } = require('../../../scripts/bench/lib/layout');
@@ -123,10 +127,34 @@ test('plan writes nothing, and its sources use no network, process or AWS module
     );
     assert.deepEqual(fs.readdirSync(dir, { recursive: true }).sort(), before);
   });
+  // The sources of `plan` are bench.js and every local module it loads, followed through their requires. The
+  // judge client (lib/opencode.js) and its spawn helper start processes by design; plan must never load them.
+  const planSources = new Set();
+  const pending = [BENCH_JS];
+  while (pending.length) {
+    const file = pending.pop();
+    if (planSources.has(file)) continue;
+    planSources.add(file);
+    const text = fs.readFileSync(file, 'utf8');
+    for (const [, relative] of text.matchAll(
+      /require\(['"](\.{1,2}\/[^'"]+)['"]\)/g,
+    ))
+      pending.push(require.resolve(path.resolve(path.dirname(file), relative)));
+  }
   const lib = path.join(path.dirname(BENCH_JS), 'lib');
+  assert.ok(planSources.has(path.join(lib, 'plan.js')));
+  assert.ok(planSources.has(path.join(lib, 'ledger.js')));
+  const spawningModules = new Set(
+    ['opencode.js', 'proc.js'].map((fileName) => path.join(lib, fileName)),
+  );
+  for (const file of spawningModules)
+    assert.ok(!planSources.has(file), `plan must not load ${file}`);
   for (const file of [
     BENCH_JS,
-    ...fs.readdirSync(lib).map((fileName) => path.join(lib, fileName)),
+    ...fs
+      .readdirSync(lib)
+      .map((fileName) => path.join(lib, fileName))
+      .filter((file) => !spawningModules.has(file)),
   ]) {
     const text = fs.readFileSync(file, 'utf8');
     assert.doesNotMatch(
@@ -256,6 +284,8 @@ test('the settings drive the plan: model prices and judge seats; each answer is 
       subject: 'no-history-subject',
       judges: { anthropic: 'no-history-judge', openai: null, xai: null },
     },
+    judge_timeout_ms_by_seat: { xai: null },
+    judge_max_output_tokens_by_seat: { openai: null, xai: null },
   });
   assert.deepEqual(
     [
@@ -270,6 +300,8 @@ test('the settings drive the plan: model prices and judge seats; each answer is 
   const priced = planFor(ROOT, {
     estimate_usd_per_call: { subject: 0, judge: 0, writer: 0 },
     models: { judges: { openai: null, xai: null } },
+    judge_timeout_ms_by_seat: { xai: null },
+    judge_max_output_tokens_by_seat: { openai: null, xai: null },
   });
   // 10 x 0.06693 + 18 x 0.0478 + 4 x 0.02586 = 1.63314
   assert.equal(priced.pending_usd, 1.63);
@@ -552,6 +584,157 @@ test('plan prints the mean and the upper estimate (p90); worst_case_usd is the p
     between.out,
     /Upper estimate \(p90\) of pending work: \$4\.79 of max_usd \$3\.00: OVER the limit/,
   );
+});
+
+// The ledger reserves a judge or checklist writer call at its ceiling (call-ceiling.js), above the p90 `plan` sums. The
+// plan warns when the room it leaves below a limit is smaller than that margin.
+function largestMargin(config) {
+  const calls = [
+    ...Object.values(config.models.judges).map((modelId) => ['judge', modelId]),
+    ['writer', rubricWriterModel(config)],
+  ];
+  return Math.max(
+    ...calls.map(
+      ([callKind, modelId]) =>
+        callCeiling({
+          config,
+          callKind,
+          modelId,
+          prompt: '',
+          maxOutputTokens: judgeMaxOutputTokens(config, { modelId }),
+        }).usd - callCost(config, callKind, modelId).p90,
+    ),
+  );
+}
+const marginWarningsOf = (plan) =>
+  plan.warnings.filter((warning) =>
+    /^cost: the ledger reserves a \w+ call at its ceiling/.test(warning),
+  );
+
+test('a reservation above the p90 is premised on: a call with token prices reserves more than its p90', () => {
+  const config = helpers.exampleConfig();
+  assert.ok(largestMargin(config) > 0.1, 'the committed profile has prices');
+});
+
+test('plan warns when the room below max_usd is smaller than what one call reserves above its p90, and not otherwise', () => {
+  const margin = largestMargin(helpers.exampleConfig());
+  const p90 = planFor(ROOT).pending_usd_p90_unrounded;
+  // Plenty of room: no warning.
+  assert.deepEqual(marginWarningsOf(planFor(ROOT, { max_usd: 30 })), []);
+  // Room one cent short of the margin: warned, the plan itself still passes at its p90.
+  const tight = planFor(ROOT, { max_usd: p90 + margin - 0.01 });
+  assert.equal(tight.ok, true);
+  assert.equal(marginWarningsOf(tight).length, 1);
+  const usd = (amount) => `$${amount.toFixed(3)}`;
+  // The room is 0.01 short of the margin: the first call needs 0.01 more, each further call at once needs a margin more.
+  assert.match(
+    marginWarningsOf(tight)[0],
+    /at least \$0\.\d{3} against a p90 of \$0\.\d{3}\); this plan leaves \$0\.\d{3} below max_usd, so the ledger can stop the run near its end while the spend is still below it; /,
+  );
+  assert.ok(
+    marginWarningsOf(tight)[0].endsWith(
+      `raise max_usd by at least $0.010 to run one call at a time, and by ${usd(margin)} more for each further call that runs at once`,
+    ),
+    marginWarningsOf(tight)[0],
+  );
+  assert.doesNotMatch(marginWarningsOf(tight)[0], /total_cap_usd/);
+  // A plan that lands on max_usd within the checker's tolerance has a room below zero by float noise: shown as $0.000.
+  const onTheLimit = marginWarningsOf(planFor(ROOT, { max_usd: p90 - 1e-10 }));
+  assert.equal(onTheLimit.length, 1);
+  assert.match(
+    onTheLimit[0],
+    new RegExp(
+      `this plan leaves \\$0\\.000 below max_usd, .*; raise max_usd by at least ${usd(margin).replace('$', '\\$')} to run`,
+    ),
+  );
+  assert.match(renderPlan(tight), /\n {2}cost: the ledger reserves a /);
+  // Room of the margin and a cent over: not warned.
+  assert.deepEqual(
+    marginWarningsOf(planFor(ROOT, { max_usd: p90 + margin + 0.01 })),
+    [],
+  );
+  // A refused plan says why it is refused, and nothing about the margin.
+  const refused = planFor(ROOT, { max_usd: p90 - 0.01 });
+  assert.equal(refused.ok, false);
+  assert.deepEqual(marginWarningsOf(refused), []);
+});
+
+test('plan has no reservation warning for models with no token prices: they are reserved at their p90', () => {
+  const unpriced = {
+    models: {
+      subject: 'no-history-subject',
+      judges: {
+        anthropic: 'no-history-a',
+        openai: 'no-history-b',
+        xai: 'no-history-c',
+      },
+      rubric_writer: 'no-history-w',
+    },
+  };
+  const p90 = planFor(ROOT, unpriced).pending_usd_p90_unrounded;
+  const tight = planFor(ROOT, { ...unpriced, max_usd: p90 + 0.001 });
+  assert.equal(tight.ok, true);
+  assert.deepEqual(marginWarningsOf(tight), []);
+});
+
+test('plan warns about the reservation margin against total_cap_usd too, using the ledger total and reservations', () => {
+  const margin = largestMargin(helpers.exampleConfig());
+  const p90 = planFor(ROOT).pending_usd_p90_unrounded;
+  const planWithLedgerAt = (spentUsd) =>
+    helpers.withFixtureCopy((dir, layout) => {
+      helpers.writeLedger(layout.ledgerFile, [makeSettledRow(spentUsd)]);
+      return JSON.parse(planOn(dir, '--json').out);
+    });
+  const cap = helpers.exampleConfig().total_cap_usd;
+  const near = planWithLedgerAt(cap - p90 - margin + 0.01);
+  assert.equal(near.ok, true, near.refused.join('; '));
+  assert.equal(marginWarningsOf(near).length, 1);
+  // The ledger cap is the limit that binds, so the text names total_cap_usd: raising max_usd would not give any room.
+  const text = marginWarningsOf(near)[0];
+  const [, left, raise, more] =
+    /this plan leaves \$(\d\.\d{3}) below total_cap_usd, so .*; raise total_cap_usd by at least \$(\d\.\d{3}) to run one call at a time, and by \$(\d\.\d{3}) more for each further call that runs at once$/.exec(
+      text,
+    ) || [];
+  assert.ok(left, text);
+  // The ledger rounds its total to the cent, so the room is only known to about a cent.
+  assert.ok(Math.abs(Number(left) - (margin - 0.01)) < 0.006, text);
+  assert.ok(Math.abs(Number(raise) - (margin - Number(left))) < 0.0015, text);
+  assert.equal(more, margin.toFixed(3));
+  assert.doesNotMatch(text, /max_usd/);
+  const roomy = planWithLedgerAt(cap - p90 - margin - 0.01);
+  assert.equal(roomy.ok, true, roomy.refused.join('; '));
+  assert.deepEqual(marginWarningsOf(roomy), []);
+});
+
+test('plan names both limits when the room below each is the same, and the one that is smaller when they differ', () => {
+  const margin = largestMargin(helpers.exampleConfig());
+  const p90 = planFor(ROOT).pending_usd_p90_unrounded;
+  const limit = p90 + margin - 0.01;
+  // max_usd equal to total_cap_usd and no spend: the same room below both.
+  const equal = marginWarningsOf(
+    planFor(ROOT, { max_usd: limit, total_cap_usd: limit }),
+  );
+  assert.equal(equal.length, 1);
+  assert.match(
+    equal[0],
+    /below max_usd and total_cap_usd, so .*; raise max_usd and total_cap_usd by at least \$0\.010 to run one call at a time, /,
+  );
+  // max_usd below a larger total_cap_usd: only max_usd can be raised to help.
+  const maxBinds = marginWarningsOf(
+    planFor(ROOT, { max_usd: limit, total_cap_usd: limit + 50 }),
+  );
+  assert.equal(maxBinds.length, 1);
+  assert.match(maxBinds[0], /below max_usd, so .*; raise max_usd by at least /);
+  assert.doesNotMatch(maxBinds[0], /total_cap_usd/);
+});
+
+test('plan.js does not say that the ledger reserves the p90 of every call', () => {
+  const text = fs.readFileSync(
+    path.join(path.dirname(BENCH_JS), 'lib', 'plan.js'),
+    'utf8',
+  );
+  assert.doesNotMatch(text, /which is what the ledger reserves/);
+  assert.match(text, /reserves a subject call at its p90, but a judge/);
 });
 
 test('a model with no measured cost is priced at estimate_usd_per_call with one warning that names it', () => {
@@ -1410,8 +1593,8 @@ test('plan --json: within_total_cap is false when the ledger cap refuses the pla
 });
 
 // max_usd counts the run's spend so far, as the ledger does. The fixture plan's upper estimate (p90) is 4.7924, the
-// amount the ledger reserves for its calls. For each ledger and max_usd, plan refuses exactly when the ledger would
-// refuse a reservation of that pending p90 cost.
+// amount plan checks. For each ledger and max_usd, plan refuses exactly when the ledger would refuse a reservation of
+// that pending p90 cost (a priced judge or checklist call reserves a little more: the reservation warning).
 const PENDING = PROJECTED_USD;
 const makeSpentRow = (usd, run) => ({
   type: 'settle',
