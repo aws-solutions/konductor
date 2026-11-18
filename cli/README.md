@@ -8,7 +8,6 @@ for the agent, skill and SOP content that Konductor manages — it does not itse
 SDLC workflows (that's the Konductor Kiro agent's job).
 
 > **Status:** all commands perform real work (see [Current state](#current-state)).
-> `metrics` is a proof of concept (see [`metrics`](#metrics)).
 
 ---
 
@@ -1289,7 +1288,7 @@ like any other usage error.
     guidance
   - `verify-run` checking a SOP session file against its gate boundaries and
     reporting one exit code, including exit code 2 for an unresolved gating finding
-- **Proof of concept:** `metrics` reporting local token/credit usage of Konductor sessions
+  - `metrics` reporting local token and credit usage of Konductor sessions per harness
 - **Not yet started:** the run-engine/conductor (which will read/write
   `.konductor/run-state.json`-shaped documents), and `.konductor/runs/` storage.
 
@@ -1311,7 +1310,7 @@ like any other usage error.
   an alternative for installing from a local checkout.
 - SOPs are synthed into `dist/kiro-cli-v2/sops/` but are not installed anywhere; there is
   no runtime discovery path for them yet.
-- `metrics` is a proof of concept: Kiro session formats are undocumented, Claude Code
+- `metrics`: Kiro session formats are undocumented, Claude Code
   subagent output tokens are not reported (their transcripts hold placeholder values),
   and Kiro v3 subagent credits are not split from the parent session (whether the parent
   includes them is still being verified, see #289).
