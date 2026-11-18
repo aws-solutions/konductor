@@ -40,7 +40,7 @@ const CONSTANTS_JS = path.join(
 );
 
 const FULL_CONSTANTS = {
-  package_name: 'ASDLCCoreAICapabilities',
+  package_name: 'example-package',
   orchestrator_agent: 'konductor',
   orchestrator_variants: [
     'konductor-mux-orchestrator',
@@ -48,7 +48,7 @@ const FULL_CONSTANTS = {
   ],
   agent_prefix: 'k-',
   skill_prefix: 'asdlc-',
-  install_prefix: 'local-ASDLCCoreAICapabilities',
+  install_prefix: 'local-example-package',
   bench_model_env: 'ASDLC_BENCH_MODEL_ID',
   max_inline_chars_env: 'ASDLC_MAX_INLINE_CHARS',
   claude_agents_dir_env: 'ASDLC_CLAUDE_AGENTS_DIR',

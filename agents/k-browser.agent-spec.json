@@ -10,13 +10,14 @@
     "skills": {
       "skillNames": [
         "constraints",
+        "humanize-writing",
         "sdlc-navigator",
         "app-discovery",
         "dom-inspection"
       ]
     },
     "context": {
-      "contextNames": []
+      "contextNames": ["k-core-rules.md"]
     },
     "mcpRegistry": {
       "playwright-mcp": {
@@ -52,7 +53,12 @@
         "@playwright-mcp/browser_press_key",
         "@playwright-mcp/browser_close"
       ],
-      "toolsSettings": {},
+      "toolsSettings": {
+        "subagent": {
+          "availableAgents": [],
+          "trustedAgents": []
+        }
+      },
       "hooks": {},
       "resources": [
         "file://AGENTS.md",

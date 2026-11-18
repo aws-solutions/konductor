@@ -27,6 +27,7 @@ tools/build-user-guide/
 ├── BUILD_USER_GUIDE_PROMPT.md      # the build instructions the agent follows
 ├── build-user-guide.sh             # wrapper: build, --check for CI, --record after a tool run
 ├── sync-html-content.py            # deterministic fact updates for both bundles
+├── inject-seo-metadata.py          # patches title, description, OG/Twitter tags, and canonical into both bundles
 ├── html_sop_edits.py               # the SOP sections, as exact-match bundle edits
 └── README.md                       # this file
 ```
@@ -51,9 +52,9 @@ Detects `kiro-cli` or `claude`, runs the orchestrator (`konductor`) against
 `BUILD_USER_GUIDE_PROMPT.md`, writes the HTML, the build notes, and the hash manifest.
 Options: `--runtime kiro|claude`, `--dry-run`, `--check`, `--record`.
 
-`--record` writes the manifest for the current Markdown↔HTML pair without running an
-agent. Use it after a deterministic update (`make guide` does this for you), so `--check`
-has a baseline.
+`--record` re-injects the SEO metadata into both bundles, then writes the manifest for the
+current Markdown↔HTML pair, without running an agent. Use it after a deterministic update
+(`make guide` does this for you), so `--check` has a baseline.
 
 ## Check for drift (CI)
 

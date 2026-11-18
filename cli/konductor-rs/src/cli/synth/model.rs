@@ -5,6 +5,7 @@
 
 use std::path::PathBuf;
 
+use crate::cli::synth::orchestrator_names::ORCHESTRATOR_NAMES;
 use crate::cli::synth::parser::ParsedAgentSpec;
 
 /// A file that lives alongside a skill's SKILL.md — a script, template,
@@ -73,6 +74,10 @@ pub struct CanonicalModel {
     pub skills: Vec<SkillDef>,
     pub sops: Vec<SopDef>,
     pub context: Vec<ContextDef>,
+}
+
+pub(crate) fn is_orchestrator(agent_name: &str) -> bool {
+    ORCHESTRATOR_NAMES.contains(&agent_name)
 }
 
 #[cfg(test)]

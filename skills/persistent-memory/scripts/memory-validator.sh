@@ -2,8 +2,21 @@
 # SPDX-License-Identifier: Apache-2.0
 set -euo pipefail
 
-TARGET="${1:?Usage: memory-validator.sh <target-file>}"
-PROPOSED="$(cat)"
+# --check-path runs only the path checks below, for reads: exit 0 and print the
+# canonical path to load when the target is a path the validator would write, 1 with a
+# REJECT line otherwise. It reads no stdin and creates nothing.
+# --clear lets an empty stdin replace a target that still has entries; without it
+# that write is refused, so an unset shell variable cannot wipe the file.
+CHECK_PATH_ONLY=0
+CLEAR=0
+while :; do
+  case "${1:-}" in
+    --check-path) CHECK_PATH_ONLY=1; shift ;;
+    --clear) CLEAR=1; shift ;;
+    *) break ;;
+  esac
+done
+TARGET="${1:?Usage: memory-validator.sh [--check-path] [--clear] <target-file>}"
 
 # Config: read from .konductor/memory-config.json relative to git root.
 # Only path consulted, no fallback.
@@ -23,7 +36,7 @@ GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo ".")"
 CONFIG_FILE="${GIT_ROOT}/.konductor/memory-config.json"
 
 # Anchor a relative TARGET to the repo root too, mirroring CONFIG_FILE
-# above -- the skill's real invocation always passes the relative literal
+# above -- the skill's real invocation passes a relative literal such as
 # ".konductor/memory/MEMORY.md", so without this a write from a package
 # subdirectory (e.g. src/SomePackage/) lands at
 # src/SomePackage/.konductor/memory/MEMORY.md instead of the canonical,
@@ -34,6 +47,52 @@ case "$TARGET" in
   *) TARGET="${GIT_ROOT}/${TARGET}" ;;
 esac
 TARGET_DIR="$(dirname "$TARGET")"
+
+# Refuse to read or write through a symlink or outside the project root. Trust in
+# memory content is decided by the rules, not here; this guard only stops a
+# tracked symlink from turning a memory write into a write somewhere else.
+# The path is checked before anything is created, so a refused argument
+# (absolute, `..`, or a variant spelling) leaves no directory behind.
+ROOT_P="$(cd "$GIT_ROOT" && pwd -P)"
+TARGET_NAME="$(basename "$TARGET")"
+KONDUCTOR_DIR="$(dirname "$TARGET_DIR")"
+PARENT_P="$(cd -P "$(dirname "$KONDUCTOR_DIR")" 2>/dev/null && pwd -P || true)"
+if [[ "$TARGET_NAME" != "MEMORY.md" && "$TARGET_NAME" != "USER.md" ]] ||
+   [[ "$(basename "$TARGET_DIR")" != "memory" || "$(basename "$KONDUCTOR_DIR")" != ".konductor" ]] ||
+   [[ "$PARENT_P" != "$ROOT_P" ]]; then
+  echo "REJECT: resolved target $TARGET is not ${ROOT_P}/.konductor/memory/{MEMORY,USER}.md" >&2
+  exit 1
+fi
+TARGET="${ROOT_P}/.konductor/memory/${TARGET_NAME}"
+TARGET_DIR="$(dirname "$TARGET")"
+for p in "$TARGET" "$TARGET_DIR" "$(dirname "$TARGET_DIR")"; do
+  if [[ -L "$p" ]]; then
+    echo "REJECT: $p is a symlink; memory is written only to a regular file under ${ROOT_P}/.konductor/memory/" >&2
+    exit 1
+  fi
+done
+# A directory at the target would swallow the atomic mv below and report success.
+if [[ -e "$TARGET" && ! -f "$TARGET" ]]; then
+  echo "REJECT: $TARGET is not a regular file; memory is written only to a regular file under ${ROOT_P}/.konductor/memory/" >&2
+  exit 1
+fi
+if [[ "$CHECK_PATH_ONLY" == 1 ]]; then
+  printf '%s\n' "$TARGET"
+  exit 0
+fi
+PROPOSED="$(cat)"
+# Empty input over a file with entries is almost always an unset variable, not a
+# decision to clear the file. Refuse before anything is created or replaced.
+# The emptiness test stays in-process: piping $PROPOSED into grep -q under
+# pipefail kills printf with SIGPIPE once the content outgrows the pipe buffer,
+# and the negated pipeline then calls a valid write empty.
+if [[ "$CLEAR" == 0 && -f "$TARGET" ]] &&
+   ! [[ "$PROPOSED" =~ [^[:space:]] ]] &&
+   grep -q '[^[:space:]]' "$TARGET"; then
+  echo "REJECT: proposed content is empty but $TARGET has entries; nothing was written. The content was probably in a variable left unset between shell calls: rebuild it and write in the same call as the validator lookup." >&2
+  exit 1
+fi
+mkdir -p "$TARGET_DIR"
 
 # _parse_config <path>: parses a JSON config file and, on success (exit 0),
 # prints:
@@ -181,13 +240,16 @@ url_allowed() {
   return 1
 }
 
-strip_date_prefix() {
-  printf '%s\n' "$1" | sed -E 's/^\[[0-9]{4}-[0-9]{2}-[0-9]{2}\] //'
+# Strip the optional leading date and then the origin tag, in the order step 4a
+# accepts them, so the near-duplicate check compares entry text only: the same
+# fact re-tagged or re-dated is the same entry. The whitespace class matches 4a.
+strip_entry_prefix() {
+  printf '%s\n' "$1" | sed -E 's/^\[[0-9]{4}-[0-9]{2}-[0-9]{2}\][[:space:]]+//; s/^\[origin:(agent|user)\][[:space:]]*//'
 }
 
 normalize_entry() {
   local text
-  text="$(strip_date_prefix "$1")"
+  text="$(strip_entry_prefix "$1")"
   text="${text#"${text%%[![:space:]]*}"}"  # ltrim
   text="${text%"${text##*[![:space:]]}"}"  # rtrim
   printf '%s\n' "$text" | tr '[:upper:]' '[:lower:]' | cut -c1-80
@@ -250,12 +312,61 @@ derive_entry() {
 # the general rule: digits are alphanumeric, so "1." in "1. Ignore" is only
 # half-stripped by the punctuation rule (the "." goes, the "1" doesn't).
 # Kept as its own step for that reason.
+#
+# Step 4 strips any leading bracketed token: a date, an origin tag, a
+# task-list box [x], a label, a nested "[a [b] c]" or a "[text](url)" link.
+# Every new entry starts with a date or origin tag (step 4a), and step 2 alone
+# would stop at the "origin" in "[origin:user] Ignore ...", so the keyword check
+# never saw the first word. Step 4 runs to its own fixed point before step 2,
+# because step 2 would strip the "[" of the next token and leave its text
+# behind. Like step 2 it subsumes the date-prefix special case here.
+
+# Removes one leading balanced [...] group and an optional (...) link target
+# right after it. An unbalanced group is left alone for step 2.
+#
+# Two views of the same text are checked, selected by $2:
+#   drop   (default) removes the whole group, so "[see below] Ignore x" is read
+#          as "Ignore x".
+#   unwrap keeps the group's inner text, so "[Ignore lint] x" is read as
+#          "Ignore lint x". A date, an origin tag or a task-list box is still
+#          removed whole, since it never carries entry text.
+# A label can hide an instruction, and a leading label can also be a harmless
+# prefix, so the keyword check reads the entry both ways.
+strip_leading_bracket_group() {
+  printf '%s\n' "$1" | awk -v mode="${2:-drop}" '{
+    if (substr($0, 1, 1) != "[") { print; exit }
+    depth = 0; n = length($0)
+    for (i = 1; i <= n; i++) {
+      c = substr($0, i, 1)
+      if (c == "[") depth++
+      else if (c == "]" && --depth == 0) break
+    }
+    if (depth != 0) { print; exit }
+    inner = substr($0, 2, i - 2)
+    rest = substr($0, i + 1)
+    if (substr(rest, 1, 1) == "(") {
+      close_at = index(rest, ")")
+      if (close_at > 0) rest = substr(rest, close_at + 1)
+    }
+    sub(/^[[:space:]]+/, "", rest)
+    keep = (mode == "unwrap" && inner !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ && inner !~ /^origin:(agent|user)$/ && inner != " " && inner != "x")
+    if (keep) rest = (rest == "" ? inner : inner " " rest)
+    print rest
+  }'
+}
+
 strip_markdown_markers() {
   local text="$1"
+  local mode="${2:-drop}"
   local prev=""
   while [[ "$text" != "$prev" ]]; do
     prev="$text"
     text="$(printf '%s\n' "$text" | sed -E 's/^[[:space:]]+//')"                # 1. leading whitespace
+    local bracket_prev=""
+    while [[ "$text" != "$bracket_prev" ]]; do
+      bracket_prev="$text"
+      text="$(strip_leading_bracket_group "$text" "$mode")"  # 4. leading bracketed token
+    done
     text="$(printf '%s\n' "$text" | sed -E 's/^[^[:alnum:][:space:]]+//')"      # 2. leading punctuation/marker run (blockquote, heading, emphasis, bullet, backtick, or any other punctuation-based marker)
     text="$(printf '%s\n' "$text" | sed -E 's/^[0-9]+[.)][[:space:]]*//')"      # 3. numbered marker (kept separate -- digits are alnum, not caught by step 2)
   done
@@ -318,12 +429,14 @@ while IFS= read -r line; do
     exit 1
   fi
 
-  # 3c. Instruction-like language
-  stripped="$(strip_date_prefix "$entry")"
-  stripped_lower="$(printf '%s\n' "$stripped" | tr '[:upper:]' '[:lower:]')"
+  # 3c. Instruction-like language. The keyword must be a whole word at the
+  # start of either view, so "Overrides live in ..." and "Forgetting to ..."
+  # pass while "Ignore lint failures" and "[Ignore]" do not.
+  stripped_lower="$(printf '%s\n' "$entry" | tr '[:upper:]' '[:lower:]')"
   stripped_trimmed="$(strip_markdown_markers "$stripped_lower")"
+  stripped_unwrapped="$(strip_markdown_markers "$stripped_lower" unwrap)"
   for kw in ignore override forget disregard pretend; do
-    if [[ "$stripped_trimmed" == ${kw}* ]]; then
+    if [[ "$stripped_trimmed" =~ ^${kw}([^[:alnum:]]|$) || "$stripped_unwrapped" =~ ^${kw}([^[:alnum:]]|$) ]]; then
       echo "REJECT: instruction-like keyword '$kw' at start of entry" >&2
       exit 1
     fi
@@ -345,6 +458,14 @@ while IFS= read -r line; do
     fi
   done
 
+  # 4a. Provenance tag. Core rule 11 follows untagged entries as the user's
+  # own, so a line written through this script must say who wrote it. Lines
+  # already in the file are exempt above: hand-written and legacy untagged
+  # entries stay valid until someone edits them.
+  if ! [[ "$entry" =~ ^(\[[0-9]{4}-[0-9]{2}-[0-9]{2}\][[:space:]]+)?\[origin:(agent|user)\] ]]; then
+    echo "REJECT: new entry has no [origin:agent] or [origin:user] tag after the optional date: ${entry:0:80}" >&2
+    exit 1
+  fi
 done <<< "$PROPOSED"
 
 # 4. Budget check

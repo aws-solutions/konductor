@@ -52,10 +52,13 @@ pub(crate) const KONDUCTOR_DESTINATION_ROOT: &str = ".konductor";
 /// writes `.konductor/manifest`.
 pub struct KiroCliInstallStrategy;
 
+/// The strategy's manifest name and `--harness` value. Matches
+/// `KiroCliV2Transformer::name()` exactly.
+pub(crate) const STRATEGY_NAME: &str = "kiro-cli-v2";
+
 impl InstallStrategy for KiroCliInstallStrategy {
-    /// Matches `KiroCliV2Transformer::name()` exactly.
     fn name(&self) -> &'static str {
-        "kiro-cli-v2"
+        STRATEGY_NAME
     }
 
     fn harness_dir(&self) -> &'static str {
@@ -315,14 +318,14 @@ mod plan;
 // `kiro_cli/{plan,copy,fs_util}.rs`.
 pub(super) use copy::{
     copy_agent_files, copy_skill_dir_recursive, install_agents, install_context,
-    install_kiro_sop_skills, install_skills, install_sops, list_agent_files, list_agent_files_like,
-    list_skill_dirs, CONTEXT_RESOURCE_PREFIX,
+    install_context_into, install_kiro_sop_skills, install_skills, install_sops, list_agent_files,
+    list_agent_files_like, list_skill_dirs, CONTEXT_RESOURCE_PREFIX,
 };
 pub(super) use fs_util::{reject_unsafe_file_name, set_executable};
 pub(super) use plan::{
     attach_provenance, content_manifest_path, plan_additive_claude_sop_skill_files, plan_all_files,
-    plan_claude_hooks_file, plan_claude_settings_grant, plan_skill_dir_recursive,
-    read_skill_scopes_sidecar, read_sop_scopes_sidecar, PlannedFile,
+    plan_claude_hooks_file, plan_claude_settings_grant, plan_context_files_into,
+    plan_skill_dir_recursive, read_skill_scopes_sidecar, read_sop_scopes_sidecar, PlannedFile,
 };
 
 #[cfg(test)]
@@ -1374,7 +1377,7 @@ mod tests {
         seed_synthed_agent(&repo_root, "k-example", b"{}\n");
         let sops_dir = repo_root.join("dist/kiro-cli-v2/sops");
         fs::create_dir_all(&sops_dir).unwrap();
-        fs::write(sops_dir.join("asdlc-plan.sop.md"), b"# Plan\n").unwrap();
+        fs::write(sops_dir.join("k-plan.sop.md"), b"# Plan\n").unwrap();
 
         KiroCliInstallStrategy
             .install_from_local(
@@ -1388,7 +1391,7 @@ mod tests {
         // SOPs are Konductor tooling shared across runtimes, not a
         // Kiro CLI concept (mirrors `.konductor/skills/`, `.konductor/bin/`).
         assert!(!target_dir.join(".kiro/sops").exists());
-        let installed = target_dir.join(".konductor/sops/asdlc-plan.sop.md");
+        let installed = target_dir.join(".konductor/sops/k-plan.sop.md");
         assert!(
             installed.exists(),
             "expected the staged SOP to be copied verbatim to .konductor/sops/"
@@ -1401,7 +1404,7 @@ mod tests {
         assert!(manifest.strategies[0]
             .files
             .iter()
-            .any(|f| f.path == ".konductor/sops/asdlc-plan.sop.md"));
+            .any(|f| f.path == ".konductor/sops/k-plan.sop.md"));
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -3034,6 +3037,112 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    fn installed_konductor_skills_args(target_dir: &Path) -> Vec<String> {
+        let value: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(target_dir.join(".kiro/agents/k-example.json")).unwrap(),
+        )
+        .unwrap();
+        value["mcpServers"]["konductor-skills"]["args"]
+            .as_array()
+            .expect("args must be an array")
+            .iter()
+            .map(|a| a.as_str().unwrap().to_string())
+            .collect()
+    }
+
+    /// Installs one opted-in and one opted-out target from a repo whose
+    /// MCP binary is `binary`, and returns each target with its injected
+    /// `konductor-skills` args.
+    fn install_opted_in_and_out_with_mcp_binary(
+        binary: &[u8],
+        label: &str,
+    ) -> [(std::path::PathBuf, Vec<String>); 2] {
+        let repo_root = scratch_dir(&format!("{label}-repo"));
+        seed_synthed_agent_with_skill_resource(&repo_root, "k-example", "constraints");
+        seed_synthed_skill(
+            &repo_root,
+            "constraints",
+            b"---\nname: constraints\n---\nBody\n",
+            &[],
+        );
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", binary);
+        let install = |target_dir: &Path, no_telemetry: bool| {
+            KiroCliInstallStrategy
+                .install_from_local(
+                    target_dir,
+                    Some(repo_root.to_str().unwrap()),
+                    "2026-01-01T00:00:00Z",
+                    no_telemetry,
+                )
+                .expect("install must succeed");
+        };
+        let opted_in = scratch_dir(&format!("{label}-opted-in"));
+        let opted_out = scratch_dir(&format!("{label}-opted-out"));
+
+        install(&opted_in, false);
+        install(&opted_out, true);
+        install(&opted_out, true);
+
+        fs::remove_dir_all(&repo_root).ok();
+        [opted_in, opted_out].map(|target_dir| {
+            let args = installed_konductor_skills_args(&target_dir);
+            (target_dir, args)
+        })
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn install_from_local_points_a_current_mcp_server_at_install_info_whether_or_not_opted_out() {
+        let targets = install_opted_in_and_out_with_mcp_binary(
+            crate::cli::install::resource_rewrite::FAKE_SERVER_WITH_INSTALL_INFO.as_bytes(),
+            "mcp-telemetry-arg-current",
+        );
+        for (target_dir, args) in targets {
+            assert_eq!(
+                args,
+                [
+                    "--skills-dir",
+                    "~/.konductor/skills",
+                    "--skills-dir",
+                    ".konductor/skills",
+                    "--install-info",
+                    ".konductor/install-info.json"
+                ]
+            );
+            fs::remove_dir_all(&target_dir).ok();
+        }
+    }
+
+    /// A binary whose `--help` does not list `--install-info` (here, one
+    /// that cannot run at all) keeps the per-harness `--telemetry off`.
+    #[test]
+    fn install_from_local_mcp_server_telemetry_arg_follows_no_telemetry_for_an_older_server() {
+        let [(opted_in, opted_in_args), (opted_out, opted_out_args)] =
+            install_opted_in_and_out_with_mcp_binary(b"binary bytes\n", "mcp-telemetry-arg-older");
+        assert_eq!(
+            opted_in_args,
+            [
+                "--skills-dir",
+                "~/.konductor/skills",
+                "--skills-dir",
+                ".konductor/skills"
+            ]
+        );
+        assert_eq!(
+            opted_out_args,
+            [
+                "--skills-dir",
+                "~/.konductor/skills",
+                "--skills-dir",
+                ".konductor/skills",
+                "--telemetry",
+                "off"
+            ]
+        );
+        fs::remove_dir_all(&opted_in).ok();
+        fs::remove_dir_all(&opted_out).ok();
+    }
+
     /// Reachability proof for the Claude/V3 `permissions.allow` grant
     /// and the telemetry hooks wired after it: both fire through this
     /// unmodified strategy's `install_from_local` whenever the target
@@ -3120,7 +3229,8 @@ mod tests {
                 "matcher": "startup|clear",
                 "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation{root}")}]
             }]),
-            "SessionStart must invoke the hidden __telemetry-hook subcommand for agent_invocation"
+            "SessionStart must invoke the hidden __telemetry-hook subcommand for agent_invocation; \
+             the orchestration hook is the Claude strategy's, never a Kiro install's"
         );
         assert_eq!(
             claude_settings["hooks"]["SubagentStart"],
@@ -3167,8 +3277,10 @@ mod tests {
     /// `--no-telemetry` on a dual-marker install (`.kiro` and `.claude`
     /// both already present) run end to end: the V2 Kiro `mcpServers`
     /// injection and the V3/Claude `permissions.allow` grant must still
-    /// land (neither is a telemetry side effect), but no telemetry-hook
-    /// block or `.claude/settings.local.json` may be written.
+    /// land (neither is a telemetry side effect), but no hook block and no
+    /// `.claude/settings.local.json` may be written: a Kiro install wires
+    /// only the telemetry hooks into Claude settings, and `--no-telemetry`
+    /// turns those off.
     #[test]
     fn install_from_local_no_telemetry_skips_claude_hook_wiring_but_keeps_permission_grant() {
         let target_dir = scratch_dir("no-telemetry-skips-hooks-target");
@@ -3217,15 +3329,17 @@ mod tests {
             "--no-telemetry must not affect the unrelated MCP permission grant"
         );
 
-        // The telemetry hook wiring itself must be completely absent:
-        // no `hooks` key in the shared file, and no personal settings
-        // file at all.
+        // The hook wiring must be completely absent: no `hooks` key in
+        // the shared file, and no personal settings file at all.
         assert!(
             claude_settings.get("hooks").is_none(),
-            "--no-telemetry must suppress the SessionStart/SubagentStart telemetry-hook \
-             wiring entirely; got: {claude_settings:?}"
+            "--no-telemetry must suppress the Claude hook wiring entirely; got: \
+             {claude_settings:?}"
         );
-        assert!(!target_dir.join(".claude/settings.local.json").exists());
+        assert!(
+            !target_dir.join(".claude/settings.local.json").exists(),
+            "a Kiro --no-telemetry install must not create .claude/settings.local.json"
+        );
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();

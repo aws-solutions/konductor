@@ -1,6 +1,6 @@
 [package]
 name = "konductor-telemetry"
-version = "1.0.3"
+version = "1.2.0"
 edition = "2021"
 description = "Shared telemetry primitives -- identity (nil-UUID sentinel, UUID-shape validation, the machine-scoped $HOME/.konductor/telemetry.json read/write path) and net (host-allowlist DNS classification, DNS-rebinding pin construction, and the timeout-vs-failure resolution decision) -- consumed by cli/konductor-rs and mcp/lib/skill-lookup-core"
 license.workspace = true
@@ -25,7 +25,7 @@ path = "src/lib.rs"
 async = ["tokio"]
 
 [dependencies]
-# `identity` module only. Not exact-pinned, unlike every other
+# `identity` and `install_info` modules. Not exact-pinned, unlike every other
 # dependency in this repo's convention -- this crate is a path
 # dependency of both cli/konductor-rs (own Cargo.lock, no `[workspace]`
 # of its own, resolves serde to =1.0.228) and mcp/lib/skill-lookup-core

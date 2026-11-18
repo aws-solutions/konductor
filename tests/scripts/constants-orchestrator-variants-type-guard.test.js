@@ -44,12 +44,12 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const CONSTANTS_JS = path.join(REPO_ROOT, 'scripts', 'brand-config', 'lib', 'constants.js');
 
 const FULL_CONSTANTS = {
-  package_name: 'ASDLCCoreAICapabilities',
+  package_name: 'example-package',
   orchestrator_agent: 'asdlc-orchestrator',
   orchestrator_variants: ['asdlc-mux-orchestrator', 'asdlc-cmux-orchestrator'],
   agent_prefix: 'asdlc-',
   skill_prefix: 'asdlc-',
-  install_prefix: 'local-ASDLCCoreAICapabilities',
+  install_prefix: 'local-example-package',
   bench_model_env: 'ASDLC_BENCH_MODEL_ID',
   max_inline_chars_env: 'ASDLC_MAX_INLINE_CHARS',
   claude_agents_dir_env: 'ASDLC_CLAUDE_AGENTS_DIR',

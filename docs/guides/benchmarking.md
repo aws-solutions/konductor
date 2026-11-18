@@ -1,4 +1,4 @@
-# Benchmarking ASDLCCoreAICapabilities agents
+# Benchmarking Konductor agents
 
 Benchmark a change to this package's agents or skills using nothing but the
 `claude` CLI — this harness has **zero dependency on `aim` or any

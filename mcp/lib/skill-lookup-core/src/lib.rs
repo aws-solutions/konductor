@@ -43,7 +43,10 @@ pub mod telemetry;
 /// identical hazard for that crate's own modules.
 #[cfg(test)]
 pub(crate) mod test_home_lock {
+    use std::ffi::OsString;
+    use std::path::PathBuf;
     use std::sync::{Mutex, MutexGuard};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     pub(crate) static HOME_ENV_LOCK: Mutex<()> = Mutex::new(());
 
@@ -56,5 +59,46 @@ pub(crate) mod test_home_lock {
         HOME_ENV_LOCK
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    /// RAII guard: holds `HOME_ENV_LOCK` and points `HOME` at a fresh
+    /// scratch dir for its lifetime. On drop, including during a panic,
+    /// it restores the original `HOME` and removes the scratch dir.
+    pub(crate) struct HomeGuard {
+        _lock: MutexGuard<'static, ()>,
+        pub(crate) scratch: PathBuf,
+        original_home: Option<OsString>,
+    }
+
+    impl HomeGuard {
+        pub(crate) fn new(label: &str) -> Self {
+            let lock = lock_home();
+            let scratch = std::env::temp_dir().join(format!(
+                "skill-lookup-home-{label}-{}-{}",
+                std::process::id(),
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            std::fs::create_dir_all(&scratch).unwrap();
+            let original_home = std::env::var_os("HOME");
+            std::env::set_var("HOME", &scratch);
+            Self {
+                _lock: lock,
+                scratch,
+                original_home,
+            }
+        }
+    }
+
+    impl Drop for HomeGuard {
+        fn drop(&mut self) {
+            match &self.original_home {
+                Some(home) => std::env::set_var("HOME", home),
+                None => std::env::remove_var("HOME"),
+            }
+            let _ = std::fs::remove_dir_all(&self.scratch);
+        }
     }
 }

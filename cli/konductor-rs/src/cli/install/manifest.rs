@@ -1220,6 +1220,74 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
+    /// Producer side of the manifest contract shared with
+    /// `skill-lookup-core`, whose reader parses the same file. Slots and
+    /// files are built out of order so the writer's sorting is part of
+    /// what the fixture pins.
+    #[test]
+    fn serialized_manifest_matches_shared_contract_fixture() {
+        let fixture_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../mcp/lib/skill-lookup-core/testdata/install-manifest.v2.json");
+        let expected = fs::read_to_string(&fixture_path)
+            .unwrap_or_else(|e| panic!("failed to read {}: {e}", fixture_path.display()));
+        let file = |path: &str, sha256: Option<&str>, provenance: Provenance| ManifestFile {
+            path: path.to_string(),
+            sha256: sha256.map(str::to_string),
+            provenance,
+        };
+        let slot = |strategy: &str, files: Vec<ManifestFile>| {
+            StrategyManifest::new(
+                strategy,
+                "2026-01-15T09:30:00Z",
+                ".",
+                Some("/src/konductor".to_string()),
+                Status::Complete,
+                files,
+            )
+        };
+        let manifest = Manifest {
+            schema_version: SCHEMA_VERSION,
+            strategies: vec![
+                slot(
+                    "kiro-cli-v2",
+                    vec![
+                        file(
+                            ".konductor/skills/code-review/references/checklist.md",
+                            None,
+                            Provenance::ReplacedForeign,
+                        ),
+                        file(
+                            ".konductor/skills/code-review/SKILL.md",
+                            Some(&"3".repeat(64)),
+                            Provenance::Created,
+                        ),
+                        file(
+                            ".kiro/agents/k-example.json",
+                            Some(&"1".repeat(64)),
+                            Provenance::ReplacedOurs,
+                        ),
+                    ],
+                ),
+                slot(
+                    "claude",
+                    vec![file(
+                        ".claude/skills/code-review/SKILL.md",
+                        Some(&"2".repeat(64)),
+                        Provenance::Created,
+                    )],
+                ),
+            ],
+        };
+        let actual = String::from_utf8(serialize(&manifest).unwrap()).unwrap();
+        assert_eq!(
+            actual,
+            expected,
+            "the installer's manifest output changed; update {} and check that \
+             skill-lookup-core's install_manifest reader still parses it",
+            fixture_path.display()
+        );
+    }
+
     #[test]
     fn in_progress_status_serializes_as_in_progress_string() {
         let dir = scratch_dir("status-in-progress");

@@ -30,7 +30,7 @@ For the agents and skills themselves, see the [Agents reference](agents.md) and
 
 ## Command table
 
-Seven commands.
+Eight commands.
 
 | Command | Purpose |
 | --- | --- |
@@ -40,6 +40,7 @@ Seven commands.
 | `konductor doctor` | Check the runtime, the installed content, the project config, and available updates |
 | `konductor init` | Create `.konductor/` and write a starter `config.yml` |
 | `konductor synth` | Parse `agents/`, `skills/`, and `agent-sops/` and write per-runtime output to `<source>/dist/` |
+| `konductor verify-run` | Check a SOP session file (`--session <path>`, optional `--root <dir>` and `--max-fix-cycles <N>`) against its gates and exit through the exit-code contract; reads only, writes nothing |
 | `konductor metrics` | Show quality trends from recent runs |
 
 `update` and `uninstall` both accept `--target <dir>`, `--all`, and `--dry-run`, and share one
@@ -93,13 +94,15 @@ Accepted before or after a subcommand.
 | `install` | `--from <PATH>` | path | No | Install from a local repo root with already-synthed content instead of fetching a release. A maintainer path — the documented workflows all install from a release |
 | `install` | `--target <DIR>` | path | No | Destination. Defaults to `$HOME` |
 | `install` | `--link-bin` | flag | No | Symlink `konductor` into `$HOME/.local/bin` |
-| `install` | `--no-telemetry` | flag | No | Suppress telemetry for this invocation |
+| `install` | `--no-telemetry` | flag | No | Opt the whole target out of telemetry. Persists for later `update` runs and also stops the skill-lookup MCP server reporting |
 | `install` | `--use-github-token` | flag | No | Authenticate the release fetch with a GitHub token |
 | `update` | `--from <PATH>` | path | No | Source repo root. No default — pass it every time |
 | `update` | `--target <DIR>` | path | No | Which tracked install to update. Conflicts with `--all` |
 | `update` | `--all` | flag | No | Update every tracked install. Conflicts with `--target` |
 | `update` | `--dry-run` | flag | No | Report what would be overwritten, per path, flagging local edits. Writes nothing |
 | `update` | `--harness <NAME>` | enum | No | Narrow the selection to one harness |
+| `update` | `--no-telemetry` | flag | No | Opt the whole target out of telemetry, durably. Conflicts with `--enable-telemetry` |
+| `update` | `--enable-telemetry` | flag | No | Opt the whole target back in to telemetry, durably. Conflicts with `--no-telemetry` |
 | `uninstall` | `--target <DIR>` | path | No | Which tracked install to remove. Conflicts with `--all` |
 | `uninstall` | `--all` | flag | No | Remove every tracked install. Conflicts with `--target` |
 | `uninstall` | `--dry-run` | flag | No | Report what would be removed, per path, flagging local edits. Writes nothing |
@@ -129,7 +132,7 @@ supported.
 | `severities_source` | string | A path, relative to the CLI's policy directory, to the file defining finding severities | `severity-schema.yml` |
 | `tiers_source` | string | A path, relative to the CLI's policy directory, to the file defining change tiers | `scope-table.yml` |
 | `tier` | string | The active change tier: `trivial`, `bugfix`, `minor`, `major`, or `full` | `minor` |
-| `default_severity` | string | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` — applied to a finding that does not specify its own severity | `MEDIUM` |
+| `default_severity` | string | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` — loaded and validated, but not applied to gate evaluation; a finding with an empty, whitespace-only or unrecognized severity label always ranks `CRITICAL` | `MEDIUM` |
 | `fail_on_severity_at_or_above` | string | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` — the lowest severity treated as blocking | `CRITICAL` |
 
 Unrecognized extra keys are ignored.
@@ -155,7 +158,7 @@ layer falls through.
 
 ### Config error messages
 
-All exit `64`.
+All exit `64`, except under `verify-run`, where an invalid config exits `65` (see [Exit-code contract](#exit-code-contract)).
 
 | Message | Cause |
 | --- | --- |
@@ -172,18 +175,19 @@ An **empty** `config.yml` is not an error — every field falls through to its d
 | Code | Constant | Meaning |
 | --- | --- | --- |
 | `0` | — | Success |
-| `1` | `EXIT_HALTED` | A command ran correctly and reported failure — today that is `doctor` with one or more `failed`/`stale` checks |
-| `2` | — | **Reserved** for the run-engine's "unresolved CRITICAL gate" signal. The run-engine is not yet built, so nothing emits `2` today — and a bad invocation never will |
-| `6` | `EXIT_SUCCESS_WITH_WARNINGS` | Everything the command was responsible for succeeded, but something peripheral did not — today, `uninstall` when a tracked `--link-bin` symlink could not be removed |
-| `64` | `EXIT_USAGE_ERROR` | Usage error (`EX_USAGE`, BSD `sysexits.h`) — a bad flag, unknown command, missing argument, invalid value, or an invalid config |
-| `65` | `EXIT_VERIFY_FAILED` | A verification failed — a checksum mismatch on a fetched install source, or an unsupported `~/.konductor/installs` schema version |
+| `1` | `EXIT_HALTED` | A command ran correctly and reported failure — `doctor` with one or more `failed`/`stale` checks, or `verify-run` on a blocked phase |
+| `2` | `EXIT_CRITICAL_GATE` | Unresolved gating finding: an open finding at or above the effective threshold. Emitted by `verify-run`; a bad invocation never exits `2` |
+| `3` | `EXIT_BUDGET_EXCEEDED` | Budget exceeded. Emitted by `verify-run` when a feature's fix cycles go above the cap |
+| `6` | `EXIT_SUCCESS_WITH_WARNINGS` | Everything the command was responsible for succeeded, but something peripheral did not — today, `uninstall` when a tracked `--link-bin` symlink could not be removed, or `verify-run` when a run passed with a skipped gate phase |
+| `64` | `EXIT_USAGE_ERROR` | Usage error (`EX_USAGE`, BSD `sysexits.h`) — a bad flag, unknown command, missing argument, invalid value, or an invalid config. For `verify-run`, argument problems only (including a `--root` that is not a directory, or a `--max-fix-cycles` value that is not a non-negative integer) |
+| `65` | `EXIT_VERIFY_FAILED` | A verification failed — a checksum mismatch on a fetched install source, or an unsupported `~/.konductor/installs` schema version. For `verify-run`, any content failure: an unusable session file (unreadable, not UTF-8, invalid YAML, a rejected tag or key, a symlink, outside `--root`, over 1 MiB) or config, a missing gate fact, an inconsistent session record (including a started or completed phase after an earlier phase still `PENDING`), a recorded `max_fix_cycles` above a pinned `--max-fix-cycles` (reason `CAP_RAISED`), or a run still in progress without `--allow-running` |
 
 ### Why `64` and not `2`
 
 Most command-line tools use `2` for a usage error. Konductor uses `64` — the BSD `sysexits.h`
 `EX_USAGE` value — and reserves the low codes so a malformed invocation can never be confused with a
 substantive failure signal. If you script against the CLI, treat `64` as *you typed something wrong*
-rather than lumping every non-zero code together.
+(for `verify-run`, a bad argument; a bad session file exits `65`) rather than lumping every non-zero code together.
 
 `--help` and `--version` are not usage errors and exit `0`.
 
@@ -199,7 +203,23 @@ rather than lumping every non-zero code together.
 | Malformed config on load | Any command, against a broken `.konductor/config.yml` |
 | `init` without `--force` on an existing `.konductor/` | `konductor init` |
 | `synth` parse failure | A malformed `agents/*.agent-spec.json` |
-| Current directory cannot be resolved | — |
+| Current directory cannot be resolved (also under `verify-run`) | — |
+| `verify-run` with a `--root` that is missing or not a directory | `konductor verify-run --session s.yml --root nope` |
+| `verify-run` with a `--max-fix-cycles` that is not digits only (no sign, spaces or decimals) | `konductor verify-run --session s.yml --max-fix-cycles -1` |
+
+### Pinning the fix-cycle budget
+
+`konductor verify-run --session <path> --max-fix-cycles <N>` takes the fix-cycle budget from
+the command line instead of the session file.
+
+- A recorded `max_fix_cycles` above `N` exits `65` with reason `CAP_RAISED`, naming both values.
+- A recorded value at or below `N` stays the cap, so a stricter recorded cap is still enforced (exit `3` when exceeded).
+- An absent `max_fix_cycles` takes `N` instead of the default `2`.
+- A malformed `N` exits `64`. A malformed recorded value is still a `65` integrity failure.
+- Without the flag nothing changes: the recorded cap is trusted and only an absent key defaults to `2`.
+
+The flag protects checks that CI or an engineer runs with a budget they chose. It does not protect
+an agent that writes the session and also runs `verify-run`, because that agent can pass any value.
 
 ### Unknown-command suggestions
 
@@ -291,6 +311,15 @@ konductor synth: /path/to/agents/broken.agent-spec.json: invalid JSON: key must 
 
 - Skills and SOPs are parsed and validated before anything is written, so a bad skill name or a
   duplicate SOP fails the whole run rather than producing a partial tree.
+- On Kiro CLI v2 and v3, synth appends a `## Your skills` block to each agent's `prompt`. It lists
+  the agent's declared skills with a rule for when to load one. Skills whose description starts
+  "MUST USE for every" (today only `constraints`) are left out, since they claim every task.
+- On Claude Code, each agent file ends with a `## Skills you can load` block instead. It lists the
+  agent's declared skills that are not in its `clientConfig.claudeCli.skills` preload, to be
+  loaded with the `Skill` tool.
+- synth prints a `konductor: warning:` line for an agent whose Claude Code preload is over 32 KiB
+  or 32 skill names. Past 32 names the warning lists the skills Claude Code would drop. It is a
+  warning, so synth still exits `0`.
 
 ---
 
@@ -300,15 +329,19 @@ konductor synth: /path/to/agents/broken.agent-spec.json: invalid JSON: key must 
 konductor/
 ├── agents/                       11 agent specs (*.agent-spec.json)
 ├── agent-sops/                   19 SOPs (*.sop.md)
-├── skills/                       82 skills (<name>/SKILL.md, plus optional helper files)
+├── skills/                       80 skills (<name>/SKILL.md, plus optional helper files)
 ├── context/                      Loaded at agent startup
-│   └── k-orchestrator-routing-rules.md
+│   ├── k-core-rules.md
+│   ├── k-direct-work.md
+│   ├── k-orchestrator-routing-rules.md
+│   └── k-orchestrator-shared.md
 ├── cli/                          The Konductor CLI
 │   ├── README.md                 CLI-specific docs
-│   └── gate-config/              Declarative policy shipped with the CLI
+│   └── gate-config/              Declarative policy; the CLI embeds config.yml only
 │       ├── config.yml            Default configuration
 │       ├── severity-schema.yml   Finding severities
-│       └── scope-table.yml       Change tiers
+│       ├── scope-table.yml       Change tiers
+│       └── sop-orchestration.yml Gated SOP list, repository lint input
 ├── mcp/                          MCP servers the CLI installs alongside the agents
 │   ├── lib/                      Shared crates: skill-lookup-core, telemetry-net
 │   └── servers/skill-lookup/     Serves skills to Kiro CLI sessions
@@ -343,7 +376,7 @@ JSON or Markdown you can read and change — see
 | `dist/` | `konductor synth` | **Yes** |
 | `~/.konductor/logs/konductor.log` | Every CLI invocation | Outside the repo |
 | `~/.konductor/config.yml` | You, by hand | Outside the repo |
-| `.konductor/handoff/<name>.md` | The `k-context-gathering` SOP, for large findings | No |
+| `.konductor/handoff/<name>.md` | The `k-context-gathering` and `k-comprehensive-search` SOPs, and subagents under the `delegation-protocol` handoff pattern | By `.konductor/.gitignore` when `konductor init` created it; otherwise by the `.konductor/handoff/.gitignore` the writer creates first |
 | `.agents/scratchpad/critique-NNN.md` | The `k-pre-cr-critique` SOP | No |
 | `.kiro/specs/<feature>/` | The `kiro-spec-workflow` SOP | No |
 
@@ -356,10 +389,10 @@ per runtime, delegation targets, and the full per-agent breakdown, see the
 
 | Agent | Model | SOPs declared | Skills | MCP registry |
 | --- | --- | --- | --- | --- |
-| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` | 13 | — |
-| `konductor-mux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
-| `konductor-cmux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
-| `k-architect` | `claude-sonnet-5.5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` | 38 | `aws-mcp` |
+| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-adversarial-pull-request-review`, `about-konductor` | 25 | `aws-mcp` |
+| `konductor-mux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor` | 10 | — |
+| `konductor-cmux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor` | 10 | — |
+| `k-architect` | `claude-sonnet-5.5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review` | 38 | `aws-mcp` |
 | `k-developer` | `claude-sonnet-5.5` | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` | 27 | `aws-mcp` |
 | `k-quality-assurance` | `claude-sonnet-5.5` | `k-test-coverage-review` | 12 | — |
 | `k-product-manager` | `claude-sonnet-5.5` | — | 16 | — |
@@ -368,25 +401,33 @@ per runtime, delegation targets, and the full per-agent breakdown, see the
 | `k-browser` | `claude-sonnet-5.5` | — | 4 | `playwright-mcp` |
 | `k-media-analyzer` | `claude-sonnet-5.5` | — | 1 | — |
 
-Every agent runs `claude-sonnet-5.5`. The SOP column is each spec's
+Every agent runs `claude-sonnet-5.5`, the Kiro CLI form of the ID. On Claude Code, `konductor synth`
+writes it as `claude-sonnet-5-5`. The SOP column is each spec's
 `dependencies.agentSops.agentSopNames`; the skill count is
-`clientConfig.claudeCli.skills`, which matches `dependencies.skills.skillNames` for every
-agent except `konductor` — that one declares `claude-teams-behavior` for Claude Code only,
-so its shared count is 12 and its Claude Code count is 13. Every skill is catalogued in the
+`clientConfig.claudeCli.skills`. Claude Code preloads that list only when the agent runs as a
+subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand.
+The list differs from `dependencies.skills.skillNames` in two places. `konductor` declares
+`claude-teams-behavior` for Claude Code only. Seven agents (the three orchestrators,
+`k-quality-assurance`, `k-researcher`, `k-browser`, `k-media-analyzer`) declare
+`humanize-writing` in `skillNames` only, so no runtime preloads it for them. Every skill is catalogued in the
 [Skills catalog](skills.md).
 
-Only the three orchestrators declare a context file
-(`context/k-orchestrator-routing-rules.md`).
+Every agent declares `context/k-core-rules.md`. The three orchestrators also declare
+`context/k-orchestrator-shared.md`. Only the mux and cmux orchestrators also declare
+`context/k-orchestrator-routing-rules.md`; `konductor` declares `context/k-direct-work.md`.
 
 ### MCP registry entries
 
 | Entry | Declared by | Definition |
 | --- | --- | --- |
-| `aws-mcp` | `k-architect`, `k-developer` | `command: uvx`, args `mcp-proxy-for-aws-cli==1.7.0`, `https://aws-mcp.us-east-1.api.aws/mcp`, `--metadata`, `AWS_REGION=us-east-1` |
+| `aws-mcp` | `konductor`, `k-architect`, `k-developer` | `command: uvx`, args `mcp-proxy-for-aws-cli==1.7.0`, `https://aws-mcp.us-east-1.api.aws/mcp`, `--metadata`, `AWS_REGION=us-east-1`, `--skip-auth` |
 | `playwright-mcp` | `k-browser` | args `-y`, `@playwright/mcp@latest` |
 
-In Claude Code these agents request the corresponding tools via globs — `mcp__aws-mcp__*` and
-`mcp__playwright-mcp__*` — rather than launching the servers themselves.
+In Claude Code `k-architect`, `k-developer` and `k-browser` request the corresponding tools via the
+globs `mcp__aws-mcp__*` and `mcp__playwright-mcp__*` rather than launching the servers themselves.
+`konductor` requests only five read-only `aws-mcp` tools: `aws___retrieve_skill`,
+`aws___search_documentation`, `aws___read_documentation`, `aws___list_regions` and
+`aws___get_regional_availability`.
 
 ---
 
@@ -404,7 +445,7 @@ All 19, with owning agent and required parameters. Detail and flowcharts:
 | `kiro-spec-workflow` | orchestrators | `feature_name`, `feature_scope_path`, `user_stories_path`, `design_artifacts_path` |
 | `k-design-doc-creation` | `k-architect` | `topic` |
 | `k-existing-design-review` | `k-architect` | `design_dir` |
-| `k-adversarial-pull-request-review` | `k-architect` | `diff_input` (always; `pr_url` is context-only) |
+| `k-adversarial-pull-request-review` | orchestrators (`k-architect` is the checker) | `diff_input` (always; `pr_url` is context-only) |
 | `k-code-review-workflow` | `k-developer` | `source_dir` |
 | `k-code-cleanup` | `k-developer` | `source_dir` |
 | `k-pre-cr-critique` | `k-developer` | none — all parameters have defaults |
