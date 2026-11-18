@@ -45,6 +45,11 @@ const MODEL_ID = /^[A-Za-z0-9._:/-]{3,120}$/;
 const REASONING_EFFORT = /^[a-z]{3,10}$/;
 const SESSION_ID = /"sessionID":"(ses_[A-Za-z0-9_]{1,100})"/;
 const PROVIDER = 'amazon-bedrock';
+// A fixed session title. Without --title, OpenCode starts the session with a default title and then makes a second
+// model call to write a real one, and that call sends the first user message (the whole judge prompt, answer included)
+// to the provider's small model. Its tokens are not in the session's step_finish events, so the ledger never sees it. A
+// title that is not the default makes OpenCode skip that call.
+const SESSION_TITLE = 'bench-judge';
 const SESSION_EXPORT_TIMEOUT_MS = 60000;
 const VERSION_TIMEOUT_MS = 30000;
 // Linux refuses a single argument longer than 128 KiB (MAX_ARG_STRLEN) with E2BIG. The prompt is one
@@ -144,6 +149,11 @@ function judgeConfig({ modelId = null, region, maxOutputTokens }) {
   return {
     $schema: 'https://opencode.ai/config.json',
     enabled_providers: [PROVIDER],
+    // Any call OpenCode makes to a small model (the session title, if --title were ever dropped) goes to the seat's own
+    // model, never to another provider's model such as a Claude Haiku for an OpenAI or xAI seat.
+    ...(modelId === null
+      ? {}
+      : { small_model: `${PROVIDER}/${configIdFor(modelId)}` }),
     share: 'disabled',
     // Both spellings: OpenCode versions differ in which key they read.
     provider: { [PROVIDER]: bedrock },
@@ -622,7 +632,8 @@ async function judgeCall({
         ...(standalone ? ['--standalone'] : []),
         '--format',
         'json',
-        '--auto',
+        '--title',
+        SESSION_TITLE,
         '-m',
         model,
         prompt,

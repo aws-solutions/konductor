@@ -192,6 +192,28 @@ test('lockdown: only the Bedrock provider, every tool denied by default and by n
   assert.deepEqual(config.provider, config.providers);
 });
 
+test('lockdown: a call with a model names that model as the small model, so no title or summary call reaches another provider', () => {
+  for (const modelId of [OPUS, TERRA]) {
+    const config = oc.judgeConfig({
+      modelId,
+      region: 'us-west-2',
+      maxOutputTokens: LIMIT,
+    });
+    assert.equal(
+      config.small_model,
+      `amazon-bedrock/${oc.opencodeModelId(modelId)}`,
+    );
+    assert.ok(
+      Object.hasOwn(
+        config.provider['amazon-bedrock'].models,
+        config.small_model.split('/')[1],
+      ),
+      'the small model is the entry the config defines',
+    );
+  }
+  assert.ok(!('small_model' in oc.judgeConfig({ region: 'us-west-2' })));
+});
+
 test('lockdown: the region comes from the settings and no AWS profile is ever set', () => {
   const config = oc.judgeConfig({
     modelId: TERRA,
@@ -710,7 +732,7 @@ test('judgeCall: an unsafe model id or effort, a bad prompt or a stale credentia
   });
 });
 
-test('judgeCall: the command line is opencode run --standalone --format json --auto -m <model> <prompt>, in the sandbox', async () => {
+test('judgeCall: the command line is opencode run --standalone --format json --title <fixed title> -m <model> <prompt>, in the sandbox, without --auto', async () => {
   await withJudge(async ({ call, tmpRoot }) => {
     const { run, calls } = stubRun();
     const result = await call({ run, prompt: 'line one\nline "two" $(x)' });
@@ -723,11 +745,18 @@ test('judgeCall: the command line is opencode run --standalone --format json --a
       '--standalone',
       '--format',
       'json',
-      '--auto',
+      '--title',
+      'bench-judge',
       '-m',
       `amazon-bedrock/${OPUS_ENTRY}`,
       'line one\nline "two" $(x)',
     ]);
+    assert.ok(!args.includes('--auto'), 'no auto-approval of permissions');
+    assert.equal(
+      args[args.indexOf('--title') + 1],
+      'bench-judge',
+      'a fixed title, never a part of the prompt',
+    );
     assert.ok(options.cwd.startsWith(path.join(tmpRoot, 'bench-judge-')));
     assert.equal(path.basename(options.cwd), 'project');
     assert.equal(sandboxMode, 0o700);
@@ -766,7 +795,8 @@ test('judgeCall: an OpenCode without --standalone gets neither run nor session e
       'run',
       '--format',
       'json',
-      '--auto',
+      '--title',
+      'bench-judge',
       '-m',
       `amazon-bedrock/${OPUS_ENTRY}`,
       'judge this',
@@ -1474,7 +1504,8 @@ test('stub binary: the real process sees every tool denied, only Bedrock, a 0700
       '--standalone',
       '--format',
       'json',
-      '--auto',
+      '--title',
+      'bench-judge',
       '-m',
       `amazon-bedrock/${TERRA_ENTRY}`,
       prompt,
