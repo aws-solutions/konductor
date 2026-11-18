@@ -4,7 +4,7 @@
 
 [← Back to guide index](README.md)
 
-All **81 skills** the package ships, grouped by what they are for. Each entry gives what the
+All **80 skills** the package ships, grouped by what they are for. Each entry gives what the
 skill does, when it makes sense to reach for it, and which agents declare it.
 
 A **skill** is a module of knowledge an agent loads on demand — see
@@ -225,7 +225,7 @@ Looking things up outside the repository.
 
 ## Coverage
 
-**All 81 skills are declared by at least one agent.** That matters because a skill no agent
+**All 80 skills are declared by at least one agent.** That matters because a skill no agent
 declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use
 it. Contributors adding a skill should see
 [Contributing → check skill coverage](appendix/contributing.md#check-skill-coverage).
