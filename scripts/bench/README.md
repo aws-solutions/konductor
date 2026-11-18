@@ -497,7 +497,7 @@ Each answer is scored on its own. A judge call sees one answer, never the other 
 
 ## The pairs job
 
-`lib/pairs.js` (`runPairs`) makes the subject runs of the selected skills. It spends money: each run is one Claude Code call. The command that starts it as a job comes with the job launcher.
+`lib/pairs.js` (`runPairs`) makes the subject runs of the selected skills. It spends money: each run is one Claude Code call. `scripts/bench/job.js pairs` runs it, and `scripts/bench/launch.js pairs` starts that in the background (see Starting a job).
 
 1. `plan` for the same skills must pass. If it refuses (an invalid baseline, a cost above `max_usd`, a ledger past a limit), nothing is built or spent. Skills that `plan` does not plan, such as `no baseline`, are listed as skipped. `plan` counts an answer as done when its file exists, so it prices no run for an answer that is out of date (a skill edit, another model or runner profile). Once the tasks are assembled the job adds those runs, at the p90 of a subject call, to the plan's figure and checks `max_usd` (this run's spend and reservations) and `total_cap_usd` (the ledger) again. Over a limit, the job is refused with a line that says how many answers are out of date, and nothing is set aside or spent; this holds for `--dry-run` too.
 2. A run is pending when its answer file is missing or not current: another input digest (see Task assembly), or a text that does not match its stored hash. A pending answer file is renamed `<file>.superseded-<time>` and kept. It is never read again.
@@ -529,6 +529,53 @@ Each answer also records the skills version (the commit of the last change under
 
 A list whose key is longer than 64 characters keeps its first three names, the count of the others and the first 8 hex digits of the SHA-256 of the whole key; two such lists share a key only when all three agree, which is very unlikely. A pid file alone does not mean the job runs: a job is live only when its pid is alive and that process's command line holds the job script. The command line is read with `ps`, or from `/proc/<pid>/cmdline` when `ps` cannot run. A pid the system gave to another program does not count. A pid that is alive but whose command line neither can read cannot be checked, so the launch is refused (exit 1) and starts nothing; the message names the pid file to remove if that process is not the job.
 
+## Starting a job
+
+A job is paid work that can run for a long time. `launch.js` starts it in the background and returns at once:
+
+```
+node scripts/bench/launch.js pairs --skills brew-log --run r1 [--max-usd 5] [--config <file>] [--root <dir>] [--dry-run]
+```
+
+It checks every option first, the same way the job will: a known job (only `pairs` so far), skills that have a `skills/<name>/SKILL.md` under the root it is given, a valid run id, a settings file that loads, and a plain `--max-usd` within `total_cap_usd`. A flag is given as `--flag value` or `--flag=value`, and a flag given twice is refused (exit 64), as in `plan`. Then it starts `node scripts/bench/job.js` with those values, detached, with stdout and stderr in the job's log (see Job folder). It prints one JSON line and exits:
+
+```
+{"job":"pairs","run_id":"r1","skills":["brew-log"],"dry_run":false,"pid":4242,"already_running":false,"log_file":"...","pid_file":"..."}
+```
+
+- A second launch of the same job and skills returns the running job with `"already_running": true` and starts nothing, so a rerun of a workflow step cannot pay twice.
+- Exit 0 means the job was started, not that it will run: the job checks `plan` for the same skills first and can still refuse (its own exit 1). The result of the job is the last line of its log.
+- A launch that shares a skill with another live job of the same kind in the same run is refused, because both would run that skill's pending work.
+- A dry run spends nothing. It has its own log and pid file, is never refused for an overlap, and never blocks a paid job.
+- The check, the start and the pid file happen under a lock file (`launch.lock`, exclusive create, stale after 30 seconds), so two launches at the same moment cannot both start.
+- The job gets the caller's environment without the variables that would redirect or change a child (`ANTHROPIC_*`, `OPENAI_*`, `OPENCODE_*`, `CLAUDE_CODE_*`, `NODE_OPTIONS`, `BASH_ENV`, `ENV`). The launcher reads and writes no credential: the job exports fresh, short-lived credentials before every subject run.
+
+| Launcher exit | Meaning                                                                                                                                 |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 0             | started, or already running                                                                                                             |
+| 1             | refused: another live job runs one of these skills, a pid file names a process that cannot be checked, or another launch holds the lock |
+| 64            | usage error (the JSON line gives every reason, joined with `; `)                                                                        |
+| 66, 70, 74    | missing input, internal error, I/O error, as for `plan`                                                                                 |
+
+On a failure the line is `{"error": "...", "exit_code": N}`. A failed write (the job folder, the log, the pid file, the lock) says "cannot write" and exits 74. When the pid file is the write that fails, the job has already started, so the launcher first stops its process group (SIGTERM); a retry then cannot start the same job twice. If that signal fails, the error text names the pid that is still running.
+
+`job.js` is the job itself, in the foreground. It takes the same options. It prints one line per event, every line through the redactor, and ends with one JSON line: the status, the exit code, the stop if any, and the count of runs by result. That last line is printed whole, however many skills were skipped; the other lines are cut at 8000 characters.
+
+| Job exit | Meaning                                                                                         |
+| -------- | ----------------------------------------------------------------------------------------------- |
+| 0        | done: every pending run gave a valid answer, nothing was pending, or a dry run                  |
+| 1        | refused by `plan` (invalid baseline, cost above `max_usd`, a ledger past a limit)               |
+| 3        | partial: a run failed or was not loaded; the answers made are kept                              |
+| 4        | stop: credentials missing, long-term or expiring within the call timeout (5 minutes by default) |
+| 5        | stop: spend (the ledger refused a call)                                                         |
+| 6        | stop: the ledger cannot be read or its lock cannot be taken                                     |
+| 7        | stop: security (the secret sweep found a credential value or the canary in stored text)         |
+| 8        | stop: the first run was answered by another model than the subject model                        |
+| 10       | stop: the first run was invalid for another reason than the skill or the model (setup)          |
+| 64       | usage error; 66, 70 and 74 as for `plan`                                                        |
+
+Neither command uses exit code 2, which this repository keeps for a gate finding.
+
 ## Not built yet
 
-These are added in a later PR: the commands that start the jobs, the judge job, the checklist writer for reading A, the labels that sum up the scores, and the report. The judge client is a library until the judge job uses it.
+These are added in a later PR: the judge job, the checklist writer for reading A, `next` (which says which job to start), the labels that sum up the scores, and the report. The judge client is a library until the judge job uses it.
