@@ -586,6 +586,18 @@ def test_ratchet_accepts_entry_created_by_lowered_threshold():
     assert _ratchet({}, {"widget": {"lines": 90}}, new_thresholds=thresholds) == []
 
 
+def test_ratchet_rejects_entry_over_the_old_threshold_even_after_a_cut():
+    """A lowered threshold excuses a new entry only up to the OLD threshold.
+
+    Above it the skill grew past a limit that already applied, which a cut
+    elsewhere in the same change must not launder.
+    """
+    thresholds = {"bytes": 1000, "description_chars": 512, "lines": 80}
+    assert _ratchet({}, {"widget": {"lines": 600}}, new_thresholds=thresholds) == [
+        "skills.widget.lines = 600 added"
+    ]
+
+
 def test_ratchet_rejects_raised_threshold_or_tolerance():
     assert _ratchet({}, {}, new_thresholds={"bytes": 2000, "description_chars": 512, "lines": 100})
     assert _ratchet({}, {}, new_tolerance={"bytes": 100, "description_chars": 50, "lines": 60})
@@ -598,3 +610,46 @@ def test_check_ratchet_cli_passes_against_itself():
         text=True,
     )
     assert result.returncode == 0, result.stderr
+
+
+def _ratchet_cli(tmp_path, monkeypatch, old_skills, new_skills, new_thresholds=None):
+    """Commit NEW as the baseline the CLI reads and return the path of OLD.
+
+    Comparing the committed baseline with itself can only ever pass, so each
+    rejection path needs an OLD that differs from it.
+    """
+    old_path = tmp_path / "old-baseline.json"
+    old_path.write_text(sq.render_baseline(_baseline(old_skills)), encoding="utf-8")
+    new_path = tmp_path / "baseline.json"
+    new_path.write_text(
+        sq.render_baseline(_baseline(copy.deepcopy(new_skills), new_thresholds)), encoding="utf-8"
+    )
+    monkeypatch.setattr(sq, "BASELINE_PATH", new_path)
+    return old_path
+
+
+def test_check_ratchet_cli_rejects_a_raised_entry(tmp_path, monkeypatch, capsys):
+    old = _ratchet_cli(tmp_path, monkeypatch, {"widget": {"lines": 300}}, {"widget": {"lines": 301}})
+    assert sq.main(["--check-ratchet", str(old)]) == 1
+    assert "skills.widget.lines raised from 300 to 301" in capsys.readouterr().err
+
+
+def test_check_ratchet_cli_rejects_an_added_entry_over_the_old_threshold(tmp_path, monkeypatch, capsys):
+    thresholds = {"bytes": 1000, "description_chars": 512, "lines": 80}
+    old = _ratchet_cli(tmp_path, monkeypatch, {}, {"widget": {"lines": 600}}, new_thresholds=thresholds)
+    assert sq.main(["--check-ratchet", str(old)]) == 1
+    assert "skills.widget.lines = 600 added" in capsys.readouterr().err
+
+
+def test_check_ratchet_cli_rejects_an_unreadable_old_baseline(tmp_path, monkeypatch, capsys):
+    old = _ratchet_cli(tmp_path, monkeypatch, {}, {})
+    old.write_text("", encoding="utf-8")
+    assert sq.main(["--check-ratchet", str(old)]) == 1
+    assert f"old baseline {old}" in capsys.readouterr().err
+
+
+def test_check_ratchet_cli_rejects_an_unreadable_new_baseline(tmp_path, monkeypatch, capsys):
+    old = _ratchet_cli(tmp_path, monkeypatch, {}, {})
+    sq.BASELINE_PATH.write_text("", encoding="utf-8")
+    assert sq.main(["--check-ratchet", str(old)]) == 1
+    assert f"new baseline {sq.BASELINE_PATH}" in capsys.readouterr().err
