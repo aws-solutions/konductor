@@ -4,7 +4,7 @@
 
 [← Back to guide index](README.md)
 
-All **81 skills** the package ships, grouped by what they are for. Each entry gives what the
+All **79 skills** the package ships, grouped by what they are for. Each entry gives what the
 skill does, when it makes sense to reach for it, and which agents declare it.
 
 A **skill** is a module of knowledge an agent loads on demand — see
@@ -23,9 +23,9 @@ know exactly which lens you want applied.
 - [Behaviour, routing, and memory](#behaviour-routing-and-memory) — 13
 - [Requirements and product](#requirements-and-product) — 6
 - [Program and delivery management](#program-and-delivery-management) — 7
-- [Architecture and design](#architecture-and-design) — 12
+- [Architecture and design](#architecture-and-design) — 11
 - [Design quality gates](#design-quality-gates) — 6
-- [API and data modelling](#api-and-data-modelling) — 6
+- [API and data modelling](#api-and-data-modelling) — 5
 - [Security](#security) — 3
 - [Implementation and code review](#implementation-and-code-review) — 17
 - [Testing and browser automation](#testing-and-browser-automation) — 7
@@ -70,8 +70,8 @@ Turning a business ask into something an engineer can build.
 | `user-story-writing` | Creates user stories with INVEST principles, epics, and acceptance criteria, from validated requirements or a rough ask. Scales to MVP (10-15), Production (20-30), or full scope (30-40 stories). | You need stories, epics or acceptance criteria, or want to turn a feature idea into backlog items. No requirements doc is needed. | `k-product-manager`, `konductor` |
 | `task-decomposition` | Splits stories and a system design into independent features that individual engineers can build with minimal overlap. | The HLD is done and you need to parallelise the work across people. | `k-developer`, `k-product-manager`, `k-tpm` |
 | `sprint-planning` | Task hierarchy, story-point sizing, capacity tracking, sprint workflow. Its Asana reference drives the same workflow through Asana. | You are planning a sprint or sizing work. For Asana, it needs an Asana MCP server (opt-in). | `k-product-manager`, `k-tpm` |
-| `decision-research` | Research patterns for gathering context before deciding and verifying artifact claims: prior art, alternatives, trade-offs, evidence base, assumption challenges. | A decision needs evidence rather than opinion. | `k-architect`, `k-product-manager` |
-| `document-formats` | Reads and writes `.docx` via pandoc. | Your requirements arrived as a Word document. | `k-product-manager`, `k-quality-assurance`, `k-researcher`, `k-tpm` |
+| `decision-research` | Research patterns for gathering context before deciding, and for surfacing prior art an artifact missed: prior art, alternatives, trade-offs, evidence base, assumption challenges. | A decision needs evidence rather than opinion. | `k-architect`, `k-product-manager` |
+| `docx-conversion` | Converts `.docx` files to and from Markdown with pandoc. | Your requirements arrived as a Word document. | `k-product-manager`, `k-quality-assurance`, `k-researcher`, `k-tpm` |
 
 ---
 
@@ -105,8 +105,7 @@ Producing the design itself.
 | `non-functional-requirements` | Extracts measurable NFRs across performance, availability, security, scalability, and observability. | The design exists and "it should be fast" needs to become a number. | `k-architect` |
 | `architecture-diagram-generation` | Generates AWS architecture diagrams as draw.io XML with official service icons and directional data flows; single or multi-account. | You need a real diagram from a written design. | `k-architect` |
 | `cost-estimation` | AWS cost estimates in baseline, optimized, and high-availability scenarios. | Someone asked what this will cost to run. Needs service configs and expected load. | `k-architect` |
-| `adr-generator` | Produces inline Architecture Decision Records — Context, Decision, Status, Alternatives Considered, Consequences. | A significant design choice needs a written record. | `k-architect` |
-| `decision-writing` | How to write decision records well: structure, tone, alternatives framing, consequence articulation. | Your ADRs are technically complete but nobody can follow them. | `k-architect` |
+| `decision-writing` | How to write decision records well: structure, tone, alternatives framing, consequence articulation. Its ADR Mode produces inline Architecture Decision Records (Context, Decision, Status, Alternatives Considered, Consequences). | A significant design choice needs a written record, or your ADRs are technically complete but nobody can follow them. | `k-architect` |
 | `trade-off-evaluator` | Scores options across cost, latency, complexity, scalability, and operability into a comparison matrix plus a recommendation. | A decision has more than one credible option. | `k-architect` |
 | `deliberation-panel` | Multi-perspective deliberation: derives decision-specific axes, argues each independently, cross-examines anonymously, synthesizes a scored recommendation. Requires explicit consent. | A high-stakes decision where you want genuine disagreement, not a single voice. | `konductor`, `k-architect`, `k-developer`, `k-product-manager`, `k-researcher` |
 | `argumentation-reference` | Primer on argumentation theory — Toulmin model, fallacy taxonomy, argument scoring. | Used during adversarial review to name why an argument is weak. | `k-architect` |
@@ -120,27 +119,30 @@ Checking a design before anyone builds it.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `design-evaluation` | Evaluates a complete design package for production readiness across 10 dimensions. | The final gate before implementation. Wants all artifacts present — design, threat model, API specs, data models, diagrams, IAM. | `k-architect`, `konductor` |
+| `design-evaluation` | Evaluates a design package, or a single design doc, for production readiness across 10 dimensions (8 scored, 2 report sections). | The final gate before implementation. Lists any missing artifacts (system design, threat model, API specs, data models, diagrams, IAM) and scores what is present; use `single-document` scope for one doc. | `k-architect`, `konductor` |
 | `design-quality-check` | Scores a design doc for writing quality, structural completeness, and KISS/YAGNI compliance. Detects filler, hedging, unsupported claims, passive voice, circular reasoning. | The doc is complete but reads badly, or you suspect padding. | `k-architect` |
-| `doc-accuracy-analyzer` | Six-step verification of a technical document against primary sources: extracts claims, investigates each, classifies, reports. | You need to know which claims in a document are actually true. | `k-architect` |
-| `aws-service-validator` | Validates AWS service and feature claims against live AWS documentation. Catches hallucinated AWS assertions. | Any design that names AWS services. This is the anti-hallucination gate. | `k-architect` |
-| `adversarial-design-review` | Reviews design sections from an adversarial stance, classifying CRITICAL / IMPORTANT / MINOR. Path B fallback when no devil's-advocate subagent is installed. | You want the design attacked and have no separate adversarial agent available. | `k-architect` |
+| `doc-accuracy-analyzer` | The entry point for fact-checking a technical document: extracts claims, routes AWS claims to `aws-service-validator`, checks the rest against primary sources, reports. | You need to know which claims in a document are actually true. | `k-architect`, `k-product-manager` |
+| `aws-service-validator` | Validates AWS feature, limit, pricing, and Region claims against live AWS documentation. Called by `doc-accuracy-analyzer`, or run directly on a list of AWS claims. | Any design that names AWS services. This is the anti-hallucination gate. | `k-architect` |
+| `adversarial-design-review` | Reviews design sections from an adversarial stance, classifying CRITICAL / IMPORTANT / SUGGESTION. Path B fallback when no devil's-advocate subagent is installed. | You want the design attacked and have no separate adversarial agent available. | `k-architect` |
 | `humanize-writing` | Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. | Writing or editing prose, or a draft reads machine-written. | all 11. Loads on demand on every runtime |
 
 ---
 
 ## API and data modelling
 
-Interface and storage design, each paired with its own validator.
+API, data and access policy design. The Smithy and IAM skills each pair with a validator;
+`dynamodb-design` carries its own review gate.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
 | `smithy-modeling` | Generates Smithy API models — service definitions, operations, structures, validation, errors. Supports TypeScript, OpenAPI, and AWS SDK codegen. | Designing a new service API. | `k-architect` |
 | `smithy-validation` | Validates Smithy models for structure, naming, security, and codegen readiness. | Before implementing against a Smithy model. | `k-architect` |
-| `dynamodb-design` | DynamoDB table designs optimized for access patterns: partition keys, GSI strategy, capacity planning, plus CDK/CloudFormation code. | Designing a data model on DynamoDB. | `k-architect` |
-| `dynamodb-validation` | Validates a DynamoDB design against best practice across 13 categories — hot partitions, missing indexes, cost, security. | Before implementing a DynamoDB design. | `k-architect` |
+| `dynamodb-design` | Designs DynamoDB tables and GSIs from access patterns, and reviews a design for hot partitions and unsharded low-cardinality keys. | Designing or reviewing a DynamoDB data model. | `k-architect` |
 | `iam-policy-design` | Generates least-privilege IAM role policies, resource policies, and compliance configuration. | Designing access control for a new service. | `k-architect` |
 | `policy-validation` | Validates IAM policies for over-permissive grants, missing conditions, and compliance gaps. | Before deploying any IAM change. | `k-architect` |
+
+For DynamoDB depth that `dynamodb-design` does not carry, such as Streams, backup and the cost
+calculator, it points to the AWS MCP server's `amazon-dynamodb` skill.
 
 ---
 
@@ -173,11 +175,11 @@ Writing and reviewing code.
 | `adversarial-code-review-pass-integrity` | One parallel pass, scoped to data integrity: multi-item mutations, atomicity, ordering, idempotency. | Same: run in a session the coordinator spawns, not called on its own. | `k-architect`, `k-developer` |
 | `adversarial-code-review-pass-schema` | One parallel pass, scoped to schema and contract: API/schema/type changes, backward compatibility, validation completeness. | Same: run in a session the coordinator spawns, not called on its own. | `k-architect`, `k-developer` |
 | `historical-issues-registry` | Loads prior review state for a pull request, then filters new findings that duplicate ones already fixed or already declined by a human reviewer. | Reviewing a second or third revision of the same change, to stop the same comment reappearing. | `k-architect` |
-| `asdlc-code-simplifier` | Simplifies code for clarity and consistency without changing behaviour. | Recently modified code is correct but hard to read. | `k-developer` |
-| `asdlc-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer` |
+| `k-code-simplifier` | Simplifies code for clarity and consistency without changing behaviour. | Recently modified code is correct but hard to read. | `k-developer` |
+| `k-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer` |
 | `git-workflow` | Atomic commits, branch management, history operations. | Committing, branching, or searching history. | `k-developer` |
-| `git-merge` | Branch merges — feature into mainline, dev into mainline, release merges. | Merging anything. Declared only by the two multiplexer orchestrators. | `konductor-cmux-orchestrator`, `konductor-mux-orchestrator` |
-| `find-aws-skills` | Discovers additional AWS skills from the AWS MCP server for tasks the bundled skills do not cover. | Your task involves an AWS service and nothing bundled matches. | `k-developer` |
+| `git-merge` | Branch merges into the default branch, release merges, merge conflicts. | Merging locally; use `code-review` when merges go through PRs. Declared only by the two multiplexer orchestrators. | `konductor-cmux-orchestrator`, `konductor-mux-orchestrator` |
+| `find-aws-skills` | Discovers additional AWS skills from the AWS MCP server for tasks the bundled skills do not cover. | Your task involves an AWS service and nothing bundled matches. | `k-architect`, `k-developer`, `konductor` |
 | `agents-md-authoring` | Creates and maintains AGENTS.md files that bootstrap agent context. Covers the agents.md standard, the context-loading block, and the CLAUDE.md bridge. | Onboarding a repo for agents, or your conventions have drifted from what agents are told. | `k-developer`, `konductor` |
 
 ---
@@ -208,9 +210,9 @@ it that step's parameters, and the specialist runs its own skill.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `kiro-requirements-generation` | Turns user stories into a Kiro IDE `requirements.md` with EARS-format acceptance criteria. | Step 1 of the `kiro-spec-workflow` SOP. | `k-product-manager` |
-| `kiro-design-generation` | Turns design artifacts into a per-feature Kiro IDE `design.md` with all 6 required sections. | Step 2 of the `kiro-spec-workflow` SOP, after requirements are approved. | `k-architect` |
-| `kiro-task-generation` | Generates a Kiro IDE `tasks.md` — numbered checkboxes with requirement references. | Step 3 of the `kiro-spec-workflow` SOP, after design is approved. | `k-developer` |
+| `kiro-requirements-generation` | Turns user stories into a Kiro IDE `requirements.md` with a Glossary, EARS-format acceptance criteria, and the source story ID on each requirement, or a bug report into `bugfix.md`. | Step 1 of the `kiro-spec-workflow` SOP. | `k-product-manager` |
+| `kiro-design-generation` | Turns design artifacts into a per-feature Kiro IDE `design.md` with Kiro's 7 sections, including Correctness Properties. Runs first in a design-first spec. | Step 2 of the `kiro-spec-workflow` SOP, after requirements are approved. | `k-architect` |
+| `kiro-task-generation` | Generates a Kiro IDE `tasks.md`: numbered checkboxes with requirement references, optional test tasks, checkpoints, and a task dependency graph. | Step 3 of the `kiro-spec-workflow` SOP, after design is approved. | `k-developer` |
 
 ---
 
@@ -226,7 +228,7 @@ Looking things up outside the repository.
 
 ## Coverage
 
-**All 81 skills are declared by at least one agent.** That matters because a skill no agent
+**All 79 skills are declared by at least one agent.** That matters because a skill no agent
 declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use
 it. Contributors adding a skill should see
 [Contributing → check skill coverage](appendix/contributing.md#check-skill-coverage).
@@ -246,10 +248,10 @@ Useful when deciding which agent to talk to directly.
 
 | Agent | Skills declared | Preloaded on Claude Code |
 | --- | --- | --- |
-| `k-architect` | 38 | 2 |
+| `k-architect` | 37 | 2 |
 | `k-developer` | 27 | 4 |
-| `konductor` | 24 | 2 |
-| `k-product-manager` | 15 | 1 |
+| `konductor` | 25 | 2 |
+| `k-product-manager` | 16 | 1 |
 | `k-tpm` | 14 | 1 |
 | `k-quality-assurance` | 13 | 2 |
 | `konductor-cmux-orchestrator` | 11 | 1 |

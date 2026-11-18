@@ -124,6 +124,27 @@ pub(crate) fn write_atomic_with_mode(path: &Path, contents: &[u8], mode: u32) ->
     Ok(())
 }
 
+/// Errors with `InvalidInput` when `path` exists and is a symlink (of any
+/// kind, dangling or not); never follows it. `File::create`, `rename` and
+/// `create_dir_all` all resolve symlinks, so a write through a symlinked
+/// path or parent directory lands wherever the link points. A missing path
+/// is not an error: there is nothing to reject yet. This is a
+/// check-then-act guard, so callers repeat it right before each write to
+/// keep the window small; see `claude_settings.rs` for the full TOCTOU
+/// note.
+pub(crate) fn reject_symlink(path: &Path, kind: &str) -> io::Result<()> {
+    match std::fs::symlink_metadata(path) {
+        Ok(meta) if meta.file_type().is_symlink() => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!(
+                "{} is a symlink, not a real {kind} -- refusing to write through it",
+                path.display()
+            ),
+        )),
+        _ => Ok(()),
+    }
+}
+
 /// A best-effort unique token for the temp file name: the current Unix
 /// timestamp in nanoseconds combined with the process id. Not
 /// cryptographically random -- this only needs to avoid collisions

@@ -60,9 +60,23 @@ SCOPE_CLAUSE = re.compile(r"\bonly (in|for|when|on)\b|\bapplies to\b", re.IGNORE
 # An explicit mandate.
 MUST_USE = re.compile(r"\bMUST USE\b", re.IGNORECASE)
 # Behavior-summary form: a capitalised third-person verb first ("Validates ...").
-# A plural noun before a preposition ("Notes on ...") is not a verb.
-VERB_PROXY = re.compile(r"^[A-Z][a-z]+s\b(?!\s+(?:on|of|for|about|in|to|from|with|at|by)\b)")
-VERB_PROXY_STOPLIST = frozenset({"This", "Has", "Was", "Its", "Is", "Does", "Thus", "Plus"})
+VERB_PROXY = re.compile(r"^[A-Z][a-z]+s\b")
+# First words that look like a third-person verb but are not one. Rejecting any
+# first word followed by a preposition caught "Notes on ..." and also rejected
+# "Checks for drift ...", "Scans for hard-coded secrets ..." and "Searches for
+# prior art ...", which AGENTS.md allows, so the nouns are named instead. A noun
+# missing from this set opens a description that passes as a behavior summary and
+# warns, which is the softer error of the two: the author is told to check that
+# the description says when the skill applies.
+VERB_PROXY_STOPLIST = frozenset(
+    {
+        "This", "Has", "Was", "Its", "Is", "Does", "Thus", "Plus",
+        # Noun openers a documentation-shaped description uses.
+        "Checklists", "Conventions", "Details", "Examples", "Findings", "Guidelines",
+        "Instructions", "Notes", "Options", "Patterns", "Questions", "References",
+        "Requirements", "Rules", "Standards", "Steps", "Templates", "Tips",
+    }
+)
 
 # A fence opens at up to 3 spaces of indent, or inside a list item at up to 3 spaces
 # past the item's content column. Any deeper line is indented code, not a fence. A
@@ -76,6 +90,11 @@ REFERENCE_DEFINITION = re.compile(r"^ {0,3}\[(?!\^)[^\]]+\]:\s*(\S+)")
 CODE_SPAN = re.compile(r"(`+)(?!`)(.+?)(?<!`)\1(?!`)")
 URL_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
 BARE_PATH = re.compile(r"(?<![\w/.-])((?:references|scripts|evals|templates|assets)/[\w./-]+)")
+# A line that names the AWS MCP server's skill-file fetch tool is describing a
+# path inside ANOTHER skill's bundle, which `file=` takes in the same
+# `references/...` shape. Those paths are never on this skill's disk, so the
+# on-disk check below would reject correct prose.
+EXTERNAL_BUNDLE_FETCH = re.compile(r"\baws___retrieve_skill\b")
 READ_VERB = re.compile(r"\b(read|open|consult|load)\b", re.IGNORECASE)
 READ_CONDITION = re.compile(r"\b(when|whenever|before|after|if|unless|during|only)\b", re.IGNORECASE)
 SKILL_NAME = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -345,6 +364,8 @@ def _check_links(report: SkillReport, skill_dir: Path, unfenced: list[str], star
 
 def _check_bare_paths(report: SkillReport, skill_dir: Path, unfenced: list[str], start: int) -> None:
     for offset, line in enumerate(unfenced):
+        if EXTERNAL_BUNDLE_FETCH.search(line):
+            continue
         for match in BARE_PATH.finditer(line):
             path = match.group(1).rstrip(".,;:)")
             if not (skill_dir / path.split("/", 1)[0]).is_dir():

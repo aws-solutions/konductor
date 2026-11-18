@@ -32,10 +32,11 @@ drift checks, [`tools/build-user-guide/`](../../tools/build-user-guide/README.md
 ### Declared skills and the Claude Code preload differ by design
 
 Every agent's `clientConfig.claudeCli.skills` is a short preload list (1 to 4 skills) that
-Claude Code injects into a spawned subagent; `dependencies.skills.skillNames` is everything the
-agent may load. The roster tables give both: the Skills column is the `skillNames` count and the
-preload column is the `claudeCli` count, and `check-guide-facts.py` asserts each. The one name in
-a preload list but not in `skillNames` is `konductor`'s `claude-teams-behavior`.
+Claude Code injects into a spawned subagent; `dependencies.skills.skillNames` is what the agent's
+own file lists as loadable, and the list Kiro CLI holds it to. On Claude Code a subagent can still
+reach any installed skill. The roster tables give both: the Skills column is the `skillNames`
+count and the preload column is the `claudeCli` count, and `check-guide-facts.py` asserts each.
+The one name in a preload list but not in `skillNames` is `konductor`'s `claude-teams-behavior`.
 
 ### `metrics` is a stub
 
