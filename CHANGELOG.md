@@ -312,6 +312,8 @@ not per individual commit.
   - `find-aws-skills` now loads for any AWS service guidance, even when a local skill covers part
     of the task, and `architecture-advisor`, `kiro-design-generation` and `system-design-patterns`
     load `dynamodb-design` and apply its quality gate before designing DynamoDB keys and indexes.
+    When a lookup fails, `find-aws-skills` offers direct API calls through `aws___run_script` only
+    when the agent has that tool.
   - `infra-validation` runs the server's `aws-cloudformation`, `aws-cdk` and
     `aws-well-architected-review` checks (cfn-lint, cfn-guard, cdk-nag, a pillar review)
     read-only and rates their findings CRITICAL, IMPORTANT or SUGGESTION. It runs `cdk synth`
