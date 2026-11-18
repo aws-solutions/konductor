@@ -64,14 +64,14 @@ Run automated quality gates against the draft. This phase requires no user inter
 **Constraints:**
 
 - You MUST run the `doc-accuracy-analyzer` skill to verify all technical claims against primary sources. It routes AWS feature, limit, pricing, and Region claims to `aws-service-validator`. Flag any INCORRECT, OVERSTATED, or UNVERIFIED findings in the draft with inline `> ⚠️` callouts.
-- You MUST NOT block doc creation on UNVERIFIED claims — mark them and proceed.
-- `doc-accuracy-analyzer` routes AWS claims to `aws-service-validator`; do not run the validator again. Pass `validation_output_dir/<name>-aws-validation.md` as the report path, and keep the analyzer's rows if it reports a fallback. Flag INCORRECT claims with `> ⚠️ INCORRECT: <correction>` callouts and UNVERIFIED claims with `> ⚠️ UNVERIFIED: <what was searched>` callouts.
-- You MUST NOT block doc creation on UNVERIFIED AWS claims — mark them and proceed.
+- You MUST NOT block doc creation on UNVERIFIED claims: mark them and proceed. The exception is an UNVERIFIED claim noted "contradicts prior knowledge, check <doc page>": it blocks like INCORRECT, so check it against that page and reclassify it, or correct the text.
+- `doc-accuracy-analyzer` routes AWS claims to `aws-service-validator`; do not run the validator again. Pass `validation_output_dir/<name>-aws-validation.md` as the report path, and keep the analyzer's rows if it reports a fallback. Flag INCORRECT claims with `> ⚠️ INCORRECT: <correction>` callouts and UNVERIFIED claims with `> ⚠️ UNVERIFIED: <what was searched>` callouts, or `> ⚠️ UNVERIFIED: contradicts prior knowledge, check <doc page>` when the validator added that note.
+- You MUST NOT block doc creation on UNVERIFIED AWS claims: mark them and proceed. An UNVERIFIED AWS claim noted "contradicts prior knowledge" is the exception and blocks like INCORRECT.
 - You MUST run the `trade-off-evaluator` skill for every significant design decision that has multiple options. Score each option 1–5 across cost, latency, complexity, scalability, and operability. Embed the scored table in the relevant ADR's Alternatives section and write the full trade-off report to `validation_output_dir/<name>-tradeoffs.md`.
 - You MUST run the `adr-generator` skill to verify every Phase 2 ADR is embedded under the `## Architecture Decision Records` section. Do NOT regenerate ADRs already created in Phase 2 — enrich them only (the `trade-off-evaluator` bullet above owns score embedding).
 - You MUST NOT ask the engineer for input during this phase.
 
-**Expected Output:** Draft updated with `doc-accuracy-analyzer` and `aws-service-validator` findings inline. Trade-off matrices embedded in ADRs. Validation and trade-off reports written to `validation_output_dir`. Report: N AWS claims checked (N confirmed, N unverified, N incorrect), N trade-off matrices produced, N ADRs generated.
+**Expected Output:** Draft updated with `doc-accuracy-analyzer` and `aws-service-validator` findings inline. Trade-off matrices embedded in ADRs. Validation and trade-off reports written to `validation_output_dir`. Report: N AWS claims checked (N confirmed, N unverified (N contradicting prior knowledge), N incorrect), N trade-off matrices produced, N ADRs generated.
 
 ### Phase 4: Adversarial Review Loop
 
@@ -108,7 +108,7 @@ Produce the final artifact and present it to the engineer.
 The document is ready for principal engineer review when all of the following are true:
 
 - `design-doc-guidelines` maker-checker: **0 CRITICAL findings**
-- `doc-accuracy-analyzer`: **0 INCORRECT findings**, each corrected in the text, and every OVERSTATED finding corrected or flagged (UNVERIFIED is acceptable with callouts)
+- `doc-accuracy-analyzer`: **0 INCORRECT findings**, each corrected in the text, **0 UNVERIFIED findings noted "contradicts prior knowledge"**, each checked against the named page and reclassified or corrected, and every OVERSTATED finding corrected or flagged (other UNVERIFIED findings are acceptable with callouts)
 - Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION findings**
 - `design-evaluation` confidence score: **≥ 3.0 average** across all sections
 

@@ -62,7 +62,7 @@ git log --oneline -3
 git push
 ```
 
-When an orchestrator dispatches this skill to a pane, the orchestrator asks for this confirmation in its own turn before dispatch, because a print-mode pane cannot ask.
+Phase 2 is never dispatched to a pane: a print-mode pane cannot show the staged diff and wait for the answer. Run it from base konductor, or open a PR (see `code-review`). An orchestrator may dispatch Phase 1 to a pane, but only after it asks the user in its own turn, because Phase 1 pushes.
 
 ### Before every commit and push
 
