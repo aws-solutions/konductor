@@ -162,17 +162,19 @@ fn synth_appends_each_agents_own_skill_index_on_kiro_only() {
                 );
             }
             assert!(block.contains("`get_skill`"), "{harness}/{name}");
-            let v3_rule = "call `load_resource` with id `tool::konductor-skills::get_skill`";
+            let catalogue_rule = "call it with id `tool::konductor-skills::get_skill`";
+            let native_rule = "call `tool_load` with tool_ids `[\"konductor-skills::get_skill\"]`";
             if harness == "kiro-v3" {
                 assert!(
-                    block.contains(v3_rule) && !block.contains("tool_load"),
+                    block.contains(catalogue_rule) && block.contains(native_rule),
                     "{harness}/{name}: load rule"
                 );
             } else {
                 assert!(
                     block.contains("call `tool_search` with tool_id `konductor-skills::get_skill`")
-                        && !block.contains(v3_rule)
-                        && !block.contains("tool_load"),
+                        && !block.contains(catalogue_rule)
+                        && !block.contains("tool_load")
+                        && !block.contains("load_resource"),
                     "{harness}/{name}: load rule"
                 );
             }

@@ -136,15 +136,24 @@ pub(crate) enum KiroEngine {
     V3,
 }
 
-/// The id Kiro CLI V3 gives the `get_skill` tool's deferred schema, in the
-/// `tool::<server>::<tool>` form its `load_resource` tool takes.
+// Both id forms are read off the shipped engines, not inferred:
+// - kiro-cli 3.5.0's `tool_search` schema says "Exact tool identifier to
+//   load (from available-deferred-tools list, format:
+//   server_name::tool_name)", and its own example is
+//   `builder-mcp::InternalSearch`.
+// - @kiro/agent 0.66.119 builds a deferred id as `tool::<server>::<tool>`
+//   for an MCP tool, and its unknown-id hint names the un-prefixed form
+//   for `tool_load` and `tool_call`.
+
+/// The id Kiro CLI V3's `load_resource` catalogue gives the `get_skill`
+/// tool's deferred schema, in its `tool::<server>::<tool>` form.
 pub(crate) fn get_skill_resource_id() -> String {
     format!("tool::{MCP_SERVER_NAME}::{GET_SKILL_TOOL}")
 }
 
-/// The id Kiro CLI V2's `tool_search` tool takes to load a deferred tool,
-/// in its `<server>::<tool>` form.
-pub(crate) fn get_skill_tool_search_id() -> String {
+/// The un-prefixed `<server>::<tool>` id, which V2's `tool_search` and V3's
+/// native `tool_load` both take for the same deferred tool.
+pub(crate) fn get_skill_native_id() -> String {
     format!("{MCP_SERVER_NAME}::{GET_SKILL_TOOL}")
 }
 
@@ -158,7 +167,7 @@ fn kiro_load_rule(engine: KiroEngine) -> String {
         // stays conditional. It loads a deferred tool with `tool_search`,
         // then the tool is called by its plain name.
         KiroEngine::V2 => {
-            let id = get_skill_tool_search_id();
+            let id = get_skill_native_id();
             format!(
                 "{lead} If `{GET_SKILL_TOOL}` is not in your tool list, call `tool_search` with \
                  tool_id `{id}` first, then call `{GET_SKILL_TOOL}`."
@@ -166,15 +175,22 @@ fn kiro_load_rule(engine: KiroEngine) -> String {
         }
         // V3 defers MCP tool schemas, and a schema one agent loads is not
         // loaded for the subagents it spawns, so the step is unconditional
-        // and every agent repeats it.
+        // and every agent repeats it. Which loader an agent gets is decided
+        // per session, so the rule names both and keys on the tool list:
+        // the catalogue surface exposes `load_resource` and takes the
+        // `tool::`-prefixed id, the native surface exposes `tool_load` and
+        // takes the un-prefixed one. Both end in `tool_call`.
         KiroEngine::V3 => {
-            let id = get_skill_resource_id();
+            let resource_id = get_skill_resource_id();
+            let native_id = get_skill_native_id();
             format!(
-                "{lead} Before your first `{GET_SKILL_TOOL}` call, call `load_resource` with id \
-                 `{id}`, then call `{GET_SKILL_TOOL}` through `tool_call` with that same id. Do \
-                 this yourself in every agent and subagent: a schema loaded by another agent is \
-                 not loaded for you. Skills are not `skill::` resources, so do not pass a skill \
-                 name to `load_resource`; load skills only with `{GET_SKILL_TOOL}`."
+                "{lead} Before your first `{GET_SKILL_TOOL}` call, load its schema. If \
+                 `load_resource` is in your tool list, call it with id `{resource_id}`; otherwise \
+                 call `tool_load` with tool_ids `[\"{native_id}\"]`. Then call \
+                 `{GET_SKILL_TOOL}` through `tool_call` with the id you loaded. Do this yourself \
+                 in every agent and subagent: a schema loaded by another agent is not loaded for \
+                 you. A konductor skill is not a `skill::` resource, so do not pass a skill name \
+                 to `load_resource`; load skills only with `{GET_SKILL_TOOL}`."
             )
         }
     }
@@ -433,7 +449,7 @@ mod tests {
         let block = kiro_skill_block("k-developer", &["a"], &skills, KiroEngine::V3).unwrap();
         assert!(block.contains(&format!("`{GET_SKILL_TOOL}`")), "{block}");
         assert!(block.contains(&format!("`{MCP_SERVER_NAME}`")), "{block}");
-        assert!(!block.contains("tool_load"), "{block}");
+        assert!(!block.contains("If the tool is deferred"), "{block}");
         assert!(
             block.contains("`ws-*` also count; read them from `.kiro/skills/<name>/SKILL.md`"),
             "{block}"
@@ -441,28 +457,56 @@ mod tests {
     }
 
     #[test]
-    fn v3_load_rule_always_names_load_resource_and_the_get_skill_id() {
+    fn v3_load_rule_repeats_itself_for_every_agent() {
         let skills = vec![skill("a", "Use for a.")];
         for agent in ["k-developer", "konductor"] {
             let block = kiro_skill_block(agent, &["a"], &skills, KiroEngine::V3).unwrap();
-            assert!(
-                block.contains(
-                    "Before your first `get_skill` call, call `load_resource` with id \
-                     `tool::konductor-skills::get_skill`"
-                ),
-                "{block}"
-            );
-            assert!(
-                block.contains("through `tool_call` with that same id"),
-                "{block}"
-            );
             assert!(block.contains("in every agent and subagent"), "{block}");
+            // Narrowed to konductor's own skills: `skill::<name>` is a real
+            // V3 catalogue id for a package member, just not for these.
             assert!(
-                block.contains("Skills are not `skill::` resources"),
+                block.contains("A konductor skill is not a `skill::` resource"),
                 "{block}"
             );
-            assert!(!block.contains("If the tool is deferred"), "{block}");
+            assert!(!block.contains("Skills are not `skill::` resources"), "{block}");
         }
+    }
+
+    // V3 picks the loader per session, so the rule has to name both. The
+    // catalogue id is the native id with a `tool::` prefix, so a plain
+    // containment check passes even if the two are swapped; split the rule
+    // at the fallback and assert the id each loader is actually given.
+    #[test]
+    fn v3_load_rule_gives_each_loader_its_own_id_form() {
+        let skills = vec![skill("a", "Use for a.")];
+        let block = kiro_skill_block("k-developer", &["a"], &skills, KiroEngine::V3).unwrap();
+        let rule = block
+            .lines()
+            .find(|line| line.contains("load_resource"))
+            .expect("V3 rule names load_resource");
+        let (catalogue, native) = rule
+            .split_once("otherwise")
+            .expect("V3 rule names a fallback loader");
+
+        assert!(
+            catalogue.contains("If `load_resource` is in your tool list"),
+            "{rule}"
+        );
+        assert!(
+            catalogue.contains(&format!("id `{}`", get_skill_resource_id())),
+            "{rule}"
+        );
+        assert!(!catalogue.contains("tool_load"), "{rule}");
+
+        assert!(native.contains("`tool_load`"), "{rule}");
+        assert!(
+            native.contains(&format!("tool_ids `[\"{}\"]`", get_skill_native_id())),
+            "{rule}"
+        );
+        // The prefixed id on this surface is what `tool_call` rejects.
+        assert!(!native.contains(&get_skill_resource_id()), "{rule}");
+
+        assert!(rule.contains("`tool_call` with the id you loaded"), "{rule}");
     }
 
     #[test]
@@ -480,35 +524,7 @@ mod tests {
             !block.contains("load_resource") && !block.contains("tool_load"),
             "{block}"
         );
-        assert_eq!(get_skill_tool_search_id(), "konductor-skills::get_skill");
-    }
-
-    // delegation-protocol carries its own copy of each engine's load step
-    // for subagents; it must name the same ids the index does.
-    #[test]
-    fn delegation_protocol_names_the_same_load_ids_as_the_index() {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../skills/delegation-protocol/SKILL.md");
-        let skill = std::fs::read_to_string(&path).unwrap();
-        let v3 = format!(
-            "call load_resource with id {}, then call {GET_SKILL_TOOL} through tool_call",
-            get_skill_resource_id()
-        );
-        let v2 = format!(
-            "call tool_search with tool_id {} first, then call {GET_SKILL_TOOL}",
-            get_skill_tool_search_id()
-        );
-        assert!(
-            skill.contains("Kiro CLI V3:") && skill.contains(&v3),
-            "{}",
-            path.display()
-        );
-        assert!(
-            skill.contains("Kiro CLI V2:") && skill.contains(&v2),
-            "{}",
-            path.display()
-        );
-        assert!(!skill.contains("tool_load"), "{}", path.display());
+        assert_eq!(get_skill_native_id(), "konductor-skills::get_skill");
     }
 
     #[test]

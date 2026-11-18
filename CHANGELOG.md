@@ -95,12 +95,13 @@ not per individual commit.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 - `NOTICE.txt` lists every shipped crate, and `make notice-check` keeps it current.
-- Kiro CLI V3 agents' skills index now tells every agent and subagent to call `load_resource`
-  with id `tool::konductor-skills::get_skill` before its first `get_skill` call, and says skills
-  are not `skill::` resources. The V2 index says to call `tool_search` with tool_id
-  `konductor-skills::get_skill` when `get_skill` is not in the tool list. Both used to say to load
-  it with `tool_load`, which Kiro CLI does not have. `delegation-protocol` gives each engine's step
-  for a subagent's REQUIRED SKILLS.
+- Kiro CLI V3 agents' skills index now tells every agent and subagent to load the `get_skill`
+  schema before its first `get_skill` call, naming both of V3's loaders with the id each takes:
+  `load_resource` with id `tool::konductor-skills::get_skill` when that tool is in the agent's
+  tool list, `tool_load` with tool_ids `["konductor-skills::get_skill"]` when it is not. The V2
+  index says to call `tool_search` with tool_id `konductor-skills::get_skill` when `get_skill`
+  is not in the tool list. Both indexes used to name `tool_load` alone, which V2 does not have
+  and which V3 exposes only while the `load_resource` catalogue is off.
 - When `get_skill` can't find a skill, its error says if `--skill-name-filter` hides an existing
   skill from the agent, and lists up to three close skill names.
 
