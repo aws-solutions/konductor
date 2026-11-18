@@ -480,7 +480,10 @@ mod tests {
                 block.contains("A konductor skill is not a `skill::` resource"),
                 "{block}"
             );
-            assert!(!block.contains("Skills are not `skill::` resources"), "{block}");
+            assert!(
+                !block.contains("Skills are not `skill::` resources"),
+                "{block}"
+            );
         }
     }
 
@@ -518,7 +521,10 @@ mod tests {
         // The prefixed id on this surface is what `tool_call` rejects.
         assert!(!native.contains(&get_skill_resource_id()), "{rule}");
 
-        assert!(rule.contains("`tool_call` with the id you loaded"), "{rule}");
+        assert!(
+            rule.contains("`tool_call` with the id you loaded"),
+            "{rule}"
+        );
     }
 
     #[test]
