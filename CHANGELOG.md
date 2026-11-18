@@ -357,6 +357,23 @@ not per individual commit.
     All three start the server with `--skip-auth`, so documentation search and skills work
     without AWS credentials; calls that act on an account still need them.
     The skill-name test now also checks aws-mcp skill names in table cells and prose.
+- The Kiro spec skills and the `kiro-spec-workflow` SOP write specs in the format Kiro writes
+  them:
+  - `requirements.md` has a Glossary, and each requirement names the user story it came from on
+    a `**Source:**` line (for example `US-3`), so it traces back to the PM handoff.
+  - `design.md` has Kiro's seven sections, with Correctness Properties: `*For any* ... SHALL`
+    statements, each with the requirements it validates.
+  - `tasks.md` marks optional test tasks with `- [ ]*`, adds checkpoint tasks, names the
+    property each property test checks, and ends with a Task Dependency Graph (a flowchart and
+    a JSON list of waves, with each checkpoint alone in its wave, same-file writes in
+    separate waves, and every task after the waves its required predecessors are listed in),
+    which Kiro's spec format check requires.
+  - The SOP takes `spec_type` (`feature` or `bugfix`) and `workflow` (`requirements-first` or
+    `design-first`), and writes `.config.kiro`. A bugfix spec writes `bugfix.md` with Current,
+    Expected and Unchanged Behavior sections from a `bug_report_path`. Run on its own on Kiro,
+    the SOP offers `/spec new` seeded with the handoff files and hands execution to `/spec run`;
+    inside `k-full-sdlc` it leaves execution to that SOP. Its last step reports gaps between the
+    documents instead of a traceability table.
 
 - Overlapping skills now keep each rule set in one place. `decision-writing` gains an ADR Mode
   that replaces `adr-generator`, which is removed (80 skills). `adversarial-code-review` points
