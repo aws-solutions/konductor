@@ -1881,7 +1881,8 @@ components:
         The lines of the workflow text that a stage takes up, counted from 1
         as a diagnostic counts them. `line` holds the stage's first key and
         `end_line` the end of its last value. Both are included, and a comment
-        or blank line after the stage is not.
+        or blank line after the stage is not. A stage in flow form starts at
+        its `{` and ends at its `}`.
       properties:
         line:
           type: integer
