@@ -28,9 +28,8 @@ in-development state — read the ground rules below before changing anything.
    - Agent names are runtime-independent and carry no package prefix: the orchestrator is
      `konductor` on both runtimes (`kiro-cli chat --agent konductor`, `claude --agent konductor`),
      its variants are `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`, and every
-     specialist takes the `k-` prefix. `ASDLCCoreAICapabilities-<name>` and
-     `konductor-asdlc-<name>` are half-renamed forms that `naming.py` rewrites — never
-     reintroduce them.
+     specialist takes the `k-` prefix. Package-prefixed and half-renamed agent names are
+     retired forms that `naming.py` lists and rewrites; never reintroduce them.
    - `doctor` exits `1` on failed health checks; `64` is strictly for usage errors; `2` is
      forever reserved for the unresolved-CRITICAL-gate signal.
 4. **Implemented behaviour wins over prediction.** Where a command actually works, output

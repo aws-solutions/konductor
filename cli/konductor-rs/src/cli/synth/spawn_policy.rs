@@ -7,7 +7,7 @@
 
 use super::model::is_orchestrator;
 
-/// Every agent that is not a `konductor*` orchestrator is a specialist. Only
+/// Every agent that is not one of the three orchestrators is a specialist. Only
 /// the orchestrators delegate, so each harness transformer strips spawn tools
 /// from every other agent's config; an agent outside both naming conventions
 /// loses its spawn tools rather than keeping them.
