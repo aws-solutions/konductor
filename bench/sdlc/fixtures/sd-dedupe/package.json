@@ -1,0 +1,10 @@
+{
+  "name": "contact-import",
+  "version": "2.3.0",
+  "private": true,
+  "description": "Nightly contact import",
+  "main": "src/dedupe.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

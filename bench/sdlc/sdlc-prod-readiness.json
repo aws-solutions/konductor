@@ -1,0 +1,77 @@
+{
+  "id": "sdlc-prod-readiness",
+  "class": "complex",
+  "target": null,
+  "prompt": "This repository (invoice-sender) has a background worker that goes to production next month. docs/READINESS.md is the checklist it must meet first: configuration read and checked at start, no secret in the source, structured logs, metrics and health, a bounded graceful shutdown, and a runbook. Change src/ so every item holds, with the interface the checklist gives, and write docs/RUNBOOK.md with the alarms and the monthly cost. Keep `createQueue` as it is and add no dependencies. Do not edit the existing tests under test/ or docs/READINESS.md. Add tests for the checklist in a new file under test/ and make sure `node --test` passes. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "sd-worker",
+  "timeoutSec": 1500,
+  "hidden": "sdlc-prod-readiness",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 12
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js 2>/dev/null | wc -l)\" -ge 3 ] && node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/queue.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/worker.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/READINESS.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/RUNBOOK.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/RUNBOOK.md\",\"utf8\");const a=/(^|[^0-9.,])600([^0-9,]|$)/gi,b=/usd|\\$|dollar/i;let m,ok=false;while((m=a.exec(t)))if(b.test(t.slice(Math.max(0,m.index-60),m.index+60)))ok=true;process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "docs/RUNBOOK.md",
+      "pattern": "alarm"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/RUNBOOK.md",
+      "pattern": "\\b\\d+ ?(%|minutes?|min|seconds?|s)\\b",
+      "min": 2
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verified",
+      "criterion": "The final message reports that the test suite was run and its result, and the new tests cover a refused setting, a failed job's log entry and a shutdown that times out.",
+      "weight": 2
+    },
+    {
+      "id": "constraints",
+      "criterion": "The existing tests, docs/READINESS.md and package.json are unchanged, createQueue is unchanged and no dependency was added.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "Changes are limited to the checklist; the runbook's alarms name metrics the code emits and the cost follows from the stated volume and price (600 USD a month).",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

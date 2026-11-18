@@ -1,0 +1,30 @@
+{
+  "extraTasks": [
+    "sdlc"
+  ],
+  "tasks": [
+    "sdlc-problem-framing",
+    "sdlc-spike-dedupe",
+    "sdlc-arch-decision",
+    "req-vague-request",
+    "design-hold-service",
+    "plan-multipart-feature",
+    "review-inventory-security",
+    "orch-input-validation",
+    "hard-seat-holds",
+    "hard-export-formats",
+    "hard-catalog-limits",
+    "sdlc-prod-readiness"
+  ],
+  "arms": [
+    "vanilla",
+    "main"
+  ],
+  "replicates": 2,
+  "judges": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ],
+  "parallel": 1
+}

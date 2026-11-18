@@ -2,7 +2,7 @@
 'use strict';
 
 // A blind calibration sheet for chosen quality pack criteria, built from the bench's own trees instead of a run: the
-// reference solution and every partial solution of each task, each laid over its fixture. Free: no model call, no
+// reference solution, every partial solution and the keyword stub of each task, each laid over its fixture. Free: no model call, no
 // agent, no network. A person rates the items; key.json says which tree each item came from. Comparing judges with
 // the labels needs a judge pass over the same trees, which spends credits and is a separate step.
 
@@ -28,19 +28,35 @@ function filesOf(root) {
   return out;
 }
 
-/** The files an overlay changes or adds against its fixture, in the shape the pack gate reads ({rel, orig, text, created}). */
-function overlayChanges(fixtureDir, overlayDir) {
+/**
+ * The files an overlay changes or adds against its fixture, in the shape the pack gate reads ({rel, orig, text, created}).
+ * `underDir`, when given, is laid on the fixture first (the reference under a stub), so its files count as changed too.
+ */
+function overlayChanges(fixtureDir, overlayDir, underDir = null) {
   const base = filesOf(fixtureDir);
-  return [...filesOf(overlayDir)].filter(([rel, text]) => base.get(rel) !== text).sort(([a], [b]) => a.localeCompare(b))
+  const tree = new Map([...(underDir ? filesOf(underDir) : []), ...filesOf(overlayDir)]);
+  return [...tree].filter(([rel, text]) => base.get(rel) !== text).sort(([a], [b]) => a.localeCompare(b))
     .map(([rel, text]) => ({ rel, orig: base.has(rel) ? base.get(rel) : null, text, created: !base.has(rel), binary: false }));
 }
 
-/** The trees of one task to rate: the reference solution and each partial, with a name that stays in key.json. */
-function treesOf(benchDir, taskId) {
-  const solution = path.join(benchDir, 'tasks', 'solutions', taskId);
-  const partials = path.join(benchDir, 'tasks', 'partials', taskId);
+/**
+ * The trees of one task to rate, each with a name that stays in key.json: the reference solution, each partial
+ * solution, and the keyword stub laid over the reference as the validator lays it. `roots` are the directories that
+ * hold solutions/, partials/ and stubs/ (bench/tasks, then each extra tasks directory); the first holding the task's
+ * reference is used.
+ */
+function treesOf(roots, taskId) {
+  const root = roots.find((r) => fs.existsSync(path.join(r, 'solutions', taskId))) ?? roots[0];
+  const solution = path.join(root, 'solutions', taskId);
+  const partials = path.join(root, 'partials', taskId);
+  const stub = path.join(root, 'stubs', taskId);
+  const hasSolution = fs.existsSync(solution);
   const named = fs.existsSync(partials) ? fs.readdirSync(partials).sort().map((n) => ({ tree: `partial:${n}`, dir: path.join(partials, n) })) : [];
-  return [...(fs.existsSync(solution) ? [{ tree: 'reference', dir: solution }] : []), ...named];
+  return [
+    ...(hasSolution ? [{ tree: 'reference', dir: solution }] : []),
+    ...named,
+    ...(hasSolution && fs.existsSync(stub) ? [{ tree: 'stub', dir: stub, base: solution }] : []),
+  ];
 }
 
 /** The Markdown block of one sheet item `it`: the task, the answer key, the changes and the criteria to rate. */
@@ -57,21 +73,22 @@ function itemMarkdown(it) {
 
 /**
  * Writes sheet.json (blinded, labels empty), sheet.md (a readable copy) and key.json (item to task and tree) to `outDir`.
- * `benchDir` is the bench directory; `taskIds` the tasks whose trees are rated; `criteriaIds` the pack criteria a person
+ * `benchDir` is the bench directory; `extraDirs` the extra tasks directories (bench/sdlc); `taskIds` the tasks whose trees are rated; `criteriaIds` the pack criteria a person
  * rates (a criterion that does not apply to a tree is listed as n/a with the gate's reason); `seed` orders the items.
  * Returns the directory, the sheet path and the item count.
  */
-function exportReferenceSheet({ benchDir, taskIds, criteriaIds, outDir, seed = 1, packName = 'quality' }) {
+function exportReferenceSheet({ benchDir, taskIds, criteriaIds, outDir, seed = 1, packName = 'quality', extraDirs = [] }) {
   const pack = packLib.loadPack(packName);
   const unknown = criteriaIds.filter((id) => !pack.criteria.some((c) => c.id === id));
   if (unknown.length) throw new Error(`not in pack ${pack.id}: ${unknown.join(', ')}`);
-  const tasks = loadTasks(benchDir);
+  const tasks = loadTasks(benchDir, { extraDirs });
+  const roots = [path.join(benchDir, 'tasks'), ...extraDirs.map((d) => path.resolve(d))];
   const redactions = loadRedactions();
   const drawn = [];
   for (const taskId of taskIds) {
     const task = tasks.get(taskId);
-    if (!task) throw new Error(`task "${taskId}" is not in ${benchDir}/tasks`);
-    const trees = treesOf(benchDir, taskId);
+    if (!task) throw new Error(`task "${taskId}" is not in ${benchDir}/tasks or an extra tasks directory`);
+    const trees = treesOf(roots, taskId);
     if (!trees.length) throw new Error(`task "${taskId}" has no reference or partial solution to rate`);
     for (const t of trees) drawn.push({ task, ...t });
   }
@@ -79,7 +96,7 @@ function exportReferenceSheet({ benchDir, taskIds, criteriaIds, outDir, seed = 1
   const key = { pack: { id: pack.id, revision: pack.revision }, seed, items: {} };
   shuffle(drawn, seed).forEach((d, i) => {
     const itemId = `item-${String(i + 1).padStart(3, '0')}`;
-    const files = overlayChanges(d.task.fixtureDir, d.dir);
+    const files = overlayChanges(d.task.fixtureDir, d.dir, d.base);
     const app = packLib.applicability(pack, d.task, files);
     const chosen = app.criteria.filter((c) => criteriaIds.includes(c.criterion.id));
     const rated = chosen.filter((c) => c.status === 'judged').map((c) => c.criterion);

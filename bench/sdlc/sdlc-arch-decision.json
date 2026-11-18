@@ -1,0 +1,83 @@
+{
+  "id": "sdlc-arch-decision",
+  "class": "design",
+  "target": null,
+  "prompt": "We must choose how partners receive order events (docs/context.md lists the constraints and data/partners.csv the partners). Write an architecture decision record at docs/adr/0001-order-event-delivery.md. It must give the decision criteria tied to the constraints, at least three options rated against every criterion, the decision, its consequences, and what reversing it would cost and when we should revisit it. Use the numbers in the context and the partner list. Do not change docs/context.md or data/, and do not write code. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "sd-notify",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "docs/adr/0001-order-event-delivery.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/context.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/adr/0001-order-event-delivery.md\",\"utf8\");process.exit(t.split(\"\\n\").filter((l)=>/^\\s*(#{2,5}\\s*|[-*]\\s+|\\d+[.)]\\s+|\\|\\s*)(\\*\\*)?(option|alternative)\\s*([A-Z0-9]|\\d)\\b/i.test(l)).length>=3?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/adr/0001-order-event-delivery.md\",\"utf8\");const a=/webhook|push|endpoint/gi,b=/(^|[^0-9])120([^0-9]|$)|30 ?%/i;let m,ok=false;while((m=a.exec(t)))if(b.test(t.slice(Math.max(0,m.index-400),m.index+400)))ok=true;process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/adr/0001-order-event-delivery.md\",\"utf8\");const i=t.search(/^#{1,4}\\s*decision/im);if(i<0)process.exit(1);const s=t.slice(i,i+1500);process.exit(/webhook|push/i.test(s)&&/poll|feed|pull/i.test(s)?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/adr/0001-order-event-delivery.md\",\"utf8\");const rows=t.split(\"\\n\").filter((l)=>/^\\s*\\|/.test(l)&&!/^\\s*\\|[\\s:|-]+\\|?\\s*$/.test(l));process.exit(rows.length>=4&&rows.some((r)=>(r.match(/\\|/g)||[]).length>=5)?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "docs/adr/0001-order-event-delivery.md",
+      "pattern": "revers|roll ?back|undo|revisit|reconsider"
+    },
+    {
+      "type": "contains",
+      "path": "docs/adr/0001-order-event-delivery.md",
+      "pattern": "^#{1,4}\\s*consequences?"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/adr/0001-order-event-delivery.md",
+      "pattern": "(\\b60 ?(s|sec|seconds)\\b|1,?500|\\b120\\b|\\b400\\b)",
+      "min": 3
+    }
+  ],
+  "rubric": [
+    {
+      "id": "criteria",
+      "criterion": "The criteria come from the constraints with their numbers: freshness under 60 s, 120 of 400 partners without an endpoint, 2 engineers and no self-run brokers, the 1,500 USD budget (answer key A1 to A4).",
+      "weight": 2
+    },
+    {
+      "id": "matrix",
+      "criterion": "Every option is rated against every criterion with a reason, and webhook-only is ruled out by the 120 partners (A2).",
+      "weight": 3
+    },
+    {
+      "id": "decision",
+      "criterion": "The decision serves both kinds of partner (webhooks for those that can take them, a pull feed for the rest, or an equivalent that meets every hard constraint), with its consequences.",
+      "weight": 2
+    },
+    {
+      "id": "fair-and-reversible",
+      "criterion": "Rejected options get the conditions under which they would win, and the record states the cost of reversal and a review trigger with a number.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

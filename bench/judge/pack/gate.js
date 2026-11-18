@@ -13,7 +13,7 @@ const CODE_EXT = new Set(['.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.py', '
 const DOC_NOTHING_TYPES = new Set(['comments', 'readme']);
 
 // What a derived type is called when a task does not ask for it, so the reason reads "does not ask for code", not "for change".
-const REASON_LABEL = { change: 'code', delegation: 'assignments', concurrency: 'concurrent code', extension: 'an extension point', 'nfr-code': 'non-functional targets in code', 'pattern-key': 'a pattern from its answer key', 'enterprise-pattern': 'an enterprise pattern from its answer key' };
+const REASON_LABEL = { change: 'code', delegation: 'assignments', concurrency: 'concurrent code', extension: 'an extension point', 'nfr-code': 'non-functional targets in code', 'pattern-key': 'a pattern from its answer key', 'enterprise-pattern': 'an enterprise pattern from its answer key', framing: 'a problem framing', spike: 'a spike', decision: 'a decision record', production: 'production readiness' };
 // Declared-only types that read the changed product code: they share its files and its size floor.
 const CODE_BACKED = new Set(['code', 'concurrency', 'extension', 'nfr-code', 'pattern-key', 'enterprise-pattern']);
 
@@ -65,6 +65,11 @@ function artifactStates(pack, task, files, { deleted = [] } = {}) {
   const changed = [...codeFiles, ...testFiles].filter((f) => (byRel.get(f.rel)?.added ?? 0) + (byRel.get(f.rel)?.removed ?? 0) > 0);
   const haveOf = { tests: testFiles, readme: readmeFiles, review: mdFiles, design: mdFiles, 'threat-model': mdFiles, guide: mdFiles, requirements: mdFiles, plan: mdFiles, delegation: mdFiles, change: changed };
   for (const t of CODE_BACKED) haveOf[t] = codeFiles;
+  // A spike is throwaway code plus its write-up; production readiness is product code plus its runbook.
+  haveOf.spike = [...codeFiles, ...testFiles, ...mdFiles];
+  haveOf.production = [...codeFiles, ...mdFiles];
+  haveOf.framing = mdFiles;
+  haveOf.decision = mdFiles;
   const state = {};
   for (const t of types) {
     if (t === 'comments') {

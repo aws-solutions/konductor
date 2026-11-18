@@ -19,7 +19,11 @@
     "extension": "Product code the task says must take a new case later (a format, a rule, a plugin). Declared only by a task that asks for it.",
     "nfr-code": "Product code that must meet the non-functional targets the task or its design document names. Declared only by such a task.",
     "pattern-key": "Product code of a task whose answer key names, under Pattern key, the design patterns the change needs. Declared only by such a task.",
-    "enterprise-pattern": "Product code of a task whose answer key asks, under Pattern key, for an enterprise pattern (repository, unit of work, anti-corruption layer or similar). Declared only by such a task."
+    "enterprise-pattern": "Product code of a task whose answer key asks, under Pattern key, for an enterprise pattern (repository, unit of work, anti-corruption layer or similar). Declared only by such a task.",
+    "framing": "A problem framing document: the problem with its evidence, who has it, options including doing nothing, a success measure and what would stop the work. Declared only by a task that asks for one.",
+    "spike": "A proof of concept or spike: throwaway code that answers one question, and the write-up of what it measured. Declared only by a task that asks for one.",
+    "decision": "An architecture decision record: the criteria, the options weighed against them, the decision, its consequences and how to reverse it. Declared only by a task that asks for one.",
+    "production": "Product code and its runbook for a task that asks for production readiness: configuration, secrets, logs, metrics, health, shutdown and cost. Declared only by such a task."
   },
   "minAddedCodeLines": 8,
   "taskArtifacts": {
@@ -74,6 +78,20 @@
       "tests",
       "nfr-code",
       "enterprise-pattern"
+    ],
+    "sdlc-problem-framing": [
+      "framing"
+    ],
+    "sdlc-spike-dedupe": [
+      "spike"
+    ],
+    "sdlc-arch-decision": [
+      "decision"
+    ],
+    "sdlc-prod-readiness": [
+      "code",
+      "tests",
+      "production"
     ]
   },
   "declaredOnly": [
@@ -82,7 +100,11 @@
     "extension",
     "nfr-code",
     "pattern-key",
-    "enterprise-pattern"
+    "enterprise-pattern",
+    "framing",
+    "spike",
+    "decision",
+    "production"
   ],
   "dimensions": [
     {
@@ -164,6 +186,26 @@
     {
       "id": "enterprise-patterns",
       "label": "Enterprise patterns"
+    },
+    {
+      "id": "ideation",
+      "label": "Ideation and problem framing"
+    },
+    {
+      "id": "spike",
+      "label": "Proof of concept and spike"
+    },
+    {
+      "id": "architecture-deliberation",
+      "label": "Architecture deliberation"
+    },
+    {
+      "id": "production-readiness",
+      "label": "Production readiness in code"
+    },
+    {
+      "id": "review-quality",
+      "label": "Review findings"
     }
   ],
   "criteria": [
@@ -1806,6 +1848,330 @@
         "minQuotes": 2,
         "quote": "The code line that crosses the boundary or holds the pattern, then the Pattern key line it is checked against."
       }
+    },
+    {
+      "id": "idea-problem-evidence",
+      "dimension": "ideation",
+      "appliesTo": [
+        "framing"
+      ],
+      "weight": 3,
+      "question": "Does the framing state the problem the evidence shows, with the numbers that show it?",
+      "levels": {
+        "fail": "The problem is the requested solution restated, or no count, share or quote from the given data backs it.",
+        "partial": "The problem is backed by 1 number from the data, or the numbers are given and the problem still restates the requested solution.",
+        "pass": "The problem is stated apart from any solution and backed by at least 2 numbers from the data, each with its source file, and where the data contradicts the request the framing says so."
+      },
+      "evidence": {
+        "minQuotes": 2,
+        "quote": "The problem sentence, then the number or data line that backs it (the answer key may hold the count)."
+      }
+    },
+    {
+      "id": "idea-options-range",
+      "dimension": "ideation",
+      "appliesTo": [
+        "framing"
+      ],
+      "weight": 2,
+      "question": "Are at least three options weighed, including doing nothing and one that is not the requested solution?",
+      "levels": {
+        "fail": "1 option is given, or every option is a variant of the requested solution.",
+        "partial": "2 options are given, or 3 or more with no do-nothing option.",
+        "pass": "3 or more options are given, one of them doing nothing and one not the requested solution, each with its cost and the part of the problem it leaves."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The heading or line of the option that differs most from the request (pass), or the option list (fail or partial)."
+      }
+    },
+    {
+      "id": "idea-success-measure",
+      "dimension": "ideation",
+      "appliesTo": [
+        "framing"
+      ],
+      "weight": 2,
+      "question": "Is success defined by a measure with a baseline, a target and a way to read it?",
+      "levels": {
+        "fail": "No success measure is given, or it holds no number.",
+        "partial": "A measure has a target number and lacks the baseline or the way it is read.",
+        "pass": "Each success measure names the metric, its baseline from the data, a target number with a date or period, and where the number is read."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The success measure line."
+      }
+    },
+    {
+      "id": "idea-kill-criteria",
+      "dimension": "ideation",
+      "appliesTo": [
+        "framing"
+      ],
+      "weight": 1,
+      "question": "Does the framing list the assumptions to test first and a signal that would stop the work?",
+      "levels": {
+        "fail": "No assumption to test and no stop signal is given.",
+        "partial": "Assumptions are listed and no stop signal is given, or a stop signal holds no number.",
+        "pass": "The riskiest assumptions are listed with how each is tested, and at least 1 stop signal with a number says when to drop the idea."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The stop signal line (pass or partial), or the assumptions heading (fail)."
+      }
+    },
+    {
+      "id": "spike-question",
+      "dimension": "spike",
+      "appliesTo": [
+        "spike"
+      ],
+      "weight": 2,
+      "question": "Does the spike state one question, the decision it informs and the threshold for an answer before the results?",
+      "levels": {
+        "fail": "No question is stated, or the write-up only describes what was built.",
+        "partial": "A question is stated with no threshold, or the threshold comes after the results.",
+        "pass": "One question, the decision it informs and a pass threshold with a number and a unit are stated before any result."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The question or threshold line."
+      }
+    },
+    {
+      "id": "spike-evidence",
+      "dimension": "spike",
+      "appliesTo": [
+        "spike"
+      ],
+      "weight": 3,
+      "question": "Are the results measured numbers with units, input size and a command that reproduces them?",
+      "levels": {
+        "fail": "No measured number is given, or numbers are given with no unit or input size.",
+        "partial": "Numbers have units and input sizes, and no command reproduces them, or 1 option the question names was not measured.",
+        "pass": "Every option the question names was measured on the stated input size, each number has a unit, the output was checked to be the same across options, and one command reproduces the table."
+      },
+      "evidence": {
+        "minQuotes": 2,
+        "quote": "The result line with its number and unit, then the command that produced it."
+      }
+    },
+    {
+      "id": "spike-scope-throwaway",
+      "dimension": "spike",
+      "appliesTo": [
+        "spike"
+      ],
+      "weight": 1,
+      "question": "Is the spike code kept apart from product code and marked as throwaway?",
+      "levels": {
+        "fail": "The spike changes 2 or more product files, or it is written into product paths as if it were production code.",
+        "partial": "The spike changes 1 product file, or it sits apart and is not marked as throwaway.",
+        "pass": "The spike code sits in its own directory, changes no product file and says it is throwaway or not for production."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The line that marks the spike as throwaway (pass), or the product file it changed (fail or partial)."
+      }
+    },
+    {
+      "id": "spike-recommendation",
+      "dimension": "spike",
+      "appliesTo": [
+        "spike"
+      ],
+      "weight": 2,
+      "question": "Does the recommendation follow from the measured numbers and state the limits of the measurement?",
+      "levels": {
+        "fail": "No recommendation is given, or it contradicts the measured numbers.",
+        "partial": "The recommendation follows from the numbers and states no limit of the measurement (machine, input shape, cases not tried).",
+        "pass": "The recommendation names the option the numbers favor against the threshold, and states at least 2 limits of the measurement and the next step to remove one."
+      },
+      "evidence": {
+        "minQuotes": 2,
+        "quote": "The recommendation line, then the result line it rests on."
+      }
+    },
+    {
+      "id": "arch-criteria-explicit",
+      "dimension": "architecture-deliberation",
+      "appliesTo": [
+        "decision"
+      ],
+      "weight": 2,
+      "question": "Are the decision criteria listed, each tied to a stated constraint with its number, and ranked?",
+      "levels": {
+        "fail": "No criteria are listed, or the options are compared with no criteria named.",
+        "partial": "Criteria are listed and 1 or more of them names no constraint or number from the context, or they carry no rank or weight.",
+        "pass": "Every criterion names the constraint it comes from with its number, and the criteria carry a rank or weight."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "One criterion line with its constraint and number."
+      }
+    },
+    {
+      "id": "arch-tradeoff-matrix",
+      "dimension": "architecture-deliberation",
+      "appliesTo": [
+        "decision"
+      ],
+      "weight": 3,
+      "question": "Is every option rated against every criterion, with a reason for each rating?",
+      "levels": {
+        "fail": "Options are described one by one with no rating against the criteria.",
+        "partial": "A table or list rates the options and 1 or more cells are empty or carry a rating with no reason.",
+        "pass": "Every option is rated against every criterion, each rating carries a reason or a number, and an option that breaks a hard constraint is marked as ruled out."
+      },
+      "evidence": {
+        "minQuotes": 2,
+        "quote": "The matrix row of the chosen option, then the row of an option it ruled out."
+      }
+    },
+    {
+      "id": "arch-option-fair",
+      "dimension": "architecture-deliberation",
+      "appliesTo": [
+        "decision"
+      ],
+      "weight": 2,
+      "question": "Is each rejected option given the conditions under which it would win?",
+      "levels": {
+        "fail": "Rejected options are listed only with their weaknesses.",
+        "partial": "1 rejected option is given the conditions under which it would win, and the others are not.",
+        "pass": "Every rejected option states its strongest point and the change in the constraints under which it would be chosen."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The line that gives a rejected option its winning condition (pass or partial), or a rejected option (fail)."
+      }
+    },
+    {
+      "id": "arch-reversibility",
+      "dimension": "architecture-deliberation",
+      "appliesTo": [
+        "decision"
+      ],
+      "weight": 2,
+      "question": "Does the record say what reversing the decision costs and which signal would trigger a review?",
+      "levels": {
+        "fail": "Neither the cost to reverse nor a review trigger is given.",
+        "partial": "One of the two is given, or the trigger holds no number.",
+        "pass": "The record states what a reversal would change (code, data, contracts) with its rough size, and at least 1 review trigger with a number."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The reversal or review trigger line."
+      }
+    },
+    {
+      "id": "prod-observability",
+      "dimension": "production-readiness",
+      "appliesTo": [
+        "production"
+      ],
+      "weight": 3,
+      "question": "Does every failure path log a structured record with an id and the cause, and count the outcome?",
+      "levels": {
+        "fail": "Failures are logged as free text, or 2 or more failure paths log nothing.",
+        "partial": "Failures log structured records and 1 failure path has no id, no cause or no counter.",
+        "pass": "Every failure path logs one structured record with the work item id and the cause, every outcome increments a named counter, and no log record holds a secret."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The structured log call on a failure path (pass), or the failure path with no record (fail or partial)."
+      }
+    },
+    {
+      "id": "prod-config-secrets",
+      "dimension": "production-readiness",
+      "appliesTo": [
+        "production"
+      ],
+      "weight": 3,
+      "question": "Is configuration read and checked at start, with no secret written in the code?",
+      "levels": {
+        "fail": "A secret literal is in the code, or configuration is read where it is used with no check.",
+        "partial": "No secret literal remains and 1 setting is read without a check or with no default the runbook names.",
+        "pass": "Every setting is read once at start, checked for type and range, and a value out of range stops the start with a message naming the setting; no secret literal is in the code."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The configuration check line (pass), or the secret literal or unchecked read (fail or partial)."
+      }
+    },
+    {
+      "id": "prod-graceful-lifecycle",
+      "dimension": "production-readiness",
+      "appliesTo": [
+        "production"
+      ],
+      "weight": 2,
+      "question": "Does the code report its health and shut down by draining in-flight work within a bound?",
+      "levels": {
+        "fail": "There is no health signal and no shutdown path.",
+        "partial": "Health or shutdown exists and the other does not, or shutdown drops in-flight work or waits with no bound.",
+        "pass": "A health call reports whether the process can take work, and shutdown stops new work, waits for in-flight work up to a named bound and reports whether it drained."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The shutdown or health code line."
+      }
+    },
+    {
+      "id": "prod-cost-estimate",
+      "dimension": "production-readiness",
+      "appliesTo": [
+        "production"
+      ],
+      "weight": 2,
+      "question": "Does the runbook estimate the monthly cost from the stated volume and unit price, and name the biggest cost driver?",
+      "levels": {
+        "fail": "No cost figure is given.",
+        "partial": "A cost figure is given with no formula, volume or unit price, or it does not follow from the stated numbers.",
+        "pass": "The monthly cost is computed from the stated volume and unit price with the formula shown, matches the answer key, and the biggest cost driver is named."
+      },
+      "evidence": {
+        "minQuotes": 2,
+        "quote": "The cost line, then the volume or price line of the answer key or task it uses."
+      }
+    },
+    {
+      "id": "prod-runbook-actions",
+      "dimension": "production-readiness",
+      "appliesTo": [
+        "production"
+      ],
+      "weight": 2,
+      "question": "Does each alarm in the runbook have a metric, a threshold and the action an operator takes?",
+      "levels": {
+        "fail": "No alarm is listed, or alarms have no threshold.",
+        "partial": "Alarms have thresholds and 1 or more have no operator action or name a metric the code does not emit.",
+        "pass": "Every alarm names a metric the code emits, a threshold with a number and a period, and the first action an operator takes."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "One alarm line with its metric, threshold and action."
+      }
+    },
+    {
+      "id": "rev-severity-impact",
+      "dimension": "review-quality",
+      "appliesTo": [
+        "review"
+      ],
+      "weight": 2,
+      "question": "Does each finding's severity come with the impact that justifies it?",
+      "levels": {
+        "fail": "Severities are given with no impact, or 2 or more findings carry a severity their impact does not support.",
+        "partial": "Every finding has a severity and 1 finding has no impact or an impact that does not fit its severity.",
+        "pass": "Every finding states who or what is harmed and how, and its severity follows from that impact as the review's scale defines."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "A finding's severity with its impact sentence."
+      }
     }
   ],
   "fillerTerms": [
@@ -1960,5 +2326,179 @@
       "@Disabled\\b",
       "unittest\\.skip"
     ]
-  }
+  },
+  "phases": [
+    {
+      "id": "ideation",
+      "label": "Ideation and problem framing",
+      "criteria": [
+        "des-problem-first",
+        "des-goals-nongoals",
+        "idea-problem-evidence",
+        "idea-options-range",
+        "idea-success-measure",
+        "idea-kill-criteria"
+      ]
+    },
+    {
+      "id": "poc",
+      "label": "Proof of concept and spike",
+      "criteria": [
+        "spike-question",
+        "spike-evidence",
+        "spike-scope-throwaway",
+        "spike-recommendation"
+      ]
+    },
+    {
+      "id": "architecture",
+      "label": "Architecture and design deliberation",
+      "criteria": [
+        "des-alternatives",
+        "des-decision-rationale",
+        "des-adr-consequences",
+        "des-architecture",
+        "des-consistency",
+        "des-technical-accuracy",
+        "des-conflicts-surfaced",
+        "des-testable-acceptance",
+        "des-diagram-present",
+        "des-diagram-fit",
+        "des-diagram-labels",
+        "arch-criteria-explicit",
+        "arch-tradeoff-matrix",
+        "arch-option-fair",
+        "arch-reversibility"
+      ]
+    },
+    {
+      "id": "requirements",
+      "label": "Requirements",
+      "criteria": [
+        "req-unambiguous",
+        "req-testable",
+        "req-failure-and-edge-cases",
+        "req-no-solution-leak",
+        "req-conflicts-and-gaps",
+        "req-assumptions-and-questions",
+        "req-prioritized",
+        "req-traceable"
+      ]
+    },
+    {
+      "id": "nfr",
+      "label": "Non-functional requirements",
+      "criteria": [
+        "req-nfr-coverage",
+        "req-nfr-measurable",
+        "des-nfr-addressed",
+        "code-nfr-mechanism",
+        "code-nfr-bounded"
+      ]
+    },
+    {
+      "id": "production",
+      "label": "Production readiness",
+      "criteria": [
+        "tm-scope",
+        "tm-stride",
+        "tm-mitigations",
+        "tm-residual",
+        "tm-grounded",
+        "des-operability",
+        "des-rollout-migration",
+        "des-scale-bottleneck",
+        "des-failure-modes",
+        "prod-observability",
+        "prod-config-secrets",
+        "prod-graceful-lifecycle",
+        "prod-cost-estimate",
+        "prod-runbook-actions"
+      ]
+    },
+    {
+      "id": "implementation",
+      "label": "Implementation",
+      "criteria": [
+        "mod-single-responsibility",
+        "mod-no-duplication",
+        "mod-isolation",
+        "mod-pattern-fit",
+        "mod-pattern-missing",
+        "maint-naming",
+        "maint-size-nesting",
+        "maint-dead-code",
+        "maint-error-handling",
+        "maint-magic-constants",
+        "conc-shared-state",
+        "conc-async-errors",
+        "conc-timeout-cancel",
+        "ext-one-place",
+        "ext-closed-core",
+        "ent-pattern-applied"
+      ]
+    },
+    {
+      "id": "testing",
+      "label": "Testing",
+      "criteria": [
+        "test-asserts-behavior",
+        "test-rule-would-fail",
+        "test-scenario-spread",
+        "test-no-tautology",
+        "test-one-scenario",
+        "test-names",
+        "test-deterministic",
+        "scn-traced"
+      ]
+    },
+    {
+      "id": "documentation",
+      "label": "Documentation",
+      "criteria": [
+        "doc-why-not-what",
+        "doc-accuracy",
+        "doc-no-stale-or-noise",
+        "doc-concise",
+        "cq-plain-typography",
+        "cq-no-filler-terms",
+        "cq-sentence-length",
+        "cq-lead-with-point",
+        "cq-concrete",
+        "cq-human-voice",
+        "cq-no-repetition",
+        "cq-reader-order",
+        "cq-direct-instructions",
+        "guide-accuracy",
+        "guide-audience-fit",
+        "guide-troubleshooting",
+        "guide-scannability",
+        "guide-consistent-terms"
+      ]
+    },
+    {
+      "id": "change-review",
+      "label": "Change discipline and review",
+      "criteria": [
+        "chg-no-leftovers",
+        "chg-tests-intact",
+        "chg-scoped",
+        "rev-severity-impact"
+      ]
+    },
+    {
+      "id": "planning",
+      "label": "Delegation and planning",
+      "criteria": [
+        "plan-independent-tasks",
+        "plan-done-criteria",
+        "plan-dependencies-order",
+        "plan-coverage",
+        "plan-sizing",
+        "plan-risks",
+        "plan-test-tasks",
+        "plan-delegation-fit"
+      ]
+    }
+  ]
 }

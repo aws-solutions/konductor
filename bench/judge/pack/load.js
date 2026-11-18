@@ -23,6 +23,7 @@ const PACK_SCHEMA = {
     minAddedCodeLines: { type: 'integer', minimum: 0 },
     taskArtifacts: { type: 'object' },
     declaredOnly: { type: 'array', items: { type: 'string' } },
+    phases: { type: 'array', items: { type: 'object', required: ['id', 'label', 'criteria'], properties: { id: { type: 'string', pattern: '^[a-z][a-z0-9-]*$' }, label: { type: 'string', minLength: 1 }, criteria: { type: 'array', minItems: 1, items: { type: 'string' } } } } },
     artifactTypes: { type: 'object' },
     dimensions: { type: 'array', minItems: 1, items: { type: 'object', required: ['id', 'label'], properties: { id: { type: 'string' }, label: { type: 'string' } } } },
     criteria: {
@@ -100,10 +101,30 @@ function validatePack(pack) {
   }
   for (const d of dims) if (!pack.criteria.some((c) => c.dimension === d)) out.push(`dimension ${d} has no criterion`);
   for (const t of pack.declaredOnly || []) if (!types.has(t)) out.push(`declaredOnly: "${t}" is not an artifact type of the pack`);
+  out.push(...phaseProblems(pack));
   for (const [task, list] of Object.entries(pack.taskArtifacts || {})) {
     if (!Array.isArray(list)) out.push(`taskArtifacts.${task} must be an array`);
     else for (const t of list) if (!types.has(t)) out.push(`taskArtifacts.${task}: "${t}" is not an artifact type of the pack`);
   }
+  return out;
+}
+
+/** When the pack lists SDLC phases, every criterion sits in exactly one of them and every listed id is a criterion. */
+function phaseProblems(pack) {
+  if (!pack.phases) return [];
+  const out = [];
+  const ids = new Set(pack.criteria.map((c) => c.id));
+  const owner = new Map();
+  for (const ph of pack.phases) {
+    if (owner.has(`phase:${ph.id}`)) out.push(`phase ${ph.id}: duplicate id`);
+    owner.set(`phase:${ph.id}`, ph.id);
+    for (const id of ph.criteria) {
+      if (!ids.has(id)) out.push(`phase ${ph.id}: "${id}" is not a criterion`);
+      else if (owner.has(id)) out.push(`criterion ${id}: in phases ${owner.get(id)} and ${ph.id}`);
+      else owner.set(id, ph.id);
+    }
+  }
+  for (const id of ids) if (!owner.has(id)) out.push(`criterion ${id}: in no phase`);
   return out;
 }
 

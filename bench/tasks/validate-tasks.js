@@ -124,6 +124,11 @@ const FIXTURE_BASELINE = {
   'hard-seats': { cmd: 'node --test', exit: 0 },
   'hard-exports': { cmd: 'node --test', exit: 0 },
   'hard-catalog': { cmd: 'node --test', exit: 0 },
+  // SDLC-suite fixtures (bench/sdlc): two hold only documents and data, two have tests that pass before and after.
+  'sd-feedback': null,
+  'sd-notify': null,
+  'sd-dedupe': { cmd: 'node --test', exit: 0 },
+  'sd-worker': { cmd: 'node --test', exit: 0 },
   // Autonomy fixtures: the visible tests pass before and after the work.
   'auto-gateway': { cmd: 'node --test', exit: 0 },
   'auto-reports': { cmd: 'node --test', exit: 0 },

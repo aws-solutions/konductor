@@ -1,0 +1,93 @@
+{
+  "id": "sdlc-problem-framing",
+  "class": "design",
+  "target": null,
+  "prompt": "This folder holds a request to build PDF export for the report pages (docs/request.md), product notes and October support and usage data under data/. Before anyone plans the work, write a one-page problem framing at docs/framing.md: the problem the evidence shows, who has it and how much, the options worth weighing (at least three), a recommendation, how we would measure success, and the assumptions to test first with a signal that would make us stop. Use the numbers in data/ and say where each one comes from. Do not change the files under data/ or docs/request.md, and do not plan the implementation. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "sd-feedback",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "docs/framing.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/request.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "grep -Eq '(^|[^0-9])41([^0-9]|$)' docs/framing.md && grep -Eq '(^|[^0-9])66([^0-9]|$)|6[12](\\.[0-9])? ?%' docs/framing.md",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/framing.md\",\"utf8\");const a=/find|discover|locat|hidden|buried|can.?t see|cannot see|where/gi,b=/export/i;let m,ok=false;while((m=a.exec(t)))if(b.test(t.slice(Math.max(0,m.index-200),m.index+200)))ok=true;process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/framing.md\",\"utf8\");const a=/print/gi,b=/hidden|4\\.6|\\b0\\b|zero|no clicks/i;let m,ok=false;while((m=a.exec(t)))if(b.test(t.slice(Math.max(0,m.index-300),m.index+300)))ok=true;process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "docs/framing.md",
+      "pattern": "do nothing|status quo|no change|leave (it|things) as"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/framing.md\",\"utf8\");process.exit(t.split(\"\\n\").filter((l)=>/^\\s*(#{2,5}\\s*|[-*]\\s+|\\d+[.)]\\s+|\\|\\s*)(\\*\\*)?(option|alternative)\\s*([A-Z0-9]|\\d)\\b/i.test(l)).length>=3?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/framing.md",
+      "pattern": "\\b\\d+(\\.\\d+)? ?%",
+      "min": 2
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/framing.md\",\"utf8\");const a=/success|metric|measure|target/gi,b=/\\d/i;let m,ok=false;while((m=a.exec(t)))if(b.test(t.slice(Math.max(0,m.index-150),m.index+150)))ok=true;process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "docs/framing.md",
+      "pattern": "\\b(stop|kill|abandon|revisit|drop)\\b"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "problem-evidence",
+      "criterion": "The framing names the findability of the existing export as the main problem (41 of 66 tickets, answer key F1, F2) instead of the missing PDF format, with numbers and their source.",
+      "weight": 3
+    },
+    {
+      "id": "options",
+      "criterion": "At least three options are weighed, including doing nothing and moving the existing export and print button onto the report page (F4), each with its cost.",
+      "weight": 2
+    },
+    {
+      "id": "measure",
+      "criterion": "Success is a measure with a baseline from the data and a target (ticket counts, export click share, F3).",
+      "weight": 2
+    },
+    {
+      "id": "hidden-print",
+      "criterion": "The framing notices that zero print clicks come from the button hidden in release 4.6 (F3), not from no demand.",
+      "weight": 1
+    },
+    {
+      "id": "scope",
+      "criterion": "The document frames the problem and does not plan the implementation; the slow reports (F5) are named as a separate problem.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

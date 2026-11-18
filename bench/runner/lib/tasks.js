@@ -31,6 +31,8 @@ const SUITE_DEFAULTS = {
   rootcause: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 2, parallel: 1 },
   // Larger multi-step tasks (design then implement, refactor, cross-layer feature, review then fix); tasks come from bench/complex.
   complex: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 1, parallel: 1 },
+  // One or more tasks per SDLC phase of the quality pack, for the konductor against vanilla quality claim; new tasks come from bench/sdlc.
+  sdlc: { arms: ['vanilla', 'main'], replicates: 2, parallel: 1 },
   // Can a Kiro agent read a skill's references/*.md file from the skills root? Tasks come from bench/refs; the arms are built by the study driver.
   'references-read': { arms: ['main'], replicates: 3, parallel: 1 },
   // Does the `constraints` skill's guidance reach Kiro agents and change what they do? Tasks come from bench/probes; the arms are built by the study driver.

@@ -585,7 +585,7 @@ function cmdCalibrate(opts) {
     console.log(`wrote ${r.n} item(s) to ${r.dir} (sheet.json, sheet.md, key.json). Label sheet.json, then run: calibrate score --labels ${r.sheetPath}`);
   } else if (sub === 'export-reference') {
     const list = (name) => String(need(opts, name)).split(',').map((s) => s.trim()).filter(Boolean);
-    const r = exportReferenceSheet({ benchDir: benchDirOf(opts), taskIds: list('tasks'), criteriaIds: list('criteria'), outDir: need(opts, 'out'), seed: seedOf(opts) });
+    const r = exportReferenceSheet({ benchDir: benchDirOf(opts), taskIds: list('tasks'), criteriaIds: list('criteria'), outDir: need(opts, 'out'), seed: seedOf(opts), extraDirs: extraDirsOf(opts) });
     console.log(`wrote ${r.n} item(s) to ${r.dir} (sheet.json, sheet.md, key.json). No model was called.`);
   } else if (sub === 'score') {
     const t = DEFAULTS.thresholds;
