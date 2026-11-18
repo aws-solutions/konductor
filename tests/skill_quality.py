@@ -60,9 +60,23 @@ SCOPE_CLAUSE = re.compile(r"\bonly (in|for|when|on)\b|\bapplies to\b", re.IGNORE
 # An explicit mandate.
 MUST_USE = re.compile(r"\bMUST USE\b", re.IGNORECASE)
 # Behavior-summary form: a capitalised third-person verb first ("Validates ...").
-# A plural noun before a preposition ("Notes on ...") is not a verb.
-VERB_PROXY = re.compile(r"^[A-Z][a-z]+s\b(?!\s+(?:on|of|for|about|in|to|from|with|at|by)\b)")
-VERB_PROXY_STOPLIST = frozenset({"This", "Has", "Was", "Its", "Is", "Does", "Thus", "Plus"})
+VERB_PROXY = re.compile(r"^[A-Z][a-z]+s\b")
+# First words that look like a third-person verb but are not one. Rejecting any
+# first word followed by a preposition caught "Notes on ..." and also rejected
+# "Checks for drift ...", "Scans for hard-coded secrets ..." and "Searches for
+# prior art ...", which AGENTS.md allows, so the nouns are named instead. A noun
+# missing from this set opens a description that passes as a behavior summary and
+# warns, which is the softer error of the two: the author is told to check that
+# the description says when the skill applies.
+VERB_PROXY_STOPLIST = frozenset(
+    {
+        "This", "Has", "Was", "Its", "Is", "Does", "Thus", "Plus",
+        # Noun openers a documentation-shaped description uses.
+        "Checklists", "Conventions", "Details", "Examples", "Findings", "Guidelines",
+        "Instructions", "Notes", "Options", "Patterns", "Questions", "References",
+        "Requirements", "Rules", "Standards", "Steps", "Templates", "Tips",
+    }
+)
 
 # A fence opens at up to 3 spaces of indent, or inside a list item at up to 3 spaces
 # past the item's content column. Any deeper line is indented code, not a fence. A

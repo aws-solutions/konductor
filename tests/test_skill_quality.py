@@ -189,6 +189,27 @@ def test_verb_proxy_only_warns_and_passes(tmp_path):
     assert [f.rule for f in findings if f.severity == "warning"] == ["activation"]
 
 
+@pytest.mark.parametrize(
+    "description",
+    [
+        "Checks for drift between a deployed IAM role and the policy its module declares.",
+        "Scans for hard-coded secrets across the repository and reports every hit by file.",
+        "Searches for prior art in the codebase and lists every match it finds by file.",
+    ],
+    ids=["checks-for", "scans-for", "searches-for"],
+)
+def test_verb_before_a_preposition_is_a_behavior_summary(tmp_path, description):
+    """A verb opener keeps passing when its object arrives through a preposition."""
+    findings = sq.check_skill_content(_skill(tmp_path, description=description)).findings
+    assert not _errors(findings)
+    assert [f.rule for f in findings if f.severity == "warning"] == ["activation"]
+
+
+def test_noun_before_a_preposition_is_not_a_behavior_summary(tmp_path):
+    skill = _skill(tmp_path, description="Notes on the build system, its quirks, and the flags it reads.")
+    assert [f.rule for f in _errors(sq.check_skill_content(skill).findings)] == ["activation"]
+
+
 def test_scope_clause_passes(tmp_path):
     skill = _skill(tmp_path, description="Loaded only in Claude Code sessions to set teammate behavior rules for agents.")
     assert _rules(skill) == set()
