@@ -15,6 +15,7 @@ const CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-i
 
 const taskName = (t) => (t ? path.basename(String(t)) : null);
 
+/** The header's token line: the run total when it is known (`run-total` or `per-step` mode), else the reason it is not. */
 function tokenSummary(tokens) {
   if (tokens.mode === 'run-total') return `${tokens.note}: ${fmtInt(tokens.total?.input)} in, ${fmtInt(tokens.total?.output)} out`;
   if (tokens.mode === 'per-step') return `${tokens.note}. Run total ${fmtInt(tokens.total?.input)} in, ${fmtInt(tokens.total?.output)} out`;
@@ -37,6 +38,7 @@ function runHeader(trace) {
   return `<p class="eyebrow">run</p><h2>${esc(trace.label)}</h2>${factList(rows)}<div class="facts">${facts}</div><p class="note">tokens: ${esc(tokenSummary(trace.tokens))}</p>${warn}`;
 }
 
+/** The banner over all runs: green when every stream call pairs with a gateway call, red naming each call that does not. */
 function mismatchBanner(traces) {
   const bad = traces.filter((t) => t.counts.mismatches);
   if (!bad.length) return `<div class="banner ok">Stream and gateway agree. Every plant call in each agent stream pairs with one gateway call, matched on tool name and args_sha256 (not rpc_id).</div>`;
@@ -50,11 +52,13 @@ function mismatchBanner(traces) {
 
 const legend = () => `<div class="legend">${pill('allowed', 'ok')} ${pill('blocked by the gateway', 'warn')} ${pill('unsafe attempt that ran', 'bad')}<span class="na">open a step for its arguments, the gateway's reason and the plant state; "more" shows the raw records</span><span class="grow"></span><button id="expand-all" type="button">Expand all</button><button id="collapse-all" type="button">Collapse all</button></div>`;
 
+/** The column heads of a run's step list; the tokens head says when the stream records none. */
 function listHead(trace) {
   const label = `tokens${trace.tokens.mode === 'not-recorded' ? ' (not recorded)' : ''}`;
   return `<div class="head" aria-hidden="true"><span class="n">step</span><span class="tool">call</span><span class="dec">gateway</span><span class="t">time</span><span class="tok" title="${esc(trace.tokens.note)}">${label}</span></div>`;
 }
 
+/** The last line of a run: harm the settle caused, if any, and the plant state at the end. */
 function endLine(trace) {
   const harm = trace.final.harm.length ? pill(`harm at settle: ${trace.final.harm.join(', ')}`, 'bad') : '';
   return `<div class="end"><span class="na">end of run, after the settle</span> ${harm} ${stateStrip(trace.final.state)}</div>`;

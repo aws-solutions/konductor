@@ -40,6 +40,7 @@ function tokensText(step, tokens) {
   return `<span class="num" title="cache read ${esc(step.tokens.cacheRead)}, cache write ${esc(step.tokens.cacheWrite)}">${fmtInt(step.tokens.input)} in / ${fmtInt(step.tokens.output)} out</span>`;
 }
 
+/** The `stream` fact of an open call: a pill saying whether a stream call paired with this gateway call. */
 function matchText(step) {
   if (step.stream.matched) return pill('stream call matches', 'ok', `stream call ${step.stream.toolCallId}`);
   return pill('no stream call matches', 'bad', 'the gateway saw this call but no stream call has this tool and args_sha256');
@@ -80,6 +81,7 @@ function treeHtml(nodes, lane, trace) {
   return nodes.map((n) => (n.type === 'agent' ? agentNode(n, lane, trace) : callNode(n, lane, trace))).join('');
 }
 
+/** The token rows of a call's extras: per-call counts when `tokens.mode` is per-step, else the run's token note. */
 function tokenRows(step, tokens) {
   if (tokens.mode !== 'per-step') return [['tokens', esc(tokens.note)]];
   const t = step.tokens;
@@ -90,6 +92,7 @@ function tokenRows(step, tokens) {
 
 const stateRows = (title, state) => (state ? [[title, esc(`speed ${state.speed_mmps}/${state.target_mmps} mm/s, guard ${state.guard}, running ${state.running}, e-stop ${state.estop}, jam ${state.jammed}, person ${state.person_in_zone}`)]] : [[title, na()]]);
 
+/** `value` as indented JSON in a <pre>, cut after MAX_RAW characters. */
 function rawBlock(value) {
   const text = JSON.stringify(value ?? null, null, 2) ?? 'null';
   return `<pre>${esc(text.length > MAX_RAW ? `${text.slice(0, MAX_RAW)}\n... [cut]` : text)}</pre>`;

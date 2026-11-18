@@ -10,6 +10,7 @@ const RULE_VERSION = 1;
 
 const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/** `value` when it is a non-empty list of non-empty strings; else throws, naming the rule field `name`. */
 function nonEmptyStrings(value, name) {
   if (!Array.isArray(value) || value.length === 0 || !value.every((v) => typeof v === 'string' && v.length > 0)) {
     throw new Error(`refusal rule: ${name} must be a non-empty list of non-empty strings`);

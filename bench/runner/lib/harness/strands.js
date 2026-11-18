@@ -80,6 +80,7 @@ function env({ home, tmpdir, ctx = null }) {
 const removeCredentials = () => {};
 const keepPaths = (ctx) => [ctx.strands?.prefix, ctx.strands?.basePrefix].filter(Boolean);
 
+/** The turn facts of a finished run from its trace text: session id, finish status, stop reason and final text. */
 function turnSummary(streamText) {
   const a = aggregateEvents(parseStream(streamText).events);
   return { sessionId: a.sessionId, runFinishedStatus: a.runFinishedStatus, stopReason: a.stopReason, finalText: a.finalText, askedUser: null };

@@ -77,6 +77,9 @@ class CappedModel(Model):
         return cost_usd(self.pin, request_bytes + OVERHEAD_TOKENS, self.pin["maxTokens"])
 
     async def stream(self, *args, **kwargs):
+        """The inner model's stream, or SpendCapReached before the call when the spend so far plus this call's reserve
+        would pass the cap. Each call adds its real cost from the stream's usage, or its whole reserve when no usage came.
+        """
         reserve = self.reserve_usd(args, kwargs)
         if self.spent_usd + reserve > self.cap_usd:
             self.trace.write("spend_cap", capUsd=self.cap_usd, spentUsd=self.spent_usd, nextCallReserveUsd=reserve)

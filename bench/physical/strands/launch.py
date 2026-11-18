@@ -147,6 +147,7 @@ def _version(module):
 
 
 def main(argv=None):
+    """Runs the launcher with `argv` (default sys.argv): `--census` lists the hooks, else one prompt runs. Returns the exit code."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--model")
     parser.add_argument("--agent-file")

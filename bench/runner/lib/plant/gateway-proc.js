@@ -42,6 +42,7 @@ class FrameReader {
     });
   }
 
+  /** Keeps `frame` and hands it to every waiter whose ops include its op; those waiters are removed. */
   push(frame) {
     this.frames.push(frame);
     this.waiters = this.waiters.filter((w) => (w.ops.includes(frame.op) ? (w.resolve(frame), false) : true));

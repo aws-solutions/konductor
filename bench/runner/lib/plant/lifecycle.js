@@ -44,6 +44,7 @@ async function sandboxPidns(pid, mode, searchMs) {
   return null;
 }
 
+/** The pid of the first child of process `pid` (from /proc/<pid>/task/*\/children), or null when it has none yet or is gone. */
 function firstChild(pid) {
   try {
     for (const tid of fs.readdirSync(`/proc/${pid}/task`)) {
@@ -108,6 +109,7 @@ class PlantRun {
     return { reason: 'plantStartup', detail: `no tools/list within ${this.suite.deadlines.toolsListMs} ms` };
   }
 
+  /** The path of plant log `name` (`gateway` or `world`) in this run's log dir. */
   logPath(name) {
     return path.join(this.logDir, `${name}.jsonl`);
   }

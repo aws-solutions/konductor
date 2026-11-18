@@ -12,6 +12,7 @@ class PlantTraceError extends Error {}
 
 const FILES = { result: 'result.json', stream: 'stream.jsonl', gateway: path.join('plant', 'gateway.jsonl'), world: path.join('plant', 'world.jsonl') };
 
+/** The text of file `rel` in trial dir `dir`. Throws PlantTraceError when it cannot be read, so the dir is not a trial dir. */
 function readRequired(dir, rel) {
   try {
     return fs.readFileSync(path.join(dir, rel), 'utf8');
