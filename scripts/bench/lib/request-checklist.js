@@ -779,14 +779,16 @@ const credentialStop = (message, attempt) =>
  * repair call first, which is not counted in `attempts`. A provider block is tried `maxRefusals` times, then the
  * task is refused. A failure the provider says can never work is not retried. A fatal error (a credential failure,
  * a spend stop, a ledger error) stops every worker and is thrown after they settle; `systemicAfter` tasks in a row
- * whose every call failed throw SystemicFailureError, which is fatal too. Finished files are kept.
+ * whose every call failed throw SystemicFailureError, which is fatal too. Finished files are kept, and the thrown
+ * error carries `partial`, the same shape as the return value, for the work done before the stop.
  * A try whose reply reached the output limit and could not be used (the call failed because the model stopped for
  * length, or the reply fails the checks) is a failed try like any other and is counted in `cut_off`; a try that is
  * retried and cut off again counts again. A reply that used the whole limit and passed the checks is not counted.
  * Returns { written, copied, failed, refused, usd, cut_off }: task ids written and copied, and { task_id, reason } for
- * each task that failed or was refused, and the number of tries cut off. `redact` cleans the message of that
- * SystemicFailureError (default: the module redactor); the job passes a run redactor that also removes the credential
- * values it handed out.
+ * each task that failed or was refused, and the number of tries cut off. `nameOf(job)` names a task in these lists
+ * (default its task id); the job passes one that adds the skill and batch, since a task id can repeat across batches
+ * and dose ladder items. `redact` cleans the message of that SystemicFailureError (default: the module redactor); the
+ * job passes a run redactor that also removes the credential values it handed out.
  */
 async function writeChecklists({
   jobs,
@@ -801,6 +803,7 @@ async function writeChecklists({
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   log = () => {},
   now = () => new Date(),
+  nameOf = (job) => job.task_id,
   redact: redactFailure = redact,
 }) {
   const breaker = createBreaker({
@@ -838,7 +841,7 @@ async function writeChecklists({
     let repairInfo = null;
     let repairNote = null;
     const fail = (list, reason) => {
-      list.push({ task_id: job.task_id, reason });
+      list.push({ task_id: nameOf(job), reason });
       log(`${job.task_id}: NOT written (${reason}); USD ${spent.toFixed(4)}`);
     };
     const countCutOff = (result) => {
@@ -1008,18 +1011,33 @@ async function writeChecklists({
     }
     if (!accepted.has(copyKey(job.input)))
       accepted.set(copyKey(job.input), { items, from: job.task_id });
-    written.push(job.task_id);
+    written.push(nameOf(job));
     log(
       `${job.task_id}: ${items.length} items written${repairInfo ? ` (repaired after: ${repairInfo.reason.slice(0, 100)})` : ''}; USD ${spent.toFixed(4)}`,
     );
   };
 
   const pending = jobs.filter((job) => job.state === 'pending');
-  const results = await pool(pending, concurrency, runOne);
+  let results;
+  try {
+    results = await pool(pending, concurrency, runOne);
+  } catch (error) {
+    // Calls before the stop were paid and their files are on disk; the caller still has to report them.
+    if (error && typeof error === 'object')
+      error.partial = {
+        written: [...written],
+        copied: [...copied],
+        failed: [...failed],
+        refused: [...refused],
+        usd: Number(usdTotal.toFixed(4)),
+        cut_off: cutOff,
+      };
+    throw error;
+  }
   results.forEach((result, index) => {
     if (result.error)
       failed.push({
-        task_id: pending[index].task_id,
+        task_id: nameOf(pending[index]),
         reason: shortReason(
           result.error.message || result.error,
           redactFailure,
@@ -1030,7 +1048,7 @@ async function writeChecklists({
     const source = accepted.get(copyKey(job.input));
     if (!source) {
       failed.push({
-        task_id: job.task_id,
+        task_id: nameOf(job),
         reason: `the task it copies (${job.copy_of}) has no checklist`,
       });
       continue;
@@ -1048,12 +1066,12 @@ async function writeChecklists({
       );
     } catch (error) {
       failed.push({
-        task_id: job.task_id,
+        task_id: nameOf(job),
         reason: shortReason(error && error.message, redactFailure),
       });
       continue;
     }
-    copied.push(job.task_id);
+    copied.push(nameOf(job));
     log(`${job.task_id}: copied from ${source.from} (same request)`);
   }
   return {

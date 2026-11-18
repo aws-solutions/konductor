@@ -17,23 +17,23 @@ This guide covers what exists today: the vocabulary, the formats of the frozen b
 
 ## Glossary
 
-| Term      | Meaning                                                                                                                                                                                             |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Arm       | One way of answering a task. `with` has the skill installed; `without` does not.                                                                                                                    |
-| Baseline  | The frozen files for one skill: rules, tasks and bucket sidecars, committed under `bench/baselines/<skill>/`. Stale when `SKILL.md` or the rules change.                                            |
-| Rule      | One instruction from `SKILL.md`, with a quote that must appear in the file and a class.                                                                                                             |
-| Class     | `useful` changes what an answer says. `style` is a format or wording rule. `generic` is good practice for any answer.                                                                               |
-| Task      | A realistic request, written so that at least two rules matter without being named. Each task has a checklist, its `rubric`.                                                                        |
-| Batch     | A named set of tasks for one skill, such as `b1`, with one task file. A second batch of fresh tasks checks that a result holds beyond the first set.                                                |
-| Reading B | The rules reading: judges score each answer on its own against the task's rules checklist. Its scale is `items`.                                                                                    |
-| Reading A | The request-only reading: the same answers scored against a checklist written from the request alone. Its scale is `outcome`. Its writer is a library; its job is later. `plan` counts those calls. |
-| Seat      | One judge: a name (`anthropic`, `openai`, `xai` by default) and a model. The seats use models from different families.                                                                              |
-| Bucket    | Where a checklist item counts, set by its rule's class: `value` (`useful`), `format` (`style`) or `guard` (`generic`).                                                                              |
-| Guard     | The `guard` bucket: items from generic rules. They show whether the skill leaves ordinary quality alone. Its report is added in a later PR.                                                         |
-| Exclusion | A task left out of reading A only, with a reason and a date, when the checklist writer cannot make a usable checklist for it. Never allowed for reading B.                                          |
-| Ledger    | The append-only file `bench/out/ledger.jsonl` of every paid call of all runs: its upper estimate, then the cost its CLI reports or, with none, its mean. See Spend limits and the ledger.           |
-| Run id    | The name of one run's folder under `bench/out/`. Default: `default`.                                                                                                                                |
-| Stage     | A step of a run as `plan` lists it: 1 prep, 2 rules reading, 3 request-only reading, 4 report.                                                                                                      |
+| Term      | Meaning                                                                                                                                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Arm       | One way of answering a task. `with` has the skill installed; `without` does not.                                                                                                                                                     |
+| Baseline  | The frozen files for one skill: rules, tasks and bucket sidecars, committed under `bench/baselines/<skill>/`. Stale when `SKILL.md` or the rules change.                                                                             |
+| Rule      | One instruction from `SKILL.md`, with a quote that must appear in the file and a class.                                                                                                                                              |
+| Class     | `useful` changes what an answer says. `style` is a format or wording rule. `generic` is good practice for any answer.                                                                                                                |
+| Task      | A realistic request, written so that at least two rules matter without being named. Each task has a checklist, its `rubric`.                                                                                                         |
+| Batch     | A named set of tasks for one skill, such as `b1`, with one task file. A second batch of fresh tasks checks that a result holds beyond the first set.                                                                                 |
+| Reading B | The rules reading: judges score each answer on its own against the task's rules checklist. Its scale is `items`.                                                                                                                     |
+| Reading A | The request-only reading: the same answers scored against a checklist written from the request alone. Its scale is `outcome`. Its writer is `lib/request-checklist.js`, and the `checklists` job runs it. `plan` counts those calls. |
+| Seat      | One judge: a name (`anthropic`, `openai`, `xai` by default) and a model. The seats use models from different families.                                                                                                               |
+| Bucket    | Where a checklist item counts, set by its rule's class: `value` (`useful`), `format` (`style`) or `guard` (`generic`).                                                                                                               |
+| Guard     | The `guard` bucket: items from generic rules. They show whether the skill leaves ordinary quality alone. Its report is added in a later PR.                                                                                          |
+| Exclusion | A task left out of reading A only, with a reason and a date, when the checklist writer cannot make a usable checklist for it. Never allowed for reading B.                                                                           |
+| Ledger    | The append-only file `bench/out/ledger.jsonl` of every paid call of all runs: its upper estimate, then the cost its CLI reports or, with none, its mean. See Spend limits and the ledger.                                            |
+| Run id    | The name of one run's folder under `bench/out/`. Default: `default`.                                                                                                                                                                 |
+| Stage     | A step of a run as `plan` lists it: 1 prep, 2 rules reading, 3 request-only reading, 4 report.                                                                                                                                       |
 
 ## Where files live
 
@@ -321,11 +321,11 @@ The redactor (`lib/redact.js`) replaces secret-shaped values with a marker: AWS 
 
 The secret sweep (`lib/sweep.js`) scans the files of a run folder in two tiers. An exact match of a value the run knows is secret (the credentials handed to the agent, or the canary) is a stop: the file can be quarantined and the run should end. Quarantine writes a copy named `<file>~quarantined-<time>` (mode 0600) with the matched values and every secret shape redacted, then removes the original, so no copy of the value stays on disk. A quarantined file is never scanned, but a later sweep lists it as `quarantined` and is not clean while one exists, so a second sweep cannot read as clean after a stop. Any other secret-shaped string is only a warning, because answers about security often quote example keys. The file keeps that text as it is: it is not redacted in the file, and it is redacted when the answer is prepared for judging. A file the sweep cannot scan (over the size cap, a symbolic link, which is never followed, or a file removed while the sweep ran) is listed as skipped, and the sweep is not clean while any file is skipped. A run folder that does not exist is not clean either, so a wrong path cannot read as a clean sweep.
 
-Both are used while a subject run is going: `runSubjectTask` sweeps every run folder and redacts the errors and the stderr it returns. The jobs that make checklist and judge calls come in a later PR.
+Both are used while a subject run is going: `runSubjectTask` sweeps every run folder and redacts the errors and the stderr it returns. The checklist job's writer calls use the same helpers; the judge job comes in a later PR.
 
 ## Retries and parallel calls
 
-Two helpers wrap a model call. `lib/retry.js` sorts a failure into a class. A credential failure and a spend stop are never retried and end the run. A credential failure is AWS credentials that are missing or expired, an AWS SSO login that ran out (`the SSO session associated with this profile has expired`, `Token has expired`, `refresh failed`), or a request signature the provider rejects. `401` and `unauthorized` count only next to an AWS error name or `not authorized to perform`, so a bare `401 Unauthorized` from another tool is a temporary failure and not a credential one. A provider refusal is tried twice, because a retry gives the same block. A call that can never work as it is (access denied, an invalid request, a model or file that does not exist) is not retried at all and does not count toward the four-in-a-row stop. Anything else, such as a timeout or throttling, is retried up to three tries in all with a growing pause. If four calls in a row fail every try, the run stops, because that points at a credential or provider problem and not bad luck. Classes are matched on the error's message text: the provider's exception names and the phrases the CLIs print, such as `requires AWS credentials` (a credential failure) or `The provided model identifier is invalid` (a call that can never work). A message that matches none is treated as a temporary failure. `lib/pool.js` runs at most a set number of calls at once for each seat. After a fatal error it starts no more calls and rejects with that error, so a caller keeps only the work it already stored. `retry.js` is used by `runSubjectTask` and `pool.js` by the pairs job; the jobs that make checklist and judge calls come in a later PR.
+Two helpers wrap a model call. `lib/retry.js` sorts a failure into a class. A credential failure and a spend stop are never retried and end the run. A credential failure is AWS credentials that are missing or expired, an AWS SSO login that ran out (`the SSO session associated with this profile has expired`, `Token has expired`, `refresh failed`), or a request signature the provider rejects. `401` and `unauthorized` count only next to an AWS error name or `not authorized to perform`, so a bare `401 Unauthorized` from another tool is a temporary failure and not a credential one. A provider refusal is tried twice, because a retry gives the same block. A call that can never work as it is (access denied, an invalid request, a model or file that does not exist) is not retried at all and does not count toward the four-in-a-row stop. Anything else, such as a timeout or throttling, is retried up to three tries in all with a growing pause. If four calls in a row fail every try, the run stops, because that points at a credential or provider problem and not bad luck. Classes are matched on the error's message text: the provider's exception names and the phrases the CLIs print, such as `requires AWS credentials` (a credential failure) or `The provided model identifier is invalid` (a call that can never work). A message that matches none is treated as a temporary failure. `lib/pool.js` runs at most a set number of calls at once for each seat. After a fatal error it starts no more calls and rejects with that error, so a caller keeps only the work it already stored. `retry.js` is used by `runSubjectTask` and by the checklist writer, and `pool.js` by the pairs job and the checklist job; the judge job comes in a later PR.
 
 ## What the judges see
 
@@ -537,7 +537,7 @@ A job is paid work that can run for a long time. `launch.js` starts it in the ba
 node scripts/bench/launch.js pairs --skills brew-log --run r1 [--max-usd 5] [--config <file>] [--root <dir>] [--dry-run]
 ```
 
-It checks every option first, the same way the job will: a known job (only `pairs` so far), skills that have a `skills/<name>/SKILL.md` under the root it is given, a valid run id, a settings file that loads, and a plain `--max-usd` within `total_cap_usd`. A flag is given as `--flag value` or `--flag=value`, and a flag given twice is refused (exit 64), as in `plan`. Then it starts `node scripts/bench/job.js` with those values, detached, with stdout and stderr in the job's log (see Job folder). It prints one JSON line and exits:
+It checks every option first, the same way the job will: a known job (`pairs` or `checklists`), skills that have a `skills/<name>/SKILL.md` under the root it is given (or, for `checklists` with `--ladder`, items of that dose ladder), a valid run id, a settings file that loads, and a plain `--max-usd` within `total_cap_usd`. A flag is given as `--flag value` or `--flag=value`, and a flag given twice is refused (exit 64), as in `plan`. Then it starts `node scripts/bench/job.js` with those values, detached, with stdout and stderr in the job's log (see Job folder). It prints one JSON line and exits:
 
 ```
 {"job":"pairs","run_id":"r1","skills":["brew-log"],"dry_run":false,"pid":4242,"already_running":false,"log_file":"...","pid_file":"..."}
@@ -559,20 +559,21 @@ It checks every option first, the same way the job will: a known job (only `pair
 
 On a failure the line is `{"error": "...", "exit_code": N}`. A failed write (the job folder, the log, the pid file, the lock) says "cannot write" and exits 74. When the pid file is the write that fails, the job has already started, so the launcher first stops its process group (SIGTERM); a retry then cannot start the same job twice. If that signal fails, the error text names the pid that is still running.
 
-`job.js` is the job itself, in the foreground. It takes the same options. It prints one line per event, every line through the redactor, and ends with one JSON line: the status, the exit code, the stop if any, and the count of runs by result. That last line is printed whole, however many skills were skipped; the other lines are cut at 8000 characters.
+`job.js` is the job itself, in the foreground. It takes the same options. It prints one line per event, every line through the redactor, and ends with one JSON line: the job, the run id, the skills, the status, the exit code and the stop if any, then the counts of the job. For `pairs` these are `jobs`, `pending`, the count of runs by result (`results`) and `skipped`. For `checklists` they are `tasks`, `done`, `pending`, `copies`, `remaining`, `excluded`, `results` (the count of checklists written, copied, failed and blocked), `usd` and `skipped`. That last line is printed whole, however many skills were skipped; the other lines are cut at 8000 characters.
 
-| Job exit | Meaning                                                                                         |
-| -------- | ----------------------------------------------------------------------------------------------- |
-| 0        | done: every pending run gave a valid answer, nothing was pending, or a dry run                  |
-| 1        | refused by `plan` (invalid baseline, cost above `max_usd`, a ledger past a limit)               |
-| 3        | partial: a run failed or was not loaded; the answers made are kept                              |
-| 4        | stop: credentials missing, long-term or expiring within the call timeout (5 minutes by default) |
-| 5        | stop: spend (the ledger refused a call)                                                         |
-| 6        | stop: the ledger cannot be read or its lock cannot be taken                                     |
-| 7        | stop: security (the secret sweep found a credential value or the canary in stored text)         |
-| 8        | stop: the first run was answered by another model than the subject model                        |
-| 10       | stop: the first run was invalid for another reason than the skill or the model (setup)          |
-| 64       | usage error; 66, 70 and 74 as for `plan`                                                        |
+| Job exit | Meaning                                                                                                                                                                                             |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0        | done: every pending run gave a valid answer (every task has a current checklist), nothing was pending, or a dry run                                                                                 |
+| 1        | refused: `plan` refuses the skills (invalid baseline, cost above `max_usd`, a ledger past a limit); `checklists` also refuses a request the writer cannot be given, or a projection above `max_usd` |
+| 3        | partial: a run failed or was not loaded, or a checklist failed or the provider blocked its writer; the work made is kept                                                                            |
+| 4        | stop: credentials missing, long-term or about to expire: for `pairs` within the call timeout (5 minutes by default), for `checklists` less than 3 minutes away                                      |
+| 5        | stop: spend (the ledger refused a call)                                                                                                                                                             |
+| 6        | stop: the ledger cannot be read or its lock cannot be taken                                                                                                                                         |
+| 7        | stop: security (the secret sweep found a credential value or the canary in stored text)                                                                                                             |
+| 8        | stop: the first run was answered by another model than the subject model                                                                                                                            |
+| 9        | stop: systemic, 4 checklists in a row whose every call failed (`checklists` only)                                                                                                                   |
+| 10       | stop: the first run was invalid for another reason than the skill or the model (setup)                                                                                                              |
+| 64       | usage error (a `--ladder` file that cannot be read or fails its audit is one); 66, 70 and 74 as for `plan`                                                                                          |
 
 Neither command uses exit code 2, which this repository keeps for a gate finding.
 
@@ -604,6 +605,44 @@ A reply whose only fault is the length of some items (the count, the JSON shape 
 
 A checklist file records the writer prompt's hash, the writer model, the stripped request with its hash, the item count, and the items with their hash. It is current only when the prompt hash, the model, the request hash and the item count match today's values, the stored request and items match their own hashes, and the items still pass the checks; otherwise it is written again and the old file is kept as `<file>.superseded-<time>`. A file that cannot be read for a reason other than "it is not there" or "it is not JSON" (an I/O error, a folder in its place) stops the command with that error, because reading it as missing would pay for the checklist again. If a checklist that passed the checks cannot be written after one more try, the task is reported as failed and its items are printed in the job log, so the paid reply is not lost. Tasks with the same stripped request and item count (the dose ladder's doses share their tasks) share one writer call: the later ones are written as copies that name the task they copy. Each call is a judge call (`lib/opencode.js`), so it is booked in the ledger like any other. It reserves its ceiling in the ledger (the prompt's tokens plus the output limit at the model's token prices, see the paragraph on the ledger), is charged the writer model's mean when the CLI reports no usable cost, and is priced at the model's p90 by `plan`, which checks that figure against the limits.
 
+## Exclusions and the scale view
+
+`bench/exclusions.json` (format above) holds the tasks a person has left out of reading A, each with a reason and a date. It is read and checked in one place (`lib/baseline.js` `loadExclusions`); a malformed file is refused as a whole, so a bad record never keeps a task in by accident. `lib/exclusions.js` `splitTasks` splits the tasks of one batch into the ones reading A reads and the excluded ones with their reason and date. Records are per batch: the same task id in another batch is not excluded. An excluded task still counts for reading B, and nothing on disk is moved or deleted.
+
+`lib/scale-view.js` says what a judge of each scale is shown of a task:
+
+| Scale     | Checklist shown                                                          | Excluded task | No current checklist                                      |
+| --------- | ------------------------------------------------------------------------ | ------------- | --------------------------------------------------------- |
+| `items`   | the task's rules checklist (the sets come back unchanged)                | shown         | not possible                                              |
+| `outcome` | the request-only checklist from `checklists/<skill>/<batch>/<task>.json` | left out      | empty checklist, listed as `missing`, `stale` or `unsafe` |
+
+A checklist is current only for the same stripped request, item count, writer model and writer prompt. A task that waits for its checklist is never judged against another one, and the judgment digest holds the hash of the checklist shown, so a new checklist makes old judgments pending.
+
+## The checklist job
+
+`lib/checklist-job.js` (`runChecklists`) writes the request-only checklist of every task of the selected skills that has none that is current. It spends money: each checklist is one writer call (a judge call through OpenCode), plus retries and at most one repair call. `scripts/bench/job.js checklists` runs it, and `scripts/bench/launch.js checklists` starts that in the background.
+
+```
+node scripts/bench/launch.js checklists --skills brew-log --run r1 [--ladder <file>] [--max-usd 5] [--dry-run]
+```
+
+1. `plan` for the same skills must pass, as for the pairs job. Skills it does not plan are skipped. A skill whose rules or tasks are stale still gets its checklists: reading A needs only the tasks.
+2. `--ladder <file>` lets `--skills` also name the items of a dose ladder (`fixture-d0`, ...). The ladder must pass its audit. Its doses share their tasks, so each task is written once and copied for the other doses.
+3. A task in `bench/exclusions.json` is not planned: no call, no file, in no count. The job prints it with its reason and date.
+4. A request the writer cannot be given (it still names the skill once stripped, or its rules checklist is not 5 to 8 items) refuses the whole job. So does a projection above `max_usd` with what the run already spent or reserved. Nothing is spent.
+5. Fresh credentials are exported once for `aws_profile`. Every call checks they are more than 3 minutes from expiry before it starts.
+6. At most 4 writer calls run at once. Retries, the repair call and the files follow Request-only checklists above.
+7. The result counts `cut_off`: the tries whose reply reached the output limit and could not be used, because the call failed when the model stopped for length or because the reply failed the checks. A try that is retried and cut off again counts again; a reply that used the whole limit and passed the checks does not count. When the count is above 0 the log says so and names `judge_max_output_tokens` and `judge_max_output_tokens_by_seat`, the settings that set the limit (see The output limit).
+
+| Result    | Meaning                                                                                                                                                    | Exit   |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| `done`    | every task read by A has a current checklist                                                                                                               | 0      |
+| `refused` | `plan` refused, a request cannot be given to the writer, or the projection is above `max_usd`                                                              | 1      |
+| `partial` | a checklist failed, or the provider blocked the writer on it; both are named. A blocked task stays a failure until a person adds it to the exclusions file | 3      |
+| `stopped` | credentials (4), spend (5), the ledger (6), or 4 tasks in a row whose every call failed (systemic, 9); finished checklists are kept                        | 4 to 9 |
+
+A rerun resumes: a current checklist is never written again.
+
 ## Not built yet
 
-These are added in a later PR: the judge job, the job that runs the checklist writer for reading A, `next` (which says which job to start), the labels that sum up the scores, and the report. The judge client and the checklist writer are libraries until their jobs use them.
+These are added in a later PR: the judge job, `next` (which says which job to start), the labels that sum up the scores, and the report. The judge client is a library until the judge job uses it.
