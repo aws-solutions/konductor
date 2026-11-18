@@ -2,19 +2,11 @@
   "schemaVersion": 1,
   "note": "Findings tolerated today. A finding not listed fails `cap audit`; a listed finding that no longer occurs also fails until it is removed. Edit with `cap audit --update-baseline`.",
   "base": {
-    "ref": "origin/main",
-    "commitSha": "be9a15dd5e813b0a1fe36f07ff2c044831d21392"
+    "ref": "origin/feat/bench-pilot-nk",
+    "commitSha": "e5fa114caa61d529fd0adc3412e937bacb2d3207"
   },
-  "updatedAt": "2026-11-04T21:08:28.921Z",
+  "updatedAt": "2026-11-18T20:05:35.928Z",
   "waived": {
-    "description-block-scalar|skill:find-aws-skills": {
-      "rule": "description-block-scalar",
-      "id": "skill:find-aws-skills"
-    },
-    "description-block-scalar|skill:workspace-skills": {
-      "rule": "description-block-scalar",
-      "id": "skill:workspace-skills"
-    },
     "description-no-cue|skill:adversarial-code-review-pass-integrity": {
       "rule": "description-no-cue",
       "id": "skill:adversarial-code-review-pass-integrity"
@@ -27,41 +19,13 @@
       "rule": "description-no-cue",
       "id": "skill:adversarial-code-review-pass-security"
     },
-    "description-no-cue|skill:adversarial-design-review": {
-      "rule": "description-no-cue",
-      "id": "skill:adversarial-design-review"
-    },
-    "description-no-cue|skill:app-discovery": {
-      "rule": "description-no-cue",
-      "id": "skill:app-discovery"
-    },
-    "description-no-cue|skill:claude-teams-behavior": {
-      "rule": "description-no-cue",
-      "id": "skill:claude-teams-behavior"
-    },
     "description-no-cue|skill:design-evaluation": {
       "rule": "description-no-cue",
       "id": "skill:design-evaluation"
     },
-    "description-no-cue|skill:design-quality-check": {
-      "rule": "description-no-cue",
-      "id": "skill:design-quality-check"
-    },
-    "description-no-cue|skill:dom-inspection": {
-      "rule": "description-no-cue",
-      "id": "skill:dom-inspection"
-    },
     "description-no-cue|skill:historical-issues-registry": {
       "rule": "description-no-cue",
       "id": "skill:historical-issues-registry"
-    },
-    "description-no-cue|skill:socratic-elicitation": {
-      "rule": "description-no-cue",
-      "id": "skill:socratic-elicitation"
-    },
-    "description-no-cue|skill:sop-state-management": {
-      "rule": "description-no-cue",
-      "id": "skill:sop-state-management"
     },
     "lint-dup-block|skill:cmux-dispatch|skill:mux-dispatch": {
       "rule": "lint-dup-block",
@@ -75,21 +39,9 @@
       "rule": "lint-orphan-file",
       "id": "skill:legacy-to-agentic-estimate"
     },
-    "lint-skill-lines|skill:cost-estimation": {
-      "rule": "lint-skill-lines",
-      "id": "skill:cost-estimation"
-    },
     "lint-skill-lines|skill:cypress-test-implementation": {
       "rule": "lint-skill-lines",
       "id": "skill:cypress-test-implementation"
-    },
-    "lint-skill-lines|skill:dynamodb-design": {
-      "rule": "lint-skill-lines",
-      "id": "skill:dynamodb-design"
-    },
-    "lint-skill-lines|skill:dynamodb-validation": {
-      "rule": "lint-skill-lines",
-      "id": "skill:dynamodb-validation"
     },
     "lint-skill-lines|skill:e2e-test-strategy": {
       "rule": "lint-skill-lines",
@@ -103,10 +55,6 @@
       "rule": "lint-skill-lines",
       "id": "skill:iam-policy-design"
     },
-    "lint-skill-lines|skill:infra-validation": {
-      "rule": "lint-skill-lines",
-      "id": "skill:infra-validation"
-    },
     "lint-skill-lines|skill:policy-validation": {
       "rule": "lint-skill-lines",
       "id": "skill:policy-validation"
@@ -115,21 +63,9 @@
       "rule": "lint-skill-lines",
       "id": "skill:security-test-generation"
     },
-    "lint-skill-lines|skill:smithy-modeling": {
-      "rule": "lint-skill-lines",
-      "id": "skill:smithy-modeling"
-    },
-    "lint-skill-lines|skill:smithy-validation": {
-      "rule": "lint-skill-lines",
-      "id": "skill:smithy-validation"
-    },
     "lint-skill-lines|skill:test-coverage-analysis": {
       "rule": "lint-skill-lines",
       "id": "skill:test-coverage-analysis"
-    },
-    "lint-skill-lines|skill:ui-text-validation": {
-      "rule": "lint-skill-lines",
-      "id": "skill:ui-text-validation"
     }
   }
 }
