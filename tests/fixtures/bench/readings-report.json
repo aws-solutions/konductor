@@ -1,0 +1,34 @@
+{
+  "about": "Compact stand-in data for tests/scripts/bench/readings-report*.test.js: for each demo item, 8 tasks with a with and a without answer, and per scale the with-minus-without gap of each task (every seat of a task gives the same gap, from its with judgment and its without judgment, so the task gaps and the intervals can be checked by hand). Synthetic: not data of any run. outcome = reading A, items = reading B. A demo with no entry for a scale has no judge job on that scale.",
+  "words": { "with": 30, "without": 60 },
+  "demos": {
+    "convention-pass": {
+      "items": { "gap": [3.0, 2.5, 3.5, 3.0, 2.0, 3.0, 3.5, 2.5] },
+      "outcome": { "gap": [0.2, -0.3, 0.0, 0.4, -0.2, 0.1, -0.1, 0.0] }
+    },
+    "convention-leaks-into-a": {
+      "items": { "gap": [3.0, 2.5, 3.5, 3.0, 2.0, 3.0, 3.5, 2.5] },
+      "outcome": { "gap": [1.0, 1.2, 0.8, 1.1, 0.9, 1.0, 1.3, 0.7] }
+    },
+    "convention-no-gain-on-b": {
+      "items": { "gap": [0.2, -0.3, 0.1, 0.0, -0.2, 0.3, 0.0, -0.1] },
+      "outcome": { "gap": [0.2, -0.3, 0.0, 0.4, -0.2, 0.1, -0.1, 0.0] }
+    },
+    "helps-a": {
+      "items": { "gap": [2.0, 1.5, 2.5, 2.0, 1.0, 2.0, 2.5, 1.5] },
+      "outcome": { "gap": [1.2, 0.8, 1.0, 1.4, 0.6, 1.0, 1.2, 0.8] }
+    },
+    "ladder-D0": {
+      "outcome": { "gap": [0.2, -0.3, 0.0, 0.4, -0.2, 0.1, -0.1, 0.0] }
+    },
+    "ladder-D1": {
+      "outcome": { "gap": [-0.4, -0.6, -0.5, -0.3, -0.7, -0.5, -0.4, -0.6] }
+    },
+    "ladder-D2": {
+      "outcome": { "gap": [-0.9, -1.1, -1.0, -0.8, -1.2, -1.0, -0.9, -1.1] }
+    },
+    "ladder-D4": {
+      "outcome": { "gap": [-1.9, -2.1, -2.0, -1.8, -2.2, -2.0, -1.9, -2.1] }
+    }
+  }
+}
