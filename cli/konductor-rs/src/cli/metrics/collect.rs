@@ -457,6 +457,7 @@ pub(crate) fn collect_kiro_v3(path: &Path, mtime: u64, size: u64) -> Record {
     let (mut turns, mut subagents) = (0u64, 0u64);
     let mut agent_type = None;
     let (mut parsed, mut failed) = (0u64, 0u64);
+    let mut usage_failed = false;
     for line in BufReader::new(file).lines() {
         let Ok(line) = line else {
             failed += 1;
@@ -492,10 +493,14 @@ pub(crate) fn collect_kiro_v3(path: &Path, mtime: u64, size: u64) -> Record {
                     _ => {}
                 }
             }
-            Err(_) => failed += 1,
+            Err(_) => {
+                failed += 1;
+                usage_failed |= line.contains("\"usage_summary\"");
+            }
         }
     }
-    if parsed == 0 && failed > 0 {
+    // A credit line we can't read would silently undercount the session.
+    if usage_failed || (parsed == 0 && failed > 0) {
         return rec.unparsed();
     }
     rec.agent = agent_type.or(session.agent_mode);
@@ -703,6 +708,38 @@ mod tests {
         assert_eq!(r.subagent_runs, Some(1));
         assert_eq!(r.models[0].credits, Some(0.75));
         assert_eq!(r.models[0].requests, 1);
+    }
+
+    #[test]
+    fn kiro_v3_sums_one_usage_summary_per_turn() {
+        // Each event carries only its own turn's credits (checked against
+        // real multi-turn KAS sessions), so summing across events is right.
+        let d = tmp("v3-turns");
+        let body = [
+            r#"{"id":"1","timestamp":"2026-11-01T10:00:00Z","payload":{"type":"session_start","agentType":"konductor"}}"#,
+            r#"{"id":"2","timestamp":"2026-11-01T10:00:01Z","payload":{"type":"turn_start"}}"#,
+            r#"{"id":"3","timestamp":"2026-11-01T10:01:00Z","payload":{"type":"usage_summary","promptTurnSummaries":[{"unit":"credit","usage":0.256}]}}"#,
+            r#"{"id":"4","timestamp":"2026-11-01T10:02:00Z","payload":{"type":"turn_start"}}"#,
+            r#"{"id":"5","timestamp":"2026-11-01T10:03:00Z","payload":{"type":"usage_summary","promptTurnSummaries":[{"unit":"credit","usage":2.791}]}}"#,
+        ]
+        .join("\n");
+        let p = write(&d, "ws/s/messages.jsonl", &body);
+        let r = collect_kiro_v3(&p, 0, 0);
+        assert_eq!(r.models[0].requests, 2);
+        let credits = r.models[0].credits.unwrap();
+        assert!((credits - 3.047).abs() < 1e-9, "{credits}");
+    }
+
+    #[test]
+    fn kiro_v3_unreadable_usage_summary_marks_record_unparsed() {
+        let d = tmp("v3-bad-usage");
+        let body = [
+            r#"{"id":"1","timestamp":"2026-11-01T10:00:00Z","payload":{"type":"session_start","agentType":"konductor"}}"#,
+            r#"{"id":"2","timestamp":"2026-11-01T10:01:00Z","payload":{"type":"usage_summary","promptTurnSummaries":[{"unit":"credit"}]}}"#,
+        ]
+        .join("\n");
+        let p = write(&d, "ws/s/messages.jsonl", &body);
+        assert_eq!(collect_kiro_v3(&p, 0, 0).status, Status::Unparsed);
     }
 
     #[test]
