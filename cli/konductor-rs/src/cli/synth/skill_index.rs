@@ -173,11 +173,11 @@ fn kiro_load_rule(engine: KiroEngine) -> String {
                  tool_id `{id}` first, then call `{GET_SKILL_TOOL}`."
             )
         }
-        // V3 defers MCP tool schemas, and a schema one agent loads is not
-        // loaded for the subagents it spawns, so the step is unconditional
-        // and every agent repeats it. Which loader an agent gets is decided
-        // per session, so the rule names both and keys on the tool list:
-        // the catalogue surface exposes `load_resource` and takes the
+        // V3 always defers MCP tool schemas, and a schema one agent loads
+        // is not loaded for the subagents it spawns, so every agent loads
+        // it for itself. Only the loader varies, and it is decided per
+        // session, so the rule names both and keys on the tool list: the
+        // catalogue surface exposes `load_resource` and takes the
         // `tool::`-prefixed id, the native surface exposes `tool_load` and
         // takes the un-prefixed one. Both end in `tool_call`.
         KiroEngine::V3 => {
