@@ -30,6 +30,8 @@ const READ = Object.freeze({
   readRecord: (job) => job.record,
   isStale: () => false,
 });
+const words = (count) =>
+  Array.from({ length: count }, (_, index) => `w${index}`).join(' ');
 
 /**
  * The judge jobs of a fixture skill: { itemsJobs, outcomeJobs }. Every seat gives a task its fixture gap. Task ids
@@ -52,8 +54,8 @@ function jobsOf(skill, { override = {} } = {}) {
         const scores = scoresForGap(gap);
         for (const seat of SEATS)
           for (const arm of ARMS)
-            jobs[scale].push(
-              judgeJob({
+            jobs[scale].push({
+              ...judgeJob({
                 skill,
                 batch,
                 taskId,
@@ -62,7 +64,8 @@ function jobsOf(skill, { override = {} } = {}) {
                 arm,
                 record: validRecord(scale, seat, arm, scores[arm]),
               }),
-            );
+              answer: { text: words(DATA.words[arm]) },
+            });
       });
     });
   return { itemsJobs: jobs.items, outcomeJobs: jobs.outcome };
