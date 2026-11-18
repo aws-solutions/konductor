@@ -232,3 +232,43 @@ def test_direct_work_treats_a_skill_miss_as_the_signal_to_spawn():
     direct = (ROOT / "context" / "k-direct-work.md").read_text(encoding="utf-8")
     assert "that miss is the answer" in direct
     assert direct.index(SOP_CLAUSE) < direct.index("spawn a specialist in two cases only")
+
+
+FILTER_CHECK = "git --no-pager -c core.fsmonitor= config --local --includes --get-regexp '^filter\\.'"
+EXTENSION_CHECK = "git --no-pager -c core.fsmonitor= config --local --type=bool --get extensions.worktreeConfig"
+WORKTREE_FILTER_CHECK = "git --no-pager -c core.fsmonitor= config --worktree --includes --get-regexp '^filter\\.'"
+
+
+def _read_only_shell_row():
+    text = (ROOT / "context" / "k-orchestrator-routing-rules.md").read_text(encoding="utf-8")
+    return next(line for line in text.splitlines() if line.startswith("| Read-only shell commands"))
+
+
+def test_read_only_git_skips_working_tree_reads_when_a_filter_driver_is_set():
+    row = _read_only_shell_row()
+    assert "a `filter.<driver>` with its `clean` or `process` program" in row
+    assert "`git config --local --includes --get-regexp '^filter\\.'`" in row
+    assert "`git config --local --type=bool --get extensions.worktreeConfig`" in row
+    assert "`git config --worktree --includes --get-regexp '^filter\\.'`" in row
+    assert (
+        "before `git status`, `git diff` against the working tree (including `--stat` and `HEAD`), "
+        "`git blame`, or `git ls-files -m` (`--modified`), run `" + FILTER_CHECK + "` and `" + EXTENSION_CHECK + "`, "
+        "and only if the second prints `true`, `" + WORKTREE_FILTER_CHECK + "`"
+    ) in row
+    assert (
+        "If a filter read prints anything, or the extension read prints anything other than "
+        "`true` or `false` (an error included), do not run those four"
+    ) in row
+    assert "use `git diff --cached`, `git log`, `git show`, and the file tools instead" in row
+    assert "tell the user the repository config defines a filter driver or could not be checked" in row
+    assert "the only `-c` allowed" in row
+
+
+def test_read_only_git_skips_submodule_working_trees():
+    row = _read_only_shell_row()
+    assert "including one in a submodule's own config" in row
+    assert "`--ignore-submodules=dirty` to `git status` and `git diff`" in row
+    assert (
+        "`git --no-pager -c core.fsmonitor= diff --no-ext-diff --no-textconv --submodule=short "
+        "--ignore-submodules=dirty`"
+    ) in row
