@@ -501,7 +501,7 @@ fn check_specialist_spawn_grants(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
         }
         if !grants.is_empty() {
             warnings.push(format!(
-                "agent '{}' is a specialist (not a `konductor*` orchestrator) but its spec grants spawn tools {grants:?}; \
+                "agent '{}' is a specialist (not one of the three orchestrators) but its spec grants spawn tools {grants:?}; \
                  specialists must not spawn, so remove them from the spec",
                 agent.name
             ));
