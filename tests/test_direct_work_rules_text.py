@@ -67,10 +67,9 @@ def test_every_skill_direct_work_names_is_declared_by_konductor():
         "infra-validation",
     } <= named
     spec = _spec("konductor")
-    kiro = set(spec["dependencies"]["skills"]["skillNames"])
-    claude = set(spec["clientConfig"]["claudeCli"]["skills"])
-    assert named <= kiro, sorted(named - kiro)
-    assert named <= claude, sorted(named - claude)
+    declared = set(spec["dependencies"]["skills"]["skillNames"])
+    assert named <= declared, sorted(named - declared)
+    assert "Skill" in spec["clientConfig"]["claudeCli"]["tools"]
 
 
 def _direct_work():

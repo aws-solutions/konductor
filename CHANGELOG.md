@@ -57,11 +57,18 @@ not per individual commit.
   this shell's PATH, is reported as warn, not as missing. Under `coordinator` it runs the same
   persona load the session-start hook runs, so a digest over the hook's output budget is
   `failed`, and an install root outside the home that is not a git checkout root is `warn`.
+- `synth` warns when an agent's Claude Code skill preload (`clientConfig.claudeCli.skills`) is over
+  32 KiB or 32 names, and names the skills Claude Code would drop. `-v` prints one
+  `claude preload:` line per agent, and `synth --json` adds a `claude_preload` array. Each Claude
+  Code agent file ends with a "Skills you can load" block listing its declared skills that are not
+  preloaded; `synth` warns when such an agent's `tools` list lacks `Skill`.
 
 ### Changed
 
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
+- Claude Code subagents now preload 1 to 4 skills each (109 KB in total, down from 1.9 MB); the rest
+  load on demand.
 - `konductor` does the work itself, commits only when you ask, and spawns one fresh `k-*` reviewer per phase gate (next bullet);
   it spawns a specialist only for a tool, access, skill or SOP it lacks, for parallel work on disjoint files, or when an SOP says so;
   an SOP `konductor` does not declare is run by the specialist that declares it. Parallel parts reach your branch only after
@@ -211,6 +218,13 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- `k-adversarial-pull-request-review` now says "in Konductor" or "for Konductor" where it
+  scopes the `pr_url` and historical-filtering limits, including the report's
+  `Historical filtering:` line.
+- `cmux-dispatch` renames the done-key variable it exports to the dispatched pane to
+  `KONDUCTOR_DONE_KEY`, and `cmux-completion-hook.sh` reads the new name. A custom completion
+  hook must read `KONDUCTOR_DONE_KEY` too; the bundled hook still falls back to
+  `CMUX_WORKSPACE_ID`.
 - Review ceilings: CRITICAL and IMPORTANT findings get one fix and one re-review. One in the task's own output still open,
   or one the re-review reports there, carried over or new, or caused by the fix in what depends on it, stops work on that artifact;
   a finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing, not put in the fix brief.
@@ -382,6 +396,23 @@ not per individual commit.
   flag them only when the data needs SSE-KMS or a customer managed key. For a customer managed
   key, `iam-policy-design` adds a bucket policy statement that denies `s3:PutObject` under any
   other key, and `policy-validation` asks for one; only the deny on unencrypted uploads is gone.
+- `smithy-modeling` and `smithy-validation` describe current Smithy rules: `enum` and `intEnum`
+  shapes instead of the deprecated `@enum` trait, the full `@paginated` rules, required
+  `@httpLabel` members, the DANGER severity, `smithy validate --severity` and
+  `smithy diff --mode git`, `@readonly` and `@idempotent` as behavior traits, member renames as
+  breaking even with `@jsonName`, and IDL 2.1 needing Smithy 1.75.0 or later. The example
+  review puts `@sensitive` on a target shape, since the trait cannot apply to members, and the
+  file-organization reference pins every Smithy artifact no newer than the installed CLI, with
+  1.75.0 in the example, and adds `$schema`.
+- The Smithy skills say `$version: "2"` resolves to IDL 2.1 on Smithy 1.75.0 or later.
+- The Smithy skills treat `@paginated` `items` as recommended, not required, and say each list
+  operation carries its own `@paginated`, which can take its settings from a service-level
+  `@paginated`.
+- The Smithy skills accept any string as a service `version`; a date is only a convention.
+- `smithy-modeling` adds a resource lifecycle example, a `GetUserInput` with a required
+  `@httpLabel` member, and says mixins pass their traits to the shapes that use them.
+- The file-organization reference's documentation validator checks operations only, and the
+  guide calls its file naming a convention and a doc comment plus `@documentation` redundant.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
