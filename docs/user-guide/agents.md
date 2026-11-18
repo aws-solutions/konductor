@@ -31,7 +31,7 @@ and the MCP registry entries.
 | `konductor` | Single writer. Does the work, reviews at each phase gate. | `claude-sonnet-5.5` | 24 | 2 | 11 | none |
 | `konductor-mux-orchestrator` | Coordinator. Delegates every change, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 11 | 1 | 10 | none |
 | `konductor-cmux-orchestrator` | Coordinator. Delegates every change, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 11 | 1 | 10 | none |
-| `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 15 | 1 | 0 | none |
+| `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 16 | 1 | 0 | none |
 | `k-architect` | System designs, APIs, data models, threat models. | `claude-sonnet-5.5` | **38** | 2 | 3 | `aws-mcp` |
 | `k-developer` | Implementation, code review, git, builds. | `claude-sonnet-5.5` | 27 | 4 | 4 | `aws-mcp` |
 | `k-quality-assurance` | Test coverage, E2E strategy, security tests. | `claude-sonnet-5.5` | 13 | 2 | 1 | none |
@@ -325,7 +325,7 @@ followed by `Fix these issues? [y/n]`.
 | | |
 | --- | --- |
 | **SOPs** | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` |
-| **Skills** | 27 — backend and frontend development and review, `infra-validation`, `code-review`, `git-workflow`, `asdlc-code-simplifier`, `design-impact-review`, `find-aws-skills`, `security-remediation`, the three `adversarial-code-review-pass-*` skills, `verification`, and others |
+| **Skills** | 27 — backend and frontend development and review, `infra-validation`, `code-review`, `git-workflow`, `k-code-simplifier`, `design-impact-review`, `find-aws-skills`, `security-remediation`, the three `adversarial-code-review-pass-*` skills, `verification`, and others |
 | **MCP** | `aws-mcp`, same as the architect |
 | **Can mutate?** | Write and shell in both runtimes — pre-approved in Kiro CLI, granted in Claude Code |
 | **Can delegate to** | nothing (returns to the orchestrator) |
@@ -347,7 +347,7 @@ lands here. It owns the only source-modifying SOP, `k-code-cleanup`.
 | | |
 | --- | --- |
 | **SOPs** | **none** — skill-driven |
-| **Skills** | 15 — `user-story-writing`, `requirements-extraction`, `decision-research`, `sprint-planning`, `task-decomposition`, `legacy-to-agentic-estimate`, `humanize-writing`, `deliberation-panel`, `kiro-requirements-generation`, and others |
+| **Skills** | 16 — `user-story-writing`, `requirements-extraction`, `decision-research`, `doc-accuracy-analyzer`, `sprint-planning`, `task-decomposition`, `legacy-to-agentic-estimate`, `humanize-writing`, `deliberation-panel`, `kiro-requirements-generation`, and others |
 | **Can mutate?** | Write pre-approved in Kiro CLI and granted in Claude Code; shell asks first in Kiro CLI and is granted in Claude Code |
 | **Can delegate to** | nothing (returns to the orchestrator) |
 
@@ -371,7 +371,7 @@ Owns `legacy-to-agentic-estimate` and its `convert_estimates.py` script, which i
 | | |
 | --- | --- |
 | **SOPs** | **none** — skill-driven |
-| **Skills** | 9: `external-research`, `sdlc-navigator`, `document-formats`, `deliberation-panel`, `socratic-elicitation`, `persistent-memory`, `workspace-skills`, `constraints`, `humanize-writing` |
+| **Skills** | 9: `external-research`, `sdlc-navigator`, `docx-conversion`, `deliberation-panel`, `socratic-elicitation`, `persistent-memory`, `workspace-skills`, `constraints`, `humanize-writing` |
 | **Kiro CLI tools** | `@builtin`; `allowedTools` is `fs_read` only |
 | **Claude Code tools** | `WebFetch`, `WebSearch`, `TodoWrite`, `Read`, `Skill` — the narrowest tool list of any agent, and the only one with no write or shell tool |
 | **Can mutate?** | **Not in Claude Code** — no write or shell tool is granted at all. In Kiro CLI it pre-approves `fs_read` only, so anything more asks first |

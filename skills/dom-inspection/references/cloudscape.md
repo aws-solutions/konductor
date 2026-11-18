@@ -4,7 +4,7 @@ Read this when the page under inspection uses Cloudscape components (`awsui` cla
 
 ## Cloudscape-Specific Notes
 
-Cloudscape components wrap native HTML inputs — the validation attributes are on the inner `<input>` element, not the Cloudscape component wrapper. Always query the inner input:
+Cloudscape components wrap native HTML inputs, so the validation attributes are on the inner `<input>` element, not the Cloudscape component wrapper. Always query the inner input:
 
 ```javascript
 // Correct: query inner input inside Cloudscape wrapper

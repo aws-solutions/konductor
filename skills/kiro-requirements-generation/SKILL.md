@@ -1,7 +1,7 @@
 ---
 name: kiro-requirements-generation
-description: Transforms user stories and requirements into Kiro IDE requirements.md with EARS-format acceptance criteria. Use when turning user stories into a Kiro requirements.md, spec step 1, after user-story-writing and before kiro-design-generation. For a bare feature request, write its user stories first.
-version: 1.0.0
+description: Writes Kiro IDE requirements.md files. Use when turning user stories into a Kiro requirements.md with EARS acceptance criteria, after user-story-writing and before kiro-design-generation. For a bare feature request, write its user stories first.
+version: 1.0.1
 tags: [skill, kiro, specs, requirements, ears, acceptance-criteria]
 ---
 
@@ -303,4 +303,4 @@ Before presenting output, verify:
 - Could add security criteria using Unwanted pattern (IF unauthorized access attempted, THEN...)
 - Could cross-reference NFRs from `requirements-extraction` as additional criteria
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking. If the user said not to ask questions, fix CRITICAL and IMPORTANT findings yourself and finish without the prompt. If both apply, `scope_confirmed` wins: the caller owns the fix step, so report the findings and leave fixing to the caller. Fix the findings yourself only in no-questions mode without `scope_confirmed`.

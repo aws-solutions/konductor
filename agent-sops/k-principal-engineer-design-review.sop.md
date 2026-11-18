@@ -11,7 +11,7 @@ This SOP runs a pre-submission quality gate on a design document before it goes 
 
 Adversarial review uses the `adversarial-design-review` skill.
 
-This SOP uses `design-quality-check` for the slop and quality gate and `argumentation-reference` for fallacy checking. The adversarial loop runs a maximum of 5 rounds and exits when 0 CRITICAL + 0 IMPORTANT + fewer than 3 MINOR findings remain.
+This SOP uses `design-quality-check` for the slop and quality gate and `argumentation-reference` for fallacy checking. The adversarial loop runs a maximum of 5 rounds and exits when 0 CRITICAL + 0 IMPORTANT + fewer than 3 SUGGESTION findings remain.
 
 ## Parameters
 
@@ -55,7 +55,7 @@ Run the `design-quality-check` skill on the full document.
 - If score < 3, You MUST stop the SOP, present the issues to the engineer, and request revision before continuing — do not proceed to Step 2 with a score < 3
 - You MUST NOT proceed to Step 2 until quality score ≥ 3
 
-**Expected Output:** Quality score, IMPORTANT issues list, MINOR issues list
+**Expected Output:** Quality score, IMPORTANT issues list, SUGGESTION issues list
 
 ### 2. Architecture Principles Gate (design-evaluation)
 
@@ -63,10 +63,10 @@ Run the `design-evaluation` skill across 10 production readiness dimensions.
 
 **Constraints:**
 
-- You MUST apply the `design-evaluation` skill
-- You MUST evaluate all 10 dimensions: template adherence, scalability, security, maintainability, resilience, testability, operational readiness, cost optimization, API design quality, data model quality
-- You MUST classify each finding as CRITICAL, IMPORTANT, or MINOR using the same severity definitions as the adversarial review
-- You MUST compute a confidence score per section: average of the dimension scores (1–5 each)
+- You MUST apply the `design-evaluation` skill with package scope `single-document`
+- You MUST evaluate all 10 dimensions defined in `design-evaluation` Step 1
+- You MUST classify each finding as CRITICAL, IMPORTANT, or SUGGESTION using the same severity definitions as the adversarial review
+- You MUST compute a confidence score per section: average of the 8 scored dimensions (1 to 5 each). High-level assessment (#2) and actionable recommendations (#10) are unscored report sections and stay out of the average
 - Sections with average score < 3 are flagged for adversarial focus in Step 3
 
 **Expected Output:** Dimension scores, per-section confidence scores, classified findings list
@@ -84,14 +84,14 @@ Run adversarial review of all design decisions, trade-offs, and architectural ch
   - **CRITICAL (architectural):** Wrong architecture choice, missing security boundary, fundamental scalability flaw.
   - **CRITICAL (factual):** Incorrect technical claim, wrong service behavior.
   - **IMPORTANT:** Weak justification, missing alternative, incomplete trade-off.
-  - **MINOR:** Style, clarity, minor omission.
+  - **SUGGESTION:** Style, clarity, minor omission.
 - **Escalation rule:** If any CRITICAL (architectural) finding is present after round 2, You MUST stop the loop immediately, present the finding to the engineer, and state that a fundamental redesign is needed — do not continue the loop
 - Evaluate the escalation rule before applying corrections. After each round, You MUST apply corrections to the document and re-run the `design-quality-check` skill to confirm quality score remains ≥ 3
-- **Exit condition:** 0 CRITICAL + 0 IMPORTANT + fewer than 3 MINOR findings
+- **Exit condition:** 0 CRITICAL + 0 IMPORTANT + fewer than 3 SUGGESTION findings
 - **Loop cap:** Maximum 5 rounds. If exit condition is not met after 5 rounds, You MUST present the remaining findings to the engineer for manual resolution and proceed to Step 4 with the current state
 - You MUST track round history: round number, findings count by severity, corrections applied
 
-**Expected Output per round:** Findings list (CRITICAL → IMPORTANT → MINOR), corrections applied, updated finding counts
+**Expected Output per round:** Findings list (CRITICAL → IMPORTANT → SUGGESTION), corrections applied, updated finding counts
 
 ### 4. Output
 
@@ -120,8 +120,8 @@ Produce the review report and present the verdict.
 
   ## Adversarial Review History
 
-  | Round | CRITICAL | IMPORTANT | MINOR | Corrections Applied |
-  | ----- | -------- | --------- | ----- | ------------------- |
+  | Round | CRITICAL | IMPORTANT | SUGGESTION | Corrections Applied |
+  | ----- | -------- | --------- | ---------- | ------------------- |
 
   ## Remaining Findings
 
@@ -129,7 +129,7 @@ Produce the review report and present the verdict.
 
   ### Important
 
-  ### Minor
+  ### Suggestion
 
   ## Verdict
 
@@ -139,8 +139,8 @@ Produce the review report and present the verdict.
   ```
 
 - You MUST assign the verdict as follows:
-  - 0 CRITICAL + 0 IMPORTANT + <3 MINOR → **PE-READY**
-  - 0 CRITICAL + 0 IMPORTANT + ≥3 MINOR (after 5 rounds) → **REVISIONS NEEDED**
+  - 0 CRITICAL + 0 IMPORTANT + <3 SUGGESTION → **PE-READY**
+  - 0 CRITICAL + 0 IMPORTANT + ≥3 SUGGESTION (after 5 rounds) → **REVISIONS NEEDED**
   - 0 CRITICAL + ≥1 IMPORTANT remaining (after 5 rounds) → **REVISIONS NEEDED**
   - Any CRITICAL (factual) remaining after 5 rounds → **REVISIONS NEEDED** (a wrong technical claim is correctable by revision)
   - Any CRITICAL (architectural) after round 2 escalation → **FUNDAMENTAL REDESIGN REQUIRED**
@@ -151,6 +151,6 @@ Produce the review report and present the verdict.
 
 ## Quality Gate
 
-**PE-READY** requires: quality score ≥ 3, 0 CRITICAL findings, 0 IMPORTANT findings, fewer than 3 MINOR findings.
+**PE-READY** requires: quality score ≥ 3, 0 CRITICAL findings, 0 IMPORTANT findings, fewer than 3 SUGGESTION findings.
 
 **CRITICAL findings block PE-READY** — the verdict MUST be REVISIONS NEEDED or FUNDAMENTAL REDESIGN REQUIRED if any CRITICAL finding remains after the loop.

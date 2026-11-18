@@ -69,6 +69,8 @@ EDITS = [
      "Registers the 11 agents, 81 skills, 19 SOPs, the core rules, and the orchestrator routing rules"),
     ("reference count row", '{ k: "Count", v: "75 skills · 13 SOPs" }',
      '{ k: "Count", v: "81 skills · 19 SOPs" }'),
+    ("faq: skills row", '{ k: "Skills — 75", v: "On-demand knowledge modules" }',
+     '{ k: "Skills — 81", v: "On-demand knowledge modules" }'),
     ("concepts SOP blurb", "<div>13 SOPs that encode multi-step procedures",
      "<div>19 SOPs that encode multi-step procedures"),
     ("SOP count (concepts)",
@@ -259,6 +261,10 @@ EDITS = [
     ("reference roster note",
      "Every agent runs claude-sonnet-5.5 on Kiro CLI and claude-sonnet-5-5 on Claude Code. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",
      "Every agent runs claude-sonnet-5.5 on Kiro CLI and claude-sonnet-5-5 on Claude Code. Skill counts are from each spec's dependencies.skills.skillNames, every skill the agent may load. Claude Code preloads only 1 to 4 of them, clientConfig.claudeCli.skills, when the agent runs as a subagent; everything else loads on demand through the Skill tool. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. konductor's preload also includes claude-teams-behavior, which is not in its skillNames.",),
+    # ---- git-merge targets the default branch and defers to PRs -------------
+    ("skills catalog: git-merge row",
+     '"k":"git-merge","v":"Branch merges — feature into mainline, dev into mainline, release merges. — REACH FOR IT: Merging anything.',
+     '"k":"git-merge","v":"Branch merges into the default branch, release merges, merge conflicts. — REACH FOR IT: Merging locally; use code-review when merges go through PRs.'),
     # ---- humanize-writing is declared by every agent, preloaded by four -----
     ("skills catalog: humanize-writing row",
      '"k":"humanize-writing","v":"Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. \u2014 REACH FOR IT: Writing or editing prose, or a draft reads machine-written. · DECLARED BY: all 11. On Claude Code, k-architect, k-developer, k-product-manager and k-tpm preload it when they run as subagents. Otherwise, and on Kiro CLI, it loads on demand"',
@@ -505,6 +511,96 @@ EDITS = [
     ("usecases: adversarial review agent card",
      "Adversarial security review</div><div style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--lav)\">k-architect</div>",
      "Adversarial security review</div><div style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--lav)\">konductor</div>"),
+    # ---- design reviews grade CRITICAL / IMPORTANT / SUGGESTION ------------
+    # agent-sops/k-design-doc-creation.sop.md,
+    # agent-sops/k-principal-engineer-design-review.sop.md and
+    # skills/adversarial-design-review/SKILL.md name SUGGESTION as the lowest tier.
+    ("design gate: adversarial review (prose)",
+     'Adversarial review: <strong style="color:var(--tx);font-weight:600">0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR</strong>',
+     'Adversarial review: <strong style="color:var(--tx);font-weight:600">0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION</strong>'),
+    ("design use case: phase 4 tiers",
+     "CRITICAL (architectural or factual) / IMPORTANT / MINOR. If a CRITICAL architectural",
+     "CRITICAL (architectural or factual) / IMPORTANT / SUGGESTION. If a CRITICAL architectural"),
+    ("design use case: phase 4 exit",
+     "0 CRITICAL, 0 IMPORTANT, and fewer than 3 MINOR findings. No finding",
+     "0 CRITICAL, 0 IMPORTANT, and fewer than 3 SUGGESTION findings. No finding"),
+    ("design-doc-creation node: path B tiers",
+     "CRITICAL (architectural) · CRITICAL (factual) · IMPORTANT · MINOR. Up to 5 rounds",
+     "CRITICAL (architectural) · CRITICAL (factual) · IMPORTANT · SUGGESTION. Up to 5 rounds"),
+    ("design-doc-creation node: circuit-breaker exit",
+     "fewer than 3 MINOR — or presents remaining issues",
+     "fewer than 3 SUGGESTION, or presents remaining issues"),
+    ("design-doc-creation gate row: adversarial review",
+     '{ k: "Adversarial review", v: "0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR" }',
+     '{ k: "Adversarial review", v: "0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION" }'),
+    # The next three rewrite text that html_sop_edits._PE_REVIEW appended. That
+    # fragment carries the same new wording, so its append stays satisfied.
+    ("pe-review output: finding order",
+     "every adversarial round, ordered CRITICAL → IMPORTANT → MINOR.",
+     "every adversarial round, ordered CRITICAL → IMPORTANT → SUGGESTION."),
+    ("pe-review know: loop exit",
+     "0 IMPORTANT and fewer than 3 MINOR findings remain.",
+     "0 IMPORTANT and fewer than 3 SUGGESTION findings remain."),
+    ("pe-review know: PE-READY threshold",
+     "0 IMPORTANT, fewer than 3 MINOR), REVISIONS NEEDED",
+     "0 IMPORTANT, fewer than 3 SUGGESTION), REVISIONS NEEDED"),
+    ("skills catalog: adversarial-design-review tiers",
+     "classifying CRITICAL / IMPORTANT / MINOR. Path B fallback",
+     "classifying CRITICAL / IMPORTANT / SUGGESTION. Path B fallback"),
+    # ---- design-evaluation: 8 scored dimensions, #2 and #10 are unscored ----
+    ("design review use case: step 04 dimensions",
+     "Scores all 10 dimensions 1 to 5: template adherence, high-level assessment, scalability "
+     "(including cost), performance, security, maintainability, resilience, code quality, testability, "
+     "and actionable recommendations. Below 3 is flagged for revision.",
+     "Scores 8 dimensions 1 to 5: template adherence, scalability (including cost), performance, "
+     "security, maintainability, resilience, code quality, and testability. Below 3 is flagged for "
+     "revision. A high-level assessment and actionable recommendations are written as unscored "
+     "report sections."),
+    ("design review row: the 10 dimensions",
+     '{ k: "The 10 dimensions", v: "Template adherence · high-level assessment · scalability (including cost) · '
+     'performance · security · maintainability and extensibility · failure handling and resilience · '
+     'code and implementation quality · testability and automation readiness · actionable recommendations" }',
+     '{ k: "The 10 dimensions", v: "Scored 1 to 5: template adherence · scalability (including cost) · '
+     'performance · security · maintainability and extensibility · failure handling and resilience · '
+     'code and implementation quality · testability and automation readiness. Unscored report '
+     'sections: high-level assessment · actionable recommendations" }'),
+    ("design review flow: step 06 scoring",
+     "Scores all 10 dimensions 1–5, flags any dimension below 3,",
+     "Scores the 8 scored dimensions 1 to 5, flags any dimension below 3,"),
+    ("design-doc-creation phase 5: confidence score",
+     "confidence score (the average of 10 dimension scores, 1–5 each; anything below 3 is flagged)",
+     "confidence score (the average of its 8 scored dimensions, 1 to 5 each; anything below 3 is flagged)"),
+    ("design-doc-creation flow: phase 5 confidence score",
+     "confidence score (the average of 10 dimensions, 1–5 each)",
+     "confidence score (the average of the 8 scored dimensions, 1 to 5 each)"),
+    ("design review row: missing threat model",
+     "critical; warned if missing, but the review still runs and ends NOT READY (the Security dimension is capped at 3)",
+     "required for READY FOR IMPLEMENTATION; warned if missing. The review still runs and ends NOT READY (the Security dimension is capped at 3)"),
+    # ---- design SOP: an UNVERIFIED claim noted "contradicts prior knowledge" blocks ----
+    # agent-sops/k-design-doc-creation.sop.md. The last three rewrite text from
+    # html_sop_edits.SOP_EDITS, whose entries carry the same new wording.
+    ("design SOP: know title, most unverified claims do not block",
+     '{ title: "Unverified claims do not block.", body: "Both doc-accuracy-analyzer',
+     '{ title: "Most unverified claims do not block.", body: "Both doc-accuracy-analyzer'),
+    ("design SOP: contradicts-prior-knowledge claim blocks",
+     "and OVERSTATED findings block until they are corrected or flagged.\" },",
+     "and OVERSTATED findings block until they are corrected or flagged. An UNVERIFIED claim noted "
+     '\\"contradicts prior knowledge\\" blocks like INCORRECT: check it against the named doc page and '
+     "reclassify it, or correct the text.\" },"),
+    ("design use case: checklist gates contradicts-prior-knowledge claims",
+     "0 INCORRECT</strong>, each corrected in the text, and every OVERSTATED finding corrected or flagged "
+     "(UNVERIFIED is acceptable with callouts)",
+     '0 INCORRECT</strong>, each corrected in the text, <strong style="color:var(--tx);font-weight:600">0 '
+     'UNVERIFIED noted "contradicts prior knowledge"</strong>, each checked against the named page and '
+     "reclassified or corrected, and every OVERSTATED finding corrected or flagged "
+     "(other UNVERIFIED findings are acceptable with callouts)"),
+    ("design SOP: gate row gates contradicts-prior-knowledge claims",
+     "v: \"0 INCORRECT findings, each corrected in the text, and every OVERSTATED "
+     "finding corrected or flagged (UNVERIFIED is acceptable with callouts)\" },",
+     'v: "0 INCORRECT findings, each corrected in the text, 0 UNVERIFIED findings '
+     'noted \\"contradicts prior knowledge\\", each checked against the named page and reclassified or '
+     "corrected, and every OVERSTATED finding corrected or flagged (other UNVERIFIED findings are acceptable "
+     "with callouts)\" },"),
 ]
 
 # Per-agent roster figures, verified against agents/*.agent-spec.json.
@@ -539,7 +635,7 @@ ROSTER = [
      '{"k":"k-quality-assurance","v":"claude-sonnet-5.5 · k-test-coverage-review · 13 · \u2014"}'),
     ("ref pm",
      '{"k":"k-product-manager","v":"claude-sonnet-5.5 · none · 16 · —"}',
-     '{"k":"k-product-manager","v":"claude-sonnet-5.5 · none · 15 · —"}'),
+     '{"k":"k-product-manager","v":"claude-sonnet-5.5 · none · 16 · —"}'),
     ("ref researcher",
      '{"k":"k-researcher","v":"claude-sonnet-5.5 · none · 8 · \u2014"}',
      '{"k":"k-researcher","v":"claude-sonnet-5.5 · none · 9 · \u2014"}'),
@@ -565,8 +661,8 @@ ROSTER = [
      "No SOPs. 1 skill, constraints. It also declares humanize-writing, loaded on demand.",
      'No SOPs. 2 skills, constraints and humanize-writing. On Claude Code only constraints is preloaded.'),
     ("skills-per-agent table",
-     '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"24"},{"k":"k-product-manager","v":"15"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
-     '"rows":[{"k":"k-architect","v":"38 · 2"},{"k":"k-developer","v":"27 · 4"},{"k":"konductor","v":"24 · 2"},{"k":"k-product-manager","v":"15 · 1"},{"k":"k-tpm","v":"14 · 1"},{"k":"k-quality-assurance","v":"13 · 2"},{"k":"konductor-cmux-orchestrator","v":"11 · 1"},{"k":"konductor-mux-orchestrator","v":"11 · 1"},{"k":"k-researcher","v":"9 · 2"},{"k":"k-browser","v":"5 · 4"},{"k":"k-media-analyzer","v":"2 · 1"}]'),
+     '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"24"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
+     '"rows":[{"k":"k-architect","v":"38 · 2"},{"k":"k-developer","v":"27 · 4"},{"k":"konductor","v":"24 · 2"},{"k":"k-product-manager","v":"16 · 1"},{"k":"k-tpm","v":"14 · 1"},{"k":"k-quality-assurance","v":"13 · 2"},{"k":"konductor-cmux-orchestrator","v":"11 · 1"},{"k":"konductor-mux-orchestrator","v":"11 · 1"},{"k":"k-researcher","v":"9 · 2"},{"k":"k-browser","v":"5 · 4"},{"k":"k-media-analyzer","v":"2 · 1"}]'),
     # at-a-glance cards
     ("card konductor", 'Coordinator. Delegates everything, implements nothing. claude-sonnet-5.5 · 13 skills · 11 SOPs',
      'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 24 skills · 11 SOPs'),
@@ -580,8 +676,8 @@ ROSTER = [
     ("troubleshooting t-3: only mux and cmux load the routing rules",
      'Only the three orchestrators load this file',
      'Only the mux and cmux orchestrators load this file'),
-    ("card pm", 'Requirements, user stories, decision research. claude-sonnet-5.5 · 16 skills · 0 SOPs',
-     'Requirements, user stories, decision research. claude-sonnet-5.5 · 15 skills · 0 SOPs'),
+    ("card pm", 'Requirements, user stories, decision research. claude-sonnet-5.5 · 15 skills · 0 SOPs',
+     'Requirements, user stories, decision research. claude-sonnet-5.5 · 16 skills · 0 SOPs'),
     ("card architect", 'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 38 skills · 4 SOPs · aws-mcp',
      'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 38 skills · 3 SOPs · aws-mcp'),
     ("card developer", 'Implementation, code review, git, builds. claude-sonnet-5.5 · 26 skills · 4 SOPs · aws-mcp',
@@ -612,6 +708,12 @@ ROSTER = [
     ("skills catalog: system-design-patterns outputs",
      "Produces the system design, NFRs, threat-model inputs, and an architecture-diagram description.",
      "Produces four documents: the system design (with NFRs), threat-model input, an architecture-diagram description, and a design review handoff."),
+    ("skills catalog: design-evaluation row",
+     '"k":"design-evaluation","v":"Evaluates a complete design package for production readiness across 10 dimensions.',
+     '"k":"design-evaluation","v":"Evaluates a design package, or a single design doc, for production readiness across 10 dimensions (8 scored, 2 report sections).'),
+    ("skills catalog: design-evaluation reach",
+     "The final gate before implementation. Wants all artifacts present — design, threat model, API specs, data models, diagrams, IAM.",
+     "The final gate before implementation. Lists any missing artifacts (system design, threat model, API specs, data models, diagrams, IAM) and scores what is present; use single-document scope for one doc."),
 ]
 
 

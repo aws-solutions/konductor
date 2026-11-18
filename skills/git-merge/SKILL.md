@@ -1,55 +1,110 @@
 ---
 name: git-merge
-description: 'Merges a feature or dev branch into the default branch with --no-ff --no-commit so the merge can be inspected and built before it is committed. Use when asked to merge a branch, do a release merge, or tag a release after a merge.'
-version: 1.0.0
-tags: [skill, git, merge, branch, mainline, release]
+description: 'Merges a feature or dev branch into the default branch with --no-ff --no-commit so the merge can be inspected and built before it is committed. Use for branch, release and sync merges, merge conflicts (lockfiles too) or a half-done merge; if merges go through PRs, open a PR. The code-review skill opens PRs.'
+version: 1.1.0
+tags: [skill, git, merge, branch, default-branch, release]
 ---
 
 # Git Merge
 
 ## Overview
 
-Merge a feature branch into mainline safely using `--no-ff --no-commit` for inspectable merge commits. This skill defines the standard 4-phase merge workflow that preserves branch history and allows pre-commit inspection.
+Merge a feature branch into `<default-branch>` safely using `--no-ff --no-commit` for inspectable merge commits. Phases 1 and 2 are the merge itself. Phases 3 and 4 (tag, clean up) apply only when the user asks for them, so leave them out of a runbook written for someone else.
+
+Use the repo's real branch names. If the default branch is `main`, every command and message says `main`.
 
 ## Usage
 
 Use this skill when:
 
-- Merging a feature branch into mainline
-- Merging dev into mainline
+- Merging a feature branch into `<default-branch>`
+- Merging dev into `<default-branch>`
 - Performing release merges
+- Resolving merge conflicts, including lockfiles and a merge left half-finished
+- Explaining why this repo uses merge commits (--no-ff) rather than fast-forwards
 - Any branch merge that should preserve history
 
-Trigger words: `merge`, `merge branch`, `merge into mainline`, `release merge`, `merge dev`
+Trigger words: `merge`, `merge branch`, `merge into main`, `merge into mainline`, `release merge`, `merge dev`
 
 ## Workflow
 
-### Phase 1: Merge mainline into feature branch first
+### Phase 1: Merge `<default-branch>` into feature branch first
 
-Ensure the feature branch is up to date with mainline before merging back.
+Ensure the feature branch is up to date with `<default-branch>` before merging back.
 
 ```bash
-git switch mainline
+git switch <default-branch>
 git pull
 git switch <feature_branch>
-git merge --no-commit --no-ff mainline
-# Fix any merge conflicts
-git commit -m "Merging mainline into <feature_branch>"
-git push
+git merge --no-commit --no-ff <default-branch>
+# Resolve conflicts, then run the pre-commit checks below
+git commit -m "Merging <default-branch> into <feature_branch>"
+git push origin <feature_branch>
 ```
 
-### Phase 2: Merge feature branch into mainline
+### Phase 2: Merge feature branch into `<default-branch>`
+
+Decide first whether this repo merges locally or through PRs. If it uses PRs, or you can't tell, open a PR from `<feature_branch>` (see `code-review`) and stop here: skip Phases 3 and 4.
 
 ```bash
-git switch mainline
+git switch <default-branch>
 git pull
 git merge --no-ff --no-commit <feature_branch>
 # Fix any merge conflicts, verify build
-git commit -m "Merging <feature_branch> into mainline"
+git diff --cached --stat
+```
+
+With the merge still staged, show the user the diff summary and ask them to confirm the merge into `<default-branch>`. If they decline, run `git merge --abort`, open a PR from `<feature_branch>` (see `code-review`), and stop: skip Phases 3 and 4. If they confirm:
+
+```bash
+git commit -m "Merging <feature_branch> into <default-branch>"
+git log --oneline -3
 git push
 ```
 
+Phase 2 is never dispatched to a pane: a print-mode pane cannot show the staged diff and wait for the answer. Run it from base konductor, or open a PR (see `code-review`). An orchestrator may dispatch Phase 1 to a pane, but only after it asks the user in its own turn, because Phase 1 pushes.
+
+### Before every commit and push
+
+The merge is staged but not committed, so check it now:
+
+```bash
+git status                          # no "Unmerged paths" left
+git diff --cached --check           # no leftover conflict markers or whitespace errors
+git diff --cached -- <conflicted_file>   # read each file that conflicted
+<build command> && <test command>   # use the repo's own, e.g. npm ci && npm test
+```
+
+Before pushing, `git log --oneline -3` should show the merge commit on top.
+
+### Conflicts
+
+- Source files: edit to keep both sides' intent, `git add <file>`, then read `git diff --cached -- <file>`.
+- Lockfiles (`package-lock.json`, `yarn.lock`, `Cargo.lock`): don't hand-edit conflict markers. Take the default branch's copy and regenerate it, for example `git checkout --theirs package-lock.json && npm install && git add package-lock.json` when merging `<default-branch>` into the feature branch.
+- To back out of a merge, never use `git reset --hard` or force-push. While the merge is still staged, run `git merge --abort`. For a merge commit on `<default-branch>` that is not pushed yet, run `git reset --keep origin/<default-branch>`, which stops instead of discarding uncommitted changes.
+
+### If the push is rejected or the PR falls behind
+
+Merge the newer work in the same way, re-check, then push again. Which ref to merge depends on what happened:
+
+- **Push rejected:** someone pushed to the same branch first, so merge `origin/<current_branch>`.
+- **PR behind:** the default branch moved on, so merge `origin/<default-branch>`.
+
+```bash
+git fetch origin
+git merge --no-ff --no-commit origin/<ref>   # <current_branch> or <default-branch>, as above
+# pre-commit checks again
+git commit -m "Merging origin/<ref> into <current_branch>"
+git push origin <current_branch>
+```
+
+If `<current_branch>` is `<default-branch>`, repeat the Phase 2 confirmation first: show `git log --oneline -3` and `git diff --stat origin/<default-branch>..HEAD`, then push only after the user confirms again. A confirmation given before the rejection does not cover the new merge.
+
+Never force-push and never rebase a branch others have pulled; both rewrite history they already have. In a runbook, state that rule in words rather than as a command a reader could paste.
+
 ### Phase 3: Tag release (if applicable)
+
+Only after the Phase 2 push succeeded.
 
 ```bash
 git tag v<version>
@@ -58,6 +113,8 @@ git push origin v<version>
 
 ### Phase 4: Clean up (optional)
 
+Only after the Phase 2 push succeeded.
+
 ```bash
 git branch -d <feature_branch>        # delete local
 git push -d origin <feature_branch>   # delete remote
@@ -65,45 +122,41 @@ git push -d origin <feature_branch>   # delete remote
 
 ## Merge Flags
 
-| Flag          | Purpose                                                                         |
-| ------------- | ------------------------------------------------------------------------------- |
-| `--no-ff`     | Always create a merge commit (no fast-forward) — preserves branch history       |
-| `--no-commit` | Stage the merge but don't commit — lets you inspect and build before committing |
-
-## Anti-Patterns
-
-1. **NEVER** fast-forward merge into mainline — always use `--no-ff`
-2. **NEVER** merge into mainline without pulling latest first
-3. **NEVER** skip merging mainline into feature branch first
-4. **NEVER** force push to mainline
+| Flag          | Purpose                                                                           |
+| ------------- | --------------------------------------------------------------------------------- |
+| `--no-ff`     | Always create a merge commit (no fast-forward) to preserve branch history         |
+| `--no-commit` | Stage the merge but don't commit, so you can inspect and build before committing |
 
 ## Quick Reference
 
-| Task                  | Command                                            |
-| --------------------- | -------------------------------------------------- |
-| Update mainline       | `git switch mainline && git pull`                  |
-| Merge with inspection | `git merge --no-ff --no-commit <branch>`           |
-| Tag release           | `git tag v<version> && git push origin v<version>` |
-| Delete local branch   | `git branch -d <branch>`                           |
-| Delete remote branch  | `git push -d origin <branch>`                      |
+| Task                      | Command                                            |
+| ------------------------- | -------------------------------------------------- |
+| Update `<default-branch>` | `git switch <default-branch> && git pull`          |
+| Merge with inspection     | `git merge --no-ff --no-commit <branch>`           |
+| Tag release               | `git tag v<version> && git push origin v<version>` |
+| Delete local branch       | `git branch -d <branch>`                           |
+| Delete remote branch      | `git push -d origin <branch>`                      |
 
 ## Quality Gate
 
 **CRITICAL (block merge):**
 
-- Merging into mainline without `--no-ff` flag — branch history will be lost
-- Merging into mainline without pulling latest first — risks overwriting others' changes
-- Skipping Phase 1 (merging mainline into feature branch first) — conflicts should be resolved on the feature branch, not mainline
-- Force pushing to mainline
+- Merging into `<default-branch>` without `--no-ff` flag: branch history will be lost
+- Merging into `<default-branch>` without pulling latest first: risks overwriting others' changes
+- Skipping Phase 1 (merging `<default-branch>` into feature branch first): conflicts should be resolved on the feature branch, not `<default-branch>`
+- Force pushing to `<default-branch>`, or rebasing a branch others have pulled
+- Recovering from a merge with `git reset --hard` or a force-push instead of `git merge --abort` or `git reset --keep`
+- Pushing to `<default-branch>` without explicit user confirmation
+- Tagging, or deleting the feature branch, before the merge is pushed to `<default-branch>`
 
 **IMPORTANT (fix before proceeding):**
 
-- Not using `--no-commit` flag — prevents pre-commit inspection of merge result
+- Not using `--no-commit` flag: prevents pre-commit inspection of merge result
 - Not verifying build passes before committing the merge
 - Merge commit message doesn't describe what was merged
 
 **SUGGESTION:**
 
-- Tag releases after merging to mainline for traceability
+- Tag releases after merging to `<default-branch>` for traceability
 - Clean up feature branches after successful merge to reduce clutter
 - Verify tests pass on the feature branch after Phase 1 before proceeding to Phase 2

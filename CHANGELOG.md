@@ -65,6 +65,8 @@ not per individual commit.
 
 ### Changed
 
+- 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
+  plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
 - Claude Code subagents now preload 1 to 4 skills each (109 KB in total, down from 1.9 MB); the rest
   load on demand.
 - `konductor` does the work itself, commits only when you ask, and spawns one fresh `k-*` reviewer per phase gate (next bullet);
@@ -121,6 +123,27 @@ not per individual commit.
   writing a report.
 - `cost-estimation` moved its REVIEW workflow (checking an existing estimate) into
   `references/review-workflow.md`. The skill opens it only when the user picks REVIEW.
+- `cost-estimation` moved its CREATE workflow out of `SKILL.md`. The setup reply, context
+  gathering and clarifying questions are in `references/create-context.md`, which the skill opens
+  when the user picks CREATE. The pricing research, scenarios, growth modeling, optimization and
+  report steps are in `references/create-analysis.md`, which it opens once the context is
+  confirmed.
+- `architecture-diagram-generation` keeps its XML templates, icon styles and common patterns in
+  `references/drawio-templates.md` and loads them only when generating the XML. Its repeated
+  introduction is now one overview.
+- `e2e-test-strategy` keeps its Stage 9 report template in `references/report-template.md` and
+  opens it only when writing the report.
+- `architecture-diagram-generation` now targets plain draw.io (diagrams.net) XML and drops the
+  rules that served one draw.io-based tool. It places S3 with the regional services, since each
+  bucket lives in one region, and treats AWS WAF as global only for CloudFront-scoped web ACLs.
+  A Lambda function with VPC config is drawn in its subnets.
+- The published HTML guide's FAQ now gives the current skill count (81) instead of 75.
+- `infra-validation` and `iam-policy-design` read as one instruction set each, without a pasted
+  second prompt and role. `infra-validation` asks for scope once, and skips the questions when
+  the caller passes the type, path and environment or `scope_confirmed`. It rates findings
+  CRITICAL, IMPORTANT or SUGGESTION, matching its quality gate, and names `policy-validation` as
+  the home for policy-level IAM checks. `iam-policy-design` ends both modes with one compliance
+  step.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
@@ -195,6 +218,13 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- `k-adversarial-pull-request-review` now says "in Konductor" or "for Konductor" where it
+  scopes the `pr_url` and historical-filtering limits, including the report's
+  `Historical filtering:` line.
+- `cmux-dispatch` renames the done-key variable it exports to the dispatched pane to
+  `KONDUCTOR_DONE_KEY`, and `cmux-completion-hook.sh` reads the new name. A custom completion
+  hook must read `KONDUCTOR_DONE_KEY` too; the bundled hook still falls back to
+  `CMUX_WORKSPACE_ID`.
 - Review ceilings: CRITICAL and IMPORTANT findings get one fix and one re-review. One in the task's own output still open,
   or one the re-review reports there, carried over or new, or caused by the fix in what depends on it, stops work on that artifact;
   a finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing, not put in the fix brief.
@@ -249,9 +279,90 @@ not per individual commit.
   section to the design document, and points follow-up work at konductor skills instead of
   prompts that don't exist. Its S3 Intelligent-Tiering advice now targets data with unknown or
   changing access patterns, not infrequently accessed data.
+- Fact-checking starts at `doc-accuracy-analyzer`. It routes AWS feature, limit, pricing and
+  Region claims to `aws-service-validator`, rates findings CRITICAL, IMPORTANT or SUGGESTION,
+  and states when a document passes. When checking an artifact, `decision-research` now adds only
+  prior art and missing context. `k-product-manager` gains `doc-accuracy-analyzer`.
+- `smithy-modeling`, `smithy-validation`, and `progress-tracking` now read as one set of
+  instructions instead of a summary followed by a pasted prompt. `smithy-validation`'s output
+  format uses its Quality Gate's severity names, and it flags operations left callable without
+  authentication instead of operations missing `@auth`. `smithy-modeling`'s service templates
+  carry an auth scheme trait and no longer set a doc comment and `@documentation` on the same
+  shape, which Smithy rejects as a trait conflict. `progress-tracking` takes `plan_path`
+  and per-feature `spec_dir`, defaulting to the `.kiro/specs/` paths it used
+  before.
+- `policy-validation` reads as one instruction set, without a pasted second prompt and role. It
+  keeps one Rules section, one IAM score rubric and one Iteration Progress template, and rates
+  findings CRITICAL, IMPORTANT or SUGGESTION, matching its quality gate.
+- About 40 skills were revised after test runs showed where they went wrong. What changes when
+  you use them:
+  - Review and validation skills rate findings CRITICAL, IMPORTANT or SUGGESTION and keep
+    CRITICAL for real blockers such as exposure, data loss and credential risk. Each finding
+    cites its location and a concrete fix. Context the skill could not check is reported as an
+    assumption or an unscored note, not a rated finding.
+  - Tell a skill not to ask questions, or pass the scope up front, and it records its
+    assumptions in the output and finishes instead of stopping to ask. This covers the kiro
+    spec, requirements, user story, threat model, NFR, cost and sprint-planning skills.
+  - A request for a security-focused or adversarial second pass loads `adversarial-code-review`
+    instead of `code-review`. `verification`, `git-merge` and `decision-research` load on more
+    of the requests they cover, such as finishing a change test-first or syncing a branch.
+  - `git-merge` checks the staged merge before it commits and recovers from a rejected push
+    without force-pushing or rebasing.
+
+### Removed
+
+- Breaking: three skills are renamed and their old names are removed, with no aliases:
+  `asdlc-aspect-review` is now `k-aspect-review`, `asdlc-code-simplifier` is now
+  `k-code-simplifier`, and `document-formats` is now `docx-conversion`, whose description names
+  `.docx`. Custom agent specs must use the new names: `konductor synth` rejects a spec that still
+  declares an old one.
 
 ### Fixed
 
+- Skill bodies no longer contradict themselves or the codebase. `backend-development` and
+  `backend-review` keep a facade, factory or repository layering only when the codebase already
+  uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes
+  TDD's RED phase to code changes, and `k-code-simplifier` runs the tests before and after
+  and reports each change with its reason. The full deliberation panel run is defined once, in
+  `deliberation-panel`; `socratic-elicitation` keeps a short inline offer that points to it.
+  Repeated paragraphs and tables are cut from several skills.
+- Design and planning skills no longer contradict themselves or point at sections that don't
+  exist. The design review skills and their SOPs call the lowest finding tier SUGGESTION, as the
+  other checkers do. `design-evaluation` lists missing artifacts before it scores and its gate
+  items map to its 10 dimensions, which both design review SOPs and the user guide now use.
+  Eight of them are scored. The high-level assessment and the recommendations are unscored
+  report sections, so a SOP's confidence score averages only the eight.
+  Missing artifacts are listed apart from findings and carry no severity, and the PE review and
+  design-doc SOPs evaluate a single document without asking for the rest of a package, so a
+  one-doc review can reach PE-READY. In `k-existing-design-review` a missing threat model rules
+  out READY FOR IMPLEMENTATION.
+  `plan-review` has a SHIP IT template and star rules that don't overlap, and
+  `trade-off-evaluator` writes to the caller's output directory or reports inline. The
+  `external-research` AWS example states a checked fact instead of a wrong one.
+  `program-decision-docs` treats fewer than 2 options, counting do nothing, as CRITICAL.
+  `non-functional-requirements` asks for targets per operation type. `design-evaluation` does
+  not prompt when a SOP runs it. `trade-off-evaluator` writes no file standalone unless asked.
+- `infra-validation` and `policy-validation` no longer flag an S3 bucket or DynamoDB table as
+  unencrypted for lacking an encryption setting, since both encrypt at rest by default. They
+  flag them only when the data needs SSE-KMS or a customer managed key. The `infra-validation`
+  Graviton example cites the published Lambda arm64 figure.
+- `smithy-modeling` and `smithy-validation` describe current Smithy rules: `enum` and `intEnum`
+  shapes instead of the deprecated `@enum` trait, the full `@paginated` rules, required
+  `@httpLabel` members, the DANGER severity, `smithy validate --severity` and
+  `smithy diff --mode git`, `@readonly` and `@idempotent` as behavior traits, member renames as
+  breaking even with `@jsonName`, and IDL 2.1 needing Smithy 1.75.0 or later. The example
+  review puts `@sensitive` on a target shape, since the trait cannot apply to members, and the
+  file-organization reference pins every Smithy artifact no newer than the installed CLI, with
+  1.75.0 in the example, and adds `$schema`.
+- The Smithy skills say `$version: "2"` resolves to IDL 2.1 on Smithy 1.75.0 or later.
+- The Smithy skills treat `@paginated` `items` as recommended, not required, and say each list
+  operation carries its own `@paginated`, which can take its settings from a service-level
+  `@paginated`.
+- The Smithy skills accept any string as a service `version`; a date is only a convention.
+- `smithy-modeling` adds a resource lifecycle example, a `GetUserInput` with a required
+  `@httpLabel` member, and says mixins pass their traits to the shapes that use them.
+- The file-organization reference's documentation validator checks operations only, and the
+  guide calls its file naming a convention and a doc comment plus `@documentation` redundant.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
@@ -294,6 +405,13 @@ not per individual commit.
   pricing. `program-planning` and `playwright-test-implementation` no longer point at SOP steps
   that are missing when the skill runs alone. `cmux-dispatch`, `design-doc-guidelines` and
   `external-research` drop terms that do not apply in this repo.
+- `git-merge` shows the merge log and diff and asks before pushing to the default branch, and
+  only when the repo merges locally; otherwise, or if the user declines, it opens a PR. Tagging
+  and branch cleanup wait for a successful push. The merge into the default branch never runs in
+  a dispatched pane. `git-workflow` now merges the default branch in
+  before a PR instead of rebasing, matching `git-merge`.
+- `cmux-dispatch` and `mux-dispatch` no longer claim every task, and say that Claude Code panes
+  skip permission prompts, so dispatch only tasks you would approve unattended.
 
 ### Security
 
