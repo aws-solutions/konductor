@@ -119,8 +119,15 @@ fn has_ext(p: &Path, ext: &str) -> bool {
 /// Every candidate session file across the three harnesses. Listing is
 /// cheap; parsing is gated on mtime and the cache in `refresh`.
 fn sources(home: &Path) -> Vec<Source> {
+    sources_in(
+        &env_dir("CLAUDE_CONFIG_DIR", home, ".claude"),
+        &env_dir("KIRO_HOME", home, ".kiro"),
+    )
+}
+
+fn sources_in(claude_dir: &Path, kiro_dir: &Path) -> Vec<Source> {
     let mut out = Vec::new();
-    let claude_projects = env_dir("CLAUDE_CONFIG_DIR", home, ".claude").join("projects");
+    let claude_projects = claude_dir.join("projects");
     for project in children(&claude_projects)
         .into_iter()
         .filter(|p| p.is_dir())
@@ -143,7 +150,7 @@ fn sources(home: &Path) -> Vec<Source> {
             }
         }
     }
-    let kiro_sessions = env_dir("KIRO_HOME", home, ".kiro").join("sessions");
+    let kiro_sessions = kiro_dir.join("sessions");
     for entry in children(&kiro_sessions.join("cli")) {
         if has_ext(&entry, "json") {
             out.push(Source {
@@ -200,11 +207,13 @@ fn refresh(
             continue;
         }
         let key = src.path.to_string_lossy().into_owned();
-        if let Some(prev) = cache.get(&key) {
-            if prev.mtime == mtime && prev.size == meta.len() {
-                continue;
-            }
+        let prev = cache.get(&key);
+        if prev.is_some_and(|p| p.mtime == mtime && p.size == meta.len()) {
+            continue;
         }
+        // A resumed or rewritten file keeps the attribution it had, even
+        // if its agent has since been renamed or uninstalled.
+        let prev_match = prev.and_then(|p| p.konductor_agent.clone().map(|k| (p.agent.clone(), k)));
         let mut rec = match src.harness {
             Harness::Claude => collect::collect_claude(&src.path, mtime, meta.len()),
             Harness::KiroCliV2 => collect::collect_kiro_v2(&src.path, mtime, meta.len()),
@@ -213,12 +222,24 @@ fn refresh(
         // Attribution is fixed at parse time, so renaming or uninstalling
         // an agent later doesn't drop its history. Usage from
         // non-Konductor sessions is never stored.
-        rec.konductor_agent = rec.agent.as_ref().and_then(|a| agents.get(a)).cloned();
+        rec.konductor_agent = rec
+            .agent
+            .as_ref()
+            .and_then(|a| agents.get(a))
+            .cloned()
+            .or_else(|| {
+                prev_match
+                    .filter(|(agent, _)| *agent == rec.agent)
+                    .map(|(_, k)| k)
+            });
         if rec.konductor_agent.is_none() {
-            rec.models.clear();
+            rec = rec.into_stub();
         }
         cache.insert(key, rec);
     }
+    // A stub only exists to skip re-parsing its file; once the harness
+    // deletes the file there is nothing left to skip.
+    cache.retain(|path, r| r.konductor_agent.is_some() || Path::new(path).exists());
     ScanOutcome { unreadable }
 }
 
@@ -271,12 +292,138 @@ mod tests {
         ]);
         refresh(&mut cache, &[], 0, &agents);
         assert!(!cache.contains_key("stub"));
-        assert!(cache.contains_key("other"));
+        assert!(
+            !cache.contains_key("other"),
+            "stub whose file is gone is pruned"
+        );
         assert!(cache.contains_key("kept"));
         assert!(
             cache.contains_key("uninstalled-since"),
             "attribution is fixed at parse time"
         );
+    }
+
+    fn tmp(name: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!(
+            "konductor-metrics-{name}-{}",
+            crate::cli::atomic_write::unique_suffix()
+        ));
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    fn put(path: &Path, body: &str) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, body).unwrap();
+    }
+
+    const KONDUCTOR_LINE: &str = r#"{"type":"agent-setting","agentSetting":"k-dev","cwd":"/secret/repo","timestamp":"2026-11-01T10:00:00Z"}
+{"type":"assistant","timestamp":"2026-11-01T10:00:01Z","message":{"id":"m","model":"claude-opus-5-5","usage":{"input_tokens":1,"output_tokens":2}}}"#;
+
+    fn claude_source(path: &Path) -> Vec<Source> {
+        vec![Source {
+            harness: Harness::Claude,
+            path: path.to_path_buf(),
+        }]
+    }
+
+    fn agents() -> BTreeMap<String, String> {
+        BTreeMap::from([("k-dev".to_string(), "k-dev".to_string())])
+    }
+
+    #[test]
+    fn non_konductor_file_is_cached_as_a_bare_stub() {
+        let d = tmp("refresh-stub");
+        let f = d.join("projects/p/s.jsonl");
+        put(&f, &KONDUCTOR_LINE.replace("k-dev", "someone-else"));
+        let mut cache = HashMap::new();
+        refresh(&mut cache, &claude_source(&f), 0, &agents());
+        let r = &cache[&f.to_string_lossy().into_owned()];
+        assert_eq!(r.konductor_agent, None);
+        assert!(
+            r.models.is_empty(),
+            "usage of non-Konductor sessions is never stored"
+        );
+        assert_eq!(
+            (r.repo.as_deref(), r.first_ts, r.last_ts),
+            (None, None, None)
+        );
+        assert!(r.session_id.is_empty());
+        assert_eq!(r.agent.as_deref(), Some("someone-else"));
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn unchanged_file_is_not_reparsed() {
+        let d = tmp("refresh-unchanged");
+        let f = d.join("projects/p/s.jsonl");
+        put(&f, KONDUCTOR_LINE);
+        let mut cache = HashMap::new();
+        refresh(&mut cache, &claude_source(&f), 0, &agents());
+        let key = f.to_string_lossy().into_owned();
+        assert_eq!(cache[&key].models[0].output_tokens, Some(2));
+        cache.get_mut(&key).unwrap().session_id = "sentinel".into();
+        refresh(&mut cache, &claude_source(&f), 0, &agents());
+        assert_eq!(cache[&key].session_id, "sentinel");
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn rewritten_file_keeps_attribution_after_its_agent_is_uninstalled() {
+        let d = tmp("refresh-carry");
+        let f = d.join("projects/p/s.jsonl");
+        put(&f, KONDUCTOR_LINE);
+        let mut cache = HashMap::new();
+        refresh(&mut cache, &claude_source(&f), 0, &agents());
+        put(&f, &format!("{KONDUCTOR_LINE}\n"));
+        refresh(&mut cache, &claude_source(&f), 0, &BTreeMap::new());
+        let r = &cache[&f.to_string_lossy().into_owned()];
+        assert_eq!(r.konductor_agent.as_deref(), Some("k-dev"));
+        assert_eq!(r.models[0].output_tokens, Some(2));
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn sources_cover_all_three_harness_layouts() {
+        let d = tmp("sources");
+        let (claude, kiro) = (d.join("claude"), d.join("kiro"));
+        for p in [
+            claude.join("projects/p/s1.jsonl"),
+            claude.join("projects/p/s1/subagents/agent-a.jsonl"),
+            claude.join("projects/p/s1/subagents/agent-a.meta.json"),
+            kiro.join("sessions/cli/abc.json"),
+            kiro.join("sessions/cli/abc.jsonl"),
+            kiro.join("sessions/ws1/sess_1/messages.jsonl"),
+            kiro.join("sessions/ws1/sess_1/session.json"),
+        ] {
+            put(&p, "");
+        }
+        let mut found: Vec<(Harness, String)> = sources_in(&claude, &kiro)
+            .into_iter()
+            .map(|s| {
+                (
+                    s.harness,
+                    s.path.strip_prefix(&d).unwrap().display().to_string(),
+                )
+            })
+            .collect();
+        found.sort_by(|a, b| a.1.cmp(&b.1));
+        assert_eq!(
+            found,
+            vec![
+                (Harness::Claude, "claude/projects/p/s1.jsonl".to_string()),
+                (
+                    Harness::Claude,
+                    "claude/projects/p/s1/subagents/agent-a.jsonl".to_string()
+                ),
+                (Harness::KiroCliV2, "kiro/sessions/cli/abc.json".to_string()),
+                (
+                    Harness::KiroV3,
+                    "kiro/sessions/ws1/sess_1/messages.jsonl".to_string()
+                ),
+            ]
+        );
+        std::fs::remove_dir_all(&d).ok();
     }
 
     #[test]

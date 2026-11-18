@@ -101,6 +101,29 @@ impl Record {
         }
     }
 
+    /// Keeps only what's needed to skip re-parsing an unchanged file (and
+    /// to count it as unparsed). Nothing about a non-Konductor session —
+    /// its repo, ids, or timing — is stored.
+    pub(crate) fn into_stub(self) -> Self {
+        Record {
+            path: self.path,
+            mtime: self.mtime,
+            size: self.size,
+            harness: self.harness,
+            session_id: String::new(),
+            parent_session_id: None,
+            agent: self.agent,
+            repo: None,
+            first_ts: None,
+            last_ts: None,
+            harness_version: None,
+            status: self.status,
+            subagent_runs: None,
+            models: Vec::new(),
+            konductor_agent: None,
+        }
+    }
+
     fn unparsed(mut self) -> Self {
         self.status = Status::Unparsed;
         self.models.clear();
