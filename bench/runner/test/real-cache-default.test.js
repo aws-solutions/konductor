@@ -32,6 +32,16 @@ test('the default cache follows XDG_STATE_HOME, else ~/.local/state, and BENCH_R
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('two users on one host get two default caches, each under their own home', { skip: fs.existsSync('/tmp/konductor-bench/realrepos') && 'the old shared /tmp cache exists here, so both users still use it (DEBT #21-legacy)' }, () => {
+  const root = tmp();
+  try {
+    const homes = ['alice', 'bob'].map((u) => { const h = path.join(root, u); fs.mkdirSync(h); return h; });
+    const [a, b] = homes.map((home) => resolveIn({ HOME: home }).stdout.trim());
+    assert.notEqual(a, b);
+    homes.forEach((home, i) => assert.ok([a, b][i].startsWith(fs.realpathSync(home) + path.sep), [a, b][i]));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('loadRun points BENCH_REAL_CACHE at the cache the run recorded, unless it is already set', () => {
   const root = tmp();
   const prev = process.env.BENCH_REAL_CACHE;
