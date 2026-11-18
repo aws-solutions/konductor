@@ -67,22 +67,7 @@
         "Skill"
       ],
       "skills": [
-        "constraints",
-        "sdlc-navigator",
-        "docx-conversion",
-        "requirements-extraction",
-        "user-story-writing",
-        "decision-research",
-        "doc-accuracy-analyzer",
-        "sprint-planning",
-        "legacy-to-agentic-estimate",
-        "task-decomposition",
-        "humanize-writing",
-        "deliberation-panel",
-        "socratic-elicitation",
-        "persistent-memory",
-        "workspace-skills",
-        "kiro-requirements-generation"
+        "constraints"
       ]
     }
   }

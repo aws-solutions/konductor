@@ -484,7 +484,7 @@ struct AgentSkills<'a> {
 /// declared order; the ones not in `claude.skills` are listed in a
 /// trailing block (see `render_on_demand_skills_block`).
 ///
-/// For a specialist (any agent that is not a `konductor*` orchestrator), spawn
+/// For a specialist (any agent that is not one of the three orchestrators), spawn
 /// tools are dropped from `tools` and `disallowedTools` denies them, whether or
 /// not a `tools` list exists.
 fn render_agent_md(
