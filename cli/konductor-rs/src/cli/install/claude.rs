@@ -27,9 +27,8 @@
 // non-model-triggered skill instead (`disable-model-invocation: true`).
 //
 // When a staged agent declares the `aws-mcp` server or grants one of its
-// tools in frontmatter `tools`, install merges
-// tools in frontmatter `tools`, install merges Claude Code permission rules intotall merges
-// Claude Code permission rules into `<target_dir>/.claude/settings.json`:
+// tools in frontmatter `tools`, install merges Claude Code permission rules
+// into `<target_dir>/.claude/settings.json`:
 // `permissions.ask` for `aws___run_script`, and `permissions.allow` for the
 // agents' Kiro `allowedTools`, read from synth's `_mcp_allowed_tools.json`.
 //
