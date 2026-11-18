@@ -13,13 +13,16 @@ function items(): HTMLElement[] {
   return within(region).getAllByRole('listitem');
 }
 
-// The numbers of the lines that carry `aria-current`.
-function marked(): number[] {
+// The numbers of the lines whose attribute `name` is "true".
+function linesWith(name: string): number[] {
   return items()
     .map((item, index) => ({ item, n: index + 1 }))
-    .filter(({ item }) => item.getAttribute('aria-current') === 'true')
+    .filter(({ item }) => item.getAttribute(name) === 'true')
     .map(({ n }) => n);
 }
+
+const marked = () => linesWith('data-marked');
+const current = () => linesWith('aria-current');
 
 function stageOf(sample: SampleText, name: string): MarkedStage {
   const stage = sample.stages.find((each) => each.name === name);
@@ -42,6 +45,7 @@ describe('YamlPane', () => {
     renderPane(BLOCK);
 
     expect(marked()).toEqual([]);
+    expect(current()).toEqual([]);
     expect(screen.getByText('Read-only.')).toBeTruthy();
   });
 
@@ -49,6 +53,7 @@ describe('YamlPane', () => {
     renderPane(STAGES_FIRST, stageOf(STAGES_FIRST, 'draft'));
 
     expect(marked()).toEqual([2, 3]);
+    expect(current()).toEqual([2]);
     expect(items()).toHaveLength(8);
   });
 
@@ -56,12 +61,14 @@ describe('YamlPane', () => {
     renderPane(BLOCK, stageOf(BLOCK, 'review'));
 
     expect(marked()).toEqual([10, 11]);
+    expect(current()).toEqual([10]);
   });
 
   it('marks the stage at the end of the file', () => {
     renderPane(BLOCK, stageOf(BLOCK, 'wrap-up'));
 
     expect(marked()).toEqual([12, 13]);
+    expect(current()).toEqual([12]);
     expect(items()).toHaveLength(13);
   });
 
@@ -69,6 +76,7 @@ describe('YamlPane', () => {
     renderPane(FLOW, stageOf(FLOW, 'review'));
 
     expect(marked()).toEqual([6]);
+    expect(current()).toEqual([6]);
   });
 
   it('says which lines are marked, and ties that to the lines', () => {

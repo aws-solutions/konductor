@@ -76,7 +76,7 @@
 }
 
 /* The fill is faint, so the bar on the left is what reaches 3:1. */
-.wf-code-line[aria-current='true'] {
+.wf-code-line[data-marked='true'] {
   background: var(--wf-code-mark-bg);
   box-shadow: inset 3px 0 0 var(--wf-code-mark-edge);
 }

@@ -21,7 +21,9 @@ function isMarked(n: number, range: LineRange | undefined): boolean {
  * Numbered lines of plain text in a box that scrolls and takes keyboard
  * focus, so the arrow keys can scroll it. Text is rendered as text, never as
  * markup. The numbers are hidden from a screen reader, which reads the lines.
- * The lines of `marked` carry `aria-current` and are drawn as marked.
+ * The lines of `marked` are drawn as marked. Only the first carries
+ * `aria-current`, as one item of a list is current; the caller says which
+ * lines the range holds in the note that `describedBy` names.
  */
 export function CodeLines({
   lines,
@@ -49,7 +51,8 @@ export function CodeLines({
           <li
             key={line.n}
             className="wf-code-line"
-            aria-current={isMarked(line.n, marked) ? 'true' : undefined}
+            data-marked={isMarked(line.n, marked) ? 'true' : undefined}
+            aria-current={line.n === marked?.line ? 'true' : undefined}
           >
             <span className="wf-code-n" aria-hidden="true">
               {line.n}
