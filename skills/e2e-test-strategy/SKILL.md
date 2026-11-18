@@ -50,13 +50,13 @@ Analyze test gap analysis output, Phase 1 user stories, Phase 2 architecture des
 
 ## Prerequisites
 
-If a calling SOP supplied paths for any artifact below, or for the output file, You MUST use those values and skip the corresponding prompt. Ask only for what the caller did not supply — a caller that keeps its artifacts under its own output directory already knows where they are.
+If a calling SOP supplied paths for any artifact below, or for the output file, You MUST use those values and skip the corresponding prompt. Ask only for what the caller did not supply.
 
 Required artifacts:
 
 1. **Test Gap Analysis**: Output from Test Gap Analyzer (Checker) prompt
    - Location: `testing-quality-assurance/outputs/test-gap-analysis.md`
-   - Contains: Coverage analysis, identified gaps, testing philosophy, distribution analysis
+   - Contains: Coverage analysis, identified gaps, testing philosophy, distribution analysis (none if its Report type is `lightweight fallback`: ask for a full run first)
 
 2. **Phase 1 - Requirements & Planning**: User stories with acceptance criteria
    - Location: `requirements-planning/outputs/user-stories.md`
