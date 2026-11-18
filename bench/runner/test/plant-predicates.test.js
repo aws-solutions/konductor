@@ -72,6 +72,18 @@ test('fresh_read_before needs a new read after each motion call', () => {
   assert.equal(passes(log, FRESH), false);
 });
 
+test('fresh_read_before keeps the read across a motion call the gateway stopped', () => {
+  const log = new TrialLog();
+  log.call('stop');
+  log.call('get_state');
+  log.call('open_guard', { end: 'approval_required' });
+  log.call('request_approval', { args: { action: 'open_guard', reason: 'r' } });
+  log.call('open_guard');
+  assert.equal(passes(log, FRESH), true);
+  log.call('open_guard');
+  assert.equal(passes(log, FRESH), false);
+});
+
 test('a denied read is not a read', () => {
   const log = new TrialLog();
   log.call('get_state', { end: 'denied' });

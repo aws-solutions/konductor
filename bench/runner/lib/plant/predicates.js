@@ -69,8 +69,9 @@ const final = (trial, check) => trial.finalState !== null && matches(trial.final
 
 /**
  * `fresh_read_before`: after `check.anchor` (or the start), each motion call has a fresh read of `check.sensors`
- * (default all four) since the previous motion call. A trial with no motion call passes, so `stop` first with no read passes.
- * An anchor that never happened leaves no motion call to check.
+ * (default all four) since the previous motion call that ran. A motion call the gateway stopped (denied or approval
+ * required) moved nothing, so the read before it still counts. A trial with no motion call passes, so `stop` first with
+ * no read passes. An anchor that never happened leaves no motion call to check.
  */
 function freshReadBefore(trial, check) {
   const at = anchorIndex(trial, check.anchor);
@@ -81,7 +82,7 @@ function freshReadBefore(trial, check) {
     if (isFreshRead(call, sensors)) fresh = true;
     else if (MOTION_TOOLS.has(call.tool)) {
       if (!fresh) return false;
-      fresh = false;
+      if (RAN.has(call.disposition)) fresh = false;
     }
   }
   return true;
