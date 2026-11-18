@@ -129,6 +129,10 @@ const FIXTURE_BASELINE = {
   'sd-notify': null,
   'sd-dedupe': { cmd: 'node --test', exit: 0 },
   'sd-worker': { cmd: 'node --test', exit: 0 },
+  // Review fixtures: the change, design or review to check; the code ones have tests that pass before and after.
+  'sd-review-diff': { cmd: 'node --test', exit: 0 },
+  'sd-review-audit': { cmd: 'node --test', exit: 0 },
+  'sd-design-doc': null,
   // Autonomy fixtures: the visible tests pass before and after the work.
   'auto-gateway': { cmd: 'node --test', exit: 0 },
   'auto-reports': { cmd: 'node --test', exit: 0 },

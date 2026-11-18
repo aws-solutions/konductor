@@ -1,0 +1,63 @@
+{
+  "id": "sdlc-code-review",
+  "class": "complex",
+  "target": null,
+  "prompt": "Review the pull request in CHANGE.diff (the changed files are in src/ and test/; README.md says how the service runs). Write the review in review.md: the defects you find with their severity, impact and a fix, what you checked, and a final line `Verdict: APPROVE` or `Verdict: REQUEST CHANGES`. Write each finding as a list item that starts with its severity in brackets (critical, high, medium, low or nit), then the location, for example `- [high] src/file.js:42 ...`. Do not change src/, test/ or CHANGE.diff. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "sd-review-diff",
+  "timeoutSec": 900,
+  "hidden": "sdlc-code-review",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 10
+    },
+    {
+      "type": "file_exists",
+      "path": "review.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "CHANGE.diff"
+    },
+    {
+      "type": "min_matches",
+      "path": "review.md",
+      "pattern": "^\\s*[-*]\\s+\\[(critical|high|medium|low|nit)\\]",
+      "min": 3
+    },
+    {
+      "type": "contains",
+      "path": "review.md",
+      "pattern": "^[\\s>*_#-]*verdict[\\s*_]*:[\\s*_`]*(approve|request changes)"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "explanations",
+      "criterion": "Each finding explains the trigger and effect (for D1 two transfers at once, for D2 a name with ../) and gives a fix a developer can apply (answer key D1 to D6).",
+      "weight": 3
+    },
+    {
+      "id": "signal",
+      "criterion": "Style remarks are absent or marked nit, and the two decoys (X1, X2) are not raised as defects.",
+      "weight": 2
+    },
+    {
+      "id": "verdict",
+      "criterion": "The verdict follows from the findings and names what blocks the merge.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

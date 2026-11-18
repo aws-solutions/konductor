@@ -32,9 +32,11 @@ By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, ch
 | Proof of concept and spike | a spike a task asks for | the question with its threshold, a result with its unit and the command that made it |
 | Architecture deliberation | a decision record a task asks for | the matrix row of the chosen option and of one it ruled out, the review trigger |
 | Production readiness in code | product code and runbook of a task that asks for readiness | the structured log on a failure path, the configuration check, the drain bound, the cost line |
-| Review findings | reviews | a finding's severity with the impact that justifies it |
+| Review findings | reviews, code reviews and review audits | a finding's severity with its impact, the least specific finding, the style remarks, the verdict line |
+| Design review findings | a review of a given design | a gap with its section and the design text that leaves it open, its consequence |
+| Review audit | an audit of someone else's code review | a missed defect with why it was missed, a refutation with its code line, a severity correction with its reason |
 
-`bench/criteria/quality-pack.json` holds 106 criteria, each in one of 11 SDLC phases (see SDLC phases). Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
+`bench/criteria/quality-pack.json` holds 116 criteria, each in one of 13 SDLC phases (see SDLC phases). Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
 
 ### Criteria
 
@@ -145,7 +147,17 @@ By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, ch
 | prod-graceful-lifecycle | Production readiness in code | production | 2 | judge | Does the code report its health and shut down by draining in-flight work within a bound? |
 | prod-cost-estimate | Production readiness in code | production | 2 | judge | Does the runbook estimate the monthly cost from the stated volume and unit price, and name the biggest cost driver? |
 | prod-runbook-actions | Production readiness in code | production | 2 | judge | Does each alarm in the runbook have a metric, a threshold and the action an operator takes? |
-| rev-severity-impact | Review findings | review | 2 | judge | Does each finding's severity come with the impact that justifies it? |
+| rev-severity-impact | Review findings | review, code-review, design-review, review-audit | 2 | judge | Does each finding's severity come with the impact that justifies it? |
+| cr-actionable | Review findings | code-review, review-audit | 3 | judge | Does each finding give its location, the input or sequence that triggers it, and a fix? |
+| cr-signal | Review findings | code-review | 2 | judge | Are style remarks kept apart from defects and few enough not to bury them? |
+| cr-coverage-areas | Review findings | code-review | 2 | judge | Does the review say which risk areas it checked: tests, security of input, concurrency and non-functional limits? |
+| cr-verdict | Review findings | code-review, review-audit | 2 | judge | Does the review end with one verdict that follows from its findings? |
+| dr-gap-specific | Design review findings | design-review | 3 | judge | Does each gap cite the section of the design it concerns and quote or name the text that leaves it open? |
+| dr-consequence | Design review findings | design-review | 2 | judge | Does each gap say what goes wrong if it ships as written and what to add or ask? |
+| dr-prioritized | Design review findings | design-review | 1 | judge | Are the gaps ranked, with those that block launch marked? |
+| ra-missed-explained | Review audit | review-audit | 3 | judge | Does each missed defect come with its location, its impact and the reason the review did not catch it? |
+| ra-claim-evidence | Review audit | review-audit | 3 | judge | Is each claim called wrong refuted with the code or test that disproves it? |
+| ra-severity-reason | Review audit | review-audit | 2 | judge | Does each severity correction give the old level, the new level and the impact that justifies the change? |
 
 ## Code-quality criteria for concurrency, extension, targets and patterns
 
@@ -203,7 +215,7 @@ A review document uses the threat model criteria that make sense for a code revi
 
 ## SDLC phases
 
-The pack lists 11 phases in `phases`, and each criterion sits in exactly one (the lint refuses a gap or a double). `report-2x2 --criteria-pack quality` scores each phase on its own (see Reports).
+The pack lists 13 phases in `phases`, and each criterion sits in exactly one (the lint refuses a gap or a double). `report-2x2 --criteria-pack quality` scores each phase on its own (see Reports).
 
 | Phase | Criteria | Ids |
 |---|---|---|
@@ -216,7 +228,9 @@ The pack lists 11 phases in `phases`, and each criterion sits in exactly one (th
 | Implementation | 16 | `mod-single-responsibility`, `mod-no-duplication`, `mod-isolation`, `mod-pattern-fit`, `mod-pattern-missing`, `maint-naming`, `maint-size-nesting`, `maint-dead-code`, `maint-error-handling`, `maint-magic-constants`, `conc-shared-state`, `conc-async-errors`, `conc-timeout-cancel`, `ext-one-place`, `ext-closed-core`, `ent-pattern-applied` |
 | Testing | 8 | `test-asserts-behavior`, `test-rule-would-fail`, `test-scenario-spread`, `test-no-tautology`, `test-one-scenario`, `test-names`, `test-deterministic`, `scn-traced` |
 | Documentation | 18 | `doc-why-not-what`, `doc-accuracy`, `doc-no-stale-or-noise`, `doc-concise`, `cq-plain-typography`, `cq-no-filler-terms`, `cq-sentence-length`, `cq-lead-with-point`, `cq-concrete`, `cq-human-voice`, `cq-no-repetition`, `cq-reader-order`, `cq-direct-instructions`, `guide-accuracy`, `guide-audience-fit`, `guide-troubleshooting`, `guide-scannability`, `guide-consistent-terms` |
-| Change discipline and review | 4 | `chg-no-leftovers`, `chg-tests-intact`, `chg-scoped`, `rev-severity-impact` |
+| Change discipline | 3 | `chg-no-leftovers`, `chg-tests-intact`, `chg-scoped` |
+| Code review and review audit | 8 | `rev-severity-impact`, `cr-actionable`, `cr-signal`, `cr-coverage-areas`, `cr-verdict`, `ra-missed-explained`, `ra-claim-evidence`, `ra-severity-reason` |
+| Design review | 3 | `dr-gap-specific`, `dr-consequence`, `dr-prioritized` |
 | Delegation and planning | 8 | `plan-independent-tasks`, `plan-done-criteria`, `plan-dependencies-order`, `plan-coverage`, `plan-sizing`, `plan-risks`, `plan-test-tasks`, `plan-delegation-fit` |
 
 Coverage before this map. Requirements, non-functional targets, implementation, testing, documentation and planning each had 5 or more criteria and a task. Four phases were thin or missing:
@@ -226,7 +240,17 @@ Coverage before this map. Requirements, non-functional targets, implementation, 
 - Architecture deliberation had alternatives, rationale and consequences, but no trade-off matrix, no fair case for rejected options and no reversal cost.
 - Production readiness had threat model and design-document criteria, and nothing for configuration, secrets, logs, health, shutdown or cost in code.
 
-Review had only the threat model criteria and gains `rev-severity-impact`.
+Review had only the threat model criteria. Three review areas were missing and now have their own types, criteria and tasks. They are doing a code review (`code-review`), finding the gaps in a design (`design-review`), and finding what someone else's review missed or got wrong (`review-audit`). `rev-severity-impact` applies to all three and to `review`, so the new criteria extend it rather than repeat it.
+
+The review tasks are scored in two parts. Recall, false alarms and severity are counted by hidden tests against a fixed key of planted items, with no judge. A finding is a list item that starts with its severity in brackets and then a `file:line` or a section. It is matched to a planted item by location (within a few lines of an anchor text in the file) or by a short list of distinctive phrases. Each finding goes to at most one item, so a finding between two neighbours is not counted twice. The matcher is `hidden/<task>/hidden/review-key.js`; the three copies are kept identical by a test. The judge rates only how each finding is explained (`cr-*`, `dr-*`, `ra-*`).
+
+| Task | Phase | Declares | Planted | Hidden tests |
+|---|---|---|---|---|
+| `sdlc-code-review` | code review | code-review | 6 defects (race, path traversal, negative amount, off by one, unbounded retry, weak test) and 2 decoys | 10: each defect, severity of the three that lose money or data, no decoy flagged, at most 3 unmatched findings, the verdict |
+| `sdlc-design-review-gaps` | design review | design-review | 7 gaps (latency target, clock assumption, payment failure, admin access, rollout, diagram against text, data retention) and 3 covered topics | 10: each gap, severity of the two security and failure gaps, at most 1 false alarm about a covered topic, a section named in 80% of findings |
+| `sdlc-review-audit` | code review | review-audit | 3 missed defects, 2 wrong claims, 2 severity errors, 3 correct findings | 10: each missed defect, each wrong claim, no correct finding called wrong, both severity corrections, the verdict, at most 2 unmatched missed items |
+
+The key lives only in the hidden tests and the fixture's answer key, which the agent never sees; a test checks that no fixture file names a planted id.
 
 Each new criterion applies to one declared-only type (`framing`, `spike`, `decision`, `production`) or to `review`. Each of the four types has its own task in `bench/sdlc/`:
 
@@ -237,7 +261,7 @@ Each new criterion applies to one declared-only type (`framing`, `spike`, `decis
 | `sdlc-arch-decision` | architecture | decision | 10 checks: 3 options, the 120 partners without an endpoint near webhooks, a decision that serves both kinds of partner, a matrix of 4 or more rows, consequences and a review trigger |
 | `sdlc-prod-readiness` | production readiness | code, tests, production | 12 hidden tests (settings and their errors, no key literal, structured failure logs with no key, health, a drained and a timed-out stop) and a runbook cost of 600 USD |
 
-`suites/sdlc.json` runs the four with eight earlier tasks, so every phase has at least one task. `runner/test/sdlc-report.test.js` checks that coverage.
+`suites/sdlc.json` runs the seven `sdlc-*` tasks with eight earlier ones, so every phase has at least one task. `runner/test/sdlc-report.test.js` checks that coverage.
 
 ## Written content
 
@@ -372,11 +396,11 @@ For the SDLC criteria:
 
 ```
 node bench/runner/bench.js calibrate export-reference --out DIR --seed 11 --extra-tasks bench/sdlc \
-  --tasks sdlc-problem-framing,sdlc-spike-dedupe,sdlc-arch-decision,sdlc-prod-readiness,review-inventory-security \
-  --criteria idea-problem-evidence,idea-options-range,idea-success-measure,idea-kill-criteria,spike-question,spike-evidence,spike-scope-throwaway,spike-recommendation,arch-criteria-explicit,arch-tradeoff-matrix,arch-option-fair,arch-reversibility,prod-observability,prod-config-secrets,prod-graceful-lifecycle,prod-cost-estimate,prod-runbook-actions,rev-severity-impact
+  --tasks sdlc-problem-framing,sdlc-spike-dedupe,sdlc-arch-decision,sdlc-prod-readiness,sdlc-code-review,sdlc-design-review-gaps,sdlc-review-audit,review-inventory-security \
+  --criteria idea-problem-evidence,idea-options-range,idea-success-measure,idea-kill-criteria,spike-question,spike-evidence,spike-scope-throwaway,spike-recommendation,arch-criteria-explicit,arch-tradeoff-matrix,arch-option-fair,arch-reversibility,prod-observability,prod-config-secrets,prod-graceful-lifecycle,prod-cost-estimate,prod-runbook-actions,rev-severity-impact,cr-actionable,cr-signal,cr-coverage-areas,cr-verdict,dr-gap-specific,dr-consequence,dr-prioritized,ra-missed-explained,ra-claim-evidence,ra-severity-reason
 ```
 
-It writes 12 items. A judge pass over them would be 36 pack calls, about 6 to 10 credits on kiro; it needs the owner's approval first.
+It writes 24 items (reference, partials and stub of each task) with 106 criteria to rate. A judge pass over them would be 72 pack calls, about 12 to 21 credits on kiro; it needs the owner's approval first.
 
 `cap review` (the side-by-side page) is not extended. Its ratings file, import and scoring are built around the task rubric ids, and adding pack ids there would either be dropped silently on import or mix with the rubric score. Use `calibrate export` for pack ratings.
 

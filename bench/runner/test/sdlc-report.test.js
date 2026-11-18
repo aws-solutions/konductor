@@ -26,12 +26,13 @@ const NEW_PHASE = {
   poc: ['spike-question', 'spike-evidence', 'spike-scope-throwaway', 'spike-recommendation'],
   architecture: ['arch-criteria-explicit', 'arch-tradeoff-matrix', 'arch-option-fair', 'arch-reversibility'],
   production: ['prod-observability', 'prod-config-secrets', 'prod-graceful-lifecycle', 'prod-cost-estimate', 'prod-runbook-actions'],
-  'change-review': ['rev-severity-impact'],
+  'code-review': ['rev-severity-impact', 'cr-actionable', 'cr-signal', 'cr-coverage-areas', 'cr-verdict', 'ra-missed-explained', 'ra-claim-evidence', 'ra-severity-reason'],
+  'design-review': ['dr-gap-specific', 'dr-consequence', 'dr-prioritized'],
 };
 
-test('every criterion sits in exactly one of the eleven SDLC phases, and the lint refuses a gap or a double', () => {
+test('every criterion sits in exactly one of the thirteen SDLC phases, and the lint refuses a gap or a double', () => {
   assert.deepEqual(P.validatePack(pack), []);
-  assert.equal(pack.phases.length, 11);
+  assert.equal(pack.phases.length, 13);
   assert.equal(pack.phases.reduce((n, p) => n + p.criteria.length, 0), pack.criteria.length);
   for (const [phase, ids] of Object.entries(NEW_PHASE)) for (const id of ids) assert.ok(pack.phases.find((p) => p.id === phase).criteria.includes(id), `${id} in ${phase}`);
   const gap = clone();
@@ -43,15 +44,15 @@ test('every criterion sits in exactly one of the eleven SDLC phases, and the lin
 });
 
 test('the new artifact types are declared-only, so no earlier task gains the new criteria', () => {
-  for (const t of ['framing', 'spike', 'decision', 'production']) assert.ok(pack.declaredOnly.includes(t), t);
+  const NEW_TYPES = new Set(['framing', 'spike', 'decision', 'production', 'code-review', 'design-review', 'review-audit']);
+  for (const t of NEW_TYPES) assert.ok(pack.declaredOnly.includes(t), t);
   const tasks = loadTasks(BENCH);
-  const NEW_TYPES = new Set(['framing', 'spike', 'decision', 'production']);
   for (const task of tasks.values()) assert.ok(!P.declaredArtifacts(pack, task).some((t) => NEW_TYPES.has(t)), task.id);
 });
 
 test('each sdlc task lands in its phase', () => {
   const tasks = loadTasks(BENCH, { extraDirs: [path.join(BENCH, 'sdlc')] });
-  const want = { 'sdlc-problem-framing': 'ideation', 'sdlc-spike-dedupe': 'poc', 'sdlc-arch-decision': 'architecture', 'sdlc-prod-readiness': 'production' };
+  const want = { 'sdlc-problem-framing': 'ideation', 'sdlc-spike-dedupe': 'poc', 'sdlc-arch-decision': 'architecture', 'sdlc-prod-readiness': 'production', 'sdlc-code-review': 'code-review', 'sdlc-review-audit': 'code-review', 'sdlc-design-review-gaps': 'design-review' };
   for (const [id, phase] of Object.entries(want)) assert.ok(taskPhases(pack, tasks.get(id)).includes(phase), `${id}: ${taskPhases(pack, tasks.get(id))}`);
   assert.ok(taskPhases(pack, tasks.get('sdlc-prod-readiness')).includes('implementation'));
 });
@@ -141,4 +142,31 @@ test('export-reference reads an extra tasks directory and adds the keyword stub 
     assert.ok(sheet.items.every((it) => it.changes.includes('spike/run.js') && it.changes.includes('docs/spike.md')));
     assert.ok(!sheet.items.some((it) => /stub/i.test(it.changes)), 'no file names the tree');
   } finally { fs.rmSync(out, { recursive: true, force: true }); }
+});
+
+const REVIEW_TASKS = { 'sdlc-code-review': 'sd-review-diff', 'sdlc-design-review-gaps': 'sd-design-doc', 'sdlc-review-audit': 'sd-review-audit' };
+
+test('the review tasks share one key matcher, kept identical in each hidden directory', () => {
+  const copies = Object.keys(REVIEW_TASKS).map((id) => fs.readFileSync(path.join(BENCH, 'sdlc', 'hidden', id, 'hidden', 'review-key.js'), 'utf8'));
+  assert.equal(new Set(copies).size, 1);
+});
+
+test('the review keys stay out of what the agent sees: no fixture file names a planted id or holds the key', () => {
+  for (const fixture of Object.values(REVIEW_TASKS)) {
+    const dir = path.join(BENCH, 'sdlc', 'fixtures', fixture);
+    const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
+    for (const file of walk(dir).filter((f) => path.basename(f) !== '.bench-answer-key.md')) {
+      const text = fs.readFileSync(file, 'utf8');
+      assert.ok(!/\b(D[1-6]|G[1-7]|M[1-3]|X[12])\b|planted|decoy|answer key/i.test(text), path.relative(BENCH, file));
+    }
+  }
+});
+
+test('the key matcher gives each finding to one planted item and reads severities and locations', () => {
+  const key = require(path.join(BENCH, 'sdlc', 'hidden', 'sdlc-code-review', 'hidden', 'review-key.js'));
+  const items = key.parseItems('## Findings\n\n- [high] `src/a.js:3` lost update\n  across awaits\n- [nit] naming\n\nVerdict: X');
+  assert.deepEqual(items.map((i) => [i.severity, i.file, i.line]), [['high', 'src/a.js', 3], ['nit', null, null]]);
+  assert.match(items[0].text, /across awaits/);
+  const a = key.assign(items, [{ id: 'A', phrases: [/lost update/] }, { id: 'B', phrases: [/update|naming/] }]);
+  assert.deepEqual([a.get('A').length, a.get('B').length], [1, 1]);
 });

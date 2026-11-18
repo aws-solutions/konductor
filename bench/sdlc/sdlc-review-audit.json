@@ -1,0 +1,72 @@
+{
+  "id": "sdlc-review-audit",
+  "class": "complex",
+  "target": null,
+  "prompt": "Sam reviewed and approved the change in CHANGE.diff (reviews/review-by-sam.md; the code is in src/). Check that review: which defects it missed, which of its claims are wrong, which severities are off, and whether the approval should stand. Write the result in docs/review-audit.md with the sections `## Missed defects`, `## Wrong claims` and `## Severity corrections`, and a final line starting with `Verdict:`. Write each missed defect as `- [severity] file:line ...`, refer to Sam's findings by their ids (R1 to R6), and write a severity correction as `R<n>: <old> -> <new>` with the reason. Do not change src/, test/, reviews/ or CHANGE.diff. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "sd-review-audit",
+  "timeoutSec": 900,
+  "hidden": "sdlc-review-audit",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 10
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/review-audit.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "reviews"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "CHANGE.diff"
+    },
+    {
+      "type": "contains",
+      "path": "docs/review-audit.md",
+      "pattern": "^#{1,4}\\s.*missed"
+    },
+    {
+      "type": "contains",
+      "path": "docs/review-audit.md",
+      "pattern": "^#{1,4}\\s.*(wrong|incorrect)"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/review-audit.md",
+      "pattern": "^\\s*[-*]\\s+\\[(critical|high|medium|low|nit)\\]",
+      "min": 1
+    }
+  ],
+  "rubric": [
+    {
+      "id": "missed",
+      "criterion": "Each missed defect (answer key M1 to M3) comes with its impact and why the review did not catch it.",
+      "weight": 3
+    },
+    {
+      "id": "refutations",
+      "criterion": "R2 and R5 are refuted with the code or test that disproves them, and R1, R4 and R6 are not called wrong.",
+      "weight": 2
+    },
+    {
+      "id": "severity",
+      "criterion": "R4 is raised and R3 lowered, each with the impact that justifies it, and the verdict says the approval does not stand.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

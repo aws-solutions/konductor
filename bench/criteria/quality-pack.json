@@ -23,7 +23,10 @@
     "framing": "A problem framing document: the problem with its evidence, who has it, options including doing nothing, a success measure and what would stop the work. Declared only by a task that asks for one.",
     "spike": "A proof of concept or spike: throwaway code that answers one question, and the write-up of what it measured. Declared only by a task that asks for one.",
     "decision": "An architecture decision record: the criteria, the options weighed against them, the decision, its consequences and how to reverse it. Declared only by a task that asks for one.",
-    "production": "Product code and its runbook for a task that asks for production readiness: configuration, secrets, logs, metrics, health, shutdown and cost. Declared only by such a task."
+    "production": "Product code and its runbook for a task that asks for production readiness: configuration, secrets, logs, metrics, health, shutdown and cost. Declared only by such a task.",
+    "code-review": "A review of a diff the task gives: findings with location, severity and fix, and a verdict. Declared only by a task that asks for one.",
+    "design-review": "A review of a design document the task gives: the gaps found, each with its section, consequence and question. Declared only by a task that asks for one.",
+    "review-audit": "A review of someone else's code review: what it missed, which claims are wrong, which severities change, and whether its verdict stands. Declared only by a task that asks for one."
   },
   "minAddedCodeLines": 8,
   "taskArtifacts": {
@@ -92,6 +95,15 @@
       "code",
       "tests",
       "production"
+    ],
+    "sdlc-code-review": [
+      "code-review"
+    ],
+    "sdlc-design-review-gaps": [
+      "design-review"
+    ],
+    "sdlc-review-audit": [
+      "review-audit"
     ]
   },
   "declaredOnly": [
@@ -104,7 +116,10 @@
     "framing",
     "spike",
     "decision",
-    "production"
+    "production",
+    "code-review",
+    "design-review",
+    "review-audit"
   ],
   "dimensions": [
     {
@@ -206,6 +221,14 @@
     {
       "id": "review-quality",
       "label": "Review findings"
+    },
+    {
+      "id": "design-review",
+      "label": "Design review findings"
+    },
+    {
+      "id": "review-audit",
+      "label": "Review audit"
     }
   ],
   "criteria": [
@@ -2159,7 +2182,10 @@
       "id": "rev-severity-impact",
       "dimension": "review-quality",
       "appliesTo": [
-        "review"
+        "review",
+        "code-review",
+        "design-review",
+        "review-audit"
       ],
       "weight": 2,
       "question": "Does each finding's severity come with the impact that justifies it?",
@@ -2171,6 +2197,188 @@
       "evidence": {
         "minQuotes": 1,
         "quote": "A finding's severity with its impact sentence."
+      }
+    },
+    {
+      "id": "cr-actionable",
+      "dimension": "review-quality",
+      "appliesTo": [
+        "code-review",
+        "review-audit"
+      ],
+      "weight": 3,
+      "question": "Does each finding give its location, the input or sequence that triggers it, and a fix?",
+      "levels": {
+        "fail": "2 or more findings lack a file and line, or say only that something may be wrong with no trigger or fix.",
+        "partial": "Every finding has a location and 1 finding lacks its trigger or its fix.",
+        "pass": "Every finding names file and line, the input or sequence of calls that triggers the defect, its effect, and a fix a developer can apply."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The finding with the least detail (fail or partial), or the most specific finding with its trigger and fix (pass)."
+      }
+    },
+    {
+      "id": "cr-signal",
+      "dimension": "review-quality",
+      "appliesTo": [
+        "code-review"
+      ],
+      "weight": 2,
+      "question": "Are style remarks kept apart from defects and few enough not to bury them?",
+      "levels": {
+        "fail": "Style or naming remarks outnumber the defects, or 5 or more are raised at a severity above nit.",
+        "partial": "Style remarks are fewer than the defects and 1 to 4 of them carry a severity above nit.",
+        "pass": "Every style remark is marked nit or left out, and the defects come first."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "A style remark with its severity (fail or partial), or the line that sets nits apart (pass)."
+      }
+    },
+    {
+      "id": "cr-coverage-areas",
+      "dimension": "review-quality",
+      "appliesTo": [
+        "code-review"
+      ],
+      "weight": 2,
+      "question": "Does the review say which risk areas it checked: tests, security of input, concurrency and non-functional limits?",
+      "levels": {
+        "fail": "The review names none of the areas it checked.",
+        "partial": "The review names 1 to 3 of the 4 areas, or names them with no finding or note for any.",
+        "pass": "The review names all 4 areas, and for each gives a finding or one line saying what was checked and found sound."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The line that names the areas checked."
+      }
+    },
+    {
+      "id": "cr-verdict",
+      "dimension": "review-quality",
+      "appliesTo": [
+        "code-review",
+        "review-audit"
+      ],
+      "weight": 2,
+      "question": "Does the review end with one verdict that follows from its findings?",
+      "levels": {
+        "fail": "No verdict, or a verdict that approves with an open finding rated high or critical.",
+        "partial": "A verdict is given and its reason names no finding.",
+        "pass": "One verdict line is given, it follows from the most severe open finding, and it names the findings that block the merge."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The verdict line."
+      }
+    },
+    {
+      "id": "dr-gap-specific",
+      "dimension": "design-review",
+      "appliesTo": [
+        "design-review"
+      ],
+      "weight": 3,
+      "question": "Does each gap cite the section of the design it concerns and quote or name the text that leaves it open?",
+      "levels": {
+        "fail": "2 or more gaps name no section, or are generic advice that fits any design.",
+        "partial": "Every gap names a section and 1 gap names no text or number from the design.",
+        "pass": "Every gap names its section and the design text, number or diagram element that leaves it open."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The gap with the least anchoring (fail or partial), or a gap with its section and quoted text (pass)."
+      }
+    },
+    {
+      "id": "dr-consequence",
+      "dimension": "design-review",
+      "appliesTo": [
+        "design-review"
+      ],
+      "weight": 2,
+      "question": "Does each gap say what goes wrong if it ships as written and what to add or ask?",
+      "levels": {
+        "fail": "2 or more gaps say only that something is missing.",
+        "partial": "1 gap says only that something is missing, or the consequences give no number or scenario from the context.",
+        "pass": "Every gap states a failure scenario or cost, with a number from the design or its context where one exists, and the question or addition that closes it."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "A gap with its consequence and closing question."
+      }
+    },
+    {
+      "id": "dr-prioritized",
+      "dimension": "design-review",
+      "appliesTo": [
+        "design-review"
+      ],
+      "weight": 1,
+      "question": "Are the gaps ranked, with those that block launch marked?",
+      "levels": {
+        "fail": "The gaps carry no severity or order.",
+        "partial": "Gaps carry severities and none is marked as blocking launch, or the order contradicts the severities.",
+        "pass": "Gaps are ordered by severity and the ones that block launch are named as such."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The line that marks a gap as blocking (pass), or the gap list (fail or partial)."
+      }
+    },
+    {
+      "id": "ra-missed-explained",
+      "dimension": "review-audit",
+      "appliesTo": [
+        "review-audit"
+      ],
+      "weight": 3,
+      "question": "Does each missed defect come with its location, its impact and the reason the review did not catch it?",
+      "levels": {
+        "fail": "Missed defects are listed with no location or no impact.",
+        "partial": "Every missed defect has a location and impact and none says why the review did not catch it.",
+        "pass": "Every missed defect has file and line, an impact, and the gap in the original review that let it through (a line it skipped, a finding that stopped at style)."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "A missed defect with its impact and the reason it was missed."
+      }
+    },
+    {
+      "id": "ra-claim-evidence",
+      "dimension": "review-audit",
+      "appliesTo": [
+        "review-audit"
+      ],
+      "weight": 3,
+      "question": "Is each claim called wrong refuted with the code or test that disproves it?",
+      "levels": {
+        "fail": "A claim is called wrong with no code, test or quote behind it.",
+        "partial": "Every wrong claim names its finding id and 1 gives no code line or test that disproves it.",
+        "pass": "Every claim called wrong names its finding id and quotes the code line or test that disproves it."
+      },
+      "evidence": {
+        "minQuotes": 2,
+        "quote": "The refutation with its code line, then the claim of the original review it answers."
+      }
+    },
+    {
+      "id": "ra-severity-reason",
+      "dimension": "review-audit",
+      "appliesTo": [
+        "review-audit"
+      ],
+      "weight": 2,
+      "question": "Does each severity correction give the old level, the new level and the impact that justifies the change?",
+      "levels": {
+        "fail": "Severities are changed with no old level or no reason.",
+        "partial": "Every correction gives both levels and 1 gives no impact.",
+        "pass": "Every correction gives the finding id, the old and the new level, and the impact on users or data that moves it."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "A severity correction line with its reason."
       }
     }
   ],
@@ -2478,12 +2686,34 @@
     },
     {
       "id": "change-review",
-      "label": "Change discipline and review",
+      "label": "Change discipline",
       "criteria": [
         "chg-no-leftovers",
         "chg-tests-intact",
-        "chg-scoped",
-        "rev-severity-impact"
+        "chg-scoped"
+      ]
+    },
+    {
+      "id": "code-review",
+      "label": "Code review and review audit",
+      "criteria": [
+        "rev-severity-impact",
+        "cr-actionable",
+        "cr-signal",
+        "cr-coverage-areas",
+        "cr-verdict",
+        "ra-missed-explained",
+        "ra-claim-evidence",
+        "ra-severity-reason"
+      ]
+    },
+    {
+      "id": "design-review",
+      "label": "Design review",
+      "criteria": [
+        "dr-gap-specific",
+        "dr-consequence",
+        "dr-prioritized"
       ]
     },
     {

@@ -1,0 +1,10 @@
+{
+  "name": "wallet-service",
+  "version": "1.4.0",
+  "private": true,
+  "description": "Wallet balances, statements and exports",
+  "main": "src/wallet.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

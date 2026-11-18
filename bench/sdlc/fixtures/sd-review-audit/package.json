@@ -1,0 +1,10 @@
+{
+  "name": "shop-cart",
+  "version": "3.1.0",
+  "private": true,
+  "description": "Cart totals, coupons and the cart summary",
+  "main": "src/cart.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

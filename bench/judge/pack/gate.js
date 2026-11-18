@@ -13,7 +13,7 @@ const CODE_EXT = new Set(['.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.py', '
 const DOC_NOTHING_TYPES = new Set(['comments', 'readme']);
 
 // What a derived type is called when a task does not ask for it, so the reason reads "does not ask for code", not "for change".
-const REASON_LABEL = { change: 'code', delegation: 'assignments', concurrency: 'concurrent code', extension: 'an extension point', 'nfr-code': 'non-functional targets in code', 'pattern-key': 'a pattern from its answer key', 'enterprise-pattern': 'an enterprise pattern from its answer key', framing: 'a problem framing', spike: 'a spike', decision: 'a decision record', production: 'production readiness' };
+const REASON_LABEL = { change: 'code', delegation: 'assignments', concurrency: 'concurrent code', extension: 'an extension point', 'nfr-code': 'non-functional targets in code', 'pattern-key': 'a pattern from its answer key', 'enterprise-pattern': 'an enterprise pattern from its answer key', framing: 'a problem framing', spike: 'a spike', decision: 'a decision record', production: 'production readiness', 'code-review': 'a code review', 'design-review': 'a design review', 'review-audit': 'an audit of a review' };
 // Declared-only types that read the changed product code: they share its files and its size floor.
 const CODE_BACKED = new Set(['code', 'concurrency', 'extension', 'nfr-code', 'pattern-key', 'enterprise-pattern']);
 
@@ -70,6 +70,7 @@ function artifactStates(pack, task, files, { deleted = [] } = {}) {
   haveOf.production = [...codeFiles, ...mdFiles];
   haveOf.framing = mdFiles;
   haveOf.decision = mdFiles;
+  for (const t of ['code-review', 'design-review', 'review-audit']) haveOf[t] = mdFiles;
   const state = {};
   for (const t of types) {
     if (t === 'comments') {

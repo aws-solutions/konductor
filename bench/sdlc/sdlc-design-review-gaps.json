@@ -1,0 +1,50 @@
+{
+  "id": "sdlc-design-review-gaps",
+  "class": "complex",
+  "target": null,
+  "prompt": "Review the design in docs/design.md before it is approved (README.md gives the load and the payment provider's error rate). Find what the design leaves out or gets wrong: targets, assumptions, failure modes, security, rollout, data handling and whether the diagram matches the text. Write the review in docs/design-review.md. Write each gap as a list item that starts with its severity in brackets (critical, high, medium, low or nit), then the section it concerns, for example `- [high] \u00a75 ...`, with what goes wrong and what to add. Do not report things the design already covers. Do not change docs/design.md. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "sd-design-doc",
+  "timeoutSec": 900,
+  "hidden": "sdlc-design-review-gaps",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 10
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/design-review.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/design.md"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/design-review.md",
+      "pattern": "^\\s*[-*]\\s+\\[(critical|high|medium|low|nit)\\]",
+      "min": 3
+    }
+  ],
+  "rubric": [
+    {
+      "id": "specific",
+      "criterion": "Each gap names its section and the design text that leaves it open (answer key G1 to G7).",
+      "weight": 3
+    },
+    {
+      "id": "consequence",
+      "criterion": "Each gap says what goes wrong if it ships, with numbers from the README where they exist (40 orders a second, 1 in 500 timeouts), and what to add.",
+      "weight": 2
+    },
+    {
+      "id": "no-false-alarms",
+      "criterion": "Idempotency, rate limiting and monitoring, which the design covers, are not reported as missing.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}
