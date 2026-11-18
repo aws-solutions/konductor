@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useId } from 'react';
 import { CodeLines } from '../code-pane/CodeLines';
-import type { ConsoleLine } from './core/run-follow';
+import type { FollowedStage } from './core/run-follow';
 
-// The lines before the first one held. The cap of the buffer and the server's
-// own cap both drop the oldest lines, so the first number says how many.
-function droppedText(lines: readonly ConsoleLine[]): string | undefined {
-  const dropped = (lines[0]?.n ?? 1) - 1;
-  if (dropped <= 0) return undefined;
-  return dropped === 1
-    ? '1 earlier line is not shown.'
-    : `${dropped} earlier lines are not shown.`;
+// A stage can still print its first line only while it has not ended and
+// the run goes on.
+function canStillPrint(stage: FollowedStage, runFinished: boolean): boolean {
+  return (
+    !runFinished && (stage.status === 'pending' || stage.status === 'running')
+  );
+}
+
+// Why no line is shown. Lines that are gone, because the run ended, the
+// server started again or the run-wide cap dropped them, are not "yet".
+function emptyText(stage: FollowedStage, runFinished: boolean): string {
+  return !stage.dropped && canStillPrint(stage, runFinished)
+    ? 'No output yet.'
+    : 'No live output is available.';
 }
 
 /**
@@ -20,31 +26,36 @@ function droppedText(lines: readonly ConsoleLine[]): string | undefined {
  */
 export function ConsolePane({
   stage,
-  lines,
+  runFinished,
 }: {
-  stage: string;
-  /** The stage's lines, oldest first, as `applyRunEvents` keeps them. */
-  lines: readonly ConsoleLine[];
+  /** The stage as `applyRunEvents` keeps it, with its lines oldest first. */
+  stage: FollowedStage;
+  /** Whether the run has ended, so no further line can come. */
+  runFinished: boolean;
 }) {
   const noteId = useId();
-  const dropped = droppedText(lines);
+  const { name, console: lines } = stage;
   return (
-    <section className="wf-code-pane" aria-label={`Console of ${stage}`}>
+    <section className="wf-code-pane" aria-label={`Console of ${name}`}>
       <div className="wf-code-pane-head">
-        <h3 className="wf-code-pane-title">Console: {stage}</h3>
+        <h3 className="wf-code-pane-title">Console: {name}</h3>
         <p className="wf-code-note" id={noteId}>
           Live only, not saved.
         </p>
       </div>
-      {dropped && <p className="wf-code-note">{dropped}</p>}
       {lines.length === 0 ? (
-        <p className="wf-code-note">No output yet.</p>
+        <p className="wf-code-note">{emptyText(stage, runFinished)}</p>
       ) : (
-        <CodeLines
-          lines={lines}
-          label={`Console lines of ${stage}`}
-          describedBy={noteId}
-        />
+        <>
+          {stage.dropped && (
+            <p className="wf-code-note">Earlier lines are not shown.</p>
+          )}
+          <CodeLines
+            lines={lines}
+            label={`Console lines of ${name}`}
+            describedBy={noteId}
+          />
+        </>
       )}
     </section>
   );

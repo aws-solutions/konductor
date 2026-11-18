@@ -4,9 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { ConsolePane } from './ConsolePane';
 import {
   applyRunEvents,
-  CONSOLE_LINES_PER_STAGE,
+  CONSOLE_LINES_PER_RUN,
   startFollowing,
   type ConsoleLine,
+  type FollowedStage,
   type RunEvent,
 } from './core/run-follow';
 
@@ -15,6 +16,22 @@ const LINES: ConsoleLine[] = [
   { n: 2, text: 'Writing PLAN.md' },
 ];
 
+function stageWith(change: Partial<FollowedStage> = {}): FollowedStage {
+  return {
+    name: 'draft',
+    status: 'running',
+    console: LINES,
+    dropped: false,
+    ...change,
+  };
+}
+
+function renderPane(change: Partial<FollowedStage> = {}, runFinished = false) {
+  return render(
+    <ConsolePane stage={stageWith(change)} runFinished={runFinished} />,
+  );
+}
+
 function shownLines(): string[] {
   const region = screen.getByRole('region', { name: 'Console lines of draft' });
   return within(region)
@@ -22,9 +39,11 @@ function shownLines(): string[] {
     .map((item) => item.querySelector('.wf-code-text')?.textContent ?? '');
 }
 
+const NOT_SHOWN = 'Earlier lines are not shown.';
+
 describe('ConsolePane', () => {
   it('shows the lines of the stage in order', () => {
-    render(<ConsolePane stage="draft" lines={LINES} />);
+    renderPane();
 
     expect(
       screen.getByRole('heading', { name: 'Console: draft' }),
@@ -33,7 +52,7 @@ describe('ConsolePane', () => {
   });
 
   it('says the lines are live only and not saved, and ties that to the lines', () => {
-    render(<ConsolePane stage="draft" lines={LINES} />);
+    renderPane();
     const note = screen.getByText('Live only, not saved.');
     const region = screen.getByRole('region', {
       name: 'Console lines of draft',
@@ -48,19 +67,16 @@ describe('ConsolePane', () => {
       '<script>document.title="owned"</script>',
       '<b>not bold</b> &amp; &lt;',
     ];
-    const { container } = render(
-      <ConsolePane
-        stage="draft"
-        lines={hostile.map((text, index) => ({ n: index + 1, text }))}
-      />,
-    );
+    const { container } = renderPane({
+      console: hostile.map((text, index) => ({ n: index + 1, text })),
+    });
 
     expect(container.querySelector('img, script, b')).toBeNull();
     expect(shownLines()).toEqual(hostile);
   });
 
   it('can be scrolled with the keyboard', () => {
-    render(<ConsolePane stage="draft" lines={LINES} />);
+    renderPane();
     const region = screen.getByRole('region', {
       name: 'Console lines of draft',
     });
@@ -72,7 +88,7 @@ describe('ConsolePane', () => {
   });
 
   it('hides the line numbers from a screen reader', () => {
-    const { container } = render(<ConsolePane stage="draft" lines={LINES} />);
+    const { container } = renderPane();
     const numbers = [...container.querySelectorAll('.wf-code-n')];
 
     expect(numbers.map((n) => n.textContent)).toEqual(['1', '2']);
@@ -81,25 +97,20 @@ describe('ConsolePane', () => {
     );
   });
 
-  it.each([
-    [2, '1 earlier line is not shown.'],
-    [6, '5 earlier lines are not shown.'],
-  ])('says so when the first line held is line %i', (first, text) => {
-    render(
-      <ConsolePane stage="draft" lines={[{ n: first, text: 'later line' }]} />,
-    );
+  it('says earlier lines are not shown when the stage is marked dropped', () => {
+    renderPane({ console: [{ n: 6, text: 'later line' }], dropped: true });
 
-    expect(screen.getByText(text)).toBeTruthy();
+    expect(screen.getByText(NOT_SHOWN)).toBeTruthy();
   });
 
-  it('says nothing was dropped when the first line is held', () => {
-    render(<ConsolePane stage="draft" lines={LINES} />);
+  it('says nothing was dropped when the stage is not marked dropped', () => {
+    renderPane();
 
-    expect(screen.queryByText(/earlier lines? (is|are) not shown/)).toBeNull();
+    expect(screen.queryByText(NOT_SHOWN)).toBeNull();
   });
 
-  it('says how many lines the buffer of the run dropped', () => {
-    const over = CONSOLE_LINES_PER_STAGE + 3;
+  it('says so after the run-wide cap drops lines of the stage', () => {
+    const over = CONSOLE_LINES_PER_RUN + 3;
     const events: RunEvent[] = Array.from({ length: over }, (_, index) => ({
       seq: index + 1,
       type: 'console',
@@ -109,16 +120,74 @@ describe('ConsolePane', () => {
     }));
     const run = applyRunEvents(startFollowing(['draft']), events);
 
-    render(<ConsolePane stage="draft" lines={run.stages[0]!.console} />);
+    render(<ConsolePane stage={run.stages[0]!} runFinished={false} />);
 
-    expect(screen.getByText('3 earlier lines are not shown.')).toBeTruthy();
-    expect(shownLines()).toHaveLength(CONSOLE_LINES_PER_STAGE);
+    expect(screen.getByText(NOT_SHOWN)).toBeTruthy();
+    expect(shownLines()).toHaveLength(CONSOLE_LINES_PER_RUN);
   });
 
-  it('says there is no output before the first line', () => {
-    render(<ConsolePane stage="draft" lines={[]} />);
+  describe('with no line', () => {
+    it.each<[string, FollowedStage['status']]>([
+      ['pending', 'pending'],
+      ['running', 'running'],
+    ])(
+      'says there is no output yet while a %s stage can still print',
+      (_, status) => {
+        renderPane({ status, console: [] });
 
-    expect(screen.getByText('No output yet.')).toBeTruthy();
-    expect(screen.queryByRole('region', { name: /Console lines/ })).toBeNull();
+        expect(screen.getByText('No output yet.')).toBeTruthy();
+        expect(
+          screen.queryByRole('region', { name: /Console lines/ }),
+        ).toBeNull();
+      },
+    );
+
+    it('says no live output is available once the run has finished', () => {
+      // A finished run's events carry no console lines.
+      renderPane({ status: 'passed', console: [] }, true);
+
+      expect(screen.getByText('No live output is available.')).toBeTruthy();
+      expect(screen.queryByText('No output yet.')).toBeNull();
+    });
+
+    it('says no live output is available for a running stage of a finished run', () => {
+      // As after the server started again and the run was ended.
+      renderPane({ status: 'running', console: [] }, true);
+
+      expect(screen.getByText('No live output is available.')).toBeTruthy();
+    });
+
+    it.each<[string, FollowedStage['status']]>([
+      ['passed', 'passed'],
+      ['blocked', 'blocked'],
+    ])(
+      'says no live output is available for a %s stage while the run goes on',
+      (_, status) => {
+        renderPane({ status, console: [] });
+
+        expect(screen.getByText('No live output is available.')).toBeTruthy();
+      },
+    );
+
+    it('says no live output is available when the cap dropped every line of the stage', () => {
+      const run = applyRunEvents(startFollowing(['draft', 'review']), [
+        { seq: 1, type: 'console', stage: 'draft', n: 1, text: 'old' },
+        ...Array.from(
+          { length: CONSOLE_LINES_PER_RUN },
+          (_, index): RunEvent => ({
+            seq: index + 2,
+            type: 'console',
+            stage: 'review',
+            n: index + 1,
+            text: `line ${index + 1}`,
+          }),
+        ),
+      ]);
+
+      render(<ConsolePane stage={run.stages[0]!} runFinished={false} />);
+
+      expect(screen.getByText('No live output is available.')).toBeTruthy();
+      expect(screen.queryByText(NOT_SHOWN)).toBeNull();
+    });
   });
 });
