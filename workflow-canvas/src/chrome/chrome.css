@@ -44,8 +44,11 @@
   }
 }
 
+/* The room below keeps the last card off the bottom edge of the page, as on
+   its sides. A card that ends on the last row of the page is drawn with its
+   corners a shade off from one capture to the next. */
 .wf-mode-panel {
-  padding-block-start: 16px;
+  padding-block: 16px 24px;
 }
 
 /* The trail above the title. */
