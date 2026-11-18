@@ -40,7 +40,7 @@ right specialist, checks what comes back, and sends it back for fixes when it fa
   reviewed, pass one fresh reviewer; a standalone design, plan or requirements document passes its
   checker skill; a one-file change of at most 50 lines passes by build, test and lint, reported with the diff stat. Anything touching auth, secrets,
   data or infrastructure, and every threat model, gets the reviewer. Failed checks get one fix and one re-review.
-- 🧠 **Expertise built in.** 81 skills and 19 step-by-step workflows (SOPs) cover threat models,
+- 🧠 **Expertise built in.** 79 skills and 19 step-by-step workflows (SOPs) cover threat models,
   IAM policies, DynamoDB design, code review, E2E testing and more.
 - 🪶 **No infrastructure.** Agents are configuration (prompts, skills, SOPs) that your Kiro or
   Claude Code runtime runs directly. No servers, no extra accounts.
@@ -379,7 +379,7 @@ More walkthroughs: [understand a codebase](docs/user-guide/use-cases/understand-
 
 ## What's inside
 
-### 🧠 81 skills
+### 🧠 79 skills
 
 Skills are packaged expertise the agents load when they need it. For Claude Code, every skill in an
 agent's `skills:` frontmatter is injected in full at session start; other skills load on demand
@@ -387,7 +387,7 @@ agent's `skills:` frontmatter is injected in full at session start; other skills
 
 | Area | Count | Examples |
 | --- | ---: | --- |
-| Architecture & design | 22 | `system-design-patterns`, `threat-modeling`, `dynamodb-design`, `iam-policy-design`, `smithy-modeling`, `cost-estimation`, `adr-generator` |
+| Architecture & design | 20 | `system-design-patterns`, `threat-modeling`, `dynamodb-design`, `iam-policy-design`, `smithy-modeling`, `cost-estimation`, `decision-writing` |
 | Planning & tracking | 13 | `user-story-writing`, `task-decomposition`, `sprint-planning`, `risk-management`, `program-planning`, `progress-tracking` |
 | Development & review | 14 | `backend-development`, `frontend-development`, `infra-validation`, `code-review`, `git-workflow`, `adversarial-code-review` |
 | Orchestration & delegation | 13 | `delegation-protocol`, `sdlc-navigator`, `pre-planning-analysis`, `persistent-memory`, `workspace-skills`, `mux-dispatch` |
@@ -442,10 +442,13 @@ mkdir -p .konductor && curl -fsSL https://raw.githubusercontent.com/aws-solution
 
 ### 🔌 Integrations
 
-AWS MCP comes pre-wired for `k-architect` and `k-developer` on Claude Code, launched through
-`mcp-proxy-for-aws-cli==1.7.0`. You need `uvx` and AWS credentials. Both agents get the full server,
-including AWS API tools, so scope agent-initiated calls with the `aws:ViaAWSMCPService` and
-`aws:CalledViaAWSMCP` IAM condition keys. Kiro CLI users add `aws-mcp` to their own MCP config,
+AWS MCP comes pre-wired for `konductor`, `k-architect` and `k-developer` on Claude Code, launched
+through `mcp-proxy-for-aws-cli==1.7.0`. You need `uvx`. The agents start the proxy with
+`--skip-auth`, so documentation search and skills work without AWS credentials; calls that act on
+an account still need them. `k-architect` and
+`k-developer` get the full server, including AWS API tools, so scope agent-initiated calls with the
+`aws:ViaAWSMCPService` and `aws:CalledViaAWSMCP` IAM condition keys. `konductor` is granted only the five
+read-only documentation, skill and Region tools, by name, on both harnesses. Kiro CLI users add `aws-mcp` to their own MCP config,
 where knowledge tools are auto-approved and API tools ask first. See
 [Install for Claude Code](docs/user-guide/tasks/install-claude-code.md#optional-integrations) or
 [Install for Kiro CLI](docs/user-guide/tasks/install-kiro-cli.md).
@@ -476,7 +479,7 @@ the README, `LICENSE.txt` and `NOTICE.txt`.
 konductor/
 ├── agents/        11 agent specs (*.agent-spec.json)
 ├── agent-sops/    19 SOPs (*.sop.md)
-├── skills/        81 skills (skills/<name>/SKILL.md)
+├── skills/        79 skills (skills/<name>/SKILL.md)
 ├── context/       Context loaded at agent startup (core rules for every agent, orchestrator routing rules)
 ├── cli/           The konductor CLI (Rust)
 ├── mcp/           The skill-lookup MCP server

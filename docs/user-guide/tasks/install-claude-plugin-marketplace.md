@@ -65,7 +65,7 @@ manages CLI-tracked installs.
 
 ## AWS MCP
 
-The plugin bundles `aws-mcp` for `k-architect` and `k-developer`. Install
+The plugin bundles `aws-mcp` for `konductor`, `k-architect` and `k-developer`. Install
 `uvx` and configure AWS credentials before using AWS API tools. The proxy is
 pinned; AWS documentation and skills still come from the managed endpoint at
 request time.
