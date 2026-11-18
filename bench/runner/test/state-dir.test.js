@@ -12,7 +12,19 @@ const SCRIPTS = path.join(__dirname, '..', '..', 'scripts');
 const LIB = path.join(SCRIPTS, 'state-dir.sh');
 const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'sd-test-'));
+const dirs = [];
+const tmp = () => { const d = fs.mkdtempSync(path.join(os.tmpdir(), 'sd-test-')); dirs.push(d); return d; };
+// Some tests make a read-only dir ('ro', mode 500) inside their root; make every dir writable again so removal never stops on one.
+function makeWritable(dir) {
+  fs.chmodSync(dir, 0o700);
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) if (e.isDirectory()) makeWritable(path.join(dir, e.name));
+}
+test.after(() => {
+  for (const d of dirs.splice(0)) {
+    try { makeWritable(d); } catch { /* rmSync below reports what is left */ }
+    fs.rmSync(d, { recursive: true, force: true });
+  }
+});
 const modeOf = (p) => fs.statSync(p).mode & 0o777;
 
 function resolve(env, args = ['']) {

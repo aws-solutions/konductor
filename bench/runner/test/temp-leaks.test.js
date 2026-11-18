@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Task test files that once left temp dirs on every validator and suite run (notes-, notes-hidden-, led-hidden-,
-// led-cfg-). Each one runs here in its own task workspace with a fresh TMPDIR, which must be empty afterwards.
+// Test files that once left temp dirs on every validator and suite run (notes-, notes-hidden-, led-hidden-,
+// led-cfg-, skilleval-test-, sd-test-). Each one runs here with a fresh TMPDIR, which must be empty afterwards.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -41,5 +41,19 @@ const CASES = [
 for (const c of CASES) {
   test(`${c.name}: nothing is left in TMPDIR`, () => {
     assert.deepEqual(leftBehind(workspace(c.ws), c.files), []);
+  });
+}
+
+// Bench test files that once left their own temp dirs (skilleval-test-, sd-test- with a read-only 'ro' dir inside).
+// They run in place, from the repository root.
+const REPO = path.join(__dirname, '..', '..', '..');
+const IN_PLACE = [
+  { name: 'bench/skilleval/test/skilleval.test.js (skilleval-test-)', files: ['bench/skilleval/test/skilleval.test.js'] },
+  { name: 'bench/runner/test/state-dir.test.js (sd-test-)', files: ['bench/runner/test/state-dir.test.js'] },
+];
+
+for (const c of IN_PLACE) {
+  test(`${c.name}: nothing is left in TMPDIR`, () => {
+    assert.deepEqual(leftBehind(REPO, c.files), []);
   });
 }

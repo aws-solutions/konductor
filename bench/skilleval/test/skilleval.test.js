@@ -21,7 +21,9 @@ const { emit, checkTask } = require('../lib/emit.js');
 const { loadTasks, loadSuite, isSuiteName } = require('../../runner/lib/tasks.js');
 const { main } = require('../skilleval.js');
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'skilleval-test-'));
+const dirs = [];
+const tmp = () => { const d = fs.mkdtempSync(path.join(os.tmpdir(), 'skilleval-test-')); dirs.push(d); return d; };
+test.after(() => { for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true }); });
 const SKILL = `---
 name: widget-audit
 description: Audits widget inventories for stale entries. Use when reviewing a widget list before a release.
