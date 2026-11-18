@@ -103,7 +103,9 @@ def _konductor_loaded_files():
 
 
 def test_bundle_reference_block_counts_konductor_skills_from_the_spec():
-    count = len(_spec("konductor")["clientConfig"]["claudeCli"]["skills"])
+    spec = _spec("konductor")
+    claude_skills = set(spec["dependencies"]["skills"]["skillNames"]) | set(spec["clientConfig"]["claudeCli"]["skills"])
+    count = len(claude_skills - {"humanize-writing"})
     for rel in ("docs/index.html", "docs/site/user-guide.html"):
         body = (ROOT / rel).read_text(encoding="utf-8")
         assert f"konductor skills ({count})" in body, rel

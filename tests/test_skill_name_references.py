@@ -5,8 +5,8 @@
    context/ and docs/user-guide/, and every name in an agent's skill slots, is a
    skill under skills/ or a skill the AWS MCP server serves.
 2. When an agent declares skill S and S tells the agent to load local skill T,
-   the agent declares T in both dependencies.skills.skillNames and
-   clientConfig.claudeCli.skills.
+   the agent declares T in dependencies.skills.skillNames. The
+   clientConfig.claudeCli.skills preload does not need it.
 
 No network: the AWS MCP skill names are pinned below.
 
@@ -165,14 +165,14 @@ def load_targets(skill):
 
 
 def closure_gaps(agent, spec):
+    # skillNames is what both harnesses can load: Claude Code lists every entry
+    # not in the claudeCli.skills preload under "Skills you can load".
     skill_names, claude = _slots(spec)
     gaps = []
     for skill in sorted((skill_names | claude) & LOCAL_SKILLS):
         for target in sorted(load_targets(skill)):
-            missing = [slot for slot, names in (("skillNames", skill_names), ("claudeCli.skills", claude))
-                       if target not in names]
-            if missing:
-                gaps.append(f"{skill} loads {target}, missing from {', '.join(missing)}")
+            if target not in skill_names:
+                gaps.append(f"{skill} loads {target}, missing from skillNames")
     return gaps
 
 
