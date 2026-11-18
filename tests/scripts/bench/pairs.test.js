@@ -1680,6 +1680,145 @@ test('runPairs: a first run that fails outright does not stop the job, and a val
   });
 });
 
+// A fault that hits every launch the same way must not run every pending run with all its tries.
+const FAILED_LAUNCH = {
+  code: 1,
+  stdout: '',
+  stderr: 'error: unknown option --settings',
+};
+/** A stub whose run number (in the order the jobs first appear) decides whether every launch of it fails outright. */
+function stubFailingRuns(failing) {
+  const order = new Map();
+  return stubRun((call) => {
+    const key = `${call.arm}|${call.request}`;
+    if (!order.has(key)) order.set(key, order.size);
+    return failing(order.get(key)) ? FAILED_LAUNCH : answerFor(call);
+  });
+}
+
+test('runPairs: runs in a row that fail outright stop the job at the fourth, with kind systemic and the launches of those four runs only', async () => {
+  await withRepo(async ({ layout, tmpRoot, options }) => {
+    const stub = stubFailingRuns(() => true);
+    const lines = [];
+    const summary = await runPairs(
+      options({
+        run: stub.run,
+        config: helpers.exampleConfig({ subject_concurrency: 1 }),
+        log: (line) => lines.push(line),
+      }),
+    );
+    assert.equal(summary.status, 'stopped');
+    assert.equal(summary.stop.kind, 'systemic');
+    assert.match(summary.stop.message, /4 calls in a row failed every try/);
+    assert.match(summary.stop.message, /unknown option/);
+    assert.deepEqual(
+      summary.results.map((entry) => entry.status),
+      ['failed', 'failed', 'failed', 'failed', ...Array(6).fill('skipped')],
+    );
+    assert.equal(stub.calls.length, 12, '4 runs of 3 tries, not 10 runs of 3');
+    assert.deepEqual(
+      answerFiles(layout),
+      [],
+      'nothing is stored for a failed run',
+    );
+    assert.deepEqual(armsLeft(tmpRoot), []);
+    assert.ok(lines.some((line) => /STOP \(systemic\)/.test(line)));
+    for (const entry of summary.results)
+      assert.ok(!('failedOutright' in entry), 'no internal field is left');
+    const settles = fs
+      .readFileSync(layout.ledgerFile, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line))
+      .filter((row) => row.type === 'settle');
+    assert.equal(settles.length, 12);
+  });
+});
+
+test('runPairs: a run that gets a result resets the streak, so scattered failures stop nothing', async () => {
+  await withRepo(async ({ options }) => {
+    // Runs 0, 1, 3, 4, 5, 7 and 8 fail outright and 2, 6 and 9 do not: the longest streak is 3.
+    const failing = new Set([0, 1, 3, 4, 5, 7, 8]);
+    const stub = stubFailingRuns((index) => failing.has(index));
+    const summary = await runPairs(
+      options({
+        run: stub.run,
+        config: helpers.exampleConfig({ subject_concurrency: 1 }),
+      }),
+    );
+    assert.equal(summary.stop, null);
+    assert.equal(summary.status, 'partial');
+    assert.deepEqual(
+      summary.results.map((entry) => entry.status),
+      [
+        'failed',
+        'failed',
+        'ok',
+        'failed',
+        'failed',
+        'failed',
+        'ok',
+        'failed',
+        'failed',
+        'ok',
+      ],
+    );
+    assert.equal(stub.calls.length, 7 * 3 + 3);
+  });
+});
+
+test('runPairs: three failed runs in a row and then a valid one do not stop the job, and the first run counts in the streak', async () => {
+  await withRepo(async ({ options }) => {
+    const stub = stubFailingRuns((index) => index < 3);
+    const summary = await runPairs(
+      options({
+        run: stub.run,
+        config: helpers.exampleConfig({ subject_concurrency: 1 }),
+      }),
+    );
+    assert.equal(summary.stop, null);
+    assert.deepEqual(
+      summary.results.map((entry) => entry.status),
+      ['failed', 'failed', 'failed', ...Array(7).fill('ok')],
+    );
+    const four = stubFailingRuns((index) => index < 4);
+    await withRepo(async ({ options: again }) => {
+      const stopped = await runPairs(
+        again({
+          run: four.run,
+          config: helpers.exampleConfig({ subject_concurrency: 1 }),
+        }),
+      );
+      assert.equal(
+        stopped.stop.kind,
+        'systemic',
+        'four in a row, the first included',
+      );
+    });
+  });
+});
+
+test('runPairs: a failed launch that a retry makes up for is not a failed run, however many runs have one', async () => {
+  await withRepo(async ({ options }) => {
+    const seen = new Set();
+    const stub = stubRun((call) => {
+      const key = `${call.arm}|${call.request}`;
+      if (seen.has(key)) return answerFor(call);
+      seen.add(key);
+      return FAILED_LAUNCH;
+    });
+    const summary = await runPairs(
+      options({
+        run: stub.run,
+        config: helpers.exampleConfig({ subject_concurrency: 1 }),
+      }),
+    );
+    assert.equal(summary.stop, null);
+    assert.equal(summary.status, 'done');
+    assert.equal(stub.calls.length, 20);
+  });
+});
+
 test('writeRecord: writes through a temporary file with mode 0600 and removes it when the rename fails', () => {
   helpers.withTmp((dir) => {
     const file = path.join(dir, 'sub', 'answer.json');

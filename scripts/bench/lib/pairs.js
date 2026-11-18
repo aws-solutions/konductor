@@ -32,6 +32,12 @@
  * from the ledger, a ledger that cannot be used, and a security stop from the secret sweep end the job: no new run
  * starts, runs already going finish, and finished answers are kept. The result says which stop and why.
  *
+ * Failed runs in a row. A run in which no try got a result (the CLI exited with an error or printed no answer) is a
+ * failed run, and one such run alone is bad luck and stops nothing. A breaker (retry.js) counts the failed runs in a
+ * row, the first included, and a run that got a result resets it: the job stops (stop kind `systemic`) at the fourth,
+ * because a fault that hits every launch the same way (a CLI too old for a flag, a wrapper that cannot start, a region
+ * where the model is not enabled) would otherwise run every pending run with all its tries.
+ *
  * Every answer and run folder is under bench/out/<run-id>/ (layout.js). Folders are mode 0700 and files 0600.
  */
 'use strict';
@@ -60,6 +66,7 @@ const {
 } = require('./ledger');
 const { callCost } = require('./cost-profile');
 const { buildPlan } = require('./plan');
+const { createBreaker, SystemicFailureError } = require('./retry');
 const { fileSha256, sha256 } = require('./provenance');
 const { readJsonFile } = require('./read-file');
 const { redact } = require('./redact');
@@ -450,6 +457,8 @@ async function runPairs({
         ? await readSkillsVersion(layout.root)
         : skillsVersion;
     const now = subject.now || Date.now;
+    // Runs in a row in which no try got a result. A lone failure is bad luck; a streak is a fault of the setup.
+    const breaker = createBreaker();
 
     const runOne = async (job) => {
       const entry = {
@@ -504,6 +513,13 @@ async function runPairs({
       }
       entry.status = outcome.status;
       const { result } = outcome;
+      const failedOutright =
+        outcome.tries.length > 0 &&
+        outcome.tries.every((attempt) => attempt.ok === false);
+      if (failedOutright)
+        entry.failedOutright = `${outcome.tries.length} try(ies) failed outright, the last with: ${
+          outcome.tries[outcome.tries.length - 1].error || 'no error text'
+        }`;
       const modelsUsed = Array.isArray(result.modelsUsed)
         ? result.modelsUsed
         : [];
@@ -535,6 +551,16 @@ async function runPairs({
       log(
         `  ${jobLabel(job)} ${entry.status} loaded=${result.skillLoad.loaded} model_ok=${modelUsageOk(result.modelsUsed, config.models.subject)} tries=${outcome.tries.length}${result.error ? ` error: ${result.error}` : ''}`,
       );
+      if (!failedOutright) breaker.recordSuccess();
+      else
+        try {
+          breaker.recordFailure(entry.failedOutright);
+        } catch (error) {
+          if (!(error instanceof SystemicFailureError)) throw error;
+          const stop = stopOf('systemic', error.message);
+          summary.stop = summary.stop || stop;
+          log(`  ${jobLabel(job)}: STOP (${stop.kind}) ${stop.message}`);
+        }
       return entry;
     };
 
@@ -567,6 +593,7 @@ async function runPairs({
     for (const entry of summary.results) {
       delete entry.wrongModel;
       delete entry.setupProblems;
+      delete entry.failedOutright;
     }
     summary.estimated = tracker.estimated();
     if (summary.estimated)
