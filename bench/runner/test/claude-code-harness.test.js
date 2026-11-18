@@ -66,7 +66,7 @@ function setup(stream = 'vanilla-success', cfg = {}, { pin = CANON, names = AGEN
   const watch = path.join(root, 'watch');
   fs.mkdirSync(watch);
   const ctx = {
-    config: { model: MODEL, canonicalModel: CANON, effort: 'default' }, scratchDir, claude: cc.resolveClaude({ binOverride: bin }), claudeTmpBases: [tmpBase], envKeep: [],
+    config: { model: MODEL, canonicalModel: CANON, effort: 'high' }, scratchDir, claude: cc.resolveClaude({ binOverride: bin }), claudeTmpBases: [tmpBase], envKeep: [],
     envInfo: { kiroCliVersion: null, harnessVersion: '9.9.9', modelListSnapshotPath: null, region: 'us-east-1' },
     isolation: { mode: 'none' }, runBudgetUsd: 0.75,
     tripwire: { roots: [{ dir: watch, depth: 2 }], extraExcludes: [], absExclude: [scratchDir, path.join(root, 'out')] },
@@ -209,11 +209,11 @@ test('binaryContains finds a flag across a chunk boundary', () => {
 
 test('buildCommand: the verified launch shape, tool list last, no max-turns, budget mapped', () => {
   const ctx = { claude: { bin: '/x/claude', supportsHookEvents: true }, runBudgetUsd: 1.5 };
-  const config = { model: MODEL, canonicalModel: CANON };
+  const config = { model: MODEL, canonicalModel: CANON, effort: 'high' };
   const van = cc.buildCommand({ arm: CC_VANILLA, task: { prompt: 'do it' }, config, ctx });
   assert.equal(van.file, '/x/claude');
   assert.equal(van.stdin, 'do it');
-  assert.deepEqual(van.args, ['-p', '--output-format', 'stream-json', '--verbose', '--model', MODEL, '--max-budget-usd', '1.5', '--permission-mode', 'acceptEdits', '--allowedTools', 'Bash', 'Edit', 'Write', 'Read']);
+  assert.deepEqual(van.args, ['-p', '--output-format', 'stream-json', '--verbose', '--model', MODEL, '--max-budget-usd', '1.5', '--permission-mode', 'acceptEdits', '--effort', 'high', '--allowedTools', 'Bash', 'Edit', 'Write', 'Read']);
   const kon = cc.buildCommand({ arm: CC_KONDUCTOR, task: { prompt: 'do it' }, config, ctx });
   assert.ok(kon.args.includes('--include-hook-events'));
   assert.deepEqual(kon.args.slice(kon.args.indexOf('--agent'), kon.args.indexOf('--agent') + 2), ['--agent', 'konductor']);

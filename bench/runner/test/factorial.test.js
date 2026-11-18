@@ -190,6 +190,19 @@ test('an unjudged cell, a wrong harness, a wrong arm and different models are re
   assert.throws(() => build(bench, { ...d, ccVanilla: [] }), /cell ccVanilla.*no run directory given/);
 });
 
+test('every cell must run at one effort level: a Claude Code cell at "default" next to Kiro at high is refused, the same level is shown', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const high = { extra: () => ({ effort: 'high' }) };
+  const old = { extra: () => ({ effort: 'default' }) };
+  assert.throws(() => build(bench, four(root, bench, { all: high, cv: old, ck: old })), /effort differs: kiroVanilla ran at high, ccVanilla at default/);
+  assert.throws(() => build(bench, four(root, bench, { all: high, kv: { extra: (t) => ({ effort: t === 't1' ? 'max' : 'high' }) } })), /cell kiroVanilla.*more than one effort level \(high, max\)/);
+  const res = build(bench, four(root, bench, { all: high }));
+  assert.equal(res.effort, 'high');
+  assert.ok(res.cells.every((c) => c.effort === 'high'));
+  assert.match(toMarkdown(renderFactorial(res)), /effort high in every cell/);
+});
+
 test('the two konductor cells must come from one recorded commit each', () => {
   const root = tmp();
   const bench = benchWith(root);

@@ -46,7 +46,6 @@ const CC_ONLY = (flag) => `--${flag} applies to Claude Code (cc-) arms only`;
 const NO_ENGINE = (rt) => `--agent-engine applies to kiro-cli arms only; ${rt} arms have no agent engine`;
 const PREPARE = '--prepare-only covers kiro-cli and Claude Code arms; opencode and Strands arms need their binary and AWS credentials, so check them with a normal run';
 const CC_NO = {
-  effort: 'the effort level is not passed to claude, so a value would be recorded but not applied',
   'stop-on': 'the early-stop watcher reads kiro-cli and opencode events only',
   'max-tool-calls': 'the early-stop watcher reads kiro-cli and opencode events only',
   'aws-creds-file': 'credentials come from the AWS_* variables in the environment that starts the bench, or from --aws-profile',
@@ -98,8 +97,16 @@ test('a Claude Code arm with credentials set is refused --run-credit-limit, and 
 test('the first refused Claude Code flag in table order is the one reported', () => {
   const s = setup();
   try {
-    const r = run(s, ['--arms', 'cc-vanilla', '--aws-profile', 'p', '--stop-on', 'end_turn', '--effort', 'high']);
-    assert.equal(refusal(r), `--effort does not apply to Claude Code arms (${CC_NO.effort})`);
+    const r = run(s, ['--arms', 'cc-vanilla', '--aws-profile', 'p', '--max-tool-calls', '3', '--stop-on', 'end_turn']);
+    assert.equal(refusal(r), `--stop-on does not apply to Claude Code arms (${CC_NO['stop-on']})`);
+  } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
+});
+
+test('a Claude Code arm takes --effort at a claude level, and refuses a level claude does not have', () => {
+  const s = setup();
+  try {
+    assert.match(run(s, ['--arms', 'cc-vanilla', '--effort', 'turbo']).stderr, /--effort turbo is not a claude --effort level \(use low, medium, high, xhigh, max\)/);
+    assert.equal(refusal(run(s, ['--arms', 'cc-vanilla', '--effort', 'xhigh'])), undefined);
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
 });
 
@@ -153,8 +160,8 @@ test('a Claude Code arm refuses an autonomy task with the full text, and the fla
   try {
     const r = run(s, ['--arms', 'cc-vanilla']);
     assert.equal(refusal(r), 'multi-turn (autonomy) tasks are not supported on the Claude Code harness yet: t1; the resume flags have not been verified. Choose other tasks with --tasks');
-    const both = run(s, ['--arms', 'cc-vanilla', '--effort', 'high']);
-    assert.match(refusal(both), /^--effort does not apply to Claude Code arms/);
+    const both = run(s, ['--arms', 'cc-vanilla', '--stop-on', 'end_turn']);
+    assert.match(refusal(both), /^--stop-on does not apply to Claude Code arms/);
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
 });
 

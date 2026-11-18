@@ -49,7 +49,7 @@ const CASES = {
     },
   },
   'claude-code': {
-    config: { model: 'us.anthropic.claude-sonnet-5-5', canonicalModel: 'claude-sonnet-5-5', effort: 'default' },
+    config: { model: 'us.anthropic.claude-sonnet-5-5', canonicalModel: 'claude-sonnet-5-5', effort: 'high' },
     setup: () => ({ claude: { version: '9.9.9' } }),
   },
   // Only the scripted fake model is enabled for Strands, so its runs cost nothing.

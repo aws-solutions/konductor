@@ -122,8 +122,11 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack, quoteR
 
   const model = canonicalModel(run.config.canonicalModel ?? rows.find((r) => r.model)?.model ?? run.config.model);
   const shas = uniq(executed.map((e) => e.result.commitSha).filter(Boolean));
+  // The effort level each run was started at. A Claude Code run from before bench passed --effort to claude records "default".
+  const efforts = uniq(executed.map((e) => e.result.effort ?? 'unrecorded')).sort();
+  if (efforts.length > 1) throw new Error(`${where}: its runs were started at more than one effort level (${efforts.join(', ')}); a cell holds one effort level`);
   const modelsSeen = uniq(executed.flatMap((e) => (e.result.claudeCode?.modelsSeen ?? [e.result.sessionModel ?? e.result.model]).filter(Boolean))).sort();
-  return { run, spec, dirs: run.dirs ?? [run.dir], quote: a.quote, armId, rows, unit: a.scores.unit, panel, revisions, model, modelsSeen, pin: a.facts.pin ?? null, shas, harnessVersion: executed[0].result.harnessVersion ?? executed[0].result.kiroCliVersion ?? null };
+  return { run, spec, dirs: run.dirs ?? [run.dir], quote: a.quote, armId, rows, unit: a.scores.unit, panel, revisions, model, modelsSeen, pin: a.facts.pin ?? null, shas, effort: efforts[0], harnessVersion: executed[0].result.harnessVersion ?? executed[0].result.kiroCliVersion ?? null };
 }
 
 const sameJson = (x, y) => JSON.stringify(x) === JSON.stringify(y);
@@ -135,6 +138,7 @@ function checkComparable(cells) {
     if (!sameJson(c.panel.judges, first.panel.judges)) throw new Error(`judge panel differs: ${first.spec.id} has ${first.panel.judges.join(', ')}; ${c.spec.id} has ${c.panel.judges.join(', ')}`);
     if (!sameJson(c.panel.models, first.panel.models)) throw new Error(`judge model ids differ between ${first.spec.id} and ${c.spec.id}`);
     if (c.model !== first.model) throw new Error(`model differs: ${first.spec.id} ran ${first.model}, ${c.spec.id} ran ${c.model}`);
+    if (c.effort !== first.effort) throw new Error(`effort differs: ${first.spec.id} ran at ${first.effort}, ${c.spec.id} at ${c.effort}; every cell must run at the same --effort level (a Claude Code run made before bench passed --effort to claude records "default")`);
   }
   const taskSets = cells.map((c) => uniq(c.rows.map((r) => r.task)).sort());
   const all = uniq(taskSets.flat()).sort();
@@ -182,7 +186,7 @@ function summarizeCell(c, tasks) {
   const taskMeansKept = tasks.map((t) => byTask[t].qualityExclTimeouts).filter(fin);
   const scoredRows = rows.filter((r) => !r.excluded);
   return {
-    id: c.spec.id, harness: c.spec.harness, role: c.spec.role, arm: c.armId, unit: c.unit, dirs: c.dirs, model: c.model, harnessVersion: c.harnessVersion,
+    id: c.spec.id, harness: c.spec.harness, role: c.spec.role, arm: c.armId, unit: c.unit, dirs: c.dirs, model: c.model, effort: c.effort, harnessVersion: c.harnessVersion,
     runs: executed, success: clean, passed: rows.filter((r) => r.outcome === 'good').length, timeouts: rows.filter((r) => r.timeout).length,
     errors: rows.filter((r) => r.outcome === 'error').length, excluded: rows.filter((r) => r.excluded).length,
     quality: mean(taskMeans), qualityExclTimeouts: mean(taskMeansKept), byTask,
@@ -263,7 +267,7 @@ function buildFactorial({ dirs, arms = {}, benchDir, extraDirs = [], scoringFile
   const quote = mergeQuote(loaded.map((c) => c.quote));
   const result = {
     schemaVersion: 1, kind: 'factorial-2x2', quote, tasks: taskIds, replicates: { min: reps.min, perTask: reps.perTask },
-    descriptive: !intervals, descriptiveReason, model: loaded[0].model, units: { 'kiro-cli': 'credits', 'claude-code': 'USD' },
+    descriptive: !intervals, descriptiveReason, model: loaded[0].model, effort: loaded[0].effort, units: { 'kiro-cli': 'credits', 'claude-code': 'USD' },
     judges: { backend: loaded[0].panel.backend, panel: loaded[0].panel.judges, models: loaded[0].panel.models },
     weights, cells, contrasts, costRatios, notes: out,
     ...(qualityDimensions ? { qualityDimensions } : {}),
@@ -395,7 +399,7 @@ function renderFactorial(res, { charts = null } = {}) {
     D.note(res.descriptive
       ? `${res.descriptiveReason}. These are the observed numbers of one pilot, not statistics: no interval is shown and no effect should be called real from them.`
       : `Intervals are paired by task (t interval on the per-task differences) over ${res.tasks.length} tasks with at least ${MIN_REPS} replicates per cell.`),
-    D.p(`Model ${res.model}. Quality is the repository score (${qualityWeightsText(res.weights)}, renormalised over what a run has, times 100). Judges: ${res.judges.panel.join(', ')} (${res.judges.backend}). Tasks: ${res.tasks.join(', ')}.`),
+    D.p(`Model ${res.model}, effort ${res.effort} in every cell. Quality is the repository score (${qualityWeightsText(res.weights)}, renormalised over what a run has, times 100). Judges: ${res.judges.panel.join(', ')} (${res.judges.backend}). Tasks: ${res.tasks.join(', ')}.`),
     D.h(2, 'Quality by cell'),
     D.table(head, [...taskRows,
       ['**mean over tasks**', ...cols.map((c) => `**${f1(c.quality)}**`)],

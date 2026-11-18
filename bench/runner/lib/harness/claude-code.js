@@ -28,6 +28,15 @@ const DEFAULT_MODEL = 'us.anthropic.claude-sonnet-5-5';
 const REGION = 'us-east-1';
 const PERMISSION_MODE = 'acceptEdits';
 const ALLOWED_TOOLS = ['Bash', 'Edit', 'Write', 'Read'];
+// The levels `claude --effort` takes (`claude --help` of 2.1.326: low, medium, high, xhigh, max). bench passes the level
+// as given, so a Claude Code arm and a Kiro CLI arm at --effort high run at the same named level.
+const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
+
+/** `effort` when `claude --effort` takes it; throws naming the levels otherwise. */
+function effortOf(effort) {
+  if (!EFFORT_LEVELS.includes(effort)) throw new Error(`--effort ${effort} is not a claude --effort level (use ${EFFORT_LEVELS.join(', ')})`);
+  return effort;
+}
 const DEFAULT_RUN_BUDGET_USD = 5;
 // The Claude Code version the stream parser and the harness flags were checked against.
 const VALIDATED_VERSION = '2.1.316.1544';
@@ -105,7 +114,7 @@ function resolveClaude({ binOverride = process.env.BENCH_CLAUDE_BIN || null, too
   const problem = launcherProblem(bin, minBytes);
   if (problem) throw new Error(`${bin}: this is a launcher, not the claude binary; it can override the model, region and credentials (${problem}). Pass the real binary with --claude-bin PATH or --claude-tools-dir DIR`);
   version = version ?? path.basename(path.dirname(bin)).match(/^\d+(\.\d+)+$/)?.[0] ?? 'unknown';
-  return { bin, version, sha256: sandbox.sha256File(bin), supportsHookEvents: binaryContains(bin, '--include-hook-events') };
+  return { bin, version, sha256: sandbox.sha256File(bin), supportsHookEvents: binaryContains(bin, '--include-hook-events'), supportsEffort: binaryContains(bin, '--effort') };
 }
 
 /**
@@ -197,6 +206,7 @@ function buildCommand({ arm, task, config, ctx, resume = null }) {
     '--model', config.model,
     '--max-budget-usd', String(ctx.runBudgetUsd ?? DEFAULT_RUN_BUDGET_USD),
     '--permission-mode', PERMISSION_MODE,
+    '--effort', config.effort,
   ];
   if (arm.agent) args.push('--agent', arm.agent);
   if (!arm.vanilla && ctx.claude?.supportsHookEvents) args.push('--include-hook-events');
@@ -427,8 +437,8 @@ function runConfigRecord({ ctx, config, region, runBudgetUsd, arms = [] }) {
     binaryName: path.basename(ctx.claude.bin), version: ctx.claude.version, binarySha256: ctx.claude.sha256, supportsHookEvents: ctx.claude.supportsHookEvents,
     provider: PROVIDER, modelId: config.model, canonicalModel: config.canonicalModel, region,
     permissionMode: PERMISSION_MODE, allowedTools: ALLOWED_TOOLS, maxBudgetUsdPerRun: runBudgetUsd ?? DEFAULT_RUN_BUDGET_USD,
-    flags: ['-p', '--output-format stream-json', '--verbose', '--model', '--max-budget-usd', '--permission-mode', '--allowedTools', '--agent (konductor arms)', ...(ctx.claude.supportsHookEvents ? ['--include-hook-events (konductor arms)'] : [])],
-    effort: { applied: false, note: 'claude --effort is not passed; the effort field of a result is "default"' },
+    flags: ['-p', '--output-format stream-json', '--verbose', '--model', '--max-budget-usd', '--permission-mode', '--effort', '--allowedTools', '--agent (konductor arms)', ...(ctx.claude.supportsHookEvents ? ['--include-hook-events (konductor arms)'] : [])],
+    effort: { applied: true, flag: '--effort', level: config.effort },
     credentials: ctx.awsCreds
       ? { mode: 'profile (keys read with aws configure export-credentials and exported to each run; no profile variables)', profile: ctx.awsCreds.profile, refresh: 'read again before a run when the cached keys carry no expiry or expire within 15 minutes', variableNames: CREDENTIAL_VARS, notPassedWhenSet: PROFILE_VARS.filter((k) => process.env[k] !== undefined) }
       : { mode: 'environment (exported keys; no profile variables)', variableNames: credentialNames(), notPassedWhenSet: PROFILE_VARS.filter((k) => process.env[k] !== undefined) },
@@ -445,7 +455,7 @@ function runConfigRecord({ ctx, config, region, runBudgetUsd, arms = [] }) {
 const keepPaths = (ctx) => [ctx.claude?.bin].filter(Boolean);
 
 module.exports = {
-  id, meta, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
+  id, meta, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
   resolveClaude, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,

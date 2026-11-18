@@ -36,7 +36,7 @@ function dirArm(root, name, contentHash) {
 function ctxFor(root, { pin = CANON, builds = [] } = {}) {
   return {
     repo: root, cacheDir: path.join(root, 'cache'), cargoTarget: path.join(root, 'target'), scratchDir: path.join(root, 'scratch'),
-    config: { model: 'us.anthropic.claude-sonnet-5-5', canonicalModel: CANON, effort: 'default' },
+    config: { model: 'us.anthropic.claude-sonnet-5-5', canonicalModel: CANON, effort: 'high' },
     claudeBuild: (arm, ctx, { exportDir, bin }) => {
       builds.push(arm.id);
       write(path.join(exportDir, 'dist/claude/marker'), 'synth');
@@ -214,7 +214,7 @@ const REAL_SRC = process.env.KONDUCTOR_TEST_SRC;
 test('real konductor install --harness claude: 11 agents, dashed pin, rules file', { skip: REAL_BIN && REAL_SRC ? false : 'set KONDUCTOR_TEST_BIN (a built konductor) and KONDUCTOR_TEST_SRC (a source tree after `konductor synth`) to run' }, () => {
   const root = tmp();
   try {
-    const ctx = { config: { model: 'us.anthropic.claude-sonnet-5-5', canonicalModel: CANON, effort: 'default' }, claude: { version: 'test' } };
+    const ctx = { config: { model: 'us.anthropic.claude-sonnet-5-5', canonicalModel: CANON, effort: 'high' }, claude: { version: 'test' } };
     const home = path.join(root, 'home');
     const meta = cc.installInto(home, { arm: { vanilla: false, agent: 'konductor' }, prepared: { bin: REAL_BIN, exportDir: REAL_SRC }, ctx, config: ctx.config, outDir: null });
     assert.equal(meta.installedAgents, 11);

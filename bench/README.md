@@ -454,10 +454,12 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
   `claude` and be at least 50 MB): a launcher can override the model, region and credentials, so a vanilla arm through it is
   not vanilla. Version, file name and sha256 go to run-config; a version other than the validated one logs a warning.
 - Command: `claude -p PROMPT --output-format stream-json --verbose --model us.anthropic.claude-sonnet-5-5 --max-budget-usd N
-  --permission-mode acceptEdits [--agent konductor] [--include-hook-events] --allowedTools Bash Edit Write Read`, stdin from
-  `/dev/null`. `--max-budget-usd` is `--run-budget-usd` (default 5). `--effort`, `--stop-on`, `--max-tool-calls`,
-  `--run-credit-limit`, `--aws-creds-file` and `--agent-engine` are refused for these arms; the effort level is not passed to
-  claude, so results say `effort: default`. Multi-turn (autonomy) tasks are not supported yet and are refused when the run starts.
+  --permission-mode acceptEdits --effort LEVEL [--agent konductor] [--include-hook-events] --allowedTools Bash Edit Write Read`, stdin from
+  `/dev/null`. `--max-budget-usd` is `--run-budget-usd` (default 5). `--effort` is passed to `claude --effort` as given (`low`,
+  `medium`, `high`, `xhigh` or `max`; default `high`, the same as Kiro CLI arms), and recorded in each result, `run-config.json`
+  (`effort`, `claudeCode.effort`), `env.json` and the report header. A claude whose binary has no `--effort` flag is refused.
+  Runs made before this record `effort: default` (claude's own default, not passed). `--stop-on`, `--max-tool-calls`,
+  `--run-credit-limit`, `--aws-creds-file` and `--agent-engine` are refused for these arms. Multi-turn (autonomy) tasks are not supported yet and are refused when the run starts.
 - Credentials come from the environment of the shell that starts the bench: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and
   `AWS_SESSION_TOKEN`, for example from `aws configure export-credentials --format env`. They go to claude through its
   process environment only; no file is written. `AWS_PROFILE`, `AWS_DEFAULT_PROFILE`, `AWS_CONFIG_FILE` and
@@ -561,7 +563,7 @@ bash bench/scripts/pilot-2x2.sh --cells report --out /var/tmp/pilot-2x2
   (each flag takes one or more comma-separated judged run directories, and `:ARM` after the last one picks the one arm a
   cell reads when the directories hold several, for example `--kiro-konductor /runs/kiro:pr-1`; `--cell kiroKonductor=DIR:pr-1`
   is the same and may replace any of the four flags. Without `:ARM` a cell must hold exactly one arm; `--out` also writes `charts/quality-by-cell.svg`, `konductor-effect.svg` and `cost-ratio.svg`, linked from the markdown, described in [PILOT-2X2.md](PILOT-2X2.md#charts)). It refuses cells with different tasks, judge panel,
-  rubric revision, model, konductor commit (a mismatch, a missing commit, or more than one in a cell), a run judged by only part of the panel, or cost unit. It prints quality per task and cell, the five contrasts, the
+  rubric revision, model, effort level (a Claude Code cell run before bench passed `--effort` records `default`), konductor commit (a mismatch, a missing commit, or more than one in a cell), a run judged by only part of the panel, or cost unit. It prints quality per task and cell, the five contrasts, the
   konductor over vanilla cost ratio inside each harness, success, timeouts, delegation and model identity. Intervals appear
   only with 5 or more tasks of 2 or more replicates per cell (`--reps 2` or more).
 - Paste back: `OUT/report/factorial-2x2.md` (its charts are in `OUT/report/charts/`), the spend table the script prints at the end, and the `NOT DONE` list if there is one.

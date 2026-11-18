@@ -138,7 +138,7 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
   try {
     const ctx = {
       repo, cacheDir, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb: null,
-      config: isCc ? { model: ccModel, canonicalModel: cc.canonicalModel(ccModel), effort: 'default' } : { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine }, envKeep: list(opts['env-keep']),
+      config: isCc ? { model: ccModel, canonicalModel: cc.canonicalModel(ccModel), effort: cc.effortOf(opts.effort || DEFAULT_EFFORT) } : { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine }, envKeep: list(opts['env-keep']),
     };
     const { prepared, errors } = prepareAll({ arms, ctx, log, allowPartial: Boolean(opts['allow-partial']) });
     console.log(preflightTable(arms, prepared, errors));
@@ -220,6 +220,7 @@ async function cmdRun(opts, deps = {}) {
   for (const [flag, why] of Object.entries(desc.flags.refused)) {
     if (opts[flag] !== undefined) throw new Error(`--${flag} does not apply to ${desc.proseName} arms (${why})`);
   }
+  if (isCc) cc.effortOf(opts.effort || DEFAULT_EFFORT);
   if (!desc.supports.multiTurn) {
     const multiTurn = tasks.filter((t) => t.autonomy).map((t) => t.id);
     if (multiTurn.length) throw new Error(`multi-turn (autonomy) tasks are not supported on the ${desc.proseName} harness yet: ${multiTurn.join(', ')}; ${desc.multiTurnNote}. Choose other tasks with --tasks`);
@@ -318,7 +319,7 @@ async function cmdRun(opts, deps = {}) {
   const config = isSt
     ? { model: opts.model, effort: 'default' }
     : isCc
-    ? { model: ccModel, canonicalModel: cc.canonicalModel(ccModel), effort: 'default' }
+    ? { model: ccModel, canonicalModel: cc.canonicalModel(ccModel), effort: cc.effortOf(opts.effort || DEFAULT_EFFORT) }
     : isOc
     ? { model: opts.model || oc.DEFAULT_MODEL, effort: oc.variantOf(opts.effort || DEFAULT_EFFORT) }
     : { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine };
@@ -364,12 +365,13 @@ async function cmdRun(opts, deps = {}) {
     if (isCc) {
       const flagValue = (name) => (opts[name] && opts[name] !== true ? opts[name] : null);
       ctx.claude = cc.resolveClaude({ binOverride: flagValue('claude-bin') ?? undefined, toolsDir: flagValue('claude-tools-dir') ?? undefined });
+      if (!ctx.claude.supportsEffort) throw new Error(`${ctx.claude.bin} (claude ${ctx.claude.version}) has no --effort flag, so the run could not apply --effort ${config.effort}; use a claude that lists --effort in claude --help`);
       const claudeChanged = cc.claudeChanges(readRunConfigs(outDir), ctx.claude);
       if (claudeChanged.length && !opts['allow-claude-change']) throw new Error(cc.describeClaudeChanges(claudeChanged, ctx.claude, outDir, flagValue('claude-tools-dir')));
       if (claudeChanged.length) log(`warning: --allow-claude-change: ${cc.describeClaudeChanges(claudeChanged, ctx.claude, outDir, flagValue('claude-tools-dir')).split('. One study')[0]}`);
       Object.assign(ctx, { region: ccRegion, runBudgetUsd, ...(ccCreds ? { awsCreds: ccCreds } : {}) });
       const credsNote = ccCreds ? `credentials from profile ${ccCreds.profile}, read again before a run when they expire within 15 minutes` : `credentials from the environment (${cc.credentialNames().join(', ')})`;
-      log(`claude ${ctx.claude.version} (${ctx.claude.bin}), sha256 ${ctx.claude.sha256.slice(0, 12)}, model ${config.model} (canonical ${config.canonicalModel}), region ${ccRegion}, permission mode ${cc.PERMISSION_MODE}, per-run budget $${runBudgetUsd ?? cc.DEFAULT_RUN_BUDGET_USD}, ${credsNote}`);
+      log(`claude ${ctx.claude.version} (${ctx.claude.bin}), sha256 ${ctx.claude.sha256.slice(0, 12)}, model ${config.model} (canonical ${config.canonicalModel}), effort ${config.effort}, region ${ccRegion}, permission mode ${cc.PERMISSION_MODE}, per-run budget $${runBudgetUsd ?? cc.DEFAULT_RUN_BUDGET_USD}, ${credsNote}`);
       const versionNote = cc.versionWarning(ctx.claude.version);
       if (versionNote) log(`warning: ${versionNote}`);
       const shadow = cc.PROFILE_VARS.filter((k) => process.env[k]);
@@ -522,6 +524,7 @@ async function cmdRun(opts, deps = {}) {
       ? oc.envSetup({ arm: { vanilla: !konductor }, config, ctx, home: '<run-home>' })
       : buildChildEnv(process.env, { home: '<run-home>', agentEngine: config.agentEngine, keep: envKeep, konductor }));
     fs.writeFileSync(path.join(outDir, 'env.json'), JSON.stringify({
+      model: config.model, effort: config.effort,
       konductorArm: describeEnv(process.env, envFor(true)),
       vanillaArm: describeEnv(process.env, envFor(false)),
       interpreters,

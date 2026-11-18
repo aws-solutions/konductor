@@ -205,8 +205,10 @@ test('CLI: a Claude Code run writes names-only run-config and env, a USD summary
     assert.deepEqual(cfg.claudeCode.credentials.notPassedWhenSet, ['AWS_PROFILE']);
     assert.ok(cfg.claudeCode.envVarNames.includes('CLAUDE_CONFIG_DIR'));
     assert.ok(cfg.claudeCode.envVarNames.includes('CLAUDE_CODE_TMPDIR'), 'the variable name is recorded, not a path');
-    assert.equal(cfg.claudeCode.effort.applied, false);
+    assert.deepEqual(cfg.claudeCode.effort, { applied: true, flag: '--effort', level: 'high' });
+    assert.equal(cfg.effort, 'high');
     const envFile = JSON.parse(fs.readFileSync(path.join(out, 'env.json'), 'utf8'));
+    assert.equal(envFile.effort, 'high');
     assert.equal(envFile.vanillaArm.set.TMPDIR, '<run>/tmp', 'env.json shows the run temp directory, which is not under HOME');
     assert.equal(envFile.vanillaArm.set.CLAUDE_CODE_TMPDIR, '<run>/tmp');
     assert.equal(cfg.claudeCode.binaryName, 'claude');
@@ -233,7 +235,7 @@ test('CLI guards: flags that do not apply to Claude Code arms are refused before
   try {
     for (const [args, re] of [
       [['--agent-engine', 'v3'], /--agent-engine applies to kiro-cli arms only; claude-code arms have no agent engine/],
-      [['--effort', 'high'], /--effort does not apply to Claude Code arms/],
+      [['--effort', 'turbo'], /--effort turbo is not a claude --effort level/],
       [['--stop-on', 'end_turn'], /--stop-on does not apply to Claude Code arms/],
       [['--max-tool-calls', '3'], /--max-tool-calls does not apply to Claude Code arms/],
       [['--aws-creds-file', 'x'], /--aws-creds-file does not apply to Claude Code arms/],

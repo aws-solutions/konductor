@@ -11,7 +11,7 @@ const path = require('node:path');
 const { MIN_BINARY_BYTES } = require('../lib/harness/claude-code.js');
 
 const SCRIPT = `#!/usr/bin/env node
-// the real binary carries the --include-hook-events flag text; the fake does too so the harness detects it
+// the real binary carries the --include-hook-events and --effort flag text; the fake does too so the harness detects them
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -49,7 +49,7 @@ if (cfg.otlpLogsFile && endpoint) {
 } else finish();
 `;
 
-const stub = () => `#!/bin/sh\nexec '${process.execPath}' "$(dirname "$0")/fake-claude.js" "$@"\n# the real binary carries the --include-hook-events flag text; the stub does too so the harness detects it\n`;
+const stub = () => `#!/bin/sh\nexec '${process.execPath}' "$(dirname "$0")/fake-claude.js" "$@"\n# the real binary carries the --include-hook-events and --effort flag text; the stub does too so the harness detects them\n`;
 
 function makeFakeClaude(toolsDir, config, version = '9.9.9') {
   const dir = path.join(toolsDir, version);

@@ -322,7 +322,7 @@ One run uses one runtime. The runtime is chosen by the arm name, and arms from d
 | --- | --- | --- | --- |
 | `kiro-cli` | `vanilla`, `v1.2.0`, `main`, `name=<ref>` | Kiro credits | Engine v2 by default, `--agent-engine v3` available. The only runtime for per-skill studies (`cap skill-study`). |
 | `opencode` on Amazon Bedrock | `oc-vanilla`, `oc-v1.2.0`, `oc-main`, `oc-name=<ref>` | USD | Pinned `opencode-ai` 1.19.5. `trace` is not supported. Subagent activity is read from opencode's database, not the stream. |
-| `claude-code` on Amazon Bedrock | `cc-vanilla`, `cc-main`, `cc-name=<ref>` | USD | Needs the real `claude` binary (`--claude-bin` or `--claude-tools-dir`). Multi-turn (autonomy) tasks are refused. `--effort`, `--stop-on` and `--run-credit-limit` do not apply. |
+| `claude-code` on Amazon Bedrock | `cc-vanilla`, `cc-main`, `cc-name=<ref>` | USD | Needs the real `claude` binary (`--claude-bin` or `--claude-tools-dir`). Multi-turn (autonomy) tasks are refused. `--effort` is passed to `claude --effort` (default `high`, as for Kiro CLI). `--stop-on` and `--run-credit-limit` do not apply. |
 
 Details, credentials and flags are in the harness sections of [README.md](README.md#opencode-harness).
 

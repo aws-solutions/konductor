@@ -90,7 +90,8 @@ const USAGE = `Usage:
        when the cached keys have no expiry or expire within 15 minutes, and passes them to that run only; a study can then outlive one session's keys.
        --claude-tools-dir takes the newest <version>/claude there. run-config.json records the binary's version and sha256, and a later command into the
        same --out that resolves another binary is refused unless --allow-claude-change is given; the refusal names --claude-bin <dir>/<version>/claude to stay on it.
-       --run-budget-usd is claude's own per-run cap, default 5. --effort, --stop-on, --max-tool-calls and --run-credit-limit do not apply)
+       --run-budget-usd is claude's own per-run cap, default 5. --effort goes to claude --effort (low, medium, high, xhigh, max; default high).
+       --stop-on, --max-tool-calls and --run-credit-limit do not apply)
   node bench/runner/bench.js judge --run DIR [--judges a,b] [--mode rubric,pairwise] [--baseline vanilla|ARM]
        [--concurrency N] [--budget-credits X] [--judge-cmd CMD] [--max-file-chars N] [--max-bundle-chars N]
        [--redact-file FILE] [--judge-timeout-sec N] [--bench-dir DIR] [--allow-small-panel] [--kiro-bin PATH]
