@@ -459,9 +459,9 @@ pub(crate) fn collect_kiro_v3(path: &Path, mtime: u64, size: u64) -> Record {
     let (mut parsed, mut failed) = (0u64, 0u64);
     let mut usage_failed = false;
     for line in BufReader::new(file).lines() {
+        // An unreadable line may have been a usage_summary.
         let Ok(line) = line else {
-            failed += 1;
-            continue;
+            return rec.unparsed();
         };
         rec.touch_ts(str_field(&line, "timestamp").and_then(parse_iso_secs));
         let interesting = [
@@ -739,6 +739,17 @@ mod tests {
         ]
         .join("\n");
         let p = write(&d, "ws/s/messages.jsonl", &body);
+        assert_eq!(collect_kiro_v3(&p, 0, 0).status, Status::Unparsed);
+    }
+
+    #[test]
+    fn kiro_v3_unreadable_line_marks_record_unparsed() {
+        let d = tmp("v3-bad-utf8");
+        let p = d.join("ws/s/messages.jsonl");
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        let mut bytes = br#"{"id":"1","timestamp":"2026-11-01T10:00:00Z","payload":{"type":"session_start","agentType":"konductor"}}"#.to_vec();
+        bytes.extend_from_slice(b"\n\xff\xfe not utf-8\n");
+        std::fs::write(&p, bytes).unwrap();
         assert_eq!(collect_kiro_v3(&p, 0, 0).status, Status::Unparsed);
     }
 
