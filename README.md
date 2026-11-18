@@ -439,10 +439,13 @@ mkdir -p .konductor && curl -fsSL https://raw.githubusercontent.com/aws-solution
 
 ### 🔌 Integrations
 
-AWS MCP comes pre-wired for `k-architect` and `k-developer` on Claude Code, launched through
-`mcp-proxy-for-aws-cli==1.7.0`. You need `uvx` and AWS credentials. Both agents get the full server,
-including AWS API tools, so scope agent-initiated calls with the `aws:ViaAWSMCPService` and
-`aws:CalledViaAWSMCP` IAM condition keys. Kiro CLI users add `aws-mcp` to their own MCP config,
+AWS MCP comes pre-wired for `konductor`, `k-architect` and `k-developer` on Claude Code, launched
+through `mcp-proxy-for-aws-cli==1.7.0`. You need `uvx`. The agents start the proxy with
+`--skip-auth`, so documentation search and skills work without AWS credentials; calls that act on
+an account still need them. `k-architect` and
+`k-developer` get the full server, including AWS API tools, so scope agent-initiated calls with the
+`aws:ViaAWSMCPService` and `aws:CalledViaAWSMCP` IAM condition keys. `konductor` is granted only the five
+read-only documentation, skill and Region tools, by name, on both harnesses. Kiro CLI users add `aws-mcp` to their own MCP config,
 where knowledge tools are auto-approved and API tools ask first. See
 [Install for Claude Code](docs/user-guide/tasks/install-claude-code.md#optional-integrations) or
 [Install for Kiro CLI](docs/user-guide/tasks/install-kiro-cli.md).

@@ -96,11 +96,13 @@ EDITS = [
     ("layout tree skills", "├── skills/                       81 skills (<name>/SKILL.md",
      "├── skills/                       80 skills (<name>/SKILL.md"),
     # ---- aws-mcp launches a pinned version, not a floating @latest ----------
-    ("reference MCP registry note: pinned aws-mcp",
-     'note":"MCP registry entries — aws-mcp (k-architect, k-developer): command uvx, args '
-     'mcp-proxy-for-aws@latest, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1.',
-     'note":"MCP registry entries — aws-mcp (k-architect, k-developer): command uvx, args '
-     'mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1.'),
+    ('reference MCP registry note: pinned aws-mcp',
+     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
+     ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
+     ' konductor requests only three read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation and aws___read_documentation.',
+     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
+     ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
+     ' konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.'),
     ("architect card: pinned aws-mcp",
      'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws@latest — allowedTools grants documentation '
      'search/read, region list, and regional availability.',
@@ -141,16 +143,8 @@ EDITS = [
      + "specialist); no runtime enforces either shape. " + _code("konductor")
      + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>"),
     ("use-cases owned-by-the-orchestrator: konductor's Claude Code tools",
-     "alone; in Claude Code its tool list has no " + _code("Bash") + ", " + _code("Write") + ", or " + _code("Edit")
-     + ". What it has is " + _code("Read") + ", " + _code("Glob") + ", " + _code("Grep") + ", " + _code("WebFetch")
-     + ", " + _code("WebSearch") + ", " + _code("TodoWrite") + ", " + _code("Workflow") + ", an " + _code("Agent(...)")
-     + " tool scoped to the eight specialists, and " + _code("SendMessage") + ".</p>",
-     "alone; in Claude Code it is granted " + _code("Bash") + ", " + _code("Write") + " and " + _code("Edit")
-     + " alongside " + _code("Read") + ", " + _code("Glob") + ", " + _code("Grep") + ", " + _code("WebFetch")
-     + ", " + _code("WebSearch") + ", " + _code("TodoWrite") + ", " + _code("Workflow") + ", " + _code("Skill") + ", "
-     + _code("SendMessage") + ", and an " + _code("Agent(...)") + " tool scoped to the eight specialists, and uses"
-     + " them as its direct-work rules allow. For the mux and cmux orchestrators only the routing rules stop"
-     + " them, so the dispatcher behaviour you see there is a convention rather than a wall.</p>"),
+     'alone; in Claude Code it is granted <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Bash</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Write</code> and <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Edit</code> alongside <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Read</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Glob</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Grep</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">WebFetch</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">WebSearch</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">TodoWrite</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Workflow</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Skill</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">SendMessage</code>, and an <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Agent(...)</code> tool scoped to the eight specialists, and uses them as its direct-work rules allow. For the mux and cmux orchestrators only the routing rules stop them, so the dispatcher behaviour you see there is a convention rather than a wall.</p>',
+     'and read-only aws-mcp lookups; in Claude Code it is granted <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Bash</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Write</code> and <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Edit</code> alongside <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Read</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Glob</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Grep</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">WebFetch</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">WebSearch</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">TodoWrite</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Workflow</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Skill</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">SendMessage</code>, and an <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Agent(...)</code> tool scoped to the eight specialists, and uses them as its direct-work rules allow. For the mux and cmux orchestrators only the routing rules stop them, so the dispatcher behaviour you see there is a convention rather than a wall.</p>'),
     ("use-cases chain: konductor runs the steps itself",
      "So when you run this chain \"via the orchestrator\", the orchestrator reads, synthesises, and routes."
      + " The file writes, " + _code("git diff") + " calls, and build and test commands execute through"
@@ -339,21 +333,9 @@ EDITS = [
      "ask first, while Claude Code grants both outright; and <span style=\"font-family:"
      "'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">k-researcher</span> has no "
      "write or shell tool in Claude Code at all."),
-    ("uc owned-by prose",
-     "<code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">"
-     "konductor</code> <strong style=\"color:var(--tx);font-weight:600\">cannot write files or "
-     "run shell commands in Kiro CLI</strong> — though Claude Code grants it Bash and Write, so "
-     "only its routing rules stop it there — in Kiro CLI its <code style=\"font-family:"
-     "'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">allowedTools</code> is "
-     "<code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">"
-     "fs_read</code> only;",
-     "<code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">"
-     "konductor</code> <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only "
-     "in Kiro CLI</strong> — a write or a command still reaches you as a permission prompt, "
-     "because @builtin grants both, and Claude Code grants them with no prompt of its own — in "
-     "Kiro CLI its <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;"
-     "color:var(--tx)\">allowedTools</code> is <code style=\"font-family:'JetBrains Mono',"
-     "monospace;font-size:.87em;color:var(--tx)\">fs_read</code> alone;"),
+    ('uc owned-by prose',
+     '<code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">konductor</code> <strong style="color:var(--tx);font-weight:600">pre-approves reads only in Kiro CLI</strong> — a write or a command still reaches you as a permission prompt, because @builtin grants both, and Claude Code grants them with no prompt of its own — in Kiro CLI its <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">allowedTools</code> is <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">fs_read</code> alone;',
+     '<code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">konductor</code> <strong style="color:var(--tx);font-weight:600">pre-approves reads only in Kiro CLI</strong> — a write or a command still reaches you as a permission prompt, because @builtin grants both, and Claude Code grants them with no prompt of its own — in Kiro CLI its <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">allowedTools</code> is <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">fs_read</code> and read-only aws-mcp lookups;'),
     # The `\"` escapes below are load-bearing: this passage lands inside a
     # double-quoted JS string in the bundle's `data-dc-script` block, which
     # `dc-runtime` compiles with `new Function()`.
@@ -401,24 +383,9 @@ EDITS = [
      '          { k: "k-researcher", v: "asks / asks · not granted / not granted" },\n'
      '          { k: "k-browser", v: "asks / asks · GRANTED / GRANTED" },\n'
      '          { k: "k-media-analyzer", v: "asks / asks · GRANTED / GRANTED" }'),
-    ("ag-access bullets",
-     'bullets: ["No orchestrator is locked down in Claude Code: all three declare Write and '
-     'Bash. In Kiro CLI the picture is the one you would expect — konductor has neither write '
-     'nor shell, and the two multiplexer variants have shell but not write — but that restraint '
-     'is a Kiro CLI property, not a property of the agent.", "k-browser and k-media-analyzer are '
-     'read-only in Kiro CLI but can write files and run shell commands in Claude Code. The two '
-     'runtime configurations disagree.", "k-product-manager and k-tpm gain shell access in '
-     'Claude Code that they do not have in Kiro CLI."]',
-     'bullets: ["No orchestrator is locked down in Claude Code, and none is incapable in Kiro '
-     'CLI either: all three declare Write and Bash, and in Kiro CLI konductor pre-approves '
-     'nothing but fs_read while the two multiplexer variants pre-approve shell. That is a '
-     'prompting difference, not a capability one.", "k-browser and k-media-analyzer pre-approve '
-     'reads only in Kiro CLI and are granted write and shell outright in Claude Code. If you '
-     'expect a media analyser to be incapable of editing your repository, that does not hold in '
-     'either runtime.", "k-product-manager and k-tpm pre-approve writes but not shell in Kiro '
-     'CLI, and are granted both in Claude Code.", "Delegation does not narrow permissions in '
-     "Claude Code. A subagent runs inside its parent's permission context, so the parent must "
-     'hold a tool for the subagent to use it."]'),
+    ('ag-access bullets',
+     'bullets: ["No orchestrator is locked down in Claude Code, and none is incapable in Kiro CLI either: all three declare Write and Bash, and in Kiro CLI konductor pre-approves nothing but fs_read while the two multiplexer variants pre-approve shell. That is a prompting difference, not a capability one.", "k-browser and k-media-analyzer pre-approve reads only in Kiro CLI and are granted write and shell outright in Claude Code. If you expect a media analyser to be incapable of editing your repository, that does not hold in either runtime.", "k-product-manager and k-tpm pre-approve writes but not shell in Kiro CLI, and are granted both in Claude Code.", "Delegation does not narrow permissions in Claude Code. A subagent runs inside its parent\'s permission context, so the parent must hold a tool for the subagent to use it."]',
+     'bullets: ["No orchestrator is locked down in Claude Code, and none is incapable in Kiro CLI either: all three declare Write and Bash, and in Kiro CLI konductor pre-approves only reads, fs_read and read-only aws-mcp lookups, while the two multiplexer variants pre-approve shell. That is a prompting difference, not a capability one.", "k-browser and k-media-analyzer pre-approve reads only in Kiro CLI and are granted write and shell outright in Claude Code. If you expect a media analyser to be incapable of editing your repository, that does not hold in either runtime.", "k-product-manager and k-tpm pre-approve writes but not shell in Kiro CLI, and are granted both in Claude Code.", "Delegation does not narrow permissions in Claude Code. A subagent runs inside its parent\'s permission context, so the parent must hold a tool for the subagent to use it."]'),
     ("ag-access note",
      'note: "k-researcher is the only agent — specialist or orchestrator — that is read-only in '
      'both runtimes, which makes it the safe default for exploratory work."',
@@ -610,6 +577,45 @@ EDITS = [
      "with callouts)\" },"),
 ]
 
+_PREREQ_MONO = "<span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">{}</span>"
+_PREREQ_UVX = _PREREQ_MONO.format("uvx")
+_PREREQ_CREDS = _PREREQ_MONO.format("~/.aws/credentials")
+
+
+def _UC_CODE(text):
+    """Inline code span in the use-case callouts."""
+    return f"<code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em\">{text}</code>"
+
+
+def _code_block(label, body):
+    """A copyable code block in the install pages' markup."""
+    return (
+        '\n            <div style="border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--code);margin-bottom:18px">\n'
+        '              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--bd)">'
+        f"<span style=\"font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--mu2)\">{label}</span>"
+        "<button data-copy=\"1\" style=\"all:unset;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu2)\" style-hover=\"color:var(--sig)\">copy</button></div>\n"
+        "              <pre style=\"margin:0;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:#E8E4F5;overflow-x:auto\">"
+        f"{body}</pre>\n"
+        "            </div>"
+    )
+
+
+_AWS_MCP_KIRO_CONFIG = """{
+  "mcpServers": {
+    "aws-mcp": {
+      "command": "uvx",
+      "args": [
+        "mcp-proxy-for-aws-cli==1.7.0",
+        "https://aws-mcp.us-east-1.api.aws/mcp",
+        "--metadata",
+        "AWS_REGION=us-east-1",
+        "--skip-auth"
+      ]
+    }
+  }
+}"""
+
+
 # Per-agent roster figures, verified against agents/*.agent-spec.json.
 # (label, old, new) -- model · SOPs declared · skills · MCP
 #
@@ -619,9 +625,9 @@ EDITS = [
 # report "target not found" on the next run. When a count changes again, edit
 # `new` and move the previous `new` into `old`.
 ROSTER = [
-    ("ref konductor",
-     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor · 13 · —"}',
-     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor · 24 · —"}'),
+    ('ref konductor',
+     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor · 24 · aws-mcp"}',
+     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor · 25 · aws-mcp"}'),
     ("ref mux",
      '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}',
      '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 10 · —"}'),
@@ -668,11 +674,12 @@ ROSTER = [
      "No SOPs. 1 skill \u2014 constraints only.",
      "No SOPs. 1 skill, constraints. It also declares humanize-writing, loaded on demand."),
     ("skills-per-agent table",
-     '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"24"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
-     '"rows":[{"k":"k-architect","v":"37"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"24"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),
+     '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"25"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
+     '"rows":[{"k":"k-architect","v":"37"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"25"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),
     # at-a-glance cards
-    ("card konductor", 'Coordinator. Delegates everything, implements nothing. claude-sonnet-5.5 · 13 skills · 11 SOPs',
-     'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 24 skills · 11 SOPs'),
+    ('card konductor',
+     'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 24 skills · 11 SOPs · aws-mcp',
+     'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 25 skills · 11 SOPs · aws-mcp'),
     ("card mux", 'Same, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 10 SOPs',
      'Coordinator. Delegates every change, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 10 SOPs'),
     ("card cmux", 'Same, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 10 SOPs',
@@ -721,6 +728,108 @@ ROSTER = [
     ("skills catalog: design-evaluation reach",
      "The final gate before implementation. Wants all artifacts present — design, threat model, API specs, data models, diagrams, IAM.",
      "The final gate before implementation. Lists any missing artifacts (system design, threat model, API specs, data models, diagrams, IAM) and scores what is present; use single-document scope for one doc."),
+    # ---- skills catalog: dynamodb-design rewritten, dynamodb-validation removed
+    # The anchor keeps the neighbours, so the result is checkable once applied.
+    ("skills catalog: slim dynamodb-design, drop dynamodb-validation",
+     'Before implementing against a Smithy model. · DECLARED BY: architect"},'
+     '{"k":"dynamodb-design","v":"DynamoDB table designs optimized for access patterns: partition keys, '
+     'GSI strategy, capacity planning, plus CDK/CloudFormation code. — REACH FOR IT: Designing a data model '
+     'on DynamoDB. · DECLARED BY: architect"},{"k":"dynamodb-validation","v":"Validates a DynamoDB design '
+     'against best practice across 13 categories — hot partitions, missing indexes, cost, security. — REACH '
+     'FOR IT: Before implementing a DynamoDB design. · DECLARED BY: architect"},{"k":"iam-policy-design"',
+     'Before implementing against a Smithy model. · DECLARED BY: architect"},'
+     '{"k":"dynamodb-design","v":"Designs DynamoDB tables and GSIs from access patterns, and reviews a design '
+     'for hot partitions and unsharded low-cardinality keys. — REACH FOR IT: Designing or reviewing a DynamoDB '
+     'data model. · DECLARED BY: architect"},{"k":"iam-policy-design"'),
+    ("skills catalog: API and data modelling header and DynamoDB note",
+     'sec("sk-api", "API and data modelling — 4", "API and data modelling — 4", {"paras":["Interface and '
+     'storage design, each paired with its own validator. For a DynamoDB data model, k-architect loads the '
+     'AWS MCP server\'s amazon-dynamodb skill through find-aws-skills."]',
+     'sec("sk-api", "API and data modelling — 5", "API and data modelling — 5", {"paras":["API, data and access '
+     'policy design. The Smithy and IAM skills each pair with a validator; dynamodb-design carries its own review '
+     'gate. For DynamoDB depth it does not carry, such as Streams, backup and the cost calculator, it points to the '
+     'AWS MCP server\'s amazon-dynamodb skill."]'),
+    ("skills catalog: find-aws-skills declared by",
+     'nothing bundled matches. · DECLARED BY: architect, developer"}',
+     'nothing bundled matches. · DECLARED BY: architect, developer, konductor"}'),
+    ("skills catalog: infra-validation declared by",
+     'Before deploying any infrastructure change. · DECLARED BY: developer"}',
+     'Before deploying any infrastructure change. · DECLARED BY: developer, konductor"}'),
+    # ---- konductor declares aws-mcp ----------------------------------------
+    ("konductor tools row: Kiro CLI aws-mcp",
+     '{ k: "konductor tools", v: "Kiro CLI: @builtin, subagent, @aws-mcp; allowedTools is fs_read plus five '
+     'read-only aws-mcp tools. ',
+     '{ k: "konductor tools", v: "Kiro CLI: @builtin, subagent and five read-only aws-mcp tools by name; '
+     'allowedTools is fs_read plus those five. '),
+    ("glossary MCP: aws-mcp declarers",
+     "aws-mcp (on k-architect and k-developer)",
+     "aws-mcp (on konductor, k-architect and k-developer)"),
+    ("faq privacy: aws-mcp declarers",
+     "declared in the k-architect and k-developer specs",
+     "declared in the konductor, k-architect and k-developer specs"),
+    ("install-kiro success note: reads only",
+     "the orchestrator pre-approves fs_read alone",
+     "the orchestrator pre-approves only reads"),
+    ("install pages: AWS documentation lookups declarers",
+     "AWS documentation lookups</strong> — " + _mono("k-architect") + " and " + _mono("k-developer") + ". Install",
+     "AWS documentation lookups</strong> — " + _mono("konductor") + ", " + _mono("k-architect") + " and "
+     + _mono("k-developer") + ". Install"),
+    ("install-claude: AWS documentation lookups declarers",
+     "AWS documentation lookups</strong> — " + _mono("konductor") + " requests three read-only AWS MCP tools; "
+     + _mono("k-architect") + " and " + _mono("k-developer") + " request AWS MCP tools",
+     "AWS documentation lookups</strong> — " + _mono("konductor") + " requests five read-only AWS MCP tools; "
+     + _mono("k-architect") + " and " + _mono("k-developer") + " request AWS MCP tools"),
+    # ---- k-code-review-workflow passes its scope to infra-validation ----------
+    ("code-review-workflow params: environment",
+     'param("output_file", false, "code-review-report.md"), param("cr_url", false, "none — passed to the adversarial step when present")]',
+     'param("output_file", false, "code-review-report.md"), param("environment", false, "none, passed to infra-validation, which then assumes Production"), param("cr_url", false, "none — passed to the adversarial step when present")]'),
+    ("code-review-workflow step 03: infra-validation scope",
+     'backend-review · frontend-review · infra-validation.',
+     'backend-review · frontend-review · infra-validation, given scope_confirmed, the infra files and any environment, so it does not stop to ask.'),
+    # ---- aws-mcp starts with --skip-auth: credentials only for account calls ----
+    ("prerequisites: AWS credentials optional",
+     "AWS credentials are optional</strong> — needed only for the AWS documentation integration below.",
+     "AWS credentials are optional</strong> — needed only for AWS MCP calls that act on an AWS account."),
+    ("prerequisites integrations: agent count",
+     "Four agents can use external tool servers.",
+     "Five agents can use external tool servers."),
+    ("prerequisites integrations: aws-mcp agents",
+     "k-architect<br>k-developer</div>",
+     "konductor<br>k-architect<br>k-developer</div>"),
+    ("prerequisites integrations: aws-mcp needs",
+     _PREREQ_UVX + " installed, plus AWS credentials in " + _PREREQ_CREDS
+     + " or environment variables. Both agents work without credentials, just without AWS lookups.</div>",
+     _PREREQ_UVX + " installed. Documentation search and skills work without AWS credentials; calls that"
+     " act on an AWS account need credentials in " + _PREREQ_CREDS + " or environment variables.</div>"),
+    ("install-kiro-cli integrations: intro",
+     "Two are pre-configured in the agent specs and need only their local dependency.</p>",
+     "Two are declared in the agent specs.</p>"),
+    ("install-kiro-cli integrations: aws-mcp config",
+     _mono("k-developer") + ". Install " + _mono("uvx") + " and configure AWS credentials in "
+     + _mono("~/.aws/credentials") + " or environment variables. Both agents work without credentials,"
+     " just without AWS lookups.</p>",
+     _mono("k-developer") + ". Install " + _mono("uvx") + " and add " + _mono("aws-mcp") + " to "
+     + _mono(".kiro/settings/mcp.json") + " for one project or " + _mono("~/.kiro/settings/mcp.json")
+     + " for all projects, since Kiro CLI does not start MCP servers from the agent specs:</p>"
+     + _code_block("JSON", _AWS_MCP_KIRO_CONFIG)
+     + '\n            <p style="margin:0 0 14px;font-size:16px;line-height:1.75;color:var(--mu)">With '
+     + _mono("--skip-auth") + ", documentation search and skills work without AWS credentials. Configure"
+     " credentials in " + _mono("~/.aws/credentials") + " or environment variables only for calls that"
+     " act on an AWS account.</p>"),
+    ("design-a-system: phase 3 aws-mcp callout",
+     "server. In Kiro CLI that server is declared and launched from the agent spec. "
+     '<strong style="color:var(--tx);font-weight:600">In Claude Code the agent only requests the tools via the '
+     + _UC_CODE("mcp__aws-mcp__*") + " glob — you must configure an " + _UC_CODE("aws-mcp")
+     + " server yourself</strong> or those tools will not resolve. Either way, with no AWS credentials the"
+     " step degrades to UNVERIFIED findings rather than failing.",
+     "server. In Claude Code the install launches that server. "
+     '<strong style="color:var(--tx);font-weight:600">In Kiro CLI you add ' + _UC_CODE("aws-mcp")
+     + " to your own MCP config</strong> (Install for Kiro CLI, Optional integrations) or those tools will"
+     " not resolve. The server starts with " + _UC_CODE("--skip-auth") + ", so the lookups work without"
+     " AWS credentials. Without the server, the step degrades to UNVERIFIED findings rather than failing."),
+    ("faq: aws-mcp needs uvx only",
+     "It needs uvx and credentials present.",
+     "It needs uvx present."),
 ]
 
 

@@ -4,25 +4,15 @@ Read this when a new estimate's context is gathered and confirmed (CREATE Step 3
 
 ## Step 4: AWS Pricing Research (FIRST MCP calls)
 
-**NOW begin AWS Pricing MCP server usage:**
+**NOW begin pricing calls through the AWS MCP server**, as `SKILL.md` describes under Available Tools:
 
-1. **USE get_pricing_service_codes()** to identify all available AWS services for pricing
+1. **Load `aws-billing-and-cost-management`** and its pricing lookup reference for the service codes and attribute filters.
 
-2. **For each service in their solution:**
+2. **For each service in their solution**, call `DescribeServices` for its attribute names and `GetAttributeValues` for the values the filters need.
 
-   ```
-   USE get_pricing_service_attributes(service_code)
-   USE get_pricing_attribute_values(service_code, [relevant_attributes])
-   ```
+3. **If they provided infrastructure code**, read it to list the resources and the settings that set their price.
 
-3. **If they provided infrastructure code, analyze it to identify services:**
-
-   ```
-   USE analyze_cdk_project(project_path) # if CDK code provided
-   USE analyze_terraform_project(project_path) # if Terraform code provided
-   ```
-
-If the pricing tools aren't available and you can't ask the user to add them (they said not to ask, or nobody is there to answer), use published list prices for the estimate's region. Say so at the top of the report and mark those figures unverified. Never invent a unit price you don't know: leave that line unpriced and say what would price it.
+If the AWS MCP server isn't available, or a pricing call is denied and you can't ask the user to fix it (they said not to ask, or nobody is there to answer), use published list prices for the estimate's region. Say so at the top of the report and mark those figures unverified. Never invent a unit price you don't know: leave that line unpriced and say what would price it.
 
 ## Step 5: Architecture Validation for Cost Estimation
 
@@ -51,27 +41,13 @@ Analyze their solution to ensure complete and accurate cost estimation:
 
 ## Step 6: Multi-Scenario Cost Analysis
 
-**USE get_pricing()** with detailed filters for each service:
+Price each scenario with `GetProducts`, changing only the filters the scenario changes (instance class, `termType` and purchase option, deployment option such as Multi-AZ):
 
 **Create Three Detailed Scenarios:**
 
 1. **Baseline Scenario** - Standard configuration meeting minimum requirements
-
-   ```
-   USE get_pricing(service_code, region, baseline_filters, output_options)
-   ```
-
 2. **Optimized Scenario** - Cost-optimized with Reserved Instances and right-sizing
-
-   ```
-   USE get_pricing(service_code, region, optimized_filters, output_options)
-   ```
-
 3. **High-Availability Scenario** - Multi-AZ, enhanced monitoring, disaster recovery
-
-   ```
-   USE get_pricing(service_code, region, ha_filters, output_options)
-   ```
 
 **Include All Cost Components:**
 
@@ -162,10 +138,10 @@ I'll also include:
 
 ## Step 10: Complete Cost Analysis Report Creation
 
-**Compile all pricing data from AWS Pricing MCP server into detailed analysis:**
+**Compile all pricing data from the Price List API into detailed analysis:**
 
 1. **Summarize all pricing data collected:**
-   - Service-by-service cost breakdown with unit pricing from get_pricing() calls
+   - Service-by-service cost breakdown with unit prices from the `GetProducts` calls
    - Multiple scenario comparisons (baseline, optimized, high-availability)
    - Growth projections and scaling cost implications
    - Reserved Instance and Savings Plan analysis

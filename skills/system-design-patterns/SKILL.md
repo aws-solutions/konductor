@@ -184,7 +184,7 @@ If the system uses DynamoDB or requires API design:
 4. **Consistency Requirements**: Strong consistency needed or eventual consistency acceptable?
 5. **Data Lifecycle**: How long is data retained? Archive strategy?
 
-**Handoff Note**: Recommend `smithy-modeling` for API design and `dynamodb-design` (checked with `dynamodb-validation`) for data modeling.
+**Handoff Note**: Recommend `smithy-modeling` for API design. For a DynamoDB data model, load the `dynamodb-design` skill before designing keys and indexes, and apply its quality gate, including write sharding for low-cardinality keys and hot partitions. For depth it does not carry, such as Streams, backup or the cost calculator, load the AWS MCP server's `amazon-dynamodb` skill with `aws___retrieve_skill` or through `find-aws-skills`. Run `dynamodb-design`'s quality gate again on the finished model to review it.
 
 ## Output Deliverables
 
@@ -413,7 +413,7 @@ After completing the interview, generate:
 ## Recommended Next Skills
 
 - **smithy-modeling**: For API design (if applicable)
-- **dynamodb-design**: For data modeling (if applicable)
+- **dynamodb-design**: For a DynamoDB data model (if applicable)
 - **threat-modeling**: For detailed security analysis
 - **infra-validation**: For checking the CDK or CloudFormation code once written
 ```

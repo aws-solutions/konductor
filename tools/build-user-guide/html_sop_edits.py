@@ -179,8 +179,8 @@ SOP_EDITS += [
 # k-architect's model and skill count, in the agents page's own prose and tables.
 SOP_EDITS += [
     ("agents bullet: architect model",
-     "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model, claude-sonnet-5.5.",
-     "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model: claude-sonnet-5.5 on Kiro CLI, claude-sonnet-5-5 on Claude Code."),
+     "k-architect carries 39 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model: claude-sonnet-5.5 on Kiro CLI, claude-sonnet-5-5 on Claude Code.",
+     "k-architect carries 38 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model: claude-sonnet-5.5 on Kiro CLI, claude-sonnet-5-5 on Claude Code."),
     ("specialists table: architect",
      '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review. 38 skills.',
      '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review. 37 skills.'),
@@ -564,11 +564,11 @@ SOP_EDITS += [
 # Values from agents/konductor*.agent-spec.json.
 SOP_EDITS += [
     ('orchestrators: konductor skills',
-     '{ k: "konductor skills (13)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor. claude-teams-behavior is Claude Code only. Kiro CLI has the other 12 plus humanize-writing, on demand" }',
-     '{ k: "konductor skills (24)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation. claude-teams-behavior is Claude Code only. Kiro CLI has the other 23 plus humanize-writing, on demand" }'),
-    ("orchestrators: konductor tools",
-     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Skill — so it CAN write and run shell there; only its routing rules stop it" }',
-     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check" }'),
+     '{ k: "konductor skills (24)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation. claude-teams-behavior is Claude Code only. Kiro CLI has the other 23 plus humanize-writing, on demand" }',
+     '{ k: "konductor skills (25)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation, find-aws-skills. claude-teams-behavior is Claude Code only. Kiro CLI has the other 24 plus humanize-writing, on demand" }'),
+    ('orchestrators: konductor tools',
+     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check. It also requests three read-only aws-mcp tools: mcp__aws-mcp__aws___retrieve_skill, mcp__aws-mcp__aws___search_documentation and mcp__aws-mcp__aws___read_documentation" }',
+     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check. It also requests five read-only aws-mcp tools: mcp__aws-mcp__aws___retrieve_skill, mcp__aws-mcp__aws___search_documentation, mcp__aws-mcp__aws___read_documentation, mcp__aws-mcp__aws___list_regions and mcp__aws-mcp__aws___get_regional_availability" }'),
     ("orchestrators: mux/cmux SOPs",
      '{ k: "mux / cmux SOPs (9)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor — konductor\'s ten, minus k-delegate" }',
      '{ k: "mux / cmux SOPs (10)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor. konductor\'s eleven, minus k-delegate" }'),
@@ -1226,19 +1226,9 @@ SPAN = "<span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;colo
 
 SOP_EDITS += [
     # ---- single-writer shape: konductor edits, the shared rules file, four context files ----
-    ("qs checkpoint names the single-writer shape",
-     "Watch what happens after you ask for implementation work. You should see the orchestrator "
-     "<strong style=\"color:var(--tx);font-weight:600\">delegate</strong> to a specialist rather than start "
-     "editing files itself. That is the whole design, and it is a rule rather than a wall in both runtimes. "
-     "In Kiro CLI konductor pre-approves fs_read alone, so a write or a command stops to ask you rather than "
-     "being refused; in Claude Code it holds Write and Bash outright. Either way what keeps it delegating is "
-     "its routing rules. If it starts editing directly, see",
-     "Watch what happens when you ask for a single change, such as a bug fix in one module. You should see "
-     "konductor edit files and run the build itself, then spawn a k-* reviewer when the phase closes. A "
-     "multi-phase request like the one above gets an SOP name instead. In Kiro CLI konductor pre-approves "
-     "fs_read alone, so each write or command stops to ask you first; in Claude Code it holds Write and Bash "
-     "outright. If you want an orchestrator that hands every change to a specialist, use "
-     "konductor-mux-orchestrator or konductor-cmux-orchestrator. If one of those starts editing directly, see"),
+    ('qs checkpoint names the single-writer shape',
+     'Watch what happens when you ask for a single change, such as a bug fix in one module. You should see konductor edit files and run the build itself, then spawn a k-* reviewer when the phase closes. A multi-phase request like the one above gets an SOP name instead. In Kiro CLI konductor pre-approves fs_read alone, so each write or command stops to ask you first; in Claude Code it holds Write and Bash outright. If you want an orchestrator that hands every change to a specialist, use konductor-mux-orchestrator or konductor-cmux-orchestrator. If one of those starts editing directly, see',
+     'Watch what happens when you ask for a single change, such as a bug fix in one module. You should see konductor edit files and run the build itself, then spawn a k-* reviewer when the phase closes. A multi-phase request like the one above gets an SOP name instead. In Kiro CLI konductor pre-approves only reads (fs_read and read-only aws-mcp lookups), so each write or command stops to ask you first; in Claude Code it holds Write and Bash outright. If you want an orchestrator that hands every change to a specialist, use konductor-mux-orchestrator or konductor-cmux-orchestrator. If one of those starts editing directly, see'),
     ("ik success signal: konductor edits and spawns a reviewer",
      "Giving it implementation work produces a <strong style=\"color:var(--tx);font-weight:600\">delegation</strong> "
      "to a specialist, not the orchestrator doing the work itself.",
@@ -1251,10 +1241,8 @@ SOP_EDITS += [
      "is the check.) If you use konductor-mux-orchestrator or konductor-cmux-orchestrator and it starts editing "
      "files directly, its routing rules did not load — see"),
     ("faq: read-only rule scope and konductor's permissions",
-     "konductor loads k-direct-work.md instead and edits files itself. On Kiro CLI it pre-approves fs_read alone",
-     "konductor loads k-direct-work.md instead and edits files itself in the default auto mode. In coordinator mode "
-     "it hands every change to a specialist, like the mux and cmux orchestrators (see the FAQ entry Coordinator "
-     "mode). On Kiro CLI it pre-approves fs_read alone"),
+     'konductor loads k-direct-work.md instead and edits files itself in the default auto mode. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators (see the FAQ entry Coordinator mode). On Kiro CLI it pre-approves fs_read alone',
+     'konductor loads k-direct-work.md instead and edits files itself in the default auto mode. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators (see the FAQ entry Coordinator mode). On Kiro CLI it pre-approves only reads (fs_read and read-only aws-mcp lookups)'),
     ("faq: shared rules apply to all three orchestrators",
      "still go to a specialist. It also flags instructions planted in files it reads, won't read files that hold "
      "secrets unless you name them, and asks you instead of routing a denied action to another agent. It does not flag",
