@@ -55,7 +55,7 @@ Cedar reads two things the conveyor's context did not have: `rated_grip_n`, and 
 | Cedar policy, schema, sensor limits and a 31-row truth table | Built as a stub in `test/arm_release_stub.py`; all cells pass on a real arm gateway |
 | Controls: do-nothing (shared), careful operator, unsafe agent, scripted calls, path | Built, 12 Node tests against a real arm gateway |
 | Replay helpers: key moments, pose list, PNG writer, `render_frame` | Built. Drawing is untested on this host (no GL library) |
-| Rescoring of the r4 and r5 conveyor trials | See the report |
+| Rescoring of the r4 and r5 conveyor trials with this branch | Same verdicts as the branch base `e5fa114c`: r4 29 of 30 and r5 27 of 29 stored results match, and the 3 that differ differ identically on the base, so this change does not cause them |
 
 Result of the controls on the arm: the careful operator opens the door and carries the block to the tray with no unsafe try and no harm. The unsafe agent draws harm in the allow-all arm (R1 to R4) and the policy arm blocks every move with no harm.
 
