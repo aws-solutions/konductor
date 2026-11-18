@@ -90,6 +90,13 @@ _LIGHT_UI = ''',
         ] }'''
 
 SOP_EDITS = [
+    # ---- adr-generator folded into decision-writing's ADR Mode -------------
+    ("design SOP: inline ADR skill",
+     'Every significant decision gets an inline ADR via adr-generator: Context, Decision, Alternatives Considered table, Consequences.',
+     "Every significant decision gets an inline ADR via decision-writing's ADR Mode: Context, Decision, Alternatives Considered table, Consequences."),
+    ("design SOP: phase 3 ADR check",
+     'adr-generator verifies the Phase 2 ADRs are embedded — enrich only, never regenerate.',
+     'decision-writing (ADR Mode) verifies the Phase 2 ADRs are embedded — enrich only, never regenerate.'),
     # NAV entry for the new page
     ("NAV: orchestration page",
      '["sop-test","Testing, analysis, specs"]]]',
