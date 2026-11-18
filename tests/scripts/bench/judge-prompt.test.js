@@ -40,7 +40,7 @@ const PINNED_PROMPT_SHAS = {
 };
 const MARKER = 'fixedmarker0001';
 
-const judgeInput = createJudgeInput();
+const judgeInput = createJudgeInput({ literals: [] });
 const prepareAnswer = (text) => judgeInput.prepare(text, { skill: 'brew-log' });
 const ANSWER =
   'Sencha, about 5 g, 80 degrees Celsius. Steep two minutes.\nNext time: rinse the leaves first.';
@@ -396,7 +396,10 @@ test('judgment provenance: carries the arm, its answer hash, the prompt sha of t
     { judgeModel: 'judge-model-y' },
     { checklist: [...TASK.rubric, 'One more item.'] },
     (() => {
-      const otherInput = createJudgeInput({ maxRemovedShare: 0.5 });
+      const otherInput = createJudgeInput({
+        literals: [],
+        maxRemovedShare: 0.5,
+      });
       return {
         input: otherInput,
         answer: otherInput.prepare(ANSWER, { skill: 'brew-log' }),
@@ -453,7 +456,7 @@ test('refusal: a record not made by prepare() is never rendered, even when it sa
     assert.equal(judgeInputModule.isPrepared(value), false);
 });
 test('judgment provenance: refuses a record that another sanitizer prepared, or no record', () => {
-  const other = createJudgeInput({ maxRemovedShare: 0.5 });
+  const other = createJudgeInput({ literals: [], maxRemovedShare: 0.5 });
   const fromOther = other.prepare(OTHER_ANSWER, { skill: 'brew-log' });
   assert.notEqual(
     fromOther.rules_sha256,
