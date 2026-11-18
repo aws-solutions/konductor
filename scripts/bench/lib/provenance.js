@@ -12,6 +12,8 @@
 'use strict';
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { readFile } = require('./read-file');
 const { ARMS } = require('./layout');
 
@@ -43,6 +45,33 @@ const sha256 = (value) =>
 
 /** SHA-256 of a file's bytes: the `skill_md_sha256` of a rules file and the `rules_sha256` of a task file. */
 const fileSha256 = (file) => sha256(readFile(file));
+
+/**
+ * SHA-256 of every regular file below `dir`, keyed by its slash-separated path relative to `dir`, so the
+ * same tree hashes the same on any machine and in any folder. Entries are visited in name order. A file with an
+ * execute bit (any of the three) is marked in its entry, because a script that loses the bit behaves differently;
+ * a tree without such a file hashes from paths and bytes alone. A symbolic link or any other entry that is not a
+ * file or folder is refused, because what it points at is not part of the tree. Folder names alone do not
+ * count: an empty folder changes nothing.
+ */
+function treeSha256(dir) {
+  const files = [];
+  const walk = (folder, relative) => {
+    for (const name of fs.readdirSync(folder).sort()) {
+      const entryPath = path.join(folder, name);
+      const entryRelative = relative ? `${relative}/${name}` : name;
+      const stat = fs.lstatSync(entryPath);
+      if (stat.isDirectory()) walk(entryPath, entryRelative);
+      else if (stat.isFile()) {
+        const entry = [entryRelative, fileSha256(entryPath)];
+        if (stat.mode & 0o111) entry.push('executable');
+        files.push(entry);
+      } else throw new Error(`cannot hash non-file entry ${entryPath}`);
+    }
+  };
+  walk(dir, '');
+  return sha256({ files });
+}
 
 /** Hash of a checklist (an array of items), for the judgment record. */
 const checklistSha256 = (items) => sha256({ items });
@@ -104,6 +133,7 @@ module.exports = {
   sortKeysDeep,
   sha256,
   fileSha256,
+  treeSha256,
   checklistSha256,
   judgmentInputs,
 };

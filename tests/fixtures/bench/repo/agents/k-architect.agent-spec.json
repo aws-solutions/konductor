@@ -1,4 +1,8 @@
 {
   "name": "k-architect",
+  "config": {
+    "description": "Kitchen planner agent.",
+    "systemPrompt": "# Kitchen planner\n\nYou plan a home kitchen.\n\n## Skills Available\n\n- **brew-log**: Writes a short log entry for a tea or coffee brew."
+  },
   "dependencies": { "skills": { "skillNames": ["brew-log"] } }
 }
