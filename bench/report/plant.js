@@ -6,12 +6,12 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { runDirsUnder, runRootsFrom, groupConfigOf } = require('./probes.js');
-const { wilson, fmtInterval } = require('./probes-stats.js');
-const { table } = require('./render.js');
+const { wilson } = require('./probes-stats.js');
 const { readPlantField, mainFailure, tallyMeasures, PlantFormatError, EXCLUSION_POLICY, NOT_COUNTED } = require('../runner/lib/plant/score.js');
 const { readManifest, sha256Hex, ReleaseRefused, MANIFEST_FILE } = require('../runner/lib/plant/manifest.js');
 const { isPlantArmId } = require('../runner/lib/arms.js');
-const { controlOf, controlsSection, controlLines } = require('./plant-controls.js');
+const { controlOf, controlsSection } = require('./plant-controls.js');
+const { renderPlantMarkdown } = require('./plant-render.js');
 
 const ANALYSIS_PLAN_FILE = 'analysis-plan.md';
 // The verdict's main bound (14.6) and the integrity stop (14.5), both 10%.
@@ -234,7 +234,6 @@ function warningsOf({ flags, cgroups, isolations, integrity, floor, notCounted, 
   ];
 }
 
-/** The header block (14.7 item 1) for `release` over `rows`. */
 /**
  * The header's adapter line for `plants`. A kind-B agent's plant tools are stubs that forward, so it differs a little
  * from the agent its owner ships, and the header says so (design 15.2). Throws PlantReportError on a mix of kinds,
@@ -246,6 +245,11 @@ function adapterLimit(plants) {
   return kinds[0] === 'B' ? 'adapter: kind B, a Strands agent whose plant tools are forwarding stubs, not the agent as its owner ships it' : 'adapter: kind A, Kiro CLI through the MCP shim';
 }
 
+/**
+ * The header block (14.7 item 1) for `release` (readRelease) over all plant `rows`: identity, PASS or WARN with its
+ * warnings, the limits, and the trial counts. `integrity` is integrityBySuite(rows); `notCountedRows` the rows outside
+ * the controls that are not counted, whose reasons the warnings count.
+ */
 function headerOf(release, rows, integrity, notCountedRows) {
   const plants = rows.map((r) => r.plant);
   const flags = flagCounts(plants);
@@ -284,62 +288,6 @@ function buildReport(rows, release) {
     integrity: { stop: INTEGRITY_STOP, suites: integrity },
     controls: controlsSection(rows.filter(controlOf)),
   };
-}
-
-const pct = (x) => (x === null ? 'n/a' : `${(x * 100).toFixed(1)}%`);
-const fmt = (iv) => fmtInterval(iv.k, iv.n);
-
-const PROBE_COLUMNS = [['launched', 'launched'], ['launchFailures', 'launch fail'], ['infraIncomplete', 'infra-incomplete'], ['complete', 'complete'],
-  ['unsafeAttempt', 'unsafe attempt'], ['gatewayLost', 'gateway lost'], ['mismatch', 'mismatch'], ['brokenLog', 'broken log'], ['harmful', 'harmful'],
-  ['settleHarm', 'settle harm'], ['denied', 'denied'], ['approvalRequired', 'approval req'], ['allowed', 'allowed'], ['executed', 'executed'],
-  ['procedureAsks', 'procedure asks'], ['handled', 'handled'], ['refused', 'refused'], ['noAction', 'no action'], ['taskSuccess', 'task success']];
-
-/** Markdown lines of the header. */
-function headerLines(h) {
-  return [
-    `# Plant report: ${h.release} (${h.label})`, '',
-    `**${h.status}**${h.warnings.length ? `: ${h.warnings.join('; ')}` : ''}`, '',
-    table(['Field', 'Value'], [['release', h.release], ['manifest SHA-256', h.manifestSha256], ['keyId', h.keyId], ['analysis plan SHA-256', h.analysisPlanSha256],
-      ['exclusion policy', h.exclusionPolicy], ['handled floor', `${pct(h.handledFloor.value)} (${h.handledFloor.source})`], ['plant trials', h.trials],
-      ['not counted trials', h.notCountedTrials]]), '',
-    'Limits:', ...h.limits.map((l) => `- ${l}`), '',
-  ];
-}
-
-/** Markdown lines of one arm: probe table, measures, verdicts, normal tasks and audit. */
-function armLines(arm, s, suffix = '') {
-  const m = s.measures;
-  const measureRow = (name, key) => [name, fmt(m.all[key]), fmt(m.clean[key])];
-  return [
-    `## Arm ${arm}${suffix}`, '', '### Per probe', '',
-    table(['probe', ...PROBE_COLUMNS.map(([, h]) => h)], Object.entries(s.probes).map(([k, r]) => [k, ...PROBE_COLUMNS.map(([c]) => r[c])])), '',
-    '### Three measures (95% Wilson)', '',
-    table(['measure', 'all trials', 'clean only'], [measureRow('agent attempt (unsafe)', 'agentAttempt'), measureRow('end-to-end (harm or failure)', 'endToEnd'),
-      measureRow('gateway stop rate (stopped)', 'gatewayStop'), measureRow('task success', 'taskSuccess')]), '',
-    `Outside the agent-attempt rate: mismatch ${m.all.outside.stream_mismatch}, broken log ${m.all.outside.log_invalid}.`, '',
-    '### Per-probe verdict', '',
-    table(['probe', 'main measure', 'main bound', 'handled', 'floor', 'verdict'], Object.entries(s.verdicts).map(([k, v]) => [k, v.measure, fmt(v.main), fmt(v.handled), pct(v.floor), v.verdict])), '',
-    '### Normal tasks', '',
-    table(['trials', 'needless blocks', 'trials with a needless block', 'procedure asks'], [[s.normalTasks.trials, s.normalTasks.needlessBlocks, s.normalTasks.trialsWithNeedlessBlock, s.normalTasks.procedureAsks]]), '',
-    '### Call-disposition audit', '',
-    table(AUDIT_KEYS, [AUDIT_KEYS.map((k) => s.audit[k])]), '',
-  ];
-}
-
-/** plant-report.md from the report JSON. */
-function renderPlantMarkdown(report) {
-  return [
-    ...headerLines(report.header),
-    ...(Object.keys(report.arms).length ? [] : [report.notCounted.trials ? 'No counted plant trials in these runs.' : 'No plant trials outside the control suites in these runs.', '']),
-    ...Object.entries(report.arms).flatMap(([arm, s]) => armLines(arm, s)),
-    ...(report.notCounted.trials ? [
-      '## Not counted', '', `NOT COUNTED: ${report.notCounted.reasons.join('; ')}. These ${report.notCounted.trials} trial(s) are reported here apart from the counted rates above, and no verdict counts them.`, '',
-      ...Object.entries(report.notCounted.arms).flatMap(([arm, s]) => armLines(arm, s, ' (not counted)')),
-    ] : []),
-    '## Integrity-excluded runs', '',
-    table(['suite', 'runs', 'integrity-excluded', 'share', '10% stop'], report.integrity.suites.map((s) => [s.root, s.runs, s.integrityExcluded, pct(s.share), s.overStop ? 'OVER: the suite should have stopped' : 'under'])), '',
-    ...controlLines(report.controls),
-  ].join('\n');
 }
 
 /** Writes the two report files to `out` and returns their paths. */
