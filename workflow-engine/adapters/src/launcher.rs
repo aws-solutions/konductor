@@ -75,9 +75,9 @@ use workflow_core::runner::keep_tail;
 /// How often the wait looks at the program and its group.
 const POLL: Duration = Duration::from_millis(20);
 /// How long after a kill the group gets to disappear before the end is reported as failed.
-const AFTER_KILL: Duration = Duration::from_secs(2);
+pub(crate) const AFTER_KILL: Duration = Duration::from_secs(2);
 /// A limit that is longer than a year is a year, so the number handed to `timeout` and the clock sum stay in range.
-const LONGEST_LIMIT: Duration = Duration::from_secs(365 * 24 * 3600);
+pub(crate) const LONGEST_LIMIT: Duration = Duration::from_secs(365 * 24 * 3600);
 /// The programs that stop another after a limit, in the order they are tried.
 const TIMEOUT_PROGRAMS: [&str; 2] = ["timeout", "gtimeout"];
 /// What to tell the user when no such program is found.
@@ -149,7 +149,7 @@ impl SystemLauncher {
         self.timeout_program().map(|path| flavor_of(&path))
     }
 
-    fn timeout_program(&self) -> Option<PathBuf> {
+    pub(crate) fn timeout_program(&self) -> Option<PathBuf> {
         find_timeout(self.search.as_deref())
     }
 
@@ -160,10 +160,21 @@ impl SystemLauncher {
         self
     }
 
-    fn interrupted(&self) -> bool {
+    /// The grace period between the terminate signal and the kill.
+    pub(crate) fn grace(&self) -> Duration {
+        self.grace
+    }
+
+    /// Whether the interrupt flag is set.
+    pub(crate) fn interrupted(&self) -> bool {
         self.interrupt
             .as_ref()
             .is_some_and(|flag| flag.load(Ordering::SeqCst))
+    }
+
+    /// The interrupt flag this launcher looks at, for a caller that waits on its own and has to look at it too.
+    pub(crate) fn interrupt_flag(&self) -> Option<Arc<AtomicBool>> {
+        self.interrupt.clone()
     }
 
     /// The identity of a process: the group it leads and its start time, or `None` if there is no such process.
@@ -183,7 +194,7 @@ struct Identity {
 }
 
 /// The bytes read from a program's standard output, the last `keep` of them.
-struct Tail {
+pub(crate) struct Tail {
     bytes: Vec<u8>,
     keep: usize,
 }
@@ -198,7 +209,7 @@ impl Tail {
         }
     }
 
-    fn text(&self, keep: usize) -> String {
+    pub(crate) fn text(&self, keep: usize) -> String {
         let text = String::from_utf8_lossy(&self.bytes).into_owned();
         keep_tail(&text, keep).to_string()
     }
@@ -206,7 +217,7 @@ impl Tail {
 
 /// Reads `stream` on its own thread from the start, keeping its last `keep` bytes, so a chatty program never blocks on
 /// a full pipe. The receiver gets a message when the stream ends. `None` if the thread could not start.
-fn read_tail(
+pub(crate) fn read_tail(
     mut stream: impl Read + Send + 'static,
     name: &str,
     keep: usize,
@@ -444,7 +455,7 @@ impl SystemLauncher {
     /// Sends the terminate signal to the group, waits the grace period for it to empty, then kills what is left. When
     /// `child` is the group's leader and this process started it, it is reaped as it ends: a leader that is a zombie
     /// still counts as a member of its group.
-    fn stop_group(&self, pgid: u32, mut child: Option<&mut std::process::Child>) {
+    pub(crate) fn stop_group(&self, pgid: u32, mut child: Option<&mut std::process::Child>) {
         let mut reap = |wait: bool| {
             if let Some(child) = child.as_deref_mut() {
                 if wait {
@@ -489,15 +500,15 @@ impl SystemLauncher {
 }
 
 /// `1.500s`: the form of a duration `timeout` reads. The part after the point keeps a limit below one second.
-fn seconds_arg(duration: Duration) -> String {
+pub(crate) fn seconds_arg(duration: Duration) -> String {
     format!("{}.{:03}s", duration.as_secs(), duration.subsec_millis())
 }
 
-fn duration_ms(duration: Duration) -> u64 {
+pub(crate) fn duration_ms(duration: Duration) -> u64 {
     u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
 }
 
-fn unix_ms(time: SystemTime) -> u64 {
+pub(crate) fn unix_ms(time: SystemTime) -> u64 {
     time.duration_since(UNIX_EPOCH).map_or(0, duration_ms)
 }
 
@@ -574,7 +585,7 @@ fn find_timeout(search: Option<&OsStr>) -> Option<PathBuf> {
 
 /// Why `program` cannot be run from `cwd`, or `None` if it can. A name with a slash is a path from `cwd`; any other is
 /// looked up on `PATH`, as the system does when it starts a program.
-fn program_problem(program: &str, cwd: &Path) -> Option<String> {
+pub(crate) fn program_problem(program: &str, cwd: &Path) -> Option<String> {
     let found = if program.contains('/') {
         let path = cwd.join(program);
         if !path.exists() {
@@ -603,16 +614,16 @@ fn is_executable(path: &Path) -> bool {
 }
 
 #[cfg(unix)]
-fn make_group_leader(command: &mut Command) {
+pub(crate) fn make_group_leader(command: &mut Command) {
     use std::os::unix::process::CommandExt;
     command.process_group(0);
 }
 
 #[cfg(not(unix))]
-fn make_group_leader(_command: &mut Command) {}
+pub(crate) fn make_group_leader(_command: &mut Command) {}
 
 #[cfg(unix)]
-fn exit_status(status: &std::process::ExitStatus) -> i32 {
+pub(crate) fn exit_status(status: &std::process::ExitStatus) -> i32 {
     use std::os::unix::process::ExitStatusExt;
     status
         .code()
@@ -621,7 +632,7 @@ fn exit_status(status: &std::process::ExitStatus) -> i32 {
 }
 
 #[cfg(not(unix))]
-fn exit_status(status: &std::process::ExitStatus) -> i32 {
+pub(crate) fn exit_status(status: &std::process::ExitStatus) -> i32 {
     status.code().unwrap_or(1)
 }
 

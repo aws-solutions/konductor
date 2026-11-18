@@ -2,13 +2,16 @@
 //! The parts of the workflow engine that touch the world. The core crate defines the ports, and this crate
 //! implements them. Each step adds only the ports it needs: `WorkflowSource` (step 1c), and `Clock`, `RunStore`,
 //! `RunLock` and the `fake` `Harness` (step 1d), `TrustStore`, `Terminal` and `AgentCatalog` (step 1e), and
-//! `ProcessLauncher` and the `kiro-cli` `Harness` (step 1f-1), and the `claude` `Harness` (step 1f-2).
+//! `ProcessLauncher` and the `kiro-cli` `Harness` (step 1f-1), the `claude` `Harness` (step 1f-2), and the ACP
+//! `Harness` for Kiro CLI and Claude Code (step 1f-3).
 
 #![forbid(unsafe_code)]
 
 pub mod acp_client;
 pub mod acp_frames;
+pub mod acp_harness;
 pub mod acp_permission;
+pub mod acp_process;
 pub mod agent_catalog;
 pub mod claude_harness;
 pub mod clock;
@@ -27,7 +30,9 @@ pub mod trust_store;
 
 pub use acp_client::{converse, Adapter, Ending, Incoming, Outcome, Plan, Wire};
 pub use acp_frames::{FrameError, Frames, MAX_FRAME_BYTES};
+pub use acp_harness::{kiro_acp_args, AcpHarness, AcpKind};
 pub use acp_permission::{decide, Decision, Request};
+pub use acp_process::AcpProcess;
 pub use agent_catalog::{kiro_engine, FileAgentCatalog, KiroAgent, KiroEngine};
 pub use claude_harness::{
     claude_args, is_rule_name, read_reply, tool_rules, ClaudeHarness, Reply, ToolRules,
