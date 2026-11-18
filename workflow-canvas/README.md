@@ -255,7 +255,10 @@ port, call it over HTTP and check each reply against the schema of the
 contract. They move a fake clock by hand, so none of them waits. A test
 compares the error codes, diagnostic codes, limits, patterns and the table of
 keys with their slices in the stub with the contract, so a change to one
-without the other fails.
+without the other fails. Another (`http/routes.test.ts`) checks that each
+method and path of the contract has exactly one route in `buildRoutes`, which
+asks for the token when the contract does, and that the stub serves no route
+the contract leaves out.
 
 Playwright starts the stub beside the app (`stub-api/web-servers.ts` holds its
 launch code and the server list), so an end-to-end test can call it. Its launch
