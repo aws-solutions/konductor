@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyRunEvents,
-  CONSOLE_LINES_PER_STAGE,
+  CONSOLE_LINES_PER_RUN,
   startFollowing,
   type FollowedRun,
   type RunEvent,
@@ -29,13 +29,14 @@ function stage(run: FollowedRun, name: string) {
   return run.stages.find((each) => each.name === name);
 }
 
-function lines(stage: string, from: number, count: number): RunEvent[] {
+// `count` console lines of `stage`, numbered from 1, from `seq` on.
+function lines(stage: string, seq: number, count: number): RunEvent[] {
   return Array.from({ length: count }, (_, index) => ({
-    seq: from + index,
+    seq: seq + index,
     type: 'console',
     stage,
-    n: from + index,
-    text: `line ${from + index}`,
+    n: index + 1,
+    text: `line ${index + 1}`,
   }));
 }
 
@@ -43,10 +44,11 @@ describe('startFollowing', () => {
   it('has every stage pending, no outcome, and asks from the start', () => {
     expect(startFollowing(ORDER)).toEqual({
       stages: [
-        { name: 'draft', status: 'pending', console: [] },
-        { name: 'review', status: 'pending', console: [] },
+        { name: 'draft', status: 'pending', console: [], dropped: false },
+        { name: 'review', status: 'pending', console: [], dropped: false },
       ],
       next: 0,
+      consoleOrder: [],
     });
   });
 });
@@ -61,15 +63,18 @@ describe('applyRunEvents', () => {
           name: 'draft',
           status: 'passed',
           console: [{ n: 1, text: 'Writing PLAN.md' }],
+          dropped: false,
         },
         {
           name: 'review',
           status: 'passed',
           console: [{ n: 1, text: 'Reading PLAN.md' }],
+          dropped: false,
         },
       ],
       outcome: { status: 'passed', exitCode: 0 },
       next: 7,
+      consoleOrder: ['draft', 'review'],
     });
   });
 
@@ -120,6 +125,7 @@ describe('applyRunEvents', () => {
       name: 'draft',
       status: 'passed',
       console: [],
+      dropped: false,
     });
   });
 
@@ -135,6 +141,7 @@ describe('applyRunEvents', () => {
       name: 'draft',
       status: 'running',
       console: [{ n: 1, text: 'once' }],
+      dropped: false,
     });
     expect(run.next).toBe(2);
   });
@@ -170,26 +177,75 @@ describe('applyRunEvents', () => {
     expect(run.next).toBe(8);
   });
 
-  it(`keeps the last ${CONSOLE_LINES_PER_STAGE} lines of a stage and drops the oldest`, () => {
-    const over = CONSOLE_LINES_PER_STAGE + 5;
-    const run = follow([
-      ...lines('draft', 1, over),
-      {
-        seq: over + 1,
-        type: 'console',
-        stage: 'review',
-        n: 1,
-        text: 'other stage',
-      },
-    ]);
+  it(`keeps the last ${CONSOLE_LINES_PER_RUN} lines of the run and drops the oldest`, () => {
+    const over = CONSOLE_LINES_PER_RUN + 5;
+    const run = follow(lines('draft', 1, over));
     const kept = stage(run, 'draft')?.console ?? [];
 
-    expect(kept).toHaveLength(CONSOLE_LINES_PER_STAGE);
+    expect(kept).toHaveLength(CONSOLE_LINES_PER_RUN);
     expect(kept[0]).toEqual({ n: 6, text: 'line 6' });
     expect(kept.at(-1)).toEqual({ n: over, text: `line ${over}` });
-    expect(stage(run, 'review')?.console).toEqual([
-      { n: 1, text: 'other stage' },
+    expect(stage(run, 'draft')?.dropped).toBe(true);
+  });
+
+  it('caps the lines of all stages together, dropping the oldest whatever its stage', () => {
+    const run = applyRunEvents(startFollowing(['plan', 'build', 'check']), [
+      ...lines('plan', 1, 400),
+      ...lines('build', 401, 500),
+      ...lines('check', 901, 300),
     ]);
+    const held = run.stages.flatMap((each) => each.console);
+    const [plan, build, check] = run.stages;
+
+    expect(held.length).toBeLessThanOrEqual(CONSOLE_LINES_PER_RUN);
+    expect(held).toHaveLength(CONSOLE_LINES_PER_RUN);
+    expect(plan?.console[0]).toEqual({ n: 201, text: 'line 201' });
+    expect(plan?.console).toHaveLength(200);
+    expect(build?.console).toHaveLength(500);
+    expect(check?.console).toHaveLength(300);
+    expect(run.stages.map((each) => each.dropped)).toEqual([
+      true,
+      false,
+      false,
+    ]);
+    expect(run.consoleOrder).toHaveLength(CONSOLE_LINES_PER_RUN);
+  });
+
+  it('empties a stage whose lines are all the oldest, and says they were dropped', () => {
+    const run = follow([
+      ...lines('draft', 1, 3),
+      ...lines('review', 4, CONSOLE_LINES_PER_RUN),
+    ]);
+
+    expect(stage(run, 'draft')).toMatchObject({ console: [], dropped: true });
+    expect(stage(run, 'review')?.console).toHaveLength(CONSOLE_LINES_PER_RUN);
+    expect(stage(run, 'review')?.dropped).toBe(false);
+  });
+
+  it('says lines were dropped when the first line held is not line 1', () => {
+    // A tab that joins late gets only the lines the server still holds.
+    const run = follow([
+      { seq: 9, type: 'console', stage: 'draft', n: 4, text: 'later' },
+    ]);
+
+    expect(stage(run, 'draft')?.dropped).toBe(true);
+  });
+
+  it('keeps the dropped mark when the stage moves on', () => {
+    const run = follow([
+      ...lines('draft', 1, CONSOLE_LINES_PER_RUN + 1),
+      {
+        seq: CONSOLE_LINES_PER_RUN + 2,
+        type: 'stage_state',
+        stage: 'draft',
+        status: 'passed',
+      },
+    ]);
+
+    expect(stage(run, 'draft')).toMatchObject({
+      status: 'passed',
+      dropped: true,
+    });
   });
 
   it('keeps the text of a line as sent', () => {

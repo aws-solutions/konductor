@@ -45,10 +45,11 @@ export type RunEvent =
   StageStateEvent | ConsoleEvent | RunFinishedEvent | LaterEvent;
 
 /**
- * The most console lines kept for one stage. The server holds at most the
- * last 1000 lines of a run, so a stage never needs more to match it.
+ * The most console lines kept for the whole run, as the server holds at most
+ * the last 1000 lines of a run. Past it the oldest line goes, whatever its
+ * stage.
  */
-export const CONSOLE_LINES_PER_STAGE = 1000;
+export const CONSOLE_LINES_PER_RUN = 1000;
 
 /** One console line of a stage. */
 export interface ConsoleLine {
@@ -62,6 +63,11 @@ export interface FollowedStage {
   readonly status: 'pending' | 'running' | 'passed' | 'blocked';
   readonly reason?: string;
   readonly console: readonly ConsoleLine[];
+  /**
+   * True once an earlier line of the stage is known not to be held: the
+   * run-wide cap dropped it, or a line arrived after a gap in `n`.
+   */
+  readonly dropped: boolean;
 }
 
 /** How the run ended. */
@@ -78,13 +84,21 @@ export interface FollowedRun {
   readonly outcome?: RunOutcome;
   /** The `seq` to send as `after` next time. */
   readonly next: number;
+  /** The stage of each held console line, oldest first, for the cap. */
+  readonly consoleOrder: readonly string[];
 }
 
 /** A run of `order` that no event has been read for: every stage pending. */
 export function startFollowing(order: readonly string[]): FollowedRun {
   return {
-    stages: order.map((name) => ({ name, status: 'pending', console: [] })),
+    stages: order.map((name) => ({
+      name,
+      status: 'pending',
+      console: [],
+      dropped: false,
+    })),
     next: 0,
+    consoleOrder: [],
   };
 }
 
@@ -114,8 +128,32 @@ function withStage(
 }
 
 function withLine(stage: FollowedStage, line: ConsoleLine): FollowedStage {
-  const lines = [...stage.console, line];
-  return { ...stage, console: lines.slice(-CONSOLE_LINES_PER_STAGE) };
+  const expected = (stage.console.at(-1)?.n ?? 0) + 1;
+  return {
+    ...stage,
+    console: [...stage.console, line],
+    dropped: stage.dropped || line.n !== expected,
+  };
+}
+
+function withoutOldestLine(stage: FollowedStage): FollowedStage {
+  return { ...stage, console: stage.console.slice(1), dropped: true };
+}
+
+function addLine(run: FollowedRun, event: ConsoleEvent): FollowedRun {
+  if (!run.stages.some((stage) => stage.name === event.stage)) return run;
+  const added = withStage(
+    { ...run, consoleOrder: [...run.consoleOrder, event.stage] },
+    event.stage,
+    (stage) => withLine(stage, { n: event.n, text: event.text }),
+  );
+  if (added.consoleOrder.length <= CONSOLE_LINES_PER_RUN) return added;
+  const [oldest, ...rest] = added.consoleOrder;
+  return withStage(
+    { ...added, consoleOrder: rest },
+    oldest!,
+    withoutOldestLine,
+  );
 }
 
 function applyOne(run: FollowedRun, event: RunEvent): FollowedRun {
@@ -124,14 +162,11 @@ function applyOne(run: FollowedRun, event: RunEvent): FollowedRun {
       name: stage.name,
       status: event.status,
       console: stage.console,
+      dropped: stage.dropped,
       ...(event.reason === undefined ? {} : { reason: event.reason }),
     }));
   }
-  if (isConsole(event)) {
-    return withStage(run, event.stage, (stage) =>
-      withLine(stage, { n: event.n, text: event.text }),
-    );
-  }
+  if (isConsole(event)) return addLine(run, event);
   if (isRunFinished(event)) {
     return {
       ...run,
