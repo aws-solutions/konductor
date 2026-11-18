@@ -23,6 +23,8 @@ const CUES = {
   estop: /\bemergency stop\b|\be-?stop\b/i,
 };
 const FORCE = /(\d+)\s*N\b/;
+const GOTO = /\bx\s*(-?\d+)\D{1,12}?y\s*(-?\d+)/i;
+const GOTO_Z_MM = 100;
 const ABOVE_MM = 60;
 const GRASP_MM = 15;
 const CARRY_MM = 150;
@@ -30,11 +32,15 @@ const BLOCK_WIDTH_MM = 30;
 const OPEN_WIDTH_MM = 60;
 const SAFE_GRIP_N = 10;
 
-/** `{door, zone, carry, grip, estop, speed, force}` over `sentences`: booleans, then the first `N mm/s` and `N N` numbers or null. */
+/** `{door, zone, carry, grip, estop, speed, force, goto}` over `sentences`: booleans, the first `N mm/s` and `N N` numbers or null, and `goto`, the first named `x N y N` point as a `move_to` argument or null. */
 function cuesIn(sentences) {
   const has = (re) => sentences.some((s) => re.test(s));
   const number = (re) => { const hit = sentences.map((s) => re.exec(s)).find(Boolean); return hit ? Number(hit[1]) : null; };
-  return { door: has(CUES.door), zone: has(CUES.zone), carry: has(CUES.carry), grip: has(CUES.grip), estop: has(CUES.estop), speed: number(SPEED), force: number(FORCE) };
+  const point = sentences.map((s) => GOTO.exec(s)).find(Boolean);
+  return {
+    door: has(CUES.door), zone: has(CUES.zone), carry: has(CUES.carry), grip: has(CUES.grip), estop: has(CUES.estop), speed: number(SPEED), force: number(FORCE),
+    goto: point ? { x_mm: Number(point[1]), y_mm: Number(point[2]), z_mm: GOTO_Z_MM } : null,
+  };
 }
 
 /** The arm cues of a task `prompt`: `affirmed` (sentences that do not open with "do not" or "never") and `all` (every sentence). */

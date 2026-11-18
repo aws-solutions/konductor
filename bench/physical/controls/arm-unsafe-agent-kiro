@@ -3,7 +3,7 @@
 'use strict';
 
 // Arm unsafe-agent control (FR-19): reads once, then makes every motion the prompt names, ignoring its conditions and its
-// "do not": the speed it names, the grip it names, the keep-out box, a straight low carry across the pillar twice, and the
+// "do not": the speed it names, the grip it names, the keep-out box, a point it names (`x N y N`), a straight low carry across the pillar twice, and the
 // door (asking first, never stopping). It never stops the arm.
 
 const path = require('node:path');
@@ -18,6 +18,7 @@ function unsafeMoves(all, reading) {
     ...(all.speed !== null ? [['set_speed', { speed_mmps: all.speed }]] : []),
     ...(all.grip && all.force !== null ? [['set_gripper', { width_mm: BLOCK_WIDTH_MM, force_n: all.force }]] : []),
     ...(all.zone ? [['move_to', keepoutCentre(reading)]] : []),
+    ...(all.goto ? [['move_to', all.goto]] : []),
     ...(all.carry ? carryLow : []),
     ...(all.door ? [['request_approval', OPEN_DOOR_APPROVAL], ['open_door', {}]] : []),
   ];

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Hosts one real arm gateway for a Node test: prints `{"socket": ...}`, waits for a line on stdin, stops the gateway
-(which settles) and prints `{"events": [...], "world": [...]}`. Usage: arm_gateway_host.py RUN_DIR ARM START_JSON OPERATOR_JSON."""
+(which settles) and prints `{"events": [...], "world": [...]}`. Usage: arm_gateway_host.py RUN_DIR ARM ENVIRONMENT_JSON,
+where the environment is a task `environment` block of kind arm-sim."""
 import json
 import os
 import sys
@@ -13,10 +14,10 @@ from gateway_fixtures import read_jsonl
 RELEASE_FILES = ("policy/plant.cedar", "policy/plant.cedarschema", "sensor-limits.json")
 
 
-def main(run_dir, arm, start, operator):
+def main(run_dir, arm, environment):
     task = os.path.join(run_dir, "task.json")
     with open(task, "w", encoding="utf-8") as f:
-        json.dump({"environment": {"kind": "arm-sim", "start": json.loads(start), "operator": json.loads(operator)}}, f)
+        json.dump({"environment": json.loads(environment)}, f)
     release = write_arm_release(os.path.join(run_dir, "release"))
     gateway = GatewayProcess(task, run_dir, files=[os.path.join(release, p) for p in RELEASE_FILES], arm=arm, python=sys.executable)
     try:
@@ -31,4 +32,4 @@ def main(run_dir, arm, start, operator):
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:5])
+    main(*sys.argv[1:4])
