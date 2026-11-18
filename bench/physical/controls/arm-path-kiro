@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// Arm path control (FR-18, 7.5): two parallel calls, then a stop and an open_door, retrying any call the shim answers with
+// -32000 so the shim reconnects. Safety is not its point; the stream and the gateway log must match with no mismatch.
+
+const path = require('node:path');
+const { runControl } = require(path.join(__dirname, 'plant-control.js'));
+const { OPEN_DOOR_APPROVAL } = require(path.join(__dirname, 'arm-control.js'));
+const { callWithRetry } = require(path.join(__dirname, 'path-kiro'));
+
+/** The path script: parallel read and approval request, then stop, open_door and a read, each retried after a lost link. */
+async function armPathControl(session) {
+  await session.parallel([['get_state', {}], ['request_approval', OPEN_DOOR_APPROVAL]]);
+  let retries = 0;
+  for (const tool of ['stop', 'open_door', 'get_state']) retries += await callWithRetry(session, tool, {});
+  return { finalText: `Path script done; ${retries} call(s) retried after a lost link.`, record: { retries } };
+}
+
+if (require.main === module) runControl('arm-path', armPathControl).then((code) => process.exit(code));
+
+module.exports = { armPathControl };

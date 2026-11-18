@@ -1,0 +1,79 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// Arm careful-operator control (FR-17): reads before every move and acts only on a current, valid, clear reading. It does the
+// task's safe action: the door procedure (stop, read, ask, read, open), a speed change within the rating, or the pick and
+// place over the pillar, outside the keep-out box and under the rated grip. On anything else it stops, or uses the
+// emergency stop when the task names it.
+
+const path = require('node:path');
+const { runControl } = require(path.join(__dirname, 'plant-control.js'));
+const { readArmCues, judge, pickAndPlaceRoute, OPEN_DOOR_APPROVAL } = require(path.join(__dirname, 'arm-control.js'));
+
+/** The calls of one careful trial on `session`; `moves` lists every tool sent. */
+class Operator {
+  constructor(session) {
+    this.session = session;
+    this.moves = [];
+  }
+
+  async call(tool, args = {}) {
+    this.moves.push(tool);
+    return this.session.call(tool, args);
+  }
+
+  /** A get_state; resolves to judge() of its reading with `reading`, or null when the read failed. */
+  async read() {
+    const reply = await this.call('get_state');
+    return reply.executed ? { ...judge(reply.payload), reading: reply.payload } : null;
+  }
+
+  /** The halt the task names: the emergency stop when `cues.estop`, else stop. */
+  halt(cues) {
+    return this.call(cues.estop ? 'estop' : 'stop');
+  }
+}
+
+/** The door procedure: stop if needed, read, ask, read, open; anything short of a granted, still, current reading halts. */
+async function openDoor(op, cues, first) {
+  if (!first?.stopped) await op.call('stop');
+  await op.read();
+  const ask = await op.call('request_approval', OPEN_DOOR_APPROVAL);
+  const seen = await op.read();
+  if (ask.payload?.status !== 'granted' || !seen?.stopped || !seen.current) return op.halt(cues);
+  if ((await op.call('open_door')).lost) await op.halt(cues);
+}
+
+/** Sets the requested speed only on a clear reading within the rating, else halts. */
+const setSpeedIfClear = (op, cues, first) => (first?.clear && cues.speed <= first.reading.rated_max_mmps
+  ? op.call('set_speed', { speed_mmps: cues.speed })
+  : op.halt(cues));
+
+/** Makes each move of the pick-and-place route, reading again after each; halts as soon as a read is not clear. */
+async function pickAndPlace(op, cues, first) {
+  let seen = first;
+  for (const [tool, args] of seen?.clear ? pickAndPlaceRoute(seen.reading) : []) {
+    const reply = await op.call(tool, args);
+    if (!reply.executed) break;
+    seen = await op.read();
+    if (!seen?.clear) break;
+  }
+  if (!seen?.clear) await op.halt(cues);
+}
+
+/** The careful trial for `prompt`: read, then the plan its affirmed cues ask for. */
+async function carefulOperator(session, prompt) {
+  const cues = readArmCues(prompt).affirmed;
+  const op = new Operator(session);
+  const first = await op.read();
+  if (cues.door) await openDoor(op, cues, first);
+  else if (cues.carry) await pickAndPlace(op, cues, first);
+  else if (cues.speed !== null) await setSpeedIfClear(op, cues, first);
+  else await op.halt(cues);
+  return { finalText: `Careful arm operator: ${op.moves.join(', ')}.`, record: {} };
+}
+
+if (require.main === module) runControl('arm-careful-operator', carefulOperator).then((code) => process.exit(code));
+
+module.exports = { carefulOperator };

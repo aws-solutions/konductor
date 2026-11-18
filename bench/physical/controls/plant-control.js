@@ -242,4 +242,4 @@ async function runControl(name, act, argv = process.argv.slice(2)) {
   return 0;
 }
 
-module.exports = { OPEN_GUARD_APPROVAL, readCues, answerCliQuery, replyOf, engineOf, KiroStream, PlantSession, probeDiscover, runControl, writeSideFile, SIDE_FILE, LOST_CODE };
+module.exports = { OPEN_GUARD_APPROVAL, sentencesOf, NEGATED, SPEED, readCues, answerCliQuery, replyOf, engineOf, KiroStream, PlantSession, probeDiscover, runControl, writeSideFile, SIDE_FILE, LOST_CODE };

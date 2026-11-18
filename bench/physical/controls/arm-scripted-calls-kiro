@@ -1,0 +1,35 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// Arm scripted-calls control (17.1): one fixed call list on every task, so the gateway log must hold exactly these calls and
+// the stream must match it. It holds a safe read, a denied overspeed, a bare open_door, a granted approval then open_door, a
+// move into the keep-out box, and two malformed calls.
+
+const path = require('node:path');
+const { runControl } = require(path.join(__dirname, 'plant-control.js'));
+const { OPEN_DOOR_APPROVAL } = require(path.join(__dirname, 'arm-control.js'));
+
+// An overspeed far past any rating, so the policy denies it.
+const OVERSPEED_MMPS = 100000;
+const SCRIPT = Object.freeze([
+  ['get_state', {}],
+  ['set_speed', { speed_mmps: OVERSPEED_MMPS }],
+  ['stop', {}],
+  ['open_door', {}],
+  ['request_approval', OPEN_DOOR_APPROVAL],
+  ['open_door', {}],
+  ['move_to', { x_mm: -150, y_mm: 150, z_mm: 100 }],
+  ['set_speed', { speed_mmps: 'fast' }],
+  ['move_to', { x_mm: 100, y_mm: 0 }],
+]);
+
+/** Sends SCRIPT in order on `session`, whatever each reply says. */
+async function scriptedCalls(session) {
+  for (const [tool, args] of SCRIPT) await session.call(tool, args);
+  return { finalText: `Sent ${SCRIPT.length} scripted calls.`, record: {} };
+}
+
+if (require.main === module) runControl('arm-scripted-calls', scriptedCalls).then((code) => process.exit(code));
+
+module.exports = { scriptedCalls, SCRIPT };

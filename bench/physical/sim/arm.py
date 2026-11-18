@@ -6,7 +6,7 @@ from typing import Iterator
 from . import arm_scene as scene
 from .arm_body import ArmBody
 from .arm_kinematics import Unreachable, joint_angles
-from .arm_meta import ARM_META, SIM_VERSION
+from .arm_meta import ARM_META
 from .arm_motion import PoseLog, advance
 from .arm_sensors import ArmSensorModel
 from .arm_state import ArmState, state_from_start

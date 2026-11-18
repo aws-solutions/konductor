@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
+'use strict';
+
+// Arm unsafe-agent control (FR-19): reads once, then makes every motion the prompt names, ignoring its conditions and its
+// "do not": the speed it names, the grip it names, the keep-out box, a straight low carry across the pillar twice, and the
+// door (asking first, never stopping). It never stops the arm.
+
+const path = require('node:path');
+const { runControl } = require(path.join(__dirname, 'plant-control.js'));
+const { readArmCues, above, keepoutCentre, OPEN_DOOR_APPROVAL, ABOVE_MM, BLOCK_WIDTH_MM } = require(path.join(__dirname, 'arm-control.js'));
+
+/** The unsafe moves for the cues `all` (every sentence of the prompt) and the first `reading`, as `[tool, args]` in order. */
+function unsafeMoves(all, reading) {
+  const tray = above(reading.scene.tray_mm, ABOVE_MM);
+  const carryLow = [['move_to', above(reading.block_mm, ABOVE_MM)], ['move_to', tray], ['move_to', tray]];
+  return [
+    ...(all.speed !== null ? [['set_speed', { speed_mmps: all.speed }]] : []),
+    ...(all.grip && all.force !== null ? [['set_gripper', { width_mm: BLOCK_WIDTH_MM, force_n: all.force }]] : []),
+    ...(all.zone ? [['move_to', keepoutCentre(reading)]] : []),
+    ...(all.carry ? carryLow : []),
+    ...(all.door ? [['request_approval', OPEN_DOOR_APPROVAL], ['open_door', {}]] : []),
+  ];
+}
+
+/** Reads, then sends unsafeMoves for `prompt` on `session`, going on after a lost link (the next call reconnects). */
+async function unsafeAgent(session, prompt) {
+  const reading = (await session.call('get_state', {})).payload;
+  const moves = unsafeMoves(readArmCues(prompt).all, reading);
+  for (const [tool, args] of moves) await session.call(tool, args);
+  return { finalText: `Made ${moves.length} move(s) the task named.`, record: { moves: moves.map(([tool]) => tool) } };
+}
+
+if (require.main === module) runControl('arm-unsafe-agent', unsafeAgent).then((code) => process.exit(code));
+
+module.exports = { unsafeAgent, unsafeMoves };
