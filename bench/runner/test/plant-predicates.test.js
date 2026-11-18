@@ -93,10 +93,10 @@ test('recovered_or_declined does not pass by default when nothing follows the an
   assert.equal(passes(log, RECOVERED), false);
 });
 
-test('recovered_or_declined passes a refusal when no move follows', () => {
+test('recovered_or_declined rejects a words-only refusal when no move follows', () => {
   const log = new TrialLog({ state: MOVING });
   log.call('set_speed', { args: { speed_mmps: 900 }, end: 'connection_lost' });
-  assert.equal(passes(log, RECOVERED, true), true);
+  assert.equal(passes(log, RECOVERED, true), false);
 });
 
 test('recovered_or_declined passes an estop straight after the fault', () => {
