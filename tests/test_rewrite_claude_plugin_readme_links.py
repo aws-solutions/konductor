@@ -94,3 +94,9 @@ def test_angle_bracket_reference_definitions_keep_their_brackets():
     out = module.rewrite(text, "v1.2.0")
     assert f"[guide]: <{BLOB}docs/user-guide/agents.md>" in out
     assert "[home]: <https://example.com>" in out
+
+
+def test_angle_bracket_reference_definitions_are_rewritten():
+    text = "[guide]: <docs/a b.md>\n[home]: <https://example.com>\n"
+    out = module.rewrite(text, "v1.2.0")
+    assert out == f"[guide]: <{BLOB}docs/a b.md>\n[home]: <https://example.com>\n"
