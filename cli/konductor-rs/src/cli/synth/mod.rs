@@ -35,6 +35,7 @@ pub mod claude;
 pub mod kiro_cli_v2;
 pub mod kiro_cli_v3;
 pub mod model;
+mod orchestrator_names;
 pub mod parse_canonical;
 pub mod parser;
 pub mod registry;
