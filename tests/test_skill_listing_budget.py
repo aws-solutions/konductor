@@ -30,6 +30,30 @@ def listing_entries():
         description = "" if description is None else str(description).strip()
         description = description.replace("<", "&lt;").replace(">", "&gt;")
         entries[name] = f"- {name}: {description}" if description else f"- {name}"
+    entries.update(sop_listing_entries())
+    return entries
+
+
+# Mirrors `MAX_DESCRIPTION_CHARS` in cli/konductor-rs/src/cli/install/claude.rs.
+SOP_DESCRIPTION_MAX_CHARS = 400
+
+
+def sop_listing_entries():
+    """The `sop-<name>` skills the installer builds from agent-sops/.
+
+    They are model-invocable on Claude Code, so their descriptions are in the
+    listing too. shortcut: approximates the installer's Overview reflow and
+    truncation (first paragraph, whitespace joined, cut at 400 chars); switch to
+    the installer's own output if the two ever disagree.
+    """
+    entries = {}
+    for path in sorted((ROOT / "agent-sops").glob("*.sop.md")):
+        text = path.read_text(encoding="utf-8")
+        match = re.search(r"^## Overview[ \t]*\n(.*?)(?:\n[ \t]*\n|\n#|\Z)", text, re.S | re.M)
+        description = " ".join(match.group(1).split()) if match else ""
+        description = description[:SOP_DESCRIPTION_MAX_CHARS].replace("<", "&lt;").replace(">", "&gt;")
+        name = "sop-" + path.name[: -len(".sop.md")]
+        entries[name] = f"- {name}: {description}" if description else f"- {name}"
     return entries
 
 

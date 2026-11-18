@@ -68,6 +68,13 @@ not per individual commit.
 
 ### Changed
 
+- On Claude Code, the `sop-<name>` skills the installer builds from SOPs no longer carry
+  `disable-model-invocation: true`, so Claude can load a SOP through its `Skill` tool, as Kiro
+  CLI already could through its `.kiro/skills/sop-<name>` copy. `/sop-<name>` still works.
+  The skill listing budget test now counts these 19 descriptions.
+- Orchestrators now start a matched SOP themselves: they say its name, phase count and values,
+  load its `sop-<name>` skill and run it under its own gates. They still give the typed command
+  when the skill cannot be loaded, and never pass a confirmation flag the user did not give.
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
@@ -409,6 +416,10 @@ not per individual commit.
 
 ### Fixed
 
+- `scope_confirmed=true` in `k-e2e-test-generation`, `k-light-ui-testing` and
+  `k-test-coverage-review` now counts only when it comes from the user, so a model that starts
+  one of these SOPs cannot skip its confirmation. `k-e2e-test-generation` will not stage, commit
+  or push without that yes, and never pushes the default branch.
 - Skill bodies no longer contradict themselves or the codebase. `backend-development` and
   `backend-review` keep a facade, factory or repository layering only when the codebase already
   uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes
