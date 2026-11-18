@@ -62,6 +62,9 @@ not per individual commit.
   `claude preload:` line per agent, and `synth --json` adds a `claude_preload` array. Each Claude
   Code agent file ends with a "Skills you can load" block listing its declared skills that are not
   preloaded; `synth` warns when such an agent's `tools` list lacks `Skill`.
+- `make test-py` now checks every skill's frontmatter, description, size, code fences, and
+  `references/` links against a shrink-only baseline in `tests/skill-quality-baseline.json`.
+  `python3 tests/skill_quality.py --print-baseline` refuses to write a baseline that grew.
 
 ### Changed
 
