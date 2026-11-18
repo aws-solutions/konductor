@@ -86,7 +86,7 @@ flowchart TD
         direction TB
         Q1["doc-accuracy-analyzer<br/>verify claims vs primary sources<br/>route AWS claims to aws-service-validator (aws-mcp)<br/>flag INCORRECT / OVERSTATED / UNVERIFIED inline<br/>AWS report → docs/design/&lt;name&gt;-aws-validation.md"]
         Q2["trade-off-evaluator<br/>score 1–5: cost, latency, complexity,<br/>scalability, operability<br/>report → docs/design/&lt;name&gt;-tradeoffs.md"]
-        Q3["adr-generator<br/>verify Phase 2 ADRs are embedded<br/>enrich only — do not regenerate"]
+        Q3["decision-writing (ADR Mode)<br/>verify Phase 2 ADRs are embedded<br/>enrich only — do not regenerate"]
         Q1 --> Q2 --> Q3
     end
 

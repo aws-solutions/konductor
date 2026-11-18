@@ -257,8 +257,8 @@ the original.
 saving a durable fact — notify immediately after writing.**
 
 If the capture turns out to be situational, the user can say "don't save that" in the next
-turn and the entry can be removed. Removing an `[origin:user]` entry is allowed only when the
-user asks; the provenance gate above covers every other change.
+turn and the entry can be removed. Removing an `[origin:user]` or untagged entry is allowed only
+when the user asks; the provenance gate above covers every other change.
 
 When two `Ruling:` entries you may follow decide the same collision differently, the newer date wins: follow
 it, and offer to remove the older one. An `[origin:agent]` `Ruling:` never competes. If both have the same date, ask the user which one stands.
