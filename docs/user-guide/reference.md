@@ -314,7 +314,12 @@ konductor synth: /path/to/agents/broken.agent-spec.json: invalid JSON: key must 
 - On Kiro CLI v2 and v3, synth appends a `## Your skills` block to each agent's `prompt`. It lists
   the agent's declared skills with a rule for when to load one. Skills whose description starts
   "MUST USE for every" (today only `constraints`) are left out, since they claim every task.
-  Claude Code output is unchanged.
+- On Claude Code, each agent file ends with a `## Skills you can load` block instead. It lists the
+  agent's declared skills that are not in its `clientConfig.claudeCli.skills` preload, to be
+  loaded with the `Skill` tool.
+- synth prints a `konductor: warning:` line for an agent whose Claude Code preload is over 32 KiB
+  or 32 skill names. Past 32 names the warning lists the skills Claude Code would drop. It is a
+  warning, so synth still exits `0`.
 
 ---
 
@@ -415,13 +420,14 @@ Every agent declares `context/k-core-rules.md`. The three orchestrators also dec
 
 | Entry | Declared by | Definition |
 | --- | --- | --- |
-| `aws-mcp` | `konductor`, `k-architect`, `k-developer` | `command: uvx`, args `mcp-proxy-for-aws-cli==1.7.0`, `https://aws-mcp.us-east-1.api.aws/mcp`, `--metadata`, `AWS_REGION=us-east-1` |
+| `aws-mcp` | `konductor`, `k-architect`, `k-developer` | `command: uvx`, args `mcp-proxy-for-aws-cli==1.7.0`, `https://aws-mcp.us-east-1.api.aws/mcp`, `--metadata`, `AWS_REGION=us-east-1`, `--skip-auth` |
 | `playwright-mcp` | `k-browser` | args `-y`, `@playwright/mcp@latest` |
 
 In Claude Code `k-architect`, `k-developer` and `k-browser` request the corresponding tools via the
 globs `mcp__aws-mcp__*` and `mcp__playwright-mcp__*` rather than launching the servers themselves.
-`konductor` requests only three read-only `aws-mcp` tools: `aws___retrieve_skill`,
-`aws___search_documentation` and `aws___read_documentation`.
+`konductor` requests only five read-only `aws-mcp` tools: `aws___retrieve_skill`,
+`aws___search_documentation`, `aws___read_documentation`, `aws___list_regions` and
+`aws___get_regional_availability`.
 
 ---
 

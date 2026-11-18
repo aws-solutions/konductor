@@ -216,8 +216,9 @@ AWS's own getting-started docs, OAuth commands, and existing configs.
 
 **AWS documentation lookups:** `k-architect` and `k-developer` request the whole `aws-mcp`
 server via the `mcp__aws-mcp__*` glob, so every tool it exposes is granted, including the
-AWS-API-acting ones (see Tool grant below). `konductor` requests only three read-only tools:
-`aws___retrieve_skill`, `aws___search_documentation` and `aws___read_documentation`. Each
+AWS-API-acting ones (see Tool grant below). `konductor` requests only five read-only tools:
+`aws___retrieve_skill`, `aws___search_documentation`, `aws___read_documentation`,
+`aws___list_regions` and `aws___get_regional_availability`. Each
 agent's rendered `.md` file carries an `mcpServers:` entry (built from `dependencies.mcpRegistry`, filtered to just this server,
 launched via `uvx mcp-proxy-for-aws-cli==1.7.0`), so this `konductor install --harness claude`
 install launches the server itself. No separate MCP server configuration is needed. This is also
@@ -226,9 +227,10 @@ instead: the plugin ships a plugin-level `.mcp.json` for the same server, with t
 tool rewritten to its real plugin-scoped name Claude Code resolves for a plugin subagent. The
 server auto-starts as soon as the plugin (or standalone install) is enabled, launching
 `mcp-proxy-for-aws-cli==1.7.0`. The proxy is pinned for repeatable client behavior; AWS
-service documentation and skills still come from the managed endpoint at request time. Install `uvx`
-and configure AWS credentials (`~/.aws/credentials` or environment variables) so the agent has
-something to authenticate with; it degrades gracefully if credentials are absent.
+service documentation and skills still come from the managed endpoint at request time. Install `uvx`.
+The server starts with `--skip-auth`, so documentation search and skills work without AWS
+credentials; configure credentials (`~/.aws/credentials` or environment variables) only for calls
+that act on an AWS account.
 
 **Tool grant: the whole server for `k-architect` and `k-developer`.** These two grant every tool
 the server exposes: the five AWS knowledge/documentation tools (`aws___search_documentation`,

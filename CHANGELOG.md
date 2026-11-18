@@ -57,11 +57,18 @@ not per individual commit.
   this shell's PATH, is reported as warn, not as missing. Under `coordinator` it runs the same
   persona load the session-start hook runs, so a digest over the hook's output budget is
   `failed`, and an install root outside the home that is not a git checkout root is `warn`.
+- `synth` warns when an agent's Claude Code skill preload (`clientConfig.claudeCli.skills`) is over
+  32 KiB or 32 names, and names the skills Claude Code would drop. `-v` prints one
+  `claude preload:` line per agent, and `synth --json` adds a `claude_preload` array. Each Claude
+  Code agent file ends with a "Skills you can load" block listing its declared skills that are not
+  preloaded; `synth` warns when such an agent's `tools` list lacks `Skill`.
 
 ### Changed
 
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
+- Claude Code subagents now preload 1 to 4 skills each (109 KB in total, down from 1.9 MB); the rest
+  load on demand.
 - `konductor` does the work itself, commits only when you ask, and spawns one fresh `k-*` reviewer per phase gate (next bullet);
   it spawns a specialist only for a tool, access, skill or SOP it lacks, for parallel work on disjoint files, or when an SOP says so;
   an SOP `konductor` does not declare is run by the specialist that declares it. Parallel parts reach your branch only after
@@ -130,10 +137,6 @@ not per individual commit.
   rules that served one draw.io-based tool. It places S3 with the regional services, since each
   bucket lives in one region, and treats AWS WAF as global only for CloudFront-scoped web ACLs.
   A Lambda function with VPC config is drawn in its subnets.
-- Three skills are renamed and their old names are removed: `asdlc-aspect-review` is now
-  `k-aspect-review`, `asdlc-code-simplifier` is now `k-code-simplifier`, and `document-formats`
-  is now `docx-conversion`, whose description names `.docx`. Custom agent specs must use the
-  new names: `konductor synth` rejects a spec that still declares an old one.
 - The published HTML guide's FAQ now gives the current skill count (81) instead of 75.
 - `infra-validation` and `iam-policy-design` read as one instruction set each, without a pasted
   second prompt and role. `infra-validation` asks for scope once, and skips the questions when
@@ -215,6 +218,13 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- `k-adversarial-pull-request-review` now says "in Konductor" or "for Konductor" where it
+  scopes the `pr_url` and historical-filtering limits, including the report's
+  `Historical filtering:` line.
+- `cmux-dispatch` renames the done-key variable it exports to the dispatched pane to
+  `KONDUCTOR_DONE_KEY`, and `cmux-completion-hook.sh` reads the new name. A custom completion
+  hook must read `KONDUCTOR_DONE_KEY` too; the bundled hook still falls back to
+  `CMUX_WORKSPACE_ID`.
 - Review ceilings: CRITICAL and IMPORTANT findings get one fix and one re-review. One in the task's own output still open,
   or one the re-review reports there, carried over or new, or caused by the fix in what depends on it, stops work on that artifact;
   a finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing, not put in the fix brief.
@@ -312,6 +322,8 @@ not per individual commit.
   - `find-aws-skills` now loads for any AWS service guidance, even when a local skill covers part
     of the task, and `architecture-advisor`, `kiro-design-generation` and `system-design-patterns`
     load `dynamodb-design` and apply its quality gate before designing DynamoDB keys and indexes.
+    When a lookup fails, `find-aws-skills` offers direct API calls through `aws___run_script` only
+    when the agent has that tool.
   - `infra-validation` runs the server's `aws-cloudformation`, `aws-cdk` and
     `aws-well-architected-review` checks (cfn-lint, cfn-guard, cdk-nag, a pillar review)
     read-only and rates their findings CRITICAL, IMPORTANT or SUGGESTION. It runs `cdk synth`
@@ -338,9 +350,12 @@ not per individual commit.
     runs IAM Access Analyzer `ValidatePolicy` in the user's AWS account.
   - `konductor` declares `aws-mcp` and `find-aws-skills`, like `k-architect` and `k-developer`,
     so it can run `infra-validation`'s AWS checks. On Kiro CLI the three agents pre-approve only the server's
-    read-only documentation, skill and Region tools. On Claude Code `konductor` is granted only
-    `aws___retrieve_skill`, `aws___search_documentation` and `aws___read_documentation`, and its
-    prompt forbids `aws___run_script` and requires confirmation before any mutating AWS action.
+    read-only documentation, skill and Region tools. On both harnesses `konductor` is granted only
+    those five tools by name (`aws___retrieve_skill`, `aws___search_documentation`,
+    `aws___read_documentation`, `aws___list_regions`, `aws___get_regional_availability`), so it
+    has no `aws___run_script`, and its prompt requires confirmation before any mutating AWS action.
+    All three start the server with `--skip-auth`, so documentation search and skills work
+    without AWS credentials; calls that act on an account still need them.
     The skill-name test now also checks aws-mcp skill names in table cells and prose.
 - The Kiro spec skills and the `kiro-spec-workflow` SOP write specs in the format Kiro writes
   them:
@@ -360,6 +375,14 @@ not per individual commit.
     inside `k-full-sdlc` it leaves execution to that SOP. Its last step reports gaps between the
     documents instead of a traceability table.
 
+### Removed
+
+- Breaking: three skills are renamed and their old names are removed, with no aliases:
+  `asdlc-aspect-review` is now `k-aspect-review`, `asdlc-code-simplifier` is now
+  `k-code-simplifier`, and `document-formats` is now `docx-conversion`, whose description names
+  `.docx`. Custom agent specs must use the new names: `konductor synth` rejects a spec that still
+  declares an old one.
+
 ### Fixed
 
 - Skill bodies no longer contradict themselves or the codebase. `backend-development` and
@@ -377,7 +400,8 @@ not per individual commit.
   report sections, so a SOP's confidence score averages only the eight.
   Missing artifacts are listed apart from findings and carry no severity, and the PE review and
   design-doc SOPs evaluate a single document without asking for the rest of a package, so a
-  one-doc review can reach PE-READY.
+  one-doc review can reach PE-READY. In `k-existing-design-review` a missing threat model rules
+  out READY FOR IMPLEMENTATION.
   `plan-review` has a SHIP IT template and star rules that don't overlap, and
   `trade-off-evaluator` writes to the caller's output directory or reports inline. The
   `external-research` AWS example states a checked fact instead of a wrong one.
@@ -386,17 +410,21 @@ not per individual commit.
   not prompt when a SOP runs it. `trade-off-evaluator` writes no file standalone unless asked.
 - `infra-validation` and `policy-validation` no longer flag an S3 bucket or DynamoDB table as
   unencrypted for lacking an encryption setting, since both encrypt at rest by default. They
-  flag them only when the data needs SSE-KMS or a customer managed key.
+  flag them only when the data needs SSE-KMS or a customer managed key. For a customer managed
+  key, `iam-policy-design` adds a bucket policy statement that denies `s3:PutObject` under any
+  other key, and `policy-validation` asks for one; only the deny on unencrypted uploads is gone.
 - `smithy-modeling` and `smithy-validation` describe current Smithy rules: `enum` and `intEnum`
   shapes instead of the deprecated `@enum` trait, the full `@paginated` rules, required
   `@httpLabel` members, the DANGER severity, `smithy validate --severity` and
   `smithy diff --mode git`, `@readonly` and `@idempotent` as behavior traits, member renames as
   breaking even with `@jsonName`, and IDL 2.1 needing Smithy 1.75.0 or later. The example
   review puts `@sensitive` on a target shape, since the trait cannot apply to members, and the
-  file-organization reference repins the example to 1.75.0 and adds `$schema`.
+  file-organization reference pins every Smithy artifact no newer than the installed CLI, with
+  1.75.0 in the example, and adds `$schema`.
 - The Smithy skills say `$version: "2"` resolves to IDL 2.1 on Smithy 1.75.0 or later.
-- The Smithy skills treat `@paginated` `items` as recommended, not required, and let
-  operations inherit `@paginated` settings from the service.
+- The Smithy skills treat `@paginated` `items` as recommended, not required, and say each list
+  operation carries its own `@paginated`, which can take its settings from a service-level
+  `@paginated`.
 - The Smithy skills accept any string as a service `version`; a date is only a convention.
 - `smithy-modeling` adds a resource lifecycle example, a `GetUserInput` with a required
   `@httpLabel` member, and says mixins pass their traits to the shapes that use them.
@@ -446,7 +474,8 @@ not per individual commit.
   `external-research` drop terms that do not apply in this repo.
 - `git-merge` shows the merge log and diff and asks before pushing to the default branch, and
   only when the repo merges locally; otherwise, or if the user declines, it opens a PR. Tagging
-  and branch cleanup wait for a successful push. `git-workflow` now merges the default branch in
+  and branch cleanup wait for a successful push. The merge into the default branch never runs in
+  a dispatched pane. `git-workflow` now merges the default branch in
   before a PR instead of rebasing, matching `git-merge`.
 - `cmux-dispatch` and `mux-dispatch` no longer claim every task, and say that Claude Code panes
   skip permission prompts, so dispatch only tasks you would approve unattended.

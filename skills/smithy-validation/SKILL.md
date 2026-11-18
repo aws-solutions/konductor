@@ -142,7 +142,7 @@ Use this skill when:
 
 **Verify:**
 
-- List operations have the `@paginated` trait, either directly or inherited from the service's `@paginated` (operation settings override the service's)
+- Each list operation carries its own `@paginated` trait. It can be empty when the service's `@paginated` supplies every setting, since a service-level trait only supplies defaults to operations that have the trait. A list operation without it is a finding
 - `inputToken` and `outputToken` set on the operation or inherited from the service, and `pageSize` defined
 - `items` names the paged list or map; it is optional, but recommended
 - The `inputToken` member is not `@required`
@@ -218,11 +218,11 @@ When the model spans more than one file or may need splitting, open the `smithy-
 
 ### Step 1: Initial Validation
 
-Run automated checks from the project directory, where `smithy validate` picks up `smithy-build.json` and its `sources` and Maven dependencies:
+Run automated checks from the project directory and pass the model directory. This works with or without `smithy-build.json`; without one, plain `smithy validate` loads no model files and still prints SUCCESS:
 
 ```bash
-smithy validate
-smithy validate --severity NOTE   # also report NOTE events; the default floor is WARNING
+smithy validate <model-dir>
+smithy validate --severity NOTE <model-dir>   # also report NOTE events; the default floor is WARNING
 ```
 
 Review validation output for:
@@ -266,8 +266,8 @@ Look for an earlier version of the model before you start: other `*.smithy` file
 
 ```bash
 smithy diff --old previous-model/ --new current-model/
-smithy diff --mode git              # compare the working tree's model against HEAD
-smithy diff --mode git --old main   # or against a branch or commit
+smithy diff --mode git --old main   # a review branch against its base
+smithy diff --mode git              # uncommitted changes against HEAD
 ```
 
 Identify and document:
@@ -347,7 +347,7 @@ Open `references/example-review.md` (relative to this file) before writing the r
 
 Before approving a model:
 
-- [ ] Validates without errors: `smithy validate`
+- [ ] Validates without errors: `smithy validate <model-dir>`
 - [ ] All public shapes have documentation
 - [ ] Operations have defined errors
 - [ ] Every `@httpLabel` member is `@required`, checked for each operation

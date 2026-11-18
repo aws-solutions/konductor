@@ -34,8 +34,10 @@ NOT_LOCAL = {
     # setting-up-cloudtrail-multi-region skills.
     ("iam-policy-design", "references/create-secrets-using-best-practices.md"),
     ("iam-policy-design", "references/cloudtrail-multi-region-setup.md"),
-    # A file inside the AWS MCP server's amazon-dynamodb skill.
+    # Files inside the AWS MCP server's amazon-dynamodb skill.
     ("cost-estimation", "references/cost-model-schema.md"),
+    ("dynamodb-design", "references/cost-model-schema.md"),
+    ("dynamodb-design", "references/vector-search.md"),
 }
 
 

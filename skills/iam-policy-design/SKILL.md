@@ -67,7 +67,7 @@ Unless explicitly out of scope, include:
 - Customer-managed KMS keys with automatic rotation for data whose classification needs them
 - Separate key policies for administrators and users
 - TLS 1.2+ enforced for all data in transit
-- S3: SSE-S3 by default, or SSE-KMS with a customer managed key when the data classification needs it, and a bucket policy that denies non-TLS requests. S3 encrypts every upload by default, so no policy needs to deny unencrypted uploads
+- S3: SSE-S3 by default, or SSE-KMS with a customer managed key when the data classification needs it, and a bucket policy that denies non-TLS requests. S3 encrypts every upload by default, so a deny on unencrypted uploads is no longer needed. When the classification needs a customer managed key, the bucket policy also denies `s3:PutObject` unless `s3:x-amz-server-side-encryption-aws-kms-key-id` is that key's full ARN (see S3 Bucket Policy: Customer Managed Key below)
 
 **Network Security:**
 
@@ -244,7 +244,26 @@ When the user or the design under review names a compliance framework (GDPR, HIP
 
 ## IAM Policy Templates
 
-`aws-iam` generates identity-based policies and `securing-s3-buckets` the S3 bucket policy. These templates cover the policy types those skills leave to you.
+`aws-iam` generates identity-based policies and `securing-s3-buckets` the S3 bucket policy. These templates cover the policy types and statements those skills leave to you.
+
+### S3 Bucket Policy: Customer Managed Key
+
+Default bucket encryption is only a default: a `PutObject` that sends its own `x-amz-server-side-encryption` header (`AES256`, or `aws:kms` with another key) overrides it, and `securing-s3-buckets` has no statement that stops this. When the data classification needs a customer managed key, add this statement to the bucket policy, with the key's full ARN. S3 compares the key it actually uses, from the header or the bucket default, so uploads that rely on the default key still pass:
+
+```json
+{
+  "Sid": "DenyOtherKmsKeys",
+  "Effect": "Deny",
+  "Principal": "*",
+  "Action": "s3:PutObject",
+  "Resource": "arn:aws:s3:::bucket-name/*",
+  "Condition": {
+    "StringNotEquals": {
+      "s3:x-amz-server-side-encryption-aws-kms-key-id": "arn:aws:kms:region:account-id:key/key-id"
+    }
+  }
+}
+```
 
 ### Resource-Based Policy: KMS Key
 

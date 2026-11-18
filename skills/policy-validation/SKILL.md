@@ -40,8 +40,8 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 
 **CRITICAL:** one of the findings below.
 
-- `*` action, `*` resource, `ec2:*` (it covers EBS snapshots, security-group ingress and instance userData), or `service:*` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`) without a documented justification
-- Cross-account trust without `sts:ExternalId` or another condition key
+- `*` action, `*` resource, `ec2:*` (it covers EBS snapshots, security-group ingress and instance userData), or `service:*` on a data, credential, code or permission service (`s3:*`, `kms:*`, `lambda:*`, `iam:*`, `sts:*`, `ssm:*`, `secretsmanager:*`, `dynamodb:*`) without a documented justification
+- Cross-account trust with no condition that limits which principal can assume the role, such as `sts:ExternalId`, `aws:PrincipalOrgID`, `aws:PrincipalArn`, or `aws:SourceAccount`/`aws:SourceArn` for service principals. Transport or time conditions (`aws:SecureTransport`, `aws:CurrentTime`) do not count
 - `iam:PassRole` on `Resource: "*"`. With a compute create or update action (`ec2:RunInstances`, `lambda:CreateFunction`, `lambda:UpdateFunctionConfiguration`, `ecs:RegisterTaskDefinition`) it lets the principal run code as any passable role; alone it is still a wildcard resource
 - A direct privilege-escalation action (`iam:PutRolePolicy`, `iam:PutUserPolicy`, `iam:PutGroupPolicy`, `iam:CreatePolicy`, `iam:CreatePolicyVersion`, `iam:AttachRolePolicy`, `iam:AttachUserPolicy`, `iam:AttachGroupPolicy`) on `Resource: "*"`
 - `kms:*` granted to a non-admin principal
@@ -58,8 +58,8 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 - A trail that is single-region or skips global service events
 - CloudTrail logs not encrypted or without log file validation
 - KMS key rotation off for sensitive data where nothing requires it
-- `service:*` on a low-risk service (`cloudwatch:*`, `xray:*`) without a documented justification
-- Cross-account trust that has a condition key but whose intent is unverified
+- Any other `service:*`, such as `cloudwatch:*`, `xray:*`, `sqs:*` or `sns:*`, without a documented justification
+- Cross-account trust with a condition that limits the principal but whose intent is unverified
 - Named actions beyond what the role needs, with no wildcard
 - A direct privilege-escalation action scoped to named resources
 - `ForAllValues` with no `Null` check on the same key, or a Deny that matches `aws:TagKeys` case-sensitively
@@ -755,6 +755,7 @@ Generate output in this format:
 
 3. **Encrypt new S3 bucket** (CRITICAL, < 1 hour)
    - Enable default encryption with KMS customer-managed key
+   - Add a bucket policy statement that denies `s3:PutObject` unless `s3:x-amz-server-side-encryption-aws-kms-key-id` is that key's full ARN
    - Add a bucket policy that denies non-TLS requests
    - Enable versioning and MFA delete
 
@@ -839,7 +840,7 @@ Generate output in this format:
 **CRITICAL (must fix):**
 
 - Wildcard actions on sensitive services without documented justification
-- Cross-account trust without `ExternalId` or condition keys
+- Cross-account trust with no condition that limits which principal can assume the role, such as `sts:ExternalId`, `aws:PrincipalOrgID`, `aws:PrincipalArn`, or `aws:SourceAccount`/`aws:SourceArn` for service principals. Transport or time conditions (`aws:SecureTransport`, `aws:CurrentTime`) do not count
 - KMS key policies allow `kms:*` to non-admin principals
 - S3 bucket policies allow public access
 - No CloudTrail trail at all

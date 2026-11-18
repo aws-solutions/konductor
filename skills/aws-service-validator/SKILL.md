@@ -37,11 +37,13 @@ Do not accept the document's own assertion as evidence. Always consult the prima
 
 ### Step 2: Classify Each Claim
 
-| Status     | Definition                                                         |
-| ---------- | ------------------------------------------------------------------ |
-| CONFIRMED  | Primary source explicitly confirms the assertion                   |
-| UNVERIFIED | No primary source found; service may be too new or claim too vague |
-| INCORRECT  | Primary source contradicts the assertion                           |
+| Status     | Definition                                                                                             |
+| ---------- | ------------------------------------------------------------------------------------------------------ |
+| CONFIRMED  | A primary source you checked confirms the assertion                                                    |
+| UNVERIFIED | No primary source checked or found: the tools were unavailable, the service is new, or the claim vague |
+| INCORRECT  | A primary source you checked contradicts the assertion                                                 |
+
+CONFIRMED and INCORRECT always mean source-checked: memory alone never gives either.
 
 For INCORRECT claims, provide the correction and the evidence URL.
 For UNVERIFIED claims, note what was searched and why it could not be confirmed.
@@ -50,12 +52,13 @@ A correction says what the design should do instead, not just the right limit. "
 
 #### When the aws-mcp tools are unavailable
 
-A known-wrong claim must not hide in UNVERIFIED, or the gate passes a broken design, and a well-known true limit should not land there either. So:
+If you have a web fetch or web search tool, use it first: open the docs.aws.amazon.com page for the claim and classify from what it says, with that page's URL as evidence. That is a source check.
 
-- Mark a claim INCORRECT when you are confident it contradicts a documented AWS limit or behavior. Label the evidence "prior knowledge, not source-checked" and name the doc page the author should check. Do not list a URL you did not open as evidence.
-- Mark a claim CONFIRMED when it states a long-standing, widely documented limit or behavior you are confident of, such as the 5 TB maximum S3 object size. Use the same evidence label and doc page.
-- Keep pricing and Region claims UNVERIFIED, since both change often and must come from the pricing page or the regional availability tool.
-- Mark everything else UNVERIFIED, saying the tools were unavailable rather than claiming a search.
+With no way to read the docs, every claim stays UNVERIFIED, because a limit you remember may have changed. So:
+
+- Label the evidence "prior knowledge, not source-checked", and say the tools were unavailable rather than claiming a search.
+- When you believe a claim contradicts a documented AWS limit or behavior, add the note "contradicts prior knowledge, check <doc page>", naming the doc page the author should check. Do not list a URL you did not open as evidence. The Quality Gate treats this note as blocking, so a known-wrong claim cannot pass as plain UNVERIFIED.
+- Do not judge pricing and Region claims from memory at all, since both change often and must come from the pricing page or the regional availability tool. They get the label only.
 - State at the top of the report that no AWS docs were consulted.
 
 ### Step 3: Produce Validation Report
@@ -71,14 +74,14 @@ Output a markdown report in this format:
 | "Max synchronous invocation payload: 6 MB" | Lambda    | CONFIRMED  | https://docs.aws.amazon.com/...           | -                                            |
 | "<service> is GA in <Region>"              | <service> | UNVERIFIED | Regional availability call found no match | Flag for human review                        |
 
-**Summary:** N claims checked: N CONFIRMED, N UNVERIFIED, N INCORRECT.
+**Summary:** N claims checked: N CONFIRMED, N UNVERIFIED (N contradicting prior knowledge), N INCORRECT.
 ```
 
 When run directly, write the report to the path the caller gives, or to `docs/design/<name>-aws-validation.md`. When `doc-accuracy-analyzer` calls this skill, return the rows so it can merge them into its own report, and write the file only if it passed a path.
 
 ## Pitfalls
 
-- **Do not block on UNVERIFIED**: mark and proceed. New services may not yet appear in documentation.
+- **Do not block on UNVERIFIED**: mark and proceed. New services may not yet appear in documentation. The exception is a claim noted "contradicts prior knowledge", which blocks the gate
 - **Do not validate pricing claims from memory**: always call `aws___search_documentation` for pricing pages.
 - **Regional availability changes frequently**: always call `aws___get_regional_availability` rather than relying on prior knowledge. It requires `resource_type`, plus `filters` for a multi-region call, and filter values must exactly match AWS's catalog names. When listing names with an unfiltered single-region call, follow `next_token` before concluding a name doesn't exist.
 - **Feature names drift**: search by both the marketing name and the API/console name if the first search returns no results.
@@ -90,12 +93,14 @@ After producing the report, confirm:
 - Every claim you were given has a row in the report
 - Every INCORRECT finding has a correction and an evidence URL that resolves
 - No CONFIRMED finding is based solely on the document's own assertion
+- No CONFIRMED or INCORRECT finding rests on prior knowledge alone
 
 ## Quality Gate
 
 The fact-check gate passes when:
 
 - **0 INCORRECT findings** remain: each one is corrected inline. A `> ⚠️ INCORRECT: <correction>` callout marks a fix still owed, not a pass
-- UNVERIFIED findings are flagged with `> ⚠️ UNVERIFIED: <what was searched>` callouts
+- **0 UNVERIFIED findings noted "contradicts prior knowledge"** remain: check each against the named page and reclassify it, or correct the text. Until then it is flagged `> ⚠️ UNVERIFIED: contradicts prior knowledge, check <doc page>` and the gate does not pass
+- Other UNVERIFIED findings are flagged with `> ⚠️ UNVERIFIED: <what was searched>` callouts
 - Each callout sits under the claim it flags and carries the design fix, so reviewers see the remedy next to the text
 - When run directly, the report is written to the path the caller gives, or to `docs/design/<name>-aws-validation.md`. When `doc-accuracy-analyzer` calls it without a path, write no file and return the rows

@@ -67,10 +67,9 @@ def test_every_skill_direct_work_names_is_declared_by_konductor():
         "infra-validation",
     } <= named
     spec = _spec("konductor")
-    kiro = set(spec["dependencies"]["skills"]["skillNames"])
-    claude = set(spec["clientConfig"]["claudeCli"]["skills"])
-    assert named <= kiro, sorted(named - kiro)
-    assert named <= claude, sorted(named - claude)
+    declared = set(spec["dependencies"]["skills"]["skillNames"])
+    assert named <= declared, sorted(named - declared)
+    assert "Skill" in spec["clientConfig"]["claudeCli"]["tools"]
 
 
 def _direct_work():
@@ -104,7 +103,9 @@ def _konductor_loaded_files():
 
 
 def test_bundle_reference_block_counts_konductor_skills_from_the_spec():
-    count = len(_spec("konductor")["clientConfig"]["claudeCli"]["skills"])
+    spec = _spec("konductor")
+    claude_skills = set(spec["dependencies"]["skills"]["skillNames"]) | set(spec["clientConfig"]["claudeCli"]["skills"])
+    count = len(claude_skills - {"humanize-writing"})
     for rel in ("docs/index.html", "docs/site/user-guide.html"):
         body = (ROOT / rel).read_text(encoding="utf-8")
         assert f"konductor skills ({count})" in body, rel

@@ -560,8 +560,8 @@ SOP_EDITS += [
      '{ k: "konductor skills (24)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation. claude-teams-behavior is Claude Code only. Kiro CLI has the other 23 plus humanize-writing, on demand" }',
      '{ k: "konductor skills (25)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation, find-aws-skills. claude-teams-behavior is Claude Code only. Kiro CLI has the other 24 plus humanize-writing, on demand" }'),
     ('orchestrators: konductor tools',
-     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check" }',
-     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check. It also requests three read-only aws-mcp tools: mcp__aws-mcp__aws___retrieve_skill, mcp__aws-mcp__aws___search_documentation and mcp__aws-mcp__aws___read_documentation" }'),
+     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check. It also requests three read-only aws-mcp tools: mcp__aws-mcp__aws___retrieve_skill, mcp__aws-mcp__aws___search_documentation and mcp__aws-mcp__aws___read_documentation" }',
+     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check. It also requests five read-only aws-mcp tools: mcp__aws-mcp__aws___retrieve_skill, mcp__aws-mcp__aws___search_documentation, mcp__aws-mcp__aws___read_documentation, mcp__aws-mcp__aws___list_regions and mcp__aws-mcp__aws___get_regional_availability" }'),
     ("orchestrators: mux/cmux SOPs",
      '{ k: "mux / cmux SOPs (9)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor — konductor\'s ten, minus k-delegate" }',
      '{ k: "mux / cmux SOPs (10)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor. konductor\'s eleven, minus k-delegate" }'),
@@ -1279,12 +1279,16 @@ SOP_EDITS += [
     # ---- design SOP: OVERSTATED doc-accuracy findings are flagged and gate readiness ----
     ("design use case: checklist gates OVERSTATED",
      "0 INCORRECT</strong>, each corrected in the text (UNVERIFIED is acceptable with callouts)",
-     "0 INCORRECT</strong>, each corrected in the text, and every OVERSTATED finding corrected or flagged "
-     "(UNVERIFIED is acceptable with callouts)"),
+     '0 INCORRECT</strong>, each corrected in the text, <strong style="color:var(--tx);font-weight:600">0 '
+     'UNVERIFIED noted "contradicts prior knowledge"</strong>, each checked against the named page and '
+     "reclassified or corrected, and every OVERSTATED finding corrected or flagged "
+     "(other UNVERIFIED findings are acceptable with callouts)"),
     ("design SOP: gate row gates OVERSTATED",
      "{ k: \"doc-accuracy-analyzer\", v: \"0 INCORRECT findings, each corrected in the text (UNVERIFIED is acceptable with callouts)\" },",
-     "{ k: \"doc-accuracy-analyzer\", v: \"0 INCORRECT findings, each corrected in the text, and every OVERSTATED "
-     "finding corrected or flagged (UNVERIFIED is acceptable with callouts)\" },"),
+     '{ k: "doc-accuracy-analyzer", v: "0 INCORRECT findings, each corrected in the text, 0 UNVERIFIED findings '
+     'noted \\"contradicts prior knowledge\\", each checked against the named page and reclassified or '
+     "corrected, and every OVERSTATED finding corrected or flagged (other UNVERIFIED findings are acceptable "
+     "with callouts)\" },"),
     ("design use case: Phase 3 is two passes and flags OVERSTATED",
      "Three automated passes, with no user interaction permitted. doc-accuracy-analyzer checks every technical "
      "claim against primary sources and routes AWS claims to aws-service-validator. INCORRECT and UNVERIFIED "
@@ -1306,5 +1310,7 @@ SOP_EDITS += [
     ("design SOP: OVERSTATED blocks until corrected or flagged",
      "mark UNVERIFIED claims with a callout and proceed. Only INCORRECT findings are treated as blocking.",
      "mark UNVERIFIED claims with a callout and proceed. INCORRECT findings block until the text is corrected, "
-     "and OVERSTATED findings block until they are corrected or flagged."),
+     "and OVERSTATED findings block until they are corrected or flagged. An UNVERIFIED claim noted "
+     '\\"contradicts prior knowledge\\" blocks like INCORRECT: check it against the named doc page and '
+     "reclassify it, or correct the text."),
 ]

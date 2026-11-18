@@ -90,11 +90,12 @@ EDITS = [
      "├── skills/                       80 skills (<name>/SKILL.md"),
     # ---- aws-mcp launches a pinned version, not a floating @latest ----------
     ('reference MCP registry note: pinned aws-mcp',
-     'note":"MCP registry entries — aws-mcp (k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1.'
-     ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code these agents request the corresponding tools via globs — mcp__aws-mcp__* and mcp__playwright-mcp__* — rather than launching the servers themselves.',
-     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1.'
+     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
      ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
-     ' konductor requests only three read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation and aws___read_documentation.'),
+     ' konductor requests only three read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation and aws___read_documentation.',
+     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
+     ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
+     ' konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.'),
     ("architect card: pinned aws-mcp",
      'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws@latest — allowedTools grants documentation '
      'search/read, region list, and regional availability.',
@@ -540,8 +541,33 @@ EDITS = [
      "confidence score (the average of 10 dimensions, 1–5 each)",
      "confidence score (the average of the 8 scored dimensions, 1 to 5 each)"),
     ("design review row: missing threat model",
-     "but degrades rather than blocks (the security and threat coverage dimension is limited)",
-     "but degrades rather than blocks (the Security dimension is capped at 3)"),
+     "critical; warned if missing, but the review still runs and ends NOT READY (the Security dimension is capped at 3)",
+     "required for READY FOR IMPLEMENTATION; warned if missing. The review still runs and ends NOT READY (the Security dimension is capped at 3)"),
+    # ---- design SOP: an UNVERIFIED claim noted "contradicts prior knowledge" blocks ----
+    # agent-sops/k-design-doc-creation.sop.md. The last three rewrite text from
+    # html_sop_edits.SOP_EDITS, whose entries carry the same new wording.
+    ("design SOP: know title, most unverified claims do not block",
+     '{ title: "Unverified claims do not block.", body: "Both doc-accuracy-analyzer',
+     '{ title: "Most unverified claims do not block.", body: "Both doc-accuracy-analyzer'),
+    ("design SOP: contradicts-prior-knowledge claim blocks",
+     "and OVERSTATED findings block until they are corrected or flagged.\" },",
+     "and OVERSTATED findings block until they are corrected or flagged. An UNVERIFIED claim noted "
+     '\\"contradicts prior knowledge\\" blocks like INCORRECT: check it against the named doc page and '
+     "reclassify it, or correct the text.\" },"),
+    ("design use case: checklist gates contradicts-prior-knowledge claims",
+     "0 INCORRECT</strong>, each corrected in the text, and every OVERSTATED finding corrected or flagged "
+     "(UNVERIFIED is acceptable with callouts)",
+     '0 INCORRECT</strong>, each corrected in the text, <strong style="color:var(--tx);font-weight:600">0 '
+     'UNVERIFIED noted "contradicts prior knowledge"</strong>, each checked against the named page and '
+     "reclassified or corrected, and every OVERSTATED finding corrected or flagged "
+     "(other UNVERIFIED findings are acceptable with callouts)"),
+    ("design SOP: gate row gates contradicts-prior-knowledge claims",
+     "v: \"0 INCORRECT findings, each corrected in the text, and every OVERSTATED "
+     "finding corrected or flagged (UNVERIFIED is acceptable with callouts)\" },",
+     'v: "0 INCORRECT findings, each corrected in the text, 0 UNVERIFIED findings '
+     'noted \\"contradicts prior knowledge\\", each checked against the named page and reclassified or '
+     "corrected, and every OVERSTATED finding corrected or flagged (other UNVERIFIED findings are acceptable "
+     "with callouts)\" },"),
     # ---- Kiro spec skills and kiro-spec-workflow: Kiro's current spec format -----
     ("kiro skills row: requirements glossary, story IDs, bugfix",
      '"k":"kiro-requirements-generation","v":"Turns user stories into a Kiro IDE requirements.md with EARS-format acceptance criteria.',
@@ -589,6 +615,45 @@ EDITS = [
      '{ k: "kiro-spec-workflow", v: ".kiro/specs/<feature-name>/ \u2014 three files" },',
      '{ k: "kiro-spec-workflow", v: ".kiro/specs/<feature-name>/: three spec files and .config.kiro" },'),
 ]
+
+_PREREQ_MONO = "<span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">{}</span>"
+_PREREQ_UVX = _PREREQ_MONO.format("uvx")
+_PREREQ_CREDS = _PREREQ_MONO.format("~/.aws/credentials")
+
+
+def _UC_CODE(text):
+    """Inline code span in the use-case callouts."""
+    return f"<code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em\">{text}</code>"
+
+
+def _code_block(label, body):
+    """A copyable code block in the install pages' markup."""
+    return (
+        '\n            <div style="border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--code);margin-bottom:18px">\n'
+        '              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--bd)">'
+        f"<span style=\"font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--mu2)\">{label}</span>"
+        "<button data-copy=\"1\" style=\"all:unset;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu2)\" style-hover=\"color:var(--sig)\">copy</button></div>\n"
+        "              <pre style=\"margin:0;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:#E8E4F5;overflow-x:auto\">"
+        f"{body}</pre>\n"
+        "            </div>"
+    )
+
+
+_AWS_MCP_KIRO_CONFIG = """{
+  "mcpServers": {
+    "aws-mcp": {
+      "command": "uvx",
+      "args": [
+        "mcp-proxy-for-aws-cli==1.7.0",
+        "https://aws-mcp.us-east-1.api.aws/mcp",
+        "--metadata",
+        "AWS_REGION=us-east-1",
+        "--skip-auth"
+      ]
+    }
+  }
+}"""
+
 
 # Per-agent roster figures, verified against agents/*.agent-spec.json.
 # (label, old, new) -- model · SOPs declared · skills · MCP
@@ -731,9 +796,10 @@ ROSTER = [
      'Before deploying any infrastructure change. · DECLARED BY: developer, konductor"}'),
     # ---- konductor declares aws-mcp ----------------------------------------
     ("konductor tools row: Kiro CLI aws-mcp",
-     '{ k: "konductor tools", v: "Kiro CLI: @builtin, subagent; allowedTools is fs_read only. ',
      '{ k: "konductor tools", v: "Kiro CLI: @builtin, subagent, @aws-mcp; allowedTools is fs_read plus five '
-     'read-only aws-mcp tools. '),
+     'read-only aws-mcp tools. ',
+     '{ k: "konductor tools", v: "Kiro CLI: @builtin, subagent and five read-only aws-mcp tools by name; '
+     'allowedTools is fs_read plus those five. '),
     ("glossary MCP: aws-mcp declarers",
      "aws-mcp (on k-architect and k-developer)",
      "aws-mcp (on konductor, k-architect and k-developer)"),
@@ -748,9 +814,9 @@ ROSTER = [
      "AWS documentation lookups</strong> — " + _mono("konductor") + ", " + _mono("k-architect") + " and "
      + _mono("k-developer") + ". Install"),
     ("install-claude: AWS documentation lookups declarers",
-     "AWS documentation lookups</strong> — " + _mono("k-architect") + " and " + _mono("k-developer")
-     + " request AWS MCP tools",
      "AWS documentation lookups</strong> — " + _mono("konductor") + " requests three read-only AWS MCP tools; "
+     + _mono("k-architect") + " and " + _mono("k-developer") + " request AWS MCP tools",
+     "AWS documentation lookups</strong> — " + _mono("konductor") + " requests five read-only AWS MCP tools; "
      + _mono("k-architect") + " and " + _mono("k-developer") + " request AWS MCP tools"),
     # ---- k-code-review-workflow passes its scope to infra-validation ----------
     ("code-review-workflow params: environment",
@@ -759,6 +825,50 @@ ROSTER = [
     ("code-review-workflow step 03: infra-validation scope",
      'backend-review · frontend-review · infra-validation.',
      'backend-review · frontend-review · infra-validation, given scope_confirmed, the infra files and any environment, so it does not stop to ask.'),
+    # ---- aws-mcp starts with --skip-auth: credentials only for account calls ----
+    ("prerequisites: AWS credentials optional",
+     "AWS credentials are optional</strong> — needed only for the AWS documentation integration below.",
+     "AWS credentials are optional</strong> — needed only for AWS MCP calls that act on an AWS account."),
+    ("prerequisites integrations: agent count",
+     "Four agents can use external tool servers.",
+     "Five agents can use external tool servers."),
+    ("prerequisites integrations: aws-mcp agents",
+     "k-architect<br>k-developer</div>",
+     "konductor<br>k-architect<br>k-developer</div>"),
+    ("prerequisites integrations: aws-mcp needs",
+     _PREREQ_UVX + " installed, plus AWS credentials in " + _PREREQ_CREDS
+     + " or environment variables. Both agents work without credentials, just without AWS lookups.</div>",
+     _PREREQ_UVX + " installed. Documentation search and skills work without AWS credentials; calls that"
+     " act on an AWS account need credentials in " + _PREREQ_CREDS + " or environment variables.</div>"),
+    ("install-kiro-cli integrations: intro",
+     "Two are pre-configured in the agent specs and need only their local dependency.</p>",
+     "Two are declared in the agent specs.</p>"),
+    ("install-kiro-cli integrations: aws-mcp config",
+     _mono("k-developer") + ". Install " + _mono("uvx") + " and configure AWS credentials in "
+     + _mono("~/.aws/credentials") + " or environment variables. Both agents work without credentials,"
+     " just without AWS lookups.</p>",
+     _mono("k-developer") + ". Install " + _mono("uvx") + " and add " + _mono("aws-mcp") + " to "
+     + _mono(".kiro/settings/mcp.json") + " for one project or " + _mono("~/.kiro/settings/mcp.json")
+     + " for all projects, since Kiro CLI does not start MCP servers from the agent specs:</p>"
+     + _code_block("JSON", _AWS_MCP_KIRO_CONFIG)
+     + '\n            <p style="margin:0 0 14px;font-size:16px;line-height:1.75;color:var(--mu)">With '
+     + _mono("--skip-auth") + ", documentation search and skills work without AWS credentials. Configure"
+     " credentials in " + _mono("~/.aws/credentials") + " or environment variables only for calls that"
+     " act on an AWS account.</p>"),
+    ("design-a-system: phase 3 aws-mcp callout",
+     "server. In Kiro CLI that server is declared and launched from the agent spec. "
+     '<strong style="color:var(--tx);font-weight:600">In Claude Code the agent only requests the tools via the '
+     + _UC_CODE("mcp__aws-mcp__*") + " glob — you must configure an " + _UC_CODE("aws-mcp")
+     + " server yourself</strong> or those tools will not resolve. Either way, with no AWS credentials the"
+     " step degrades to UNVERIFIED findings rather than failing.",
+     "server. In Claude Code the install launches that server. "
+     '<strong style="color:var(--tx);font-weight:600">In Kiro CLI you add ' + _UC_CODE("aws-mcp")
+     + " to your own MCP config</strong> (Install for Kiro CLI, Optional integrations) or those tools will"
+     " not resolve. The server starts with " + _UC_CODE("--skip-auth") + ", so the lookups work without"
+     " AWS credentials. Without the server, the step degrades to UNVERIFIED findings rather than failing."),
+    ("faq: aws-mcp needs uvx only",
+     "It needs uvx and credentials present.",
+     "It needs uvx present."),
 ]
 
 

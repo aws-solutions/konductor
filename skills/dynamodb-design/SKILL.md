@@ -118,4 +118,4 @@ Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issu
 
 ## Going deeper
 
-For Streams consumers, backup and restore, security review, vector indexes, zero-ETL and the cost calculator, load the AWS MCP server's `amazon-dynamodb` skill with `aws___retrieve_skill`, or through `find-aws-skills`. It is large: retrieve the sections you need by name rather than reading it whole. Keep this skill's quality gate and output format either way.
+For Streams consumers, backup and restore, security review, vector indexes, zero-ETL and the cost calculator, load the AWS MCP server's `amazon-dynamodb` skill with `aws___retrieve_skill`, or through `find-aws-skills`. It loads whole (SKILL.md is about 140 KB). Vector indexes (`references/vector-search.md`) and the cost calculator (`references/cost-model-schema.md`, `scripts/calculate_costs.py`) can be fetched alone with the tool's `file` parameter. Keep this skill's quality gate and output format either way.

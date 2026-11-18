@@ -3,7 +3,8 @@
 // synth/skill_index.rs: builds the "Your skills" block synth appends to
 // each Kiro agent's prompt: a rule for when to load one of the agent's
 // own declared skills, how to load it, and the list of those skills.
-// Claude Code gets no block; it lists and loads skills natively.
+// Claude Code agents get a "Skills you can load" block from claude.rs
+// instead, listing only the declared skills they do not preload.
 
 use super::model::{is_orchestrator, SkillDef};
 use crate::cli::skills_server::{GET_SKILL_TOOL, MCP_SERVER_NAME};

@@ -70,7 +70,7 @@ Use this skill when:
 - Apply `@paginated` to list operations, naming `inputToken`, `outputToken`, and `pageSize`. Also name `items` (the output list or map being paged); Smithy does not require it, but clients use it
 - The `inputToken` member must not be `@required`; `pageSize` should not be either
 - Only one list or map per operation can be paginated
-- When every list operation pages the same way, put the shared settings in a `@paginated` trait on the service; operations inherit them and set only what differs, usually `items`
+- When every list operation pages the same way, put the shared settings in a `@paginated` trait on the service. Each list operation still carries `@paginated`, often with only `items`: the service trait only supplies defaults to operations that have one
 
 ## Input Processing
 

@@ -58,7 +58,7 @@ For each claim, assign a classification. Severity uses the same scale as the oth
 | UNVERIFIED      | No primary source found               | SUGGESTION |
 | MISSING CONTEXT | True but incomplete without qualifier | SUGGESTION |
 
-Rows from `aws-service-validator` keep INCORRECT and UNVERIFIED. Reclassify a CONFIRMED row as OVERSTATED or MISSING CONTEXT when the document's wording goes further than the cited page (for example, "unlimited" where the page gives a quota).
+Rows from `aws-service-validator` keep INCORRECT and UNVERIFIED, and an UNVERIFIED row keeps its "contradicts prior knowledge" note. Reclassify a CONFIRMED row as OVERSTATED or MISSING CONTEXT when the document's wording goes further than the cited page (for example, "unlimited" where the page gives a quota).
 
 ### Step 5: Assess Approach Feasibility
 
@@ -84,7 +84,7 @@ For each INCORRECT or OVERSTATED finding, provide:
 ### Summary
 
 - Total claims: N (N routed to aws-service-validator)
-- CONFIRMED: N | INCORRECT: N | OVERSTATED: N | UNVERIFIED: N | MISSING CONTEXT: N
+- CONFIRMED: N | INCORRECT: N | OVERSTATED: N | UNVERIFIED: N (N contradicting prior knowledge) | MISSING CONTEXT: N
 - Result: PASS or FAIL
 
 ### CRITICAL Findings
@@ -107,8 +107,9 @@ The document passes when:
 - 0 INCORRECT (CRITICAL) findings remain, including the routed AWS claims. A `> ⚠️ INCORRECT: <correction>` callout marks a fix still owed; the document passes once the text is corrected.
 - Every OVERSTATED (IMPORTANT) finding is corrected or flagged with a callout.
 - Every UNVERIFIED finding carries a `> ⚠️ UNVERIFIED: <what was searched>` callout. It is rated SUGGESTION, because new services and internal facts often have no public source.
+- No UNVERIFIED row from `aws-service-validator` still carries a "contradicts prior knowledge" note: check the named page and reclassify the row first.
 
-SUGGESTION findings never block once each UNVERIFIED one carries its callout.
+Otherwise, SUGGESTION findings never block once each UNVERIFIED one carries its callout.
 
 ## Guidelines
 
