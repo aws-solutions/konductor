@@ -12,8 +12,8 @@
 // docstring -- this is NOT one of the "no schema change" fields the
 // rest of this module's rationale applies to).
 //
-// This module targets Kiro CLI V3 (the backend runtime Amazon calls
-// "KAS" internally) specifically. Whether the same JSON shape is also
+// This module targets the Kiro CLI V3 backend runtime specifically.
+// Whether the same JSON shape is also
 // consumed by the Kiro IDE agent picker is plausible but NOT formally
 // confirmed by any of the public kiro.dev pages this module is grounded
 // in -- verify against a real Kiro IDE install before assuming IDE
