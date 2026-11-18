@@ -123,4 +123,10 @@ function parseJson(text, file) {
 /** Reads and parses a JSON file. A read failure throws the system error; bad content throws JsonFileError. */
 const readJsonFile = (file) => parseJson(readFile(file, 'utf8'), file);
 
-module.exports = { readFile, parseJson, readJsonFile, JsonFileError };
+module.exports = {
+  BYTE_ORDER_MARK,
+  readFile,
+  parseJson,
+  readJsonFile,
+  JsonFileError,
+};
