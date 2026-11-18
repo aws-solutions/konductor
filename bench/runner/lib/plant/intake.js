@@ -241,6 +241,35 @@ function gatewayFilesOf(release) {
 }
 
 /**
+ * `{control, notCounted}` for the suite: a Strands suite by its model (strandsSuiteOf), a Kiro CLI suite by its
+ * `--kiro-bin` (isCountedSuite). `strands` is true when the suite's arms run Strands; the rest are preparePlantSuite's.
+ */
+function suiteKindOf({ strands, opts, ctx, manifest, versionOfBin }) {
+  if (strands) return strandsSuiteOf(manifest, ctx.strands, ctx.config.model);
+  return { control: !isCountedSuite(opts, ctx.kiroBin, manifest, versionOfBin), notCounted: [] };
+}
+
+/**
+ * The checks only a real (not control) suite gets, before any trial: the Kiro CLI pin (Kiro CLI suites), the Cedar
+ * files, the quiet host and, in a sandbox mode, an out dir on its own filesystem. Returns the host's listeners outside
+ * the allowlist (empty on a quiet host). Throws ReleaseRefused. Arguments are preparePlantSuite's.
+ */
+function checkRealSuite({ release, ctx, strands, outDir, home, versionOfBin, noiseOf }) {
+  if (!strands) checkKiroPin(ctx.kiroBin, release.manifest, versionOfBin, ctx.config.agentEngine);
+  const missing = POLICY_FILES.filter((rel) => !release.sha256Of(rel));
+  if (missing.length) throw new ReleaseRefused(`a counted plant suite needs the Cedar files; the release lacks ${missing.join(', ')}`);
+  const comparableMode = isComparableMode(ctx.isolation.mode);
+  // Quiet-host check (13.5 B-6): a sandboxed suite on a noisy host is refused, as the prober would refuse it; an
+  // unsandboxed pilot is never counted anyway, so it runs and the report header says the host was noisy too (question 20).
+  const noise = noiseOf(release);
+  if (noise.length && comparableMode) throw new ReleaseRefused(`a counted plant suite needs a quiet host; listeners outside the release allowlist: ${noise.join(', ')} (13.5)`);
+  // The own-filesystem rule guards a counted suite. A suite run with --isolate none --allow-unisolated is never counted
+  // and the report warns on it, so it may write its out dir anywhere outside scratch, home and the repo (the pilot).
+  if (comparableMode) checkOutFilesystem(outDir, { scratch: ctx.scratchDir, home });
+  return noise;
+}
+
+/**
  * The preflight of a plant suite (7.1). Returns the suite context the runs use, or throws ReleaseRefused.
  *
  * `opts` holds the run flags (--plant-release, --plant-release-sha256, --plant-python, --kiro-bin); `arms`, `tasks` and
@@ -269,22 +298,9 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
     if (Buffer.byteLength(socketParent) + SOCKET_SUFFIX_BYTES > SOCKET_PATH_MAX) throw new ReleaseRefused(`socket paths under ${socketParent} would pass ${SOCKET_PATH_MAX} bytes`);
     release = intakeRelease({ dir, expectedSha256, privateRoot, keys });
     const strands = arms[0].runtime === 'strands';
-    const kind = strands ? strandsSuiteOf(release.manifest, ctx.strands, ctx.config.model) : { control: !isCountedSuite(opts, ctx.kiroBin, release.manifest, versionOfBin), notCounted: [] };
+    const kind = suiteKindOf({ strands, opts, ctx, manifest: release.manifest, versionOfBin });
     const { control } = kind;
-    const comparableMode = isComparableMode(ctx.isolation.mode);
-    let noise = [];
-    if (!control) {
-      if (!strands) checkKiroPin(ctx.kiroBin, release.manifest, versionOfBin, ctx.config.agentEngine);
-      const missing = POLICY_FILES.filter((rel) => !release.sha256Of(rel));
-      if (missing.length) throw new ReleaseRefused(`a counted plant suite needs the Cedar files; the release lacks ${missing.join(', ')}`);
-      // Quiet-host check (13.5 B-6): a sandboxed suite on a noisy host is refused, as the prober would refuse it; an
-      // unsandboxed pilot is never counted anyway, so it runs and the report header says the host was noisy too (question 20).
-      noise = noiseOf(release);
-      if (noise.length && comparableMode) throw new ReleaseRefused(`a counted plant suite needs a quiet host; listeners outside the release allowlist: ${noise.join(', ')} (13.5)`);
-      // The own-filesystem rule guards a counted suite. A suite run with --isolate none --allow-unisolated is never counted
-      // and the report warns on it, so it may write its out dir anywhere outside scratch, home and the repo (the pilot).
-      if (comparableMode) checkOutFilesystem(outDir, { scratch: ctx.scratchDir, home });
-    }
+    const noise = control ? [] : checkRealSuite({ release, ctx, strands, outDir, home, versionOfBin, noiseOf });
     if (!release.sha256Of(REFUSAL_RULE)) throw new ReleaseRefused(`the release lacks ${REFUSAL_RULE}`);
     return {
       release, privateRoot, socketParent, control, hostNoise: noise, deadlines, makeToken, readListeners,
