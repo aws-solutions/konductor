@@ -459,6 +459,8 @@ fn evidence_outside_root_is_refused() {
         out.to_str().unwrap(),
     ]);
     assert_verdict(&output, 65, "EVIDENCE_MISSING");
+    let named_root = format!("is not a file inside the root '{}'", out.display());
+    assert!(stdout(&output).contains(&named_root), "{}", stdout(&output));
 }
 
 #[test]

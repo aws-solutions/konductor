@@ -460,6 +460,11 @@ not per individual commit.
   `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
 - The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
   agents no longer carry an `mcpServers` block that Claude Code ignores.
+- The config lock gives up with a contention error at its 5-second deadline when the lock file
+  keeps being replaced under it, instead of retrying without a limit. The error now says the lock
+  is held by another process or the lock file kept changing.
+- The plugin README link rewrite handles `[label]: <target>` reference definitions: it pins a
+  relative target to the release tag and leaves an absolute one alone, keeping the brackets.
 - `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
   such as a `telemetry:` opt-out. It now changes only the named key.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
@@ -472,6 +477,33 @@ not per individual commit.
   pricing. `program-planning` and `playwright-test-implementation` no longer point at SOP steps
   that are missing when the skill runs alone. `cmux-dispatch`, `design-doc-guidelines` and
   `external-research` drop terms that do not apply in this repo.
+- `konductor config set` keeps an existing `config.yml`'s permission bits and refuses a symlinked
+  `.konductor/` or `config.yml` instead of writing through it.
+- The session keys for gate facts and the fix-cycle cap are listed once, in the `gate_facts` block
+  of `sop-orchestration.yml`, and `konductor verify-run` reads them from there.
+  `make sop-orchestration-check` fails when a gated SOP stops naming its boundaries' keys. A key
+  named only inside a fenced code block does not count.
+- `verify-run`'s `CONFIG_SOURCE` line now comes from the same config read as the threshold.
+- `verify-run`'s `EVIDENCE_MISSING` message now names the root the evidence path was resolved
+  against. The reason code and exit code are unchanged.
+- Orchestrators run `git` reads as `git --no-pager -c core.fsmonitor=` with `--no-ext-diff
+  --no-textconv --submodule=short` (and `--no-show-signature` on `log` and `show`). These forms
+  stop repository config from running a program through `core.fsmonitor`, `core.pager`,
+  `diff.external`, a textconv driver, signature checks or a submodule diff. `git status` and
+  `git diff` also take `--ignore-submodules=dirty`, so they never check a submodule's working
+  tree, where the submodule's own config could run a `filter.<driver>`. Submodule working-tree
+  changes stay hidden from these reads; a submodule at a new commit still shows. No flag stops a
+  `filter.<driver>`, so orchestrators skip `git status`, working-tree `git diff`, `git blame` and
+  `git ls-files -m` when `.git/config` or a file it includes defines one, or when
+  `extensions.worktreeConfig` is true in `.git/config` and the worktree's `config.worktree` (or a
+  file it includes) defines one. They also skip them when `extensions.worktreeConfig` holds a value that is not a boolean. They use
+  `git diff --cached`, `git log`, `git show` and the file tools instead, and tell the user why.
+- The orchestrator routing rules list memory and skill capture as direct work, matching what
+  Memory & Skill Reflexes ask for.
+- Core rule 12's example search that skips `.env` files keeps `.env.example` in its results.
+- `persistent-memory` allows removing an untagged entry when the user asks, as the agent prompts do.
+- `verify-run` rejects a misspelled key in `sop-orchestration.yml`, such as `boundries`, instead of
+  reading it as a SOP with no gate boundaries.
 - `git-merge` shows the merge log and diff and asks before pushing to the default branch, and
   only when the repo merges locally; otherwise, or if the user declines, it opens a PR. Tagging
   and branch cleanup wait for a successful push. The merge into the default branch never runs in

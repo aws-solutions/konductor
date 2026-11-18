@@ -7,6 +7,6 @@ gated:
     basis: Step 1 output needs approval before Step 2.
     phases: [one, two]
     boundaries:
-      - {phase: one, kind: approval, scope: global}
+      - not-a-dict
 not_gated:
   beta-plain: No stop rule between steps.
