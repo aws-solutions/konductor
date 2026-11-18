@@ -90,12 +90,12 @@ EDITS = [
      "├── skills/                       80 skills (<name>/SKILL.md"),
     # ---- aws-mcp launches a pinned version, not a floating @latest ----------
     ('reference MCP registry note: pinned aws-mcp',
-     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1.'
+     'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
      ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
      ' konductor requests only three read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation and aws___read_documentation.',
      'note":"MCP registry entries — aws-mcp (konductor, k-architect, k-developer): command uvx, args mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1, --skip-auth.'
      ' playwright-mcp (k-browser): args -y, @playwright/mcp@latest. In Claude Code k-architect, k-developer and k-browser request the corresponding tools via the globs mcp__aws-mcp__* and mcp__playwright-mcp__* rather than launching the servers themselves.'
-     ' konductor requests only three read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation and aws___read_documentation.'),
+     ' konductor requests only five read-only aws-mcp tools: aws___retrieve_skill, aws___search_documentation, aws___read_documentation, aws___list_regions and aws___get_regional_availability.'),
     ("architect card: pinned aws-mcp",
      'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws@latest — allowedTools grants documentation '
      'search/read, region list, and regional availability.',
@@ -686,9 +686,10 @@ ROSTER = [
      'Before deploying any infrastructure change. · DECLARED BY: developer, konductor"}'),
     # ---- konductor declares aws-mcp ----------------------------------------
     ("konductor tools row: Kiro CLI aws-mcp",
-     '{ k: "konductor tools", v: "Kiro CLI: @builtin, subagent; allowedTools is fs_read only. ',
      '{ k: "konductor tools", v: "Kiro CLI: @builtin, subagent, @aws-mcp; allowedTools is fs_read plus five '
-     'read-only aws-mcp tools. '),
+     'read-only aws-mcp tools. ',
+     '{ k: "konductor tools", v: "Kiro CLI: @builtin, subagent and five read-only aws-mcp tools by name; '
+     'allowedTools is fs_read plus those five. '),
     ("glossary MCP: aws-mcp declarers",
      "aws-mcp (on k-architect and k-developer)",
      "aws-mcp (on konductor, k-architect and k-developer)"),
@@ -703,9 +704,9 @@ ROSTER = [
      "AWS documentation lookups</strong> — " + _mono("konductor") + ", " + _mono("k-architect") + " and "
      + _mono("k-developer") + ". Install"),
     ("install-claude: AWS documentation lookups declarers",
-     "AWS documentation lookups</strong> — " + _mono("k-architect") + " and " + _mono("k-developer")
-     + " request AWS MCP tools",
      "AWS documentation lookups</strong> — " + _mono("konductor") + " requests three read-only AWS MCP tools; "
+     + _mono("k-architect") + " and " + _mono("k-developer") + " request AWS MCP tools",
+     "AWS documentation lookups</strong> — " + _mono("konductor") + " requests five read-only AWS MCP tools; "
      + _mono("k-architect") + " and " + _mono("k-developer") + " request AWS MCP tools"),
     # ---- k-code-review-workflow passes its scope to infra-validation ----------
     ("code-review-workflow params: environment",

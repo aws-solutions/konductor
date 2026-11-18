@@ -420,8 +420,9 @@ Every agent declares `context/k-core-rules.md`. The three orchestrators also dec
 
 In Claude Code `k-architect`, `k-developer` and `k-browser` request the corresponding tools via the
 globs `mcp__aws-mcp__*` and `mcp__playwright-mcp__*` rather than launching the servers themselves.
-`konductor` requests only three read-only `aws-mcp` tools: `aws___retrieve_skill`,
-`aws___search_documentation` and `aws___read_documentation`.
+`konductor` requests only five read-only `aws-mcp` tools: `aws___retrieve_skill`,
+`aws___search_documentation`, `aws___read_documentation`, `aws___list_regions` and
+`aws___get_regional_availability`.
 
 ---
 

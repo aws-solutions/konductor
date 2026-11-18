@@ -216,8 +216,9 @@ AWS's own getting-started docs, OAuth commands, and existing configs.
 
 **AWS documentation lookups:** `k-architect` and `k-developer` request the whole `aws-mcp`
 server via the `mcp__aws-mcp__*` glob, so every tool it exposes is granted, including the
-AWS-API-acting ones (see Tool grant below). `konductor` requests only three read-only tools:
-`aws___retrieve_skill`, `aws___search_documentation` and `aws___read_documentation`. Each
+AWS-API-acting ones (see Tool grant below). `konductor` requests only five read-only tools:
+`aws___retrieve_skill`, `aws___search_documentation`, `aws___read_documentation`,
+`aws___list_regions` and `aws___get_regional_availability`. Each
 agent's rendered `.md` file carries an `mcpServers:` entry (built from `dependencies.mcpRegistry`, filtered to just this server,
 launched via `uvx mcp-proxy-for-aws-cli==1.7.0`), so this `konductor install --harness claude`
 install launches the server itself. No separate MCP server configuration is needed. This is also

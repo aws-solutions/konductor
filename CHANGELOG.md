@@ -338,9 +338,10 @@ not per individual commit.
     runs IAM Access Analyzer `ValidatePolicy` in the user's AWS account.
   - `konductor` declares `aws-mcp` and `find-aws-skills`, like `k-architect` and `k-developer`,
     so it can run `infra-validation`'s AWS checks. On Kiro CLI the three agents pre-approve only the server's
-    read-only documentation, skill and Region tools. On Claude Code `konductor` is granted only
-    `aws___retrieve_skill`, `aws___search_documentation` and `aws___read_documentation`, and its
-    prompt forbids `aws___run_script` and requires confirmation before any mutating AWS action.
+    read-only documentation, skill and Region tools. On both harnesses `konductor` is granted only
+    those five tools by name (`aws___retrieve_skill`, `aws___search_documentation`,
+    `aws___read_documentation`, `aws___list_regions`, `aws___get_regional_availability`), so it
+    has no `aws___run_script`, and its prompt requires confirmation before any mutating AWS action.
     All three start the server with `--skip-auth`, so documentation search and skills work
     without AWS credentials; calls that act on an account still need them.
     The skill-name test now also checks aws-mcp skill names in table cells and prose.

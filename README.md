@@ -444,8 +444,8 @@ through `mcp-proxy-for-aws-cli==1.7.0`. You need `uvx`. The agents start the pro
 `--skip-auth`, so documentation search and skills work without AWS credentials; calls that act on
 an account still need them. `k-architect` and
 `k-developer` get the full server, including AWS API tools, so scope agent-initiated calls with the
-`aws:ViaAWSMCPService` and `aws:CalledViaAWSMCP` IAM condition keys. `konductor` gets three read-only
-documentation tools on Claude Code and pre-approves five read-only tools on Kiro CLI. Kiro CLI users add `aws-mcp` to their own MCP config,
+`aws:ViaAWSMCPService` and `aws:CalledViaAWSMCP` IAM condition keys. `konductor` is granted only the five
+read-only documentation, skill and Region tools, by name, on both harnesses. Kiro CLI users add `aws-mcp` to their own MCP config,
 where knowledge tools are auto-approved and API tools ask first. See
 [Install for Claude Code](docs/user-guide/tasks/install-claude-code.md#optional-integrations) or
 [Install for Kiro CLI](docs/user-guide/tasks/install-kiro-cli.md).
