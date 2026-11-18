@@ -51,6 +51,7 @@ bench/out/<run-id>/                          run data (git-ignored)
   raw/<skill>/<batch>/<task>.<with|without>/raw.jsonl   subject event log, and its kept earlier tries
   checklists/<skill>/<batch>/<task>.json
   judgments/<items|outcome>/<skill>/<batch>/<task>.<seat>.<with|without>.json
+  judgments/<items|outcome>/<skill>/<batch>/<task>.<seat>.<with|without>.json.failed-<time>   a judgment that failed every try, kept with its error
   jobs/<job>.<skills>.log, .pid            job logs and pid files (private, see Job folder)
   report.json, report.md
 ```
@@ -342,7 +343,7 @@ Control, zero-width, bidi and tag characters are removed first, line breaks beco
 
 Every drop is counted, with the share of the answer's non-whitespace characters that was removed. The rules have a version number and a hash of their whole specification, so a change to the rules can mark earlier judgments stale once judgments exist (added in a later PR).
 
-`lib/judge-input.js` is the one place that turns a stored answer into text a judge may see. It prepares one answer at a time, for a judge prompt that holds only that answer, and the caller must name the skill under test (`""` for a control), so a missing option cannot skip the name rules. The stored answer must be text (null and undefined are read as an empty answer); anything else is refused. `request`, the task's request text, is optional and feeds the guard. It runs four steps in this order:
+`lib/judge-input.js` is the one place that turns a stored answer into text a judge may see. It prepares one answer at a time, for a judge prompt that holds only that answer, and the caller must name the skill under test (`""` for a control), so a missing option cannot skip the name rules. `literals`, the exact credential values the run handed out, is required too (`[]` when it handed out none), so a caller that forgets it gets an error and not a redactor without them. The stored answer must be text (null and undefined are read as an empty answer); anything else is refused. `request`, the task's request text, is optional and feeds the guard. It runs four steps in this order:
 
 1. Sanitize, as above.
 2. Redact: the redactor replaces secret-shaped values, so lookalike strings never reach a judge. The result says whether the text changed.
@@ -561,7 +562,7 @@ It checks every option first, the same way the job will: a known job (`pairs`, `
 
 On a failure the line is `{"error": "...", "exit_code": N}`. A failed write (the job folder, the log, the pid file, the lock) says "cannot write" and exits 74. When the pid file is the write that fails, the job has already started, so the launcher first stops its process group (SIGTERM); a retry then cannot start the same job twice. If that signal fails, the error text names the pid that is still running.
 
-`job.js` is the job itself, in the foreground. It takes the same options. It prints one line per event, every line through the redactor, and ends with one JSON line: the job, the run id, the skills, the status, the exit code and the stop if any, then the counts of the job. For `pairs` these are `jobs`, `pending`, the count of runs by result (`results`) and `skipped`. For `checklists` they are `tasks`, `done`, `pending`, `copies`, `remaining`, `excluded`, `results` (the count of checklists written, copied, failed and blocked), `usd` and `skipped`. For `judge` they are `scale`, `jobs`, `done`, `pending`, `waiting`, `not_loaded`, `ineligible`, `other_arm_unusable`, `remaining`, `excluded`, `tasks_counted`, `tasks`, `results` (the count of judgments made, ineligible and failed), `usd` and `skipped`. That last line is printed whole, however many skills were skipped; the other lines are cut at 8000 characters.
+`job.js` is the job itself, in the foreground. It takes the same options. It prints one line per event, every line through the redactor, and ends with one JSON line: the job, the run id, the skills, the status, the exit code and the stop if any, then the counts of the job. For `pairs` these are `jobs`, `pending`, the count of runs by result (`results`) and `skipped`. For `checklists` they are `tasks`, `done`, `pending`, `copies`, `remaining`, `excluded`, `results` (the count of checklists written, copied, failed and blocked), `usd` and `skipped`. For `judge` they are `scale`, `jobs`, `done`, `pending`, `waiting`, `not_loaded`, `ineligible`, `other_arm_unusable`, `blocked`, `remaining`, `excluded`, `tasks_counted`, `tasks`, `results` (the count of judgments made, ineligible, failed and refused), `usd` and `skipped`. That last line is printed whole, however many skills were skipped; the other lines are cut at 8000 characters.
 
 | Job exit | Meaning                                                                                                                                                                                             |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -573,7 +574,7 @@ On a failure the line is `{"error": "...", "exit_code": N}`. A failed write (the
 | 6        | stop: the ledger cannot be read or its lock cannot be taken                                                                                                                                         |
 | 7        | stop: security (the secret sweep found a credential value or the canary in stored text)                                                                                                             |
 | 8        | stop: the first run was answered by another model than the subject model                                                                                                                            |
-| 9        | stop: systemic, 4 checklists in a row whose every call failed (`checklists` only)                                                                                                                   |
+| 9        | stop: systemic, 4 subject runs, checklists or judgments in a row whose every call failed                                                                                                            |
 | 10       | stop: the first run was invalid for another reason than the skill or the model (setup)                                                                                                              |
 | 64       | usage error (a `--ladder` file that cannot be read or fails its audit is one); 66, 70 and 74 as for `plan`                                                                                          |
 
@@ -647,7 +648,7 @@ A rerun resumes: a current checklist is never written again.
 
 ## The judge job
 
-`lib/judge-job.js` (`runJudging`) makes the judgments of one reading for the selected skills: `--scale items` is reading B (the rules checklist), `--scale outcome` is reading A (the request-only checklist). It spends money: each judgment is one judge call through OpenCode (see Judge calls). `scripts/bench/job.js judge` runs it, and `scripts/bench/launch.js judge` starts that in the background.
+`lib/judge-job.js` (`runJudging`) makes the judgments of one reading for the selected skills: `--scale items` is reading B (the rules checklist), `--scale outcome` is reading A (the request-only checklist). It spends money: each judgment is one judge call, plus retries, through OpenCode (see Judge calls). `scripts/bench/job.js judge` runs it, and `scripts/bench/launch.js judge` starts that in the background.
 
 ```
 node scripts/bench/launch.js judge --scale items --skills brew-log --run r1 [--max-usd 5] [--dry-run]
@@ -658,27 +659,44 @@ node scripts/bench/launch.js judge --scale items --skills brew-log --run r1 [--m
 3. The checklist shown is the task's rules checklist (each item with its bucket from the sidecar) for `items`, and the request-only checklist for `outcome`. A task whose request-only checklist is missing, stale or unsafe waits for the checklist job. It is never judged against another checklist.
 4. The judgment's answer must be current (see The pairs job). A missing or stale answer makes its judgments wait for the pairs job. An answer stored as `not_loaded` is never judged, and `plan` does not count its judgments: the task does not count in either reading.
 5. The answer goes through the judge-input step (see What the judges see). If it is not eligible, no call is made: the job writes an `ineligible` record for that arm with the reason and a cost of 0, and the task does not count for that reading. While one arm's answer is not loaded or not eligible, the other arm's judgments of that task are not made either (`other_arm_unusable`, counted on the last line): no call and no file, and neither `plan` nor the projection counts them, because a seat with one valid arm never counts. They are pending again once that answer can be used; a judgment already made is kept. Before the first judge run, `plan` cannot know that an answer will be found not eligible, so it may count the sibling call that the job then holds.
-6. A projection (one call per pending judgment at the p90 of its seat's model in the cost profile) above `max_usd`, with what the run already spent or reserved, refuses the job. The ledger refuses each call that would pass a limit. Each call reserves its ceiling (see Judge calls), which is well above its p90, so the ledger can refuse a call while the projection still fits: leave `max_usd` room for the calls in flight (the width of the seats' pools times their ceilings).
-7. Each seat has its own pool of `judge_concurrency` calls (or its `judge_concurrency_by_seat` entry), so a slow seat cannot hold the fast seats' slots, and its own call timeout.
-8. Each call has the output limit of its seat: its entry in `judge_max_output_tokens_by_seat`, else `judge_max_output_tokens`. A reply cut off at the limit, or one that used the whole limit and could not be read, is a failed try and is counted in `cut_off` of the job result and in a log line, apart from the other failures, so a limit set too low shows.
+6. A projection (one call per pending judgment at the p90 of its seat's model in the cost profile; retries and repeated blocks are not in it) above `max_usd`, with what the run already spent or reserved, refuses the job. The ledger refuses each call that would pass a limit. Each call reserves its ceiling (see Judge calls), which is well above its p90, so the ledger can refuse a call while the projection still fits: leave `max_usd` room for the calls in flight (the width of the seats' pools times their ceilings).
+7. Fresh credentials are exported once for `aws_profile`, and no call starts within 3 minutes of their expiry. A job with no call to make exports nothing.
+8. Each seat has its own pool of `judge_concurrency` calls (or its `judge_concurrency_by_seat` entry), so a slow seat cannot hold the fast seats' slots, and its own call timeout.
+9. Each call has the output limit of its seat: its entry in `judge_max_output_tokens_by_seat`, else `judge_max_output_tokens`. A reply cut off at the limit, or one that used the whole limit and could not be read, is a failed try and is counted in `cut_off` of the job result and in a log line, apart from the other failures, so a limit set too low shows. A try that is retried and cut off again counts again.
 
 A judgment file, `judgments/<scale>/<skill>/<batch>/<task>.<seat>.<with|without>.json`, holds only a finished result:
 
-| Status       | What it holds                                                                                                                    |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `valid`      | One label per item for the one answer, its score, its guard figure on `items`, the judge's reason and reply (redacted), the cost |
-| `ineligible` | Why the answer is not eligible. No call was made                                                                                 |
+| Status       | What it holds                                                                                                                       |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `valid`      | One label per item for the one answer, its score, its guard figure on `items`, the judge's reason and reply (redacted), the cost    |
+| `ineligible` | Why the answer is not eligible. No call was made                                                                                    |
+| `refused`    | The provider blocked the judge 3 times across launches (the error and the last reply). It is not tried again until an input changes |
 
-Both record the scale, the seat, the arm, the judge model, the prompt version and hash, the checklist (and on `outcome` which request-only checklist it was), the answer hash, the OpenCode version, and what the judge-input step removed from the answer, never the answer text. A judgment is current when its input digest (the arm and that arm's answer hash, the checklist hash (on reading B this covers each item and its bucket, so a sidecar edit that moves an item makes that task's judgments pending again), the judge prompt hash, the judge model, the sanitizer version and rules hash) equals today's; the OpenCode version is not part of it. The other arm's answer is not in the digest, so a new answer for one arm leaves the other arm's judgments current. A current judgment is never made again. One that is not current is pending, and when it is made again the old file is kept as `<file>.superseded-<time>`. A `valid` record is also not current when its seat or arm is not the judgment's, its score is outside 1 to 5, or its guard figure does not fit the checklist (a record edited by hand, cut short or copied from another seat), so one bad file never stops the reading. A judgment that cannot be written (a full disk, a read-only folder) stops the job with the I/O error (exit 74): the calls already running finish, are paid, and their replies are lost; no new call starts. A failed call or a reply the parser rejects writes no judgment file, so the judgment stays pending: it is never scored 0, and `plan` never counts it as done.
+All record the scale, the seat, the arm, the judge model, the prompt version and hash, the checklist (and on `outcome` which request-only checklist it was), the answer hash, the OpenCode version, and what the judge-input step removed from the answer, never the answer text. A judgment is current when its input digest (the arm and that arm's answer hash, the checklist hash (on reading B this covers each item and its bucket, so a sidecar edit that moves an item makes that task's judgments pending again), the judge prompt hash, the judge model, the sanitizer version and rules hash) equals today's; the OpenCode version is not part of it. The other arm's answer is not in the digest, so a new answer for one arm leaves the other arm's judgments current. A current judgment is never made again. One that is not current is pending, and when it is made again the old file is kept as `<file>.superseded-<time>`. A `valid` record is also not current when its seat or arm is not the judgment's, its score is outside 1 to 5, or its guard figure does not fit the checklist (a record edited by hand, cut short or copied from another seat), so one bad file never stops the reading.
 
 Unless it is a dry run, the job prints one line for each task that does not count, `task <skill>/<batch>/<task>: not counted: <reason>`, and the last line gives the number of tasks and how many count. A task counts for the reading with at least 2 seats with a valid judgment for both arms, and no answer that is not loaded or not eligible. A seat's gap is its score of the `with` answer minus its score of the `without` answer.
 
-| Result    | Meaning                                                                                    | Exit |
-| --------- | ------------------------------------------------------------------------------------------ | ---- |
-| `done`    | every judgment of the reading is current (an answer that is not loaded leaves no judgment) | 0    |
-| `refused` | `plan` refused, or the projection is above `max_usd`                                       | 1    |
-| `partial` | a judgment failed, or waits for an answer or a checklist; each is named                    | 3    |
-| `stopped` | spend (5) or the ledger (6); finished judgments are kept                                   | 5, 6 |
+What happens when a call goes wrong:
+
+| What happened                                                         | What the job does                                                                                                             |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| the call failed, timed out, was throttled, or the parser rejects it   | retried, up to 3 tries with a growing pause; a rejected reply is always this, whatever words the judge used                   |
+| every try failed                                                      | kept as `<file>.failed-<time>` with the error and the last reply; no judgment file, so it stays pending, never a 0            |
+| the provider blocked the reply                                        | one more try to confirm it; blocks count across launches, and at 3 the judgment is written as `refused`                       |
+| the provider says the call can never work (access denied)             | not retried; stays pending                                                                                                    |
+| 4 judgments in a row failed every try (blocks and the above excepted) | the job stops (`systemic`): that points at the credentials or the provider                                                    |
+| credentials missing, expired, or within 3 minutes of expiry           | no new call starts; the job stops (`credentials`)                                                                             |
+| the ledger refuses a call, or cannot be used                          | the job stops (`spend`, `ledger`)                                                                                             |
+| a judgment cannot be stored (disk full, read-only folder)             | no new call starts, the calls in flight finish, and the job ends with the error (a system error, exit 74 with "cannot write") |
+
+`plan` counts a judgment file as done, so a failed judgment, which has none, is still pending there. The other arm of a `refused` judgment is not judged on that seat (`other_arm_unusable`, as for an answer that is not loaded or not eligible), and `plan` does not count it. A task counts for the reading when at least 2 seats gave a valid judgment for both arms and no answer is not loaded or not eligible; a seat's gap is its score of the `with` answer minus its score of the `without` answer. A judgment file that names another seat or arm than the job it was read for is left out, as if it were missing. The last line gives `tasks_counted` of `tasks`.
+
+| Result    | Meaning                                                                                       | Exit       |
+| --------- | --------------------------------------------------------------------------------------------- | ---------- |
+| `done`    | every judgment of the reading is current (an answer that is not loaded leaves no judgment)    | 0          |
+| `refused` | `plan` refused, or the projection is above `max_usd`                                          | 1          |
+| `partial` | a judgment failed, was blocked for good, or waits for an answer or a checklist; each is named | 3          |
+| `stopped` | credentials (4), spend (5), the ledger (6) or systemic (9); finished judgments are kept       | 4, 5, 6, 9 |
 
 A rerun resumes: a current judgment is never made again.
 

@@ -15,7 +15,7 @@
  *   checklists   { job, run_id, skills, status, exit_code, stop, tasks, done, pending, copies, remaining, excluded,
  *                  results, usd, skipped }
  *   judge        { job, run_id, skills, status, exit_code, stop, scale, jobs, done, pending, waiting, not_loaded,
- *                  ineligible, other_arm_unusable, remaining, excluded, tasks_counted, tasks, results, usd,
+ *                  ineligible, other_arm_unusable, blocked, remaining, excluded, tasks_counted, tasks, results, usd,
  *                  skipped }
  * Every printed line passes through the redactor.
  *
@@ -27,14 +27,16 @@
  *       limit), or for checklists and judge a projection above max_usd, or for checklists a request the writer
  *       cannot be given; nothing was built or spent
  *   3   partial: at least one run failed or was not loaded, a checklist failed or the provider blocked its
- *       writer, or a judgment failed or still waits for an answer or a checklist; the work that was made is kept
+ *       writer, or a judgment failed, was blocked by the provider or still waits for an answer or a checklist;
+ *       the work that was made is kept
  *   4   stopped, credentials: missing, long-term, or about to expire: for `pairs` within the call timeout (5 minutes
  *       unless set, never less than 3), for the other jobs less than 3 minutes away
  *   5   stopped, spend: the ledger refused a call (max_usd or total_cap_usd)
  *   6   stopped, ledger: the ledger cannot be read or its lock cannot be taken
  *   7   stopped, security: the secret sweep found a credential value or the canary in a stored file
  *   8   stopped, model: the first run was answered by a model other than the subject model
- *   9   stopped, systemic: 4 checklists in a row whose every call failed (a provider or credential problem)
+ *   9   stopped, systemic: 4 subject runs, checklists or judgments in a row whose every call failed (a provider or
+ *       credential problem)
  *   10  stopped, setup: the first run was invalid for a reason that is neither the skill nor the model (a result that
  *       names no model, tools beyond the grant, a tool outside the grant that ran, the `without` arm loading the skill)
  *   64  usage error, 66 missing input, 70 internal error, 74 I/O error (as in bench.js)
@@ -175,9 +177,9 @@ async function checklistsJob(request, { dryRun, print, checklistOptions }) {
 }
 
 /**
- * The judge job: its summary and its last line. Each failed judgment is printed by name, and so is each task that does
- * not count for the reading, with the reason (up to a few waiting judgments are listed by `runJudging`; the counts are
- * always on the last line).
+ * The judge job: its summary and its last line. Each failed judgment is printed by name, and so is each judgment the
+ * provider blocked for good and each task that does not count for the reading, with the reason; the counts are always on
+ * the last line.
  */
 async function judgeJob(request, { dryRun, print, judgeOptions }) {
   const summary = await runJudging({
@@ -191,6 +193,8 @@ async function judgeJob(request, { dryRun, print, judgeOptions }) {
   });
   for (const { judgment, reason } of summary.results.failed)
     print(`failed: ${judgment}: ${reason}`);
+  for (const { judgment, reason } of summary.blocked)
+    print(`blocked by the provider: ${judgment}: ${reason}`);
   // Before anything is judged every task "does not count", so a dry run prints no task lines.
   if (!dryRun)
     for (const row of summary.tasks)
@@ -209,6 +213,7 @@ async function judgeJob(request, { dryRun, print, judgeOptions }) {
       not_loaded: summary.not_loaded,
       ineligible: summary.ineligible,
       other_arm_unusable: summary.other_arm_unusable,
+      blocked: summary.blocked.length,
       remaining: summary.remaining,
       excluded: summary.excluded.length,
       tasks_counted: summary.tasks.filter((task) => task.counted).length,
@@ -217,6 +222,7 @@ async function judgeJob(request, { dryRun, print, judgeOptions }) {
         judged: summary.results.judged.length,
         ineligible: summary.results.ineligible.length,
         failed: summary.results.failed.length,
+        refused: summary.results.refused.length,
       },
       usd: summary.usd,
       skipped: summary.skipped,
