@@ -1,7 +1,7 @@
 ---
 name: smithy-modeling
-description: Generates Smithy API models from requirements. Use when designing a new service API. Produces service definitions, operations, data structures, validation rules, and error handling following Smithy best practices. Supports TypeScript, OpenAPI, and AWS SDK code generation.
-version: 1.0.0
+description: Generates Smithy API models from requirements. Use when designing a new service API. Produces operations, data structures, validation rules, and errors, with TypeScript, OpenAPI, and AWS SDK code generation.
+version: 1.1.0
 tags: [skill, smithy, api-design, type-safety, code-generation, aws]
 ---
 
@@ -9,7 +9,7 @@ tags: [skill, smithy, api-design, type-safety, code-generation, aws]
 
 ## Overview
 
-Generates type-safe Smithy API models from system design and user story inputs. Covers service definitions, operations, input/output shapes, validation traits, error types, and pagination patterns.
+Generates type-safe Smithy models from requirements, design documents, user stories, or existing API specifications. Covers service definitions, operations, input/output shapes, validation traits, error types, and pagination. Every shape must stay compatible with TypeScript, OpenAPI, and AWS SDK code generation.
 
 ## Usage
 
@@ -19,36 +19,12 @@ Use this skill when:
 - Creating API contracts for client/server code generation
 - Defining data structures and validation rules
 
-## Core Concepts
-
-### Smithy Model Structure
-
-A Smithy model defines a service namespace, operations (with `@http` traits), input/output shapes, error shapes, and validation traits (`@length`, `@range`, `@pattern`). Pagination is required for list operations. Security traits (`@auth`, `@sensitive`) are required for authentication and PII.
-
-### Code Generation Targets
-
-Smithy models generate TypeScript clients, OpenAPI specs, and AWS SDK code. All shapes must be code-generation compatible.
-
-## Execution
-
-When this skill is activated, use the following as your full instruction set for generating the Smithy model. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# Smithy Expert (Maker)
-
-You are a Smithy API modeling expert specializing in creating type-safe, well-documented API definitions using the Smithy IDL (Interface Definition Language).
-
-## Your Role
-
-Generate Smithy model definitions from requirements, design documents, or API specifications. Create models that follow best practices for type safety, documentation, validation, and code generation.
-
-## Core Responsibilities
+## Model Elements
 
 ### 1. Service Definition
 
 - Define service shape with appropriate metadata
-- Set service version following semantic versioning
+- Set the service version, a date string such as `"2024-01-15"` as in the template below
 - Include title and documentation
 - List all operations the service provides
 
@@ -58,13 +34,15 @@ Generate Smithy model definitions from requirements, design documents, or API sp
 - Define clear input/output structures
 - Apply appropriate HTTP traits (@http, @readonly, @idempotent)
 - Specify all possible errors for each operation
+- A POST that creates something or changes state (create, check out, submit) is not idempotent. Give its input an `@idempotencyToken` member so clients can retry a timed-out call without doing the work twice, or say in the operation docs why a retry is unsafe
 
 ### 3. Shape Design
 
 - Use appropriate shape types (structure, string, integer, list, map, etc.)
 - Apply naming conventions (PascalCase for shapes, camelCase for members)
 - Add comprehensive documentation to all public shapes
-- Define reusable shapes for common patterns
+- Define reusable shapes for common patterns. When create, replace, and read shapes repeat the same members, put them in a `@mixin` (see Common Patterns)
+- When another service will reuse types or errors, put them in their own namespace (for example `com.example.library.common`) and pull them in with `use`, so the second service imports them instead of copying
 
 ### 4. Validation and Constraints
 
@@ -72,7 +50,8 @@ Generate Smithy model definitions from requirements, design documents, or API sp
 - Use @range for numeric bounds
 - Apply @length for string/collection size limits
 - Use @pattern for format validation (email, URLs, etc.)
-- Mark sensitive data with @sensitive trait
+- Mark passwords, tokens, and PII with @sensitive
+- When the requirements call for authentication, put the auth scheme trait (for example `@httpBearerAuth`) on the service. Operations inherit it; use `@auth` on an operation only to narrow or reorder its schemes, and `@optionalAuth` only for operations callable without credentials. Don't add a scheme the input never asked for, since it changes every generated client; list it as a suggestion instead
 
 ### 5. Error Handling
 
@@ -80,7 +59,9 @@ Generate Smithy model definitions from requirements, design documents, or API sp
 - Use @error("client") for 4xx errors
 - Use @error("server") for 5xx errors
 - Apply @httpError with appropriate status codes
-- Include helpful error messages and context
+- Include helpful error messages and context, for example a `fieldErrors` list on `ValidationError` naming each bad field and why
+- Mark errors a client may retry with `@retryable` (`@retryable(throttling: true)` for 429), and give throttling and 503 errors a `Retry-After` `@httpHeader`
+- Attach errors to the operations that can raise them. Errors any operation can raise (throttling, 503) go in the service's `errors` list instead
 
 ### 6. Pagination Support
 
@@ -101,16 +82,18 @@ When given requirements or specifications:
 
 ## Output Format
 
-Generate complete Smithy model files with:
+If step 2 found 10 or more operations, the model will pass 500 lines, or other services share its types, open `references/file-organization.md` (relative to this file) before writing files and split the model the way it shows. Otherwise write one file in this shape. `aws.protocols#restJson1` comes from the `software.amazon.smithy:smithy-aws-traits` package, so the model needs a `smithy-build.json` that lists it (see Deliverables) or `smithy validate` can't resolve the trait:
 
 ```smithy
 $version: "2"
 
 namespace [appropriate.namespace]
 
+use aws.protocols#restJson1
+
 /// Service documentation
 @title("[Service Title]")
-@documentation("[Detailed service description]")
+@restJson1
 service [ServiceName] {
     version: "[YYYY-MM-DD]"
     operations: [
@@ -132,6 +115,7 @@ operation [OperationName] {
 }
 
 /// Input structure documentation
+@input
 structure [OperationInput] {
     /// Field documentation
     @required
@@ -139,6 +123,7 @@ structure [OperationInput] {
 }
 
 /// Output structure documentation
+@output
 structure [OperationOutput] {
     /// Field documentation
     [fieldName]: [Type]
@@ -165,7 +150,7 @@ structure [ErrorName] {
 
 ### Documentation Standards
 
-- Add @documentation to all public shapes
+- Document all public shapes with a `///` doc comment or `@documentation`, not both on one shape
 - Explain constraints and validation rules
 - Document business logic and edge cases
 - Provide examples where helpful
@@ -204,6 +189,13 @@ operation CreateUser {
     errors: [ValidationError, ConflictError]
 }
 
+@input
+structure CreateUserInput with [UserAttributes] {
+    /// Lets a client retry a timed-out create without creating a second user
+    @idempotencyToken
+    clientToken: String
+}
+
 @http(method: "GET", uri: "/users/{userId}")
 @readonly
 operation GetUser {
@@ -226,6 +218,70 @@ operation DeleteUser {
     input: DeleteUserInput
     output: DeleteUserOutput
     errors: [UserNotFound]
+}
+```
+
+### Shared Members with a Mixin
+
+```smithy
+/// Fields a caller sets on create and full replace
+@mixin
+structure UserAttributes {
+    @required
+    email: Email
+
+    displayName: String
+}
+
+structure User with [UserAttributes] {
+    @required
+    userId: String
+}
+```
+
+### Common Errors
+
+```smithy
+@error("client")
+@httpError(400)
+structure ValidationError {
+    @required
+    message: String
+
+    /// One entry per invalid field
+    fieldErrors: FieldErrorList
+}
+
+structure FieldError {
+    @required
+    field: String
+
+    @required
+    reason: String
+}
+
+list FieldErrorList {
+    member: FieldError
+}
+
+@error("client")
+@httpError(429)
+@retryable(throttling: true)
+structure ThrottlingError {
+    @required
+    message: String
+
+    /// Seconds to wait before retrying
+    @httpHeader("Retry-After")
+    retryAfterSeconds: Integer
+}
+
+@error("server")
+@httpError(503)
+@retryable
+structure ServiceUnavailableError {
+    @required
+    message: String
 }
 ```
 
@@ -287,7 +343,7 @@ list UserList {
 - Missing constraints on strings and numbers
 - Inconsistent error handling across operations
 - Missing documentation on public shapes
-- Breaking changes without versioning
+- Breaking changes without versioning. Renaming a member changes its JSON wire name, so when you fix an existing model, say in the change notes whether any clients depend on it, and keep the old wire name with `@jsonName` if they do
 - Missing pagination on list operations
 - Exposing internal implementation details
 - Using snake_case instead of camelCase
@@ -308,6 +364,10 @@ Keep a model under 10 operations in one file; split it at 10+ operations, past 5
 
 Open `references/file-organization.md` (relative to this file) when a model spans more than one file or you are deciding whether to split one. It has the file layouts, what goes in each file, the `smithy-build.json` sources setup, and the review checks `smithy-validation` applies.
 
+## Reviewing an Existing Model
+
+When asked to review or fix a model, check it against the Quality Gate below, fix what it asks for, and stay within what the model already does: no new operations or auth schemes the original didn't imply. Report the changes under CRITICAL, IMPORTANT, and SUGGESTION headings in that order, and note any change that alters the wire format.
+
 ## Interaction Guidelines
 
 1. **Ask Clarifying Questions** if requirements are ambiguous
@@ -321,33 +381,16 @@ Open `references/file-organization.md` (relative to this file) when a model span
 Provide:
 
 1. **Complete Smithy Model** with all shapes defined
-2. **Build Configuration** (smithy-build.json) if code generation is needed
+2. **Build Configuration** (smithy-build.json) whenever the model uses an `aws.*` trait such as `aws.protocols#restJson1` or code generation is needed. List `software.amazon.smithy:smithy-aws-traits` under `maven.dependencies` for `aws.*` traits. For a split model, list every file under `sources` as `references/file-organization.md` shows
 3. **Validation Metadata** for linting and quality checks
 4. **Documentation** explaining design decisions
 5. **Example Usage** showing how to use generated code
-
-## Success Criteria
-
-Your Smithy model should:
-
-- Validate without errors using `smithy validate`
-- Generate compilable code for target languages
-- Include comprehensive documentation
-- Apply appropriate constraints and validation
-- Follow naming conventions consistently
-- Define specific, actionable error types
-- Support pagination for list operations
-- Mark sensitive data appropriately
-- Be ready for production use
-
-Generate Smithy models that are type-safe, well-documented, and follow industry best practices for API design.
-
----
 
 ## Quality Gate
 
 **CRITICAL (must fix):**
 
+- Model fails `smithy validate`
 - Service namespace missing or not a valid reverse-DNS namespace
 - Operations missing required `@http` traits
 - Error shapes not defined for failure cases
@@ -355,13 +398,16 @@ Generate Smithy models that are type-safe, well-documented, and follow industry 
 
 **IMPORTANT (should fix):**
 
-- Missing `@documentation` traits on operations and shapes
+- Missing documentation (`///` comments or `@documentation`) on operations and shapes
 - Pagination not implemented for list operations
 - Validation constraints (`@length`, `@range`, `@pattern`) missing on string/numeric inputs
+- Passwords, tokens, or PII not marked `@sensitive`
+- Naming conventions applied inconsistently
+- Generated code for a target language does not compile (CRITICAL if the design requires that target)
 
 **SUGGESTION:**
 
 - Could add `@examples` traits for documentation
 - Could define reusable common shapes (timestamps, IDs)
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
