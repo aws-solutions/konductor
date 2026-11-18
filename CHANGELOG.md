@@ -62,11 +62,22 @@ not per individual commit.
   `claude preload:` line per agent, and `synth --json` adds a `claude_preload` array. Each Claude
   Code agent file ends with a "Skills you can load" block listing its declared skills that are not
   preloaded; `synth` warns when such an agent's `tools` list lacks `Skill`.
+- `make test-py` now checks every skill's frontmatter, description, size, code fences, and
+  `references/` links against a shrink-only baseline in `tests/skill-quality-baseline.json`.
+  `python3 tests/skill_quality.py --print-baseline` refuses to write a baseline that grew.
 
 ### Changed
 
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
+- `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
+  `skills/test-coverage-analysis/references/` (SKILL.md 69.3 KB to 30.3 KB). It also gains a
+  scope section and a shorter Coverage-mode path for one module or one PR, and drops the
+  compatibility and roadmap lists.
+- `cypress-test-implementation` moved its task breakdown, Cypress patterns, and report templates into
+  `skills/cypress-test-implementation/references/` (SKILL.md 53.9 KB to 19.4 KB). It also gains a
+  scope section and a short path that writes the specs directly for one or two flows, and its
+  Quality Gate no longer renders inside a code block.
 - Claude Code subagents now preload 1 to 4 skills each (109 KB in total, down from 1.9 MB); the rest
   load on demand.
 - `konductor` does the work itself, commits only when you ask, and spawns one fresh `k-*` reviewer per phase gate (next bullet);
@@ -375,6 +386,19 @@ not per individual commit.
     inside `k-full-sdlc` it leaves execution to that SOP. Its last step reports gaps between the
     documents instead of a traceability table.
 
+- Overlapping skills now keep each rule set in one place. `decision-writing` gains an ADR Mode
+  that replaces `adr-generator`, which is removed (79 skills). `adversarial-code-review` points
+  to its three pass skills for each lens's checklist and severities, keeping a severity rule
+  of its own for a run that loads no pass, and `frontend-review` checks changes against the
+  rules in `frontend-development`.
+- Two pass ratings now match the old `adversarial-code-review` gate: a new field missing
+  validation or a default at any entry point is IMPORTANT (was SUGGESTION), and any unguarded
+  map or optional access is IMPORTANT (was limited to access reached at runtime). The security
+  pass also rates an internal error code or raw exception message surfaced to a caller CRITICAL.
+- `frontend-review` now checks the full `frontend-development` rule set, including `.refine()`
+  over `.transform()` for cross-field validation, defensive checks on array index access, and
+  TypeScript utility types.
+
 ### Removed
 
 - Breaking: three skills are renamed and their old names are removed, with no aliases:
@@ -511,6 +535,15 @@ not per individual commit.
   before a PR instead of rebasing, matching `git-merge`.
 - `cmux-dispatch` and `mux-dispatch` no longer claim every task, and say that Claude Code panes
   skip permission prompts, so dispatch only tasks you would approve unattended.
+- Kiro CLI v3 synth now prints a warning when it drops an orchestrator's
+  `toolsSettings.subagent.availableAgents`, or any other unmapped `toolsSettings` key, instead of
+  dropping it silently. Specialists get no `availableAgents` warning: their output carries no
+  subagent tools, and synth already warns when a specialist's spec names a subagent.
+- Doc comments in the kiro-v3 synth module now cite the real sources for its `hooks`, tool-ID
+  and `trustedAgents`/`availableAgents` mappings (public kiro.dev pages and live testing against
+  the installed Kiro CLI `agent upgrade` engine) instead of a vendored module that doesn't exist
+  in this repository. They say which tool-ID rows no source confirms, and correctly state that
+  `install/registry.rs` registers three install strategies, not two.
 
 ### Security
 
