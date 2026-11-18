@@ -25,9 +25,11 @@ Do NOT use when:
 
 - User wants a full system design → use `system-design-patterns`
 - User wants API specs → use `smithy-modeling`
-- User wants a data model → use `dynamodb-design`
+- User wants a DynamoDB data model → use `dynamodb-design`
 - User wants a threat model → use `threat-modeling`
 - User wants a scored multi-option comparison → use `trade-off-evaluator`
+
+When the recommendation turns on a DynamoDB data model (which key, which index, one table or several), load the `dynamodb-design` skill before designing keys and indexes, and apply its quality gate, including write sharding for low-cardinality keys and hot partitions. For depth it does not carry, such as Streams, backup or the cost calculator, load the AWS MCP server's `amazon-dynamodb` skill with `aws___retrieve_skill` or through `find-aws-skills`.
 
 ## Decision Framework
 

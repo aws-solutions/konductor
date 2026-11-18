@@ -288,7 +288,11 @@ recommendations list.
 
 Chains three skills in sequence — `kiro-requirements-generation` →
 `kiro-design-generation` → `kiro-task-generation` — to turn PM and design artifacts into a
-complete Kiro IDE spec directory, then validates traceability across the three documents.
+complete Kiro IDE spec directory, then checks the three documents for gaps. It writes feature
+specs (requirements-first or design-first) and bugfix specs, in the format Kiro itself writes.
+When you run it on its own on Kiro, with the default `spec_dir`, it offers Kiro's own `/spec new`
+flow, seeded with the same handoff files, as an alternative, and hands the finished spec to
+`/spec run`. Inside `k-full-sdlc` it writes the spec and leaves execution to that SOP.
 
 ### When to invoke it
 
@@ -305,24 +309,32 @@ kiro-cli chat --agent konductor
 Run the kiro-spec-workflow SOP for feature_name=user-authentication
 ```
 
-You will need the three other required paths; the SOP will ask if you have not supplied them.
+A feature spec also needs `feature_scope_path`, `user_stories_path` and
+`design_artifacts_path`; a bugfix spec needs `bug_report_path`. The SOP asks for any you leave
+out.
 
 ### Parameters
 
 | Parameter | Required | Default |
 | --- | --- | --- |
 | `feature_name` | **Yes** | — kebab-case, e.g. `user-authentication` |
-| `feature_scope_path` | **Yes** | — the feature-split file with this feature's scoped stories, components, and dependencies |
-| `user_stories_path` | **Yes** | — the full user stories file from the `user-story-writing` skill |
-| `design_artifacts_path` | **Yes** | — the design artifacts directory from the architect phase |
-| `output_dir` | No | `.kiro/specs/{feature_name}/` |
+| `feature_scope_path` | **Yes**, for a feature spec | — the feature-split file with this feature's scoped stories, components, and dependencies |
+| `user_stories_path` | **Yes**, for a feature spec | — the full user stories file from the `user-story-writing` skill |
+| `design_artifacts_path` | **Yes**, for a feature spec | — the design artifacts directory from the architect phase; optional for a bugfix spec |
+| `spec_type` | No | `feature`; `bugfix` writes `bugfix.md` in place of `requirements.md` |
+| `workflow` | No | `requirements-first`; `design-first` writes `design.md` before `requirements.md` |
+| `bug_report_path` | **Yes**, for a bugfix spec | — the bug report: observed behavior, reproduction steps, issue ID |
+| `spec_dir` | No | `.kiro/specs/{feature_name}/` |
 
 ### Flow
 
 ```mermaid
 %%{init:{'theme':'base','themeVariables':{'fontSize':'14px','primaryColor':'#eef2f7','primaryTextColor':'#0f172a','primaryBorderColor':'#40556e','lineColor':'#7a8899','textColor':'#0f172a','edgeLabelBackground':'#ffffff','clusterBkg':'#fafbfc','clusterBorder':'#c9d2dc'}}}%%
 flowchart TD
-    S1["1. kiro-requirements-generation<br/>read feature scope → identify in-scope stories<br/>read user stories, filter to this feature<br/>create output_dir<br/>produce requirements.md with EARS criteria<br/>(WHEN / IF / WHILE … SHALL)"]
+    S0["0. Set up the spec<br/>run on its own on Kiro: offer /spec new seeded with the handoff files<br/>otherwise generate: step 1 (step 2 for design-first) writes .config.kiro"]
+    S0 --> S1
+
+    S1["1. kiro-requirements-generation<br/>read feature scope → identify in-scope stories<br/>read user stories, filter to this feature<br/>produce requirements.md: Glossary, EARS criteria<br/>(WHEN / IF / WHILE … SHALL), source story ID per requirement<br/>(bugfix: bugfix.md from the bug report)"]
 
     S1 --> A1{"User approves<br/>requirements.md?"}
     A1 -->|"Changes requested"| R1{"Fewer than<br/>2 cycles used?"}
@@ -332,7 +344,7 @@ flowchart TD
     A1 -->|Approved| S2
     Cap1 --> S2
 
-    S2["2. kiro-design-generation<br/>read requirements.md + design artifacts<br/>produce design.md with all 6 sections:<br/>Overview · Architecture · Components and Interfaces ·<br/>Data Models · Error Handling · Testing Strategy<br/>every requirement must be addressed"]
+    S2["2. kiro-design-generation<br/>read requirements.md + design artifacts<br/>produce design.md with all 7 sections:<br/>Overview · Architecture · Components and Interfaces ·<br/>Data Models · Correctness Properties ·<br/>Error Handling · Testing Strategy<br/>every requirement must be addressed"]
 
     S2 --> UI{"UI feature AND a<br/>UI-prototyping agent<br/>is available?"}
     UI -->|Yes| Mock["Spawn it with the HLD or PRD URL<br/>generate a Cloudscape mock UI<br/>present it alongside design.md"]
@@ -347,7 +359,7 @@ flowchart TD
     A2 -->|Approved| S3
     Cap2 --> S3
 
-    S3["3. kiro-task-generation<br/>read requirements.md + design.md<br/>produce tasks.md in Kiro IDE format:<br/>numbered checkboxes, max 2-level hierarchy,<br/>requirement references<br/>every requirement gets ≥1 task"]
+    S3["3. kiro-task-generation<br/>read requirements.md + design.md<br/>produce tasks.md in Kiro IDE format:<br/>numbered checkboxes, max 2-level hierarchy,<br/>requirement references, optional test tasks,<br/>checkpoints, task dependency graph<br/>every requirement gets ≥1 task"]
 
     S3 --> A3{"User approves<br/>tasks.md?"}
     A3 -->|"Changes requested"| R3{"Fewer than<br/>2 cycles used?"}
@@ -357,7 +369,7 @@ flowchart TD
     A3 -->|Approved| S4
     Cap3 --> S4
 
-    S4["4. Validate spec completeness<br/>all three files exist in output_dir<br/>every requirement addressed in design.md<br/>every requirement has ≥1 task<br/>present traceability summary:<br/>requirement → design section → task(s)"]
+    S4["4. Validate spec completeness<br/>all files and .config.kiro exist in spec_dir<br/>every criterion cited by a property or task<br/>every property has a test task<br/>every leaf task in exactly one wave<br/>report the gaps; on Kiro, run on its own: hand off to /spec run"]
 
     class A1,A2,A3 gate
     class S4 focus
@@ -367,18 +379,21 @@ flowchart TD
 ```
 
 *`kiro-spec-workflow`: three generation steps, each with its own approval gate and a 2-cycle
-revision cap, then a traceability check.*
+revision cap, then a gap check. Design-first runs step 2 before step 1, then links the design
+to the requirements.*
 
 ### What you get
 
 ```text
 .kiro/specs/<feature-name>/
-├── requirements.md   EARS-format acceptance criteria
-├── design.md         six-section per-feature low-level design
-└── tasks.md          Kiro IDE numbered task list with requirement references
+├── .config.kiro      spec id, workflow type and spec type
+├── requirements.md   Glossary and EARS-format acceptance criteria (bugfix.md for a bugfix spec)
+├── design.md         seven-section per-feature low-level design with correctness properties
+└── tasks.md          Kiro IDE task list with requirement references and a dependency graph
 ```
 
-Plus a traceability summary mapping each requirement to its design section and its task(s).
+Plus a list of any gaps between the three documents. Kiro shows requirement-to-task
+traceability in its own spec view.
 
 ### Things to know
 
@@ -389,6 +404,11 @@ Plus a traceability summary mapping each requirement to its design section and i
   a convention that keeps criteria testable.
 - **Requirements are filtered by feature scope.** Step 1 reads `feature_scope_path` first, then
   includes only the user stories mapped to that feature.
+- **Each requirement names its source story.** A `**Source:**` line carries the story ID the
+  feature split uses, such as `US-3`, so you can trace a requirement back to the PM handoff.
+- **On Kiro, execution goes to Kiro.** `/spec view`, `/spec analyze_requirements` and
+  `/spec run` work on the files this SOP writes, and `/spec run` executes the tasks in
+  dependency waves. Property-based testing runs in the Kiro IDE only.
 - **UI features get an optional mock.** If the feature is UI-facing and a UI-prototyping agent is
   available, a Cloudscape mock is generated and presented alongside `design.md` so you can
   validate both before implementation.
