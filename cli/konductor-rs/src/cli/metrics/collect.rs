@@ -245,7 +245,9 @@ pub(crate) fn collect_claude(path: &Path, mtime: u64, size: u64) -> Record {
                 }
             }
             Ok(_) => {}
-            Err(_) => failed += 1,
+            // Only usage-carrying lines get here, so one we can't read
+            // would silently undercount the session.
+            Err(_) => return rec.unparsed(),
         }
     }
     if parsed == 0 && failed > 0 {
@@ -376,6 +378,18 @@ mod tests {
         assert_eq!(m.cache_read_tokens, Some(2000));
         assert_eq!(m.thinking_tokens, Some(6));
         assert_eq!(m.credits, None);
+    }
+
+    #[test]
+    fn claude_unreadable_usage_line_marks_record_unparsed() {
+        let d = tmp("claude-bad-usage");
+        let body = [
+            r#"{"type":"assistant","timestamp":"2026-11-01T10:00:00Z","message":{"id":"a","model":"claude-opus-5-5","usage":{"output_tokens":5}}}"#,
+            r#"{"type":"assistant","message":{"id":"b","model":"claude-opus-5-5","usage":{"output_tokens":"many"}}}"#,
+        ]
+        .join("\n");
+        let p = write(&d, "proj/s.jsonl", &body);
+        assert_eq!(collect_claude(&p, 0, 0).status, Status::Unparsed);
     }
 
     #[test]
