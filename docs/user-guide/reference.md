@@ -314,7 +314,12 @@ konductor synth: /path/to/agents/broken.agent-spec.json: invalid JSON: key must 
 - On Kiro CLI v2 and v3, synth appends a `## Your skills` block to each agent's `prompt`. It lists
   the agent's declared skills with a rule for when to load one. Skills whose description starts
   "MUST USE for every" (today only `constraints`) are left out, since they claim every task.
-  Claude Code output is unchanged.
+- On Claude Code, each agent file ends with a `## Skills you can load` block instead. It lists the
+  agent's declared skills that are not in its `clientConfig.claudeCli.skills` preload, to be
+  loaded with the `Skill` tool.
+- synth prints a `konductor: warning:` line for an agent whose Claude Code preload is over 32 KiB
+  or 32 skill names. Past 32 names the warning lists the skills Claude Code would drop. It is a
+  warning, so synth still exits `0`.
 
 ---
 
@@ -324,10 +329,12 @@ konductor synth: /path/to/agents/broken.agent-spec.json: invalid JSON: key must 
 konductor/
 ├── agents/                       11 agent specs (*.agent-spec.json)
 ├── agent-sops/                   19 SOPs (*.sop.md)
-├── skills/                       82 skills (<name>/SKILL.md, plus optional helper files)
+├── skills/                       79 skills (<name>/SKILL.md, plus optional helper files)
 ├── context/                      Loaded at agent startup
 │   ├── k-core-rules.md
-│   └── k-orchestrator-routing-rules.md
+│   ├── k-direct-work.md
+│   ├── k-orchestrator-routing-rules.md
+│   └── k-orchestrator-shared.md
 ├── cli/                          The Konductor CLI
 │   ├── README.md                 CLI-specific docs
 │   └── gate-config/              Declarative policy; the CLI embeds config.yml only
@@ -369,7 +376,7 @@ JSON or Markdown you can read and change — see
 | `dist/` | `konductor synth` | **Yes** |
 | `~/.konductor/logs/konductor.log` | Every CLI invocation | Outside the repo |
 | `~/.konductor/config.yml` | You, by hand | Outside the repo |
-| `.konductor/handoff/<name>.md` | The `k-context-gathering` SOP, for large findings | No |
+| `.konductor/handoff/<name>.md` | The `k-context-gathering` and `k-comprehensive-search` SOPs, and subagents under the `delegation-protocol` handoff pattern | By `.konductor/.gitignore` when `konductor init` created it; otherwise by the `.konductor/handoff/.gitignore` the writer creates first |
 | `.agents/scratchpad/critique-NNN.md` | The `k-pre-cr-critique` SOP | No |
 | `.kiro/specs/<feature>/` | The `kiro-spec-workflow` SOP | No |
 
@@ -380,43 +387,48 @@ All 11, with the model each declares and the SOPs it makes available. For write 
 per runtime, delegation targets, and the full per-agent breakdown, see the
 [Agents reference](agents.md).
 
-| Agent | Model | SOPs declared | Skills | MCP registry |
-| --- | --- | --- | --- | --- |
-| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` | 13 | — |
-| `konductor-mux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
-| `konductor-cmux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
-| `k-architect` | `claude-sonnet-5.5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` | 38 | `aws-mcp` |
-| `k-developer` | `claude-sonnet-5.5` | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` | 27 | `aws-mcp` |
-| `k-quality-assurance` | `claude-sonnet-5.5` | `k-test-coverage-review` | 12 | — |
-| `k-product-manager` | `claude-sonnet-5.5` | — | 16 | — |
-| `k-tpm` | `claude-sonnet-5.5` | — | 14 | — |
-| `k-researcher` | `claude-sonnet-5.5` | — | 8 | — |
-| `k-browser` | `claude-sonnet-5.5` | — | 4 | `playwright-mcp` |
-| `k-media-analyzer` | `claude-sonnet-5.5` | — | 1 | — |
+| Agent | Model | SOPs declared | Skills | Preloaded on Claude Code | MCP registry |
+| --- | --- | --- | --- | --- | --- |
+| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-adversarial-pull-request-review`, `about-konductor` | 25 | 2 | `aws-mcp` |
+| `konductor-mux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor` | 11 | 1 | none |
+| `konductor-cmux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor` | 11 | 1 | none |
+| `k-architect` | `claude-sonnet-5.5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review` | 37 | 2 | `aws-mcp` |
+| `k-developer` | `claude-sonnet-5.5` | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` | 27 | 4 | `aws-mcp` |
+| `k-quality-assurance` | `claude-sonnet-5.5` | `k-test-coverage-review` | 13 | 2 | none |
+| `k-product-manager` | `claude-sonnet-5.5` | none | 16 | 1 | none |
+| `k-tpm` | `claude-sonnet-5.5` | none | 14 | 1 | none |
+| `k-researcher` | `claude-sonnet-5.5` | none | 9 | 2 | none |
+| `k-browser` | `claude-sonnet-5.5` | none | 5 | 4 | `playwright-mcp` |
+| `k-media-analyzer` | `claude-sonnet-5.5` | none | 2 | 1 | none |
 
 Every agent runs `claude-sonnet-5.5`, the Kiro CLI form of the ID. On Claude Code, `konductor synth`
 writes it as `claude-sonnet-5-5`. The SOP column is each spec's
 `dependencies.agentSops.agentSopNames`; the skill count is
-`clientConfig.claudeCli.skills`. Claude Code preloads that list only when the agent runs as a
-subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand.
-The list differs from `dependencies.skills.skillNames` in two places. `konductor` declares
-`claude-teams-behavior` for Claude Code only. Seven agents (the three orchestrators,
-`k-quality-assurance`, `k-researcher`, `k-browser`, `k-media-analyzer`) declare
-`humanize-writing` in `skillNames` only, so no runtime preloads it for them. Every skill is catalogued in the
+`dependencies.skills.skillNames`, the skills its own agent file lists as loadable. Only Kiro CLI
+holds an agent to that list; a Claude Code install puts every skill under `.claude/skills/`, where
+any of them stays reachable. The preload column is
+`clientConfig.claudeCli.skills`, the 1 to 4 skills Claude Code injects when the agent runs as a
+subagent; everything else loads on demand through the `Skill` tool. A top-level Claude Code
+agent, and every agent on Kiro CLI, loads skills on demand. `konductor` additionally preloads
+`claude-teams-behavior`, which is not in its `skillNames`. Every skill is catalogued in the
 [Skills catalog](skills.md).
 
-Every agent declares `context/k-core-rules.md`. Only the three orchestrators also declare
-`context/k-orchestrator-routing-rules.md`.
+Every agent declares `context/k-core-rules.md`. The three orchestrators also declare
+`context/k-orchestrator-shared.md`. Only the mux and cmux orchestrators also declare
+`context/k-orchestrator-routing-rules.md`; `konductor` declares `context/k-direct-work.md`.
 
 ### MCP registry entries
 
 | Entry | Declared by | Definition |
 | --- | --- | --- |
-| `aws-mcp` | `k-architect`, `k-developer` | `command: uvx`, args `mcp-proxy-for-aws-cli==1.7.0`, `https://aws-mcp.us-east-1.api.aws/mcp`, `--metadata`, `AWS_REGION=us-east-1` |
+| `aws-mcp` | `konductor`, `k-architect`, `k-developer` | `command: uvx`, args `mcp-proxy-for-aws-cli==1.7.0`, `https://aws-mcp.us-east-1.api.aws/mcp`, `--metadata`, `AWS_REGION=us-east-1`, `--skip-auth` |
 | `playwright-mcp` | `k-browser` | args `-y`, `@playwright/mcp@latest` |
 
-In Claude Code these agents request the corresponding tools via globs — `mcp__aws-mcp__*` and
-`mcp__playwright-mcp__*` — rather than launching the servers themselves.
+In Claude Code `k-architect`, `k-developer` and `k-browser` request the corresponding tools via the
+globs `mcp__aws-mcp__*` and `mcp__playwright-mcp__*` rather than launching the servers themselves.
+`konductor` requests only five read-only `aws-mcp` tools: `aws___retrieve_skill`,
+`aws___search_documentation`, `aws___read_documentation`, `aws___list_regions` and
+`aws___get_regional_availability`.
 
 ---
 
@@ -431,10 +443,10 @@ All 19, with owning agent and required parameters. Detail and flowcharts:
 | `k-context-gathering` | orchestrators | `target` |
 | `k-verify` | orchestrators | `source_dir` |
 | `k-delegate` | `konductor` | `task_description`, `target_agent` |
-| `kiro-spec-workflow` | orchestrators | `feature_name`, `feature_scope_path`, `user_stories_path`, `design_artifacts_path` |
+| `kiro-spec-workflow` | orchestrators | `feature_name`, `feature_scope_path`, `user_stories_path`, `design_artifacts_path` (a bugfix spec: `feature_name`, `bug_report_path`) |
 | `k-design-doc-creation` | `k-architect` | `topic` |
 | `k-existing-design-review` | `k-architect` | `design_dir` |
-| `k-adversarial-pull-request-review` | `k-architect` | `diff_input` (always; `pr_url` is context-only) |
+| `k-adversarial-pull-request-review` | orchestrators (`k-architect` is the checker) | `diff_input` (always; `pr_url` is context-only) |
 | `k-code-review-workflow` | `k-developer` | `source_dir` |
 | `k-code-cleanup` | `k-developer` | `source_dir` |
 | `k-pre-cr-critique` | `k-developer` | none — all parameters have defaults |

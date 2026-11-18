@@ -184,7 +184,9 @@ dist/
 Each Kiro CLI v2 and v3 agent's `prompt` ends with a generated `## Your skills`
 block listing the agent's declared skills with a rule for when to load one.
 Skills whose description starts "MUST USE for every" (today only `constraints`)
-are left out, since they claim every task. Claude Code agents get no block.
+are left out, since they claim every task. Each Claude Code agent file ends with a
+`## Skills you can load` block instead, listing only the declared skills it does not preload
+(see the preload paragraph below).
 
 The filename carries no architecture or OS: the packaged content (agent/skill/SOP
 markdown and JSON config, no compiled code) is architecture- and OS-independent within
@@ -200,6 +202,15 @@ On success, `synth` prints two summary lines to stdout: what was written
 (agent/skill/SOP/context counts and the output root) and the packaged
 artifact's filename. `dist/` is gitignored - inspect the output with a
 plain directory listing, e.g. `find dist -maxdepth 3`.
+
+Claude Code injects every skill in an agent's `clientConfig.claudeCli.skills` into each
+subagent it spawns, so `synth` measures that preload. It prints a `konductor: warning:` line to
+stderr for any agent over 32 KiB or 32 names; past 32 names it lists the skills Claude Code would
+drop. The command still succeeds. `-v` adds one
+`claude preload: <agent> <bytes> B, <n> skill(s)` line per agent, and `--json` carries the same
+figures in a `claude_preload` array. Each agent file lists the declared skills it does not
+preload, to be loaded with the `Skill` tool, so `synth` also warns when an agent has such skills
+but an explicit `clientConfig.claudeCli.tools` list without `Skill`.
 
 ---
 
@@ -228,6 +239,11 @@ change too - even a lone foreign marker (e.g. a `.kiro/` directory left over fro
 unrelated Kiro CLI use) no longer steers selection, so `--harness claude` installs
 Claude Code content there regardless. `kiro-v3` installs for Kiro CLI's V3 (KAS) engine,
 via its own `KiroCliV3InstallStrategy`.
+
+After a `kiro-cli-v2` install the summary is followed by one line naming the kiro-cli
+versions the agents' explicit v2 tool lists were checked against (2.36.0 and 3.0.0) and
+the `/tools` command that re-checks them on another version against the installed
+`<target>/.kiro/agents/k-developer.json`; it informs only and gates nothing.
 
 ### `--version <v>` and `--force`: content-version tracking
 
@@ -720,6 +736,7 @@ rather than re-implementing any validation.
 | `config`            | `.konductor/config.yml` loads and validates, via `config`'s own loader.                                                                                                    |
 | `container_runtime` | Probes `docker`/`podman`/`nerdctl`/`finch` on PATH, in that order - informational only.                                                                                    |
 | `index_status`      | Compares `~/.konductor/installs`'s cached status for the target against that target's real manifest status - catches an install/update interrupted between the two writes. |
+| `orchestration`     | `orchestration.mode` in `~/.konductor/config.yml` is `auto`, `coordinator` or unset; a project-file value is reported as ignored (`warn` when it differs from the mode sessions run, `info` when it matches). Per installed harness, the session-start hook is wired, its `konductor` binary is executable, and its `--install-root` is this target; under `coordinator`, the persona files are installed and load within the hook's output budget (`failed` when the digest is over budget or the install path too long), and an install root outside your home that is not a git checkout root is `warn`, since a session started in a subdirectory of it falls back to `auto`. A missing piece is `failed` under `coordinator` and `warn` otherwise. A hook entry not in the form `install` writes is `warn` with its command shown. |
 | `cli_version`       | Machine-wide, runs exactly once even under `--all`. Compares the running `konductor` binary's own version against the latest published GitHub release. `warn` severity only when stale - never `failed`, never affects `doctor`'s own exit code. |
 | `content_version`   | Per-target, runs once per tracked target under `--all`. Compares that target's recorded content version (`agent_version` in `install-info.json`) against the latest published release. Fully independent of `cli_version` - no shared check name, summary line, or comparison logic. |
 
@@ -900,6 +917,12 @@ phase-gated SOP, and reports one exit code. Today only `k-full-sdlc` lists its p
 and gate boundaries in `cli/gate-config/sop-orchestration.yml`, so only its sessions can
 pass. The SOP name comes from the file name (`<sop>-<digit>...`).
 
+The session keys it reads come from `gate_facts` in the same file: `gate_<phase>_result`,
+`gate_<phase>_evidence`, `gate_<phase>_checker`, and `gate_<phase>_override` for each boundary, and
+`run.data.max_fix_cycles` for the fix-cycle cap. `k-full-sdlc`'s Progress Tracking section says
+when it writes each one, and `make sop-orchestration-check` fails when a gated SOP stops naming
+the keys of its boundaries.
+
 It reads the session file (at most 1 MiB), checks that the evidence files the session
 names exist (it never opens them), and reads the effective config (preset, then
 `~/.konductor/config.yml`, then `<cwd>/.konductor/config.yml`) for
@@ -938,7 +961,7 @@ The first row that fires sets the exit; every firing reason prints.
 | V1 | The file is missing, unreadable, not UTF-8, a symlink, outside the root, or rejected by the YAML loader. A `config.yml` that is present but invalid | `SESSION_INVALID`, `CONFIG_INVALID` | 65 |
 | V2 | `schema_version` is not 1, a status outside the skill's enums, a SOP name not in the gated list or with no `phases`, or session phases that differ from that list | `RECORD_INTEGRITY` | 65 |
 | V3 | A phase `COMPLETED` after an earlier `PENDING` or `IN_PROGRESS` one, `run_status: completed` with a phase not `COMPLETED` or `SKIPPED`, or a `SKIPPED` phase with no `skip_reason` | `PHASE_ORDER`, `PHASE_INCOMPLETE`, `SKIP_UNEXPLAINED` | 65 |
-| V4 | A gate phase is `COMPLETED` (per registered feature for a feature gate) with no `gate_<phase>_result`, an approval result other than `approved`, or no `gate_<phase>_evidence` naming a file in the project | `GATE_MISSING`, `APPROVAL_MISSING`, `EVIDENCE_MISSING` | 65 |
+| V4 | A gate phase is `COMPLETED` (per registered feature for a feature gate) with no `gate_<phase>_result`, an approval result other than `approved`, or no `gate_<phase>_evidence` naming a file inside the root | `GATE_MISSING`, `APPROVAL_MISSING`, `EVIDENCE_MISSING` | 65 |
 | V5 | A phase is `BLOCKED`, or a per-feature phase stays `IN_PROGRESS` after a later phase completed | `HALTED` | 1 |
 | V6 | A feature's `fix_cycles_used` is above the cap: `run.data.max_fix_cycles`, or 2 when none is recorded. Also checks the run-level `doc_fix_cycles_used` | `BUDGET_EXCEEDED` | 3 |
 | V7 | A check-threshold or loop-exit `gate_<phase>_result` ranks at or above the effective threshold. A word in no severity list ranks as CRITICAL | `FINDING_UNRESOLVED` | 2 |
@@ -991,6 +1014,68 @@ kiro-cli chat --agent konductor                      # start a session
 Skill bodies load lazily via the `fs_read` tool: an interactive session prompts for
 approval the first time an agent reads a skill, and a `--no-interactive` run needs
 `--trust-tools=fs_read` (or `--trust-all-tools`) to read skills without prompting.
+
+### Orchestration mode
+
+`orchestration.mode` picks how `konductor` works: `auto` (the default, single-writer) or
+`coordinator` (read-only, every change goes to a specialist). Set it by hand in the user layer:
+
+```yaml
+# ~/.konductor/config.yml
+orchestration:
+  mode: coordinator   # or auto (the default)
+```
+
+- Only `~/.konductor/config.yml` is read. A project `.konductor/config.yml` value is ignored, and
+  the `doctor` `orchestration` check reports it: `warn` when it differs from the mode in effect,
+  `info` when it matches.
+- `config set` does not set this key. It writes the project layer, and it keeps an existing
+  `orchestration:` section in that file intact.
+- The value is exactly `auto` or `coordinator`. A change applies from the next session, with no
+  reinstall; `install` and `update` never rewrite it.
+- `install` wires a session-start hook for `konductor` on every harness, also under
+  `--no-telemetry`: a standalone document `.kiro/hooks/konductor-orchestration-hooks.json` on
+  Kiro CLI v3, a `SessionStart` block in the Claude Code hooks settings file, and an `agentSpawn`
+  entry in `.kiro/agents/konductor.json` on Kiro CLI v2. `uninstall` removes them.
+- Under `coordinator` the hook prints `Orchestration: coordinator`, a line telling `konductor` to
+  read the installed `k-orchestrator-routing-rules.md` in full, and the short coordinator digest
+  (under 2,500 bytes in total). Only the mode line and the Step 1 pointer are trusted; the summary
+  lines are a preview of the file. Under `auto`, or with no setting, it prints nothing, except that on a Claude Code resume or
+  compact it prints `Orchestration: auto`, so a session that changed mode sees the change.
+- The hook acts only for the install that wired it: it looks for the nearest install that owns
+  `konductor` for the harness that fired it from the working directory upward and in your home directory, and prints nothing
+  unless that install is the one named by its own `--install-root`. `konductor` follows the rules
+  file the hook names only when the install is under your home directory, or its root is the
+  project root: the working directory itself or a git checkout root that contains it. For an
+  install anywhere else the hook prints a fallback line (below) and the session runs as `auto`.
+  Install under your home directory or the project root for coordinator mode.
+- When it recognises a `konductor` session but cannot apply `coordinator` (unset `HOME` on Claude
+  Code or Kiro CLI v2, an unreadable or unparsable config file, an unknown value, a missing rules
+  file, or an install outside the locations above), it prints one line,
+  `Orchestration: auto (fallback: <reason>)`, and the session runs as `auto`.
+- The first reply of every `konductor` session states the mode: the hook's line, or
+  `Orchestration: auto (default)` when no line arrived. `Orchestration: auto (default)` with
+  `coordinator` set means the hook output did not reach the session; run `konductor doctor`.
+
+Kiro CLI v3 and Claude Code installed with `konductor install` are supported. The Claude Code plugin does not wire the hook, so coordinator mode is not available there. Claude Code is wired to run the hook again on `/clear`,
+`/compact` and resume (tested on resume only); Kiro CLI v3 may not after `/compact`, so start a new
+session if a `coordinator` session starts writing files itself. Kiro CLI v2 is not supported: the hook is wired as above, but its
+delivery is untested, and when it does not arrive the session runs as `auto` and the first reply
+says `Orchestration: auto (default)`.
+
+Alternatives considered: a separate coordinator agent that loads the routing rules as a static
+resource (as the mux and cmux orchestrators do) needs no hook, no output budget and no trust
+carve-out, but adds a fourth orchestrator to keep in parity and gives up switching by config under
+one agent name. An install-time profile (install or update writes the agent with the routing rules
+or the direct-work file as its static resource) keeps the single name and the config key but needs
+`konductor update` after each change. The hook keeps the single name and switches at the next
+session; the cost is the output budget, the digest and the rule 11 carve-out bounded to two context
+directories.
+
+The hook runs the hidden command `konductor __orchestration-hook`. Like `__telemetry-hook`, it is
+not part of the command surface: it reads the harness payload on stdin, acts only for a
+`konductor` session, exits 0 on every payload, and writes nothing to stderr. A bad flag exits 64
+like any other usage error.
 
 ---
 

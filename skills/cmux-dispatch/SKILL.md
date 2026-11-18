@@ -1,6 +1,6 @@
 ---
 name: cmux-dispatch
-description: Delegate tasks to parallel agent sessions via cmux. Use when the user asks to delegate, spawn, or run a task in a separate cmux surface with a specific agent. Handles surface creation, readiness polling, prompt delivery, and completion notification.
+description: Delegates tasks to parallel agent sessions via cmux. Use when cmux is running and the work should be visible in its own pane, or to delegate to a specific agent. Claude Code panes skip permission prompts. Handles pane creation, readiness polling, prompt delivery, and completion notice.
 ---
 
 # cmux Dispatch
@@ -36,10 +36,11 @@ Spawn agent sessions in cmux surfaces so delegated work is visible, interactive,
 
 Use this skill when:
 
-- User asks you to do ANY implementation, design, QA, documentation, or operations work
+- cmux is running and the work should be visible in its own pane, so the user can watch and correct it as it runs
 - User says "delegate", "spawn", "run this in a new tab/pane", "have X agent investigate"
 - User wants parallel work visible in cmux rather than hidden sub-agents
-- **NEVER** use `use_subagent` when cmux is available — always use this skill instead
+
+On Claude Code, the pane runs `claude -p` with `--dangerously-skip-permissions`: print mode can't stop for a permission prompt, so tool calls run without approval. Before dispatching a task that pushes, deletes, deploys, or reads untrusted input (repo files from others, issue text, web pages), ask the user in your own turn first, or tell them to run it from base konductor. Say so in any plan or command list you hand the user, naming what the child may do unattended (edit, commit, push). Never dispatch a merge into the default branch (`git-merge` Phase 2): run it from base konductor or open a PR.
 
 **You MUST immediately run the dispatch script without pre-checking the environment.** The script handles all validation (cmux availability, CMUX_WORKSPACE_ID) and exits with a clear error if anything is missing.
 
@@ -64,6 +65,11 @@ echo "CMUX_DISPATCH_DIR=$CMUX_DISPATCH_DIR"
 
 If it exits 1, dispatch can't run: tell the user and fall back to the base
 orchestrator.
+
+If you are writing dispatch commands for someone to run later instead of
+running them now, put this block at the top of the script and have the
+commands read the variable it sets, not a path you resolved. A path resolved
+on your machine may not exist on theirs.
 
 ## Deterministic Script
 
@@ -131,6 +137,19 @@ substitute for the deliverable. The script tells every child to write its full
 deliverable to `<dispatch dir>/result.md` for the orchestrator to read; use
 `cmux read-screen` only as a fallback.
 
+### Chaining agents (maker, then checker)
+
+Dispatched agents can't see each other, so the orchestrator carries every
+handoff:
+
+1. Dispatch the maker. Wait for its `.done` and read its result file.
+2. Dispatch the checker with what it needs from that result (branch, worktree
+   path, summary) pasted into its task.
+3. Read the checker's result file. If it has findings, dispatch the maker
+   again on the same target with those findings in the task.
+
+Never tell one agent to message or wait for another.
+
 ## Worktree Provisioning for Write Agents
 
 **The rule: every write-agent dispatch task must explicitly name the exact
@@ -170,7 +189,7 @@ bash "<CMUX_DISPATCH_DIR>/cmux-dispatch.sh" \
           [OR: Work directly on branch <branch> in this shared working tree
           — no worktree for this task.]
           Implement the feature; commit and push the branch you're on; open
-          a draft CR to mainline."
+          a draft PR to main."
 ```
 
 **Read-only agents** (research, investigation, review) need no worktree
@@ -238,11 +257,11 @@ things provide harder enforcement after the fact:
 - The pre-commit hook (husky/lint-staged, or the equivalent for this
   project) runs inside the tree the agent actually committed from — edits
   made outside the named target simply will not surface in that commit.
-- The CR diff at review time shows exactly which files changed; a human
+- The PR diff at review time shows exactly which files changed; a human
   reviewer catches any file that should not have been touched before merge.
 
 Cleanup (removing the worktree and branch) happens only after the agent's
-draft CR has merged, and only with explicit user confirmation — this skill
+draft PR has merged, and only with explicit user confirmation. This skill
 does not perform cleanup itself.
 
 ## Best Practices

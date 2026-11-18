@@ -381,7 +381,7 @@ else
   # script would have to reconstruct, so AGENT is passed through as-is.
   KIRO_FLAGS="--no-interactive --trust-all-tools"
   [[ "$INTERACTIVE" == true ]] && KIRO_FLAGS="--trust-all-tools"
-  PANE_CMD="${CMD_PREFIX}export ASDLC_DONE_KEY=\"${DONE_KEY}\" KONDUCTOR_DONE_FILE=$(printf '%q' "$DONE_FILE") ; kiro-cli chat --agent \"$AGENT\" ${KIRO_FLAGS} $(printf '%q' "$PROMPT")"
+  PANE_CMD="${CMD_PREFIX}export KONDUCTOR_DONE_KEY=\"${DONE_KEY}\" KONDUCTOR_DONE_FILE=$(printf '%q' "$DONE_FILE") ; kiro-cli chat --agent \"$AGENT\" ${KIRO_FLAGS} $(printf '%q' "$PROMPT")"
   # Record the exit: keep a .done cmux-completion-hook.sh wrote on a clean stop
   # and add the exit code, or write a fallback .done on an abnormal exit.
   PANE_CMD="${PANE_CMD} ; ec=\$? ; mkdir -p -m 700 $(printf '%q' "$DISPATCH_DIR") ; python3 -c $(printf '%q' "$RECORD_DONE_PY") $(printf '%q %q' "$DONE_FILE" "${WS_ID:-$DONE_KEY}") \"\$ec\" 'shell fallback' || true"
@@ -399,34 +399,34 @@ cmux send-key ${WS_ID:+--workspace "$WS_ID"} --surface "$SURFACE_ID" enter
 # invocation writing the same $REGISTRY_FILE.
 mkdir -p "$REGISTRY_DIR"
 TASK_SUMMARY=$(printf '%s' "$TASK_TEXT" | head -c 100)
-ENTRY=$(ASDLC_WS_ID="$WS_ID" \
-  ASDLC_SURFACE_ID="$SURFACE_ID" \
-  ASDLC_AGENT="$AGENT" \
-  ASDLC_TASK_SUMMARY="$TASK_SUMMARY" \
-  ASDLC_MODE="$MODE" \
-  ASDLC_CWD="${CWD:-}" \
-  ASDLC_REGISTRY_FILE="$REGISTRY_FILE" \
-  ASDLC_REGISTRY_LOCK="$REGISTRY_LOCK" \
-  ASDLC_DONE_KEY="$DONE_KEY" \
+ENTRY=$(KONDUCTOR_WS_ID="$WS_ID" \
+  KONDUCTOR_SURFACE_ID="$SURFACE_ID" \
+  KONDUCTOR_AGENT="$AGENT" \
+  KONDUCTOR_TASK_SUMMARY="$TASK_SUMMARY" \
+  KONDUCTOR_MODE="$MODE" \
+  KONDUCTOR_CWD="${CWD:-}" \
+  KONDUCTOR_REGISTRY_FILE="$REGISTRY_FILE" \
+  KONDUCTOR_REGISTRY_LOCK="$REGISTRY_LOCK" \
+  KONDUCTOR_DONE_KEY="$DONE_KEY" \
   ENTRY_DISPATCH_DIR="$DISPATCH_DIR" \
   python3 -c "
 import json, os, sys, fcntl, tempfile
 entry = {
-    'workspace_id': os.environ['ASDLC_WS_ID'],
-    'surface_id': os.environ['ASDLC_SURFACE_ID'],
-    'agent': os.environ['ASDLC_AGENT'],
-    'task_summary': os.environ['ASDLC_TASK_SUMMARY'],
-    'mode': os.environ['ASDLC_MODE'],
-    'cwd': os.environ['ASDLC_CWD'],
-    'done_key': os.environ['ASDLC_DONE_KEY'],
+    'workspace_id': os.environ['KONDUCTOR_WS_ID'],
+    'surface_id': os.environ['KONDUCTOR_SURFACE_ID'],
+    'agent': os.environ['KONDUCTOR_AGENT'],
+    'task_summary': os.environ['KONDUCTOR_TASK_SUMMARY'],
+    'mode': os.environ['KONDUCTOR_MODE'],
+    'cwd': os.environ['KONDUCTOR_CWD'],
+    'done_key': os.environ['KONDUCTOR_DONE_KEY'],
     'dispatch_dir': os.environ['ENTRY_DISPATCH_DIR'],
     'dispatched_at': '$(date -u +%Y-%m-%dT%H:%M:%SZ)'
 }
-registry_file = os.environ['ASDLC_REGISTRY_FILE']
+registry_file = os.environ['KONDUCTOR_REGISTRY_FILE']
 try:
-    lock = open(os.environ['ASDLC_REGISTRY_LOCK'], 'w')
+    lock = open(os.environ['KONDUCTOR_REGISTRY_LOCK'], 'w')
 except OSError as e:
-    print(f'ERROR: cannot open registry lock file {os.environ[\"ASDLC_REGISTRY_LOCK\"]}: {e}', file=sys.stderr)
+    print(f'ERROR: cannot open registry lock file {os.environ[\"KONDUCTOR_REGISTRY_LOCK\"]}: {e}', file=sys.stderr)
     sys.exit(2)
 with lock:
     fcntl.flock(lock, fcntl.LOCK_EX)

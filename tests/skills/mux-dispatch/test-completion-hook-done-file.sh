@@ -31,7 +31,7 @@ for hook in mux-dispatch/mux-completion-hook.sh cmux-dispatch/cmux-completion-ho
   # A unique id, so the legacy path can be checked without touching anything
   # another process wrote there.
   key="test-$name-$$-$RANDOM"
-  printf '%s' "$STOP" | KONDUCTOR_DONE_FILE="$done_file" MUX_WORKSPACE_ID="$key" ASDLC_DONE_KEY="$key" \
+  printf '%s' "$STOP" | KONDUCTOR_DONE_FILE="$done_file" MUX_WORKSPACE_ID="$key" KONDUCTOR_DONE_KEY="$key" \
     bash "$PKG_ROOT/skills/$hook"
   if python3 -c 'import json, sys; d = json.load(open(sys.argv[1])); sys.exit(0 if d["status"] == "done" and d["summary"] == "finished the task" else 1)' "$done_file" 2>/dev/null; then
     log_pass "$name: writes the .done to KONDUCTOR_DONE_FILE"
