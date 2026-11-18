@@ -20,6 +20,8 @@ Run these before the Session Start steps in `SKILL.md`:
 
 Then confirm the sprint parameters and team size as `SKILL.md` describes, and present a project/section/capacity summary for confirmation.
 
+If there is no connection yet or the user said not to ask, read the workspace, project, sections, members and custom fields from any export the user supplied, and use those GIDs. Never make up a GID; where one is unknown, name the lookup that will resolve it at execution time.
+
 **Note:** Asana sprint/iteration setup (date ranges, custom fields for story points) must be configured in the Asana UI. Use the capabilities to read project details and list the project's sections to discover existing sprint sections.
 
 ## Task Hierarchy
@@ -32,7 +34,7 @@ Standard project hierarchy levels map to Asana as follows:
 | ---------- | ------------------------ | ----------------------------------------------------------------------------------------- |
 | Goal       | Portfolio                | Browse portfolios and their items to navigate                                             |
 | Initiative | Project                  | Use the Asana search capability (search projects/tasks in the workspace) to find projects |
-| Epic       | Section within a project | List the project's sections                                                               |
+| Epic       | Section, or parent task  | A section when the project groups by epic; a parent task when sections are sprints       |
 | Story      | Task                     | Create a task via the Asana MCP                                                           |
 | Task       | Task or Subtask          | Create a task via the Asana MCP with a `parent` param for subtasks                        |
 | Subtask    | Subtask                  | Nest the task under a parent (subtask)                                                    |
@@ -40,18 +42,20 @@ Standard project hierarchy levels map to Asana as follows:
 Rules:
 
 - Create parent tasks first, then nest children by creating a task with a parent GID or by nesting the task under a parent (subtask)
-- Use **sections** to group tasks by epic, sprint, or workflow stage (sections are flat — they cannot be nested)
+- Use **sections** to group tasks by epic, sprint, or workflow stage. Sections are flat and a task sits in one section per project, so when the sections are sprints (`Sprint 14`), make each epic a parent task in the sprint section with its stories as subtasks. Do not record the epic only in a text custom field. Keep it to two levels: when you split an oversized story, make the pieces subtasks of the epic and keep the ticket ID in their names (`PAY-130a`, `PAY-130b`).
+- Only leaf tasks carry story points; a parent task created for an epic or a split item carries none
 - Asana has no explicit task "type" field — hierarchy is controlled via sections and parent/subtask relationships, not a type attribute. The `SKILL.md` rule to always set a type does not apply.
 
 ## Story Points
 
 - Set story points via Asana custom fields (use the capability to update the task's fields/custom fields to set custom field values), not an Estimate attribute
 - To check if a story points custom field exists, read project details with `opt_fields=custom_fields` and look for a numeric field named "Story Points" or similar
-- If no story point custom field exists on the project, note this to the user and track points locally
+- If no story point custom field exists on the project, tell the user, track points locally, and put a `Story Points: N` line at the top of each leaf task's notes so the number survives until a field is added. Offer to add the field in the Asana UI.
 
 ## Task Creation Rules
 
-- Create a task via the Asana MCP with: project GID, section GID, name, notes, assignee, due date
+- Create a task via the Asana MCP with: project GID, section GID, name, notes, assignee GID, due date. Subtasks take the parent task's GID; in a plan written before execution, refer to the parent by its write number.
+- Put the source ticket ID (for example `PAY-130`) in the task name or the first line of the notes
 - Apply a tag/label to the task for categorization
 - Add a comment to the task to link to source tickets or context
 - To link a task to a code review, use the Asana task URL
@@ -81,5 +85,7 @@ This replaces the rollover steps in `SKILL.md`, because the Asana MCP cannot mov
    c. Add a comment to the original task linking to the new task. If this fails, note the failure but continue
    d. Close the original task by updating the task's fields/custom fields with `completed=true` — this step is critical and must always run if (a) succeeded, regardless of whether (b) or (c) failed. If (d) fails, report both the original and new task GIDs to the user so they can reconcile manually
 6. Recalculate capacity for the new sprint based on carried-over points
+
+In a rollover plan written for someone to run later, put the confirmation in its own step before the first write, write step 5 out per task as a, b, c, d, and repeat the rule that (d) runs whenever (a) succeeded.
 
 **Note:** The Asana API supports moving tasks between sections, but the Asana MCP tool sets available today do not consistently expose this endpoint. The workaround above recreates tasks in the target section. Be aware this loses task history, comments, attachments, subtasks, followers, tags, and other custom fields from the original task.

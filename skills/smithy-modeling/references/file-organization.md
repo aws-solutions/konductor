@@ -61,7 +61,7 @@ model/
 
 ## What goes in each file
 
-Every file repeats `$version: "2"` and the model's `namespace`. Shapes in one namespace resolve each other across files with no imports, so file order doesn't matter.
+Every file repeats `$version: "2"` and a `namespace`. Shapes in one namespace resolve each other across files with no imports, so file order doesn't matter. Types and errors that another service will reuse go in their own namespace, such as `com.example.todo.common`, and files that need them add `use com.example.todo.common#Todo`.
 
 `service.smithy` holds only the service shape and its metadata:
 
@@ -72,6 +72,7 @@ namespace com.example.todo
 
 /// Todo Service provides task management capabilities
 @title("Todo Service")
+@httpBearerAuth
 service TodoService {
     version: "2024-11-14"
     operations: [CreateTodo, GetTodo, UpdateTodo, DeleteTodo, ListTodos]
@@ -123,7 +124,7 @@ metadata validators = [
 
 - Name files consistently (lowercase with hyphens)
 - Group related shapes in the same file, one responsibility per file
-- Use the same namespace across all files of one model
+- Use one namespace for a service's own shapes, plus a separate common namespace only for shapes other services reuse
 - State the file's purpose at the top and order shapes logically within it
 - Keep shared types in their own file or directory so other services can reuse them
 
@@ -132,7 +133,7 @@ metadata validators = [
 - Mix unrelated concerns in one file (operations plus unrelated types)
 - Create files with only 1-2 shapes (too granular)
 - Define the same shape in more than one file
-- Use different namespaces within one model
+- Scatter one service's own shapes across several namespaces
 
 ## Build configuration
 
@@ -143,7 +144,13 @@ Point `smithy-build.json` at the model directory:
   "version": "1.0",
   "sources": ["model"],
   "maven": {
-    "dependencies": ["software.amazon.smithy:smithy-model:1.51.0"]
+    "dependencies": [
+      "software.amazon.smithy:smithy-aws-traits:1.51.0",
+      "software.amazon.smithy:smithy-openapi:1.51.0"
+    ]
+  },
+  "plugins": {
+    "openapi": { "service": "com.example.todo#TodoService" }
   }
 }
 ```
@@ -159,7 +166,7 @@ When validating a model, flag:
 - Mixed concerns in one file
 - Inconsistent file naming
 - Duplicate shape definitions across files
-- Different namespaces within one model
+- One service's own shapes spread across several namespaces
 - No clear separation between domains, or a layout that blocks parallel work
 - Shared types not separated for reuse
 - `sources` in `smithy-build.json` that miss a model directory
