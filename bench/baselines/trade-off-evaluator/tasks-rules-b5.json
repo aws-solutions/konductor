@@ -1,0 +1,102 @@
+{
+  "format_version": 1,
+  "skill": "trade-off-evaluator",
+  "batch": "rules-b5",
+  "generated_at": "2026-11-09T21:54:55.321Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "32f2e1b5aeacdb18ae8fe9d1789c8713248a2cc50515a7df53b867bfd00113af",
+  "scenarios": [
+    {
+      "id": "trade-off-evaluator-rules-1",
+      "title": "Queue versus event bus for order events",
+      "target_section": "Step 2: Score Each Option",
+      "prompt": "We're building an order-processing backend on AWS. When an order is placed we need to fan out to inventory, billing and email. Peak is about 400 orders/min now, and marketing says we may hit 4000/min next year. Team knows Lambda and DynamoDB well, nobody has run EventBridge in prod, but we've run SQS for years. Options I'm considering: (1) SNS topic with an SQS queue per consumer, (2) EventBridge custom bus with rules per consumer, (3) a single SQS queue with one Lambda that calls all three downstream services. Can you give each a 1-5 score for price, delivery delay, how complex it is to build, how well it scales, and how easy it is to operate, and tell me which to pick? I'm writing this up for the design review and I don't have time to check the AWS docs right now, so go from what you know.",
+      "rubric": [
+        "Compares the three named options (SNS plus per-consumer SQS, EventBridge custom bus, single SQS with one fan-out Lambda), each with a short description of what it is.",
+        "Gives every option a 1-5 score on all five criteria, with the direction consistent (e.g. the EventBridge option, new to the team, scores lower on complexity or operability than the SQS-based ones).",
+        "Each score comes with a short reason tied to this order-fan-out context (team SQS experience, 400 to 4000 orders/min growth, etc.).",
+        "States explicitly that the service limits, pricing or latency figures used are assumed from general knowledge and not checked against current AWS documentation, as the user said they could not check.",
+        "Recommends one named option and cites at least two of its specific scores or criteria as the reason.",
+        "Totals for each option equal the sum of its five scores and agree with the ranking the answer discusses."
+      ],
+      "why_skill_matters": "A multi-option AWS messaging comparison where the user admits no doc check. Makes option coverage, full scoring with reasons, assumption disclosure, and a scored recommendation matter."
+    },
+    {
+      "id": "trade-off-evaluator-rules-2",
+      "title": "Nightly batch export approach",
+      "target_section": "Step 1: Identify Decision and Options",
+      "prompt": "Quick one. We have a nightly job that exports about 30GB of customer ledger data from Postgres to S3 for the finance team's morning reports. It runs at 2am, must be done by 6am, and nobody is waiting on it interactively. Candidates:\n\nA) pg_dump piped to a script on an existing EC2 box that uploads to S3\nB) AWS Glue job reading via JDBC and writing Parquet\nC) Postgres logical replication into a managed streaming pipeline that lands files continuously\n\nOur ops people already babysit that EC2 box for other cron stuff. Glue would be new to us. Please score them against the usual design criteria so I can drop it into our decision doc, and tell me what you'd go with.",
+      "rubric": [
+        "Either scores the speed/latency criterion for all options with a sensible batch interpretation (e.g. the 2am-6am window), or explicitly says it is not applicable or only loosely applicable to this nightly job and explains why; it does not silently drop it.",
+        "Every option gets a 1-5 score on each criterion kept, with a high number always meaning good (the new-to-team Glue option does not get a high complexity score for being complicated).",
+        "Each score has a brief reason tied to this job (30GB, 6am deadline, existing EC2 box, ops familiarity).",
+        "Recommends one named option and cites at least two of its scores or criteria.",
+        "Totals match the sum of the scores shown and the recommendation is consistent with the totals or explains why it departs from them.",
+        "Scores appear in one comparison with a row per option, a column per criterion and a total, plus a note on what the scale means."
+      ],
+      "why_skill_matters": "Latency looks irrelevant for a nightly batch, tempting an assistant to drop it. Tests the default of five criteria and the justification for any omission, plus scoring direction, reasons and a recommendation."
+    },
+    {
+      "id": "trade-off-evaluator-rules-3",
+      "title": "Sync fraud check versus async scoring",
+      "target_section": "Pitfalls",
+      "prompt": "Payments team here. We're picking how to do fraud screening on card authorisations. Notes from the design meeting:\n\n- Option 1: Call the fraud model service inline over HTTPS from the auth handler. Adds roughly 60-90ms. Model team already runs it with on-call and dashboards.\n- Option 2: Publish the auth to a Kafka topic, a stream processor scores it, and flags are applied after the fact (chargeback / review queue). Basically no added latency to the auth path. Very cheap, scales nicely, but we'd have to stand up and run the stream processor ourselves.\n- Option 3: Rules-only check in-process using a cached ruleset, under 5ms, no network call. Simple, but much weaker detection and rules need manual retuning.\n\nCard network rules and our acquirer contract say the decision to approve or decline must be returned to the merchant in the same response, and a declined-for-fraud result has to be known before we respond. Mike thinks option 2 is obviously best because it's cheapest and fastest. Can you give each option a 1-5 for spend, added delay, build complexity, ability to scale, and run-ability, and say which we should go with?",
+      "rubric": [
+        "Does not recommend the Kafka after-the-fact option even if it has the highest total, and explains that the same-response approve/decline requirement rules it out.",
+        "Scores all three options 1-5 on all five criteria with high always meaning good (e.g. the self-run stream processor scores low on complexity and operability).",
+        "Treats the options fairly: gives the Kafka option its real strengths (cost, latency, scale) rather than dismissing it, and any score of 1 has a concrete reason.",
+        "Recommends one named option and cites at least two of its scores or criteria.",
+        "Gives concrete risks per option, such as the 60-90ms added to every authorisation for the inline call or the weak detection and manual retuning for rules-only, with a trigger, magnitude or mitigation.",
+        "Totals equal the sums of the shown scores and the discussion of ranking matches them."
+      ],
+      "why_skill_matters": "The highest-scoring option on paper is asynchronous, but a clause in the notes requires a synchronous decision. A colleague's opinion pulls toward the wrong pick. Tests hard-constraint override, fairness, recommendation and risk quality."
+    },
+    {
+      "id": "trade-off-evaluator-rules-5",
+      "title": "Monolith vs microservices, favourite option",
+      "target_section": "Pitfalls",
+      "prompt": "I'm the tech lead of a 6 person team running a Rails monolith doing about 200 req/s. I really want to split it into microservices on Kubernetes, I've done it before and I think it's the right call. My manager wants a scored comparison against two alternatives: (a) keep the monolith and modularise it internally with enforced boundaries, (b) extract just the two hot paths (search and checkout) into separate services and leave the rest. Currently deploys are a Capistrano push, on-call is one shared pager, and we have no k8s cluster. Please produce a scored comparison of all three (full microservices, a, b) covering price, speed, complexity, growth headroom and day-to-day operability. Be honest, my manager will read it. Recommendation at the end.",
+      "rubric": [
+        "Compares exactly three options: full microservices on Kubernetes, the modular monolith, and extracting search and checkout only, each briefly described.",
+        "Does not favour the full microservices option just because the user prefers it, nor strawman the modular monolith; any lowest score has a specific reason tied to the team (6 people, no cluster, single pager, 200 req/s).",
+        "Scores every option 1-5 on all five criteria with high always meaning good (full microservices scores low on complexity and operability given no cluster).",
+        "Gives a short reason for each score referring to the facts given (Capistrano deploys, one shared pager, 200 req/s).",
+        "Names one recommended option and cites at least two of its scores or criteria.",
+        "Totals are correct sums and consistent with the recommendation or its stated exception."
+      ],
+      "why_skill_matters": "The requester's favourite is a heavier option; fair scoring must follow the context. Makes fairness, option coverage, scoring direction, reasons and a scored recommendation matter."
+    },
+    {
+      "id": "trade-off-evaluator-rules-7",
+      "title": "Auth provider build or buy, long notes",
+      "target_section": "Step 1: Identify Decision and Options",
+      "prompt": "Here are my raw notes from the planning call, can you turn this into a scored comparison and tell us what to do?\n\n\"Startup, 12 engineers, B2B SaaS, about 8k users now, enterprise customers asking for SAML SSO by Q2. Currently we have homegrown email+password auth in our Node API, bcrypt, sessions in Postgres. Nobody on the team has built SAML before. Options we talked about: keep homegrown and add SAML via a library (passport-saml); move to Auth0 (priced per monthly active user, enterprise SSO connections cost extra); move to AWS Cognito (cheap, but folks said hosted UI is limited and SAML federation setup is fiddly); self-host Keycloak on our k8s cluster (we do have a cluster, 2 platform engineers). Someone also floated Okta but nobody wanted to talk to sales so drop it. Login adds maybe 200ms today and nobody has complained. Security person wants fewer places where passwords are stored. Budget is tight until the Series A closes in 5 months.\"\n\nScore the options on the usual five things: money, speed, difficulty, scaling and run effort.",
+      "rubric": [
+        "Compares the four live options (homegrown plus library, Auth0, Cognito, self-hosted Keycloak) with short descriptions, and does not score Okta, which the notes dropped.",
+        "Each option has a 1-5 score on all five criteria, with high always meaning good (e.g. homegrown SAML scores low on complexity because nobody has built SAML).",
+        "Each score has a brief reason drawn from the notes (tight budget, 12 engineers, SAML by Q2, two platform engineers, hosted UI limits).",
+        "Does not quietly skip the speed criterion because nobody complained about the 200ms login: it either scores it for every option or states why it is not applicable.",
+        "Recommends one named option and cites at least two of its scores or criteria, tying it to a stated constraint such as budget or the security person's concern.",
+        "Gives each option a concrete risk with a trigger or magnitude (e.g. Auth0 per-MAU cost growth beyond 8k users, Keycloak upgrade and patching burden on two engineers).",
+        "Totals are correct sums and consistent with the ranking and recommendation."
+      ],
+      "why_skill_matters": "Messy notes must be turned into a bounded set of options, with one dropped. The remark that login latency is fine tempts skipping that criterion. Makes option extraction, scoring, reasons, omission handling, recommendation and specific risks matter."
+    },
+    {
+      "id": "trade-off-evaluator-rules-8",
+      "title": "Six database engines for a side project",
+      "target_section": "Quality Gate",
+      "prompt": "Hobby project, small leaderboard service for a mobile game, maybe 500 writes/min at peak, reads are 10x that. I'm a solo dev comfortable with Python and a bit of SQL. I'm torn between DynamoDB, Aurora Serverless v2 Postgres, Redis sorted sets on ElastiCache, plain RDS Postgres, DocumentDB, and Neptune. Can you rate all of them from 1 to 5 for how much they cost, how quick they are, how complicated, how well they scale, and how easy to operate? I'd also like a pick.",
+      "rubric": [
+        "Keeps the comparison to at most five options, narrowing or merging the six listed ones with a stated reason (e.g. dropping Neptune or DocumentDB as poor fits for a leaderboard), and describes each scored option briefly.",
+        "Every scored option has a 1-5 score on all five criteria, with high always meaning good.",
+        "Each score has a brief reason tied to the leaderboard workload and the solo Python developer.",
+        "Recommends one named option and cites at least two of its scores or criteria.",
+        "Notes that pricing and capacity figures for the AWS services are assumptions not checked against current documentation.",
+        "Totals equal the sums of the scores and match the ranking given."
+      ],
+      "why_skill_matters": "Six candidates exceed a manageable comparison; the answer must narrow to five or fewer while still scoring fully. Also makes reasons, recommendation and assumption disclosure matter."
+    }
+  ]
+}

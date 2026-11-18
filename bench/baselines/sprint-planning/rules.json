@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "sprint-planning",
+  "skill_md_sha256": "b875cd18aec04b717b3b489d422f0f209a9ffea8671b3251b62dcf510ee788ee",
+  "request_context": "A request to plan a team work cycle from tickets, documents or conversation, sizing the work, organizing it into a hierarchy, and tracking how much fits in the available capacity.",
+  "rules": [
+    {
+      "id": "sprint-planning-r01",
+      "source_quote": "Confirm sprint parameters with user:",
+      "class": "useful",
+      "outcome": "Before planning begins, the answer states the assumed capacity, duration and the day-equivalent of one point, and asks the user to confirm or change them.",
+      "why": "Planning against unconfirmed capacity or duration yields a plan that does not fit the team's real availability.",
+      "scenario_hint": "User starts planning a new sprint without stating capacity or length."
+    },
+    {
+      "id": "sprint-planning-r02",
+      "source_quote": "Sprint capacity: **10 points** (default)",
+      "class": "useful",
+      "outcome": "When the user gives no figures, the plan assumes ten points of capacity over a two-week period, with one point equal to one working day.",
+      "why": "Without sensible defaults the plan has no baseline to measure against.",
+      "scenario_hint": "User asks to plan a sprint and gives no capacity numbers."
+    },
+    {
+      "id": "sprint-planning-r03",
+      "source_quote": "Create parents first, nest children via task management tool with parent task ID",
+      "class": "useful",
+      "outcome": "Higher-level items are created before their children, and each child is placed under its parent so the nesting is explicit.",
+      "why": "Creating children first leaves orphaned items or broken nesting.",
+      "scenario_hint": "User wants a goal broken into larger items, stories and tasks created together."
+    },
+    {
+      "id": "sprint-planning-r04",
+      "source_quote": "Only **Tasks and Subtasks** get assigned to a sprint",
+      "class": "useful",
+      "outcome": "Only the small, executable work items and their sub-items are assigned to the sprint; larger containers such as initiatives, epics and stories that span several sprints are left unassigned.",
+      "why": "Assigning multi-sprint containers inflates the sprint's load and misrepresents what can be finished.",
+      "scenario_hint": "Plan includes an epic or story that will take several sprints."
+    },
+    {
+      "id": "sprint-planning-r05",
+      "source_quote": "When adding a task to a sprint, all nested subtasks are auto-added",
+      "class": "useful",
+      "outcome": "When a task with sub-items is put in the sprint, the answer treats its sub-items as included too and counts them once, without separately re-adding or double-counting them.",
+      "why": "Double-counting or omitting sub-items distorts the sprint's workload.",
+      "scenario_hint": "Task with several subtasks is added to a sprint."
+    },
+    {
+      "id": "sprint-planning-r06",
+      "source_quote": "Always set explicit type — never leave as None. Default to **Task**.",
+      "class": "useful",
+      "outcome": "Every created item has an explicit type; items with no obvious level are treated as ordinary tasks rather than left untyped.",
+      "why": "Untyped items break hierarchy and sprint-assignment rules.",
+      "scenario_hint": "Creating items from a loose list of tickets with no stated levels."
+    },
+    {
+      "id": "sprint-planning-r07",
+      "source_quote": "Tasks above 5 points should be broken down",
+      "class": "useful",
+      "outcome": "Work estimated above five points, such as multi-service integrations or major migrations, is flagged as too large and proposed to be split into smaller pieces.",
+      "why": "Oversized items are unpredictable and often spill across sprints.",
+      "scenario_hint": "Ticket describing a major migration or multi-service integration."
+    },
+    {
+      "id": "sprint-planning-r08",
+      "source_quote": "Set the **Estimate** attribute for story points — never put estimates in description",
+      "class": "useful",
+      "outcome": "Each estimate is recorded in the item's dedicated estimate field, not written into its description text.",
+      "why": "Estimates buried in descriptions cannot be summed or tracked.",
+      "scenario_hint": "Creating sized tasks in a project tool."
+    },
+    {
+      "id": "sprint-planning-r09",
+      "source_quote": "| 3      | Medium    | New API endpoint with tests, refactor module, investigate+fix bug   |",
+      "class": "generic",
+      "outcome": "Estimates use a small scale of values (1, 2, 3, 5, 8) that match the work's scope, with trivial changes at the bottom and large features near the top.",
+      "why": "Inconsistent sizing makes totals meaningless.",
+      "scenario_hint": "Any request to estimate work with story points."
+    },
+    {
+      "id": "sprint-planning-r10",
+      "source_quote": "Warn when approaching capacity (≥80%)",
+      "class": "useful",
+      "outcome": "The answer warns the user when the planned load is nearing the sprint's capacity, before it is reached.",
+      "why": "Without an early warning the sprint is overloaded before anyone notices.",
+      "scenario_hint": "Adding tasks pushes the total close to the capacity limit."
+    },
+    {
+      "id": "sprint-planning-r11",
+      "source_quote": "Alert when exceeding capacity",
+      "class": "generic",
+      "outcome": "When the planned points exceed capacity, the answer clearly says so and states by how much.",
+      "why": "Silent overcommitment leads to missed commitments.",
+      "scenario_hint": "Tasks added total more than the sprint's capacity."
+    },
+    {
+      "id": "sprint-planning-r12",
+      "source_quote": "Display remaining capacity after each task added",
+      "class": "style",
+      "outcome": "After each task is added, a line shows points used, total capacity and points remaining.",
+      "why": "",
+      "scenario_hint": "Any request to plan a sprint by adding tasks incrementally."
+    }
+  ]
+}

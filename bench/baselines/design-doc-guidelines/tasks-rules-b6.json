@@ -1,0 +1,99 @@
+{
+  "format_version": 1,
+  "skill": "design-doc-guidelines",
+  "batch": "rules-b6",
+  "generated_at": "2026-11-10T00:05:05.100Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "403df5ee649fc95ced683cb6a4e21cc283ae917f9664e2f8d6041e013da6b672",
+  "scenarios": [
+    {
+      "id": "design-doc-guidelines-rules-1",
+      "title": "Review of a memory-layer doc before it goes to leads",
+      "target_section": "Review Checklist",
+      "prompt": "Can you review this design doc before I send it to the leads? Some of them are PMs and EMs, not engineers. Draft is below.\n\n---\n# Project Recall\n\nIn today's fast-moving world of AI-assisted development, memory is a powerful capability that is crucial for the modern engineering org. Recall is a robust, scalable, seamless memory layer for coding agents.\n\n## Features\n\n**Feature 1: Session Notes.** Session Notes is a tool that writes a summary file at the end of every agent session. It stores the file in the Memory Store, a key-value service that keeps entries per repo. Entries have a 30-day TTL.\n\n**Feature 2: Repo Facts.** Repo Facts is a tool that extracts facts like build commands and test entry points and saves them in the Memory Store, a key-value service that keeps entries per repo. Entries have a 90-day TTL.\n\n**Feature 3: Team Sharing.** Team Sharing is a tool that lets one dev pass notes to another. Notes go into the Memory Store, a key-value service that keeps entries per repo, and are exposed via RAG at session start.\n\n## Approval\n\nWe request approval for: Feature 1, Feature 2, Feature 3.\n---\n\nBackground that isn't in the doc: every morning our devs re-explain the DynamoDB table layout and the build steps to the agent. Priya timed it at about 6 minutes a session, and most people run 4 sessions a day.",
+      "rubric": [
+        "Recommends opening with the daily pain of re-explaining the table layout and build steps (about 6 minutes per session, 4 sessions a day) instead of the opening paragraph of generic claims about AI development.",
+        "Says Session Notes, Repo Facts and Team Sharing are each described as \"X is a tool that…\" and proposes describing each by the specific problem it removes for a developer.",
+        "Points out that the approval line only lists the three feature names and proposes wording it as outcomes, such as agents starting a session already knowing the build steps and layout.",
+        "Notes that the Memory Store is described in full three times and suggests defining it once in a shared place that the three feature descriptions refer to by name.",
+        "Flags \"powerful\", \"robust, scalable, seamless\" and \"crucial for the modern engineering org\" as empty and suggests cutting them or replacing them with specifics.",
+        "Notes that TTL, RAG and key-value are used without explanation for a PM and EM audience, and expands or defines them at first use in any rewritten text."
+      ],
+      "why_skill_matters": "The draft opens with filler, lists features tool-first, ends with an approval line that is just feature names, and repeats the Memory Store description three times. The background note gives the real pain numbers that the doc lacks. It also uses unexplained acronyms for a mixed audience."
+    },
+    {
+      "id": "design-doc-guidelines-rules-2",
+      "title": "Restructure a dependency bot doc for Thursday review",
+      "target_section": "Structure (outside-in)",
+      "prompt": "Our review is Thursday and the EMs said last time they couldn't get through my docs. Restructure this so they can decide fast. Paste of the main part:\n\n---\n**Dependency Bot design**\n\nDependencies are a pain point for the team and we want to improve the situation. (Last quarter 9 of 31 security patches shipped more than 3 weeks late. Dev cost was mostly people forgetting.)\n\n**Approach**\n\nEvery night a cron job runs the scanner. A maintainer can also trigger a scan on demand with the /scan webhook. Both run the same scanner, which opens one PR per vulnerable package.\n\n```mermaid\nflowchart LR\n  Cron[Nightly cron] --> Scanner\n  Webhook[/scan webhook] --> Cron\n  Scanner --> PR[Open PR]\n  PR --> Scanner\n```\n\nThe scanner is invoked like this:\n\n```bash\n#!/bin/bash\nfor pkg in $(jq -r '.deps[].name' lock.json); do\n  ./check.sh \"$pkg\" --since \"$(date -d '-1 day' +%F)\" || echo \"$pkg\" >> flagged.txt\ndone\n```\n\nEach PR carries this frontmatter:\n\n```yaml\nbot: depbot\nseverity: [low|medium|high|critical]\npackage: <name>\nfrom: <semver>\nto: <semver>\n```\n\nVersions are matched with `^(\\d+)\\.(\\d+)\\.(\\d+)(-[\\w.]+)?$`. Anything that doesn't match is skipped.\n\n**Ask**\n\nPlease approve the scanner.\n---",
+      "rubric": [
+        "Moves the bash loop, the PR frontmatter fields and the version regex out of the approach description into a separate, clearly labeled part that busy reviewers can skip, and keeps the approach itself conceptual.",
+        "Proposes an order in which the problem, a short overview of the approach and the thing being approved come first and stand alone, so an EM can decide without reading the script, fields or regex.",
+        "Flags that the /scan webhook arrow points into the nightly cron and that the PR points back to the scanner, and says the cron and the webhook should both feed the scanner.",
+        "Builds the opening on the concrete numbers (9 of 31 patches more than 3 weeks late) rather than the vague \"pain point\" sentence, and puts them at the top.",
+        "Suggests rewording the \"approve the scanner\" ask as a result for the team, such as security patches shipping on time.",
+        "Expands or explains terms such as PR, semver, cron and frontmatter when they first appear in the overview parts meant for non-engineers."
+      ],
+      "why_skill_matters": "One pasted draft mixes a vague problem, a diagram with a wrong arrow, a bash script, a schema and a regex in the design part, and an ask that names only a component. The EMs need a short front part and a skippable back part."
+    },
+    {
+      "id": "design-doc-guidelines-rules-3",
+      "title": "Prettify a runner diagram that is also wrong",
+      "target_section": "Diagram Accuracy",
+      "prompt": "hey, can you make this diagram in my doc look nicer? nicer colours, easier to read in dark mode, whatever you think. here's the diagram and the three lines of text under it.\n\n```mermaid\nflowchart LR\n  You[Your laptop] --> Runner\n  Cron[Schedule] --> CLI\n  CLI --> Cron\n  Runner --> Board[Task board]\n  Worker[Worker agent] --> You\n  Runner --> Worker\n```\n\nText under it:\n- Everything halts as soon as you shut your laptop.\n- The runner dispatches tasks to the board.\n- Three config sources load at startup.\n\nFor what it's worth, how it actually works, from memory: I start the runner inside tmux on the build box and detach. Someone on call makes tasks by hand in the board UI and the runner polls the board and hands each task to a worker. The worker tells the runner when it's done and the runner posts the result on the board. The CLI and the schedule both just start the runner. Config comes from defaults, the team file, the repo file and env vars.",
+      "rubric": [
+        "Says the schedule and the CLI both start the runner and should converge on it, and that the schedule/CLI pair pointing at each other does not match how it works.",
+        "Says the worker's result should go back through the runner and then onto the board, not straight to the person at the laptop.",
+        "Says the claim that closing the laptop halts everything is wrong, because the runner lives in tmux on the build box and keeps going.",
+        "Says the runner does not dispatch tasks to the board: people create tasks by hand and the runner polls the board; the arrow or sentence is corrected.",
+        "Says there are four config sources (defaults, team file, repo file, env vars), not three.",
+        "Explains or defines the terms it relies on, such as runner, worker and tmux, the first time it uses them in the corrected diagram text."
+      ],
+      "why_skill_matters": "The request only asks for colours and readability, but the user's own closing notes contradict the arrows and all three claims. A cosmetic-only answer misses that the diagram and the text are wrong."
+    },
+    {
+      "id": "design-doc-guidelines-rules-5",
+      "title": "Splitting three feature docs around a renamed service",
+      "target_section": "Multi-Feature Design Structure",
+      "prompt": "I'm writing three docs for the Relay service: retry queue, audit log, and dashboard export. Each one currently starts by re-describing Relay, the Auth Gateway and the Event Bus before getting to the feature, so there's a lot of copy-paste. Two examples of how they open:\n\n**Audit log doc, intro:**\n\"Relay is the service that receives jobs from the Event Bus (a message stream) and runs them. The Auth Gateway checks every caller's token before Relay accepts anything. The audit log writes every event to S3 and lets you search them.\"\n\n**Retry queue doc, intro:**\n\"Relay is the service that receives jobs from the Event Bus and runs them. The Auth Gateway checks every caller's token before Relay accepts anything. The retry queue is a feature that holds failed jobs and tries them again up to 5 times.\"\n\nDashboard export is similar. Also, last week the team agreed to rename Relay to Dispatcher, and I've only updated the main architecture page so far. The three feature docs still say Relay everywhere, and there's a runbook and a setup guide that mention it too.\n\nHow should I organise this and what should I do about the rename?",
+      "rubric": [
+        "Recommends one top-level architecture document that defines Relay/Dispatcher, the Auth Gateway and the Event Bus once, with the three feature documents referring to them by name and adding only what is new.",
+        "Says that if a feature doc needs to qualify how a shared component behaves, it adds a short note instead of copying the component's description.",
+        "Points out that the audit log and retry queue intros say what the feature is or does (\"writes every event to S3\", \"holds failed jobs\") and suggests opening each with the problem it fixes, such as failed jobs being lost or no way to find what happened.",
+        "Tells the user to search the whole repository or doc set for the old name Relay, not just the three feature docs, covering the runbook and setup guide named in the request and other places such as scripts, templates, ignore files and the changelog.",
+        "Defines terms such as Event Bus, token and S3 in a half-sentence on first use in any sample intro it writes."
+      ],
+      "why_skill_matters": "The user has repeated component descriptions across feature docs, tool-first feature intros, and a half-finished rename that touches docs the user named plus ones not named."
+    },
+    {
+      "id": "design-doc-guidelines-rules-6",
+      "title": "Config field rename partly done",
+      "target_section": "Rename Propagation",
+      "prompt": "I renamed the config field `sync_mode` to `replication_mode` across the service. I ran a search inside src/ and fixed the 3 hits, so I think I'm done. Can you confirm, or tell me what else to check?\n\nThe repo layout:\n\n```\nsrc/\ndocs/design.md\ndocs/sync-internals.md     # companion doc, deeper detail\nguide/setup.md\ntemplates/service.yaml.tmpl\nscripts/deploy.sh\n.gitignore\nRELEASES.md                # release notes\nconfig.default.yaml\n```\n\nconfig.default.yaml right now:\n\n```yaml\nreplication_mode: sync\nreplication_timeout_s: 30\n```\n\nA line from docs/design.md:\n\n> The `sync_mode` option defaults to `async`, so writes return before replicas confirm.\n\nA line from docs/sync-internals.md:\n\n> See [Sync modes](design.md#sync-mode) for the full list of values.\n\nI haven't opened anything outside src/ yet.",
+      "rubric": [
+        "Says src/ alone isn't enough and tells the user to search the entire repository for `sync_mode`, naming the docs, guide, template, deploy script, .gitignore and release notes file from the layout.",
+        "Calls out that the companion doc link to `design.md#sync-mode` will break if the section is renamed, and that examples in the guide or template may lack the new field name.",
+        "Notices that the design doc says the default is `async` while config.default.yaml sets `sync`, and says the claim must be checked against the real default and corrected.",
+        "Says the statement that writes return before replicas confirm depends on the default and so is wrong or unverified if the default is `sync`.",
+        "Explains or expands terms like replica and companion doc on first use, if it uses them in the explanation."
+      ],
+      "why_skill_matters": "A partial rename with a search limited to src/, plus a visible mismatch between the pasted config default and the design doc claim."
+    },
+    {
+      "id": "design-doc-guidelines-rules-8",
+      "title": "Draft a doc from raw notes for a ticket-driven agent",
+      "target_section": "Document Flow (outside-in)",
+      "prompt": "Please turn my notes into a proper design doc. Busy directors will read it, and they only look at the first page. The rest is for the two engineers who build it. Notes (messy, sorry):\n\n- Problem: Dana lost about 40 min last Tuesday finding which Jira ticket a failed deploy belonged to. Same thing happened to Luis twice in October. People grep Slack.\n- Idea: an agent reads each new Jira ticket, writes a one-paragraph summary plus linked deploys to `tickets/<KEY>.md` in the repo, and mirrors the file to a shared S3 bucket so other teams can search.\n- Ticket key regex: `[A-Z]{2,6}-\\d+`. Agent runs `curl -s -H \"Authorization: Bearer $JIRA_TOKEN\" \"$JIRA_URL/rest/api/3/issue/$KEY\"` then calls the model. File front matter: `key`, `status`, `deploys: []`, `updated`.\n- Agent also takes instructions from comments on the ticket, like \"re-summarize, ignore the old notes\".\n- Other teams can read the whole bucket. Some tickets have customer names in them.\n- Phase 1: read-only summaries, 2 weeks. Phase 2: deploy linking, 3 weeks. Phase 3: search UI, 4 weeks.\n- Ask: we want a go to build phase 1 and 2, and budget for ~$300/month of model calls.",
+      "rubric": [
+        "Opens with the concrete pain from the notes (Dana's ~40 minutes last Tuesday, Luis twice in October, searching Slack) rather than a statement about ticket tracking in general.",
+        "Puts the problem, a short description of the approach and the thing being approved on the first page, so directors can decide without reading the engineering parts.",
+        "Phrases the ask as outcomes, such as finding the ticket behind a failed deploy in seconds, with the phase 1 and 2 scope and ~$300/month, not just \"build the agent\".",
+        "Places the curl command, the ticket key regex and the front matter fields in a clearly labeled engineer-only part and keeps the main design free of them.",
+        "Covers the risks in the notes: customer names in tickets mirrored to a bucket all teams can read, and ticket comments acting as instructions to the agent. For each it gives a mitigation and what risk remains or is accepted.",
+        "Explains Jira key, S3 bucket, front matter and similar terms the first time they appear in the director-facing first page."
+      ],
+      "why_skill_matters": "Raw notes with a concrete incident, a buried ask, code-level details, and two boundary risks (customer data to a shared bucket, ticket comments steering the agent). The reader split calls for a self-contained front part and a confined detail part."
+    }
+  ]
+}

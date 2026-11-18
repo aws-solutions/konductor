@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "design-quality-check",
+  "skill_md_sha256": "6928e987766ae850b0cc86f8c4f7b563a4dd3d1c2b576d59665d10aa0e77c878",
+  "request_context": "A request to assess a design document for writing quality, completeness and unnecessary complexity before it goes to design review.",
+  "rules": [
+    {
+      "id": "design-quality-check-r01",
+      "source_quote": "Accept a markdown file path or inline content. Report section count and approximate word count.",
+      "class": "style",
+      "outcome": "The assessment begins by stating how many sections the document has and roughly how many words it contains.",
+      "why": "",
+      "scenario_hint": "Any request to check the quality of a design document."
+    },
+    {
+      "id": "design-quality-check-r02",
+      "source_quote": "Flag each missing required section as an issue of type `missing_section`.",
+      "class": "useful",
+      "outcome": "Points out each expected part that is absent from the document (the motivating context, the needs it must meet, an overview of the approach, an explanation of operation with a diagram reference, an implementation plan, recorded decisions), naming each missing one as a significant issue, even when the rest is well written.",
+      "why": "Structural gaps leave reviewers without context and go unnoticed if the assessment only judges prose.",
+      "scenario_hint": "Design document that reads well but has no requirements section or no decision records."
+    },
+    {
+      "id": "design-quality-check-r03",
+      "source_quote": "Performance/latency/cost assertions with no evidence URL or measurement",
+      "class": "useful",
+      "outcome": "Flags numeric claims about speed, delay, expense or throughput that come with no measurement or source link, as significant issues, and suggests adding evidence.",
+      "why": "Unbacked numbers mislead reviewers into trusting figures nobody verified.",
+      "scenario_hint": "Document stating 'this will cut latency by 40%' or 'costs under $100/month' with no source."
+    },
+    {
+      "id": "design-quality-check-r04",
+      "source_quote": "Justification restates the claim without adding evidence (e.g., \"we chose X because X is the best choice\")",
+      "class": "useful",
+      "outcome": "Flags justifications that merely restate the choice instead of giving reasons or evidence, as significant issues, with a suggestion for what real rationale to add.",
+      "why": "Circular rationale hides the actual trade-offs and cannot be challenged in review.",
+      "scenario_hint": "Decision section saying a tool was chosen because it is the best option."
+    },
+    {
+      "id": "design-quality-check-r05",
+      "source_quote": "Features, abstractions, or extensibility points not required by stated requirements",
+      "class": "useful",
+      "outcome": "Flags features, abstraction layers or extension points that no stated requirement calls for, and asks for the simpler option or a requirement that justifies the complexity.",
+      "why": "Unneeded complexity inflates cost and risk and is rarely challenged without explicit checking.",
+      "scenario_hint": "Design adding a generic extension framework or multi-region support when requirements describe a single small use."
+    },
+    {
+      "id": "design-quality-check-r06",
+      "source_quote": "\"it is worth noting\", \"needless to say\", \"as mentioned above\", \"in order to\", \"it should be noted that\"",
+      "class": "useful",
+      "outcome": "Identifies wordy filler phrases and vague hedging that avoids commitment, treats them as minor issues, and gives a location and a tighter rewording for each.",
+      "why": "Filler and noncommittal wording dilutes the document and obscures what is actually decided.",
+      "scenario_hint": "Document full of 'it is worth noting' and 'might potentially' phrasing."
+    },
+    {
+      "id": "design-quality-check-r07",
+      "source_quote": ">30% passive constructions in a section",
+      "class": "useful",
+      "outcome": "Flags sections where passive constructions dominate (roughly a third or more of sentences) as a minor issue, and suggests active rewording.",
+      "why": "Heavy passive voice hides who or what performs each action.",
+      "scenario_hint": "Section where most sentences say 'the data is processed' with no actor."
+    },
+    {
+      "id": "design-quality-check-r08",
+      "source_quote": "Do not flag technical hedging that is accurate",
+      "class": "useful",
+      "outcome": "Does not penalize accurate technical ranges or qualifiers (such as a typical range of delays), passive wording inside formal definitions, or qualitative rationale lacking links, and does not penalize a short but complete document.",
+      "why": "False positives erode trust in the assessment and push authors to pad or strip valid content.",
+      "scenario_hint": "Concise document with an honest range like 'typically 100–500ms' and a formal definition."
+    },
+    {
+      "id": "design-quality-check-r09",
+      "source_quote": "Score reflects the worst issue type present (one IMPORTANT issue cannot yield score 5)",
+      "class": "useful",
+      "outcome": "Gives an overall score from 1 to 5 consistent with the issues found: a flawless document gets the top score, only a few minor issues gets one below it, one or two significant issues or many minor ones gets the middle score, and three or more significant issues gets a lower score, the lowest if sections are also missing.",
+      "why": "An inconsistent score misleads the author about whether the document may proceed.",
+      "scenario_hint": "Document with two significant issues and several minor ones."
+    },
+    {
+      "id": "design-quality-check-r10",
+      "source_quote": "Score ≥ 3 required to advance to adversarial review. Score < 3 blocks advancement and requires revision.",
+      "class": "useful",
+      "outcome": "States whether the document may advance to the next review stage: a middle score or higher passes, with revision notes where relevant, while a lower score blocks it and requires revision or rewrite.",
+      "why": "Authors need a clear go or no-go decision, not just a number.",
+      "scenario_hint": "Document scoring low because of several serious problems and missing parts."
+    },
+    {
+      "id": "design-quality-check-r11",
+      "source_quote": "Every IMPORTANT issue has a concrete suggestion for resolution",
+      "class": "generic",
+      "outcome": "Every issue reported gives its location (section and approximate line) and a concrete suggestion for fixing it, not just a complaint.",
+      "why": "Issues without location or fix guidance are hard for the author to act on.",
+      "scenario_hint": "Any request to check the quality of a design document."
+    },
+    {
+      "id": "design-quality-check-r12",
+      "source_quote": "Issues: {N} IMPORTANT, {N} MINOR",
+      "class": "style",
+      "outcome": "The result opens with the overall score out of 5 and a count of significant and minor issues, followed by the itemized list of issues.",
+      "why": "",
+      "scenario_hint": "Any request to check the quality of a design document."
+    }
+  ]
+}

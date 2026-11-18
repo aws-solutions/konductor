@@ -1,0 +1,277 @@
+{
+  "format_version": 1,
+  "skill": "design-quality-check",
+  "batch": "rules-c4",
+  "rules": {
+    "design-quality-check-r01": {
+      "class": "style",
+      "kept": false,
+      "bucket": "format"
+    },
+    "design-quality-check-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-quality-check-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-quality-check-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-quality-check-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-quality-check-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-quality-check-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-quality-check-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-quality-check-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-quality-check-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-quality-check-r11": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "design-quality-check-r12": {
+      "class": "style",
+      "kept": false,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "design-quality-check-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-quality-check-r11"
+      }
+    },
+    "design-quality-check-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r05"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-quality-check-r11"
+      }
+    },
+    "design-quality-check-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r08"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r08"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-quality-check-r11"
+      }
+    },
+    "design-quality-check-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-quality-check-r11"
+      }
+    },
+    "design-quality-check-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r03"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r10"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "design-quality-check-r11"
+      }
+    },
+    "design-quality-check-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r02"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r09"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r10"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "design-quality-check-r11"
+      }
+    },
+    "design-quality-check-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r08"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-quality-check-r11"
+      }
+    },
+    "design-quality-check-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r03"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r04"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r09"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-quality-check-r10"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-quality-check-r11"
+      }
+    }
+  }
+}

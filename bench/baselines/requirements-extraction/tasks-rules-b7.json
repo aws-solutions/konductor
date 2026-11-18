@@ -1,0 +1,122 @@
+{
+  "format_version": 1,
+  "skill": "requirements-extraction",
+  "batch": "rules-b7",
+  "generated_at": "2026-11-10T03:24:31.290Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "ae3f57783014d287eb5712c4efbd4922b1038c99a070b00ff416688c445f66c4",
+  "scenarios": [
+    {
+      "id": "requirements-extraction-rules-1",
+      "title": "Clinic scheduling brief written in press-release style",
+      "target_section": "Extraction Rules",
+      "prompt": "I'm handing a design brief to our architect and need the requirements boiled down into inputs for the architecture work: something on the business side, a consolidated requirements doc, and the key stories. The requirements text came from the comms team so it's a bit breathless. Please produce it all.\n\nREQUIREMENTS\nCareLoop: The Future of Clinic Scheduling!\n\"CareLoop changed how our front desk works. We feel like we got our mornings back,\" says Dana Ruiz, practice manager at Lakeside Family Health.\nProblem: missed appointments cost small clinics about $200 each and no-show rates run around 23%. CareLoop aims to cut no-shows by 30% within 6 months of rollout and cut phone scheduling time by 50%.\nUsers: front-desk staff at independent clinics (5-40 staff) and their patients. Demo: 5 clinics, 2,000 patients, 20 concurrent staff users. Production: 500 clinics, 400,000 patients, 3,000 concurrent users at the Monday-morning peak.\nOur magical, industry-first SMS nudge engine sets us apart from legacy tools like ClinicSoft, which has no patient self-service.\nSlot search returns in under 400 ms at p95. 99.9% monthly uptime.\nSecurity: HIPAA. Staff sign in with email+password plus mandatory MFA; patients use an SMS one-time code. Role-based access (front desk, provider, admin). AES-256 at rest, TLS 1.2+ in transit. All PHI access is audit-logged and kept 6 years. Data stays in US regions.\nTech: AWS, containers on ECS Fargate, Aurora PostgreSQL, REST API, React frontend. SMS via Twilio. Launch: March 2027. The demo runs in a single AZ; multi-region failover is deferred.\n\nSTORIES\n1.1 As a front-desk user I want to search open slots by provider and date so I can book quickly. AC: results under 400 ms p95.\n1.2 As a patient I want to confirm by SMS reply so I don't need to call. AC: Twilio webhook, idempotent.\n2.1 As an admin I want to see who opened a patient record so we pass audits. AC: retained 6 years, CSV export.",
+      "rubric": [
+        "Delivers three distinct pieces for CareLoop: the business background, the consolidated requirements, and the selected key stories, with none merged into another or left out.",
+        "Keeps the original numbers: 30% fewer no-shows in 6 months, 50% less phone scheduling time, 400 ms p95 slot search, 99.9% uptime, and the $200 cost / 23% no-show baseline.",
+        "Records the full security set: HIPAA, staff email/password plus MFA, patient SMS one-time code, three roles, AES-256 at rest, TLS 1.2+, PHI access audit log retained 6 years, and US-only data.",
+        "Gives demo scale (5 clinics, 2,000 patients, 20 concurrent staff) separately from production scale (500 clinics, 400,000 patients, 3,000 peak users) and notes the single-AZ demo with multi-region failover deferred.",
+        "Leaves out Dana Ruiz's quote and the \"magical, industry-first\" wording, while still stating plainly that the SMS nudge engine is the differentiator against ClinicSoft's lack of patient self-service.",
+        "The business part covers the missed-appointment problem, the clinic staff and patient users, the objectives, the deployment on AWS, the SMS differentiator and the March 2027 launch.",
+        "The three outputs are condensed rewrites rather than pasted copies of the source, and they call the same things by the same names (for example front-desk staff, patients, admin) throughout.",
+        "Closes by asking the user whether to go ahead and correct the gaps found in the review."
+      ],
+      "why_skill_matters": "A press-release style brief with a customer quote, hype words, a competitor jab, precise numbers, demo versus production scale, and a security block. It makes the three-document delivery, number preservation, security completeness, scale split, marketing removal, business coverage and the closing fix question matter."
+    },
+    {
+      "id": "requirements-extraction-rules-2",
+      "title": "Hiking app stories with a buried storage clause",
+      "target_section": "Epic [N]: [Epic Name] ([X] Stories)",
+      "prompt": "Our architect only wants the stories that really matter for the design, so keep it tight. Below is the story backlog for TrailMate, a hiking-club app (EU-based, about 8,000 members at launch, 40k trips a year). Give me the key stories with what they mean for the design, and the other design inputs that follow from them.\n\nEPIC 1 ACCOUNTS\n1.1 Sign up with email and password.\n1.2 Sign in with Google.\n1.3 Reset password by email link.\n1.4 Change display name.\n1.5 Upload a profile photo. AC: max 5 MB, JPEG/PNG; scanned for malware before display; stored only in the EU region (eu-west-1) because of GDPR; deleted within 30 days of account closure.\n1.6 Delete my account.\n\nEPIC 2 TRIPS\n2.1 Create a trip with a GPX route (up to 20 MB).\n2.2 Browse trips within 25 km of me. AC: results in under 800 ms.\n2.3 Join a trip. AC: capacity limit enforced, no overbooking under concurrent joins.\n2.4 Edit trip description.\n2.5 Comment on a trip.\n2.6 Share my emergency contact with the trip leader. AC: encrypted at rest, visible only to the leader.\n\nEPIC 3 SAFETY AND ADMIN\n3.1 Safety check-in: if I haven't checked in within 2 hours of the planned finish, push a notification to the leader and my emergency contact.\n3.2 Weekly digest email.\n3.3 Change notification preferences.\n3.4 Dark mode.\n3.5 Export my data.\n3.6 Moderator queue for reported comments. AC: every moderator action is audit-logged.",
+      "rubric": [
+        "Each of the three epics (Accounts, Trips, Safety and Admin) is cut to a handful of stories, no more than five apiece, and trivial ones such as dark mode, display-name change and trip description edits are left out.",
+        "Keeps the photo-related data protection rule: uploaded images malware-scanned, stored only in the EU region (eu-west-1) for GDPR, and removed within 30 days of account closure, even though it sits in a minor profile story.",
+        "Carries over the emergency contact being encrypted at rest and visible only to the trip leader, and the moderator actions being audit-logged.",
+        "Retains the specific targets: 25 km radius with under 800 ms response, 2-hour check-in window, 20 MB GPX and 5 MB photo limits, and the 8,000-member / 40k-trips-a-year scale.",
+        "Ends with a synthesis of design needs drawn from the stories: entities such as users, trips, memberships and check-ins, a geo-radius query pattern, an overbooking-safe join flow, a notification path, and region-locked storage.",
+        "Output is a condensed selection with technical points per story, not a restatement of all 18 backlog items."
+      ],
+      "why_skill_matters": "The backlog has 18 stories in three epics, so choosing a few per epic is necessary. A GDPR region and malware-scan clause is hidden in the acceptance criteria of the profile photo story, which looks cosmetic and is easy to cut. This makes story selection, security retention, numbers and the design synthesis matter."
+    },
+    {
+      "id": "requirements-extraction-rules-3",
+      "title": "Messy reconciliation notes with vague speed words",
+      "target_section": "Technical Constraints",
+      "prompt": "ok so product gave me this and I need to give the architect clean inputs by tomorrow. Can you turn it into what they need (business background, the requirements, and key stories)? Notes are messy. Also tell me what's weak in them before I send.\n\nLedgerLark = tool that auto-matches Stripe payouts to NetSuite invoices for mid-size online merchants. Problem: finance teams burn ~12 hrs/week on manual reconciliation, with about 4% error rate. Target: down to 2 hrs/week and under 0.5% mismatches. Buyer = controllers at merchants with 20-200 staff, end users = accountants. Pilot Oct, launch Jan 2027.\n\nPilot: 3 merchants, ~50k txns/day. Eventually \"lots of merchants\", sales says 800 within 2 years, ~5M txns/day total.\n\nNightly match job must finish \"fast\" so accountants have results at 7am. Dashboard should be snappy, filters under 1s.\n\nHas to run inside our own AWS account (customer data can't leave it). Backend Python/FastAPI, Postgres on RDS, REST API, React UI. Mobile app and multi-currency pushed to v2. Login through Okta SSO. Alerts to PagerDuty if nightly job fails; logs go to CloudWatch, kept 30 days. Integrates with Stripe API and NetSuite SuiteTalk. Beats competitors because it learns matching rules from accountants' corrections, they're rules-only.\n\nStories:\n- As an accountant I want unmatched items listed with suggested matches and a confidence score so I can approve in one click.\n- As a controller I want a month-end report exported as PDF/CSV.\n- As an admin I want to connect Stripe via OAuth.",
+      "rubric": [
+        "Constraints name the customer's own AWS account, Python/FastAPI, Postgres on RDS, REST, React, Okta SSO, and record mobile app and multi-currency as deferred to v2.",
+        "Integrations and operations are captured: Stripe API, NetSuite SuiteTalk, PagerDuty alert on nightly job failure, CloudWatch logs retained 30 days.",
+        "Pilot scale (3 merchants, ~50k transactions a day) is stated apart from the eventual scale (800 merchants, ~5M transactions a day within 2 years).",
+        "Keeps 12 hrs/week to 2 hrs/week, 4% error to under 0.5% mismatches, 7am results and sub-1-second filters.",
+        "Reports weaknesses with the most serious first: the nightly job's \"fast\" and the dashboard's \"snappy\" lacking a real time target beyond the 7am deadline, and no peak or concurrency figures, ahead of lesser items.",
+        "Business part states the reconciliation problem, controllers and accountants as users, the learning-from-corrections differentiator, and the Oct pilot and Jan 2027 launch.",
+        "Content is condensed and uses consistent terms (for example accountants, controllers, merchants) rather than echoing the notes verbatim.",
+        "Ends with a question asking whether the user wants those weaknesses fixed."
+      ],
+      "why_skill_matters": "Informal notes with a stack, deployment constraint, deferred scope, integrations, monitoring, vague speed phrases and a fuzzy \"lots of merchants\". The user also asks what's weak. It makes constraint capture, scale split, numbers, ordered self-review and the closing question matter."
+    },
+    {
+      "id": "requirements-extraction-rules-4",
+      "title": "Terse fleet maintenance note with no security content",
+      "target_section": "Quality Gate",
+      "prompt": "Need design docs from this, short one. Business context, requirements, key stories.\n\nBrightline Freight wants a fleet maintenance scheduler. Problem: unplanned breakdowns, about 14 per 100 trucks a year, each costing roughly $4,500 in towing and lost loads. Goal: cut unplanned downtime by 25% in year one. Users: 15 dispatchers and the shop foremen. Pilot: 300 trucks. Year 3: 12,000 trucks across 40 customers. Vendor-hosted multi-tenant SaaS on AWS, we run it. API responses under 300 ms, 99.5% uptime. Differentiator: predicts failures from telematics instead of fixed mileage schedules. Launch Q2 2027.\n\nStories (one epic: Predictive Maintenance):\n1. As a dispatcher I want a ranked list of trucks at risk of failure this week so I can pull them in.\n2. As a foreman I want work orders auto-created from a predicted fault so the bay is scheduled.\n3. As a dispatcher I want to ingest telematics from existing providers so I don't re-key data. AC: batch every 5 minutes.",
+      "rubric": [
+        "Provides three separate outputs for Brightline: business context, consolidated requirements, and the key stories with their implications.",
+        "Business part covers the breakdown problem, dispatchers and foremen as users, the 25% downtime target, vendor-hosted multi-tenant SaaS on AWS, the telematics-prediction differentiator and Q2 2027 launch.",
+        "Keeps 14 breakdowns per 100 trucks, $4,500 cost, 25% reduction, 300 ms response, 99.5% uptime and the 5-minute telematics batch.",
+        "Shows the 300-truck pilot separately from the 12,000 trucks across 40 customers by year 3.",
+        "Notes that the source says nothing on authentication, tenant data isolation, encryption or compliance, and ranks that as the top gap above lesser suggestions.",
+        "Each document is a short, focused extraction using consistent names (dispatcher, foreman, truck), without long copying."
+      ],
+      "why_skill_matters": "A short, terse source with strong numbers and scale steps, no security content at all, and only three stories. It makes the three-part output, business coverage, number retention, scale split and a self-review that flags the missing security material matter."
+    },
+    {
+      "id": "requirements-extraction-rules-5",
+      "title": "Permit portal where demo shortcuts differ from production",
+      "target_section": "Scale",
+      "prompt": "Council only cares about the demo next month, but the architect will be designing for the real thing. Can you turn the material below into the three design docs (business context, requirements, key stories)? Thanks.\n\nPermitPoint: online building permit filing for the City of Alderbrook. Problem: applicants queue at the counter and processing averages 21 days. Goal is 10 days within a year of go-live, with 60% of applications filed online by end of year one.\nUsers: contractors and homeowners file; 35 city plan reviewers review.\nCouncil demo (Dec 2026): 25 concurrent users, about 300 sample permits. For the demo we're taking shortcuts: one AZ, username/password login, no virus scanning on uploads, no SSO.\nProduction (go-live Sept 2027): 2,000 concurrent users in deadline week, 1.2M documents (plans up to 100 MB each), case list under 1.5 s. Staff must sign in through the city's Entra ID SSO with MFA; applicants use email login. All documents encrypted with customer-managed KMS keys, TLS 1.2+, and malware-scanned. Records kept 10 years, every reviewer action audit-logged. Data stays in us-east-2. Public records requests need an export within 5 days.\nStack: AWS, Java Spring Boot, Aurora PostgreSQL, S3 for documents, REST. Fee payment through the city's existing Paymentus gateway. Multi-region DR is phase 3, not now.\n\nStory: As a plan reviewer I want to mark up a PDF plan and request corrections so the applicant can resubmit. AC: markup stored as a separate layer; every change audit-logged.",
+      "rubric": [
+        "Presents the demo (25 concurrent users, ~300 permits, single AZ, password login, no upload scanning, no SSO) as a distinct tier from production (2,000 concurrent users, 1.2M documents, SSO and scanning required), so demo shortcuts are not read as production requirements.",
+        "Production security is complete: Entra ID SSO with MFA for staff, email login for applicants, customer-managed KMS keys, TLS 1.2+, malware scanning, 10-year retention, audit log of reviewer actions, us-east-2 residency, and 5-day records export.",
+        "Constraints list AWS, Java Spring Boot, Aurora PostgreSQL, S3 and REST, the Paymentus integration, and multi-region DR deferred to phase 3.",
+        "Keeps 21 days to 10 days, 60% online filing, 1.5 s case list, 100 MB plan files and the demo and production concurrency counts.",
+        "All three outputs are present for PermitPoint, including key stories with the reviewer markup story.",
+        "Documents are condensed and use the same terms (applicants, plan reviewers, demo, production) throughout."
+      ],
+      "why_skill_matters": "The source mixes demo shortcuts and production needs, and the user's framing pulls toward demo only. The security details and the deferral are scattered. It makes the demo/production split, security retention, constraints, numbers and three-part delivery matter."
+    },
+    {
+      "id": "requirements-extraction-rules-6",
+      "title": "Learning platform backlog with many minor stories",
+      "target_section": "Story [N.X]: [Story Title]",
+      "prompt": "Please make design inputs for the architect from this: a business-context summary, a requirements summary, and a stories extract. Don't just paste the whole backlog, they only want what shapes the design.\n\nLearnly: grading and lecture add-on for university learning systems. Problem: instructors spend 9 hours a week grading; target is 40% less within one semester of adoption. Sold to universities; vendor-hosted SaaS. Demo: 800 students, 20 courses. Production: 40,000 students, 1,500 concurrent at exam time. Launch August 2027.\n\nEPIC 1 COURSE DELIVERY\n1.1 Instructor uploads lecture video up to 2 GB; transcoded to several bitrates.\n1.2 Student streams a lecture; playback starts within 3 s.\n1.3 Student bookmarks a timestamp.\n1.4 Instructor posts an announcement.\n1.5 Student downloads a transcript PDF.\n1.6 Instructor schedules a content release date.\n1.7 Student toggles dark mode.\n\nEPIC 2 GRADING AND INTEGRATION\n2.1 Instructor auto-grades quizzes; results for 500 submissions in under 5 s.\n2.2 Grades sync to the university gradebook via LTI 1.3.\n2.3 Student appeals a grade. AC: workflow with full audit trail.\n2.4 Instructor exports grades as CSV.\n2.5 Student views grade history.\n2.6 University admin signs in via SAML SSO. AC: FERPA applies to all student records.\n2.7 Instructor changes grading-label colours.",
+      "rubric": [
+        "Epic 1 and Epic 2 each keep at most five stories, favouring ones like video upload/transcoding, streaming start time, quiz auto-grading, LTI gradebook sync and the grade appeal, and skipping dark mode and grading-label colours.",
+        "Closing synthesis names design needs from the kept stories: entities such as courses, submissions, grades and appeals, bulk-grading and LTI API patterns, SAML and FERPA-driven access control with audit, and video transcoding and streaming performance.",
+        "Gives three distinct deliverables for Learnly: the business summary, the requirements summary, and the stories extract.",
+        "Business part covers the grading-time problem, universities as buyers, instructors and students as users, the 40% target, vendor-hosted SaaS, and the August 2027 launch.",
+        "Preserves 9 hours a week with 40% reduction, 3 s playback start, 5 s for 500 submissions, 2 GB uploads, 800 versus 40,000 students and 1,500 concurrent at exam time.",
+        "Output is a distilled selection rather than a copy of the 14-story backlog, and the terms used for personas and entities are consistent.",
+        "Finishes by asking whether the user wants the issues it found corrected."
+      ],
+      "why_skill_matters": "Two epics with seven stories each, mixing major and trivial items, forcing selection. Also numbers, scale steps, FERPA/SAML security and a business paragraph. It makes the story selection, the design synthesis, the full set of deliverables, numbers, business coverage and the closing question matter."
+    },
+    {
+      "id": "requirements-extraction-rules-7",
+      "title": "Solar inverter monitoring pitch with hype and a testimonial",
+      "target_section": "Security Requirements",
+      "prompt": "I have a pitch-style requirements writeup for SolarSync and need it converted into design inputs for our architect (business context, consolidated requirements, key stories). Strip the sales talk. After that, tell me where the writeup is thin so I can go back to the product owner.\n\nSolarSync: A REVOLUTIONARY leap in solar fleet intelligence!\n\"SolarSync paid for itself in a single quarter. Game changer,\" raves Priya Nair, COO of BrightAcre Solar.\nOperators of solar farms lose revenue to inverter faults found too late. SolarSync monitors smart inverters and is expected to lower operations and maintenance costs by 15% and shorten fault detection from 6 hours to 15 minutes.\nUsers: farm operators and field technicians. Pilot: 200 inverters at 4 sites. Production: 10,000 inverters across 120 sites. Each inverter reports every 10 seconds. Raw telemetry is kept 13 months. Dashboards load in under 2 s. Platform uptime 99.95%. Alerts should arrive \"in near real time.\"\nSecurity: each device authenticates with its own certificate (mutual TLS). Data encrypted with AES-256 at rest. SOC 2 Type II is required before the first enterprise contract. Firmware pushes are audit-logged for 2 years. Operators see only their own sites.\nBuilt on AWS: IoT Core for ingest, Timestream for telemetry, Lambda for rules. Kotlin services, REST API for the operator app. Grafana for ops dashboards. Launch: June 2027. Unlike generic SCADA tools, SolarSync gives per-inverter fault prediction.\nStory: As a field technician I want a fault alert with the likely cause so I can bring the right part.",
+      "rubric": [
+        "Omits the \"revolutionary\" headline and the BrightAcre Solar COO quote, and presents the product and its SCADA-tool contrast in plain factual language.",
+        "Keeps 15% O&M cost reduction, fault detection from 6 hours to 15 minutes, 10-second reporting, 13-month raw retention, 2 s dashboards and 99.95% uptime.",
+        "Security is complete: per-device certificates with mutual TLS, AES-256 at rest, SOC 2 Type II before the first enterprise contract, firmware pushes audit-logged 2 years, and operators limited to their own sites.",
+        "Constraints list AWS IoT Core, Timestream, Lambda, Kotlin, REST API, and Grafana for operations dashboards.",
+        "Lists weaknesses with the weightiest first, such as \"near real time\" alerts having no numeric target, and no stated peak ingest or alert volume, before lesser ideas.",
+        "Business part covers the late fault detection problem, operators and technicians, objectives and the June 2027 launch, with 200 versus 10,000 inverters as scale.",
+        "Outputs are condensed extractions, not copies of the pitch, with consistent terms (inverter, operator, site)."
+      ],
+      "why_skill_matters": "A pitch with hype, a testimonial, strong metrics, a security block, a stack, and a vague alert latency. The user asks for gaps. It makes marketing removal, numbers, security retention, constraints, ranked review and business coverage matter."
+    }
+  ]
+}

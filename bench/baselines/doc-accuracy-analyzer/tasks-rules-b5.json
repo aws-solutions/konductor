@@ -1,0 +1,133 @@
+{
+  "format_version": 1,
+  "skill": "doc-accuracy-analyzer",
+  "batch": "rules-b5",
+  "generated_at": "2026-11-09T21:40:15.034Z",
+  "model": "claude-sonnet-5-5",
+  "skills_version": "konductor-v1.2.0",
+  "rules_sha256": "b8683f2c943f552626ad08a8b4614617659a05172d801028ae9c4548401ab71e",
+  "scenarios": [
+    {
+      "id": "doc-accuracy-analyzer-rules-1",
+      "title": "Notification service reuse design",
+      "target_section": "Step 1: Extract Verifiable Claims",
+      "prompt": "I'm submitting this design doc for review on Thursday and want someone to go over the factual claims first. Here's the relevant section:\n\n\"Push Notification Revamp — Background\nOur existing NotifyService module already handles fan-out to mobile devices, so adding web push requires only configuration changes (a new channel entry in channels.yaml). We expect to deliver 50,000 notifications per second at peak, based on load tests last quarter. SNS supports up to 10 million topic subscriptions per topic, which is more than enough for our 2M users. Using SNS for fan-out is the industry-standard pattern for this kind of workload, and all of our target regions (including eu-central-2) offer SNS mobile push. Estimated cost is under $400/month.\"\n\nPlease check it over and tell me what holds up and what doesn't. I don't have the repo handy while typing this, so just work from what's written and what you know.",
+      "rubric": [
+        "Treats the statement that NotifyService already handles mobile fan-out and needs only a channels.yaml entry for web push as the riskiest claim, and says web push delivery (e.g. protocol, subscription handling) may need real code that the doc doesn't show.",
+        "Pulls out checkable statements across several kinds: the 50,000/sec figure, the load-test basis, the 10 million subscription limit, the 2M users, the eu-central-2 availability, the industry-standard claim, and the $400/month cost.",
+        "Does not call the NotifyService claim confirmed; says a file path or commit in the repo is needed to back it, since none is given.",
+        "Marks \"industry-standard pattern\" for SNS fan-out as not confirmed by reputation alone, asking for a concrete source.",
+        "Gives each claim a distinct verdict (confirmed, wrong, exaggerated, no source, or missing qualifier) rather than a single overall \"looks fine/needs work\".",
+        "Opens with a count of the total claims checked and how many land in each verdict category."
+      ],
+      "why_skill_matters": "A short design doc mixes an \"already built, only configuration\" claim, a performance figure, an SNS limit, regional availability, a best-practice appeal and a cost. The user cannot give repo access. This makes claim types, scrutiny of existing-code claims, implementation evidence and verdicts matter."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-2",
+      "title": "Queue quota claims in a data pipeline doc",
+      "target_section": "Step 2: Investigate Each Claim",
+      "prompt": "Reviewer on my team commented \"some of these numbers look off, please verify\" on my ingestion pipeline doc. Excerpt below. Can you go through and tell me which statements are right and which aren't, with something I can point to as proof? Today's date is Nov 2026 so I want current info.\n\n---\n3.2 Messaging layer\n- We use SQS standard queues; the maximum message size is 64 KB so our event payloads (avg 40 KB) fit comfortably.\n- Lambda event source mappings from SQS can batch up to 10,000 messages, so we can drain a backlog quickly.\n- SQS FIFO queues support unlimited throughput by default, so ordering will not limit us.\n- Message retention can be set up to 14 days; we use 4 days.\n- Kinesis Data Streams is available in all commercial regions, including ones we may add later.\n---\n\nThanks!",
+      "rubric": [
+        "Checks each statement against what the vendor's own documentation says rather than the doc's wording, and states what the source says for the message size, batch size, FIFO throughput, retention and Kinesis availability.",
+        "Notes that quotas such as message size and batch size change over time and that the answer reflects the documentation version consulted, advising the user to recheck current docs.",
+        "Backs each service-support claim with a link or named page on the AWS documentation site, not just an assertion.",
+        "Separates correct statements (e.g. 14-day maximum retention) from wrong or exaggerated ones (e.g. FIFO \"unlimited throughput\", the 64 KB size limit) with distinct verdicts.",
+        "For each wrong or exaggerated statement, quotes the original line, supplies replacement wording, and cites the source for the correction.",
+        "Begins with a count of the claims checked and how many fall in each verdict category.",
+        "Orders the findings so the most serious (contradicted claims) come before milder ones, with claim, verdict, evidence and correction shown for each."
+      ],
+      "why_skill_matters": "Several quota and feature claims, some wrong, some exaggerated, one right. The user asks for proof and current info. Makes independent sourcing, currency of limits, doc citations, verdicts and corrections matter."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-3",
+      "title": "Retry logic claim in payments doc",
+      "target_section": "Step 4: Assess Approach Feasibility",
+      "prompt": "Need a sanity check on the integration section of our payments reconciliation design before I send it to the architects. Pasted below.\n\n\"4. Integration with LedgerSync\nThe ReconcileWorker already implements exponential-backoff retry (see worker/retry.go) so failed ledger calls are retried safely. LedgerSync exposes an idempotency key header, so a retried call will never double-post. We then feed the reconciled batches into the Snowflake loader via the existing S3 export, which will automatically pick up the new batch format because the loader is schema-flexible. Finally the finance dashboard refreshes within seconds of load, as Snowpipe is real-time.\"\n\nI only have this text, not the code. What would you flag? I'm worried the flow is shakier than it reads.",
+      "rubric": [
+        "Walks the flow in order (retry, idempotent ledger call, S3 export, loader picking up new format, dashboard refresh) and flags the loader \"automatically picks up the new batch format\" step as resting on an assumption nobody confirmed.",
+        "Says the retry claim cites worker/retry.go but without a commit or confirmed content it can't be called verified from the text alone, and the user should check that the file really implements backoff.",
+        "Singles out \"already implements\" retry and \"existing S3 export\" as claims about existing things that deserve closer verification.",
+        "Does not accept that LedgerSync's idempotency header guarantees no double-posting just because the doc says so; asks for the vendor documentation behaviour.",
+        "Marks Snowpipe being \"real-time\" \"within seconds\" as true-but-exaggerated (typically near-real-time with latency) rather than simply right or wrong.",
+        "Starts with an overview giving the number of claims examined and how many fall into each verdict category."
+      ],
+      "why_skill_matters": "An integration chain with an assumed middle step, existing-code claim with a file path that can't be read, vendor idempotency claim and Snowpipe exaggeration. Matters for feasibility tracing, implementation evidence and verdicts."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-4",
+      "title": "Best-practice appeals in an auth proposal",
+      "target_section": "Step 3: Classify Findings",
+      "prompt": "Hey, quick one. My staff engineer asked me to tighten up the \"Rationale\" paragraph of our auth redesign before it goes out. I think it's mostly fine since everyone knows this stuff, but have a look:\n\n\"Rationale. Everyone agrees JWTs stored in localStorage are the standard approach for single-page apps, and most teams in our industry have moved this way. Cognito is what AWS recommends for B2C identity, and it is widely regarded as the most secure option. Refresh token rotation is best practice and is supported out of the box. We keep access tokens to 15 minutes, which matches common advice. Our current gateway already validates JWT signatures, so we only need to point it at the new issuer.\"\n\nI can't share the gateway code right now. Just tell me where this paragraph is on shaky ground.",
+      "rubric": [
+        "Refuses to treat \"everyone agrees\", \"most teams\", \"widely regarded as most secure\" and \"best practice\" as confirmation, labelling them as unconfirmed until a concrete source is cited.",
+        "Looks for an official source on whether AWS actually recommends Cognito for B2C and on what refresh token rotation support Cognito offers, instead of repeating the paragraph.",
+        "Calls out \"gateway already validates JWT signatures, so we only need to point it at the new issuer\" as high-risk, noting issuer, key rotation and claim differences could need work.",
+        "States the gateway claim can't be called confirmed without a file location or commit and the user hasn't provided the code.",
+        "Distinguishes verdicts for these lines, e.g. localStorage \"standard approach\" as contradicted or contested by established security recommendations, and \"most secure\" as exaggerated.",
+        "Opens with the total number of claims examined and how many fall into each verdict category."
+      ],
+      "why_skill_matters": "The user thinks \"everyone knows this\" and wants only light edits. The paragraph is full of reputation-based appeals plus a buried existing-code claim in the last sentence. Subtle: the pull is to agree it's fine."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-5",
+      "title": "Multi-region database availability and pricing",
+      "target_section": "Step 5: Suggest Corrections",
+      "prompt": "We're about to circulate the DR section of our design. Could you find what's wrong and give me fixed wording I can paste in? Text:\n\n\"6. Disaster recovery\nAurora Global Database replicates to secondary regions with typically sub-second lag, and failover to a secondary region is instantaneous with zero data loss. We will place the secondary in ap-southeast-4. Aurora Serverless v2 can scale to zero ACUs, so the standby costs almost nothing. Total DR spend is estimated at $150/month. Cross-region replication is enabled with a single checkbox.\"\n\nAlso please include where each correction comes from so my manager doesn't push back.",
+      "rubric": [
+        "For each wrong or inflated line (instantaneous failover with zero data loss, scale to zero, $150/month, single checkbox), quotes the original, provides replacement wording, and names the source for it.",
+        "Cites the AWS documentation page for Aurora Global Database behaviour and for region availability of the secondary (ap-southeast-4), not just general statements.",
+        "Notes that Serverless v2 minimum capacity and regional offerings have changed over time, so the figures must be checked against current docs.",
+        "Marks \"sub-second lag\" as true but needing a qualifier or being overstated, and \"zero data loss\" as contradicted (RPO is typically seconds, not zero), with differing seriousness.",
+        "Extracts claims across replication lag, failover time, region, scaling, cost and setup effort, not only the headline failover claim.",
+        "Opens with the total number of claims checked and a count per verdict category."
+      ],
+      "why_skill_matters": "Wording fixes with sources requested. Several claims overstated, wrong or lacking qualifiers. Matters for corrections, citations, limit currency and classification."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-6",
+      "title": "Long platform migration doc with one buried claim",
+      "target_section": "Step 1: Extract Verifiable Claims",
+      "prompt": "Please do a fact check on the section below from our internal \"Move to Kubernetes\" doc. It's long, I know. Most of it is just narrative so don't over-think it.\n\n\"2.1 Why now. Over the past year our deploy frequency has grown and the VM fleet has become hard to manage. The platform team has spent about 30% of its time on patching. Engineering leadership wants a consistent runtime across teams, and several product groups have asked for faster scaling. Our competitors have publicly talked about their container journeys.\n\n2.2 Approach. We will run EKS with managed node groups in two regions. Our existing Helm chart library (platform-charts) already supports all our service types, so teams only need to fill in values files to onboard. We estimate 120 services will migrate in Q1. Each cluster supports up to 5,000 nodes, well above our need of about 400. Service mesh is not required.\n\n2.3 Timeline. Pilot in January, wave one in February, wave two in March. Training sessions are scheduled with the vendor.\n\n2.4 Risks. Staff are new to Kubernetes. Cost may rise during dual running.\"\n\nGive me your findings.",
+      "rubric": [
+        "Identifies that platform-charts \"already supports all our service types\" and teams \"only need to fill in values files\" is a high-risk claim and does not accept it, noting stateful or special services may need chart work.",
+        "States that the platform-charts claim needs a repo path or commit (e.g. chart list per service type) before it can count as confirmed.",
+        "Extracts checkable items from the narrative sections too, such as the 30% patching time, 120 services, 5,000 node cluster limit and 400 node need, instead of only the 2.2 claims.",
+        "Checks the 5,000 node cluster figure against current EKS documentation and says the limit should be confirmed because EKS quotas change.",
+        "Gives the 30% patching and 120 services figures a no-source-found style verdict rather than treating them as confirmed.",
+        "Opens with a count of the total claims checked and how many fall in each verdict category."
+      ],
+      "why_skill_matters": "A long doc where the key risky claim sits in one sentence among narrative, and the user says not to over-think. Subtle. Matters for aggressive extraction, existing-code claims and quota currency."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-7",
+      "title": "Serverless API throughput claims",
+      "target_section": "Step 2: Investigate Each Claim",
+      "prompt": "Writing up the API tier for a design review. A teammate says a couple of my facts are stale. Can you check them? I want to know which are wrong and which are fine.\n\n- API Gateway REST APIs can handle 10,000 requests per second per account by default, and we can raise it.\n- Lambda has a 15 minute timeout, so our report generation jobs (up to 12 minutes) fit.\n- Lambda max deployment package is 50 MB zipped, so our 180 MB container-less bundle needs layers.\n- API Gateway integration timeout is 29 seconds and cannot be increased.\n- Our CloudFront distribution adds WAF at no extra cost.\n\nPlease show what the official source says for each one, not just yes/no.",
+      "rubric": [
+        "For each bullet, states what the vendor's own documentation says (default throughput, 15 min timeout, package sizes, 29 second timeout, WAF pricing) instead of agreeing or disagreeing from the user's wording.",
+        "Flags that API Gateway timeout and throughput figures have been changed by AWS over time and advises confirming against the current documentation.",
+        "Gives the AWS documentation page (or its name) for each service-support or limit statement.",
+        "Differentiates verdicts, e.g. the WAF \"no extra cost\" claim as contradicted, the 15 minute timeout as confirmed, and the 50 MB zipped limit as true but missing the 250 MB unzipped and container image options.",
+        "Provides replacement text for each inaccurate or exaggerated bullet, with the source for the change.",
+        "Begins with counts of claims checked and per-verdict totals."
+      ],
+      "why_skill_matters": "A bullet list of limit claims with one explicit request for what the source says. Matters for independent sourcing, limit currency, citations, verdicts and corrections."
+    },
+    {
+      "id": "doc-accuracy-analyzer-rules-8",
+      "title": "Recommendation claims in a data lake proposal",
+      "target_section": "Guidelines",
+      "prompt": "Can you pressure-test this proposal summary? Our VP will read it and I don't want to be caught out.\n\n\"Proposal: Move analytics to an Iceberg-based lakehouse on S3. Iceberg is the de facto standard table format and everybody is adopting it. AWS recommends Iceberg over Hive-style tables for new workloads, and Athena supports Iceberg time travel natively. Our ETL framework (etl-core) is built on Spark and already writes Iceberg, so migration just means flipping the output format flag. Expected query cost reduction is 60%, based on a vendor blog post. Compaction runs automatically with no operational effort.\"\n\nBe strict. No need to be polite about it.",
+      "rubric": [
+        "Treats \"de facto standard\" and \"everybody is adopting it\" as unconfirmed popularity arguments needing a concrete source.",
+        "Verifies \"Athena supports Iceberg time travel\" and \"AWS recommends Iceberg\" with a link or named page on the AWS documentation site rather than asserting them.",
+        "Singles out \"etl-core already writes Iceberg, so migration just means flipping a flag\" as the highest-risk claim, noting partitioning, catalog and schema evolution may be involved.",
+        "Says the etl-core claim needs a file path or commit before it counts as confirmed.",
+        "Marks \"60% cost reduction based on a vendor blog\" as unverifiable or overstated, and \"compaction automatic with no operational effort\" as overstated, with differing seriousness.",
+        "Traces the migration path (write Iceberg, catalog registration, Athena query, compaction) and flags steps that rely on assumed capability.",
+        "Opens with a count of claims checked and per-verdict totals."
+      ],
+      "why_skill_matters": "A proposal with popularity appeals, a vendor-recommendation claim, an existing-code claim, a cost number from a vendor blog and an automation claim. The user asks for strictness. Matters for unconfirmed popularity, citations, code evidence and path feasibility."
+    }
+  ]
+}

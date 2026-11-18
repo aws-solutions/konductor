@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "doc-accuracy-analyzer",
+  "skill_md_sha256": "ba44f0691af7a8c1ff0ed164bef550a0296c51a3786f5b6d3773b7ad41d195bb",
+  "request_context": "A request to check a technical design document for factual errors before it goes to reviewers, by verifying its claims against authoritative sources and reporting what is wrong.",
+  "rules": [
+    {
+      "id": "doc-accuracy-analyzer-r01",
+      "source_quote": "Be aggressive. \"Already built\" and \"requires only configuration\" are the highest-risk claim types.",
+      "class": "useful",
+      "outcome": "Claims that something already exists or needs only configuration are singled out and checked with extra scrutiny, rather than being taken at face value.",
+      "why": "These claims hide the largest unplanned engineering effort and are the ones most often wrong.",
+      "scenario_hint": "Design doc says an existing component is already built and only needs configuration to support the new feature."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r02",
+      "source_quote": "Scan the document and extract all verifiable claims by category",
+      "class": "useful",
+      "outcome": "The answer pulls out the document's checkable statements across numbers and metrics, implementation status, cloud service features, limits, pricing, availability and appeals to best practice, rather than only a few obvious ones.",
+      "why": "Skipping a category leaves factual errors unexamined that reviewers later find.",
+      "scenario_hint": "Design doc mixing performance figures, service feature assertions, and statements about existing code."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r03",
+      "source_quote": "Search the source. Do not accept the document's assertion as evidence.",
+      "class": "useful",
+      "outcome": "Each claim is judged against an independent authoritative source, not against the document's own wording, and the answer shows what that source says.",
+      "why": "Accepting the document's own statements makes the check circular and misses errors.",
+      "scenario_hint": "Design doc asserts a service supports a feature with no supporting reference."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r04",
+      "source_quote": "Never accept \"it is well known that\" as evidence",
+      "class": "useful",
+      "outcome": "Statements justified by common knowledge, popularity or reputation are not treated as confirmed; they are marked as unconfirmed unless a concrete source backs them.",
+      "why": "Folk wisdom is often outdated or wrong and passes unchecked into decisions.",
+      "scenario_hint": "Doc claims a pattern is the standard or best practice, citing that it is well known."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r05",
+      "source_quote": "Service limits change — always check current documentation",
+      "class": "useful",
+      "outcome": "Limits, quotas and feature claims are compared with the current official documentation, and the answer notes that figures may have changed or that the version consulted matters.",
+      "why": "Stale limits lead to designs that break against the real service.",
+      "scenario_hint": "Doc cites a quota or maximum size for a cloud service."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r06",
+      "source_quote": "Implementation claims require a file path or commit reference",
+      "class": "useful",
+      "outcome": "Claims about what the code already does are backed by a specific file location or commit; where none can be given, the claim is not called confirmed.",
+      "why": "Without a pointer, readers cannot check that the code does what the doc says.",
+      "scenario_hint": "Doc states a module already implements retry logic."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r07",
+      "source_quote": "\"AWS supports X\" requires a docs.aws.amazon.com citation",
+      "class": "useful",
+      "outcome": "Statements that a cloud service supports something are backed by a link to the vendor's official documentation page.",
+      "why": "Secondary sources and memory are often inaccurate about service capabilities.",
+      "scenario_hint": "Doc claims a managed service supports a particular feature or region."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r08",
+      "source_quote": "| Overstated      | True but exaggerated                  | Medium   |",
+      "class": "useful",
+      "outcome": "Each claim gets a verdict distinguishing confirmed, contradicted, true-but-exaggerated, no source found, and true-but-missing a qualifier, with contradictions treated as most serious and missing qualifiers as least.",
+      "why": "Without graded verdicts, reviewers cannot tell which errors must be fixed first.",
+      "scenario_hint": "Doc contains a mix of correct, exaggerated and wrong claims."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r09",
+      "source_quote": "Flag any \"it will work because it should work\" reasoning",
+      "class": "useful",
+      "outcome": "The answer walks through each proposed approach step by step and flags steps that depend on a capability not actually confirmed, including reasoning that merely assumes it will work.",
+      "why": "Designs can fail at an unverified link even when each individual claim sounds plausible.",
+      "scenario_hint": "Doc proposes integrating two systems with an assumed capability in the middle."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r10",
+      "source_quote": "For each Inaccurate or Overstated finding, provide:",
+      "class": "useful",
+      "outcome": "For every wrong or exaggerated claim, the answer quotes the original text, offers replacement wording, and cites the source that supports the correction.",
+      "why": "Authors need ready, sourced fixes rather than just a list of complaints.",
+      "scenario_hint": "Doc has claims found to be incorrect or inflated."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r11",
+      "source_quote": "- Total claims: N",
+      "class": "generic",
+      "outcome": "The answer begins with an overview giving the total number of claims checked and how many fall into each verdict category.",
+      "why": "Readers need the overall picture of document reliability before the details.",
+      "scenario_hint": "Any request to verify the factual accuracy of a design document."
+    },
+    {
+      "id": "doc-accuracy-analyzer-r12",
+      "source_quote": "### High Severity Findings",
+      "class": "style",
+      "outcome": "Findings are grouped by seriousness, with the most serious first, and each entry shows the claim, the verdict, the evidence and the correction.",
+      "why": "",
+      "scenario_hint": "Any request to verify the factual accuracy of a design document."
+    }
+  ]
+}

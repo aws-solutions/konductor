@@ -1,0 +1,217 @@
+{
+  "format_version": 1,
+  "skill": "design-doc-guidelines",
+  "batch": "rules-b6",
+  "rules": {
+    "design-doc-guidelines-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-doc-guidelines-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-doc-guidelines-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-doc-guidelines-r04": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-doc-guidelines-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-doc-guidelines-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-doc-guidelines-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-doc-guidelines-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-doc-guidelines-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-doc-guidelines-r10": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-doc-guidelines-r11": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "design-doc-guidelines-r12": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    }
+  },
+  "scenarios": {
+    "design-doc-guidelines-rules-1": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r10"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r09"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-doc-guidelines-r12"
+      }
+    },
+    "design-doc-guidelines-rules-2": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r04"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r06"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r03"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-doc-guidelines-r12"
+      }
+    },
+    "design-doc-guidelines-rules-3": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r07"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r07"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-doc-guidelines-r12"
+      }
+    },
+    "design-doc-guidelines-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r10"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r10"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r02"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r11"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "design-doc-guidelines-r12"
+      }
+    },
+    "design-doc-guidelines-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r11"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r11"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r07"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r07"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "design-doc-guidelines-r12"
+      }
+    },
+    "design-doc-guidelines-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r05"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r04"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "design-doc-guidelines-r08"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "design-doc-guidelines-r12"
+      }
+    }
+  }
+}

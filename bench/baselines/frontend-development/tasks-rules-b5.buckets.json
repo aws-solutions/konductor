@@ -1,0 +1,199 @@
+{
+  "format_version": 1,
+  "skill": "frontend-development",
+  "batch": "rules-b5",
+  "rules": {
+    "frontend-development-r01": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-development-r02": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-development-r03": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-development-r04": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "frontend-development-r05": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-development-r06": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-development-r07": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-development-r08": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-development-r09": {
+      "class": "useful",
+      "kept": true,
+      "bucket": "value"
+    },
+    "frontend-development-r10": {
+      "class": "generic",
+      "kept": true,
+      "bucket": "guard"
+    },
+    "frontend-development-r11": {
+      "class": "useful",
+      "kept": false,
+      "bucket": "value"
+    },
+    "frontend-development-r12": {
+      "class": "style",
+      "kept": true,
+      "bucket": "format"
+    }
+  },
+  "scenarios": {
+    "frontend-development-rules-4": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r06"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r02"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "frontend-development-r10"
+      }
+    },
+    "frontend-development-rules-5": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r09"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r01"
+      },
+      "5": {
+        "bucket": "guard",
+        "rule_id": "frontend-development-r10"
+      },
+      "6": {
+        "bucket": "format",
+        "rule_id": "frontend-development-r12"
+      }
+    },
+    "frontend-development-rules-6": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r07"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r09"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r01"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r02"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r08"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "frontend-development-r10"
+      }
+    },
+    "frontend-development-rules-7": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r05"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r06"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r08"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r01"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r03"
+      },
+      "6": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r09"
+      },
+      "7": {
+        "bucket": "guard",
+        "rule_id": "frontend-development-r10"
+      }
+    },
+    "frontend-development-rules-8": {
+      "1": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r01"
+      },
+      "2": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r02"
+      },
+      "3": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r03"
+      },
+      "4": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r05"
+      },
+      "5": {
+        "bucket": "value",
+        "rule_id": "frontend-development-r09"
+      },
+      "6": {
+        "bucket": "guard",
+        "rule_id": "frontend-development-r10"
+      }
+    }
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "format_version": 1,
+  "skill": "requirements-extraction",
+  "skill_md_sha256": "0814963ba2cd9c469fc33f6ac53ea070119cf761428cc5ed06d8fda702309b94",
+  "request_context": "A request to condense a product requirements document and user stories into focused input documents that a software architect can use to start system design.",
+  "rules": [
+    {
+      "id": "requirements-extraction-r01",
+      "source_quote": "**MUST DO: write all three files below",
+      "class": "useful",
+      "outcome": "Three separate documents are produced: one on business context, one on consolidated requirements, and one with selected key user stories. None of the three is omitted, even when the material is long.",
+      "why": "A missing document leaves the architect without part of the design inputs, and the story extract is the one most easily dropped.",
+      "scenario_hint": "Large requirements and story documents where the work is long and the last deliverable might be skipped."
+    },
+    {
+      "id": "requirements-extraction-r02",
+      "source_quote": "Quantified metrics dropped or replaced with vague terms (\"fast\", \"scalable\")",
+      "class": "useful",
+      "outcome": "Every quantified figure from the source (percentages, time savings, cost reductions, latency targets, user counts) appears with its original number, not replaced by vague words like fast or scalable.",
+      "why": "Architects size and trade off designs against concrete numbers; vague wording makes the targets untestable.",
+      "scenario_hint": "Source documents containing specific targets such as latency under 500ms, 100 concurrent users, or percentage improvements."
+    },
+    {
+      "id": "requirements-extraction-r03",
+      "source_quote": "Security or compliance requirements missing from requirements-summary.md",
+      "class": "useful",
+      "outcome": "All security and compliance requirements from the source are carried over in full: authentication, authorization, encryption at rest and in transit, data residency, audit logging, retention and named standards.",
+      "why": "Dropping a security or compliance requirement can lead to an architecture that is non-compliant or must be redesigned.",
+      "scenario_hint": "Source documents that scatter security and compliance statements across stories and requirement sections."
+    },
+    {
+      "id": "requirements-extraction-r04",
+      "source_quote": "Scale requirements (demo vs. production) not documented",
+      "class": "useful",
+      "outcome": "Scale is stated separately for the initial demo and for production or future growth, covering users, data volume and peak concurrent load, and simplifications accepted for the demo are called out.",
+      "why": "Mixing demo and production scale leads to over- or under-engineered architecture.",
+      "scenario_hint": "Source describes a small demo deployment and a larger eventual production target."
+    },
+    {
+      "id": "requirements-extraction-r05",
+      "source_quote": "Remove: marketing language, customer testimonials, press release formatting, epic descriptions without technical detail.",
+      "class": "useful",
+      "outcome": "Promotional wording, customer quotes and press-release style text are removed, while technical content, constraints and business context are kept in plain factual language.",
+      "why": "Marketing noise distracts from design-relevant facts and inflates the handoff.",
+      "scenario_hint": "Source requirements written in press-release style with customer quotes and promotional claims."
+    },
+    {
+      "id": "requirements-extraction-r06",
+      "source_quote": "Select 3-5 most architecturally significant stories per epic",
+      "class": "useful",
+      "outcome": "For each epic, only a small number (three to five) of the stories that most influence architecture are kept, chosen for their data, security, performance or integration impact, instead of listing every story.",
+      "why": "Including all stories buries the architecturally important ones and defeats the purpose of a focused handoff.",
+      "scenario_hint": "User stories document with several epics each containing many stories of mixed significance."
+    },
+    {
+      "id": "requirements-extraction-r07",
+      "source_quote": "Add \"Architecture Implications\" section summarizing technical needs",
+      "class": "useful",
+      "outcome": "The story extract ends with a synthesis of what the stories imply for the design: data entities and access patterns, API needs, security flows and performance or caching needs.",
+      "why": "Without this synthesis the architect must re-derive design consequences from individual stories.",
+      "scenario_hint": "Key stories selected with acceptance criteria that imply data, API, security and performance needs."
+    },
+    {
+      "id": "requirements-extraction-r08",
+      "source_quote": "Technical constraints documented (deployment model, technology preferences)",
+      "class": "useful",
+      "outcome": "Deployment model, cloud provider and services, preferred languages, database, API style and any deferred or simplified scope are recorded as constraints, along with required integrations and monitoring or logging needs.",
+      "why": "Missing constraints let the architect propose designs that conflict with mandated platforms or technologies.",
+      "scenario_hint": "Source mentions a required cloud platform, preferred stack, and features deferred from the initial release."
+    },
+    {
+      "id": "requirements-extraction-r09",
+      "source_quote": "Files are focused and concise (not copying entire requirements doc)",
+      "class": "generic",
+      "outcome": "Each output document is a condensed extraction rather than a copy of the source, and the content stays consistent in terminology across documents.",
+      "why": "Verbatim copying defeats the purpose of a focused handoff and creates inconsistencies.",
+      "scenario_hint": "Any request to condense requirements and stories into design inputs."
+    },
+    {
+      "id": "requirements-extraction-r10",
+      "source_quote": "Present findings as: CRITICAL → IMPORTANT → SUGGESTION.",
+      "class": "useful",
+      "outcome": "After producing the documents, the answer reports a self-review of gaps, ordered from must-fix problems (dropped metrics, missing security or scale) to should-fix and then optional improvements such as flagging ambiguous requirements.",
+      "why": "Without a prioritized review, serious omissions in the handoff go unnoticed.",
+      "scenario_hint": "Completed extraction where some figures or requirements may be incomplete or ambiguous."
+    },
+    {
+      "id": "requirements-extraction-r11",
+      "source_quote": "Ask: \"Fix these issues? [y/n]\"",
+      "class": "style",
+      "outcome": "The review ends by asking the user whether they want the identified issues fixed.",
+      "why": "",
+      "scenario_hint": "Any request to condense requirements and stories into design inputs where review findings exist."
+    },
+    {
+      "id": "requirements-extraction-r12",
+      "source_quote": "**Purpose:** Provide business context for architectural decisions",
+      "class": "useful",
+      "outcome": "The business document covers the product and the problem it solves, target users with expected user and data scale, quantified objectives and success metrics, deployment model, differentiators and launch timeline, each focused on its design implications.",
+      "why": "The architect needs the business rationale and targets to weigh trade-offs.",
+      "scenario_hint": "Requirements document with business problem, users, objectives, differentiators and a launch date."
+    }
+  ]
+}
