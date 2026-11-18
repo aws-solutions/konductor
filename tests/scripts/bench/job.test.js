@@ -314,7 +314,19 @@ test('job main: usage errors are exit 64 and run nothing', async () => {
   };
   for (const [argv, pattern] of [
     [['pairs', '--root', '<root>'], /--skills is required/],
-    [['judge', '--skills', SKILL, '--root', '<root>'], /unknown job "judge"/],
+    [['report', '--skills', SKILL, '--root', '<root>'], /unknown job "report"/],
+    [
+      ['judge', '--skills', SKILL, '--root', '<root>'],
+      /--scale is required for the judge job/,
+    ],
+    [
+      ['judge', '--scale', 'overall', '--skills', SKILL, '--root', '<root>'],
+      /--scale must be one of items, outcome/,
+    ],
+    [
+      [...PAIRS, '--scale', 'items'],
+      /--scale is not an option of the pairs job/,
+    ],
     [[...PAIRS, '--json'], /unknown option --json/],
     [[...PAIRS, '--dry-run=1'], /--dry-run does not take a value/],
     [['--skills', SKILL], /first word must be a job name/],

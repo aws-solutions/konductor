@@ -16,6 +16,7 @@ const {
   loadConfig,
   rubricWriterModel,
   seatsOf,
+  judgeConcurrency,
 } = require('../../../scripts/bench/lib/config');
 const { REPO_ROOT } = require('../../../scripts/bench/lib/layout');
 const helpers = require('./helpers');
@@ -49,6 +50,8 @@ test('the example holds the expected default settings', () => {
     judge_timeout_ms_by_seat: { xai: 720000 },
     judge_max_output_tokens: 9000,
     judge_max_output_tokens_by_seat: { openai: 5000, xai: 37500 },
+    judge_concurrency: 3,
+    judge_concurrency_by_seat: { xai: 12 },
     estimate_usd_per_call: {
       subject: 0.078125,
       judge: 0.0625,
@@ -370,6 +373,7 @@ test('an open map in the settings file may hold any key, and must not be missing
         'models.rubric_writer': 'writer-m',
         judge_timeout_ms_by_seat: { solo: 300000 },
         judge_max_output_tokens_by_seat: { solo: 4000 },
+        judge_concurrency_by_seat: {},
       }),
     });
     assert.deepEqual(seatsOf(config), ['solo']);
@@ -590,6 +594,7 @@ test('judge timeouts: an entry for a seat that is not in models.judges is refuse
     models: { judges: { xai: null } },
     judge_timeout_ms_by_seat: { xai: null },
     judge_max_output_tokens_by_seat: { xai: null },
+    judge_concurrency_by_seat: { xai: null },
   });
   assert.deepEqual(noXai.judge_timeout_ms_by_seat, {});
   assert.throws(
@@ -632,6 +637,79 @@ for (const [name, overrides, expected] of [
   ],
 ]) {
   test(`judge timeouts are validated: ${name}`, () =>
+    assert.throws(() => helpers.exampleConfig(overrides), expected));
+}
+
+test('judge concurrency: one width per seat, the default for the rest; an entry is added, replaced or removed with null', () => {
+  const defaults = helpers.exampleConfig();
+  assert.deepEqual(
+    seatsOf(defaults).map((seat) => judgeConcurrency(defaults, seat)),
+    [3, 3, 12],
+  );
+  const config = helpers.exampleConfig({
+    judge_concurrency: 2,
+    judge_concurrency_by_seat: { xai: null, openai: 5 },
+  });
+  assert.deepEqual(config.judge_concurrency_by_seat, { openai: 5 });
+  assert.deepEqual(
+    seatsOf(config).map((seat) => judgeConcurrency(config, seat)),
+    [2, 5, 2],
+  );
+});
+
+// A seat removed from models.judges needs its per-seat concurrency entry removed in the same settings.
+test('judge concurrency: an entry for a seat that is not in models.judges is refused, so a removed seat needs its entry removed', () => {
+  assert.throws(
+    () =>
+      helpers.exampleConfig({
+        models: { judges: { xai: null } },
+        judge_timeout_ms_by_seat: { xai: null },
+      }),
+    /judge_concurrency_by_seat\.xai: no such judge seat in models\.judges \(remove the entry\)/,
+  );
+  const noXai = helpers.exampleConfig({
+    models: { judges: { xai: null } },
+    judge_timeout_ms_by_seat: { xai: null },
+    judge_max_output_tokens_by_seat: { xai: null },
+    judge_concurrency_by_seat: { xai: null },
+  });
+  assert.deepEqual(noXai.judge_concurrency_by_seat, {});
+});
+
+for (const [name, overrides, expected] of [
+  [
+    'zero',
+    { judge_concurrency: 0 },
+    /judge_concurrency: must be a whole number from 1 to 32/,
+  ],
+  [
+    'over 32',
+    { judge_concurrency: 33 },
+    /judge_concurrency: must be a whole number from 1 to 32/,
+  ],
+  [
+    'a fraction',
+    { judge_concurrency: 1.5 },
+    /judge_concurrency: must be a whole/,
+  ],
+  ['text', { judge_concurrency: '3' }, /judge_concurrency: must be a whole/],
+  [
+    'a bad seat value',
+    { judge_concurrency_by_seat: { xai: 0 } },
+    /judge_concurrency_by_seat\.xai: must be a whole number from 1 to 32/,
+  ],
+  [
+    'a seat that does not exist',
+    { judge_concurrency_by_seat: { xia: 4 } },
+    /judge_concurrency_by_seat\.xia: no such judge seat in models\.judges/,
+  ],
+  [
+    'a map that is not an object',
+    { judge_concurrency_by_seat: [] },
+    /judge_concurrency_by_seat: must be an object/,
+  ],
+]) {
+  test(`judge concurrency is validated: ${name}`, () =>
     assert.throws(() => helpers.exampleConfig(overrides), expected));
 }
 
@@ -798,6 +876,7 @@ test('judge_max_output_tokens_by_seat: an entry for a seat that is not in models
         models: { judges: { openai: null } },
         judge_timeout_ms_by_seat: { xai: null },
         judge_max_output_tokens_by_seat: { openai: null },
+        judge_concurrency_by_seat: { xai: null },
       },
     });
     assert.deepEqual(dropped.judge_max_output_tokens_by_seat, {

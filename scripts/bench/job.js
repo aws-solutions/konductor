@@ -5,27 +5,31 @@
  *
  *   node scripts/bench/job.js pairs --skills a,b [--run <id>] [--max-usd N] [--config <file>] [--root <dir>] [--dry-run]
  *   node scripts/bench/job.js checklists --skills a,b [--ladder <file>] [same options]
+ *   node scripts/bench/job.js judge --scale items|outcome --skills a,b [same options]
  *
- * `pairs` makes the subject runs (lib/pairs.js) and `checklists` the request-only checklists of reading A
- * (lib/checklist-job.js). Both SPEND MONEY unless --dry-run is given. The options are checked the same way the
- * launcher checks them (lib/launch.js parseJobCommand). The job prints one line per event, then a last line that
- * is one JSON object:
+ * `pairs` makes the subject runs (lib/pairs.js), `checklists` the request-only checklists of reading A
+ * (lib/checklist-job.js) and `judge` the judgments of one reading (lib/judge-job.js). Each SPENDS MONEY unless
+ * --dry-run is given. The options are read and checked by the same function the launcher uses (lib/launch.js
+ * parseJobCommand). The job prints one line per event, then a last line that is one JSON object:
  *   pairs        { job, run_id, skills, status, exit_code, stop, jobs, pending, results, skipped }
  *   checklists   { job, run_id, skills, status, exit_code, stop, tasks, done, pending, copies, remaining, excluded,
  *                  results, usd, skipped }
+ *   judge        { job, run_id, skills, status, exit_code, stop, scale, jobs, done, pending, waiting, not_loaded,
+ *                  ineligible, other_arm_unusable, remaining, excluded, tasks_counted, tasks, results, usd,
+ *                  skipped }
  * Every printed line passes through the redactor.
  *
  * Exit codes (2 is never used: AGENTS.md reserves it for a gate finding):
  *
- *   0   done: every pending run gave a valid answer (every task has a current checklist), or there was nothing to
- *       do, or a dry run listed the work
+ *   0   done: every pending run gave a valid answer (every task has a current checklist, every judgment of the
+ *       reading is current), or there was nothing to do, or a dry run listed the work
  *   1   refused: `plan` for the same skills refuses them (an invalid baseline, a cost above max_usd, a ledger past a
- *       limit), or for checklists a request the writer cannot be given or a projection above max_usd; nothing was
- *       built or spent
- *   3   partial: at least one run failed or was not loaded, or a checklist failed or the provider blocked its
- *       writer; the work that was made is kept
+ *       limit), or for checklists and judge a projection above max_usd, or for checklists a request the writer
+ *       cannot be given; nothing was built or spent
+ *   3   partial: at least one run failed or was not loaded, a checklist failed or the provider blocked its
+ *       writer, or a judgment failed or still waits for an answer or a checklist; the work that was made is kept
  *   4   stopped, credentials: missing, long-term, or about to expire: for `pairs` within the call timeout (5 minutes
- *       unless set, never less than 3), for `checklists` less than 3 minutes away
+ *       unless set, never less than 3), for the other jobs less than 3 minutes away
  *   5   stopped, spend: the ledger refused a call (max_usd or total_cap_usd)
  *   6   stopped, ledger: the ledger cannot be read or its lock cannot be taken
  *   7   stopped, security: the secret sweep found a credential value or the canary in a stored file
@@ -39,6 +43,7 @@
 
 const { describeFailure } = require('./bench');
 const { runChecklists } = require('./lib/checklist-job');
+const { runJudging } = require('./lib/judge-job');
 const {
   BOOL_FLAGS,
   JOBS,
@@ -75,6 +80,7 @@ Options
   --config <file>    Settings file to use instead of bench/config.json.
   --root <dir>       Repository root to read (default: this checkout).
   --ladder <file>    checklists only: a dose ladder whose items --skills may also name.
+  --scale <scale>    judge only, required: items (reading B) or outcome (reading A).
   --dry-run          List the work and stop: nothing is spent or written.
 
 Exit codes
@@ -89,7 +95,7 @@ Start a job in the background with scripts/bench/launch.js. See scripts/bench/RE
 /** The last line is one JSON object and must stay whole, so it is not cut at the length of an event line. */
 const FINAL_LINE_MAX_CHARS = 1000000;
 
-/** The exit code of a job summary (runPairs or runChecklists). */
+/** The exit code of a job summary (runPairs, runChecklists or runJudging). */
 function exitCodeFor(summary) {
   if (summary.status === 'done' || summary.status === 'dry-run')
     return EXIT_DONE;
@@ -169,14 +175,69 @@ async function checklistsJob(request, { dryRun, print, checklistOptions }) {
 }
 
 /**
- * Runs the job. `io` is { out(text), err(text) }; `env` is where BENCH_DEBUG is read. `pairsOptions` and
- * `checklistOptions` are extra options for runPairs and runChecklists (tests use them for stub calls). Returns the
- * exit code; never throws.
+ * The judge job: its summary and its last line. Each failed judgment is printed by name, and so is each task that does
+ * not count for the reading, with the reason (up to a few waiting judgments are listed by `runJudging`; the counts are
+ * always on the last line).
+ */
+async function judgeJob(request, { dryRun, print, judgeOptions }) {
+  const summary = await runJudging({
+    layout: request.layout,
+    config: request.config,
+    skills: request.skills,
+    scale: request.scale,
+    dryRun,
+    log: print,
+    ...judgeOptions,
+  });
+  for (const { judgment, reason } of summary.results.failed)
+    print(`failed: ${judgment}: ${reason}`);
+  // Before anything is judged every task "does not count", so a dry run prints no task lines.
+  if (!dryRun)
+    for (const row of summary.tasks)
+      if (!row.counted)
+        print(
+          `task ${row.skill}/${row.batch}/${row.task_id}: not counted: ${row.invalid}`,
+        );
+  return {
+    summary,
+    last: {
+      scale: summary.scale,
+      jobs: summary.jobs,
+      done: summary.done,
+      pending: summary.pending,
+      waiting: summary.waiting.length,
+      not_loaded: summary.not_loaded,
+      ineligible: summary.ineligible,
+      other_arm_unusable: summary.other_arm_unusable,
+      remaining: summary.remaining,
+      excluded: summary.excluded.length,
+      tasks_counted: summary.tasks.filter((task) => task.counted).length,
+      tasks: summary.tasks.length,
+      results: {
+        judged: summary.results.judged.length,
+        ineligible: summary.results.ineligible.length,
+        failed: summary.results.failed.length,
+      },
+      usd: summary.usd,
+      skipped: summary.skipped,
+    },
+  };
+}
+
+/**
+ * Runs the job. `io` is { out(text), err(text) }; `env` is where BENCH_DEBUG is read. `pairsOptions`,
+ * `checklistOptions` and `judgeOptions` are extra options for runPairs, runChecklists and runJudging (tests use them
+ * for stub calls). Returns the exit code; never throws.
  */
 async function main(
   argv,
   io,
-  { env = process.env, pairsOptions = {}, checklistOptions = {} } = {},
+  {
+    env = process.env,
+    pairsOptions = {},
+    checklistOptions = {},
+    judgeOptions = {},
+  } = {},
 ) {
   const print = (line, maxChars = 8000) =>
     io.out(`${redact(line, { maxChars })}\n`);
@@ -189,12 +250,14 @@ async function main(
     const { job, options, request } = command;
     const dryRun = options.dryRun === true;
     print(
-      `${job}: run ${request.layout.runId}, skills ${request.skills.join(', ')}${dryRun ? ', dry run' : ''}, pid ${process.pid}`,
+      `${job}: run ${request.layout.runId}, skills ${request.skills.join(', ')}${request.scale ? `, scale ${request.scale}` : ''}${dryRun ? ', dry run' : ''}, pid ${process.pid}`,
     );
     const { summary, last } =
       job === 'checklists'
         ? await checklistsJob(request, { dryRun, print, checklistOptions })
-        : await pairsJob(request, { dryRun, print, pairsOptions });
+        : job === 'judge'
+          ? await judgeJob(request, { dryRun, print, judgeOptions })
+          : await pairsJob(request, { dryRun, print, pairsOptions });
     for (const reason of summary.refused) print(`refused: ${reason}`);
     for (const warning of summary.warnings) print(`warning: ${warning}`);
     if (summary.stop)

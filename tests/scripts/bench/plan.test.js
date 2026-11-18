@@ -286,6 +286,7 @@ test('the settings drive the plan: model prices and judge seats; each answer is 
     },
     judge_timeout_ms_by_seat: { xai: null },
     judge_max_output_tokens_by_seat: { openai: null, xai: null },
+    judge_concurrency_by_seat: { xai: null },
   });
   assert.deepEqual(
     [
@@ -302,6 +303,7 @@ test('the settings drive the plan: model prices and judge seats; each answer is 
     models: { judges: { openai: null, xai: null } },
     judge_timeout_ms_by_seat: { xai: null },
     judge_max_output_tokens_by_seat: { openai: null, xai: null },
+    judge_concurrency_by_seat: { xai: null },
   });
   // 10 x 0.06693 + 18 x 0.0478 + 4 x 0.02586 = 1.63314
   assert.equal(priced.pending_usd, 1.63);

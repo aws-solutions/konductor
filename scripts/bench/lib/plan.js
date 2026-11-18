@@ -31,7 +31,11 @@
  * Not in the offline plan, and said so in its output: the credential check and the Bedrock model list.
  * They belong to stage 1 of a run.
  * A done call here means its output file exists; whether that file is stale is checked where
- * the file's format is defined.
+ * the file's format is defined. One exception: a judgment whose other arm's answer cannot be used (stored as not
+ * loaded, or recorded as not eligible) is not counted, because the judge job does not make it.
+ * The sibling-arm skip reads the other arm's stored judgment status as is, without checking that it is current, so
+ * after an input changes `plan` may count one call per seat too few until the judge job re-plans; the job's own
+ * projection is exact.
  */
 'use strict';
 
@@ -55,6 +59,10 @@ const {
 } = require('./baseline');
 const { resolveAgent, AgentSpecError } = require('./skills');
 const { readLedger, checkLimits, LedgerError } = require('./ledger');
+const { readJsonFile } = require('./read-file');
+
+/** Judgment statuses that leave the answer of that arm unusable for its seat (judge-job.js STATUS_INELIGIBLE). */
+const UNUSABLE_JUDGMENT_STATUSES = new Set(['ineligible']);
 
 const createTally = () => ({ done: 0, total: 0 });
 const createCallTallies = () => ({
@@ -177,7 +185,30 @@ const createCounter = (tallies, pendingByModel) => (kind, file, model) => {
   else pendingByModel[kind][model] = (pendingByModel[kind][model] || 0) + 1;
 };
 
-/** Counts the calls of one task: two subject runs, a judge call per seat and answer for each reading, one checklist. */
+/** The `status` of the JSON record in `file`, or null when there is none or it cannot be read. */
+function storedStatus(file) {
+  try {
+    const record = readJsonFile(file);
+    return record !== null && typeof record === 'object' ? record.status : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True when the answer of `arm` cannot be used for one seat's judgments of a reading: the answer is stored as not
+ * loaded (pairs.js), or that arm's judgment is recorded as not eligible (judge-job.js). The judge job then makes no
+ * judgment of the other arm for that seat, because the seat could never count, so it is no call here either.
+ */
+const armUnusable = ({ layout, skill, batch, id }, arm, judgmentFile) =>
+  storedStatus(layout.answerFile(skill, batch, id, arm)) === 'not_loaded' ||
+  UNUSABLE_JUDGMENT_STATUSES.has(storedStatus(judgmentFile));
+
+/**
+ * Counts the calls of one task: two subject runs, a judge call per seat and answer for each reading, one checklist.
+ * A judgment is no call, unless its file is already there, when its own answer is stored as not loaded (the judge job
+ * never judges it) or its other arm cannot be used (armUnusable).
+ */
 function countTaskCalls(
   { layout, seats, config },
   { skill, batch, id },
@@ -190,22 +221,31 @@ function countTaskCalls(
       layout.answerFile(skill, batch, id, arm),
       config.models.subject,
     );
+  const where = { layout, skill, batch, id };
   // Each answer is judged on its own: one call per seat and arm.
   for (const seat of seats) {
-    const judgeModel = config.models.judges[seat];
-    for (const arm of ARMS) {
-      if (readB)
-        countCall(
-          'judgeB',
-          layout.judgmentFile('items', skill, batch, id, seat, arm),
-          judgeModel,
-        );
-      if (readA)
-        countCall(
-          'judgeA',
-          layout.judgmentFile('outcome', skill, batch, id, seat, arm),
-          judgeModel,
-        );
+    for (const [kind, scale, read] of [
+      ['judgeB', 'items', readB],
+      ['judgeA', 'outcome', readA],
+    ]) {
+      if (!read) continue;
+      const files = Object.fromEntries(
+        ARMS.map((arm) => [
+          arm,
+          layout.judgmentFile(scale, skill, batch, id, seat, arm),
+        ]),
+      );
+      for (const arm of ARMS) {
+        const other = ARMS.find((entry) => entry !== arm);
+        if (
+          !fs.existsSync(files[arm]) &&
+          (storedStatus(layout.answerFile(skill, batch, id, arm)) ===
+            'not_loaded' ||
+            armUnusable(where, other, files[other]))
+        )
+          continue;
+        countCall(kind, files[arm], config.models.judges[seat]);
+      }
     }
   }
   if (readA)
