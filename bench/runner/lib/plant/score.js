@@ -17,7 +17,7 @@ const LOG_VERSION = 1;
 const ENV_VERSION = 1;
 const EXCLUSION_POLICY = 'plant-failure-v1';
 // Why a suite of the pinned Kiro CLI is not counted (plant field and run config `notCounted`), as plant-report's header says it.
-const NOT_COUNTED = { noSandbox: 'run without sandbox', noisyHost: 'host failed quiet-host checks' };
+const NOT_COUNTED = { noSandbox: 'run without sandbox', noisyHost: 'host failed quiet-host checks', noStrandsPin: 'release pins no strands-agents version' };
 const PLANT_FLAGS = ['plantGatewayStart', 'plantStartup', 'plantGatewayLost', 'plantPathLost', 'plantLimit', 'plantForeignConn',
   'plantLogIntegrity', 'plantLogInvalid', 'plantLogScrubbed', 'plantPolicyGap'];
 const LAUNCH_FLAGS = ['plantGatewayStart', 'plantStartup'];

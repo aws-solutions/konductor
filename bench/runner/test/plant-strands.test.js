@@ -14,7 +14,8 @@ const { argsSha256 } = require('../lib/plant/canonical.js');
 const { plantCallsInStrandsTrace, plantCallsInGatewayLog, matchCalls } = require('../lib/plant/stream-match.js');
 const { censusProblems } = require('../lib/plant/strands-adapter.js');
 const { preflightStrands } = require('../lib/plant/strands-census.js');
-const { isCountedStrands, ReleaseRefused } = require('../lib/plant/intake.js');
+const { strandsSuiteOf, countingOf, ReleaseRefused } = require('../lib/plant/intake.js');
+const { NOT_COUNTED } = require('../lib/plant/score.js');
 const { resolveArm, parseArmSpec, isPlantArmId } = require('../lib/arms.js');
 const { executeRun } = require('../lib/run-one.js');
 const strands = require('../lib/harness/strands.js');
@@ -117,12 +118,16 @@ test('census problems count as mismatches only when the arm forbids hooks', () =
   assert.equal(matchOf(trace, calls, { forbidHooks: true }).mismatches, 1);
 });
 
-test('a Strands suite is counted only with a pinned SDK and a real model; a wrong SDK is refused', () => {
+test('a fake model is a control; a real model is a real suite, not counted without an SDK pin; a wrong SDK is refused', () => {
   const pinned = { versions: { strands: { version: '1.65.0' } } };
-  assert.equal(isCountedStrands(pinned, { version: '1.65.0' }, 'fake:/s.json'), false);
-  assert.equal(isCountedStrands({}, { version: '1.65.0' }, 'bedrock:x'), false);
-  assert.equal(isCountedStrands(pinned, { version: '1.65.0' }, 'bedrock:x'), true);
-  assert.throws(() => isCountedStrands(pinned, { version: '1.64.0' }, 'bedrock:x'), ReleaseRefused);
+  const sdk = { version: '1.65.0' };
+  assert.deepEqual(strandsSuiteOf(pinned, sdk, 'fake:/s.json'), { control: true, notCounted: [] });
+  assert.deepEqual(strandsSuiteOf({}, sdk, 'bedrock:x'), { control: false, notCounted: [NOT_COUNTED.noStrandsPin] });
+  assert.deepEqual(strandsSuiteOf(pinned, sdk, 'bedrock:x'), { control: false, notCounted: [] });
+  assert.throws(() => strandsSuiteOf(pinned, { version: '1.64.0' }, 'bedrock:x'), ReleaseRefused);
+  // The plant-r2 trial: a real model, no SDK pin, --isolate none. A real suite, not counted, with both reasons named.
+  assert.deepEqual(countingOf({ control: false, mode: 'none', platform: 'linux', reasons: [NOT_COUNTED.noStrandsPin] }),
+    { counted: false, comparable: false, notCounted: [NOT_COUNTED.noStrandsPin, NOT_COUNTED.noSandbox] });
 });
 
 test('the launcher env passes BYPASS_TOOL_CONSENT and no credential path', () => {

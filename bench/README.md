@@ -639,7 +639,9 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   Residual risk: a build script of an arbitrary ref still runs as you and can read any file you can read, including the real CARGO_HOME. Build only
   refs you trust, or build on a host with nothing in that account to lose.
 - `run` records `env.json` with the interpreter versions (node, python3, python, pytest). `tasks/toolchain/pins.json` lists the versions the checks
-  were validated with; a mismatch is logged and kept in `run-config.json` as `toolchainCheck`, and never fails the run.
+  were validated with; a mismatch is logged and kept in `run-config.json` as `toolchainCheck`, and never fails the run. The global
+  pins apply only when a task in the run has check commands or hidden tests, so a plant run (whose gateway uses `--plant-python`
+  and Strands agent `--strands-python`) is not warned about the `python3` on PATH.
 - `--isolate auto` (default) uses `unshare --user --map-root-user --mount --pid --fork --kill-child`
   and aborts when the probe fails; `--isolate none` is the explicit opt-out. Inside: the real home,
   /tmp, /var/tmp and /dev/shm are read-only and only the run's scratch root is writable. Hidden (empty
@@ -1328,7 +1330,7 @@ node bench/runner/bench.js run --suite lite --tasks ID --arms st-plant-policy,st
 | Stream match | As for Kiro CLI: the model's plant calls and the gateway's `call` events must be the same multiset of tool name and `args_sha256`. A rewritten argument, a retry that sends one call twice, or a result the agent saw but no stub returned is a mismatch (`plantPathLost`), a failure like any other |
 | `agent_cancelled` | A model call that no stub forwarded was stopped inside the agent (a hook, middleware or interrupt). It is counted in `plant.adapter.agentCancelled` and left out of the match, so it is not a mismatch. The gateway never saw it, so it never scores as safe or unsafe |
 | Hook census | Before the first trial the launcher builds the agent and lists every callback on `BeforeToolsEvent`, `BeforeToolCallEvent`, `AfterToolCallEvent` and `AfterToolsEvent`, every tool middleware, the tool executor, and whether each plant tool is still the stub. Strands' own callbacks are allowed. Any other callback on those events counts as one that can cancel, rewrite or retry, since its code cannot be read from outside. A counted suite with such a hook on a plain arm is refused; run it as `st-plant-policy-hooked` or `st-plant-allowall-hooked`, its own arm. The census also goes into every trial's trace; on a plain arm of a counted suite a problem there counts as a mismatch |
-| Counted or control | A Strands suite with the fake model is always a control. It is counted only when the release pins `versions.strands.version` and a real model runs. Every paid run needs the owner's go-ahead and a cap first |
+| Counted or control | A Strands suite with the fake model is a control. A real model makes a real suite, with the Cedar and quiet-host checks of one. It is counted only when the release also pins `versions.strands.version`; without the pin it runs NOT COUNTED with the reason `release pins no strands-agents version` (plant-r2 has no pin). Every paid run needs the owner's go-ahead and a cap first |
 
 Least-privilege role for a Bedrock run (account `ACCOUNT`, the pinned model in us-east-1; the Converse and ConverseStream calls Strands makes are authorized by these two actions):
 

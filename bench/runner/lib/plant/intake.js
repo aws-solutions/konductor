@@ -177,15 +177,16 @@ function isCountedSuite(opts, kiroBin, manifest, versionOfBin) {
 }
 
 /**
- * True when a Strands suite is counted: the release pins `versions.strands.version` (the strands-agents version) and
- * the model is a real one. A scripted `fake:` model is always a control. Throws ReleaseRefused when the pin and the
- * interpreter's `strands.version` differ, so a wrong SDK is refused rather than run as a control.
+ * What kind of suite a Strands run is: `{control, notCounted}`. A scripted `fake:` model is a control. A real model is a
+ * real suite; when the release pins no `versions.strands.version` it is not counted, and `notCounted` names why. Throws
+ * ReleaseRefused when the pin and the interpreter's `strands.version` differ, so a wrong SDK is refused, not run.
  */
-function isCountedStrands(manifest, strands, model) {
+function strandsSuiteOf(manifest, strands, model) {
+  if (String(model).startsWith('fake:')) return { control: true, notCounted: [] };
   const pinned = manifest.versions?.strands?.version;
-  if (!pinned || String(model).startsWith('fake:')) return false;
+  if (!pinned) return { control: false, notCounted: [NOT_COUNTED.noStrandsPin] };
   if (strands?.version !== pinned) throw new ReleaseRefused(`strands-agents ${strands?.version} is not the pinned ${pinned}`);
-  return true;
+  return { control: false, notCounted: [] };
 }
 
 /** Throws ReleaseRefused when the out dir shares a filesystem with scratch or home (NFR-12, counted suites with isolation). */
@@ -199,12 +200,14 @@ function checkOutFilesystem(outDir, others) {
 /**
  * Whether a plant suite is counted and comparable, and why not: `{counted, comparable, notCounted}`. A control suite is
  * neither, with no reason (it is a control). Any other suite is counted only in a comparable isolation mode on Linux and on
- * a quiet host; `noise` lists the host's listeners outside the allowlist (hostNoise). `notCounted` holds the NOT_COUNTED
+ * a quiet host; `noise` lists the host's listeners outside the allowlist (hostNoise), and `reasons` adds reasons of the suite's
+ * own (strandsSuiteOf). `notCounted` holds the NOT_COUNTED
  * reasons. Comparable is the same as counted: a suite that is not counted is never comparable.
  */
-function countingOf({ control, mode, platform = process.platform, noise = [] }) {
+function countingOf({ control, mode, platform = process.platform, noise = [], reasons = [] }) {
   if (control) return { counted: false, comparable: false, notCounted: [] };
   const notCounted = [
+    ...reasons,
     ...(platform === 'linux' && isComparableMode(mode) ? [] : [NOT_COUNTED.noSandbox]),
     ...(noise.length ? [NOT_COUNTED.noisyHost] : []),
   ];
@@ -268,7 +271,8 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
     if (Buffer.byteLength(socketParent) + SOCKET_SUFFIX_BYTES > SOCKET_PATH_MAX) throw new ReleaseRefused(`socket paths under ${socketParent} would pass ${SOCKET_PATH_MAX} bytes`);
     release = intakeRelease({ dir, expectedSha256, privateRoot, keys });
     const strands = arms[0].runtime === 'strands';
-    const control = strands ? !isCountedStrands(release.manifest, ctx.strands, ctx.config.model) : !isCountedSuite(opts, ctx.kiroBin, release.manifest, versionOfBin);
+    const kind = strands ? strandsSuiteOf(release.manifest, ctx.strands, ctx.config.model) : { control: !isCountedSuite(opts, ctx.kiroBin, release.manifest, versionOfBin), notCounted: [] };
+    const { control } = kind;
     const comparableMode = isComparableMode(ctx.isolation.mode);
     let noise = [];
     if (!control) {
@@ -286,7 +290,7 @@ function preparePlantSuite({ opts, arms, tasks, parallel, outDir, ctx, repo, key
     if (!release.sha256Of(REFUSAL_RULE)) throw new ReleaseRefused(`the release lacks ${REFUSAL_RULE}`);
     return {
       release, privateRoot, socketParent, control, hostNoise: noise, deadlines, makeToken, readListeners,
-      ...countingOf({ control, mode: ctx.isolation.mode, noise }),
+      ...countingOf({ control, mode: ctx.isolation.mode, noise, reasons: kind.notCounted }),
       python: opts['plant-python'] && opts['plant-python'] !== true ? opts['plant-python'] : 'python3',
       isolationMode: ctx.isolation.mode,
       tasks: bindTasks(tasks, release),
@@ -308,4 +312,4 @@ function removePrivateRoot(privateRoot, releaseRoot) {
   fs.rmSync(privateRoot, { recursive: true, force: true });
 }
 
-module.exports = { oddFileReason, refuseLauncher, isCountedStrands, intakeRelease, discardRelease, preparePlantSuite, countingOf, refuseInside, setModes, ReleaseRefused };
+module.exports = { oddFileReason, refuseLauncher, strandsSuiteOf, intakeRelease, discardRelease, preparePlantSuite, countingOf, refuseInside, setModes, ReleaseRefused };

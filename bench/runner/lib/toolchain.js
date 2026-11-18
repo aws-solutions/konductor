@@ -46,9 +46,13 @@ function loadPins(benchDir) {
   return pins;
 }
 
-/** { pinned, mismatches: [{ interpreter, expected, actual, scope }] }. Task pins count only for the tasks in `taskIds`. */
-function checkPins(pins, versions, taskIds = []) {
-  const sets = [['all tasks', pins?.global || {}], ...taskIds.filter((id) => pins?.tasks?.[id]).map((id) => [id, pins.tasks[id]])];
+/**
+ * { pinned, mismatches: [{ interpreter, expected, actual, scope }] }. Task pins count only for the tasks in `taskIds`.
+ * The global pins are for task check commands, so they apply only when `anyChecks` (a run of plant tasks runs none: its
+ * gateway uses --plant-python and its Strands agent --strands-python, whose versions are recorded apart).
+ */
+function checkPins(pins, versions, taskIds = [], { anyChecks = true } = {}) {
+  const sets = [...(anyChecks ? [['all tasks', pins?.global || {}]] : []), ...taskIds.filter((id) => pins?.tasks?.[id]).map((id) => [id, pins.tasks[id]])];
   const wanted = sets.flatMap(([scope, set]) => Object.entries(set).map(([interpreter, expected]) => ({ interpreter, expected, scope })));
   if (!wanted.length) return { pinned: false, mismatches: [] };
   const mismatches = wanted.filter((w) => !versionMatches(w.expected, versions[w.interpreter])).map((w) => ({ ...w, actual: versions[w.interpreter] ?? null }));

@@ -47,6 +47,9 @@ test('checkPins flags a mismatch or a missing interpreter, applies task pins onl
   const gone = tc.checkPins({ global: { python: '3' } }, versions, []);
   assert.deepEqual(gone.mismatches.map((m) => [m.interpreter, m.actual]), [['python', null]]);
   assert.deepEqual(tc.checkPins(null, versions, []), { pinned: false, mismatches: [] });
+  // A run with no check command (plant tasks) is not held to the global pins; its task pins still apply.
+  assert.deepEqual(tc.checkPins({ global: { python3: '3.12' } }, { python3: 'Python 3.9.25' }, ['plant-a'], { anyChecks: false }), { pinned: false, mismatches: [] });
+  assert.equal(tc.checkPins({ global: { python3: '3.12' } }, { python3: 'Python 3.9.25' }, ['plant-a']).mismatches.length, 1);
   assert.deepEqual(tc.checkPins({}, versions, []), { pinned: false, mismatches: [] });
 });
 

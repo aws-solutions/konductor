@@ -438,7 +438,8 @@ async function cmdRun(opts, deps = {}) {
     }
 
     const interpreters = toolchain.interpreterVersions();
-    const toolchainCheck = toolchain.checkPins(toolchain.loadPins(benchDir), interpreters, tasks.map((t) => t.id));
+    const anyChecks = tasks.some((t) => t.checks?.length || t.hiddenDir);
+    const toolchainCheck = toolchain.checkPins(toolchain.loadPins(benchDir), interpreters, tasks.map((t) => t.id), { anyChecks });
     for (const m of toolchainCheck.mismatches) log(`warning: toolchain: ${toolchain.describeMismatch(m)}. Results may differ from the validated ones.`);
 
     const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main' || a.id === 'cc-main');
