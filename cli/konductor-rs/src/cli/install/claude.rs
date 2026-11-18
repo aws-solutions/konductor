@@ -53,7 +53,7 @@ use super::resource_rewrite::{
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
 use super::InstallStrategy;
-use crate::cli::synth::claude::MCP_ALLOWED_TOOLS_SIDECAR_FILE;
+use crate::cli::synth::claude::{is_mcp_rule_safe_name, MCP_ALLOWED_TOOLS_SIDECAR_FILE};
 use crate::cli::synth::kiro_cli_v2::{
     AGENTS_CONTENT_TYPE_DIR, SKILLS_CONTENT_TYPE_DIR, SOPS_CONTENT_TYPE_DIR,
 };
@@ -502,17 +502,11 @@ fn read_mcp_allowed_tools_sidecar(agents_dir: &Path) -> Result<Option<McpAllowed
         .map_err(|e| format!("failed to read {}: {e}", path.display()))?;
     let sidecar: McpAllowedTools = serde_json::from_str(&text)
         .map_err(|e| format!("failed to parse {}: {e}", path.display()))?;
-    let is_rule_safe = |name: &str| {
-        !name.is_empty()
-            && name
-                .chars()
-                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-    };
     for (agent, servers) in &sidecar {
         for (server, tools) in servers {
             if let Some(bad) = std::iter::once(server)
                 .chain(tools)
-                .find(|name| !is_rule_safe(name))
+                .find(|name| !is_mcp_rule_safe_name(name))
             {
                 return Err(format!(
                     "{} lists {bad:?} for agent '{agent}'; MCP server and tool names may only \

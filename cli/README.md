@@ -258,7 +258,11 @@ When a `--harness claude` install includes an agent that declares the `aws-mcp` 
   `mcp__aws-mcp__<tool>`, so Claude Code pre-approves the same read-only tools Kiro CLI
   does. `synth` records them in `dist/claude/agents/_mcp_allowed_tools.json`. A dist
   without that file (synthed by an older konductor) gets only the ask rule, and install
-  says so.
+  says so. Only single named tools are recorded: `synth` leaves out a whole-server
+  (`@aws-mcp`) or wildcard (`@aws-mcp/*`) entry, or any name that is not letters, digits,
+  `_` and `-`, and prints a `konductor: warning:` naming the agent and entry. A wildcard
+  allow would also cover `aws___run_script`. Install still rejects a sidecar with such a
+  name.
 
 The merge only appends. It never removes or reorders your entries, and a reinstall that
 adds nothing leaves the file untouched. If one of your entries already covers a rule (a

@@ -62,8 +62,10 @@ not per individual commit.
   `permissions.allow` in `.claude/settings.json`, as `mcp__aws-mcp__<tool>`, so Claude Code
   runs them without asking, as Kiro CLI does. `konductor synth` records the list in
   `dist/claude/agents/_mcp_allowed_tools.json`; a dist without that file gets only the
-  `aws___run_script` ask rule. A user `deny` or `ask` entry that covers a tool is kept and
-  that tool is left out.
+  `aws___run_script` ask rule. Synth leaves a whole-server (`@aws-mcp`), wildcard
+  (`@aws-mcp/*`) or other non rule-safe entry out of that file with a warning naming the agent
+  and entry, so a wildcard allow never covers `aws___run_script` and never breaks install.
+  A user `deny` or `ask` entry that covers a tool is kept and that tool is left out.
 - `synth` warns when an agent's Claude Code skill preload (`clientConfig.claudeCli.skills`) is over
   32 KiB or 32 names, and names the skills Claude Code would drop. `-v` prints one
   `claude preload:` line per agent, and `synth --json` adds a `claude_preload` array. Each Claude
