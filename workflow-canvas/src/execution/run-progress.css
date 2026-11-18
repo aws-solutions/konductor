@@ -1,0 +1,67 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * The progress strip of a run, for the light and the dark mode. A test
+ * (run-progress-contrast.test.ts) checks that these colours are the theme's
+ * and reach WCAG AA in both modes.
+ */
+.wf-progress {
+  --wf-progress-bg: #ffffff;
+  --wf-progress-text: #16131f;
+  --wf-progress-text-muted: #56516a;
+  --wf-progress-track: #faf8f4;
+  --wf-progress-edge: #7a7490;
+  --wf-progress-passed: #0b7a52;
+  --wf-progress-blocked: #b3261e;
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--wf-progress-bg);
+  color: var(--wf-progress-text);
+}
+
+:root[data-theme='dark'] .wf-progress {
+  --wf-progress-bg: #171331;
+  --wf-progress-text: #f5f3ee;
+  --wf-progress-text-muted: #9c93b8;
+  --wf-progress-track: #1c1740;
+  --wf-progress-edge: #8f86ad;
+  --wf-progress-passed: #3ddc97;
+  --wf-progress-blocked: #ff8b8b;
+}
+
+.wf-progress-summary {
+  margin: 0;
+  font-weight: 600;
+}
+
+.wf-progress-bar {
+  display: flex;
+  gap: 2px;
+  flex: 1 1 160px;
+  min-width: 120px;
+  height: 8px;
+  border: 1px solid var(--wf-progress-edge);
+  border-radius: 8px;
+  background: var(--wf-progress-track);
+  overflow: hidden;
+}
+
+.wf-progress-passed {
+  background: var(--wf-progress-passed);
+}
+
+.wf-progress-blocked {
+  background: var(--wf-progress-blocked);
+}
+
+.wf-progress-elapsed {
+  margin: 0;
+  color: var(--wf-progress-text-muted);
+  font-family: var(--wf-font-code);
+  font-variant-numeric: tabular-nums;
+}
