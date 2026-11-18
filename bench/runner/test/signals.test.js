@@ -8,6 +8,8 @@ const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const { tmp, makeBench } = require('./helpers.js');
 const { makeFakeKiro, writeFakeAuth } = require('./fake-kiro.js');
+const { makeFakeClaude } = require('./fake-claude.js');
+const { makeFakeOpencode } = require('./fake-opencode.js');
 const { spawnWithTimeout } = require('../lib/run-one.js');
 const procs = require('../lib/procs.js');
 
@@ -79,6 +81,21 @@ test('the fake agent replaces started.json by a rename, so a poller never reads 
     assert.notEqual(fs.statSync(file).ino, before, 'started.json was rewritten in place');
     assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).pid > 0, true);
     assert.deepEqual(fs.readdirSync(probe).filter((n) => n.includes('.tmp')), []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the fake claude and opencode agents also write their started files by a rename', () => {
+  const root = tmp();
+  try {
+    makeFakeClaude(path.join(root, 'claude'), { dir: root });
+    makeFakeOpencode(path.join(root, 'oc'), { dir: root });
+    const scripts = [path.join(root, 'claude', '9.9.9', 'fake-claude.js'), path.join(root, 'oc', 'opencode')].map((f) => fs.readFileSync(f, 'utf8'));
+    for (const text of scripts) {
+      assert.match(text, /writeAtomic\(path\.join\(cfg\.dir, 'started/);
+      assert.doesNotMatch(text, /writeFileSync\(path\.join\(cfg\.dir, 'started/);
+    }
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write, makeBench } = require('./helpers.js');
 const { makeFakeKiro } = require('./fake-kiro.js');
+const { recordGroups, groupGone } = require('./agent-groups.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { parseStream } = require('../lib/stream.js');
@@ -198,6 +199,7 @@ test('a non end_turn stop reason is treated as an ask and answered with the defa
 
 test('the task timeout covers all turns together and a timeout in a later turn ends the run as a timeout', async () => {
   const s = setup({ turns: [{ finalText: ASK_UNIT, delayMs: 1200 }, { sleepSec: 30 }] }, { timeoutSec: 2 });
+  const groups = recordGroups();
   try {
     const r = await run(s);
     assert.equal(r.status, 'timeout');
@@ -205,10 +207,10 @@ test('the task timeout covers all turns together and a timeout in a later turn e
     assert.equal(r.creditsCensored, true);
     assert.ok(r.wallClockMs < 2800, `wall clock ${r.wallClockMs} ms shows one 2 s budget, not 2 s per turn`);
     assert.ok(r.wallClockMs >= 1900);
-    const pid = s.turn(2).pid;
-    assert.throws(() => process.kill(pid, 0), /ESRCH/, 'the killed turn left no process behind');
+    assert.equal(groups.pids.length, 2, 'one agent group per turn');
+    assert.ok(groups.pids.every(groupGone), 'the killed turn left no process behind');
     assert.deepEqual(fs.readdirSync(s.scratchDir), []);
-  } finally { s.cleanup(); }
+  } finally { groups.restore(); s.cleanup(); }
 });
 
 test('a turn that exits non-zero ends the run without resuming', async () => {

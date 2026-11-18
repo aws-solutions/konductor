@@ -10,6 +10,7 @@ const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const { tmp, write, makeBench } = require('./helpers.js');
 const { makeFakeOpencode } = require('./fake-opencode.js');
+const { recordGroups, groupGone } = require('./agent-groups.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { harnessFor, opencode: oc, kiro } = require('../lib/harness/index.js');
@@ -180,6 +181,7 @@ test('a throttling error is flagged and the run is an error, not a success', asy
 test('a timed-out run keeps the partial database rows and marks the cost censored', async () => {
   const s = setup({ sleepSec: 30 });
   s.task.timeoutSec = 1;
+  const groups = recordGroups();
   try {
     const r = await executeRun({ arm: OC_VANILLA, task: s.task, replicate: 1, ctx: s.ctx, prepared: null, outDir: s.outDir });
     assert.equal(r.status, 'timeout');
@@ -188,9 +190,11 @@ test('a timed-out run keeps the partial database rows and marks the cost censore
     assert.equal(r.turnDurationMs, null);
     assert.equal(r.credits, null);
     assert.equal(typeof r.costUsd, 'number', 'the rows present at the kill are used');
-    assert.throws(() => process.kill(started(s).pid, 0), /ESRCH/);
+    assert.equal(groups.pids.length, 1);
+    assert.ok(groupGone(groups.pids[0]), 'the killed agent left no process behind');
     assert.deepEqual(fs.readdirSync(s.scratchDir), []);
   } finally {
+    groups.restore();
     s.cleanup();
   }
 });
@@ -350,8 +354,11 @@ for (const signal of ['SIGTERM', 'SIGHUP']) {
       child.kill(signal);
       const r = await done;
       assert.notEqual(r.code, 0);
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      assert.throws(() => process.kill(started(s).pid, 0), /ESRCH/);
+      // The runner sent SIGKILL to the group before it exited; the kernel ends and reaps the fake on its own time.
+      const pid = started(s).pid;
+      const killedBy = Date.now() + 10000;
+      while (!groupGone(pid) && Date.now() < killedBy) await new Promise((resolve) => setTimeout(resolve, 50));
+      assert.ok(groupGone(pid), 'the opencode group is gone');
       assert.deepEqual(fs.readdirSync(path.join(s.root, 'tmp'), { recursive: true }).filter((f) => /credentials|\.aws/.test(String(f))), []);
       assert.deepEqual(fs.readdirSync(path.join(s.root, 'tmp')).filter((n) => n.startsWith('w-')), []);
       assert.equal(JSON.parse(fs.readFileSync(path.join(out, 'summary.json'), 'utf8')).interrupted, signal);

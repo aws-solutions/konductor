@@ -6,10 +6,13 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { writeAtomic } = require('../lib/backfill.js');
 
 const SCRIPT = `#!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
+// started.json is replaced by a rename, so a test that polls for it never parses a half-written file.
+${writeAtomic.toString()}
 const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'fake-opencode.config.json'), 'utf8'));
 const args = process.argv.slice(2);
 if (args[0] === '--version') { console.log(cfg.version || '1.19.5'); process.exit(0); }
@@ -45,8 +48,8 @@ const startedRecord = JSON.stringify({
   agents: fs.existsSync(path.join(process.env.XDG_CONFIG_HOME, 'opencode', 'agents')) ? fs.readdirSync(path.join(process.env.XDG_CONFIG_HOME, 'opencode', 'agents')).sort() : [],
   rg: fs.existsSync(path.join(process.env.XDG_CACHE_HOME, 'opencode', 'bin', 'rg')),
 });
-fs.writeFileSync(path.join(cfg.dir, 'started.json'), startedRecord);
-fs.writeFileSync(path.join(cfg.dir, 'started-' + (turn + 1) + '.json'), startedRecord);
+writeAtomic(path.join(cfg.dir, 'started.json'), startedRecord);
+writeAtomic(path.join(cfg.dir, 'started-' + (turn + 1) + '.json'), startedRecord);
 if (cfg.sleepSec) { setTimeout(() => {}, cfg.sleepSec * 1000); return; }
 fs.writeFileSync(path.join(dir, 'hello.txt'), 'hello\\n');
 if (cfg.leak) console.log(JSON.stringify({ type: 'tool_use', sessionID: 'x', part: { type: 'tool', tool: 'bash', state: { output: fs.readFileSync(credFile, 'utf8') } } }));

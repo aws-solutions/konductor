@@ -9,6 +9,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { tmp, write, makeBench } = require('./helpers.js');
 const { makeFakeClaude } = require('./fake-claude.js');
+const { recordGroups, groupGone } = require('./agent-groups.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { harnessFor, claudeCode: cc, kiro, opencode } = require('../lib/harness/index.js');
@@ -583,6 +584,7 @@ test('a secret the agent prints is scrubbed from every output and the run is fla
 test('a timed-out run is killed, has no result line and its cost is censored', async () => {
   const s = setup('sigterm', { sleepSec: 30 });
   s.task.timeoutSec = 1;
+  const groups = recordGroups();
   try {
     const r = await run(s);
     assert.equal(r.status, 'timeout');
@@ -590,10 +592,12 @@ test('a timed-out run is killed, has no result line and its cost is censored', a
     assert.equal(r.costCensored, true);
     assert.equal(r.creditsCensored, false);
     assert.equal(r.turnDurationMs, null);
-    assert.throws(() => process.kill(started(s).pid, 0), /ESRCH/);
+    assert.equal(groups.pids.length, 1);
+    assert.ok(groupGone(groups.pids[0]), 'the killed agent left no process behind');
     assert.deepEqual(fs.readdirSync(s.scratchDir), []);
     assert.deepEqual(fs.readdirSync(s.tmpBase), [], 'the task directory made before the kill is removed');
   } finally {
+    groups.restore();
     s.cleanup();
   }
 });

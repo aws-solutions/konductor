@@ -9,6 +9,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { MIN_BINARY_BYTES } = require('../lib/harness/claude-code.js');
+const { writeAtomic } = require('../lib/backfill.js');
 
 const SCRIPT = `#!/usr/bin/env node
 // the real binary carries the --include-hook-events and --effort flag text; the fake does too so the harness detects them
@@ -20,7 +21,9 @@ const args = process.argv.slice(2);
 if (args[0] === '--version') { console.log(cfg.version || '9.9.9 (fake)'); process.exit(0); }
 const cfgDir = process.env.CLAUDE_CONFIG_DIR;
 const list = (d) => { try { return fs.readdirSync(d).sort(); } catch { return null; } };
-fs.writeFileSync(path.join(cfg.dir, 'started.json'), JSON.stringify({
+// started.json is replaced by a rename, so a test that polls for it never parses a half-written file.
+${writeAtomic.toString()}
+writeAtomic(path.join(cfg.dir, 'started.json'), JSON.stringify({
   pid: process.pid, cwd: process.cwd(), home: process.env.HOME, configDir: cfgDir, args, env: process.env, envKeys: Object.keys(process.env),
   rules: list(path.join(cfgDir, 'rules')), agents: list(path.join(cfgDir, 'agents')), configFiles: list(cfgDir),
   stdinIsTty: require('tty').isatty(0),

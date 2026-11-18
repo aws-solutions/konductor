@@ -11,6 +11,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { tmp, makeBench } = require('./helpers.js');
 const { makeFakeKiro } = require('./fake-kiro.js');
+const { recordGroups, groupGone } = require('./agent-groups.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
 const sandbox = require('../lib/sandbox.js');
@@ -158,15 +159,33 @@ test('a snapshot failure sets a flag and does not skip the checks', async () => 
 test('a timed-out run is credit-censored and has no turn duration', async () => {
   const s = setup({ sleepSec: 30 });
   s.task.timeoutSec = 1;
+  const groups = recordGroups();
   try {
     const r = await executeRun({ arm: ARM, task: s.task, replicate: 1, ctx: s.ctx, prepared: null, outDir: s.outDir });
     assert.equal(r.status, 'timeout');
     assert.equal(r.creditsCensored, true);
     assert.equal(r.creditsLowerBound, 0);
     assert.equal(r.turnDurationMs, null);
-    const pid = JSON.parse(fs.readFileSync(path.join(s.probe, 'started.json'), 'utf8')).pid;
-    assert.throws(() => process.kill(pid, 0), /ESRCH/);
+    assert.equal(groups.pids.length, 1);
+    assert.ok(groupGone(groups.pids[0]), 'the killed agent left no process behind');
   } finally {
+    groups.restore();
+    s.cleanup();
+  }
+});
+
+test('a timed-out agent killed before it wrote its pid file is still checked gone, from the runner registry', async () => {
+  const s = setup({ startDelayMs: 5000, sleepSec: 30 });
+  s.task.timeoutSec = 1;
+  const groups = recordGroups();
+  try {
+    const r = await executeRun({ arm: ARM, task: s.task, replicate: 1, ctx: s.ctx, prepared: null, outDir: s.outDir });
+    assert.equal(r.status, 'timeout');
+    assert.equal(fs.existsSync(path.join(s.probe, 'started.json')), false, 'the fake never got to write its pid file');
+    assert.equal(groups.pids.length, 1);
+    assert.ok(groupGone(groups.pids[0]));
+  } finally {
+    groups.restore();
     s.cleanup();
   }
 });
