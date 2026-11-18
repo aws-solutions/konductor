@@ -68,7 +68,40 @@ Each lens has its own pass skill, which is the single source for that lens's che
 
 ## Quality Gate
 
-Severity for each finding comes from the pass skill that owns its lens. Running directly, with no pass skill loaded, rate a finding CRITICAL when it discloses internal detail to a caller, corrupts or loses data, or lets unvalidated input reach a query; IMPORTANT when a guarantee is weakened but still mostly held; SUGGESTION otherwise. A CRITICAL finding blocks approval; IMPORTANT should be fixed before merge; SUGGESTION is optional.
+Severity for each finding comes from the pass skill that owns its lens. Running directly, with no pass skill loaded, rate against the list below. It is the union of the three pass skills' severity guidance, each item taken at the strictest rating any pass gives it, so a direct run rates the same diff no lower than a pass does. A CRITICAL finding blocks approval; IMPORTANT should be fixed before merge; SUGGESTION is optional.
+
+**CRITICAL:**
+
+- A stack trace, internal ID, internal error code, or raw exception message reaching a caller
+- Unvalidated input reaching a query, path, or command
+- A hardcoded credential, API key, or embedded token
+- A widened IAM policy, grant, or trust relationship on a production role
+- A multi-item mutation that has to succeed or fail as a unit, with no transaction
+- An unconditional overwrite on a resource that can see concurrent writes
+- A delete or overwrite on an error path with no rollback or compensation
+- A breaking change to a shipped API or data model with no migration path
+- A field the write path requires that the read path does not default, leaving existing records unparseable
+
+**IMPORTANT:**
+
+- A request payload, response body, or auth header logged at info or debug level
+- A write path with no test exercising the mutation
+- A map or optional access with no existence guard
+- A new field missing validation or a default in one or more entry points
+- Validation that runs after the side effect it is meant to guard
+- A handler or route registered but not wired into the router, authorizer, or middleware
+- A retry of a non-idempotent operation with no idempotency key
+- Reimplementing an existing transaction or batch-write helper, bypassing shared validation middleware or a schema validator, bypassing an established error-mapping layer, or decoding an opaque token inline where a utility exists
+
+**SUGGESTION:**
+
+- An abstraction boundary leak that does not itself expose sensitive data
+- A condition expression present but weaker than warranted
+- A log field that could carry something sensitive under some inputs
+- An extra query where a write's return value would serve
+- An enum, error code, or status name change that consumers may pattern-match on
+
+For a finding the list does not name, rate it CRITICAL when it discloses internal detail to a caller, corrupts or loses data, or lets unvalidated input reach a query; IMPORTANT when a guarantee is weakened but still mostly held; SUGGESTION otherwise.
 
 Present findings as: CRITICAL → IMPORTANT → SUGGESTION. If invoked directly (not via SOP): Ask: "Fix these issues? [y/n]"
 
