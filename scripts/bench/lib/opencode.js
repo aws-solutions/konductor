@@ -2,9 +2,12 @@
 /**
  * OpenCode judge client: one judge call through the OpenCode CLI on Bedrock.
  *
- * Each call gets a fresh private sandbox (mode 0700) with its own project config and its own XDG config,
- * data and state dirs, so no user config, MCP server, session database or background service is shared with
- * anything else. The config:
+ * Each call gets a fresh private sandbox (mode 0700) with its own project config, its own home and its own XDG
+ * config, data and state dirs, so no user config, MCP server, plugin, session database or background service is shared
+ * with anything else. OpenCode merges every opencode.json and loads every .opencode/plugin file it finds walking up
+ * from its working directory, and loads ~/.opencode too (checked with 1.19.5), so the sandbox is cut off from both:
+ * its root holds a minimal git directory, which ends the walk-up there (a project directory is bounded by its git
+ * root), and HOME is the sandbox's own `home`. The config:
  *   - enables only the Bedrock provider and turns sharing off;
  *   - denies every tool, including any tool a newer OpenCode adds (`"*": "deny"`), and turns code execution
  *     off (`tools.execute: false`) so no fetch() runs. A judge gets everything it needs inside the prompt;
@@ -248,10 +251,11 @@ function callCeiling({
 }
 
 /**
- * Environment for one judge call: the parent's environment through childEnv (no profile), with OpenCode's
- * config, data and state dirs pointed into the call's sandbox, so that the user's global OpenCode config
- * (which can declare MCP servers) is not loaded and no session database or server state is shared. Tool
- * shims that find their own data through XDG_* (mise) have their dirs pinned to the current values first.
+ * Environment for one judge call: the parent's environment through childEnv (no profile), with HOME and OpenCode's
+ * config, data and state dirs pointed into the call's sandbox, so that the user's global OpenCode config and
+ * ~/.opencode (which can declare MCP servers and plugins) are not loaded and no session database or server state is
+ * shared. What finds its data through the real HOME or XDG_* is pinned to the current values first: tool shims
+ * (mise), the AWS shared config and credentials files, and the OpenCode cache (a catalog download, not config).
  *
  * `credentials` ({ accessKeyId, secretAccessKey, sessionToken }, exported by the job for the configured profile)
  * replace every credential variable of the parent, as for the subject runner: OpenCode reads no profile, so
@@ -269,12 +273,20 @@ function judgeEnv(sandbox, { region, base = process.env, credentials } = {}) {
   pin('MISE_CONFIG_DIR', 'XDG_CONFIG_HOME', '.config');
   pin('MISE_CACHE_DIR', 'XDG_CACHE_HOME', '.cache');
   pin('MISE_STATE_DIR', 'XDG_STATE_HOME', '.local/state');
+  // HOME is the sandbox's, so what the AWS SDK and OpenCode read through it must point at the real files.
+  for (const [name, file] of [
+    ['AWS_CONFIG_FILE', 'config'],
+    ['AWS_SHARED_CREDENTIALS_FILE', 'credentials'],
+  ])
+    if (base[name] === undefined) pinned[name] = path.join(home, '.aws', file);
+  pinned.XDG_CACHE_HOME = xdg('XDG_CACHE_HOME', '.cache');
   return childEnv({
     region,
     base: credentials ? withoutCredentialVars(base) : base,
     extra: {
       ...pinned,
       ...(credentials ? credentialVars(credentials) : {}),
+      HOME: sandbox.home,
       XDG_CONFIG_HOME: sandbox.xdgConfig,
       XDG_DATA_HOME: sandbox.xdgData,
       XDG_STATE_HOME: sandbox.xdgState,
@@ -333,7 +345,10 @@ function removeSandbox(root) {
 
 /**
  * Creates a call's sandbox (mode 0700, config file 0600) under `tmpRoot` and writes the lockdown config, with the
- * model's entry when `modelId` is given (then `maxOutputTokens` is its output limit).
+ * model's entry when `modelId` is given (then `maxOutputTokens` is its output limit). `home` is the HOME of the call.
+ * `.git` is the smallest directory git accepts as a repository (HEAD, objects, refs): it makes the sandbox root the
+ * git root of the project directory, and OpenCode stops looking for opencode.json and .opencode there instead of
+ * reading what sits in the temp dir or above it.
  */
 function makeSandbox({
   modelId = null,
@@ -354,17 +369,27 @@ function makeSandbox({
   const sandbox = {
     root,
     project: path.join(root, 'project'),
+    home: path.join(root, 'home'),
     xdgConfig: path.join(root, 'xdg-config'),
     xdgData: path.join(root, 'xdg-data'),
     xdgState: path.join(root, 'xdg-state'),
   };
+  const gitDir = path.join(root, '.git');
   for (const dir of [
     sandbox.project,
+    sandbox.home,
     sandbox.xdgConfig,
     sandbox.xdgData,
     sandbox.xdgState,
+    gitDir,
+    path.join(gitDir, 'objects'),
+    path.join(gitDir, 'refs'),
   ])
     fs.mkdirSync(dir, { mode: 0o700 });
+  fs.writeFileSync(path.join(gitDir, 'HEAD'), 'ref: refs/heads/main\n', {
+    mode: 0o600,
+    flag: 'wx',
+  });
   fs.writeFileSync(
     path.join(sandbox.project, 'opencode.json'),
     `${JSON.stringify(config, null, 2)}\n`,
