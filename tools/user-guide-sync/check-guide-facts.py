@@ -134,6 +134,19 @@ def withdrawn_command_problem(cmd: str, commands: list[str], hidden: set[str]) -
 # without skillNames (docs/user-guide/appendix/contributing.md, "Adding a skill to an agent").
 CLAUDE_ONLY_MARKER = re.compile(r"\bClaude Code only\b|\bonly in Claude Code\b")
 
+# A bundle roster row, in either of the two key spellings the published page
+# uses: `{ k: "name", v: "..." }` and `{"k":"name","v":"..."}`. Matching only
+# the unquoted form hid every row in the quoted one, which is where the
+# per-agent counts live.
+def ROSTER_ROW_RE_FOR(name: str) -> str:
+    return (r'\{\s*"?k"?\s*:\s*"' + re.escape(name)
+            + r'"\s*,\s*"?v"?\s*:\s*"(.*?)"\s*\}')
+
+
+# "38 · 2": declared skills, then the Claude Code preload. The rows in this
+# form state no unit, so a pattern anchored on the word "skills" skips them.
+ROSTER_COUNT_PAIR_RE = re.compile(r"\s*(\d+)\s*·\s*(\d+)\s*\Z")
+
 
 def html_pages_for_flags(root: Path):
     return [p for p in (root / "docs" / "site" / "user-guide.html",
@@ -276,24 +289,39 @@ def main() -> int:
                 fail(f"{page}: roster table has no Preloaded column")
             for row in rows:
                 name = strip_md(row[i_agent])
-                if name not in specs or len(row) <= max(i_model, i_skills):
+                # A row with fewer cells than the header declares used to be
+                # skipped, which turned a truncated roster row into a silent
+                # pass on every column it was missing. Report it instead.
+                if name not in specs:
+                    continue
+                if len(row) <= max(i_model, i_skills):
+                    fail(f"{page}: {name} roster row has {len(row)} cell(s), too few for the "
+                         f"Model and Skills columns the header declares")
                     continue
                 checked.add(name)
                 want_n = len(specs[name]["skill_names"])
                 if row[i_skills] != str(want_n):
                     fail(f"{page}: {name} Skills column says {row[i_skills]!r}, spec declares {want_n}")
-                if i_pre is not None and len(row) > i_pre:
-                    want_pre = len(specs[name]["claude_skills"])
-                    if row[i_pre] != str(want_pre):
-                        fail(f"{page}: {name} Preloaded column says {row[i_pre]!r}, "
-                             f"spec preloads {want_pre}")
+                if i_pre is not None:
+                    if len(row) <= i_pre:
+                        fail(f"{page}: {name} roster row has {len(row)} cell(s), so it has no "
+                             f"Preloaded column cell")
+                    else:
+                        want_pre = len(specs[name]["claude_skills"])
+                        if row[i_pre] != str(want_pre):
+                            fail(f"{page}: {name} Preloaded column says {row[i_pre]!r}, "
+                                 f"spec preloads {want_pre}")
                 if row[i_model] != specs[name]["model"]:
                     fail(f"{page}: {name} Model says {row[i_model]!r}, spec says {specs[name]['model']!r}")
                 # SOP columns drift the same way the skill counts do -- one spec
                 # dropped a SOP as unusable and four places kept listing it.
                 # agents.md states a count; reference.md names them.
                 i_sops = next((header.index(h) for h in header if h.startswith("SOP")), None)
-                if i_sops is not None and len(row) > i_sops:
+                if i_sops is not None:
+                    if len(row) <= i_sops:
+                        fail(f"{page}: {name} roster row has {len(row)} cell(s), so it has no "
+                             f"SOP column cell")
+                        continue
                     want_sops = specs[name]["sops"]
                     cell = row[i_sops]
                     if header[i_sops] == "SOPs" and cell.isdigit():
@@ -377,10 +405,25 @@ def main() -> int:
             continue
         rel = page.relative_to(root)
         for name, spec in specs.items():
-            for m in re.finditer(
-                r'\{\s*k:\s*"' + re.escape(name) + r'",\s*v:\s*"(.*?)"\s*\}', rendered
-            ):
-                found = re.search(r"(\d+) skills", m.group(1))
+            for m in re.finditer(ROSTER_ROW_RE_FOR(name), rendered):
+                value = m.group(1)
+                # The eleven rows that carry the authoritative counts use the
+                # "declared · preloaded" form with no literal "skills", so the
+                # word-anchored pattern below never sees them.
+                pair = ROSTER_COUNT_PAIR_RE.match(value)
+                if pair:
+                    for got, want, what in (
+                        (pair.group(1), len(spec["skill_names"]), "declares"),
+                        (pair.group(2), len(spec["claude_skills"]), "preloads"),
+                    ):
+                        if got != str(want):
+                            card_fails.append(
+                                f"{rel}: {name} roster row says {got} for "
+                                f"{'declared' if what == 'declares' else 'preloaded'} skills, "
+                                f"spec {what} {want}"
+                            )
+                    continue
+                found = re.search(r"(\d+) skills", value)
                 if found and found.group(1) != str(len(spec["skill_names"])):
                     card_fails.append(
                         f"{rel}: {name} roster row says {found.group(1)} skills, "

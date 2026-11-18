@@ -1,11 +1,11 @@
 # Example Review Output
 
-Read this when writing a review report and you want to see the Output Format filled in for a real model.
+Read this before writing a review report: it is the Output Format in `SKILL.md` filled in for a real model.
 
 ````markdown
 ## Smithy Model Review: WeatherService
 
-### Critical Issues
+### CRITICAL
 
 **Type Safety** - WeatherData.temperature
 Issue: Temperature field is untyped String without constraints
@@ -16,7 +16,7 @@ Example:
 ```smithy
 @documentation("Temperature in Celsius. Range: -273.15 to 1000")
 @range(min: -273.15, max: 1000)
-Double TemperatureCelsius
+double TemperatureCelsius
 ```
 
 **Error Handling** - GetForecast operation
@@ -37,7 +37,25 @@ operation GetForecast {
 }
 ```
 
-### Warnings
+**Security** - WeatherService service
+Issue: The service has no auth scheme trait, so every operation can be called anonymously
+Impact: Anyone can read forecasts and call write operations without credentials
+Fix: Put an auth scheme on the service; operations inherit it
+Example:
+
+```smithy
+use aws.auth#sigv4
+use aws.protocols#restJson1
+
+@restJson1
+@sigv4(name: "weather")
+service WeatherService {
+    version: "2024-01-01"
+    operations: [GetForecast, ListLocations]
+}
+```
+
+### IMPORTANT
 
 **Documentation** - ListLocations operation
 Issue: Missing documentation on pagination behavior
@@ -49,23 +67,42 @@ Example:
 Lists available weather locations with pagination support.
 Returns up to 100 locations per request. Use nextToken for additional pages.
 """)
-@paginated(inputToken: "nextToken", outputToken: "nextToken", pageSize: "maxResults")
-operation ListLocations { ... }
+@readonly
+@http(method: "GET", uri: "/locations")
+@paginated(inputToken: "nextToken", outputToken: "nextToken", pageSize: "maxResults", items: "locations")
+operation ListLocations {
+    input := {
+        @httpQuery("nextToken")
+        nextToken: String
+
+        @httpQuery("maxResults")
+        @range(min: 1, max: 100)
+        maxResults: Integer
+    }
+    output := {
+        @required
+        locations: LocationList
+
+        nextToken: String
+    }
+}
 ```
 
 **Security** - User.email field
 Issue: Email field not marked as sensitive
-Recommendation: Mark PII with @sensitive trait
+Recommendation: Mark PII with the @sensitive trait on the shape the member targets; the trait cannot go on a member
 Example:
 
 ```smithy
+@sensitive
+string EmailAddress
+
 structure User {
-    @sensitive
-    email: String
+    email: EmailAddress
 }
 ```
 
-### Suggestions
+### SUGGESTION
 
 **Performance** - ListLocations operation
 Observation: No default page size specified

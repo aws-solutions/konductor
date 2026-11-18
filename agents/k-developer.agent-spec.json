@@ -20,10 +20,10 @@
         "code-review",
         "git-workflow",
         "find-aws-skills",
-        "asdlc-aspect-review",
+        "k-aspect-review",
         "socratic-elicitation",
         "deliberation-panel",
-        "asdlc-code-simplifier",
+        "k-code-simplifier",
         "agents-md-authoring",
         "design-impact-review",
         "persistent-memory",
@@ -45,7 +45,8 @@
           "mcp-proxy-for-aws-cli==1.7.0",
           "https://aws-mcp.us-east-1.api.aws/mcp",
           "--metadata",
-          "AWS_REGION=us-east-1"
+          "AWS_REGION=us-east-1",
+          "--skip-auth"
         ]
       }
     },

@@ -1,6 +1,6 @@
 ---
 name: sop-state-management
-description: 'Use when writing or running an SOP that must resume after a crash: mints or resumes a YAML session file, tracks phase status, and serializes fix-cycle counters. Sessions are matched by project identity, phase status (pending, skipped, in-progress, completed, blocked) carries skip reasons and completion summaries, and counters stay correct across parallel work.'
+description: 'Use when writing or running an SOP that must resume after a crash: mints or resumes a YAML session file, tracks phase status, and serializes fix-cycle counters. Sessions match by project identity, phases record skip reasons and completion summaries, and counters stay correct across parallel work.'
 version: 1.0.0
 tags: [skill, session-state, resume, checklist, yaml, sop-infrastructure]
 ---

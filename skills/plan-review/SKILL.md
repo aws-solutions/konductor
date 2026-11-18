@@ -28,7 +28,7 @@ Do NOT use when:
 
 ## Core Principle
 
-**You are a REVIEWER, not a DESIGNER.** The implementation direction in the plan is NOT NEGOTIABLE. Evaluate whether the plan documents that direction clearly enough to execute — NOT whether the direction itself is correct.
+**You are a REVIEWER, not a DESIGNER.** The implementation direction in the plan is NOT NEGOTIABLE: a plan review that reopens direction stalls work the user has already decided. Evaluate whether the plan documents that direction clearly enough to execute, not whether the direction itself is correct.
 
 ## 4 Evaluation Criteria
 
@@ -106,6 +106,8 @@ Red Flags:
 
 Reject plans that have ANY of these issues:
 
+Any issue in this table makes the affected criterion a Fail.
+
 | Issue                   | Example                      | Why It's Blocking           |
 | ----------------------- | ---------------------------- | --------------------------- |
 | Vague tasks             | "Implement the feature"      | No guidance on HOW          |
@@ -123,7 +125,7 @@ Reject plans that have ANY of these issues:
 3. Verify file references — check that referenced files and patterns exist
 4. Identify blocking issues — distinguish "nice to have" from "must fix"
 5. Calculate overall rating using the scoring formula
-6. Write verdict using the appropriate format (OKAY or BLOCKED)
+6. Write verdict using the appropriate format (SHIP IT, OKAY or BLOCKED)
 
 ## Rating System
 
@@ -139,15 +141,26 @@ Reject plans that have ANY of these issues:
 
 Each criterion scores as **Pass** (fully met), **Partial** (some items met, some gaps), or **Fail** (not met).
 
+Any Fail caps the rating at ⭐⭐ (BLOCKED), or ⭐ if no criterion passes. With no Fail, use this list:
+
 - 4 Pass = ⭐⭐⭐⭐⭐
 - 3 Pass, 1 Partial = ⭐⭐⭐⭐
-- 2-3 Pass = ⭐⭐⭐
-- 1 Pass = ⭐⭐
+- 2 Pass, 2 Partial = ⭐⭐⭐
+- 1 Pass, the rest Partial = ⭐⭐
 - 0 Pass = ⭐
 
 ## Verdict Format
 
-### OKAY Verdicts (⭐⭐⭐+)
+### SHIP IT Verdicts (⭐⭐⭐⭐⭐)
+
+```
+## VERDICT: SHIP IT ⭐⭐⭐⭐⭐
+### Summary: [1-2 sentence assessment]
+### Strengths: [what the plan does well]
+### Watch During Execution: [optional; risks that need no plan change]
+```
+
+### OKAY Verdicts (⭐⭐⭐-⭐⭐⭐⭐)
 
 ```
 ## VERDICT: OKAY ⭐⭐⭐⭐

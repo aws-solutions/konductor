@@ -4,36 +4,24 @@
     "cypress-test-implementation": {
       "lines": 575
     },
-    "dynamodb-design": {
-      "bytes": 75539,
-      "lines": 2195
-    },
-    "dynamodb-validation": {
-      "bytes": 64678,
-      "lines": 1903
-    },
     "e2e-test-strategy": {
-      "bytes": 46224,
-      "lines": 1595
+      "bytes": 32797,
+      "lines": 981
     },
     "humanize-writing": {
       "bytes": 38158,
       "lines": 561
     },
     "iam-policy-design": {
-      "bytes": 37071,
-      "lines": 933
-    },
-    "infra-validation": {
-      "bytes": 49149,
-      "lines": 1346
+      "bytes": 37292,
+      "lines": 810
     },
     "policy-validation": {
-      "bytes": 34231,
-      "lines": 906
+      "bytes": 40604,
+      "lines": 862
     },
     "security-test-generation": {
-      "lines": 615
+      "lines": 617
     },
     "test-coverage-analysis": {
       "lines": 740

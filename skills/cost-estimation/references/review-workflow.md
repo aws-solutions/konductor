@@ -1,18 +1,20 @@
 # Cost estimation: REVIEW workflow
 
-Read this when the user has an existing estimate to check and answered "REVIEW" at the path choice in `SKILL.md`. After Step 8, apply the Quality Gate in `SKILL.md`.
+Read this when the user asks to review, check, or correct an existing estimate, shares one, or picked REVIEW at the path choice in `SKILL.md`. After Step 8, apply the Quality Gate in `SKILL.md`.
 
 ## REVIEW WORKFLOW - Existing Cost Estimate Enhancement
 
 ### Step 1: Path Selection
 
-Wait for user to respond with "REVIEW"
+If the request already asked for a review or included the estimate, start here without waiting. Otherwise wait for the user to pick REVIEW.
 
 Respond with: "Excellent! I'll help you analyze and enhance your existing cost estimate. Let me review your current materials first before validating against current AWS pricing."
 
 ### Step 2: Complete Existing Estimate Gathering
 
 **DO NOT make any MCP calls yet. Focus on understanding their current estimate.**
+
+If the user already shared the estimate, read it and go to Step 3 instead of sending this request. Otherwise ask:
 
 "## Current Cost Estimate Review
 
@@ -71,22 +73,19 @@ Once they provide materials:
 
 ### Step 4: Current Pricing Validation (FIRST MCP calls)
 
-**NOW begin AWS Pricing MCP server usage for validation:**
+**NOW begin pricing calls through the AWS MCP server**, as `SKILL.md` describes under Available Tools:
 
-1. **USE get_pricing_service_codes()** to confirm all services in their estimate are available for pricing
+1. **Load `aws-billing-and-cost-management`** and its pricing lookup reference, and confirm each service in their estimate has a Price List service code.
 
-2. **For each service in their existing estimate:**
+2. **For each service in their existing estimate**, call `DescribeServices` and `GetAttributeValues` for the filters, then `GetProducts` for the current unit price.
 
-   ```
-   USE get_pricing_service_attributes(service_code)
-   USE get_pricing_attribute_values(service_code, [relevant_attributes])
-   USE get_pricing(service_code, region, current_filters, output_options)
-   ```
+If the AWS MCP server isn't available, or a pricing call is denied and you can't ask the user to fix it (they said not to ask, or nobody is there to answer), use published list prices for the estimate's region. Say so at the top of the report and mark those figures unverified. Never invent a unit price you don't know: leave that line unpriced and say what would price it.
 
 ### Step 5: Complete Validation and Gap Analysis
 
 **Pricing Accuracy Assessment:**
 
+- Recompute every existing line from its stated usage and unit prices, not only the missing ones. Mark each line correct, wrong (with the corrected figure and why), or unverifiable. Keep the estimate's usage figures unless the context contradicts them
 - Compare their estimates against current AWS pricing
 - Identify significant pricing discrepancies
 - Check for outdated pricing models or discontinued services
@@ -100,7 +99,8 @@ Once they provide materials:
   - Backup and disaster recovery
   - Security services
   - Operational overhead
-- Check for unrealistic usage assumptions
+- Add a missing service only when the architecture or context shows it. Label anything you infer (a NAT gateway, WAF, backups) as an assumption on its own line, so the reader can drop it
+- Check for unrealistic usage assumptions, and for usage that grows over the budget period (accumulating storage, rising traffic) but is priced flat
 - Validate service sizing and configuration choices
 
 **Optimization Opportunity Identification:**
@@ -150,7 +150,7 @@ Once they provide materials:
 
 ### Step 7: Enhanced Report Format Selection
 
-**BEFORE generating the enhanced report, ask for format preference:**
+**BEFORE generating the enhanced report, ask for format preference** unless the user already named a format or a file to write; then use it and go to Step 8:
 
 "## Cost Estimate Analysis Complete - Enhanced Report Generation
 
@@ -186,10 +186,11 @@ Your enhanced report will include:
 
 ### Step 8: Enhanced Cost Analysis Report Creation
 
-**Compile enhanced analysis using AWS Pricing MCP server data:**
+**Compile enhanced analysis using the Price List API data:**
 
 1. **Create comparison analysis:**
-   - Original estimate vs. current AWS pricing from get_pricing() calls
+   - Original estimate vs. current AWS pricing from the `GetProducts` calls
+   - One row per original line with its original and corrected cost and the reason, including lines that were right; mark added lines as new
    - Identify pricing discrepancies and corrections needed
    - Calculate potential savings from optimization opportunities
    - Document all changes and improvements made
@@ -197,7 +198,8 @@ Your enhanced report will include:
 2. **Generate enhanced cost analysis:**
    - Updated service-by-service breakdown with current pricing
    - Corrected assumptions and validated calculations
-   - Complete optimization recommendations
+   - The pricing source (Price List API or published list prices) and a confidence range for the corrected total
+   - Optimization levers with estimated monthly savings, grouped by horizon (0-30 days, 1-6 months, 6+ months)
    - Risk assessment and implementation considerations
    - Professional executive summary for stakeholders
 
