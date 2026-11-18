@@ -123,6 +123,8 @@ pub enum Ending {
     Refused(String),
     /// The conversation went wrong. The text says what.
     Failed(String),
+    /// The adapter closed its output before the conversation was over. The text says where.
+    Closed(String),
     /// A permission request was refused. The text names the tool.
     Denied(String),
 }
@@ -139,6 +141,7 @@ enum Stop {
     Interrupted,
     Refused(String),
     Failed(String),
+    Closed(String),
     Denied(String),
 }
 
@@ -167,12 +170,15 @@ pub fn converse(wire: &mut dyn Wire, plan: &Plan) -> Outcome {
         Err(Stop::Interrupted) => Ending::Interrupted,
         Err(Stop::Refused(why)) => Ending::Refused(why),
         Err(Stop::Failed(why)) => Ending::Failed(why),
+        Err(Stop::Closed(why)) => Ending::Closed(why),
         Err(Stop::Denied(why)) => Ending::Denied(why),
     };
-    Outcome {
-        ending,
-        text: talk.message.finish(),
-    }
+    // A stage that is blocked by a refusal has no message that anything reads.
+    let text = match ending {
+        Ending::Denied(_) => String::new(),
+        _ => talk.message.finish(),
+    };
+    Outcome { ending, text }
 }
 
 struct Talk<'a, 'p> {
@@ -284,15 +290,26 @@ impl Talk<'_, '_> {
         match self.wait(id, "session/prompt", self.plan.limit, Phase::Prompt) {
             Err(Stop::Time) => {
                 // The notification is the polite end. Whatever the adapter does with it, the stage has timed out.
-                let _ = self
-                    .wire
-                    .send(&notification("session/cancel", cancel_params(session)));
-                let until = Instant::now() + self.plan.grace;
-                let _ = self.wait(id, "session/prompt", until, Phase::Cancelling);
+                self.cancel_and_wait(session, id);
                 Err(Stop::Time)
+            }
+            Err(Stop::Denied(why)) => {
+                // The refusal ends the stage. The adapter is told to stop and gets the grace period to say so.
+                self.cancel_and_wait(session, id);
+                Err(Stop::Denied(why))
             }
             other => other,
         }
+    }
+
+    /// Sends `session/cancel` and waits up to the grace period for the prompt to be answered. What the adapter says in
+    /// that time, and whether it answers, changes nothing: the caller already knows how the conversation ends.
+    fn cancel_and_wait(&mut self, session: &str, prompt_id: u64) {
+        let _ = self
+            .wire
+            .send(&notification("session/cancel", cancel_params(session)));
+        let until = Instant::now() + self.plan.grace;
+        let _ = self.wait(prompt_id, "session/prompt", until, Phase::Cancelling);
     }
 
     fn call(&mut self, method: &str, params: Json, phase: Phase) -> Result<Json, Stop> {
@@ -325,6 +342,8 @@ impl Talk<'_, '_> {
             }
             let frame = match self.wire.recv(until) {
                 Incoming::Frame(frame) => frame,
+                // A wait that was cut short by an interrupt is an interrupt, and not the end of the time.
+                Incoming::TimedOut if self.wire.interrupted() => return Err(Stop::Interrupted),
                 Incoming::TimedOut => return Err(Stop::Time),
                 Incoming::TooLong => {
                     return Err(Stop::Failed(format!(
@@ -338,7 +357,7 @@ impl Talk<'_, '_> {
                     ))
                 }
                 Incoming::Closed => {
-                    return Err(Stop::Failed(format!(
+                    return Err(Stop::Closed(format!(
                         "the adapter ended its output before it answered `{method}`"
                     )))
                 }
@@ -464,11 +483,6 @@ impl Talk<'_, '_> {
                     None => cancelled_response(id),
                 };
                 let _ = self.reply(&answer);
-                if let Some(session) = self.session.clone() {
-                    let _ = self
-                        .wire
-                        .send(&notification("session/cancel", cancel_params(&session)));
-                }
                 Err(Stop::Denied(match why {
                     Refusal::NoRule => format!(
                         "the agent asked to use `{}`, and no allow rule in the agent file `{}` names it",
@@ -1171,7 +1185,7 @@ mod tests {
             ),
             (Incoming::TooLong, "byte limit"),
             (Incoming::NotUtf8, "not UTF-8"),
-            (Incoming::Closed, "ended its output"),
+            (Incoming::Failed("boom2".to_string()), "boom2"),
             (Incoming::Failed("boom".to_string()), "boom"),
             (
                 frame(r#"{"id":1,"error":{"code":-32602,"message":"bad"}}"#),
@@ -1188,6 +1202,19 @@ mod tests {
             };
             assert!(why.contains(expected), "{expected}: {why}");
         }
+    }
+
+    #[test]
+    fn an_adapter_that_closes_its_output_is_reported_as_closed() {
+        let mut wire = Script::new(|_: &Json| vec![Incoming::Closed]);
+        let outcome = converse(&mut wire, &plan(Adapter::KiroV2, &[]));
+        let Ending::Closed(why) = outcome.ending else {
+            panic!("{outcome:?}")
+        };
+        assert!(
+            why.contains("ended its output before it answered `initialize`"),
+            "{why}"
+        );
     }
 
     #[test]

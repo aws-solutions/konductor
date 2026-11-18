@@ -35,6 +35,7 @@ use std::path::{Path, PathBuf};
 use workflow_core::json::{self, Json};
 use workflow_core::ports::{AgentCatalog, AgentDefinition, AgentTools, Placement, Runner};
 use workflow_core::rules::is_name;
+use workflow_core::trust::sha256_hex;
 
 use crate::repo_config::{MAX_DEPTH, MAX_ENTRIES};
 
@@ -125,6 +126,50 @@ impl FileAgentCatalog {
             Err(why) => Err(why),
         };
         Some(KiroAgent { definition, engine })
+    }
+
+    /// A hash of the file or files that define `agent` for `runner`: every file the catalog resolves for it in the
+    /// nearest folder that has one, by its path below the agents folder and its raw bytes. For a file this build cannot
+    /// use (not valid JSON, no `name`, over 1 MiB, not readable) the bytes are still what is hashed, never the reason
+    /// text, so two different unusable files differ and a rewrite of one changes the hash. A file that is gone is no
+    /// longer a candidate, so the hash of the rest differs from a baseline that had it, and `None` means there is no
+    /// definition at all. Two calls give the same hash while the files are unchanged.
+    pub fn agent_file_hash(&self, runner: Runner, agent: &str) -> Option<String> {
+        if !is_name(agent) {
+            return None;
+        }
+        for place in self.places() {
+            let (folder, files): (PathBuf, Vec<String>) = match runner {
+                Runner::KiroCli => {
+                    let folder = place.base.join(".kiro/agents");
+                    let files = kiro_candidates(&folder, agent)
+                        .into_iter()
+                        .map(|c| c.file)
+                        .collect();
+                    (folder, files)
+                }
+                Runner::Claude => {
+                    let folder = place.base.join(".claude/agents");
+                    let files = claude_candidates(&folder, agent)
+                        .into_iter()
+                        .map(|c| c.relative)
+                        .collect();
+                    (folder, files)
+                }
+            };
+            if files.is_empty() {
+                continue;
+            }
+            let mut bytes: Vec<u8> = Vec::new();
+            for file in &files {
+                bytes.extend(file.as_bytes());
+                bytes.push(0);
+                bytes.extend(raw_file_bytes(&folder.join(file)));
+                bytes.push(0);
+            }
+            return Some(sha256_hex(&bytes));
+        }
+        None
     }
 
     /// The folders searched, nearest first, each with where it counts and how its files are shown.
@@ -841,6 +886,27 @@ impl AgentCatalog for FileAgentCatalog {
     }
 }
 
+/// What goes into the hash for one file: its length and its bytes (the first 4 MiB of a longer file), or the kind of
+/// error that stopped the read. A link is followed, as the catalog does. It reads the file whatever the catalog made of
+/// it, so a file the catalog cannot use still has a content hash.
+fn raw_file_bytes(path: &Path) -> Vec<u8> {
+    const HASHED: u64 = 4 * 1024 * 1024;
+    let mut out = Vec::new();
+    match fs::metadata(path) {
+        Err(error) => {
+            out.extend(format!("unreadable:{:?}", error.kind()).as_bytes());
+            return out;
+        }
+        Ok(meta) => out.extend(format!("len:{}:", meta.len()).as_bytes()),
+    }
+    let mut content = Vec::new();
+    match fs::File::open(path).and_then(|f| f.take(HASHED).read_to_end(&mut content)) {
+        Ok(_) => out.extend(content),
+        Err(error) => out.extend(format!("unreadable:{:?}", error.kind()).as_bytes()),
+    }
+    out
+}
+
 /// The bytes of a definition: `None` if nothing is there, `Some(Err)` if something is there that cannot be used. A
 /// caller decides what a byte that is not UTF-8 means: Claude Code decodes a markdown agent file as a Node.js reader
 /// does, a byte that is not UTF-8 becoming U+FFFD, so the harness still loads it and so must the catalog.
@@ -1382,6 +1448,103 @@ mod tests {
         }
     }
 
+    fn scratch_project(label: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "workflow-adapters-catalog-{label}-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join(".kiro/agents")).unwrap();
+        fs::create_dir_all(dir.join(".claude/agents")).unwrap();
+        dir
+    }
+
+    #[test]
+    fn the_hash_of_an_agent_file_changes_when_the_file_does_and_not_otherwise() {
+        let dir = scratch_project("hash");
+        let catalog = FileAgentCatalog::new(&dir, None);
+        assert_eq!(catalog.agent_file_hash(Runner::KiroCli, "k-a"), None);
+        assert_eq!(catalog.agent_file_hash(Runner::Claude, "k-a"), None);
+        fs::write(
+            dir.join(".kiro/agents/k-a.json"),
+            r#"{"name":"k-a","allowedTools":[]}"#,
+        )
+        .unwrap();
+        fs::write(
+            dir.join(".claude/agents/k-a.md"),
+            "---\nname: k-a\ntools: Read\n---\nBody.\n",
+        )
+        .unwrap();
+        let kiro = catalog.agent_file_hash(Runner::KiroCli, "k-a").unwrap();
+        let claude = catalog.agent_file_hash(Runner::Claude, "k-a").unwrap();
+        assert_eq!(
+            catalog.agent_file_hash(Runner::KiroCli, "k-a"),
+            Some(kiro.clone())
+        );
+        assert_eq!(
+            catalog.agent_file_hash(Runner::Claude, "k-a"),
+            Some(claude.clone())
+        );
+        assert_ne!(kiro, claude);
+        fs::write(
+            dir.join(".kiro/agents/k-a.json"),
+            r#"{"name":"k-a","allowedTools":["@x"]}"#,
+        )
+        .unwrap();
+        assert_ne!(catalog.agent_file_hash(Runner::KiroCli, "k-a"), Some(kiro));
+        // A second file that declares the same id changes the hash of the Claude definition.
+        fs::write(
+            dir.join(".claude/agents/other.md"),
+            "---\nname: k-a\n---\nBody.\n",
+        )
+        .unwrap();
+        assert_ne!(catalog.agent_file_hash(Runner::Claude, "k-a"), Some(claude));
+        // A name that is not an agent id has no hash.
+        assert_eq!(catalog.agent_file_hash(Runner::KiroCli, "../x"), None);
+        fs::remove_dir_all(dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_link_to_an_agent_file_is_hashed_as_that_file_and_a_link_that_leads_nowhere_has_no_hash() {
+        use std::os::unix::fs::symlink;
+        let dir = scratch_project("hash-link");
+        let real = dir.join("real");
+        fs::create_dir_all(&real).unwrap();
+        fs::write(real.join("k.json"), r#"{"name":"k-a","allowedTools":[]}"#).unwrap();
+        fs::write(
+            real.join("k.md"),
+            "---\nname: k-b\ntools: Read\n---\nBody.\n",
+        )
+        .unwrap();
+        symlink(real.join("k.json"), dir.join(".kiro/agents/k-a.json")).unwrap();
+        symlink(real.join("k.md"), dir.join(".claude/agents/k-b.md")).unwrap();
+        let catalog = FileAgentCatalog::new(&dir, None);
+        let kiro = catalog.agent_file_hash(Runner::KiroCli, "k-a").unwrap();
+        let claude = catalog.agent_file_hash(Runner::Claude, "k-b").unwrap();
+        // A write through the link is a change of the file.
+        fs::write(
+            real.join("k.json"),
+            r#"{"name":"k-a","allowedTools":["x"]}"#,
+        )
+        .unwrap();
+        fs::write(
+            real.join("k.md"),
+            "---\nname: k-b\ntools: Read, Write\n---\nBody.\n",
+        )
+        .unwrap();
+        assert_ne!(catalog.agent_file_hash(Runner::KiroCli, "k-a"), Some(kiro));
+        assert_ne!(catalog.agent_file_hash(Runner::Claude, "k-b"), Some(claude));
+        // A link whose target is gone is no agent file, so it has no hash. A link to a folder is not listed as an
+        // agent file either, and the config scan refuses it with its path before a stage starts.
+        fs::remove_file(real.join("k.json")).unwrap();
+        assert_eq!(catalog.agent_file_hash(Runner::KiroCli, "k-a"), None);
+        symlink(&real, dir.join(".kiro/agents/k-c.json")).unwrap();
+        assert_eq!(catalog.agent_file_hash(Runner::KiroCli, "k-c"), None);
+        fs::remove_dir_all(dir).ok();
+    }
+
     #[test]
     fn engines_have_their_flags() {
         assert_eq!(KiroEngine::V2.flag(), "--v2");
@@ -1429,5 +1592,135 @@ mod tests {
             kiro_tools(r#"{"allowedTools":["fs_read"],"permissions":{"rules":[]}}"#),
             AgentTools::Listed(vec!["fs_read".to_string()])
         );
+    }
+    /// Files the catalog cannot use for the agent `k-a`, each in its own project, with what is wrong with them.
+    fn unusable_kiro_file(label: &str, text: &[u8]) -> (PathBuf, FileAgentCatalog) {
+        let dir = scratch_project(label);
+        fs::write(dir.join(".kiro/agents/k-a.json"), text).unwrap();
+        let catalog = FileAgentCatalog::new(&dir, None);
+        (dir, catalog)
+    }
+
+    #[test]
+    fn two_different_files_the_catalog_cannot_use_do_not_hash_the_same() {
+        // Neither is valid JSON, so the catalog reports the same reason for both. Their bytes differ.
+        let (one, first) = unusable_kiro_file("unusable-1", b"not json at all, one");
+        let (two, second) = unusable_kiro_file("unusable-2", b"not json at all, two");
+        assert!(first.kiro_agent("k-a").is_some_and(|a| a.engine.is_err()));
+        assert!(second.kiro_agent("k-a").is_some_and(|a| a.engine.is_err()));
+        let hashes = (
+            first.agent_file_hash(Runner::KiroCli, "k-a"),
+            second.agent_file_hash(Runner::KiroCli, "k-a"),
+        );
+        assert!(hashes.0.is_some() && hashes.1.is_some());
+        assert_ne!(hashes.0, hashes.1);
+        // A file with no `name` and a file with another `name` of the same id-stem are unusable in the same way too.
+        let (three, third) = unusable_kiro_file("unusable-3", br#"{"allowedTools":["a"]}"#);
+        let (four, fourth) = unusable_kiro_file("unusable-4", br#"{"allowedTools":["b"]}"#);
+        assert_ne!(
+            third.agent_file_hash(Runner::KiroCli, "k-a"),
+            fourth.agent_file_hash(Runner::KiroCli, "k-a")
+        );
+        for dir in [one, two, three, four] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    #[test]
+    fn a_file_the_catalog_cannot_use_changes_the_hash_when_it_is_rewritten_or_when_it_goes() {
+        let (dir, catalog) = unusable_kiro_file("unusable-rewrite", b"not json");
+        let before = catalog.agent_file_hash(Runner::KiroCli, "k-a").unwrap();
+        assert_eq!(
+            catalog.agent_file_hash(Runner::KiroCli, "k-a"),
+            Some(before.clone())
+        );
+        // Still unusable, still the same reason, different bytes.
+        fs::write(dir.join(".kiro/agents/k-a.json"), b"not json, rewritten").unwrap();
+        let rewritten = catalog.agent_file_hash(Runner::KiroCli, "k-a").unwrap();
+        assert_ne!(rewritten, before);
+        // It becomes usable.
+        fs::write(
+            dir.join(".kiro/agents/k-a.json"),
+            r#"{"name":"k-a","allowedTools":["fs_write"]}"#,
+        )
+        .unwrap();
+        let usable = catalog.agent_file_hash(Runner::KiroCli, "k-a").unwrap();
+        assert_ne!(usable, rewritten);
+        // It goes: no definition, which differs from every baseline that had one.
+        fs::remove_file(dir.join(".kiro/agents/k-a.json")).unwrap();
+        assert_eq!(catalog.agent_file_hash(Runner::KiroCli, "k-a"), None);
+        fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn an_unusable_file_that_is_too_big_to_read_is_hashed_by_its_content_and_not_by_the_reason() {
+        let big = |last: u8| {
+            let mut bytes = vec![b'x'; 1024 * 1024 + 8];
+            *bytes.last_mut().unwrap() = last;
+            bytes
+        };
+        let (one, first) = unusable_kiro_file("unusable-big-1", &big(b'a'));
+        let (two, second) = unusable_kiro_file("unusable-big-2", &big(b'a'));
+        assert_eq!(
+            first.agent_file_hash(Runner::KiroCli, "k-a"),
+            second.agent_file_hash(Runner::KiroCli, "k-a")
+        );
+        // Sizes differ, and the first 4 MiB is what is read, so a change inside it or to the length shows.
+        fs::write(
+            two.join(".kiro/agents/k-a.json"),
+            &big(b'a')[..1024 * 1024 + 7],
+        )
+        .unwrap();
+        assert_ne!(
+            first.agent_file_hash(Runner::KiroCli, "k-a"),
+            second.agent_file_hash(Runner::KiroCli, "k-a")
+        );
+        for dir in [one, two] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+    #[test]
+    fn an_agent_is_found_and_hashed_by_its_name_in_a_file_with_another_name() {
+        let dir = scratch_project("by-name");
+        fs::create_dir_all(dir.join(".kiro/agents/team")).unwrap();
+        let file = dir.join(".kiro/agents/team/something-else.json");
+        fs::write(&file, r#"{"name":"k-a","allowedTools":["fs_read"]}"#).unwrap();
+        // A file whose name is the id but whose JSON `name` is another agent is not this agent.
+        fs::write(
+            dir.join(".kiro/agents/k-a.json"),
+            r#"{"name":"someone-else","allowedTools":["fs_write"]}"#,
+        )
+        .unwrap();
+        let catalog = FileAgentCatalog::new(&dir, None);
+        let agent = catalog.kiro_agent("k-a").expect("found by its name");
+        assert_eq!(
+            agent.definition.file,
+            ".kiro/agents/team/something-else.json"
+        );
+        assert_eq!(
+            agent.definition.tools,
+            AgentTools::Listed(vec!["fs_read".to_string()])
+        );
+        // The hash covers that file: a rewrite of it changes the hash, and a rewrite of the other one does not.
+        let before = catalog.agent_file_hash(Runner::KiroCli, "k-a").unwrap();
+        fs::write(
+            dir.join(".kiro/agents/k-a.json"),
+            r#"{"name":"someone-else","allowedTools":["shell"]}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            catalog.agent_file_hash(Runner::KiroCli, "k-a"),
+            Some(before.clone())
+        );
+        fs::write(
+            &file,
+            r#"{"name":"k-a","allowedTools":["fs_read","shell"]}"#,
+        )
+        .unwrap();
+        assert_ne!(
+            catalog.agent_file_hash(Runner::KiroCli, "k-a"),
+            Some(before)
+        );
+        fs::remove_dir_all(dir).ok();
     }
 }
