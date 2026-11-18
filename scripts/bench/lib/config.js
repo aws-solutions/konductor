@@ -58,6 +58,8 @@ const REPLACED_SETTINGS = Object.freeze({
   agent_for: 'removed: the agent comes from the agent specs',
   needs_tools: 'removed: not in the MVP',
 });
+// More parallel subject runs than this would mostly meet provider throttling, and each holds a claude process.
+const MAX_SUBJECT_CONCURRENCY = 32;
 const isPlainObject = (value) =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -227,6 +229,14 @@ function validateSettings(config, errors) {
   if (!profileIds().includes(config.runner_profile))
     errors.push(
       `runner_profile: must be one of ${profileIds().join(', ')}, got ${JSON.stringify(config.runner_profile)}`,
+    );
+  if (
+    !Number.isInteger(config.subject_concurrency) ||
+    config.subject_concurrency < 1 ||
+    config.subject_concurrency > MAX_SUBJECT_CONCURRENCY
+  )
+    errors.push(
+      `subject_concurrency: must be a whole number from 1 to ${MAX_SUBJECT_CONCURRENCY}`,
     );
 }
 

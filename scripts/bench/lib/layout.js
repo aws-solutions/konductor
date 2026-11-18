@@ -13,6 +13,7 @@
  *   bench/out/ledger.jsonl                        spend ledger, shared by every run (git-ignored)
  *   bench/out/<run-id>/report.json, report.md     run output (git-ignored)
  *   bench/out/<run-id>/answers/<skill>/<batch>/<task>.<with|without>.json
+ *   bench/out/<run-id>/raw/<skill>/<batch>/<task>.<with|without>/raw.jsonl     subject event log
  *   bench/out/<run-id>/checklists/<skill>/<batch>/<task>.json              request-only checklist
  *   bench/out/<run-id>/judgments/<items|outcome>/<skill>/<batch>/<task>.<seat>.<with|without>.json
  *
@@ -157,6 +158,12 @@ function createLayout({ root = REPO_ROOT, runId = DEFAULT_RUN_ID } = {}) {
       path.join(
         taskTree('checklists', skill, batch),
         `${requireSafeSegment('task id', taskId)}.json`,
+      ),
+    /** The folder of one subject run: its raw event log, and nothing else, so the secret sweep scans only that run. */
+    subjectRunDir: (skill, batch, taskId, arm) =>
+      path.join(
+        taskTree('raw', skill, batch),
+        `${requireSafeSegment('task id', taskId)}.${requireOneOf('arm', arm, ARMS)}`,
       ),
     judgmentFile: (scale, skill, batch, taskId, seat, arm) => {
       const dir = path.join(

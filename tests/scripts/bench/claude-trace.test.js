@@ -24,6 +24,32 @@ const fixture = (name) =>
   fs.readFileSync(path.join(FIXTURES, `${name}.jsonl`), 'utf8');
 const event = (value) => JSON.stringify(value);
 
+test('init: the Claude Code version is read as cli_version, and is null when the event has none', () => {
+  const versioned = readClaudeCodeTrace(
+    event({
+      type: 'system',
+      subtype: 'init',
+      tools: ['Skill'],
+      claude_code_version: '2.1.0',
+    }),
+  );
+  assert.equal(versioned.cli_version, '2.1.0');
+  for (const value of [undefined, '', 7, null])
+    assert.equal(
+      readClaudeCodeTrace(
+        event({
+          type: 'system',
+          subtype: 'init',
+          tools: ['Skill'],
+          claude_code_version: value,
+        }),
+      ).cli_version,
+      null,
+      JSON.stringify(value),
+    );
+  assert.equal(readClaudeCodeTrace('').cli_version, null, 'no init event');
+});
+
 test('happy path: init tools, paired tool calls, answer, usage and cost', () => {
   const trace = readClaudeCodeTrace(fixture('happy-path'));
   assert.equal(trace.runtime, 'claude-code');
