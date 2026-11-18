@@ -6,6 +6,9 @@
 
 #![forbid(unsafe_code)]
 
+pub mod acp_client;
+pub mod acp_frames;
+pub mod acp_permission;
 pub mod agent_catalog;
 pub mod claude_harness;
 pub mod clock;
@@ -22,6 +25,9 @@ pub mod run_store;
 pub mod terminal;
 pub mod trust_store;
 
+pub use acp_client::{converse, Adapter, Ending, Incoming, Outcome, Plan, Wire};
+pub use acp_frames::{FrameError, Frames, MAX_FRAME_BYTES};
+pub use acp_permission::{decide, Decision, Request};
 pub use agent_catalog::{kiro_engine, FileAgentCatalog, KiroAgent, KiroEngine};
 pub use claude_harness::{
     claude_args, is_rule_name, read_reply, tool_rules, ClaudeHarness, Reply, ToolRules,
