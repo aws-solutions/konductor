@@ -359,9 +359,11 @@ EDITS = [
      'them every granted tool runs without asking, MCP tools included. On Claude Code, deny rules '
      'in your settings.json still block, and an ask rule denies the call, because each specialist '
      'runs with -p and can\'t prompt. konductor install --harness claude sets an ask rule for '
-     'aws___run_script, so a mux or cmux pane cannot call it. Script calls need a person to '
-     'approve them; run that work from konductor. Add deny rules for anything a dispatched agent '
-     'must never do."]'),
+     'aws___run_script in the settings file it installs into, so a mux or cmux pane that file '
+     'applies to cannot call it: every pane for the default $HOME install, and only panes running '
+     'in the target project for a --target install. A Claude Code plugin install sets no rule; add '
+     'it yourself. Script calls need a person to approve them; run that work from konductor. Add '
+     'deny rules for anything a dispatched agent must never do."]'),
     ("ag-access rows",
      '          { k: "konductor", v: "no / no · YES / YES" },\n'
      '          { k: "konductor-mux-orchestrator", v: "no / YES · YES / YES" },\n'

@@ -242,7 +242,8 @@ which runs sandboxed Python with AWS API access; `aws___get_presigned_url`; `aws
 `konductor` gets none of the AWS-API-acting tools on Claude Code.
 `konductor install --harness claude` puts `mcp__aws-mcp__aws___run_script` in
 `permissions.ask`, so Claude Code asks before every call in an interactive session. In a `-p`
-or background run, which cannot ask, the call is denied, so a mux or cmux pane cannot run it.
+run, which cannot ask, the call is denied, so a mux or cmux pane cannot run it when that settings
+file applies to the pane: always for a `$HOME` install, and with `--target` only in that project.
 It also puts the five read-only tools in `permissions.allow`, so they run without asking, as on
 Kiro CLI. Once a tool call runs, it uses your own IAM credentials. Use the `aws:ViaAWSMCPService`
 (boolean) and `aws:CalledViaAWSMCP` (string, `aws-mcp.amazonaws.com` for this server) global IAM

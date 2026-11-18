@@ -280,8 +280,10 @@ Under `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`, each pane 
 `claude -p --dangerously-skip-permissions`. Claude Code's
 [permission modes](https://code.claude.com/docs/en/permission-modes) docs say an explicit ask
 rule is still enforced in `bypassPermissions`, and that a `-p` run denies a call that would
-prompt. So a dispatched pane cannot call `aws___run_script`. Run work that needs it from
-`konductor`, where you can approve each call.
+prompt. So a dispatched pane cannot call `aws___run_script` when the settings file holding the
+rule applies to it: every pane for the default `$HOME` install, and only panes running in the
+target project for a `--target` install. Plugin installs get no rule (see below). Run work that
+needs it from `konductor`, where you can approve each call.
 
 The Claude Code plugin cannot ship permission rules. Plugin users add
 `mcp__plugin_konductor_aws-mcp__aws___run_script` to `permissions.ask` themselves (see

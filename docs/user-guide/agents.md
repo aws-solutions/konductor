@@ -108,9 +108,13 @@ These rows describe agents started by `konductor`. `konductor-mux-orchestrator` 
 (`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so under them
 every granted tool runs without asking, MCP tools included. On Claude Code, deny rules in your
 `settings.json` still block, and an ask rule denies the call, because each specialist runs with `-p`
-and can't prompt. `konductor install --harness claude` sets an ask rule for `aws___run_script`, so a
-mux or cmux pane cannot call it. Script calls need a person to approve them; run that work from
-`konductor`. Add deny rules for anything a dispatched agent must never do.
+and can't prompt. `konductor install --harness claude` sets an ask rule for `aws___run_script` in
+the settings file it installs into, so a mux or cmux pane that file applies to cannot call it: every
+pane for the default `$HOME` install, and only panes running in the target project for a `--target`
+install. A Claude Code plugin install sets no rule; add it yourself (see
+[Install from the Claude plugin marketplace](tasks/install-claude-plugin-marketplace.md)). Script
+calls need a person to approve them; run that work from `konductor`. Add deny rules for anything a
+dispatched agent must never do.
 
 Three observations that are not obvious and do affect what you should trust:
 

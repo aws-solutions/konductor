@@ -558,8 +558,9 @@ not per individual commit.
   frontmatter is read too; an agent file whose frontmatter cannot be read is skipped with a
   warning naming the file. That tool runs agent-written Python with your
   AWS credentials. Mux and cmux panes run `claude -p --dangerously-skip-permissions`, where an
-  ask rule is still enforced and a call that would prompt is denied, so a pane cannot call it;
-  run that work from `konductor`. The merge only appends, keeps any user entry that already
+  ask rule is still enforced and a call that would prompt is denied, so a pane the rule's
+  settings file applies to cannot call it (every pane for the default `$HOME` install; for a
+  `--target` install, only panes running in that project); run that work from `konductor`. The merge only appends, keeps any user entry that already
   covers the rule and says so, refuses a symlinked `.claude` or `settings.json`, and
   `uninstall` leaves the rule in place. The Claude Code plugin cannot ship permission rules;
   plugin users add `mcp__plugin_konductor_aws-mcp__aws___run_script` to `permissions.ask`
