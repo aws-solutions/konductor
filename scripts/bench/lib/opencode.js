@@ -404,11 +404,19 @@ const hasTokenCounts = (usage) =>
  * would be worse: an older OpenCode run without the flag hangs until the call's timeout.
  */
 class StandaloneProbeError extends Error {
-  constructor(message) {
+  /** `stderr` is the last probe's stderr as read (not yet redacted), for the call result. */
+  constructor(message, stderr = '') {
     super(message);
     this.name = 'StandaloneProbeError';
+    this.stderr = stderr;
   }
 }
+const firstLine = (text) =>
+  String(text || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .find(Boolean) ?? '';
+const PROBE_DETAIL_CHARS = 200;
 const PROBE_ATTEMPTS = 2;
 const standaloneByRunner = new WeakMap();
 function standaloneSupported({ run, bin, sandbox, env }) {
@@ -439,11 +447,21 @@ async function probeStandalone({ run, bin, sandbox, env }) {
       return /(^|\s)--standalone\b/m.test(helpText);
     lastResult = result;
   }
+  // proc.run reports a command that cannot start as code -1 and a `spawn error: ...` line. That is a permanent error
+  // (a missing binary, a bad PATH), not a help text that was hard to read, and the operator must be told which.
+  const spawnLine = lastResult.code === -1 ? firstLine(lastResult.stderr) : '';
+  if (spawnLine.startsWith('spawn error:'))
+    throw new StandaloneProbeError(
+      `cannot run \`${bin}\`: ${/\bENOENT\b/.test(spawnLine) ? `${bin} was not found on PATH` : `${bin} could not be started`} (${spawnLine.slice(0, PROBE_DETAIL_CHARS)})`,
+      lastResult.stderr,
+    );
   const why = lastResult.timedOut
     ? 'timed out'
     : `exit ${lastResult.code}, no --format option in the text`;
+  const detail = firstLine(lastResult.stderr).slice(0, PROBE_DETAIL_CHARS);
   throw new StandaloneProbeError(
-    `cannot read \`${bin} run --help\` (${why}, ${PROBE_ATTEMPTS} tries), so it is unknown whether this OpenCode needs --standalone`,
+    `cannot read \`${bin} run --help\` (${why}, ${PROBE_ATTEMPTS} tries), so it is unknown whether this OpenCode needs --standalone${detail ? `; its first stderr line: ${detail}` : ''}`,
+    lastResult.stderr,
   );
 }
 
@@ -629,7 +647,7 @@ async function judgeCall({
         timedOut: false,
         cutOff: false,
         error: redactText(error.message, { maxChars: ERROR_CHARS }),
-        stderr: '',
+        stderr: redactText(error.stderr, { maxChars: STDERR_CHARS }),
         reasoningEffort: reasoningEffort ?? null,
         maxOutputTokens: outputLimit,
       };

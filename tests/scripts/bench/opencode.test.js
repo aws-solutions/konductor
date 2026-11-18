@@ -699,6 +699,72 @@ test('judgeCall: calls that start together share one --help probe', async () => 
   });
 });
 
+/** A proc.run stub for which the opencode binary cannot be started, as proc.run reports it. */
+const missingBinaryRun = (spawnError = 'spawn opencode ENOENT') => {
+  const attempts = [];
+  const run = async (command, args) => {
+    attempts.push([command, ...args]);
+    return {
+      code: -1,
+      stdout: '',
+      stderr: `spawn error: ${spawnError}`,
+      ms: 0,
+      timedOut: false,
+      overflow: false,
+    };
+  };
+  return { run, attempts };
+};
+
+test('judgeCall: a missing opencode binary is named as such, with the spawn error in the result, charged 0, and sorted as permanent', async () => {
+  await withJudge(async ({ call, ledgerFile }) => {
+    const { run, attempts } = missingBinaryRun();
+    const failed = await call({ run });
+    assert.equal(failed.ok, false);
+    assert.equal(failed.modelStarted, false);
+    assert.equal(
+      failed.error,
+      'cannot run `opencode`: opencode was not found on PATH (spawn error: spawn opencode ENOENT)',
+    );
+    assert.equal(failed.stderr, 'spawn error: spawn opencode ENOENT');
+    assert.ok(
+      attempts.every((entry) => entry.join(' ') === 'opencode run --help'),
+      'only the help probe was tried',
+    );
+    const [, settle] = rowsOf(ledgerFile);
+    assert.equal(settle.usd, 0);
+    // lib/retry.js must not loop on a binary that is not there.
+    assert.equal(classifyError(oc.judgeCallError(failed)), 'permanent');
+  });
+});
+
+test('judgeCall: a binary that cannot be started for another reason says so, and a help probe that fails with stderr shows its first line', async () => {
+  await withJudge(async ({ call }) => {
+    const denied = await call({
+      run: missingBinaryRun('spawn opencode EACCES').run,
+    });
+    assert.equal(
+      denied.error,
+      'cannot run `opencode`: opencode could not be started (spawn error: spawn opencode EACCES)',
+    );
+    assert.equal(classifyError(oc.judgeCallError(denied)), 'permanent');
+    const broken = await call({
+      run: async () => ({
+        code: 1,
+        stdout: '',
+        stderr: '\nError: config is invalid\nmore text\n',
+        ms: 1,
+        timedOut: false,
+      }),
+    });
+    assert.equal(
+      broken.error,
+      'cannot read `opencode run --help` (exit 1, no --format option in the text, 2 tries), so it is unknown whether this OpenCode needs --standalone; its first stderr line: Error: config is invalid',
+    );
+    assert.match(broken.stderr, /config is invalid/);
+  });
+});
+
 test('judgeCall: a help text unreadable twice fails the call clearly, charges 0, and is asked again by the next call', async () => {
   await withJudge(async ({ call, ledgerFile }) => {
     let helpAnswers = 0;
