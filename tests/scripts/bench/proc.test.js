@@ -135,23 +135,36 @@ test('run: the largest timeout setTimeout takes is accepted and the child still 
   assert.equal(result.timedOut, false);
 });
 
-test('run: a process that keeps the output pipes open after the kill does not hold the result past the grace time', async () => {
-  // `sleep 4 &` inherits the pipes; killing the shell leaves it holding them, so 'close' would wait 4 seconds.
-  const result = await run('sh', ['-c', 'sleep 4 & sleep 4'], {
-    timeoutMs: 200,
-    killGraceMs: 200,
-  });
+// A helper in a session of its own is outside the child's process group, so the group kill misses it, and it holds the
+// inherited output pipes: 'close' would wait for it (4 seconds), so the grace timer ends the call.
+const ESCAPEE = `require('child_process').spawn('sleep', ['4'], { detached: true, stdio: ['ignore', 'inherit', 'inherit'] }).unref();`;
+
+test('run: a process that left the group and keeps the output pipes open after the kill does not hold the result past the grace time', async () => {
+  const result = await run(
+    NODE,
+    script(`${ESCAPEE} setInterval(() => {}, 1000)`),
+    {
+      timeoutMs: 600,
+      killGraceMs: 200,
+    },
+  );
   assert.equal(result.timedOut, true);
   assert.equal(result.code, null);
   assert.ok(result.ms < 3000, `returned after ${result.ms} ms`);
 });
 
 test('run: the same holds after an output flood', async () => {
-  const result = await run('sh', ['-c', 'sleep 4 & yes x'], {
-    maxOutputChars: 1000,
-    timeoutMs: 20000,
-    killGraceMs: 200,
-  });
+  const result = await run(
+    NODE,
+    script(
+      `${ESCAPEE} setInterval(() => process.stdout.write('x'.repeat(200)), 1)`,
+    ),
+    {
+      maxOutputChars: 1000,
+      timeoutMs: 20000,
+      killGraceMs: 200,
+    },
+  );
   assert.equal(result.overflow, true);
   assert.equal(result.timedOut, false);
   assert.ok(result.ms < 3000, `returned after ${result.ms} ms`);
@@ -178,13 +191,28 @@ const isAlive = (pid) => {
     return false;
   }
 };
-const hostSource = (pidFile, { exitOnceChildIsUp = false } = {}) => `
+const hostSource = (
+  pidFile,
+  { exitOnceChildIsUp = false, hostHandler = null } = {},
+) => `
 const fs = require('fs');
 const { run } = require(${JSON.stringify(PROC_MODULE)});
 const childSource = ${JSON.stringify(
   `require('fs').writeFileSync(${JSON.stringify(pidFile)}, String(process.pid)); setInterval(() => {}, 1000)`,
 )};
 run(process.execPath, ['-e', childSource], { timeoutMs: 60000 });
+${
+  // The host registers its own handler after the first run(), which is what installed the helper's handlers.
+  hostHandler
+    ? `
+for (const signal of ['SIGINT', 'SIGTERM'])
+  process.on(signal, () => {
+    fs.writeFileSync(${JSON.stringify(`${pidFile}.host`)}, signal);
+    ${hostHandler === 'exit' ? 'process.exit(7);' : ''}
+  });
+setInterval(() => {}, 1000);`
+    : ''
+}
 ${
   exitOnceChildIsUp
     ? `setInterval(() => { if (fs.existsSync(${JSON.stringify(pidFile)})) process.exit(0); }, 20);`
@@ -211,6 +239,46 @@ async function startHost(pidFile, options) {
   return { host, pid, exited };
 }
 
+// A helper process the child starts stays in the child's process group, and a timeout or a flood must kill it too.
+const helperChildSource = (pidFile, { floodOnceUp = false } = {}) => {
+  const helper = `require('fs').writeFileSync(${JSON.stringify(pidFile)}, String(process.pid)); setInterval(() => {}, 1000)`;
+  return `
+    const fs = require('fs');
+    require('child_process').spawn(process.execPath, ['-e', ${JSON.stringify(helper)}], { stdio: 'ignore' });
+    setInterval(() => {
+      if (${floodOnceUp} && fs.existsSync(${JSON.stringify(pidFile)})) process.stdout.write('x'.repeat(200));
+    }, 5);
+  `;
+};
+
+for (const [name, options, source] of [
+  ['a timeout', { timeoutMs: 2000 }, { floodOnceUp: false }],
+  [
+    'an output flood',
+    { timeoutMs: 20000, maxOutputChars: 1000 },
+    { floodOnceUp: true },
+  ],
+])
+  test(`run: ${name} kills the helper process the child started, not only the child`, async () => {
+    await helpers.withTmpAsync(async (dir) => {
+      const pidFile = path.join(dir, 'helper.pid');
+      let helperPid = 0;
+      try {
+        const result = await run(
+          NODE,
+          script(helperChildSource(pidFile, source)),
+          options,
+        );
+        assert.ok(result.timedOut || result.overflow, 'the call was cut short');
+        helperPid = Number(fs.readFileSync(pidFile, 'utf8'));
+        assert.ok(helperPid > 0, 'the helper started');
+        await waitFor(() => !isAlive(helperPid));
+      } finally {
+        if (helperPid && isAlive(helperPid)) process.kill(helperPid, 'SIGKILL');
+      }
+    });
+  });
+
 for (const [signal, exitCode] of [
   ['SIGINT', 130],
   ['SIGTERM', 143],
@@ -236,6 +304,50 @@ for (const [signal, exitCode] of [
       }
     });
   });
+
+for (const signal of ['SIGINT', 'SIGTERM'])
+  test(`exit hooks: a host handler for ${signal} added after the first run() still runs, and decides the exit`, async () => {
+    await helpers.withTmpAsync(async (dir) => {
+      const pidFile = path.join(dir, 'pid');
+      const { host, pid, exited } = await startHost(pidFile, {
+        hostHandler: 'exit',
+      });
+      try {
+        // The host registers its handler right after run(); wait until it is there before signalling.
+        await sleep(300);
+        host.kill(signal);
+        assert.deepEqual(await exited, { code: 7, signal: null });
+        assert.equal(fs.readFileSync(`${pidFile}.host`, 'utf8'), signal);
+        await waitFor(() => !isAlive(pid));
+      } finally {
+        host.kill('SIGKILL');
+        if (isAlive(pid)) process.kill(pid, 'SIGKILL');
+      }
+    });
+  });
+
+test('exit hooks: a host handler that does not exit keeps the host running, with its child already killed', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const pidFile = path.join(dir, 'pid');
+    const { host, pid, exited } = await startHost(pidFile, {
+      hostHandler: 'stay',
+    });
+    try {
+      await sleep(300);
+      host.kill('SIGINT');
+      await waitFor(() => !isAlive(pid));
+      assert.equal(fs.readFileSync(`${pidFile}.host`, 'utf8'), 'SIGINT');
+      const early = await Promise.race([
+        exited,
+        sleep(500).then(() => 'running'),
+      ]);
+      assert.equal(early, 'running', 'the helper did not end the host');
+    } finally {
+      host.kill('SIGKILL');
+      if (isAlive(pid)) process.kill(pid, 'SIGKILL');
+    }
+  });
+});
 
 test('exit hooks: a host that calls process.exit does not leave its running child behind', async () => {
   await helpers.withTmpAsync(async (dir) => {

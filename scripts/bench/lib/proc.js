@@ -5,6 +5,9 @@
  * so callers can record the failure before deciding what to do. A command that cannot be started
  * resolves with code -1 and a `spawn error: ...` line in stderr.
  *
+ * Process-wide side effect: the first run() installs an 'exit' hook and SIGINT and SIGTERM handlers that kill the
+ * children still running (see installExitHooks), so a host that has its own signal handlers should know.
+ *
  * GOTCHA: `opencode run` finds its project config (opencode.json, which carries the Bedrock provider and
  * the judge lockdown) from the PWD environment variable, not from process.cwd(). Node's spawn({ cwd })
  * changes the directory but leaves the parent's PWD in the environment, so OpenCode silently ignores the
@@ -26,35 +29,61 @@ const DEFAULT_KILL_GRACE_MS = 2000;
 // something is wrong, and holding it all would grow this process without bound.
 const DEFAULT_MAX_OUTPUT_CHARS = 32 * 1024 * 1024;
 
+// A child leads its own process group (it is spawned detached, except on Windows), so killing it also kills the helper
+// processes it started: OpenCode starts a private server per call, and a server left running after a timeout would
+// keep the exported credentials and could finish, and bill, a request nobody waits for.
+const ownProcessGroup = process.platform !== 'win32';
+
+/** SIGKILL for `child` and, where it leads a process group, for every process in that group. */
+function killChild(child) {
+  try {
+    if (ownProcessGroup && Number.isInteger(child.pid)) {
+      process.kill(-child.pid, 'SIGKILL');
+      return;
+    }
+  } catch {
+    /* the group is already gone, or the signal was refused: signal the child itself below */
+  }
+  try {
+    child.kill('SIGKILL');
+  } catch {
+    /* already gone */
+  }
+}
+
 // Children still running when this process exits (an abort thrown from one pool worker, a SIGTERM) must
 // not be left behind: a stale model process holding old credentials keeps calling the provider.
 const liveChildren = new Set();
+const killLiveChildren = () => {
+  for (const child of liveChildren) killChild(child);
+};
 let exitHooksInstalled = false;
+/**
+ * Installed once, by the first run(): an 'exit' hook that kills the live children, and a SIGINT and a SIGTERM handler.
+ * The handler kills the live children and then ends the process with the usual code (130, 143) only when it is the
+ * one listener for the signal. A host that registers its own handler owns shutdown (it may flush a ledger or write run
+ * state first): its handler runs too, and the children are already gone whether it exits or not.
+ */
 function installExitHooks() {
   if (exitHooksInstalled) return;
   exitHooksInstalled = true;
-  process.on('exit', () => {
-    for (const child of liveChildren) {
-      try {
-        child.kill('SIGKILL');
-      } catch {
-        /* already gone */
-      }
-    }
-  });
-  // Without a handler a signal ends the process without running the 'exit' hook above.
+  process.on('exit', killLiveChildren);
   for (const [signal, exitCode] of [
     ['SIGINT', 130],
     ['SIGTERM', 143],
   ])
-    process.on(signal, () => process.exit(exitCode));
+    process.on(signal, () => {
+      killLiveChildren();
+      if (process.listenerCount(signal) === 1) process.exit(exitCode);
+    });
 }
 
 /**
  * Runs `command` with `args` (an array; no shell). `env` replaces the environment whole (default
  * process.env). `stdin`, when given, is written and closed. Output beyond `maxOutputChars` (stdout and
- * stderr together) kills the child and sets `overflow`. After a kill (timeout or overflow) the result is
- * returned once the pipes close, or `killGraceMs` later if a process that inherited them keeps them open;
+ * stderr together) kills the child and sets `overflow`. The kill is SIGKILL to the child's whole process group, so
+ * the helpers it started die with it. After a kill (timeout or overflow) the result is returned once the pipes close,
+ * or `killGraceMs` later if a process that left the group (its own session) and inherited the pipes keeps them open;
  * such a process is not killed.
  */
 function run(
@@ -104,9 +133,9 @@ function run(
         overflow,
       });
     };
-    const killChild = () => {
+    const stopChild = () => {
       if (!child) return;
-      child.kill('SIGKILL');
+      killChild(child);
       graceTimer ??= setTimeout(() => {
         child.stdout.destroy();
         child.stderr.destroy();
@@ -115,12 +144,13 @@ function run(
     };
     const timer = setTimeout(() => {
       timedOut = true;
-      killChild();
+      stopChild();
     }, timeoutMs);
     try {
       child = spawn(command, args, {
         cwd,
         env: childEnvironment,
+        detached: ownProcessGroup,
         stdio: [stdin === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
       });
     } catch (error) {
@@ -136,7 +166,7 @@ function run(
         if (overflow) return;
         if (stdout.length + stderr.length + chunk.length > maxOutputChars) {
           overflow = true;
-          killChild();
+          stopChild();
           return;
         }
         append(chunk);
