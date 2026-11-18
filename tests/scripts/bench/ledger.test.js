@@ -1304,7 +1304,7 @@ test('a settle whose write fails leaves the reservation open: it can be retried 
   });
 });
 
-test('a cancel whose write fails, and one after a failed settle, report the I/O error and can be tried again', async (t) => {
+test('a cancel whose write fails reports the I/O error and can be tried again', async (t) => {
   await helpers.withTmpAsync(async (dir) => {
     const ledger = makeLedger(dir);
     const first = await ledger.reserve(2);
@@ -1318,21 +1318,68 @@ test('a cancel whose write fails, and one after a failed settle, report the I/O 
     failing.mock.restore();
     first.cancel();
     assert.deepEqual([ledger.read().total, ledger.read().reserved], [0, 0]);
-    // settle fails, then the cleanup cancels.
-    const second = await ledger.reserve(3);
-    const failingAgain = failSettleWrite(t);
-    assert.throws(() => second.settle({ reportedUsd: 1 }), { code: 'ENOSPC' });
-    failingAgain.mock.restore();
-    second.cancel();
     assert.deepEqual(
       readRows(ledger.file).map((row) => [row.id, row.type, row.status]),
       [
         ['r1-1', 'reserve', undefined],
         ['r1-1', 'settle', 'cancelled'],
-        ['r1-2', 'reserve', undefined],
-        ['r1-2', 'settle', 'cancelled'],
       ],
     );
+  });
+});
+
+test('a cancel after a settle was tried is refused, so a paid call is never booked at 0 and only a settle retry closes it', async (t) => {
+  await helpers.withTmpAsync(async (dir) => {
+    const ledger = makeLedger(dir);
+    const second = await ledger.reserve(3);
+    const failing = failSettleWrite(t);
+    assert.throws(() => second.settle({ reportedUsd: 1 }), { code: 'ENOSPC' });
+    failing.mock.restore();
+    // The disk is back, and the cleanup in `finally` cancels: that would book the paid call at 0.
+    assert.throws(() => second.cancel(), /cannot be cancelled after a settle/);
+    assert.deepEqual(
+      readRows(ledger.file).map((row) => [row.type, row.status]),
+      [['reserve', undefined]],
+      'no cancel row was written',
+    );
+    assert.deepEqual(
+      [ledger.read().total, ledger.read().reserved],
+      [0, 3],
+      'the reservation stays open, so its p90 is still counted',
+    );
+    // A settle retry still closes it, at the cost the CLI reported.
+    assert.equal(second.settle({ reportedUsd: 1 }).usd, 1);
+    assert.deepEqual([ledger.read().total, ledger.read().reserved], [1, 0]);
+  });
+});
+
+test('a settle that throws before it writes also blocks a later cancel', async () => {
+  await helpers.withTmpAsync(async (dir) => {
+    const ledger = makeLedger(dir);
+    const reservation = await ledger.reserve(2);
+    assert.throws(() => reservation.settle({ model: 42 }), TypeError);
+    assert.throws(
+      () => reservation.cancel(),
+      /cannot be cancelled after a settle/,
+    );
+    assert.equal(ledger.read().reserved, 2);
+  });
+});
+
+test('a reservation whose settle never succeeds expires into the total at its reservation, not at 0', async (t) => {
+  await helpers.withTmpAsync(async (dir) => {
+    const ledger = makeLedger(dir);
+    const reservation = await ledger.reserve(2, 'call');
+    failSettleWrite(t);
+    assert.throws(() => reservation.settle({ reportedUsd: 1.5 }), {
+      code: 'ENOSPC',
+    });
+    assert.throws(() => reservation.cancel(), /cannot be cancelled/);
+    ledger.clock.nowMs += 24 * 3600 * 1000;
+    const state = ledger.read();
+    assert.equal(state.reserved, 0);
+    assert.equal(state.total, 2);
+    assert.equal(state.expired.count, 1);
   });
 });
 
