@@ -116,7 +116,9 @@ function writeFiles(files) {
 }
 
 /**
- * What the report reads of one skill: { summary, label, details, convention }. `row` is the skill's plan row.
+ * What the report reads of one skill: { summary, label, details, outcomeJobs }. `row` is the skill's plan row.
+ * `outcomeJobs` are the reading A judge jobs the summary was read from ([] when the skill was not read), for a command
+ * that needs the stored judgments themselves (trim.js).
  */
 function readOneSkill({
   layout,
@@ -134,6 +136,7 @@ function readOneSkill({
       summary,
       label: labelSkill({ summary, batches }),
       details: skillDetails({ summary }),
+      outcomeJobs: [],
     };
   };
   if (!RUNNABLE_STATUSES.has(row.status))
@@ -178,6 +181,7 @@ function readOneSkill({
       guardEntries: guard.skills[skill] ? guard.skills[skill].batches : null,
     }),
     details: skillDetails({ summary, ...jobs }),
+    outcomeJobs: jobs.outcomeJobs,
   };
 }
 
@@ -216,7 +220,7 @@ function readLadderControl({ layout, config, ladder, judgeInput, warnings }) {
  *   now                      clock for `generated_at`
  *   provider                 `live` (default) or `stub`; a stub report says it is not a measurement
  *   armsTmpRoot              where the arms are built for their manifests (default: the system temp dir)
- * Returns { report, markdown }.
+ * Returns { report, markdown, outcomeJobs } where outcomeJobs maps each measured skill to its reading A judge jobs.
  */
 function collectReport({
   layout,
@@ -280,7 +284,13 @@ function collectReport({
     spend,
     warnings: [...new Set(warnings)],
   });
-  return { report, markdown: renderReportMarkdown(report) };
+  return {
+    report,
+    markdown: renderReportMarkdown(report),
+    outcomeJobs: Object.fromEntries(
+      measured.map((entry) => [entry.summary.skill, entry.outcomeJobs]),
+    ),
+  };
 }
 
 /**

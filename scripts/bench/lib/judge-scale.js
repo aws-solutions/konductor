@@ -263,7 +263,8 @@ function scoreJudgment({ scale, text, arm, itemCount, buckets = null }) {
  * per seat and arm). `scale` is required and every judgment must carry it: an `items` and an `outcome` judgment for the
  * same seat and arm would otherwise replace each other and mix two readings into one gap.
  * A seat counts when it has a valid judgment for both arms; its gap is score with minus score without. A seat with one
- * valid arm does not count. The task counts when at least `minSeats` seats count; its gap is the mean seat gap. A later
+ * valid arm does not count. The task counts when at least `minSeats` seats count; its gap is the mean seat gap, and
+ * `means` is { with, without }: the mean score of each arm over those same seats (null when the task does not count). A later
  * valid judgment for the same seat and arm replaces an earlier one, so a redo wins; an invalid one replaces nothing.
  * `guard` is { items, with_met, without_met }: the mean over counted seats of the guard weight met by each arm's own
  * judgment, or null when the checklist has no guard item. The counted judgments must agree on the guard: all null, or
@@ -325,6 +326,7 @@ function aggregateTask(judgments, { scale, minSeats = MIN_SEATS } = {}) {
       gap: null,
       seat_gaps: {},
       seats_valid: counted.length,
+      means: null,
       guard: null,
       invalid: `${counted.length} valid seat(s), need ${minSeats}`,
     };
@@ -353,6 +355,14 @@ function aggregateTask(judgments, { scale, minSeats = MIN_SEATS } = {}) {
     gap: calculateMean(Object.values(seatGaps)),
     seat_gaps: seatGaps,
     seats_valid: counted.length,
+    // The score of each arm on its own, over the same counted seats as the gap, so a reader of the gap can also see
+    // whether both arms were already near the top of the scale.
+    means: {
+      with: calculateMean(counted.map(([, byArm]) => byArm.get('with').score)),
+      without: calculateMean(
+        counted.map(([, byArm]) => byArm.get('without').score),
+      ),
+    },
     guard:
       guardItems === null
         ? null

@@ -7,6 +7,8 @@
  *                                   [--max-minutes N --started-at <UTC time>] [--provider live|stub]
  *   node scripts/bench/bench.js report --skills a,b [--run <id>] [--config <file>] [--root <dir>] [--provider live|stub]
  *   node scripts/bench/bench.js cost-profile [--ledger <file>] [--out <file>] [--root <dir>]
+ *   node scripts/bench/bench.js trim --run <id> [--skills a,b] [--threshold 4.8] [--min-per-batch 5] [--dry-run] [--list-kept]
+ *                                    [--config <file>] [--root <dir>]
  *
  * `plan` is offline. It makes no network, model or AWS call, spends nothing and writes no file. With
  * no --skills it prints this usage and the skills that have a baseline, and does nothing else.
@@ -23,17 +25,28 @@
  * `cost-profile` (lib/cost-profile-rebuild.js) reads the spend ledger and prints a cost profile built from the calls
  * whose cost the CLI reported, or writes it to --out. It needs no settings file and spends nothing.
  *
+ * `trim` (lib/trim.js) drops the tasks a trusted run found easy from the committed baselines and refreshes
+ * bench/baselines/MANIFEST.json, then prints ONE JSON line: per skill and batch, how many tasks are kept (their ids
+ * with `--list-kept`), which are dropped and which are restored, and the rules a batch has no item for any more. It
+ * reads the stored judgments like `report`, spends nothing and changes only files under bench/baselines/; `--dry-run`
+ * changes nothing. It is refused (64) for a run that is not trusted, a missing or stale report, a skill that reading A
+ * covers too thinly, a rule that would have no item left in any batch of its skill, or a baseline file edited after
+ * the plan was made.
+ *
  * README.md in this folder explains the terms and the file formats.
  *
  * Exit codes (the values are the sysexits.h ones where one fits):
  *
- *   0   done (for next: a job to run, or done; for report: the report is written)
+ *   0   done (for next: a job to run, or done; for report: the report is written; for trim: the baselines are
+ *       trimmed, or would be with --dry-run)
  *   1   the plan is refused: an invalid baseline or agent spec, a projected cost above max_usd, a plan that
  *       would take the spend ledger past total_cap_usd, or no selected skill that can be run
- *       (no baseline or no agent); for next: stop (a limit is reached, or the plan is refused)
+ *       (no baseline or no agent); for next: stop (a limit is reached, or the plan is refused); for trim: the
+ *       baselines do not match MANIFEST.json before or after the trim
  *   64  usage error (EX_USAGE): a bad flag or value, an unknown skill, a settings file that
- *       cannot be read or is invalid, a spend ledger that cost-profile cannot parse, or a text in the data
- *       of `report` that is too long for the redactor to scan
+ *       cannot be read or is invalid, a spend ledger that cost-profile cannot parse, a text in the data
+ *       of `report` that is too long for the redactor to scan, or a trim that is refused (the run is not trusted,
+ *       its report is missing or stale, or a skill's reading A covers fewer than 12 of every 16 tasks)
  *   66  a file or folder the plan needs is missing (EX_NOINPUT)
  *   70  internal error (EX_SOFTWARE): a bug in the benchmark. One line says so; the stack trace is
  *       printed only when BENCH_DEBUG=1 is set
@@ -71,6 +84,7 @@ const EX_SOFTWARE = 70;
 const EX_IOERR = 74;
 const USAGE = `Usage: node scripts/bench/bench.js <plan|next|report> --skills <a,b> [options]
        node scripts/bench/bench.js cost-profile [--ledger <file>] [--out <file>] [--root <dir>]
+       node scripts/bench/bench.js trim --run <id> [--skills <a,b>] [--threshold <n>] [--min-per-batch <n>] [--dry-run] [--list-kept]
 
 Commands
   plan    Show the stages a run would take for the selected skills, which are done, and what the
@@ -81,6 +95,8 @@ Commands
           report.md in the run folder. Offline: no network, no model call, nothing spent.
   cost-profile  Rebuild the cost profile (mean, median, p90 per call kind and model) from the
           spend ledger. Offline: nothing spent.
+  trim    Drop the easy tasks of a trusted run from the committed baselines and refresh the manifest: a
+          task whose reading A mean is at or above the threshold both without and with the skill. Offline: nothing spent.
 
 Options
   --skills <a,b>     Skills to plan. Without it, only this help is shown. The controls are named the
@@ -97,11 +113,17 @@ Options
                      stub, and stub only there.
   --ledger <file>    cost-profile only: the spend ledger to read (default: bench/out/ledger.jsonl).
   --out <file>       cost-profile only: write the profile there instead of printing it.
+  --threshold <n>    trim only: drop a task whose reading A mean is at least n both without and with the skill, 1 to 5
+                     (default: 4.8). A task with no counted with-skill judgment stays.
+  --min-per-batch <n>  trim only: keep at least n tasks in each batch, 5 or more (default: 5). The dropped tasks
+                     with the lowest means (the lower of the two arms) stay when a batch would fall below it.
+  --dry-run          trim only: print what would be dropped and write nothing.
+  --list-kept        trim only: also print the ids of the tasks that stay (a long line for many skills).
 
 Exit codes
-  0   done (next: a job to run, or done; report: the report is written)
-  1   the plan is refused (an invalid baseline or agent spec, a projected cost above max_usd, a ledger past a limit, or no skill to run); next: stop
-  64  usage error: a bad flag or value, an unknown skill, an unreadable or invalid settings file, or (cost-profile) a corrupt ledger
+  0   done (next: a job to run, or done; report: the report is written; trim: the baselines are trimmed)
+  1   the plan is refused (an invalid baseline or agent spec, a projected cost above max_usd, a ledger past a limit, or no skill to run); next: stop; trim: the baselines do not match MANIFEST.json
+  64  usage error: a bad flag or value, an unknown skill, an unreadable or invalid settings file, (cost-profile) a corrupt ledger, or (trim) a run that is not trusted, a missing or stale report, or too thin a reading A
   66  a file or folder the plan needs is missing
   70  internal error (a bug in the benchmark); set BENCH_DEBUG=1 to print the stack trace
   74  I/O error reading a file or folder, such as permission denied
@@ -135,9 +157,17 @@ const isSystemError = (error) =>
 
 /**
  * Turns anything thrown while running into { code, text }: the exit code and what to print on stderr.
- * Only a bug (70) can carry a stack trace, and only when `debug` is true.
+ * Only a bug (70) can carry a stack trace, and only when `debug` is true. An error with a string `hint` gets it as a
+ * second `error:` line, so advice the code attached (what to repair after a failed write) is not lost.
  */
-function describeFailure(error, { debug = false } = {}) {
+function describeFailure(error, options = {}) {
+  const described = describeFailureLine(error, options);
+  if (error && typeof error.hint === 'string' && error.hint)
+    described.text = `${described.text.replace(/\n$/, '')}\nerror: ${error.hint}\n`;
+  return described;
+}
+
+function describeFailureLine(error, { debug = false } = {}) {
   if (error instanceof UsageError)
     return {
       code: EX_USAGE,
@@ -186,6 +216,8 @@ const VALUE_FLAGS = {
   '--provider': 'provider',
   '--ledger': 'ledger',
   '--out': 'out',
+  '--threshold': 'threshold',
+  '--min-per-batch': 'minPerBatch',
 };
 /** Flags only `next` takes; `plan` refuses them, so a typo cannot pass quietly. */
 const NEXT_ONLY_FLAGS = ['maxMinutes', 'startedAt', 'provider'];
@@ -193,8 +225,18 @@ const NEXT_ONLY_FLAGS = ['maxMinutes', 'startedAt', 'provider'];
 const NOT_REPORT_FLAGS = ['maxUsd', 'maxMinutes', 'startedAt'];
 /** Flags only `cost-profile` takes, and the only flags it takes besides --root. */
 const COST_PROFILE_FLAGS = ['ledger', 'out'];
-const COMMANDS = ['plan', 'next', 'report', 'cost-profile'];
-const BOOL_FLAGS = { '--json': 'json', '--help': 'help', '-h': 'help' };
+/** Flags only `trim` takes. */
+const TRIM_ONLY_FLAGS = ['threshold', 'minPerBatch', 'dryRun', 'listKept'];
+/** Flags `trim` refuses besides --json: it spends nothing, runs no job and takes the provider from the stored report. */
+const NOT_TRIM_FLAGS = ['maxUsd', 'maxMinutes', 'startedAt', 'provider'];
+const COMMANDS = ['plan', 'next', 'report', 'cost-profile', 'trim'];
+const BOOL_FLAGS = {
+  '--json': 'json',
+  '--dry-run': 'dryRun',
+  '--list-kept': 'listKept',
+  '--help': 'help',
+  '-h': 'help',
+};
 /** The command-line spelling of a parsed option name (`maxUsd` is `--max-usd`). */
 const flagOf = (name) =>
   Object.entries({ ...VALUE_FLAGS, ...BOOL_FLAGS }).find(
@@ -270,6 +312,18 @@ function main(argv, io, env = process.env, nextOptions = {}) {
       throw new UsageError(
         `${costProfileOnly.map(flagOf).join(', ')} is an option of cost-profile, not of ${command}`,
       );
+    const trimOnly = TRIM_ONLY_FLAGS.filter((name) => name in options);
+    if (trimOnly.length && command !== 'trim')
+      throw new UsageError(
+        `${trimOnly.map(flagOf).join(', ')} is an option of trim, not of ${command}`,
+      );
+    if (command === 'trim') {
+      const refusedByTrim = NOT_TRIM_FLAGS.filter((name) => name in options);
+      if (refusedByTrim.length)
+        throw new UsageError(
+          `${refusedByTrim.map(flagOf).join(', ')} is not an option of trim: it spends nothing and runs no job`,
+        );
+    }
     if (command === 'plan') {
       const nextOnly = NEXT_ONLY_FLAGS.filter((name) => name in options);
       if (nextOnly.length)
@@ -325,6 +379,9 @@ function main(argv, io, env = process.env, nextOptions = {}) {
         throw error;
       throw new UsageError(error.message);
     }
+
+    if (command === 'trim')
+      return runTrimCommand({ layout, config, options, nextOptions, io });
 
     if (!options.skills) {
       if (command !== 'plan')
@@ -522,6 +579,45 @@ function runReport({ layout, config, names, options, nextOptions, io }) {
   }
   io.out(`${redact(JSON.stringify(result), { maxChars: 16000 })}\n`);
   return 0;
+}
+
+/**
+ * The `trim` command (lib/trim.js): drops the easy tasks of a trusted run from the committed baselines and prints one
+ * JSON line. `--run` is required, because the run chosen decides which tasks leave a frozen baseline. `nextOptions`
+ * may carry `now` and `collect` (tests). Exit 0 when the baselines are trimmed (or would be), 1 when they do not match
+ * MANIFEST.json before or after the trim, 64 for a refusal.
+ */
+function runTrimCommand({ layout, config, options, nextOptions, io }) {
+  // Loaded here and not at the top: trim reads the stored judgments through the report modules, and `plan` must never
+  // load them (plan.test.js checks it). Each line is marked so that check can tell them apart.
+  const trim = require('./lib/trim'); // report only
+  if (options.run === undefined)
+    throw new UsageError(
+      '--run is required: name the run whose judgments say which tasks are easy',
+    );
+  const outcome = trim.runTrim({
+    layout,
+    config,
+    skills: options.skills && parseSkillSelection(options.skills),
+    threshold:
+      options.threshold === undefined
+        ? undefined
+        : trim.parseThreshold(options.threshold),
+    minPerBatch:
+      options.minPerBatch === undefined
+        ? undefined
+        : trim.parseMinPerBatch(options.minPerBatch),
+    dryRun: options.dryRun === true,
+    listKept: options.listKept === true,
+    ...(nextOptions.now ? { now: nextOptions.now } : {}),
+    ...(nextOptions.collect ? { collect: nextOptions.collect } : {}),
+  });
+  if (outcome.result)
+    io.out(
+      `${redact(JSON.stringify(outcome.result), { maxChars: Number.POSITIVE_INFINITY })}\n`,
+    );
+  for (const problem of outcome.problems) io.err(`error: ${problem}\n`);
+  return outcome.ok ? 0 : 1;
 }
 
 if (require.main === module) {

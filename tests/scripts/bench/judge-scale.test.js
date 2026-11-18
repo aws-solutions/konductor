@@ -747,6 +747,23 @@ test('seats: the seat gaps are named by seat', () => {
   ]);
   assert.deepEqual(aggregated.seat_gaps, { a: 2, b: -1 });
 });
+test('seats: the mean score of each arm is read over the counted seats only', () => {
+  const aggregated = aggregate([
+    makeJudgment('a', 'with', 4),
+    makeJudgment('a', 'without', 2),
+    makeJudgment('b', 'with', 1),
+    makeJudgment('b', 'without', 4),
+    makeJudgment('c', 'with', 5),
+    makeJudgment('d', 'without', 1),
+  ]);
+  assert.deepEqual(aggregated.means, { with: 2.5, without: 3 });
+  assert.equal(
+    aggregate([makeJudgment('a', 'with', 4), makeJudgment('a', 'without', 2)])
+      .means,
+    null,
+    'a task that does not count has no means',
+  );
+});
 test('seats: the rule is 2 of 3 by default, and the result does not depend on input order', () => {
   assert.equal(judgeScale.MIN_SEATS, 2);
   const judgments = [
