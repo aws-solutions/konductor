@@ -304,16 +304,22 @@ const isPrepared = (record) =>
  *   { text, eligible, reason, redacted, truncated, leaks, changes, counts, chars_in, removed_chars, removed_share,
  *     removed_by_rule, sanitizer_version, rules_sha256 }
  * The record is frozen and registered (isPrepared): a copy or a hand-built record is not one. `reason` is null when
- * eligible, else why the answer must not reach a judge. `literals` are exact secret values (the
- * credentials given to the child). `settings` are the sanitizer settings (sanitize.js DEFAULT_SETTINGS). `maxRemovedShare`
+ * eligible, else why the answer must not reach a judge. `literals` is required: the exact secret values (the
+ * credentials given to the child), or [] when the run handed out none. `settings` are the sanitizer settings
+ * (sanitize.js DEFAULT_SETTINGS). `maxRemovedShare`
  * is the most the sanitizer may delete (a share of non-whitespace characters, above 0 and at most 1).
  */
 function createJudgeInput({
-  literals = [],
+  literals,
   maxChars = MAX_ANSWER_CHARS,
   maxRemovedShare = MAX_REMOVED_SHARE,
   settings,
 } = {}) {
+  // No default: a caller that forgot the run's credentials would get no exact-value redaction and no error.
+  if (!Array.isArray(literals))
+    throw new TypeError(
+      'createJudgeInput: options.literals is required (the exact credential values the run handed out, or [] when it handed out none)',
+    );
   const provenance = sanitizerProvenance({
     maxChars,
     maxRemovedShare,

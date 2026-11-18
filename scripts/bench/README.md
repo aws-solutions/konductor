@@ -343,7 +343,7 @@ Control, zero-width, bidi and tag characters are removed first, line breaks beco
 
 Every drop is counted, with the share of the answer's non-whitespace characters that was removed. The rules have a version number and a hash of their whole specification, so a change to the rules can mark earlier judgments stale once judgments exist (added in a later PR).
 
-`lib/judge-input.js` is the one place that turns a stored answer into text a judge may see. It prepares one answer at a time, for a judge prompt that holds only that answer, and the caller must name the skill under test (`""` for a control), so a missing option cannot skip the name rules. The stored answer must be text (null and undefined are read as an empty answer); anything else is refused. `request`, the task's request text, is optional and feeds the guard. It runs four steps in this order:
+`lib/judge-input.js` is the one place that turns a stored answer into text a judge may see. It prepares one answer at a time, for a judge prompt that holds only that answer, and the caller must name the skill under test (`""` for a control), so a missing option cannot skip the name rules. `literals`, the exact credential values the run handed out, is required too (`[]` when it handed out none), so a caller that forgets it gets an error and not a redactor without them. The stored answer must be text (null and undefined are read as an empty answer); anything else is refused. `request`, the task's request text, is optional and feeds the guard. It runs four steps in this order:
 
 1. Sanitize, as above.
 2. Redact: the redactor replaces secret-shaped values, so lookalike strings never reach a judge. The result says whether the text changed.
@@ -574,7 +574,7 @@ On a failure the line is `{"error": "...", "exit_code": N}`. A failed write (the
 | 6        | stop: the ledger cannot be read or its lock cannot be taken                                                                                                                                         |
 | 7        | stop: security (the secret sweep found a credential value or the canary in stored text)                                                                                                             |
 | 8        | stop: the first run was answered by another model than the subject model                                                                                                                            |
-| 9        | stop: systemic, 4 checklists or judgments in a row whose every call failed                                                                                                                          |
+| 9        | stop: systemic, 4 subject runs, checklists or judgments in a row whose every call failed                                                                                                            |
 | 10       | stop: the first run was invalid for another reason than the skill or the model (setup)                                                                                                              |
 | 64       | usage error (a `--ladder` file that cannot be read or fails its audit is one); 66, 70 and 74 as for `plan`                                                                                          |
 

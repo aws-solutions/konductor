@@ -39,8 +39,10 @@ const RULE_CASES = helpers.readJson(
 const SKILL_CASES = helpers.readJson(
   path.join(helpers.FIXTURE_DIR, 'skill-narration.cases.json'),
 );
+const makeInput = (options = {}) =>
+  createJudgeInput({ literals: [], ...options });
 const KEY = ['AK', 'IA'].join('') + 'Q'.repeat(16); // shaped like an AWS access key id; not a real one
-const defaultInput = createJudgeInput();
+const defaultInput = makeInput();
 const prepare = (text, input = defaultInput) =>
   input.prepare(text, { skill: SKILL });
 /** scanLeaks with the default sanitizer settings, which the default judge input sanitizes with. */
@@ -444,7 +446,7 @@ test('nothing left, or too long to sanitize: not eligible', () => {
 test('redaction runs after sanitizing: key ids, the canary and exact credential values never reach a judge', () => {
   const canary = newCanary();
   const secret = 'not-a-real-secret-value-1234';
-  const withLiteral = createJudgeInput({ literals: [secret] });
+  const withLiteral = makeInput({ literals: [secret] });
   const result = prepare(
     `Row 1 ${KEY}\nThe canary is ${canary}\nExport ${secret} now.\nI'll load the e2e-test-strategy skill.`,
     withLiteral,
@@ -469,7 +471,7 @@ test('redaction sees through characters the sanitizer normalizes away, and leave
 });
 
 test('size cap: cut after redaction so a cut cannot split a secret; flagged truncated; room for a long answer', () => {
-  const small = createJudgeInput({ maxChars: 50 });
+  const small = makeInput({ maxChars: 50 });
   const result = prepare(`${'x'.repeat(40)}${KEY}${'y'.repeat(100)}`, small);
   assert.deepEqual(
     [result.truncated, result.redacted, result.eligible],
@@ -486,10 +488,7 @@ test('size cap: cut after redaction so a cut cannot split a secret; flagged trun
   assert.equal(prepare('word '.repeat(10000)).truncated, false);
   assert.ok(MAX_ANSWER_CHARS >= 50000);
   for (const invalidMaxChars of [0, -1, 1.5, '5'])
-    assert.throws(
-      () => createJudgeInput({ maxChars: invalidMaxChars }),
-      TypeError,
-    );
+    assert.throws(() => makeInput({ maxChars: invalidMaxChars }), TypeError);
 });
 
 /** True when `text` holds a surrogate unit that is not one half of a pair. */
@@ -499,7 +498,7 @@ const hasLoneSurrogate = (text) =>
   );
 
 test('size cap: the cut never lands between the two halves of a surrogate pair', () => {
-  const small = createJudgeInput({ maxChars: 10 });
+  const small = makeInput({ maxChars: 10 });
   const emoji = '\u{1F600}';
   assert.equal(emoji.length, 2);
   // The pair sits at units 9 and 10: a cut at 10 would keep the first half only, so the cut moves back one unit.
@@ -539,7 +538,7 @@ test('size cap: wherever the cut falls in a text of pairs, no half of a pair is 
   const emoji = '\u{1F680}';
   for (let cap = 1; cap <= 9; cap += 1) {
     for (const lead of ['', 'a']) {
-      const input = createJudgeInput({ maxChars: cap });
+      const input = makeInput({ maxChars: cap });
       const result = prepare(`${lead}${emoji.repeat(8)}`, input);
       const kept = result.text.replace(/\[truncated \d+ characters\]$/, '');
       assert.equal(hasLoneSurrogate(result.text), false, `${cap}/${lead}`);
@@ -551,7 +550,7 @@ test('size cap: wherever the cut falls in a text of pairs, no half of a pair is 
 });
 
 test('size cap: a surrogate unit that is not half of a pair is not moved, so only a real pair is protected', () => {
-  const small = createJudgeInput({ maxChars: 4 });
+  const small = makeInput({ maxChars: 4 });
   // A high surrogate with no low one after it, and a low one with no high one before it, sit at the cut.
   const loneHigh = prepare('abc\ud83dxyz', small);
   assert.equal(loneHigh.text, 'abc\ud83d[truncated 3 characters]');
@@ -582,7 +581,7 @@ test('size cap: the cut is placed in the redacted text, where a redacted secret 
   const marker = createRedactor()(KEY, { maxChars: Infinity });
   assert.notEqual(marker.length, KEY.length);
   // In the redacted text the pair straddles the cap; in the stored text it does not.
-  const small = createJudgeInput({ maxChars: marker.length + 1 });
+  const small = makeInput({ maxChars: marker.length + 1 });
   const result = prepare(`${KEY}\u{1F600}tail`, small);
   assert.equal(result.redacted, true);
   assert.equal(result.text, `${marker}[truncated 6 characters]`);
@@ -594,7 +593,7 @@ test('deterministic: the same stored answer gives the same result, and the input
   assert.deepEqual(prepare(stored), prepare(stored));
   assert.deepEqual(
     prepare(stored),
-    createJudgeInput().prepare(stored, { skill: SKILL }),
+    makeInput().prepare(stored, { skill: SKILL }),
   );
 });
 
@@ -610,7 +609,7 @@ test('provenance: version 10, pinned, one value from every path, changed by the 
     PINNED_PROVENANCE_HASH,
   );
   const hashWithOptions = (options) =>
-    createJudgeInput(options).provenance.sanitizerRulesSha256;
+    makeInput(options).provenance.sanitizerRulesSha256;
   assert.equal(
     hashWithOptions({ literals: ['another-secret-value'] }),
     PINNED_PROVENANCE_HASH,
@@ -625,10 +624,7 @@ test('provenance: version 10, pinned, one value from every path, changed by the 
     ]).size,
     4,
   );
-  assert.equal(
-    createJudgeInput().settings.plugin,
-    sanitizer.DEFAULT_SETTINGS.plugin,
-  );
+  assert.equal(makeInput().settings.plugin, sanitizer.DEFAULT_SETTINGS.plugin);
   const judgment = {
     arm: 'with',
     answerSha256: helpers.makeFakeSha256('1'),
@@ -648,7 +644,7 @@ test('provenance: version 10, pinned, one value from every path, changed by the 
   );
 });
 
-test('provenance: sanitizerProvenance() and createJudgeInput() report the same value, for the same options, and nothing else exports a hash', () => {
+test('provenance: sanitizerProvenance() and makeInput() report the same value, for the same options, and nothing else exports a hash', () => {
   for (const optionSet of [
     {},
     { maxChars: 100 },
@@ -664,11 +660,11 @@ test('provenance: sanitizerProvenance() and createJudgeInput() report the same v
     const { literals, ...options } = optionSet;
     assert.deepEqual(
       sanitizerProvenance(optionSet),
-      createJudgeInput(optionSet).provenance,
+      makeInput(optionSet).provenance,
       JSON.stringify(options),
     );
     assert.equal(
-      prepare('x', createJudgeInput(optionSet)).rules_sha256,
+      prepare('x', makeInput(optionSet)).rules_sha256,
       sanitizerProvenance(optionSet).sanitizerRulesSha256,
     );
     assert.equal(
@@ -833,12 +829,12 @@ test('removed share: the limit is a setting; both arms are held to it', () => {
       `sanitizer removed ${+(defaults.removed_share * 100).toFixed(1)}% of the answer`,
     ],
   );
-  const lenient = createJudgeInput({ maxRemovedShare: 0.9 });
+  const lenient = makeInput({ maxRemovedShare: 0.9 });
   assert.deepEqual(
     [prepare(answer, lenient).eligible, prepare(answer, lenient).reason],
     [true, null],
   );
-  const strict = createJudgeInput({ maxRemovedShare: 0.005 });
+  const strict = makeInput({ maxRemovedShare: 0.005 });
   assert.equal(
     prepare('I loaded the skill. ' + 'a'.repeat(2000), strict).eligible,
     false,
@@ -1082,7 +1078,7 @@ test('leaks: every match is counted, the sample is the first match, and the reas
 test('no secret reaches any field of the result, a leak sample included: the scan reads the redacted text', () => {
   const literal = 'handed-out-secret-1';
   const canary = newCanary();
-  const input = createJudgeInput({ literals: [literal] });
+  const input = makeInput({ literals: [literal] });
   for (const secret of [KEY, canary, literal]) {
     const result = input.prepare(`tool_use ${secret}\nRow 1`, {
       skill: SKILL,
@@ -1093,7 +1089,7 @@ test('no secret reaches any field of the result, a leak sample included: the sca
 });
 
 test('prepare uses its settings for the rules and for the scan', () => {
-  const custom = createJudgeInput({
+  const custom = makeInput({
     settings: {
       plugin: 'acme',
       scratchPrefix: 'my.box',
@@ -1144,4 +1140,25 @@ test('ordinary sentences with "guidance" or "skills" and a weak cue word reach t
   const wrapped = prepare(`${answer}\n\nI used the\nskill to answer this.`);
   assert.equal(wrapped.text.trim(), answer);
   assert.equal(wrapped.counts['skill-narration'], 1);
+});
+
+test('createJudgeInput needs literals: a caller that forgets the run credentials gets an error, not a silent gap', () => {
+  for (const options of [
+    undefined,
+    {},
+    { maxChars: 100 },
+    { literals: undefined },
+    { literals: null },
+    { literals: 'not-a-list-of-values' },
+  ])
+    assert.throws(
+      () => createJudgeInput(options),
+      { name: 'TypeError', message: /options\.literals is required/ },
+      JSON.stringify(options),
+    );
+  // An explicit [] is how a run that hands out no credentials says so.
+  assert.equal(
+    createJudgeInput({ literals: [] }).prepare('x', { skill: '' }).eligible,
+    true,
+  );
 });

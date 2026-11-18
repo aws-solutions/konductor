@@ -35,8 +35,8 @@
  *   6   stopped, ledger: the ledger cannot be read or its lock cannot be taken
  *   7   stopped, security: the secret sweep found a credential value or the canary in a stored file
  *   8   stopped, model: the first run was answered by a model other than the subject model
- *   9   stopped, systemic: 4 checklists or judgments in a row whose every call failed (a provider or credential
- *       problem)
+ *   9   stopped, systemic: 4 subject runs, checklists or judgments in a row whose every call failed (a provider or
+ *       credential problem)
  *   10  stopped, setup: the first run was invalid for a reason that is neither the skill nor the model (a result that
  *       names no model, tools beyond the grant, a tool outside the grant that ran, the `without` arm loading the skill)
  *   64  usage error, 66 missing input, 70 internal error, 74 I/O error (as in bench.js)

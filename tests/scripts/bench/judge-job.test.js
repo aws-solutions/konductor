@@ -2049,7 +2049,9 @@ test('provider blocks count across launches: two in the first, the third makes t
       skills: [SKILL],
       scale: 'items',
       judgeInput:
-        require('../../../scripts/bench/lib/judge-input').createJudgeInput(),
+        require('../../../scripts/bench/lib/judge-input').createJudgeInput({
+          literals: [],
+        }),
       armsTmpRoot: tmpRoot,
     });
     const held = jobs.find((entry) => entry.state === 'other_arm_unusable');
@@ -2254,7 +2256,7 @@ test('what a failed judgment keeps of the reply and the error is redacted', () =
       config,
       skills: [SKILL],
       scale: 'items',
-      judgeInput: createJudgeInput(),
+      judgeInput: createJudgeInput({ literals: [] }),
       armsTmpRoot: tmpRoot,
     });
     const record = judgeJob.failedRecord(jobs[0], {
@@ -2808,13 +2810,15 @@ test('the default judge call: every judgment goes through OpenCode in a locked-d
     assert.equal(seen.length, 30);
     for (const call of seen) {
       assert.equal(call.command, 'opencode');
-      assert.deepEqual(call.args.slice(0, 5), [
+      assert.deepEqual(call.args.slice(0, 6), [
         'run',
         '--standalone',
         '--format',
         'json',
-        '--auto',
+        '--title',
+        'bench-judge',
       ]);
+      assert.ok(!call.args.includes('--auto'));
       assert.ok(call.cwd.startsWith(path.join(sandboxRoot, 'bench-judge-')));
       assert.equal(call.mode, 0o700);
       assert.equal(call.config.permission['*'], 'deny');
