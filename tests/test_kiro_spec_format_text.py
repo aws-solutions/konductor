@@ -135,6 +135,11 @@ def _check_waves(text, label):
              if expected.get(l) is None or plan.placed[l] < expected[l]}
     assert not early, f"{label}: leaf -> (earliest wave the rule gives, wave listed): {early}"
 
+    behind = {l: [p for p in plan.required_predecessors(l) if plan.placed[p] >= plan.placed[l]]
+              for l in plan.leaves}
+    behind = {l: ps for l, ps in behind.items() if ps}
+    assert not behind, f"{label}: leaf -> required predecessors not in an earlier wave: {behind}"
+
     for wave in plan.waves:
         checkpoints = [t for t in wave["tasks"] if plan.is_checkpoint(t)]
         assert not checkpoints or len(wave["tasks"]) == 1, (
@@ -165,6 +170,22 @@ def _requirement_criteria(text):
 
 def test_task_skill_example_places_every_leaf_no_earlier_than_the_rule_and_checkpoints_alone():
     _check_waves(_task_skill_example(), "task skill example")
+
+
+def test_wave_check_fails_a_test_task_listed_before_the_code_it_tests_moved_later():
+    example = _task_skill_example()
+    graph = example.split("```json\n", 1)[1].split("```", 1)[0]
+    moved = json.dumps({"waves": [
+        {"id": 0, "tasks": ["1"]},
+        {"id": 1, "tasks": ["2.1"]},
+        {"id": 2, "tasks": ["2.2"]},
+        {"id": 3, "tasks": ["3"]},
+        {"id": 4, "tasks": ["4.2"]},
+        {"id": 5, "tasks": ["4.1"]},
+        {"id": 6, "tasks": ["5"]},
+    ]})
+    with pytest.raises(AssertionError, match=r"not in an earlier wave: \{'4\.2': \['4\.1'\]\}"):
+        _check_waves(example.replace(graph, moved + "\n"), "4.1 moved to wave 5")
 
 
 def test_task_skill_example_references_a_requirement_on_every_task_but_the_checkpoints():

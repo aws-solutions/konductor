@@ -177,7 +177,7 @@ When the spec has `bugfix.md` instead of `requirements.md`, follow the bugfix ta
 4. Map each acceptance criterion to implementation tasks, and each correctness property to one test task
 5. Order tasks by dependency (foundation → core → polish), add checkpoints, then build the dependency graph and the waves from that order
 6. Write tasks.md to `{spec_dir}/tasks.md`
-7. Check it: every cited criterion and property exists, every property has a test task, and every leaf task id appears in exactly one wave, no earlier than the wave the wave rule gives it, with each checkpoint alone in its wave and no two leaves that write the same file in one wave. `grep -n '^ *- \[ \]' tasks.md` lists the tasks to compare with the waves
+7. Check it: every cited criterion and property exists, every property has a test task, and every leaf task id appears in exactly one wave, no earlier than the wave the wave rule gives it and later than the waves its required predecessors are listed in, with each checkpoint alone in its wave and no two leaves that write the same file in one wave. `grep -n '^ *- \[ \]' tasks.md` lists the tasks to compare with the waves
 8. Present to user for approval. If user requests changes, revise and re-present (max 2 cycles). If the user said not to ask questions, skip approval: state your assumptions in the final message and finish.
 
 ## Quality Gate
@@ -185,7 +185,7 @@ When the spec has `bugfix.md` instead of `requirements.md`, follow the bugfix ta
 **CRITICAL (must fix):**
 
 - Tasks have circular dependencies
-- In a feature spec, `## Task Dependency Graph` missing, or its `waves` JSON is invalid, omits a leaf task, lists one twice, lists a parent task, puts a leaf earlier than the wave the wave rule gives it, or puts a checkpoint in a wave with another task
+- In a feature spec, `## Task Dependency Graph` missing, or its `waves` JSON is invalid, omits a leaf task, lists one twice, lists a parent task, puts a leaf earlier than the wave the wave rule gives it or in a wave no later than one its required predecessors are listed in, or puts a checkpoint in a wave with another task
 - A task missing the requirement reference its kind calls for: an implementation, example or unit test task without its `_Requirements: X.Y_` line, a property-based test task without its `**Validates: Requirements N.M**` line, or a bugfix verify sub-task without its `_Requirements: X.Y_` line. Checkpoints are exempt
 - A reference to an acceptance criterion or property that does not exist
 - tasks.md written anywhere other than `{spec_dir}`
