@@ -132,7 +132,7 @@ These call no model. The marks in the table say what each command costs.
 | What will this cost, and which commands do I run? | `node bench/runner/bench.js pr-plan --ref opt-a=REF --suite lite --budget-credits 100` | free, runs nothing |
 | Do all arms build and install? | add `--prepare-only` to any `run` command | free, builds arms, starts no agent |
 | What will judging cost? | `node bench/runner/bench.js judge --run DIR --plan` | free, calls no model |
-| Is the code healthy? | `node --test "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js"` | free |
+| Is the code healthy? | `node --test "bench/runner/test/*.test.js" "bench/skilleval/test/*.test.js"`, then `node --test bench/physical/test/*.test.js bench/agenteval/test/*.test.js` and `python3 -m unittest discover -s bench/physical/test -p 'test_*.py'` (the plant's Python side) | free |
 | Does a skill load when it should, and stay out when it should not? | `node bench/runner/bench.js cap select --skill NAME --run stub-sel --out /tmp/kp` (needs the skill's frozen `selection.json`; add `--stub-behaviour fake` for a fake model that picks from the skill index) | free on the stub; a real run is paid and needs approval |
 | Does the keep-or-prune pipeline work end to end? | `node bench/runner/bench.js cap keep-prune --skill plan-review --run stub-pilot --out /tmp/kp` | free, stub provider only; it refuses to run if any of the 35 frozen baselines fails its check, and a stale baseline gives NO DATA. Each block is the conditional effect after load, judged by three judge families (median score); the whole-skill call is NO DATA without `--selection FILE` |
 
