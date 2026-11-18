@@ -201,13 +201,13 @@ Optional. Lists tasks left out of reading A.
 }
 ```
 
-| Field     | Rule                                                   | Why                                                                                         |
-| --------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| `batches` | Keys are batch names. A task is listed once per batch. | Batch names are shared by every skill, so an id is looked up across skills.                 |
-| `id`      | A task id.                                             | `plan` warns when it matches no task of any skill with a baseline, which is usually a typo. |
-| `scales`  | Exactly `["outcome"]`. `items` is refused.             | A task may leave reading A, never reading B.                                                |
-| `reason`  | At least 20 characters.                                | Lets a reader see later why the task was left out.                                          |
-| `date`    | A real date written `YYYY-MM-DD`.                      | Records when the decision was made.                                                         |
+| Field     | Rule                                                   | Why                                                                                          |
+| --------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `batches` | Keys are batch names. A task is listed once per batch. | Batch names are shared by every skill, so an id is looked up across skills.                  |
+| `id`      | A task id.                                             | `plan` warns when it matches no task of any skill with a baseline, which is usually a typo.  |
+| `scales`  | Exactly `["outcome"]`. `items` is refused.             | A task may leave reading A, never reading B.                                                 |
+| `reason`  | 20 to 500 characters.                                  | Lets a reader see later why the task was left out. It is printed in reports, so it is short. |
+| `date`    | A real date written `YYYY-MM-DD`.                      | Records when the decision was made.                                                          |
 
 ## Running `plan`
 
@@ -778,6 +778,48 @@ A control reading that cannot decide is `NOT RUN`, not a pass or a fail: one wit
 
 `readSkill` reads one skill from the judge jobs `planJudging` lists for each scale, `ladderDoses` matches a dose ladder's doses to their items (`fixture-d0`, ...), and `buildReadingsReport` puts the skills and the controls together. A later PR adds the report writer that turns the result into `report.md`.
 
+## Labels and the report
+
+`node scripts/bench/bench.js report --skills <a,b> [--run <id>] [--provider live|stub] [--config <file>] [--root <dir>]` reads the stored answers and judgments of a run, applies the label rules and writes `bench/out/<run-id>/report.json` and `report.md`. It makes no network, model or AWS call and spends nothing. It writes those two files in the run folder; while it reads, it builds and removes scratch copies of the arms in the system temp folder (the same step `plan` and the judge job use). It prints one JSON line (`{"report":"written",...,"labels":{...}}`; when the controls did not pass, `labels_published` is false and each label is `withheld (controls: FAIL)`, as in `report.md`) and exits 0 whenever the files are written, also for a `NO DATA` or `FAIL` report. Other exits: 64 for a usage error, which includes a text in the data too long for the redactor to scan (the message names the field, such as a warning that quotes a `target_section`, and nothing is written; an exclusion reason is at most 500 characters, so it is never that long); 66 when a file vanishes while it is read, as for `plan`; 70 for a bug in the benchmark; 74 when a file cannot be read or the report cannot be written. `--provider stub` reads a stub run's spend from its own ledger, and a stub report says `STUB DATA: not a measurement` at the top of `report.md` and has `"provider": "stub"` in `report.json` (`"live"` otherwise). It reads the judge jobs the judge job itself lists, so a judgment counts here exactly when the judge job counts it as current.
+
+The `spend` part of `report.json` holds this run's spend and reservations (`run_spent_usd`, `run_reserved_usd`), the whole ledger's total and call count (`ledger_total_usd`, `ledger_calls`), this run's calls charged at their mean because the CLI reported no usable cost (`estimated_calls`, `estimated_usd`), this run's calls that ended before a model step started and were charged 0 (`unstarted_calls`), and the calls charged at their mean over the whole ledger, shared with other runs (`ledger_estimated_calls`, `ledger_estimated_usd`). It is null, with a warning, when the ledger cannot be read.
+
+The two files are written through temporary files: each goes to a temporary file first, and the two renames follow. A write that fails before the renames (a full disk, a run folder that cannot be written, a folder where `report.md` should be) exits 74 with `cannot write file` and the path of the report file, leaves the previous `report.json` and `report.md` as they were and leaves no temporary file. A failure or a kill between the two renames can leave the new `report.json` beside the old `report.md`; run `report` again and both are replaced.
+
+`lib/labels.js` gives each skill one label from reading A and reading B, pooled over its batches, checked in this order (the first match wins):
+
+| Order | Label                              | Condition                                  |
+| ----- | ---------------------------------- | ------------------------------------------ |
+| 1     | `helps quality`                    | A's lower end is above 0.                  |
+| 2     | `harm`                             | A's upper end is below 0.                  |
+| 3     | `teaches conventions (human call)` | B's lower end is above 0 and A contains 0. |
+| 4     | `no change`                        | Neither lower end is above 0.              |
+
+A skill is `NO DATA` instead, with every reason listed, when a reading counts fewer than 12 of every 16 of its tasks (a task excluded from A is a task A does not count), when a judgment of either reading is stale, when a batch was not read (no judge job in it), when `plan` does not run the skill, or when A has no interval. A batch whose reading B waits for a refreshed baseline (`SKILL.md` or the batch changed after the rules were written) is still read by A: the skill is labeled from A alone, with B treated as having no interval, so it is `NO DATA` only when A contains 0, and the reason names the batch. The rules read the unrounded interval ends, so an end of exactly 0 is neither above nor below 0. The rules text is kept in the code (`LABEL_RULES`, dated) and printed in the report. A label is a reading of one run, not a keep or prune verdict, and the report says so at the top.
+
+Beside each label, and changing nothing: the pooled guard result (the per-task guard gaps of every batch with guard data, with a 95% t interval, and `loss` when any batch has one) and `a_batches_agree`, true when A's mean gap has the same sign in every batch (null with one batch).
+
+Each skill also gets a suggested verdict, read from the same pooled readings as the label. It is a suggestion for the maintainer, who makes the final call. "Mean" is the pooled mean gap, and the first match wins:
+
+| Order | Suggested verdict | Condition                                                |
+| ----- | ----------------- | -------------------------------------------------------- |
+| 1     | `keep`            | A's lower end is above 0.                                |
+| 2     | `prune`           | A's upper end is below 0.                                |
+| 3     | `lean keep`       | A's mean is -0.10 or more and B's mean is +0.50 or more. |
+| 4     | `lean prune`      | A's mean is -0.10 or less, or B's mean is under +0.30.   |
+| 5     | `close call`      | Anything else, including a B with no mean.               |
+
+A `NO DATA` skill gets `no data`. The cut points -0.10, +0.30 and +0.50 are a maintainer's choice, not a statistical test. Each verdict comes with one action: a `prune` or `lean prune` with B's mean at +0.50 or more says to fix the rules that cost task quality, or prune, because the answers follow the skill but the task result is worse. The rules text is kept in the code (`VERDICT_RULES`, dated) and printed in the report. `report.md` shows the skills under each verdict before the labels, a verdict column in the label table, and the verdict with its action in each skill's section; `report.json` holds `verdict`, `verdict_why` and `verdict_action` per skill. The verdicts are withheld from `report.md` exactly when the labels are.
+
+`lib/report.js` builds the summary and the markdown. Each answer is judged on its own, so a seat gives a task one judgment per arm; these figures read a seat's two judgments together, and a seat counts only with a valid judgment for both arms. Per skill and reading it adds:
+
+- **Seats agree.** How many counted tasks had every counted seat vote the same way: `WITH` when the seat scored the with answer higher, `WITHOUT` when lower, `TIE` when the same.
+- **Item losses** (reading B). The rules checklist items where a seat gave the with answer a lower label than the without answer more often than a higher one, worst first.
+
+The label entries in `report.json` (`A`, `B`, `B_all`) hold the printed interval (`t_interval`, 4 decimals) and the unrounded one the rules read (`t_interval_exact`). The `why` of a label prints an interval end with 2 decimals, or with 2 significant digits when the end is not 0 but would print as `+0.00` or `-0.00`. The coverage line of each reading in `report.md` lists every judgment state, `other arm unusable` included, so the counts add up to the expected judgments.
+
+`convention-control` is read as a control, never labeled; its pass rule comes from the readings report. When a control fails or is not run, the report prints `controls: FAIL` at the top and withholds the labels from `report.md`; `report.json` keeps them with `labels_published: false`. A run with no control prints `Controls: NONE` (not trusted) and shows its labels. Every free-text field is put on one line, with `<` and the `](` of a link escaped so that a viewer loads no image or HTML from a record, and both files are redacted before they are written: `report.md` as text, `report.json` string by string (keys too), so a quote written as `\"` in JSON cannot hide a secret. A checklist item in a table cell is redacted before it is cut to 110 characters, so a cut cannot leave the front half of a secret. `tests/fixtures/bench/report.expected.txt` holds the markdown of a fixture report, and `stub-run.test.js` runs the stubbed loop down to a labeled report, compared with `tests/fixtures/bench/stub-run.report.expected.txt`.
+
 ## Not built yet
 
-These are added in a later PR: the report writer that puts the readings, the controls verdict and the guard result beside each label. The judge job does not take a dose ladder yet: the ladder's items are judged once the controls check that reads them is added, and `next` does not name ladder work.
+The judge job does not take a dose ladder yet: the ladder's items are judged once the controls check that reads them is added, `next` does not name ladder work, and the report has no ladder control.

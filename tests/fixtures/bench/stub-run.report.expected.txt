@@ -1,0 +1,84 @@
+# Skill benchmark report
+
+Run `stub-e2e`. Generated 2026-11-12T12:00:00.000Z. Label rules dated 2026-11-10; control pass rules dated 2026-11-18.
+
+**STUB DATA: not a measurement.** This run used the stub provider, which makes up its answers, judgments and costs. Nothing below says anything about a skill.
+
+Controls: **NONE** (the run includes no control, so the readings are not trusted).
+
+How to read a label: it describes one run on generated tasks under one judge panel. It is not a keep or prune verdict. `teaches conventions` is a call for a person: the model follows the skill's rules, and a neutral judge cannot say whether the team wants them. `helps quality` has no positive control yet: read it as "A's interval is above 0 on these tasks" and nothing stronger.
+
+## Suggested verdicts
+
+| Suggested verdict | Skills |
+| --- | --- |
+| keep (1) | `brew-log` |
+
+A suggestion read from A and B by the rules below; the final call is the maintainer's. Each skill's section gives the action.
+
+## Labels
+
+| Skill | Label | Suggested verdict | A gap | B gap | Guard (pooled) | A batches agree |
+| --- | --- | --- | --- | --- | --- | --- |
+| `brew-log` | **helps quality** | keep | +3.20 [+3.20, +3.20] (n=4) | +3.20 [+3.20, +3.20] (n=4) | +1.00 [+1.00, +1.00], no loss | n/a (one batch) |
+
+A = `outcome` (the request-only checklist), B = `items` (the rules checklist, over the tasks A reads). Each answer is judged on its own. Gaps are with minus without on the 1 to 5 scale: the mean over the pooled tasks with a 95% t interval. The guard result and "A batches agree" are shown beside the label and change nothing.
+
+## Label rules (dated 2026-11-10)
+
+Notation: "A" is the `outcome` reading (a checklist written from the request alone) and "B" the `items` reading (the rules checklist). Both are read from the same stored answers of a skill, pooled over its batches. A gap is with minus without on the 1 to 5 scale, one number per task. "Lower" and "upper" are the ends of the 95% t interval over the pooled tasks (df = tasks - 1). "Above 0" means the lower end is above 0.
+
+1. `helps quality`: the lower end of A is above 0.
+2. `harm`: the upper end of A is below 0.
+3. `teaches conventions (human call)`: the lower end of B is above 0 and A's interval contains 0.
+4. `no change`: neither lower end is above 0.
+5. The rules are checked in the order 1, 2, 3, 4 and the first match wins, so a skill gets exactly one label. A skill is `NO DATA` instead when a reading counts fewer than 12 of every 16 of its tasks, when a judgment of either reading is stale, when a batch was not read, or when A has no interval (fewer than 2 counted tasks), or A contains 0 and B has none. A batch whose reading B waits for a refreshed baseline is still read by A: the skill is labeled from A alone, and is `NO DATA` when A contains 0.
+6. A label is a reading of one run on generated tasks under one judge panel. It is not a keep or prune verdict, and `teaches conventions` is a call for a person.
+
+## Suggested verdict rules (dated 2026-11-16)
+
+A suggested verdict is read from the same pooled A and B readings as the label. It is a suggestion; the final call is the maintainer's. "Mean" is the pooled mean gap. The cut points are a maintainer's choice.
+
+1. `keep`: A's lower end is above 0.
+2. `prune`: A's upper end is below 0.
+3. `lean keep`: A's mean is -0.10 or more and B's mean is +0.50 or more.
+4. `lean prune`: A's mean is -0.10 or less, or B's mean is under +0.30.
+5. `close call`: anything else, including a B with no mean.
+6. The rules are checked in the order 1 to 5 and the first match wins. A skill labeled `NO DATA` gets `no data`.
+7. The action beside a `prune` or `lean prune` verdict says "fix" when B's mean is +0.50 or more: the answers follow the skill's rules but the task result is worse, so the rules that cost quality are the first thing to change.
+
+## Controls
+
+No control is in this run.
+
+## brew-log
+
+Label: **helps quality** (A lower end +3.20 is above 0).
+
+Suggested verdict: **keep** (A lower end +3.20 is above 0). Action: Keep.
+
+| Batch | A gap | B gap | Guard MET rate |
+| --- | --- | --- | --- |
+| b1 | +3.20 [+3.20, +3.20] (n=4) | +3.20 [+3.20, +3.20] (n=4) | 100% with / 0% without |
+| **pooled** | +3.20 [+3.20, +3.20] (n=4) | +3.20 [+3.20, +3.20] (n=4) | +1.00 [+1.00, +1.00], no loss |
+| **pooled, B over all 5 tasks** | | +3.20 [+3.20, +3.20] (n=5) | |
+
+- Left out of A: b1/brew-log-rules-3 (2026-01-16). Reason: fixture: the request-only writer exceeded the item length limit twice
+- Seats agree (every counted seat scored the same arm higher, or both the same): A 4 of 4 tasks; B 4 of 4 tasks.
+- Length ratio (with / without words, mean per task): 2.56 (n=5).
+- Coverage A: 4 of 4 tasks counted; judgments 24 of 24 done, 0 pending (0 stale), 0 waiting, 0 not loaded, 0 not eligible, 0 other arm unusable.
+- Coverage B: 5 of 5 tasks counted; judgments 30 of 30 done, 0 pending (0 stale), 0 waiting, 0 not loaded, 0 not eligible, 0 other arm unusable.
+
+Rules checklist items (B): 12 seat(s) with both judgments; the with answer got a lower label than the without answer on 0 item labels and a higher one on 48.
+
+No item is lost more often than it is won.
+
+## Spend
+
+This run: $10.28 spent, $0.00 reserved. The ledger: $10.28 over 68 calls.
+
+## Warnings
+
+- exclusions.json: batch b1: "brew-log-rules-9" names no task of any skill with a baseline, so it excludes nothing
+
+A label is not a verdict, and a suggested verdict is a suggestion: the final call is the maintainer's. Labels: `helps quality`, `harm`, `teaches conventions (human call)`, `no change`, `NO DATA`. Suggested verdicts: `keep`, `lean keep`, `close call`, `lean prune`, `prune`, `no data`.

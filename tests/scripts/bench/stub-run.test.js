@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // The stubbed end-to-end run: on a copy of the fixture repo, `plan`, then `next` and the job it names, until `next`
-// says done, down to the stored judgments of both readings. The first pass is cut by a spend STOP from the ledger and
-// resumed with a higher max_usd. The stub provider (scripts/bench/lib/stub-provider.js) stands in for the claude and
-// opencode processes: no model, AWS or network call is made. The expected steps and judgments are committed in
-// tests/fixtures/bench/stub-run.expected.json.
+// says done, down to the stored judgments of both readings, then `report`, down to a labeled report. The first pass is
+// cut by a spend STOP from the ledger and resumed with a higher max_usd. The stub provider
+// (scripts/bench/lib/stub-provider.js) stands in for the claude and opencode processes: no model, AWS or network call
+// is made. The expected steps and judgments are committed in tests/fixtures/bench/stub-run.expected.json and the
+// expected report in tests/fixtures/bench/stub-run.report.expected.txt.
 'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -18,6 +20,11 @@ const { readLedger } = require('../../../scripts/bench/lib/ledger');
 const helpers = require('./helpers');
 
 const EXPECTED_FILE = path.join(helpers.FIXTURE_DIR, 'stub-run.expected.json');
+const EXPECTED_REPORT_FILE = path.join(
+  helpers.FIXTURE_DIR,
+  'stub-run.report.expected.txt',
+);
+const REPORT_TIME = '2026-11-12T12:00:00.000Z';
 const RUN = 'stub-e2e';
 /**
  * One subject run at a time, so the spend STOP always lands on the same run. The stub reports 1 USD for each subject
@@ -77,6 +84,25 @@ function storedJudgments(layout) {
         `${record.status} ${record.arm} ${record.score}`,
       ];
     }),
+  );
+}
+
+/** Every file of the run folder: path -> sha256 of its bytes. */
+function runFiles(layout) {
+  return Object.fromEntries(
+    fs
+      .readdirSync(layout.runDir, { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => {
+        const file = path.join(entry.parentPath, entry.name);
+        return [
+          path.relative(layout.runDir, file).split(path.sep).join('/'),
+          crypto
+            .createHash('sha256')
+            .update(fs.readFileSync(file))
+            .digest('hex'),
+        ];
+      }),
   );
 }
 
@@ -201,4 +227,92 @@ test('stubbed run: plan, next until done, a spend STOP and a resume, down to the
       expected,
       `the stubbed run differs from ${EXPECTED_FILE}; actual:\n${JSON.stringify(actual, null, 2)}`,
     );
+
+    // Stage 4: `report` reads the stored judgments, labels the skill and writes report.json and report.md. Nothing
+    // else in the run folder changes, and the report spends nothing.
+    const before = runFiles(layout);
+    const reportIo = capture();
+    const reportCode = bench.main(
+      ['report', ...common],
+      reportIo,
+      {},
+      {
+        now: () => Date.parse(REPORT_TIME),
+      },
+    );
+    assert.equal(reportCode, 0, reportIo.errors);
+    assert.equal(reportIo.errors, '');
+    const line = portable(JSON.parse(reportIo.text), dir);
+    assert.deepEqual(line, {
+      report: 'written',
+      run_id: RUN,
+      report_json: `<dir>/repo/bench/out/${RUN}/report.json`,
+      report_md: `<dir>/repo/bench/out/${RUN}/report.md`,
+      controls_status: 'NONE',
+      labels_published: true,
+      labels: { [helpers.SKILL]: 'helps quality' },
+    });
+    const after = runFiles(layout);
+    assert.deepEqual(
+      Object.keys(after).filter((name) => !Object.hasOwn(before, name)),
+      ['report.json', 'report.md'],
+    );
+    for (const [name, digest] of Object.entries(before))
+      assert.equal(after[name], digest, `report changed ${name}`);
+    assert.equal(fs.readFileSync(stubLedgerFile, 'utf8').length, ledgerBytes);
+    const markdown = fs.readFileSync(layout.reportMd, 'utf8');
+    assert.equal(
+      markdown,
+      fs.readFileSync(EXPECTED_REPORT_FILE, 'utf8'),
+      `the stub report differs from ${EXPECTED_REPORT_FILE}; actual:\n${markdown}`,
+    );
+    const summary = helpers.readJson(layout.reportJson);
+    assert.equal(summary.provider, 'stub');
+    assert.match(markdown, /^\*\*STUB DATA: not a measurement\.\*\*/m);
+    assert.deepEqual(
+      summary.warnings.filter((warning) =>
+        warning.startsWith(`${helpers.SKILL}:`),
+      ),
+      [],
+      'a skill that is ready has no plan status warning',
+    );
+    assert.equal(summary.skills[0].label, 'helps quality');
+    assert.equal(summary.skills[0].coverage.A.tasks_counted, 4);
+    assert.equal(summary.skills[0].coverage.B.tasks_counted, 5);
+    // `plan` now shows stage 4 as done.
+    const planAfter = capture();
+    bench.main(['plan', ...planArgs, '--json'], planAfter);
+    assert.equal(JSON.parse(planAfter.text).stages[3].state, 'done');
+
+    // Stage 5: SKILL.md changes after the baseline, so reading B waits for a refreshed baseline. The
+    // with answers and reading A are made again; an A interval above 0 still labels the skill.
+    fs.appendFileSync(
+      path.join(root, 'skills', helpers.SKILL, 'SKILL.md'),
+      '\nOne more line written after the baseline.\n',
+    );
+    assert.equal((await loop('25')).next, 'done');
+    const staleIo = capture();
+    assert.equal(
+      bench.main(
+        ['report', ...common],
+        staleIo,
+        {},
+        {
+          now: () => Date.parse(REPORT_TIME),
+        },
+      ),
+      0,
+      staleIo.errors,
+    );
+    const staleReport = helpers.readJson(layout.reportJson);
+    const stale = staleReport.skills[0];
+    assert.ok(
+      staleReport.warnings.includes(`${helpers.SKILL}: rules stale`),
+      'the plan status of a skill that is not ready is a warning',
+    );
+    assert.deepEqual(stale.no_data, []);
+    assert.deepEqual(JSON.parse(staleIo.text).labels, {
+      [helpers.SKILL]: 'helps quality',
+    });
+    assert.equal(stale.coverage.A.tasks_counted, 4);
   }));
