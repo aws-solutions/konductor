@@ -184,7 +184,9 @@ dist/
 Each Kiro CLI v2 and v3 agent's `prompt` ends with a generated `## Your skills`
 block listing the agent's declared skills with a rule for when to load one.
 Skills whose description starts "MUST USE for every" (today only `constraints`)
-are left out, since they claim every task. Claude Code agents get no block.
+are left out, since they claim every task. Each Claude Code agent file ends with a
+`## Skills you can load` block instead, listing only the declared skills it does not preload
+(see the preload paragraph below).
 
 The filename carries no architecture or OS: the packaged content (agent/skill/SOP
 markdown and JSON config, no compiled code) is architecture- and OS-independent within
@@ -200,6 +202,15 @@ On success, `synth` prints two summary lines to stdout: what was written
 (agent/skill/SOP/context counts and the output root) and the packaged
 artifact's filename. `dist/` is gitignored - inspect the output with a
 plain directory listing, e.g. `find dist -maxdepth 3`.
+
+Claude Code injects every skill in an agent's `clientConfig.claudeCli.skills` into each
+subagent it spawns, so `synth` measures that preload. It prints a `konductor: warning:` line to
+stderr for any agent over 32 KiB or 32 names; past 32 names it lists the skills Claude Code would
+drop. The command still succeeds. `-v` adds one
+`claude preload: <agent> <bytes> B, <n> skill(s)` line per agent, and `--json` carries the same
+figures in a `claude_preload` array. Each agent file lists the declared skills it does not
+preload, to be loaded with the `Skill` tool, so `synth` also warns when an agent has such skills
+but an explicit `clientConfig.claudeCli.tools` list without `Skill`.
 
 ---
 
