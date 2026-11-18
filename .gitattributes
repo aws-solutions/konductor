@@ -8,3 +8,6 @@ bench/baselines/** text eol=lf
 scripts/bench/prompts/** text eol=lf
 tests/fixtures/bench/** text eol=lf
 skills/*/SKILL.md text eol=lf
+# The control skill and its rules are hashed by their bytes in the same way.
+scripts/bench/skills/** text eol=lf
+scripts/bench/controls/** text eol=lf

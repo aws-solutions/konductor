@@ -1484,6 +1484,30 @@ test('.gitattributes keeps every skills/*/SKILL.md at LF, so the hash in a rules
   });
 });
 
+// The control skill is hashed by its bytes (`skill_md_sha256` in its rules file) and the rules file is hashed into its
+// tasks file, so both folders are held at LF as well.
+test('.gitattributes keeps the control skill and the control rules at LF', () => {
+  helpers.withTmp((dir) => {
+    const git = (...args) =>
+      spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
+    assert.equal(git('init', '-q').status, 0);
+    fs.copyFileSync(
+      path.join(__dirname, '..', '..', '..', '.gitattributes'),
+      path.join(dir, '.gitattributes'),
+    );
+    for (const file of [
+      'scripts/bench/skills/convention-control/SKILL.md',
+      'scripts/bench/controls/convention-control/rules.json',
+    ]) {
+      fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+      fs.writeFileSync(path.join(dir, file), '{\r\n"a": 1\r\n}\r\n');
+      assert.equal(git('add', '-A').status, 0);
+      assert.equal(git('show', `:${file}`).stdout, '{\n"a": 1\n}\n', file);
+      assert.match(git('check-attr', 'eol', '--', file).stdout, /eol: lf/);
+    }
+  });
+});
+
 // The spend ledger: plan reads it, never writes it, and refuses a plan that would take it past total_cap_usd.
 // The fixture plan's upper estimate (p90) is 4.7924 (see the first test), the figure checked against the limits, so a
 // ledger holding 95.2076 lands exactly on total_cap_usd 100.

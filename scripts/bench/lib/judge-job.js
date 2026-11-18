@@ -8,7 +8,9 @@
  * Order of work:
  *   1. `plan` for the same skills (plan.js) must pass, as for the pairs job. Only skills `plan` plans are judged; the
  *      others are listed as skipped. Reading B waits for a refreshed baseline when the rules or the batch are stale
- *      (tasks.js read_b), so such a batch has no `items` work; reading A needs only the tasks.
+ *      (tasks.js read_b), so such a batch has no `items` work; reading A needs only the tasks. A dose ladder item
+ *      (--ladder) is not given to `plan`: the ladder must pass its audit, and its items are read by A only, with the
+ *      ladder's authored answers (dose-ladder.js judgingSets) and their request-only checklists.
  *   2. The judge jobs are the ones job planning lists for the scale (jobs.js planJobs): every task, seat and arm. A
  *      task a person has excluded from reading A (bench/exclusions.json) has no `outcome` job and is listed with its
  *      reason.
@@ -74,6 +76,8 @@ const { CredentialError } = awsCredentials;
 const { judgeConcurrency, rubricWriterModel } = require('./config');
 const { callCost } = require('./cost-profile');
 const { loadBaseline, loadExclusions } = require('./baseline');
+const { FormatError } = require('./formats');
+const { itemNames, judgingSets, validateLadder } = require('./dose-ladder');
 const { splitTasks } = require('./exclusions');
 const { createJudgeInput } = require('./judge-input');
 const {
@@ -321,6 +325,9 @@ const jobLabel = (job) =>
  *   scale                    'items' or 'outcome'
  *   judgeInput               createJudgeInput(...) result
  *   armsTmpRoot              where loadTaskSet builds the arms for their manifests (default: the system temp dir)
+ *   ladder                   the dose ladder (an object) whose items `skills` may also name, or null. An item is
+ *                            judged on `outcome` only, against its request-only checklist, with the authored answers
+ *                            of the ladder (dose-ladder.js judgingSets); on `items` it has no job.
  * Returns { jobs, excluded, warnings } where each job is a jobs.js judge job plus
  *   { file, label, checklist, buckets, checklist_meta, answer, shown, rendered, inputs, state, reason }
  * and state is
@@ -344,10 +351,18 @@ function planJudging({
   scale,
   judgeInput,
   armsTmpRoot,
+  ladder = null,
 }) {
   resolveScale(scale);
   const exclusions = loadExclusions(layout);
   const writer = scale === 'outcome' ? rubricWriterModel(config) : null;
+  const ladderItems = ladder ? itemNames(ladder) : [];
+  const fromLadder = ladderItems.length
+    ? judgingSets(
+        ladder,
+        skills.filter((skill) => ladderItems.includes(skill)),
+      )
+    : null;
   // The seats judge the same answer, so it goes through the judge-input step once.
   const prepared = new Map();
   const prepare = (job, record) => {
@@ -367,19 +382,28 @@ function planJudging({
   const excluded = [];
   const warnings = [];
   for (const skill of skills) {
-    const { taskSet } = loadTaskSet({
-      layout,
-      config,
-      skill,
-      ...(armsTmpRoot ? { tmpRoot: armsTmpRoot } : {}),
-    });
-    const baseline = loadBaseline(layout, skill);
-    const ruleIds = baseline.rules
-      ? baseline.rules.rules.map((rule) => rule.id)
-      : [];
-    const bucketsOf = new Map(
-      baseline.batches.map((entry) => [entry.batch, entry.buckets]),
-    );
+    const isItem = ladderItems.includes(skill);
+    // A dose ladder item is read by A only: it has no rules checklist, so it has no `items` job.
+    if (isItem && scale !== 'outcome') continue;
+    let taskSet;
+    let ruleIds = [];
+    let bucketsOf = new Map();
+    if (isItem) taskSet = fromLadder.taskSets[skill];
+    else {
+      ({ taskSet } = loadTaskSet({
+        layout,
+        config,
+        skill,
+        ...(armsTmpRoot ? { tmpRoot: armsTmpRoot } : {}),
+      }));
+      const baseline = loadBaseline(layout, skill);
+      ruleIds = baseline.rules
+        ? baseline.rules.rules.map((rule) => rule.id)
+        : [];
+      bucketsOf = new Map(
+        baseline.batches.map((entry) => [entry.batch, entry.buckets]),
+      );
+    }
     if (scale === 'outcome')
       for (const { batch, tasks } of taskSet.batches)
         excluded.push(
@@ -438,7 +462,12 @@ function planJudging({
           job.checklist.length,
         );
       }
-      const stored = readAnswer(layout, job, job.arm);
+      const stored = isItem
+        ? {
+            state: 'ok',
+            record: fromLadder.answer(skill, planJob.task.id, job.arm),
+          }
+        : readAnswer(layout, job, job.arm);
       if (['missing', 'stale'].includes(stored.state)) {
         job.state = 'waiting';
         job.reason = `waits for the pairs job: the ${job.arm} answer is ${stored.state}`;
@@ -845,6 +874,8 @@ const readVersionForConfig = (config) =>
  *   now              () => ms, for the expiry check and the file times
  *   retry            extra options for retry.js withRetry (tests: sleep, baseMs)
  *   armsTmpRoot      where the arms are built for their manifests (tests)
+ *   ladder           the dose ladder (an object or a file path) whose items `skills` may also name, or null. The
+ *                    items are not given to `plan`; the ladder must pass its audit instead (dose-ladder.js).
  *
  * Returns { status, refused, stop, skipped, scale, excluded, jobs, done, pending, waiting, not_loaded, ineligible,
  * other_arm_unusable, projected_usd, results, blocked, remaining, tasks, cut_off, warnings, usd, estimated } where
@@ -875,6 +906,7 @@ async function runJudging({
   now = Date.now,
   retry = {},
   armsTmpRoot,
+  ladder = null,
 }) {
   if (!SCALES.includes(scale))
     throw new TypeError(
@@ -904,17 +936,42 @@ async function runJudging({
     usd: 0,
     estimated: null,
   };
-  const plan = buildPlan({ layout, config, skills });
-  summary.warnings.push(...plan.warnings);
-  if (!plan.ok) {
-    summary.refused.push(...plan.refused);
-    return summary;
+  const ladderItems = ladder ? itemNames(ladder) : [];
+  const ladderSelected = skills.filter((name) => ladderItems.includes(name));
+  const realSkills = skills.filter((name) => !ladderItems.includes(name));
+  let runnable = [];
+  // As in the checklist job: `plan` judges the skills, and the ladder is checked by its own audit.
+  if (realSkills.length) {
+    const plan = buildPlan({ layout, config, skills: realSkills });
+    summary.warnings.push(...plan.warnings);
+    if (!plan.ok) {
+      summary.refused.push(...plan.refused);
+      return summary;
+    }
+    runnable = plan.skills.filter((row) => {
+      if (RUNNABLE_STATUSES.has(row.status)) return true;
+      summary.skipped.push({ skill: row.skill, status: row.status });
+      return false;
+    });
   }
-  const runnable = plan.skills.filter((row) => {
-    if (RUNNABLE_STATUSES.has(row.status)) return true;
-    summary.skipped.push({ skill: row.skill, status: row.status });
-    return false;
-  });
+  if (ladderSelected.length) {
+    const audit = validateLadder(ladder);
+    if (!audit.ok) {
+      summary.refused.push(
+        `the dose ladder fails its audit: ${audit.problems.slice(0, LISTED_WAITS).join('; ')}`,
+      );
+      return summary;
+    }
+    // A run of ladder items alone skips `plan`, which would have refused a malformed exclusions file.
+    try {
+      loadExclusions(layout);
+    } catch (error) {
+      if (!(error instanceof FormatError)) throw error;
+      summary.refused.push(error.message);
+      return summary;
+    }
+  }
+  const judged = [...runnable.map((row) => row.skill), ...ladderSelected];
 
   // The subject runner stores an answer as it is. A text that holds one of the run's credential values stops that run
   // (claude-run.js, sweepTrace), so no stored answer holds one and the judge job, which has none of those values, needs
@@ -924,10 +981,11 @@ async function runJudging({
     planJudging({
       layout,
       config,
-      skills: runnable.map((row) => row.skill),
+      skills: judged,
       scale,
       judgeInput,
       armsTmpRoot,
+      ladder: ladderSelected.length ? ladder : null,
     });
   const planned = planFor();
   const { jobs } = planned;
@@ -962,7 +1020,7 @@ async function runJudging({
       .reduce((total, job) => total + judgeCallP90(config, job.model), 0),
   );
   log(
-    `judge: reading ${prompt.reading} (scale ${scale}, prompt v${prompt.version}); skills ${runnable.map((row) => row.skill).join(', ') || 'none'}; ${summary.done}/${summary.jobs} judgment(s) current, ${summary.pending} to make, ${summary.waiting.length} waiting, ${summary.not_loaded} not judged (an answer not loaded), ${summary.ineligible} with an answer not eligible, ${summary.other_arm_unusable} not judged because the other arm's answer cannot be used; projected USD ${summary.projected_usd.toFixed(2)}`,
+    `judge: reading ${prompt.reading} (scale ${scale}, prompt v${prompt.version}); skills ${judged.join(', ') || 'none'}; ${summary.done}/${summary.jobs} judgment(s) current, ${summary.pending} to make, ${summary.waiting.length} waiting, ${summary.not_loaded} not judged (an answer not loaded), ${summary.ineligible} with an answer not eligible, ${summary.other_arm_unusable} not judged because the other arm's answer cannot be used; projected USD ${summary.projected_usd.toFixed(2)}`,
   );
   for (const { skill, status } of summary.skipped)
     log(`  skipped ${skill} (${status})`);

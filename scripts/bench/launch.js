@@ -4,7 +4,7 @@
  *
  *   node scripts/bench/launch.js pairs --skills a,b [--run <id>] [--max-usd N] [--config <file>] [--root <dir>] [--dry-run]
  *   node scripts/bench/launch.js checklists --skills a,b [--ladder <file>] [same options]
- *   node scripts/bench/launch.js judge --scale items|outcome --skills a,b [same options]
+ *   node scripts/bench/launch.js judge --scale items|outcome --skills a,b [--ladder <file>] [same options]
  *
  * The job is `node scripts/bench/job.js` with the same, checked options (lib/launch.js). Its log and pid file are in
  * bench/out/<run-id>/jobs/ (lib/job-dir.js). A job that is already running for the same skills is not started again.
@@ -52,7 +52,7 @@ Options
   --max-usd <n>      Spend limit for this run in USD, a plain decimal such as 2.5 (default: 30).
   --config <file>    Settings file to use instead of bench/config.json.
   --root <dir>       Repository root to read (default: this checkout).
-  --ladder <file>    checklists only: a dose ladder whose items --skills may also name.
+  --ladder <file>    checklists and judge: a dose ladder whose items --skills may also name.
   --scale <scale>    judge only, required: items (reading B) or outcome (reading A).
   --provider <name>  live (default) or stub: no model call, only in a run id stub or stub-<name>.
   --dry-run          Start the job in its dry-run mode: it lists the work and spends nothing.

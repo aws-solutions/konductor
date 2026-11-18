@@ -41,6 +41,9 @@ This guide covers what exists today: the vocabulary, the formats of the frozen b
 skills/<skill>/SKILL.md                      the skill under test (read only)
 agents/*.agent-spec.json                     agents; one that lists the skill answers for it (read only)
 scripts/bench/prompts/                       judge and checklist-writer prompt templates (byte-exact, see Judge prompts)
+scripts/bench/skills/<control>/SKILL.md      a control skill (see Controls)
+scripts/bench/controls/<control>/            its baseline: rules.json, tasks-<batch>.json, tasks-<batch>.buckets.json
+scripts/bench/controls/dose-ladder-v1.json   the dose ladder
 bench/config.json                            the settings (git-ignored), see Settings
 bench/exclusions.json                        tasks left out of reading A
 bench/baselines/<skill>/rules.json           frozen rules
@@ -244,7 +247,7 @@ With `--json` the plan is one JSON object. `pending_usd` is the estimated cost (
 | `no baseline`        | The skill has no baseline folder. Nothing to plan.                                                                                                                                                  |
 | `no agent`           | No agent lists the skill. Nothing to plan.                                                                                                                                                          |
 
-The agent for a skill is the agent whose `agents/<name>.agent-spec.json` lists the skill under `dependencies.skills.skillNames`. If several list it, `k-developer` is used when it is one of them, otherwise the first by name. Every spec in `agents/` is read, in name order, with the same reader as the baseline files: a byte order mark is fine and a repeated key is refused. A spec that cannot be used is never skipped, because the plan would then name another agent or say `no agent`; it is the problem `invalid agent spec`.
+The agent for a skill is the agent whose `agents/<name>.agent-spec.json` lists the skill under `dependencies.skills.skillNames`. If several list it, `k-developer` is used when it is one of them, otherwise the first by name. A control skill runs under its fixed agent. Every spec in `agents/` is read, in name order, with the same reader as the baseline files: a byte order mark is fine and a repeated key is refused. A spec that cannot be used is never skipped, because the plan would then name another agent or say `no agent`; it is the problem `invalid agent spec`.
 
 ### Exit codes
 
@@ -479,7 +482,7 @@ Each dose is its own item (`fixture-d0`, `fixture-d1`, ...), so the scoring and 
 
 `writeLadderAnswers` audits the ladder, then writes one answer record per task and arm to `answers/<item>/<set>/<task>.<with|without>.json` in the run folder. A ladder that fails its audit writes nothing. An answer record holds the text, its input digest, a skill-load entry marked as authored (`loaded` is true for the `with` arm and false for the `without` arm, as for a generated answer, and the note says nothing was loaded), and a cost of 0. The digest covers one task and one arm, so appending a task keeps the judgments of the others, and editing a task makes only its own answers stale. A stored answer that equals the new record in every field is left alone, so a second write of an unchanged ladder writes nothing; one that differs in any field is rewritten. A stored answer that is not an authored one, or that belongs to another set, is never replaced. Answers of a task or dose that the ladder no longer has stay on disk and are not reported.
 
-The ladder data and the controls check that reads its labels come in a later PR.
+The ladder data is `scripts/bench/controls/dose-ladder-v1.json`; see Controls for how a run judges it.
 
 ## Task assembly
 
@@ -540,7 +543,7 @@ A job is paid work that can run for a long time. `launch.js` starts it in the ba
 node scripts/bench/launch.js pairs --skills brew-log --run r1 [--max-usd 5] [--config <file>] [--root <dir>] [--dry-run]
 ```
 
-It checks every option first, the same way the job will: a known job (`pairs`, `checklists` or `judge`), skills that have a `skills/<name>/SKILL.md` under the root it is given (or, for `checklists` with `--ladder`, items of that dose ladder), for `judge` a `--scale` of `items` or `outcome`, a valid run id, a settings file that loads, and a plain `--max-usd` within `total_cap_usd`. A flag is given as `--flag value` or `--flag=value`, and a flag given twice is refused (exit 64), as in `plan`. Then it starts `node scripts/bench/job.js` with those values, detached, with stdout and stderr in the job's log (see Job folder). It prints one JSON line and exits:
+It checks every option first, the same way the job will: a known job (`pairs`, `checklists` or `judge`), skills that have a `skills/<name>/SKILL.md` under the root it is given or are a control skill (or, for `checklists` and `judge` with `--ladder`, items of that dose ladder), for `judge` a `--scale` of `items` or `outcome`, a valid run id, a settings file that loads, and a plain `--max-usd` within `total_cap_usd`. A flag is given as `--flag value` or `--flag=value`, and a flag given twice is refused (exit 64), as in `plan`. Then it starts `node scripts/bench/job.js` with those values, detached, with stdout and stderr in the job's log (see Job folder). It prints one JSON line and exits:
 
 ```
 {"job":"pairs","run_id":"r1","skills":["brew-log"],"dry_run":false,"pid":4242,"already_running":false,"log_file":"...","pid_file":"..."}
@@ -651,7 +654,7 @@ A rerun resumes: a current checklist is never written again.
 `lib/judge-job.js` (`runJudging`) makes the judgments of one reading for the selected skills: `--scale items` is reading B (the rules checklist), `--scale outcome` is reading A (the request-only checklist). It spends money: each judgment is one judge call, plus retries, through OpenCode (see Judge calls). `scripts/bench/job.js judge` runs it, and `scripts/bench/launch.js judge` starts that in the background.
 
 ```
-node scripts/bench/launch.js judge --scale items --skills brew-log --run r1 [--max-usd 5] [--dry-run]
+node scripts/bench/launch.js judge --scale items --skills brew-log --run r1 [--ladder <file>] [--max-usd 5] [--dry-run]
 ```
 
 1. `plan` for the same skills must pass, as for the pairs job. Skills it does not plan are skipped. Reading B waits for a refreshed baseline when the rules or a batch are stale, so such a batch has no `items` work. Reading A needs only the tasks.
@@ -663,6 +666,8 @@ node scripts/bench/launch.js judge --scale items --skills brew-log --run r1 [--m
 7. Fresh credentials are exported once for `aws_profile`, and no call starts within 3 minutes of their expiry. A job with no call to make exports nothing.
 8. Each seat has its own pool of `judge_concurrency` calls (or its `judge_concurrency_by_seat` entry), so a slow seat cannot hold the fast seats' slots, and its own call timeout.
 9. Each call has the output limit of its seat: its entry in `judge_max_output_tokens_by_seat`, else `judge_max_output_tokens`. A reply cut off at the limit, or one that used the whole limit and could not be read, is a failed try and is counted in `cut_off` of the job result and in a log line, apart from the other failures, so a limit set too low shows. A try that is retried and cut off again counts again.
+
+`--ladder <file>` lets `--skills` also name the items of a dose ladder (see Controls). The items are not given to `plan`; the ladder must pass its audit. An item has no `items` judgment, and on `outcome` each of its two answers is the ladder's authored one, judged on its own, so it never waits for the pairs job.
 
 A judgment file, `judgments/<scale>/<skill>/<batch>/<task>.<seat>.<with|without>.json`, holds only a finished result:
 
@@ -820,6 +825,29 @@ The label entries in `report.json` (`A`, `B`, `B_all`) hold the printed interval
 
 `convention-control` is read as a control, never labeled; its pass rule comes from the readings report. When a control fails or is not run, the report prints `controls: FAIL` at the top and withholds the labels from `report.md`; `report.json` keeps them with `labels_published: false`. A run with no control prints `Controls: NONE` (not trusted) and shows its labels. Every free-text field is put on one line, with `<` and the `](` of a link escaped so that a viewer loads no image or HTML from a record, and both files are redacted before they are written: `report.md` as text, `report.json` string by string (keys too), so a quote written as `\"` in JSON cannot hide a secret. A checklist item in a table cell is redacted before it is cut to 110 characters, so a cut cannot leave the front half of a secret. `tests/fixtures/bench/report.expected.txt` holds the markdown of a fixture report, and `stub-run.test.js` runs the stubbed loop down to a labeled report, compared with `tests/fixtures/bench/stub-run.report.expected.txt`.
 
+## Controls
+
+A control is a case whose right answer is known in advance. Include both in a run before trusting its labels; their pass rules are in the readings report above. The controls belong to the benchmark, so they live under `scripts/bench/` and no installer ships them:
+
+| Control              | Files                                                                                                                | Select with                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `convention-control` | `scripts/bench/skills/convention-control/SKILL.md`, and its baseline in `scripts/bench/controls/convention-control/` | `--skills convention-control` |
+| Dose ladder          | `scripts/bench/controls/dose-ladder-v1.json`                                                                         | `--skills dose-ladder`        |
+
+`convention-control` is a skill of five arbitrary, harmless conventions (an opening word, a summary heading, a closing line, a bullet marker, a date style) and one guard rule about using the request's own facts. No request names a convention, so only a model that has the skill follows them. Its baseline has one batch of 8 tasks, named after the control, in the same formats as any baseline, and it always runs under `k-developer`. `plan`, `next`, the jobs and `report` run it like a skill (subject runs and both readings); the report reads it as a control and never labels it. It does not appear in the list of skills with a baseline.
+
+The folder `scripts/bench/skills/` holds the controls and nothing else. A folder there that has a `SKILL.md` but is not a control (the list is fixed in `layout.js`) stops the jobs that build the arms with an error that names it, because the arms would install it in place of the skill of the same name.
+
+The dose ladder has authored answers, so it has no subject runs and no rules checklist. `next --skills dose-ladder` names only the two reading A jobs, `checklists` and `judge --scale outcome`, with the ladder's items (`fixture-d0`, `fixture-d1`, `fixture-d2`, `fixture-d4`) and `--ladder scripts/bench/controls/dose-ladder-v1.json`; the judge job takes the answers from the ladder itself. `report --skills dose-ladder` reads each dose by A and applies the ladder's pass rule. The ladder must pass its audit, or `next` and `report` exit 64 with a usage error.
+
+A control counts only through judgments that are current for today's judge prompt, judges, checklist and answers, so a control whose judgments are stale or missing is `NOT RUN`, never a pass. A live run of both controls costs about $12 at the means of the cost profile, with an upper estimate (p90) of about $21, so `max_usd` must be at least 21 to run both in one run; start it by hand:
+
+```sh
+node scripts/bench/bench.js next --skills convention-control,dose-ladder --run controls --max-usd 21
+```
+
+Run the command it prints, call `next` again until it prints `done`, then run `report` with the same `--skills` and `--run`.
+
 ## Not built yet
 
-The judge job does not take a dose ladder yet: the ladder's items are judged once the controls check that reads them is added, `next` does not name ladder work, and the report has no ladder control.
+`plan` does not price the dose ladder: `plan --skills dose-ladder` exits 64. Before it names a ladder job, `next` checks the limits the job and the ledger enforce: the job's upper estimate (p90) on top of this run's spend and reservations must fit `max_usd`, and on top of the ledger's total and reservations `total_cap_usd`, with a figure at exactly a limit allowed; otherwise `next` answers `stop` with kind `spend`. A ledger that cannot be parsed is a `refused` stop; one that exists but cannot be opened ends the command with exit 74. The ledger still refuses every call past a limit.
