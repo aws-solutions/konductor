@@ -121,8 +121,8 @@ export function colorsOf(mode: ThemeMode): Colors {
 
 /**
  * The header band and the top bar are dark in both modes. These are the
- * colours of the text and controls on them. Text and the selected-tab
- * indicator reach their contrast (4.5:1 and 3:1) on `background`.
+ * colours of the text and controls on them. Text and the selected segment
+ * of the view switch reach their contrast (4.5:1 and 3:1) on `background`.
  */
 export const BAND = {
   background: '#141026',
@@ -130,8 +130,9 @@ export const BAND = {
   textMuted: '#c9c2e0',
   link: '#c4b2ff',
   /**
-   * The hairline under the top bar and under the tabs. The band is dark in
-   * both modes, so it takes the hairline of the dark palette.
+   * The hairline under the top bar and the border of the view switch in the
+   * page header. The band is dark in both modes, so it takes the hairline of
+   * the dark palette.
    */
   divider: DARK.border,
 } as const;
