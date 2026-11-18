@@ -51,7 +51,7 @@ A few things stand out and are worth knowing before you pick an agent:
   preloaded skills into its context before the first turn. Every other declared skill loads
   on demand through the `Skill` tool. Kiro CLI, and a top-level Claude Code agent, load every
   skill on demand.
-- **`konductor` declares 24 skills and preloads 2 on Claude Code** (`constraints`,
+- **`konductor` declares 25 skills and preloads 2 on Claude Code** (`constraints`,
   `claude-teams-behavior`). `claude-teams-behavior` is only in the spec's `clientConfig.claudeCli`
   block, so Kiro CLI never sees it.
 - **Five agents declare zero SOPs**: `k-product-manager`, `k-tpm`, `k-researcher`,
