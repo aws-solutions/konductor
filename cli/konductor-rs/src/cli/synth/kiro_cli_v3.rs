@@ -1098,10 +1098,9 @@ fn collect_dropped_tools_settings_warnings(
     warnings
 }
 
-/// KAS's five recognized hook triggers, camelCase, per Kiro CLI's own
-/// real hook-trigger enum (see this module's header comment for the
-/// provenance of this class of evidence). A V2 trigger spelling not in
-/// this list has no KAS equivalent and is dropped by
+/// The five CLI 2.x hook triggers, camelCase, as listed in the
+/// hooks-migration page's 2.x-to-V3 trigger table. A V2 trigger spelling
+/// not in this list has no KAS equivalent and is dropped by
 /// `convert_hooks_for_v3` rather than guessed at.
 const KAS_HOOK_TRIGGERS: &[&str] = &[
     "agentSpawn",
@@ -1111,11 +1110,10 @@ const KAS_HOOK_TRIGGERS: &[&str] = &[
     "stop",
 ];
 
-/// CLI absent-`timeout_ms` default, in milliseconds, per Kiro CLI's own
-/// real V2 reader default -- KAS defaults an absent array-form `timeout`
-/// to 60s, a different value, so an omitted V2 timeout is always emitted
-/// explicitly here rather than left absent for KAS to default on its
-/// own.
+/// Timeout emitted for a V2 hook with no `timeout_ms`, in milliseconds.
+/// The 10-second value matches the hooks-migration page's worked
+/// example, where `/upgrade-agent` writes `"timeout": 10` on every
+/// converted hook, so `timeout` is always emitted explicitly.
 const DEFAULT_HOOK_TIMEOUT_MS: u64 = 10_000;
 
 /// Converts V2's trigger-keyed `hooks` object into KAS's
@@ -1134,19 +1132,16 @@ const DEFAULT_HOOK_TIMEOUT_MS: u64 = 10_000;
 /// ceiling division with a 1-second floor (an authored sub-second value,
 /// or a literal `0`, maps to KAS's tightest expressible bound rather than
 /// `0`, which KAS reads as "disabled" -- inverting the author's intent);
-/// an absent `timeout_ms` still emits `timeout` at the CLI's own default
-/// (10s), so the migrated hook does not silently run under KAS's larger
-/// 60s default instead. A "tool hook" (no `command` key -- KAS's
-/// `action` is a discriminated union with no non-command variant) and an
-/// entry under an unrecognized trigger are both dropped rather than
-/// emitted as an invalid document: the public hooks-migration page
-/// confirms the real `/upgrade-agent` converter drops an unrepresentable
-/// Hook and reports a warning rather than writing an invalid profile,
-/// but this crate has no general warnings-collection mechanism for synth
-/// output today (see `collect_dropped_tools_settings_warnings` below for
-/// the one that now exists, scoped to `toolsSettings`), so silent
-/// omission is this function's own equivalent of that "drop with a
-/// warning" behavior.
+/// an absent `timeout_ms` still emits `timeout` at
+/// `DEFAULT_HOOK_TIMEOUT_MS` (10s), as the worked example does. A "tool
+/// hook" (no `command` key -- KAS's `action` is a discriminated union
+/// with no non-command variant) and an entry under an unrecognized
+/// trigger are both dropped rather than emitted as an invalid document.
+/// The public hooks-migration page says the real `/upgrade-agent`
+/// converter also drops an unrepresentable Hook, but it reports a
+/// warning. This function drops hooks silently: only `toolsSettings`
+/// drops print a warning today (see
+/// `collect_dropped_tools_settings_warnings` above).
 ///
 /// This function's array-form output does NOT reach a merge-with-
 /// existing-content path, so a known hazard elsewhere -- array-form
@@ -2665,11 +2660,8 @@ mod tests {
     /// call site to prove the wiring, not just the pure functions.
     ///
     /// This covers the file-output side of that wiring only. It does not
-    /// assert on the warning text `transform` prints via `eprintln!` --
-    /// this test harness has no stderr-capture mechanism, the same gap
-    /// noted for `parse_canonical.rs::check_skill_scope_consistency`'s own
-    /// call site (see this module's `collect_dropped_tools_settings_warnings`
-    /// docstring for that cross-reference).
+    /// assert on the warning text `transform` prints via `eprintln!`,
+    /// because this test harness has no stderr-capture mechanism.
     #[test]
     fn transform_does_not_leak_available_agents_only_name_into_permission_rules() {
         let kiro = KiroCliConfig {
