@@ -13,7 +13,7 @@
         "humanize-writing",
         "external-research",
         "sdlc-navigator",
-        "document-formats",
+        "docx-conversion",
         "deliberation-panel",
         "socratic-elicitation",
         "persistent-memory",
@@ -30,7 +30,7 @@
   "clientConfig": {
     "kiroCli": {
       "welcomeMessage": "I gather information — external documentation, web resources, AWS docs, and (when configured) Slack. Ask me a question and I'll research it and report back with sources.",
-      "tools": ["@builtin", "subagent"],
+      "tools": ["@builtin"],
       "allowedTools": ["fs_read"],
       "toolsSettings": {
         "subagent": {
@@ -47,13 +47,7 @@
       "tools": ["WebFetch", "WebSearch", "TodoWrite", "Read", "Skill"],
       "skills": [
         "constraints",
-        "external-research",
-        "sdlc-navigator",
-        "document-formats",
-        "deliberation-panel",
-        "socratic-elicitation",
-        "persistent-memory",
-        "workspace-skills"
+        "external-research"
       ]
     }
   }

@@ -17,7 +17,12 @@ name: Validate PR
 on:
   pull_request:
     # The stacked verify-run/gate PRs target feat/sop-gates-* branches, not main.
-    branches: [main, 'feat/sop-gates-*']
+    # feat/** covers every feature-branch base, so coverage is explicit rather than
+    # resting on behaviour nobody can account for: a run fired on a PR whose base was
+    # feat/claude-preload-docs, which neither pattern below matched, even though this
+    # filter matches the base branch name as a string. feat/sop-gates-* is redundant
+    # under feat/** and stays put; removing it is a separate decision.
+    branches: [main, 'feat/sop-gates-*', 'feat/**']
     types: [opened, edited, reopened, synchronize]
 
 permissions:
@@ -57,6 +62,37 @@ jobs:
         # and `make test-py` below both run `python3 -m pytest`, and two of
         # the tests/ files import yaml.
         run: python3 -m pip install --user pytest pyyaml
+
+      - name: Reject a skill-quality baseline that grew
+        # tests/skill-quality-baseline.json may only shrink. The pytest gate
+        # enforces "skill <= its entry"; this step enforces "entry <= what the
+        # base branch had" so a PR cannot raise or add a ceiling to pass.
+        # The working tree is the PR's test merge commit, so it already holds any
+        # slimming that landed on the base branch, and OLD could be base.sha or
+        # the merge-base. The merge-base is used to match the dist/ and CHANGELOG
+        # steps. The checker also comes from the merge-base when it exists there,
+        # so a PR cannot weaken the ratchet it is judged by.
+        run: |
+          set -e
+          MERGE_BASE="$(git merge-base "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")"
+          # With the commit confirmed, a failed `cat-file -e` on a path means the
+          # file is absent there; any other git error fails the step.
+          git cat-file -e "${MERGE_BASE}^{commit}"
+          if git cat-file -e "${MERGE_BASE}:tests/skill-quality-baseline.json" 2>/dev/null; then
+            git show "${MERGE_BASE}:tests/skill-quality-baseline.json" > /tmp/base-baseline.json
+            # The checker reads the new baseline from its own directory.
+            RATCHET_DIR="$(mktemp -d)"
+            mkdir "${RATCHET_DIR}/tests"
+            cp tests/skill-quality-baseline.json "${RATCHET_DIR}/tests/"
+            if git cat-file -e "${MERGE_BASE}:tests/skill_quality.py" 2>/dev/null; then
+              git show "${MERGE_BASE}:tests/skill_quality.py" > "${RATCHET_DIR}/tests/skill_quality.py"
+            else
+              cp tests/skill_quality.py "${RATCHET_DIR}/tests/"
+            fi
+            python3 "${RATCHET_DIR}/tests/skill_quality.py" --check-ratchet /tmp/base-baseline.json
+          else
+            echo "notice: no baseline at the merge-base; skipping ratchet diff" >&2
+          fi
 
       - name: Validate the Kiro Power (powers/konductor/)
         # Users import the Power from the tagged release matching VERSION

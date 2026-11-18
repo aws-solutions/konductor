@@ -138,7 +138,8 @@ regenerated bundle.
 Commands that differ per runtime (`kiro-cli chat --agent konductor` vs
 `claude --agent konductor`) must be driven by the runtime switcher rather than duplicated inline.
 Only the command differs — the agent name is identical on both runtimes and carries no package
-prefix, so never write `ASDLCCoreAICapabilities-<name>`, `konductor-asdlc-<name>`, or `asdlc-<name>`.
+prefix, so never write a package-prefixed or retired agent name; `tools/user-guide-sync/naming.py`
+lists them.
 
 ## Procedure
 

@@ -1,6 +1,6 @@
 # Asana Integration (Optional MCP)
 
-The `asana-sprint-planning` skill uses the **official Asana V2 MCP server** — a remote HTTP server
+When a team tracks sprints in Asana, the `sprint-planning` skill uses the **official Asana V2 MCP server** — a remote HTTP server
 provided by Asana, Inc. and authenticated via OAuth2. It is a user opt-in and is **not** bundled
 with this package.
 
@@ -67,7 +67,7 @@ the current configuration file format.
 
 ## Step 3 — Verify the connection
 
-Once configured, the `asana-sprint-planning` skill will call `asana___GetCurrentUser` at startup
+Once configured, the `sprint-planning` skill (its `references/asana.md`) will call `asana___GetCurrentUser` at startup
 to verify connectivity and retrieve your workspace GID. If the call fails, the skill will print
 an error message with a link back to this guide.
 
