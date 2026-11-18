@@ -7,7 +7,10 @@
 const TERMINAL = new Set(['denied', 'approval_required', 'executed', 'execution_error', 'connection_lost']);
 const NEEDS_WORLD_LINE = new Set(['executed', 'connection_lost', 'fault', 'harm']);
 
-const callIdsOf = (lines) => new Set(lines.filter((l) => l.type === 'call').map((l) => `c${l.seq}`));
+/** The id the gateway gives the call on `call` line `line` (`c<seq>`); the call's later events name it by this id. */
+const callIdOf = (line) => `c${line.seq}`;
+
+const callIdsOf = (lines) => new Set(lines.filter((l) => l.type === 'call').map(callIdOf));
 
 /** Problems with `seq` in `lines` (named `name`): it must run 0, 1, 2 with no gap. */
 function seqProblems(lines, name) {
@@ -86,4 +89,4 @@ function checkCrossLog(gatewayLines, worldLines) {
   return problems;
 }
 
-module.exports = { checkGatewayLog, checkCrossLog, TERMINAL };
+module.exports = { checkGatewayLog, checkCrossLog, callIdOf, TERMINAL };

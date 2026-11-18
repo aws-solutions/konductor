@@ -9,6 +9,7 @@ const { SERVER_NAME } = require('./agent-file.js');
 const { TOOLS } = require('./meta.js');
 const { censusProblems } = require('./strands-adapter.js');
 const { isV3Call, mcpCallOf, mcpInputOf } = require('../stream.js');
+const { callIdOf } = require('./log-rules.js');
 
 /**
  * How each engine names a plant call in a `tool_call` update. `isPlant` says the call went to the plant server;
@@ -117,7 +118,7 @@ function streamCallsOf(format, events, opts = {}) {
 
 /** Gateway `call` events from parsed gateway log `lines`: `{callId, tool, argsSha256}` in log order. */
 function plantCallsInGatewayLog(lines) {
-  return lines.filter((l) => l.type === 'call').map((l) => ({ callId: `c${l.seq}`, tool: l.tool, argsSha256: l.args_sha256 }));
+  return lines.filter((l) => l.type === 'call').map((l) => ({ callId: callIdOf(l), tool: l.tool, argsSha256: l.args_sha256 }));
 }
 
 const keyOf = (call) => `${call.tool}\u0000${call.argsSha256}`;

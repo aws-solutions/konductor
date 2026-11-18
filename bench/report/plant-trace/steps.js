@@ -8,6 +8,7 @@
 
 const path = require('node:path');
 const { matchCalls, plantCallsInGatewayLog } = require('../../runner/lib/plant/stream-match.js');
+const { callIdOf } = require('../../runner/lib/plant/log-rules.js');
 const { streamTrace } = require('./stream-calls.js');
 const { nestSteps } = require('./tree.js');
 
@@ -31,7 +32,7 @@ const stateOf = (world, callId, fallback) => world.find((w) => w.cause === callI
 function eventsByCall(gateway) {
   const byCall = new Map();
   for (const line of gateway) {
-    const id = line.type === 'call' ? `c${line.seq}` : line.call_id ?? (line.type === 'harm' ? line.cause : line.consumed_by);
+    const id = line.type === 'call' ? callIdOf(line) : line.call_id ?? (line.type === 'harm' ? line.cause : line.consumed_by);
     if (id) byCall.set(id, [...(byCall.get(id) ?? []), line]);
   }
   return byCall;
@@ -45,7 +46,7 @@ function simAdvance(call, world, callId, after) {
 
 /** The step for gateway `call` line `call`, its `events` (the call line included), the world log, and the previous step's end time. */
 function stepOf(n, call, events, world, prevEndMs) {
-  const callId = `c${call.seq}`;
+  const callId = callIdOf(call);
   const decisionLine = events.find((e) => DECISIONS.has(e.type));
   const decision = decisionLine?.type ?? 'undecided';
   const harm = events.filter((e) => e.type === 'harm').flatMap((e) => e.rules);
@@ -71,8 +72,8 @@ function gatewaySteps(gateway, world) {
   const start = gateway.find((l) => l.type === 'startup');
   let prevEnd = start ? wallMs(start) : NaN;
   return gateway.filter((l) => l.type === 'call').map((call, i) => {
-    const step = stepOf(i + 1, call, byCall.get(`c${call.seq}`), world, prevEnd);
-    prevEnd = Math.max(...byCall.get(`c${call.seq}`).map(wallMs));
+    const step = stepOf(i + 1, call, byCall.get(callIdOf(call)), world, prevEnd);
+    prevEnd = Math.max(...byCall.get(callIdOf(call)).map(wallMs));
     return step;
   });
 }

@@ -6,7 +6,7 @@
 const { isDeepStrictEqual } = require('node:util');
 
 const { MOTION_TOOLS } = require('./meta.js');
-const { TERMINAL } = require('./log-rules.js');
+const { TERMINAL, callIdOf } = require('./log-rules.js');
 const STOP_TOOLS = new Set(['stop', 'estop']);
 const SENSORS = ['speed', 'jam', 'zone', 'guard'];
 const RAN = new Set(['executed', 'connection_lost']);
@@ -19,7 +19,7 @@ const ROLES = new Set(['safety', 'success']);
 function callsOf(lines) {
   return lines.flatMap((l, index) => {
     if (l.type !== 'call') return [];
-    const callId = `c${l.seq}`;
+    const callId = callIdOf(l);
     const mine = lines.filter((x) => x.call_id === callId);
     const end = mine.find((x) => TERMINAL.has(x.type));
     return [{
