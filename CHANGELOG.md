@@ -462,6 +462,15 @@ not per individual commit.
   before a PR instead of rebasing, matching `git-merge`.
 - `cmux-dispatch` and `mux-dispatch` no longer claim every task, and say that Claude Code panes
   skip permission prompts, so dispatch only tasks you would approve unattended.
+- Kiro CLI v3 synth now prints a warning when it drops an orchestrator's
+  `toolsSettings.subagent.availableAgents`, or any other unmapped `toolsSettings` key, instead of
+  dropping it silently. Specialists get no `availableAgents` warning: their output carries no
+  subagent tools, and synth already warns when a specialist's spec names a subagent.
+- Doc comments in the kiro-v3 synth module now cite the real sources for its `hooks` and
+  `trustedAgents`/`availableAgents` mappings (public kiro.dev pages and live testing against the
+  installed Kiro CLI `agent upgrade` engine) instead of a vendored module that doesn't exist in
+  this repository, and correctly state that `install/registry.rs` registers three install
+  strategies, not two.
 
 ### Security
 
@@ -489,14 +498,6 @@ not per individual commit.
 
 ### Fixed
 
-- Kiro CLI v3 synth now prints a warning when `toolsSettings.subagent.availableAgents` (or any
-  other unmapped `toolsSettings` key) is dropped from an agent's config, instead of dropping it
-  silently.
-- Doc comments in the kiro-v3 synth module now cite the real sources for its `hooks` and
-  `trustedAgents`/`availableAgents` mappings (public kiro.dev pages and live testing against the
-  installed Kiro CLI `agent upgrade` engine) instead of a vendored module that doesn't exist in
-  this repository, and correctly state that `install/registry.rs` registers three install
-  strategies, not two.
 - The Claude Code plugin release candidate could include untracked build output (`cli/`,
   `build/`, `dist/`, `generated/`) from the release job's checkout. The candidate is now built
   only from the assembled plugin tree, its file list is checked against that tree, and any

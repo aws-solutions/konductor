@@ -1061,7 +1061,11 @@ fn push_trusted_agent_rules(
 /// implement that mapping yet, so dropping the field silently would
 /// lose which subagents an agent's menu should show; the diagnostic is
 /// a stopgap until the mapping exists, not a claim the field is
-/// unmappable.
+/// unmappable. The warning is for orchestrators only: `render_agent_file`
+/// strips every spawn tag and `subagent` rule from a specialist, so
+/// there is no list to restrict, and `parse_canonical`'s
+/// `check_specialist_spawn_grants` already warns when a specialist's
+/// spec names a subagent.
 ///
 /// Any other key not in `CONFIRMED_TOOLS_SETTINGS_KEYS` gets the generic
 /// message: no agent spec in this repository uses one today, but a future
@@ -1086,7 +1090,7 @@ fn collect_dropped_tools_settings_warnings(
                 .get("availableAgents")
                 .and_then(serde_json::Value::as_array)
                 .is_some_and(|arr| !arr.is_empty());
-            if has_available_agents {
+            if has_available_agents && !is_specialist(agent_name) {
                 warnings.push(format!(
                     "agent '{agent_name}': toolsSettings.subagent.availableAgents was \
                      dropped during V3 synth -- this transformer does not yet emit the \
@@ -1963,14 +1967,26 @@ mod tests {
         let tools_settings = serde_json::json!({
             "subagent": {"availableAgents": ["helper-one", "helper-two"]}
         });
-        let warnings = collect_dropped_tools_settings_warnings("k-example", &tools_settings);
+        let warnings = collect_dropped_tools_settings_warnings("konductor", &tools_settings);
         assert_eq!(
             warnings.len(),
             1,
             "expected exactly one warning, got: {warnings:?}"
         );
-        assert!(warnings[0].contains("k-example"));
+        assert!(warnings[0].contains("konductor"));
         assert!(warnings[0].contains("availableAgents"));
+    }
+
+    /// A specialist loses every spawn tag and `subagent` rule in
+    /// `render_agent_file`, and `check_specialist_spawn_grants` already
+    /// warns about the spec, so this function stays quiet for it.
+    #[test]
+    fn collect_dropped_tools_settings_warnings_skips_available_agents_for_specialists() {
+        let tools_settings = serde_json::json!({
+            "subagent": {"availableAgents": ["helper-one"]}
+        });
+        let warnings = collect_dropped_tools_settings_warnings("k-example", &tools_settings);
+        assert!(warnings.is_empty(), "got: {warnings:?}");
     }
 
     /// An empty `availableAgents` array carries no information worth
