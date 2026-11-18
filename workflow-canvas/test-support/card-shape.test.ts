@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { NODE_HEIGHT, NODE_WIDTH } from '../src/graph';
 import {
   BORDER_WIDTH,
-  CARD_RADIUS,
   FOCUS_GAP,
   FOCUS_WIDTH,
+  NODE_RADIUS,
   PORT_DOT_SIZE,
   nodeOutline,
   spreadStroke,
@@ -49,18 +49,33 @@ describe('the focus ring', () => {
   });
 });
 
+const cssRule = (selector: string) =>
+  new RegExp(`${selector.replace(/[.:]/g, '\\$&')} \\{([^}]*)\\}`).exec(
+    css,
+  )?.[1] ?? '';
+
 describe('the port dots', () => {
-  it('are drawn in canvas.css at the size of the module', () => {
-    const rule =
-      /\.react-flow \.wf-port::before \{([^}]*)\}/.exec(css)?.[1] ?? '';
+  const handle = cssRule('.react-flow .wf-port');
+  const dot = cssRule('.react-flow .wf-port::before');
 
-    expect(rule).toContain(`width: ${PORT_DOT_SIZE}px`);
-    expect(rule).toContain(`height: ${PORT_DOT_SIZE}px`);
-    expect(rule).toContain(`top: -${PORT_DOT_SIZE / 2}px`);
+  it('take their size in canvas.css from the module', () => {
+    expect(handle).toContain(`--wf-port-dot-size: ${PORT_DOT_SIZE}px;`);
   });
 
-  it('fit on the shortest node, clear of its rounded corners', () => {
-    expect(PORT_DOT_SIZE).toBeLessThan(NODE_HEIGHT.end / 2);
-    expect(PORT_DOT_SIZE).toBeLessThan(NODE_WIDTH - 2 * CARD_RADIUS);
+  it('size the handle and the dot from that one property', () => {
+    expect(handle).toContain('width: var(--wf-port-dot-size);');
+    expect(dot).toContain('width: var(--wf-port-dot-size);');
+    expect(dot).toContain('height: var(--wf-port-dot-size);');
+    expect(dot).toContain('top: calc(var(--wf-port-dot-size) / -2);');
   });
+
+  it.each(Object.entries(NODE_HEIGHT))(
+    'fit on the %s node, clear of its rounded corners',
+    (kind, height) => {
+      const radius = NODE_RADIUS[kind as keyof typeof NODE_RADIUS];
+
+      expect(PORT_DOT_SIZE).toBeLessThan(height / 2);
+      expect(PORT_DOT_SIZE).toBeLessThan(NODE_WIDTH - 2 * radius);
+    },
+  );
 });

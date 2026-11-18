@@ -11,9 +11,9 @@ import {
   type StageGraphNode,
 } from '../graph';
 import {
-  CARD_RADIUS,
   FOCUS_GAP,
   FOCUS_WIDTH,
+  NODE_RADIUS,
   nodeOutline,
   spreadStroke,
 } from './card-shape';
@@ -97,7 +97,7 @@ export function IntentNode({ data }: NodeProps<FlowNode<IntentGraphNode>>) {
       data-testid="node-intent"
       data-state={data.status?.state}
     >
-      <NodeShape height={NODE_HEIGHT.intent} radius={CARD_RADIUS} />
+      <NodeShape height={NODE_HEIGHT.intent} radius={NODE_RADIUS.intent} />
       <div className="wf-node-title">intent</div>
       <div className="wf-node-intent-outcome" title={data.outcome}>
         {data.outcome}
@@ -116,7 +116,7 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
       data-testid={`node-stage-${data.name}`}
       data-state={data.status?.state}
     >
-      <NodeShape height={NODE_HEIGHT.stage} radius={CARD_RADIUS} />
+      <NodeShape height={NODE_HEIGHT.stage} radius={NODE_RADIUS.stage} />
       <SequenceIn />
       <div className="wf-node-title" title={data.name}>
         {data.name}
@@ -138,7 +138,7 @@ export function EndNode({ data }: NodeProps<FlowNode<EndGraphNode>>) {
       data-testid="node-end"
       data-state={data.status?.state}
     >
-      <NodeShape height={NODE_HEIGHT.end} radius={NODE_HEIGHT.end / 2} />
+      <NodeShape height={NODE_HEIGHT.end} radius={NODE_RADIUS.end} />
       <SequenceIn />
       <div className="wf-node-title">end</div>
       <StatusBadge status={data.status} />

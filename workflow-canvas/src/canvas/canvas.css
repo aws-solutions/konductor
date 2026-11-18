@@ -173,13 +173,14 @@
 /*
  * A run order port is a small dot on the middle of the top edge (in) or the
  * bottom edge (out). It shows while the node is hovered, focused or selected,
- * so the cards stay quiet at rest. The size matches PORT_DOT_SIZE in
- * card-shape.ts.
+ * so the cards stay quiet at rest. `--wf-port-dot-size` matches
+ * PORT_DOT_SIZE in card-shape.ts.
  */
 .react-flow .wf-port {
+  --wf-port-dot-size: 10px;
   /* The handle has no height, so a link starts and ends on the border of
      the card. The dot is drawn around it. */
-  width: 10px;
+  width: var(--wf-port-dot-size);
   min-width: 0;
   height: 0;
   min-height: 0;
@@ -194,11 +195,11 @@
 
 .react-flow .wf-port::before {
   position: absolute;
-  top: -5px;
+  top: calc(var(--wf-port-dot-size) / -2);
   left: 0;
   box-sizing: border-box;
-  width: 10px;
-  height: 10px;
+  width: var(--wf-port-dot-size);
+  height: var(--wf-port-dot-size);
   border: 2px solid var(--wf-edge);
   border-radius: 50%;
   background: var(--wf-node-bg);
