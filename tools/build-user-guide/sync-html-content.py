@@ -576,6 +576,31 @@ EDITS = [
     ("design review row: missing threat model",
      "critical; warned if missing, but the review still runs and ends NOT READY (the Security dimension is capped at 3)",
      "required for READY FOR IMPLEMENTATION; warned if missing. The review still runs and ends NOT READY (the Security dimension is capped at 3)"),
+    # ---- design SOP: an UNVERIFIED claim noted "contradicts prior knowledge" blocks ----
+    # agent-sops/k-design-doc-creation.sop.md. The last three rewrite text from
+    # html_sop_edits.SOP_EDITS, whose entries carry the same new wording.
+    ("design SOP: know title, most unverified claims do not block",
+     '{ title: "Unverified claims do not block.", body: "Both doc-accuracy-analyzer',
+     '{ title: "Most unverified claims do not block.", body: "Both doc-accuracy-analyzer'),
+    ("design SOP: contradicts-prior-knowledge claim blocks",
+     "and OVERSTATED findings block until they are corrected or flagged.\" },",
+     "and OVERSTATED findings block until they are corrected or flagged. An UNVERIFIED claim noted "
+     '\\"contradicts prior knowledge\\" blocks like INCORRECT: check it against the named doc page and '
+     "reclassify it, or correct the text.\" },"),
+    ("design use case: checklist gates contradicts-prior-knowledge claims",
+     "0 INCORRECT</strong>, each corrected in the text, and every OVERSTATED finding corrected or flagged "
+     "(UNVERIFIED is acceptable with callouts)",
+     '0 INCORRECT</strong>, each corrected in the text, <strong style="color:var(--tx);font-weight:600">0 '
+     'UNVERIFIED noted "contradicts prior knowledge"</strong>, each checked against the named page and '
+     "reclassified or corrected, and every OVERSTATED finding corrected or flagged "
+     "(other UNVERIFIED findings are acceptable with callouts)"),
+    ("design SOP: gate row gates contradicts-prior-knowledge claims",
+     "v: \"0 INCORRECT findings, each corrected in the text, and every OVERSTATED "
+     "finding corrected or flagged (UNVERIFIED is acceptable with callouts)\" },",
+     'v: "0 INCORRECT findings, each corrected in the text, 0 UNVERIFIED findings '
+     'noted \\"contradicts prior knowledge\\", each checked against the named page and reclassified or '
+     "corrected, and every OVERSTATED finding corrected or flagged (other UNVERIFIED findings are acceptable "
+     "with callouts)\" },"),
 ]
 
 # Per-agent roster figures, verified against agents/*.agent-spec.json.

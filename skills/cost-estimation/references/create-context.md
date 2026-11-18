@@ -1,12 +1,12 @@
 # Cost estimation: CREATE context gathering
 
-Read this when the user starts a new estimate and answered "CREATE" at the path choice in `SKILL.md`. It covers Steps 1-3. Make no pricing calls here; when Step 3 confirms you have enough detail, return to Steps 4-10 in `SKILL.md`.
+Read this when the user wants a new estimate: they ask what an architecture will cost, give a design with no estimate yet, or picked CREATE at the path choice in `SKILL.md`. It covers Steps 1-3. Make no pricing calls here; when Step 3 confirms you have enough detail, open `references/create-analysis.md` for Steps 4-10.
 
 ## CREATE WORKFLOW - Complete New Cost Analysis
 
 ### Step 1: Path Selection and Setup
 
-Wait for user to respond with "CREATE"
+If the request already asked for a new estimate, start here without waiting. Otherwise wait for the user to pick CREATE.
 
 Respond with: "Perfect! I'll guide you through creating a complete AWS cost analysis. Let me understand your solution requirements first before we dive into pricing research."
 
@@ -14,7 +14,7 @@ Respond with: "Perfect! I'll guide you through creating a complete AWS cost anal
 
 **DO NOT make any MCP calls yet. Focus entirely on understanding their solution.**
 
-Provide this detailed context gathering request:
+If the user already shared the design, requirements, or load figures, read them and go to Step 3 instead of sending this request. Otherwise provide this detailed context gathering request:
 
 "## Solution Context Required
 

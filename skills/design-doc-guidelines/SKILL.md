@@ -1,6 +1,6 @@
 ---
 name: design-doc-guidelines
-description: Use when writing, reviewing, or restructuring a design doc, RFC, technical spec, architecture proposal, ADR, or one-pager. Trigger on requests like "review my design," "tighten this spec," or "is this too technical?" Covers outside-in structure, plain writing rules, AI slop detection, diagram accuracy, and technical accuracy.
+description: Use when writing, reviewing, or restructuring a design doc, RFC, technical spec, architecture proposal, ADR, or one-pager. Trigger on requests like "review my design," "tighten this spec," or "is this too technical?" Covers structure, plain writing, AI slop, diagram accuracy, and technical accuracy.
 version: 1
 ---
 
@@ -35,6 +35,7 @@ When reviewing a design doc, check:
 - [ ] No forward references (mentioning something before it's defined)?
 - [ ] Decision Requested framed as user outcomes, not feature names?
 - [ ] Features explained in terms of problems they solve, not what the tool does?
+- [ ] If the design spans several features, has a parent or companion doc, targets more than one runtime, or renames a file or config field: checked against `references/multi-doc-designs.md`?
 
 ## Anti-patterns
 

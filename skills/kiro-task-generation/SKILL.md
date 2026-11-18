@@ -1,7 +1,7 @@
 ---
 name: kiro-task-generation
-description: Generates Kiro IDE tasks.md from requirements.md and design.md. Use when turning an approved requirements.md plus design.md into a Kiro tasks.md, spec step 3, after kiro-design-generation and before implementation. Produces a numbered checkbox task list with requirement references for spec-driven development.
-version: 1.0.0
+description: 'Generates a Kiro IDE tasks.md: a numbered checkbox task list with requirement references. Use when turning an approved requirements.md plus design.md into a Kiro tasks.md, spec step 3, after kiro-design-generation and before implementation.'
+version: 1.1.0
 tags: [skill, kiro, specs, tasks, implementation-plan, spec-driven-development]
 ---
 
@@ -60,6 +60,8 @@ Do NOT use when:
 - Tasks are ONLY coding tasks — no deployment, documentation, or user testing
 - Each task builds incrementally on previous tasks
 - Tasks are designed for a code-generation LLM to execute one at a time
+- Each task is one coherent code change together with its tests. Put unit tests in the same task as the code they cover; only cross-component integration tests get a task of their own
+- When the design specifies a mechanism for a criterion (a concurrency guard, conditional write, idempotency check, retry rule), give that mechanism its own sub-task, titled for it, with the test that proves it. Folded into a generic "implement the service" task, it is the part the executing LLM is most likely to get wrong or skip
 
 ## Task Ordering
 
@@ -75,7 +77,7 @@ Do NOT use when:
 4. Map each requirement to implementation tasks
 5. Order tasks by dependency (foundation → core → polish)
 6. Write tasks.md to `{spec_dir}/tasks.md`
-7. Present to user for approval. If user requests changes, revise and re-present (max 2 cycles).
+7. Present to user for approval. If user requests changes, revise and re-present (max 2 cycles). If the user said not to ask questions, skip approval: state your assumptions in the final message and finish.
 
 ## Quality Gate
 
@@ -89,6 +91,7 @@ Do NOT use when:
 **IMPORTANT (should fix):**
 
 - Tasks too large (should be completable by an LLM in one pass)
+- A design-specified mechanism folded into a broader task instead of having its own sub-task
 - No clear ordering — foundation tasks should come before core tasks
 - Sub-tasks at same indentation as parent (must be indented 2 spaces)
 

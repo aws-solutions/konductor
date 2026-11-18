@@ -1,7 +1,7 @@
 ---
 name: socratic-elicitation
-description: 'Interactive Socratic questioning that surfaces missing information, unstated assumptions, and unresolved tradeoffs from the user before work begins, or when stress-testing a plan the user already holds. Use when the user says "ask me questions first", "what am I missing", "poke holes in this", or "challenge this plan", or when a request is too vague to start. Asks one question at a time and ends with a requirements or challenge summary.'
-version: 1.0.0
+description: Asks Socratic questions, one at a time, to surface missing information, unstated assumptions, and open tradeoffs before work begins, or to stress-test a plan the user holds. Use when the user says "ask me questions first", "what am I missing", "poke holes in this", or "challenge this plan", or when a request is too vague to start. Ends with a requirements or challenge summary.
+version: 1.1.0
 tags: [skill, elicitation, requirements, intake, challenge, socratic, pre-planning]
 ---
 
@@ -105,7 +105,7 @@ This skill stops as soon as ANY of these is true:
 
 ## Escalation to Deliberation Panel
 
-When an answer leaves 2+ viable paths with non-trivial trade-offs and the user's stated preference picks no winner, offer (never auto-run) a deliberation panel. Name only the options the user raised:
+When an answer leaves 2+ viable paths with non-trivial trade-offs and the user's stated preference picks no winner, stop asking new questions and offer (never auto-run) a deliberation panel. State only the options and trade-offs the user has raised, in their terms, without adding options or leaning toward either side:
 
 ```
 I've found a decision with no clear winner:
@@ -121,7 +121,11 @@ How would you like to proceed?
      cross-examines the arguments, and returns a scored recommendation
 ```
 
-**Once per session per topic:** a later tradeoff on the same topic gets a lighter prompt, "I found another decision point. Same treatment?", without repeating the cost note.
+**Once per session per topic.** For a later tradeoff on the same topic, don't print the block or the numbered menu again. Write only this one line:
+
+```
+Another decision point: <Option A> vs <Option B>. Convene a panel, or decide directly?
+```
 
 If the user opts in, run the panel per the `deliberation-panel` skill's "Offering the Panel from a Host Skill" section, with `decision_domain` inferred from context (default `general-tradeoff`), then resume elicitation with the user's decision in the requirements summary. If `deliberation-panel` isn't available, offer to reason through the tradeoff together or decide directly.
 

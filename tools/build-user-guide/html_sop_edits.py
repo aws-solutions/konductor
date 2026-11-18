@@ -1291,12 +1291,16 @@ SOP_EDITS += [
     # ---- design SOP: OVERSTATED doc-accuracy findings are flagged and gate readiness ----
     ("design use case: checklist gates OVERSTATED",
      "0 INCORRECT</strong>, each corrected in the text (UNVERIFIED is acceptable with callouts)",
-     "0 INCORRECT</strong>, each corrected in the text, and every OVERSTATED finding corrected or flagged "
-     "(UNVERIFIED is acceptable with callouts)"),
+     '0 INCORRECT</strong>, each corrected in the text, <strong style="color:var(--tx);font-weight:600">0 '
+     'UNVERIFIED noted "contradicts prior knowledge"</strong>, each checked against the named page and '
+     "reclassified or corrected, and every OVERSTATED finding corrected or flagged "
+     "(other UNVERIFIED findings are acceptable with callouts)"),
     ("design SOP: gate row gates OVERSTATED",
      "{ k: \"doc-accuracy-analyzer\", v: \"0 INCORRECT findings, each corrected in the text (UNVERIFIED is acceptable with callouts)\" },",
-     "{ k: \"doc-accuracy-analyzer\", v: \"0 INCORRECT findings, each corrected in the text, and every OVERSTATED "
-     "finding corrected or flagged (UNVERIFIED is acceptable with callouts)\" },"),
+     '{ k: "doc-accuracy-analyzer", v: "0 INCORRECT findings, each corrected in the text, 0 UNVERIFIED findings '
+     'noted \\"contradicts prior knowledge\\", each checked against the named page and reclassified or '
+     "corrected, and every OVERSTATED finding corrected or flagged (other UNVERIFIED findings are acceptable "
+     "with callouts)\" },"),
     ("design use case: Phase 3 is two passes and flags OVERSTATED",
      "Three automated passes, with no user interaction permitted. doc-accuracy-analyzer checks every technical "
      "claim against primary sources and routes AWS claims to aws-service-validator. INCORRECT and UNVERIFIED "
@@ -1318,5 +1322,7 @@ SOP_EDITS += [
     ("design SOP: OVERSTATED blocks until corrected or flagged",
      "mark UNVERIFIED claims with a callout and proceed. Only INCORRECT findings are treated as blocking.",
      "mark UNVERIFIED claims with a callout and proceed. INCORRECT findings block until the text is corrected, "
-     "and OVERSTATED findings block until they are corrected or flagged."),
+     "and OVERSTATED findings block until they are corrected or flagged. An UNVERIFIED claim noted "
+     '\\"contradicts prior knowledge\\" blocks like INCORRECT: check it against the named doc page and '
+     "reclassify it, or correct the text."),
 ]
