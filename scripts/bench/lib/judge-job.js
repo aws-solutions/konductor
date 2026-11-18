@@ -699,7 +699,10 @@ async function runJudging({
     return false;
   });
 
-  const judgeInput = createJudgeInput();
+  // The subject runner stores an answer as it is. A text that holds one of the run's credential values stops that run
+  // (claude-run.js, sweepTrace), so no stored answer holds one and the judge job, which has none of those values, needs
+  // no literals here.
+  const judgeInput = createJudgeInput({ literals: [] });
   const planFor = () =>
     planJudging({
       layout,

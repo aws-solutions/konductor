@@ -800,7 +800,9 @@ test('resume: an edited judge prompt template makes every judgment pending and n
       skills: [SKILL],
       scale: 'items',
       judgeInput:
-        require('../../../scripts/bench/lib/judge-input').createJudgeInput(),
+        require('../../../scripts/bench/lib/judge-input').createJudgeInput({
+          literals: [],
+        }),
       armsTmpRoot: path.join(path.dirname(layout.root), 'tmp'),
     });
     assert.deepEqual(
@@ -1086,7 +1088,9 @@ test('an answer stored as not loaded is never judged, nor is the other arm of it
       skills: [SKILL],
       scale: 'items',
       judgeInput:
-        require('../../../scripts/bench/lib/judge-input').createJudgeInput(),
+        require('../../../scripts/bench/lib/judge-input').createJudgeInput({
+          literals: [],
+        }),
       armsTmpRoot: tmpRoot,
     });
     const held = jobs.filter((entry) => entry.state === 'other_arm_unusable');
@@ -1347,7 +1351,7 @@ test('an ineligible record redacts its reason', () =>
       config,
       skills: [SKILL],
       scale: 'items',
-      judgeInput: createJudgeInput(),
+      judgeInput: createJudgeInput({ literals: [] }),
       armsTmpRoot: tmpRoot,
     });
     const target = jobs[0];
@@ -1363,7 +1367,7 @@ test('the judge-input step gets the task request, so text the user wrote stays i
     writeAnswers(layout, config, tmpRoot, (arm) =>
       arm === 'with' ? WITH_TEXT : WITHOUT_TEXT,
     );
-    const real = createJudgeInput();
+    const real = createJudgeInput({ literals: [] });
     const requests = [];
     const spy = {
       ...real,
