@@ -1,6 +1,6 @@
 ---
 name: decision-research
-description: 'Use before drafting an ADR or other decision record, to find prior decisions, alternatives and evidence. Also use after rubric-based quality checks (Maker-Checker Pattern) to surface prior art and missing context an artifact overlooks.'
+description: Use before an ADR, decision record or tool or migration choice to research current state, prior decisions, alternatives, trade-offs, constraints and evidence. Also use after rubric-based quality checks (Maker-Checker Pattern) to surface prior art and missing context an artifact overlooks; doc-accuracy-analyzer checks the claims. Slack threads and exports count as sources.
 ---
 
 # Decision Research
@@ -36,7 +36,11 @@ find . -name "*.config.*"       # Find configuration files
 
 ### Phase 1b: Extract Slack Discussion Context
 
-Open `references/slack.md` (relative to this file) when the user gives Slack thread URLs or asks you to search Slack for prior discussion. It covers reading a thread, searching for related ones, what to extract, and how thread content maps to the research output.
+Use this phase when the user gives Slack thread URLs, a thread export, or asks you to search Slack for prior discussion.
+
+Resolve every Slack user ID to the person's name and never put raw IDs (such as `U01ABC`) in findings, not even in parentheses after the name. Readers of a decision record can't map IDs to people.
+
+Open `references/slack.md` (relative to this file) for how to read and search threads, what to extract, and how thread content maps to the research output.
 
 ### Phase 2: Find Prior Decisions
 

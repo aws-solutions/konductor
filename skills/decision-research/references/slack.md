@@ -24,14 +24,14 @@ Read this when the user gives Slack thread URLs or asks you to search Slack for 
 - Links or references shared in the thread
 - Timeline context (when was this discussed, is it still relevant?)
 
-**Mapping thread content to research output:**
+**Mapping thread content to the Research Output Template in `SKILL.md`:**
 
-| Thread element        | Maps to                                     |
-| --------------------- | ------------------------------------------- |
-| Participants          | Deciders / stakeholders                     |
-| Positions taken       | Alternatives (with evidence from arguments) |
-| Consensus points      | Proposed recommendation                     |
-| Unresolved tensions   | Key trade-offs to address                   |
-| Constraints mentioned | Constraints section                         |
-| Links shared          | Sources                                     |
+| Thread element        | Maps to                                                      |
+| --------------------- | ------------------------------------------------------------ |
+| Positions taken       | Alternatives, with each argument and who made it as evidence |
+| Participants          | The attribution on each Alternatives entry                   |
+| Consensus points      | Prior Decisions, linking the thread                          |
+| Unresolved tensions   | Gaps                                                         |
+| Constraints mentioned | Constraints                                                  |
+| Links shared          | Sources                                                      |
 

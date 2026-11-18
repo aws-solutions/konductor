@@ -1,6 +1,6 @@
 ---
 name: architecture-diagram-generation
-description: Generates AWS architecture diagrams as draw.io (diagrams.net) XML. Use when you need a visual diagram from a system design document. Produces single or multi-account diagrams with official AWS service icons and directional data flows.
+description: Generates AWS architecture diagrams as draw.io (diagrams.net) XML. Use when you need a visual diagram from a system design document. Draws single or multi-account layouts with official AWS icons and directional data flows.
 version: 1.0.0
 tags: [skill, architecture, diagram, drawio, aws]
 ---
@@ -106,8 +106,6 @@ Route 53 Resolver endpoints go in their subnets. A private hosted zone stays out
 
 ## XML Generation Process
 
-Open `references/drawio-templates.md` (relative to this file) when generating the XML. It holds the single-account and multi-account templates, the AWS service icon styles, and the serverless web application and logical grouping patterns.
-
 ### 1. Review Use-Case Requirements
 
 - Review the use-case prompt thoroughly to understand system requirements
@@ -124,13 +122,15 @@ Open `references/drawio-templates.md` (relative to this file) when generating th
 
 ### 3. Start with Template
 
+Open `references/drawio-templates.md` (relative to this file) now, before writing any XML. It holds the single-account and multi-account templates, the AWS service icon styles, and the serverless web application and logical grouping patterns used in steps 4 and 5.
+
 - Choose appropriate template (single/multi-account)
 - Replace placeholder values with actual system information
 - Validate basic XML structure
 
 ### 4. Add AWS Services
 
-- Use official AWS service icons with proper styling
+- Use official AWS service icons, copying the icon styles from `references/drawio-templates.md`
 - Position services according to scope (global/regional/VPC)
 - Ensure consistent icon sizing and alignment
 

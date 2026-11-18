@@ -1,7 +1,7 @@
 ---
 name: smithy-validation
 description: Validates Smithy API models for quality, best practices, and production readiness. Use before implementation to catch structural, naming, security, and code generation issues. Produces prioritized findings with specific fixes.
-version: 1.0.0
+version: 1.1.0
 tags: [skill, smithy, api-design, validation, checker, code-review]
 ---
 
@@ -250,7 +250,7 @@ Verify generated artifacts:
 
 ### Step 5: Breaking Change Analysis
 
-If reviewing changes to existing model:
+Look for an earlier version of the model before you start: other `*.smithy` files outside the model under review (for example `previous-model/`), or the file in git history. A rename that looks like a naming nit is a wire break when a deployed version exists, so compare against it whenever one is there, by reading if the CLI is missing:
 
 ```bash
 smithy diff --old previous-model/ --new current-model/
@@ -264,12 +264,12 @@ Identify and document:
 
 ## Output Format
 
-Use the Quality Gate's three levels and add what the model does well:
+Use the Quality Gate's three levels and add what the model does well. Give every finding, SUGGESTION included, its location, impact and a Smithy example. Write fixes as complete Smithy 2.0 the reader can paste: include the `use` lines the fix needs and the full trait arguments, and avoid `{ ... }` elisions. If the smithy CLI was not run, say so in the report and list the commands to run before handoff.
 
 ### CRITICAL (Must Fix)
 
 ```
- [Category] [Location]
+**[Category]** - [Location]
 Issue: [Description]
 Impact: [Why this matters]
 Fix: [Specific recommendation]
@@ -279,7 +279,7 @@ Example: [Code showing fix]
 ### IMPORTANT (Should Fix)
 
 ```
- [Category] [Location]
+**[Category]** - [Location]
 Issue: [Description]
 Recommendation: [Suggested improvement]
 Example: [Code showing improvement]
@@ -288,22 +288,23 @@ Example: [Code showing improvement]
 ### SUGGESTION (Consider)
 
 ```
- [Category] [Location]
+**[Category]** - [Location]
 Observation: [What could be better]
 Benefit: [Why this would help]
 Alternative: [Optional approach]
+Example: [Code showing the alternative]
 ```
 
 ### Positive Findings
 
 ```
- [Category]
+**[Category]**
 Good practice: [What's done well]
 ```
 
 ## Example Review Output
 
-Open `references/example-review.md` (relative to this file) when writing a review report and you want a filled-in example. It reviews a WeatherService model and shows CRITICAL, IMPORTANT, SUGGESTION, and positive findings in that format.
+Open `references/example-review.md` (relative to this file) before writing the review report. It reviews a WeatherService model and shows CRITICAL, IMPORTANT, SUGGESTION, and positive findings in that format.
 
 ## Anti-Patterns to Flag
 
@@ -361,7 +362,7 @@ Before approving a model:
 
 - Model fails `smithy validate` with ERROR-level events
 - An operation that needs authentication can be called without it: no auth scheme trait on the service, or the operation is marked `@optionalAuth` or `@auth([])`
-- Sensitive data (PII, credentials) not marked with `@sensitive`
+- Credentials, payment data (card numbers, payment tokens), government IDs or passwords not marked with `@sensitive`. Free text and ordinary IDs (notes, customer IDs) are IMPORTANT unless the model says they hold PII
 - Breaking changes introduced to existing operations
 - Invalid Smithy syntax that blocks code generation
 
@@ -379,4 +380,4 @@ Before approving a model:
 
 A model passes review when no CRITICAL finding remains and each IMPORTANT finding is fixed or accepted with a recorded reason.
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
