@@ -101,10 +101,24 @@ describe('GET /api/runs', () => {
 describe('GET /api/runs with a run that another program started', () => {
   const stub = useStub({ root: 'busy' });
 
-  it('lists that run, with the goal of the workflow', async () => {
-    await stub().client.post('/api/run', { params: { goal: 'Mine' } });
-    expect(await rows(stub())).toMatchObject([
+  it('lists that run before any start, and it is the run a start is refused for', async () => {
+    const listed = await rows(stub());
+    expect(listed).toMatchObject([
       { status: 'running', goal: 'Add a greeting to the README' },
     ]);
+    const runId = listed[0]?.run_id;
+
+    const started = await stub().client.post('/api/run', {
+      params: { goal: 'Mine' },
+    });
+    expectError(started, 409, 'already_running');
+    expect(started.body).toMatchObject({ run_id: runId });
+
+    const read = await stub().client.get(`/api/runs/${runId}`);
+    expectContract(read, 'GET', '/api/runs/{id}');
+    expect(read.body).toMatchObject({
+      run: { run_id: runId, status: 'running' },
+    });
+    expect(await rows(stub())).toHaveLength(1);
   });
 });

@@ -56,6 +56,7 @@ export class WorkflowApi {
    * the file stops matching it, as the contract says.
    */
   private readonly trustedHash: string | undefined;
+  private otherRunStarted = false;
 
   constructor(options: WorkflowApiOptions) {
     this.root = options.root;
@@ -126,14 +127,8 @@ export class WorkflowApi {
     if (!check.view) throw invalidWorkflow(check);
     const stageNames = check.view.stages.map((stage) => stage.name);
     if (this.trustedHash !== file.hash) throw untrusted(this.root);
-    // Another program holds the workspace: its run is there from the start.
-    const active =
-      this.runs.activeRunId() ??
-      (this.behavior.busy
-        ? this.runs.start(this.root, stageNames, goalOfOther(check.view), {
-            neverEnds: true,
-          })
-        : undefined);
+    this.findOtherRun();
+    const active = this.runs.activeRunId();
     if (active) {
       throw new ApiError(
         'already_running',
@@ -163,7 +158,25 @@ export class WorkflowApi {
 
   /** The runs of the root, newest first: the stub keeps every run it played. */
   listRuns(limit: number): { runs: RunSummary[] } {
+    this.findOtherRun();
     return { runs: this.runs.list(limit) };
+  }
+
+  /**
+   * In a busy workspace another program's run is there before any call, so
+   * the first call that reads runs finds it, and every later call sees the
+   * same run. It never ends.
+   */
+  private findOtherRun(): void {
+    if (!this.behavior.busy || this.otherRunStarted) return;
+    const file = this.store.read(this.root);
+    const view = file && checkWorkflowText(file.text, this.root).view;
+    if (!view) return;
+    this.otherRunStarted = true;
+    const stageNames = view.stages.map((stage) => stage.name);
+    this.runs.start(this.root, stageNames, goalOfOther(view), {
+      neverEnds: true,
+    });
   }
 
   listAgents(): { agents: Agent[] } {
@@ -171,6 +184,7 @@ export class WorkflowApi {
   }
 
   getRun(runId: string): Run {
+    this.findOtherRun();
     const run = RUN_ID_PATTERN.test(runId) ? this.runs.get(runId) : undefined;
     if (!run) throw new ApiError('not_found', 'There is no run with this id.');
     return run;
@@ -181,6 +195,7 @@ export class WorkflowApi {
    * `nextAt` says when the next one happens, for a caller that waits for it.
    */
   runEvents(runId: string, after: number): RunEventsPage {
+    this.findOtherRun();
     const known = RUN_ID_PATTERN.test(runId) ? this.runs.events(runId) : null;
     if (!known)
       throw new ApiError('not_found', 'There is no run with this id.');
