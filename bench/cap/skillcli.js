@@ -15,7 +15,7 @@ const { analyzeStudy, analyzeRuns, buildCriteriaReport, renderCriteria, writeCri
 const { checkMode, checkHeldMin } = require('./forced.js');
 
 const list = (v) => (v === undefined || v === true || v === '' ? [] : String(v).split(',').filter(Boolean));
-const val = (v) => (v === undefined || v === true ? undefined : String(v));
+const { textFlag: val, repoRootOf } = require('../runner/lib/flag-values.js');
 const pathOpt = (v) => (v && v !== true ? path.resolve(v) : null);
 const num = (v, name) => {
   if (v === undefined) return undefined;
@@ -25,7 +25,7 @@ const num = (v, name) => {
 };
 
 function common(opts) {
-  const repo = path.resolve(opts['repo-root'] && opts['repo-root'] !== true ? opts['repo-root'] : process.env.BENCH_REPO_ROOT || path.resolve(BENCH_DIR, '..'));
+  const repo = repoRootOf(opts);
   const benchDir = pathOpt(opts['bench-dir']) ?? BENCH_DIR;
   return { repo, benchDir, extraTasks: list(opts['extra-tasks']).map(realDir) };
 }

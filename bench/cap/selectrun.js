@@ -11,6 +11,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { BENCH_DIR } = require('../runner/lib/tasks.js');
+const { textFlag: val, repoRootOf } = require('../runner/lib/flag-values.js');
 const { loadRun } = require('../report/load.js');
 const { loadBaseline, BASELINES_DIR } = require('./frozen.js');
 const { loadChecked } = require('./baselineformats.js');
@@ -80,14 +81,13 @@ function runSelect({ name, repo, outDir, runId = null, fromRun = null, reps = 3,
   return { result, file, scored };
 }
 
-const val = (v) => (v === undefined || v === true ? undefined : String(v));
 const f2 = (v) => (v === null ? 'n/a' : v.toFixed(2));
 
 /** The command: parses flags, runs runSelect or writes the tasks, and prints the result. */
 function cmdSelect(opts) {
   const name = val(opts.skill);
   if (!name) throw new Error('--skill NAME is required');
-  const repo = path.resolve(val(opts['repo-root']) ?? process.env.BENCH_REPO_ROOT ?? path.resolve(BENCH_DIR, '..'));
+  const repo = repoRootOf(opts);
   const requestsFile = val(opts.requests) ? path.resolve(val(opts.requests)) : null;
   const tasksDir = val(opts['write-tasks']);
   if (tasksDir) {

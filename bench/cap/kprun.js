@@ -10,6 +10,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { BENCH_DIR } = require('../runner/lib/tasks.js');
+const { textFlag: val, repoRootOf } = require('../runner/lib/flag-values.js');
 const { loadBaseline, loadConvention, loadDoseLadder, BASELINES_DIR } = require('./frozen.js');
 const { checkDepth, judgmentStore, DEFAULT_REPLICATES, CLAIM } = require('./keepprune.js');
 const { blockFromCheck, buildRecord, writeRecord, renderRecord, selectionProblems } = require('./kprecord.js');
@@ -79,7 +80,6 @@ function runKeepPrune({ name, repo, runId, outDir, depth = 'both', provider = 's
   return { record, file, markdown };
 }
 
-const val = (v) => (v === undefined || v === true ? undefined : String(v));
 
 /** The command: parses flags, runs runKeepPrune and prints the record table (or the record with --json). */
 function cmdKeepPrune(opts) {
@@ -92,7 +92,7 @@ function cmdKeepPrune(opts) {
   if (!Number.isInteger(replicates) || replicates < 1) throw new Error('--replicates takes a whole number of 1 or more');
   const selectionFile = val(opts.selection);
   const r = runKeepPrune({
-    name, runId, repo: path.resolve(val(opts['repo-root']) ?? process.env.BENCH_REPO_ROOT ?? path.resolve(BENCH_DIR, '..')),
+    name, runId, repo: repoRootOf(opts),
     outDir: path.resolve(val(opts.out) ?? path.join(BENCH_DIR, 'out', 'keep-prune')), depth: val(opts.depth) ?? 'both', provider: val(opts.provider) ?? 'stub',
     subjectModel: val(opts['subject-model']) ?? STUB_SUBJECT_MODEL, judges: val(opts.judges) ? val(opts.judges).split(',').filter(Boolean) : STUB_JUDGES,
     replicates, rejudge: Boolean(opts.rejudge), selection: selectionFile ? readJsonFile(path.resolve(selectionFile)) : null,

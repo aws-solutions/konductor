@@ -16,6 +16,7 @@ const { AGENT_ENGINES, DEFAULT_ENGINE, isUsdRuntime, descriptorOf, supporting, n
 const { DESCRIPTORS } = require('./harness/descriptors.js');
 const { readProfile } = require('./harness/opencode-creds.js');
 const { isSuiteName, loadTasks, loadSuite, suiteExtraDirs, suiteDirs, suiteFile, mergeExtraDirs, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
+const { repoRootOf } = require('./flag-values.js');
 const real = require('./real.js');
 const reallib = require('../../real/lib.js');
 const { runAll, prepareAll, preflightTable, describePlan, budgetNote, DEFAULT_CENSORED_FLOOR, CREDITS, USD } = require('./orchestrate.js');
@@ -46,7 +47,6 @@ const { runConfigRecord: introspectRunConfig } = require('./introspect/index.js'
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
-const DEFAULT_REPO = path.resolve(BENCH_DIR, '..');
 // Censored opencode runs are charged this many USD when the arm has no completed run yet.
 const DEFAULT_CENSORED_FLOOR_USD = 0.5;
 
@@ -153,8 +153,6 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
     procs.removeAllScratch();
   }
 }
-
-const repoRootOf = (opts) => path.resolve(opts['repo-root'] && opts['repo-root'] !== true ? opts['repo-root'] : process.env.BENCH_REPO_ROOT || DEFAULT_REPO);
 
 async function cmdRun(opts, deps = {}) {
   // Everything the runner reads from its own checkout later is read or hashed now, so a branch switch mid-study fails fast.
