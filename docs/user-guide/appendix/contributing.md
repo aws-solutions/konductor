@@ -26,12 +26,14 @@ Everything Konductor does is plain JSON and Markdown in the repository. There is
 behaviour, no database, no hidden state — so you can read exactly what an agent will do, and change
 it.
 
-Five files control five different things. Pick the smallest one that achieves what you want.
+Seven files control seven different things. Pick the smallest one that achieves what you want.
 
 | Change | Edit | Effect |
 | --- | --- | --- |
 | Rules every agent must follow | `context/k-core-rules.md` | NEVER DO rules, writing habits, and engineering practices, loaded at session start for every agent |
-| Which specialist handles which kind of request | `context/k-orchestrator-routing-rules.md` | Routing, loaded at session start for all three orchestrators |
+| Which specialist handles which kind of request | `context/k-orchestrator-routing-rules.md` | Routing, loaded at session start for the mux and cmux orchestrators |
+| What every orchestrator does with handoffs, splits, denials and briefs | `context/k-orchestrator-shared.md` | Shared orchestrator rules, loaded at session start for `konductor` and the mux and cmux orchestrators |
+| What `konductor` does itself and when it hands off | `context/k-direct-work.md` | Direct work, phase reviews, and handoffs, loaded at session start for `konductor` |
 | The steps of one workflow | `agent-sops/<name>.sop.md` | That SOP's steps, constraints, and quality gates |
 | How an agent reasons about one topic | `skills/<name>/SKILL.md` | Guidance that agent loads on demand |
 | An agent's prompt, model, tools, or dependencies | `agents/<name>.agent-spec.json` | That agent, in both runtimes |
@@ -323,7 +325,7 @@ ls skills | wc -l
 ```
 
 ```text
-      82
+      81
 ```
 
 Compare that against the union of every spec's declared skills. A mismatch means a skill exists that
@@ -370,7 +372,7 @@ a security problem.
 ## Related
 
 - [Agents reference](../agents.md) — every agent's model, tools, access, and delegation targets
-- [Skills catalog](../skills.md) — all 82 skills and which agents declare each
+- [Skills catalog](../skills.md) — all 81 skills and which agents declare each
 - [SOP workflows](../sop-workflows/README.md) — the 19 procedures and their structure
 - [CLI reference](../reference.md) — the full command, flag, config, and exit-code contract
 

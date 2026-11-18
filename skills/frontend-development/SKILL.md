@@ -1,6 +1,6 @@
 ---
 name: frontend-development
-description: Implements frontend code changes for React/TypeScript applications using AWS Cloudscape Design System. Use when fixing type safety issues, form patterns, component extraction, or adding UI features. Follows Cloudscape-only component rules with no native HTML.
+description: Implements frontend changes for React/TypeScript apps built on the AWS Cloudscape Design System. Use when fixing type safety issues, form patterns, component extraction, or adding UI features. Uses Cloudscape components only, never native HTML.
 version: 1.0.0
 tags: [skill, frontend, react, typescript, cloudscape, forms, implementation]
 ---

@@ -285,7 +285,7 @@ fn configured_threshold(cwd: &Path) -> Result<(Severity, String), Invalid> {
 /// file, else the shipped defaults. Mirrors the layering in `load_config`.
 fn config_source(cwd: &Path) -> String {
     let project = cwd.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME);
-    let user = env_home_dir().map(|home| home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME));
+    let user = env_home_dir().map(|home| config::user_config_path(&home));
     [Some(project), user]
         .into_iter()
         .flatten()
@@ -725,5 +725,18 @@ mod tests {
         assert!(!is_project_file(&root, "dir/a.md"));
         assert!(!is_project_file(&root, "Dir/A.md"));
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn config_source_names_the_user_file_through_user_config_path() {
+        let project = SweepProject::new();
+        let home = env_home_dir().unwrap();
+        let user_config = config::user_config_path(&home);
+        std::fs::create_dir_all(user_config.parent().unwrap()).unwrap();
+        std::fs::write(&user_config, "fail_on_severity_at_or_above: HIGH\n").unwrap();
+        assert_eq!(
+            config_source(&project.root),
+            user_config.display().to_string()
+        );
     }
 }

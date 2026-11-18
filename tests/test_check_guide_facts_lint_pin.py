@@ -127,3 +127,188 @@ def test_unparsable_pin_fails_the_section(repo_copy):
     section = lint_section_output(repo_copy, "          RUST_LINT_TOOLCHAIN: stable\n")
     assert f"FAIL  RUST_LINT_TOOLCHAIN in validate-pr.yml is 'stable'; it {EXPECTED_SHAPE}" in section
     assert "ok" not in section
+
+
+CLI_RS = REPO_ROOT / "cli" / "konductor-rs" / "src" / "cli.rs"
+
+
+def test_config_stays_withdrawn_and_is_found_as_a_hidden_command():
+    assert "config" in check_guide_facts.WITHDRAWN_COMMANDS
+    assert "config" in check_guide_facts.hidden_commands(CLI_RS.read_text(encoding="utf-8"))
+
+
+def test_existence_check_accepts_a_hidden_command_missing_from_the_readme():
+    assert check_guide_facts.withdrawn_command_problem("config", ["init"], {"config"}) is None
+
+
+def test_existence_check_fails_for_a_name_in_neither_source():
+    problem = check_guide_facts.withdrawn_command_problem("nosuchcmd", ["init"], {"config"})
+    assert "cli/README.md does not declare it and cli.rs has no hidden command of that name" in problem
+
+
+def test_stale_delegation_phrases_stay_forbidden():
+    assert set(check_guide_facts.STALE_DELEGATION_PHRASES) == {
+        "can also spawn each other",
+        "carry Agent(...) tools",
+        "holds the subagent tool but can spawn nothing",
+        "via Agent(...)",
+        "adversarial handoff never fires",
+        "step 6 silently no-ops",
+        "Its step-6 adversarial pass never fires",
+        "Kiro CLI v2 is not covered",
+        "only the core rules stop",
+        "the core rules forbid it in Kiro CLI v2",
+        "cannot spawn the architect in either runtime",
+        "no spawn tool in either runtime",
+    }
+
+
+def test_stale_phrase_is_matched_through_inline_code_backticks():
+    assert check_guide_facts.stale_delegation_phrases(
+        "k-architect and k-quality-assurance carry `Agent(...)` tools"
+    ) == ["carry Agent(...) tools"]
+    assert check_guide_facts.stale_delegation_phrases("k-developer via `Agent(...)`") == [
+        "via Agent(...)"
+    ]
+
+
+def test_konductor_spawn_cell_is_exempt_in_markdown_and_bundle_forms():
+    assert check_guide_facts.stale_delegation_phrases(
+        "| `konductor` | the 8 specialists | the same 8, via `Agent(...)`, plus `SendMessage` |"
+    ) == []
+    assert check_guide_facts.stale_delegation_phrases(
+        '{ k: "konductor", v: "the 8 specialists · the same 8 via Agent(...), plus SendMessage" }'
+    ) == []
+
+
+def test_stale_delegation_phrase_in_a_markdown_source_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "user-guide" / "agents.md"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original + "\nIn Claude Code the specialists carry `Agent(...)` tools too.\n",
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert "agents.md: says 'carry Agent(...) tools'" in result.stdout
+
+
+def test_stale_delegation_phrase_in_a_bundle_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "site" / "user-guide.html"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original.replace("nothing · nothing", "k-developer via Agent(...)", 1),
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert "specialists hold no spawn tool" in result.stdout
+
+
+def test_v2_spawn_caveat_in_the_guide_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "user-guide" / "agents.md"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original + "\nKiro CLI v2 is not covered, so there only the core rules stop a spawn.\n",
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert result.returncode != 0
+    assert "specialists hold no spawn tool in any runtime" in result.stdout
+
+
+def test_stale_version_claims_are_the_two_shipped_phrases():
+    assert set(check_guide_facts.STALE_VERSION_CLAIMS) == {"last v2 release", "2.36.0 or later"}
+
+
+def _guide_check_with_appended(repo_copy, rel, addition):
+    page = repo_copy / rel
+    original = page.read_text(encoding="utf-8")
+    page.write_text(original + addition, encoding="utf-8")
+    try:
+        return subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+
+
+def test_last_v2_release_claim_in_the_guide_fails_the_guide_check(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy, "docs/user-guide/agents.md", "\nkiro-cli 3.0.0 is the last v2 release.\n"
+    )
+    assert result.returncode != 0
+    assert "state the checked kiro-cli versions, not a last release or a minimum" in result.stdout
+
+
+def test_minimum_version_claim_in_the_rust_doc_comment_fails_the_guide_check(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy,
+        "cli/konductor-rs/src/cli/synth/kiro_cli_v2.rs",
+        "\n/// Needs kiro-cli 2.36.0 or later.\n",
+    )
+    assert result.returncode != 0
+    assert "kiro_cli_v2.rs: says '2.36.0 or later'" in result.stdout
+
+
+def test_v2_core_rules_clause_in_the_guide_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "user-guide" / "faq.md"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original + "\nNo specialist holds a spawn tool, and the core rules forbid it in Kiro CLI v2.\n",
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert result.returncode != 0
+    assert "the core rules forbid it in Kiro CLI v2" in result.stdout
+
+
+def test_stale_delegation_phrase_wrapped_across_markdown_lines_fails_the_guide_check(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy,
+        "docs/user-guide/faq.md",
+        "\nNo specialist holds a spawn tool, and the core rules\nforbid it in Kiro CLI v2.\n",
+    )
+    assert result.returncode != 0
+    assert "the core rules forbid it in Kiro CLI v2" in result.stdout
+
+
+def test_version_claim_wrapped_across_doc_comment_lines_fails_the_guide_check(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy,
+        "cli/konductor-rs/src/cli/synth/kiro_cli_v2.rs",
+        "\n/// Needs kiro-cli 2.36.0\n/// or later.\n",
+    )
+    assert result.returncode != 0
+    assert "kiro_cli_v2.rs: says '2.36.0 or later'" in result.stdout
+
+
+def test_notes_describe_the_existence_check_the_code_runs():
+    """A visible command missing from cli/README.md fails the check; the guide
+    must not say that any command in cli.rs, hidden or not, passes."""
+    notes = (REPO_ROOT / "docs" / "user-guide" / "notes.md").read_text(encoding="utf-8")
+    assert "hidden with `#[command(hide = true)]`" in notes
+    assert "hidden or not" not in notes

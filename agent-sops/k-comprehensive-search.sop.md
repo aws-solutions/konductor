@@ -120,4 +120,4 @@ ast-grep -p 'import { $IMPORTS } from "$MODULE"' {project_root}
 
 - Return file paths + 3-5 line snippets, not full file contents
 - Cap at 20 matches per search pattern — report total count if more exist
-- If combined findings exceed ~100 lines, write to `.konductor/handoff/<search-name>.md` and return the path
+- If combined findings exceed ~100 lines, write to `.konductor/handoff/<search-name>.md` and return the path (first create `.konductor/handoff/.gitignore` containing `*` if it is missing)

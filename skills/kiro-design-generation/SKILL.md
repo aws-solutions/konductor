@@ -1,7 +1,7 @@
 ---
 name: kiro-design-generation
-description: Transforms system design artifacts into per-feature Kiro IDE design.md with the 6 required sections. Use after requirements.md is approved and before task generation.
-version: 1.0.0
+description: Transforms system design artifacts into per-feature Kiro IDE design.md with the 6 required sections. Use to turn an approved requirements.md and a system design into a Kiro design.md, spec step 2, between kiro-requirements-generation and kiro-task-generation.
+version: 1.1.0
 tags: [skill, kiro, specs, design, low-level-design, per-feature]
 ---
 
@@ -52,7 +52,7 @@ Not all inputs are required — use what is available. At minimum, `requirements
 {spec_dir}/design.md
 ```
 
-`spec_dir` (optional): path where spec artifacts are written. Defaults to `.kiro/specs/{feature-name}/` if not provided — the same location Kiro IDE itself writes specs to, so this skill behaves identically whether invoked standalone in any Kiro project or as part of a larger workflow. A caller that keeps its artifacts elsewhere passes its own `spec_dir`, and this skill MUST read and write there instead.
+`spec_dir` (optional): where spec artifacts live. Defaults to `.kiro/specs/{feature-name}/`; when the caller passes one, this skill MUST read and write there instead.
 
 One `design.md` per feature, placed alongside the corresponding `requirements.md` in the same `spec_dir`.
 
@@ -219,6 +219,9 @@ When extracting per-feature design from the system-level design:
 - Each requirement from `requirements.md` MUST map to at least one component in the design
 - Create a traceability note in the Overview section listing which requirements are addressed
 - If a requirement cannot be addressed by the design, flag it explicitly
+- Put gaps and assumptions in design.md itself, in an "Assumptions and Gaps" list inside the Overview (not a new `##` section), not only in your chat reply. A gap is a requirement that names an operation or behavior the upstream design does not define, a conflict between requirements and the system design, or an expected input that is missing (no threat model, DynamoDB design or API spec handoff). For each, say what you assumed
+- When a requirement denies callers who do not own a resource, design an explicit ownership check. Return 404 both for ids that do not exist and for ids the caller does not own, so responses do not reveal which ids exist. Return 403 only when the caller can already see the resource but lacks permission for this action (for example, read-only on a shared item)
+- Do not add behavior the requirements do not ask for (quotas, exports, alerting). If you add something, list it under Assumptions and Gaps
 
 ### Feature Scoping
 
@@ -231,6 +234,7 @@ When extracting per-feature design from the system-level design:
 - If this feature depends on another feature's components, reference the other feature's design.md
 - Example: "Depends on the Alert entity from `.kiro/specs/alert-management/design.md`"
 - Do not copy component designs across features — reference and extend
+- Reuse the keys, indexes and TTLs the system design already defines. Replace one only when it cannot meet a requirement, and say why in the Overview
 
 ### Granularity
 
@@ -275,6 +279,8 @@ Also read supplementary artifacts if available:
 - DynamoDB design from `.konductor/handoff/architect-dynamodb-design.md`
 - API specs from `.konductor/handoff/architect-api-specs.md`
 
+Record each one that is missing; it goes in the Overview's Assumptions and Gaps list.
+
 ### Step 3: Identify Feature-Specific Components
 
 From the system design, extract only the components relevant to this feature:
@@ -307,6 +313,8 @@ Before presenting output, verify:
 - [ ] Component interfaces use typed signatures (not vague descriptions)
 - [ ] Data models include field types and constraints
 - [ ] design.md is placed alongside requirements.md in `{spec_dir}`
+- [ ] Gaps, missing inputs and assumptions are written in design.md
+- [ ] Line count checked with `wc -l` (report the real number) and headings checked with `grep -n '^## '`
 
 ## Quality Gate
 
@@ -333,4 +341,4 @@ Before presenting output, verify:
 - Could add performance considerations (expected latency, throughput)
 - Could add a "Future Considerations" section for known extensions
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking. If the user said not to ask questions, fix CRITICAL and IMPORTANT findings yourself and finish without the prompt. If both apply, `scope_confirmed` wins: the caller owns the fix step, so report the findings and leave fixing to the caller. Fix the findings yourself only in no-questions mode without `scope_confirmed`.

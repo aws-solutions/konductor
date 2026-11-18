@@ -46,13 +46,89 @@ _DIAGRAM_DIR = {"agents": "agents", "skills": "skills", "SOPs": "agent-sops"}
 # for agents ("11 agent specs"), which is why this needs its own map.
 _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 
-# Commands the CLI accepts but the guide deliberately does not document, with the
-# decision recorded so the carve-out is auditable rather than folklore. `config`
-# is withheld from the v1 customer-visible surface (reviewer decision on
-# reviewer decision); `.konductor/config.yml` itself stays documented, since `init`
-# writes it and `doctor` validates it. Adding a name here is a product decision,
-# not a way to silence this script -- see docs/user-guide/notes.md.
-WITHDRAWN_COMMANDS = {"config"}
+# Commands the CLI accepts but the guide deliberately does not document. `config`
+# is hidden (`#[command(hide = true)]` in cli/konductor-rs/src/cli.rs), so it is
+# not in cli/README.md's command list; the leak checks keep it out of the guide.
+WITHDRAWN_COMMANDS: set[str] = {"config"}
+
+_HIDDEN_COMMAND = re.compile(r"#\[command\(hide = true[^\]]*\]\s*\n\s*(\w+)\s*\{")
+
+
+STALE_DELEGATION_PHRASES = (
+    "can also spawn each other",
+    "carry Agent(...) tools",
+    "holds the subagent tool but can spawn nothing",
+    "via Agent(...)",
+    "adversarial handoff never fires",
+    "step 6 silently no-ops",
+    "Its step-6 adversarial pass never fires",
+    "Kiro CLI v2 is not covered",
+    "only the core rules stop",
+    "the core rules forbid it in Kiro CLI v2",
+    "cannot spawn the architect in either runtime",
+    "no spawn tool in either runtime",
+)
+# konductor's own delegation cell is the one place "via Agent(...)" is correct. The
+# Markdown source writes it as "the same 8, via `Agent(...)`"; the bundle drops the
+# comma and the backticks.
+KONDUCTOR_SPAWN_CELL = re.compile(r"the same 8,? via Agent\(\.\.\.\)")
+_INLINE_CODE = re.compile(r"`([^`\n]*)`")
+# kiro-cli 3.1.0 ships v2 as its default engine, and no minimum client version is
+# enforced; versions are checked, not required.
+STALE_VERSION_CLAIMS = ("last v2 release", "2.36.0 or later")
+KIRO_V2_SYNTH = Path("cli") / "konductor-rs" / "src" / "cli" / "synth" / "kiro_cli_v2.rs"
+
+
+def _flat(text: str) -> str:
+    """Collapse line wraps and indentation so a phrase split across Markdown or
+    doc-comment lines still matches."""
+    return " ".join(text.split())
+
+
+def stale_delegation_phrases(text: str) -> list[str]:
+    """Stale phrases in `text`, matched with inline-code backticks stripped so the
+    Markdown sources are checked by the same rule as the published bundle."""
+    plain = _flat(KONDUCTOR_SPAWN_CELL.sub("", _INLINE_CODE.sub(r"\1", text)))
+    return [phrase for phrase in STALE_DELEGATION_PHRASES if phrase in plain]
+
+
+# `konductor` does the work itself; only the mux and cmux orchestrators are read-only
+# dispatchers. These describe the old all-dispatcher shape.
+STALE_DISPATCHER_PHRASES = (
+    "never implements",
+    "HUB \u2014 READ-ONLY",
+    "routing rules are always active",
+    "capability-to-agent routing table",
+    "routes each piece of work to the specialist that owns it",
+    "delegates all work",
+    "The orchestrators are dispatchers by design",
+    "its tool list has no",
+    "reads, synthesises, and routes",
+    "hands file edits and shell commands to",
+    "which routes design requests to",
+    "The orchestrator routes both to",
+    "The orchestrator routes this to",
+    "routes the design to",
+    "routes it to the owner",
+    "re-delegate, up to 2 cycles",
+    "which routes design work to",
+    "let it route",
+    "routing rules send code review to",
+    "which decides who owns it",
+)
+
+
+def hidden_commands(cli_rs_text: str) -> set[str]:
+    """Names of the clap variants marked `#[command(hide = true)]`, lower-cased."""
+    return {name.lower() for name in _HIDDEN_COMMAND.findall(cli_rs_text)}
+
+
+def withdrawn_command_problem(cmd: str, commands: list[str], hidden: set[str]) -> str | None:
+    if cmd in commands or cmd in hidden:
+        return None
+    return (f"`{cmd}` is listed as withdrawn from the guide, but cli/README.md does not "
+            f"declare it and cli.rs has no hidden command of that name "
+            f"-- drop it from WITHDRAWN_COMMANDS")
 
 
 def html_pages_for_flags(root: Path):
@@ -435,12 +511,35 @@ def main() -> int:
     for rel, text in sources.items():
         if rel.name == "notes.md":
             continue  # records why the claim is wrong; naming it is the point
+        for phrase in stale_delegation_phrases(text):
+            perm_fails.append(
+                f"{rel}: says {phrase!r}: specialists hold no spawn tool "
+                f"in any runtime"
+            )
+        for phrase in STALE_DISPATCHER_PHRASES:
+            if phrase in text:
+                perm_fails.append(
+                    f"{rel}: says {phrase!r}: konductor does the work itself; only the "
+                    f"mux and cmux orchestrators are read-only dispatchers"
+                )
         low = text.lower()
         for phrase in FORBIDDEN_PERMISSION_CLAIMS:
             if phrase in low:
                 perm_fails.append(
                     f"{rel}: says {phrase!r} — `tools` grants the capability, "
                     f"`allowedTools` only pre-approves it"
+                )
+    version_sources = dict(sources)
+    version_sources[KIRO_V2_SYNTH] = read(root / KIRO_V2_SYNTH)
+    for rel, text in version_sources.items():
+        if rel.name == "notes.md":
+            continue
+        flat = _flat(text.replace("///", " "))
+        for phrase in STALE_VERSION_CLAIMS:
+            if phrase in flat:
+                perm_fails.append(
+                    f"{rel}: says {phrase!r}: state the checked kiro-cli versions, "
+                    f"not a last release or a minimum"
                 )
 
     if perm_fails:
@@ -647,10 +746,8 @@ def main() -> int:
     keys = re.findall(r"^([a-z][a-z0-9_]*):", cfg, re.MULTILINE)
     if not keys:
         fail("could not parse any top-level keys from cli/gate-config/config.yml")
-    # reference.md is the only page documenting the schema now. The task page that
-    # used to carry it went with the `konductor config` command -- see the
-    # WITHDRAWN_COMMANDS note below. The FILE is still documented, because
-    # `init` writes it and `doctor` validates it.
+    # reference.md is the only page documenting the schema. The file is documented
+    # because `init` writes it and `doctor` validates it.
     for page in ("reference.md",):
         text = read(guide / page)
         missing = [k for k in keys if f"`{k}`" not in text]
@@ -686,21 +783,18 @@ def main() -> int:
         commands = [
             c for c in re.findall(r"`([a-z][a-z-]*)`", first_para) if c not in subcommands
         ]
-    # `config` is a real command the CLI accepts and a deliberately undocumented
-    # one: it is not part of the customer-visible surface for the v1 launch, by
-    # reviewer decision. Excluding it here keeps this section
-    # meaningful rather than deleting it -- every OTHER command must still be
-    # documented, and the exclusion itself is asserted against cli/README.md, so
-    # a `config` that stops existing (or a second withdrawal nobody recorded)
-    # fails loudly instead of silently widening the carve-out.
+    # `config` is hidden in cli.rs and withheld from the guide. Every other command
+    # must be documented, and each withdrawn name must still be declared in
+    # cli/README.md or hidden with `#[command(hide = true)]` in cli.rs, so a
+    # deleted command fails loudly instead of widening the carve-out.
+    hidden = hidden_commands(read(root / "cli" / "konductor-rs" / "src" / "cli.rs"))
     documented = [c for c in commands if c not in WITHDRAWN_COMMANDS]
     for cmd in documented:
         if f"`konductor {cmd}" not in ref_md:
             fail(f"reference.md command table missing `konductor {cmd}`")
     for cmd in sorted(WITHDRAWN_COMMANDS):
-        if cmd not in commands:
-            fail(f"`{cmd}` is listed as withdrawn from the guide, but cli/README.md "
-                 f"no longer declares it — drop it from WITHDRAWN_COMMANDS")
+        if problem := withdrawn_command_problem(cmd, commands, hidden):
+            fail(problem)
         elif f"`konductor {cmd}" in ref_md:
             fail(f"reference.md documents `konductor {cmd}`, which is withdrawn for v1")
     if documented:

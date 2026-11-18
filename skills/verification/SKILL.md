@@ -1,6 +1,6 @@
 ---
 name: verification
-description: 'Use whenever a task producing a testable outcome (code, build artifacts, generated documents, or infrastructure changes) is about to be declared complete. MUST USE before presenting any such result: run the TDD workflow and show evidence it works, integrated with the maker-checker pattern.'
+description: Use before saying a change is done, to prove it works, to run tests before and after a change, or when asked to show the commands you ran and their output. No code, build, doc, or infra change counts as complete without the command, its output, and the matching checker skill. Covers test-first and spec-first work, TDD, and the maker-checker pattern.
 version: 1.0.0
 tags: [skill, behavioral, verification, tdd, evidence, quality]
 ---
@@ -13,11 +13,11 @@ Evidence collection protocol that ensures no task is declared complete without p
 
 ## Usage
 
-This skill is always active. It applies whenever an agent completes a task that produces a testable outcome — code, build artifacts, generated documents, or infrastructure changes. No explicit activation needed.
+Load this skill before declaring a task with a testable outcome done: code, build artifacts, generated documents, or infrastructure changes.
 
 ## TDD Workflow
 
-Follow these phases in order. Do not skip phases.
+For code changes, follow these phases in order. Do not skip phases. For a document or infrastructure change with no test to write, keep SPEC, then build or validate the change instead of RED, GREEN and REFACTOR, then run VERIFY if the repo has tests that cover the change, and go to EVIDENCE.
 
 1. **SPEC** — Define success criteria before implementation. What must be true when done?
 2. **RED** — Write a failing test. Run it. Confirm it FAILS. Show the output.
@@ -117,7 +117,7 @@ These patterns produce wrong conclusions:
 **IMPORTANT (must fix before proceeding):**
 
 - Evidence provided but incomplete (e.g., exit code shown but output omitted)
-- TDD phase skipped (e.g., jumped from SPEC to GREEN without RED)
+- TDD phase skipped on a code change (e.g., jumped from SPEC to GREEN without RED)
 - Manual test described vaguely ("it works") instead of specific observations
 
 **SUGGESTION:**

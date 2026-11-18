@@ -100,7 +100,7 @@ project's own structure.
 
 ### Things to know
 
-- **The orchestrator coordinates and never implements.** Every phase runs in a subagent, routed
+- **Under this SOP the orchestrator coordinates; each phase runs in the agent the SOP names.** Every phase runs in a subagent, routed
   by task rather than by step number. A design fix goes back to step 3, a code fix to step 7, a
   documentation fix to step 10 — never to whoever is closest.
 - **Fix cycles are a shared budget.** `max_fix_cycles` (default `2`) is per feature *for the whole

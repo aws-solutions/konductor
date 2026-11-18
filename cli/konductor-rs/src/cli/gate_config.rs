@@ -446,11 +446,14 @@ mod tests {
                     "CRITICAL \u{2014} architectural:",
                     "CRITICAL \u{2014} factual:",
                     "IMPORTANT:",
-                    "MINOR:",
+                    "SUGGESTION:",
                 ],
             ),
-            ("design-quality-check", vec!["IMPORTANT", "MINOR"]),
-            ("doc-accuracy-analyzer", vec!["High", "Medium", "Low"]),
+            ("design-quality-check", vec!["IMPORTANT", "SUGGESTION"]),
+            (
+                "doc-accuracy-analyzer",
+                vec!["CRITICAL", "IMPORTANT", "SUGGESTION"],
+            ),
         ]
     }
 

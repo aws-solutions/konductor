@@ -38,6 +38,7 @@ pub mod model;
 pub mod parse_canonical;
 pub mod parser;
 pub mod registry;
+pub(crate) mod spawn_policy;
 
 mod content_writers;
 mod frontmatter;

@@ -262,11 +262,8 @@ test-py:
 
 # ── test-skills-sh ────────────────────────────────────────────────────────────
 # Globbed so new tests are picked up. SKILLS_SH_EXCLUDE lists tests known to
-# fail on main; remove an entry once its test passes.
-#   persistent-memory/test-nonbullet-injection.sh writes its URL allowlist to
-#   .asdlc/memory-config.json, but memory-validator.sh reads
-#   .konductor/memory-config.json, so the two disallowed-URL cases pass through.
-SKILLS_SH_EXCLUDE := tests/skills/persistent-memory/test-nonbullet-injection.sh
+# fail on main; remove an entry once its test passes. Empty today.
+SKILLS_SH_EXCLUDE :=
 test-skills-sh:
 	@failed=""; \
 	for f in tests/skills/*/*.sh; do \

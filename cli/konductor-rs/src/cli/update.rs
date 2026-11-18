@@ -2148,6 +2148,12 @@ fn report_update_already_at_version(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Whether the Claude hooks file at `path` wires a telemetry hook. The
+    /// orchestration hook is wired regardless of the telemetry choice.
+    fn wires_telemetry_hook(path: &Path) -> bool {
+        fs::read_to_string(path).is_ok_and(|text| text.contains("__telemetry-hook"))
+    }
     use manifest::{ManifestFile, Provenance};
     use std::fs;
 
@@ -2735,8 +2741,8 @@ mod tests {
         );
         let claude_hooks_path = target_dir.join(".claude/settings.local.json");
         assert!(
-            !claude_hooks_path.exists(),
-            "install --no-telemetry must not write hook wiring in the first place"
+            !wires_telemetry_hook(&claude_hooks_path),
+            "install --no-telemetry must not write telemetry hook wiring in the first place"
         );
 
         // The fix under test: a PLAIN `update` -- no `--no-telemetry`
@@ -2761,7 +2767,7 @@ mod tests {
         );
         assert_eq!(update_code, 0, "update must succeed");
         assert!(
-            !claude_hooks_path.exists(),
+            !wires_telemetry_hook(&claude_hooks_path),
             "a plain `update` (no --no-telemetry passed) must keep the telemetry-hook \
              wiring suppressed for a target that was originally installed with \
              --no-telemetry"
@@ -2861,9 +2867,7 @@ mod tests {
         assert_eq!(update_code, 0, "update --all must succeed");
 
         assert!(
-            !opted_out_target
-                .join(".claude/settings.local.json")
-                .exists(),
+            !wires_telemetry_hook(&opted_out_target.join(".claude/settings.local.json")),
             "the originally-opted-out target must stay suppressed inside an --all batch \
              that does not itself pass --no-telemetry"
         );
@@ -2873,7 +2877,7 @@ mod tests {
         )
         .unwrap();
         assert!(
-            in_settings.get("hooks").is_some(),
+            in_settings.to_string().contains("__telemetry-hook"),
             "the originally-opted-in target must still be wired inside the same --all \
              batch; got: {in_settings:?}"
         );
@@ -3242,7 +3246,7 @@ mod tests {
         let after_update: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
         assert!(
-            after_update.get("hooks").is_none(),
+            !after_update.to_string().contains("__telemetry-hook"),
             "a target with the legacy identity file present but install-info.json absent \
              must be read as opted OUT -- there must be no fallback to the legacy file; \
              got: {after_update:?}"
@@ -3295,7 +3299,7 @@ mod tests {
         let after_install: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
         assert!(
-            after_install.get("hooks").is_some(),
+            after_install.to_string().contains("__telemetry-hook"),
             "a plain install must wire the telemetry hooks"
         );
 
@@ -3330,7 +3334,9 @@ mod tests {
         let after_explicit_opt_out: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
         assert!(
-            after_explicit_opt_out.get("hooks").is_none(),
+            !after_explicit_opt_out
+                .to_string()
+                .contains("__telemetry-hook"),
             "explicit --no-telemetry must suppress hook re-wiring even for a target whose \
              install-info.json is present; got: {after_explicit_opt_out:?}"
         );
@@ -3364,7 +3370,7 @@ mod tests {
         let after_plain_update: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
         assert!(
-            after_plain_update.get("hooks").is_none(),
+            !after_plain_update.to_string().contains("__telemetry-hook"),
             "a plain update (no --no-telemetry re-passed) must keep this target's hooks \
              suppressed -- the earlier explicit opt-out deleted the record, so there is \
              nothing left to carry forward as enabled; got: {after_plain_update:?}"
@@ -3420,7 +3426,7 @@ mod tests {
         let after_install: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
         assert!(
-            after_install.get("hooks").is_some(),
+            after_install.to_string().contains("__telemetry-hook"),
             "a plain install must wire the telemetry hooks"
         );
 
@@ -3454,7 +3460,9 @@ mod tests {
         let after_no_telemetry_update: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
         assert!(
-            after_no_telemetry_update.get("hooks").is_none(),
+            !after_no_telemetry_update
+                .to_string()
+                .contains("__telemetry-hook"),
             "update --no-telemetry must suppress wiring for its own run; \
              got: {after_no_telemetry_update:?}"
         );
@@ -3488,7 +3496,7 @@ mod tests {
         let after_plain_update: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
         assert!(
-            after_plain_update.get("hooks").is_none(),
+            !after_plain_update.to_string().contains("__telemetry-hook"),
             "a plain `update` with no flag re-passed must keep hooks suppressed for a target \
              that was opted out via a PRIOR `update --no-telemetry` run -- the opt-out must be \
              sticky, not silently lapse the moment the flag is omitted; \
@@ -3543,8 +3551,8 @@ mod tests {
         assert!(!crate::cli::telemetry::install_info_exists(&target));
         let claude_settings_path = target.join(".claude/settings.local.json");
         assert!(
-            !claude_settings_path.exists(),
-            "install --no-telemetry must not write hook wiring in the first place"
+            !wires_telemetry_hook(&claude_settings_path),
+            "install --no-telemetry must not write telemetry hook wiring in the first place"
         );
 
         // `update --enable-telemetry`: forces telemetry ON for this run
@@ -3577,7 +3585,7 @@ mod tests {
         let after_enable: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
         assert!(
-            after_enable.get("hooks").is_some(),
+            after_enable.to_string().contains("__telemetry-hook"),
             "update --enable-telemetry must wire hooks for this run; got: {after_enable:?}"
         );
 
@@ -3616,7 +3624,7 @@ mod tests {
         let after_plain_update: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
         assert!(
-            after_plain_update.get("hooks").is_some(),
+            after_plain_update.to_string().contains("__telemetry-hook"),
             "a plain update must re-wire hooks for a target that was durably re-opted in by an \
              earlier --enable-telemetry run; got: {after_plain_update:?}"
         );
