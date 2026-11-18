@@ -19,7 +19,9 @@
  *                           and requests where it should not, for the selection test (selection.js). Optional.
  *   manifest.identities     { <old skill>: { replaced_by, how, note, migration: { approved_by, date, note } } }: a
  *                           skill that was renamed or folded into another. Its old tasks prove nothing about the
- *                           new skill, so it is NO DATA until a person records an approved migration.
+ *                           new skill, so it is NO DATA until a person records an approved migration. A skill
+ *                           removed with no successor in the tree (how "removed", replaced_by null, the note says
+ *                           where its job went) has nothing to measure: it is refused, never migrated.
  *
  * Every validator takes parsed JSON and returns { errors, warnings }: both are arrays of
  * strings, and a file is accepted when `errors` is empty. A reader rejects an unknown
@@ -347,10 +349,10 @@ const MANIFEST_SOURCE = createShapeCheck({
   tree: checkGitObject,
   subject_sha256: createStringCheck({ pattern: SHA256, hint: 'must be 64 lowercase hex characters (SHA-256)' }),
 });
-/** One manifest.identities entry: a renamed or folded skill and the person who approved its migration, if any. */
+/** One manifest.identities entry: a renamed, folded or removed skill and the person who approved its migration, if any. */
 const IDENTITY = createShapeCheck({
-  replaced_by: createStringCheck({ pattern: SKILL_NAME, hint: 'must be a skill name' }),
-  how: createOneOfCheck(['renamed', 'folded']),
+  replaced_by: nullable(createStringCheck({ pattern: SKILL_NAME, hint: 'must be a skill name' })),
+  how: createOneOfCheck(['renamed', 'folded', 'removed']),
   note: createStringCheck({ min: 20 }),
   migration: createShapeCheck({
     approved_by: nullable(createStringCheck()),
@@ -668,7 +670,11 @@ const validateManifest = makeValidator(
   (manifest, context, errors) => {
     for (const [skill, identity] of Object.entries(manifest.identities || {})) {
       if (identity.replaced_by === skill) errors.push(`identities.${skill}.replaced_by: a skill cannot replace itself`);
+      if ((identity.how === 'removed') !== (identity.replaced_by === null))
+        errors.push(`identities.${skill}: replaced_by is null exactly when how is "removed"`);
       const m = identity.migration;
+      if (identity.how === 'removed' && m.approved_by !== null)
+        errors.push(`identities.${skill}.migration: a removed skill has nothing to migrate to, so approved_by stays null`);
       if ((m.approved_by === null) !== (m.date === null))
         errors.push(`identities.${skill}.migration: approved_by and date are set together or not at all`);
     }

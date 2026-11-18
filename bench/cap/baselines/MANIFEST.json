@@ -187,6 +187,16 @@
         "date": null,
         "note": ""
       }
+    },
+    "dynamodb-validation": {
+      "replaced_by": null,
+      "how": "removed",
+      "note": "removed in #219 (19beac0b); the AWS MCP server's amazon-dynamodb skill covers the same review, and dynamodb-design keeps a short local review gate",
+      "migration": {
+        "approved_by": null,
+        "date": null,
+        "note": ""
+      }
     }
   }
 }

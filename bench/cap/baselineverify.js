@@ -184,7 +184,10 @@ function provenanceFindings(b, manifest, skillsDir) {
   const identity = manifest.identities?.[b.skill] ?? null;
   const entry = manifest.sources?.[b.skill] ?? null;
   if (b.skillMissing && !identity) problems.push(`${b.skill}: the tree has no skills/${b.skill}/SKILL.md and ${MANIFEST_NAME} has no identities entry for it, so the identity is unmapped`);
-  if (identity) {
+  if (identity?.how === 'removed') {
+    if (!b.skillMissing) problems.push(`${b.skill}: identities says it was removed, but the tree still has skills/${b.skill}/SKILL.md`);
+    warnings.push(`${b.skill}: removed; nothing to measure (${identity.note})`);
+  } else if (identity) {
     if (!fs.existsSync(path.join(skillsDir, identity.replaced_by, 'SKILL.md'))) problems.push(`${b.skill}: identities.replaced_by names ${identity.replaced_by}, which the tree does not have`);
     warnings.push(`${b.skill}: ${identity.how} into ${identity.replaced_by}; NO DATA until a person approves a migration`);
   }

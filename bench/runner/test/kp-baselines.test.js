@@ -27,6 +27,9 @@ const tmp = (t) => {
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 const writeJson = (f, v) => fs.writeFileSync(f, `${JSON.stringify(v, null, 2)}\n`);
 
+/** The pilot's SKILL.md as its frozen baseline was written from (fixtures/keep-prune), so a pilot tree stays fresh after main edits the skill. */
+const PILOT_SKILL = path.join(__dirname, 'fixtures', 'keep-prune', 'plan-review-SKILL.md');
+const writePilotSkill = (skillsDir) => { fs.mkdirSync(path.join(skillsDir, PILOT), { recursive: true }); fs.copyFileSync(PILOT_SKILL, path.join(skillsDir, PILOT, 'SKILL.md')); };
 /** A baselines folder with the pilot alone and a skills folder with the pilot's skill alone. */
 function pilotTree(t) {
   const root = tmp(t);
@@ -34,7 +37,7 @@ function pilotTree(t) {
   const skillsDir = path.join(root, 'repo', 'skills');
   fs.mkdirSync(dir, { recursive: true });
   fs.cpSync(path.join(BASELINES_DIR, PILOT), path.join(dir, PILOT), { recursive: true });
-  fs.cpSync(path.join(SKILLS, PILOT), path.join(skillsDir, PILOT), { recursive: true });
+  writePilotSkill(skillsDir);
   rehash(dir);
   return { root, dir, skillsDir, repo: path.dirname(skillsDir) };
 }
@@ -62,7 +65,7 @@ function withSource(tree) {
   rehash(tree.dir, { sources: { [PILOT]: { ...src, subject_sha256: unit.sha256 } } });
 }
 
-test('all 35 of Michael Lin\'s baselines are restored and pass the full verifier against this tree', () => {
+test('all 35 of Michael Lin\'s baselines pass the full verifier against this tree, every one with a status', () => {
   const v = verifyBaselines({ dir: BASELINES_DIR, skillsDir: SKILLS });
   assert.deepEqual(v.problems, []);
   assert.equal(v.skillCount, 35);
@@ -70,11 +73,10 @@ test('all 35 of Michael Lin\'s baselines are restored and pass the full verifier
   const status = baselineStatus({ skillsDir: SKILLS });
   const by = Object.fromEntries(status.map((s) => [s.skill, s.status]));
   assert.equal(by['asana-sprint-planning'], 'folded');
-  assert.equal(by[PILOT], 'fresh');
+  assert.equal(by['dynamodb-validation'], 'removed');
   assert.equal(by['sprint-planning'], 'stale');
   const count = (s) => status.filter((x) => x.status === s).length;
-  assert.equal(count('fresh') + count('stale') + count('folded'), 35);
-  assert.ok(count('stale') > count('fresh'), `${count('fresh')} fresh, ${count('stale')} stale`);
+  assert.equal(count('fresh') + count('stale') + count('folded') + count('removed'), 35);
 });
 
 test('the verifier refuses an unlisted file, a missing listed file, invalid rules and a repeated key', (t) => {
@@ -177,4 +179,21 @@ test('only skills are subjects: an agent, a SOP and always-loaded context are re
   assert.throws(() => assertSkillSubject({ repo: REPO, name: 'k-core-rules' }), /not ablatable by this design/);
   assert.throws(() => assertSkillSubject({ repo: REPO, name: 'no-such-thing' }), /is not a skill/);
   assert.doesNotThrow(() => assertSkillSubject({ repo: REPO, name: 'about-konductor' }), 'a name that is a skill and a SOP is checked as the skill');
+});
+
+test('a removed skill is mapped, refused with its note, and never blocks the other baselines', (t) => {
+  const { runKeepPrune } = require('../../cap/kprun.js');
+  const out = tmp(t);
+  assert.throws(() => runKeepPrune({ name: 'dynamodb-validation', repo: REPO, runId: 'stub-x', outDir: out, depth: 'quick' }), /dynamodb-validation was removed from the tree, so there is nothing to measure: removed in #219/);
+  assert.equal(runKeepPrune({ name: PILOT, repo: REPO, runId: 'stub-y', outDir: out, depth: 'quick' }).record.skill.name, PILOT, 'the other baselines still run');
+  const tree = pilotTree(t);
+  const removed = { replaced_by: null, how: 'removed', note: 'removed in this test; its job moved elsewhere', migration: { approved_by: null, date: null, note: '' } };
+  rehash(tree.dir, { identities: { [PILOT]: removed } });
+  assert.ok(verifyBaselines(tree).problems.some((p) => /says it was removed, but the tree still has skills\/plan-review\/SKILL\.md/.test(p)));
+  fs.rmSync(path.join(tree.skillsDir, PILOT), { recursive: true });
+  assert.deepEqual(verifyBaselines(tree).problems, []);
+  assert.deepEqual(baselineStatus(tree).map((s) => s.status), ['removed']);
+  assert.throws(() => loadBaseline({ name: PILOT, ...tree }), /nothing to measure: removed in this test/);
+  rehash(tree.dir, { identities: { [PILOT]: { ...removed, replaced_by: 'plan-check' } } });
+  assert.ok(verifyBaselines(tree).problems.some((p) => /replaced_by is null exactly when how is "removed"/.test(p)));
 });

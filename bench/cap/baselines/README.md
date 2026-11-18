@@ -23,10 +23,10 @@ A task file whose `rules_sha256` differs from `rules.json` is stale, not broken:
 
 A baseline is fresh only when the whole loaded unit is unchanged (`cap/subjectunit.js`). The unit is `SKILL.md`, every other file in the skill folder except `evals/`, and every file of another skill that `SKILL.md` names. A stale or unmapped baseline gives NO DATA, with the reason named.
 
-His baselines hashed `SKILL.md` only (legacy). A legacy baseline is fresh only when `SKILL.md` is byte-identical and the unit is still `SKILL.md` alone. Against this tree that is 9 of 35. 25 are stale. `asana-sprint-planning` was folded into `sprint-planning`. Do not refresh stale baselines in place: a person writes and reviews new ones.
+His baselines hashed `SKILL.md` only (legacy). A legacy baseline is fresh only when `SKILL.md` is byte-identical and the unit is still `SKILL.md` alone. On the head that merged main on 2026-11-18 (`e5fa114c`, 80 skills), 1 of 35 is fresh (`frontend-review`) and 32 are stale, because main edited their skills. `asana-sprint-planning` was folded into `sprint-planning`, and `dynamodb-validation` was removed in #219. 47 skills have no baseline. Do not refresh stale baselines in place: a person writes and reviews new ones.
 
 ## Provenance fields for new baselines
 
 - `rules.json` `source`: `commit` and `tree` (the Git commit and the skill folder's tree the rules were written from), and `subject` (the unit's `sha256`, `paths` and `unresolved` names).
 - `MANIFEST.json` `sources.<skill>`: the same `commit`, `tree` and `subject_sha256`. The two must agree.
-- `MANIFEST.json` `identities.<old name>`: `replaced_by`, `how` (`renamed` or `folded`), a `note`, and `migration` (`approved_by`, `date`, `note`). Until a person fills `approved_by` and `date`, the old name is NO DATA. Even after that, the old rules do not match the new unit, so the record stays stale until new rules and tasks are frozen.
+- `MANIFEST.json` `identities.<old name>`: `replaced_by`, `how` (`renamed` or `folded`), a `note`, and `migration` (`approved_by`, `date`, `note`). Until a person fills `approved_by` and `date`, the old name is NO DATA. Even after that, the old rules do not match the new unit, so the record stays stale until new rules and tasks are frozen. A skill removed with no successor in the tree has `how` `removed`, `replaced_by` null and a `note` saying where its job went; `cap keep-prune` and `cap select` refuse that name with the note, and every other baseline still runs.

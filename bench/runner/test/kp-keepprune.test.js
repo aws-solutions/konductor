@@ -11,6 +11,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const { loadBaseline, loadConvention, loadDoseLadder } = require('../../cap/frozen.js');
 const kp = require('../../cap/keepprune.js');
@@ -29,6 +30,9 @@ const tmp = (t) => {
 const ladder = loadDoseLadder();
 const stub = createStubProvider({ ladder });
 const seats = [...STUB_JUDGES];
+/** The pilot's SKILL.md as its frozen baseline was written from (fixtures/keep-prune), so a pilot tree stays fresh after main edits the skill. */
+const PILOT_SKILL = path.join(__dirname, 'fixtures', 'keep-prune', 'plan-review-SKILL.md');
+const writePilotSkill = (skillsDir) => { fs.mkdirSync(path.join(skillsDir, PILOT), { recursive: true }); fs.copyFileSync(PILOT_SKILL, path.join(skillsDir, PILOT, 'SKILL.md')); };
 const pilot = () => loadBaseline({ name: PILOT, skillsDir: path.join(REPO, 'skills') });
 /** A frozen selection result measured on `unitSha256`, as cap select writes it. */
 const selectionOn = (unitSha256) => ({ triggerPrecision: 0.9, triggerRecall: 0.8, observedUseRate: 0.4, requests: { load: 5, none: 5 }, runs: 30, failedLoads: 0, frozen: true, requestsSha256: 'e'.repeat(64), unitSha256, source: 'stub-selection', measuredAt: '2026-11-17' });
@@ -37,7 +41,7 @@ function pilotRepo(t) {
   const root = tmp(t);
   const repo = path.join(root, 'repo');
   const baselinesDir = path.join(root, 'baselines');
-  fs.cpSync(path.join(REPO, 'skills', PILOT), path.join(repo, 'skills', PILOT), { recursive: true });
+  writePilotSkill(path.join(repo, 'skills'));
   fs.cpSync(path.join(REPO, 'bench', 'cap', 'baselines', PILOT), path.join(baselinesDir, PILOT), { recursive: true });
   const files = {};
   for (const f of fs.readdirSync(path.join(baselinesDir, PILOT)).sort()) files[`${PILOT}/${f}`] = require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(baselinesDir, PILOT, f))).digest('hex');
@@ -67,8 +71,11 @@ test('the dose ladder shows the judges reading rising harm: D0 contains 0 and th
 });
 
 test('one real skill, both depths: one record with a label, a suggested verdict, its unit and source, and an empty sign-off', (t) => {
-  const out = tmp(t);
-  const { record, file, markdown } = runKeepPrune({ name: PILOT, repo: REPO, runId: 'stub-pilot', outDir: out });
+  const { root, repo, baselinesDir } = pilotRepo(t);
+  // A Git repository, so the record names the source commit of the unit.
+  const git = (...a) => assert.equal(spawnSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@example.com', ...a]).status, 0);
+  git('init', '-q'); git('add', '-A'); git('commit', '-q', '-m', 'pilot');
+  const { record, file, markdown } = runKeepPrune({ name: PILOT, repo, baselinesDir, runId: 'stub-pilot', outDir: path.join(root, 'out') });
   assert.deepEqual(rec.recordProblems(record), []);
   assert.equal(record.schema, 'keep-prune-record/2');
   assert.match(record.unit.manifestSha256, /^[0-9a-f]{64}$/);

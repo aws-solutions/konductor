@@ -41,12 +41,15 @@ const SET = Object.freeze({
   ],
 });
 
+/** The pilot's SKILL.md as its frozen baseline was written from (fixtures/keep-prune), so a pilot tree stays fresh after main edits the skill. */
+const PILOT_SKILL = path.join(__dirname, 'fixtures', 'keep-prune', 'plan-review-SKILL.md');
+const writePilotSkill = (skillsDir) => { fs.mkdirSync(path.join(skillsDir, PILOT), { recursive: true }); fs.copyFileSync(PILOT_SKILL, path.join(skillsDir, PILOT, 'SKILL.md')); };
 /** A repository with the pilot skill and a baselines folder with its baseline, its selection.json frozen in. */
 function frozenTree(t, { set = SET } = {}) {
   const root = tmp(t);
   const repo = path.join(root, 'repo');
   const baselinesDir = path.join(root, 'baselines');
-  fs.cpSync(path.join(REPO, 'skills', PILOT), path.join(repo, 'skills', PILOT), { recursive: true });
+  writePilotSkill(path.join(repo, 'skills'));
   fs.cpSync(path.join(REPO, 'bench', 'cap', 'baselines', PILOT), path.join(baselinesDir, PILOT), { recursive: true });
   fs.writeFileSync(path.join(baselinesDir, PILOT, 'selection.json'), `${JSON.stringify(set, null, 2)}\n`);
   const files = {};

@@ -58,7 +58,8 @@ function stubBehaviour(behaviour, repo) {
  * @returns {{ result, file, scored }}
  */
 function runSelect({ name, repo, outDir, runId = null, fromRun = null, reps = 3, behaviour = 'correct', requestsFile = null, baselinesDir = BASELINES_DIR, measuredAt }) {
-  assertSkillSubject({ repo, name });
+  // As in kprun.js: a name with a baseline but no skill folder is checked by its identity entry in the loader.
+  if (!fs.existsSync(path.join(baselinesDir, name)) || fs.existsSync(path.join(repo, 'skills', name))) assertSkillSubject({ repo, name });
   const req = requestsOf({ name, repo, baselinesDir, requestsFile });
   let results;
   let source;

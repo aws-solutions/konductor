@@ -71,6 +71,9 @@ function verifiedBaselines(dir, skillsDir) {
   return v;
 }
 
+/** The identities entry of `name` when it says the skill was removed with no successor, else null. */
+const removedIdentity = (manifest, name) => (manifest.identities?.[name]?.how === 'removed' ? manifest.identities[name] : null);
+
 /**
  * The freshness of one baseline against a tree, with its identity. `b` is a verified readSkillBaseline result.
  * Returns { name, unitName, identity, identityWhy, unit, skillText, skillSha, freshness }.
@@ -101,6 +104,8 @@ function loadBaseline({ name, skillsDir, dir = BASELINES_DIR }) {
   const v = verifiedBaselines(dir, skillsDir);
   const b = v.skills.get(name);
   if (!b || !b.hasBaseline) throw new Error(`no frozen baseline for ${name} in ${dir}`);
+  const gone = removedIdentity(v.manifest, name);
+  if (gone) throw new Error(`${name} was removed from the tree, so there is nothing to measure: ${gone.note}`);
   const s = statusOf(b, v.manifest, skillsDir);
   const batches = b.batches.map((x) => taskBatch(x.tasks));
   const bWaiting = b.batches.filter((x) => b.rulesStale || x.stale).map((x) => x.batch);
@@ -114,8 +119,8 @@ function loadBaseline({ name, skillsDir, dir = BASELINES_DIR }) {
 }
 
 /**
- * The freshness of every frozen baseline against a tree: [{ skill, status, why }], status fresh, stale, renamed or
- * folded. Throws when the folder fails its check.
+ * The freshness of every frozen baseline against a tree: [{ skill, status, why }], status fresh, stale, renamed,
+ * folded or removed. Throws when the folder fails its check.
  * @param {object} o
  * @param {string} o.skillsDir the skills/ folder of the tree under test
  * @param {string} [o.dir] the baselines folder
@@ -123,6 +128,8 @@ function loadBaseline({ name, skillsDir, dir = BASELINES_DIR }) {
 function baselineStatus({ skillsDir, dir = BASELINES_DIR }) {
   const v = verifiedBaselines(dir, skillsDir);
   return [...v.skills.values()].map((b) => {
+    const gone = removedIdentity(v.manifest, b.skill);
+    if (gone) return { skill: b.skill, status: 'removed', why: gone.note };
     const s = statusOf(b, v.manifest, skillsDir);
     if (s.identity) return { skill: b.skill, status: s.identity.how, why: s.identityWhy ?? s.freshness.why };
     return { skill: b.skill, status: s.freshness.fresh ? 'fresh' : 'stale', why: s.freshness.why };
