@@ -557,8 +557,8 @@ SOP_EDITS += [
 # Values from agents/konductor*.agent-spec.json.
 SOP_EDITS += [
     ('orchestrators: konductor skills',
-     '{ k: "konductor skills (24)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation. claude-teams-behavior is Claude Code only. Kiro CLI has the other 23 plus humanize-writing, on demand" }',
-     '{ k: "konductor skills (25)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation, find-aws-skills. claude-teams-behavior is Claude Code only. Kiro CLI has the other 24 plus humanize-writing, on demand" }'),
+     '{ k: "konductor skills (25)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation, find-aws-skills. claude-teams-behavior is Claude Code only. Kiro CLI has the other 24 plus humanize-writing, on demand" }',
+     '{ k: "konductor skills (25)", v: "constraints, humanize-writing, delegation-protocol, agents-md-authoring, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review, design-impact-review, infra-validation, find-aws-skills. On Claude Code it preloads constraints and claude-teams-behavior, which is Claude Code only and not one of the 25" }'),
     ('orchestrators: konductor tools',
      'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check. It also requests three read-only aws-mcp tools: mcp__aws-mcp__aws___retrieve_skill, mcp__aws-mcp__aws___search_documentation and mcp__aws-mcp__aws___read_documentation" }',
      'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check. It also requests five read-only aws-mcp tools: mcp__aws-mcp__aws___retrieve_skill, mcp__aws-mcp__aws___search_documentation, mcp__aws-mcp__aws___read_documentation, mcp__aws-mcp__aws___list_regions and mcp__aws-mcp__aws___get_regional_availability" }'),
@@ -566,8 +566,8 @@ SOP_EDITS += [
      '{ k: "mux / cmux SOPs (9)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor — konductor\'s ten, minus k-delegate" }',
      '{ k: "mux / cmux SOPs (10)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor. konductor\'s eleven, minus k-delegate" }'),
     ("orchestrators: mux/cmux skills",
-     '{ k: "mux / cmux skills (8)", v: "constraints, delegation-protocol, sdlc-navigator, git-merge, pre-planning-analysis, socratic-elicitation, verification, plus mux-dispatch or cmux-dispatch" }',
-     '{ k: "mux / cmux skills (10)", v: "constraints, delegation-protocol, sdlc-navigator, git-merge, pre-planning-analysis, socratic-elicitation, verification, sop-state-management, about-konductor, plus mux-dispatch or cmux-dispatch" }'),
+     '{ k: "mux / cmux skills (10)", v: "constraints, delegation-protocol, sdlc-navigator, git-merge, pre-planning-analysis, socratic-elicitation, verification, sop-state-management, about-konductor, plus mux-dispatch or cmux-dispatch" }',
+     '{ k: "mux / cmux skills (11)", v: "constraints, humanize-writing, delegation-protocol, sdlc-navigator, git-merge, pre-planning-analysis, socratic-elicitation, verification, sop-state-management, about-konductor, plus mux-dispatch or cmux-dispatch. On Claude Code each preloads only constraints" }'),
     ("orchestrators: mux/cmux tools",
      'Claude Code: Workflow, TodoWrite, Read, Bash, Grep, Glob. No write, but yes shell — needed for pane dispatch" }',
      'Claude Code: Workflow, TodoWrite, Read, Bash, Grep, Glob, Write, Skill. Kiro CLI gives them shell but not write — needed for pane dispatch; Claude Code gives them both" }'),
@@ -685,18 +685,18 @@ SOP_EDITS += [
     # bundled skill-lookup MCP server that serves them. Claude Code is the native
     # case: `clientConfig.claudeCli.skills` plus `.claude/skills/<name>/SKILL.md`.
     ("runtime differences: skills resolution row",
-     '{ k: "Skills resolution", v: "skill://~/.kiro/skills/<name>/SKILL.md resource URIs · clientConfig.claudeCli.skills names" }',
-     '{ k: "Skills resolution", v: "through the bundled skill-lookup MCP server — skills install to .konductor/skills/, outside the .kiro/skills/ tree Kiro CLI scans · native Claude Code skills: clientConfig.claudeCli.skills names the set, each body at .claude/skills/<name>/SKILL.md" }'),
+     '{ k: "Skills resolution", v: "through the bundled skill-lookup MCP server \u2014 skills install to .konductor/skills/, outside the .kiro/skills/ tree Kiro CLI scans · native Claude Code skills: clientConfig.claudeCli.skills names the set, each body at .claude/skills/<name>/SKILL.md" }',
+     '{ k: "Skills resolution", v: "through the bundled skill-lookup MCP server \u2014 skills install to .konductor/skills/, outside the .kiro/skills/ tree Kiro CLI scans · native Claude Code skills: each body at .claude/skills/<name>/SKILL.md; clientConfig.claudeCli.skills names the few a subagent preloads, and the rest load through the Skill tool" }'),
 
     # Same correction in the contributing example: there is no per-skill entry
     # under clientConfig.kiroCli.resources. The only skill:// resource any spec
     # carries is the `ws-*` workspace-skills glob.
     ("contributing: add-a-skill JSON",
-     'code: "{\\n  \\"clientConfig\\": {\\n    \\"kiroCli\\": {\\n      \\"resources\\": [\\"skill://~/.kiro/skills/my-new-skill/SKILL.md\\"]\\n    },\\n    \\"claudeCli\\": {\\n      \\"skills\\": [\\"my-new-skill\\"]\\n    }\\n  }\\n}"',
-     'code: "{\\n  \\"dependencies\\": {\\n    \\"skills\\": {\\n      \\"skillNames\\": [\\"my-new-skill\\"]\\n    }\\n  },\\n  \\"clientConfig\\": {\\n    \\"claudeCli\\": {\\n      \\"skills\\": [\\"my-new-skill\\"]\\n    }\\n  }\\n}"'),
+     'code: "{\\n  \\"dependencies\\": {\\n    \\"skills\\": {\\n      \\"skillNames\\": [\\"my-new-skill\\"]\\n    }\\n  },\\n  \\"clientConfig\\": {\\n    \\"claudeCli\\": {\\n      \\"skills\\": [\\"my-new-skill\\"]\\n    }\\n  }\\n}"',
+     'code: "{\\n  \\"dependencies\\": {\\n    \\"skills\\": {\\n      \\"skillNames\\": [\\"my-new-skill\\"]\\n    }\\n  }\\n}"'),
     ("skills: recently-fixed wiring sentence",
-     "Both runtimes were wired: the skill name in clientConfig.claudeCli.skills and a matching skill:// resource entry in clientConfig.kiroCli.resources.",
-     "Both runtimes were wired: the skill name in dependencies.skills.skillNames, which is what konductor synth reads for either harness, and in clientConfig.claudeCli.skills, which is what Claude Code lists in the rendered agent's skills: frontmatter."),
+     "Both runtimes were wired: the skill name in dependencies.skills.skillNames, which is what konductor synth reads for either harness, and in clientConfig.claudeCli.skills, which is what Claude Code lists in the rendered agent's skills: frontmatter.",
+     "Each is declared in dependencies.skills.skillNames, which konductor synth reads for either harness, and both runtimes load it on demand."),
 
     # Three design SOPs, not two: k-principal-engineer-design-review is one, and
     # the picker's own comparison table already contrasts it with
@@ -716,8 +716,8 @@ SOP_EDITS += [
      "No SOPs — skill-driven. 16 skills: user-story-writing",
      "No SOPs — skill-driven. 16 skills: user-story-writing"),
     ("roster row: researcher skills",
-     "No SOPs — skill-driven. 7 skills: external-research",
-     "No SOPs — skill-driven. 8 skills: external-research"),
+     "No SOPs \u2014 skill-driven. 8 skills: external-research",
+     'No SOPs \u2014 skill-driven. 9 skills: external-research'),
 ]
 
 # ── Review findings: bundle-only drift ────────────────────────────────────────
