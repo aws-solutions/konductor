@@ -4,8 +4,8 @@
 
 // Self-check for a task author, standalone (Node.js only). Run from the folder that holds fixture/, hidden/,
 // solution/ and task-draft.json:  node kit/check-draft.js
-// It plays the scripted user over solution/ASKS.json (one string per asking turn; topics are case-insensitive
-// regexes, each fact answered once), then runs the hidden tests and the other checks on the reference
+// It plays the scripted user over solution/ASKS.json (one string per asking turn; topics are plain
+// case-insensitive substrings, each fact answered once), then runs the hidden tests and the other checks on the reference
 // (fixture + solution) and on the stub (the untouched fixture, no conversation), and prints an approximate score:
 // (0.5 * hidden fraction + 0.2 * weighted substance checks) / 0.7. The bench's own dry run is the one that counts.
 
@@ -31,7 +31,7 @@ function copy(src, dest, skip = new Set()) {
 function converse(asks) {
   const done = new Set();
   return { questions: asks.map((text, i) => {
-    const hit = draft.scriptedUser.facts.filter((f) => !done.has(f.id) && f.topics.some((t) => new RegExp(t, 'i').test(text)));
+    const hit = draft.scriptedUser.facts.filter((f) => !done.has(f.id) && f.topics.some((t) => text.toLowerCase().includes(t.toLowerCase())));
     hit.forEach((f) => done.add(f.id));
     return { turn: i + 1, text, matched: hit.map((f) => f.id), count: Math.max(1, (text.match(/\?/g) || []).length) };
   }) };

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// A stand-in for the scripted-user harness, for free dry runs only. It answers a list of asking turns from
-// task.scriptedUser with the autonomy tier's oracle (topics are case-insensitive regexes, each fact answered once,
-// no match gets the default reply) and returns the conversation record the hidden tests read from BENCH_CONVERSATION.
-// shortcut: no model and no agent; it replays fixed question texts. Replace with the B3 harness once it lands.
+// The scripted user of the bench harness (scriptedToAutonomy + createOracle: topics are plain case-insensitive
+// substrings, each fact is given once, anything else gets the default reply), played over a fixed list of asking
+// turns for the free dry run. It returns the record the harness writes to BENCH_CONVERSATION for the hidden tests.
+// No agent runs here: the reference's asks come from solutions/<id>/ASKS.json.
 
-const { createOracle } = require('../../../runner/lib/autonomy.js');
+const { createOracle, scriptedToAutonomy } = require('../../../runner/lib/autonomy.js');
 
 const FAKE_MAX_TURNS = 10;
 
@@ -14,11 +14,7 @@ const FAKE_MAX_TURNS = 10;
 function converse(task, asks) {
   const su = task.scriptedUser;
   if (!su) throw new Error(`${task.id} has no scriptedUser`);
-  const oracle = createOracle({
-    clarifications: su.facts.map((f) => ({ id: f.id, topic: f.id, keywords: f.topics, answer: f.answer })),
-    defaultAnswer: su.defaultReply,
-    maxInterjections: FAKE_MAX_TURNS,
-  });
+  const oracle = createOracle({ ...scriptedToAutonomy(su), maxInterjections: FAKE_MAX_TURNS });
   const questions = [];
   asks.forEach((text, i) => {
     const r = oracle.reply(text);

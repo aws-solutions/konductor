@@ -7,9 +7,8 @@
 // It reads the last ```json block of an output document, and for scripted-user tasks registers the standard suite:
 // one test per hidden fact (found in one requirement), one for contradictions, one for invented numbers (precision),
 // and one for the number of questions asked. The conversation comes from the file named by BENCH_CONVERSATION,
-// written by the scripted-user harness: { "questions": [ { "turn", "text", "matched": [factId], "count"? } ] }.
-// shortcut: with no BENCH_CONVERSATION the question count is 0, so a harness that does not write the file never
-// penalises; upgrade when the scripted-user harness (B3) writes it on every run.
+// which the runner writes for a scripted task (run-one.js): { "questions": [ { "turn", "text", "count", "matched" } ] }.
+// With no BENCH_CONVERSATION (a check run outside the runner) the question count is 0.
 
 const fs = require('node:fs');
 const path = require('node:path');

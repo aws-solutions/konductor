@@ -37,7 +37,7 @@ const TASK = {
   scriptedUser: {
     defaultReply: "I'm not sure, use your judgement.",
     facts: [
-      { id: 'F1', topics: ['time ?zone', 'quiet'], answer: 'No texts before 8:00 local time.' },
+      { id: 'F1', topics: ['time zone', 'quiet'], answer: 'No texts before 8:00 local time.' },
       { id: 'F2', topics: ['language', 'spanish'], answer: 'Spanish and English.' },
     ],
   },

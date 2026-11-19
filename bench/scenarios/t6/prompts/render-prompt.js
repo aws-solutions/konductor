@@ -11,7 +11,7 @@ const path = require('node:path');
 const SCRIPTED = `2. The scripted user (\`scriptedUser\` in task-draft.json). The colleague knows 4 to 8 facts that are NOT in the fixture or the request, that a careful practitioner would think to ask about after reading the folder (the folder shows the gap, for example data with two time zones but no rule for them), and that change the requirements. For each fact write:
    - \`id\`: F1, F2, ...
    - \`answer\`: one or two sentences in the colleague's voice with a specific value that cannot be guessed (a number, a date, a named rule).
-   - \`topics\`: 3 to 6 lowercase JavaScript regex fragments, matched case-insensitively against the agent's question, that a natural question about this subject would contain (synonyms included, for example "time ?zone", "\\\\bhours?\\\\b", "night", "early"). They must not match the generic question "Is there anything else I should know before I start?", and two facts should not share most topics.
+   - \`topics\`: 3 to 8 lowercase plain words or short phrases (NOT regexes), matched as case-insensitive substrings of the agent's question, that a natural question about this subject would contain; include synonyms and word stems (for example "time zone", "timezone", "quiet hour", "night", "how early"). They must not match the generic question "Is there anything else I should know before I start?", and two facts should not share most topics.
    \`defaultReply\` is exactly: "I'm not sure, use your judgement."
 3. \`hidden/\`: copy \`kit/doc-key.js\` to \`hidden/doc-key.js\` unchanged, and write \`hidden/requirements.test.js\`:
    \`\`\`js

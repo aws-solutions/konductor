@@ -30,13 +30,13 @@ calls `scriptedSuite` from `doc-key.js`, which registers:
 
 Plus 2 or 3 tests for requirements that come from the fixture itself, and the usual checks.
 
-## Interface the scripted-user harness must provide
+## The scripted user in a run
 
-The hidden tests read the conversation from the file named by `BENCH_CONVERSATION`:
-`{"questions": [{"turn", "text", "matched": [factId], "count"?}]}`. `count` is the number of questions in that turn;
-without it the tests count `?` in `text` (so `text` must not be clipped). Facts map to the autonomy oracle as
-`{id, topic: id, keywords: topics, answer}` with `defaultAnswer = scriptedUser.defaultReply`; `tools/fake-user.js`
-does exactly that for the free dry run. Without `BENCH_CONVERSATION` the question count is 0 (no penalty).
+The bench runner plays `scriptedUser` (topics are plain case-insensitive substrings of the question, each fact is
+given once, anything else gets `defaultReply`; see `bench/README.md`, Autonomy tier). Before the checks run it writes
+the conversation to a file named by `BENCH_CONVERSATION`: `{"questions": [{"turn", "text", "count", "matched"}]}`,
+where `count` is the number of questions in that turn. The hidden tests read it for the question count.
+`tools/fake-user.js` plays the same oracle over `solutions/<id>/ASKS.json` for the free dry run.
 
 ## Free dry run
 
