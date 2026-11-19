@@ -1,0 +1,5 @@
+[
+  { "name": "checkout_address_viewed", "when": "address step is displayed", "payload": ["cart_id", "country"] },
+  { "name": "checkout_address_submitted", "when": "address passes client validation", "payload": ["cart_id", "country", "used_lookup"] },
+  { "name": "checkout_address_lookup_used", "when": "a customer accepts a suggested address", "payload": ["country", "result_count"] }
+]
