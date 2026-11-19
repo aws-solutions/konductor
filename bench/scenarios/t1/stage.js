@@ -105,6 +105,8 @@ function fix(id) {
   return { credits };
 }
 
+const sourceNote = (s) => (s === 'original' ? 'original (author-written; idea only)' : `${s.url} (${s.licence}; idea only, paraphrased)`);
+
 function assemble(id) {
   const w = path.join(AUTH, 'work', id);
   const b = brief(id);
@@ -132,6 +134,7 @@ function assemble(id) {
     targetAgent: mapping.targetAgent,
     controlKind: b.controlKind || 'none',
     ...(b.twinOf ? { twinOf: b.twinOf } : {}),
+    ...(draft.expertKey ? { expertKey: { items: draft.expertKey.items.map((i) => ({ id: i.id, text: i.text, source: i.source || sourceNote(b.source) })), weakAnswers: draft.expertKey.weakAnswers } } : {}),
     loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: b.mustNotLoad || [] },
     tiers: ['full'],
     authorship: { family: FAMILY[b.author], model: b.author, date: b.date || today(), source: b.source === 'original' ? 'original' : b.source },

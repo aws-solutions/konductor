@@ -1,0 +1,16 @@
+{
+  "id": "t1-bug-http-retry",
+  "phase": "bugfix",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "size": "25 to 40",
+  "source": {
+    "url": "https://github.com/sindresorhus/got",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: bug fix. Role: developer. Repo kind: a Node.js 24 internal HTTP client wrapper (no dependencies; a request function over node:http with timeouts, retries, a small response cache, logging, tests that use a local test server, CI config, docs). About 30 files. Inspiration (a bug class only, nothing copied): public HTTP clients have fixed defects where Retry-After is read in the wrong unit or ignored, retries are counted twice, a request body is consumed by the first attempt, or a timeout fires after the response. Build a task where the owner reports symptoms (retries hammer a server that asked for a pause, POST retries send empty bodies, calls hang for minutes), with no diagnosis. Two or three interacting defects, one subtle. Visible tests pass today and do not point at them."
+}

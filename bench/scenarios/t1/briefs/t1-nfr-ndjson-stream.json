@@ -1,0 +1,16 @@
+{
+  "id": "t1-nfr-ndjson-stream",
+  "phase": "nfr",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "python",
+  "size": "25 to 40",
+  "source": {
+    "url": "https://github.com/ICRAR/ijson",
+    "licence": "BSD-3-Clause",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: NFR and performance. Role: developer. Repo kind: a Python 3.12 log analysis job (standard library only; about 30 files) that reads a large newline-delimited JSON file, aggregates counts and percentiles per endpoint, and writes a summary. Inspiration (idea only): public streaming JSON parsers that process large inputs incrementally. Build a task where the owner says the job needs far too much memory and time on a 2 GB file, and states numeric limits: a ceiling on peak memory (measured with tracemalloc on a generated file of known size, with a wide margin), a ceiling on the number of passes over the file, and an identical summary for the sample data. Include wrinkles of your own design (malformed lines that must be counted and skipped, exact percentiles that must stay exact within a stated tolerance without sorting everything, and gzip input that must still work)."
+}

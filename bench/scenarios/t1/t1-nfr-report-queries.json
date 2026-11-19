@@ -119,5 +119,41 @@
         "note": "All requirements are stated in the prompt. The connection parameter requirement is explicit ('ReportDatabase must also accept an optional sqlite3 connection'). The 3-statement limit, 8 MiB limit, and byte-for-byte output requirements are all clearly specified."
       }
     ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "cause-n-plus-one",
+        "text": "Names the per-customer query loop as a cause that grows with the number of customers, and replaces it with a fixed number of statements (a join or one batched lookup), not a cache of the loop.",
+        "source": "SQLAlchemy documentation, Relationship Loading Techniques, the N plus one problem, https://docs.sqlalchemy.org/en/20/orm/queryguide/relationships.html (MIT; idea only, paraphrased)"
+      },
+      {
+        "id": "cause-quadratic-lookup",
+        "text": "Finds the list scan that makes row assembly quadratic and replaces it with a keyed lookup or a sorted merge, saying why the cost drops.",
+        "source": "Python documentation, Time complexity of common operations, https://wiki.python.org/moin/TimeComplexity (PSF licence; idea only, paraphrased)"
+      },
+      {
+        "id": "cause-materialised-result",
+        "text": "Explains that the whole result is held in memory before writing, and streams rows to the writer so peak memory does not grow with the row count.",
+        "source": "Python documentation, sqlite3 cursor iteration and tracemalloc, https://docs.python.org/3/library/tracemalloc.html (PSF licence; idea only, paraphrased)"
+      },
+      {
+        "id": "measured-not-guessed",
+        "text": "Reports how the improvement was measured (statement count and peak memory before and after on a realistic size) instead of claiming it, and says which limit each change addresses.",
+        "source": "SQLite documentation, Query planning, https://www.sqlite.org/queryplanner.html (public domain; idea only, paraphrased)"
+      },
+      {
+        "id": "ordering-and-ties",
+        "text": "Notes that a join or batched read can change row order, and shows how the original ordering and tie-breaks were kept so the output stays byte for byte the same.",
+        "source": "SQLite documentation, SELECT, ORDER BY, https://www.sqlite.org/lang_select.html (public domain; idea only, paraphrased)"
+      }
+    ],
+    "weakAnswers": [
+      "Adds an in-memory cache around the per-customer query and calls it fixed.",
+      "Raises a limit or adds a comment that the job is slow for large data.",
+      "Optimises one hot spot only and leaves the statement count growing with customers.",
+      "Rewrites the formatters for speed without touching the queries.",
+      "Claims memory is lower without a measurement."
+    ]
   }
 }
