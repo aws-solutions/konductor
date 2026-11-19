@@ -137,10 +137,9 @@ pub(in crate::cli::install) fn install_sops(
 /// `skill-lookup-mcp` itself never scans `.kiro/skills/`.
 ///
 /// Thin wrapper around `install::claude::install_sop_skills_into`
-/// (`destination_root: KIRO_DESTINATION_ROOT`, `disable_model_invocation:
-/// false` -- Kiro CLI has no documented equivalent to Claude Code's
-/// `disable-model-invocation` frontmatter key, so it is omitted
-/// entirely). Returns an empty `Vec` (not an error) when the source
+/// (`destination_root: KIRO_DESTINATION_ROOT`, `claude_frontmatter:
+/// false` -- Claude Code's `arguments` key is not part of Kiro's skill
+/// schema, so it is omitted). Returns an empty `Vec` (not an error) when the source
 /// directory is missing or empty, matching `install_sops`'s contract.
 pub(in crate::cli::install) fn install_kiro_sop_skills(
     harness_dir: &Path,

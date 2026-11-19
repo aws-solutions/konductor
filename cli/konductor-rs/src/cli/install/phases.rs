@@ -811,7 +811,7 @@ mod tests {
             std::fs::read_to_string(target_dir.join(".claude/skills/sop-ticket-sync/SKILL.md"))
                 .expect("expected a converted SKILL.md");
         assert!(rendered.contains("name: \"sop-ticket-sync\""));
-        assert!(rendered.contains("disable-model-invocation: true"));
+        assert!(!rendered.contains("disable-model-invocation"));
         assert!(rendered.contains("<agent-sop name=\"ticket-sync\">"));
         assert!(rendered.contains("# Ticket Sync"));
         assert!(

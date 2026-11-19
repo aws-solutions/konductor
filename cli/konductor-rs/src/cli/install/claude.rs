@@ -23,8 +23,9 @@
 // SOPs ARE in scope, via `install_sop_skills`: each staged `<name>.sop.md`
 // is converted into a `sop-<name>/SKILL.md` under `.claude/skills/`, not
 // copied verbatim -- Claude Code has no MCP-prompt equivalent to serve
-// `.sop.md` files directly, so each SOP becomes its own slash-invokable,
-// non-model-triggered skill instead (`disable-model-invocation: true`).
+// `.sop.md` files directly, so each SOP becomes its own skill instead,
+// invocable by the user (`/sop-<name>`) and by the model (`Skill` tool),
+// the same reach Kiro CLI gives its `.kiro/skills/sop-<name>` copy.
 //
 // `ClaudeTransformer`, the synth side that produces `dist/claude/...`,
 // lives on a separate, unmerged branch and is not imported here.
@@ -635,8 +636,8 @@ pub(super) fn install_sop_skills(
 /// `<name>.sop.md` file under `<harness_dir>/sops/` into a
 /// `sop-<name>/SKILL.md` file under `<target_dir>/<destination_root>/skills/`,
 /// parameterized over the destination root and whether the rendered
-/// frontmatter carries Claude Code's `disable-model-invocation: true`
-/// key (see `render_sop_skill_md`'s own doc comment for why
+/// frontmatter carries Claude Code-only keys (`arguments`; see
+/// `render_sop_skill_md_with_options`'s own doc comment for why
 /// Kiro-targeted callers pass `false`).
 ///
 /// `pub(super)`: `kiro_cli` reuses this directly for its own
@@ -647,7 +648,7 @@ pub(super) fn install_sop_skills_into(
     harness_dir: &Path,
     target_dir: &Path,
     destination_root: &str,
-    disable_model_invocation: bool,
+    claude_frontmatter: bool,
 ) -> Result<Vec<ManifestFile>, String> {
     let source_dir = harness_dir.join(SOPS_CONTENT_TYPE_DIR);
     let entries = list_agent_files_like(&source_dir)?;
@@ -672,7 +673,7 @@ pub(super) fn install_sop_skills_into(
         let src = source_dir.join(&file_name);
         let body = std::fs::read_to_string(&src)
             .map_err(|e| format!("failed to read {}: {e}", src.display()))?;
-        let rendered = render_sop_skill_md_with_options(sop_name, &body, disable_model_invocation);
+        let rendered = render_sop_skill_md_with_options(sop_name, &body, claude_frontmatter);
 
         let skill_dir = destination_root_path.join(&skill_dir_name);
         std::fs::create_dir_all(&skill_dir)
@@ -708,9 +709,10 @@ pub(super) fn install_sop_skills_into(
 ///   break frontmatter parsing
 /// - an optional frontmatter `arguments: [...]` array, scraped from a
 ///   `## Parameters` section (see `scrape_sop_parameters`), emitted only
-///   when `disable_model_invocation` is `true` (Claude Code's own
+///   when `claude_frontmatter` is `true` (Claude Code's own
 ///   schema, not Kiro's)
-/// - frontmatter `disable-model-invocation: true`
+/// - no `disable-model-invocation` key, so both the user (`/sop-<name>`)
+///   and the model (`Skill` tool) can invoke it, as on Kiro CLI
 /// - a body wrapping the original SOP text in
 ///   `<agent-sop name="...">`/`<content>`/`<user-input>` tags, with
 ///   `sop_name` XML-attribute-escaped and the body guarded against a
@@ -734,32 +736,26 @@ fn render_sop_skill_md(sop_name: &str, body: &str) -> String {
 const MAX_DESCRIPTION_CHARS: usize = 400;
 
 /// Generalized form of `render_sop_skill_md`: identical frontmatter/body
-/// wrapping, but `disable_model_invocation` controls whether the
-/// `disable-model-invocation: true` frontmatter key, and the `arguments`
-/// array, are emitted at all.
+/// wrapping, but `claude_frontmatter` controls whether the Claude
+/// Code-only `arguments` array is emitted at all.
 ///
-/// Claude Code's own callers always pass `true` -- these SOP-derived
-/// skills are meant to be explicitly `/`-selectable, not autonomously
-/// invoked by the model.
+/// Claude Code's own callers always pass `true`. Neither path emits
+/// `disable-model-invocation`: a SOP-derived skill is reachable by the
+/// model on Claude Code (`Skill` tool) as it already is on Kiro CLI
+/// (native discovery of `.kiro/skills/sop-<name>`), and by the user on
+/// both. The user's consent for side effects comes from the SOP's own
+/// gates and the harness's tool permissions, not from this frontmatter.
 ///
-/// Kiro has no `disable-model-invocation`-equivalent frontmatter key:
-/// its skill frontmatter schema is limited to `name`, `description`,
+/// Kiro's skill frontmatter schema is limited to `name`, `description`,
 /// `license`, `compatibility`, `metadata`, and the unrelated
-/// `allowed-tools`, and none of them gate autonomous invocation.
-/// `kiro_cli::install_kiro_sop_skills` therefore passes `false` here,
-/// and no such key is emitted -- inventing an unrecognized key could
-/// cause Kiro to ignore it or skip the skill entirely. The `arguments`
-/// array is gated the same way, for the same "not part of Kiro's
-/// schema" reason.
-///
-/// A Kiro-rendered SOP skill carries no advisory guard text discouraging
-/// self-invocation: there is no enforcement mechanism on Kiro that
-/// could gate this, and prose asking a model not to self-invoke has
-/// proven unreliable in practice.
+/// `allowed-tools`. `kiro_cli::install_kiro_sop_skills` therefore
+/// passes `false` here, so no `arguments` array is emitted --
+/// inventing an unrecognized key could cause Kiro to ignore it or skip
+/// the skill entirely.
 fn render_sop_skill_md_with_options(
     sop_name: &str,
     body: &str,
-    disable_model_invocation: bool,
+    claude_frontmatter: bool,
 ) -> String {
     let base_description = extract_overview_description(body)
         .unwrap_or_else(|| format!("Standard operating procedure: {sop_name}."));
@@ -770,13 +766,12 @@ fn render_sop_skill_md_with_options(
         yaml_double_quote(&format!("sop-{sop_name}")),
         yaml_double_quote(&description)
     );
-    // `arguments` is gated on `disable_model_invocation`: it is not
+    // `arguments` is gated on `claude_frontmatter`: it is not
     // part of Kiro's schema, see this function's own doc comment.
-    if disable_model_invocation {
+    if claude_frontmatter {
         if let Some(arguments) = scrape_sop_parameters(body) {
             frontmatter.push_str(&format!("arguments: [{}]\n", arguments.join(", ")));
         }
-        frontmatter.push_str("disable-model-invocation: true\n");
     }
     frontmatter.push_str("---\n\n");
 
@@ -1765,7 +1760,10 @@ mod tests {
         assert!(rendered.starts_with("---\n"));
         assert!(rendered.contains("name: \"sop-ticket-sync\"\n"));
         assert!(rendered.contains("description: \"Syncs tickets.\"\n"));
-        assert!(rendered.contains("disable-model-invocation: true\n"));
+        assert!(
+            !rendered.contains("disable-model-invocation"),
+            "a SOP skill must stay model-invocable on Claude Code, got: {rendered}"
+        );
         assert!(
             !rendered.contains("arguments:"),
             "no Parameters section -> no arguments key at all"
@@ -1775,9 +1773,9 @@ mod tests {
         assert!(rendered.contains("</content><user-input>$ARGUMENTS</user-input></agent-sop>"));
     }
 
-    /// Kiro has no `disable-model-invocation`-equivalent frontmatter key
-    /// and carries no advisory guard text either: the Kiro path renders
-    /// the same plain description and body with no advisory prose.
+    /// Neither path emits `disable-model-invocation`, and neither
+    /// carries advisory guard text: the Kiro path renders the same
+    /// plain description and body as the Claude path.
     #[test]
     fn render_sop_skill_md_with_options_kiro_path_carries_no_advisory_guard() {
         let body = "# Ticket Sync\n\n## Overview\n\nSyncs tickets.\n\nBody text.\n";
@@ -1805,7 +1803,7 @@ mod tests {
             !claude_rendered.contains("Run only when explicitly invoked"),
             "the Claude path must never have carried this text either, got: {claude_rendered}"
         );
-        assert!(claude_rendered.contains("disable-model-invocation: true\n"));
+        assert!(!claude_rendered.contains("disable-model-invocation"));
     }
 
     #[test]
@@ -2303,6 +2301,31 @@ mod tests {
         assert!(code_review.contains("name: \"sop-code-review\""));
 
         fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Every SOP this repo ships must render as a skill both the user
+    /// and the model can invoke on Claude Code, matching Kiro CLI.
+    #[test]
+    fn every_shipped_sop_renders_without_disable_model_invocation() {
+        let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let sops_dir = manifest_dir.join("../../agent-sops");
+        let mut count = 0;
+        for entry in fs::read_dir(&sops_dir).unwrap() {
+            let path = entry.unwrap().path();
+            let file_name = path.to_string_lossy().into_owned();
+            let Some(stem) = file_name.strip_suffix(".sop.md") else {
+                continue;
+            };
+            let sop_name = stem.rsplit('/').next().unwrap_or(stem);
+            let body = fs::read_to_string(&path).unwrap();
+            let rendered = render_sop_skill_md(sop_name, &body);
+            assert!(
+                !rendered.contains("disable-model-invocation"),
+                "{sop_name} must stay model-invocable on Claude Code"
+            );
+            count += 1;
+        }
+        assert!(count >= 19, "expected every shipped SOP, found {count}");
     }
 
     #[test]

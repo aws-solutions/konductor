@@ -76,6 +76,10 @@ not per individual commit.
   trigger phrases, its "not for" boundary and its pointers to other skills. Each SOP gets a
   short first Overview paragraph, which is the one the installer lists; the old paragraph
   stays below it. Skill patch versions are bumped.
+- On Claude Code, the `sop-<name>` skills the installer builds from SOPs no longer carry
+  `disable-model-invocation: true`, so Claude can load a SOP through its `Skill` tool, as Kiro
+  CLI already could through its `.kiro/skills/sop-<name>` copy. `/sop-<name>` still works.
+  The skill listing budget test now counts these 19 descriptions.
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
