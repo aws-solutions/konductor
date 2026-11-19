@@ -1,0 +1,8 @@
+{
+  "forecast_period": "steady production month",
+  "monthly_delivery_tb": 180,
+  "peak_concurrent_viewers": 42000,
+  "sustained_throughput_min_gbps": 1.5,
+  "peak_throughput_gbps": 3.2,
+  "notes": "The minimum sustained rate is the service requirement; peak rate is planning context."
+}

@@ -1,0 +1,26 @@
+{
+  "environment": "production",
+  "monthly_requests": {
+    "list": 2400000,
+    "get": 900000,
+    "create": 120000
+  },
+  "peak_requests_per_second": 240,
+  "booking_item_serialized_bytes": 6144,
+  "pagination_options": {
+    "cursor": {
+      "page_size": 160,
+      "list_p95_latency_ms": 240,
+      "peak_capacity_rps": 320,
+      "rpo_minutes": 2,
+      "rto_minutes": 18
+    },
+    "offset": {
+      "page_size": 500,
+      "list_p95_latency_ms": 320,
+      "peak_capacity_rps": 300,
+      "rpo_minutes": 4,
+      "rto_minutes": 24
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "single-queue-pool": {
+    "description": "one managed queue with a consumer pool",
+    "queue_count": 1,
+    "capacity_source": "production per-queue quota",
+    "worker_count": 18,
+    "request_units_per_message": 3,
+    "transfer_multiplier": 1.0,
+    "p99_delivery_seconds": 2.7,
+    "rpo_seconds": 45,
+    "rto_minutes": 10
+  },
+  "topic-regional-queues": {
+    "description": "one topic with a queue in each service region",
+    "queue_count": 3,
+    "capacity_source": "production per-queue quota",
+    "worker_count": 12,
+    "request_units_per_message": 4,
+    "transfer_multiplier": 1.05,
+    "p99_delivery_seconds": 2.4,
+    "rpo_seconds": 30,
+    "rto_minutes": 12
+  },
+  "stream-partitions": {
+    "description": "a partitioned stream with independent delivery workers",
+    "queue_count": 8,
+    "capacity_per_partition_messages_per_second": 1000,
+    "worker_count": 16,
+    "request_units_per_message": 4,
+    "transfer_multiplier": 1.02,
+    "p99_delivery_seconds": 2.1,
+    "rpo_seconds": 20,
+    "rto_minutes": 8
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "marketing-downloads-site",
+  "version": "2.1.0",
+  "description": "Infrastructure and deployment for marketing site with asset buckets and CDN",
+  "main": "deploy/deploy.js",
+  "scripts": {
+    "test": "node --test",
+    "lint": "node scripts/lint.js",
+    "deploy:staging": "node deploy/deploy.js staging",
+    "deploy:prod": "node deploy/deploy.js production"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "keywords": [
+    "aws",
+    "s3",
+    "cloudfront",
+    "infrastructure"
+  ],
+  "author": "Platform Security Team",
+  "license": "MIT",
+  "private": true
+}

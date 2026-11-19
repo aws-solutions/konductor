@@ -1,0 +1,65 @@
+# Hard Constraints and Limits
+
+## Storage Limits
+- **Maximum storage capacity**: 2.5 TB (Standard volume class)
+- **Base data size**: 2.05 TB (900M rows × 2.5 KB/row)
+- **Available for indexes**: 0.45 TB maximum
+- **Total budget cannot exceed**: 2.5 TB under any circumstances
+
+## Performance Requirements (Non-negotiable)
+- P99 read latency < 100ms for patterns 1, 2, 3, 4, 5
+- Sustained read throughput: 500 MB/s
+- Provisioned IOPS: 15,000
+- No full table scans on queries against large tables
+
+## Schema Constraints
+- Must use SQLite dialect
+- Primary key must be defined on order_history table
+- order_number must be UNIQUE and NOT NULL
+- All foreign key relationships must be explicitly defined
+- Appropriate NOT NULL constraints required
+
+## Query Pattern Requirements
+All 7 query patterns in query-patterns.sql must be supported:
+1. Customer orders (newest first)
+2. Order lookup by number
+3. Order lines by order
+4. Open orders by warehouse
+5. Order status check
+6. Date range reporting
+7. Product performance reporting
+
+## Cost Constraints
+- **Monthly budget**: $300 maximum
+- **Storage cost**: $0.10/GB-month
+- **IOPS cost**: $0.10/1000 IOPS-month
+- **Throughput cost**: $0.08/MB/s-month
+- **Volume fee**: $50/month for Standard class (includes 2.5 TB)
+
+## Implementation Constraints
+- No external dependencies beyond SQLite
+- Schema must be in single db/schema.sql file
+- Must include proper documentation in docs/decision.md
+- Decision must include JSON block with cost calculations
+
+## Validation Requirements
+- Hidden tests will verify:
+  - No full table scans (must use index search)
+  - All constraints present (PK, FK, NOT NULL, UNIQUE)
+  - Storage calculations within limits
+  - Cost calculations accurate within 10%
+  - Chosen option meets all hard limits
+
+## Important Notes
+- The "tempting" option is indexing every column separately (7+ indexes)
+- This approach uses approximately 3.1 TB total storage
+- 3.1 TB exceeds the 2.5 TB Standard volume limit
+- Exceeding 2.5 TB would require Premium volume class ($150/month base fee)
+- Premium volume would push total cost over $300/month budget
+
+## Risk Areas
+1. Underestimating index storage overhead
+2. Missing composite index opportunities
+3. Not accounting for SQLite internal overhead
+4. Forgetting volume class base fees in cost calculation
+5. Assuming all indexes have equal storage impact

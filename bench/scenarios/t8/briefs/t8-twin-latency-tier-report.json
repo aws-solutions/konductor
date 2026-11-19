@@ -1,0 +1,18 @@
+{
+  "id": "t8-twin-latency-tier-report",
+  "kind": "twin",
+  "twinOf": "t8-inc-checkout-latency",
+  "controlKind": "twin",
+  "phase": "release-ops",
+  "role": "sre",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "stack": "ops",
+  "source": {
+    "url": "https://github.com/danluu/post-mortems",
+    "licence": "no licence file (GitHub API: license null); a list of links, used for the idea only; no linked text used",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "A finance analyst needs, from the checkout API log of that day, the number of checkout requests and the number of successful ones per hour (UTC), written as a CSV at `reports/checkout-hourly.csv` with columns `hour` (ISO 8601 hour start, for example 2026-03-17T14:00:00Z), `requests`, `succeeded`, sorted by hour, covering every hour present in the log. They also want the day totals as a one-line JSON file `reports/checkout-totals.json` with keys `requests` and `succeeded`. No analysis of why, no incident talk: just the counts. Count only checkout requests (not health checks or other paths), and count a request as succeeded when its status is below 400."
+}

@@ -1,0 +1,14 @@
+service: atlas-login
+regions:
+  eu-west-1:
+    edge_pool: edge-eu
+    gateway_pool: gateway-eu
+    auth_pool: auth-eu
+    traffic_share: 0.47
+  us-east-1:
+    edge_pool: edge-us
+    gateway_pool: gateway-us
+    auth_pool: auth-us
+    traffic_share: 0.53
+global_health_probe: /internal/ready
+probe_interval_seconds: 15

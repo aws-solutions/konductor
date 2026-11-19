@@ -1,0 +1,16 @@
+cluster: orders-prod
+manager: quorumctl
+primary: orders-db-a
+replicas:
+  - name: orders-db-b
+    zone: zone-blue
+    promotion_eligible: true
+    expected_max_lag_seconds: 30
+  - name: orders-db-c
+    zone: zone-green
+    promotion_eligible: false
+    delay_seconds: 900
+    reason: delayed copy for backup recovery
+fencing:
+  lease_seconds: 45
+  require_old_primary_fenced: true

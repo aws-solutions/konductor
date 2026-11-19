@@ -1,0 +1,90 @@
+{
+  "batch_processing": {
+    "description": "Spark cluster processing costs",
+    "unit": "per hour",
+    "pricing": [
+      {
+        "tier": "standard",
+        "nodes": 1,
+        "cost_per_hour": 68,
+        "specs": "8 vCPU, 32GB RAM, 500GB SSD",
+        "notes": "Minimum 1-hour billing, suitable for nightly batch jobs"
+      },
+      {
+        "tier": "high_memory",
+        "nodes": 1,
+        "cost_per_hour": 92,
+        "specs": "8 vCPU, 64GB RAM, 500GB SSD",
+        "notes": "For memory-intensive transformations"
+      }
+    ],
+    "storage": {
+      "description": "S3-compatible object storage",
+      "cost_per_tb_month": 23,
+      "retrieval_cost_per_gb": 0.005,
+      "notes": "First 50 TB free, then tiered pricing applies"
+    },
+    "data_transfer": {
+      "inbound": "free",
+      "outbound_per_gb": 0.09,
+      "cross_region_per_gb": 0.02
+    }
+  },
+  "streaming_processing": {
+    "description": "Managed streaming service (Flink/Kafka)",
+    "pricing": [
+      {
+        "component": "base_setup",
+        "cost_per_month": 1250,
+        "includes": "Management, monitoring, basic support",
+        "notes": "Required for all streaming deployments"
+      },
+      {
+        "component": "processing_units",
+        "cost_per_pu_hour": 0.048,
+        "typical_requirement": "4 PU per GB/s throughput",
+        "notes": "Billed per second, minimum 10 minutes"
+      },
+      {
+        "component": "event_processing",
+        "cost_per_million_events": 0.85,
+        "notes": "Includes transformation and enrichment"
+      },
+      {
+        "component": "data_storage",
+        "cost_per_gb_month": 0.023,
+        "notes": "Hot storage for 7-day window"
+      }
+    ],
+    "additional_costs": {
+      "api_calls_per_million": 0.40,
+      "alerting_per_alert": 0.001,
+      "support_premium": 500
+    }
+  },
+  "shared_services": {
+    "monitoring": {
+      "basic": 150,
+      "premium": 450,
+      "includes": "Dashboards, basic alerts, 7-day retention"
+    },
+    "data_catalog": {
+      "cost_per_month": 300,
+      "users": 25,
+      "additional_user": 12
+    },
+    "backup_recovery": {
+      "cost_per_tb_month": 18,
+      "rpo_1h_surcharge": 0.15,
+      "notes": "Standard RPO is 24 hours"
+    }
+  },
+  "notes": [
+    "All prices in USD",
+    "Prices valid through December 2025",
+    "Volume discounts available above $5,000 monthly",
+    "Enterprise support: 15% surcharge",
+    "**Important**: The $68/hour batch cluster rate is for the US-East region. Other regions may vary by up to 15%.",
+    "**Superseded**: The previous batch storage cost of $28/TB-month has been reduced to $23/TB-month effective Q1 2024."
+  ]
+}

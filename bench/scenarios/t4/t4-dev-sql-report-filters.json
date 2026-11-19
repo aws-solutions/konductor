@@ -50,6 +50,41 @@
     }
   ],
   "rubric": [],
+  "expertKey": {
+    "items": [
+      {
+        "id": "identifiers-allowlist",
+        "text": "Explains in the final message why the sort column and direction use a fixed allowlist: identifiers cannot be bound as parameters, and escaping them is not safe.",
+        "source": "OWASP SQL Injection Prevention Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "one-builder",
+        "text": "Moves the list and CSV paths onto one shared query builder (or says why not), so a fix cannot miss one path again.",
+        "source": "OWASP SQL Injection Prevention Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "regression-tests",
+        "text": "Adds visible tests with injection payloads (value, LIKE wildcard, sort, paging, CSV) so the fix stays in place.",
+        "source": "OWASP SQL Injection Prevention Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "log-detail-return-generic",
+        "text": "Logs the database error detail on the server side and returns a generic message, rather than dropping the detail altogether.",
+        "source": "OWASP Error Handling Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Error_Handling_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "least-privilege-db",
+        "text": "Mentions running report queries with read-only database access as defence in depth (for sqlite, a read-only connection).",
+        "source": "OWASP SQL Injection Prevention Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Used parameterized queries to fix SQL injection.",
+      "Sanitized the user input.",
+      "Escaped special characters in the query.",
+      "Added input validation."
+    ]
+  },
   "tiers": [
     "full"
   ],

@@ -1,0 +1,17 @@
+alerts:
+  - name: search-api-memory-headroom
+    expression: container_memory_working_set_bytes / container_memory_limit_bytes > 0.91
+    for: 10m
+    severity: page
+  - name: search-api-restarts
+    expression: increase(container_restarts_total[15m]) > 1
+    for: 5m
+    severity: page
+  - name: search-api-errors
+    expression: rate(search_errors_total[5m]) > 0.025
+    for: 10m
+    severity: ticket
+  - name: gateway-upstream-latency
+    expression: p95(upstream_request_seconds) > 1.2
+    for: 15m
+    severity: ticket

@@ -1,0 +1,18 @@
+{
+  "currency": "USD",
+  "billing_unit": "one million requests",
+  "pagination_options": {
+    "cursor": {
+      "monthly_base_usd": 220,
+      "list_usd_per_million": 34,
+      "get_usd_per_million": 9,
+      "create_usd_per_million": 14
+    },
+    "offset": {
+      "monthly_base_usd": 190,
+      "list_usd_per_million": 28,
+      "get_usd_per_million": 9,
+      "create_usd_per_million": 14
+    }
+  }
+}

@@ -63,6 +63,41 @@
       "weight": 1
     }
   ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "derive-from-use",
+        "text": "Says how the needed actions and resources were found (the deploy and rollback code paths, or recorded calls) and how to keep the list current when the deploy changes, for example by generating or checking the policy from activity logs.",
+        "source": "AWS IAM Access Analyzer policy generation, https://docs.aws.amazon.com/IAM/latest/UserGuide/access-analyzer-policy-generation.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "stage-separation",
+        "text": "Points out that one role serving both stages lets a staging run touch production, and suggests separate stage roles or stage conditions as the next step.",
+        "source": "AWS IAM User Guide, Security best practices in IAM, https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "short-lived-ci-credentials",
+        "text": "Notes that the CI should reach the role through short-lived federated credentials with a trust condition on the repository and branch, not stored access keys.",
+        "source": "GitHub Docs, Configuring OpenID Connect in Amazon Web Services, https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services (CC-BY-4.0)"
+      },
+      {
+        "id": "guardrail",
+        "text": "Suggests a guardrail that caps the role even if its policy grows again (a permissions boundary or an organization policy), since the audit found drift by copy-paste.",
+        "source": "AWS IAM User Guide, Permissions boundaries, https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "pass-role-risk",
+        "text": "Explains why role passing is the dangerous grant (it lets the deploy hand a stronger role to a function) and that it is limited to the function execution roles.",
+        "source": "Cloudsplaining, https://github.com/salesforce/cloudsplaining (BSD-3-Clause)"
+      }
+    ],
+    "weakAnswers": [
+      "Removed the wildcards and followed least privilege.",
+      "Scoped the policy to specific resources.",
+      "Removed iam:* because it is dangerous.",
+      "Tightened the policy; the deploy should still work."
+    ]
+  },
   "tiers": [
     "full"
   ],

@@ -1,0 +1,83 @@
+{
+  "runner": "node",
+  "testCmd": "node --test --test-timeout=4000 test/*.test.js",
+  "pristine": [
+    "src/tokenizer.js",
+    "src/values.js",
+    "src/parser.js",
+    "src/validator.js",
+    "src/printer.js"
+  ],
+  "mutants": [
+    {
+      "id": "m01",
+      "files": [
+        "src/tokenizer.js"
+      ],
+      "note": "a backslash at end of a quoted value is accepted instead of reported"
+    },
+    {
+      "id": "m02",
+      "files": [
+        "src/parser.js"
+      ],
+      "note": "empty documents start with an extra enumerable value"
+    },
+    {
+      "id": "m03",
+      "files": [
+        "src/values.js"
+      ],
+      "note": "the maximum numeric magnitude is rejected"
+    },
+    {
+      "id": "m04",
+      "files": [
+        "src/values.js"
+      ],
+      "note": "quantity conversion truncates instead of rounding"
+    },
+    {
+      "id": "m05",
+      "files": [
+        "src/parser.js"
+      ],
+      "note": "duplicate keys overwrite earlier values"
+    },
+    {
+      "id": "m06",
+      "files": [
+        "src/parser.js"
+      ],
+      "note": "a section exactly at the nesting limit is rejected"
+    },
+    {
+      "id": "m07",
+      "files": [
+        "src/validator.js"
+      ],
+      "note": "validation location line and column are swapped"
+    },
+    {
+      "id": "m08",
+      "files": [
+        "src/printer.js"
+      ],
+      "note": "boolean-looking strings are printed as booleans"
+    },
+    {
+      "id": "m09",
+      "files": [
+        "src/tokenizer.js"
+      ],
+      "note": "a reused tokenizer retains the previous line number"
+    },
+    {
+      "id": "m10",
+      "files": [
+        "src/validator.js"
+      ],
+      "note": "invalid timeout values skip validation"
+    }
+  ]
+}

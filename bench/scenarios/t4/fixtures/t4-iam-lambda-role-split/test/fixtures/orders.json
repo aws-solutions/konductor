@@ -1,0 +1,10 @@
+[
+  {
+    "orderId": "order-1",
+    "status": "paid"
+  },
+  {
+    "orderId": "order-2",
+    "status": "packed"
+  }
+]

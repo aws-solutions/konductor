@@ -1,0 +1,5 @@
+Copyright 2025 Calendar Workbench contributors.
+
+Permission is granted to use, copy, modify, and distribute this software for any
+purpose with or without fee, provided that the above copyright notice appears in
+all copies.

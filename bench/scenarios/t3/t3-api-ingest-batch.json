@@ -1,0 +1,167 @@
+{
+  "id": "t3-api-ingest-batch",
+  "class": "design",
+  "target": null,
+  "prompt": "Review the sensor-ingest materials in `fixture/` and design the API contract and decision record for this service. Write the OpenAPI document to `api/openapi.json` and the architecture decision to `docs/decision.md`. The decision document must contain a fenced block whose info string is `decision` holding JSON with exactly these keys: `chosen` (the option id), `options` (an array of option ids considered), `limits` (an object mapping each hard-limit name to `{\"limit\": number, \"value\": number}`), and `monthly_cost_usd` (the chosen option's monthly cost computed from the price sheet). Use the fleet traffic, gateway, reliability, and pricing data to compute the selected option's values rather than repeating a raw input. Include a batch ingest POST operation with per-item outcome reporting, a client idempotency header, and a GET operation for batch status in the API document. Explain the tradeoffs among the options and how the selected design meets the operating constraints.",
+  "fixture": "t3-api-ingest-batch",
+  "timeoutSec": 900,
+  "hidden": "t3-api-ingest-batch",
+  "phase": "architecture",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 19
+    },
+    {
+      "type": "file_exists",
+      "path": "api/openapi.json"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/decision.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoned-choice",
+      "criterion": "The decision explains why the selected design balances bounded request size, partial outcomes, latency, recovery objectives, throughput, and cost for the fleet. (not code-checkable: A structural test can verify numbers and fields but cannot judge whether the tradeoff explanation is technically persuasive or grounded in the scenario.)",
+      "weight": 1
+    },
+    {
+      "id": "option-comparison",
+      "criterion": "The decision compares the rejected alternatives accurately, including the operational consequence of the low-cost large-batch design and the cost of the more redundant design. (not code-checkable: Tests can identify an option id and a failing metric, but they cannot assess completeness, accuracy, or usefulness of the written comparison.)",
+      "weight": 1
+    },
+    {
+      "id": "contract-clarity",
+      "criterion": "The API and decision record use clear, implementable semantics for idempotency, per-item results, deferred work, and status polling. (not code-checkable: Schema checks can find required shapes and paths but cannot reliably evaluate whether the contract is understandable and operationally unambiguous.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/OAI/OpenAPI-Specification",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "decision-writing",
+    "smithy-modeling"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-architect",
+  "loadCheck": {
+    "mustLoad": [
+      "decision-writing",
+      "smithy-modeling",
+      "k-architect"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "alibaba",
+    "model": "qwen3-coder-next",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt does not name or hint at specific frameworks, methods, or the correct option."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All limits, values, and required output format are explicitly defined with no reasonable ambiguity."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture data provides raw numbers but does not state the answer or which option to select; meta.json only labels a tempting option."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fail",
+        "note": "The task requires non-trivial calculation: computing monthly cost from price sheet usage, verifying 6 hard constraints, and selecting the viable option (rejecting the cheaper but oversized direct-large-batch)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All necessary data is provided in fixture/; tests validate all required fields; no impossible or unfair requirements."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "states that direct-large-batch with 1000 items exceeds the 256 KiB (262,144 byte) gateway body limit: 512 envelope + (1000 × 380) = 380,512 bytes, making this option invalid regardless of its lower cost.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "identifies that the 1 MiB pilot gateway ceiling mentioned in current-api.md is superseded by the production 256 KiB limit and must not be used for the new contract design.",
+        "source": "OpenAPI Specification, https://github.com/OAI/OpenAPI-Specification (Apache-2.0); idea only"
+      },
+      {
+        "id": "e3",
+        "text": "computes the monthly cost from the chosen option's usage quantities and the price sheet rates, arriving at a figure within the 1,500 USD budget: buffered-batch costs approximately 1,217 USD/month, replicated-stream costs approximately 1,459 USD/month.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "explains the tradeoff between buffered-batch (lower cost, meets RPO/RTO, 688 items per batch) and replicated-stream (better RPO/RTO, higher throughput, 64 items per batch, costs ~242 USD/month more but still within budget).",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "notes that the 5-minute RTO mentioned in operations.md is a rehearsal result, not the production requirement (RTO ≤15 minutes, RPO ≤60 seconds), so buffered-batch's 10-minute RTO and 30-second RPO satisfy production guardrails.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "describes why partial success semantics matter: clients need item-level outcomes to correlate each reading with its result, and retries must be idempotent to avoid duplicate batches.",
+        "source": "OpenAPI Specification, https://github.com/OAI/OpenAPI-Specification (Apache-2.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "observes that the 4,000-device / 60-second interval demo configuration in traffic-profile.md is superseded and irrelevant to production capacity planning with 40,000 devices at 10-second intervals.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e8",
+        "text": "identifies the failure mode if direct-large-batch were chosen: gateway rejection of oversized requests would cause complete service outage, making this 'cheaper' option operationally catastrophic.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "selects direct-large-batch because it has the lowest computed monthly cost (~845 USD) without verifying the batch size against the gateway body limit.",
+      "uses the 1 MiB pilot gateway limit from current-api.md instead of the 256 KiB production limit, allowing the invalid direct-large-batch option.",
+      "picks replicated-stream as 'safest' without comparing its ~1,459 USD/month cost to buffered-batch's ~1,217 USD/month when both satisfy requirements.",
+      "computes cost using flat per-reading or per-device rates instead of multiplying option usage quantities by the price sheet rates.",
+      "treats the 5-minute RTO rehearsal result as the production requirement, unnecessarily disqualifying buffered-batch."
+    ]
+  }
+}

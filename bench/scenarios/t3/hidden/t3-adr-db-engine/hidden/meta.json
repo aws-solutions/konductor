@@ -1,0 +1,6 @@
+{
+  "deliverables": ["docs/adr/0001-database.md"],
+  "acceptableOptions": ["kv-provisioned-autoscaling"],
+  "temptingOption": "kv-on-demand",
+  "notes": "On-demand has the lowest computed monthly cost but exceeds the 1,000 WCU/s partition ceiling when the 60% hot-write share from traffic-profile.json is combined with its one-shard layout in price-sheet.json; the ceiling is in platform-limits.json."
+}

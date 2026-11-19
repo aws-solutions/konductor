@@ -1,0 +1,21 @@
+alerts:
+  - name: ledger-write-errors
+    metric: ledger_write_error_rate
+    condition: '> 0.5'
+    window: 5m
+    severity: page
+  - name: ledger-replica-lag
+    metric: ledger_replica_lag_seconds
+    condition: '> 15'
+    window: 5m
+    severity: page
+  - name: ledger-latency
+    metric: ledger_request_latency_p95_ms
+    condition: '> 450'
+    window: 10m
+    severity: ticket
+  - name: authorizer-errors
+    metric: payment_authorizer_error_rate
+    condition: '> 1'
+    window: 5m
+    severity: page

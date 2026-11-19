@@ -1,0 +1,9 @@
+{
+  "currency": "USD",
+  "billing_period": "month",
+  "nodes": [
+    {"id": "cache-52", "memory_gb": 52, "monthly_price_usd": 420},
+    {"id": "cache-105", "memory_gb": 105, "monthly_price_usd": 650},
+    {"id": "cache-209", "memory_gb": 209, "monthly_price_usd": 1400}
+  ]
+}

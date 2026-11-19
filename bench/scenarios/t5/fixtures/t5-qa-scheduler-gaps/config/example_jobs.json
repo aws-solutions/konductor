@@ -1,0 +1,4 @@
+[
+  {"name": "morning-report", "cron": "15 9 * * 1-5", "priority": 20},
+  {"name": "cleanup", "cron": "0 2 * * 0", "priority": 5}
+]

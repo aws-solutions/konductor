@@ -1,0 +1,20 @@
+{
+  "shared-composite": {
+    "database_count": 1,
+    "compute_units": 2,
+    "writes_per_compute_unit_qps": 1400,
+    "latency_components_ms": [42, 18, 25],
+    "rpo_seconds": 30,
+    "rto_minutes": 10,
+    "storage_multiplier": 1
+  },
+  "tenant-database-per-customer": {
+    "database_count": 12000,
+    "compute_units": 1,
+    "writes_per_compute_unit_qps": 3000,
+    "latency_components_ms": [35, 20],
+    "rpo_seconds": 45,
+    "rto_minutes": 12,
+    "storage_multiplier": 1
+  }
+}

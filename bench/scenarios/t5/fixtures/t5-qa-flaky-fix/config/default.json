@@ -1,0 +1,6 @@
+{
+  "timeZone": "UTC",
+  "outboxDirectory": ".runtime/outbox",
+  "rateLimit": { "limit": 3, "windowMs": 60000 },
+  "pollIntervalMs": 30000
+}

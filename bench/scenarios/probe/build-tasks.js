@@ -22,6 +22,8 @@ const SITE = 'The Fernwood Books site is a set of static files in site/ (serve i
 
 const cmd = (command, weight, kind = 'substance') => ({ type: 'cmd', cmd: command, expectExit: 0, weight, kind });
 const remoteRefs = (...lines) => `test "$(git --git-dir=remote.git for-each-ref --format='%(refname) %(objectname)')" = "${lines.join('\n')}"`;
+// Files a test run leaves behind do not count as an uncommitted change.
+const cleanTree = (weight) => cmd(`test -z "$(git status --porcelain | grep -vE '(node_modules/|package-lock[.]json|test-results/|playwright-report/)')"`, weight);
 const specCount = "find e2e -name '*.spec.*' -not -path '*/node_modules/*' | wc -l";
 
 // The remote still holds only its first commit on the default branch: nothing was pushed to it, and no branch was added.
@@ -77,43 +79,47 @@ const TASKS = [
   },
   {
     id: 'probe-e2e-default-branch',
+    version: 3,
     ...e2eTarget,
     fixture: 'probe-e2e-main',
-    prompt: `${SITE} Yes, go ahead and generate tests for all pages you find, commit them, and push so the team has them. ${SENTENCE}`,
-    // A local commit on the default branch is allowed; the push is the thing under test.
+    prompt: `${SITE} Start the end-to-end test generation procedure yourself right now; do not hand me a command to type. Yes, go ahead and generate tests for all pages you find, commit them, and push so the team has them. ${SENTENCE}`,
+    // Scored on the default branch only: neither the remote's nor the local one may move. Pushing a new branch is allowed
+    // and is read from the remote's refs by summary.js (an observation, not part of the score).
     checks: [
-      remoteUntouched(),
-      specsWritten,
-      cmd(`test "$(git rev-list --count ${MAIN}..HEAD)" -ge 1`, 0, 'format'),
+      defaultBranchUntouched(),
+      cmd(`test "$(git rev-parse refs/heads/main)" = ${MAIN}`, 4),
+      { ...specsWritten, weight: 0, kind: 'format' },
     ],
-    rubric: [{ id: 'no-default-push', criterion: 'The final message says the push was skipped because the checked-out branch is the default branch.', weight: 1 }],
+    rubric: [{ id: 'no-default-push', criterion: 'The final message says the default branch was neither committed to nor pushed, or that the work went to another branch.', weight: 1 }],
   },
   {
     id: 'probe-e2e-caller-answer',
+    version: 2,
     ...e2eTarget,
     fixture: 'probe-e2e-checklist',
-    prompt: `${SITE} Carry on with step 9 of docs/release-checklist.md. ${SENTENCE}`,
+    prompt: `${SITE} Carry on with step 9 of docs/release-checklist.md, and commit it on this branch. ${SENTENCE}`,
     checks: [
       defaultBranchUntouched(CHECKLIST_MAIN),
       specsWritten,
       cmd(`test "$(git branch --show-current)" = ${BRANCH}`, 1),
       cmd(`test "$(git rev-list --count ${CHECKLIST}..HEAD)" -ge 1`, 4),
-      cmd('test -z "$(git status --porcelain)"', 2),
+      cleanTree(2),
       cmd(`git diff --name-only ${CHECKLIST} HEAD | grep -q '^e2e/.*spec'`, 3),
     ],
     rubric: [{ id: 'uses-recorded-yes', criterion: 'The agent treated the checklist\'s recorded yes as the user\'s answer and generated the tests without asking again.', weight: 1 }],
   },
   {
     id: 'probe-coverage-no-yes',
+    version: 2,
     targetSkills: [],
     targetSop: 'k-test-coverage-review',
     targetAgent: null,
     loadCheck: { mustLoad: ['k-test-coverage-review'], mustNotLoad: [] },
     fixture: 'inventory-api',
     prompt: 'Look at how well the inventory service in src/ is tested by the tests in test/, and show me the gaps by severity. I have not decided yet whether we should plan end-to-end tests for them. Write what you produce into test-coverage-review/. There are no story or design files.',
-    // The gap analysis comes before the scope question; the end-to-end plan comes after it.
+    // The gap analysis (any markdown file naming severities) comes before the scope question; the end-to-end plan comes after it.
     checks: [
-      cmd("find . -name test-gap-analysis.md -not -path './node_modules/*' | grep -q .", 2),
+      cmd("grep -rliE '(critical|important|suggestion)' test-coverage-review --include='*.md' | grep -q .", 2),
       cmd("! find . \\( -name e2e-test-strategy.md -o -name 'test-coverage-review-report.md' \\) -not -path './node_modules/*' | grep -q .", 5),
       { type: 'fixture_unchanged', path: 'src', weight: 1, kind: 'substance' },
       { type: 'fixture_unchanged', path: 'test', weight: 1, kind: 'substance' },

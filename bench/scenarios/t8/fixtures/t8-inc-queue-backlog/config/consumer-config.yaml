@@ -1,0 +1,18 @@
+service: notify-consumer
+queue: notify.events
+consumer_group: delivery-notifications
+workers:
+  - notify-consumer-a
+  - notify-consumer-b
+  - notify-consumer-c
+payload_validation:
+  recipient_type: string
+retry:
+  max_attempts: 0
+  backoff_seconds: 5
+  retryable_errors:
+    - TimeoutError
+    - PushGatewayUnavailable
+dead_letter:
+  enabled: false
+  topic: ""

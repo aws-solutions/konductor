@@ -43,4 +43,4 @@ merging the mapper's `map.json` and the reviewer's `review.json` when present. `
 reference, an empty stub and a dump that flags every changed line, three times each, with the runner's check code.
 Gates: reference at least 95, stub at most 20, all checks pass the reference, identical repeats.
 
-Tests: `node --test bench/scenarios/t2/test/`.
+Tests: `node --test bench/scenarios/t2/test/*.test.js`.

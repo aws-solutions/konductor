@@ -1,0 +1,218 @@
+{
+  "outputFile": "incidents/2026-03-checkout-latency.md",
+  "items": [
+    {
+      "id": "cause-summary",
+      "type": "text",
+      "path": "rootCause.summary",
+      "all": [
+        "checkout",
+        "pool|connection",
+        "40.*12|12.*40|reduc|shrink|lower"
+      ],
+      "none": [
+        "receipt|template|garbage.collect|\\bgc\\b"
+      ],
+      "weight": 3
+    },
+    {
+      "id": "cause-evidence",
+      "type": "evidence",
+      "path": "rootCause.evidence",
+      "groups": [
+        {
+          "file": "^config/config-diff-week\\.yaml$",
+          "all": [
+            "services\\.checkout\\.pool_size|after: 12\\s*$|at: 2026-03-17T17:42|source: runtime-config"
+          ]
+        },
+        {
+          "file": "^logs/pooler\\.log$",
+          "all": [
+            "client_pool_size=12",
+            "previous=40"
+          ]
+        },
+        {
+          "file": "^logs/checkout-api\\.log$",
+          "all": [
+            "connection_acquire_timeout",
+            "status=503"
+          ]
+        }
+      ],
+      "min": 2,
+      "weight": 2
+    },
+    {
+      "id": "evidence-precision",
+      "type": "evidencePrecision",
+      "path": "rootCause.evidence",
+      "relevant": [
+        "services\\.checkout\\.pool_size|after: 12\\s*$|at: 2026-03-17T17:42|source: runtime-config",
+        "client_pool_size=12",
+        "connection_acquire_timeout",
+        "status=503",
+        "waiters=[1-9]",
+        "pool (exhausted|saturated|full)|configured=12"
+      ],
+      "min": 0.5,
+      "weight": 2
+    },
+    {
+      "id": "timeline-config-change",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "40",
+          "12",
+          "pool|config"
+        ],
+        "timeNear": {
+          "time": "2026-03-17T17:42:00Z",
+          "tolMin": 2
+        }
+      }
+    },
+    {
+      "id": "timeline-first-symptom",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "p99|latency|wait"
+        ],
+        "timeNear": {
+          "time": "2026-03-17T18:03:00Z",
+          "tolMin": 2
+        }
+      }
+    },
+    {
+      "id": "timeline-failures",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "503|timeout|limit"
+        ],
+        "timeNear": {
+          "time": "2026-03-17T18:04:00Z",
+          "tolMin": 2
+        }
+      }
+    },
+    {
+      "id": "timeline-mitigation",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "restart|last-known-good|roll(ed)? ?back|revert|restor"
+        ],
+        "timeNear": {
+          "time": "2026-03-17T18:41:00Z",
+          "tolMin": 2
+        }
+      }
+    },
+    {
+      "id": "timeline-recovery",
+      "type": "some",
+      "path": "timeline",
+      "match": {
+        "all": [
+          "recover|zero waiters|waiters=0|configured at 40|back to (40|normal)|normal|resolved|restored"
+        ],
+        "timeNear": {
+          "time": "2026-03-17T18:43:00Z",
+          "tolMin": 2
+        }
+      }
+    },
+    {
+      "id": "timeline-order",
+      "type": "order",
+      "path": "timeline",
+      "first": {
+        "all": [
+          "pool|config"
+        ],
+        "timeNear": {
+          "time": "2026-03-17T17:42:00Z",
+          "tolMin": 2
+        }
+      },
+      "then": {
+        "all": [
+          "503|timeout"
+        ],
+        "timeNear": {
+          "time": "2026-03-17T18:04:00Z",
+          "tolMin": 2
+        }
+      }
+    },
+    {
+      "id": "timeline-concise",
+      "type": "maxLen",
+      "path": "timeline",
+      "max": 15,
+      "min": 5
+    },
+    {
+      "id": "impact-duration",
+      "type": "number",
+      "path": "impact.durationMinutes",
+      "value": 40,
+      "tol": 2
+    },
+    {
+      "id": "impact-failures",
+      "type": "number",
+      "path": "impact.failedRequests",
+      "value": 407,
+      "tolPct": 5
+    },
+    {
+      "id": "impact-p99",
+      "type": "number",
+      "path": "impact.peakP99Ms",
+      "value": 3505,
+      "tolPct": 5
+    },
+    {
+      "id": "action-fix",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "pool|connection",
+          "40|restore|pin|review",
+          "runtime|config|reject"
+        ]
+      }
+    },
+    {
+      "id": "action-guard",
+      "type": "some",
+      "path": "actionItems",
+      "match": {
+        "field": "text",
+        "all": [
+          "alert|page|monitor",
+          "pool_waiters|p99|five_xx|drift"
+        ]
+      }
+    },
+    {
+      "id": "actions-concise",
+      "type": "maxLen",
+      "path": "actionItems",
+      "max": 10,
+      "min": 2
+    }
+  ]
+}

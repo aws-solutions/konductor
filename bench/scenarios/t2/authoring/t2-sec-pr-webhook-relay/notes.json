@@ -1,0 +1,3 @@
+{
+  "notes": "The changed signature path canonicalizes parsed JSON, uses ordinary equality, and emits the supplied authentication header on failure. The replay requirement is stated in the provider contract and must be connected to the route's acceptance and storage behavior. The callback risk requires reading customer configuration and the existing destination helper, while the default-secret risk requires reading the environment example and deployment assumptions. The public key identifier in startup diagnostics is intentionally safe to log and is a decoy, not a finding."
+}

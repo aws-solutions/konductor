@@ -1,0 +1,7 @@
+{
+  "minimumNights": 1,
+  "maximumGuests": 8,
+  "defaultCurrency": "USD",
+  "defaultLocale": "en-US",
+  "maxNoteLength": 120
+}

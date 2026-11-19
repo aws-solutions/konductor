@@ -1,0 +1,8 @@
+{
+  "port": 0,
+  "host": "127.0.0.1",
+  "tokenSecret": "test_key_123",
+  "accessLifetimeSeconds": 60,
+  "refreshLifetimeSeconds": 3600,
+  "dataDirectory": "./data"
+}

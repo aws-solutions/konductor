@@ -1,0 +1,108 @@
+{
+  "id": "t5-dev-legacy-characterize",
+  "class": "hard",
+  "version": 1,
+  "phase": "testing",
+  "role": "developer",
+  "phases2": [
+    "refactor"
+  ],
+  "questions": "allowed",
+  "prompt": "I am going to rework rates.py next week and I want a safety net first. Please write tests under tests/ that pin down what this shipping label tool does today, so that after the refactor I can tell if I changed what it computes or prints. The behaviour as it stands is the contract, including the odd parts customers and the warehouse already rely on. You can read all of the code, but do not change any of it, the existing tests, the CLI, or the package files. Keep the suite quick, add no dependencies, remove any temporary files your tests create, and keep `python3 -m unittest discover -s tests` passing.",
+  "fixture": "t5-dev-legacy-characterize",
+  "hidden": "t5-dev-legacy-characterize",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 mutation.test.js",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests && test \"$(cat tests/*.py | grep -cE '^[[:space:]]*def[[:space:]]+test_')\" -ge 13",
+      "expectExit": 0,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "rates.py",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "meaningful-assertions",
+      "criterion": "The added tests pin observable values, returned state, and failure status instead of only exercising lines (code cannot check this because assertion intent is semantic).",
+      "weight": 2
+    }
+  ],
+  "targetSkills": [
+    "test-coverage-analysis"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "test-coverage-analysis"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/boxed/mutmut",
+      "licence": "BSD-3-Clause",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks the agent to write characterization tests for existing behavior without naming specific methods, mutants, or implementation details. It correctly directs the agent to discover the behavior from reading the code."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly states the goal: pin down current behavior as the contract. The agent can read all code and must keep the existing suite passing. The requirement for at least 13 tests and the mutation test minimum of 10 provide clear success criteria."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains no hints about the specific edge cases targeted by mutants. The comments in calendar_rules.py mention leap day as a holiday, but this is documentation of actual behavior, not a leak. The agent must discover boundary conditions by reading the code carefully."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task is appropriately difficult. The existing smoke tests (5 tests) kill 0/10 mutants. A shallow approach adding tests that only exercise happy paths would not meet the mutation threshold. Each mutant targets a specific edge case: boundary inclusion (weight bands), fallback zone selection, calculation order (fuel rounding), leap day handling, zero weight validation, state between calls, next business day logic, postal code normalization, CLI error status, and currency rounding. These require careful reading and specific test values."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "The task is fair. The behavior is fully defined in the code and discoverable by reading. No contradictory requirements. The mutants represent realistic bugs that characterization tests should catch. The solution demonstrates that focused tests with specific values can kill all mutants without special knowledge."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

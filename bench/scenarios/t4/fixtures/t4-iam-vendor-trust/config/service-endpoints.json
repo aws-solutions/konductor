@@ -1,0 +1,5 @@
+{
+  "dashboard": "https://dashboard.example.invalid",
+  "artifactStore": "s3://northstar-example-artifacts",
+  "status": "https://status.example.invalid"
+}

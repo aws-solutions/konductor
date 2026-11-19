@@ -1,0 +1,6 @@
+{
+  "deliverables": ["api/openapi.json", "docs/decision.md"],
+  "acceptableOptions": ["cursor-index"],
+  "temptingOption": "offset-sql",
+  "notes": "The lower-cost offset option looks adequate on throughput and recovery, but its deep-page latency combines the production measurement in fixture/traffic.csv with the p99 limit in fixture/service-limits.csv and exceeds that limit."
+}

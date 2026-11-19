@@ -1,0 +1,113 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowCloudFrontStaging",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "cloudfront.amazonaws.com"
+      },
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::assets-bucket-staging/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceArn": "arn:aws:cloudfront::111122223333:distribution/E1A2B3C4D5E6F7"
+        },
+        "Bool": {
+          "aws:SecureTransport": "true"
+        }
+      }
+    },
+    {
+      "Sid": "AllowCloudFrontProduction",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "cloudfront.amazonaws.com"
+      },
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::assets-bucket-prod/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceArn": "arn:aws:cloudfront::111122223333:distribution/F8E7D6C5B4A3F2"
+        },
+        "Bool": {
+          "aws:SecureTransport": "true"
+        }
+      }
+    },
+    {
+      "Sid": "AllowCloudFrontListStaging",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "cloudfront.amazonaws.com"
+      },
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::assets-bucket-staging",
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceArn": "arn:aws:cloudfront::111122223333:distribution/E1A2B3C4D5E6F7"
+        },
+        "Bool": {
+          "aws:SecureTransport": "true"
+        }
+      }
+    },
+    {
+      "Sid": "AllowCloudFrontListProduction",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "cloudfront.amazonaws.com"
+      },
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::assets-bucket-prod",
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceArn": "arn:aws:cloudfront::111122223333:distribution/F8E7D6C5B4A3F2"
+        },
+        "Bool": {
+          "aws:SecureTransport": "true"
+        }
+      }
+    },
+    {
+      "Sid": "AllowDeployRole",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::111122223333:role/deploy-role"
+      },
+      "Action": [
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::assets-bucket-staging",
+        "arn:aws:s3:::assets-bucket-staging/*",
+        "arn:aws:s3:::assets-bucket-prod",
+        "arn:aws:s3:::assets-bucket-prod/*"
+      ],
+      "Condition": {
+        "Bool": {
+          "aws:SecureTransport": "true"
+        }
+      }
+    },
+    {
+      "Sid": "DenyNonTLS",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::assets-bucket-staging",
+        "arn:aws:s3:::assets-bucket-staging/*",
+        "arn:aws:s3:::assets-bucket-prod",
+        "arn:aws:s3:::assets-bucket-prod/*"
+      ],
+      "Condition": {
+        "Bool": {
+          "aws:SecureTransport": "false"
+        }
+      }
+    }
+  ]
+}

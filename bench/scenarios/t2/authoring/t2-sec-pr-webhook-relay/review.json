@@ -1,0 +1,11 @@
+{
+  "verdicts": [
+    { "check": "leak", "verdict": "pass", "note": "Prompt asks for security sign-off without mentioning specific methods, checklists, or problem areas." },
+    { "check": "ambiguity", "verdict": "pass", "note": "Clear instructions: review PR 361, write REVIEW.md with JSON findings containing location, severity, issue, fix." },
+    { "check": "ceiling", "verdict": "pass", "note": "Task requires deep security review of signature verification, replay protection, SSRF, secret management, and logging - not found by shallow review." },
+    { "check": "floor", "verdict": "pass", "note": "All 6 key items are findable at the specified lines in the fixture with clear evidence and indefensible severity." },
+    { "check": "hidden-answer", "verdict": "pass", "note": "No comments, tests, docs, or file names in the fixture point at planted problems. The public key log in index.js is a decoy per notes.txt." }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

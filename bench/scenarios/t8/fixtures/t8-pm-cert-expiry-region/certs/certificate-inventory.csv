@@ -1,0 +1,6 @@
+certificate_id,region,subject,serial,not_before,not_after,issuer,status
+gw-auth-eu-2024-11,eu-west-1,gateway.atlas.internal,A7E4-91C2,2024-11-16T11:00:00Z,2025-02-14T11:00:00Z,Atlas Internal CA,active
+gw-auth-us-2025-01,us-east-1,gateway.atlas.internal,B8F2-44D1,2025-01-21T09:00:00Z,2025-04-21T09:00:00Z,Atlas Internal CA,active
+edge-eu-2025-02,eu-west-1,edge.atlas.internal,C4A0-77B9,2025-02-01T08:00:00Z,2025-05-02T08:00:00Z,Atlas Internal CA,active
+edge-us-2025-02,us-east-1,edge.atlas.internal,C4A0-77BA,2025-02-01T08:00:00Z,2025-05-02T08:00:00Z,Atlas Internal CA,active
+gw-auth-eu-next,eu-west-1,gateway.atlas.internal,D1B3-8820,2025-02-14T12:05:00Z,2025-05-15T12:05:00Z,Atlas Internal CA,staged

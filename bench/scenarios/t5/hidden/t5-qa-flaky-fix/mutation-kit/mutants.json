@@ -1,0 +1,19 @@
+{
+  "runner": "node",
+  "testCmd": "node --test --test-timeout=4000 test/*.test.js",
+  "pristine": [
+    "src/calendar.js",
+    "src/outbox.js",
+    "src/rate-limiter.js",
+    "src/ids.js",
+    "src/scheduler.js"
+  ],
+  "mutants": [
+    { "id": "m01", "files": ["src/calendar.js"], "note": "Rejects hour 23 even though it is a valid boundary." },
+    { "id": "m02", "files": ["src/calendar.js"], "note": "Ignores the requested time zone when finding a weekday." },
+    { "id": "m03", "files": ["src/outbox.js"], "note": "Treats malformed outbox data as an empty outbox." },
+    { "id": "m04", "files": ["src/rate-limiter.js"], "note": "Waits one extra millisecond before opening a rate window." },
+    { "id": "m05", "files": ["src/ids.js"], "note": "Shrinks the random range used for identifier suffixes." },
+    { "id": "m06", "files": ["src/scheduler.js"], "note": "Leaves a stopped timer queued for execution." }
+  ]
+}

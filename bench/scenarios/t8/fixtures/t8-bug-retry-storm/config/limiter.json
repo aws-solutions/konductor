@@ -1,0 +1,7 @@
+{
+  "name": "partner-orders",
+  "requestsPerMinute": 120,
+  "burst": 20,
+  "changedAt": "2025-03-17T22:14:00Z",
+  "owner": "platform-runtime"
+}

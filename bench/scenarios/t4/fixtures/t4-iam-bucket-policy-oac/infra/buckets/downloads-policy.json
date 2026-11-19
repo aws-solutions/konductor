@@ -1,0 +1,16 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::downloads-bucket-staging",
+        "arn:aws:s3:::downloads-bucket-staging/*",
+        "arn:aws:s3:::downloads-bucket-prod",
+        "arn:aws:s3:::downloads-bucket-prod/*"
+      ]
+    }
+  ]
+}

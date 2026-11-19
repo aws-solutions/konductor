@@ -1,0 +1,6 @@
+{
+  "p99_delivery_seconds": 3,
+  "monthly_budget_usd": 4500,
+  "rpo_seconds": 60,
+  "rto_minutes": 15
+}

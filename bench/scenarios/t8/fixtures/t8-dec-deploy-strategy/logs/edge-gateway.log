@@ -1,0 +1,562 @@
+2025-08-19T00:00:26Z INFO request_id=req-58195343 service=edge-gateway health check passed zone=north status=200
+2025-08-19T00:02:38Z INFO request_id=req-78734465 service=edge-gateway slow request method=GET path=/v1/rooms/362 status=200 latency_ms=794
+2025-08-19T00:05:25Z WARN request_id=req-29022430 service=edge-gateway request completed method=GET path=/v1/rooms/785 status=200 latency_ms=157
+2025-08-19T00:07:54Z INFO request_id=req-24518963 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T00:10:39Z INFO request_id=req-38799285 service=edge-gateway health check passed zone=north status=200
+2025-08-19T00:13:10Z INFO request_id=req-74281624 service=edge-gateway slow request method=GET path=/v1/rooms/623 status=200 latency_ms=770
+2025-08-19T00:15:54Z WARN request_id=req-33853705 service=edge-gateway request completed method=GET path=/v1/rooms/970 status=200 latency_ms=101
+2025-08-19T00:18:24Z INFO request_id=req-22855302 service=edge-gateway health check passed zone=north status=200
+2025-08-19T00:20:58Z WARN request_id=req-48006810 service=edge-gateway request completed method=GET path=/v1/rooms/917 status=200 latency_ms=50
+2025-08-19T00:23:38Z WARN request_id=req-21143580 service=edge-gateway health check passed zone=north status=200
+2025-08-19T00:26:04Z INFO request_id=req-77807925 service=edge-gateway slow request method=GET path=/v1/rooms/599 status=200 latency_ms=1199
+2025-08-19T00:28:23Z INFO request_id=req-98595268 service=edge-gateway websocket handshake completed room=room-440 status=101
+2025-08-19T00:31:09Z DEBUG request_id=req-63423368 service=edge-gateway request completed method=GET path=/v1/rooms/543 status=200 latency_ms=15
+2025-08-19T00:33:37Z INFO request_id=req-77440664 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T00:36:10Z INFO request_id=req-97794870 service=edge-gateway request completed method=GET path=/v1/rooms/292 status=200 latency_ms=138
+2025-08-19T00:38:41Z WARN request_id=req-38885126 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T00:41:08Z DEBUG request_id=req-23867885 service=edge-gateway websocket handshake completed room=room-524 status=101
+2025-08-19T00:44:08Z INFO request_id=req-10750065 service=edge-gateway slow request method=GET path=/v1/rooms/263 status=200 latency_ms=1400
+2025-08-19T00:46:46Z INFO request_id=req-19970446 service=edge-gateway slow request method=GET path=/v1/rooms/679 status=200 latency_ms=862
+2025-08-19T00:48:55Z WARN request_id=req-97538299 service=edge-gateway websocket handshake completed room=room-994 status=101
+2025-08-19T00:51:25Z DEBUG request_id=req-37393556 service=edge-gateway slow request method=GET path=/v1/rooms/283 status=200 latency_ms=1409
+2025-08-19T00:54:04Z INFO request_id=req-81352192 service=edge-gateway websocket handshake completed room=room-335 status=101
+2025-08-19T00:56:45Z DEBUG request_id=req-58177334 service=edge-gateway slow request method=GET path=/v1/rooms/817 status=200 latency_ms=1181
+2025-08-19T00:59:09Z WARN request_id=req-37587671 service=edge-gateway request completed method=GET path=/v1/rooms/123 status=200 latency_ms=126
+2025-08-19T01:02:09Z INFO request_id=req-94880986 service=edge-gateway health check passed zone=north status=200
+2025-08-19T01:04:20Z WARN request_id=req-90952381 service=edge-gateway request completed method=GET path=/v1/rooms/819 status=200 latency_ms=31
+2025-08-19T01:07:22Z INFO request_id=req-59457486 service=edge-gateway request completed method=GET path=/v1/rooms/479 status=200 latency_ms=94
+2025-08-19T01:09:30Z INFO request_id=req-66748302 service=edge-gateway slow request method=GET path=/v1/rooms/125 status=200 latency_ms=1297
+2025-08-19T01:12:29Z INFO request_id=req-19597303 service=edge-gateway health check passed zone=north status=200
+2025-08-19T01:14:55Z INFO request_id=req-88974397 service=edge-gateway slow request method=GET path=/v1/rooms/814 status=200 latency_ms=1015
+2025-08-19T01:17:25Z INFO request_id=req-86247105 service=edge-gateway request completed method=GET path=/v1/rooms/793 status=200 latency_ms=142
+2025-08-19T01:19:55Z INFO request_id=req-93127857 service=edge-gateway request completed method=GET path=/v1/rooms/126 status=200 latency_ms=154
+2025-08-19T01:22:20Z INFO request_id=req-39073343 service=edge-gateway websocket handshake completed room=room-319 status=101
+2025-08-19T01:25:24Z DEBUG request_id=req-71349377 service=edge-gateway websocket handshake completed room=room-510 status=101
+2025-08-19T01:27:35Z INFO request_id=req-75090051 service=edge-gateway health check passed zone=north status=200
+2025-08-19T01:30:08Z INFO request_id=req-83455699 service=edge-gateway websocket handshake completed room=room-798 status=101
+2025-08-19T01:33:01Z WARN request_id=req-44806483 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T01:35:39Z INFO request_id=req-54179513 service=edge-gateway slow request method=GET path=/v1/rooms/100 status=200 latency_ms=1374
+2025-08-19T01:38:02Z INFO request_id=req-56619721 service=edge-gateway websocket handshake completed room=room-223 status=101
+2025-08-19T01:40:48Z INFO request_id=req-79818581 service=edge-gateway request completed method=GET path=/v1/rooms/446 status=200 latency_ms=150
+2025-08-19T01:43:11Z DEBUG request_id=req-73847779 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T01:45:34Z INFO request_id=req-11965347 service=edge-gateway health check passed zone=north status=200
+2025-08-19T01:48:11Z INFO request_id=req-69718364 service=edge-gateway websocket handshake completed room=room-343 status=101
+2025-08-19T01:50:46Z INFO request_id=req-69549522 service=edge-gateway slow request method=GET path=/v1/rooms/587 status=200 latency_ms=834
+2025-08-19T01:53:08Z INFO request_id=req-18523350 service=edge-gateway slow request method=GET path=/v1/rooms/678 status=200 latency_ms=1340
+2025-08-19T01:55:54Z DEBUG request_id=req-49953203 service=edge-gateway health check passed zone=north status=200
+2025-08-19T01:58:47Z WARN request_id=req-56834756 service=edge-gateway request completed method=GET path=/v1/rooms/595 status=200 latency_ms=90
+2025-08-19T02:01:19Z INFO request_id=req-74154486 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T02:03:26Z INFO request_id=req-23274945 service=edge-gateway slow request method=GET path=/v1/rooms/347 status=200 latency_ms=1166
+2025-08-19T02:06:16Z WARN request_id=req-91196970 service=edge-gateway slow request method=GET path=/v1/rooms/987 status=200 latency_ms=1233
+2025-08-19T02:09:01Z INFO request_id=req-92162102 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T02:11:13Z WARN request_id=req-91050577 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T02:14:11Z INFO request_id=req-61006926 service=edge-gateway websocket handshake completed room=room-924 status=101
+2025-08-19T02:16:38Z DEBUG request_id=req-92018579 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T02:19:23Z WARN request_id=req-43751558 service=edge-gateway websocket handshake completed room=room-356 status=101
+2025-08-19T02:21:38Z INFO request_id=req-40766011 service=edge-gateway websocket handshake completed room=room-723 status=101
+2025-08-19T02:24:14Z INFO request_id=req-60534997 service=edge-gateway request completed method=GET path=/v1/rooms/125 status=200 latency_ms=34
+2025-08-19T02:26:45Z INFO request_id=req-36749804 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T02:29:36Z WARN request_id=req-77623760 service=edge-gateway request completed method=GET path=/v1/rooms/625 status=200 latency_ms=137
+2025-08-19T02:31:50Z INFO request_id=req-71138676 service=edge-gateway slow request method=GET path=/v1/rooms/246 status=200 latency_ms=846
+2025-08-19T02:34:40Z DEBUG request_id=req-58775881 service=edge-gateway slow request method=GET path=/v1/rooms/164 status=200 latency_ms=938
+2025-08-19T02:37:09Z DEBUG request_id=req-23589242 service=edge-gateway slow request method=GET path=/v1/rooms/982 status=200 latency_ms=1474
+2025-08-19T02:39:36Z INFO request_id=req-96885126 service=edge-gateway health check passed zone=north status=200
+2025-08-19T02:42:06Z INFO request_id=req-51447967 service=edge-gateway request completed method=GET path=/v1/rooms/195 status=200 latency_ms=35
+2025-08-19T02:44:40Z DEBUG request_id=req-17252585 service=edge-gateway request completed method=GET path=/v1/rooms/660 status=200 latency_ms=161
+2025-08-19T02:47:10Z DEBUG request_id=req-59732964 service=edge-gateway health check passed zone=north status=200
+2025-08-19T02:50:15Z INFO request_id=req-72188339 service=edge-gateway request completed method=GET path=/v1/rooms/322 status=200 latency_ms=15
+2025-08-19T02:52:19Z DEBUG request_id=req-74392490 service=edge-gateway slow request method=GET path=/v1/rooms/857 status=200 latency_ms=1015
+2025-08-19T02:54:58Z DEBUG request_id=req-31440452 service=edge-gateway request completed method=GET path=/v1/rooms/627 status=200 latency_ms=40
+2025-08-19T02:57:43Z INFO request_id=req-58107589 service=edge-gateway request completed method=GET path=/v1/rooms/767 status=200 latency_ms=136
+2025-08-19T03:00:12Z WARN request_id=req-21563028 service=edge-gateway health check passed zone=north status=200
+2025-08-19T03:02:35Z DEBUG request_id=req-99908830 service=edge-gateway health check passed zone=north status=200
+2025-08-19T03:05:14Z INFO request_id=req-31111286 service=edge-gateway websocket handshake completed room=room-732 status=101
+2025-08-19T03:07:43Z WARN request_id=req-76367101 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T03:10:32Z DEBUG request_id=req-48420913 service=edge-gateway health check passed zone=north status=200
+2025-08-19T03:13:16Z DEBUG request_id=req-77994653 service=edge-gateway health check passed zone=north status=200
+2025-08-19T03:15:36Z WARN request_id=req-77350162 service=edge-gateway health check passed zone=north status=200
+2025-08-19T03:18:30Z WARN request_id=req-95831575 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T03:20:45Z INFO request_id=req-34248547 service=edge-gateway health check passed zone=north status=200
+2025-08-19T03:23:25Z INFO request_id=req-84357742 service=edge-gateway request completed method=GET path=/v1/rooms/637 status=200 latency_ms=91
+2025-08-19T03:26:11Z DEBUG request_id=req-52372327 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T03:28:19Z INFO request_id=req-50321507 service=edge-gateway request completed method=GET path=/v1/rooms/511 status=200 latency_ms=42
+2025-08-19T03:31:06Z INFO request_id=req-76281615 service=edge-gateway slow request method=GET path=/v1/rooms/352 status=200 latency_ms=852
+2025-08-19T03:33:51Z DEBUG request_id=req-35519324 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T03:36:16Z INFO request_id=req-35976231 service=edge-gateway request completed method=GET path=/v1/rooms/289 status=200 latency_ms=89
+2025-08-19T03:38:55Z DEBUG request_id=req-54768687 service=edge-gateway request completed method=GET path=/v1/rooms/793 status=200 latency_ms=157
+2025-08-19T03:41:09Z INFO request_id=req-35799816 service=edge-gateway health check passed zone=north status=200
+2025-08-19T03:43:53Z DEBUG request_id=req-47655503 service=edge-gateway websocket handshake completed room=room-274 status=101
+2025-08-19T03:46:26Z INFO request_id=req-12466258 service=edge-gateway request completed method=GET path=/v1/rooms/301 status=200 latency_ms=33
+2025-08-19T03:48:54Z INFO request_id=req-21424519 service=edge-gateway request completed method=GET path=/v1/rooms/630 status=200 latency_ms=156
+2025-08-19T03:51:37Z INFO request_id=req-65624344 service=edge-gateway websocket handshake completed room=room-362 status=101
+2025-08-19T03:54:17Z WARN request_id=req-49561437 service=edge-gateway health check passed zone=north status=200
+2025-08-19T03:57:01Z INFO request_id=req-76735458 service=edge-gateway request completed method=GET path=/v1/rooms/632 status=200 latency_ms=49
+2025-08-19T03:59:39Z INFO request_id=req-84372298 service=edge-gateway slow request method=GET path=/v1/rooms/499 status=200 latency_ms=1322
+2025-08-19T04:02:13Z INFO request_id=req-49143198 service=edge-gateway websocket handshake completed room=room-184 status=101
+2025-08-19T04:04:27Z DEBUG request_id=req-95111043 service=edge-gateway websocket handshake completed room=room-201 status=101
+2025-08-19T04:07:22Z INFO request_id=req-88999861 service=edge-gateway slow request method=GET path=/v1/rooms/961 status=200 latency_ms=1084
+2025-08-19T04:09:30Z INFO request_id=req-52952401 service=edge-gateway request completed method=GET path=/v1/rooms/223 status=200 latency_ms=88
+2025-08-19T04:12:27Z INFO request_id=req-16475306 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T04:14:40Z INFO request_id=req-13617446 service=edge-gateway request completed method=GET path=/v1/rooms/794 status=200 latency_ms=84
+2025-08-19T04:17:20Z INFO request_id=req-26025118 service=edge-gateway request completed method=GET path=/v1/rooms/376 status=200 latency_ms=78
+2025-08-19T04:20:03Z INFO request_id=req-14799115 service=edge-gateway health check passed zone=north status=200
+2025-08-19T04:22:51Z INFO request_id=req-89816849 service=edge-gateway websocket handshake completed room=room-102 status=101
+2025-08-19T04:25:00Z INFO request_id=req-56450868 service=edge-gateway request completed method=GET path=/v1/rooms/401 status=200 latency_ms=78
+2025-08-19T04:27:46Z INFO request_id=req-49483498 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T04:30:20Z INFO request_id=req-59323094 service=edge-gateway health check passed zone=north status=200
+2025-08-19T04:33:05Z DEBUG request_id=req-14924594 service=edge-gateway health check passed zone=north status=200
+2025-08-19T04:35:41Z WARN request_id=req-79457384 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T04:37:59Z DEBUG request_id=req-44448016 service=edge-gateway slow request method=GET path=/v1/rooms/866 status=200 latency_ms=1212
+2025-08-19T04:40:41Z DEBUG request_id=req-33879483 service=edge-gateway request completed method=GET path=/v1/rooms/258 status=200 latency_ms=110
+2025-08-19T04:43:05Z INFO request_id=req-73622417 service=edge-gateway health check passed zone=north status=200
+2025-08-19T04:45:52Z INFO request_id=req-79501161 service=edge-gateway slow request method=GET path=/v1/rooms/639 status=200 latency_ms=870
+2025-08-19T04:48:03Z DEBUG request_id=req-65703568 service=edge-gateway websocket handshake completed room=room-622 status=101
+2025-08-19T04:50:36Z INFO request_id=req-51120433 service=edge-gateway slow request method=GET path=/v1/rooms/480 status=200 latency_ms=1253
+2025-08-19T04:53:16Z WARN request_id=req-28640967 service=edge-gateway slow request method=GET path=/v1/rooms/468 status=200 latency_ms=1467
+2025-08-19T04:55:42Z INFO request_id=req-79834584 service=edge-gateway request completed method=GET path=/v1/rooms/976 status=200 latency_ms=17
+2025-08-19T04:58:39Z INFO request_id=req-25115503 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T05:01:10Z INFO request_id=req-40526235 service=edge-gateway slow request method=GET path=/v1/rooms/252 status=200 latency_ms=1281
+2025-08-19T05:03:47Z WARN request_id=req-96806293 service=edge-gateway request completed method=GET path=/v1/rooms/854 status=200 latency_ms=53
+2025-08-19T05:06:30Z WARN request_id=req-78864024 service=edge-gateway slow request method=GET path=/v1/rooms/107 status=200 latency_ms=945
+2025-08-19T05:08:43Z INFO request_id=req-98306383 service=edge-gateway request completed method=GET path=/v1/rooms/468 status=200 latency_ms=134
+2025-08-19T05:11:21Z INFO request_id=req-38772558 service=edge-gateway slow request method=GET path=/v1/rooms/477 status=200 latency_ms=903
+2025-08-19T05:14:06Z INFO request_id=req-70285267 service=edge-gateway websocket handshake completed room=room-232 status=101
+2025-08-19T05:16:20Z INFO request_id=req-25163747 service=edge-gateway request completed method=GET path=/v1/rooms/584 status=200 latency_ms=171
+2025-08-19T05:19:19Z DEBUG request_id=req-69206678 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T05:21:59Z INFO request_id=req-36937670 service=edge-gateway slow request method=GET path=/v1/rooms/424 status=200 latency_ms=960
+2025-08-19T05:24:08Z WARN request_id=req-77603253 service=edge-gateway request completed method=GET path=/v1/rooms/563 status=200 latency_ms=129
+2025-08-19T05:26:43Z WARN request_id=req-27996015 service=edge-gateway health check passed zone=north status=200
+2025-08-19T05:29:09Z DEBUG request_id=req-68213655 service=edge-gateway slow request method=GET path=/v1/rooms/296 status=200 latency_ms=1216
+2025-08-19T05:32:10Z DEBUG request_id=req-33395877 service=edge-gateway slow request method=GET path=/v1/rooms/468 status=200 latency_ms=1282
+2025-08-19T05:34:19Z INFO request_id=req-59478444 service=edge-gateway slow request method=GET path=/v1/rooms/752 status=200 latency_ms=730
+2025-08-19T05:37:11Z DEBUG request_id=req-42026163 service=edge-gateway websocket handshake completed room=room-379 status=101
+2025-08-19T05:39:35Z INFO request_id=req-92301256 service=edge-gateway request completed method=GET path=/v1/rooms/577 status=200 latency_ms=96
+2025-08-19T05:42:34Z WARN request_id=req-98623044 service=edge-gateway health check passed zone=north status=200
+2025-08-19T05:44:34Z INFO request_id=req-36075848 service=edge-gateway websocket handshake completed room=room-611 status=101
+2025-08-19T05:47:09Z INFO request_id=req-24406685 service=edge-gateway health check passed zone=north status=200
+2025-08-19T05:49:54Z INFO request_id=req-85036598 service=edge-gateway health check passed zone=north status=200
+2025-08-19T05:52:23Z WARN request_id=req-21592165 service=edge-gateway request completed method=GET path=/v1/rooms/532 status=200 latency_ms=32
+2025-08-19T05:55:03Z INFO request_id=req-46336976 service=edge-gateway request completed method=GET path=/v1/rooms/870 status=200 latency_ms=113
+2025-08-19T05:57:50Z WARN request_id=req-35589138 service=edge-gateway slow request method=GET path=/v1/rooms/593 status=200 latency_ms=1227
+2025-08-19T06:00:17Z INFO request_id=req-31421596 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T06:02:42Z INFO request_id=req-21304139 service=edge-gateway websocket handshake completed room=room-629 status=101
+2025-08-19T06:05:15Z INFO request_id=req-10620322 service=edge-gateway slow request method=GET path=/v1/rooms/286 status=200 latency_ms=933
+2025-08-19T06:08:05Z INFO request_id=req-51113760 service=edge-gateway websocket handshake completed room=room-145 status=101
+2025-08-19T06:10:40Z WARN request_id=req-70860134 service=edge-gateway request completed method=GET path=/v1/rooms/139 status=200 latency_ms=79
+2025-08-19T06:13:13Z INFO request_id=req-63995437 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T06:15:43Z DEBUG request_id=req-25366416 service=edge-gateway health check passed zone=north status=200
+2025-08-19T06:18:34Z INFO request_id=req-24989069 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T06:21:08Z DEBUG request_id=req-97716256 service=edge-gateway slow request method=GET path=/v1/rooms/277 status=200 latency_ms=682
+2025-08-19T06:23:17Z INFO request_id=req-82818161 service=edge-gateway websocket handshake completed room=room-804 status=101
+2025-08-19T06:25:44Z INFO request_id=req-52616932 service=edge-gateway websocket handshake completed room=room-608 status=101
+2025-08-19T06:28:40Z WARN request_id=req-94413594 service=edge-gateway slow request method=GET path=/v1/rooms/731 status=200 latency_ms=1247
+2025-08-19T06:31:15Z INFO request_id=req-66773854 service=edge-gateway websocket handshake completed room=room-211 status=101
+2025-08-19T06:33:54Z WARN request_id=req-28454997 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T06:36:25Z INFO request_id=req-52221480 service=edge-gateway request completed method=GET path=/v1/rooms/318 status=200 latency_ms=71
+2025-08-19T06:39:08Z INFO request_id=req-52359504 service=edge-gateway websocket handshake completed room=room-930 status=101
+2025-08-19T06:41:31Z INFO request_id=req-29942914 service=edge-gateway health check passed zone=north status=200
+2025-08-19T06:43:42Z WARN request_id=req-17459569 service=edge-gateway health check passed zone=north status=200
+2025-08-19T06:46:41Z WARN request_id=req-51962271 service=edge-gateway slow request method=GET path=/v1/rooms/252 status=200 latency_ms=1303
+2025-08-19T06:49:22Z INFO request_id=req-87694804 service=edge-gateway websocket handshake completed room=room-441 status=101
+2025-08-19T06:51:55Z WARN request_id=req-43525128 service=edge-gateway health check passed zone=north status=200
+2025-08-19T06:54:16Z INFO request_id=req-21436482 service=edge-gateway health check passed zone=north status=200
+2025-08-19T06:57:01Z INFO request_id=req-13192855 service=edge-gateway request completed method=GET path=/v1/rooms/530 status=200 latency_ms=147
+2025-08-19T06:59:12Z DEBUG request_id=req-75785480 service=edge-gateway slow request method=GET path=/v1/rooms/745 status=200 latency_ms=1013
+2025-08-19T07:01:54Z INFO request_id=req-17296609 service=edge-gateway slow request method=GET path=/v1/rooms/289 status=200 latency_ms=1198
+2025-08-19T07:04:49Z INFO request_id=req-31426321 service=edge-gateway slow request method=GET path=/v1/rooms/641 status=200 latency_ms=1290
+2025-08-19T07:07:25Z INFO request_id=req-92967772 service=edge-gateway request completed method=GET path=/v1/rooms/314 status=200 latency_ms=23
+2025-08-19T07:09:41Z INFO request_id=req-75111219 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T07:12:34Z DEBUG request_id=req-24009908 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T07:14:41Z WARN request_id=req-96123148 service=edge-gateway slow request method=GET path=/v1/rooms/510 status=200 latency_ms=1400
+2025-08-19T07:17:37Z DEBUG request_id=req-78806428 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T07:20:07Z INFO request_id=req-42271061 service=edge-gateway slow request method=GET path=/v1/rooms/297 status=200 latency_ms=906
+2025-08-19T07:22:33Z DEBUG request_id=req-34447398 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T07:25:23Z INFO request_id=req-88853591 service=edge-gateway websocket handshake completed room=room-838 status=101
+2025-08-19T07:27:48Z WARN request_id=req-51289222 service=edge-gateway health check passed zone=north status=200
+2025-08-19T07:30:12Z WARN request_id=req-16780360 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T07:32:35Z INFO request_id=req-96809294 service=edge-gateway websocket handshake completed room=room-478 status=101
+2025-08-19T07:35:39Z INFO request_id=req-78991451 service=edge-gateway websocket handshake completed room=room-164 status=101
+2025-08-19T07:38:16Z WARN request_id=req-71204510 service=edge-gateway slow request method=GET path=/v1/rooms/737 status=200 latency_ms=772
+2025-08-19T07:40:37Z INFO request_id=req-67221505 service=edge-gateway slow request method=GET path=/v1/rooms/775 status=200 latency_ms=1460
+2025-08-19T07:43:16Z INFO request_id=req-59009146 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T07:45:54Z DEBUG request_id=req-78611868 service=edge-gateway websocket handshake completed room=room-515 status=101
+2025-08-19T07:48:21Z DEBUG request_id=req-21029530 service=edge-gateway health check passed zone=north status=200
+2025-08-19T07:50:35Z DEBUG request_id=req-44743566 service=edge-gateway request completed method=GET path=/v1/rooms/939 status=200 latency_ms=58
+2025-08-19T07:53:27Z DEBUG request_id=req-88838742 service=edge-gateway websocket handshake completed room=room-277 status=101
+2025-08-19T07:56:01Z INFO request_id=req-33506140 service=edge-gateway websocket handshake completed room=room-972 status=101
+2025-08-19T07:58:31Z INFO request_id=req-70365898 service=edge-gateway health check passed zone=north status=200
+2025-08-19T08:01:18Z INFO request_id=req-45885095 service=edge-gateway request completed method=GET path=/v1/rooms/207 status=200 latency_ms=110
+2025-08-19T08:03:54Z INFO request_id=req-62591765 service=edge-gateway slow request method=GET path=/v1/rooms/709 status=200 latency_ms=1477
+2025-08-19T08:06:16Z INFO request_id=req-51819137 service=edge-gateway slow request method=GET path=/v1/rooms/543 status=200 latency_ms=1168
+2025-08-19T08:08:57Z INFO request_id=req-48582075 service=edge-gateway slow request method=GET path=/v1/rooms/399 status=200 latency_ms=1210
+2025-08-19T08:11:17Z INFO request_id=req-29854573 service=edge-gateway request completed method=GET path=/v1/rooms/849 status=200 latency_ms=59
+2025-08-19T08:14:02Z INFO request_id=req-36607619 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T08:16:47Z INFO request_id=req-23601973 service=edge-gateway health check passed zone=north status=200
+2025-08-19T08:18:52Z INFO request_id=req-36710497 service=edge-gateway health check passed zone=north status=200
+2025-08-19T08:21:39Z DEBUG request_id=req-18405111 service=edge-gateway request completed method=GET path=/v1/rooms/904 status=200 latency_ms=31
+2025-08-19T08:24:00Z INFO request_id=req-67443033 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T08:26:59Z WARN request_id=req-34347610 service=edge-gateway slow request method=GET path=/v1/rooms/876 status=200 latency_ms=995
+2025-08-19T08:29:37Z INFO request_id=req-28829069 service=edge-gateway websocket handshake completed room=room-822 status=101
+2025-08-19T08:32:10Z DEBUG request_id=req-46580197 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T08:34:20Z INFO request_id=req-93579647 service=edge-gateway health check passed zone=north status=200
+2025-08-19T08:37:10Z INFO request_id=req-70103282 service=edge-gateway request completed method=GET path=/v1/rooms/742 status=200 latency_ms=17
+2025-08-19T08:39:53Z INFO request_id=req-79960748 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T08:42:02Z INFO request_id=req-97454427 service=edge-gateway slow request method=GET path=/v1/rooms/671 status=200 latency_ms=800
+2025-08-19T08:44:34Z INFO request_id=req-62605161 service=edge-gateway health check passed zone=north status=200
+2025-08-19T08:47:22Z INFO request_id=req-84148498 service=edge-gateway websocket handshake completed room=room-146 status=101
+2025-08-19T08:50:11Z INFO request_id=req-62006642 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T08:52:28Z INFO request_id=req-28452308 service=edge-gateway websocket handshake completed room=room-806 status=101
+2025-08-19T08:55:21Z INFO request_id=req-31886581 service=edge-gateway request completed method=GET path=/v1/rooms/658 status=200 latency_ms=71
+2025-08-19T08:57:26Z DEBUG request_id=req-83500292 service=edge-gateway websocket handshake completed room=room-946 status=101
+2025-08-19T09:00:24Z WARN request_id=req-60709390 service=edge-gateway request completed method=GET path=/v1/rooms/254 status=200 latency_ms=135
+2025-08-19T09:02:37Z INFO request_id=req-99306925 service=edge-gateway health check passed zone=north status=200
+2025-08-19T09:05:17Z WARN request_id=req-74663648 service=edge-gateway request completed method=GET path=/v1/rooms/311 status=200 latency_ms=65
+2025-08-19T09:07:49Z WARN request_id=req-36512830 service=edge-gateway request completed method=GET path=/v1/rooms/477 status=200 latency_ms=120
+2025-08-19T09:10:20Z INFO request_id=req-69427446 service=edge-gateway request completed method=GET path=/v1/rooms/697 status=200 latency_ms=9
+2025-08-19T09:13:00Z INFO request_id=req-40548450 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T09:15:28Z INFO request_id=req-26654278 service=edge-gateway websocket handshake completed room=room-561 status=101
+2025-08-19T09:18:03Z INFO request_id=req-21759978 service=edge-gateway slow request method=GET path=/v1/rooms/507 status=200 latency_ms=1481
+2025-08-19T09:20:55Z INFO request_id=req-39079900 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T09:23:25Z INFO request_id=req-75789095 service=edge-gateway request completed method=GET path=/v1/rooms/642 status=200 latency_ms=55
+2025-08-19T09:26:04Z INFO request_id=req-88228055 service=edge-gateway request completed method=GET path=/v1/rooms/665 status=200 latency_ms=8
+2025-08-19T09:28:32Z INFO request_id=req-81677466 service=edge-gateway health check passed zone=north status=200
+2025-08-19T09:31:07Z INFO request_id=req-75918560 service=edge-gateway health check passed zone=north status=200
+2025-08-19T09:33:54Z INFO request_id=req-96229457 service=edge-gateway slow request method=GET path=/v1/rooms/305 status=200 latency_ms=1141
+2025-08-19T09:36:14Z DEBUG request_id=req-52035378 service=edge-gateway request completed method=GET path=/v1/rooms/687 status=200 latency_ms=116
+2025-08-19T09:38:39Z INFO request_id=req-51530602 service=edge-gateway health check passed zone=north status=200
+2025-08-19T09:41:17Z INFO request_id=req-54555306 service=edge-gateway health check passed zone=north status=200
+2025-08-19T09:43:43Z DEBUG request_id=req-98395321 service=edge-gateway slow request method=GET path=/v1/rooms/837 status=200 latency_ms=1411
+2025-08-19T09:46:21Z INFO request_id=req-16333046 service=edge-gateway slow request method=GET path=/v1/rooms/705 status=200 latency_ms=911
+2025-08-19T09:49:24Z INFO request_id=req-38860006 service=edge-gateway websocket handshake completed room=room-916 status=101
+2025-08-19T09:51:37Z INFO request_id=req-59023533 service=edge-gateway request completed method=GET path=/v1/rooms/507 status=200 latency_ms=13
+2025-08-19T09:54:22Z DEBUG request_id=req-36458708 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T09:56:37Z INFO request_id=req-80466683 service=edge-gateway slow request method=GET path=/v1/rooms/677 status=200 latency_ms=724
+2025-08-19T09:59:40Z WARN request_id=req-70140891 service=edge-gateway slow request method=GET path=/v1/rooms/282 status=200 latency_ms=1085
+2025-08-19T10:01:53Z INFO request_id=req-17723618 service=edge-gateway request completed method=GET path=/v1/rooms/853 status=200 latency_ms=78
+2025-08-19T10:04:43Z WARN request_id=req-51673250 service=edge-gateway request completed method=GET path=/v1/rooms/802 status=200 latency_ms=173
+2025-08-19T10:07:12Z INFO request_id=req-69746446 service=edge-gateway slow request method=GET path=/v1/rooms/733 status=200 latency_ms=843
+2025-08-19T10:09:37Z WARN request_id=req-46260237 service=edge-gateway websocket handshake completed room=room-638 status=101
+2025-08-19T10:12:00Z DEBUG request_id=req-68701483 service=edge-gateway websocket handshake completed room=room-886 status=101
+2025-08-19T10:14:51Z INFO request_id=req-92227246 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T10:17:20Z INFO request_id=req-78390611 service=edge-gateway request completed method=GET path=/v1/rooms/827 status=200 latency_ms=147
+2025-08-19T10:19:42Z INFO request_id=req-92267898 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T10:22:20Z INFO request_id=req-86224253 service=edge-gateway request completed method=GET path=/v1/rooms/751 status=200 latency_ms=116
+2025-08-19T10:25:19Z INFO request_id=req-28884701 service=edge-gateway slow request method=GET path=/v1/rooms/722 status=200 latency_ms=1405
+2025-08-19T10:27:33Z DEBUG request_id=req-70191943 service=edge-gateway websocket handshake completed room=room-450 status=101
+2025-08-19T10:30:07Z INFO request_id=req-35577705 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T10:32:56Z WARN request_id=req-39782717 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T10:35:41Z INFO request_id=req-19389846 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T10:37:55Z INFO request_id=req-54420559 service=edge-gateway slow request method=GET path=/v1/rooms/661 status=200 latency_ms=810
+2025-08-19T10:40:23Z INFO request_id=req-75145862 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T10:43:19Z DEBUG request_id=req-66961567 service=edge-gateway request completed method=GET path=/v1/rooms/550 status=200 latency_ms=58
+2025-08-19T10:45:42Z WARN request_id=req-38128790 service=edge-gateway websocket handshake completed room=room-360 status=101
+2025-08-19T10:48:32Z INFO request_id=req-14212285 service=edge-gateway slow request method=GET path=/v1/rooms/274 status=200 latency_ms=1395
+2025-08-19T10:51:01Z INFO request_id=req-44952500 service=edge-gateway health check passed zone=north status=200
+2025-08-19T10:53:11Z INFO request_id=req-87482775 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T10:55:55Z INFO request_id=req-24660537 service=edge-gateway health check passed zone=north status=200
+2025-08-19T10:58:30Z INFO request_id=req-36003909 service=edge-gateway health check passed zone=north status=200
+2025-08-19T11:01:16Z DEBUG request_id=req-71427481 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T11:03:29Z INFO request_id=req-50491453 service=edge-gateway websocket handshake completed room=room-798 status=101
+2025-08-19T11:06:19Z WARN request_id=req-39052466 service=edge-gateway slow request method=GET path=/v1/rooms/434 status=200 latency_ms=957
+2025-08-19T11:08:39Z INFO request_id=req-60348215 service=edge-gateway slow request method=GET path=/v1/rooms/567 status=200 latency_ms=1050
+2025-08-19T11:11:11Z INFO request_id=req-45450893 service=edge-gateway health check passed zone=north status=200
+2025-08-19T11:14:01Z INFO request_id=req-61955248 service=edge-gateway websocket handshake completed room=room-115 status=101
+2025-08-19T11:16:50Z INFO request_id=req-32700570 service=edge-gateway slow request method=GET path=/v1/rooms/964 status=200 latency_ms=1334
+2025-08-19T11:18:51Z WARN request_id=req-49588022 service=edge-gateway websocket handshake completed room=room-940 status=101
+2025-08-19T11:21:34Z DEBUG request_id=req-61691217 service=edge-gateway websocket handshake completed room=room-705 status=101
+2025-08-19T11:24:19Z WARN request_id=req-31431251 service=edge-gateway websocket handshake completed room=room-355 status=101
+2025-08-19T11:26:56Z DEBUG request_id=req-35542026 service=edge-gateway request completed method=GET path=/v1/rooms/231 status=200 latency_ms=115
+2025-08-19T11:29:19Z INFO request_id=req-25409402 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T11:32:03Z INFO request_id=req-95276547 service=edge-gateway websocket handshake completed room=room-901 status=101
+2025-08-19T11:34:21Z INFO request_id=req-20779911 service=edge-gateway websocket handshake completed room=room-122 status=101
+2025-08-19T11:37:24Z INFO request_id=req-32153180 service=edge-gateway slow request method=GET path=/v1/rooms/150 status=200 latency_ms=1016
+2025-08-19T11:39:51Z WARN request_id=req-99090045 service=edge-gateway health check passed zone=north status=200
+2025-08-19T11:42:17Z DEBUG request_id=req-60441479 service=edge-gateway health check passed zone=north status=200
+2025-08-19T11:45:07Z WARN request_id=req-62723532 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T11:47:31Z INFO request_id=req-30715922 service=edge-gateway health check passed zone=north status=200
+2025-08-19T11:49:59Z DEBUG request_id=req-50090424 service=edge-gateway request completed method=GET path=/v1/rooms/257 status=200 latency_ms=151
+2025-08-19T11:52:46Z WARN request_id=req-24732102 service=edge-gateway request completed method=GET path=/v1/rooms/927 status=200 latency_ms=145
+2025-08-19T11:55:17Z WARN request_id=req-60002587 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T11:57:33Z INFO request_id=req-79909676 service=edge-gateway health check passed zone=north status=200
+2025-08-19T12:00:29Z DEBUG request_id=req-11540147 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T12:03:06Z INFO request_id=req-59326344 service=edge-gateway health check passed zone=north status=200
+2025-08-19T12:05:15Z INFO request_id=req-31293561 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T12:07:44Z DEBUG request_id=req-33639838 service=edge-gateway slow request method=GET path=/v1/rooms/539 status=200 latency_ms=707
+2025-08-19T12:10:32Z WARN request_id=req-91520383 service=edge-gateway slow request method=GET path=/v1/rooms/783 status=200 latency_ms=781
+2025-08-19T12:13:17Z WARN request_id=req-89445879 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T12:15:56Z INFO request_id=req-81941494 service=edge-gateway websocket handshake completed room=room-715 status=101
+2025-08-19T12:18:09Z WARN request_id=req-34997308 service=edge-gateway request completed method=GET path=/v1/rooms/965 status=200 latency_ms=66
+2025-08-19T12:20:49Z INFO request_id=req-73345544 service=edge-gateway health check passed zone=north status=200
+2025-08-19T12:23:23Z DEBUG request_id=req-79507526 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T12:25:51Z INFO request_id=req-11688639 service=edge-gateway slow request method=GET path=/v1/rooms/699 status=200 latency_ms=1399
+2025-08-19T12:28:27Z INFO request_id=req-80681552 service=edge-gateway websocket handshake completed room=room-634 status=101
+2025-08-19T12:31:02Z DEBUG request_id=req-34914966 service=edge-gateway request completed method=GET path=/v1/rooms/826 status=200 latency_ms=92
+2025-08-19T12:33:41Z DEBUG request_id=req-87440277 service=edge-gateway websocket handshake completed room=room-971 status=101
+2025-08-19T12:36:25Z INFO request_id=req-80368945 service=edge-gateway health check passed zone=north status=200
+2025-08-19T12:38:49Z DEBUG request_id=req-24500181 service=edge-gateway websocket handshake completed room=room-968 status=101
+2025-08-19T12:41:36Z INFO request_id=req-88014069 service=edge-gateway request completed method=GET path=/v1/rooms/687 status=200 latency_ms=13
+2025-08-19T12:44:00Z INFO request_id=req-74343760 service=edge-gateway request completed method=GET path=/v1/rooms/563 status=200 latency_ms=36
+2025-08-19T12:46:41Z WARN request_id=req-54803643 service=edge-gateway slow request method=GET path=/v1/rooms/672 status=200 latency_ms=1411
+2025-08-19T12:49:19Z INFO request_id=req-34398359 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T12:51:37Z INFO request_id=req-66056219 service=edge-gateway request completed method=GET path=/v1/rooms/698 status=200 latency_ms=51
+2025-08-19T12:54:31Z INFO request_id=req-26951721 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T12:56:40Z INFO request_id=req-83872309 service=edge-gateway slow request method=GET path=/v1/rooms/262 status=200 latency_ms=1284
+2025-08-19T12:59:10Z INFO request_id=req-77192600 service=edge-gateway request completed method=GET path=/v1/rooms/794 status=200 latency_ms=24
+2025-08-19T13:01:47Z INFO request_id=req-89072178 service=edge-gateway slow request method=GET path=/v1/rooms/849 status=200 latency_ms=777
+2025-08-19T13:04:39Z INFO request_id=req-44652939 service=edge-gateway slow request method=GET path=/v1/rooms/243 status=200 latency_ms=1124
+2025-08-19T13:07:22Z INFO request_id=req-97607792 service=edge-gateway health check passed zone=north status=200
+2025-08-19T13:09:29Z INFO request_id=req-65950174 service=edge-gateway websocket handshake completed room=room-873 status=101
+2025-08-19T13:12:27Z INFO request_id=req-32557638 service=edge-gateway request completed method=GET path=/v1/rooms/705 status=200 latency_ms=21
+2025-08-19T13:14:35Z WARN request_id=req-26749343 service=edge-gateway health check passed zone=north status=200
+2025-08-19T13:17:14Z DEBUG request_id=req-49435268 service=edge-gateway request completed method=GET path=/v1/rooms/706 status=200 latency_ms=102
+2025-08-19T13:20:06Z INFO request_id=req-16652155 service=edge-gateway request completed method=GET path=/v1/rooms/800 status=200 latency_ms=168
+2025-08-19T13:22:42Z INFO request_id=req-96942833 service=edge-gateway slow request method=GET path=/v1/rooms/151 status=200 latency_ms=1413
+2025-08-19T13:24:55Z DEBUG request_id=req-35288753 service=edge-gateway health check passed zone=north status=200
+2025-08-19T13:27:32Z WARN request_id=req-51198998 service=edge-gateway slow request method=GET path=/v1/rooms/962 status=200 latency_ms=706
+2025-08-19T13:30:08Z WARN request_id=req-91742648 service=edge-gateway health check passed zone=north status=200
+2025-08-19T13:32:59Z INFO request_id=req-34049826 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T13:35:24Z DEBUG request_id=req-55002590 service=edge-gateway request completed method=GET path=/v1/rooms/893 status=200 latency_ms=114
+2025-08-19T13:37:57Z WARN request_id=req-38251564 service=edge-gateway request completed method=GET path=/v1/rooms/935 status=200 latency_ms=124
+2025-08-19T13:40:42Z INFO request_id=req-49965886 service=edge-gateway slow request method=GET path=/v1/rooms/483 status=200 latency_ms=665
+2025-08-19T13:42:54Z WARN request_id=req-80982587 service=edge-gateway health check passed zone=north status=200
+2025-08-19T13:45:49Z INFO request_id=req-98827687 service=edge-gateway websocket handshake completed room=room-416 status=101
+2025-08-19T13:48:34Z INFO request_id=req-62426734 service=edge-gateway request completed method=GET path=/v1/rooms/504 status=200 latency_ms=143
+2025-08-19T13:50:41Z DEBUG request_id=req-35421565 service=edge-gateway slow request method=GET path=/v1/rooms/412 status=200 latency_ms=1080
+2025-08-19T13:53:22Z INFO request_id=req-64806505 service=edge-gateway health check passed zone=north status=200
+2025-08-19T13:55:49Z INFO request_id=req-60225957 service=edge-gateway health check passed zone=north status=200
+2025-08-19T13:58:49Z WARN request_id=req-66889642 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T14:01:14Z INFO request_id=req-85179507 service=edge-gateway slow request method=GET path=/v1/rooms/506 status=200 latency_ms=1029
+2025-08-19T14:03:47Z WARN request_id=req-46717857 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T14:06:32Z DEBUG request_id=req-93913702 service=edge-gateway websocket handshake completed room=room-872 status=101
+2025-08-19T14:08:47Z INFO request_id=req-87494771 service=edge-gateway request completed method=GET path=/v1/rooms/190 status=200 latency_ms=114
+2025-08-19T14:11:41Z INFO request_id=req-33022835 service=edge-gateway request completed method=GET path=/v1/rooms/141 status=200 latency_ms=158
+2025-08-19T14:14:12Z WARN request_id=req-40943339 service=edge-gateway request completed method=GET path=/v1/rooms/783 status=200 latency_ms=44
+2025-08-19T14:16:46Z INFO request_id=req-39833592 service=edge-gateway websocket handshake completed room=room-369 status=101
+2025-08-19T14:19:05Z INFO request_id=req-88818890 service=edge-gateway health check passed zone=north status=200
+2025-08-19T14:21:36Z WARN request_id=req-47373843 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T14:24:25Z WARN request_id=req-79304911 service=edge-gateway health check passed zone=north status=200
+2025-08-19T14:26:47Z INFO request_id=req-96158616 service=edge-gateway health check passed zone=north status=200
+2025-08-19T14:29:19Z INFO request_id=req-89111572 service=edge-gateway websocket handshake completed room=room-753 status=101
+2025-08-19T14:32:12Z DEBUG request_id=req-82458548 service=edge-gateway slow request method=GET path=/v1/rooms/300 status=200 latency_ms=1422
+2025-08-19T14:32:59Z WARN request_id=req-93157228 service=edge-gateway websocket connect error rate elevated percent=1.41 upstream=session-router
+2025-08-19T14:34:22Z INFO request_id=req-90173594 service=edge-gateway health check passed zone=north status=200
+2025-08-19T14:35:10Z INFO request_id=req-95079029 service=edge-gateway edge traffic stable status=200 database_latency_ms=42
+2025-08-19T14:37:11Z INFO request_id=req-65912487 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T14:39:26Z INFO request_id=req-52477434 service=edge-gateway health check passed zone=north status=200
+2025-08-19T14:42:29Z INFO request_id=req-85475341 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T14:44:43Z INFO request_id=req-59216136 service=edge-gateway slow request method=GET path=/v1/rooms/337 status=200 latency_ms=840
+2025-08-19T14:47:08Z DEBUG request_id=req-79759298 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T14:50:10Z WARN request_id=req-35482333 service=edge-gateway health check passed zone=north status=200
+2025-08-19T14:52:35Z DEBUG request_id=req-71667766 service=edge-gateway request completed method=GET path=/v1/rooms/982 status=200 latency_ms=142
+2025-08-19T14:55:03Z INFO request_id=req-32598291 service=edge-gateway slow request method=GET path=/v1/rooms/207 status=200 latency_ms=1174
+2025-08-19T14:57:58Z INFO request_id=req-50576765 service=edge-gateway slow request method=GET path=/v1/rooms/347 status=200 latency_ms=1277
+2025-08-19T15:00:04Z INFO request_id=req-72027678 service=edge-gateway health check passed zone=north status=200
+2025-08-19T15:02:59Z INFO request_id=req-78746054 service=edge-gateway slow request method=GET path=/v1/rooms/730 status=200 latency_ms=1066
+2025-08-19T15:05:29Z INFO request_id=req-25101786 service=edge-gateway health check passed zone=north status=200
+2025-08-19T15:08:04Z INFO request_id=req-89258739 service=edge-gateway health check passed zone=north status=200
+2025-08-19T15:10:41Z INFO request_id=req-15976700 service=edge-gateway websocket handshake completed room=room-917 status=101
+2025-08-19T15:13:15Z INFO request_id=req-65885791 service=edge-gateway websocket handshake completed room=room-297 status=101
+2025-08-19T15:15:57Z DEBUG request_id=req-26871679 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T15:18:07Z DEBUG request_id=req-31422002 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T15:21:05Z INFO request_id=req-70708597 service=edge-gateway health check passed zone=north status=200
+2025-08-19T15:23:20Z INFO request_id=req-42607161 service=edge-gateway request completed method=GET path=/v1/rooms/461 status=200 latency_ms=144
+2025-08-19T15:26:04Z WARN request_id=req-30616301 service=edge-gateway slow request method=GET path=/v1/rooms/962 status=200 latency_ms=1037
+2025-08-19T15:28:26Z WARN request_id=req-89306094 service=edge-gateway request completed method=GET path=/v1/rooms/748 status=200 latency_ms=24
+2025-08-19T15:31:24Z INFO request_id=req-83278829 service=edge-gateway health check passed zone=north status=200
+2025-08-19T15:33:25Z INFO request_id=req-90452704 service=edge-gateway request completed method=GET path=/v1/rooms/745 status=200 latency_ms=127
+2025-08-19T15:36:06Z DEBUG request_id=req-47273379 service=edge-gateway health check passed zone=north status=200
+2025-08-19T15:38:50Z WARN request_id=req-36661738 service=edge-gateway slow request method=GET path=/v1/rooms/118 status=200 latency_ms=1494
+2025-08-19T15:41:35Z DEBUG request_id=req-65965249 service=edge-gateway request completed method=GET path=/v1/rooms/417 status=200 latency_ms=46
+2025-08-19T15:43:51Z DEBUG request_id=req-68091869 service=edge-gateway websocket handshake completed room=room-104 status=101
+2025-08-19T15:46:46Z INFO request_id=req-65078585 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T15:48:55Z INFO request_id=req-87574068 service=edge-gateway health check passed zone=north status=200
+2025-08-19T15:51:55Z INFO request_id=req-21486854 service=edge-gateway request completed method=GET path=/v1/rooms/830 status=200 latency_ms=91
+2025-08-19T15:54:04Z INFO request_id=req-24417033 service=edge-gateway websocket handshake completed room=room-378 status=101
+2025-08-19T15:57:04Z DEBUG request_id=req-26446829 service=edge-gateway health check passed zone=north status=200
+2025-08-19T15:59:31Z INFO request_id=req-84127255 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T16:02:02Z WARN request_id=req-93095375 service=edge-gateway slow request method=GET path=/v1/rooms/251 status=200 latency_ms=1069
+2025-08-19T16:04:22Z WARN request_id=req-27307909 service=edge-gateway slow request method=GET path=/v1/rooms/265 status=200 latency_ms=1323
+2025-08-19T16:07:05Z INFO request_id=req-96936471 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T16:09:47Z WARN request_id=req-29016336 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T16:12:11Z INFO request_id=req-37513131 service=edge-gateway request completed method=GET path=/v1/rooms/387 status=200 latency_ms=149
+2025-08-19T16:14:36Z WARN request_id=req-17658904 service=edge-gateway slow request method=GET path=/v1/rooms/971 status=200 latency_ms=1488
+2025-08-19T16:17:41Z WARN request_id=req-59834127 service=edge-gateway request completed method=GET path=/v1/rooms/874 status=200 latency_ms=106
+2025-08-19T16:19:45Z INFO request_id=req-42775857 service=edge-gateway request completed method=GET path=/v1/rooms/116 status=200 latency_ms=87
+2025-08-19T16:22:51Z INFO request_id=req-99192681 service=edge-gateway slow request method=GET path=/v1/rooms/297 status=200 latency_ms=1134
+2025-08-19T16:25:25Z INFO request_id=req-53444182 service=edge-gateway slow request method=GET path=/v1/rooms/804 status=200 latency_ms=769
+2025-08-19T16:27:48Z INFO request_id=req-33653249 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T16:30:21Z INFO request_id=req-76924138 service=edge-gateway websocket handshake completed room=room-332 status=101
+2025-08-19T16:32:47Z INFO request_id=req-91831841 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T16:35:08Z INFO request_id=req-80053855 service=edge-gateway websocket handshake completed room=room-963 status=101
+2025-08-19T16:37:47Z INFO request_id=req-65446065 service=edge-gateway request completed method=GET path=/v1/rooms/899 status=200 latency_ms=116
+2025-08-19T16:40:21Z DEBUG request_id=req-65531579 service=edge-gateway websocket handshake completed room=room-753 status=101
+2025-08-19T16:43:12Z INFO request_id=req-15224486 service=edge-gateway health check passed zone=north status=200
+2025-08-19T16:45:42Z WARN request_id=req-91930713 service=edge-gateway health check passed zone=north status=200
+2025-08-19T16:48:29Z INFO request_id=req-13541936 service=edge-gateway websocket handshake completed room=room-908 status=101
+2025-08-19T16:50:51Z WARN request_id=req-75224197 service=edge-gateway health check passed zone=north status=200
+2025-08-19T16:53:33Z INFO request_id=req-90436648 service=edge-gateway health check passed zone=north status=200
+2025-08-19T16:55:58Z DEBUG request_id=req-51859884 service=edge-gateway health check passed zone=north status=200
+2025-08-19T16:58:29Z INFO request_id=req-61867535 service=edge-gateway health check passed zone=north status=200
+2025-08-19T17:01:03Z WARN request_id=req-10059144 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T17:03:51Z WARN request_id=req-53855383 service=edge-gateway request completed method=GET path=/v1/rooms/761 status=200 latency_ms=31
+2025-08-19T17:06:25Z INFO request_id=req-56274805 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T17:08:40Z INFO request_id=req-97110149 service=edge-gateway request completed method=GET path=/v1/rooms/528 status=200 latency_ms=52
+2025-08-19T17:11:12Z INFO request_id=req-41766674 service=edge-gateway health check passed zone=north status=200
+2025-08-19T17:14:11Z DEBUG request_id=req-36730178 service=edge-gateway slow request method=GET path=/v1/rooms/232 status=200 latency_ms=1489
+2025-08-19T17:16:47Z DEBUG request_id=req-84588713 service=edge-gateway request completed method=GET path=/v1/rooms/384 status=200 latency_ms=15
+2025-08-19T17:19:06Z DEBUG request_id=req-82662757 service=edge-gateway health check passed zone=north status=200
+2025-08-19T17:21:30Z DEBUG request_id=req-23087511 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T17:24:19Z DEBUG request_id=req-81896568 service=edge-gateway websocket handshake completed room=room-487 status=101
+2025-08-19T17:26:51Z DEBUG request_id=req-20929338 service=edge-gateway websocket handshake completed room=room-676 status=101
+2025-08-19T17:29:41Z INFO request_id=req-32246306 service=edge-gateway request completed method=GET path=/v1/rooms/877 status=200 latency_ms=69
+2025-08-19T17:31:53Z INFO request_id=req-24032853 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T17:34:24Z WARN request_id=req-50242920 service=edge-gateway request completed method=GET path=/v1/rooms/772 status=200 latency_ms=24
+2025-08-19T17:37:17Z INFO request_id=req-57762702 service=edge-gateway slow request method=GET path=/v1/rooms/178 status=200 latency_ms=1340
+2025-08-19T17:39:31Z INFO request_id=req-53891119 service=edge-gateway health check passed zone=north status=200
+2025-08-19T17:42:01Z DEBUG request_id=req-50176135 service=edge-gateway slow request method=GET path=/v1/rooms/441 status=200 latency_ms=1423
+2025-08-19T17:44:44Z DEBUG request_id=req-24531971 service=edge-gateway request completed method=GET path=/v1/rooms/736 status=200 latency_ms=69
+2025-08-19T17:47:09Z DEBUG request_id=req-44244802 service=edge-gateway websocket handshake completed room=room-604 status=101
+2025-08-19T17:50:05Z INFO request_id=req-67201343 service=edge-gateway request completed method=GET path=/v1/rooms/113 status=200 latency_ms=72
+2025-08-19T17:52:38Z WARN request_id=req-43632917 service=edge-gateway slow request method=GET path=/v1/rooms/454 status=200 latency_ms=1141
+2025-08-19T17:55:03Z INFO request_id=req-28355623 service=edge-gateway slow request method=GET path=/v1/rooms/656 status=200 latency_ms=809
+2025-08-19T17:57:56Z WARN request_id=req-39029423 service=edge-gateway health check passed zone=north status=200
+2025-08-19T18:00:05Z DEBUG request_id=req-79771513 service=edge-gateway request completed method=GET path=/v1/rooms/589 status=200 latency_ms=106
+2025-08-19T18:03:08Z INFO request_id=req-56988242 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T18:05:14Z INFO request_id=req-92059925 service=edge-gateway health check passed zone=north status=200
+2025-08-19T18:07:52Z DEBUG request_id=req-17478159 service=edge-gateway websocket handshake completed room=room-494 status=101
+2025-08-19T18:10:42Z DEBUG request_id=req-85504539 service=edge-gateway health check passed zone=north status=200
+2025-08-19T18:13:24Z INFO request_id=req-87314652 service=edge-gateway request completed method=GET path=/v1/rooms/602 status=200 latency_ms=14
+2025-08-19T18:15:46Z DEBUG request_id=req-99416791 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T18:18:28Z DEBUG request_id=req-98250219 service=edge-gateway websocket handshake completed room=room-766 status=101
+2025-08-19T18:20:56Z DEBUG request_id=req-61573425 service=edge-gateway health check passed zone=north status=200
+2025-08-19T18:23:34Z INFO request_id=req-59117617 service=edge-gateway slow request method=GET path=/v1/rooms/184 status=200 latency_ms=1454
+2025-08-19T18:26:13Z WARN request_id=req-15304322 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T18:28:17Z DEBUG request_id=req-62691128 service=edge-gateway health check passed zone=north status=200
+2025-08-19T18:31:05Z INFO request_id=req-12408117 service=edge-gateway slow request method=GET path=/v1/rooms/357 status=200 latency_ms=1083
+2025-08-19T18:33:49Z INFO request_id=req-20296703 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T18:36:22Z INFO request_id=req-43823341 service=edge-gateway request completed method=GET path=/v1/rooms/554 status=200 latency_ms=162
+2025-08-19T18:38:43Z INFO request_id=req-81660373 service=edge-gateway slow request method=GET path=/v1/rooms/146 status=200 latency_ms=897
+2025-08-19T18:41:22Z INFO request_id=req-48297069 service=edge-gateway websocket handshake completed room=room-318 status=101
+2025-08-19T18:43:58Z INFO request_id=req-93156024 service=edge-gateway health check passed zone=north status=200
+2025-08-19T18:46:31Z INFO request_id=req-77203993 service=edge-gateway request completed method=GET path=/v1/rooms/841 status=200 latency_ms=36
+2025-08-19T18:49:14Z INFO request_id=req-32200486 service=edge-gateway slow request method=GET path=/v1/rooms/995 status=200 latency_ms=1404
+2025-08-19T18:51:46Z INFO request_id=req-65656160 service=edge-gateway websocket handshake completed room=room-769 status=101
+2025-08-19T18:54:27Z INFO request_id=req-29187543 service=edge-gateway slow request method=GET path=/v1/rooms/117 status=200 latency_ms=798
+2025-08-19T18:56:52Z DEBUG request_id=req-52187002 service=edge-gateway request completed method=GET path=/v1/rooms/908 status=200 latency_ms=159
+2025-08-19T18:59:31Z INFO request_id=req-50421764 service=edge-gateway slow request method=GET path=/v1/rooms/290 status=200 latency_ms=655
+2025-08-19T19:02:10Z INFO request_id=req-22686634 service=edge-gateway websocket handshake completed room=room-360 status=101
+2025-08-19T19:04:29Z WARN request_id=req-89437938 service=edge-gateway slow request method=GET path=/v1/rooms/459 status=200 latency_ms=1279
+2025-08-19T19:07:00Z INFO request_id=req-71849664 service=edge-gateway request completed method=GET path=/v1/rooms/432 status=200 latency_ms=128
+2025-08-19T19:09:55Z INFO request_id=req-53402974 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T19:12:21Z WARN request_id=req-14447769 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T19:14:48Z WARN request_id=req-76996590 service=edge-gateway slow request method=GET path=/v1/rooms/130 status=200 latency_ms=1495
+2025-08-19T19:17:25Z INFO request_id=req-28372330 service=edge-gateway request completed method=GET path=/v1/rooms/527 status=200 latency_ms=131
+2025-08-19T19:20:06Z INFO request_id=req-25410398 service=edge-gateway request completed method=GET path=/v1/rooms/208 status=200 latency_ms=104
+2025-08-19T19:22:18Z INFO request_id=req-18212521 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T19:25:04Z INFO request_id=req-30621266 service=edge-gateway health check passed zone=north status=200
+2025-08-19T19:27:56Z INFO request_id=req-27174496 service=edge-gateway websocket handshake completed room=room-919 status=101
+2025-08-19T19:30:16Z DEBUG request_id=req-35933347 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T19:32:39Z INFO request_id=req-79204847 service=edge-gateway request completed method=GET path=/v1/rooms/645 status=200 latency_ms=23
+2025-08-19T19:35:18Z DEBUG request_id=req-47529390 service=edge-gateway slow request method=GET path=/v1/rooms/440 status=200 latency_ms=741
+2025-08-19T19:37:46Z DEBUG request_id=req-52810625 service=edge-gateway websocket handshake completed room=room-362 status=101
+2025-08-19T19:40:30Z INFO request_id=req-23805087 service=edge-gateway slow request method=GET path=/v1/rooms/736 status=200 latency_ms=1188
+2025-08-19T19:43:03Z INFO request_id=req-23502742 service=edge-gateway websocket handshake completed room=room-411 status=101
+2025-08-19T19:45:44Z INFO request_id=req-75410047 service=edge-gateway websocket handshake completed room=room-324 status=101
+2025-08-19T19:48:21Z WARN request_id=req-93374778 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T19:50:57Z INFO request_id=req-96207023 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T19:53:31Z INFO request_id=req-17996048 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T19:55:50Z INFO request_id=req-65232067 service=edge-gateway health check passed zone=north status=200
+2025-08-19T19:58:47Z INFO request_id=req-52921176 service=edge-gateway websocket handshake completed room=room-218 status=101
+2025-08-19T20:01:07Z INFO request_id=req-82166644 service=edge-gateway websocket handshake completed room=room-703 status=101
+2025-08-19T20:03:31Z INFO request_id=req-85879140 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T20:06:30Z INFO request_id=req-42709641 service=edge-gateway request completed method=GET path=/v1/rooms/359 status=200 latency_ms=147
+2025-08-19T20:09:01Z INFO request_id=req-68629462 service=edge-gateway health check passed zone=north status=200
+2025-08-19T20:11:37Z INFO request_id=req-76468086 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T20:13:46Z INFO request_id=req-17784794 service=edge-gateway slow request method=GET path=/v1/rooms/681 status=200 latency_ms=1250
+2025-08-19T20:16:23Z INFO request_id=req-60490872 service=edge-gateway health check passed zone=north status=200
+2025-08-19T20:19:07Z INFO request_id=req-95953657 service=edge-gateway websocket handshake completed room=room-669 status=101
+2025-08-19T20:21:48Z INFO request_id=req-65280419 service=edge-gateway slow request method=GET path=/v1/rooms/570 status=200 latency_ms=981
+2025-08-19T20:24:33Z INFO request_id=req-39440750 service=edge-gateway websocket handshake completed room=room-380 status=101
+2025-08-19T20:26:44Z INFO request_id=req-54369335 service=edge-gateway request completed method=GET path=/v1/rooms/250 status=200 latency_ms=86
+2025-08-19T20:29:37Z INFO request_id=req-44388911 service=edge-gateway slow request method=GET path=/v1/rooms/339 status=200 latency_ms=1360
+2025-08-19T20:32:10Z INFO request_id=req-65839372 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T20:34:34Z INFO request_id=req-42541915 service=edge-gateway request completed method=GET path=/v1/rooms/914 status=200 latency_ms=32
+2025-08-19T20:37:15Z INFO request_id=req-14901333 service=edge-gateway health check passed zone=north status=200
+2025-08-19T20:39:35Z INFO request_id=req-43888934 service=edge-gateway websocket handshake completed room=room-935 status=101
+2025-08-19T20:42:14Z INFO request_id=req-39459437 service=edge-gateway websocket handshake completed room=room-299 status=101
+2025-08-19T20:44:56Z DEBUG request_id=req-89682670 service=edge-gateway websocket handshake completed room=room-164 status=101
+2025-08-19T20:47:09Z DEBUG request_id=req-31401895 service=edge-gateway health check passed zone=north status=200
+2025-08-19T20:50:05Z INFO request_id=req-98898897 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T20:52:33Z WARN request_id=req-36607222 service=edge-gateway websocket handshake completed room=room-104 status=101
+2025-08-19T20:54:57Z WARN request_id=req-83878546 service=edge-gateway websocket handshake completed room=room-416 status=101
+2025-08-19T20:57:36Z WARN request_id=req-98285915 service=edge-gateway websocket handshake completed room=room-585 status=101
+2025-08-19T21:00:23Z WARN request_id=req-75058356 service=edge-gateway request completed method=GET path=/v1/rooms/742 status=200 latency_ms=17
+2025-08-19T21:02:48Z INFO request_id=req-88186338 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T21:05:38Z INFO request_id=req-75986046 service=edge-gateway slow request method=GET path=/v1/rooms/310 status=200 latency_ms=714
+2025-08-19T21:07:44Z DEBUG request_id=req-33596721 service=edge-gateway slow request method=GET path=/v1/rooms/585 status=200 latency_ms=1261
+2025-08-19T21:10:32Z INFO request_id=req-32005557 service=edge-gateway websocket handshake completed room=room-704 status=101
+2025-08-19T21:12:53Z INFO request_id=req-26808581 service=edge-gateway health check passed zone=north status=200
+2025-08-19T21:15:41Z INFO request_id=req-93058768 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T21:18:21Z INFO request_id=req-11233681 service=edge-gateway slow request method=GET path=/v1/rooms/704 status=200 latency_ms=675
+2025-08-19T21:20:53Z INFO request_id=req-19726045 service=edge-gateway health check passed zone=north status=200
+2025-08-19T21:23:35Z INFO request_id=req-92080365 service=edge-gateway slow request method=GET path=/v1/rooms/280 status=200 latency_ms=1309
+2025-08-19T21:25:53Z DEBUG request_id=req-37850532 service=edge-gateway health check passed zone=north status=200
+2025-08-19T21:28:35Z WARN request_id=req-49428016 service=edge-gateway request completed method=GET path=/v1/rooms/308 status=200 latency_ms=28
+2025-08-19T21:31:11Z DEBUG request_id=req-96281413 service=edge-gateway slow request method=GET path=/v1/rooms/844 status=200 latency_ms=1422
+2025-08-19T21:33:51Z INFO request_id=req-84437488 service=edge-gateway slow request method=GET path=/v1/rooms/255 status=200 latency_ms=1477
+2025-08-19T21:36:14Z INFO request_id=req-65668182 service=edge-gateway websocket handshake completed room=room-313 status=101
+2025-08-19T21:38:46Z INFO request_id=req-54323256 service=edge-gateway health check passed zone=north status=200
+2025-08-19T21:41:27Z INFO request_id=req-44755898 service=edge-gateway slow request method=GET path=/v1/rooms/559 status=200 latency_ms=651
+2025-08-19T21:44:14Z INFO request_id=req-75529822 service=edge-gateway websocket handshake completed room=room-198 status=101
+2025-08-19T21:46:36Z WARN request_id=req-34807994 service=edge-gateway websocket handshake completed room=room-743 status=101
+2025-08-19T21:48:53Z WARN request_id=req-20616194 service=edge-gateway slow request method=GET path=/v1/rooms/326 status=200 latency_ms=1234
+2025-08-19T21:51:50Z INFO request_id=req-79746259 service=edge-gateway health check passed zone=north status=200
+2025-08-19T21:54:25Z INFO request_id=req-26443595 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T21:56:38Z INFO request_id=req-18203157 service=edge-gateway websocket handshake completed room=room-641 status=101
+2025-08-19T21:59:41Z INFO request_id=req-34388632 service=edge-gateway slow request method=GET path=/v1/rooms/421 status=200 latency_ms=1047
+2025-08-19T22:02:09Z WARN request_id=req-74972539 service=edge-gateway slow request method=GET path=/v1/rooms/246 status=200 latency_ms=955
+2025-08-19T22:04:39Z WARN request_id=req-76606000 service=edge-gateway health check passed zone=north status=200
+2025-08-19T22:07:23Z INFO request_id=req-79947503 service=edge-gateway websocket handshake completed room=room-881 status=101
+2025-08-19T22:09:42Z INFO request_id=req-84652391 service=edge-gateway health check passed zone=north status=200
+2025-08-19T22:12:24Z INFO request_id=req-34647632 service=edge-gateway request completed method=GET path=/v1/rooms/668 status=200 latency_ms=32
+2025-08-19T22:14:35Z INFO request_id=req-98832433 service=edge-gateway websocket handshake completed room=room-506 status=101
+2025-08-19T22:17:30Z INFO request_id=req-45502027 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T22:19:55Z WARN request_id=req-63450800 service=edge-gateway websocket handshake completed room=room-997 status=101
+2025-08-19T22:22:45Z WARN request_id=req-72243656 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T22:25:00Z INFO request_id=req-28850462 service=edge-gateway websocket handshake completed room=room-989 status=101
+2025-08-19T22:27:33Z INFO request_id=req-58866857 service=edge-gateway health check passed zone=north status=200
+2025-08-19T22:30:02Z INFO request_id=req-85041358 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T22:32:54Z DEBUG request_id=req-83484730 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T22:35:14Z INFO request_id=req-23216453 service=edge-gateway request completed method=GET path=/v1/rooms/254 status=200 latency_ms=134
+2025-08-19T22:38:05Z INFO request_id=req-49291117 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T22:40:50Z INFO request_id=req-24420589 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T22:43:08Z DEBUG request_id=req-99765352 service=edge-gateway request completed method=GET path=/v1/rooms/457 status=200 latency_ms=98
+2025-08-19T22:45:54Z DEBUG request_id=req-41297409 service=edge-gateway slow request method=GET path=/v1/rooms/650 status=200 latency_ms=1165
+2025-08-19T22:48:09Z INFO request_id=req-54929871 service=edge-gateway slow request method=GET path=/v1/rooms/114 status=200 latency_ms=887
+2025-08-19T22:50:47Z DEBUG request_id=req-67366267 service=edge-gateway slow request method=GET path=/v1/rooms/457 status=200 latency_ms=994
+2025-08-19T22:53:33Z INFO request_id=req-35644081 service=edge-gateway health check passed zone=north status=200
+2025-08-19T22:56:11Z DEBUG request_id=req-93455622 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T22:58:24Z INFO request_id=req-56840645 service=edge-gateway websocket handshake completed room=room-336 status=101
+2025-08-19T23:01:15Z WARN request_id=req-60736491 service=edge-gateway request completed method=GET path=/v1/rooms/275 status=200 latency_ms=124
+2025-08-19T23:03:42Z INFO request_id=req-86938583 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T23:06:01Z DEBUG request_id=req-40950058 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T23:08:44Z INFO request_id=req-91927800 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T23:11:13Z INFO request_id=req-89031274 service=edge-gateway websocket handshake completed room=room-567 status=101
+2025-08-19T23:14:15Z INFO request_id=req-88681093 service=edge-gateway request completed method=GET path=/v1/rooms/568 status=200 latency_ms=50
+2025-08-19T23:16:21Z INFO request_id=req-72454736 service=edge-gateway slow request method=GET path=/v1/rooms/548 status=200 latency_ms=682
+2025-08-19T23:19:08Z WARN request_id=req-42686504 service=edge-gateway slow request method=GET path=/v1/rooms/626 status=200 latency_ms=1231
+2025-08-19T23:21:27Z DEBUG request_id=req-51378383 service=edge-gateway health check passed zone=north status=200
+2025-08-19T23:24:03Z DEBUG request_id=req-38446236 service=edge-gateway websocket handshake completed room=room-949 status=101
+2025-08-19T23:26:36Z INFO request_id=req-99176923 service=edge-gateway slow request method=GET path=/v1/rooms/313 status=200 latency_ms=1176
+2025-08-19T23:29:32Z DEBUG request_id=req-28240441 service=edge-gateway request completed method=GET path=/v1/rooms/796 status=200 latency_ms=89
+2025-08-19T23:32:04Z INFO request_id=req-73362654 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T23:34:46Z INFO request_id=req-18762791 service=edge-gateway request completed method=GET path=/v1/rooms/207 status=200 latency_ms=19
+2025-08-19T23:36:53Z INFO request_id=req-14086727 service=edge-gateway request completed method=GET path=/v1/rooms/361 status=200 latency_ms=12
+2025-08-19T23:39:35Z INFO request_id=req-47733686 service=edge-gateway websocket handshake completed room=room-932 status=101
+2025-08-19T23:42:16Z INFO request_id=req-85126436 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T23:44:57Z WARN request_id=req-87770590 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T23:47:09Z INFO request_id=req-51069248 service=edge-gateway slow request method=GET path=/v1/rooms/423 status=200 latency_ms=754
+2025-08-19T23:49:42Z INFO request_id=req-71340194 service=edge-gateway request completed method=GET path=/v1/rooms/418 status=200 latency_ms=29
+2025-08-19T23:52:32Z INFO request_id=req-95123851 service=edge-gateway request completed method=GET path=/v1/rooms/964 status=200 latency_ms=156
+2025-08-19T23:55:12Z INFO request_id=req-28195917 service=edge-gateway retrying upstream request attempt=1 reason=temporary_unavailable
+2025-08-19T23:57:44Z INFO request_id=req-61770655 service=edge-gateway slow request method=GET path=/v1/rooms/793 status=200 latency_ms=718

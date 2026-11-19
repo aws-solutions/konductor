@@ -1,0 +1,6 @@
+{
+  "recovery_objectives": {
+    "rpo_max_seconds": 60,
+    "rto_max_seconds": 300
+  }
+}

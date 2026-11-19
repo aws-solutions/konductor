@@ -1,0 +1,30 @@
+metric_name,unit,description
+ledger_v3_request_rate,requests,Requests reaching ledger-api per second
+ledger_request_latency_p50_ms,ms,"Ledger request latency, p50"
+ledger_request_latency_p95_ms,ms,"Ledger request latency, p95"
+ledger_request_latency_p99_ms,ms,"Ledger request latency, p99"
+ledger_write_error_rate,percent,Ledger writes returning an error
+ledger_read_error_rate,percent,Ledger reads returning an error
+ledger_v3_5xx_rate,percent,HTTP 5xx responses from the ledger path
+ledger_null_legacy_rows,rows,Rows with a null legacy settlement code
+ledger_settlement_code_backfill_rate,rows_per_minute,Backfill updates per minute
+ledger_db_pool_wait_ms,ms,Time waiting for a database connection
+ledger_db_query_latency_p95_ms,ms,"Database query latency, p95"
+ledger_replica_lag_seconds,seconds,Replica replay lag
+ledger_dead_letter_rate,percent,Requests sent to the dead-letter queue
+ledger_retry_rate,percent,Ledger requests retried by the client
+ledger_idempotency_conflict_rate,percent,Idempotency conflicts per request
+payment_authorizer_error_rate,percent,Authorizer errors returned to payments
+payment_webhook_delay_seconds,seconds,Webhook delivery delay
+ledger_worker_queue_depth,items,Unprocessed ledger worker items
+ledger_worker_processing_rate,items_per_second,Ledger worker throughput
+ledger_cache_hit_rate,percent,Ledger cache hit ratio
+ledger_schema_version,version,Schema version observed by the service
+ledger_connection_errors,errors,Database connection errors
+ledger_request_timeout_rate,percent,Ledger requests exceeding the timeout
+ledger_reconciliation_gap_count,rows,Rows awaiting reconciliation
+ledger_audit_append_error_rate,percent,Audit append failures
+ledger_lock_wait_ms,ms,Time waiting on a ledger row lock
+ledger_read_only_fallback_rate,percent,Reads served by the fallback path
+ledger_api_up,boolean,Ledger API health state
+ledger_worker_up,boolean,Ledger worker health state
