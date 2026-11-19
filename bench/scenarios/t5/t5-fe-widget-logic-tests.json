@@ -1,0 +1,75 @@
+{
+  "id": "t5-fe-widget-logic-tests",
+  "class": "hard",
+  "version": 1,
+  "phase": "testing",
+  "role": "frontend",
+  "questions": "allowed",
+  "prompt": "The widget logic has bitten us twice this month, so please add coverage under `test/` that I can rely on. I own the booking flow and need the date-range picker, booking form validation, localized price display, scheduling helpers, subscription store, and rendering view models to behave consistently when they are used without a browser. Keep the checks focused on the public behavior and the messages callers actually receive, including the less obvious paths that are easy to regress. Use the existing CommonJS, dependency-free setup and keep added test files in `test/` with the repository's `.test.js` naming pattern. The existing package test command must continue to pass under Node.js 24. Do not change anything under `src/`, `package.json`, the configuration, or the documentation. Do not add dependencies, browser APIs, temporary files, or generated output. Keep the change limited to new or updated tests, and make the assertions specific enough that a future failure points to the affected widget feature.",
+  "fixture": "t5-fe-widget-logic-tests",
+  "hidden": "t5-fe-widget-logic-tests",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=30000 mutation.test.js",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test --test-timeout=30000 test/*.test.js && n=$(grep -hE '^[[:space:]]*(test|it)\\(' test/*.test.js | wc -l) && [ \"$n\" -ge 21 ]",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/date-range-picker.js",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "package.json",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "readable-coverage",
+      "criterion": "The added tests use clear behavior-focused names and precise assertions that make failures useful to a maintainer (code cannot check this because it cannot judge diagnostic clarity).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/cucumber/cucumber-js",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "pilot": null,
+  "lockedAt": null
+}
