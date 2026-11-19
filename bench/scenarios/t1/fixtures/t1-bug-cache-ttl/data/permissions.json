@@ -1,0 +1,5 @@
+[
+  { "id": "u-100", "roles": ["reader", "invoice-admin"] },
+  { "id": "u-101", "roles": ["reader"] },
+  { "id": "u-102", "roles": ["reader", "operator"] }
+]

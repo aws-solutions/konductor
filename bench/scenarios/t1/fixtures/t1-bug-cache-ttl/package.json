@@ -1,0 +1,9 @@
+{
+  "name": "profile-permission-service",
+  "version": "1.4.0",
+  "private": true,
+  "description": "Small in-memory profile and permission lookup service",
+  "type": "commonjs",
+  "engines": { "node": ">=24" },
+  "scripts": { "test": "node --test", "check": "node scripts/check-format.js" }
+}
