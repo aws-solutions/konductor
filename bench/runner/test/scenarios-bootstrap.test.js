@@ -6,7 +6,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { compare, compareRows, bootstrapDraws, verdictWord, pValueOf, usableTasks } = require('../../scenarios/bootstrap.js');
-const { BOOTSTRAP, MARGIN } = require('../../scenarios/protocol.js');
+const { BOOTSTRAP, MARGIN, PROTOCOL } = require('../../scenarios/protocol.js');
 
 // Tasks with a fixed gap between arms and a little run noise.
 const gap = (n, delta, noise = 2) => Array.from({ length: n }, (_, i) => ({ id: `t${i}`, head: [60 + delta + noise, 60 + delta - noise, 60 + delta], base: [60 + noise, 60 - noise, 60] }));
@@ -27,14 +27,14 @@ test('the same data and seed give the same draws; another seed gives other draws
   assert.equal(bootstrapDraws(t).length, 10000);
 });
 
-test('a clear gain over the margin beats by the margin; a small clear gain beats; a clear loss loses', () => {
+test('a clear gain over the margin beats by the margin, a small clear gain beats, a clear loss past the margin loses by the margin, a small one loses', () => {
   const big = compare(gap(8, 20));
   assert.equal(big.verdict, 'beats by the margin');
   assert.equal(big.n, 8);
   assert.ok(Math.abs(big.estimate - 20) < 1e-9);
   assert.ok(big.low > 5 && big.high >= big.estimate);
   assert.equal(compare(gap(8, 3, 0.5)).verdict, 'beats');
-  assert.equal(compare(gap(8, -20)).verdict, 'loses');
+  assert.equal(compare(gap(8, -20)).verdict, 'loses by the margin');
   assert.equal(compare(gap(8, -3, 0.5)).verdict, 'loses');
 });
 
@@ -45,16 +45,31 @@ test('no difference and no spread is a tie; a wide noisy interval is unsettled',
   assert.equal(wide.verdict, 'unsettled');
 });
 
-test('verdict words at the boundaries: a bound exactly on the margin or on 0 does not cross it', () => {
-  assert.equal(verdictWord({ low: 5.01, high: 9 }), 'beats by the margin');
-  assert.equal(verdictWord({ low: 5, high: 9 }), 'beats');
-  assert.equal(verdictWord({ low: 0.01, high: 3 }), 'beats');
-  assert.equal(verdictWord({ low: 0, high: 3 }), 'ties');
-  assert.equal(verdictWord({ low: -5, high: 5 }), 'ties');
-  assert.equal(verdictWord({ low: -5.01, high: 5 }), 'unsettled');
-  assert.equal(verdictWord({ low: -8, high: -0.01 }), 'loses');
-  assert.equal(verdictWord({ low: -3, high: -1 }), 'loses');
-  assert.equal(verdictWord({ low: null, high: null }), 'unsettled');
+test('verdict words follow the owner rule on [L, U] with M = 5, in the order beats by the margin, beats, loses by the margin, loses, ties, unsettled', () => {
+  const w = (low, high) => verdictWord({ low, high });
+  assert.equal(w(5.01, 9), 'beats by the margin');
+  assert.equal(w(5, 9), 'beats', 'L exactly on M is not over it');
+  assert.equal(w(0.01, 3), 'beats');
+  assert.equal(w(1, 3), 'beats', 'over 0 and inside the margin is beats, not ties');
+  assert.equal(w(-9, -5.01), 'loses by the margin');
+  assert.equal(w(-9, -5), 'loses', 'U exactly on -M is not under it');
+  assert.equal(w(-8, -0.01), 'loses');
+  assert.equal(w(-3, -1), 'loses');
+  assert.equal(w(0, 3), 'ties', 'L of 0 is not over 0');
+  assert.equal(w(-3, 3), 'ties');
+  assert.equal(w(-4.99, 4.99), 'ties');
+  assert.equal(w(-5, 4), 'unsettled', 'ties needs -M < L');
+  assert.equal(w(-4, 5), 'unsettled', 'ties needs U < M');
+  assert.equal(w(-6, 2), 'unsettled');
+  assert.equal(w(-3, 8), 'unsettled');
+  assert.equal(w(null, null), 'unsettled');
+  assert.equal(verdictWord({ low: 2, high: 20 }, 1), 'beats by the margin', 'the margin is a parameter');
+});
+
+test('the protocol lists the six words in the rule order, and the lock carries them', () => {
+  assert.deepEqual(PROTOCOL.verdictOrder, ['beats by the margin', 'beats', 'loses by the margin', 'loses', 'ties', 'unsettled']);
+  assert.deepEqual(Object.keys(PROTOCOL.verdictWords), PROTOCOL.verdictOrder);
+  assert.match(PROTOCOL.verdictWords['loses by the margin'], /U under -5/);
 });
 
 test('the interval covers the run-level noise too: runs that vary widen it, with the same task means', () => {

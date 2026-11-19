@@ -64,7 +64,7 @@ const rowText = (name, r) => [name, r.n, num(r.estimate), ci(r), r.verdict];
 function pairedBlocks(paired) {
   const blocks = [
     D.h(2, 'Pre-registered statistic: konductor minus vanilla, two-level bootstrap'),
-    D.note(`Mean paired difference per task, averaged over tasks. Interval: ${paired.draws} bootstrap draws (tasks, then runs inside each task and arm), seed ${paired.seed}. Margin ${paired.margin} points. Verdict words: beats by the margin (lower bound over +${paired.margin}), beats (over 0), loses (upper bound under 0), ties (inside -${paired.margin} to +${paired.margin}), otherwise unsettled. Only HELD-OUT tasks give a verdict; DEV tasks are shown apart and are not a verdict.`),
+    D.note(`Mean paired difference per task, averaged over tasks. Interval: ${paired.draws} bootstrap draws (tasks, then runs inside each task and arm), seed ${paired.seed}. Margin ${paired.margin} points. Verdict words, on the interval [L, U] in this order: beats by the margin (L over +${paired.margin}), beats (L over 0), loses by the margin (U under -${paired.margin}), loses (U under 0), ties (L over -${paired.margin} and U under +${paired.margin}), otherwise unsettled. Only HELD-OUT tasks give a verdict; DEV tasks are shown apart and are not a verdict.`),
   ];
   for (const h of paired.harnesses) {
     blocks.push(D.h(3, h.name));

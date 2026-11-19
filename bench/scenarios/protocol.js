@@ -19,12 +19,14 @@ const PROTOCOL = {
   },
   margin: MARGIN,
   verdictWords: {
-    'beats by the margin': `lower bound over +${MARGIN}`,
-    beats: 'lower bound over 0',
-    ties: `interval inside -${MARGIN} to +${MARGIN}`,
-    loses: 'upper bound under 0',
+    'beats by the margin': `lower bound L over +${MARGIN}`,
+    beats: 'L over 0',
+    'loses by the margin': `upper bound U under -${MARGIN}`,
+    loses: 'U under 0',
+    ties: `L over -${MARGIN} and U under +${MARGIN}`,
     unsettled: 'none of the above',
   },
+  verdictOrder: ['beats by the margin', 'beats', 'loses by the margin', 'loses', 'ties', 'unsettled'],
   secondary: [
     'konductor vs konductor-noskills (the skills\' share)',
     'konductor-noskills vs vanilla (the rules\' share)',

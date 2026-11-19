@@ -6,10 +6,10 @@
 // inside each drawn task and arm. The number of draws, the seed and the margin come from protocol.js. Pure: numbers in,
 // numbers out, so a report and a test get the same result for the same data.
 //
-// Verdict words (plan 7): "beats by the margin" lower bound over +margin; "beats" lower bound over 0; "loses" upper bound
-// under 0; "ties" interval inside -margin to +margin; otherwise "unsettled". The plan lists the words in that order. An
-// interval can fit two (for example 1 to 3 is above 0 and inside +-5), and then the rule is symmetric: a sign that the
-// interval settles (beats, loses) wins over "ties", so a small real gain and a small real loss are both named.
+// Verdict words (plan 7, owner rule), on the interval [L, U] with margin M: 'beats by the margin' if L > M; 'beats' if L > 0;
+// 'loses by the margin' if U < -M; 'loses' if U < 0; 'ties' only if -M < L and U < M; otherwise 'unsettled'. The first rule that
+// holds wins, in that order, so an interval that is both over 0 and inside the margin (1 to 3) is 'beats', not 'ties'.
+//
 // A table of several rows (per phase, per role) uses Holm's step-down rule: the rows are ordered by p-value, row i of m
 // is tested at alpha / (m - i), and its interval is taken at that level; once a row fails, every later row keeps that
 // row's level.
@@ -67,13 +67,14 @@ function pValueOf(sorted) {
   return Math.min(1, (2 * (Math.min(below, above) + 1)) / (n + 1));
 }
 
-/** The verdict word for an interval { low, high } (see the header for the order). */
+/** The verdict word for an interval { low, high } (see the header for the rules and their order). */
 function verdictWord({ low, high }, margin = MARGIN) {
   if (low === null || low === undefined || high === null || high === undefined) return 'unsettled';
   if (low > margin) return 'beats by the margin';
   if (low > 0) return 'beats';
+  if (high < -margin) return 'loses by the margin';
   if (high < 0) return 'loses';
-  if (low >= -margin && high <= margin) return 'ties';
+  if (low > -margin && high < margin) return 'ties';
   return 'unsettled';
 }
 

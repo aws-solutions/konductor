@@ -1213,9 +1213,7 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   before any output) when a task they use is not in the lock or its file in the `--extra-tasks` directories has other bytes.
 - `report-2x2 ... --stats` adds the pre-registered statistic (`bench/scenarios/bootstrap.js`, constants in `bench/scenarios/protocol.js`). Per harness it takes
   konductor minus vanilla on quality, per task, and averages over tasks. The interval is a two-level bootstrap: draw tasks with replacement, then draw runs
-  with replacement inside each drawn task and arm; 10,000 draws, a fixed seed, 95%. The verdict word uses the 5-point margin: **beats by the margin** (lower
-  bound over +5), **beats** (over 0), **loses** (upper bound under 0), **ties** (interval inside -5 to +5), else **unsettled**. The plan lists the words in
-  that order; when an interval fits two of them (1 to 3 is over 0 and inside the margin) a settled sign wins over "ties". Only HELD-OUT tasks give a
+  with replacement inside each drawn task and arm; 10,000 draws, a fixed seed, 95%. The verdict word follows the owner's rule on the interval [L, U] with margin M = 5, first rule that holds wins: **beats by the margin** if L > M; **beats** if L > 0; **loses by the margin** if U < -M; **loses** if U < 0; **ties** only if -M < L and U < M; otherwise **unsettled**. An interval of 1 to 3 is therefore "beats", not "ties", and exactly -5 to 5 is "unsettled". Only HELD-OUT tasks give a
   verdict; DEV tasks are shown apart as "DEV, not a verdict". The per-phase and per-role tables use each task's own `phase` and `role` and Holm's step-down
   correction: rows are ordered by p-value, row i of m is tested at 0.05 / (m - i), its interval is taken at that level, and rows after the first failure keep
   that level. A row with fewer than two tasks scored in both arms has no interval and is unsettled. The 3-arm pairs (against `konductor-noskills`) need a
