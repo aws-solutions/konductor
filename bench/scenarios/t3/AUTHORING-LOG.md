@@ -31,3 +31,6 @@
 | t3-db-order-history | author | deepseek-3.2 | 13.08 |
 | t3-db-order-history | map | glm-5 | 0.62 |
 | t3-db-order-history | review | minimax-m2.5 | 3.45 |
+| t3-db-audit-retention | author | deepseek-3.2 | 5.58 |
+| t3-db-audit-retention | map | glm-5 | 0.62 |
+| t3-db-audit-retention | review | minimax-m2.5 | 5.22 |

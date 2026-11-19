@@ -1,0 +1,110 @@
+{
+  "id": "t3-db-audit-retention",
+  "class": "design",
+  "target": null,
+  "prompt": "We need to design the database schema for our audit log system. Review the requirements in the fixture directory carefully. The system handles 25,000 events per second on average, with each event about 220 bytes. Compliance now requires 400 days of retention.\n\nWe need a schema that supports efficient time-range queries and user activity analysis. The retention cleanup must delete by time bucket (like monthly partitions or an indexed bucket column) so deleting a month doesn't require a full table scan.\n\nDeliver two files:\n1. db/schema.sql - The complete database schema with tables, indexes, and partitioning strategy\n2. docs/decision.md - Your architecture decision document\n\nIn docs/decision.md, include a fenced code block with info string `decision` containing JSON with exactly these keys:\n- \"chosen\" (the option id you selected)\n- \"options\" (array of option ids you considered)\n- \"limits\" (object mapping limit name to {\"limit\": number, \"value\": number} for each hard limit)\n- \"monthly_cost_usd\" (the monthly storage cost for your chosen option)\n\nCalculate the storage needs based on the numbers in the fixture files. Consider the storage limit and monthly budget constraints. Choose an indexing strategy that fits within the storage capacity while supporting the required query patterns.",
+  "fixture": "t3-db-audit-retention",
+  "timeoutSec": 900,
+  "hidden": "t3-db-audit-retention",
+  "phase": "architecture",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 22
+    },
+    {
+      "type": "file_exists",
+      "path": "db/schema.sql"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/decision.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning_quality",
+      "criterion": "Quality of reasoning about trade-offs between indexing strategies and storage constraints (not code-checkable: Tests can verify calculations and limits, but cannot assess the clarity and depth of reasoning about why certain indexes were chosen or rejected, and how the design balances query performance against storage limits.)",
+      "weight": 1
+    },
+    {
+      "id": "tradeoff_explanation",
+      "criterion": "Explanation of query performance trade-offs given the single-index constraint (not code-checkable: While tests can verify the schema works, they cannot evaluate how well the agent explains which queries will be fast vs. slow, and what compensatory strategies (like batch processing or materialized views) are suggested for slower queries.)",
+      "weight": 1
+    },
+    {
+      "id": "compliance_integration",
+      "criterion": "Integration of compliance requirements into the architecture justification (not code-checkable: Tests can check retention mechanism exists, but cannot assess how well the agent connects the partitioning strategy to compliance needs (immutable logging, auditor access, legal discovery) beyond basic retention period.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "skill:system-design-patterns",
+    "skill:decision-writing"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "skill:system-design-patterns",
+      "skill:decision-writing"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "minimax",
+    "model": "minimax-m2.5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt asks for indexing strategy and references constraints but never names '1-index', '2-indexes', or '3-indexes' - agent must derive options from storage calculations."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All numbers provided in fixture files (25k/sec, 220 bytes, 400 days, 300TB, $7k). Math yields exactly one correct answer that satisfies both storage and budget limits."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture files contain constraints but not the answer. Hidden-tests/meta.json names 1-index but agents cannot access hidden-tests directory."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Requires non-trivial calculation of storage needs, index overhead factors, and validation against both TB and budget limits. 2-indexes is a tempting trap that exceeds storage capacity."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required numbers present in fixture. Output format clearly specified. Tests verify both constraints are met and calculations are correct."
+      }
+    ]
+  }
+}
