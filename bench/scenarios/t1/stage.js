@@ -119,7 +119,7 @@ function answers(id) {
   const cwd = path.join(AUTH, 'work', `${id}-answers`);
   fs.rmSync(cwd, { recursive: true, force: true });
   fs.mkdirSync(cwd, { recursive: true });
-  fs.cpSync(path.join(DIR, 'fixtures', id), path.join(cwd, 'repo'), { recursive: true });
+  fs.cpSync(path.join(DIR, 'fixtures', task.fixture || id), path.join(cwd, 'repo'), { recursive: true });
   fs.writeFileSync(path.join(cwd, 'request.md'), `${task.prompt}\n`);
   const { credits } = call(model, cwd, fs.readFileSync(path.join(DIR, 'prompts', 'answers.md'), 'utf8'), `${id}.answers`);
   logCall(id, 'lazy+alt answers', model, credits);
@@ -162,7 +162,7 @@ function assemble(id) {
     role: b.role,
     questions: 'allowed',
     prompt: draft.prompt,
-    fixture: b.id,
+    fixture: b.onFixture || b.id,
     hidden: b.id,
     timeoutSec: limitsOf(draft.limits).hardSec,
     limits: limitsOf(draft.limits),
@@ -181,7 +181,7 @@ function assemble(id) {
   };
   fs.writeFileSync(path.join(DIR, `${id}.json`), `${JSON.stringify(task, null, 2)}\n`);
   const put = (from, to) => { fs.rmSync(to, { recursive: true, force: true }); fs.cpSync(from, to, { recursive: true }); };
-  put(path.join(w, 'fixture'), path.join(DIR, 'fixtures', id));
+  if (!b.onFixture) put(path.join(w, 'fixture'), path.join(DIR, 'fixtures', id));
   fs.mkdirSync(path.join(DIR, 'hidden', id), { recursive: true });
   put(path.join(w, 'hidden'), path.join(DIR, 'hidden', id, 'hidden'));
   put(path.join(w, 'solution'), path.join(DIR, 'solutions', id));

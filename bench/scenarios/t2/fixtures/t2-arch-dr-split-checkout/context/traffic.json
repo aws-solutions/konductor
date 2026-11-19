@@ -1,0 +1,11 @@
+{
+  "snapshot": "2025-02-10",
+  "daily_checkout_attempts": 1280000,
+  "weekday_peak_rps": 180,
+  "holiday_peak_rps": 310,
+  "average_cart_items": 2.4,
+  "p95_cart_items": 7,
+  "projected_peak_rps_12_months": 243,
+  "availability_window": "07:00-23:00 UTC",
+  "regions": ["us-east", "eu-west", "ap-southeast"]
+}

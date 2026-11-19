@@ -1,0 +1,13 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const api = require("../src");
+const { Money } = api;
+test("package exports both allocation operations", () => { assert.equal(typeof api.allocatePayment, "function"); assert.equal(typeof api.splitByWeights, "function"); });
+test("weighted split returns proportional minor units", () => { const result = api.splitByWeights(Money.fromMinor(1000, "USD"), [{ id: "a", weight: 1 }, { id: "b", weight: 3 }]); assert.deepEqual(result.map(x => [x.id, x.amount.minor]), [["a", 250], ["b", 750]]); });
+test("weighted split assigns largest remainder before smaller remainder", () => { const result = api.splitByWeights(Money.fromMinor(10, "USD"), [{ id: "x", weight: 2 }, { id: "y", weight: 3 }, { id: "z", weight: 5 }]); assert.deepEqual(result.map(x => x.amount.minor), [2, 3, 5]); });
+test("equal remainders use ascending identifier order", () => { const result = api.splitByWeights(Money.fromMinor(1, "USD"), [{ id: "z", weight: 1 }, { id: "a", weight: 1 }]); assert.deepEqual(result.map(x => [x.id, x.amount.minor]), [["a", 1], ["z", 0]]); });
+test("zero weight receives no minor units", () => { const result = api.splitByWeights(Money.fromMinor(9, "USD"), [{ id: "free", weight: 0 }, { id: "paid", weight: 2 }]); assert.deepEqual(result.map(x => x.amount.minor), [0, 9]); });
+test("negative weight is rejected", () => assert.throws(() => api.splitByWeights(Money.fromMinor(10, "USD"), [{ id: "bad", weight: -1 }, { id: "ok", weight: 1 }]), /weight/i));
+test("all zero weights are rejected", () => assert.throws(() => api.splitByWeights(Money.fromMinor(10, "USD"), [{ id: "a", weight: 0 }, { id: "b", weight: 0 }]), /positive|zero/i));
+test("JPY allocation uses whole-yen minor units", () => { const result = api.splitByWeights(Money.fromMinor(5, "JPY"), [{ id: "a", weight: 1 }, { id: "b", weight: 1 }]); assert.deepEqual(result.map(x => [x.id, x.amount.currency.code, x.amount.minor]), [["a", "JPY", 3], ["b", "JPY", 2]]); });

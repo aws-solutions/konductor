@@ -30,9 +30,11 @@ test('every task has its fixture, hidden tests and reference, and its ids match'
   for (const id of ids) {
     const task = JSON.parse(fs.readFileSync(path.join(DIR, `${id}.json`), 'utf8'));
     assert.equal(task.id, id);
-    assert.equal(task.fixture, id);
     assert.equal(task.hidden, id);
-    for (const d of ['fixtures', 'hidden', 'solutions']) assert.ok(fs.existsSync(path.join(DIR, d, id)), `${d}/${id}`);
+    // A twin or a negative control may run on another task's fixture.
+    assert.equal(task.fixture, task.controlKind === 'none' ? id : task.fixture);
+    assert.ok(fs.existsSync(path.join(DIR, 'fixtures', task.fixture)), `fixtures/${task.fixture}`);
+    for (const d of ['hidden', 'solutions']) assert.ok(fs.existsSync(path.join(DIR, d, id)), `${d}/${id}`);
   }
 });
 
@@ -51,7 +53,8 @@ test('no task file or fixture names a host path or an internal tool', () => {
   const bad = /\/home\/|\/local\/|\/var\/tmp|@amazon|midway|brazil|kiro-cli|konductor/i;
   const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
   for (const id of ids) {
-    const files = [path.join(DIR, `${id}.json`), ...['fixtures', 'hidden', 'solutions'].flatMap((d) => walk(path.join(DIR, d, id)))];
+    const extra = ['answers'].filter((d) => fs.existsSync(path.join(DIR, d, id)));
+    const files = [path.join(DIR, `${id}.json`), ...['hidden', 'solutions', ...extra].flatMap((d) => walk(path.join(DIR, d, id))), ...(fs.existsSync(path.join(DIR, 'fixtures', id)) ? walk(path.join(DIR, 'fixtures', id)) : [])];
     for (const f of files) assert.doesNotMatch(fs.readFileSync(f, 'utf8'), bad, f);
   }
 });

@@ -1,0 +1,141 @@
+{
+  "id": "t1-bug-event-listeners",
+  "class": "hard",
+  "version": 1,
+  "phase": "bugfix",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "I own this notification service and need a small bug fix. After many connection reconnects, memory keeps climbing, users sometimes receive each notification twice, one broken application callback can prevent other callbacks from running, and test processes stay alive after they should be done. The affected public pieces are the CommonJS exports from `src/index.js`: `EventBus` (`subscribe(topic, handler)` returns an unsubscribe function and `publish(topic, payload)` returns a Promise), `NotificationService` (`connect`, `disconnect`, `notify`, `subscribe`, `listenerCount`, `connectionCount`, and `close`), `WebSocketStub` (`sentMessages`, `readyState`, `send`, `close`, and `ping`), and `Heartbeat` (`start`, `stop`, `running`, and public `timer`). Keep per-user routing, payloads, the existing exports, and the current test suite working. A service connection should be safe to reconnect, disconnect, or close more than once, and one failed async callback must not prevent other callbacks or a connected socket from receiving the notification. Heartbeats must stop with their connection and must not keep the event loop alive. Please include focused regression tests and a brief changelog or operations note. Do not add runtime dependencies or change the project to a different module system.",
+  "fixture": "t1-bug-event-listeners",
+  "hidden": "t1-bug-event-listeners",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 14,
+      "weight": 5,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "test/regressions.test.js",
+      "pattern": "\\btest\\s*\\(",
+      "min": 4,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const p=require('./package.json'); const bad=[...Object.keys(p.dependencies||{}),...Object.keys(p.devDependencies||{})]; process.exit(bad.length ? 1 : 0)\"",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "connection lifecycle|handler errors|unreferenced",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/operations.md",
+      "pattern": "unreferenced.*heartbeat|handler errors|connection.*listener",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": ".nvmrc",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "weight": 1,
+      "id": "verification-report",
+      "criterion": "The final report states which relevant test commands were actually run and does not claim unverified results (code cannot check this because it cannot inspect the agent's communication)."
+    }
+  ],
+  "targetSkills": [
+    "backend-development",
+    "code-review",
+    "verification"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "backend-development",
+      "code-review",
+      "verification"
+    ],
+    "mustNotLoad": []
+  },
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/nodejs/node",
+      "licence": "MIT",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes the bugs at a high level (memory climbing, duplicate notifications, failed callbacks blocking others, processes staying alive) without naming specific methods, files, or implementation details the agent must use."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt clearly states the expected behaviors: reconnect/disconnect/close should be idempotent, one failed callback must not block others, heartbeats must stop with their connection and not keep the event loop alive. The hidden tests align with these requirements."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture files do not reveal the hidden tests. The existing tests are basic happy-path tests that pass with the buggy code. The docs and architecture files describe the system but don't hint at the specific bugs or test scenarios."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A naive fix that only adds timer.unref() would pass 2 tests but fail 12 others. Similarly, only fixing listener cleanup would fail handler error tests. Multiple distinct fixes are required to pass all hidden tests."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All bugs are solvable with the information provided. The prompt gives clear symptoms and expected behaviors. The tests are deterministic with no timing dependencies (using long 60-second heartbeat intervals in tests). The checks are fair and achievable."
+      }
+    ]
+  }
+}

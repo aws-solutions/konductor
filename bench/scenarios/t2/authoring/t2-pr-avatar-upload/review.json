@@ -1,0 +1,31 @@
+{
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt mentions security focus but does not reveal review method, specific vulnerabilities, or number of problems. Output format specified clearly."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Agent receives pr/418/changes.diff to review, writes findings to REVIEW.md, output format clearly specified with location, severity, issue, fix fields."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Most items require multi-file analysis or tracing data flow. Path traversal requires recognizing original_filename vulnerability; missing max_size requires checking config imports; Content-Type trust requires cross-file analysis; temp cleanup requires understanding error flow. Not surface-level obvious."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All 7 key items correctly placed and verifiable in fixture. Each has evidence at specified line: k1 line55 os.path.join, k2 line263 no max_size param, k3 line106-107 Content-Type only, k4 temp file not deleted, k5 line275 user.email in URL, k6 lines207-209 no deletion, k7 line105 incorrect doc claim. Grader can match by location."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No TODO/FIXME/BUG comments pointing at vulnerabilities. No test names revealing issues. Decoy d1 at lines64-66 explained as safe (not a real TOCTOU). Documentation bug (auto-delete claim) is part of the task, not a hint."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

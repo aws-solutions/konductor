@@ -1,0 +1,1 @@
+USD and EUR use cents. JPY uses whole yen. KWD uses thousandths.

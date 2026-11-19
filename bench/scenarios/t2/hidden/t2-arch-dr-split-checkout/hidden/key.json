@@ -1,0 +1,84 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "section": "3.2",
+      "severity": "critical",
+      "fix": [
+        "service-owned schema",
+        "stop direct writes",
+        "separate database"
+      ],
+      "finding": "The extracted service still writes the monolith's Order Platform, Payments, and Fulfillment tables directly, so the proposed boundary leaves shared storage ownership and coupling unchanged."
+    },
+    {
+      "id": "k2",
+      "section": "3.4",
+      "severity": "critical",
+      "fix": [
+        "saga",
+        "compensating action",
+        "durable workflow"
+      ],
+      "finding": "Payment authorization, inventory reservation, and order creation are separate operations without a defined compensation or recovery contract when a later step fails, leaving partial charges or reservations possible."
+    },
+    {
+      "id": "k3",
+      "section": "4.2",
+      "severity": "high",
+      "fix": [
+        "latency budget",
+        "parallelize",
+        "remove hop",
+        "measured p99"
+      ],
+      "finding": "The stated 440 ms total ignores the context's p99 timings for the three serial network hops and exceeds the 450 ms checkout budget once those measurements are used."
+    },
+    {
+      "id": "k4",
+      "section": "5.1",
+      "severity": "high",
+      "fix": [
+        "shadow traffic",
+        "dual-run",
+        "compare responses"
+      ],
+      "finding": "The rollout changes the primary path by percentage but never runs both implementations on the same requests and compares their outcomes before increasing customer traffic."
+    },
+    {
+      "id": "k5",
+      "section": "3.3",
+      "severity": "medium",
+      "fix": [
+        "assign owner",
+        "customer table",
+        "ownership decision"
+      ],
+      "finding": "Customer table ownership and the permitted writer remain undecided even though the service caches and reads legacy profile data, so launch authority and future schema changes are unclear."
+    },
+    {
+      "id": "k6",
+      "section": "2.3",
+      "severity": "high",
+      "fix": [
+        "migration plan",
+        "caller inventory",
+        "adapter owner"
+      ],
+      "finding": "The listed subscription, returns, support, partner, and worker callers have only a vague promise of an adapter and later migration, with no per-caller contract, owner, or retirement path for the monolith interface."
+    },
+    {
+      "id": "k7",
+      "section": "6.3",
+      "severity": "medium",
+      "fix": [
+        "provider idempotency key",
+        "deduplicate",
+        "durable retry record"
+      ],
+      "finding": "The retry design reuses a local payment attempt ID but does not send the provider idempotency key or durably record the provider request before retrying, repeating the duplicate-authorization failure described in the incident."
+    }
+  ],
+  "decoys": []
+}

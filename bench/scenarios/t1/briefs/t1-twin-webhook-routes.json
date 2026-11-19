@@ -1,0 +1,14 @@
+{
+  "id": "t1-twin-webhook-routes",
+  "phase": "implementation",
+  "role": "developer",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "controlKind": "twin",
+  "twinOf": "t1-impl-webhook-verify",
+  "onFixture": "t1-impl-webhook-verify",
+  "source": "original",
+  "brief": "A near-miss twin on an existing repository (the payment webhook service in fixture/). The request shares words with a security task (webhooks, signatures, the ledger) but asks only for a plain inventory: a new file docs/ROUTES.md with a table of every HTTP route the service serves today (method, path, the handler file, and a one-line purpose), and a sentence on which route receives provider webhooks. No code change. Hidden tests parse the table and compare it with the routes the code really registers, so a guessed or partial table fails some tests; extra prose is fine.",
+  "size": "existing"
+}
