@@ -271,6 +271,8 @@ function intIn(v, name, min, max, dflt) {
 }
 
 const stampDir = () => path.join(os.tmpdir(), 'konductor-bench', 'cap', new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z'));
+// shortcut: one rough figure for every model (0.09 to 0.11 seen on kiro-cli); each proxy report records the measured creditsPerCall.
+const PROXY_CREDITS_PER_CALL = 0.1;
 const outDirOf = (opts, repo) => checkScratch(pathOpt(opts.out) ?? stampDir(), repo, '--out');
 const logger = (tag) => (m) => console.error(`[${tag} ${new Date().toISOString().slice(11, 19)}] ${m}`);
 
@@ -447,6 +449,13 @@ async function cmdTrigger(opts) {
       ? opencodeSurface({ baseDir: b.dir, fromRun, armName: fromArm })
       : kiroSurface({ baseDir: b.dir, actingAgent: acting, fromRun, armName: fromArm });
     if (surface.missing?.length) log(`warning: the filter lists ${surface.missing.length} name(s) with no file in the tree: ${surface.missing.join(', ')}`);
+    if (opts['dry-run']) {
+      // kiro-cli asks twice per query and repeat (search words, then the pick); opencode once, with the index in the prompt.
+      const calls = queries.length * reps * (harness === 'opencode' ? 1 : 2);
+      const cross = crossFraction > 0 ? ' The --crosscheck sample would also run live.' : '';
+      console.log(`dry run: proxy mode would make up to ${calls} model call(s) (${queries.length} queries x ${reps} rep(s)), about ${(calls * PROXY_CREDITS_PER_CALL).toFixed(1)} credits at about ${PROXY_CREDITS_PER_CALL} per call.${cross} No model call was made.`);
+      return;
+    }
     const { caller, cleanup } = makeCapCaller(opts, { rawDir: path.join(outDir, 'model-raw'), log });
     let proxy;
     try {
