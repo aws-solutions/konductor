@@ -1,0 +1,27 @@
+{
+  "id": "t7-ship-train",
+  "phase": "planning",
+  "role": "tpm",
+  "author": "gpt-5.6-luna",
+  "source": {
+    "url": "https://github.com/rust-lang/rust/blob/main/RELEASES.md",
+    "licence": "MIT OR Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "kind": "a release-train calendar (a new release every 6 weeks, each branching from main 6 weeks before release), throughput history for the last 12 sprints (CSV), a remaining-work export (CSV, 60 to 100 tickets, some unestimated, some split into sub-tickets) and a doc describing the review and stabilisation rules",
+  "scenario": "A director asks: which release will the new storage engine ship in? Give me the one I can promise customers, and the one we will most likely make.",
+  "seeds": "(1) the work must merge before a branch date, not the release date; (2) throughput history has one outlier sprint (a hackathon) that inflates the mean; (3) about 15% of remaining tickets are unestimated and the doc gives a rule for sizing them from history; (4) a stabilisation rule says a feature must sit behind a flag for one full train before being on by default, which moves the promise by one train; (5) a decoy: a big ticket labelled storage that belongs to a different feature.",
+  "block": "forecast",
+  "output": "docs/storage-engine-forecast.md",
+  "shape": "{\"likely_release\": \"<version>\", \"committed_release\": \"<version>\", \"likely_branch_date\": \"YYYY-MM-DD\", \"committed_release_date\": \"YYYY-MM-DD\", \"remaining_points\": n, \"throughput_points_per_sprint\": n, \"sprints_needed\": n, \"excluded_tickets\": [ids], \"notes\": [str]}",
+  "expert": true,
+  "controlKind": "none",
+  "reviewer": "glm-5",
+  "date": "2026-11-19",
+  "expertSources": [
+    "The Rust Book, How Rust is Made and Nightly Rust, https://doc.rust-lang.org/book/appendix-07-nightly-rust.html (MIT OR Apache-2.0)",
+    "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
+    "PEP 745, Python 3.14 Release Schedule, https://peps.python.org/pep-0745/ (public domain or CC0-1.0)"
+  ]
+}
