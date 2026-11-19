@@ -27,31 +27,31 @@ Before approval, the design should also pin down ordering and duplicate behavior
     "fix": "Add read-your-writes handling, such as a consistent read from the event store or a projection catch-up token that the read path honors before returning."
   },
   {
-    "location": "3.4",
+    "location": "6.2",
     "severity": "critical",
     "issue": "The packet has 174.66 million current events, while the stated replay benchmark is 2.5 million events per minute. That is roughly 70 minutes of replay, not the claimed ten, so a full rebuild misses the 15-minute RTO and grows farther from it at the projected volume.",
     "fix": "Recalculate the estimate with measured replay throughput and define an RTO-capable recovery plan using snapshots, incremental rebuilds, or another bounded path."
   },
   {
-    "location": "3.5",
+    "location": "7.2",
     "severity": "critical",
     "issue": "The event payload contains customer identifiers, addresses, and possibly contact details, and the log is retained indefinitely. Deleting only projection rows leaves personal data in the immutable source and cannot satisfy the deletion contract.",
     "fix": "Minimize personal data in events and define redaction or tokenization plus a retention policy that covers the event log, backups, exports, and derived stores."
   },
   {
-    "location": "3.6",
+    "location": "5.1",
     "severity": "medium",
     "issue": "The comparison reduces the current CRUD model to current state only even though the current system already has a relay-backed outbox and an audit table. It omits the simpler outbox plus audit-table option, so the decision does not compare the proposed operational cost with the existing capabilities.",
     "fix": "Add the outbox and audit table as a simpler option and compare its history, integration, migration, and operating costs with event sourcing."
   },
   {
-    "location": "3.7",
+    "location": "4.1",
     "severity": "medium",
     "issue": "Snapshots are mentioned as a solution for long streams, but the design defers the interval and does not define the trigger, storage and index layout, format migration, concurrency, or retention operations. This leaves both command latency and recovery dependent on an unbuilt mechanism.",
     "fix": "Specify the snapshot trigger, snapshot storage, format and retention policy, atomicity with stream versions, and repair metrics in the design spike."
   },
   {
-    "location": "3.8",
+    "location": "5.2",
     "severity": "high",
     "issue": "The reporting contract requires direct SQL, current-day questions, seven-year reproducibility, and complete agent activity, while the proposal removes SQL and only gestures at an API, daily export, or future feed. The existing two-day export also lacks the full audit payload, so reporting loses required capability at cutover.",
     "fix": "Design a reporting projection with a schema contract and a timely warehouse feed, preserving actor history and seven-year reproducibility before removing SQL access."

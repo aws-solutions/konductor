@@ -96,6 +96,51 @@
       "weight": 1
     }
   ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "Asks for a measurable backfill parity rule because the legacy audit rows may not contain enough old values to reconstruct every historical transition, and distinguishes current-state parity from historical fidelity.",
+        "source": "MADR, Markdown Architectural Decision Records, https://github.com/adr/madr (MIT OR CC0-1.0)"
+      },
+      {
+        "id": "e2",
+        "text": "Asks how the at-least-once relay preserves per-order ordering and how fulfillment handles duplicates across a relay crash, rather than treating an idempotency key alone as proof of one logical notification.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e3",
+        "text": "Asks whether monthly partitioning and the proposed indexes keep per-order stream reads and version checks bounded as an order's events cross partitions.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e4",
+        "text": "Asks what happens when a projection has a poison event or a growing retry backlog, including whether commands are throttled and which reads or workers are degraded first.",
+        "source": "Kubernetes Enhancement Proposals (KEP template), https://github.com/kubernetes/enhancements (Apache-2.0)"
+      },
+      {
+        "id": "e5",
+        "text": "Asks for a concrete capacity and cost model covering event storage, indexes, backups, broker traffic, projection rebuild tables, and two-times burst capacity rather than a monthly review promise.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      },
+      {
+        "id": "e6",
+        "text": "Asks how the feature-flag migration handles a command that is accepted by one path while a read or retry is served by the other, including ownership of the command receipt.",
+        "source": "MADR, Markdown Architectural Decision Records, https://github.com/adr/madr (MIT OR CC0-1.0)"
+      },
+      {
+        "id": "e7",
+        "text": "Asks for a clear operational boundary for the overnight platform escalation, including who can run replay, pause a consumer, or approve an emergency database access grant.",
+        "source": "Site Reliability Engineering (Google, O'Reilly 2016), https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+      }
+    ],
+    "weakAnswers": [
+      "The proposal is well structured and keeping PostgreSQL makes it a practical choice.",
+      "Consider scalability, observability, and security before implementation.",
+      "The migration plan and rollback strategy look reasonable, so approve the spike.",
+      "Event sourcing will improve auditability and make future projections easier."
+    ]
+  },
   "targetSkills": [
     "adversarial-design-review",
     "doc-accuracy-analyzer"
@@ -132,27 +177,27 @@
       {
         "check": "leak",
         "verdict": "pass",
-        "note": "The prompt asks for a review against contracts and targets but does not name a method, checklist, or planted problems. It specifies the output format without revealing what to find."
+        "note": "The prompt asks for a review of behavior, operations, migration, and dependencies against contracts and targets. It does not hint at specific problems, name a checklist, or give the number of issues."
       },
       {
         "check": "ambiguity",
         "verdict": "pass",
-        "note": "The task is clear: review the ADR against the supporting packet, write findings to REVIEW.md with section-numbered locations and json list format."
+        "note": "The prompt clearly specifies reviewing the ADR at fixture/docs/adr/0007-event-sourced-orders.md, writing findings to REVIEW.md, and using section numbers as locations with severity levels."
       },
       {
         "check": "ceiling",
         "verdict": "pass",
-        "note": "Finding issues requires cross-file reading (ADR vs product requirements, recovery targets, reporting contract), arithmetic verification (174.7M events at 2.5M/min), and recognizing that the options table omits existing outbox+audit. A quick read accepting the rationale would miss most items."
+        "note": "Finding the issues requires cross-file reading between the ADR and multiple packet documents (product-requirements, recovery-targets, reporting-contract, current-architecture). A quick skim would miss the arithmetic error, the read-your-writes conflict, and the reporting contract gaps."
       },
       {
         "check": "floor",
         "verdict": "pass",
-        "note": "All seven key items have evidence in the fixture: k2 and k4 contradict explicit product requirements; k3 is a verifiable math error; k5 omits documented existing architecture; k7 conflicts with reporting-contract.md. Severities are defensible for a senior reviewer."
+        "note": "All key items are grounded in the fixture. Each section referenced in the key exists in the ADR, and the supporting documents contain the contradictory contracts. The recovery math error (k3) is verifiable arithmetic."
       },
       {
         "check": "hidden-answer",
         "verdict": "pass",
-        "note": "No comments, test names, file names, or docs in the fixture point at the planted problems. The findings emerge from comparing documents."
+        "note": "No comments, tests, or file names point at planted problems. The incident document mentions stale reads but as a past operational issue, not as a hint about the ADR's design flaw."
       }
     ]
   }
