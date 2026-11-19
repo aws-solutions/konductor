@@ -1,0 +1,61 @@
+{
+  "id": "t3-arch-notification-pipeline",
+  "class": "design",
+  "target": null,
+  "prompt": "Review the files under `fixture/` and make the production architecture decision for the notification fan-out pipeline. Write the decision to `docs/architecture.md`, including a components table and a concise explanation of the tradeoffs among all candidate options. The document must contain a fenced block whose info string is exactly `decision`; that block must contain JSON with exactly these keys: `chosen` (the option id), `options` (the array of option ids considered), `limits` (an object mapping each hard-limit name to `{\"limit\": number, \"value\": number}`, with one entry per hard limit in the inputs and the chosen option's computed value), and `monthly_cost_usd` (the chosen option's monthly cost computed from the price sheet). Use the traffic schedule, service quotas, recovery objectives, and billing inputs together rather than relying on a single headline figure. Make the reported figures clear enough to audit against the source files. Keep the architecture practical for the stated peak and operational objectives.",
+  "fixture": "t3-arch-notification-pipeline",
+  "timeoutSec": 900,
+  "hidden": "t3-arch-notification-pipeline",
+  "phase": "architecture",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 17
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/architecture.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tradeoff-analysis",
+      "criterion": "Explains why the selected design balances quota headroom, delivery latency, recovery targets, operational complexity, and cost better than the alternatives. (not code-checkable: Tests can recompute limits and cost but cannot judge whether the comparison is technically convincing or whether the tradeoff reasoning is complete.)",
+      "weight": 1
+    },
+    {
+      "id": "architecture-coherence",
+      "criterion": "Presents a coherent set of components and responsibilities that could implement the selected fan-out design without contradicting the source assumptions. (not code-checkable: A script can find a table or decision block but cannot assess whether the components form a practical end-to-end architecture.)",
+      "weight": 1
+    },
+    {
+      "id": "technical-communication",
+      "criterion": "Communicates the decision clearly, precisely, and concisely, with enough calculation context for an architect to audit the result. (not code-checkable: Automated checks can validate numeric fields and structure but cannot reliably evaluate clarity, precision, or useful explanation.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1
+}

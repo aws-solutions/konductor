@@ -1,0 +1,6 @@
+{
+  "deliverables": ["docs/adr/0001-delivery.md"],
+  "acceptableOptions": ["cdn-committed", "cdn-payg"],
+  "temptingOption": "object-direct",
+  "notes": "The direct option's low first-tier rate hides incremental charges in fixture/price-sheet.json, while fixture/performance.csv records its 1,400 ms start time."
+}

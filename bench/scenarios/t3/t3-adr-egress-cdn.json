@@ -1,0 +1,61 @@
+{
+  "id": "t3-adr-egress-cdn",
+  "class": "design",
+  "target": null,
+  "prompt": "Read the architecture packet under `fixture/` and choose the production delivery option. Write the architecture decision record to `docs/adr/0001-delivery.md`. Explain the cost calculation, measured limits, alternatives, and the tradeoff behind the choice. The output must contain a fenced block whose info string is exactly `decision`, containing JSON with exactly these keys: `chosen`, `options`, `limits`, and `monthly_cost_usd`. Set `chosen` to the option ID, `options` to the array of option IDs considered, and set `monthly_cost_usd` to the chosen option's computed monthly price. Set `limits` to an object with one entry per hard limit in the inputs, where each entry has `limit` and `value` numbers and `value` is the computed figure for the chosen option.",
+  "fixture": "t3-adr-egress-cdn",
+  "timeoutSec": 900,
+  "hidden": "t3-adr-egress-cdn",
+  "phase": "decisions",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 18
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/adr/0001-delivery.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoned-choice",
+      "criterion": "Explains why the selected option is preferable, including a concrete tradeoff against the cheaper or simpler alternatives. (not code-checkable: A parser can verify IDs and numbers but cannot judge whether the comparison is meaningful or whether the stated tradeoff follows from the evidence.)",
+      "weight": 1
+    },
+    {
+      "id": "calculation-explanation",
+      "criterion": "Presents a clear, mutually consistent calculation for the tiered or committed monthly price and relates it to the hard limits. (not code-checkable: Tests can recompute the answer, but they cannot assess whether a human reader can follow the calculation or spot the important billing assumption.)",
+      "weight": 1
+    },
+    {
+      "id": "adr-clarity",
+      "criterion": "Uses a concise ADR structure that states context, decision, consequences, and operational follow-up in language suitable for an architecture review. (not code-checkable: Automated checks do not reliably measure narrative organization, precision, or whether the document gives reviewers enough rationale to act.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1
+}

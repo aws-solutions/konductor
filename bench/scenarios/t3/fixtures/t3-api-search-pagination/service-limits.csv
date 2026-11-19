@@ -1,0 +1,4 @@
+name,limit,unit,direction,measurement
+p99_search_latency,250,milliseconds,max,production search request at peak load
+peak_search_throughput,1800,requests_per_second,min,sustained production peak
+monthly_search_budget,9000,usd,max,steady-state monthly estimate

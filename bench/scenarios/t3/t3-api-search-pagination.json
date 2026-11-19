@@ -1,0 +1,66 @@
+{
+  "id": "t3-api-search-pagination",
+  "class": "design",
+  "target": null,
+  "prompt": "Choose an architecture for the product search service using the supplied requirements, traffic measurements, option profiles, and price sheet. Produce the public API contract at `api/openapi.json` and explain the choice and tradeoffs at `docs/decision.md`. Keep the API suitable for deep crawler traversal while meeting every hard limit in the input files. In `docs/decision.md`, include a fenced block whose info string is `decision` and whose JSON has exactly `chosen`, `options`, `limits`, and `monthly_cost_usd`. Set `chosen` to the selected option id, `options` to the option ids considered, and make `limits` map each hard-limit name to an object with numeric `limit` and computed `value` fields. Set `monthly_cost_usd` to the selected option's monthly cost computed from the supplied price data, and make the contract document the bounded request size and continuation fields.",
+  "fixture": "t3-api-search-pagination",
+  "timeoutSec": 900,
+  "hidden": "t3-api-search-pagination",
+  "phase": "architecture",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 18
+    },
+    {
+      "type": "file_exists",
+      "path": "api/openapi.json"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/decision.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning-quality",
+      "criterion": "The decision explains why the selected design meets the deep-traversal latency target and connects each material input to the recommendation. (not code-checkable: A script can recompute measurements but cannot reliably judge whether the explanation is technically coherent or uses the evidence well.)",
+      "weight": 1
+    },
+    {
+      "id": "tradeoff-explanation",
+      "criterion": "The decision fairly compares cost, operational capacity, recovery characteristics, client behavior, and migration implications rather than presenting only the winning numbers. (not code-checkable: The tests can check numeric fields but cannot assess whether the prose presents meaningful tradeoffs or acknowledges the rejected option's strengths.)",
+      "weight": 1
+    },
+    {
+      "id": "api-clarity",
+      "criterion": "The API explanation makes the continuation contract understandable to client authors, including replay behavior, final-page behavior, and the reason the value is opaque. (not code-checkable: Schema checks can find fields and constraints, but they cannot determine whether the accompanying explanation is clear and useful to a human reader.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/OAI/OpenAPI-Specification",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "pilot": null,
+  "version": 1
+}

@@ -1,0 +1,65 @@
+{
+  "id": "t3-db-tenant-isolation",
+  "class": "design",
+  "target": null,
+  "prompt": "Design the database schema for our B2B ticketing platform. We need strong tenant isolation for 12,000+ tenants with up to 40 million tickets for the largest tenant. The total projected data is about 1.9 billion rows within a few years.\n\nWe have a strict budget of $600 per month for storage and operational costs. Our infrastructure has a hard limit of 1,000 database connections in the connection pool. Each tenant must be completely isolated from others, but different tenants should be able to reuse the same human-readable identifiers (like ticket numbers or event codes) without conflicts.\n\nPlease deliver two files:\n1. `db/schema.sql` - SQLite schema with appropriate indexes and constraints\n2. `docs/decision.md` - Architecture decision document explaining your approach\n\nIn your decision.md, include a fenced code block with info string `decision` containing JSON with exactly these keys:\n- \"chosen\": the ID of your chosen approach\n- \"options\": array of option IDs you considered\n- \"limits\": object mapping limit names to {\"limit\": number, \"value\": number} for each hard limit in the requirements\n- \"monthly_cost_usd\": the monthly cost of your chosen approach calculated from the pricing data\n\nMake sure your schema ensures every tenant-specific query uses an index whose first column is tenant_id, and that queries without tenant_id would not accidentally scan all tenant data.",
+  "fixture": "t3-db-tenant-isolation",
+  "timeoutSec": 900,
+  "hidden": "t3-db-tenant-isolation",
+  "phase": "architecture",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 2
+    },
+    {
+      "type": "file_exists",
+      "path": "db/schema.sql"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/decision.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning_quality",
+      "criterion": "Clear explanation of trade-offs between different isolation approaches (not code-checkable: Code can verify the chosen option and calculations, but cannot assess the quality of reasoning about why certain options were rejected or the depth of understanding shown in comparing alternatives.)",
+      "weight": 1
+    },
+    {
+      "id": "tradeoff_explanation",
+      "criterion": "Explanation of performance vs cost vs complexity trade-offs specific to the ticketing domain (not code-checkable: While tests can verify numerical correctness, they cannot evaluate whether the agent properly explained domain-specific considerations like ticket key reuse requirements, event-based query patterns, or the implications of 40M tickets for the largest tenant.)",
+      "weight": 1
+    },
+    {
+      "id": "architecture_cohesion",
+      "criterion": "Cohesive architectural narrative connecting schema design to business requirements (not code-checkable: Tests check individual requirements compliance but cannot assess how well the solution narrative ties together isolation, scalability, cost constraints, and operational limits into a coherent architectural story.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1
+}

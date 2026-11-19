@@ -1,0 +1,8 @@
+service,unit,cost_per_unit,notes
+storage,GB-month,0.12,Standard SSD storage
+compute,vCPU-hour,0.048,General purpose instances
+memory,GB-hour,0.008,Memory cost
+backup,GB-month,0.02,Incremental backups
+network,GB,0.08,Outbound data transfer
+io_operations,million,0.20,IOPS over free tier
+connection,connection,0.001,Per connection cost

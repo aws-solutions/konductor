@@ -1,0 +1,61 @@
+{
+  "id": "t3-adr-db-engine",
+  "class": "design",
+  "target": null,
+  "prompt": "Choose the database approach for the launch-day session store using the requirements, traffic profile, platform limits, and price sheet in `fixture/`. Write the architecture decision record to `docs/adr/0001-database.md`. Compare the key-value table on-demand, key-value provisioned with autoscaling, and relational cluster options, including the hot-key distribution, recovery objectives, latency, and monthly cost. Recompute the figures from the supplied inputs and explain the important tradeoffs and rejected alternatives in the record. The output must contain a fenced block whose info string is exactly `decision`; the block must hold JSON with exactly the keys `chosen`, `options`, `limits`, and `monthly_cost_usd`. Use the option id for `chosen`, an array of considered option ids for `options`, and make `limits` an object mapping each hard-limit name to `{ \"limit\": number, \"value\": number }`, where `value` is the computed figure for the chosen option and `monthly_cost_usd` is the chosen option's monthly cost from the price sheet.",
+  "fixture": "t3-adr-db-engine",
+  "timeoutSec": 900,
+  "hidden": "t3-adr-db-engine",
+  "phase": "decisions",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 18
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/adr/0001-database.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning-quality",
+      "criterion": "The ADR shows a clear, technically sound chain from the traffic skew and service ceilings to the selected architecture, with calculations a reviewer can audit. (not code-checkable: Tests can recompute reported figures but cannot judge whether the reasoning connects the figures to a defensible architectural decision.)",
+      "weight": 1
+    },
+    {
+      "id": "tradeoff-explanation",
+      "criterion": "The ADR fairly explains the cost, scalability, latency, recovery, and operational tradeoffs of the rejected options rather than only naming a winner. (not code-checkable: Automated checks cannot determine whether prose gives a balanced explanation of alternatives or omits an important tradeoff.)",
+      "weight": 1
+    },
+    {
+      "id": "decision-record-quality",
+      "criterion": "The record is concise, readable, and actionable, including consequences and follow-up concerns for operating the selected design. (not code-checkable: A script can validate the path and JSON shape but cannot reliably assess clarity, completeness, or usefulness to an architecture reviewer.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1
+}

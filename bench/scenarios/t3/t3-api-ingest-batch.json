@@ -1,0 +1,70 @@
+{
+  "id": "t3-api-ingest-batch",
+  "class": "design",
+  "target": null,
+  "prompt": "Review the sensor-ingest materials in `fixture/` and design the API contract and decision record for this service. Write the OpenAPI document to `api/openapi.json` and the architecture decision to `docs/decision.md`. The decision document must contain a fenced block whose info string is `decision` holding JSON with exactly these keys: `chosen` (the option id), `options` (an array of option ids considered), `limits` (an object mapping each hard-limit name to `{\"limit\": number, \"value\": number}`), and `monthly_cost_usd` (the chosen option's monthly cost computed from the price sheet). Use the fleet traffic, gateway, reliability, and pricing data to compute the selected option's values rather than repeating a raw input. Include a batch ingest POST operation with per-item outcome reporting, a client idempotency header, and a GET operation for batch status in the API document. Explain the tradeoffs among the options and how the selected design meets the operating constraints.",
+  "fixture": "t3-api-ingest-batch",
+  "timeoutSec": 900,
+  "hidden": "t3-api-ingest-batch",
+  "phase": "architecture",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 19
+    },
+    {
+      "type": "file_exists",
+      "path": "api/openapi.json"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/decision.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoned-choice",
+      "criterion": "The decision explains why the selected design balances bounded request size, partial outcomes, latency, recovery objectives, throughput, and cost for the fleet. (not code-checkable: A structural test can verify numbers and fields but cannot judge whether the tradeoff explanation is technically persuasive or grounded in the scenario.)",
+      "weight": 1
+    },
+    {
+      "id": "option-comparison",
+      "criterion": "The decision compares the rejected alternatives accurately, including the operational consequence of the low-cost large-batch design and the cost of the more redundant design. (not code-checkable: Tests can identify an option id and a failing metric, but they cannot assess completeness, accuracy, or usefulness of the written comparison.)",
+      "weight": 1
+    },
+    {
+      "id": "contract-clarity",
+      "criterion": "The API and decision record use clear, implementable semantics for idempotency, per-item results, deferred work, and status polling. (not code-checkable: Schema checks can find required shapes and paths but cannot reliably evaluate whether the contract is understandable and operationally unambiguous.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/OAI/OpenAPI-Specification",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "pilot": null,
+  "version": 1
+}
