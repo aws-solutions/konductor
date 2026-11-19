@@ -2432,4 +2432,26 @@ mod tests {
         assert!(!installed_server_supports_install_info(&dir, &[], false));
         fs::remove_dir_all(&dir).ok();
     }
+
+    #[test]
+    fn mcp_pass_v3_rewrite_keeps_the_synthed_aws_mcp_entry() {
+        let dir = scratch_dir("mcp-v3-rewrite-keeps-aws-mcp");
+        let context_dir = dir.join("context");
+        let skills_dir = dir.join("skills");
+        let bin_dir = dir.join(".konductor").join("bin");
+        let aws_mcp =
+            serde_json::json!({"command": "uvx", "args": ["mcp-proxy-for-aws-cli==1.7.0"]});
+        let mut value = serde_json::json!({
+            "resources": ["skill://skills/constraints/SKILL.md"],
+            "mcpServers": {"aws-mcp": aws_mcp.clone()}
+        });
+        let bin_files = [bin_file_entry()];
+        McpServerPassV3.rewrite(
+            &mut value,
+            &ctx(&context_dir, &skills_dir, &bin_dir, &bin_files),
+        );
+        assert_eq!(value["mcpServers"]["aws-mcp"], aws_mcp);
+        assert!(value["mcpServers"].get(MCP_SERVER_NAME).is_some());
+        fs::remove_dir_all(&dir).ok();
+    }
 }
