@@ -1,0 +1,5 @@
+{
+  "cutoffHour": 23,
+  "cutoffMinute": 59,
+  "batchSize": 100
+}

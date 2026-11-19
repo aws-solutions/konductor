@@ -1,0 +1,19 @@
+{
+  "phase": "testing",
+  "role": "qa",
+  "phases2": [],
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "stack": "node",
+  "kind": "mutants",
+  "size": "30 to 45",
+  "nmut": 10,
+  "source": {
+    "url": "https://github.com/stryker-mutator/stryker-js",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: testing and QA. Role: QA engineer. Repo kind: a Node.js backend for a small online shop: cart, line pricing, discounts and coupons, tax, shipping rules, an order total calculator, a data layer with an in-memory store, HTTP-free service functions, CI config and docs. The existing test suite looks healthy (many tests, high line coverage, plenty of assertions) but all of it exercises easy paths with round numbers. The behaviour that really matters is thin: discount order and stacking, rounding of tax and totals in minor units, quantity and coupon-expiry boundaries (exactly at the limit), free-shipping threshold equality, empty and single-line carts, and state that persists between calls. Inspiration (a testing idea only, nothing copied): public mutation-testing tools show that line coverage hides tests that never check boundaries or errors.\n\nThe request is from a QA lead who saw a wrong charge reach a customer even though coverage is above 90%. They want the tests under test/ made trustworthy for the pricing and cart code, without touching src/. They do not say how.",
+  "id": "t5-qa-cart-weak-tests"
+}
