@@ -1,0 +1,17 @@
+groups:
+  - name: catalogue-page
+    rules:
+      - alert: CataloguePageErrors
+        expr: page_errors_per_minute > 50
+        for: 2m
+      - alert: CatalogueCacheHitRatioLow
+        expr: cache_hit_ratio < 0.70
+        for: 3m
+  - name: catalogue-database
+    rules:
+      - alert: CatalogueDbConnectionsHigh
+        expr: db_active_connections > 216
+        for: 2m
+      - alert: CatalogueReplicaLag
+        expr: replica_lag_ms > 1000
+        for: 5m

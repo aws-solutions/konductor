@@ -1,0 +1,10 @@
+service: catalog-api
+listen_port: 8080
+request_timeout_ms: 2000
+connection_pool:
+  max_open: 96
+  max_idle: 24
+  wait_timeout_ms: 1800
+cache:
+  key_prefix: catalogue:v2
+  read_timeout_ms: 120

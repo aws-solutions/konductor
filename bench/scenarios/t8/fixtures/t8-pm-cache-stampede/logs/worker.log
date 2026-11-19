@@ -1,0 +1,726 @@
+2025-03-18T12:00:13.000Z INFO catalog-worker job=inventory-sync batch=104 duration_ms=231 result=ok
+2025-03-18T12:00:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=117
+2025-03-18T12:01:13.000Z INFO catalog-worker job=inventory-sync batch=92 duration_ms=411 result=ok
+2025-03-18T12:01:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=96
+2025-03-18T12:02:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=291 result=ok
+2025-03-18T12:02:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=102
+2025-03-18T12:03:13.000Z INFO catalog-worker job=inventory-sync batch=112 duration_ms=326 result=ok
+2025-03-18T12:03:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=119
+2025-03-18T12:04:13.000Z INFO catalog-worker job=inventory-sync batch=114 duration_ms=305 result=ok
+2025-03-18T12:04:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=97
+2025-03-18T12:04:58.000Z WARN catalog-worker job=search-index retry=1 reason=upstream_429 result=ok
+2025-03-18T12:05:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=309 result=ok
+2025-03-18T12:05:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=51
+2025-03-18T12:06:13.000Z INFO catalog-worker job=inventory-sync batch=98 duration_ms=386 result=ok
+2025-03-18T12:06:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=73
+2025-03-18T12:07:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=269 result=ok
+2025-03-18T12:07:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=88
+2025-03-18T12:08:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=274 result=ok
+2025-03-18T12:08:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=84
+2025-03-18T12:09:13.000Z INFO catalog-worker job=inventory-sync batch=104 duration_ms=417 result=ok
+2025-03-18T12:09:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=79
+2025-03-18T12:10:13.000Z INFO catalog-worker job=inventory-sync batch=92 duration_ms=293 result=ok
+2025-03-18T12:10:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=101
+2025-03-18T12:11:13.000Z INFO catalog-worker job=inventory-sync batch=91 duration_ms=329 result=ok
+2025-03-18T12:11:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=118
+2025-03-18T12:12:13.000Z INFO catalog-worker job=inventory-sync batch=97 duration_ms=355 result=ok
+2025-03-18T12:12:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=80
+2025-03-18T12:13:13.000Z INFO catalog-worker job=inventory-sync batch=82 duration_ms=286 result=ok
+2025-03-18T12:13:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=75
+2025-03-18T12:14:13.000Z INFO catalog-worker job=inventory-sync batch=86 duration_ms=196 result=ok
+2025-03-18T12:14:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=76
+2025-03-18T12:15:13.000Z INFO catalog-worker job=inventory-sync batch=81 duration_ms=219 result=ok
+2025-03-18T12:15:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=105
+2025-03-18T12:16:13.000Z INFO catalog-worker job=inventory-sync batch=102 duration_ms=306 result=ok
+2025-03-18T12:16:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=102
+2025-03-18T12:17:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=225 result=ok
+2025-03-18T12:17:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=61
+2025-03-18T12:18:13.000Z INFO catalog-worker job=inventory-sync batch=112 duration_ms=395 result=ok
+2025-03-18T12:18:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=86
+2025-03-18T12:19:13.000Z INFO catalog-worker job=inventory-sync batch=99 duration_ms=278 result=ok
+2025-03-18T12:19:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=106
+2025-03-18T12:20:13.000Z INFO catalog-worker job=inventory-sync batch=113 duration_ms=257 result=ok
+2025-03-18T12:20:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=84
+2025-03-18T12:21:13.000Z INFO catalog-worker job=inventory-sync batch=83 duration_ms=198 result=ok
+2025-03-18T12:21:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=94
+2025-03-18T12:22:13.000Z INFO catalog-worker job=inventory-sync batch=110 duration_ms=369 result=ok
+2025-03-18T12:22:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=99
+2025-03-18T12:23:13.000Z INFO catalog-worker job=inventory-sync batch=108 duration_ms=205 result=ok
+2025-03-18T12:23:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=103
+2025-03-18T12:24:13.000Z INFO catalog-worker job=inventory-sync batch=110 duration_ms=403 result=ok
+2025-03-18T12:24:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=66
+2025-03-18T12:25:13.000Z INFO catalog-worker job=inventory-sync batch=117 duration_ms=198 result=ok
+2025-03-18T12:25:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=112
+2025-03-18T12:26:13.000Z INFO catalog-worker job=inventory-sync batch=105 duration_ms=345 result=ok
+2025-03-18T12:26:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=107
+2025-03-18T12:27:13.000Z INFO catalog-worker job=inventory-sync batch=110 duration_ms=374 result=ok
+2025-03-18T12:27:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=108
+2025-03-18T12:28:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=355 result=ok
+2025-03-18T12:28:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=115
+2025-03-18T12:29:13.000Z INFO catalog-worker job=inventory-sync batch=119 duration_ms=298 result=ok
+2025-03-18T12:29:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=71
+2025-03-18T12:30:13.000Z INFO catalog-worker job=inventory-sync batch=111 duration_ms=348 result=ok
+2025-03-18T12:30:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=90
+2025-03-18T12:31:13.000Z INFO catalog-worker job=inventory-sync batch=115 duration_ms=202 result=ok
+2025-03-18T12:31:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=94
+2025-03-18T12:32:13.000Z INFO catalog-worker job=inventory-sync batch=113 duration_ms=257 result=ok
+2025-03-18T12:32:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=93
+2025-03-18T12:33:13.000Z INFO catalog-worker job=inventory-sync batch=85 duration_ms=323 result=ok
+2025-03-18T12:33:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=81
+2025-03-18T12:34:13.000Z INFO catalog-worker job=inventory-sync batch=107 duration_ms=414 result=ok
+2025-03-18T12:34:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=101
+2025-03-18T12:35:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=318 result=ok
+2025-03-18T12:35:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=119
+2025-03-18T12:36:13.000Z INFO catalog-worker job=inventory-sync batch=80 duration_ms=373 result=ok
+2025-03-18T12:36:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=108
+2025-03-18T12:37:13.000Z INFO catalog-worker job=inventory-sync batch=85 duration_ms=369 result=ok
+2025-03-18T12:37:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=62
+2025-03-18T12:38:13.000Z INFO catalog-worker job=inventory-sync batch=100 duration_ms=246 result=ok
+2025-03-18T12:38:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=55
+2025-03-18T12:39:13.000Z INFO catalog-worker job=inventory-sync batch=92 duration_ms=356 result=ok
+2025-03-18T12:39:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=88
+2025-03-18T12:40:13.000Z INFO catalog-worker job=inventory-sync batch=105 duration_ms=361 result=ok
+2025-03-18T12:40:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=82
+2025-03-18T12:41:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=355 result=ok
+2025-03-18T12:41:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=91
+2025-03-18T12:42:13.000Z INFO catalog-worker job=inventory-sync batch=90 duration_ms=283 result=ok
+2025-03-18T12:42:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=66
+2025-03-18T12:43:13.000Z INFO catalog-worker job=inventory-sync batch=95 duration_ms=287 result=ok
+2025-03-18T12:43:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=111
+2025-03-18T12:44:13.000Z INFO catalog-worker job=inventory-sync batch=89 duration_ms=346 result=ok
+2025-03-18T12:44:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=71
+2025-03-18T12:45:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=191 result=ok
+2025-03-18T12:45:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=56
+2025-03-18T12:46:13.000Z INFO catalog-worker job=inventory-sync batch=93 duration_ms=356 result=ok
+2025-03-18T12:46:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=66
+2025-03-18T12:47:13.000Z INFO catalog-worker job=inventory-sync batch=91 duration_ms=393 result=ok
+2025-03-18T12:47:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=71
+2025-03-18T12:48:13.000Z INFO catalog-worker job=inventory-sync batch=96 duration_ms=338 result=ok
+2025-03-18T12:48:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=91
+2025-03-18T12:49:13.000Z INFO catalog-worker job=inventory-sync batch=107 duration_ms=394 result=ok
+2025-03-18T12:49:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=100
+2025-03-18T12:50:13.000Z INFO catalog-worker job=inventory-sync batch=80 duration_ms=409 result=ok
+2025-03-18T12:50:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=54
+2025-03-18T12:51:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=364 result=ok
+2025-03-18T12:51:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=101
+2025-03-18T12:52:13.000Z INFO catalog-worker job=inventory-sync batch=107 duration_ms=336 result=ok
+2025-03-18T12:52:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=103
+2025-03-18T12:53:13.000Z INFO catalog-worker job=inventory-sync batch=116 duration_ms=367 result=ok
+2025-03-18T12:53:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=88
+2025-03-18T12:54:13.000Z INFO catalog-worker job=inventory-sync batch=105 duration_ms=352 result=ok
+2025-03-18T12:54:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=109
+2025-03-18T12:55:13.000Z INFO catalog-worker job=inventory-sync batch=81 duration_ms=313 result=ok
+2025-03-18T12:55:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=114
+2025-03-18T12:56:13.000Z INFO catalog-worker job=inventory-sync batch=97 duration_ms=352 result=ok
+2025-03-18T12:56:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=105
+2025-03-18T12:57:13.000Z INFO catalog-worker job=inventory-sync batch=85 duration_ms=311 result=ok
+2025-03-18T12:57:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=81
+2025-03-18T12:58:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=328 result=ok
+2025-03-18T12:58:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=94
+2025-03-18T12:59:13.000Z INFO catalog-worker job=inventory-sync batch=89 duration_ms=392 result=ok
+2025-03-18T12:59:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=89
+2025-03-18T13:00:13.000Z INFO catalog-worker job=inventory-sync batch=113 duration_ms=350 result=ok
+2025-03-18T13:00:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=78
+2025-03-18T13:01:13.000Z INFO catalog-worker job=inventory-sync batch=88 duration_ms=181 result=ok
+2025-03-18T13:01:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=53
+2025-03-18T13:02:13.000Z INFO catalog-worker job=inventory-sync batch=100 duration_ms=195 result=ok
+2025-03-18T13:02:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=102
+2025-03-18T13:03:13.000Z INFO catalog-worker job=inventory-sync batch=114 duration_ms=183 result=ok
+2025-03-18T13:03:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=112
+2025-03-18T13:04:13.000Z INFO catalog-worker job=inventory-sync batch=82 duration_ms=244 result=ok
+2025-03-18T13:04:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=84
+2025-03-18T13:05:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=244 result=ok
+2025-03-18T13:05:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=57
+2025-03-18T13:06:13.000Z INFO catalog-worker job=inventory-sync batch=90 duration_ms=325 result=ok
+2025-03-18T13:06:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=77
+2025-03-18T13:07:13.000Z INFO catalog-worker job=inventory-sync batch=81 duration_ms=272 result=ok
+2025-03-18T13:07:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=77
+2025-03-18T13:08:13.000Z INFO catalog-worker job=inventory-sync batch=111 duration_ms=304 result=ok
+2025-03-18T13:08:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=107
+2025-03-18T13:09:13.000Z INFO catalog-worker job=inventory-sync batch=91 duration_ms=397 result=ok
+2025-03-18T13:09:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=116
+2025-03-18T13:10:13.000Z INFO catalog-worker job=inventory-sync batch=117 duration_ms=283 result=ok
+2025-03-18T13:10:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=92
+2025-03-18T13:11:13.000Z INFO catalog-worker job=inventory-sync batch=97 duration_ms=383 result=ok
+2025-03-18T13:11:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=86
+2025-03-18T13:12:13.000Z INFO catalog-worker job=inventory-sync batch=105 duration_ms=304 result=ok
+2025-03-18T13:12:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=118
+2025-03-18T13:13:13.000Z INFO catalog-worker job=inventory-sync batch=109 duration_ms=236 result=ok
+2025-03-18T13:13:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=85
+2025-03-18T13:14:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=239 result=ok
+2025-03-18T13:14:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=64
+2025-03-18T13:15:13.000Z INFO catalog-worker job=inventory-sync batch=90 duration_ms=282 result=ok
+2025-03-18T13:15:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=96
+2025-03-18T13:15:58.000Z WARN catalog-worker job=search-index retry=1 reason=upstream_429 result=ok
+2025-03-18T13:16:13.000Z INFO catalog-worker job=inventory-sync batch=117 duration_ms=224 result=ok
+2025-03-18T13:16:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=119
+2025-03-18T13:17:13.000Z INFO catalog-worker job=inventory-sync batch=102 duration_ms=348 result=ok
+2025-03-18T13:17:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=54
+2025-03-18T13:18:13.000Z INFO catalog-worker job=inventory-sync batch=112 duration_ms=325 result=ok
+2025-03-18T13:18:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=109
+2025-03-18T13:19:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=277 result=ok
+2025-03-18T13:19:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=84
+2025-03-18T13:20:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=274 result=ok
+2025-03-18T13:20:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=115
+2025-03-18T13:21:13.000Z INFO catalog-worker job=inventory-sync batch=118 duration_ms=314 result=ok
+2025-03-18T13:21:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=82
+2025-03-18T13:22:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=234 result=ok
+2025-03-18T13:22:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=60
+2025-03-18T13:23:13.000Z INFO catalog-worker job=inventory-sync batch=114 duration_ms=251 result=ok
+2025-03-18T13:23:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=103
+2025-03-18T13:24:13.000Z INFO catalog-worker job=inventory-sync batch=120 duration_ms=245 result=ok
+2025-03-18T13:24:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=56
+2025-03-18T13:25:13.000Z INFO catalog-worker job=inventory-sync batch=116 duration_ms=274 result=ok
+2025-03-18T13:25:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=63
+2025-03-18T13:26:13.000Z INFO catalog-worker job=inventory-sync batch=110 duration_ms=340 result=ok
+2025-03-18T13:26:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=105
+2025-03-18T13:27:13.000Z INFO catalog-worker job=inventory-sync batch=114 duration_ms=299 result=ok
+2025-03-18T13:27:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=85
+2025-03-18T13:28:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=305 result=ok
+2025-03-18T13:28:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=108
+2025-03-18T13:29:13.000Z INFO catalog-worker job=inventory-sync batch=113 duration_ms=199 result=ok
+2025-03-18T13:29:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=60
+2025-03-18T13:30:13.000Z INFO catalog-worker job=inventory-sync batch=86 duration_ms=319 result=ok
+2025-03-18T13:30:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=87
+2025-03-18T13:31:13.000Z INFO catalog-worker job=inventory-sync batch=93 duration_ms=229 result=ok
+2025-03-18T13:31:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=83
+2025-03-18T13:32:13.000Z INFO catalog-worker job=inventory-sync batch=114 duration_ms=371 result=ok
+2025-03-18T13:32:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=107
+2025-03-18T13:33:13.000Z INFO catalog-worker job=inventory-sync batch=110 duration_ms=323 result=ok
+2025-03-18T13:33:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=66
+2025-03-18T13:34:13.000Z INFO catalog-worker job=inventory-sync batch=114 duration_ms=360 result=ok
+2025-03-18T13:34:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=78
+2025-03-18T13:35:13.000Z INFO catalog-worker job=inventory-sync batch=80 duration_ms=397 result=ok
+2025-03-18T13:35:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=51
+2025-03-18T13:36:13.000Z INFO catalog-worker job=inventory-sync batch=84 duration_ms=365 result=ok
+2025-03-18T13:36:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=79
+2025-03-18T13:37:13.000Z INFO catalog-worker job=inventory-sync batch=86 duration_ms=373 result=ok
+2025-03-18T13:37:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=101
+2025-03-18T13:38:13.000Z INFO catalog-worker job=inventory-sync batch=86 duration_ms=269 result=ok
+2025-03-18T13:38:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=93
+2025-03-18T13:39:13.000Z INFO catalog-worker job=inventory-sync batch=99 duration_ms=395 result=ok
+2025-03-18T13:39:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=66
+2025-03-18T13:40:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=348 result=ok
+2025-03-18T13:40:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=98
+2025-03-18T13:41:13.000Z INFO catalog-worker job=inventory-sync batch=116 duration_ms=380 result=ok
+2025-03-18T13:41:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=76
+2025-03-18T13:42:13.000Z INFO catalog-worker job=inventory-sync batch=111 duration_ms=230 result=ok
+2025-03-18T13:42:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=53
+2025-03-18T13:43:13.000Z INFO catalog-worker job=inventory-sync batch=113 duration_ms=385 result=ok
+2025-03-18T13:43:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=57
+2025-03-18T13:44:13.000Z INFO catalog-worker job=inventory-sync batch=82 duration_ms=217 result=ok
+2025-03-18T13:44:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=76
+2025-03-18T13:45:13.000Z INFO catalog-worker job=inventory-sync batch=100 duration_ms=280 result=ok
+2025-03-18T13:45:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=89
+2025-03-18T13:46:13.000Z INFO catalog-worker job=inventory-sync batch=114 duration_ms=248 result=ok
+2025-03-18T13:46:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=66
+2025-03-18T13:47:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=242 result=ok
+2025-03-18T13:47:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=109
+2025-03-18T13:48:13.000Z INFO catalog-worker job=inventory-sync batch=94 duration_ms=413 result=ok
+2025-03-18T13:48:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=52
+2025-03-18T13:49:13.000Z INFO catalog-worker job=inventory-sync batch=113 duration_ms=368 result=ok
+2025-03-18T13:49:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=108
+2025-03-18T13:50:13.000Z INFO catalog-worker job=inventory-sync batch=93 duration_ms=231 result=ok
+2025-03-18T13:50:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=85
+2025-03-18T13:51:13.000Z INFO catalog-worker job=inventory-sync batch=86 duration_ms=369 result=ok
+2025-03-18T13:51:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=80
+2025-03-18T13:52:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=280 result=ok
+2025-03-18T13:52:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=95
+2025-03-18T13:53:13.000Z INFO catalog-worker job=inventory-sync batch=107 duration_ms=216 result=ok
+2025-03-18T13:53:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=115
+2025-03-18T13:54:13.000Z INFO catalog-worker job=inventory-sync batch=116 duration_ms=338 result=ok
+2025-03-18T13:54:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=53
+2025-03-18T13:55:13.000Z INFO catalog-worker job=inventory-sync batch=82 duration_ms=377 result=ok
+2025-03-18T13:55:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=69
+2025-03-18T13:56:13.000Z INFO catalog-worker job=inventory-sync batch=97 duration_ms=203 result=ok
+2025-03-18T13:56:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=65
+2025-03-18T13:57:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=334 result=ok
+2025-03-18T13:57:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=69
+2025-03-18T13:58:13.000Z INFO catalog-worker job=inventory-sync batch=115 duration_ms=351 result=ok
+2025-03-18T13:58:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=83
+2025-03-18T13:59:13.000Z INFO catalog-worker job=inventory-sync batch=87 duration_ms=334 result=ok
+2025-03-18T13:59:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=80
+2025-03-18T14:00:13.000Z INFO catalog-worker job=inventory-sync batch=120 duration_ms=254 result=ok
+2025-03-18T14:00:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=70
+2025-03-18T14:01:13.000Z INFO catalog-worker job=inventory-sync batch=109 duration_ms=361 result=ok
+2025-03-18T14:01:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=112
+2025-03-18T14:02:13.000Z INFO catalog-worker job=inventory-sync batch=102 duration_ms=259 result=ok
+2025-03-18T14:02:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=85
+2025-03-18T14:03:13.000Z INFO catalog-worker job=inventory-sync batch=81 duration_ms=350 result=ok
+2025-03-18T14:03:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=81
+2025-03-18T14:04:13.000Z INFO catalog-worker job=inventory-sync batch=90 duration_ms=227 result=ok
+2025-03-18T14:04:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=108
+2025-03-18T14:05:13.000Z INFO catalog-worker job=inventory-sync batch=85 duration_ms=192 result=ok
+2025-03-18T14:05:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=67
+2025-03-18T14:06:13.000Z INFO catalog-worker job=inventory-sync batch=90 duration_ms=352 result=ok
+2025-03-18T14:06:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=85
+2025-03-18T14:07:13.000Z INFO catalog-worker job=inventory-sync batch=88 duration_ms=188 result=ok
+2025-03-18T14:07:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=94
+2025-03-18T14:08:13.000Z INFO catalog-worker job=inventory-sync batch=102 duration_ms=304 result=ok
+2025-03-18T14:08:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=51
+2025-03-18T14:09:13.000Z INFO catalog-worker job=inventory-sync batch=100 duration_ms=262 result=ok
+2025-03-18T14:09:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=119
+2025-03-18T14:10:13.000Z INFO catalog-worker job=inventory-sync batch=90 duration_ms=324 result=ok
+2025-03-18T14:10:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=89
+2025-03-18T14:11:13.000Z INFO catalog-worker job=inventory-sync batch=119 duration_ms=335 result=ok
+2025-03-18T14:11:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=105
+2025-03-18T14:12:13.000Z INFO catalog-worker job=inventory-sync batch=84 duration_ms=380 result=ok
+2025-03-18T14:12:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=102
+2025-03-18T14:13:13.000Z INFO catalog-worker job=inventory-sync batch=114 duration_ms=294 result=ok
+2025-03-18T14:13:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=113
+2025-03-18T14:14:13.000Z INFO catalog-worker job=inventory-sync batch=100 duration_ms=248 result=ok
+2025-03-18T14:14:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=83
+2025-03-18T14:15:13.000Z INFO catalog-worker job=inventory-sync batch=111 duration_ms=215 result=ok
+2025-03-18T14:15:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=88
+2025-03-18T14:16:13.000Z INFO catalog-worker job=inventory-sync batch=118 duration_ms=223 result=ok
+2025-03-18T14:16:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=73
+2025-03-18T14:17:13.000Z INFO catalog-worker job=inventory-sync batch=108 duration_ms=183 result=ok
+2025-03-18T14:17:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=72
+2025-03-18T14:18:13.000Z INFO catalog-worker job=inventory-sync batch=82 duration_ms=333 result=ok
+2025-03-18T14:18:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=79
+2025-03-18T14:19:13.000Z INFO catalog-worker job=inventory-sync batch=117 duration_ms=321 result=ok
+2025-03-18T14:19:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=76
+2025-03-18T14:20:13.000Z INFO catalog-worker job=inventory-sync batch=117 duration_ms=257 result=ok
+2025-03-18T14:20:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=104
+2025-03-18T14:21:13.000Z INFO catalog-worker job=inventory-sync batch=107 duration_ms=370 result=ok
+2025-03-18T14:21:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=110
+2025-03-18T14:22:13.000Z INFO catalog-worker job=inventory-sync batch=84 duration_ms=238 result=ok
+2025-03-18T14:22:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=70
+2025-03-18T14:23:13.000Z INFO catalog-worker job=inventory-sync batch=104 duration_ms=395 result=ok
+2025-03-18T14:23:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=115
+2025-03-18T14:24:13.000Z INFO catalog-worker job=inventory-sync batch=104 duration_ms=374 result=ok
+2025-03-18T14:24:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=88
+2025-03-18T14:25:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=262 result=ok
+2025-03-18T14:25:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=78
+2025-03-18T14:26:13.000Z INFO catalog-worker job=inventory-sync batch=120 duration_ms=316 result=ok
+2025-03-18T14:26:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=120
+2025-03-18T14:26:58.000Z WARN catalog-worker job=search-index retry=1 reason=upstream_429 result=ok
+2025-03-18T14:27:13.000Z INFO catalog-worker job=inventory-sync batch=108 duration_ms=324 result=ok
+2025-03-18T14:27:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=116
+2025-03-18T14:28:13.000Z INFO catalog-worker job=inventory-sync batch=117 duration_ms=281 result=ok
+2025-03-18T14:28:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=94
+2025-03-18T14:29:13.000Z INFO catalog-worker job=inventory-sync batch=112 duration_ms=274 result=ok
+2025-03-18T14:29:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=116
+2025-03-18T14:30:13.000Z INFO catalog-worker job=inventory-sync batch=114 duration_ms=230 result=ok
+2025-03-18T14:30:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=57
+2025-03-18T14:31:13.000Z INFO catalog-worker job=inventory-sync batch=88 duration_ms=209 result=ok
+2025-03-18T14:31:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=59
+2025-03-18T14:32:13.000Z INFO catalog-worker job=inventory-sync batch=89 duration_ms=411 result=ok
+2025-03-18T14:32:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=114
+2025-03-18T14:33:13.000Z INFO catalog-worker job=inventory-sync batch=112 duration_ms=327 result=ok
+2025-03-18T14:33:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=53
+2025-03-18T14:34:13.000Z INFO catalog-worker job=inventory-sync batch=98 duration_ms=181 result=ok
+2025-03-18T14:34:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=101
+2025-03-18T14:35:13.000Z INFO catalog-worker job=inventory-sync batch=116 duration_ms=188 result=ok
+2025-03-18T14:35:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=91
+2025-03-18T14:36:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=362 result=ok
+2025-03-18T14:36:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=60
+2025-03-18T14:37:13.000Z INFO catalog-worker job=inventory-sync batch=98 duration_ms=192 result=ok
+2025-03-18T14:37:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=92
+2025-03-18T14:38:13.000Z INFO catalog-worker job=inventory-sync batch=109 duration_ms=400 result=ok
+2025-03-18T14:38:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=75
+2025-03-18T14:39:13.000Z INFO catalog-worker job=inventory-sync batch=87 duration_ms=358 result=ok
+2025-03-18T14:39:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=62
+2025-03-18T14:40:13.000Z INFO catalog-worker job=inventory-sync batch=116 duration_ms=229 result=ok
+2025-03-18T14:40:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=50
+2025-03-18T14:41:13.000Z INFO catalog-worker job=inventory-sync batch=90 duration_ms=246 result=ok
+2025-03-18T14:41:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=107
+2025-03-18T14:42:13.000Z INFO catalog-worker job=inventory-sync batch=102 duration_ms=218 result=ok
+2025-03-18T14:42:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=70
+2025-03-18T14:43:13.000Z INFO catalog-worker job=inventory-sync batch=112 duration_ms=273 result=ok
+2025-03-18T14:43:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=111
+2025-03-18T14:44:13.000Z INFO catalog-worker job=inventory-sync batch=96 duration_ms=255 result=ok
+2025-03-18T14:44:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=58
+2025-03-18T14:45:13.000Z INFO catalog-worker job=inventory-sync batch=108 duration_ms=373 result=ok
+2025-03-18T14:45:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=113
+2025-03-18T14:46:13.000Z INFO catalog-worker job=inventory-sync batch=83 duration_ms=283 result=ok
+2025-03-18T14:46:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=94
+2025-03-18T14:47:13.000Z INFO catalog-worker job=inventory-sync batch=95 duration_ms=260 result=ok
+2025-03-18T14:47:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=112
+2025-03-18T14:48:13.000Z INFO catalog-worker job=inventory-sync batch=89 duration_ms=365 result=ok
+2025-03-18T14:48:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=79
+2025-03-18T14:49:13.000Z INFO catalog-worker job=inventory-sync batch=113 duration_ms=305 result=ok
+2025-03-18T14:49:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=118
+2025-03-18T14:50:13.000Z INFO catalog-worker job=inventory-sync batch=110 duration_ms=281 result=ok
+2025-03-18T14:50:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=113
+2025-03-18T14:51:13.000Z INFO catalog-worker job=inventory-sync batch=83 duration_ms=342 result=ok
+2025-03-18T14:51:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=114
+2025-03-18T14:52:13.000Z INFO catalog-worker job=inventory-sync batch=94 duration_ms=252 result=ok
+2025-03-18T14:52:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=102
+2025-03-18T14:53:13.000Z INFO catalog-worker job=inventory-sync batch=82 duration_ms=207 result=ok
+2025-03-18T14:53:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=112
+2025-03-18T14:54:13.000Z INFO catalog-worker job=inventory-sync batch=84 duration_ms=319 result=ok
+2025-03-18T14:54:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=55
+2025-03-18T14:55:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=245 result=ok
+2025-03-18T14:55:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=112
+2025-03-18T14:56:13.000Z INFO catalog-worker job=inventory-sync batch=119 duration_ms=235 result=ok
+2025-03-18T14:56:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=109
+2025-03-18T14:57:13.000Z INFO catalog-worker job=inventory-sync batch=110 duration_ms=345 result=ok
+2025-03-18T14:57:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=52
+2025-03-18T14:58:13.000Z INFO catalog-worker job=inventory-sync batch=107 duration_ms=264 result=ok
+2025-03-18T14:58:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=84
+2025-03-18T14:59:13.000Z INFO catalog-worker job=inventory-sync batch=85 duration_ms=285 result=ok
+2025-03-18T14:59:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=115
+2025-03-18T15:00:13.000Z INFO catalog-worker job=inventory-sync batch=92 duration_ms=359 result=ok
+2025-03-18T15:00:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=84
+2025-03-18T15:01:13.000Z INFO catalog-worker job=inventory-sync batch=120 duration_ms=324 result=ok
+2025-03-18T15:01:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=119
+2025-03-18T15:02:13.000Z INFO catalog-worker job=inventory-sync batch=80 duration_ms=363 result=ok
+2025-03-18T15:02:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=105
+2025-03-18T15:03:13.000Z INFO catalog-worker job=inventory-sync batch=98 duration_ms=182 result=ok
+2025-03-18T15:03:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=115
+2025-03-18T15:04:13.000Z INFO catalog-worker job=inventory-sync batch=115 duration_ms=181 result=ok
+2025-03-18T15:04:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=78
+2025-03-18T15:05:13.000Z INFO catalog-worker job=inventory-sync batch=115 duration_ms=325 result=ok
+2025-03-18T15:05:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=92
+2025-03-18T15:06:13.000Z INFO catalog-worker job=inventory-sync batch=107 duration_ms=268 result=ok
+2025-03-18T15:06:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=98
+2025-03-18T15:07:13.000Z INFO catalog-worker job=inventory-sync batch=88 duration_ms=196 result=ok
+2025-03-18T15:07:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=66
+2025-03-18T15:08:13.000Z INFO catalog-worker job=inventory-sync batch=111 duration_ms=241 result=ok
+2025-03-18T15:08:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=105
+2025-03-18T15:09:13.000Z INFO catalog-worker job=inventory-sync batch=102 duration_ms=395 result=ok
+2025-03-18T15:09:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=58
+2025-03-18T15:10:13.000Z INFO catalog-worker job=inventory-sync batch=94 duration_ms=309 result=ok
+2025-03-18T15:10:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=106
+2025-03-18T15:11:13.000Z INFO catalog-worker job=inventory-sync batch=120 duration_ms=216 result=ok
+2025-03-18T15:11:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=80
+2025-03-18T15:12:13.000Z INFO catalog-worker job=inventory-sync batch=86 duration_ms=350 result=ok
+2025-03-18T15:12:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=104
+2025-03-18T15:13:13.000Z INFO catalog-worker job=inventory-sync batch=99 duration_ms=197 result=ok
+2025-03-18T15:13:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=81
+2025-03-18T15:14:13.000Z INFO catalog-worker job=inventory-sync batch=100 duration_ms=232 result=ok
+2025-03-18T15:14:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=64
+2025-03-18T15:15:13.000Z INFO catalog-worker job=inventory-sync batch=102 duration_ms=246 result=ok
+2025-03-18T15:15:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=79
+2025-03-18T15:16:13.000Z INFO catalog-worker job=inventory-sync batch=107 duration_ms=216 result=ok
+2025-03-18T15:16:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=53
+2025-03-18T15:17:13.000Z INFO catalog-worker job=inventory-sync batch=80 duration_ms=391 result=ok
+2025-03-18T15:17:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=116
+2025-03-18T15:18:13.000Z INFO catalog-worker job=inventory-sync batch=94 duration_ms=386 result=ok
+2025-03-18T15:18:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=105
+2025-03-18T15:19:13.000Z INFO catalog-worker job=inventory-sync batch=91 duration_ms=289 result=ok
+2025-03-18T15:19:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=89
+2025-03-18T15:20:13.000Z INFO catalog-worker job=inventory-sync batch=95 duration_ms=326 result=ok
+2025-03-18T15:20:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=74
+2025-03-18T15:21:13.000Z INFO catalog-worker job=inventory-sync batch=86 duration_ms=220 result=ok
+2025-03-18T15:21:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=79
+2025-03-18T15:22:13.000Z INFO catalog-worker job=inventory-sync batch=92 duration_ms=331 result=ok
+2025-03-18T15:22:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=52
+2025-03-18T15:23:13.000Z INFO catalog-worker job=inventory-sync batch=80 duration_ms=214 result=ok
+2025-03-18T15:23:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=120
+2025-03-18T15:24:13.000Z INFO catalog-worker job=inventory-sync batch=95 duration_ms=382 result=ok
+2025-03-18T15:24:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=51
+2025-03-18T15:25:13.000Z INFO catalog-worker job=inventory-sync batch=102 duration_ms=392 result=ok
+2025-03-18T15:25:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=78
+2025-03-18T15:26:13.000Z INFO catalog-worker job=inventory-sync batch=92 duration_ms=228 result=ok
+2025-03-18T15:26:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=72
+2025-03-18T15:27:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=237 result=ok
+2025-03-18T15:27:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=91
+2025-03-18T15:28:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=295 result=ok
+2025-03-18T15:28:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=86
+2025-03-18T15:29:13.000Z INFO catalog-worker job=inventory-sync batch=119 duration_ms=248 result=ok
+2025-03-18T15:29:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=100
+2025-03-18T15:30:13.000Z INFO catalog-worker job=inventory-sync batch=96 duration_ms=353 result=ok
+2025-03-18T15:30:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=69
+2025-03-18T15:31:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=210 result=ok
+2025-03-18T15:31:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=68
+2025-03-18T15:32:13.000Z INFO catalog-worker job=inventory-sync batch=84 duration_ms=391 result=ok
+2025-03-18T15:32:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=76
+2025-03-18T15:33:13.000Z INFO catalog-worker job=inventory-sync batch=110 duration_ms=413 result=ok
+2025-03-18T15:33:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=119
+2025-03-18T15:34:13.000Z INFO catalog-worker job=inventory-sync batch=87 duration_ms=189 result=ok
+2025-03-18T15:34:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=83
+2025-03-18T15:35:13.000Z INFO catalog-worker job=inventory-sync batch=113 duration_ms=312 result=ok
+2025-03-18T15:35:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=108
+2025-03-18T15:36:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=412 result=ok
+2025-03-18T15:36:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=89
+2025-03-18T15:37:13.000Z INFO catalog-worker job=inventory-sync batch=96 duration_ms=275 result=ok
+2025-03-18T15:37:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=120
+2025-03-18T15:37:58.000Z WARN catalog-worker job=search-index retry=1 reason=upstream_429 result=ok
+2025-03-18T15:38:13.000Z INFO catalog-worker job=inventory-sync batch=112 duration_ms=289 result=ok
+2025-03-18T15:38:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=111
+2025-03-18T15:39:13.000Z INFO catalog-worker job=inventory-sync batch=82 duration_ms=413 result=ok
+2025-03-18T15:39:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=63
+2025-03-18T15:40:13.000Z INFO catalog-worker job=inventory-sync batch=104 duration_ms=322 result=ok
+2025-03-18T15:40:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=84
+2025-03-18T15:41:13.000Z INFO catalog-worker job=inventory-sync batch=98 duration_ms=368 result=ok
+2025-03-18T15:41:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=116
+2025-03-18T15:42:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=285 result=ok
+2025-03-18T15:42:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=117
+2025-03-18T15:43:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=376 result=ok
+2025-03-18T15:43:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=53
+2025-03-18T15:44:13.000Z INFO catalog-worker job=inventory-sync batch=80 duration_ms=318 result=ok
+2025-03-18T15:44:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=96
+2025-03-18T15:45:13.000Z INFO catalog-worker job=inventory-sync batch=88 duration_ms=278 result=ok
+2025-03-18T15:45:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=59
+2025-03-18T15:46:13.000Z INFO catalog-worker job=inventory-sync batch=111 duration_ms=251 result=ok
+2025-03-18T15:46:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=80
+2025-03-18T15:47:13.000Z INFO catalog-worker job=inventory-sync batch=109 duration_ms=313 result=ok
+2025-03-18T15:47:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=77
+2025-03-18T15:48:13.000Z INFO catalog-worker job=inventory-sync batch=109 duration_ms=270 result=ok
+2025-03-18T15:48:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=80
+2025-03-18T15:49:13.000Z INFO catalog-worker job=inventory-sync batch=87 duration_ms=309 result=ok
+2025-03-18T15:49:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=106
+2025-03-18T15:50:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=343 result=ok
+2025-03-18T15:50:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=96
+2025-03-18T15:51:13.000Z INFO catalog-worker job=inventory-sync batch=84 duration_ms=236 result=ok
+2025-03-18T15:51:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=97
+2025-03-18T15:52:13.000Z INFO catalog-worker job=inventory-sync batch=96 duration_ms=292 result=ok
+2025-03-18T15:52:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=112
+2025-03-18T15:53:13.000Z INFO catalog-worker job=inventory-sync batch=93 duration_ms=314 result=ok
+2025-03-18T15:53:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=113
+2025-03-18T15:54:13.000Z INFO catalog-worker job=inventory-sync batch=84 duration_ms=376 result=ok
+2025-03-18T15:54:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=77
+2025-03-18T15:55:13.000Z INFO catalog-worker job=inventory-sync batch=81 duration_ms=266 result=ok
+2025-03-18T15:55:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=100
+2025-03-18T15:56:13.000Z INFO catalog-worker job=inventory-sync batch=91 duration_ms=397 result=ok
+2025-03-18T15:56:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=83
+2025-03-18T15:57:13.000Z INFO catalog-worker job=inventory-sync batch=89 duration_ms=363 result=ok
+2025-03-18T15:57:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=108
+2025-03-18T15:58:13.000Z INFO catalog-worker job=inventory-sync batch=100 duration_ms=406 result=ok
+2025-03-18T15:58:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=101
+2025-03-18T15:59:13.000Z INFO catalog-worker job=inventory-sync batch=105 duration_ms=182 result=ok
+2025-03-18T15:59:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=100
+2025-03-18T16:00:13.000Z INFO catalog-worker job=inventory-sync batch=108 duration_ms=219 result=ok
+2025-03-18T16:00:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=83
+2025-03-18T16:01:13.000Z INFO catalog-worker job=inventory-sync batch=97 duration_ms=291 result=ok
+2025-03-18T16:01:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=70
+2025-03-18T16:02:13.000Z INFO catalog-worker job=inventory-sync batch=104 duration_ms=230 result=ok
+2025-03-18T16:02:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=80
+2025-03-18T16:03:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=316 result=ok
+2025-03-18T16:03:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=85
+2025-03-18T16:04:13.000Z INFO catalog-worker job=inventory-sync batch=118 duration_ms=344 result=ok
+2025-03-18T16:04:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=69
+2025-03-18T16:05:13.000Z INFO catalog-worker job=inventory-sync batch=118 duration_ms=199 result=ok
+2025-03-18T16:05:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=95
+2025-03-18T16:06:13.000Z INFO catalog-worker job=inventory-sync batch=100 duration_ms=366 result=ok
+2025-03-18T16:06:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=119
+2025-03-18T16:07:13.000Z INFO catalog-worker job=inventory-sync batch=84 duration_ms=279 result=ok
+2025-03-18T16:07:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=62
+2025-03-18T16:08:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=301 result=ok
+2025-03-18T16:08:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=55
+2025-03-18T16:09:13.000Z INFO catalog-worker job=inventory-sync batch=81 duration_ms=304 result=ok
+2025-03-18T16:09:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=59
+2025-03-18T16:10:13.000Z INFO catalog-worker job=inventory-sync batch=84 duration_ms=200 result=ok
+2025-03-18T16:10:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=73
+2025-03-18T16:11:13.000Z INFO catalog-worker job=inventory-sync batch=80 duration_ms=235 result=ok
+2025-03-18T16:11:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=108
+2025-03-18T16:12:13.000Z INFO catalog-worker job=inventory-sync batch=82 duration_ms=307 result=ok
+2025-03-18T16:12:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=65
+2025-03-18T16:13:13.000Z INFO catalog-worker job=inventory-sync batch=89 duration_ms=358 result=ok
+2025-03-18T16:13:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=97
+2025-03-18T16:14:13.000Z INFO catalog-worker job=inventory-sync batch=104 duration_ms=288 result=ok
+2025-03-18T16:14:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=97
+2025-03-18T16:15:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=305 result=ok
+2025-03-18T16:15:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=108
+2025-03-18T16:16:13.000Z INFO catalog-worker job=inventory-sync batch=90 duration_ms=285 result=ok
+2025-03-18T16:16:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=74
+2025-03-18T16:17:13.000Z INFO catalog-worker job=inventory-sync batch=111 duration_ms=349 result=ok
+2025-03-18T16:17:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=92
+2025-03-18T16:18:13.000Z INFO catalog-worker job=inventory-sync batch=86 duration_ms=332 result=ok
+2025-03-18T16:18:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=63
+2025-03-18T16:19:13.000Z INFO catalog-worker job=inventory-sync batch=119 duration_ms=311 result=ok
+2025-03-18T16:19:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=117
+2025-03-18T16:20:13.000Z INFO catalog-worker job=inventory-sync batch=97 duration_ms=323 result=ok
+2025-03-18T16:20:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=69
+2025-03-18T16:21:13.000Z INFO catalog-worker job=inventory-sync batch=93 duration_ms=228 result=ok
+2025-03-18T16:21:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=50
+2025-03-18T16:22:13.000Z INFO catalog-worker job=inventory-sync batch=104 duration_ms=229 result=ok
+2025-03-18T16:22:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=78
+2025-03-18T16:23:13.000Z INFO catalog-worker job=inventory-sync batch=113 duration_ms=289 result=ok
+2025-03-18T16:23:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=72
+2025-03-18T16:24:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=205 result=ok
+2025-03-18T16:24:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=95
+2025-03-18T16:25:13.000Z INFO catalog-worker job=inventory-sync batch=108 duration_ms=296 result=ok
+2025-03-18T16:25:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=103
+2025-03-18T16:26:13.000Z INFO catalog-worker job=inventory-sync batch=100 duration_ms=278 result=ok
+2025-03-18T16:26:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=113
+2025-03-18T16:27:13.000Z INFO catalog-worker job=inventory-sync batch=82 duration_ms=320 result=ok
+2025-03-18T16:27:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=85
+2025-03-18T16:28:13.000Z INFO catalog-worker job=inventory-sync batch=120 duration_ms=241 result=ok
+2025-03-18T16:28:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=66
+2025-03-18T16:29:13.000Z INFO catalog-worker job=inventory-sync batch=120 duration_ms=183 result=ok
+2025-03-18T16:29:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=118
+2025-03-18T16:30:13.000Z INFO catalog-worker job=inventory-sync batch=107 duration_ms=225 result=ok
+2025-03-18T16:30:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=87
+2025-03-18T16:31:13.000Z INFO catalog-worker job=inventory-sync batch=117 duration_ms=391 result=ok
+2025-03-18T16:31:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=88
+2025-03-18T16:32:13.000Z INFO catalog-worker job=inventory-sync batch=96 duration_ms=264 result=ok
+2025-03-18T16:32:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=50
+2025-03-18T16:33:13.000Z INFO catalog-worker job=inventory-sync batch=99 duration_ms=240 result=ok
+2025-03-18T16:33:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=77
+2025-03-18T16:34:13.000Z INFO catalog-worker job=inventory-sync batch=89 duration_ms=269 result=ok
+2025-03-18T16:34:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=118
+2025-03-18T16:35:13.000Z INFO catalog-worker job=inventory-sync batch=119 duration_ms=323 result=ok
+2025-03-18T16:35:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=110
+2025-03-18T16:36:13.000Z INFO catalog-worker job=inventory-sync batch=102 duration_ms=202 result=ok
+2025-03-18T16:36:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=63
+2025-03-18T16:37:13.000Z INFO catalog-worker job=inventory-sync batch=92 duration_ms=322 result=ok
+2025-03-18T16:37:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=73
+2025-03-18T16:38:13.000Z INFO catalog-worker job=inventory-sync batch=92 duration_ms=390 result=ok
+2025-03-18T16:38:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=56
+2025-03-18T16:39:13.000Z INFO catalog-worker job=inventory-sync batch=87 duration_ms=360 result=ok
+2025-03-18T16:39:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=95
+2025-03-18T16:40:13.000Z INFO catalog-worker job=inventory-sync batch=84 duration_ms=341 result=ok
+2025-03-18T16:40:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=64
+2025-03-18T16:41:13.000Z INFO catalog-worker job=inventory-sync batch=81 duration_ms=248 result=ok
+2025-03-18T16:41:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=66
+2025-03-18T16:42:13.000Z INFO catalog-worker job=inventory-sync batch=93 duration_ms=288 result=ok
+2025-03-18T16:42:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=67
+2025-03-18T16:43:13.000Z INFO catalog-worker job=inventory-sync batch=117 duration_ms=349 result=ok
+2025-03-18T16:43:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=75
+2025-03-18T16:44:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=209 result=ok
+2025-03-18T16:44:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=51
+2025-03-18T16:45:13.000Z INFO catalog-worker job=inventory-sync batch=87 duration_ms=353 result=ok
+2025-03-18T16:45:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=100
+2025-03-18T16:46:13.000Z INFO catalog-worker job=inventory-sync batch=112 duration_ms=313 result=ok
+2025-03-18T16:46:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=71
+2025-03-18T16:47:13.000Z INFO catalog-worker job=inventory-sync batch=88 duration_ms=191 result=ok
+2025-03-18T16:47:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=75
+2025-03-18T16:48:13.000Z INFO catalog-worker job=inventory-sync batch=90 duration_ms=194 result=ok
+2025-03-18T16:48:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=54
+2025-03-18T16:48:58.000Z WARN catalog-worker job=search-index retry=1 reason=upstream_429 result=ok
+2025-03-18T16:49:13.000Z INFO catalog-worker job=inventory-sync batch=99 duration_ms=390 result=ok
+2025-03-18T16:49:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=98
+2025-03-18T16:50:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=347 result=ok
+2025-03-18T16:50:35.000Z INFO catalog-worker queue=price-updates depth=11 acked=59
+2025-03-18T16:51:13.000Z INFO catalog-worker job=inventory-sync batch=120 duration_ms=316 result=ok
+2025-03-18T16:51:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=74
+2025-03-18T16:52:13.000Z INFO catalog-worker job=inventory-sync batch=84 duration_ms=402 result=ok
+2025-03-18T16:52:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=109
+2025-03-18T16:53:13.000Z INFO catalog-worker job=inventory-sync batch=93 duration_ms=239 result=ok
+2025-03-18T16:53:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=92
+2025-03-18T16:54:13.000Z INFO catalog-worker job=inventory-sync batch=116 duration_ms=371 result=ok
+2025-03-18T16:54:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=120
+2025-03-18T16:55:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=303 result=ok
+2025-03-18T16:55:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=101
+2025-03-18T16:56:13.000Z INFO catalog-worker job=inventory-sync batch=96 duration_ms=362 result=ok
+2025-03-18T16:56:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=62
+2025-03-18T16:57:13.000Z INFO catalog-worker job=inventory-sync batch=87 duration_ms=319 result=ok
+2025-03-18T16:57:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=62
+2025-03-18T16:58:13.000Z INFO catalog-worker job=inventory-sync batch=92 duration_ms=273 result=ok
+2025-03-18T16:58:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=100
+2025-03-18T16:59:13.000Z INFO catalog-worker job=inventory-sync batch=89 duration_ms=202 result=ok
+2025-03-18T16:59:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=74
+2025-03-18T17:00:13.000Z INFO catalog-worker job=inventory-sync batch=89 duration_ms=248 result=ok
+2025-03-18T17:00:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=106
+2025-03-18T17:01:13.000Z INFO catalog-worker job=inventory-sync batch=97 duration_ms=348 result=ok
+2025-03-18T17:01:35.000Z INFO catalog-worker queue=price-updates depth=13 acked=74
+2025-03-18T17:02:13.000Z INFO catalog-worker job=inventory-sync batch=117 duration_ms=356 result=ok
+2025-03-18T17:02:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=114
+2025-03-18T17:03:13.000Z INFO catalog-worker job=inventory-sync batch=94 duration_ms=298 result=ok
+2025-03-18T17:03:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=103
+2025-03-18T17:04:13.000Z INFO catalog-worker job=inventory-sync batch=90 duration_ms=228 result=ok
+2025-03-18T17:04:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=62
+2025-03-18T17:05:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=383 result=ok
+2025-03-18T17:05:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=79
+2025-03-18T17:06:13.000Z INFO catalog-worker job=inventory-sync batch=80 duration_ms=279 result=ok
+2025-03-18T17:06:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=82
+2025-03-18T17:07:13.000Z INFO catalog-worker job=inventory-sync batch=109 duration_ms=181 result=ok
+2025-03-18T17:07:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=57
+2025-03-18T17:08:13.000Z INFO catalog-worker job=inventory-sync batch=102 duration_ms=364 result=ok
+2025-03-18T17:08:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=81
+2025-03-18T17:09:13.000Z INFO catalog-worker job=inventory-sync batch=118 duration_ms=274 result=ok
+2025-03-18T17:09:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=85
+2025-03-18T17:10:13.000Z INFO catalog-worker job=inventory-sync batch=96 duration_ms=325 result=ok
+2025-03-18T17:10:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=57
+2025-03-18T17:11:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=294 result=ok
+2025-03-18T17:11:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=110
+2025-03-18T17:12:13.000Z INFO catalog-worker job=inventory-sync batch=108 duration_ms=370 result=ok
+2025-03-18T17:12:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=120
+2025-03-18T17:13:13.000Z INFO catalog-worker job=inventory-sync batch=105 duration_ms=389 result=ok
+2025-03-18T17:13:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=96
+2025-03-18T17:14:13.000Z INFO catalog-worker job=inventory-sync batch=99 duration_ms=369 result=ok
+2025-03-18T17:14:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=110
+2025-03-18T17:15:13.000Z INFO catalog-worker job=inventory-sync batch=108 duration_ms=349 result=ok
+2025-03-18T17:15:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=66
+2025-03-18T17:16:13.000Z INFO catalog-worker job=inventory-sync batch=81 duration_ms=362 result=ok
+2025-03-18T17:16:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=95
+2025-03-18T17:17:13.000Z INFO catalog-worker job=inventory-sync batch=95 duration_ms=330 result=ok
+2025-03-18T17:17:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=83
+2025-03-18T17:18:13.000Z INFO catalog-worker job=inventory-sync batch=99 duration_ms=243 result=ok
+2025-03-18T17:18:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=70
+2025-03-18T17:19:13.000Z INFO catalog-worker job=inventory-sync batch=97 duration_ms=362 result=ok
+2025-03-18T17:19:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=94
+2025-03-18T17:20:13.000Z INFO catalog-worker job=inventory-sync batch=89 duration_ms=381 result=ok
+2025-03-18T17:20:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=81
+2025-03-18T17:21:13.000Z INFO catalog-worker job=inventory-sync batch=116 duration_ms=186 result=ok
+2025-03-18T17:21:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=119
+2025-03-18T17:22:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=380 result=ok
+2025-03-18T17:22:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=66
+2025-03-18T17:23:13.000Z INFO catalog-worker job=inventory-sync batch=90 duration_ms=262 result=ok
+2025-03-18T17:23:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=113
+2025-03-18T17:24:13.000Z INFO catalog-worker job=inventory-sync batch=89 duration_ms=226 result=ok
+2025-03-18T17:24:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=108
+2025-03-18T17:25:13.000Z INFO catalog-worker job=inventory-sync batch=88 duration_ms=366 result=ok
+2025-03-18T17:25:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=89
+2025-03-18T17:26:13.000Z INFO catalog-worker job=inventory-sync batch=90 duration_ms=240 result=ok
+2025-03-18T17:26:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=117
+2025-03-18T17:27:13.000Z INFO catalog-worker job=inventory-sync batch=120 duration_ms=289 result=ok
+2025-03-18T17:27:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=116
+2025-03-18T17:28:13.000Z INFO catalog-worker job=inventory-sync batch=81 duration_ms=256 result=ok
+2025-03-18T17:28:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=120
+2025-03-18T17:29:13.000Z INFO catalog-worker job=inventory-sync batch=117 duration_ms=328 result=ok
+2025-03-18T17:29:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=82
+2025-03-18T17:30:13.000Z INFO catalog-worker job=inventory-sync batch=118 duration_ms=350 result=ok
+2025-03-18T17:30:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=76
+2025-03-18T17:31:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=248 result=ok
+2025-03-18T17:31:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=118
+2025-03-18T17:32:13.000Z INFO catalog-worker job=inventory-sync batch=112 duration_ms=293 result=ok
+2025-03-18T17:32:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=97
+2025-03-18T17:33:13.000Z INFO catalog-worker job=inventory-sync batch=104 duration_ms=318 result=ok
+2025-03-18T17:33:35.000Z INFO catalog-worker queue=price-updates depth=0 acked=51
+2025-03-18T17:34:13.000Z INFO catalog-worker job=inventory-sync batch=99 duration_ms=414 result=ok
+2025-03-18T17:34:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=62
+2025-03-18T17:35:13.000Z INFO catalog-worker job=inventory-sync batch=107 duration_ms=256 result=ok
+2025-03-18T17:35:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=57
+2025-03-18T17:36:13.000Z INFO catalog-worker job=inventory-sync batch=81 duration_ms=412 result=ok
+2025-03-18T17:36:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=90
+2025-03-18T17:37:13.000Z INFO catalog-worker job=inventory-sync batch=89 duration_ms=319 result=ok
+2025-03-18T17:37:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=102
+2025-03-18T17:38:13.000Z INFO catalog-worker job=inventory-sync batch=106 duration_ms=342 result=ok
+2025-03-18T17:38:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=108
+2025-03-18T17:39:13.000Z INFO catalog-worker job=inventory-sync batch=111 duration_ms=227 result=ok
+2025-03-18T17:39:35.000Z INFO catalog-worker queue=price-updates depth=1 acked=98
+2025-03-18T17:40:13.000Z INFO catalog-worker job=inventory-sync batch=110 duration_ms=284 result=ok
+2025-03-18T17:40:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=98
+2025-03-18T17:41:13.000Z INFO catalog-worker job=inventory-sync batch=91 duration_ms=307 result=ok
+2025-03-18T17:41:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=117
+2025-03-18T17:42:13.000Z INFO catalog-worker job=inventory-sync batch=104 duration_ms=320 result=ok
+2025-03-18T17:42:35.000Z INFO catalog-worker queue=price-updates depth=4 acked=106
+2025-03-18T17:43:13.000Z INFO catalog-worker job=inventory-sync batch=84 duration_ms=414 result=ok
+2025-03-18T17:43:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=67
+2025-03-18T17:44:13.000Z INFO catalog-worker job=inventory-sync batch=91 duration_ms=339 result=ok
+2025-03-18T17:44:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=118
+2025-03-18T17:45:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=225 result=ok
+2025-03-18T17:45:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=110
+2025-03-18T17:46:13.000Z INFO catalog-worker job=inventory-sync batch=99 duration_ms=348 result=ok
+2025-03-18T17:46:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=56
+2025-03-18T17:47:13.000Z INFO catalog-worker job=inventory-sync batch=103 duration_ms=363 result=ok
+2025-03-18T17:47:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=114
+2025-03-18T17:48:13.000Z INFO catalog-worker job=inventory-sync batch=105 duration_ms=239 result=ok
+2025-03-18T17:48:35.000Z INFO catalog-worker queue=price-updates depth=10 acked=81
+2025-03-18T17:49:13.000Z INFO catalog-worker job=inventory-sync batch=93 duration_ms=289 result=ok
+2025-03-18T17:49:35.000Z INFO catalog-worker queue=price-updates depth=14 acked=51
+2025-03-18T17:50:13.000Z INFO catalog-worker job=inventory-sync batch=80 duration_ms=262 result=ok
+2025-03-18T17:50:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=113
+2025-03-18T17:51:13.000Z INFO catalog-worker job=inventory-sync batch=108 duration_ms=240 result=ok
+2025-03-18T17:51:35.000Z INFO catalog-worker queue=price-updates depth=8 acked=111
+2025-03-18T17:52:13.000Z INFO catalog-worker job=inventory-sync batch=119 duration_ms=344 result=ok
+2025-03-18T17:52:35.000Z INFO catalog-worker queue=price-updates depth=9 acked=69
+2025-03-18T17:53:13.000Z INFO catalog-worker job=inventory-sync batch=105 duration_ms=380 result=ok
+2025-03-18T17:53:35.000Z INFO catalog-worker queue=price-updates depth=6 acked=91
+2025-03-18T17:54:13.000Z INFO catalog-worker job=inventory-sync batch=107 duration_ms=391 result=ok
+2025-03-18T17:54:35.000Z INFO catalog-worker queue=price-updates depth=12 acked=66
+2025-03-18T17:55:13.000Z INFO catalog-worker job=inventory-sync batch=105 duration_ms=389 result=ok
+2025-03-18T17:55:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=116
+2025-03-18T17:56:13.000Z INFO catalog-worker job=inventory-sync batch=93 duration_ms=362 result=ok
+2025-03-18T17:56:35.000Z INFO catalog-worker queue=price-updates depth=7 acked=98
+2025-03-18T17:57:13.000Z INFO catalog-worker job=inventory-sync batch=101 duration_ms=341 result=ok
+2025-03-18T17:57:35.000Z INFO catalog-worker queue=price-updates depth=2 acked=66
+2025-03-18T17:58:13.000Z INFO catalog-worker job=inventory-sync batch=116 duration_ms=301 result=ok
+2025-03-18T17:58:35.000Z INFO catalog-worker queue=price-updates depth=5 acked=94
+2025-03-18T17:59:13.000Z INFO catalog-worker job=inventory-sync batch=109 duration_ms=249 result=ok
+2025-03-18T17:59:35.000Z INFO catalog-worker queue=price-updates depth=3 acked=82
+2025-03-18T17:59:58.000Z WARN catalog-worker job=search-index retry=1 reason=upstream_429 result=ok

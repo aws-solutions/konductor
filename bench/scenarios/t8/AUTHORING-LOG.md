@@ -69,3 +69,7 @@ A deepseek author is stopped after 85 tool calls (about 25 credits at T5's rate;
 | t8-nfr-slo-burn | review | qwen3-coder-next | 0.60 |  |
 | t8-oncall-alert-review | edit | (worker) | 0.00 | each flawed-alert item required the reference's exact replacement values (thresholds, durations, an ack count) in 6 or 7 patterns; reduced to the alert name, the kind of problem and, where it is clear, the disposition; a log-citation item and two citation-format checks removed; request no longer lists every source |
 | t8-nfr-slo-burn | edit | (worker) | 0.00 | request told the agent to exclude synthetic and health-check traffic and to use the catalogue and dependency notes (the seeded traps); removed, availability defined; the availability tolerance (0.05 points) accepted the all-traffic value 99.995, cut to 0.009; a log-citation check removed |
+| t8-pm-cache-stampede | author | gpt-5.6-luna | 3.27 |  |
+| t8-pm-cache-stampede | map | glm-5 | 0.16 |  |
+| t8-pm-cache-stampede | review | qwen3-coder-next | 1.01 |  |
+| t8-pm-cache-stampede | edit | (worker) | 0.00 | the request did not name the impact fields the key reads; named and defined; timeline items required words such as "first" and "third"; decoy pattern now fails only a summary that blames the reporting job; two keyword `contains` checks removed; evidence needs 2 of 3 groups |
