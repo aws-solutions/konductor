@@ -210,6 +210,9 @@ function buildCommand({ arm, task, config, ctx, resume = null }) {
   ];
   if (arm.agent) args.push('--agent', arm.agent);
   if (!arm.vanilla && ctx.claude?.supportsHookEvents) args.push('--include-hook-events');
+  // No MCP server in any arm: with no --mcp-config, --strict-mcp-config ignores every other MCP configuration (user,
+  // project, enterprise). konductor's Claude install declares none, so its arm loses nothing.
+  args.push('--strict-mcp-config');
   // Last: the tool list is variadic.
   args.push('--allowedTools', ...ALLOWED_TOOLS);
   return { file: ctx.claude.bin, args, stdin: promptFor(arm, task), display: `claude ${args.map((a) => JSON.stringify(a)).join(' ')} < prompt.txt` };
@@ -437,7 +440,7 @@ function runConfigRecord({ ctx, config, region, runBudgetUsd, arms = [] }) {
     binaryName: path.basename(ctx.claude.bin), version: ctx.claude.version, binarySha256: ctx.claude.sha256, supportsHookEvents: ctx.claude.supportsHookEvents,
     provider: PROVIDER, modelId: config.model, canonicalModel: config.canonicalModel, region,
     permissionMode: PERMISSION_MODE, allowedTools: ALLOWED_TOOLS, maxBudgetUsdPerRun: runBudgetUsd ?? DEFAULT_RUN_BUDGET_USD,
-    flags: ['-p', '--output-format stream-json', '--verbose', '--model', '--max-budget-usd', '--permission-mode', '--effort', '--allowedTools', '--agent (konductor arms)', ...(ctx.claude.supportsHookEvents ? ['--include-hook-events (konductor arms)'] : [])],
+    flags: ['-p', '--output-format stream-json', '--verbose', '--model', '--max-budget-usd', '--permission-mode', '--effort', '--strict-mcp-config', '--allowedTools', '--agent (konductor arms)', ...(ctx.claude.supportsHookEvents ? ['--include-hook-events (konductor arms)'] : [])],
     effort: { applied: true, flag: '--effort', level: config.effort },
     credentials: ctx.awsCreds
       ? { mode: 'profile (keys read with aws configure export-credentials and exported to each run; no profile variables)', profile: ctx.awsCreds.profile, refresh: 'read again before a run when the cached keys carry no expiry or expire within 15 minutes', variableNames: CREDENTIAL_VARS, notPassedWhenSet: PROFILE_VARS.filter((k) => process.env[k] !== undefined) }
@@ -454,8 +457,11 @@ function runConfigRecord({ ctx, config, region, runBudgetUsd, arms = [] }) {
 
 const keepPaths = (ctx) => [ctx.claude?.bin].filter(Boolean);
 
+// run-one records the startup MCP list as empty for this harness, because every command passes --strict-mcp-config.
+const strictMcp = true;
+
 module.exports = {
-  id, meta, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
+  id, meta, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
   resolveClaude, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,

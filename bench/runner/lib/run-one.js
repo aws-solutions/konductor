@@ -28,6 +28,7 @@ const { moveFile, UntrustedFileError } = require('./move-file.js');
 const { openPlantRun } = require('./plant/lifecycle.js');
 const { plantWalls, withCgroup } = require('./plant/walls.js');
 const introspect = require('./introspect/index.js');
+const { startupRecord } = require('./startup.js');
 const introspectReport = require('./introspect/report.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
@@ -394,6 +395,8 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       else sandbox.copyFixture(task.fixtureDir, cwd);
       const leaked = sandbox.findAnswerKey(cwd);
       if (leaked) throw new Error(`answer key present in the agent working directory: ${leaked}`);
+      // What the agent starts with (agent, MCP servers, steering, skills, links into the real ~/.kiro or ~/.claude).
+      fs.writeFileSync(path.join(outDir, 'startup.json'), `${JSON.stringify(startupRecord({ runtime: harness.id, arm, home, cwd, strictMcp: Boolean(harness.strictMcp) }), null, 2)}\n`);
       fs.mkdirSync(path.join(runRoot, 'tmp'), { recursive: true });
       if (stdioDir) fs.mkdirSync(stdioDir, { mode: 0o700 });
       if (arm.plant) plantRun = await openPlantRun({ suite: ctx.plant, arm, task, runRoot, home, cwd, outDir });

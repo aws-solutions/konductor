@@ -214,7 +214,7 @@ test('buildCommand: the verified launch shape, tool list last, no max-turns, bud
   const van = cc.buildCommand({ arm: CC_VANILLA, task: { prompt: 'do it' }, config, ctx });
   assert.equal(van.file, '/x/claude');
   assert.equal(van.stdin, 'do it');
-  assert.deepEqual(van.args, ['-p', '--output-format', 'stream-json', '--verbose', '--model', MODEL, '--max-budget-usd', '1.5', '--permission-mode', 'acceptEdits', '--effort', 'high', '--allowedTools', 'Bash', 'Edit', 'Write', 'Read']);
+  assert.deepEqual(van.args, ['-p', '--output-format', 'stream-json', '--verbose', '--model', MODEL, '--max-budget-usd', '1.5', '--permission-mode', 'acceptEdits', '--effort', 'high', '--strict-mcp-config', '--allowedTools', 'Bash', 'Edit', 'Write', 'Read']);
   const kon = cc.buildCommand({ arm: CC_KONDUCTOR, task: { prompt: 'do it' }, config, ctx });
   assert.ok(kon.args.includes('--include-hook-events'));
   assert.deepEqual(kon.args.slice(kon.args.indexOf('--agent'), kon.args.indexOf('--agent') + 2), ['--agent', 'konductor']);

@@ -455,7 +455,7 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
   `claude` and be at least 50 MB): a launcher can override the model, region and credentials, so a vanilla arm through it is
   not vanilla. Version, file name and sha256 go to run-config; a version other than the validated one logs a warning.
 - Command: `claude -p PROMPT --output-format stream-json --verbose --model us.anthropic.claude-sonnet-5-5 --max-budget-usd N
-  --permission-mode acceptEdits --effort LEVEL [--agent konductor] [--include-hook-events] --allowedTools Bash Edit Write Read`, stdin from
+  --permission-mode acceptEdits --effort LEVEL [--agent konductor] [--include-hook-events] --strict-mcp-config --allowedTools Bash Edit Write Read`, stdin from
   `/dev/null`. `--max-budget-usd` is `--run-budget-usd` (default 5). `--effort` is passed to `claude --effort` as given (`low`,
   `medium`, `high`, `xhigh` or `max`; default `high`, the same as Kiro CLI arms), and recorded in each result, `run-config.json`
   (`effort`, `claudeCode.effort`), `env.json` and the report header. A claude whose binary has no `--effort` flag is refused.
@@ -467,7 +467,7 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
   `AWS_SHARED_CREDENTIALS_FILE` are never passed on: with a profile set, the SDK skips the exported keys and the run fails with
   `cloud_credential_error`. That failure is recorded as an infra error, not a model failure. Exact secret values are scrubbed
   from every output file; run-config and `env.json` list variable names only.
-- Isolation: per run, `HOME` and `CLAUDE_CONFIG_DIR=<HOME>/.claude` are scratch, `<config>/rules/empty.md` is the only rules
+- Isolation: per run, `HOME` and `CLAUDE_CONFIG_DIR=<HOME>/.claude` are scratch, `<config>/rules/empty.md` is the only rules `--strict-mcp-config` with no `--mcp-config` means no MCP server loads in either arm (konductor's Claude install declares none). Every run of every harness writes `startup.json` beside `result.json`: the effective agent and where it came from (`--agent`, a settings default, or the built-in default), the MCP servers it can load and the ones ignored, the steering and rules files, the skill count, whether the scratch HOME is apart from the invoking user's real `~/.kiro` and `~/.claude` (`homeIsolated`), and any link into them (`realHomeLinks`). See `runner/lib/startup.js`.
   file (the invoking user's rules never load), telemetry, auto-update and error reporting are off. Built-in agents (`Explore`,
   `general-purpose`, `Plan`, ...) and skills exist even in the vanilla arm, so vanilla is not empty; run-config says so.
 - Model identity: a run counts only if every `modelUsage[*].canonicalModel` and every assistant `message.model` (main agent and
