@@ -1,0 +1,75 @@
+# T4 authoring log
+
+Public repo: no internal names, host paths or secrets. Plan estimate for T4: 210 credits; wave 1 (5 tasks) 80, stop at
+160; the rest (7 tasks and 1 twin) 130, stop at 260.
+
+## Setup
+
+Author, map and review calls run `kiro-cli chat --no-interactive --trust-all-tools --model <id>` (3.5.0) in an empty
+folder per task, with a scratch HOME that holds only a copy of the login database and empty
+`~/.kiro/{agents,steering,skills,memories}`, a cleared environment, and `memory.mode disabled`, `memory.reflection false`,
+`chat.enableKnowledge false`. Each call's stream is scanned for memory attachments (`mem` must be 0) and for paths
+outside its folder. The mapping call sees only the finished task (prompt, checks, file list) and a file of unit names
+and one-line descriptions extracted by script; no skill, SOP or agent body was read or passed on.
+
+## Incidents
+
+1. **Account memories reached two calls (found and fixed before any task was kept).** The scratch home was copied
+   from T1's before T1 added the memory settings. Two of the first five author calls (t4-policy-fix-accessdenied and
+   t4-threat-model-webhooks) carried 6 memory attachments each (titles and summaries of saved preferences). All five
+   calls were also interrupted by a signal during a host memory pause. All five outputs were discarded and never
+   committed to the shared branch. Fix: the settings above, and the synced memory database removed from the scratch
+   home. A probe call (0.51 credits; the first smoke call cost 0.15) then saw 0 memories, and every later call shows `mem=0`.
+2. **Credits of the five interrupted calls are not known.** An interrupted call ends without a usage event, so the
+   stream holds no credit figure. They ran 13 to 25 minutes each (about 10 to 14 model turns). Judging by the
+   finished calls of the same models, they likely cost 30 to 60 credits in all. They are not in the table below.
+3. **Model throttling.** One author call (t4-iam-ci-deploy-role) ended on a throttling error after 0.94 credits; the
+   task was authored again.
+4. **Reviewer change.** minimax-m2.5 cost 21 credits for one review (t4-dev-sql-report-filters). Later reviews of
+   deepseek-authored tasks use gpt-5.6-luna, which the plan also allows for deepseek authors. One minimax review was
+   stopped 12 seconds after start (0 credits) for that reason.
+
+## Hand edits after review
+
+Every change after the author's draft is in `edits/<id>.json` with its reason. In short: prompts that named the traps
+or the hidden evaluator were rewritten to state only the symptom, the files and the interfaces; checks that grepped
+source text or required names the prompt never gave were replaced by behavioural checks; author limits of 180 s were
+raised to 900 s or more; hidden suites where most tests passed on the untouched fixture were cut down to the tests
+that measure the fix (t4-dev-sql-report-filters) or split so one forgotten path loses its own test
+(t4-iam-ci-deploy-role).
+
+## Credits per wave (reported calls only)
+
+| wave | credits |
+| --- | --- |
+| 1 | 129.09 |
+| 2 | 17.97 |
+| all | 147.06 |
+
+## Calls
+
+Times are UTC on 2026-11-19. Credits are what each call reported in its stream.
+
+| time | task | step | model | wave | seconds | credits | note |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 17:27 | t4-iam-ci-deploy-role | author | gpt-5.6-luna | 1 | 325 | 0.94 | exit 1 |
+| 17:30 | t4-threat-model-webhooks | author | gpt-5.6-luna | 1 | 196 | 3.29 |  |
+| 17:31 | t4-threat-model-webhooks | map | glm-5 | 1 | 28 | 0.73 |  |
+| 17:33 | t4-threat-model-webhooks | review | glm-5 | 1 | 115 | 5.90 |  |
+| 17:36 | t4-policy-fix-accessdenied | author | gpt-5.6-luna | 1 | 202 | 3.53 |  |
+| 17:36 | t4-policy-fix-accessdenied | map | glm-5 | 1 | 25 | 0.73 |  |
+| 17:39 | t4-policy-fix-accessdenied | review | glm-5 | 1 | 160 | 6.37 |  |
+| 17:43 | t4-iam-ci-deploy-role | author | gpt-5.6-luna | 1 | 166 | 3.22 |  |
+| 17:44 | t4-iam-ci-deploy-role | map | glm-5 | 1 | 19 | 0.73 |  |
+| 17:45 | t4-iam-ci-deploy-role | review | glm-5 | 1 | 86 | 3.51 |  |
+| 17:54 | t4-dev-sql-report-filters | author | deepseek-3.2 | 1 | 1938 | 28.02 |  |
+| 17:54 | t4-dev-sql-report-filters | map | glm-5 | 1 | 26 | 0.76 |  |
+| 18:09 | t4-dev-sql-report-filters | review | minimax-m2.5 | 1 | 859 | 21.15 |  |
+| 18:17 | t4-iam-ci-deploy-role-twin | author | deepseek-3.2 | 2 | 1271 | 16.09 |  |
+| 18:17 | t4-iam-ci-deploy-role-twin | map | glm-5 | 2 | 18 | 0.73 |  |
+| 18:18 | t4-iam-ci-deploy-role-twin | review | minimax-m2.5 | 2 | 12 | 0.00 | exit 143, stopped or throttled |
+| 18:37 | t4-iac-review-terraform | author | deepseek-3.2 | 1 | 1696 | 22.17 |  |
+| 18:39 | t4-iac-review-terraform | map | glm-5 | 1 | 14 | 0.72 |  |
+| 18:40 | t4-iac-review-terraform | review | gpt-5.6-luna | 1 | 56 | 1.24 |  |
+| 18:45 | t4-dev-sql-report-filters | fix | deepseek-3.2 | 1 | 1648 | 26.09 |  |
+| 18:47 | t4-iam-ci-deploy-role-twin | review | gpt-5.6-luna | 2 | 74 | 1.15 |  |

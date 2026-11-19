@@ -1,0 +1,5 @@
+[
+  {"sku": "mug-blue", "name": "Blue mug", "unitPriceCents": 1299, "active": true},
+  {"sku": "tea-tin", "name": "Breakfast tea", "unitPriceCents": 875, "active": true},
+  {"sku": "sticker-pack", "name": "Sticker pack", "unitPriceCents": 250, "active": false}
+]

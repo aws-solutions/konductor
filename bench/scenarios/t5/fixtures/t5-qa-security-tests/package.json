@@ -1,0 +1,9 @@
+{
+  "name": "internal-documents-api",
+  "version": "2.4.1",
+  "private": true,
+  "description": "Small internal document service handlers",
+  "main": "src/index.js",
+  "scripts": { "test": "node --test --test-timeout=4000 test/*.test.js" },
+  "engines": { "node": ">=24" }
+}

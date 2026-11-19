@@ -1,0 +1,132 @@
+{
+  "outputFile": "docs/TEST-PLAN.md",
+  "findingsKey": [
+    {
+      "id": "money-floating-point",
+      "location": [
+        "src/orders/price.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "cents",
+        "integer",
+        "decimal",
+        "minor unit",
+        "floating"
+      ],
+      "fixMin": 1,
+      "weight": 2
+    },
+    {
+      "id": "webhook-replay",
+      "location": [
+        "src/payments/webhook.js"
+      ],
+      "severity": "critical",
+      "fix": [
+        "idempotency",
+        "event id",
+        "replay",
+        "duplicate"
+      ],
+      "fixMin": 1,
+      "weight": 3
+    },
+    {
+      "id": "inventory-read-write-race",
+      "location": [
+        "src/inventory/reservation.js"
+      ],
+      "severity": "critical",
+      "fix": [
+        "atomic",
+        "concurrency",
+        "oversell",
+        "compare-and-decrement"
+      ],
+      "fixMin": 1,
+      "weight": 3
+    },
+    {
+      "id": "retry-double-charge",
+      "location": [
+        "src/payments/retry.js"
+      ],
+      "severity": "critical",
+      "fix": [
+        "idempotency",
+        "status lookup",
+        "ambiguous timeout",
+        "double-charge",
+        "no retry"
+      ],
+      "fixMin": 1,
+      "weight": 3
+    },
+    {
+      "id": "email-swallowed-error",
+      "location": [
+        "src/notifications/email.js"
+      ],
+      "severity": "medium",
+      "fix": [
+        "log",
+        "alert",
+        "surface",
+        "propagate",
+        "dead-letter",
+        "retry"
+      ],
+      "fixMin": 1,
+      "weight": 1
+    },
+    {
+      "id": "settlement-local-cutoff",
+      "location": [
+        "src/jobs/settlement.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "utc",
+        "timezone",
+        "time zone",
+        "cutoff",
+        "midnight"
+      ],
+      "fixMin": 1,
+      "weight": 2
+    },
+    {
+      "id": "refund-rounding",
+      "location": [
+        "src/orders/refunds.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "remainder",
+        "allocat",
+        "cents",
+        "rounding",
+        "sum of"
+      ],
+      "fixMin": 1,
+      "weight": 2
+    },
+    {
+      "id": "guard-disabled-by-default",
+      "location": [
+        "src/orders/checkout.js"
+      ],
+      "severity": "high",
+      "fix": [
+        "flag",
+        "default",
+        "disabled",
+        "out-of-stock",
+        "oversell"
+      ],
+      "fixMin": 1,
+      "weight": 2
+    }
+  ]
+}

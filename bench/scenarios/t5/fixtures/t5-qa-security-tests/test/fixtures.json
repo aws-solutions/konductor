@@ -1,0 +1,5 @@
+{
+  "defaultOwner": "u-editor",
+  "sampleNames": ["report.txt", "summary.csv"],
+  "retentionDays": 30
+}

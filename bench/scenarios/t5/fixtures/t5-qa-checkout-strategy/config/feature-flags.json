@@ -1,0 +1,5 @@
+{
+  "requireInventoryGuard": false,
+  "sendReceiptEmail": true,
+  "newRefundFlow": true
+}

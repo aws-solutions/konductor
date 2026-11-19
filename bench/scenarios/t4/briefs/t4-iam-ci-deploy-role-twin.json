@@ -1,0 +1,19 @@
+{
+  "id": "t4-iam-ci-deploy-role-twin",
+  "wave": 2,
+  "phase": "implementation",
+  "role": "developer",
+  "kind": "twin",
+  "stack": "node",
+  "author": "deepseek-3.2",
+  "reviewer": "gpt-5.6-luna",
+  "size": "same fixture",
+  "twinOf": "t4-iam-ci-deploy-role",
+  "source": {
+    "url": "https://github.com/salesforce/cloudsplaining",
+    "licence": "BSD-3-Clause",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Near-miss twin of t4-iam-ci-deploy-role: the SAME fixture, unchanged (it is in ./fixture already; do not edit it), with a different request where tightening IAM does not help. Phase: implementation. Role: developer. The deploy uploads every file on each run, even unchanged ones, and one failed upload stops the whole deploy. The request: add a --dry-run flag to the deploy command that prints the planned uploads, invalidations and function updates without calling the cloud client; skip files whose content hash matches the manifest written by the previous deploy (state the manifest path and JSON format in the request); and retry a failed upload up to 3 times with exponential backoff through an injectable sleep function, so tests need no real waiting. The IAM files must not change. Hidden tests drive the deploy entry point against the fake client from the fixture."
+}

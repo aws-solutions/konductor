@@ -1,0 +1,13 @@
+{
+  "id": "t4-iam-ci-deploy-role",
+  "wave": 1,
+  "phase": "security",
+  "role": "security",
+  "kind": "policy",
+  "stack": "node",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "size": "30 to 50",
+  "source": { "url": "https://github.com/salesforce/cloudsplaining", "licence": "BSD-3-Clause", "licenceCheckedAt": "2026-11-19", "use": "idea" },
+  "brief": "Phase: security and IAM. Role: security engineer. Repo kind: the deploy tooling of a small static-site-plus-API product: Node.js 24 deploy scripts (no dependencies; every cloud call goes through one thin in-repo client wrapper module, whose fake implementation used by tests records each call's action and resource ARN), environment config files for staging and prod, the CI workflow that runs the deploy, IAM policy JSON under infra/iam/, docs and tests. The CI deploy role's policy (infra/iam/ci-deploy-policy.json) grew by copy-paste: service-wide wildcards (s3:*, cloudfront:*, lambda:*), Resource \"*\", iam:PassRole on \"*\" with no iam:PassedToService condition, and a stray statement allowing iam:* 'temporarily'. The request: an audit says the CI role is far too broad; tighten it to what the deploy actually does, for both stages, without breaking the deploy. The agent must read scripts and config to learn which actions and which bucket, distribution, function and role names are really used (names come from per-stage config; one action is used only on the prod path, for example a CDN invalidation only in prod, and one only during rollback, for example publishing or updating a function alias). Hidden tests run the fixed policy through the provided evaluator: every action the deploy uses on its real resources (both stages, rollback included; derive the list by running the deploy against the fake client) stays allowed; dangerous requests are denied (iam:CreateUser, iam:AttachRolePolicy, iam:PassRole of an admin role or to a service other than lambda, s3:DeleteBucket, s3:PutBucketPolicy, lambda actions on functions outside the product prefix, any action on another product's bucket); the policy passes lint. Trap: a lazy answer keeps a wildcard resource, or drops the rollback or prod-only action."
+}

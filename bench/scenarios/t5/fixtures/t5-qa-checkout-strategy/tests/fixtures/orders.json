@@ -1,0 +1,4 @@
+[
+  { "id": "seed-1", "status": "paid", "totalCents": 1250 },
+  { "id": "seed-2", "status": "refunded", "totalCents": 995 }
+]

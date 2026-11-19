@@ -1,0 +1,131 @@
+{
+  "id": "t4-policy-fix-accessdenied",
+  "version": 1,
+  "class": "complex",
+  "phase": "bugfix",
+  "phases2": [],
+  "role": "security",
+  "questions": "allowed",
+  "prompt": "The nightly export has failed since the destination bucket moved to SSE-KMS with our own customer managed key and the LedgerRecords table got its new by_day index. The last run log is logs/nightly-2025-02-03.log. Please get the job working again, and give it only the access it actually needs: no blanket service-wide grants, nothing on other buckets, prefixes, tables or keys, nothing administrative. The access lives in infra/iam/export-job-policy.json (the job role), infra/iam/exports-bucket-policy.json and infra/iam/exports-key-policy.json; fix code under src/ too if the job itself sends something wrong. Keep the policy files valid IAM policy JSON. The ARNs and the key id are in config/export.json (read by src/config.js). Keep the interfaces as they are: runExport(client, options) in src/export-job.js, and FakeCloudClient in src/fake-cloud-client.js, which records each call in calls with action, resource, context and request. Keep the output format, the existing tests and the package free of dependencies. In your final message, explain why the upload and the index query were denied.",
+  "fixture": "t4-policy-fix-accessdenied",
+  "hidden": "t4-policy-fix-accessdenied",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 35,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test tests/*.test.js",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "infra/iam/export-job-policy.json",
+      "pattern": "\"(s3|dynamodb|kms):\\*\"",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "infra/iam/exports-bucket-policy.json",
+      "pattern": "\"s3:\\*\"",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "infra/iam/export-job-policy.json",
+      "pattern": "\"Resource\"\\s*:\\s*\"\\*\"",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "package.json",
+      "pattern": "\"dependencies\"\\s*:",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "cause",
+      "criterion": "The final message gives the real causes: the upload needs the customer key (data key generation, and decrypt for multipart) and the expected key id header that one upload path omitted, and the query needs the index ARN, not only the table (code cannot check this because the explanation is free prose in the final message).",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "iam-policy-design",
+    "policy-validation"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "iam-policy-design"
+    ],
+    "mustNotLoad": [
+      "backend-review",
+      "frontend-review",
+      "design-doc-guidelines"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "gpt",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/duo-labs/parliament",
+      "licence": "BSD-3-Clause",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "glm",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt names only the deliverable (fixed policies, explanation) and does not prescribe any method, framework, or checklist for working."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fixed",
+        "note": "Three draft checks required statement ids (WriteExportObjects, UseExportKey, RejectUnexpectedKey) the prompt never named; the lead replaced them with checks on broad grants."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture policy files contain stale denies that block the job, and the log shows AccessDenied errors, but there is no comment or document stating what the fix should be - the agent must diagnose and narrow permissions correctly."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fixed",
+        "note": "Reviewer passed it, but the draft prompt spelled out the traps (the index name as the thing to allow, the exports/<date>/ prefix, multipart, the key on every upload) and named the hidden evaluator file. The lead rewrote the prompt to state the symptom, the files and the interfaces only."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "A careful engineer can infer all requirements from the prompt, config, log, and fake-client: the index ARN, the exports/* prefix, the KMS key ID, and the need for SSEKMSKeyId on all upload paths including completeMultipartUpload."
+      }
+    ]
+  }
+}
