@@ -28,14 +28,16 @@ pub(crate) enum GroupBy {
     Repo,
 }
 
-/// `<n>h`, `<n>d`, or `<n>w` → seconds.
+/// `<n>h`, `<n>d`, or `<n>w` → seconds. Splits on the last char, not
+/// byte, so non-ASCII input is a usage error rather than a panic.
 fn parse_since(s: &str) -> Option<i64> {
-    let (num, unit) = s.split_at(s.len().checked_sub(1)?);
+    let unit = s.chars().last()?;
+    let num = &s[..s.len() - unit.len_utf8()];
     let n: i64 = num.parse().ok().filter(|n| *n > 0)?;
     let per = match unit {
-        "h" => 3600,
-        "d" => 86_400,
-        "w" => 7 * 86_400,
+        'h' => 3600,
+        'd' => 86_400,
+        'w' => 7 * 86_400,
         _ => return None,
     };
     n.checked_mul(per)
@@ -70,7 +72,7 @@ pub(crate) fn dispatch_metrics(
     let agents = konductor_agent_names(&home);
     let cache_path = home.join(CACHE_REL);
     let mut cache = load_cache(&cache_path);
-    let scan = refresh(&mut cache, &sources(&home), cutoff, &agents);
+    let scan = refresh(&mut cache.records, &sources(&home), cutoff, &agents);
     if let Err(e) = save_cache(&cache_path, &cache) {
         eprintln!(
             "{} could not write {}: {e}",
@@ -79,7 +81,7 @@ pub(crate) fn dispatch_metrics(
         );
     }
 
-    let (counted, unparsed) = select(&cache, cutoff);
+    let (counted, unparsed) = select(&cache.records, cutoff);
 
     let ctx = report::Context {
         since: &since,
@@ -90,6 +92,8 @@ pub(crate) fn dispatch_metrics(
             .len(),
         unparsed,
         unreadable: scan.unreadable,
+        stale: scan.reparse_failed,
+        unreadable_cache_lines: cache.unreadable_lines.len(),
         home: &home,
     };
     if json {
@@ -424,7 +428,7 @@ mod tests {
         assert_eq!(parse_since("24h"), Some(86_400));
         assert_eq!(parse_since("7d"), Some(7 * 86_400));
         assert_eq!(parse_since("2w"), Some(14 * 86_400));
-        for bad in ["", "d", "0d", "-1d", "7", "7m", "1.5d"] {
+        for bad in ["", "d", "0d", "-1d", "7", "7m", "1.5d", "7日", "7€", "日"] {
             assert_eq!(parse_since(bad), None, "{bad}");
         }
     }
