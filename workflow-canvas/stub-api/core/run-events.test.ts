@@ -4,7 +4,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { schemaOf } from '../test-support/contract.ts';
 import { countingSuffix, FakeClock } from '../test-support/fake-clock.ts';
 import type { Run, RunEvent } from './model.ts';
-import { RunSimulator, type RunPlan } from './runs.ts';
+import {
+  CONSOLE_GRACE_MS,
+  MAX_CONSOLE_LINES,
+  RunSimulator,
+  type RunPlan,
+} from './runs.ts';
 
 const STAGE_MS = 3000;
 let clock: FakeClock;
@@ -88,11 +93,27 @@ describe('the events of a simulated run', () => {
     });
   });
 
-  it('drop the console lines once the run has finished, and keep the rest', () => {
+  it('keep the console lines of a finished run for the grace period, in seq order', () => {
     const runId = runs.start('hello', ORDER, {
       block: { at: 0, reason: 'TIMEOUT' },
     });
-    clock.advance(STAGE_MS);
+    clock.advance(STAGE_MS + CONSOLE_GRACE_MS - 1);
+    const { events, finished } = runs.events(runId)!;
+    expect(finished).toBe(true);
+    expect(events.map((e) => [e.seq, e.type])).toEqual([
+      [1, 'stage_state'],
+      [2, 'console'],
+      [3, 'console'],
+      [4, 'stage_state'],
+      [5, 'run_finished'],
+    ]);
+  });
+
+  it('drop the console lines once the grace period is over, and keep the rest', () => {
+    const runId = runs.start('hello', ORDER, {
+      block: { at: 0, reason: 'TIMEOUT' },
+    });
+    clock.advance(STAGE_MS + CONSOLE_GRACE_MS);
     const { events, lastSeq, finished } = runs.events(runId)!;
     expect(finished).toBe(true);
     expect(lastSeq).toBe(5);
@@ -145,6 +166,29 @@ describe('the events of a simulated run', () => {
         clock.advance(STAGE_MS / 3);
       }
     }
+  });
+
+  it('keep only the latest console lines over the cap, active or finished', () => {
+    const capped = new RunSimulator({
+      clock,
+      suffix: countingSuffix(),
+      stageMs: STAGE_MS,
+      consoleLimit: 3,
+    });
+    const runId = capped.start('hello', ORDER);
+    const consoleSeqs = () =>
+      capped
+        .events(runId)!
+        .events.filter((e) => e.type === 'console')
+        .map((e) => e.seq);
+    clock.advance(STAGE_MS * ORDER.length - 1);
+    expect(consoleSeqs()).toEqual([7, 10, 11]);
+    clock.advance(1);
+    expect(consoleSeqs()).toEqual([7, 10, 11]);
+  });
+
+  it('cap the console lines of a run at 1000 by default', () => {
+    expect(MAX_CONSOLE_LINES).toBe(1000);
   });
 
   it('are not there for a run that does not exist', () => {
