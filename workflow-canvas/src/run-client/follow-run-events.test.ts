@@ -65,7 +65,12 @@ class FakeClock {
   }
 }
 
-type Step = { status: number; body: unknown } | 'no answer' | 'hang' | 'open';
+type Step =
+  | { status: number; body: unknown }
+  | { status: number; bodyError: Error }
+  | 'no answer'
+  | 'hang'
+  | 'open';
 
 /** A server that answers each call with the next step of its script. */
 class FakeServer {
@@ -94,7 +99,15 @@ class FakeServer {
       });
       if (step === 'no answer') reject(new Error('offline'));
       else if (step === 'open') this.pending = resolve;
-      else if (step !== 'hang') resolve(replyOf(step.status, step.body));
+      else if (step === 'hang') return;
+      else if ('bodyError' in step) {
+        const { status, bodyError } = step;
+        resolve({
+          ok: status >= 200 && status < 300,
+          status,
+          json: () => Promise.reject(bodyError),
+        });
+      } else resolve(replyOf(step.status, step.body));
     }).finally(done);
   };
 
@@ -368,6 +381,35 @@ describe('followRunEvents', () => {
       kind: 'failed',
       message: 'The events of the run could not be read.',
     });
+  });
+
+  it('stops when a 200 answer is not JSON, without trying again', async () => {
+    const server = new FakeServer([
+      { status: 200, bodyError: new SyntaxError('Unexpected token <') },
+      ok(page([finishedEvent(1)], true)),
+    ]);
+    const clock = new FakeClock();
+    const followed = follow(server, clock);
+    await clock.advance(RETRY_MAX_MS);
+
+    expect(server.paths).toHaveLength(1);
+    expect(followed.end()).toMatchObject({
+      kind: 'failed',
+      message: 'The events of the run could not be read.',
+    });
+  });
+
+  it('tries again when the body of a 200 answer stops arriving', async () => {
+    const server = new FakeServer([
+      { status: 200, bodyError: new TypeError('network error') },
+      ok(page([finishedEvent(1)], true)),
+    ]);
+    const clock = new FakeClock();
+    const followed = follow(server, clock);
+    await clock.advance(RETRY_FIRST_MS);
+
+    expect(server.paths).toHaveLength(2);
+    expect(followed.end()?.kind).toBe('finished');
   });
 
   it('gives up on a call that outlasts its limit, and tries again', async () => {

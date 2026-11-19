@@ -60,7 +60,7 @@ function consoleOf(seq: number, fields: Fields): RunEvent | undefined {
 
 function runFinishedOf(seq: number, fields: Fields): RunEvent | undefined {
   const { status, exit_code } = fields;
-  if (!RUN_STATUSES.has(status) || !Number.isInteger(exit_code)) {
+  if (!RUN_STATUSES.has(status) || !isWholeAtLeast(exit_code, 0)) {
     return undefined;
   }
   return {

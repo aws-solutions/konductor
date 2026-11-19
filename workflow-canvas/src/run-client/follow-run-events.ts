@@ -105,6 +105,21 @@ async function bodyOrNothing(reply: EventsReply): Promise<unknown> {
   }
 }
 
+// A body that is not JSON is a bad reply, `undefined`, as in the HTTP
+// adapter. Any other failure to read it, such as a dropped connection or an
+// abort, is thrown, so it counts as no answer and is tried again.
+async function jsonOf(
+  reply: EventsReply,
+  signal: AbortSignal,
+): Promise<unknown> {
+  try {
+    return await reply.json();
+  } catch (error) {
+    if (error instanceof SyntaxError && !signal.aborted) return undefined;
+    throw error;
+  }
+}
+
 // Ends the call when `outer` aborts or the limit passes, and leaves no wait
 // or listener behind.
 async function withLimit<T>(
@@ -144,7 +159,7 @@ async function readOnce(
       const reply = await ports.send(path, { headers, signal: limited });
       if (!reply.ok)
         return failedReply(reply.status, await bodyOrNothing(reply));
-      const answer = parseRunEventsAnswer(await reply.json());
+      const answer = parseRunEventsAnswer(await jsonOf(reply, limited));
       return answer
         ? { kind: 'answer', answer }
         : { kind: 'refused', message: UNREADABLE };
