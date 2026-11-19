@@ -31,6 +31,7 @@ describe('POST /api/session', () => {
         'checkWorkflow',
         'startRun',
         'getRun',
+        'getRunEvents',
         'listAgents',
       ],
       limits: {

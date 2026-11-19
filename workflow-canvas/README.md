@@ -67,15 +67,16 @@ npm run screenshots # Regenerate e2e/screenshots/*.png
 `api/openapi.yaml` is the OpenAPI 3.1 description of the HTTP API that the
 canvas calls. It covers these operations:
 
-| Method and path      | `operationId`   | What it does                            |
-| -------------------- | --------------- | --------------------------------------- |
-| `POST /api/session`  | `createSession` | Exchange the launch code for a token    |
-| `GET /api/workflow`  | `getWorkflow`   | Load a workflow                         |
-| `PUT /api/workflow`  | `saveWorkflow`  | Save a workflow                         |
-| `GET /api/agents`    | `listAgents`    | List the agents a stage may name        |
-| `POST /api/validate` | `checkWorkflow` | Check workflow text and report problems |
-| `POST /api/run`      | `startRun`      | Start a run                             |
-| `GET /api/runs/{id}` | `getRun`        | Get the status of a run                 |
+| Method and path             | `operationId`   | What it does                            |
+| --------------------------- | --------------- | --------------------------------------- |
+| `POST /api/session`         | `createSession` | Exchange the launch code for a token    |
+| `GET /api/workflow`         | `getWorkflow`   | Load a workflow                         |
+| `PUT /api/workflow`         | `saveWorkflow`  | Save a workflow                         |
+| `GET /api/agents`           | `listAgents`    | List the agents a stage may name        |
+| `POST /api/validate`        | `checkWorkflow` | Check workflow text and report problems |
+| `POST /api/run`             | `startRun`      | Start a run                             |
+| `GET /api/runs/{id}`        | `getRun`        | Get the status of a run                 |
+| `GET /api/runs/{id}/events` | `getRunEvents`  | Follow the events of a run              |
 
 A workflow in this version has a `format`, a `version`, an `intent` with an
 `outcome` and optional `accept` checks, optional `params` (the goal only) and
@@ -91,7 +92,12 @@ holds what a
 backend needs to implement the calls: the accepted workflow text, the checks
 that make a text invalid, the list of diagnostic codes, how a file that is not
 a plain file is handled, and what a run does stage by stage. A client follows a
-run by polling `GET /api/runs/{id}`. The session response also says which
+run by polling `GET /api/runs/{id}`, or with the long poll of
+`GET /api/runs/{id}/events`: numbered events for stage changes, the end of the
+run and console lines. A client resumes from the last number it read. Console
+lines are live only: the server keeps at most the last 1000 of a run, while the
+run is active and for 60 seconds after `run_finished`, and never stores them.
+The session response also says which
 server it is: `konductor_version`, the `capabilities` it supports (the
 `operationId` of each operation, which is not renamed within an API major
 version) and its `limits` (text bytes, stages, outcome, prompt and goal
@@ -178,7 +184,8 @@ saved change lasts until the stub stops. `GET /api/agents` lists the same
 eight agents that the Designer offers. The stub reads no files, so for a
 `prompt_file` it checks only the path rules: it accepts a path to a file that
 does not exist. A run is faked and calls no agent: its stages run for 3 seconds
-each, one after the other, and all of them pass. It runs one run at a time and
+each, one after the other, each prints two scripted console lines, and all of
+them pass. It runs one run at a time and
 never fails a stage.
 
 `STUB_WORKFLOW` picks the workflow of the session, to show the other answers of

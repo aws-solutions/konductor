@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Clock } from './clock.ts';
 import { HARNESS } from './contract.ts';
-import type { Run, RunStage, StageReason } from './model.ts';
+import type { Run, RunEvent, RunStage, StageReason } from './model.ts';
+import { scriptOf, type TimedEvent } from './run-events.ts';
 import { formatTimestamp, runIdPrefix } from './timestamp.ts';
 
 /** How long each simulated stage takes. */
 export const DEFAULT_STAGE_MS = 3000;
+/** How long a finished run keeps its console lines, as the contract says. */
+export const CONSOLE_GRACE_MS = 60_000;
+/** The most console lines of a run that are kept, the latest ones. */
+export const MAX_CONSOLE_LINES = 1000;
 
 /** How a simulated run ends. A run with no plan passes every stage. */
 export interface RunPlan {
@@ -21,6 +26,21 @@ interface StartedRun {
   startedAt: number;
   order: string[];
   plan: RunPlan;
+  script: TimedEvent[];
+}
+
+/** The events of a run that have happened by now. */
+export interface EventsSoFar {
+  /**
+   * In order. Console lines are live only: a run keeps them, at most the last
+   * `consoleLimit`, until `CONSOLE_GRACE_MS` after it finished.
+   */
+  events: RunEvent[];
+  /** The highest `seq` the run has given out, console lines included. */
+  lastSeq: number;
+  finished: boolean;
+  /** When the next event happens, while the run has one to come. */
+  nextAt?: number;
 }
 
 export interface RunSimulatorOptions {
@@ -28,6 +48,8 @@ export interface RunSimulatorOptions {
   /** Five characters from `a-z0-9`, for the end of a run id. */
   suffix: () => string;
   stageMs?: number;
+  /** The most console lines kept per run. The default is `MAX_CONSOLE_LINES`. */
+  consoleLimit?: number;
 }
 
 /**
@@ -38,6 +60,7 @@ export class RunSimulator {
   private readonly clock: Clock;
   private readonly suffix: () => string;
   private readonly stageMs: number;
+  private readonly consoleLimit: number;
   private readonly runs = new Map<string, StartedRun>();
   private latest: StartedRun | undefined;
 
@@ -45,6 +68,7 @@ export class RunSimulator {
     this.clock = options.clock;
     this.suffix = options.suffix;
     this.stageMs = options.stageMs ?? DEFAULT_STAGE_MS;
+    this.consoleLimit = options.consoleLimit ?? MAX_CONSOLE_LINES;
   }
 
   /** The id of the run that has not finished yet, if there is one. */
@@ -59,12 +83,23 @@ export class RunSimulator {
     plan: RunPlan = {},
   ): string {
     const startedAt = this.clock.now();
+    const runId = this.newRunId(startedAt);
+    const order = [...stageNames];
+    const normal = normalized(plan, stageNames.length);
     const run = {
-      runId: this.newRunId(startedAt),
+      runId,
       workflow,
       startedAt,
-      order: [...stageNames],
-      plan: normalized(plan, stageNames.length),
+      order,
+      plan: normal,
+      script: scriptOf({
+        runId,
+        startedAt,
+        order,
+        stageMs: this.stageMs,
+        block: normal.block,
+        neverEnds: normal.neverEnds,
+      }),
     };
     this.runs.set(run.runId, run);
     this.latest = run;
@@ -74,6 +109,27 @@ export class RunSimulator {
   get(runId: string): Run | undefined {
     const run = this.runs.get(runId);
     return run && this.describe(run);
+  }
+
+  events(runId: string): EventsSoFar | undefined {
+    const run = this.runs.get(runId);
+    if (!run) return undefined;
+    const now = this.clock.now();
+    const happened = run.script.filter((timed) => timed.time <= now);
+    const finished = this.isDone(run);
+    const next = run.script.find((timed) => timed.time > now);
+    const keepConsole =
+      !finished || now < this.finishTime(run) + CONSOLE_GRACE_MS;
+    const lines = happened.filter((timed) => timed.event.type === 'console');
+    const kept = new Set(keepConsole ? lines.slice(-this.consoleLimit) : []);
+    return {
+      events: happened
+        .filter((timed) => timed.event.type !== 'console' || kept.has(timed))
+        .map((timed) => timed.event),
+      lastSeq: happened.at(-1)?.event.seq ?? 0,
+      finished,
+      ...(next ? { nextAt: next.time } : {}),
+    };
   }
 
   private describe(run: StartedRun): Run {

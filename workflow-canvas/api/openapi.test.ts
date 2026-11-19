@@ -73,6 +73,7 @@ const STABLE_OPERATION_IDS = [
   'startRun',
   'getRun',
   'listAgents',
+  'getRunEvents',
 ];
 
 // This version has these operations and no others.
@@ -84,6 +85,7 @@ const OPERATIONS = [
   'POST /api/validate checkWorkflow',
   'POST /api/run startRun',
   'GET /api/runs/{id} getRun',
+  'GET /api/runs/{id}/events getRunEvents',
 ];
 
 // Each error status and the codes that may come with it.
@@ -1033,7 +1035,7 @@ describe('workflow canvas API contract', () => {
         api_version: number;
       };
       const info = (spec as unknown as { info: { version: string } }).info;
-      expect(info.version).toBe('1.5.0');
+      expect(info.version).toBe('1.6.3');
       expect(Number(info.version.split('.')[0])).toBe(apiVersion);
       const xHeader = spec.components as unknown as {
         headers: { XKonductorApi: { schema: { const: string } } };
@@ -1218,6 +1220,196 @@ describe('workflow canvas API contract', () => {
       const ids = agents.map((agent) => agent.id);
       expect(ids.length).toBeGreaterThan(0);
       expect(ids).toEqual([...new Set(ids)].sort());
+    });
+  });
+
+  describe('the events of a run', () => {
+    interface Event {
+      seq: number;
+      run_id: string;
+      type: string;
+      stage?: string;
+      status?: string;
+      reason?: string;
+      exit_code?: number;
+    }
+    interface Page {
+      events: Event[];
+      next: number;
+      finished: boolean;
+    }
+    const words = (text: string) => text.replace(/\s+/g, ' ');
+    const answers = () => jsonBodyOf(spec, 'GET /api/runs/{id}/events', '200');
+    const page = (name: string) =>
+      namedExample(answers(), name) as unknown as Page;
+    const pages = () =>
+      Object.keys(answers().examples ?? {}).map((name): [string, Page] => [
+        name,
+        page(name),
+      ]);
+
+    it('has events in the order of seq, of one run, with next after the last', () => {
+      for (const [name, { events, next }] of pages()) {
+        const seqs = events.map((event) => event.seq);
+        expect(seqs, name).toEqual([...seqs].sort((a, b) => a - b));
+        expect(new Set(events.map((e) => e.run_id)).size, name).toBeLessThan(2);
+        if (events.length > 0) expect(next, name).toBe(seqs.at(-1));
+      }
+    });
+
+    it('says a run is finished exactly when its run_finished has been read', () => {
+      for (const [name, { events, finished }] of pages()) {
+        if (events.some((e) => e.type === 'run_finished')) {
+          expect(finished, name).toBe(true);
+          expect(events.at(-1)?.type, name).toBe('run_finished');
+        }
+      }
+      expect(page('running').finished).toBe(false);
+    });
+
+    it('has no console line for a run read after the grace period, so a seq can be skipped', () => {
+      const { events } = page('halted');
+      expect(events.some((e) => e.type === 'console')).toBe(false);
+      const seqs = events.map((e) => e.seq);
+      expect(seqs.at(-1)! - seqs[0]! + 1).toBeGreaterThan(seqs.length);
+    });
+
+    it('gives the state of the run when its state events are applied in order', () => {
+      const run = (
+        jsonBodyOf(spec, 'GET /api/runs/{id}', '200').examples!['halted']!
+          .value as { run: Record<string, unknown> }
+      ).run;
+      const stages: Record<string, Record<string, string>> = Object.fromEntries(
+        (run['order'] as string[]).map((name) => [name, { status: 'pending' }]),
+      );
+      let status = 'running';
+      let exitCode: number | null = null;
+      for (const event of page('halted').events) {
+        if (event.type === 'stage_state') {
+          const { status: state, reason } = event;
+          stages[event.stage!] = reason
+            ? { status: state!, reason }
+            : { status: state! };
+        } else if (event.type === 'run_finished') {
+          status = event.status!;
+          exitCode = event.exit_code!;
+        }
+      }
+      expect(stages).toEqual(run['stages']);
+      expect(status).toBe(run['status']);
+      expect(exitCode).toBe(run['exit_code']);
+    });
+
+    it('keeps console lines live only, within 8192 bytes, and waits at most 25 seconds', () => {
+      const text = words(spec.info.description);
+      expect(text).toMatch(/A console line is live only/);
+      expect(text).toMatch(/at most 8192 bytes of UTF-8/);
+      expect(text).toMatch(/stores them nowhere/);
+      expect(text).toMatch(
+        /for 60 seconds after the `at` of its `run_finished`, then drops them/,
+      );
+      expect(text).toMatch(
+        /a client that was following the run gets every line before `run_finished`/,
+      );
+      expect(text).toMatch(/at most 25 seconds/);
+      const wait = spec.paths['/api/runs/{id}/events']![
+        'get'
+      ]!.parameters!.find((p) => p.name === 'wait');
+      expect(wait?.schema?.['maximum']).toBe(25);
+    });
+
+    it('refuses a stage event that moves a stage to pending', () => {
+      const event = spec.components.schemas['StageStateEvent']!;
+      const valid = {
+        seq: 1,
+        run_id: '20261024-0412-a7b3c',
+        at: '2026-10-24T04:12:05Z',
+        type: 'stage_state',
+        stage: 'write',
+        status: 'running',
+      };
+      expect(valueMatchesSchema(event, valid)).toBe(true);
+      expect(valueMatchesSchema(event, { ...valid, status: 'pending' })).toBe(
+        false,
+      );
+    });
+
+    describe('an event of a later type', () => {
+      const runEvent = () => spec.components.schemas['RunEvent']!;
+      const common = {
+        seq: 7,
+        run_id: '20261024-0412-a7b3c',
+        at: '2026-10-24T04:12:05Z',
+      };
+
+      it('matches a run event, so a client can skip it', () => {
+        const later = { ...common, type: 'stage_note', stage: 'write' };
+        expect(valueMatchesSchema(runEvent(), later)).toBe(true);
+      });
+
+      it('still needs the common fields', () => {
+        const noSeq = {
+          run_id: common.run_id,
+          at: common.at,
+          type: 'stage_note',
+        };
+        expect(valueMatchesSchema(runEvent(), noSeq)).toBe(false);
+      });
+
+      it('does not let a known type with a bad shape through', () => {
+        const badStage = {
+          ...common,
+          type: 'stage_state',
+          stage: 'write',
+          status: 'pending',
+        };
+        const badConsole = {
+          ...common,
+          type: 'console',
+          stage: 'write',
+          n: 0,
+          text: 'x',
+        };
+        const badFinish = {
+          ...common,
+          type: 'run_finished',
+          status: 'running',
+          exit_code: 0,
+        };
+        for (const event of [badStage, badConsole, badFinish]) {
+          expect(valueMatchesSchema(runEvent(), event), event.type).toBe(false);
+        }
+      });
+
+      it('says a server of this version sends only the three known types', () => {
+        expect(words(runEvent()['description'] as string)).toMatch(
+          /A server of this version sends only the three known types/,
+        );
+      });
+    });
+
+    it('says that version 1.6.3 keeps console lines for a grace period', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.6\.3 adds nothing: a finished run keeps its console lines for 60 seconds/,
+      );
+    });
+
+    it('says that version 1.6.2 adds a branch for a later event type', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.6\.2 adds nothing: a run event gains a branch for a type that a later version adds/,
+      );
+    });
+
+    it('says that version 1.6.1 only narrows the status of a stage event', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.6\.1 adds nothing: the `status` of a `stage_state` event gets its own enum without `pending`/,
+      );
+    });
+
+    it('says that version 1.6.0 only adds the events of a run', () => {
+      expect(words(spec.info.description)).toMatch(
+        /Version 1\.6\.0 only adds: the operation `getRunEvents`/,
+      );
     });
   });
 
