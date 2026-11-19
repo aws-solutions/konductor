@@ -1,0 +1,24 @@
+{
+  "id": "pr312-probe-02-requirements-extraction",
+  "class": "design",
+  "target": null,
+  "prompt": "Here are notes from a call with a customer: they want shared reports, mostly read on phones, someone must approve a report before it goes out, old reports must be kept seven years, and the first version is due before the March audit. Turn these notes into a clear list of requirements in out.md.",
+  "fixture": "probe-repo",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "out.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "answers",
+      "criterion": "out.md answers the request (a probe task: the score is not used).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

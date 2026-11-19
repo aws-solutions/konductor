@@ -1,0 +1,24 @@
+{
+  "id": "pr312-probe-12-task-decomposition",
+  "class": "design",
+  "target": null,
+  "prompt": "We want to add 'share a report by link' to our app: create a link, set an expiry, revoke it, and show who opened it. Split this feature into pieces that one engineer each can build with little overlap, in out.md.",
+  "fixture": "probe-repo",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "out.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "answers",
+      "criterion": "out.md answers the request (a probe task: the score is not used).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

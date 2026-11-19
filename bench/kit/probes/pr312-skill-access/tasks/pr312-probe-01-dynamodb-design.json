@@ -1,0 +1,24 @@
+{
+  "id": "pr312-probe-01-dynamodb-design",
+  "class": "design",
+  "target": null,
+  "prompt": "Our shop app stores orders. Users look up their own orders by user and date, support looks up one order by id, and a nightly job lists all orders of one status from the last day. Work out how the data should be laid out in DynamoDB and write the layout to out.md.",
+  "fixture": "probe-repo",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "out.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "answers",
+      "criterion": "out.md answers the request (a probe task: the score is not used).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}
