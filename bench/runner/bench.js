@@ -9,6 +9,7 @@
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--ref ...] [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
  *   node bench/runner/bench.js gc [--apply] | archive --run DIR [--apply]   (reclaim what the bench made; dry run by default)
+ *   node bench/runner/bench.js scenarios lint|coverage|prereg ...   (the scenario pack's authoring tools; free, no credits)
  *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix|keep-prune|select ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
@@ -21,6 +22,7 @@ const { cmdRun, repoRootOf } = require('./lib/run-cmd.js');
 const { planPr } = require('./lib/pr-plan.js');
 const evalCommands = require('./eval-commands.js');
 const { cmdCap } = require('../cap/cli.js');
+const { cmdScenarios } = require('../scenarios/cli.js');
 const { BOOLEAN_FLAGS, COMMANDS: COMMAND_NAMES, checkArgs } = require('./lib/cli-flags.js');
 const cleanup = require('./lib/cleanup-cmd.js');
 
@@ -31,7 +33,7 @@ const USAGE = `Usage:
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--gate-strict] [--allow-partial] [--allow-arm-drift] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
-       [--extra-tasks DIR,DIR] [--suites-dir DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
+       [--extra-tasks DIR,DIR] [--prereg FILE] [--level lite|standard|full [--level-since FILE]] [--suites-dir DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
        [--arm-config name=key.path=value[;key.path=value],...] [--oracle-skills [ARM,ARM]] [--oracle-manifest FILE]
        [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed] [--max-auth-failures N] [--timeout-sec N]
        [--plant-release DIR --plant-release-sha256 HEX] [--plant-python PATH] [--python PATH] [--strands-python PATH] [--strands-agent FILE] [--introspect]
@@ -65,6 +67,12 @@ const USAGE = `Usage:
        interpreter with strands-agents, default python3; --strands-agent FILE holds build_agent(model, tools), default a plain Agent; --model must be
        fake:<script.json>, the only model provider enabled. Before any trial a hook census refuses a counted suite whose plain arms carry tool hooks)
        (--extra-tasks loads tasks from DIR/<id>.json with DIR/fixtures and DIR/hidden; DIR is hidden from the agent like tasks/hidden)
+       (--prereg FILE is a PREREG.json from "scenarios prereg freeze": the run refuses to start unless every selected task is in the lock with the same
+       file bytes, as read from the --extra-tasks directories)
+       (--level picks the tasks of the suite by run level, instead of --tasks: lite is, for each of the 14 phases, the DEV task with the lowest SR-32 hash among
+       real tasks with a soft limit of 900 s or less, a swap for any role left out, the lowest-hash DEV negative control and DEV twin, and, with --level-since FILE (the
+       "tasks" list of an earlier run-config "level" record), every task added or changed since as smoke only; standard is every DEV task; full is every task and
+       needs --prereg. run-config.json records the level, its list hash and the picks, and report-2x2 shows it in its header)
        (--suites-dir DIR looks for the suite file DIR/<suite>.json first and then in <bench-dir>/suites, so a generated skilleval-* suite needs no file in the checkout)
        (--run-credit-limit X: on engine v2 the run is killed at the poll once its metered credits pass X and is recorded as censored. On v3 credits
        arrive once, at the end of a turn, so a one-shot run always finishes: over X it gets creditLimitExceeded and creditOvershoot, nothing is killed;
@@ -180,12 +188,15 @@ const USAGE = `Usage:
        Spawns, spawn depth, review rounds and reworks after a pass are always shown (read from result.json, else from stream.jsonl). --phases counts the phase
        documents of the listed phases (profiles/phase-documents.json), or all of them; leave it off for tasks that are not SDLC tasks)
   node bench/runner/bench.js report-2x2 --kiro-vanilla DIR[,DIR...][:ARM] --kiro-konductor DIR[,DIR...][:ARM] --cc-vanilla DIR[,DIR...][:ARM] --cc-konductor DIR[,DIR...][:ARM]
-       [--cell ID=DIR[,DIR...][:ARM] ...] [--out DIR] [--json] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--criteria-pack quality]
+       [--cell ID=DIR[,DIR...][:ARM] ...] [--out DIR] [--json] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--criteria-pack quality] [--prereg FILE] [--stats]
        (the 2x2 pilot table, harness by konductor on one model, from four judged run directories, one harness each; prints markdown, or JSON with --json,
        and writes factorial-2x2.md, .json and three SVG charts in charts/ to --out. A cell whose directories hold several arms names the one it
        reads with :ARM, for example --kiro-konductor /runs/kiro:main; --cell kiroVanilla=DIR:vanilla does the same and may replace any of the four flags. Refuses cells with different tasks, judge panels, rubric revisions, models or cost units. Quality is compared
        across cells; cost only as konductor over vanilla inside a harness. Intervals appear only with 5 or more tasks of 2 or more replicates per cell, otherwise
-       the table says "descriptive only" and the charts carry no whiskers. Reads run directories and writes nothing but --out)
+       the table says "descriptive only" and the charts carry no whiskers. --prereg FILE refuses the report unless every task in it is in the pre-registration
+       lock with the same file bytes (as read from --extra-tasks). --stats adds the pre-registered statistic: per harness, konductor minus vanilla on quality
+       by a two-level bootstrap (tasks, then runs; 10,000 draws, fixed seed) with a verdict word at the 5-point margin, from HELD-OUT tasks (DEV shown apart,
+       never a verdict), and per phase and per role with Holm correction. Reads run directories and writes nothing but --out)
   node bench/runner/bench.js contrast --run DIR[,DIR...] [--base ARM] [--head ARM,ARM] [--min-rel 0.15] [--rule both|any] [--by class|task] [--phases ID,ID|all]
        [--detail quick|full] [--format md|html|both] [--out DIR] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (each head arm against the base arm, overall and per task class (--by task: per task); writes contrast.md, contrast.json, contrast.html
@@ -232,6 +243,21 @@ const USAGE = `Usage:
        (exit 0 no regression, 1 regression, 2 refused or error)
   node bench/runner/bench.js skills --run DIR [--bench-dir DIR] [--repo-root DIR] [--json] [--extra-tasks DIR,DIR]
        (skill and SOP loads recomputed from stream.jsonl; read-only, works on old and in-progress runs)
+  node bench/runner/bench.js scenarios lint DIR --base REF|dir:PATH [--repo-root DIR] [--json]
+       (the prompt leak lint: refuses a task prompt that names a skill, SOP or agent of the konductor tree at --base, uses a term from the fixed method
+       list, or says "do not ask" on a task where questions are allowed; also refuses a v3 task (one with a phase) with no authorship.source or an empty
+       licence. DIR holds task files, or batch directories of them. Exit 1 when there is any finding. No credits)
+  node bench/runner/bench.js scenarios prereg freeze|check DIR [--date YYYY-MM-DD]
+       (freeze writes DIR/PREREG.json: every task's id, version and file sha256, the SR-32 DEV and HELD-OUT lists recomputed from the ids, and the fixed
+       protocol of bench/scenarios/protocol.js (margin, verdict words, bootstrap draws and seed, reps, stop rules), with a hash of the whole record. It
+       refuses a task with no integer version and never overwrites a lock. check recomputes everything and exits 1, naming each task whose file changed,
+       a task added or missing, a split list or protocol that no longer matches, or an edited lock)
+  node bench/runner/bench.js scenarios coverage DIR --base REF|dir:PATH [--selection-only FILE] [--out DIR] [--fail-on-hole] [--repo-root DIR]
+       (writes coverage.json and coverage.md into --out (default DIR) from the task files under DIR: the phase by role counts of real tasks against the
+       target counts, and one row per skill, SOP and agent of the tree at --base with its targeted DEV and HELD-OUT tasks, twins and controls, effect
+       tasks and a status: covered (3 targeted tasks, 2 of them HELD-OUT, 1 twin or control), selection-only (a unit listed with a reason in
+       --selection-only FILE, default DIR/selection-only.json, as { "skill:name": "reason" }) or hole. --fail-on-hole exits 1 on any hole or any phase
+       or role below its minimum. No credits)
   node bench/runner/bench.js cap list [--base REF] [--cap ID,ID] [--kind skill|agent|sop|context] [--all] [--init] [--json]
        [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (registry plus a scan of the capabilities at --base (default v1.2.0): owner, agents that reach each, tasks, trigger
@@ -273,7 +299,7 @@ const USAGE = `Usage:
        tasks that should make the agent load the skill on its own, in varied phrasings that never name it, and as many near misses that share its words
        but belong elsewhere (skill-creator's should-trigger and should-not-trigger method), into DIR/scenarios/<id>.trigger.json and .md, with a queries view
        that cap trigger reads as its query file. --seed-queries FILE seeds it with a skill-creator eval set or a cap draft file for that one skill)
-  node bench/runner/bench.js cap forced-prefix --cap skill:NAME [--harness kiro-cli|opencode] [--out DIR] [--base REF] [--repo-root DIR] [--bench-dir DIR]
+  node bench/runner/bench.js cap forced-prefix --cap skill:NAME|sop:NAME|agent:NAME [--harness kiro-cli|opencode] [--out DIR] [--base REF] [--repo-root DIR] [--bench-dir DIR]
        (free: writes the forced-load instruction for one skill and harness, to pass with run's arm prefix option to a forced arm and its A/A repeat in a run of their own)
   node bench/runner/bench.js cap keep-prune --skill NAME --run stub-ID [--out DIR] [--depth quick|deep|both] [--provider stub] [--subject-model ID] [--judges A,B,C] [--replicates N] [--rejudge] [--selection FILE] [--repo-root DIR] [--json]
   node bench/runner/bench.js cap select --skill NAME (--run stub-ID [--reps N] [--stub-behaviour always|never|correct|fake] | --from-run DIR | --write-tasks DIR) [--requests FILE] [--out DIR] [--repo-root DIR] [--json]
@@ -283,7 +309,7 @@ const USAGE = `Usage:
        (known-answer controls for skill studies. With --out it writes a skill that holds a fact nobody can guess (keep), a decoy skill (prune) and one task for
        each, and prints the variant, run and check commands; free. With --check it reads a finished controls run and exits 0 only when the planted lift was
        found and the decoy showed no effect; it writes controls-check.json beside the run)
-  node bench/runner/bench.js cap trigger --cap ID --mode proxy|live [--split train|heldout|all] [--reps 3] [--harness kiro-cli|opencode] [--base REF]
+  node bench/runner/bench.js cap trigger --cap ID --mode proxy|live|runs [--from-runs DIR[,DIR]] [--split train|heldout|all] [--reps 3] [--harness kiro-cli|opencode] [--base REF]
        [--queries FILE] [--out DIR] [--model M] [--model-cmd CMD] [--from-run DIR] [--from-arm NAME] [--acting-agent A] [--concurrency N]
        [--crosscheck F] [--crosscheck-run DIR] [--budget-credits X] [--budget-usd X] [--run-credit-limit X] [--stop-on first-capability|first-load|end_turn]
        [--max-tool-calls N] [--seed N] [--censored-floor X] [--dry-run] [--kiro-bin PATH] [--auth-db FILE] [--isolate auto|unshare|sandbox-exec|none]
@@ -296,7 +322,11 @@ const USAGE = `Usage:
        (arm --from-arm) or from the agent spec at --base. live: real runs of trigger tasks, stopped at the first load or delegation (first-load by
        default; first-capability also stops at find_skills), at most 4 tool calls; needs --budget-credits (--budget-usd on opencode) unless --profile is given, which also sets --reps (quick 1 to 3, detailed at least 5). --crosscheck F
        runs a share F of the queries live (at least one per kind) and --crosscheck-run DIR reads a finished live run; kappa below 0.6 or fewer than
-       12 queries prints "proxy not validated". --dry-run only writes the trigger tasks and prints the run command. Harnesses are never merged)
+       12 queries prints "proxy not validated". --dry-run only writes the trigger tasks and prints the run command. Harnesses are never merged.
+       --cap takes skill:, sop: and agent: ids (proxy reads skills, and SOPs on opencode; live and runs read all three). --mode runs reads no model and starts no run:
+       it scores the unit from the loadCheck of finished task runs in --from-runs (a konductor arm; --from-arm picks one): runs of tasks that list the unit in
+       loadCheck.mustLoad or have it as a target are should-load, runs of tasks that list it in mustNotLoad are should-not, and it also prints the share loaded
+       before the first file write)
   node bench/runner/bench.js cap prune-report --base REF [--harness kiro-cli|opencode|both] [--runs DIR[,DIR...]] [--runs-glob GLOB]
        [--min-exposure N] [--evidence FILE] [--out DIR] [--json] [--detail quick|full] [--format md|html|both] [--repo-root DIR] [--bench-dir DIR]
        (read-only, no credits: one recommendation per skill and harness from the audit at --base, the skill loads recomputed from the stream.jsonl of
@@ -436,6 +466,7 @@ async function main(argv) {
   if (cmd === 'skills') return evalCommands.cmdSkills(opts);
   if (cmd === 'calibrate') return evalCommands.cmdCalibrate(opts);
   if (cmd === 'cap') return cmdCap(opts);
+  if (cmd === 'scenarios') return cmdScenarios(opts);
   if (cmd === 'gc') return cleanup.cmdGc(opts);
   if (cmd === 'archive') return cleanup.cmdArchive(opts);
   console.error(USAGE);

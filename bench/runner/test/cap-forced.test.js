@@ -41,6 +41,25 @@ test('the forced instruction names the skill once and the harness tool, with no 
   assert.throws(() => F.forcedPrefix({ name: 'a b' }), /not a skill name/);
 });
 
+test('a forced SOP is read from its installed file on Kiro CLI and loaded as sop-NAME on opencode; a forced agent gets the whole task', () => {
+  const k = F.forcedPrefix({ name: 'k-plan', harness: 'kiro-cli', kind: 'sop' });
+  const o = F.forcedPrefix({ name: 'k-plan', harness: 'opencode', kind: 'sop' });
+  assert.match(k, /read the SOP named "k-plan", the installed file "k-plan\.sop\.md", with your file tool/);
+  assert.match(o, /load the skill named "sop-k-plan" with the skill tool/);
+  const ak = F.forcedPrefix({ name: 'k-architect', harness: 'kiro-cli', kind: 'agent' });
+  const ao = F.forcedPrefix({ name: 'k-architect', harness: 'opencode', kind: 'agent' });
+  assert.match(ak, /hand the whole task below to the agent named "k-architect" with the subagent tool/);
+  assert.match(ao, /with the task tool/);
+  for (const t of [k, o, ak, ao]) {
+    assert.doesNotMatch(t, /[–—]/);
+    assert.doesNotMatch(t, /\n/);
+    assert.ok(F.forcedFiller(t).length > 0, 'the delete arm can be given a filler of the same length');
+  }
+  assert.throws(() => F.forcedPrefix({ name: 'x', kind: 'context' }), /context files are always loaded/);
+  assert.throws(() => F.forcedPrefix({ name: 'a b', kind: 'agent' }), /not a agent name/);
+  assert.equal(F.forcedPrefix({ name: 'alpha' }), F.forcedPrefix({ name: 'alpha', kind: 'skill' }), 'a skill stays the default and unchanged');
+});
+
 test('--forced-load takes low-load, always or off, and low-load runs only under the load floor', () => {
   assert.equal(F.checkMode(undefined), null);
   assert.equal(F.checkMode('always'), 'always');
@@ -276,7 +295,7 @@ test('cap skill-study accepts --forced-load and rejects a bad value', () => {
 
 // ---- cap forced-prefix ----
 
-test('cap forced-prefix writes the instruction for each harness into --out and refuses a non-skill', () => {
+test('cap forced-prefix writes the instruction for a skill, SOP or agent and each harness into --out and refuses a context file', () => {
   const root = mkScratch('capforced-');
   try {
     const r0 = makeCapRepo(root, { tag: 'v0' });
@@ -290,9 +309,17 @@ test('cap forced-prefix writes the instruction for each harness into --out and r
       assert.equal(fs.readFileSync(file, 'utf8'), `${F.forcedPrefix({ name: 'alpha', harness })}\n`);
       assert.match(r.stdout, harness === 'opencode' ? /--arms oc-frc=REF,oc-frc-b=REF/ : /--arms frc=REF,frc-b=REF/);
     }
-    const sop = spawnSync(process.execPath, [BENCH_JS, 'cap', 'forced-prefix', '--cap', 'sop:k-plan', '--out', out, '--repo-root', r0.repo, '--bench-dir', bench, '--base', 'v0'], { encoding: 'utf8', env });
-    assert.equal(sop.status, 2);
-    assert.match(sop.stderr, /not a skill/);
+    const cli = (cap) => spawnSync(process.execPath, [BENCH_JS, 'cap', 'forced-prefix', '--cap', cap, '--out', out, '--repo-root', r0.repo, '--bench-dir', bench, '--base', 'v0'], { encoding: 'utf8', env });
+    const sop = cli('sop:k-plan');
+    assert.equal(sop.status, 0, sop.stderr);
+    assert.equal(fs.readFileSync(path.join(out, 'forced-prefix-sop-k-plan-kiro-cli.txt'), 'utf8'), `${F.forcedPrefix({ name: 'k-plan', kind: 'sop' })}\n`);
+    const agent = cli('agent:k-dev');
+    assert.equal(agent.status, 0, agent.stderr);
+    assert.equal(fs.readFileSync(path.join(out, 'forced-prefix-agent-k-dev-kiro-cli.txt'), 'utf8'), `${F.forcedPrefix({ name: 'k-dev', kind: 'agent' })}\n`);
+    const ctx = cli('context:core');
+    assert.equal(ctx.status, 2);
+    assert.match(ctx.stderr, /not a skill, SOP or agent/);
+    assert.match(cli('sop:nope').stderr, /unknown capability sop:nope/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 

@@ -58,12 +58,19 @@ const cfgDir = process.env.CLAUDE_CONFIG_DIR;
 const list = (d) => { try { return fs.readdirSync(d).sort(); } catch { return null; } };
 // started.json is replaced by a rename, so a test that polls for it never parses a half-written file.
 ${writeAtomic.toString()}
-writeAtomic(path.join(cfg.dir, 'started.json'), JSON.stringify({
-  pid: process.pid, cwd: process.cwd(), home: process.env.HOME, configDir: cfgDir, args, env: process.env, envKeys: Object.keys(process.env),
+// Multi-turn runs: each invocation is one turn. started-N.json keeps every turn's record and cfg.turnStreams[N-1] is the stream
+// that turn replays (the last one repeats); started.json is the latest, as before.
+let turn = 0;
+try { turn = fs.readdirSync(cfg.dir).filter((f) => /^started-\\d+\\.json$/.test(f)).length; } catch { /* no probe directory yet */ }
+const startedText = JSON.stringify({
+  turn: turn + 1, pid: process.pid, cwd: process.cwd(), home: process.env.HOME, configDir: cfgDir, args, env: process.env, envKeys: Object.keys(process.env),
   rules: list(path.join(cfgDir, 'rules')), agents: list(path.join(cfgDir, 'agents')), configFiles: list(cfgDir),
   stdinIsTty: require('tty').isatty(0),
   stdin: require('tty').isatty(0) ? null : fs.readFileSync(0, 'utf8'),
-}));
+});
+writeAtomic(path.join(cfg.dir, 'started.json'), startedText);
+writeAtomic(path.join(cfg.dir, 'started-' + (turn + 1) + '.json'), startedText);
+const streamFile = (cfg.turnStreams || [])[Math.min(turn, (cfg.turnStreams || []).length - 1)] || cfg.streamFile;
 const slug = process.cwd().replace(/[^A-Za-z0-9]/g, '-');
 const made = [];
 for (const base of cfg.tmpBases || [process.env.TMPDIR]) {
@@ -77,7 +84,7 @@ fs.writeFileSync(path.join(cfg.dir, 'made-' + process.pid + '.json'), JSON.strin
 if (cfg.sleepSec) { setTimeout(() => {}, cfg.sleepSec * 1000); return; }
 fs.writeFileSync(path.join(process.cwd(), 'hello.txt'), cfg.helloText || 'hello\\n');
 if (cfg.leak) console.log(JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'x', content: process.env.AWS_SECRET_ACCESS_KEY + ' ' + process.env.AWS_SESSION_TOKEN }] }, parent_tool_use_id: null }));
-const finish = () => { process.stdout.write(fs.readFileSync(cfg.streamFile, 'utf8')); process.exit(cfg.exitCode || 0); };
+const finish = () => { process.stdout.write(fs.readFileSync(streamFile, 'utf8')); process.exit(cfg.exitCode || 0); };
 // With otlpLogsFile set and an OTLP logs endpoint in the environment, posts that file's JSON body there first.
 const endpoint = process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT;
 if (cfg.otlpLogsFile && endpoint) {

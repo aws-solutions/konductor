@@ -273,6 +273,7 @@ node bench/runner/bench.js archive --restore $RUNS
 
 - A skill the agent never loads cannot show lift. Write tasks that need the skill, or use the forced-load wave.
 - `cap trigger` measures how the agent picks skills when the skill text is visible. A proxy hit is not proof; live runs are the check.
+- `cap trigger --cap skill:NAME|sop:NAME|agent:NAME --mode runs --from-runs DIR[,DIR] [--from-arm ARM]` reads the selection of a unit from finished task runs instead of trigger queries. Free: no model call and no run. Each konductor run's `result.json` has a `loadCheck` (which units loaded and whether before the first file write). A run counts as should-load when its task lists the unit in `loadCheck.mustLoad` or has it as a target (`targetSkills`, `targetSop`, `targetAgent`), and as should-not when its task lists it in `loadCheck.mustNotLoad` (twins and controls). Runs with no `loadCheck` (vanilla arms), an infra error, or an error or timeout without a load are dropped and counted. The report gives the usual precision, recall and F1 with Wilson intervals, the share of should-load runs that loaded the unit and the share of those that loaded it before the first write, and the false-load share. `--mode live` takes sop: and agent: ids as well (it reads delegation for agents and `sop-NAME` loads or `@` pointers for SOPs); proxy reads skills, and SOPs on opencode.
 - `cap skill-study` and the forced-load wave run on kiro-cli only. `cap trigger` supports kiro-cli and opencode. Claude Code arms go through `run` only; no `cap` command runs them.
 - A "no effect" call needs the A/A spread to be under 0.10, so a noisy pair gives NEEDS DATA even with 15 runs per side.
 - Judge agreement with a person is a check you run: `cap review` writes the page, `cap review-import` scores the ratings (see [Calibration](#calibration)).
@@ -1047,6 +1048,13 @@ The six `autonomy-*` tasks leave a decision open, and a scripted user (no model)
   Checked once with kiro-cli 2.35.2 on a trivial two-turn task (0.15 credits): the resumed turn kept the session id and
   the earlier context, the model stayed pinned, and credits were summed over both turns. One run, so not a rate.
   To repeat it, point `--bench-dir` at a scratch directory with one ask-then-answer task and use `--budget-credits 3`.
+- Scripted-user tasks (schema v3, `questions: scripted`): the task's `scriptedUser` plays the same oracle. Each hidden fact is a clarification whose
+  `topics` are matched as plain, case-insensitive substrings of the agent's question (not as patterns), and its `answer` is the reply; `defaultReply` answers any
+  other question. A fact is given once. The cap is `facts + 2` interjections (at least 4). The harness resumes the session with the reply: Kiro CLI with
+  `--resume-id <session id>` as above, Claude Code with `claude -p --resume <session id>` and the reply on stdin (every other flag is the first turn's; the per-turn
+  `--max-budget-usd` applies to each turn; the flag text comes from `claude --help`, and a real two-turn run has not been done yet). `result.json` records
+  `questions` (turn, text, the fact ids matched, the reply), `factsUnlocked` and `factsLocked` (fact ids), `unmatchedQuestions` and the usual turn counts. On a
+  scripted task `autonomous` and `completedWithoutHelp` are null, because questions are expected there. A task cannot have both `scriptedUser` and `autonomy`.
 - Run: `node bench/runner/bench.js run --suite autonomy --budget-credits 400 --out $OUT`, then `judge`, `report`,
   `contrast --run $OUT --base v1.2.0`. `report.md` gets an "Autonomy" section per arm: asked rate, mean interjections,
   questions on the no-question task and unmatched questions (shown apart), cap hits, intended and invariant tests,
@@ -1093,6 +1101,10 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 - `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare|noskills` builds a `dir:`
   arm from `git archive` of the base ref (never the working tree) and prints the `--arms name=dir:PATH` string. `--verify` builds it with
   the offline cargo cache and trial-installs it in a scratch HOME, then compares the installed skill, SOP and context lists with the ops.
+  `--drop agent:NAME` is the agent's drop-one arm: the agent is replaced by a stub, not removed, because the routing rules and the orchestrator's subagent
+  list still name it. The stub keeps the agent's name and description, gets a prompt that tells it to do nothing and hand the brief back (`STUB_PROMPT` in
+  `bench/cap/variant.js`), and loses its skills, SOPs, context files and subagents; `variant.json` records the op as `drop` with `how: "stub"`. The entry agent
+  `konductor` cannot be dropped.
   `--preset noskills` builds the `konductor-noskills` arm (B4): every `skills/` dir is removed and every agent's skill lists
   (`skillNames`, `claudeCli.skills`) are emptied; prompts, SOPs, context files and subagents stay. Use the same tree on both harnesses:
   `--arms konductor-noskills=dir:PATH` (Kiro CLI: the skills MCP server indexes 0 skills) and `cc-konductor-noskills=dir:PATH`
@@ -1173,7 +1185,9 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
     report says "proxy not validated".
 - Forced load: `run --arm-prefix name=FILE` puts the file's text in front of the task prompt of one arm (recorded as sha256 and size); use
   "load skill X before you start" against the same arm without it to separate discovery from effect. `cap forced-prefix --cap skill:NAME --harness kiro-cli|opencode --out DIR`
-  writes that instruction for each harness (kiro-cli: the `get_skill` tool of the skills server; opencode: the `skill` tool). Only the first turn of the entry agent sees it; a subagent does not.
+  writes that instruction for each harness (kiro-cli: the `get_skill` tool of the skills server; opencode: the `skill` tool). `--cap` also takes `sop:NAME` (kiro-cli:
+  read the installed `NAME.sop.md` with the file tool; opencode: load the skill `sop-NAME`) and `agent:NAME` (hand the whole task to that agent with the
+  subagent tool, `task` on opencode); a forced Kiro CLI SOP read is not yet seen by the load check (DEBT D-52). Only the first turn of the entry agent sees it; a subagent does not.
   Give it to the forced arm and its A/A repeat in a run of their own. An arm's A/A identity is its ref, its arm config and the sha256 of its prefix, so a prefixed arm never pairs with the same ref without one; an arm without a prefix keeps the identity it had. An arm whose runs disagree on the prefix, or carry one without a hash, is never paired. `--arm-agent name=AGENT` starts an arm in
   another agent. `--stop-on first-capability|first-load|end_turn` and `--max-tool-calls N` stop a run early and mark it `earlyStopped`.
 - Audit lint and baseline: `cap audit` also checks names, third-person descriptions, SKILL.md length, links, orphan and too-deep reference
@@ -1184,6 +1198,44 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   a long deliverable lost its later sections. A task can set `bundleLimits`. Prompts may reach 400000 bytes on the opencode backend (stdin) and stay at 120000 on
   the kiro backend (argv). Records written under the old limits keep the limits they carry. `cap plan` sizes
   the budget as the largest of 1.5x the estimate, estimate plus the largest observed run, and a pass with one such run before the last cell.
+
+## Scenario pack tools
+The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) has free authoring tools. None calls a model.
+
+- `node bench/runner/bench.js scenarios lint DIR --base REF|dir:PATH` is the prompt leak lint. It refuses a task prompt that names a skill, SOP or
+  agent of the konductor tree at `--base`, uses a term from the fixed method list (`bench/scenarios/lint.js`: STRIDE, RICE, MoSCoW, Given/When/Then and
+  others), or says "do not ask" on a task where questions are allowed (the default). A hyphenated unit name (`threat-modeling`) is caught as written; a
+  one-word name (`verification`) is caught only in backticks or quotes, or next to the word skill, SOP or agent, because it is also an everyday word. It also refuses a
+  v3 task (one with a `phase`) that has no `authorship.source`, or a public source with an empty licence. Plain deliverable names (ADR, postmortem,
+  threat model, runbook) are allowed. DIR may be one batch directory or the whole pack; `fixtures/` and `hidden/` are never read as tasks. Exit 1 on any finding.
+- `scenarios coverage DIR --base REF|dir:PATH [--selection-only FILE] [--out DIR] [--fail-on-hole]` builds the coverage matrix from the task files and writes
+  `coverage.json` and `coverage.md` (into `--out`, default DIR). View 1 is phase by role: counts of real tasks (not twins or controls) against the target
+  counts of the plan, a phase needing 8 tasks and 5 held-out, a role 8 real tasks. View 2 has one row per skill, SOP and agent of the tree: owner agents,
+  targeted tasks split into DEV and HELD-OUT by the SR-32 rule (`bench/scenarios/split.js`), twins and controls, effect tasks and a status. A unit is
+  **covered** with 3 targeted tasks (2 HELD-OUT) and 1 twin or control (a twin of a task that targets it, or a control that lists it in
+  `loadCheck.mustNotLoad`). A unit short of that is a **hole**, or **selection-only** when `selection-only.json` (`{ "skill:name": "reason" }`, beside
+  the tasks or given by `--selection-only`) holds the owner's reason. `--fail-on-hole` exits 1 on any hole or any phase or role under its minimum.
+- `scenarios prereg freeze DIR [--date YYYY-MM-DD]` writes `DIR/PREREG.json`, the pre-registration lock: every task's id, `version` (an integer, required) and file
+  sha256; the SR-32 DEV and HELD-OUT lists recomputed from the ids; and the fixed protocol of `bench/scenarios/protocol.js` (5-point margin, the verdict
+  words, 10,000 bootstrap draws with a fixed seed, replicates, stop rules); and a hash of the whole record. It never overwrites a lock: a changed pack is a
+  new study. `scenarios prereg check DIR` recomputes everything and exits 1, naming each task file that changed, a task added or missing, a split list or
+  protocol that no longer matches the rule or the code, and an edited lock. `run --prereg FILE` and `report-2x2 --prereg FILE` refuse (before any arm is built, or
+  before any output) when a task they use is not in the lock or its file in the `--extra-tasks` directories has other bytes.
+- `report-2x2 ... --stats` adds the pre-registered statistic (`bench/scenarios/bootstrap.js`, constants in `bench/scenarios/protocol.js`). Per harness it takes
+  konductor minus vanilla on quality, per task, and averages over tasks. The interval is a two-level bootstrap: draw tasks with replacement, then draw runs
+  with replacement inside each drawn task and arm; 10,000 draws, a fixed seed, 95%. The verdict word follows the owner's rule on the interval [L, U] with margin M = 5, first rule that holds wins: **beats by the margin** if L > M; **beats** if L > 0; **loses by the margin** if U < -M; **loses** if U < 0; **ties** only if -M < L and U < M; otherwise **unsettled**. An interval of 1 to 3 is therefore "beats", not "ties", and exactly -5 to 5 is "unsettled". Only HELD-OUT tasks give a
+  verdict; DEV tasks are shown apart as "DEV, not a verdict". The per-phase and per-role tables use each task's own `phase` and `role` and Holm's step-down
+  correction: rows are ordered by p-value, row i of m is tested at 0.05 / (m - i), its interval is taken at that level, and rows after the first failure keep
+  that level. A row with fewer than two tasks scored in both arms has no interval and is unsettled. The 3-arm pairs (against `konductor-noskills`) need a
+  report that reads three arms; `compare` and `compareRows` take any two score lists.
+- `run --level lite|standard|full [--level-since FILE]` picks the suite's tasks by run level (plan 7a) instead of `--tasks`; the two together are refused.
+  The list is a function of the task metadata and the SR-32 hashes (`bench/scenarios/levels.js`), so it is fixed for a pack version. **lite**: for each of the
+  14 phases (not the long multi-phase row) the DEV real task with the lowest SR-32 hash among tasks with a soft limit of 900 s or less; a role then missing is
+  swapped in from its lowest-hash DEV task in a phase with two or more such tasks (a role with no task is listed as unfilled); plus the lowest-hash DEV negative
+  control and DEV twin, 16 tasks when every phase and role is there. `--level-since FILE`, the `tasks` list of an earlier run-config `level` record, adds every
+  task added or changed since as smoke only. **standard**: every DEV task, controls and twins included. **full**: every task, and it needs `--prereg FILE`.
+  `run-config.json` gets a `level` record (name, count, list hash, picks, smoke-only tasks, task file hashes) and `report-2x2` prints it in the header with what
+  that level may and may not support. The arms, replicates and judging of a level are not enforced by the flag; they stay the run's own flags.
 
 ## How to read results
 - Tokens are not exposed by kiro-cli; credits are the cost measure. `estTokens` is characters / 4.
