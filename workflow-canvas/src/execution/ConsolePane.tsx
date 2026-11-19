@@ -55,6 +55,7 @@ export function ConsolePane({
             lines={lines}
             label={`Console lines of ${name}`}
             describedBy={noteId}
+            followEnd
           />
         </>
       )}
