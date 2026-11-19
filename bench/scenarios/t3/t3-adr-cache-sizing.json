@@ -102,5 +102,51 @@
         "note": "All necessary numbers are present: peak working set, throughput target, node specs, prices, reservation percentage, and service limits are fully specified."
       }
     ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "States that the 600 requests/second staging pilot value is superseded by the 800 requests/second production target and must not be used for capacity planning.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "Computes that minimal-105's single primary node provides only 78.75 GB after the 25% engine reservation (105 × 0.75), which covers approximately 66.7% of the 118 GB peak working set and therefore fails the 95% in-memory hit-ratio floor.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e3",
+        "text": "Clarifies that replicas provide failover availability and do not add to primary working-set capacity, so the minimal-105 replica does not compensate for insufficient primary memory.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "Verifies monthly cost by multiplying node count by per-node price from the price sheet: balanced-105 costs 4 × 650 = 2,600 USD/month; wide-209 costs 2 × 1,400 = 2,800 USD/month.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "Compares balanced-105 and wide-209 on at least two trade-off dimensions: cost (balanced costs 200 USD/month less), shard topology (balanced has two primary shards vs one), latency (wide has lower p95 latency), or operational complexity (fewer nodes with wide).",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "States the availability behavior: a replica provides zero-minute RPO and approximately three-minute RTO under the operating model, meeting the service requirements of 0-minute RPO and 5-minute RTO.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "Notes what would change the decision: the 118 GB peak working set growing beyond the 157.5 GB usable primary memory, or the 2,600 USD monthly spend approaching the 3,000 USD budget limit.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "Picks minimal-105 because it is the cheapest option with a replica, without computing whether its 78.75 GB primary capacity meets the 118 GB peak requirement.",
+      "Uses the staging pilot value of 600 requests/second instead of the 800 requests/second production target for throughput capacity planning.",
+      "Assumes the replica in minimal-105 doubles capacity to 157.5 GB, not understanding that replicas are for availability and do not serve primary working-set traffic.",
+      "Selects wide-209 solely because it has fewer nodes and lower latency, without comparing the 200 USD/month cost difference against the balanced option.",
+      "Lists the candidates without computing the engine reservation (25%) and its impact on usable memory for each topology."
+    ]
   }
 }
