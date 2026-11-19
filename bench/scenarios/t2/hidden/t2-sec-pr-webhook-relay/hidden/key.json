@@ -1,0 +1,93 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/webhooks/receiver.js",
+      "line": 24,
+      "endLine": 24,
+      "severity": "high",
+      "fix": [
+        "raw body",
+        "raw bytes",
+        "verify before parsing"
+      ],
+      "finding": "The receiver verifies a JSON re-serialization rather than the exact request bytes, so valid provider signatures can fail or an alternate representation can be accepted under a different digest."
+    },
+    {
+      "id": "k2",
+      "file": "src/webhooks/signatures.js",
+      "line": 14,
+      "endLine": 14,
+      "severity": "medium",
+      "fix": [
+        "timing-safe",
+        "timingSafeEqual",
+        "constant-time"
+      ],
+      "finding": "The secret-derived signature is compared with ordinary string equality, which exposes a timing signal to an attacker probing the webhook endpoint."
+    },
+    {
+      "id": "k3",
+      "file": "src/router.js",
+      "line": 10,
+      "endLine": 14,
+      "severity": "medium",
+      "fix": [
+        "replay window",
+        "timestamp",
+        "delivery id"
+      ],
+      "finding": "A correctly signed delivery is accepted, stored, and notified without enforcing the documented timestamp window or deduplicating its delivery identifier, allowing replayed events to trigger customer actions again."
+    },
+    {
+      "id": "k4",
+      "file": "src/notify/callback.js",
+      "line": 12,
+      "endLine": 18,
+      "severity": "critical",
+      "fix": [
+        "allowlist",
+        "private address",
+        "block metadata",
+        "validate destination"
+      ],
+      "finding": "The callback posts to the customer-supplied URL and follows redirects without destination validation, allowing a tenant setting to reach internal services or cloud metadata."
+    },
+    {
+      "id": "k5",
+      "file": "src/config.js",
+      "line": 9,
+      "endLine": 9,
+      "severity": "high",
+      "fix": [
+        "required secret",
+        "fail closed",
+        "environment variable"
+      ],
+      "finding": "Missing webhook configuration silently selects a shared hard-coded secret, so an unconfigured deployment can accept requests signed with a value known from the source."
+    },
+    {
+      "id": "k6",
+      "file": "src/webhooks/receiver.js",
+      "line": 32,
+      "endLine": 33,
+      "severity": "high",
+      "fix": [
+        "redact",
+        "remove header",
+        "do not log signature"
+      ],
+      "finding": "The invalid-signature diagnostic includes the complete secret-bearing signature header, exposing reusable authentication material to log readers and retained log systems."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "src/index.js",
+      "line": 8,
+      "endLine": 8,
+      "why": "This logs the configured public key identifier from config, which is explicitly non-secret metadata intended for ordinary diagnostics."
+    }
+  ]
+}

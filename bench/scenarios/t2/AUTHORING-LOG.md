@@ -2,7 +2,7 @@
 
 Every model call made to write, map or review a T2 task, in order. Calls ran through Kiro CLI 3.5.0 in an empty work dir with an isolated home (no steering, rules, skills, MCP servers; memory disabled). Credits are read from the call's own stream; a call stopped before its final metering event shows "not captured".
 
-Total captured: 86.18 credits over 28 calls.
+Total captured: 89.76 credits over 31 calls.
 
 | Time (UTC) | Task | Step | Model | Seconds | Credits | Result |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -34,3 +34,6 @@ Total captured: 86.18 credits over 28 calls.
 | 2026-11-19T19:19:02.549Z | t2-dr-notify-fanout | fix | deepseek-3.2 | 125 | 2.28 | ok |
 | 2026-11-19T19:31:25Z | t2-sec-pr-webhooks | review | minimax-m2.5 | 481 | 3.73 | ok |
 | 2026-11-19T19:32:22Z | t2-arch-dr-event-store | review | glm-5 | 57 | 1.34 | ok |
+| 2026-11-19T19:39:33.531Z | t2-sec-pr-webhook-relay | author2 | gpt-5.6-luna | 115 | 2.63 | ok |
+| 2026-11-19T19:39:55Z | t2-sec-pr-webhook-relay | map | glm-5 | 19 | 0.51 | ok |
+| 2026-11-19T19:41:35Z | t2-sec-pr-webhook-relay | review | qwen3-coder-next | 99 | 0.43 | ok |
