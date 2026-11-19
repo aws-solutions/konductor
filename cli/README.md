@@ -60,8 +60,8 @@ of failing.
 
 The CLI utility handles setup, content build, lifecycle, and diagnostics, and it checks,
 shows and runs workflow files with [`flow`](#flow). `flow run` runs stages on Kiro CLI or Claude Code (the
-[test-only `fake` harness](#the-fake-harness-test-only) runs no agent). Other SDLC work with real agents is still
-driven by the Konductor Kiro agent.
+[test-only `fake` harness](#the-fake-harness-test-only) runs no agent), and `flow view` opens a workflow in the browser
+canvas. Other SDLC work with real agents is still driven by the Konductor Kiro agent.
 
 ---
 
@@ -849,6 +849,7 @@ konductor flow show <name> [--json]
 konductor flow run <name> [--harness <kiro-cli|claude|fake>] [--fake-script <path>] [--goal "..."] [--trust <hash>] [--json]
 konductor flow trust <name> [--yes]
 konductor flow trust --revoke <name>
+konductor flow view <name> [--harness <kiro-cli|claude|fake>]
 ```
 
 A workflow is a YAML file, `<name>.yml`, that lists the stages of a piece of work and the agent that does each one.
@@ -993,6 +994,39 @@ directory or anything bigger is treated as not there, and a link is never follow
   summary or the question. `flow trust --revoke <name>` removes the record. On a workflow that needs no trust (see
   below), `flow trust` says so, exits 0 and writes nothing. There is no repo-wide form.
 
+- `flow view <name>` starts the workflow canvas, a page that edits, checks, saves and runs one workflow, on the loopback
+  address (`127.0.0.1`, a port the system picks, never another address) and prints one line:
+  `http://127.0.0.1:<port>/#<code>`. Open it in a browser. It opens no browser itself. The code is in the fragment,
+  which a browser never sends to a server. It works once and for 60 seconds, so open the address at once, or stop the
+  command with Ctrl+C and start it again. The code is not in the process list or in any log line. Every call to the
+  server needs the session token that the code is traded for, and a request with another `Host` or `Origin` is refused.
+  The server serves the built page from the folder named by `KONDUCTOR_CANVAS_DIR`, or else from `dist/` next to the
+  `konductor` program. A `dist/` next to the program is refused with exit `74` when it, or any file or folder in it, can
+  be written by every user (the world-writable bit; a group-writable folder is fine), since whoever changes the page
+  controls what the browser runs with your token. Build the page with `npm run build` in `workflow-canvas/`, which makes
+  `dist/`. When neither folder holds an `index.html`, `flow view` exits `74` and names the variable and the build
+  command. The page is not inside the program, and how it is shipped with the installer is not decided yet. `flow view`
+  works on a file like `flow check` and `flow show` do: it looks in `.konductor/workflows/` of the current directory and
+  then in `~/.konductor/workflows/`, searches no folder above, and needs no `HOME` and no project root. `library/<name>`
+  exits `64` before anything is looked up. A workflow with errors does not stop it, so you can fix them in the Designer.
+  A name that matches no file is a usage error. `--harness` follows the rule of `flow run`, and the canvas shows the one
+  that was chosen. A run started in the canvas goes through the same entry as `flow run`: the trust re-check in the
+  runner, the workspace lock, and the harness, with its state in `.konductor/runs/` of the current directory, which is
+  made, with `.konductor/.gitignore`, when the first run starts. The canvas cannot grant trust. `trust_required` names
+  the command to run in a terminal. If the workflow needs your confirmation and there is a terminal, `flow view` shows
+  the summary of `flow trust` and asks the same question before the server starts. If you say no, or there is no
+  terminal, the server still starts, and a run is refused until you run `flow trust <name>`. A save that changes the
+  bytes of the workflow, even a comment, leaves the record as it is, so the file no longer matches it and the next run
+  needs `flow trust` again. If `HOME` is not set to an absolute path the trust record reads as empty, so a run is
+  refused. Ctrl+C (or the terminate signal) ends the sessions of a live run with their process group and then the
+  server, with exit `0`. If the server is killed instead, the next `flow run` or `flow view` run ends what is left, by
+  the rules of `flow run`. The code in this example was used and is no longer valid. In a project that has `hello-plan`:
+
+  ```text
+  $ konductor flow view hello-plan --harness fake
+  http://127.0.0.1:34227/#d5f803450de8a39b039fc7a1d5e265e2e4d21fddcf3445438c184c0fe3496b32
+  ```
+
 **Trust.** A project workflow runs only after you confirm it, once for each workflow. A user workflow needs no
 confirmation, unless the repository has tool configuration files. A headless run loads some of them without asking, and
 others can approve a tool or start a program: `.claude/settings.json`, `.claude/settings.local.json`, `.mcp.json`,
@@ -1107,7 +1141,8 @@ usage error (a bad name, `library/<name>`, a name that matches no file, a bad `f
 none or both runner harnesses are installed, or a stage agent that the harness cannot see),
 `65` when the workflow has errors, `74` when the trust record cannot be kept or changed (no usable home folder, a file
 error, or a record that is damaged or from a newer Konductor; a record that cannot be read only trusts nothing), or when
-`flow run` or `flow trust` needs `HOME` and it is unset or not an absolute path, `75` when the workspace lock refuses
+`flow run` or `flow trust` needs `HOME` and it is unset or not an absolute path, or when `flow view` has no page folder
+or cannot bind its port, `75` when the workspace lock refuses
 the run, and `77` when the workflow is not trusted and you did not confirm it, there was no terminal, or `--trust` did
 not match, or when the project root would be the home folder.
 
@@ -1195,6 +1230,7 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
     own logic and reporting per-check ok/info/failed/stale status with remediation
     guidance
   - `flow check` and `flow show` reading workflow files through the `workflow-engine/` crates
+  - `flow view` starting the canvas server on a workflow, which the browser page uses to edit, save and run it
   - `flow run` running a workflow on `kiro-cli` (Kiro CLI V2 and V3), on `claude` (Claude Code), or on the `fake`
     harness, which is for tests,
     with its run state in `.konductor/runs/` and one run at a time per workspace

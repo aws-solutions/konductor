@@ -35,13 +35,25 @@ has no canvas server yet.
   agent file alone says what may run without asking; the `claude` harness (`claude_harness.rs`), which runs one headless
   Claude Code session for each stage and maps the agent's `tools` to `--allowedTools` rules; and the `fake` harness,
   which replays scripted replies and is for tests only.
+  The canvas server (`canvas/`) is the HTTP adapter of step 1g. It adds no port to the core. It binds `127.0.0.1` only,
+  answers the six operations of [the canvas contract](../workflow-canvas/api/openapi.yaml) from the checker, the file
+  source and the run state, and serves the built page with a `Content-Security-Policy` header that has `frame-ancestors
+  'none'`. It uses the standard library only: one thread for each connection, at most 32 open at once, a request line of
+  at most 8 KiB, a header block of at most 32 KiB with at most 64 headers, a body of at most 1 MiB and 15 seconds to
+  send a request, of which a connection that sends no byte gets 5. A thirty-third connection is closed at once, and 32
+  idle ones are dropped after 5 seconds, so idle sockets can hold the cap for that long. It checks the `Host` and
+  `Origin` of every call, trades a one-time launch code for a session token, and compares secrets in constant time. A
+  run starts through a `RunEntry` that the command passes in, so the server holds no trust or harness code, and `getRun`
+  ends a run whose owner is gone by the dead-owner rule. To use another transport, replace `canvas/http.rs` and
+  `canvas/server.rs` and keep the functions in `canvas/api.rs`.
   `harness_choice.rs` decides which harness a run may use: the name given, or else the one runner harness that the
   install index records, which the CLI reads and passes in.
 
 The golden files of the stage prompt are in `core/tests/golden/`. They hold the exact text, with no final newline.
 
-`examples/hello-plan.yml` is the example that the tests check. `tests/corpus.rs` checks the workflow files in
-`workflow-canvas/api/corpus/`, which the stub's tests read too.
+`examples/hello-plan.yml` is the example that the tests check. `tests/canvas.rs` runs the server on a loopback
+port with the fake harness, and `tests/corpus.rs` checks the workflow files in `workflow-canvas/api/corpus/`, which the
+stub's tests read too.
 
 ## Keys and slices
 
