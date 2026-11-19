@@ -20,6 +20,7 @@ const { writeArmConfig } = require('../arm-config.js');
 const { orchMetrics: computeOrchMetrics } = require('../orch-metrics.js');
 const { copyPlainFile, assertPlainPath } = require('../safe-copy.js');
 const parse = require('./claude-code-parse.js');
+const listing = require('./claude-listing.js');
 
 const id = 'claude-code';
 const meta = require('./claude-code-meta.js');
@@ -300,7 +301,33 @@ function trialInstall(prepared, ctx) {
   try {
     installInto(home, { arm: { vanilla: false, agent: 'konductor' }, prepared, ctx, config: ctx.config, outDir: null });
     prepared.skillInfo = skills.claudeSkillInfo(path.join(home, '.claude'), prepared.exportDir);
+    Object.assign(prepared, listingOf(home, { vanilla: false }, ctx));
     return [];
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+}
+
+/**
+ * The skill listing a run of `arm` gets from the install in `home`, measured with no credentials in the environment
+ * (claude-listing.js): `{ skillListing, skillListingError }`.
+ */
+function listingOf(home, arm, ctx) {
+  if (!ctx.claude?.bin) return { skillListing: null, skillListingError: 'no claude binary was resolved for this command' };
+  const noCreds = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('AWS_')));
+  const envFor = (extra) => ({ ...envSetup({ arm, ctx, home, tmpdir: path.join(home, 'tmp'), baseEnv: noCreds }).env, ...extra });
+  fs.mkdirSync(path.join(home, 'tmp'), { recursive: true });
+  const r = listing.skillListing({ claude: ctx.claude, model: ctx.config.model, home, envFor, cacheDir: ctx.cacheDir ?? null, scratch: path.join(home, 'tmp') });
+  return { skillListing: r.listing, skillListingError: r.error };
+}
+
+/** The listing of a vanilla arm: built-in skills only, from an empty config directory. */
+function vanillaSkillListing(ctx) {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'w-'));
+  try {
+    fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+    ensureEmptyClaudeRules(path.join(home, '.claude'));
+    return listingOf(home, { vanilla: true }, ctx);
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
   }
@@ -462,7 +489,7 @@ const strictMcp = true;
 
 module.exports = {
   id, meta, strictMcp, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, EFFORT_LEVELS, effortOf, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
-  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths,
+  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, vanillaSkillListing, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
   resolveClaude, claudeChanges, describeClaudeChanges, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
 };

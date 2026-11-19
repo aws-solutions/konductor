@@ -471,7 +471,7 @@ async function cmdRun(opts, deps = {}) {
       timeoutSecByTask: Object.fromEntries(tasks.map((t) => [t.id, t.timeoutSec])),
       ...config, ...ctx.envInfo,
       isolation: { ...isolation, ...describeHide(isolation.mode, ctx.hide), mask: ctx.mask }, comparable: isComparableMode(isolation.mode), tripwire: { depth: ctx.tripwire.roots[0].depth, excludes: [...DEFAULT_EXCLUDES, ...tripExtra], roots: ctx.tripwire.roots.map((r) => r.dir) },
-      arms: rc.armRecords(arms, prepared, errors),
+      arms: rc.armRecords(arms, prepared, errors, ctx.skillListings),
       resume,
       armDrift: armDrift.length ? armDrift.map((c) => ({ armId: c.armId, recorded: c.recorded, now: c.now, kind: c.kind })) : null,
       originMain: mainArm ? { originMainSha: mainArm.originMainSha, localMainSha: mainArm.localMainSha, behindOrigin: mainArm.behindOrigin, usedRef: mainArm.ref } : null,
@@ -546,6 +546,8 @@ async function cmdRun(opts, deps = {}) {
       konductorArm: describeEnv(process.env, envFor(true)),
       vanillaArm: describeEnv(process.env, envFor(false)),
       interpreters,
+      // The skill listing each arm's runs get (claude-listing.js; Kiro's record from its install), by arm id.
+      skillListings: Object.fromEntries(arms.map((a) => [a.id, ctx.skillListings?.get(a.id)?.listing ?? null])),
     }, null, 2) + '\n');
 
     log(`out=${outDir}`);

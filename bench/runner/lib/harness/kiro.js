@@ -184,11 +184,38 @@ function trialInstall(prepared, ctx) {
       throw new Error(`--arm-agent: agent "${prepared.entryAgent}" is not installed by this arm`);
     }
     prepared.skillInfo = skills.kiroSkillInfo(home, prepared.exportDir, prepared.entryAgent ?? 'konductor');
+    prepared.skillListing = skillListingOf(home, prepared.skillInfo);
+    prepared.skillListingError = null;
     return rewritten;
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
   }
 }
+
+/**
+ * The Kiro side of the skill listing record, in the Claude Code record's fields so a report can show both. Kiro CLI has
+ * no known listing budget (a search of its binary found none), so every skill counts as described and nothing is
+ * name-only. Skills are the SKILL.md dirs the trial install put under ~/.kiro/skills; an install that serves them from
+ * the skills MCP server instead puts none there, and then the arm's source catalog is counted.
+ */
+function skillListingOf(home, info) {
+  const dir = home ? path.join(home, '.kiro', 'skills') : null;
+  let installed = [];
+  try { if (dir) installed = fs.readdirSync(dir).filter((n) => fs.existsSync(path.join(dir, n, 'SKILL.md'))).sort(); } catch { /* none installed */ }
+  const names = installed.length ? installed : [...(info?.catalog?.skills ?? [])].sort();
+  const sops = names.filter((n) => n.startsWith('sop-')).length || (info?.catalog?.sops?.length ?? 0);
+  return {
+    harness: 'kiro-cli',
+    source: installed.length ? 'SKILL.md dirs the trial install wrote under ~/.kiro/skills' : "the arm's source catalog (skills served by the skills MCP server)",
+    budgetChars: null, budgetSource: 'none known: no listing cap was found in the Kiro CLI binary',
+    listingChars: null, skillsSent: names.length, overBudget: false,
+    konductorDescribed: names, konductorNameOnly: [], nameOnly: 0,
+    sops, sopsModelInvocable: sops ? true : null,
+  };
+}
+
+/** The listing of a vanilla Kiro arm: no konductor skills. */
+const vanillaSkillListing = () => ({ skillListing: skillListingOf(null, null), skillListingError: null });
 
 // Fills the scratch HOME: an empty ~/.kiro for vanilla, the installed arm otherwise, then the auth copy.
 function installInto(home, { arm, prepared, ctx, config, outDir }) {
@@ -269,6 +296,6 @@ function collectArtifacts(home, outDir, { arm } = {}) {
 }
 
 module.exports = {
-  id, meta, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, installInto, buildCommand, env, removeCredentials, keepPaths,
+  id, meta, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, vanillaSkillListing, skillListingOf, installInto, buildCommand, env, removeCredentials, keepPaths,
   parseResult, aggregateRunDir, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions, finalize,
 };

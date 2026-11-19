@@ -198,6 +198,7 @@ function prepareAll({ arms, ctx, log, allowPartial = false }) {
       p.entryAgent = arm.agentOverride ?? null;
       p.rewrittenAgents = harness.trialInstall(p, ctx);
       (ctx.skillInfo ??= new Map()).set(arm.id, p.skillInfo ?? null);
+      noteListing(arm, p, ctx, log);
       prepared.set(arm.id, p);
     } catch (e) {
       const msg = `arm ${arm.id} could not be prepared: ${e.message}`;
@@ -206,7 +207,21 @@ function prepareAll({ arms, ctx, log, allowPartial = false }) {
       log(msg.split('\n')[0]);
     }
   }
+  for (const arm of arms.filter((a) => a.vanilla)) {
+    const harness = harnessFor(arm);
+    if (harness.vanillaSkillListing) noteListing(arm, harness.vanillaSkillListing(ctx), ctx, log);
+  }
   return { prepared, errors };
+}
+
+/**
+ * Keeps the arm's skill listing record in ctx.skillListings (every run of the arm copies it) and says out loud when a
+ * konductor skill is name-only or the listing could not be measured.
+ */
+function noteListing(arm, { skillListing = null, skillListingError = null }, ctx, log) {
+  (ctx.skillListings ??= new Map()).set(arm.id, { listing: skillListing, error: skillListingError });
+  if (skillListingError) log(`WARNING: arm ${arm.id}: the skill listing was not recorded: ${skillListingError}`);
+  else if (skillListing?.nameOnly > 0) log(`WARNING: arm ${arm.id}: ${skillListing.nameOnly} konductor skill(s) are name-only in the ${skillListing.harness} listing (${skillListing.listingChars} chars > ${skillListing.budgetChars} budget): ${skillListing.konductorNameOnly.join(', ')}; report-2x2 refuses this cell`);
 }
 
 // What identifies an arm's content in the preflight table: its commit, or the hash of a directory snapshot.

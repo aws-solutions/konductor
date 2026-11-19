@@ -19,6 +19,37 @@ const path = require('path');
 const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'fake-claude.config.json'), 'utf8'));
 const args = process.argv.slice(2);
 if (args[0] === '--version') { console.log(cfg.version || '9.9.9 (fake)'); process.exit(0); }
+// The listing probes (lib/harness/claude-listing.js): /context, and -p with --debug-file and no credentials. They are
+// answered from the skills in CLAUDE_CONFIG_DIR by the real fill rule (built-ins first, then name order while it fits),
+// and never touch started.json or the files of a run.
+if (args.includes('/context') || args.includes('--debug-file')) {
+  fs.appendFileSync(path.join(cfg.dir, 'probe-env.jsonl'), JSON.stringify(Object.keys(process.env).filter((k) => k.startsWith('AWS_')).sort()) + '\\n');
+  const dir = path.join(process.env.CLAUDE_CONFIG_DIR, 'skills');
+  const builtins = [['dataviz', 1440], ['code-review', 840]];
+  const skills = (fs.existsSync(dir) ? fs.readdirSync(dir).sort() : []).flatMap((name) => {
+    let text = ''; try { text = fs.readFileSync(path.join(dir, name, 'SKILL.md'), 'utf8'); } catch { return []; }
+    if (/^disable-model-invocation:\\s*true/m.test(text)) return [];
+    const desc = (/^description:\\s*(.*)$/m.exec(text) || [])[1] || '';
+    return [{ name, full: ('- ' + name + ': ' + desc + '\\n').length, bare: ('- ' + name + '\\n').length }];
+  });
+  const budget = Number(process.env.SLASH_COMMAND_TOOL_CHAR_BUDGET || cfg.listingBudget || 30000);
+  const base = builtins.reduce((n, b) => n + b[1], 0);
+  const total = base + skills.reduce((n, s) => n + s.full, 0);
+  let used = base + skills.reduce((n, s) => n + s.bare, 0);
+  for (const s of skills) { s.chars = total <= budget || used + s.full - s.bare <= budget ? s.full : s.bare; if (s.chars === s.full && total > budget) used += s.full - s.bare; }
+  if (args.includes('/context')) {
+    const tok = (c) => (Math.ceil(c / 3) < 20 ? '< 20' : '~' + Math.ceil(c / 3));
+    const rows = [...skills.map((s) => '| ' + s.name + ' | User | ' + tok(s.chars) + ' |'), ...builtins.map((b) => '| ' + b[0] + ' | Built-in | ' + tok(b[1]) + ' |')];
+    const result = '## Context Usage\\n\\n**Tokens:** 17k / ' + (cfg.contextWindow || '1m') + ' (2%)\\n\\n### Skills\\n\\n| Skill | Source | Tokens |\\n|-------|--------|--------|\\n' + rows.join('\\n') + '\\n';
+    console.log(JSON.stringify({ result, num_turns: 0, total_cost_usd: cfg.contextCost || 0 }));
+    process.exit(0);
+  }
+  const lines = ['[DEBUG] Sending ' + (skills.length + builtins.length) + ' skills via attachment (initial)'];
+  if (total > budget) lines.push('[WARN] Skill listing over budget: ' + (skills.length + builtins.length) + ' skills, ' + total + ' chars > ' + budget + ' budget');
+  if (!cfg.noListingLines) fs.writeFileSync(args[args.indexOf('--debug-file') + 1], lines.join('\\n') + '\\n');
+  console.log(JSON.stringify({ is_error: true, total_cost_usd: 0 }));
+  process.exit(1);
+}
 const cfgDir = process.env.CLAUDE_CONFIG_DIR;
 const list = (d) => { try { return fs.readdirSync(d).sort(); } catch { return null; } };
 // started.json is replaced by a rename, so a test that polls for it never parses a half-written file.

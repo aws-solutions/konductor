@@ -132,7 +132,13 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack, quoteR
   const efforts = uniq(executed.map((e) => e.result.effort ?? 'unrecorded')).sort();
   if (efforts.length > 1) throw new Error(`${where}: its runs were started at more than one effort level (${efforts.join(', ')}); a cell holds one effort level`);
   const modelsSeen = uniq(executed.flatMap((e) => (e.result.claudeCode?.modelsSeen ?? [e.result.sessionModel ?? e.result.model]).filter(Boolean))).sort();
-  return { run, spec, dirs: run.dirs ?? [run.dir], quote: a.quote, armId, rows, unit: a.scores.unit, panel, revisions, model, modelsSeen, pin: a.facts.pin ?? null, shas, effort: efforts[0], judgeRubric, harnessVersion: executed[0].result.harnessVersion ?? executed[0].result.kiroCliVersion ?? null };
+  // The skill listing each run recorded (runner/lib/harness/claude-listing.js; Kiro's from its install). A konductor cell
+  // whose runs sent a konductor skill by name only is refused: that harness would lose descriptions the other keeps.
+  const listings = executed.map((e) => e.result.skillListing ?? e.result.claudeCode?.skillListing ?? null);
+  const cut = listings.find((l) => l?.nameOnly > 0);
+  if (spec.role === 'konductor' && cut) throw new Error(`${where}: ${listings.filter((l) => l?.nameOnly > 0).length} run(s) sent ${cut.nameOnly} konductor skill(s) by name only in the ${spec.harness} skill listing (${cut.listingChars} chars > ${cut.budgetChars} budget: ${cut.konductorNameOnly.join(', ')}); this cell does not compare with the other harness. Land the description trim, or pin a commit whose listing fits`);
+  const listing = { record: listings.find(Boolean) ?? null, unrecorded: listings.filter((l) => !l).length, variants: uniq(listings.filter(Boolean).map((l) => JSON.stringify({ ...l, cacheKey: undefined }))).length };
+  return { run, spec, dirs: run.dirs ?? [run.dir], quote: a.quote, armId, rows, unit: a.scores.unit, panel, revisions, model, modelsSeen, pin: a.facts.pin ?? null, shas, effort: efforts[0], judgeRubric, listing, harnessVersion: executed[0].result.harnessVersion ?? executed[0].result.kiroCliVersion ?? null };
 }
 
 const sameJson = (x, y) => JSON.stringify(x) === JSON.stringify(y);
@@ -202,6 +208,7 @@ function summarizeCell(c, tasks) {
     wallS: mean(rows.map((r) => r.wallMs).filter(fin)) === null ? null : mean(rows.map((r) => r.wallMs).filter(fin)) / 1000,
     modelIdentity: { models: c.modelsSeen, pin: c.pin },
     judgeRubric: c.judgeRubric,
+    skillListing: c.listing,
   };
 }
 
@@ -394,6 +401,23 @@ function ratioText(r, key) {
 }
 
 /** charts: the Map from factorialCharts when the SVG files are being written, so the markdown can link them. */
+/** The skill listing table of the header: what each cell's runs were sent, from the record each run carries. */
+function listingBlocks(cols) {
+  const cell = (c) => `${HARNESS_NAME[c.harness]} ${c.role}`;
+  const rows = cols.map((c) => {
+    const l = c.skillListing?.record;
+    const unrec = c.skillListing?.unrecorded ? `${c.skillListing.unrecorded} of ${c.runs}` : '0';
+    if (!l) return [cell(c), 'not recorded', 'n/a', 'n/a', 'n/a', 'n/a', 'n/a', unrec];
+    return [cell(c), l.skillsSent, l.konductorDescribed.length, l.nameOnly, l.listingChars ?? 'n/a', l.budgetChars ?? 'no known cap', l.sopsModelInvocable === null ? 'no SOPs' : l.sopsModelInvocable ? 'yes' : 'no', unrec];
+  });
+  const variants = cols.filter((c) => c.skillListing?.variants > 1).map(cell);
+  return [
+    D.h(2, 'Skill listing'),
+    D.table(['cell', 'skills sent', 'konductor described', 'konductor name-only', 'listing chars', 'budget chars', 'SOPs model-invocable', 'runs without a record'], rows),
+    D.note(`Measured once per arm before any run, with no model call. Claude Code sends each skill's name and description up to the budget and the rest by name only; a konductor cell with a name-only skill is refused. Kiro CLI has no known listing cap.${variants.length ? ` Runs in ${variants.join(', ')} recorded more than one listing; the first is shown.` : ''}`),
+  ];
+}
+
 function renderFactorial(res, { charts = null } = {}) {
   const [kv, kk, cv, ck] = SPECS.map((s) => res.cells.find((c) => c.id === s.id));
   const cols = [kv, kk, cv, ck];
@@ -410,6 +434,7 @@ function renderFactorial(res, { charts = null } = {}) {
       ? `${res.descriptiveReason}. These are the observed numbers of one pilot, not statistics: no interval is shown and no effect should be called real from them.`
       : `Intervals are paired by task (t interval on the per-task differences) over ${res.tasks.length} tasks with at least ${MIN_REPS} replicates per cell.`),
     D.p(`Model ${res.model}, effort ${res.effort} in every cell. Quality is the repository score (${qualityWeightsText(res.weights)}, renormalised over what a run has, times 100). Judges: ${res.judges.panel.join(', ')} (${res.judges.backend}). Tasks: ${res.tasks.join(', ')}.`),
+    ...listingBlocks(cols),
     D.h(2, 'Quality by cell'),
     D.table(head, [...taskRows,
       ['**mean over tasks**', ...cols.map((c) => `**${f1(c.quality)}**`)],

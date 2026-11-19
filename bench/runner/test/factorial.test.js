@@ -74,6 +74,27 @@ function four(root, bench, over = {}) {
   };
 }
 const build = (bench, dirs) => buildFactorial({ dirs, benchDir: bench });
+
+const LISTING = (o = {}) => ({ harness: 'claude-code', budgetChars: 30000, listingChars: 28185, skillsSent: 92, konductorDescribed: ['a', 'b'], konductorNameOnly: [], nameOnly: 0, sopsModelInvocable: false, ...o });
+
+test('the header shows each cell\'s skill listing, and a konductor cell with a name-only konductor skill is refused', () => {
+  const root = tmp();
+  try {
+    const bench = benchWith(root);
+    const kiroRec = { ...LISTING({ harness: 'kiro-cli', budgetChars: null, listingChars: null, skillsSent: 2 }), sopsModelInvocable: true };
+    const ok = four(path.join(root, 'ok'), bench, { kk: { extra: () => ({ skillListing: kiroRec }) }, ck: { extra: () => ({ skillListing: LISTING(), claudeCode: { canonicalModel: 'claude-sonnet-5-5', modelsSeen: ['claude-sonnet-5-5'], spawned: 3, skillListing: LISTING() } }) } });
+    const md = toMarkdown(renderFactorial(build(bench, ok)));
+    assert.match(md, /## Skill listing/);
+    assert.match(md, /\| Claude Code konductor \| 92 \| 2 \| 0 \| 28185 \| 30000 \| no \| 0 \|/);
+    assert.match(md, /\| Kiro CLI konductor \| 2 \| 2 \| 0 \| n\/a \| no known cap \| yes \| 0 \|/);
+    assert.match(md, /\| Kiro CLI vanilla \| not recorded \|/, 'a run from before the record is shown as not recorded');
+    const cut = LISTING({ listingChars: 33894, overBudget: true, konductorNameOnly: ['verification', 'workspace-skills'], nameOnly: 2 });
+    const bad = four(path.join(root, 'bad'), bench, { ck: { extra: () => ({ skillListing: cut }) } });
+    assert.throws(() => build(bench, bad), /2 konductor skill\(s\) by name only in the claude-code skill listing \(33894 chars > 30000 budget: verification, workspace-skills\)/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
 const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, `${a} vs ${b}`);
 
 test('four cells at n=1 per task give the table, the effects and the cost ratios, and no interval', () => {

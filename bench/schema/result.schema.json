@@ -151,7 +151,14 @@
         "object",
         "null"
       ],
-      "description": "Claude Code runs only: canonical model, models seen, modelUsage keys, cost basis, hook events, permission denials, spawn counts (runner/lib/harness/claude-code.js)."
+      "description": "Claude Code runs only: canonical model, models seen, modelUsage keys, cost basis, hook events, permission denials, spawn counts (runner/lib/harness/claude-code.js). skillListing is the same record as the top-level skillListing; the 2x2 kit's gate reads it here."
+    },
+    "skillListing": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "The skill listing this arm's runs get, measured once per arm before any run (runner/lib/harness/claude-listing.js for Claude Code, kiro.js skillListingOf for Kiro CLI): harness, budgetChars, budgetSource, listingChars, skillsSent, overBudget, konductorDescribed, konductorNameOnly, nameOnly (the count of konductor skills sent by name only), otherDescribed, otherNameOnly, builtins, sops, sopsModelInvocable. Null when it could not be measured (run-config.json arms[].skillListingError says why)."
     },
     "unscrubbedFiles": {
       "type": "array",

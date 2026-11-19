@@ -523,6 +523,37 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
   `report/load.js` and `report/orchpass.js` (`cellKeyOf`) needed no change. The credit meter and early-stop watcher read kiro-cli
   and opencode events only, so their flags are refused here.
 
+### Skill listing
+
+Claude Code sends the model one line per skill, `- name: description`, up to a budget of chars. For a 1M-window model at
+3 chars per token (Sonnet 5.5, the 2x2 model) that budget is 30,000. Past it, built-in skills keep their text and the rest
+are filled in name order; a skill that no longer fits is sent by name only. Kiro CLI has no known cap.
+
+Bench measures the listing once per arm, at prepare, before any run, with no model call
+(`runner/lib/harness/claude-listing.js`). On the trial install it runs four local `claude -p` calls with no AWS
+credentials in their environment: `/context` at the arm's budget and with it lifted (a skill whose token count drops is cut),
+and `-p ok --debug-file` at the arm's budget and at budget 1 (the `Sending N skills` and `Skill listing over budget` lines;
+claude then stops at the credential step). The record is cached in `--cache` under `claude-listing/`, keyed by the claude
+binary, the model, the budget settings and every installed `SKILL.md`, so a later command makes no call. Kiro arms get the
+same fields from their trial install (the `SKILL.md` dirs under `~/.kiro/skills`, or the source catalog when skills are
+served by the MCP server).
+
+| Field | Meaning |
+| --- | --- |
+| `harness` | `claude-code` or `kiro-cli` |
+| `budgetChars`, `budgetSource` | the budget, from the over-budget debug line, from `SLASH_COMMAND_TOOL_CHAR_BUDGET`, or from window x chars per token x `skillListingBudgetFraction`; null for Kiro |
+| `listingChars`, `skillsSent`, `overBudget` | the full listing size before any cut, the skills sent, and whether it is over the budget; `listingChars` is null for Kiro |
+| `konductorDescribed`, `konductorNameOnly`, `nameOnly` | the installed (konductor) skills sent with their description, those sent by name only, and the count of the latter |
+| `konductorNotListed` | installed model-invocable skills that Claude Code did not list at all (expected to be empty) |
+| `otherDescribed`, `otherNameOnly`, `builtins` | counts for skills that are not the arm's: project skills found from the run cwd, and built-ins |
+| `sops`, `sopsModelInvocable` | the installed SOP skills, and whether all are listed (no `disable-model-invocation: true`); null with no SOPs |
+
+Where it is written: `run-config.json` `arms[].skillListing` (and `arms[].skillListingError` when the probe failed),
+`env.json` `skillListings`, and each `result.json` as `skillListing` and, for Claude Code, `claudeCode.skillListing` (the
+field the 2x2 kit's `gate` reads). The runner logs a `WARNING` at prepare when a konductor skill is name-only or the
+listing could not be measured, and `report-2x2` shows the listing in its header and refuses a konductor cell whose runs
+sent a konductor skill by name only.
+
 ## 2x2 pilot
 A small pilot of the question "does konductor help, and does the answer depend on the harness?": Kiro CLI and Claude Code,
 each vanilla and with konductor, on one model, judged by one panel. The design, units and limits are in
@@ -564,7 +595,7 @@ bash bench/scripts/pilot-2x2.sh --cells report --out /var/tmp/pilot-2x2
   (each flag takes one or more comma-separated judged run directories, and `:ARM` after the last one picks the one arm a
   cell reads when the directories hold several, for example `--kiro-konductor /runs/kiro:pr-1`; `--cell kiroKonductor=DIR:pr-1`
   is the same and may replace any of the four flags. Without `:ARM` a cell must hold exactly one arm; `--out` also writes `charts/quality-by-cell.svg`, `konductor-effect.svg` and `cost-ratio.svg`, linked from the markdown, described in [PILOT-2X2.md](PILOT-2X2.md#charts)). It refuses cells with different tasks, judge panel,
-  rubric revision, model, effort level (a Claude Code cell run before bench passed `--effort` records `default`), konductor commit (a mismatch, a missing commit, or more than one in a cell), a run judged by only part of the panel, or cost unit. It prints quality per task and cell, the five contrasts, the
+  rubric revision, model, effort level (a Claude Code cell run before bench passed `--effort` records `default`), konductor commit (a mismatch, a missing commit, or more than one in a cell), a run judged by only part of the panel, a konductor cell whose runs sent a konductor skill by name only (see [Skill listing](#skill-listing)), or cost unit. It prints the skill listing of each cell, quality per task and cell, the five contrasts, the
   konductor over vanilla cost ratio inside each harness, success, timeouts, delegation and model identity. Intervals appear
   only with 5 or more tasks of 2 or more replicates per cell (`--reps 2` or more).
 - SDLC view: `report-2x2 ... --criteria-pack quality` adds three more sections. Quality, cost and time per cell, with the median, sd and range of quality. The same three axes per SDLC phase of the quality pack, with that phase's pack score as the median over judges. Konductor against vanilla paired by task in each harness, with each side's sd, the difference, the cost and time ratios, and wins, losses and ties. Quality is the median of the three judges with the hidden tests and checks. Run `--suite sdlc` (below) so every phase has a task. Details in [QUALITY-PACK.md](QUALITY-PACK.md#reports).

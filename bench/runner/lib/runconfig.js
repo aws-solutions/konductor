@@ -78,7 +78,7 @@ function provenanceOf(a) {
   };
 }
 
-function armRecords(arms, prepared, errors) {
+function armRecords(arms, prepared, errors, listings = new Map()) {
   return arms.map((a) => ({
     id: a.id,
     label: a.label,
@@ -96,6 +96,8 @@ function armRecords(arms, prepared, errors) {
     armConfig: a.armConfig ?? null,
     startupResources: a.vanilla ? builtinStartup(a.runtime ?? 'kiro-cli') : prepared.get(a.id)?.skillInfo?.startup ?? null,
     sopNameSource: prepared.get(a.id)?.skillInfo?.catalog?.sopSource ?? null,
+    skillListing: listings.get(a.id)?.listing ?? null,
+    skillListingError: listings.get(a.id)?.error ?? null,
     prepareError: errors.get(a.id) ?? null,
   }));
 }

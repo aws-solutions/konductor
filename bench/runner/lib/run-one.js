@@ -496,6 +496,11 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
     if (stdioDir) fs.rmSync(stdioDir, { recursive: true, force: true });
     for (const d of probeDirs) fs.rmSync(d, { recursive: true, force: true });
   }
+  const listing = ctx.skillListings?.get(arm.id);
+  if (listing) {
+    result.skillListing = listing.listing;
+    if (harness.id === 'claude-code') result.claudeCode = { ...(result.claudeCode ?? {}), skillListing: listing.listing };
+  }
   const scrubbed = scrubDeep(result, secretLiterals(process.env, harness.secrets ? harness.secrets(ctx) : []));
   result = scrubbed.value;
   if (scrubbed.count) result.flags = [...new Set([...(result.flags || []), 'credsRedacted'])];

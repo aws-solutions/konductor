@@ -211,6 +211,15 @@ test('CLI: a Claude Code run writes names-only run-config and env, a USD summary
     assert.equal(envFile.effort, 'high');
     assert.equal(envFile.vanillaArm.set.TMPDIR, '<run>/tmp', 'env.json shows the run temp directory, which is not under HOME');
     assert.equal(envFile.vanillaArm.set.CLAUDE_CODE_TMPDIR, '<run>/tmp');
+    // The skill listing is measured once for the arm (no credentials, no model call) and copied to every record.
+    const arm = cfg.arms.find((a) => a.id === 'cc-vanilla');
+    assert.equal(arm.skillListingError, null);
+    assert.deepEqual([arm.skillListing.harness, arm.skillListing.builtins, arm.skillListing.nameOnly, arm.skillListing.budgetChars], ['claude-code', 2, 0, 30000]);
+    assert.deepEqual(envFile.skillListings['cc-vanilla'], arm.skillListing);
+    const resultFile = fs.readdirSync(out, { recursive: true }).map(String).find((f) => f.endsWith('result.json'));
+    const result = JSON.parse(fs.readFileSync(path.join(out, resultFile), 'utf8'));
+    assert.deepEqual(result.skillListing, arm.skillListing);
+    assert.deepEqual(result.claudeCode.skillListing, arm.skillListing, 'the field the 2x2 kit gate reads');
     assert.equal(cfg.claudeCode.binaryName, 'claude');
     assert.equal('binaryPath' in cfg.claudeCode, false, 'the home path of the binary is not recorded');
     assert.equal(JSON.stringify(cfg.claudeCode).includes(s.root), false, 'no path of the invoking machine in the Claude Code record');

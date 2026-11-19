@@ -31,6 +31,10 @@ real cost of each cell, and prove the pipeline end to end (run, judge, combine).
   only, no cross-cell pairwise comparison. Each cell is judged on its own against the task rubric, so the scores are absolute
   and comparable across cells. The combiner refuses cells judged by different panels, backends, Bedrock model ids or rubric
   revisions, and any run scored by only part of the panel.
+- **Skill listing.** Claude Code sends the model each skill's description only up to a budget (30,000 chars for this model);
+  past it, skills are sent by name only, while Kiro CLI has no known cap. Each run records the listing its arm got
+  (`skillListing`, see [README](README.md#skill-listing)); the combiner shows it per cell and refuses a konductor cell whose
+  runs sent a konductor skill by name only, since that harness would lose descriptions the other keeps.
 
 ## Units
 
