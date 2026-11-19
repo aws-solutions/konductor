@@ -534,3 +534,23 @@ test('report-2x2 --prereg accepts tasks that match the lock and refuses a task t
   assert.match(bad.stderr, /report-2x2: the run does not match the pre-registration lock[\s\S]*t2: the task file differs/);
   assert.equal(bad.stdout, '');
 });
+
+test('report-2x2 --stats adds the pre-registered statistic from HELD-OUT tasks, with DEV shown apart, and the default output has no such section', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const d = four(root, bench);
+  const plain = cli(flags(bench, d));
+  assert.doesNotMatch(plain.stdout, /Pre-registered statistic/);
+  const res = cli([...flags(bench, d), '--stats', '--json']);
+  assert.equal(res.status, 0, res.stderr);
+  const paired = JSON.parse(res.stdout).paired;
+  assert.equal(paired.margin, 5);
+  assert.equal(paired.draws, 10000);
+  const { splitOf } = require('../../scenarios/split.js');
+  const held = TASKS.filter((t) => splitOf(t) === 'HELD-OUT').length;
+  assert.deepEqual(paired.harnesses.map((h) => [h.id, h.taskCounts.heldOut, h.taskCounts.dev]), [['kiro', held, TASKS.length - held], ['cc', held, TASKS.length - held]]);
+  assert.equal(paired.harnesses[0].heldOut.n, held);
+  const md = cli([...flags(bench, d), '--stats']);
+  assert.match(md.stdout, /## Pre-registered statistic: konductor minus vanilla, two-level bootstrap/);
+  assert.match(md.stdout, /DEV \(\d+\), not a verdict/);
+});

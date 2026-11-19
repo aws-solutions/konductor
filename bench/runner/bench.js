@@ -184,13 +184,15 @@ const USAGE = `Usage:
        Spawns, spawn depth, review rounds and reworks after a pass are always shown (read from result.json, else from stream.jsonl). --phases counts the phase
        documents of the listed phases (profiles/phase-documents.json), or all of them; leave it off for tasks that are not SDLC tasks)
   node bench/runner/bench.js report-2x2 --kiro-vanilla DIR[,DIR...][:ARM] --kiro-konductor DIR[,DIR...][:ARM] --cc-vanilla DIR[,DIR...][:ARM] --cc-konductor DIR[,DIR...][:ARM]
-       [--cell ID=DIR[,DIR...][:ARM] ...] [--out DIR] [--json] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--criteria-pack quality] [--prereg FILE]
+       [--cell ID=DIR[,DIR...][:ARM] ...] [--out DIR] [--json] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--criteria-pack quality] [--prereg FILE] [--stats]
        (the 2x2 pilot table, harness by konductor on one model, from four judged run directories, one harness each; prints markdown, or JSON with --json,
        and writes factorial-2x2.md, .json and three SVG charts in charts/ to --out. A cell whose directories hold several arms names the one it
        reads with :ARM, for example --kiro-konductor /runs/kiro:main; --cell kiroVanilla=DIR:vanilla does the same and may replace any of the four flags. Refuses cells with different tasks, judge panels, rubric revisions, models or cost units. Quality is compared
        across cells; cost only as konductor over vanilla inside a harness. Intervals appear only with 5 or more tasks of 2 or more replicates per cell, otherwise
        the table says "descriptive only" and the charts carry no whiskers. --prereg FILE refuses the report unless every task in it is in the pre-registration
-       lock with the same file bytes (as read from --extra-tasks). Reads run directories and writes nothing but --out)
+       lock with the same file bytes (as read from --extra-tasks). --stats adds the pre-registered statistic: per harness, konductor minus vanilla on quality
+       by a two-level bootstrap (tasks, then runs; 10,000 draws, fixed seed) with a verdict word at the 5-point margin, from HELD-OUT tasks (DEV shown apart,
+       never a verdict), and per phase and per role with Holm correction. Reads run directories and writes nothing but --out)
   node bench/runner/bench.js contrast --run DIR[,DIR...] [--base ARM] [--head ARM,ARM] [--min-rel 0.15] [--rule both|any] [--by class|task] [--phases ID,ID|all]
        [--detail quick|full] [--format md|html|both] [--out DIR] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (each head arm against the base arm, overall and per task class (--by task: per task); writes contrast.md, contrast.json, contrast.html

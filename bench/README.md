@@ -1204,6 +1204,15 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   new study. `scenarios prereg check DIR` recomputes everything and exits 1, naming each task file that changed, a task added or missing, a split list or
   protocol that no longer matches the rule or the code, and an edited lock. `run --prereg FILE` and `report-2x2 --prereg FILE` refuse (before any arm is built, or
   before any output) when a task they use is not in the lock or its file in the `--extra-tasks` directories has other bytes.
+- `report-2x2 ... --stats` adds the pre-registered statistic (`bench/scenarios/bootstrap.js`, constants in `bench/scenarios/protocol.js`). Per harness it takes
+  konductor minus vanilla on quality, per task, and averages over tasks. The interval is a two-level bootstrap: draw tasks with replacement, then draw runs
+  with replacement inside each drawn task and arm; 10,000 draws, a fixed seed, 95%. The verdict word uses the 5-point margin: **beats by the margin** (lower
+  bound over +5), **beats** (over 0), **loses** (upper bound under 0), **ties** (interval inside -5 to +5), else **unsettled**. The plan lists the words in
+  that order; when an interval fits two of them (1 to 3 is over 0 and inside the margin) a settled sign wins over "ties". Only HELD-OUT tasks give a
+  verdict; DEV tasks are shown apart as "DEV, not a verdict". The per-phase and per-role tables use each task's own `phase` and `role` and Holm's step-down
+  correction: rows are ordered by p-value, row i of m is tested at 0.05 / (m - i), its interval is taken at that level, and rows after the first failure keep
+  that level. A row with fewer than two tasks scored in both arms has no interval and is unsettled. The 3-arm pairs (against `konductor-noskills`) need a
+  report that reads three arms; `compare` and `compareRows` take any two score lists.
 
 ## How to read results
 - Tokens are not exposed by kiro-cli; credits are the cost measure. `estTokens` is characters / 4.

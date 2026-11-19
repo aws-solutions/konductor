@@ -27,7 +27,7 @@ const FLAGS = {
   'plant-trace': ['run', 'vs', 'out'],
   'plant-policy-test': ['release', 'python'],
   report: ['run', 'baseline', 'out', 'bench-dir', 'extra-tasks', 'detail', 'format', 'scoring', 'profile', 'verdict', 'phases', 'test-arms', 'changed-skills', 'criteria-pack', 'allow-stale-pack'],
-  'report-2x2': ['kiro-vanilla', 'kiro-konductor', 'cc-vanilla', 'cc-konductor', 'cell', 'out', 'json', 'bench-dir', 'extra-tasks', 'scoring', 'criteria-pack', 'prereg'],
+  'report-2x2': ['kiro-vanilla', 'kiro-konductor', 'cc-vanilla', 'cc-konductor', 'cell', 'out', 'json', 'bench-dir', 'extra-tasks', 'scoring', 'criteria-pack', 'prereg', 'stats'],
   compare: ['base', 'head', 'min-rel', 'rule', 'force', 'bench-dir'],
   contrast: ['run', 'base', 'head', 'min-rel', 'rule', 'by', 'bench-dir', 'extra-tasks', 'detail', 'format', 'out', 'scoring', 'phases'],
   'pr-plan': ['ref', 'base', 'suite', 'replicates', 'no-vanilla', 'budget-credits', 'budget-usd', 'out', 'seed', 'repo-root', 'bench-dir'],
@@ -83,7 +83,7 @@ const SUBCOMMANDS = { calibrate: ['export', 'export-reference', 'score'], scenar
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
   'cargo-online', 'allow-partial', 'allow-arm-drift', 'allow-claude-change', 'resume', 'resume-errors', 'allow-unisolated', 'gate-strict', 'allow-stale-pack', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
-  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes', 'fail-on-hole', 'apply', 'remove-originals', 'rejudge', 'introspect',
+  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes', 'fail-on-hole', 'stats', 'apply', 'remove-originals', 'rejudge', 'introspect',
 ]);
 
 // Positional arguments a command takes after its name (and subcommand): the directory of `scenarios lint DIR`.

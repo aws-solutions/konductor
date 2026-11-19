@@ -23,6 +23,7 @@ const { mergeQuote, STRICT_ONLY, ruleLine } = require('./quotes.js');
 const { otherRule } = require('../judge/views.js');
 const { MIN_JUDGES } = require('../judge/score.js');
 const C = require('./charts.js');
+const { buildPaired, pairedBlocks } = require('./paired.js');
 
 const SPECS = [
   { id: 'kiroVanilla', harness: 'kiro-cli', role: 'vanilla', unit: 'credits', flag: 'kiro-vanilla' },
@@ -247,7 +248,7 @@ function costRatio(van, kon) {
  * (several per cell are merged read-only, as `report` does). arms: the same keys, each the one arm a cell reads when its
  * directories hold several; a cell without an entry must hold exactly one arm. Throws when the four cells cannot be compared.
  */
-function buildFactorial({ dirs, arms = {}, benchDir, extraDirs = [], scoringFile, qualityPack = null, quoteRule = null, withSensitivity = true } = {}) {
+function buildFactorial({ dirs, arms = {}, benchDir, extraDirs = [], scoringFile, qualityPack = null, quoteRule = null, withSensitivity = true, withStats = false } = {}) {
   const tasks = loadTasks(benchDir, { extraDirs });
   const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
   const loaded = SPECS.map((spec) => loadCell(spec, dirs?.[spec.id], { tasks, weights, scoringFile, qualityPack, quoteRule, arm: arms?.[spec.id] ?? null }));
@@ -292,6 +293,7 @@ function buildFactorial({ dirs, arms = {}, benchDir, extraDirs = [], scoringFile
     weights, cells, contrasts, costRatios, notes: out,
     ...(qualityDimensions ? { qualityDimensions } : {}),
     ...(sdlc ? { sdlc } : {}),
+    ...(withStats ? { paired: buildPaired({ cells: loaded, tasks, taskIds }) } : {}),
   };
   if (withSensitivity) result.sensitivity = factorialSensitivity(result, buildFactorial({ dirs, arms, benchDir, extraDirs, scoringFile, qualityPack, quoteRule: otherRule(quote.requested), withSensitivity: false }));
   return result;
@@ -470,6 +472,7 @@ function renderFactorial(res, { charts = null } = {}) {
   if (res.quote) {
     blocks.splice(1, 0, ...factorialRuleBlocks(res));
   }
+  if (res.paired) blocks.push(...pairedBlocks(res.paired));
   if (res.notes.length) blocks.push(D.h(2, 'Notes'), D.list(res.notes));
   if (res.qualityDimensions) blocks.push(...require('./quality.js').qualityBlocks(res.qualityDimensions));
   if (res.sdlc) blocks.push(...require('./sdlc.js').sdlcBlocks(res.sdlc, (id) => labelOf(SPECS.find((x) => x.id === id))));

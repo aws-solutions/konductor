@@ -664,7 +664,7 @@ function factorialCellsOf(opts) {
 function cmdReport2x2(opts) {
   try {
     const { dirs, arms } = factorialCellsOf(opts);
-    const res = buildFactorial({ dirs, arms, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), scoringFile: scoringOf(opts), qualityPack: packOf(opts) });
+    const res = buildFactorial({ dirs, arms, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), scoringFile: scoringOf(opts), qualityPack: packOf(opts), withStats: Boolean(opts.stats) });
     if (opts.prereg !== undefined) requirePrereg(opts, { taskIds: res.tasks, extraDirs: extraDirsOf(opts) });
     const writing = Boolean(opts.out && opts.out !== true);
     const charts = writing ? factorialCharts(res) : null;
