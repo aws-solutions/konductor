@@ -260,6 +260,56 @@ describe('YamlPane', () => {
       expect(items()).toHaveLength(YAML_WINDOW_LINES);
     });
 
+    it('starts another file of the same length and range at its first window', () => {
+      const range = { line: 10, end_line: 12 };
+      const view = render(
+        <YamlPane
+          file="hello.yml"
+          text={numbered(3000)}
+          stage={{ name: 'draft', range }}
+        />,
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Show lines 501 to 1,000' }),
+      );
+      expect(numberOf(items()[0]!)).toBe(501);
+
+      view.rerender(
+        <YamlPane
+          file="other.yml"
+          text={numbered(3000)}
+          stage={{ name: 'draft', range }}
+        />,
+      );
+      const region = screen.getByRole('region', { name: 'Lines of other.yml' });
+      const first = within(region).getAllByRole('listitem')[0]!;
+      expect(numberOf(first)).toBe(1);
+    });
+
+    it('starts at the window of another stage of the same file with the same range', () => {
+      const range = { line: 10, end_line: 12 };
+      const view = render(
+        <YamlPane
+          file="hello.yml"
+          text={numbered(3000)}
+          stage={{ name: 'draft', range }}
+        />,
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Show lines 501 to 1,000' }),
+      );
+      expect(numberOf(items()[0]!)).toBe(501);
+
+      view.rerender(
+        <YamlPane
+          file="hello.yml"
+          text={numbered(3000)}
+          stage={{ name: 'review', range }}
+        />,
+      );
+      expect(numberOf(items()[0]!)).toBe(1);
+    });
+
     it('keeps the focus on the button while it remains', () => {
       render(<YamlPane file="hello.yml" text={numbered(3000)} />);
 
