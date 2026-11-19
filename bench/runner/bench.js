@@ -33,7 +33,7 @@ const USAGE = `Usage:
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--gate-strict] [--allow-partial] [--allow-arm-drift] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
-       [--extra-tasks DIR,DIR] [--prereg FILE] [--suites-dir DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
+       [--extra-tasks DIR,DIR] [--prereg FILE] [--level lite|standard|full [--level-since FILE]] [--suites-dir DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
        [--arm-config name=key.path=value[;key.path=value],...] [--oracle-skills [ARM,ARM]] [--oracle-manifest FILE]
        [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed] [--max-auth-failures N] [--timeout-sec N]
        [--plant-release DIR --plant-release-sha256 HEX] [--plant-python PATH] [--python PATH] [--strands-python PATH] [--strands-agent FILE] [--introspect]
@@ -69,6 +69,10 @@ const USAGE = `Usage:
        (--extra-tasks loads tasks from DIR/<id>.json with DIR/fixtures and DIR/hidden; DIR is hidden from the agent like tasks/hidden)
        (--prereg FILE is a PREREG.json from "scenarios prereg freeze": the run refuses to start unless every selected task is in the lock with the same
        file bytes, as read from the --extra-tasks directories)
+       (--level picks the tasks of the suite by run level, instead of --tasks: lite is, for each of the 14 phases, the DEV task with the lowest SR-32 hash among
+       real tasks with a soft limit of 900 s or less, a swap for any role left out, the lowest-hash DEV negative control and DEV twin, and, with --level-since FILE (the
+       "tasks" list of an earlier run-config "level" record), every task added or changed since as smoke only; standard is every DEV task; full is every task and
+       needs --prereg. run-config.json records the level, its list hash and the picks, and report-2x2 shows it in its header)
        (--suites-dir DIR looks for the suite file DIR/<suite>.json first and then in <bench-dir>/suites, so a generated skilleval-* suite needs no file in the checkout)
        (--run-credit-limit X: on engine v2 the run is killed at the poll once its metered credits pass X and is recorded as censored. On v3 credits
        arrive once, at the end of a turn, so a one-shot run always finishes: over X it gets creditLimitExceeded and creditOvershoot, nothing is killed;

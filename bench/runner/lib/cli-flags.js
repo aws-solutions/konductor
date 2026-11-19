@@ -11,7 +11,7 @@ const FLAGS = {
     'kiro-bin', 'bench-dir', 'repo-root', 'real-cache', 'prepare-only', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'agent-engine',
     'extra-tasks', 'suites-dir', 'run-credit-limit', 'auth-db', 'arm-prefix', 'arm-agent', 'arm-config', 'stop-on', 'max-tool-calls', 'profile',
     'oracle-skills', 'oracle-manifest', 'claude-bin', 'claude-tools-dir', 'run-budget-usd', 'aws-region', 'gate-strict', 'max-auth-failures', 'timeout-sec',
-    'plant-release', 'plant-release-sha256', 'plant-python', 'python', 'strands-python', 'strands-agent', 'allow-arm-drift', 'allow-claude-change', 'resume', 'resume-errors', 'introspect', 'prereg',
+    'plant-release', 'plant-release-sha256', 'plant-python', 'python', 'strands-python', 'strands-agent', 'allow-arm-drift', 'allow-claude-change', 'resume', 'resume-errors', 'introspect', 'prereg', 'level', 'level-since',
   ],
   judge: [
     'run', 'judges', 'mode', 'baseline', 'concurrency', 'budget-credits', 'judge-cmd', 'max-file-chars', 'max-bundle-chars', 'redact-file',

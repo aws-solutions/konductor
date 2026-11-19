@@ -1213,6 +1213,14 @@ The scenario pack (schema v3 tasks under `bench/scenarios/<batch>/<id>.json`) ha
   correction: rows are ordered by p-value, row i of m is tested at 0.05 / (m - i), its interval is taken at that level, and rows after the first failure keep
   that level. A row with fewer than two tasks scored in both arms has no interval and is unsettled. The 3-arm pairs (against `konductor-noskills`) need a
   report that reads three arms; `compare` and `compareRows` take any two score lists.
+- `run --level lite|standard|full [--level-since FILE]` picks the suite's tasks by run level (plan 7a) instead of `--tasks`; the two together are refused.
+  The list is a function of the task metadata and the SR-32 hashes (`bench/scenarios/levels.js`), so it is fixed for a pack version. **lite**: for each of the
+  14 phases (not the long multi-phase row) the DEV real task with the lowest SR-32 hash among tasks with a soft limit of 900 s or less; a role then missing is
+  swapped in from its lowest-hash DEV task in a phase with two or more such tasks (a role with no task is listed as unfilled); plus the lowest-hash DEV negative
+  control and DEV twin, 16 tasks when every phase and role is there. `--level-since FILE`, the `tasks` list of an earlier run-config `level` record, adds every
+  task added or changed since as smoke only. **standard**: every DEV task, controls and twins included. **full**: every task, and it needs `--prereg FILE`.
+  `run-config.json` gets a `level` record (name, count, list hash, picks, smoke-only tasks, task file hashes) and `report-2x2` prints it in the header with what
+  that level may and may not support. The arms, replicates and judging of a level are not enforced by the flag; they stay the run's own flags.
 
 ## How to read results
 - Tokens are not exposed by kiro-cli; credits are the cost measure. `estTokens` is characters / 4.

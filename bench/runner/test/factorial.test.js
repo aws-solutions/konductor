@@ -554,3 +554,19 @@ test('report-2x2 --stats adds the pre-registered statistic from HELD-OUT tasks, 
   assert.match(md.stdout, /## Pre-registered statistic: konductor minus vanilla, two-level bootstrap/);
   assert.match(md.stdout, /DEV \(\d+\), not a verdict/);
 });
+
+test('report-2x2 shows the run level recorded in the cells\' run-config in its header, and nothing when none is recorded', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const d = four(root, bench);
+  assert.doesNotMatch(cli(flags(bench, d)).stdout, /Run level/);
+  const level = { name: 'lite', taskCount: 16, listHash: 'ab'.repeat(32), smokeOnly: [], unfilledRoles: [], picks: [], tasks: [] };
+  for (const dir of Object.values(d).flat()) {
+    const file = path.join(dir, 'run-config.json');
+    write(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), level }));
+  }
+  const res = cli(flags(bench, d));
+  assert.equal(res.status, 0, res.stderr);
+  assert.match(res.stdout, /Run level: LITE, 16 tasks \(list abababababab\)\. LITE is a smoke test/);
+  assert.match(JSON.parse(cli([...flags(bench, d), '--json']).stdout).runLevel, /^Run level: LITE/);
+});

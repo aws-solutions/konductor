@@ -24,6 +24,7 @@ const { otherRule } = require('../judge/views.js');
 const { MIN_JUDGES } = require('../judge/score.js');
 const C = require('./charts.js');
 const { buildPaired, pairedBlocks } = require('./paired.js');
+const { levelHeader } = require('../scenarios/levels.js');
 
 const SPECS = [
   { id: 'kiroVanilla', harness: 'kiro-cli', role: 'vanilla', unit: 'credits', flag: 'kiro-vanilla' },
@@ -286,6 +287,7 @@ function buildFactorial({ dirs, arms = {}, benchDir, extraDirs = [], scoringFile
   // The SDLC view needs the pack's phase map, so it comes with --criteria-pack like the dimensions table.
   const sdlc = qualityPack ? require('./sdlc.js').summarizeSdlc({ cells: loaded, tasks, pack: qualityPack, taskIds }) : null;
   const quote = mergeQuote(loaded.map((c) => c.quote));
+  const levelLine = levelHeader(loaded.map((c) => ({ cell: labelOf(c.spec), level: c.run.config?.level ?? null })));
   const result = {
     schemaVersion: 1, kind: 'factorial-2x2', quote, tasks: taskIds, replicates: { min: reps.min, perTask: reps.perTask },
     descriptive: !intervals, descriptiveReason, model: loaded[0].model, effort: loaded[0].effort, units: { 'kiro-cli': 'credits', 'claude-code': 'USD' },
@@ -293,6 +295,7 @@ function buildFactorial({ dirs, arms = {}, benchDir, extraDirs = [], scoringFile
     weights, cells, contrasts, costRatios, notes: out,
     ...(qualityDimensions ? { qualityDimensions } : {}),
     ...(sdlc ? { sdlc } : {}),
+    ...(levelLine ? { runLevel: levelLine } : {}),
     ...(withStats ? { paired: buildPaired({ cells: loaded, tasks, taskIds }) } : {}),
   };
   if (withSensitivity) result.sensitivity = factorialSensitivity(result, buildFactorial({ dirs, arms, benchDir, extraDirs, scoringFile, qualityPack, quoteRule: otherRule(quote.requested), withSensitivity: false }));
@@ -440,6 +443,7 @@ function renderFactorial(res, { charts = null } = {}) {
       ? `${res.descriptiveReason}. These are the observed numbers of one pilot, not statistics: no interval is shown and no effect should be called real from them.`
       : `Intervals are paired by task (t interval on the per-task differences) over ${res.tasks.length} tasks with at least ${MIN_REPS} replicates per cell.`),
     D.p(`Model ${res.model}, effort ${res.effort} in every cell. Quality is the repository score (${qualityWeightsText(res.weights)}, renormalised over what a run has, times 100). Judges: ${res.judges.panel.join(', ')} (${res.judges.backend}). Tasks: ${res.tasks.join(', ')}.`),
+    ...(res.runLevel ? [D.p(res.runLevel)] : []),
     ...listingBlocks(cols),
     D.h(2, 'Quality by cell'),
     D.table(head, [...taskRows,
