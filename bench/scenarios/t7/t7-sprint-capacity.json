@@ -150,7 +150,5 @@
         "note": "I independently verified three key values: S1 capacity = 35.23 (matches), Gale Park S1 capacity = 3.6 (matches), T-068 + T-074 bundle = 11 points vs 3.6 capacity (matches). All values follow directly from the stated conventions in capacity_policy.md, team_roster.csv, sprint_calendar.csv, holidays.csv, and on_call.csv."
       }
     ]
-  },
-  "pilot": null,
-  "lockedAt": null
+  }
 }

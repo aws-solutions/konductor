@@ -2,7 +2,7 @@
   "id": "t7-program-rollup",
   "phase": "planning",
   "role": "tpm",
-  "author": "deepseek-3.2",
+  "author": "gpt-5.6-luna",
   "source": {
     "url": "https://github.com/openstack/releases",
     "licence": "Apache-2.0",
@@ -17,6 +17,7 @@
   "shape": "{\"overall\": \"green|amber|red\", \"teams\": {\"<team>\": {\"reported\": \"green|amber|red\", \"actual\": \"green|amber|red\", \"remaining_points\": n}}, \"critical_path\": [ids], \"cross_team_blockers\": [{\"tickets\": [ids], \"summary\": str}], \"duplicates\": [[ids]], \"milestone_at_risk\": str, \"forecast_date\": \"YYYY-MM-DD\"}",
   "expert": false,
   "controlKind": "none",
-  "reviewer": "minimax-m2.5",
-  "date": "2026-11-19"
+  "reviewer": "glm-5",
+  "date": "2026-11-19",
+  "authorChange": "author switched from deepseek-3.2 to gpt-5.6-luna on 2026-11-19: three deepseek-3.2 drafts in a row (t7-march-date, t7-sprint-plan, t7-risk-register) were unusable on first pass"
 }

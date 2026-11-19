@@ -150,8 +150,6 @@ function buildTask(b, draft, key, mapping, rev, date = today()) {
     tiers: ['full'],
     authorship: { family: FAMILY[b.author], model: b.author, date: b.date || date, source: b.source },
     ...(rev ? { review: { family: FAMILY[rev.model], date, verdicts: rev.verdicts.map((v) => ({ check: v.check, verdict: v.verdict, note: v.note })) } } : {}),
-    pilot: null,
-    lockedAt: null,
   };
 }
 

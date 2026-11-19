@@ -1,0 +1,4 @@
+tool,version,owner_team,environments,audit_retention_days,auth_mode,status,notes
+Shipline,7.8,Beacon,staging|production,30,OIDC,active,The team uses a separate approval queue.
+HarborStep,2.3,Beacon,staging,60,SSO,active,A few legacy jobs still use this.
+Relay,1.1,Beacon,production,7,token,retiring,Cancelled replacement work is retained for history.

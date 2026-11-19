@@ -2,7 +2,7 @@
   "id": "t7-dev-breakdown",
   "phase": "planning",
   "role": "developer",
-  "author": "deepseek-3.2",
+  "author": "gpt-5.6-luna",
   "source": {
     "url": "https://github.com/golang/go",
     "licence": "BSD-3-Clause",
@@ -17,11 +17,12 @@
   "shape": "{\"tickets\": [{\"id\": str, \"title\": str, \"files\": [paths], \"depends_on\": [ticket ids], \"estimate_days\": n}], \"order\": [ticket ids], \"files_to_change\": [paths], \"total_estimate_days\": n, \"risks\": [str]}",
   "expert": true,
   "controlKind": "none",
-  "reviewer": "minimax-m2.5",
+  "reviewer": "glm-5",
   "date": "2026-11-19",
   "expertSources": [
     "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)",
     "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)",
     "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)"
-  ]
+  ],
+  "authorChange": "author switched from deepseek-3.2 to gpt-5.6-luna on 2026-11-19: three deepseek-3.2 drafts in a row (t7-march-date, t7-sprint-plan, t7-risk-register) were unusable on first pass"
 }

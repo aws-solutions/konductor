@@ -23,5 +23,6 @@
     "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
     "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)",
     "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
-  ]
+  ],
+  "dropped": "first draft unusable and not given a fix round: most assertions check only that a kind value appears, and several match ordinary words (dark mode, vulnerability, first names) as ids; authoring/ held three competing key scripts; replaced by t7-risk-owners"
 }

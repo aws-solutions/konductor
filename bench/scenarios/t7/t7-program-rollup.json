@@ -1,0 +1,118 @@
+{
+  "id": "t7-program-rollup",
+  "class": "design",
+  "version": 1,
+  "phase": "planning",
+  "role": "tpm",
+  "questions": "allowed",
+  "prompt": "I need the executive status for the Relay milestone from the material in this folder. Give me the real program position across ARC, BEAM, and COVE, not a copy of the team updates: call out the work that can move the milestone, cross-team blockers, duplicate work, and a defensible forecast date. Write the deliverable to status/program-rollup.md in plain language, with the bottom line and enough reasoning for an exec review. Include one fenced JSON block whose info string is program-status. Its JSON shape is {overall, teams, critical_path, cross_team_blockers, duplicates, milestone_at_risk, forecast_date}: overall and each team's reported and actual must be green, amber, or red; each team also needs numeric remaining_points (its open Relay points); critical_path is an array of ticket IDs; cross_team_blockers is an array of objects with tickets (ticket IDs) and a summary string; duplicates is an array of ticket-ID arrays; milestone_at_risk is a string; forecast_date is YYYY-MM-DD. Keep the JSON valid because the review tooling reads that block.",
+  "fixture": "t7-program-rollup",
+  "hidden": "t7-program-rollup",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 15,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "status/program-rollup.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "roadmap.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "status/program-rollup.md",
+      "pattern": "```\\s*program-status",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "bottom-line",
+      "criterion": "The document tells the requester the honest program outcome and milestone implication before the supporting detail (code cannot check this because it only parses the structured block).",
+      "weight": 2
+    },
+    {
+      "id": "reasoning",
+      "criterion": "The prose explains how the reported updates differ from the export evidence and why the forecast and blocker conclusion follow (code cannot check this because it cannot assess narrative reasoning).",
+      "weight": 2
+    }
+  ],
+  "targetSkills": [
+    "status-reporting",
+    "progress-tracking",
+    "decision-research"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "status-reporting",
+      "progress-tracking",
+      "decision-research"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/openstack/releases",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for program status but does not name specific methods, frameworks, or hint at seeded traps like the ARC-143 duplicate or COVE-354 decoy."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The conventions document clearly defines open statuses, duplicate handling (ARC before BEAM before COVE), color rules, and dependency formats; all key values follow from stated rules."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture file reveals the answer; the dependency chain must be discovered by reading three different link formats across CSVs, and COVE-354 is visibly Harbor (not Relay) in the initiative column."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer trusting team paragraphs and counting all rows passes only 8/19 tests (42%), below the half threshold; the task requires analyzing the dependency chain and applying color rules correctly."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "Verified three key values from fixture: ARC points=88 (open Relay rows), BEAM-224 is Blocked with depends_on ARC-117, COVE-354 is Harbor initiative, and S-15 ends 2027-11-26 per capacity.csv; all derivable without authoring scripts."
+      }
+    ]
+  }
+}

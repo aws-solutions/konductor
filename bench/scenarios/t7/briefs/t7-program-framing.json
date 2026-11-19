@@ -23,5 +23,6 @@
     "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)",
     "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)",
     "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
-  ]
+  ],
+  "dropped": "first draft unusable and not given a fix round: date assertions use fields the grader does not have, most assertions match ordinary words, and the request lists the expected sections; replaced by t7-program-brief"
 }

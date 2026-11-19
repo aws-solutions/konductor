@@ -1,0 +1,4 @@
+tool,version,owner_team,environments,audit_retention_days,auth_mode,status,notes
+ForgeRun,4.2,Atlas,staging|production,365,OIDC,active,Release history is required for regulated service releases.
+PatchBoard,1.8,Atlas,staging,90,OIDC,active,Used for rehearsal jobs only.
+OldRunner,0.9,Atlas,production,14,token,retiring,No new services after March.

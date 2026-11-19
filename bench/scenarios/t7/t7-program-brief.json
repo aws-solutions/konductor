@@ -1,0 +1,158 @@
+{
+  "id": "t7-program-brief",
+  "class": "design",
+  "version": 1,
+  "phase": "ideation",
+  "role": "tpm",
+  "questions": "allowed",
+  "prompt": "I need a program brief I can take to the next staff meeting. Read this folder's memo, team tool inventories, roadmaps, request export, staffing, and capacity information. Frame the move to one shared deployment tool: state the problem, name the workstreams, show dependencies, call out conflicts and constraints, give the first milestones with dates, and be clear about what remains unknown and what is outside this effort. Write the requester-facing document to docs/program-brief.md. Include one fenced JSON block whose info string is program. The JSON must have exactly these named fields: problem (string); workstreams (list of objects with name string, teams list of strings, and depends_on list of names or ids); shared_dependencies (list of strings); conflicts (list of objects with between list of teams and about string); headcount_gap (number); constraints (list of strings); milestones (list of objects with name string and date string in YYYY-MM-DD format); open_questions (list of strings); and out_of_scope (list of ids).",
+  "fixture": "t7-program-brief",
+  "hidden": "t7-program-brief",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 11,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/program-brief.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "leadership-memo.md",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/program-brief.md",
+      "pattern": "```\\s*program",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "director-bottom-line",
+      "criterion": "The prose gives the director a clear bottom line early and explains why the proposed work and dates are credible or conditional (code cannot check this because it cannot judge narrative clarity or reasoning)",
+      "weight": 2
+    },
+    {
+      "id": "decision-useful-uncertainty",
+      "criterion": "The prose distinguishes confirmed facts from unresolved decisions and gives practical evidence or ownership needed to close the open questions (code cannot check this because it cannot assess honest uncertainty or usefulness to staff)",
+      "weight": 2
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "explicit-success-bar",
+        "text": "State measurable acceptance evidence for the shared tool, including audit retrieval, approval history, rollback behavior, and identity integration, rather than treating tool selection as the outcome.",
+        "source": "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
+      },
+      {
+        "id": "single-decision-owner",
+        "text": "Resolve the Atlas and Beacon overlap with one accountable decision owner and a recorded decision, while keeping each team responsible for its own cutover work.",
+        "source": "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "safe-release-path",
+        "text": "Treat the pilot and cutovers as release-engineering work: preserve auditability, make rollback a tested path, and use a small representative first wave before broad adoption.",
+        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+      },
+      {
+        "id": "dependency-readiness",
+        "text": "Make Identity Services readiness a dated entry condition for the pilot, including the token and secrets interface, rather than listing it as a generic dependency with no owner commitment.",
+        "source": "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
+      },
+      {
+        "id": "capacity-tradeoff",
+        "text": "Show the three-engineer gap as a leadership decision: add people, reduce the migration wave, or move the target date, and do not present the current capacity rows as a guarantee.",
+        "source": "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "operational-observability",
+        "text": "Name the operational evidence that will be watched during migration, such as failed promotions, approval records, audit retrieval, and rollback success, so the program can stop a wave safely.",
+        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Pick the tool with the most votes and migrate all three teams in one big cutover.",
+      "Repeat the memo's staffing request without calculating the available headcount or stating the gap.",
+      "List three workstreams but omit the Identity Services dependency and its owner.",
+      "Accept both roadmap owners and treat the feature-flag request as part of the deployment program."
+    ]
+  },
+  "targetSkills": [
+    "program-planning",
+    "decision-research",
+    "risk-management"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "program-planning",
+      "decision-research",
+      "risk-management"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/kubernetes/enhancements",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt does not name methods, frameworks, or hint at seeded traps. It asks for a program brief with specific JSON fields but does not reveal the conflict, staffing gap calculation, or the decoy."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fail",
+        "note": "The key requires exact workstream names ('Tool selection and governance', 'Identity integration', 'Migration and cutover') but the prompt only says 'name the workstreams' without specifying what names to use. The 'ownership-question' assertion requires the exact word 'ownership' in open_questions, but reasonable agents could phrase this differently (e.g., 'Who leads the migration?')."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No columns or notes in the fixture reveal the conflict, gap, or decoy directly. REQ-027's comment hints at the ownership question but requires reading the request export - it's legitimate data, not a hidden answer."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer that trusts obvious readings passes 8/19 tests (42%), below the half threshold. The task requires discovering the conflict (comparing roadmaps), calculating the staffing gap (memo ask vs headcount.csv), and identifying the 365-day constraint (atlas-tools.csv)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values follow from the fixture data: staffing gap (7 requested - 4 available = 3), REQ-012 as shared dependency (all three roadmaps list it), conflict (Atlas and Beacon both own 'Shared deployment migration' in Q3), 365-day retention (ForgeRun active tool in atlas-tools.csv, memo requirement). Tolerances are reasonable (exact for headcount_gap, inclusive string matching for constraints)."
+      }
+    ]
+  }
+}
