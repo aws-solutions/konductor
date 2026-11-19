@@ -1,0 +1,14 @@
+metric,period,value,definition,notes
+active_subscribers,2025-06,12480,paid subscriptions on June 1,Ledger snapshot
+lost_subscribers,2025-06,612,ended or access closed after grace,Seven-day look-forward
+failed_payment_loss,2025-06,402,subscriber ended with no successful payment within 7 days,Involuntary route in reconciled dashboard
+voluntary_cancel_loss,2025-06,156,subscriber completed cancellation and ended,Cancel-flow route
+other_loss,2025-06,54,chargeback pause and unclassified endings,Residual route
+failed_card_events,2025-06,517,failed card-payment events,Not unique subscribers
+failed_card_subscribers,2025-06,448,distinct subscribers with a failed card event,Some had more than one invoice event
+recovered_within_7d,2025-06,115,failed-payment subscribers with successful payment in 7 days,Recovery is not counted as loss
+survey_responses,2025-06,214,cancellation survey submissions,Shown only in cancellation flow
+survey_price_reason,2025-06,92,respondents selecting price,Not a measure of all lost subscribers
+cancel_clicks_recorded,2025-06-01/2025-06-09,71,tracked cancellation starts,Tracking complete in this slice
+cancel_clicks_recorded,2025-06-10/2025-06-16,9,tracked cancellation starts,Event delivery outage; do not compare with adjacent weeks
+cancel_clicks_recorded,2025-06-17/2025-06-30,76,tracked cancellation starts,Tracking complete in this slice

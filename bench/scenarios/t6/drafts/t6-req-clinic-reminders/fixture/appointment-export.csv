@@ -1,0 +1,8 @@
+appointment_id,clinic,appointment_local,timezone,status,patient_ref,mobile,consent,language
+A-8841,Cedar Grove Rehab,2025-01-13 08:30,America/New_York,booked,P-117,555-0101,yes,English
+A-8842,Harbor Point Therapy,2025-01-13 09:00,America/Chicago,booked,P-118,555-0102,yes,Spanish
+A-8843,Northgate Mobility,2025-01-13 10:00,America/Denver,cancelled,P-119,555-0103,yes,English
+A-8844,Cedar Grove Rehab,2025-01-14 16:00,America/New_York,booked,P-120,,yes,Vietnamese
+A-8845,Harbor Point Therapy,2025-01-14 11:30,America/Chicago,booked,P-121,555-0105,,English
+A-8846,Northgate Mobility,2025-01-15 15:00,America/Denver,booked,P-122,555-0106,yes,Spanish
+A-8847,Cedar Grove Rehab,2025-01-15 07:30,America/New_York,booked,P-123,555-0107,yes,English

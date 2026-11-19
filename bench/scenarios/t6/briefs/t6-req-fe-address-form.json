@@ -1,0 +1,18 @@
+{
+ "id": "t6-req-fe-address-form",
+ "wave": 2,
+ "kind": "scripted",
+ "phase": "requirements",
+ "role": "frontend",
+ "out": "docs/requirements.md",
+ "repo": "a small React (plain JavaScript, no build needed for the task) web shop front end with a checkout address form: components, a form validation module, existing tests, analytics event list, design notes, support complaints about addresses, a README. About 35 files.",
+ "idea": "Requirements for redesigning an address form. Hidden facts could cover: which countries are supported at launch, postcode rules, address lookup provider and its limit, accessibility target, autofill, analytics events that must not change, mobile share, PO boxes.",
+ "source": {
+  "url": "https://github.com/alphagov/govuk-design-system",
+  "licence": "MIT",
+  "licenceCheckedAt": "2026-11-19",
+  "use": "idea"
+ },
+ "author": "deepseek-3.2",
+ "reviewer": "minimax-m2.5"
+}
