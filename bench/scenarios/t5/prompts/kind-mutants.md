@@ -18,3 +18,8 @@ Mutant rules:
 - The reference tests must kill every mutant and pass on the real code.
 
 Verify: (a) in a scratch folder put `fixture/` plus `solution/`, run the suite, confirm it passes; (b) run `node kit/mutants.js <that scratch folder> hidden/mutation-kit` and confirm `score` is 1 and `realPass` is true; (c) run it on a scratch folder holding only `fixture/` and confirm at most 2 mutants are killed. Print the JSON of (b) and (c).
+
+Request rules for this kind (the request is `prompt` in `task-draft.json`):
+- Say what is wrong in the user's words and which area of the code to make trustworthy, at the level of modules or features. Do NOT list the boundaries, cases or behaviours to test, and do not name a file the new tests must go in. The agent has to read the code to find what matters.
+- No file may exist in `fixture/` that the reference solution creates; `solution/` holds only new or changed test files.
+- Checks must not depend on a test file name the request does not give. Use a count of test cases across all test files (for example `cat test/*.js | grep -cE '^[[:space:]]*(test|it)\('` against the fixture's count plus 8), together with a run of the visible suite, in ONE `cmd` check, plus `fixture_unchanged` for one source file. That is enough besides the hidden tests.

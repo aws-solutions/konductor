@@ -1,0 +1,7 @@
+{
+  "1": {"name": "local", "base": 4.25},
+  "2": {"name": "near", "base": 5.75},
+  "3": {"name": "regional", "base": 7.10},
+  "4": {"name": "national", "base": 8.40},
+  "5": {"name": "extended", "base": 9.95}
+}

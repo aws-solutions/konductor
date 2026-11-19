@@ -1,0 +1,4 @@
+[
+  { "title": "Standup", "rule": { "weekday": "Monday", "hour": 9, "minute": 30 } },
+  { "title": "Weekly review", "rule": { "weekday": "Friday", "hour": 16, "minute": 0 }, "enabled": false }
+]

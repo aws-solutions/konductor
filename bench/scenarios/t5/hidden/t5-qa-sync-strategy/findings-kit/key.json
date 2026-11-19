@@ -1,0 +1,124 @@
+{
+  "outputFile": "docs/TEST-STRATEGY.md",
+  "findingsKey": [
+    {
+      "id": "checkpoint-before-commit",
+      "location": [
+        "src/migration/batch-runner.js",
+        "migrateBatches"
+      ],
+      "severity": "critical",
+      "fix": [
+        "checkpoint",
+        "commit",
+        "crash",
+        "atomic",
+        "resume"
+      ]
+    },
+    {
+      "id": "mapper-silent-coercion",
+      "location": [
+        "src/mapping/field-mapper.js",
+        "mapCustomer"
+      ],
+      "severity": "high",
+      "fix": [
+        "precision",
+        "truncat",
+        "coerc",
+        "lossy",
+        "round-trip",
+        "overflow"
+      ]
+    },
+    {
+      "id": "tie-order-dependence",
+      "location": [
+        "src/conflicts/resolve-conflict.js",
+        "resolveConflict"
+      ],
+      "severity": "high",
+      "fix": [
+        "tie",
+        "deterministic",
+        "order",
+        "stable"
+      ]
+    },
+    {
+      "id": "retry-reapplies-change",
+      "location": [
+        "src/capture/apply-change.js",
+        "applyChange"
+      ],
+      "severity": "critical",
+      "fix": [
+        "idempot",
+        "dedup",
+        "exactly once",
+        "change id",
+        "duplicate"
+      ]
+    },
+    {
+      "id": "count-only-verification",
+      "location": [
+        "src/verification/verify-migration.js",
+        "verifyMigration"
+      ],
+      "severity": "high",
+      "fix": [
+        "content",
+        "field-level",
+        "checksum",
+        "hash",
+        "per-record",
+        "row-level"
+      ]
+    },
+    {
+      "id": "timezone-naive-ordering",
+      "location": [
+        "src/conflicts/timestamps.js",
+        "compareTimestamps"
+      ],
+      "severity": "high",
+      "fix": [
+        "timezone",
+        "time zone",
+        "utc",
+        "offset"
+      ]
+    },
+    {
+      "id": "dead-letter-loses-reason",
+      "location": [
+        "src/queue/dead-letter-queue.js",
+        "DeadLetterQueue"
+      ],
+      "severity": "medium",
+      "fix": [
+        "reason",
+        "error message",
+        "preserve",
+        "diagnostic"
+      ]
+    },
+    {
+      "id": "resume-path-unexercised",
+      "location": [
+        "src/migration/resume.js",
+        "resumeMigration"
+      ],
+      "severity": "critical",
+      "fix": [
+        "resume",
+        "restart",
+        "cursor",
+        "end-to-end",
+        "integration"
+      ]
+    }
+  ]
+}

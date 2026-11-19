@@ -1,0 +1,12 @@
+{
+  "name": "daymark-reminders",
+  "version": "2.4.1",
+  "private": true,
+  "description": "A small calendar-aware reminder worker",
+  "main": "src/index.js",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test --test-timeout=5000 test/*.test.js",
+    "check": "node scripts/check-config.js"
+  }
+}

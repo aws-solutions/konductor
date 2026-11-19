@@ -51,6 +51,7 @@ function normalize(id) {
     for (const name of fs.readdirSync(w).filter((n) => !AUTHOR_FILES.has(n))) fs.renameSync(path.join(w, name), path.join(w, 'fixture', name));
   }
   const b = brief(id);
+  if (b.kind === 'scripted' || b.kind === 'twin') return;
   if (b.kind === 'findings') buildHidden([path.join(w, 'hidden'), 'findings', b.outputFile], readJson(path.join(w, 'task-draft.json')).findingsKey);
   else buildHidden([path.join(w, 'hidden'), 'mutants']);
 }
@@ -91,6 +92,20 @@ function reviewed(v, disposition) {
   return { check: v.check, verdict: d.verdict, note: `${d.note} (reviewer: ${v.note})` };
 }
 
+// Owner rule: a design-type task carries an expert key for the judges; its rubric item scores addressed items over all items (judge share stays at 30% or less).
+function withExpertRubric(rubric, key) {
+  if (!key) return rubric;
+  const item = { id: 'expert-key', weight: 3, criterion: 'Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are judgment about test design, not a pattern in the text)' };
+  return [...(rubric || []).filter((r) => r.id !== 'expert-key'), item];
+}
+
+// A twin must not load what its source task is meant to load (skills and SOP), unless its own mapping needs it.
+function mustNotLoad(b, mapping) {
+  if (!b.twinOf) return b.mustNotLoad || [];
+  const src = readJson(path.join(DIR, `${b.twinOf}.json`));
+  return [...src.targetSkills, ...(src.targetSop ? [src.targetSop] : [])].filter((n) => !mapping.targetSkills.includes(n));
+}
+
 function assemble(id) {
   const w = work(id);
   const b = brief(id);
@@ -106,11 +121,13 @@ function assemble(id) {
   const task = {
     id, class: 'hard', version: 1, phase: b.phase, role: b.role, ...(b.phases2 && b.phases2.length ? { phases2: b.phases2 } : {}),
     questions: b.questions || 'allowed', prompt, fixture: id, hidden: id,
-    timeoutSec: limits.hardSec, limits, checks: draft.checks, rubric: draft.rubric,
+    timeoutSec: limits.hardSec, limits, checks: draft.checks, rubric: withExpertRubric(draft.rubric, b.expertKey),
     ...(draft.findingsKey ? { findingsKey: draft.findingsKey } : {}),
+    ...(draft.scriptedUser ? { scriptedUser: draft.scriptedUser } : {}),
+    ...(b.expertKey ? { expertKey: b.expertKey } : {}),
     targetSkills: mapping.targetSkills, targetSop: mapping.targetSop, targetAgent: mapping.targetAgent,
     controlKind: b.controlKind || 'none', ...(b.twinOf ? { twinOf: b.twinOf } : {}),
-    loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: b.mustNotLoad || [] },
+    loadCheck: { mustLoad: mapping.targetSkills, mustNotLoad: mustNotLoad(b, mapping) },
     effectSubset: false, tiers: ['full'],
     authorship: { family: FAMILY[b.author], model: b.author, date: b.date || today(), source: b.source },
     ...(rev ? { review: { family: FAMILY[rev.model], date: today(), verdicts: rev.verdicts.map((v) => reviewed(v, disposition)) } } : {}),
@@ -119,7 +136,8 @@ function assemble(id) {
   fs.writeFileSync(path.join(DIR, `${id}.json`), `${JSON.stringify(task, null, 2)}\n`);
   const put = (from, to) => { fs.rmSync(to, { recursive: true, force: true }); fs.cpSync(from, to, { recursive: true }); };
   put(path.join(w, 'fixture'), path.join(DIR, 'fixtures', id));
-  put(path.join(w, 'hidden'), path.join(DIR, 'hidden', id));
+  // A twin's hidden tests sit in `hidden/` (the command runs `hidden/*.test.js`), so the hidden dir holds that folder; the other kinds put their files at its top.
+  put(path.join(w, 'hidden'), path.join(DIR, 'hidden', id, b.kind === 'twin' ? 'hidden' : ''));
   put(path.join(w, 'solution'), path.join(DIR, 'solutions', id));
 }
 

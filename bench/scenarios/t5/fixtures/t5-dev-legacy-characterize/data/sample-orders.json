@@ -1,0 +1,24 @@
+[
+  {
+    "order_id": "A-1042",
+    "zone": 2,
+    "weight": 3.5,
+    "service": "priority",
+    "recipient": "Ada Lovelace",
+    "address": "12 Analytical Engine Way",
+    "city": "London",
+    "postal_code": "LN1 2AB",
+    "residential": false,
+    "total": 13.02
+  },
+  {
+    "order_id": "B-2201",
+    "zone": 4,
+    "weight": 1.0,
+    "service": "ground",
+    "recipient": "Grace Hopper",
+    "address": "1 Compiler Lane",
+    "city": "Arlington",
+    "postal_code": "VA 22201"
+  }
+]
