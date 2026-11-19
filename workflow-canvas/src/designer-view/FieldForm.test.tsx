@@ -54,12 +54,15 @@ function Owner({
   start: FieldValues;
   changes: FieldFormChange[];
 }) {
+  const originalAgent =
+    typeof start.agent === 'string' ? start.agent : undefined;
   const [values, setValues] = useState(start);
   return (
     <FieldForm
       stageName={stageName}
       rules={RULES}
       agents={AGENTS}
+      originalAgent={originalAgent}
       values={values}
       onChange={(change) => {
         changes.push(change);
@@ -188,6 +191,28 @@ describe('FieldForm', () => {
 
     expect(offered[0]).toContain('my-agent');
     expect(offered).toHaveLength(3);
+  });
+
+  it('keeps the original agent on offer after another is picked, so it can be picked again', () => {
+    const changes = renderForm({ name: 'draft', agent: 'my-agent' });
+    chooseAgent('k-architect');
+    expect(changes.at(-1)?.values.agent).toBe('k-architect');
+
+    chooseAgent('my-agent');
+    expect(changes.at(-1)?.values.agent).toBe('my-agent');
+  });
+
+  it('does not offer an original agent of the list twice', () => {
+    renderForm();
+    chooseAgent('k-architect');
+    const select = field('agent').findControl()!.findSelect()!;
+    select.openDropdown();
+    const offered = select
+      .findDropdown()
+      .findOptions()
+      .map((option) => option.getElement().textContent ?? '');
+
+    expect(offered).toHaveLength(2);
   });
 
   it('passes on a key the rules do not name, as it came', () => {

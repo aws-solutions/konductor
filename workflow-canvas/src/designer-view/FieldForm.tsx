@@ -29,16 +29,18 @@ function Control({
   value,
   invalid,
   agents,
+  originalAgent,
   onText,
 }: {
   rule: StageFieldRule;
   value: string | undefined;
   invalid: boolean;
   agents: readonly AgentOption[];
+  originalAgent: string | undefined;
   onText: (text: string) => void;
 }) {
   if (rule.key === AGENT_KEY) {
-    const choices = agentOptions(agents, value);
+    const choices = agentOptions(agents, value, originalAgent);
     const chosen = choices.find((agent) => agent.id === value);
     return (
       <Select
@@ -89,12 +91,15 @@ function Control({
  * shows the new stage at once. Each change is checked against the rules of
  * the keys, each error is shown under its key, and `onChange` gets the
  * edited values, made from the current `values`. It never writes YAML: a key
- * the rules do not name is passed on as it came.
+ * the rules do not name is passed on as it came. `originalAgent` stays on
+ * offer for as long as the form shows that stage, even when `GET /api/agents`
+ * does not list it.
  */
 export function FieldForm({
   stageName,
   rules,
   agents,
+  originalAgent,
   values,
   onChange,
 }: {
@@ -103,6 +108,8 @@ export function FieldForm({
   rules: readonly StageFieldRule[];
   /** The agents of `GET /api/agents`, offered for the `agent` key. */
   agents: readonly AgentOption[];
+  /** The `agent` of the stage when it was loaded, before any edit. */
+  originalAgent?: string;
   /** The keys of the stage now, which the parent owns. */
   values: FieldValues;
   onChange: (change: FieldFormChange) => void;
@@ -132,6 +139,7 @@ export function FieldForm({
                 value={textOf(values, rule.key)}
                 invalid={error !== undefined}
                 agents={agents}
+                originalAgent={originalAgent}
                 onText={(text) => edit(rule.key, text)}
               />
             </FormField>
