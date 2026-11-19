@@ -1,0 +1,100 @@
+{
+  "id": "t8-pm-cert-expiry-region",
+  "class": "hard",
+  "version": 1,
+  "phase": "release-ops",
+  "role": "sre",
+  "questions": "allowed",
+  "prompt": "Please investigate the EU login outage in the records in this folder and draft the postmortem for our weekly engineering review. Write it to postmortems/eu-login-outage.md as a useful incident document with the impact, evidence-backed root cause, timeline, mitigation and follow-up actions. End the file with a fenced ```json block containing one JSON object. The object must have rootCause (an object with summary text and evidence as a list of path:line strings), timeline (a list of objects with time and event), impact (an object with duration_minutes in minutes, failed_login_attempts as a count, and peak_tls_handshake_errors as a count), and actionItems (a list of objects with text and owner). Use ISO 8601 UTC strings for every time. Each evidence reference must use path:line, where path is relative to this folder and line is a 1-based line number. Keep the report specific to the evidence and distinguish customer impact from operational activity.",
+  "fixture": "t8-pm-cert-expiry-region",
+  "hidden": "t8-pm-cert-expiry-region",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 28,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "postmortems/eu-login-outage.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "certs/certificate-inventory.csv",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "clear-review-narrative",
+      "criterion": "The document gives a clear, internally consistent explanation of what customers experienced and why the unaffected region stayed healthy (code cannot check this because it cannot judge narrative coherence)",
+      "weight": 2
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://sre.google/sre-book/postmortem-culture/",
+      "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request does not specify a method, process, or tool to use; it simply asks for an investigation and incident document."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All required sections (impact, rootCause, timeline, actionItems), formats (ISO 8601, path:line evidence), and field names are explicitly specified in the request."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The root cause (certificate expiry) is not mentioned in README, notes, or file names; it must be inferred from correlating certificate-inventory.csv (expiry at 2025-02-14T11:00:00Z) with gateway-eu.log errors and auth-eu.log failures."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick wrong answer might blame the rel-8421 deploy at 10:49, but the key catches this: timeline-deployment requires 'both regions' evidence and timeline-rollback-no-effect shows the rollback at 11:26 did not fix the EU outage."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable: timeline events in channel-export.md, duration=40 min (11:00-11:40), failed_logins=17465 and peak_tls_errors=448 from eu-west-1-login.csv, evidence paths all exist with correct line numbers."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

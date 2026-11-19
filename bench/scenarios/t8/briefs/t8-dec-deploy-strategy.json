@@ -1,0 +1,64 @@
+{
+  "id": "t8-dec-deploy-strategy",
+  "kind": "doc",
+  "phase": "decisions",
+  "role": "sre",
+  "phases2": [
+    "release-ops"
+  ],
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "stack": "ops",
+  "size": "15 to 30",
+  "loglines": 1500,
+  "source": {
+    "url": "https://sre.google/sre-book/release-engineering/",
+    "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "outFile": "decisions/0007-deploy-strategy.md",
+  "blockFields": "`decision` (one of the option names the request lists), `options` (list of `{ \"name\", \"verdict\" (\"chosen\" or \"rejected\"), \"reasons\": [strings] }`), `constraints` (list of `{ \"id\", \"text\", \"source\" (the fixture file it comes from) }`), `revisitWhen` (list of strings).",
+  "kindExtra": "Seed 5 or 6 constraints in the fixture, each in one place (capacity: the fleet runs at a utilisation that leaves too little headroom for a full second fleet within the budget note; long-lived websocket sessions that take up to 40 minutes to drain; a shared database whose schema changes must work with two versions at once; a cost cap in the finance note; a deploy-frequency goal; a regulator rule that a failed release must be reverted within a set number of minutes). The right choice follows from the numbers; make one popular option clearly wrong here because of them. Key shape: a `text` item on `decision`; `some` items on `constraints` that each seeded constraint is named with its number and a `source` file pattern; `some` items on `options` that the wrong option is rejected with the capacity or cost reason; a `some` on `revisitWhen` tied to a seeded number; a `maxLen` on `constraints` (max 10). 10 to 14 items.",
+  "brief": "Phase: decisions. Role: SRE. Folder: the platform repo of a realtime collaboration service (40 hosts, websocket sessions), with the capacity report, finance note, deploy history, incident list, an SLO doc, compliance note and an old wiki page that says \"we should do blue/green like everyone\". The request: the platform lead wants a decision record choosing between rolling update, blue/green and canary for this service, so the team can stop arguing.",
+  "expertKey": {
+    "items": [
+      {
+        "id": "capacity-cost",
+        "text": "Works out what each option needs in spare capacity and money from the fleet numbers, and lets that rule an option out or in.",
+        "source": "Martin Fowler, BlueGreenDeployment, https://martinfowler.com/bliki/BlueGreenDeployment.html (copyright Martin Fowler; idea only)"
+      },
+      {
+        "id": "draining",
+        "text": "Handles long-lived sessions: how connections drain or move during each option, and what users see.",
+        "source": "Google SRE book, Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "schema-compat",
+        "text": "Notes that every option runs two versions against one database for a time, so schema changes must work with both.",
+        "source": "Martin Fowler, ParallelChange, https://martinfowler.com/bliki/ParallelChange.html (copyright Martin Fowler; idea only)"
+      },
+      {
+        "id": "rollback-speed",
+        "text": "Compares how fast and how safely each option rolls back against the stated revert limit.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "canary-signal",
+        "text": "If canary is considered, says what traffic share and metrics make the canary signal meaningful for this service.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "revisit",
+        "text": "States the conditions under which the decision should be revisited (for example a capacity or cost change).",
+        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Blue/green is best practice and gives zero downtime.",
+      "Canary, because large companies use it.",
+      "Rolling update, because it is the platform default.",
+      "A pros and cons table with no tie to the service's numbers."
+    ]
+  }
+}

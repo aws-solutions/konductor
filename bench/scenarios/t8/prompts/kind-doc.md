@@ -1,0 +1,25 @@
+## What the hidden part is: a key over a JSON block
+
+The agent writes a document at `{{OUTFILE}}`. It ends with a fenced ```json block holding one JSON object. The request must describe that object's fields in plain words (names, types, units, and that times are ISO 8601 UTC and log evidence is cited as `path:line`, the file path relative to the folder root and the 1-based line number). Do not paste an example block that holds real values from the fixture; a placeholder such as `logs/some.log:123` is fine.
+
+The block's fields for this task: {{BLOCKFIELDS}}
+
+A bench-provided script (`kit/block-key.js`, read its header for the exact rules) grades the block against a key you write. Put the key in `task-draft.json` as `blockKey`: `{ "outputFile": "{{OUTFILE}}", "items": [ ... ] }`, {{NITEMS}} items. Each item has `id`, `type`, an optional `weight` (1 to 3) and the fields of its type:
+- `text` {path, all, none}: the value at a dotted path, as text, matches every regex in `all` and none in `none`.
+- `some` / `none` / `every` {path, match}: list elements matching a matcher `{field?, all?, none?, num?: {gt, gte, lt, lte}, timeNear?: {time, tolMin}, timeIn?: [from, to]}`. `timeNear` without `field` reads the element's `time`.
+- `order` {path, first, then}: the first element matching `first` comes before the first matching `then`.
+- `number` {path, value, tol | tolPct}: a number within the tolerance.
+- `maxLen` {path, max, min}: list length bounds (a precision term: a list that names everything does not win).
+- `inSet` {path, field, fromFile, pattern}: every value of `field` is one of the names a fixture file defines (for example every metric a plan gates on exists in the metrics catalogue).
+- `evidence` {path, groups: [{all, file}], min}: cited `path:line` refs must hit lines whose text matches each group's regexes.
+- `evidencePrecision` {path, relevant, min}: the share of cited lines that are relevant.
+All regexes are JavaScript, case-insensitive, and every regex field (`all`, `none`, `relevant`) is a LIST of strings. A matcher reads only `field`, `all`, `none`, `num`, `timeNear` and `timeIn`; any other key is ignored, so a matcher with only `timeNear` accepts any element at that time. Rules for a fair key:
+- The request never says which suspect is the decoy, and never lists the files or log lines to look at first.
+- Each item tests one thing a careful practitioner gets right and a quick answer gets wrong. Most items are substance: the true cause, the numbers, the times, the constraint respected.
+- Text patterns accept every reasonable phrasing: use alternations with synonyms (`pool|connections?`), and require two or more patterns where one word could appear in a wrong answer. Use `none` to fail an answer that blames the decoy.
+- With `timeNear`, do not also put the time as a literal pattern in `all`: the tolerance must decide. Evidence groups should accept any of the lines that show the same fact (for example every line of one config change).
+- Numbers and times must be derivable from the fixture alone; state units in the request; give a tolerance (times 2 to 5 minutes, counts 3 to 10 percent).
+- The seeded facts come from the generator, so compute the key values from the generated files with a small script, not by hand.
+{{KINDEXTRA}}
+
+Write `solution/` with the reference document at `{{OUTFILE}}` (a real document a senior engineer would write, ending with the block). The tests check is `{ "type": "tests", "cmd": "node --test --test-timeout=15000 block.test.js", "min": <the number of tests: the sum of item weights>, "weight": 3, "kind": "substance" }`. Do not write the grader or `hidden/` yourself; `kit/selfcheck.js` builds it from `blockKey`.

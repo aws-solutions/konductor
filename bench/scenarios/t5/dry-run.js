@@ -18,18 +18,18 @@ const { scoreOf } = require('../t1/dry-run.js');
 const DIR = __dirname;
 const signature = (results) => JSON.stringify(results.map((r) => [r.type, r.passed, r.tests ? [r.tests.passed, r.tests.total] : null]));
 
-function workspace(root, id, reference) {
+function workspace(root, id, reference, dir = DIR) {
   const ws = path.join(root, reference ? 'ref' : 'stub');
-  fs.cpSync(path.join(DIR, 'fixtures', id), ws, { recursive: true });
-  if (reference) fs.cpSync(path.join(DIR, 'solutions', id), ws, { recursive: true });
+  fs.cpSync(path.join(dir, 'fixtures', id), ws, { recursive: true });
+  if (reference) fs.cpSync(path.join(dir, 'solutions', id), ws, { recursive: true });
   return ws;
 }
 
-function runChecks(task, ws, id, env, scratchDir) {
+function runChecks(task, ws, id, env, scratchDir, dir = DIR) {
   return task.checks.map((c) => {
     let r;
     try {
-      r = evalCheck(ws, c, { pristineDir: path.join(DIR, 'fixtures', id), hiddenDir: path.join(DIR, 'hidden', id), env, scratchDir });
+      r = evalCheck(ws, c, { pristineDir: path.join(dir, 'fixtures', id), hiddenDir: path.join(dir, 'hidden', id), env, scratchDir });
     } catch (e) {
       r = { passed: false, detail: e.message };
     }
@@ -37,18 +37,19 @@ function runChecks(task, ws, id, env, scratchDir) {
   });
 }
 
-function dryRun(id, { repeat = 3 } = {}) {
-  const task = JSON.parse(fs.readFileSync(path.join(DIR, `${id}.json`), 'utf8'));
-  const root = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), `t5-dry-${id}-`));
+// `dir` is the batch directory (default T5's); T8 reuses this scorer with its own.
+function dryRun(id, { repeat = 3, dir = DIR } = {}) {
+  const task = JSON.parse(fs.readFileSync(path.join(dir, `${id}.json`), 'utf8'));
+  const root = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), `dry-${id}-`));
   try {
     const env = { ...process.env, TMPDIR: path.join(root, 'tmp') };
     delete env.NODE_TEST_CONTEXT;
     fs.mkdirSync(env.TMPDIR);
     const out = { id, repeat, reference: null, stub: null, deterministic: true };
     for (const [mode, ref] of [['reference', true], ['stub', false]]) {
-      const ws = workspace(root, id, ref);
+      const ws = workspace(root, id, ref, dir);
       const runs = [];
-      for (let i = 0; i < repeat; i++) runs.push(runChecks(task, ws, id, env, path.join(root, 'scratch')));
+      for (let i = 0; i < repeat; i++) runs.push(runChecks(task, ws, id, env, path.join(root, 'scratch'), dir));
       if (new Set(runs.map(signature)).size > 1) out.deterministic = false;
       out[mode] = { ...scoreOf(runs[0]), checks_: runs[0].map((r) => ({ type: r.type, kind: r.kind, weight: r.weight, passed: r.passed, detail: r.detail })) };
     }

@@ -1,0 +1,5 @@
+{
+  "title": "Order sync overview",
+  "panels": ["partner requests", "retry count", "queue depth", "breaker state"],
+  "refreshSeconds": 60
+}

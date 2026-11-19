@@ -1,0 +1,4 @@
+node_modules/
+coverage/
+*.local.json
+.DS_Store

@@ -1,0 +1,6 @@
+service: atlas-auth
+release_channel: stable
+listener: 8443
+client_authentication: required
+trust_bundle: atlas-internal-ca.pem
+request_timeout_ms: 1800
