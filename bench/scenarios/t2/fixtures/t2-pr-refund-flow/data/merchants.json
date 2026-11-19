@@ -1,0 +1,4 @@
+[
+  { "id": "m_green", "name": "Green Grocery", "status": "active" },
+  { "id": "m_blue", "name": "Blue Books", "status": "active" }
+]

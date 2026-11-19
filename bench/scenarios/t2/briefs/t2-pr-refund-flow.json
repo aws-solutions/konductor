@@ -1,0 +1,19 @@
+{
+  "id": "t2-pr-refund-flow",
+  "phase": "code-review",
+  "role": "reviewer",
+  "kind": "pr",
+  "wave": 1,
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "size": "30 to 45",
+  "source": {
+    "url": "https://github.com/killbill/killbill",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js payments backend for a small marketplace (orders, captures, payouts, a ledger module, an HTTP layer on node:http, a job runner, tests, docs). The PR adds partial and full refunds: a POST endpoint, a refunds service, a ledger entry type, a webhook to the merchant, and tests. Plant problems a payments reviewer would catch: a retried request can refund twice (the idempotency helper that exists elsewhere in the repo is not used); the refund amount is computed in floating point although the ledger docs say integer minor units; a merchant can refund another merchant's order (the ownership check the capture path does is missing); the sum of partial refunds can exceed the captured amount under a race (check then write with no lock or conditional update); a log line prints the full card fingerprint and customer email, which the logging doc forbids; the tests cover only the happy path of a full refund. Add one decoy, such as a deliberate rounding rule that matches the ledger doc.",
+  "stack": "node",
+  "pr": 214
+}

@@ -1,0 +1,19 @@
+{
+  "id": "t2-pr-cursor-pages",
+  "phase": "code-review",
+  "role": "reviewer",
+  "kind": "pr",
+  "wave": 2,
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "size": "30 to 45",
+  "source": {
+    "url": "https://github.com/json-api/json-api",
+    "licence": "CC0-1.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js public REST API for a project tracker (issues, comments, users, a storage layer, an API doc in docs/, tests). The PR replaces offset pagination with cursor pagination on list endpoints. Plant: the next cursor is taken from the last item but the query uses greater-or-equal, so one item repeats; sorting is by created time only, which is not unique, so items with equal times are skipped or repeated; the cursor is plain base64 of an internal row offset, so clients can craft it; the page size has no upper bound though the API doc states 100; the response shape changes (data moved under a new key) without the versioning rule the API doc requires; the old offset parameter is silently ignored instead of supported for the stated deprecation window. Add one decoy.",
+  "stack": "node",
+  "pr": 933
+}

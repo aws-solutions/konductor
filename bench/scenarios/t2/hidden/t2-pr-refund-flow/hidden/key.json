@@ -1,0 +1,94 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/http/routes.js",
+      "line": 19,
+      "endLine": 27,
+      "severity": "critical",
+      "fix": [
+        "idempotency",
+        "key",
+        "deduplicate"
+      ],
+      "finding": "The new refund route forwards every retry directly to the service and never uses the repository's idempotency key helper, so a retried request can create two refunds and two ledger entries."
+    },
+    {
+      "id": "k2",
+      "file": "src/refunds/service.js",
+      "line": 18,
+      "endLine": 18,
+      "severity": "medium",
+      "fix": [
+        "minor units",
+        "integer",
+        "parse"
+      ],
+      "finding": "The refund amount is converted with binary floating point instead of the integer minor-unit conversion required by the ledger contract, so valid decimal amounts can be rejected or represented incorrectly.",
+      "slack": 0
+    },
+    {
+      "id": "k3",
+      "file": "src/refunds/service.js",
+      "line": 16,
+      "endLine": 17,
+      "severity": "high",
+      "fix": [
+        "ownership check",
+        "merchant id",
+        "authorize"
+      ],
+      "finding": "The service loads an order without verifying that its merchantId matches the caller, allowing one merchant to refund another merchant's captured order.",
+      "slack": 0
+    },
+    {
+      "id": "k4",
+      "file": "src/refunds/service.js",
+      "line": 24,
+      "endLine": 30,
+      "severity": "critical",
+      "fix": [
+        "atomic",
+        "conditional update",
+        "lock"
+      ],
+      "finding": "The captured-balance check happens before an asynchronous gap and the ledger write has no atomic guard, so concurrent partial refunds can both pass the check and exceed the captured amount."
+    },
+    {
+      "id": "k5",
+      "file": "src/refunds/service.js",
+      "line": 41,
+      "endLine": 45,
+      "severity": "high",
+      "fix": [
+        "redact",
+        "fingerprint",
+        "email"
+      ],
+      "finding": "The refund audit log includes the full card fingerprint and customer email even though the logging contract prohibits both, exposing payment and customer data to log readers."
+    },
+    {
+      "id": "k6",
+      "file": "test/refunds.test.js",
+      "line": 6,
+      "endLine": 22,
+      "severity": "medium",
+      "fix": [
+        "partial",
+        "duplicate",
+        "ownership"
+      ],
+      "finding": "The only refund test covers one successful full refund, leaving the partial, retry, ownership, limit, and malformed-input paths untested so important regressions can pass CI."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "src/money.js",
+      "line": 15,
+      "endLine": 15,
+      "why": "This helper intentionally rounds display values to the nearest integer minor unit, which matches the refund documentation and is separate from the ledger write path."
+    }
+  ]
+}
