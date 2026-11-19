@@ -85,8 +85,10 @@ not per individual commit.
   one with `/sop-<name>`, or by saying yes to `k-full-sdlc` Step 9's scope question, which then
   reads its installed `sop-<name>/SKILL.md` (Claude Code) or `sop-<name>` skill (Kiro CLI) and runs
   it. Step 9 starts neither SOP without that yes, and an unattended run never gets one.
-  The user guide now says which files each harness installs: a Claude Code install has no
-  `.sop.md` copy.
+  Step 9's UI test question now says the pass commits and pushes, and the two SOPs no longer
+  tell an unattended caller to set `scope_confirmed`. The install fails on an `Invocation:` line that is
+  not the exact marker, so a typo cannot open a user-only SOP to the model. The user guide now
+  says which files each harness installs: a Claude Code install has no `.sop.md` copy.
   The skill listing budget test now counts the 16 other SOP descriptions.
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
