@@ -77,10 +77,10 @@ test('the full explanation shows each check with what was observed, the rubric p
     // SR-24: the median of 0.625, 1 and 0.75 is 0.75 (the mean would be 0.792).
     assert.match(text, /rubric median over 3 judge\(s\) = 0\.75 /);
     assert.match(text, /renormalised weights \(each \/ 0\.5\): checks 0\.4, rubric 0\.6/);
-    // checks term 0 (one failed), rubric 0.75: 100 * (0.4*0 + 0.6*0.75) = 45
-    assert.match(text, /= 45\.00\n {3}qualityOfRun\(\) = 45\.00 {2}\(agrees with the line above\)/);
-    assert.match(text, /\[A\] checks scored as a fraction \(1\/2 = 0\.5.*quality 45\.00 -> 65\.0/);
-    assert.match(text, /\[B\] every check passed: quality 45\.00 -> 85\.0/);
+    // checks term 0.5 (one of two substance checks failed), rubric 0.75: 100 * (0.4*0.5 + 0.6*0.75) = 65
+    assert.match(text, /= 65\.00\n {3}qualityOfRun\(\) = 65\.00 {2}\(agrees with the line above\)/);
+    assert.match(text, /\[A\] checks scored all or nothing, the old rule \(1\/2 passed = 0.*quality 65\.00 -> 45\.0/);
+    assert.match(text, /\[B\] every check passed: quality 65\.00 -> 85\.0/);
   } finally { cleanup(root); }
 });
 
@@ -96,16 +96,16 @@ test('an unjudged run drops the rubric component and says so', () => {
   } finally { cleanup(root); }
 });
 
-test('a fractional scoring file changes the checks term and the label', () => {
+test('the all-or-nothing scoring file changes the checks term and the label', () => {
   const root = tmp();
   try {
     const { bench, runDir } = multiArm(root);
-    const frac = path.join(root, 'frac.json');
-    write(frac, JSON.stringify({ weights: { hidden: 0.5, checks: 0.2, rubric: 0.3 }, checks: 'fraction' }));
-    const text = explain(root, runDir, bench, { filter: { arm: 'vanilla', rep: 1 }, scoringFile: frac });
-    assert.match(text, /Component score \(fraction passed\): checks = 0\.5/);
-    assert.match(text, /\(checks scored as fraction\)/);
-    assert.match(text, /= 65\.00\n/);
+    const all = path.join(root, 'all.json');
+    write(all, JSON.stringify({ weights: { hidden: 0.5, checks: 0.2, rubric: 0.3 }, checks: 'all' }));
+    const text = explain(root, runDir, bench, { filter: { arm: 'vanilla', rep: 1 }, scoringFile: all });
+    assert.match(text, /Component score \(all-or-nothing\): checks = 0/);
+    assert.match(text, /\(checks scored as all\)/);
+    assert.match(text, /= 45\.00\n/);
   } finally { cleanup(root); }
 });
 

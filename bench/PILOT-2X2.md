@@ -39,9 +39,9 @@ real cost of each cell, and prove the pipeline end to end (run, judge, combine).
 ## Units
 
 Quality is a 0 to 100 score, the repository formula (hidden tests 0.5, checks 0.2, rubric 0.3, renormalised over the parts a run
-has). It is compared across all four cells. By default the checks part is 1 only when every check passed. With no hidden
-tests, one failed check then costs 40 points. `--scoring bench/profiles/scoring-fractional.json` scores the checks part as
-passed / total instead, with the same weights; the report names the mode on its weights line.
+has). It is compared across all four cells. By default the checks part is the weighted share of substance checks passed (format checks are reported, not scored). With no hidden
+tests, one failed check of five costs 8 points. `--scoring bench/profiles/scoring-all.json` restores the old rule (1 only when every
+check passed), with the same weights; the report names the mode on its weights line when it is not the default.
 
 The rubric part of quality depends on the evidence-quote rule. The default is lenient (tightened: a quote with 20 or more
 unsupported letters is rejected); `--scoring bench/profiles/scoring-strict-quotes.json` selects strict, which reproduces the numbers

@@ -111,6 +111,16 @@
               "intended",
               "invariant"
             ]
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0
+          },
+          "kind": {
+            "enum": [
+              "substance",
+              "format"
+            ]
           }
         }
       }
