@@ -37,6 +37,9 @@ function stage(draftDir, briefFile, mapFile, reviewFile) {
   const review = reviewFile ? readJson(reviewFile) : null;
   const rubric = [...(d.rubric ?? [])];
   for (const p of PAD_RUBRIC) if (rubric.length < 3 && !rubric.some((r) => r.id === p.id)) rubric.push(p);
+  // Judge-only expert key of a framing, ideation or planning task (owner rule): written by the lead from public
+  // sources into tools/expert-keys.json, never shown to the agent.
+  const keys = fs.existsSync(path.join(__dirname, 'expert-keys.json')) ? readJson(path.join(__dirname, 'expert-keys.json')) : {};
   const softSec = Math.max(300, d.limits?.softSec ?? 600);
   const task = {
     id, class: 'design', version: 1, phase: brief.phase, role: brief.role,
@@ -46,6 +49,7 @@ function stage(draftDir, briefFile, mapFile, reviewFile) {
     fixture: id, hidden: id, timeoutSec: softSec * 2,
     limits: { softSec, hardSec: softSec * 2 },
     checks: d.checks, rubric, tiers: ['full'],
+    ...(keys[id] ? { expertKey: keys[id] } : {}),
     targetSkills: map.targetSkills ?? [], targetSop: map.targetSop ?? null, targetAgent: map.targetAgent ?? null,
     controlKind: brief.kind === 'twin' ? 'twin' : brief.kind === 'negative' ? 'negative' : 'none',
     ...(brief.twinOf ? { twinOf: brief.twinOf } : {}),
