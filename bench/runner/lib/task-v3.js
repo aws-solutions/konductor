@@ -55,6 +55,8 @@ function v3Errors(task) {
   const must = task.loadCheck?.mustLoad ?? [];
   const both = (task.loadCheck?.mustNotLoad ?? []).filter((n) => must.includes(n));
   if (both.length) errors.push(`loadCheck lists ${both.join(', ')} as both mustLoad and mustNotLoad`);
+  // The schema subset has no maxItems: an expert key names 3 to 5 weak answers.
+  if ((task.expertKey?.weakAnswers?.length ?? 0) > 5) errors.push('expertKey.weakAnswers holds 3 to 5 answers');
   // A v3 task (one with a phase) records where its idea came from; old tasks are exempt.
   if (task.phase !== undefined && !task.authorship) errors.push('a v3 task (with phase) needs authorship with a source');
   if (task.authorship && task.review && task.authorship.family === task.review.family) errors.push('review.family must differ from authorship.family');

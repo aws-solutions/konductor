@@ -1,0 +1,8 @@
+{
+  "notes": [
+    "The duplicate-refund risk is easy to miss because a reusable request-key helper already exists elsewhere.",
+    "The amount contract, logging restrictions, and capture authorization live in separate files from the new service.",
+    "The check-then-write gap matters only when requests overlap, while the added test exercises one successful full refund.",
+    "The nearest-minor-unit helper is an intentional decoy and should not be reported as a defect."
+  ]
+}

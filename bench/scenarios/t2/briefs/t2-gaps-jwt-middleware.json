@@ -1,0 +1,19 @@
+{
+  "id": "t2-gaps-jwt-middleware",
+  "phase": "code-review",
+  "role": "reviewer",
+  "kind": "gaps",
+  "wave": 1,
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
+  "size": "30 to 45",
+  "source": {
+    "url": "https://github.com/auth0/node-jsonwebtoken",
+    "licence": "MIT",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Node.js internal API for a team scheduling app, with a hand-written token module (HMAC and RSA signing helpers it already has), routes, a user store, tests and docs. The PR replaces session cookies with bearer tokens: new middleware that verifies tokens, a refresh endpoint, role checks on admin routes. A teammate's review already caught some real issues. Plant what that review missed: the verifier takes the algorithm from the token header, so a token signed with the public key as an HMAC secret passes; expiry is compared in milliseconds against a seconds claim, so tokens never expire in practice; refresh tokens are not rotated or revoked, though the security doc requires it; the role check reads the role from the token instead of the store, although roles can be removed; the 401 error body echoes the token; no test covers an expired or tampered token.",
+  "stack": "node",
+  "pr": 87
+}

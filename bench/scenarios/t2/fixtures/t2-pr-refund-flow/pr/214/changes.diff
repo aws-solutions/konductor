@@ -1,0 +1,229 @@
+diff --git a/docs/refunds.md b/docs/refunds.md
+new file mode 100644
+index 0000000..68ff7af
+--- /dev/null
++++ b/docs/refunds.md
+@@ -0,0 +1,52 @@
++# Refunds
++
++`POST /v1/orders/:orderId/refund` accepts an amount such as `12.50` and
++returns a refund id. The route emits `refund.created` for the merchant after
++the ledger entry is written. Full and partial refunds use the same endpoint.
++
++The amount must not exceed the order's captured balance. A refund is recorded
++as a positive `refund` entry with the order and merchant ids attached; balance
++projections apply the account direction when they consume the entry.
++
++For display values, currency conversion uses nearest-minor-unit rounding.
++Merchant identity is supplied in `x-merchant-id`, as it is for captures.
++
++## Request shape
++
++The request body contains an `amount` decimal string. The order id comes from
++the URL, and the merchant header identifies the account making the request.
++The optional card object supplies provider context for the payment adapter.
++
++```json
++{
++  "amount": "12.50",
++  "card": { "fingerprint": "fp_test_123" },
++  "customerEmail": "buyer@example.invalid"
++}
++```
++
++## Response shape
++
++A successful request returns status `201` and a refund record with its id,
++order id, merchant id, amount in minor units, and `succeeded` status. The
++merchant event contains the refund id, order id, and the same minor-unit
++amount. Event consumers can use the refund id as their delivery key.
++
++A missing order returns `404`. An order that is not captured returns `409`, as
++does an amount larger than the captured balance. Invalid or non-positive input
++returns `400`.
++
++## Ledger and delivery
++
++The ledger write is the source of truth for the refund. The merchant event is
++queued after that write and is delivered by the normal event worker. A worker
++may retry delivery, so event consumers should make their own side effects
++safe to repeat.
++
++The service keeps the route and ledger entry small so the durable adapter can
++replace the memory store without changing the public response. Provider
++references remain outside the ledger payload and belong to the payment
++adapter's audit record. Support tooling can locate a refund by its public id.
++The public id is stable for the lifetime of the refund record.
++The order remains available for later reconciliation and support searches.
++The event payload intentionally mirrors the ledger amount.
+diff --git a/src/http/routes.js b/src/http/routes.js
+index b564546..6ff4a93 100644
+--- a/src/http/routes.js
++++ b/src/http/routes.js
+@@ -2,6 +2,7 @@ import { readJson } from './body.js';
+ import { merchantFrom } from './auth.js';
+ import { route } from './router.js';
+ import { captureOrder } from '../orders/capture.js';
++import { refundOrder } from '../refunds/service.js';
+ 
+ export function routes({ store }) {
+   return [
+@@ -14,6 +15,18 @@ export function routes({ store }) {
+         amountMinor: body.amountMinor
+       });
+       return { status: 200, body: order };
++    }),
++    route('POST', '/v1/orders/:orderId/refund', async ({ request, params }) => {
++      const body = await readJson(request);
++      const refund = await refundOrder({
++        store,
++        merchantId: merchantFrom(request),
++        orderId: params.orderId,
++        amount: body.amount,
++        card: body.card,
++        customerEmail: body.customerEmail
++      });
++      return { status: 201, body: refund };
+     })
+   ];
+ }
+diff --git a/src/ledger/entries.js b/src/ledger/entries.js
+index 8d10cdb..4d7c850 100644
+--- a/src/ledger/entries.js
++++ b/src/ledger/entries.js
+@@ -1,6 +1,7 @@
+ export const entryTypes = Object.freeze({
+   capture: 'capture',
+-  payout: 'payout'
++  payout: 'payout',
++  refund: 'refund'
+ });
+ 
+ export function isKnownEntryType(type) {
+diff --git a/src/money.js b/src/money.js
+index 6bbd7fa..f573db8 100644
+--- a/src/money.js
++++ b/src/money.js
+@@ -10,3 +10,7 @@ export function asMinorUnits(value, exponent = 2) {
+ export function formatMinorUnits(value, exponent = 2) {
+   return (value / (10 ** exponent)).toFixed(exponent);
+ }
++
++export function roundToMinor(value, exponent = 2) {
++  return Math.round(value * (10 ** exponent));
++}
+diff --git a/src/payouts/service.js b/src/payouts/payout-service.js
+similarity index 100%
+rename from src/payouts/service.js
+rename to src/payouts/payout-service.js
+diff --git a/src/refunds/service.js b/src/refunds/service.js
+new file mode 100644
+index 0000000..f0549a0
+--- /dev/null
++++ b/src/refunds/service.js
+@@ -0,0 +1,48 @@
++import { conflict, badRequest } from '../errors.js';
++import { findOrder } from '../orders/repository.js';
++import { appendEntry, entriesForOrder } from '../ledger/ledger.js';
++import { refundEvent } from '../webhooks/events.js';
++import { logger } from '../logging/logger.js';
++import { makeId } from '../utils/ids.js';
++
++const log = logger();
++
++function totalRefunded(store, orderId) {
++  return entriesForOrder(store, orderId)
++    .filter((entry) => entry.type === 'refund')
++    .reduce((sum, entry) => sum + entry.amountMinor, 0);
++}
++
++export async function refundOrder({ store, merchantId, orderId, amount, card, customerEmail }) {
++  const order = findOrder(store, orderId);
++  const refundMinor = Number(amount) * 100;
++  if (!Number.isFinite(refundMinor) || refundMinor <= 0) {
++    throw badRequest('refund amount must be positive');
++  }
++  if (order.status !== 'captured') throw conflict('order is not captured');
++
++  const refundedMinor = totalRefunded(store, orderId);
++  const remainingMinor = order.capturedMinor - refundedMinor;
++  if (refundMinor > remainingMinor) throw conflict('refund exceeds captured amount');
++
++  await Promise.resolve();
++
++  const refund = { id: makeId('ref'), orderId, merchantId, amountMinor: refundMinor, status: 'succeeded' };
++  appendEntry(store, {
++    type: 'refund',
++    orderId,
++    merchantId,
++    amountMinor: refundMinor,
++    sourceId: refund.id
++  });
++  order.refundedMinor = (order.refundedMinor || 0) + refundMinor;
++  store.saveOrder(order);
++  refundEvent(store, merchantId, refund);
++  log.info('refund.created', {
++    orderId,
++    refundId: refund.id,
++    cardFingerprint: card?.fingerprint,
++    customerEmail
++  });
++  return refund;
++}
+diff --git a/src/webhooks/events.js b/src/webhooks/events.js
+index ba4ae3c..67c4b50 100644
+--- a/src/webhooks/events.js
++++ b/src/webhooks/events.js
+@@ -3,3 +3,11 @@ import { makeId } from '../utils/ids.js';
+ export function queueMerchantEvent(store, merchantId, type, payload) {
+   return store.addEvent({ id: makeId('evt'), merchantId, type, payload, createdAt: new Date().toISOString() });
+ }
++
++export function refundEvent(store, merchantId, refund) {
++  return queueMerchantEvent(store, merchantId, 'refund.created', {
++    refundId: refund.id,
++    orderId: refund.orderId,
++    amountMinor: refund.amountMinor
++  });
++}
+diff --git a/test/payouts.test.js b/test/payouts.test.js
+index cae8eb6..4c70735 100644
+--- a/test/payouts.test.js
++++ b/test/payouts.test.js
+@@ -1,6 +1,6 @@
+ import test from 'node:test';
+ import assert from 'node:assert/strict';
+-import { createPayout } from '../src/payouts/service.js';
++import { createPayout } from '../src/payouts/payout-service.js';
+ import { orderStore } from './helpers.js';
+ 
+ test('payout adds an outbox job and ledger entry', () => {
+diff --git a/test/refunds.test.js b/test/refunds.test.js
+new file mode 100644
+index 0000000..8d3ed16
+--- /dev/null
++++ b/test/refunds.test.js
+@@ -0,0 +1,23 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { refundOrder } from '../src/refunds/service.js';
++import { orderStore } from './helpers.js';
++
++test('refund creates a full refund ledger entry and merchant event', async () => {
++  const store = orderStore();
++  const refund = await refundOrder({
++    store,
++    merchantId: 'm_green',
++    orderId: 'ord_test',
++    amount: '25.00',
++    card: { fingerprint: 'fp_test_123' },
++    customerEmail: 'buyer@example.invalid'
++  });
++
++  assert.equal(refund.status, 'succeeded');
++  assert.equal(refund.amountMinor, 2500);
++  assert.equal(store.entries[0].type, 'refund');
++  assert.equal(store.entries[0].amountMinor, 2500);
++  assert.equal(store.events[0].type, 'refund.created');
++  assert.equal(store.events[0].payload.refundId, refund.id);
++});

@@ -1,0 +1,11 @@
+{
+  "targetSkills": ["code-review", "adversarial-code-review", "backend-review"],
+  "targetSop": "k-code-review-workflow",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": ["code-review", "adversarial-code-review"],
+    "mustNotLoad": ["frontend-review", "design-evaluation"]
+  },
+  "twinIdea": "Write E2E tests for the refund flow covering duplicate request scenarios.",
+  "why": "This is a backend code review of a PR affecting merchant-critical refund behavior. The code-review skill handles standard PR review, and adversarial-code-review catches the data integrity and security gaps (duplicate refunds, idempotency) that standard review misses—exactly what the hidden notes flag."
+}

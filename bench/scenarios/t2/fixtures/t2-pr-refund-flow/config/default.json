@@ -1,0 +1,6 @@
+{
+  "port": 8080,
+  "captureWindowMinutes": 30,
+  "payoutHoldHours": 24,
+  "maxOrderMinor": 2500000
+}

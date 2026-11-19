@@ -33,4 +33,6 @@ Write these into the current directory:
    - `notes`: 3 to 6 short sentences for the reviewer: the traps you built in, what a lazy answer would miss, and what the reference changes.
 5. Run your own checks before you finish: put `fixture/` plus `solution/` in a scratch folder, run the existing tests and the hidden tests, and run the hidden tests against the plain `fixture/` to confirm at most 20% pass. Fix what fails. Then print a short list of what you verified.
 
+Be economical: write each file once, in few large steps, verify at most twice, and finish within about 60 tool calls.
+
 Keep everything plain, original and free of any internal names, host paths, usernames or secrets. Stop when the files are written and verified.
