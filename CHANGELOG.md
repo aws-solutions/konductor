@@ -438,6 +438,15 @@ not per individual commit.
 
 ### Fixed
 
+- Three skill descriptions now say what each skill takes in and puts out, so the model can tell
+  them from their neighbors. `requirements-extraction` is for handing finished requirements and
+  stories to an architect, once stories exist. `trade-off-evaluator` is for a side-by-side
+  comparison of options for a design decision, with a pick. `status-reporting` turns done, late and blocked work
+  into a weekly update with a RAG rating. The `about-konductor` SOP overview says it is not for
+  real work. Together the three descriptions are 11 characters shorter, so the Claude Code
+  skill listing shrinks. The descriptions keep the nouns a skill search is likely to use
+  ("decision", "comparison") and leave out the words of requests they exclude, because
+  `find_skills` matches any part of a description.
 - `konductor` now declares the 46 role skills the specialists use (such as `dynamodb-design`,
   `code-review`, `program-planning` and `e2e-test-strategy`), so the single-writer `konductor` on
   Kiro CLI can see and load them instead of writing without them. Claude Code could already load
