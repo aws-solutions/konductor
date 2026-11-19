@@ -15,5 +15,6 @@
   },
   "brief": "Phase: code review. Role of the person asking: reviewer. Repo kind: a Python 3.12 service that syncs invoices to an accounting provider over HTTP using urllib.request, with a small client wrapper, a job queue, tests and docs. The PR adds retries with backoff to the client. Plant: POST requests that create invoices are retried with no idempotency key, so a timeout after success creates a duplicate; backoff has no jitter and no cap, so a provider outage makes all workers hammer in lockstep and sleep for hours; the retry loop catches BaseException, so a shutdown signal is swallowed; no request timeout is set although the provider doc says requests can hang; Retry-After is parsed as seconds although the provider sends an HTTP date; the new test patches time.sleep in the wrong module, so it asserts nothing. Add one decoy.",
   "stack": "python",
-  "pr": 1290
+  "pr": 1290,
+  "dropped": "2026-11-19: re-review after the fix round found two key items for one problem; replaced by t2-pr-retry-backoff"
 }

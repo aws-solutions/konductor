@@ -1,0 +1,19 @@
+cluster: product-search-primary
+currency: USD
+nodes:
+  data: 3
+  coordinator: 2
+volume_gib_per_data_node: 750
+observed:
+  current_used_gib_per_data_node: 506
+  free_gib_per_data_node: 244
+  current_primary_data_gib_cluster: 610
+  current_replica_data_gib_cluster: 610
+forecast:
+  new_primary_data_gib_cluster: 568
+  new_replica_data_gib_cluster: 568
+  monthly_primary_growth_percent: 8
+operating_limits:
+  minimum_free_percent: 15
+  maximum_jvm_heap_percent: 50
+  rebalance_bandwidth_mib_per_sec: 40

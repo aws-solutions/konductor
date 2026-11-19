@@ -1,0 +1,11 @@
+{
+  "verdicts": [
+    { "check": "leak", "verdict": "pass", "note": "Prompt asks standard PR review without naming methods, hinting at problems, or giving count." },
+    { "check": "ambiguity", "verdict": "pass", "note": "Clear instructions: review PR 508, check against docs, write REVIEW.md with location/severity/issue/fix format." },
+    { "check": "ceiling", "verdict": "pass", "note": "Six key items are scattered across files and require careful reading; quick skim would miss several." },
+    { "check": "floor", "verdict": "pass", "note": "All six items are findable at the cited lines; severities are defensible for senior reviewers." },
+    { "check": "hidden-answer", "verdict": "pass", "note": "No comments, tests, or file names point at the planted problems; decoy is documented." }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}
