@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { RunEvent } from '../execution/core/run-follow';
+import { timestampMs } from '../execution/core/timestamp';
 
 /** The answer of `GET /api/runs/{id}/events`, as `api/openapi.yaml` gives it. */
 export interface RunEventsAnswer {
@@ -36,6 +37,11 @@ function isText(value: unknown): value is string {
   return typeof value === 'string';
 }
 
+// A time of the contract, read by the same strict parser the reducer uses.
+function isTimestamp(value: unknown): value is string {
+  return isText(value) && timestampMs(value) !== undefined;
+}
+
 function stageStateOf(seq: number, fields: Fields): RunEvent | undefined {
   const { stage, status, reason } = fields;
   if (!isText(stage) || !STAGE_STATUSES.has(status)) return undefined;
@@ -60,7 +66,7 @@ function consoleOf(seq: number, fields: Fields): RunEvent | undefined {
 
 function runFinishedOf(seq: number, fields: Fields): RunEvent | undefined {
   const { at, status, exit_code } = fields;
-  if (!isText(at) || !RUN_STATUSES.has(status)) return undefined;
+  if (!isTimestamp(at) || !RUN_STATUSES.has(status)) return undefined;
   if (!isWholeAtLeast(exit_code, 0)) return undefined;
   return {
     seq,
