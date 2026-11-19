@@ -1,0 +1,6 @@
+{
+  "service": "lantern-order-service",
+  "runtime": "nodejs24.x",
+  "memory": 256,
+  "timeout": 30
+}
