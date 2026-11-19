@@ -1,0 +1,4 @@
+[
+  { "method": "GET", "path": "/stock/north/BEANS-1KG" },
+  { "method": "GET", "path": "/warehouses" }
+]
