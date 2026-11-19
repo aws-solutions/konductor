@@ -2,7 +2,7 @@
 
 Every model call made to write, map or review a T2 task, in order. Calls ran through Kiro CLI 3.5.0 in an empty work dir with an isolated home (no steering, rules, skills, MCP servers; memory disabled). Credits are read from the call's own stream; a call stopped before its final metering event shows "not captured".
 
-Total captured: 89.76 credits over 31 calls.
+Total captured: 137.41 credits over 48 calls.
 
 | Time (UTC) | Task | Step | Model | Seconds | Credits | Result |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -37,3 +37,20 @@ Total captured: 89.76 credits over 31 calls.
 | 2026-11-19T19:39:33.531Z | t2-sec-pr-webhook-relay | author2 | gpt-5.6-luna | 115 | 2.63 | ok |
 | 2026-11-19T19:39:55Z | t2-sec-pr-webhook-relay | map | glm-5 | 19 | 0.51 | ok |
 | 2026-11-19T19:41:35Z | t2-sec-pr-webhook-relay | review | qwen3-coder-next | 99 | 0.43 | ok |
+| 2026-11-19T20:07:44Z | t2-pr-retry-client | author | deepseek-3.2 | 1245 | 9.80 | ok |
+| 2026-11-19T20:08:07Z | t2-pr-retry-client | map | glm-5 | 19 | 0.51 | ok |
+| 2026-11-19T20:19:01Z | t2-pr-retry-client | review | minimax-m2.5 | 654 | 2.92 | ok |
+| 2026-11-19T20:30:59.362Z | t2-pr-retry-client | fix | deepseek-3.2 | 718 | 17.03 | ok |
+| 2026-11-19T20:41:46Z | t2-pr-retry-client | review | minimax-m2.5 | 644 | 2.12 | ok |
+| 2026-11-19T20:43:39Z | t2-dr-search-reindex | author | gpt-5.6-luna | 112 | 1.85 | ok |
+| 2026-11-19T20:44:15Z | t2-dr-search-reindex | map | glm-5 | 33 | 0.50 | ok |
+| 2026-11-19T20:45:08Z | t2-dr-search-reindex | review | glm-5 | 52 | 1.31 | ok |
+| 2026-11-19T20:48:56Z | t2-pr-price-cache | author | gpt-5.6-luna | 227 | 4.41 | ok |
+| 2026-11-19T20:49:21Z | t2-pr-price-cache | map | glm-5 | 21 | 0.52 | ok |
+| 2026-11-19T20:50:25Z | t2-pr-price-cache | review | qwen3-coder-next | 64 | 0.30 | ok |
+| 2026-11-19T20:54:13Z | t2-dr-rate-limits | author | deepseek-3.2 | 228 | 0.00 | exit 143 |
+| 2026-11-19T20:55:02.052Z | t2-dr-search-reindex | expert | gpt-5.6-luna | 15 | 0.44 | ok |
+| 2026-11-19T20:59:52.743Z | t2-dr-rate-limits | author2 | deepseek-3.2 | 284 | 3.21 | ok |
+| 2026-11-19T21:00:38.818Z | t2-dr-rate-limits | expert | deepseek-3.2 | 46 | 0.93 | ok |
+| 2026-11-19T21:01:06Z | t2-dr-rate-limits | map | glm-5 | 23 | 0.52 | ok |
+| 2026-11-19T21:07:14Z | t2-dr-rate-limits | review | minimax-m2.5 | 367 | 1.26 | ok |

@@ -50,7 +50,7 @@ test('every task has its fixture, hidden tests and reference, and its ids match'
 
 // Owner rule (2026-11-19): threat-model, IAM design, IaC review and security-design tasks carry a judge-only expertKey whose
 // items name their public source by name and URL.
-const NEEDS_EXPERT_KEY = new Set(['t4-threat-model-webhooks', 't4-iam-ci-deploy-role', 't4-iam-lambda-role-split', 't4-iac-review-terraform', 't4-dev-sql-report-filters', 't4-arch-tenant-abac', 't4-iam-vendor-trust', 't4-iam-privesc-groups', 't4-iam-bucket-policy-oac']);
+const NEEDS_EXPERT_KEY = new Set(['t4-threat-model-webhooks', 't4-iam-ci-deploy-role', 't4-iam-lambda-role-split', 't4-iac-review-terraform', 't4-dev-sql-report-filters', 't4-arch-tenant-abac', 't4-iam-vendor-trust', 't4-iam-privesc-groups', 't4-iam-bucket-policy-oac', 't4-secrets-in-repo', 't4-dev-path-traversal-files']);
 test('tasks that need an expertKey have one, with 3 to 5 weak answers and a named source URL per item', () => {
   for (const t of tasks.filter((x) => NEEDS_EXPERT_KEY.has(x.id))) {
     assert.ok(t.expertKey, `${t.id} has no expertKey`);

@@ -1,0 +1,19 @@
+release: 3.8.0
+applied_at: 2025-04-08T14:00:00Z
+service: search-api
+changes:
+  - key: query_cache.enabled
+    from: false
+    to: true
+  - key: query_cache.key
+    from: null
+    to: full_query
+  - key: query_cache.max_entries
+    from: 0
+    to: null
+  - key: query_cache.ttl_seconds
+    from: 0
+    to: 900
+  - key: response_compression.level
+    from: 5
+    to: 6

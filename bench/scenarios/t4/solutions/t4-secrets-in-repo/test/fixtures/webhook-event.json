@@ -1,0 +1,6 @@
+{
+  "id": "evt-example-123",
+  "type": "notification.delivered",
+  "payload": {"messageId": "msg-example-456", "status": "delivered"},
+  "signature": "fixture-signature-placeholder"
+}

@@ -1,0 +1,567 @@
+2025-08-19T00:00:21Z INFO request_id=req-52349176 service=session-router health check passed assigned=185 drain_remaining=1
+2025-08-19T00:02:54Z INFO request_id=req-55440794 service=session-router slow request method=POST path=/route latency_ms=1122
+2025-08-19T00:05:15Z DEBUG request_id=req-94381645 service=session-router websocket assigned host=rr-n-13 room=room-561 pool_wait_ms=125
+2025-08-19T00:07:46Z DEBUG request_id=req-18851116 service=session-router health check passed assigned=140 drain_remaining=14
+2025-08-19T00:10:36Z INFO request_id=req-81571700 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T00:13:21Z INFO request_id=req-64957720 service=session-router health check passed assigned=217 drain_remaining=14
+2025-08-19T00:15:52Z INFO request_id=req-66776298 service=session-router session closed code=1000 duration_min=25
+2025-08-19T00:18:31Z INFO request_id=req-14392596 service=session-router websocket assigned host=rr-n-16 room=room-815 pool_wait_ms=56
+2025-08-19T00:21:08Z WARN request_id=req-70628275 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T00:23:33Z INFO request_id=req-32459698 service=session-router health check passed assigned=183 drain_remaining=11
+2025-08-19T00:25:54Z INFO request_id=req-43688835 service=session-router slow request method=POST path=/route latency_ms=1228
+2025-08-19T00:28:34Z DEBUG request_id=req-90838418 service=session-router slow request method=POST path=/route latency_ms=679
+2025-08-19T00:31:15Z INFO request_id=req-91025547 service=session-router slow request method=POST path=/route latency_ms=1155
+2025-08-19T00:33:45Z DEBUG request_id=req-61142201 service=session-router health check passed assigned=138 drain_remaining=0
+2025-08-19T00:36:15Z DEBUG request_id=req-85859683 service=session-router health check passed assigned=157 drain_remaining=9
+2025-08-19T00:38:53Z INFO request_id=req-96215097 service=session-router websocket assigned host=rr-n-06 room=room-730 pool_wait_ms=50
+2025-08-19T00:41:32Z INFO request_id=req-91611082 service=session-router health check passed assigned=205 drain_remaining=9
+2025-08-19T00:43:48Z INFO request_id=req-49652948 service=session-router health check passed assigned=234 drain_remaining=15
+2025-08-19T00:46:29Z INFO request_id=req-24872519 service=session-router health check passed assigned=114 drain_remaining=10
+2025-08-19T00:49:05Z INFO request_id=req-33427711 service=session-router session closed code=1000 duration_min=9
+2025-08-19T00:51:51Z INFO request_id=req-62540403 service=session-router health check passed assigned=132 drain_remaining=16
+2025-08-19T00:54:16Z INFO request_id=req-50304328 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T00:56:56Z INFO request_id=req-50885561 service=session-router websocket assigned host=rr-n-04 room=room-774 pool_wait_ms=47
+2025-08-19T00:59:39Z INFO request_id=req-53422427 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T01:01:43Z INFO request_id=req-41552132 service=session-router websocket assigned host=rr-n-13 room=room-637 pool_wait_ms=43
+2025-08-19T01:04:51Z INFO request_id=req-83545710 service=session-router health check passed assigned=219 drain_remaining=8
+2025-08-19T01:07:04Z INFO request_id=req-97830211 service=session-router session closed code=1000 duration_min=24
+2025-08-19T01:09:43Z WARN request_id=req-56980618 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T01:12:06Z INFO request_id=req-49914289 service=session-router session closed code=1000 duration_min=30
+2025-08-19T01:15:01Z WARN request_id=req-69469435 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T01:17:39Z INFO request_id=req-85537370 service=session-router slow request method=POST path=/route latency_ms=1022
+2025-08-19T01:20:12Z WARN request_id=req-52911461 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T01:22:49Z INFO request_id=req-15623492 service=session-router health check passed assigned=184 drain_remaining=4
+2025-08-19T01:24:57Z INFO request_id=req-45102815 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T01:27:30Z INFO request_id=req-16028262 service=session-router websocket assigned host=rr-n-16 room=room-775 pool_wait_ms=116
+2025-08-19T01:30:19Z INFO request_id=req-76400267 service=session-router slow request method=POST path=/route latency_ms=1181
+2025-08-19T01:32:53Z INFO request_id=req-33732385 service=session-router websocket assigned host=rr-n-09 room=room-417 pool_wait_ms=82
+2025-08-19T01:35:21Z INFO request_id=req-80619588 service=session-router health check passed assigned=111 drain_remaining=1
+2025-08-19T01:38:09Z INFO request_id=req-63745925 service=session-router session closed code=1000 duration_min=5
+2025-08-19T01:40:37Z INFO request_id=req-45299498 service=session-router slow request method=POST path=/route latency_ms=768
+2025-08-19T01:43:25Z DEBUG request_id=req-30012158 service=session-router slow request method=POST path=/route latency_ms=1077
+2025-08-19T01:45:42Z INFO request_id=req-22516787 service=session-router slow request method=POST path=/route latency_ms=1423
+2025-08-19T01:48:33Z INFO request_id=req-42357497 service=session-router websocket assigned host=rr-n-03 room=room-986 pool_wait_ms=31
+2025-08-19T01:50:47Z INFO request_id=req-95265518 service=session-router websocket assigned host=rr-n-02 room=room-473 pool_wait_ms=124
+2025-08-19T01:53:37Z INFO request_id=req-87676837 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T01:56:03Z INFO request_id=req-52384527 service=session-router session closed code=1000 duration_min=33
+2025-08-19T01:58:25Z INFO request_id=req-63264091 service=session-router slow request method=POST path=/route latency_ms=1196
+2025-08-19T02:01:21Z INFO request_id=req-44704848 service=session-router health check passed assigned=230 drain_remaining=8
+2025-08-19T02:03:45Z INFO request_id=req-60876299 service=session-router health check passed assigned=162 drain_remaining=16
+2025-08-19T02:06:08Z WARN request_id=req-84284937 service=session-router websocket assigned host=rr-n-09 room=room-652 pool_wait_ms=44
+2025-08-19T02:08:51Z INFO request_id=req-66506393 service=session-router session closed code=1000 duration_min=29
+2025-08-19T02:11:14Z DEBUG request_id=req-18234914 service=session-router session closed code=1000 duration_min=18
+2025-08-19T02:13:49Z DEBUG request_id=req-49764536 service=session-router websocket assigned host=rr-n-11 room=room-437 pool_wait_ms=131
+2025-08-19T02:16:22Z DEBUG request_id=req-17836414 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T02:18:52Z INFO request_id=req-96424091 service=session-router websocket assigned host=rr-n-18 room=room-516 pool_wait_ms=24
+2025-08-19T02:21:35Z DEBUG request_id=req-15307063 service=session-router health check passed assigned=191 drain_remaining=16
+2025-08-19T02:24:27Z INFO request_id=req-64556533 service=session-router session closed code=1000 duration_min=18
+2025-08-19T02:27:05Z INFO request_id=req-61145178 service=session-router session closed code=1000 duration_min=6
+2025-08-19T02:29:08Z INFO request_id=req-97878152 service=session-router slow request method=POST path=/route latency_ms=1206
+2025-08-19T02:31:53Z INFO request_id=req-16210690 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T02:34:36Z WARN request_id=req-86316923 service=session-router health check passed assigned=110 drain_remaining=7
+2025-08-19T02:36:56Z DEBUG request_id=req-64152814 service=session-router session closed code=1000 duration_min=31
+2025-08-19T02:39:26Z INFO request_id=req-92574697 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T02:42:19Z WARN request_id=req-69070770 service=session-router session closed code=1000 duration_min=20
+2025-08-19T02:44:46Z INFO request_id=req-79405835 service=session-router health check passed assigned=166 drain_remaining=11
+2025-08-19T02:47:40Z INFO request_id=req-33590564 service=session-router session closed code=1000 duration_min=35
+2025-08-19T02:49:51Z DEBUG request_id=req-13181168 service=session-router session closed code=1000 duration_min=12
+2025-08-19T02:52:18Z WARN request_id=req-99165889 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T02:55:25Z INFO request_id=req-31411463 service=session-router slow request method=POST path=/route latency_ms=999
+2025-08-19T02:57:28Z INFO request_id=req-99321211 service=session-router session closed code=1000 duration_min=36
+2025-08-19T03:00:21Z INFO request_id=req-21032507 service=session-router session closed code=1000 duration_min=1
+2025-08-19T03:03:04Z WARN request_id=req-66326878 service=session-router slow request method=POST path=/route latency_ms=1239
+2025-08-19T03:05:41Z INFO request_id=req-29816755 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T03:07:55Z WARN request_id=req-77915510 service=session-router slow request method=POST path=/route latency_ms=1181
+2025-08-19T03:10:29Z INFO request_id=req-16272914 service=session-router session closed code=1000 duration_min=6
+2025-08-19T03:13:22Z WARN request_id=req-84491954 service=session-router slow request method=POST path=/route latency_ms=1273
+2025-08-19T03:15:58Z INFO request_id=req-22855190 service=session-router session closed code=1000 duration_min=3
+2025-08-19T03:18:07Z INFO request_id=req-14709065 service=session-router slow request method=POST path=/route latency_ms=783
+2025-08-19T03:20:40Z WARN request_id=req-44583206 service=session-router slow request method=POST path=/route latency_ms=1405
+2025-08-19T03:23:14Z WARN request_id=req-39431660 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T03:26:15Z INFO request_id=req-71442658 service=session-router websocket assigned host=rr-n-01 room=room-467 pool_wait_ms=131
+2025-08-19T03:28:51Z INFO request_id=req-12860167 service=session-router slow request method=POST path=/route latency_ms=1096
+2025-08-19T03:31:24Z INFO request_id=req-81952417 service=session-router websocket assigned host=rr-n-18 room=room-922 pool_wait_ms=100
+2025-08-19T03:33:52Z INFO request_id=req-39214420 service=session-router health check passed assigned=137 drain_remaining=13
+2025-08-19T03:36:05Z DEBUG request_id=req-30132891 service=session-router slow request method=POST path=/route latency_ms=1159
+2025-08-19T03:39:07Z INFO request_id=req-15705751 service=session-router websocket assigned host=rr-n-17 room=room-183 pool_wait_ms=24
+2025-08-19T03:41:34Z WARN request_id=req-93355939 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T03:44:14Z INFO request_id=req-72009704 service=session-router session closed code=1000 duration_min=15
+2025-08-19T03:46:39Z INFO request_id=req-26794772 service=session-router health check passed assigned=118 drain_remaining=16
+2025-08-19T03:48:52Z INFO request_id=req-27057235 service=session-router session closed code=1000 duration_min=33
+2025-08-19T03:51:45Z INFO request_id=req-62437679 service=session-router session closed code=1000 duration_min=5
+2025-08-19T03:54:12Z INFO request_id=req-96568098 service=session-router slow request method=POST path=/route latency_ms=712
+2025-08-19T03:56:56Z DEBUG request_id=req-98658906 service=session-router health check passed assigned=130 drain_remaining=3
+2025-08-19T03:59:22Z INFO request_id=req-65734083 service=session-router slow request method=POST path=/route latency_ms=891
+2025-08-19T04:02:01Z INFO request_id=req-69370569 service=session-router session closed code=1000 duration_min=13
+2025-08-19T04:04:28Z INFO request_id=req-84682827 service=session-router session closed code=1000 duration_min=31
+2025-08-19T04:06:56Z INFO request_id=req-53306638 service=session-router slow request method=POST path=/route latency_ms=1079
+2025-08-19T04:09:40Z DEBUG request_id=req-95477515 service=session-router websocket assigned host=rr-n-12 room=room-409 pool_wait_ms=103
+2025-08-19T04:12:31Z INFO request_id=req-51078741 service=session-router health check passed assigned=137 drain_remaining=0
+2025-08-19T04:15:02Z DEBUG request_id=req-23548519 service=session-router websocket assigned host=rr-n-09 room=room-763 pool_wait_ms=42
+2025-08-19T04:17:15Z INFO request_id=req-12916123 service=session-router websocket assigned host=rr-n-17 room=room-630 pool_wait_ms=91
+2025-08-19T04:19:50Z INFO request_id=req-33387176 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T04:22:35Z DEBUG request_id=req-63787964 service=session-router session closed code=1000 duration_min=27
+2025-08-19T04:24:52Z DEBUG request_id=req-21271561 service=session-router websocket assigned host=rr-n-05 room=room-610 pool_wait_ms=32
+2025-08-19T04:27:55Z INFO request_id=req-68517576 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T04:30:10Z INFO request_id=req-76138889 service=session-router health check passed assigned=187 drain_remaining=5
+2025-08-19T04:32:46Z WARN request_id=req-66983817 service=session-router session closed code=1000 duration_min=13
+2025-08-19T04:35:42Z INFO request_id=req-24260642 service=session-router websocket assigned host=rr-n-01 room=room-906 pool_wait_ms=81
+2025-08-19T04:38:12Z INFO request_id=req-86282052 service=session-router health check passed assigned=235 drain_remaining=2
+2025-08-19T04:40:24Z INFO request_id=req-58327925 service=session-router slow request method=POST path=/route latency_ms=1193
+2025-08-19T04:43:25Z INFO request_id=req-44726922 service=session-router health check passed assigned=96 drain_remaining=0
+2025-08-19T04:45:50Z INFO request_id=req-98062437 service=session-router session closed code=1000 duration_min=28
+2025-08-19T04:48:32Z INFO request_id=req-93862730 service=session-router slow request method=POST path=/route latency_ms=716
+2025-08-19T04:50:42Z WARN request_id=req-55370271 service=session-router websocket assigned host=rr-n-08 room=room-394 pool_wait_ms=116
+2025-08-19T04:53:25Z DEBUG request_id=req-84515727 service=session-router health check passed assigned=125 drain_remaining=7
+2025-08-19T04:55:56Z INFO request_id=req-97922272 service=session-router session closed code=1000 duration_min=27
+2025-08-19T04:58:51Z INFO request_id=req-41403682 service=session-router session closed code=1000 duration_min=22
+2025-08-19T05:00:55Z INFO request_id=req-78813039 service=session-router health check passed assigned=86 drain_remaining=16
+2025-08-19T05:03:59Z DEBUG request_id=req-65826630 service=session-router slow request method=POST path=/route latency_ms=1198
+2025-08-19T05:06:34Z INFO request_id=req-94570409 service=session-router slow request method=POST path=/route latency_ms=973
+2025-08-19T05:09:04Z INFO request_id=req-82645867 service=session-router session closed code=1000 duration_min=17
+2025-08-19T05:11:10Z INFO request_id=req-55759775 service=session-router session closed code=1000 duration_min=3
+2025-08-19T05:13:48Z DEBUG request_id=req-15894625 service=session-router session closed code=1000 duration_min=18
+2025-08-19T05:16:17Z WARN request_id=req-69269526 service=session-router slow request method=POST path=/route latency_ms=938
+2025-08-19T05:19:00Z INFO request_id=req-49179927 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T05:21:43Z INFO request_id=req-65584287 service=session-router health check passed assigned=229 drain_remaining=16
+2025-08-19T05:24:05Z INFO request_id=req-77999539 service=session-router session closed code=1000 duration_min=31
+2025-08-19T05:26:34Z INFO request_id=req-65329205 service=session-router health check passed assigned=225 drain_remaining=10
+2025-08-19T05:29:28Z INFO request_id=req-33476018 service=session-router session closed code=1000 duration_min=4
+2025-08-19T05:31:56Z INFO request_id=req-21044887 service=session-router slow request method=POST path=/route latency_ms=1146
+2025-08-19T05:34:46Z INFO request_id=req-30797010 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T05:37:24Z WARN request_id=req-26452130 service=session-router slow request method=POST path=/route latency_ms=691
+2025-08-19T05:39:50Z WARN request_id=req-60238031 service=session-router websocket assigned host=rr-n-15 room=room-248 pool_wait_ms=76
+2025-08-19T05:42:20Z DEBUG request_id=req-71529018 service=session-router websocket assigned host=rr-n-16 room=room-994 pool_wait_ms=49
+2025-08-19T05:44:35Z INFO request_id=req-80881622 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T05:47:27Z WARN request_id=req-82514974 service=session-router websocket assigned host=rr-n-18 room=room-915 pool_wait_ms=110
+2025-08-19T05:50:11Z INFO request_id=req-85266860 service=session-router websocket assigned host=rr-n-10 room=room-870 pool_wait_ms=87
+2025-08-19T05:52:44Z INFO request_id=req-14864813 service=session-router websocket assigned host=rr-n-08 room=room-991 pool_wait_ms=115
+2025-08-19T05:55:09Z INFO request_id=req-92663568 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T05:57:53Z INFO request_id=req-37047627 service=session-router slow request method=POST path=/route latency_ms=820
+2025-08-19T06:00:13Z INFO request_id=req-98914226 service=session-router websocket assigned host=rr-n-03 room=room-803 pool_wait_ms=56
+2025-08-19T06:02:47Z INFO request_id=req-75196816 service=session-router health check passed assigned=96 drain_remaining=16
+2025-08-19T06:05:39Z WARN request_id=req-19949472 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T06:08:05Z DEBUG request_id=req-48809953 service=session-router session closed code=1000 duration_min=30
+2025-08-19T06:10:40Z INFO request_id=req-25639399 service=session-router session closed code=1000 duration_min=3
+2025-08-19T06:13:20Z WARN request_id=req-38746111 service=session-router session closed code=1000 duration_min=31
+2025-08-19T06:15:57Z INFO request_id=req-60262662 service=session-router websocket assigned host=rr-n-09 room=room-819 pool_wait_ms=108
+2025-08-19T06:18:09Z INFO request_id=req-12470112 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T06:21:07Z INFO request_id=req-97689347 service=session-router slow request method=POST path=/route latency_ms=1094
+2025-08-19T06:23:39Z WARN request_id=req-67535304 service=session-router session closed code=1000 duration_min=2
+2025-08-19T06:25:53Z INFO request_id=req-81687400 service=session-router websocket assigned host=rr-n-02 room=room-917 pool_wait_ms=64
+2025-08-19T06:28:20Z DEBUG request_id=req-51400869 service=session-router health check passed assigned=182 drain_remaining=13
+2025-08-19T06:31:02Z WARN request_id=req-40434869 service=session-router slow request method=POST path=/route latency_ms=1193
+2025-08-19T06:33:57Z INFO request_id=req-77876111 service=session-router session closed code=1000 duration_min=31
+2025-08-19T06:36:11Z INFO request_id=req-25627661 service=session-router slow request method=POST path=/route latency_ms=1295
+2025-08-19T06:39:06Z WARN request_id=req-38896032 service=session-router health check passed assigned=88 drain_remaining=3
+2025-08-19T06:41:37Z WARN request_id=req-75808948 service=session-router session closed code=1000 duration_min=18
+2025-08-19T06:44:16Z DEBUG request_id=req-80147947 service=session-router websocket assigned host=rr-n-07 room=room-764 pool_wait_ms=29
+2025-08-19T06:46:45Z DEBUG request_id=req-30337413 service=session-router session closed code=1000 duration_min=6
+2025-08-19T06:48:55Z WARN request_id=req-38812514 service=session-router slow request method=POST path=/route latency_ms=1248
+2025-08-19T06:51:47Z WARN request_id=req-33928443 service=session-router slow request method=POST path=/route latency_ms=1116
+2025-08-19T06:54:14Z INFO request_id=req-84403213 service=session-router session closed code=1000 duration_min=32
+2025-08-19T06:57:03Z WARN request_id=req-37705582 service=session-router health check passed assigned=229 drain_remaining=4
+2025-08-19T06:59:26Z INFO request_id=req-86211529 service=session-router session closed code=1000 duration_min=24
+2025-08-19T07:01:56Z INFO request_id=req-76339098 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T07:04:27Z WARN request_id=req-37993083 service=session-router session closed code=1000 duration_min=22
+2025-08-19T07:07:02Z INFO request_id=req-41372530 service=session-router websocket assigned host=rr-n-05 room=room-622 pool_wait_ms=68
+2025-08-19T07:09:56Z INFO request_id=req-35759421 service=session-router session closed code=1000 duration_min=14
+2025-08-19T07:12:05Z INFO request_id=req-71923868 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T07:15:06Z INFO request_id=req-82125073 service=session-router websocket assigned host=rr-n-17 room=room-629 pool_wait_ms=106
+2025-08-19T07:17:13Z INFO request_id=req-83625441 service=session-router slow request method=POST path=/route latency_ms=944
+2025-08-19T07:20:08Z INFO request_id=req-55855784 service=session-router slow request method=POST path=/route latency_ms=1275
+2025-08-19T07:22:42Z INFO request_id=req-14824591 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T07:24:58Z WARN request_id=req-94603660 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T07:27:37Z INFO request_id=req-92650947 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T07:30:29Z INFO request_id=req-69606200 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T07:32:48Z INFO request_id=req-92462493 service=session-router health check passed assigned=185 drain_remaining=8
+2025-08-19T07:35:27Z INFO request_id=req-87323151 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T07:37:51Z INFO request_id=req-90002355 service=session-router health check passed assigned=233 drain_remaining=14
+2025-08-19T07:40:28Z DEBUG request_id=req-76379150 service=session-router session closed code=1000 duration_min=13
+2025-08-19T07:42:59Z INFO request_id=req-70124257 service=session-router session closed code=1000 duration_min=37
+2025-08-19T07:45:31Z INFO request_id=req-24130073 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T07:48:31Z DEBUG request_id=req-86262768 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T07:51:08Z INFO request_id=req-32765196 service=session-router health check passed assigned=130 drain_remaining=11
+2025-08-19T07:53:42Z INFO request_id=req-32081498 service=session-router slow request method=POST path=/route latency_ms=735
+2025-08-19T07:55:42Z DEBUG request_id=req-30930096 service=session-router slow request method=POST path=/route latency_ms=1097
+2025-08-19T07:58:25Z INFO request_id=req-13205313 service=session-router slow request method=POST path=/route latency_ms=660
+2025-08-19T08:01:01Z INFO request_id=req-12190722 service=session-router slow request method=POST path=/route latency_ms=1020
+2025-08-19T08:03:42Z INFO request_id=req-82251846 service=session-router slow request method=POST path=/route latency_ms=946
+2025-08-19T08:06:25Z INFO request_id=req-71427112 service=session-router websocket assigned host=rr-n-18 room=room-560 pool_wait_ms=46
+2025-08-19T08:08:47Z INFO request_id=req-65032551 service=session-router health check passed assigned=181 drain_remaining=8
+2025-08-19T08:11:12Z INFO request_id=req-30881175 service=session-router health check passed assigned=135 drain_remaining=11
+2025-08-19T08:14:03Z INFO request_id=req-31419375 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T08:16:25Z DEBUG request_id=req-37185655 service=session-router slow request method=POST path=/route latency_ms=679
+2025-08-19T08:18:55Z DEBUG request_id=req-48216816 service=session-router slow request method=POST path=/route latency_ms=1444
+2025-08-19T08:21:31Z INFO request_id=req-70203579 service=session-router session closed code=1000 duration_min=34
+2025-08-19T08:24:02Z DEBUG request_id=req-36063193 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T08:27:05Z WARN request_id=req-12223879 service=session-router websocket assigned host=rr-n-02 room=room-413 pool_wait_ms=63
+2025-08-19T08:29:23Z DEBUG request_id=req-38510744 service=session-router websocket assigned host=rr-n-17 room=room-227 pool_wait_ms=61
+2025-08-19T08:31:59Z INFO request_id=req-20912889 service=session-router health check passed assigned=92 drain_remaining=10
+2025-08-19T08:34:32Z DEBUG request_id=req-45980124 service=session-router websocket assigned host=rr-n-13 room=room-993 pool_wait_ms=110
+2025-08-19T08:37:03Z WARN request_id=req-60566904 service=session-router session closed code=1000 duration_min=31
+2025-08-19T08:39:40Z INFO request_id=req-94269989 service=session-router health check passed assigned=107 drain_remaining=7
+2025-08-19T08:42:24Z DEBUG request_id=req-52087951 service=session-router slow request method=POST path=/route latency_ms=765
+2025-08-19T08:44:44Z WARN request_id=req-28705563 service=session-router health check passed assigned=122 drain_remaining=12
+2025-08-19T08:47:33Z DEBUG request_id=req-72242706 service=session-router slow request method=POST path=/route latency_ms=1390
+2025-08-19T08:50:16Z INFO request_id=req-93531450 service=session-router slow request method=POST path=/route latency_ms=679
+2025-08-19T08:52:34Z WARN request_id=req-17262143 service=session-router slow request method=POST path=/route latency_ms=855
+2025-08-19T08:55:14Z WARN request_id=req-74198276 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T08:57:44Z WARN request_id=req-77759000 service=session-router session closed code=1000 duration_min=27
+2025-08-19T09:00:13Z INFO request_id=req-21069118 service=session-router slow request method=POST path=/route latency_ms=896
+2025-08-19T09:02:49Z INFO request_id=req-48090218 service=session-router websocket assigned host=rr-n-02 room=room-832 pool_wait_ms=135
+2025-08-19T09:05:42Z INFO request_id=req-71655921 service=session-router session closed code=1000 duration_min=12
+2025-08-19T09:07:59Z INFO request_id=req-41866842 service=session-router websocket assigned host=rr-n-11 room=room-713 pool_wait_ms=91
+2025-08-19T09:10:50Z WARN request_id=req-25024957 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T09:13:09Z WARN request_id=req-26868140 service=session-router health check passed assigned=135 drain_remaining=15
+2025-08-19T09:15:40Z WARN request_id=req-74610828 service=session-router health check passed assigned=203 drain_remaining=17
+2025-08-19T09:18:13Z WARN request_id=req-78853391 service=session-router health check passed assigned=191 drain_remaining=3
+2025-08-19T09:20:56Z INFO request_id=req-25796259 service=session-router session closed code=1000 duration_min=27
+2025-08-19T09:23:32Z WARN request_id=req-48387770 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T09:26:02Z DEBUG request_id=req-62025539 service=session-router slow request method=POST path=/route latency_ms=1385
+2025-08-19T09:28:42Z INFO request_id=req-46513641 service=session-router slow request method=POST path=/route latency_ms=1093
+2025-08-19T09:31:16Z INFO request_id=req-18276739 service=session-router session closed code=1000 duration_min=6
+2025-08-19T09:33:56Z INFO request_id=req-64707122 service=session-router health check passed assigned=213 drain_remaining=14
+2025-08-19T09:36:29Z INFO request_id=req-51279501 service=session-router health check passed assigned=87 drain_remaining=7
+2025-08-19T09:39:05Z INFO request_id=req-20267571 service=session-router session closed code=1000 duration_min=28
+2025-08-19T09:41:35Z INFO request_id=req-27025162 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T09:43:44Z WARN request_id=req-88122973 service=session-router slow request method=POST path=/route latency_ms=947
+2025-08-19T09:46:33Z INFO request_id=req-92080254 service=session-router websocket assigned host=rr-n-14 room=room-370 pool_wait_ms=64
+2025-08-19T09:49:24Z WARN request_id=req-56761526 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T09:51:41Z INFO request_id=req-30408778 service=session-router health check passed assigned=140 drain_remaining=0
+2025-08-19T09:54:25Z INFO request_id=req-94439006 service=session-router websocket assigned host=rr-n-11 room=room-550 pool_wait_ms=137
+2025-08-19T09:56:55Z DEBUG request_id=req-49277786 service=session-router health check passed assigned=106 drain_remaining=1
+2025-08-19T09:59:18Z INFO request_id=req-26996341 service=session-router slow request method=POST path=/route latency_ms=1053
+2025-08-19T10:02:06Z WARN request_id=req-87051470 service=session-router session closed code=1000 duration_min=30
+2025-08-19T10:04:32Z DEBUG request_id=req-22707514 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T10:07:13Z INFO request_id=req-74656723 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T10:09:51Z WARN request_id=req-48558617 service=session-router websocket assigned host=rr-n-14 room=room-446 pool_wait_ms=134
+2025-08-19T10:12:24Z DEBUG request_id=req-23372080 service=session-router websocket assigned host=rr-n-03 room=room-719 pool_wait_ms=68
+2025-08-19T10:14:50Z WARN request_id=req-38456378 service=session-router slow request method=POST path=/route latency_ms=1374
+2025-08-19T10:17:28Z INFO request_id=req-75488976 service=session-router session closed code=1000 duration_min=31
+2025-08-19T10:19:58Z INFO request_id=req-35379844 service=session-router slow request method=POST path=/route latency_ms=701
+2025-08-19T10:22:30Z INFO request_id=req-92247787 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T10:24:54Z WARN request_id=req-70594909 service=session-router websocket assigned host=rr-n-02 room=room-738 pool_wait_ms=60
+2025-08-19T10:27:41Z INFO request_id=req-24593899 service=session-router slow request method=POST path=/route latency_ms=653
+2025-08-19T10:30:29Z INFO request_id=req-69874150 service=session-router websocket assigned host=rr-n-17 room=room-571 pool_wait_ms=97
+2025-08-19T10:32:59Z INFO request_id=req-77458492 service=session-router health check passed assigned=147 drain_remaining=15
+2025-08-19T10:35:12Z WARN request_id=req-20676042 service=session-router health check passed assigned=217 drain_remaining=2
+2025-08-19T10:37:42Z INFO request_id=req-88346242 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T10:40:44Z INFO request_id=req-81656106 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T10:43:25Z INFO request_id=req-69103969 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T10:45:52Z INFO request_id=req-25869095 service=session-router slow request method=POST path=/route latency_ms=1448
+2025-08-19T10:48:32Z WARN request_id=req-79181061 service=session-router slow request method=POST path=/route latency_ms=1052
+2025-08-19T10:50:53Z INFO request_id=req-46708046 service=session-router session closed code=1000 duration_min=10
+2025-08-19T10:53:42Z DEBUG request_id=req-29285195 service=session-router session closed code=1000 duration_min=34
+2025-08-19T10:55:50Z DEBUG request_id=req-35273382 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T10:58:46Z DEBUG request_id=req-31340043 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T11:01:06Z DEBUG request_id=req-63315757 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T11:03:26Z INFO request_id=req-56621205 service=session-router slow request method=POST path=/route latency_ms=955
+2025-08-19T11:06:09Z INFO request_id=req-45503228 service=session-router health check passed assigned=89 drain_remaining=9
+2025-08-19T11:08:54Z WARN request_id=req-83079584 service=session-router websocket assigned host=rr-n-18 room=room-959 pool_wait_ms=134
+2025-08-19T11:11:29Z INFO request_id=req-74472717 service=session-router websocket assigned host=rr-n-01 room=room-847 pool_wait_ms=29
+2025-08-19T11:14:08Z INFO request_id=req-86256415 service=session-router websocket assigned host=rr-n-08 room=room-243 pool_wait_ms=62
+2025-08-19T11:16:47Z INFO request_id=req-34180314 service=session-router websocket assigned host=rr-n-15 room=room-401 pool_wait_ms=80
+2025-08-19T11:18:59Z DEBUG request_id=req-30380775 service=session-router session closed code=1000 duration_min=26
+2025-08-19T11:21:51Z WARN request_id=req-23655944 service=session-router websocket assigned host=rr-n-07 room=room-158 pool_wait_ms=34
+2025-08-19T11:24:12Z INFO request_id=req-53314042 service=session-router session closed code=1000 duration_min=26
+2025-08-19T11:26:58Z INFO request_id=req-69946001 service=session-router session closed code=1000 duration_min=33
+2025-08-19T11:29:13Z DEBUG request_id=req-20544417 service=session-router health check passed assigned=113 drain_remaining=8
+2025-08-19T11:32:16Z DEBUG request_id=req-16206117 service=session-router websocket assigned host=rr-n-07 room=room-669 pool_wait_ms=97
+2025-08-19T11:34:33Z INFO request_id=req-19701549 service=session-router session closed code=1000 duration_min=40
+2025-08-19T11:37:06Z INFO request_id=req-66719035 service=session-router slow request method=POST path=/route latency_ms=1364
+2025-08-19T11:39:42Z INFO request_id=req-29726655 service=session-router health check passed assigned=115 drain_remaining=2
+2025-08-19T11:42:25Z DEBUG request_id=req-40332632 service=session-router slow request method=POST path=/route latency_ms=796
+2025-08-19T11:44:57Z INFO request_id=req-83534779 service=session-router session closed code=1000 duration_min=22
+2025-08-19T11:47:28Z DEBUG request_id=req-66412325 service=session-router slow request method=POST path=/route latency_ms=1027
+2025-08-19T11:49:49Z WARN request_id=req-61217789 service=session-router websocket assigned host=rr-n-12 room=room-693 pool_wait_ms=51
+2025-08-19T11:52:49Z INFO request_id=req-78611159 service=session-router health check passed assigned=230 drain_remaining=2
+2025-08-19T11:55:14Z WARN request_id=req-73301537 service=session-router health check passed assigned=106 drain_remaining=0
+2025-08-19T11:57:29Z DEBUG request_id=req-79512821 service=session-router session closed code=1000 duration_min=37
+2025-08-19T12:00:22Z WARN request_id=req-72590400 service=session-router session closed code=1000 duration_min=24
+2025-08-19T12:03:00Z INFO request_id=req-12374589 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T12:05:19Z INFO request_id=req-91092198 service=session-router slow request method=POST path=/route latency_ms=797
+2025-08-19T12:07:46Z INFO request_id=req-26204442 service=session-router session closed code=1000 duration_min=26
+2025-08-19T12:10:18Z INFO request_id=req-90997768 service=session-router health check passed assigned=92 drain_remaining=9
+2025-08-19T12:13:17Z WARN request_id=req-23449168 service=session-router websocket assigned host=rr-n-06 room=room-781 pool_wait_ms=41
+2025-08-19T12:15:40Z DEBUG request_id=req-29124296 service=session-router slow request method=POST path=/route latency_ms=652
+2025-08-19T12:18:16Z INFO request_id=req-36262074 service=session-router session closed code=1000 duration_min=35
+2025-08-19T12:21:01Z DEBUG request_id=req-38461374 service=session-router websocket assigned host=rr-n-17 room=room-406 pool_wait_ms=83
+2025-08-19T12:23:36Z INFO request_id=req-99336505 service=session-router session closed code=1000 duration_min=24
+2025-08-19T12:26:00Z WARN request_id=req-61941844 service=session-router slow request method=POST path=/route latency_ms=950
+2025-08-19T12:28:46Z WARN request_id=req-61617424 service=session-router health check passed assigned=196 drain_remaining=6
+2025-08-19T12:31:17Z INFO request_id=req-99596598 service=session-router slow request method=POST path=/route latency_ms=812
+2025-08-19T12:33:39Z DEBUG request_id=req-68678116 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T12:36:04Z INFO request_id=req-80270658 service=session-router websocket assigned host=rr-n-11 room=room-746 pool_wait_ms=120
+2025-08-19T12:38:48Z DEBUG request_id=req-49808418 service=session-router slow request method=POST path=/route latency_ms=1415
+2025-08-19T12:41:23Z INFO request_id=req-61244103 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T12:44:09Z INFO request_id=req-81703916 service=session-router websocket assigned host=rr-n-13 room=room-901 pool_wait_ms=76
+2025-08-19T12:46:40Z INFO request_id=req-59104127 service=session-router websocket assigned host=rr-n-06 room=room-982 pool_wait_ms=35
+2025-08-19T12:48:57Z INFO request_id=req-85270132 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T12:51:49Z INFO request_id=req-19728255 service=session-router websocket assigned host=rr-n-02 room=room-762 pool_wait_ms=21
+2025-08-19T12:54:27Z WARN request_id=req-26522743 service=session-router websocket assigned host=rr-n-08 room=room-352 pool_wait_ms=64
+2025-08-19T12:56:40Z DEBUG request_id=req-27373571 service=session-router websocket assigned host=rr-n-01 room=room-274 pool_wait_ms=132
+2025-08-19T12:59:38Z INFO request_id=req-50550688 service=session-router websocket assigned host=rr-n-13 room=room-844 pool_wait_ms=28
+2025-08-19T13:01:50Z WARN request_id=req-83569474 service=session-router websocket assigned host=rr-n-09 room=room-653 pool_wait_ms=131
+2025-08-19T13:04:34Z INFO request_id=req-90444813 service=session-router session closed code=1000 duration_min=35
+2025-08-19T13:07:01Z INFO request_id=req-55447062 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T13:09:39Z INFO request_id=req-68924443 service=session-router websocket assigned host=rr-n-11 room=room-585 pool_wait_ms=130
+2025-08-19T13:12:24Z INFO request_id=req-58916079 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T13:14:54Z INFO request_id=req-63429076 service=session-router session closed code=1000 duration_min=40
+2025-08-19T13:17:27Z INFO request_id=req-52199304 service=session-router slow request method=POST path=/route latency_ms=963
+2025-08-19T13:20:09Z INFO request_id=req-91553414 service=session-router session closed code=1000 duration_min=29
+2025-08-19T13:22:27Z DEBUG request_id=req-39578551 service=session-router websocket assigned host=rr-n-09 room=room-300 pool_wait_ms=108
+2025-08-19T13:25:17Z DEBUG request_id=req-71891744 service=session-router session closed code=1000 duration_min=13
+2025-08-19T13:27:28Z INFO request_id=req-71909209 service=session-router health check passed assigned=168 drain_remaining=17
+2025-08-19T13:30:03Z DEBUG request_id=req-61607622 service=session-router slow request method=POST path=/route latency_ms=1288
+2025-08-19T13:32:45Z INFO request_id=req-79337109 service=session-router slow request method=POST path=/route latency_ms=1379
+2025-08-19T13:35:18Z INFO request_id=req-60757116 service=session-router websocket assigned host=rr-n-16 room=room-743 pool_wait_ms=12
+2025-08-19T13:37:55Z INFO request_id=req-45899421 service=session-router health check passed assigned=144 drain_remaining=8
+2025-08-19T13:40:41Z INFO request_id=req-51798459 service=session-router health check passed assigned=102 drain_remaining=16
+2025-08-19T13:43:18Z DEBUG request_id=req-34439456 service=session-router slow request method=POST path=/route latency_ms=1358
+2025-08-19T13:45:26Z INFO request_id=req-64403704 service=session-router websocket assigned host=rr-n-18 room=room-293 pool_wait_ms=82
+2025-08-19T13:48:12Z INFO request_id=req-99783945 service=session-router health check passed assigned=172 drain_remaining=3
+2025-08-19T13:50:39Z INFO request_id=req-77432395 service=session-router health check passed assigned=118 drain_remaining=2
+2025-08-19T13:53:28Z WARN request_id=req-79004530 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T13:55:42Z INFO request_id=req-27195777 service=session-router session closed code=1000 duration_min=19
+2025-08-19T13:58:31Z INFO request_id=req-50835065 service=session-router slow request method=POST path=/route latency_ms=777
+2025-08-19T14:01:19Z INFO request_id=req-44057022 service=session-router session closed code=1000 duration_min=17
+2025-08-19T14:03:33Z INFO request_id=req-10862335 service=session-router session closed code=1000 duration_min=17
+2025-08-19T14:06:07Z INFO request_id=req-50091204 service=session-router session closed code=1000 duration_min=2
+2025-08-19T14:08:34Z WARN request_id=req-93621806 service=session-router health check passed assigned=131 drain_remaining=9
+2025-08-19T14:11:31Z WARN request_id=req-97574733 service=session-router session closed code=1000 duration_min=12
+2025-08-19T14:14:03Z WARN request_id=req-43233663 service=session-router websocket assigned host=rr-n-11 room=room-853 pool_wait_ms=54
+2025-08-19T14:16:30Z INFO request_id=req-32856711 service=session-router health check passed assigned=195 drain_remaining=14
+2025-08-19T14:19:02Z INFO request_id=req-17567159 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T14:21:35Z INFO request_id=req-59629098 service=session-router session closed code=1000 duration_min=34
+2025-08-19T14:24:17Z WARN request_id=req-35136006 service=session-router session closed code=1000 duration_min=13
+2025-08-19T14:27:06Z DEBUG request_id=req-58354478 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T14:29:31Z WARN request_id=req-18897456 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T14:32:10Z WARN request_id=req-21748862 service=session-router config reload completed key=upstream_pool_per_host old=240 new=120 change_id=chg-8841
+2025-08-19T14:32:13Z WARN request_id=req-23447518 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T14:32:28Z WARN request_id=req-59867532 service=session-router upstream connection pool wait exceeded threshold pool_wait_ms=418 active=120 queued=37
+2025-08-19T14:32:41Z ERROR request_id=req-32305874 service=session-router websocket assignment failed reason=upstream_pool_exhausted retrying=true
+2025-08-19T14:32:54Z WARN request_id=req-95291716 service=session-router retry burst observed attempts=2 reconnects=86 window_seconds=30
+2025-08-19T14:34:10Z INFO request_id=req-22915542 service=session-router release exposure stopped reason=health_signal
+2025-08-19T14:34:22Z INFO request_id=req-55747361 service=session-router health check passed assigned=80 drain_remaining=15
+2025-08-19T14:37:10Z DEBUG request_id=req-14072775 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T14:37:10Z INFO request_id=req-41055750 service=session-router config reload completed key=upstream_pool_per_host old=120 new=240 change_id=chg-8841-revert
+2025-08-19T14:39:54Z INFO request_id=req-49455134 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T14:40:10Z INFO request_id=req-29642818 service=session-router pool wait recovered pool_wait_ms=72 queued=0
+2025-08-19T14:42:25Z INFO request_id=req-89881426 service=session-router websocket assigned host=rr-n-17 room=room-123 pool_wait_ms=137
+2025-08-19T14:45:00Z WARN request_id=req-92185111 service=session-router websocket assigned host=rr-n-07 room=room-771 pool_wait_ms=91
+2025-08-19T14:47:26Z DEBUG request_id=req-59066289 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T14:50:13Z INFO request_id=req-35609650 service=session-router websocket assigned host=rr-n-04 room=room-953 pool_wait_ms=84
+2025-08-19T14:52:28Z INFO request_id=req-84273041 service=session-router health check passed assigned=231 drain_remaining=16
+2025-08-19T14:55:04Z INFO request_id=req-14625742 service=session-router health check passed assigned=101 drain_remaining=10
+2025-08-19T14:57:40Z INFO request_id=req-65300415 service=session-router slow request method=POST path=/route latency_ms=795
+2025-08-19T15:00:27Z INFO request_id=req-38965340 service=session-router health check passed assigned=239 drain_remaining=17
+2025-08-19T15:03:01Z INFO request_id=req-11720508 service=session-router websocket assigned host=rr-n-03 room=room-462 pool_wait_ms=54
+2025-08-19T15:05:28Z INFO request_id=req-56928928 service=session-router websocket assigned host=rr-n-11 room=room-473 pool_wait_ms=115
+2025-08-19T15:07:52Z WARN request_id=req-38646789 service=session-router session closed code=1000 duration_min=18
+2025-08-19T15:10:21Z WARN request_id=req-77252847 service=session-router websocket assigned host=rr-n-09 room=room-325 pool_wait_ms=134
+2025-08-19T15:12:58Z WARN request_id=req-32102687 service=session-router websocket assigned host=rr-n-06 room=room-673 pool_wait_ms=32
+2025-08-19T15:15:47Z INFO request_id=req-26274431 service=session-router slow request method=POST path=/route latency_ms=910
+2025-08-19T15:18:03Z INFO request_id=req-44391734 service=session-router slow request method=POST path=/route latency_ms=1304
+2025-08-19T15:20:58Z INFO request_id=req-27362146 service=session-router session closed code=1000 duration_min=28
+2025-08-19T15:23:34Z INFO request_id=req-76051986 service=session-router slow request method=POST path=/route latency_ms=1340
+2025-08-19T15:26:09Z DEBUG request_id=req-92297571 service=session-router websocket assigned host=rr-n-03 room=room-435 pool_wait_ms=83
+2025-08-19T15:28:21Z INFO request_id=req-85788216 service=session-router session closed code=1000 duration_min=22
+2025-08-19T15:30:53Z INFO request_id=req-66303192 service=session-router slow request method=POST path=/route latency_ms=761
+2025-08-19T15:33:49Z INFO request_id=req-75344336 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T15:36:33Z DEBUG request_id=req-92575311 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T15:38:37Z WARN request_id=req-33163843 service=session-router health check passed assigned=230 drain_remaining=5
+2025-08-19T15:41:16Z INFO request_id=req-12611582 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T15:44:13Z INFO request_id=req-24089473 service=session-router slow request method=POST path=/route latency_ms=1332
+2025-08-19T15:46:44Z INFO request_id=req-67709854 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T15:49:01Z INFO request_id=req-20732202 service=session-router health check passed assigned=208 drain_remaining=8
+2025-08-19T15:51:53Z INFO request_id=req-15691564 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T15:54:05Z DEBUG request_id=req-54060417 service=session-router slow request method=POST path=/route latency_ms=1442
+2025-08-19T15:56:39Z INFO request_id=req-87563990 service=session-router slow request method=POST path=/route latency_ms=1203
+2025-08-19T15:59:20Z INFO request_id=req-31375776 service=session-router slow request method=POST path=/route latency_ms=961
+2025-08-19T16:01:56Z INFO request_id=req-50008914 service=session-router health check passed assigned=181 drain_remaining=3
+2025-08-19T16:04:50Z INFO request_id=req-14959956 service=session-router session closed code=1000 duration_min=12
+2025-08-19T16:06:53Z DEBUG request_id=req-22024506 service=session-router slow request method=POST path=/route latency_ms=1338
+2025-08-19T16:09:34Z INFO request_id=req-74531134 service=session-router session closed code=1000 duration_min=25
+2025-08-19T16:12:07Z INFO request_id=req-74838282 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T16:15:01Z DEBUG request_id=req-43833072 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T16:17:31Z DEBUG request_id=req-23938687 service=session-router session closed code=1000 duration_min=37
+2025-08-19T16:19:46Z WARN request_id=req-77104915 service=session-router health check passed assigned=100 drain_remaining=13
+2025-08-19T16:22:37Z WARN request_id=req-99401209 service=session-router session closed code=1000 duration_min=5
+2025-08-19T16:25:02Z INFO request_id=req-47500866 service=session-router health check passed assigned=192 drain_remaining=16
+2025-08-19T16:27:45Z INFO request_id=req-71326880 service=session-router health check passed assigned=149 drain_remaining=14
+2025-08-19T16:30:10Z INFO request_id=req-70890362 service=session-router websocket assigned host=rr-n-10 room=room-296 pool_wait_ms=45
+2025-08-19T16:33:04Z INFO request_id=req-13551090 service=session-router health check passed assigned=215 drain_remaining=10
+2025-08-19T16:35:33Z INFO request_id=req-89227572 service=session-router session closed code=1000 duration_min=1
+2025-08-19T16:38:04Z INFO request_id=req-30222816 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T16:40:24Z INFO request_id=req-11643331 service=session-router health check passed assigned=171 drain_remaining=6
+2025-08-19T16:43:03Z INFO request_id=req-42310230 service=session-router websocket assigned host=rr-n-16 room=room-554 pool_wait_ms=105
+2025-08-19T16:45:28Z INFO request_id=req-57231585 service=session-router session closed code=1000 duration_min=15
+2025-08-19T16:48:27Z INFO request_id=req-86879692 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T16:50:57Z INFO request_id=req-93287828 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T16:53:38Z INFO request_id=req-24263876 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T16:55:51Z INFO request_id=req-70995314 service=session-router websocket assigned host=rr-n-05 room=room-120 pool_wait_ms=34
+2025-08-19T16:58:50Z DEBUG request_id=req-93528949 service=session-router session closed code=1000 duration_min=37
+2025-08-19T17:00:59Z INFO request_id=req-72169427 service=session-router websocket assigned host=rr-n-06 room=room-549 pool_wait_ms=129
+2025-08-19T17:03:25Z DEBUG request_id=req-63593367 service=session-router websocket assigned host=rr-n-12 room=room-978 pool_wait_ms=34
+2025-08-19T17:06:08Z INFO request_id=req-43085782 service=session-router session closed code=1000 duration_min=9
+2025-08-19T17:08:47Z INFO request_id=req-74117908 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T17:11:13Z DEBUG request_id=req-55768557 service=session-router health check passed assigned=142 drain_remaining=7
+2025-08-19T17:14:14Z INFO request_id=req-68754067 service=session-router websocket assigned host=rr-n-13 room=room-164 pool_wait_ms=118
+2025-08-19T17:16:37Z INFO request_id=req-70891162 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T17:18:58Z INFO request_id=req-49685100 service=session-router slow request method=POST path=/route latency_ms=1249
+2025-08-19T17:21:29Z INFO request_id=req-42522808 service=session-router health check passed assigned=83 drain_remaining=7
+2025-08-19T17:24:22Z INFO request_id=req-57448555 service=session-router health check passed assigned=114 drain_remaining=6
+2025-08-19T17:26:54Z INFO request_id=req-17424892 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T17:29:29Z WARN request_id=req-91192467 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T17:31:50Z DEBUG request_id=req-18461788 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T17:34:44Z INFO request_id=req-92024648 service=session-router session closed code=1000 duration_min=26
+2025-08-19T17:37:11Z INFO request_id=req-78888736 service=session-router health check passed assigned=217 drain_remaining=12
+2025-08-19T17:39:58Z DEBUG request_id=req-41247735 service=session-router session closed code=1000 duration_min=35
+2025-08-19T17:42:19Z WARN request_id=req-95650950 service=session-router health check passed assigned=184 drain_remaining=11
+2025-08-19T17:44:35Z INFO request_id=req-48129079 service=session-router health check passed assigned=96 drain_remaining=7
+2025-08-19T17:47:15Z INFO request_id=req-87401746 service=session-router session closed code=1000 duration_min=6
+2025-08-19T17:49:56Z INFO request_id=req-73143871 service=session-router slow request method=POST path=/route latency_ms=1220
+2025-08-19T17:52:41Z DEBUG request_id=req-49007843 service=session-router health check passed assigned=214 drain_remaining=9
+2025-08-19T17:55:16Z INFO request_id=req-14081919 service=session-router session closed code=1000 duration_min=14
+2025-08-19T17:57:49Z WARN request_id=req-95191050 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T18:00:03Z INFO request_id=req-58297230 service=session-router slow request method=POST path=/route latency_ms=815
+2025-08-19T18:02:38Z INFO request_id=req-48220815 service=session-router slow request method=POST path=/route latency_ms=667
+2025-08-19T18:05:21Z DEBUG request_id=req-15914349 service=session-router health check passed assigned=169 drain_remaining=17
+2025-08-19T18:07:50Z INFO request_id=req-85863993 service=session-router websocket assigned host=rr-n-10 room=room-241 pool_wait_ms=133
+2025-08-19T18:10:27Z INFO request_id=req-33143269 service=session-router slow request method=POST path=/route latency_ms=1145
+2025-08-19T18:13:25Z INFO request_id=req-79188709 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T18:15:35Z INFO request_id=req-96401191 service=session-router health check passed assigned=193 drain_remaining=16
+2025-08-19T18:18:20Z INFO request_id=req-15702889 service=session-router session closed code=1000 duration_min=6
+2025-08-19T18:21:00Z INFO request_id=req-71030510 service=session-router session closed code=1000 duration_min=23
+2025-08-19T18:23:20Z INFO request_id=req-53268334 service=session-router session closed code=1000 duration_min=3
+2025-08-19T18:25:48Z DEBUG request_id=req-74103534 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T18:28:41Z WARN request_id=req-34104434 service=session-router health check passed assigned=176 drain_remaining=4
+2025-08-19T18:31:00Z DEBUG request_id=req-28743465 service=session-router session closed code=1000 duration_min=15
+2025-08-19T18:33:48Z INFO request_id=req-65976927 service=session-router slow request method=POST path=/route latency_ms=1113
+2025-08-19T18:36:23Z DEBUG request_id=req-12674912 service=session-router health check passed assigned=211 drain_remaining=8
+2025-08-19T18:38:43Z INFO request_id=req-31893646 service=session-router websocket assigned host=rr-n-05 room=room-843 pool_wait_ms=80
+2025-08-19T18:41:28Z DEBUG request_id=req-98501468 service=session-router health check passed assigned=140 drain_remaining=0
+2025-08-19T18:44:03Z INFO request_id=req-58919274 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T18:46:33Z WARN request_id=req-22319211 service=session-router session closed code=1000 duration_min=23
+2025-08-19T18:49:02Z INFO request_id=req-48993359 service=session-router session closed code=1000 duration_min=30
+2025-08-19T18:51:45Z INFO request_id=req-59242366 service=session-router health check passed assigned=233 drain_remaining=1
+2025-08-19T18:54:23Z WARN request_id=req-70822318 service=session-router health check passed assigned=89 drain_remaining=9
+2025-08-19T18:56:51Z WARN request_id=req-33210321 service=session-router health check passed assigned=159 drain_remaining=8
+2025-08-19T18:59:14Z INFO request_id=req-56897435 service=session-router health check passed assigned=164 drain_remaining=11
+2025-08-19T19:01:49Z WARN request_id=req-56642256 service=session-router health check passed assigned=117 drain_remaining=3
+2025-08-19T19:04:49Z INFO request_id=req-73551715 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T19:07:11Z INFO request_id=req-13735189 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T19:09:58Z DEBUG request_id=req-70322706 service=session-router health check passed assigned=87 drain_remaining=6
+2025-08-19T19:12:18Z INFO request_id=req-13298128 service=session-router slow request method=POST path=/route latency_ms=843
+2025-08-19T19:14:43Z WARN request_id=req-97924467 service=session-router slow request method=POST path=/route latency_ms=1025
+2025-08-19T19:17:14Z DEBUG request_id=req-69303604 service=session-router health check passed assigned=232 drain_remaining=11
+2025-08-19T19:20:04Z DEBUG request_id=req-71189798 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T19:22:48Z DEBUG request_id=req-33448273 service=session-router session closed code=1000 duration_min=32
+2025-08-19T19:25:11Z WARN request_id=req-37078434 service=session-router health check passed assigned=205 drain_remaining=10
+2025-08-19T19:27:41Z DEBUG request_id=req-52043894 service=session-router slow request method=POST path=/route latency_ms=1390
+2025-08-19T19:30:31Z INFO request_id=req-50510863 service=session-router websocket assigned host=rr-n-15 room=room-347 pool_wait_ms=103
+2025-08-19T19:32:35Z DEBUG request_id=req-69368405 service=session-router session closed code=1000 duration_min=12
+2025-08-19T19:35:16Z INFO request_id=req-63253392 service=session-router slow request method=POST path=/route latency_ms=1181
+2025-08-19T19:37:47Z INFO request_id=req-41131315 service=session-router session closed code=1000 duration_min=16
+2025-08-19T19:40:37Z WARN request_id=req-30564852 service=session-router session closed code=1000 duration_min=23
+2025-08-19T19:42:57Z INFO request_id=req-93191039 service=session-router health check passed assigned=148 drain_remaining=5
+2025-08-19T19:45:38Z INFO request_id=req-99250378 service=session-router session closed code=1000 duration_min=11
+2025-08-19T19:48:34Z INFO request_id=req-95040988 service=session-router slow request method=POST path=/route latency_ms=1424
+2025-08-19T19:51:05Z WARN request_id=req-17548092 service=session-router session closed code=1000 duration_min=21
+2025-08-19T19:53:17Z WARN request_id=req-18579019 service=session-router slow request method=POST path=/route latency_ms=1213
+2025-08-19T19:56:01Z DEBUG request_id=req-28538239 service=session-router session closed code=1000 duration_min=16
+2025-08-19T19:58:24Z DEBUG request_id=req-74279995 service=session-router slow request method=POST path=/route latency_ms=1130
+2025-08-19T20:01:07Z WARN request_id=req-17153863 service=session-router websocket assigned host=rr-n-12 room=room-798 pool_wait_ms=51
+2025-08-19T20:03:30Z WARN request_id=req-79489767 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T20:06:07Z DEBUG request_id=req-73009885 service=session-router slow request method=POST path=/route latency_ms=1306
+2025-08-19T20:09:05Z INFO request_id=req-42848918 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T20:11:33Z INFO request_id=req-37544002 service=session-router websocket assigned host=rr-n-16 room=room-291 pool_wait_ms=135
+2025-08-19T20:13:45Z DEBUG request_id=req-94907388 service=session-router session closed code=1000 duration_min=35
+2025-08-19T20:16:23Z INFO request_id=req-44495787 service=session-router websocket assigned host=rr-n-06 room=room-783 pool_wait_ms=76
+2025-08-19T20:18:51Z INFO request_id=req-25318592 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T20:21:29Z INFO request_id=req-35689608 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T20:24:28Z INFO request_id=req-66122568 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T20:27:08Z INFO request_id=req-45476089 service=session-router session closed code=1000 duration_min=14
+2025-08-19T20:29:19Z INFO request_id=req-67455859 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T20:31:49Z INFO request_id=req-88946439 service=session-router slow request method=POST path=/route latency_ms=1210
+2025-08-19T20:34:44Z INFO request_id=req-54543335 service=session-router slow request method=POST path=/route latency_ms=910
+2025-08-19T20:37:17Z WARN request_id=req-42792508 service=session-router websocket assigned host=rr-n-12 room=room-807 pool_wait_ms=71
+2025-08-19T20:39:44Z INFO request_id=req-70712086 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T20:42:25Z INFO request_id=req-34215539 service=session-router health check passed assigned=197 drain_remaining=2
+2025-08-19T20:44:59Z INFO request_id=req-61703836 service=session-router session closed code=1000 duration_min=31
+2025-08-19T20:47:20Z INFO request_id=req-95992815 service=session-router websocket assigned host=rr-n-18 room=room-941 pool_wait_ms=44
+2025-08-19T20:49:42Z INFO request_id=req-57780679 service=session-router health check passed assigned=117 drain_remaining=2
+2025-08-19T20:52:17Z DEBUG request_id=req-44274037 service=session-router slow request method=POST path=/route latency_ms=874
+2025-08-19T20:54:52Z DEBUG request_id=req-86736533 service=session-router health check passed assigned=159 drain_remaining=11
+2025-08-19T20:57:52Z INFO request_id=req-19068353 service=session-router slow request method=POST path=/route latency_ms=1071
+2025-08-19T21:00:24Z WARN request_id=req-96791656 service=session-router health check passed assigned=94 drain_remaining=2
+2025-08-19T21:02:50Z DEBUG request_id=req-48814955 service=session-router websocket assigned host=rr-n-05 room=room-474 pool_wait_ms=45
+2025-08-19T21:05:15Z WARN request_id=req-84646569 service=session-router session closed code=1000 duration_min=1
+2025-08-19T21:07:57Z DEBUG request_id=req-89919419 service=session-router slow request method=POST path=/route latency_ms=1084
+2025-08-19T21:10:45Z DEBUG request_id=req-76362193 service=session-router session closed code=1000 duration_min=8
+2025-08-19T21:13:05Z INFO request_id=req-27399816 service=session-router websocket assigned host=rr-n-16 room=room-934 pool_wait_ms=23
+2025-08-19T21:15:54Z DEBUG request_id=req-43413575 service=session-router health check passed assigned=123 drain_remaining=13
+2025-08-19T21:18:19Z INFO request_id=req-55379915 service=session-router slow request method=POST path=/route latency_ms=1146
+2025-08-19T21:20:44Z INFO request_id=req-60940319 service=session-router session closed code=1000 duration_min=34
+2025-08-19T21:23:25Z INFO request_id=req-45627299 service=session-router slow request method=POST path=/route latency_ms=839
+2025-08-19T21:26:14Z INFO request_id=req-38467832 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T21:28:23Z INFO request_id=req-54366376 service=session-router health check passed assigned=149 drain_remaining=12
+2025-08-19T21:31:01Z DEBUG request_id=req-44948972 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T21:33:48Z INFO request_id=req-15910482 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T21:36:01Z INFO request_id=req-49607948 service=session-router slow request method=POST path=/route latency_ms=684
+2025-08-19T21:39:02Z DEBUG request_id=req-96307030 service=session-router slow request method=POST path=/route latency_ms=1060
+2025-08-19T21:41:28Z WARN request_id=req-10895768 service=session-router session closed code=1000 duration_min=8
+2025-08-19T21:43:55Z INFO request_id=req-23412294 service=session-router slow request method=POST path=/route latency_ms=1274
+2025-08-19T21:46:44Z INFO request_id=req-23819857 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T21:49:24Z INFO request_id=req-76143761 service=session-router websocket assigned host=rr-n-13 room=room-239 pool_wait_ms=138
+2025-08-19T21:51:26Z INFO request_id=req-70665322 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T21:54:21Z INFO request_id=req-21210106 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T21:56:36Z WARN request_id=req-31335149 service=session-router health check passed assigned=98 drain_remaining=5
+2025-08-19T21:59:26Z INFO request_id=req-77401054 service=session-router health check passed assigned=154 drain_remaining=15
+2025-08-19T22:01:43Z DEBUG request_id=req-43543350 service=session-router session closed code=1000 duration_min=5
+2025-08-19T22:04:50Z INFO request_id=req-96788573 service=session-router websocket assigned host=rr-n-14 room=room-884 pool_wait_ms=51
+2025-08-19T22:07:09Z INFO request_id=req-80174973 service=session-router health check passed assigned=200 drain_remaining=8
+2025-08-19T22:09:48Z INFO request_id=req-56459767 service=session-router health check passed assigned=204 drain_remaining=10
+2025-08-19T22:12:34Z INFO request_id=req-75594179 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T22:15:01Z WARN request_id=req-64685693 service=session-router websocket assigned host=rr-n-02 room=room-681 pool_wait_ms=37
+2025-08-19T22:17:24Z INFO request_id=req-73392690 service=session-router slow request method=POST path=/route latency_ms=776
+2025-08-19T22:20:00Z DEBUG request_id=req-84382694 service=session-router slow request method=POST path=/route latency_ms=1111
+2025-08-19T22:22:47Z WARN request_id=req-49778099 service=session-router websocket assigned host=rr-n-15 room=room-531 pool_wait_ms=112
+2025-08-19T22:25:06Z INFO request_id=req-26172347 service=session-router session closed code=1000 duration_min=17
+2025-08-19T22:27:42Z WARN request_id=req-92584168 service=session-router session closed code=1000 duration_min=39
+2025-08-19T22:30:32Z WARN request_id=req-16801617 service=session-router session closed code=1000 duration_min=16
+2025-08-19T22:32:44Z DEBUG request_id=req-72888244 service=session-router health check passed assigned=135 drain_remaining=9
+2025-08-19T22:35:28Z WARN request_id=req-85465455 service=session-router websocket assigned host=rr-n-04 room=room-760 pool_wait_ms=47
+2025-08-19T22:37:46Z WARN request_id=req-61668521 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T22:40:23Z INFO request_id=req-10413771 service=session-router slow request method=POST path=/route latency_ms=1074
+2025-08-19T22:43:17Z WARN request_id=req-49035208 service=session-router websocket assigned host=rr-n-03 room=room-282 pool_wait_ms=58
+2025-08-19T22:45:39Z INFO request_id=req-69744081 service=session-router session closed code=1000 duration_min=16
+2025-08-19T22:48:32Z INFO request_id=req-63512580 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T22:50:53Z INFO request_id=req-25517138 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T22:53:35Z INFO request_id=req-95502570 service=session-router health check passed assigned=129 drain_remaining=10
+2025-08-19T22:55:43Z INFO request_id=req-60412654 service=session-router slow request method=POST path=/route latency_ms=889
+2025-08-19T22:58:34Z WARN request_id=req-26195591 service=session-router websocket assigned host=rr-n-18 room=room-464 pool_wait_ms=13
+2025-08-19T23:01:19Z INFO request_id=req-34864509 service=session-router health check passed assigned=91 drain_remaining=8
+2025-08-19T23:03:45Z INFO request_id=req-46409054 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T23:06:13Z INFO request_id=req-71458404 service=session-router health check passed assigned=83 drain_remaining=7
+2025-08-19T23:09:05Z INFO request_id=req-47550408 service=session-router websocket assigned host=rr-n-15 room=room-275 pool_wait_ms=24
+2025-08-19T23:11:37Z DEBUG request_id=req-97432290 service=session-router session closed code=1000 duration_min=24
+2025-08-19T23:14:01Z INFO request_id=req-44895651 service=session-router slow request method=POST path=/route latency_ms=1054
+2025-08-19T23:16:41Z INFO request_id=req-50072942 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T23:19:12Z DEBUG request_id=req-65435954 service=session-router health check passed assigned=239 drain_remaining=17
+2025-08-19T23:21:31Z DEBUG request_id=req-42928114 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T23:24:33Z INFO request_id=req-47163455 service=session-router slow request method=POST path=/route latency_ms=1373
+2025-08-19T23:26:38Z INFO request_id=req-22691952 service=session-router health check passed assigned=222 drain_remaining=7
+2025-08-19T23:29:31Z INFO request_id=req-97321068 service=session-router session closed code=1000 duration_min=21
+2025-08-19T23:31:57Z DEBUG request_id=req-79187976 service=session-router slow request method=POST path=/route latency_ms=812
+2025-08-19T23:34:27Z WARN request_id=req-30847127 service=session-router slow request method=POST path=/route latency_ms=778
+2025-08-19T23:36:57Z DEBUG request_id=req-30628774 service=session-router health check passed assigned=171 drain_remaining=5
+2025-08-19T23:39:51Z INFO request_id=req-55389882 service=session-router health check passed assigned=105 drain_remaining=16
+2025-08-19T23:42:21Z DEBUG request_id=req-99852843 service=session-router retrying upstream connection attempt=1 backoff_ms=80
+2025-08-19T23:44:35Z INFO request_id=req-67389877 service=session-router health check passed assigned=201 drain_remaining=14
+2025-08-19T23:47:17Z DEBUG request_id=req-31716450 service=session-router health check passed assigned=206 drain_remaining=2
+2025-08-19T23:50:08Z INFO request_id=req-83459848 service=session-router websocket assigned host=rr-n-18 room=room-141 pool_wait_ms=99
+2025-08-19T23:52:27Z DEBUG request_id=req-36863784 service=session-router health check passed assigned=160 drain_remaining=14
+2025-08-19T23:55:07Z DEBUG request_id=req-18389310 service=session-router slow request method=POST path=/route latency_ms=836
+2025-08-19T23:57:51Z DEBUG request_id=req-59018900 service=session-router health check passed assigned=208 drain_remaining=13

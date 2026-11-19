@@ -1,0 +1,5 @@
+account_id,user_id,display_name,email,role,status,timezone
+A-104,U-1,Rina Das,rina@example.test,owner,active,Europe/Dublin
+A-104,U-2,Cal Moore,cal@example.test,administrator,active,America/Denver
+A-104,U-3,Jo Lee,jo@example.test,scheduler,suspended,Europe/London
+A-219,U-8,Sam Nouri,sam@example.test,owner,active,America/Denver

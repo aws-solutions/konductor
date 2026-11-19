@@ -1,0 +1,10 @@
+[
+  "After the board review, the final hold limits are: regular cards 12 items, student cards 15 items during school year, senior cards 10 items, children's cards 5 items, institutional cards 20 items with manager approval over 10.",
+  "The pickup window is 7 days for all branches except North Hill which gets 10 days due to limited hours, and Central which stays at 7 days but allows after-hours pickup lockers.",
+  "For children's cards under 12, parents must receive separate notifications by default, and can opt out only in person at the branch with ID verification.",
+  "E-book waitlists for One Copy One User titles have a 24-hour checkout window after notification, not 48 hours as in the vendor summary, and patrons get one automatic renewal if no one is waiting.",
+  "Notification channels priority: email primary, SMS backup for holds ready, phone call only for seniors who opt in and for institutional holds. All notifications must include pickup branch and deadline.",
+  "The fines waiver starting March 1 applies only to holds placed after that date. Existing fines from before March 1 will still be collected but patrons can appeal for waiver if they use the new system within 60 days.",
+  "WCAG 2.1 AA compliance is required at launch for core hold placement and management. Advanced features like analytics dashboard have 6-month grace period but must meet basic accessibility immediately.",
+  "All physical branches launch together in Phase 1. Bookmobile is Phase 2, scheduled for August 2024. School delivery service is excluded entirely – stays manual."
+]

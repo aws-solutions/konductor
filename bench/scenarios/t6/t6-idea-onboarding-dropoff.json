@@ -1,0 +1,177 @@
+{
+  "id": "t6-idea-onboarding-dropoff",
+  "class": "design",
+  "version": 1,
+  "phase": "ideation",
+  "role": "pm",
+  "questions": "allowed",
+  "prompt": "I need a short framing note for the Harborlight Money signup-completion drop. The folder has the growth request, funnel exports, delivery data, reviews, release history, and tracking notes. Read the evidence and make a decision-ready recommendation about whether to redesign onboarding now, with the numbers and their denominators. Include realistic alternatives, including leaving the screens unchanged for now, and define one measurable outcome with its current baseline. Write the note to docs/framing.md. End it with exactly one fenced JSON block shaped like this: {\"main_problem\": \"string\", \"evidence\": [{\"claim\": \"string\", \"value\": \"string\", \"source\": \"string\"}], \"options\": [{\"name\": \"string\", \"tradeoff\": \"string\"}], \"recommendation\": \"string\", \"success_measure\": {\"metric\": \"string\", \"baseline\": \"string\", \"target\": \"string\", \"window\": \"string\"}}. Keep the prose concise and make the JSON values carry the findings.",
+  "fixture": "t6-idea-onboarding-dropoff",
+  "hidden": "t6-idea-onboarding-dropoff",
+  "timeoutSec": 600,
+  "limits": {
+    "softSec": 300,
+    "hardSec": 600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 13,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/framing.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/framing.md",
+      "pattern": "Cloudmail",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/framing.md",
+      "pattern": "84(?:\\.0)?\\s*%",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "docs/framing.md",
+      "pattern": "analytics.{0,20}outage.{0,20}caused",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'); const s=fs.readFileSync('docs/framing.md','utf8'); const a=s.indexOf('{'); const b=s.lastIndexOf('}'); if(a<0 || b<a || !s.includes('json')) process.exit(1); JSON.parse(s.slice(a,b+1));\"",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "clear-framing",
+      "criterion": "The prose makes the causal chain, uncertainty, and decision boundary easy for a busy product lead to scan (code cannot check this because it cannot judge clarity or usefulness to a human reader).",
+      "weight": 1
+    },
+    {
+      "id": "honest-tradeoffs",
+      "criterion": "The options and recommendation state practical tradeoffs without presenting the tracking artifact as user behavior (code cannot check this because it cannot assess the quality of reasoning or calibrated uncertainty).",
+      "weight": 1
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "reframe-solution",
+        "text": "Treats \"redesign onboarding\" as a proposed solution and restates the ask as the problem of people not completing signup, before choosing what to change.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "cost-of-problem",
+        "text": "Puts a size on the problem (signups or customers lost per week since the change) so the effort of each option can be weighed against it.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "trend-not-snapshot",
+        "text": "Reads the drop against the weekly trend before and after the change rather than one before/after snapshot, and says what else changed in the same weeks.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "hypothesis",
+        "text": "States the recommended fix as a hypothesis (the change, the outcome it should move, the assumption) with a result that would show it was wrong.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "qualitative-confirms",
+        "text": "Uses user-reported evidence (reviews, support contacts) to confirm or question what the funnel numbers suggest, and says where they agree.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Redesign the onboarding screens to make them simpler and shorter.",
+      "Signups fell because of the analytics outage, so nothing really changed.",
+      "Add a progress bar and fewer form fields.",
+      "Run a round of user interviews before deciding anything."
+    ]
+  },
+  "targetSkills": [
+    "decision-writing"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:decision-writing"
+    ],
+    "mustNotLoad": [
+      "skill:program-decision-docs",
+      "skill:deliberation-panel"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://www.gov.uk/service-manual/measuring-success",
+      "licence": "OGL-3.0 (GOV.UK content under the Open Government Licence)",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt specifies the output format and required sections but does not tell the agent how to analyze or what conclusions to reach."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The prompt and fixture clearly define the output path, JSON structure, and what evidence is available. Tests allow reasonable wording variations."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires synthesizing multiple data sources, distinguishing a tracking outage from behavioral drop, and avoiding the trap of recommending a UI redesign. A superficial read would fail the 'do-nothing option' and 'fix delivery first' tests."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required facts are in the fixture files. The reference solution passes all 13 hidden tests. No unfair regexes or unreachable facts."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains the evidence but not the conclusions. The agent must analyze and synthesize; no answer key or scripted facts are present."
+      }
+    ]
+  }
+}

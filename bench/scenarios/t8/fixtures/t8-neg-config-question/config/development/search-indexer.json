@@ -1,0 +1,14 @@
+{
+  "service": "search-indexer",
+  "environment": "development",
+  "replicas": 1,
+  "resources": {
+    "cpu": "600m",
+    "memory": "1Gi"
+  },
+  "logLevel": "info",
+  "featureFlags": {
+    "requestTracing": false,
+    "newCheckout": true
+  }
+}

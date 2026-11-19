@@ -1,0 +1,23 @@
+{
+  "accountId": "111122223333",
+  "region": "us-east-2",
+  "environment": "sandbox",
+  "team": "platform",
+  "functions": [
+    "arn:aws:lambda:us-east-2:111122223333:function:team-api",
+    "arn:aws:lambda:us-east-2:111122223333:function:team-worker"
+  ],
+  "executionRole": "arn:aws:iam::111122223333:role/team-function-execution",
+  "adminRole": "arn:aws:iam::111122223333:role/account-admin",
+  "logGroups": [
+    "arn:aws:logs:us-east-2:111122223333:log-group:/platform/team-api:*",
+    "arn:aws:logs:us-east-2:111122223333:log-group:/platform/team-worker:*"
+  ],
+  "services": [
+    "arn:aws:ecs:us-east-2:111122223333:service/operations/platform-api",
+    "arn:aws:ecs:us-east-2:111122223333:service/operations/platform-worker"
+  ],
+  "analyticsBucket": "arn:aws:s3:::analytics-lake-111122223333",
+  "analyticsWorkgroup": "arn:aws:athena:us-east-2:111122223333:workgroup/analytics-read",
+  "metricsNamespace": "Platform/Operations"
+}

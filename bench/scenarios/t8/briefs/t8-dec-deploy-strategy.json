@@ -24,8 +24,8 @@
   "expertKey": {
     "items": [
       {
-        "id": "capacity-cost",
-        "text": "Works out what each option needs in spare capacity and money from the fleet numbers, and lets that rule an option out or in.",
+        "id": "blast-radius",
+        "text": "Sizes the first stage by how many users a bad release may reach before it is detected, and ties that size to the detection signal and its delay.",
         "source": "Martin Fowler, BlueGreenDeployment, https://martinfowler.com/bliki/BlueGreenDeployment.html (copyright Martin Fowler; idea only)"
       },
       {
@@ -35,12 +35,12 @@
       },
       {
         "id": "schema-compat",
-        "text": "Notes that every option runs two versions against one database for a time, so schema changes must work with both.",
+        "text": "Sequences schema changes across the period when two versions run (add first, remove only after the old version is gone), not only notes that both must work.",
         "source": "Martin Fowler, ParallelChange, https://martinfowler.com/bliki/ParallelChange.html (copyright Martin Fowler; idea only)"
       },
       {
         "id": "rollback-speed",
-        "text": "Compares how fast and how safely each option rolls back against the stated revert limit.",
+        "text": "Explains how a rollback treats sessions already on the new version, and how that fits the revert limit given the drain time.",
         "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
       },
       {
@@ -49,9 +49,9 @@
         "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
       },
       {
-        "id": "revisit",
-        "text": "States the conditions under which the decision should be revisited (for example a capacity or cost change).",
-        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+        "id": "detection",
+        "text": "Names the signals that decide go or stop at each stage and how long to watch them before widening.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
       }
     ],
     "weakAnswers": [

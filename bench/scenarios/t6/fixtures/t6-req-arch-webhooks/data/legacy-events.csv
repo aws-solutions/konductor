@@ -1,0 +1,4 @@
+legacy_name,current_name,used_by,retirement_note
+payment_ok,payment.authorized,18 accounts,keep alias in internal importer
+payment_error,payment.failed,11 accounts,keep alias in internal importer
+refund_new,refund.created,6 accounts,under review

@@ -1,0 +1,92 @@
+{
+  "output": "REVIEW.md",
+  "items": [
+    {
+      "id": "k1",
+      "file": "src/services/price-service.mjs",
+      "line": 11,
+      "endLine": 12,
+      "severity": "critical",
+      "fix": [
+        "tenant id",
+        "composite key",
+        "scope"
+      ],
+      "finding": "The cache lookup uses only the price-list id, so a hit populated by one tenant can be returned to another tenant and expose the wrong prices."
+    },
+    {
+      "id": "k2",
+      "file": "src/services/price-service.mjs",
+      "line": 24,
+      "endLine": 25,
+      "severity": "high",
+      "fix": [
+        "invalidate",
+        "bulk",
+        "replace"
+      ],
+      "finding": "Bulk replacement writes new prices without invalidating the cached list, so reads can continue serving stale prices after the nightly import."
+    },
+    {
+      "id": "k3",
+      "file": "src/app.mjs",
+      "line": 22,
+      "endLine": 24,
+      "severity": "medium",
+      "fix": [
+        "milliseconds",
+        "convert seconds",
+        "multiply by 1000"
+      ],
+      "finding": "The configured TTL is named and stored in seconds but is passed into a cache setter that interprets the value as milliseconds, making the advertised 30-second lifetime about 30 milliseconds."
+    },
+    {
+      "id": "k4",
+      "file": "src/services/price-service.mjs",
+      "line": 28,
+      "endLine": 29,
+      "severity": "medium",
+      "fix": [
+        "in-flight",
+        "deduplicate",
+        "pending"
+      ],
+      "finding": "Every concurrent miss independently calls the JSON store because the loader does not share an in-flight promise, creating a burst of duplicate reads under the documented import traffic."
+    },
+    {
+      "id": "k5",
+      "file": "src/cache/price-cache.mjs",
+      "line": 26,
+      "endLine": 26,
+      "severity": "high",
+      "fix": [
+        "clone",
+        "copy",
+        "defensive"
+      ],
+      "finding": "Cache hits return the stored object directly, so a caller that edits a price response mutates the cached value and changes later responses without a store write."
+    },
+    {
+      "id": "k6",
+      "file": "src/cache/price-cache.mjs",
+      "line": 29,
+      "endLine": 31,
+      "severity": "medium",
+      "fix": [
+        "evict",
+        "maxEntries",
+        "limit"
+      ],
+      "finding": "The configured maximum is saved and reported but set never evicts entries, allowing the process cache to grow without the documented memory ceiling."
+    }
+  ],
+  "decoys": [
+    {
+      "id": "d1",
+      "file": "test/price-cache.test.mjs",
+      "line": 70,
+      "endLine": 73,
+      "why": "This generic cache test deliberately verifies that a falsy stored value is preserved; PriceService stores arrays, and the cache itself must not discard valid falsy values."
+    }
+  ]
+}

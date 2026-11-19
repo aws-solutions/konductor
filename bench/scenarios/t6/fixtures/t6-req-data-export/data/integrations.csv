@@ -1,0 +1,4 @@
+integration_id,account_id,provider,connection_state,external_id,sync_cursor
+IN-1,A-104,MailSpring,connected,ms-778,2025-03-01T00:00:00Z
+IN-2,A-104,MeetForge,paused,mf-19,2025-02-27T12:00:00Z
+IN-4,A-219,LedgerLeaf,disconnected,ll-4,2025-01-18T08:00:00Z

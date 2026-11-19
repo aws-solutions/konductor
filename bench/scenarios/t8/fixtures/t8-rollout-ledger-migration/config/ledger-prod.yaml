@@ -1,0 +1,10 @@
+service: ledger-api
+load_balancer: ledger-public
+fleet_hosts: 12
+application_version: 2.9.4
+primary_database: ledger-primary
+replicas:
+  - ledger-replica-a
+  - ledger-replica-b
+request_timeout_ms: 900
+canary_label: ledger-v3

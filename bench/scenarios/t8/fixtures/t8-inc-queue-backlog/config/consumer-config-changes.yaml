@@ -1,0 +1,8 @@
+change_id: cfg-2025-04-17-1651
+service: notify-consumer
+applied_at: 2025-04-17T16:51:00Z
+retry.max_attempts: 4
+retry.backoff_seconds: 4
+dead_letter.enabled: true
+dead_letter.topic: notify.events.dead
+payload_validation.recipient_type: string

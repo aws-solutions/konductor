@@ -1,0 +1,143 @@
+{
+  "id": "t8-rollout-ledger-migration",
+  "class": "hard",
+  "version": 1,
+  "phase": "release-ops",
+  "role": "sre",
+  "phases2": [
+    "planning"
+  ],
+  "questions": "allowed",
+  "prompt": "You own the ledger release. Please inspect this release folder and write next week's production rollout plan at releases/ledger-v3-rollout.md. Make it usable by the release primary: say why the last canary of this release failed, schedule the database and application work, define measurable gates, assign coverage, and give an actionable rollback. Use what is in this folder rather than guessing. End the document with one fenced ```json block containing one object. The object must have rootCause (string: why the last canary failed), coverage (string), evidence (list of strings cited as path:line), steps (ordered list of objects with id and action strings, percent as a traffic or host share from 0 to 100 or null when that step moves no traffic, start as an ISO 8601 UTC time, and gate as null or an object with metric (string), op (either \"<\" or \">\"), threshold (number), and windowMin (number of minutes)), and rollback (object with trigger using metric/op/threshold/windowMin and steps as a list of strings). Gates and the rollback trigger must use metrics our dashboards actually have, with thresholds in their units. Evidence paths are relative to this folder, with 1-based line numbers (for example logs/some.log:123). The JSON block must be the final content.",
+  "fixture": "t8-rollout-ledger-migration",
+  "hidden": "t8-rollout-ledger-migration",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 28,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "releases/ledger-v3-rollout.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "logs/ledger-canary.log",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "expert-key",
+      "weight": 3,
+      "criterion": "Score the share of expertKey items the document addresses; an item counts only when the judge quotes the passage that addresses it, and the weak answers earn nothing. Do not reward length or formatting. (code cannot check this because the items are engineering judgment, not a pattern in the text)"
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "expand-contract",
+        "text": "Explains why each schema step is safe for the code version running at that moment, and how rows written during the rollout are handled by the backfill.",
+        "source": "Martin Fowler, ParallelChange, https://martinfowler.com/bliki/ParallelChange.html (copyright Martin Fowler; idea only)"
+      },
+      {
+        "id": "canary-compare",
+        "text": "Judges the canary against a control group on the same metrics over enough traffic and time, not against fixed absolute numbers alone.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "data-rollback",
+        "text": "States what a rollback does to rows already written by the new version and which step cannot be undone, and keeps the old version able to read them.",
+        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+      },
+      {
+        "id": "gates-before",
+        "text": "Fixes gate metrics and thresholds before the rollout starts, tied to user or money impact, and names who decides go or stop.",
+        "source": "Google SRE workbook, Canarying Releases, https://sre.google/workbook/canarying-releases/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "timing",
+        "text": "Says what happens when a gate fails late, close to the freeze: where the stop point is, and who decides to wait for the contingency window instead of pushing on.",
+        "source": "Google SRE book, Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0; idea only)"
+      },
+      {
+        "id": "flag",
+        "text": "Decouples deploy from release with a flag or kill switch so the new write path can be turned off without a redeploy.",
+        "source": "Kubernetes KEP template, production readiness questions, https://github.com/kubernetes/enhancements/tree/master/keps/NNNN-kep-template (Apache-2.0; idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Deploy to staging, test, then deploy to production.",
+      "Roll back if anything looks wrong, with no metric or threshold.",
+      "Run the migration and the code deploy in the same step.",
+      "Canary 10% for five minutes, then go to 100%."
+    ]
+  },
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://sre.google/workbook/canarying-releases/",
+      "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Request asks for a rollout plan but does not prescribe methods, processes, tools, or list causes/constraints for the agent to find."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All key fields (paths, units, formats, time zones) are explicitly defined in the request; competent readers agree on expectations."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Root cause (settlement_code null) appears only in canary log errors; not revealed by folder structure or obvious comments."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Quick wrong answers (wrong cause, immediate deploy, pool wait blame) fail multiple weighted tests: cause-is-compatibility-null, canary-evidence, expand-before-code, etc."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required values are derivable: error messages from log, dates from calendar, metrics from catalogue, coverage from rota, thresholds from alerts.yaml."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

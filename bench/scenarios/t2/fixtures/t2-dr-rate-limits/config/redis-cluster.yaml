@@ -1,0 +1,74 @@
+# Redis Cluster Configuration
+# Version: 2024-03-15
+
+cluster:
+  name: rate-limit-cluster
+  environment: production
+  
+nodes:
+  primary:
+    region: us-east-1
+    instances:
+      - type: cache.r6g.2xlarge
+        role: master
+        count: 3
+      - type: cache.r6g.2xlarge  
+        role: replica
+        count: 3
+  
+  secondary:
+    region: us-west-2
+    instances:
+      - type: cache.r6g.xlarge
+        role: master
+        count: 2
+      - type: cache.r6g.xlarge
+        role: replica
+        count: 2
+
+parameters:
+  maxmemory-policy: volatile-lru
+  timeout: 100  # milliseconds
+  tcp-keepalive: 300
+  maxclients: 10000
+  slowlog-log-slower-than: 10000  # microseconds
+  slowlog-max-len: 128
+  
+performance:
+  estimated_ops_per_second: 500000
+  read_latency_p99: 2ms
+  write_latency_p99: 2ms
+  network_throughput: 10 Gbps
+
+persistence:
+  snapshot_interval: 900  # seconds (15 minutes)
+  snapshot_threshold: 1000  # keys changed
+  
+failover:
+  automatic_failover: true
+  failover_timeout: 2000  # milliseconds
+  cluster_node_timeout: 5000
+  cluster_slave_validity_factor: 10
+  
+monitoring:
+  metrics_enabled: true
+  alerts:
+    - metric: cpu_utilization
+      threshold: 80%
+      duration: 5m
+    - metric: memory_usage
+      threshold: 90%
+      duration: 2m
+    - metric: error_rate
+      threshold: 1%
+      duration: 1m
+
+security:
+  encryption_in_transit: true
+  encryption_at_rest: true
+  auth_token_enabled: true
+  
+cost_estimate:
+  primary_cluster: $2,100/month
+  secondary_cluster: $1,400/month
+  total: $3,500/month

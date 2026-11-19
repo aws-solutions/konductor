@@ -1,0 +1,14 @@
+{
+  "service": "orders",
+  "environment": "production",
+  "replicas": 4,
+  "resources": {
+    "cpu": "500m",
+    "memory": "768Mi"
+  },
+  "logLevel": "info",
+  "featureFlags": {
+    "requestTracing": true,
+    "newCheckout": true
+  }
+}

@@ -6,8 +6,8 @@
   "phases2": [
     "planning"
   ],
-  "author": "deepseek-3.2",
-  "reviewer": "minimax-m2.5",
+  "author": "gpt-5.6-luna",
+  "reviewer": "qwen3-coder-next",
   "stack": "ops",
   "size": "15 to 30",
   "loglines": 1500,
@@ -26,7 +26,7 @@
     "items": [
       {
         "id": "expand-contract",
-        "text": "Splits the schema change so old and new code can run side by side: add the column and backfill first, ship code that reads both, and drop or tighten only after no old code remains.",
+        "text": "Explains why each schema step is safe for the code version running at that moment, and how rows written during the rollout are handled by the backfill.",
         "source": "Martin Fowler, ParallelChange, https://martinfowler.com/bliki/ParallelChange.html (copyright Martin Fowler; idea only)"
       },
       {
@@ -46,7 +46,7 @@
       },
       {
         "id": "timing",
-        "text": "Places the change away from the freeze and peak, with on-call cover for each step.",
+        "text": "Says what happens when a gate fails late, close to the freeze: where the stop point is, and who decides to wait for the contingency window instead of pushing on.",
         "source": "Google SRE book, Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0; idea only)"
       },
       {
@@ -61,5 +61,6 @@
       "Run the migration and the code deploy in the same step.",
       "Canary 10% for five minutes, then go to 100%."
     ]
-  }
+  },
+  "reauthoredFrom": "deepseek-3.2"
 }

@@ -1,0 +1,10 @@
+{
+  "notes": [
+    "The design misses failure handling strategy for Redis unavailability - quick reviews might accept 'temporary disable' as sufficient.",
+    "Fixed window vs rolling window mismatch requires reading customer contract language in customer-contracts.md.",
+    "Latency budget violation needs cross-referencing Redis performance numbers in redis-cluster.yaml and network latency in latency-budget.md.",
+    "Missing response headers only apparent by reading SDK documentation in rate-limiting-client.md.",
+    "Enterprise customer support gap requires checking contract specifics in customer-contracts.md.",
+    "Server clock skew issue referenced in incident history in traffic-growth.md but not addressed in design."
+  ]
+}

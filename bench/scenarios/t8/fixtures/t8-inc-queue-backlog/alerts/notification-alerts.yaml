@@ -1,0 +1,21 @@
+alerts:
+  - name: notify-consumer-lag
+    metric: consumer_lag
+    threshold: 250
+    for_minutes: 5
+    severity: page
+  - name: notify-oldest-message
+    metric: oldest_message_age_sec
+    threshold: 900
+    for_minutes: 10
+    severity: page
+  - name: broker-disk-high
+    metric: broker_disk_pct
+    threshold: 90
+    for_minutes: 5
+    severity: ticket
+  - name: notify-retry-rate
+    metric: retries
+    threshold: 40
+    for_minutes: 3
+    severity: page

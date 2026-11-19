@@ -1,0 +1,3 @@
+{
+  "notes": "The cache key, invalidation, time unit, concurrent miss, mutable value, and size ceiling are separate traps. A quick skim is likely to see the single-update invalidation and the cache tests while missing the bulk path and the contracts in the cache documentation. Tenant scoping and the TTL require reading the service together with its callers and configuration. The burst behavior and mutation concern require connecting the documentation and returned values to the cache implementation. The falsy-value cache test is a correct decoy, not a defect."
+}

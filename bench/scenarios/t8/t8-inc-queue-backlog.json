@@ -1,0 +1,101 @@
+{
+  "id": "t8-inc-queue-backlog",
+  "class": "hard",
+  "version": 1,
+  "phase": "release-ops",
+  "role": "sre",
+  "questions": "allowed",
+  "prompt": "Please turn the notification pipeline evidence in this folder into an incident write-up for support and the service owners. Explain the customer impact, the actual causal chain, why the service recovered, and practical changes that would prevent a repeat. Include a concise timeline and cite the records behind the conclusion.\n\nWrite the report to `incidents/notification-backlog.md`. End it with a fenced `json` block containing one object with these fields: `rootCause` (object with string `summary` and `evidence` list of strings), `timeline` (list of objects with `time` and `event` strings), `impact` (object with numeric `delayedNotifications` (notifications our metrics count as delayed), `longestDelayMinutes` in minutes, `incidentDurationMinutes` in minutes, and `peakConsumerLag` as queued notifications), and `actionItems` (list of objects with string `text` and string `owner`). Use ISO 8601 UTC strings for every `time`. Each `rootCause.evidence` entry must cite a log, configuration, or deploy record as `path:line`, where `path` is relative to this folder and `line` is a 1-based line number. Keep the JSON block as the document's last fenced block and make the narrative useful to a teammate who needs to explain the delay without overstating an outage.",
+  "fixture": "t8-inc-queue-backlog",
+  "hidden": "t8-inc-queue-backlog",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 block.test.js",
+      "min": 21,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "incidents/notification-backlog.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "logs/consumer-a.log",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "incidents/notification-backlog.md",
+      "pattern": "```json",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://sre.google/sre-book/addressing-cascading-failures/",
+      "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request asks to analyze evidence and write an incident report with a specific structure, but does not name a method, process, or tool the agent should use, nor tell it how to work."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request specifies the output file, required JSON structure with exact field names, ISO 8601 time format, and evidence citation format. Competent readers would agree on what is asked."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains all evidence in plain files (logs, deploy history, config, metrics). No hidden comments, solution hints, or direct answers exist in fixture files."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires careful log analysis, cross-referencing, and metrics extraction. A quick wrong answer blaming the broker disk alert (which resolved at 14:16 while lag kept rising) or listing every possible action would fail the evidence precision and cause-summary checks."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values (2865, 192, 3185) are directly readable from metrics/notification-metrics.csv. Evidence lines exist at cited locations. Time tolerances (5 min) are reasonable."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}
