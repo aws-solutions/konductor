@@ -1,0 +1,13 @@
+{
+  "id": "t4-policy-fix-accessdenied",
+  "wave": 1,
+  "phase": "bugfix",
+  "role": "security",
+  "kind": "policy",
+  "stack": "node",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "size": "25 to 40",
+  "source": { "url": "https://github.com/duo-labs/parliament", "licence": "BSD-3-Clause", "licenceCheckedAt": "2026-11-19", "use": "idea" },
+  "brief": "Phase: bug fix. Role: security engineer. Repo kind: a Node.js 24 nightly export job (no dependencies; cloud calls go through one in-repo client wrapper; the fake client used in tests records each call's action, resource ARN and relevant request context such as the encryption key id header), its identity policy at infra/iam/export-job-policy.json, the destination bucket policy at infra/iam/exports-bucket-policy.json, the KMS key policy at infra/iam/exports-key-policy.json, config, CI, docs, tests, and a logs/ folder with the failing run's output. The job started failing after the destination bucket moved to SSE-KMS with a customer managed key and the source table got a new index: the log shows AccessDenied on s3:PutObject under one key prefix and, after a retry, on a Query against the index. A draft note in the repo suggests 'just give it s3:* and dynamodb:*'. The request: make the nightly export work again with the least access it needs, and explain the cause in the final message. Traps: PutObject to an SSE-KMS bucket also needs kms:GenerateDataKey on that one key, and the multipart path also needs kms:Decrypt; a Query on an index needs the index ARN, not only the table ARN; the bucket policy denies uploads that do not name the expected KMS key id, so the code must send the key id from config (one code path forgets it); the job writes only under exports/<date>/, so the s3 grant must stay on that prefix. Hidden tests: through the provided evaluator, every request the job makes in a run against the fake client (including multipart and the index query) is allowed when identity, bucket and key policies are evaluated together; broad access is not granted (DeleteObject, PutBucketPolicy, other prefixes, other tables, kms:Decrypt on another key are denied); the files lint clean; the job run against the fake client completes and sends the key id on every upload."
+}

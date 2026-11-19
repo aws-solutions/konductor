@@ -115,6 +115,17 @@ test('Kiro CLI: the agent asks twice, each question gets its fact or the default
   } finally { s.cleanup(); }
 });
 
+test('Kiro CLI: checks of a scripted task read the conversation from BENCH_CONVERSATION', async () => {
+  const s = kiroSetup({ turns: [{ finalText: ASK_BUDGET, credits: 1 }, { finalText: DONE, credits: 1 }] });
+  try {
+    const probe = "const c=JSON.parse(require('fs').readFileSync(process.env.BENCH_CONVERSATION,'utf8'));process.exit(c.questions.length===1&&c.questions[0].matched[0]==='budget'&&c.questions[0].count>=1?0:1)";
+    const task = { ...s.task, checks: [{ type: 'cmd', cmd: `node -e "${probe}"` }] };
+    const r = await executeRun({ arm: ARM, task, replicate: 1, ctx: s.ctx, prepared: null, outDir: s.outDir, inFlightAtStart: 0 });
+    assert.equal(r.status, 'success', r.error);
+    assert.equal(r.checks[0].passed, true, r.checks[0].detail);
+  } finally { s.cleanup(); }
+});
+
 test('Kiro CLI: an agent that never asks is one turn and every fact stays locked', async () => {
   const s = kiroSetup({ turns: [{ finalText: DONE, credits: 1 }] });
   try {

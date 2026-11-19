@@ -1,0 +1,11 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[user]
+	name = Probe
+	email = probe@example.invalid
+[remote "origin"]
+	url = remote.git
+	fetch = +refs/heads/*:refs/remotes/origin/*

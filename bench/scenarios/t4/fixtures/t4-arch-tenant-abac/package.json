@@ -1,0 +1,12 @@
+{
+  "name": "example-tenant-document-service",
+  "version": "2.7.0",
+  "private": true,
+  "description": "A dependency-free multi-tenant document service",
+  "main": "src/index.js",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test",
+    "check:tenants": "node scripts/stamp-tenants.js --check"
+  }
+}

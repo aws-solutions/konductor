@@ -1,0 +1,69 @@
+{
+  "id": "probe-coverage-no-yes",
+  "class": "sop",
+  "version": 2,
+  "phase": "testing",
+  "role": "qa",
+  "questions": "allowed",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "controlKind": "none",
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "claude",
+    "model": "kiro-crew-mate",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "targetSkills": [],
+  "targetSop": "k-test-coverage-review",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "k-test-coverage-review"
+    ],
+    "mustNotLoad": []
+  },
+  "fixture": "inventory-api",
+  "prompt": "Look at how well the inventory service in src/ is tested by the tests in test/, and show me the gaps by severity. I have not decided yet whether we should plan end-to-end tests for them. Write what you produce into test-coverage-review/. There are no story or design files.",
+  "checks": [
+    {
+      "type": "cmd",
+      "cmd": "grep -rliE '(critical|important|suggestion)' test-coverage-review --include='*.md' | grep -q .",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "! find . \\( -name e2e-test-strategy.md -o -name 'test-coverage-review-report.md' \\) -not -path './node_modules/*' | grep -q .",
+      "expectExit": 0,
+      "weight": 5,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "asks-first",
+      "criterion": "The final message shows the gap summary and asks whether to plan end-to-end tests for the gaps, without planning them first.",
+      "weight": 1
+    }
+  ]
+}

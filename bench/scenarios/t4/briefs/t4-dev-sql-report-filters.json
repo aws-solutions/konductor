@@ -1,0 +1,18 @@
+{
+  "id": "t4-dev-sql-report-filters",
+  "wave": 1,
+  "phase": "security",
+  "role": "developer",
+  "kind": "code",
+  "stack": "python",
+  "author": "deepseek-3.2",
+  "reviewer": "gpt-5.6-luna",
+  "size": "30 to 50",
+  "source": {
+    "url": "https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.md",
+    "licence": "CC-BY-SA-4.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "brief": "Phase: security. Role: developer. Repo kind: a Python 3.12 internal reporting service (standard library only: a small WSGI app or http.server handlers, a sqlite3 data layer with a demo database built by a seed script, CSV export, tests, CI, docs). The report functions build SQL by string formatting from query parameters: a free-text customer name filter (LIKE), a status filter list, a date range, a sort column and sort direction, a page size and offset, and a CSV export. A pen-test summary quoted in the request says only that the reports API is injectable. The agent must make every query safe while keeping all features working. Traps a careful developer catches: the sort column and direction cannot be bound as parameters and need a fixed allowlist mapping (a lazy fix escapes quotes or parameterizes only the values); LIKE wildcards % and _ in user input must be escaped so a search for '50%' finds only that literal text; each status value must be bound; limit and offset must be integers with a cap; the CSV export calls a second, older builder that is also injectable; errors must not echo SQL or table names to the client. Hidden tests call the public functions and the WSGI app named in the request with injection payloads (union, boolean, stacked, comment, sort-column payloads) and check: no extra rows, no error leak, the schema unchanged; and with legitimate inputs check results and order stay correct."
+}

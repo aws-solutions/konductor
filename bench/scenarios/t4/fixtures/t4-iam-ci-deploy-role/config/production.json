@@ -1,0 +1,11 @@
+{
+  "stage": "production",
+  "region": "us-east-1",
+  "accountId": "111122223333",
+  "bucketName": "lantern-production-assets-111122223333",
+  "distributionId": "E1PRODUCTIONLANTERN",
+  "functionName": "lantern-api-production",
+  "executionRoleName": "lantern-api-production-exec",
+  "liveAlias": "live",
+  "sitePrefix": "site/"
+}

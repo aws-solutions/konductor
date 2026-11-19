@@ -1,0 +1,15 @@
+{
+  "name": "harborline-webhook-relay",
+  "version": "0.8.0",
+  "private": true,
+  "description": "Prototype webhook relay used for design discussion",
+  "main": "prototype/server.js",
+  "scripts": {
+    "test": "node --test",
+    "start": "node prototype/server.js",
+    "check": "node scripts/check-docs.js"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

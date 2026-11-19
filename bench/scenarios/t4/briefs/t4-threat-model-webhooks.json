@@ -1,0 +1,14 @@
+{
+  "id": "t4-threat-model-webhooks",
+  "wave": 1,
+  "phase": "design-review",
+  "role": "security",
+  "kind": "findings",
+  "stack": "docs",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "size": "20 to 35",
+  "source": { "url": "https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Threat_Modeling_Cheat_Sheet.md", "licence": "CC-BY-SA-4.0", "licenceCheckedAt": "2026-11-19", "use": "idea" },
+  "outputFile": "docs/threat-model.md",
+  "brief": "Phase: design review. Role: security engineer. Document kind: the design folder of a planned multi-tenant webhook relay service (customers register callback URLs; the service receives events from partner systems, verifies and stores them, and forwards them to the callbacks with retries). Fixture: docs/design.md (the main design, 1500 to 2500 words: components with names, data flows, a delivery sequence, storage and retention, operations), docs/api.md (endpoints and payloads), docs/decisions/ (3 or 4 short ADRs), a text architecture diagram, a sample config, a glossary, meeting notes, and a small prototype folder with a few source files and a README. Seed 8 real threats that a careful reviewer finds from the documents, each tied to a named component, and none named as a problem anywhere: inbound events accepted without signature verification, or with a non-constant-time compare; no replay protection (timestamp or event id window); callback URLs not restricted, so the forwarder can be pointed at internal addresses or the instance metadata endpoint; tenant id taken from the request body instead of from the authenticated key; full payloads and the partner signing secrets written to logs; no limit on payload size or on retries per tenant, so one tenant can exhaust the shared queue; one shared admin API key with no rotation and no audit trail; stored events not encrypted at rest and never deleted though the retention section promises 30 days. Also seed 3 decoys that look risky but are handled in the documents (TLS is terminated at the edge and re-encrypted to the service; a rate limiter exists on the public API; database access goes through a parameterized query layer). The request: before the build starts, write a threat model of this design in docs/threat-model.md, ending with one fenced json block: a list of objects with fields component, threat, severity (critical, high, medium or low) and mitigation. Do not name any threat-modelling method. Hidden tests read the block with the provided helper: one test per seeded threat (right component and the threat's key idea, with generous synonyms), severity tests for the three most serious, one test per decoy that it is not raised at high or critical, and a padding test (no more than 20 items)."
+}

@@ -1,0 +1,5 @@
+{
+  "MUG": { "name": "Blue mug", "unitPrice": 12.5 },
+  "BOOK": { "name": "Notebook", "unitPrice": 9.95 },
+  "BAG": { "name": "Canvas bag", "unitPrice": 21.0 }
+}

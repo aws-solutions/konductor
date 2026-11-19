@@ -1,0 +1,132 @@
+{
+  "id": "t6-neg-glossary-rename",
+  "class": "design",
+  "version": 1,
+  "phase": "requirements",
+  "role": "pm",
+  "questions": "allowed",
+  "prompt": "Please update our product copy after the rename from \"Workspace\" to \"Project\". In `docs/glossary.md`, update the glossary entry and its definition prose so the product term is Project, while retaining the former name in the structured record. In `docs/product-prd.md`, update only the metrics table to use Project and keep all metric facts unchanged. Leave the PRD's context and product-requirements sections as they are, and leave every other file unchanged. Keep the existing JSON block shapes: glossary `{ \"term\": \"...\", \"previous_term\": \"...\", \"definition\": \"...\", \"status\": \"...\" }`; PRD `{ \"metrics\": [{ \"name\": \"...\", \"definition\": \"...\", \"baseline\": \"...\", \"target\": \"...\" }], \"term_change\": { \"from\": \"...\", \"to\": \"...\" } }`.",
+  "fixture": "t6-neg-glossary-rename",
+  "hidden": "t6-neg-glossary-rename",
+  "timeoutSec": 600,
+  "limits": {
+    "softSec": 300,
+    "hardSec": 600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 14,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/glossary.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/product-prd.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "notes",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs'); if (!fs.readFileSync('docs/glossary.md','utf8').includes(String.fromCharCode(96,96,96)+'json')) process.exit(1)\"",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "contains",
+      "path": "docs/glossary.md",
+      "pattern": "\\\"term\\\"\\s*:\\s*\\\"Project\\\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "docs/product-prd.md",
+      "pattern": "\\|\\s*Workspace\\s+(?:activation|active)",
+      "weight": 2,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    },
+    {
+      "id": "reader-fit",
+      "criterion": "The document is usable by the people the request names: it is clear which items need a decision and from whom (code cannot check this because usefulness to a reader is a judgement).",
+      "weight": 1
+    },
+    {
+      "id": "no-padding",
+      "criterion": "Content that does not follow from the folder or the colleague's answers is absent or marked as an assumption; do not reward length or formatting (code cannot check this because it needs a reading of the whole document).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "negative",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": [
+      "skill:workspace-skills",
+      "skill:k-code-simplifier"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt specifies desired outcome (rename to Project, output paths, JSON format) without prescribing a method or process."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fixed",
+        "note": "Scope was unclear (narrative sections, definition prose); the fix round states it: glossary entry with its prose, PRD metrics table only. The lead also removed the words fixture and checks from the prompt."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Task requires selective editing with traps (persona desk workspace, workspaceId identifier, historical files) - stub scores only 15% showing appropriate difficulty."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "Task is solvable: reference passes all 14 hidden tests, prompt gives clear rename direction (Workspace to Project), no unfair hidden facts."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture shows current term (Workspace) but prompt explicitly provides the new term (Project) - these are specifications, not an answer key."
+      }
+    ]
+  }
+}

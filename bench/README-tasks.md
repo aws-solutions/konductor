@@ -80,6 +80,10 @@ Four checks measured wording and layout, not content, and failed designs that ha
 
 Results of this task scored before this change are stale for these four checks. The judge revision (prompt, rubric, answer key) is unchanged, so judgments stay valid. `bench.js recheck --run DIR` applies the new checks to saved runs and keeps the first results under `checksOriginal`; the new checks hash is the `checksRevision` it records.
 
+### Revised prompt of `sop-test-coverage-review`
+
+The prompt gained the sentence "The scope is confirmed: go ahead." since konductor PR #299: the coverage-review procedure now asks before planning end-to-end tests unless the user confirmed the scope. Checks are unchanged. The prompt is part of the task revision, so judgments saved before 2026-11-19 are stale for this task; scores from checks alone are unaffected.
+
 ## Mutation proof
 
 Reference solutions are realistic documents derived from the answer keys, and every check must pass on them. For each `sop`, `review` and `design` task (and the orchestration tasks that write a report) `tasks/stubs/<id>/` holds a keyword stub: the right headings and keywords, no substance. The validator lays it over the solution and requires at least one `min_matches` or `cmd` check to fail. Tasks of those classes need at least one `min_matches` check. A prompt that forbids edits needs a `fixture_unchanged` check.

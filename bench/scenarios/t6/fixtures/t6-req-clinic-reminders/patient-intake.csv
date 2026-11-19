@@ -1,0 +1,8 @@
+patient_ref,preferred_name,language_preference,phone_type,text_consent,emergency_contact,created_by
+P-117,Alina,English,mobile,yes,,web form
+P-118,Rosa,Spanish,mobile,yes,,front desk
+P-119,Theo,English,landline,yes,,front desk
+P-120,Minh,Vietnamese,mobile,yes,555-0191,web form
+P-121,Sam,English,mobile,,555-0192,front desk
+P-122,Diego,Spanish,mobile,yes,,web form
+P-123,Jo,English,mobile,yes,,import

@@ -1,0 +1,7 @@
+{
+  "name": "ledger-nightly",
+  "cron": "15 2 * * *",
+  "timezone": "UTC",
+  "timeoutSeconds": 900,
+  "retries": 2
+}

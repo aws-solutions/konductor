@@ -1,0 +1,14 @@
+{
+ "id": "t6-twin-clinic-costs",
+ "wave": 2,
+ "kind": "twin",
+ "twinOf": "t6-req-clinic-reminders",
+ "phase": "planning",
+ "role": "pm",
+ "out": "docs/cost-summary.md",
+ "repo": "the same fixture as t6-req-clinic-reminders (copied as is).",
+ "idea": "Near-miss twin on the same folder: a clear ask that needs no questions: total the expected monthly text-message cost per clinic from the vendor quote and the booking volumes in the folder, and say which clinic costs most. A hidden script checks the per-clinic numbers in a JSON block.",
+ "source": "original",
+ "author": "gpt-5.6-luna",
+ "reviewer": "glm-5"
+}

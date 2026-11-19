@@ -1,0 +1,139 @@
+{
+  "edits": [
+    "prompt rewritten (traps removed)",
+    "hidden: all-calls test split into deploy and rollback tests (16 to 17 tests)",
+    "package.json unchanged check made format, so fixture-passing substance weight is 20%",
+    "limits raised from 180/360 to 900/1800 s",
+    "expertKey added (judge-only; items the hidden tests or evaluator already check are left out)"
+  ],
+  "prompt": "Our security audit flagged the CI deploy role as far too broad, and I agree. Please tighten its policy in infra/iam/ci-deploy-policy.json down to what this deploy tooling really does, for both staging and production, without breaking any deploy or rollback. Stage settings are in config/staging.json and config/production.json; the deploy is scripts/deploy.js and the rollback is scripts/rollback.js. Every cloud call goes through scripts/lib/cloud-client.js, and createFakeClient(calls) there records each call as { action, resource, params }, which may help you see what is used. Keep the deploy({ stage, client, releaseId }) and rollback({ stage, client, version }) interfaces as they are. Change only the policy: not the scripts, config, workflow, packages or the public site. Keep the file valid IAM policy JSON.",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 17,
+      "weight": 6,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "infra/iam/ci-deploy-policy.json",
+      "pattern": "Resource[^:]*:\\s*\"\\*\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "not_contains",
+      "path": "infra/iam/ci-deploy-policy.json",
+      "pattern": "Action[^:]*:\\s*\"iam:\\*\"",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "file_exists",
+      "path": "infra/iam/ci-deploy-policy.json",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "targetSkills": [
+    "iam-policy-design",
+    "policy-validation"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-developer",
+  "loadCheck": {
+    "mustLoad": [
+      "iam-policy-design"
+    ],
+    "mustNotLoad": [
+      "threat-modeling",
+      "system-design-patterns",
+      "security-remediation"
+    ]
+  },
+  "twinIdea": "Add a new deployment script that uploads assets to a new S3 bucket and invalidates a new CloudFront distribution.",
+  "review": {
+    "family": "glm",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt describes what to deliver (a tightened IAM policy) without prescribing a named method, checklist, or process for how to work."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All hidden tests derive from the prompt's explicit requirements: stage resources from config files, actions from deploy.js and rollback.js, production-only CDN refresh, Lambda-only role passing. The staging distribution denial test correctly follows from 'Production refreshes its CDN but staging does not'."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture comments, docs, or tests reveal the solution. The fixture has intentionally broad permissions; the answer requires reading deploy.js and rollback.js to identify specific actions and resources."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fixed",
+        "note": "Reviewer passed it, but the draft prompt gave away the traps (production-only CDN refresh, rollback alias updates, PassRole limited to Lambda). The lead rewrote the prompt, and split the one all-calls test into deploy and rollback tests so a policy that drops the rollback path loses a test of its own (3 of 17 pass on the fixture)."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All requirements are stated in the prompt: read config files and scripts, allow needed actions on specific resources, deny everything else, restrict role passing to Lambda service with a condition. No hidden knowledge required."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "derive-from-use",
+        "text": "Says how the needed actions and resources were found (the deploy and rollback code paths, or recorded calls) and how to keep the list current when the deploy changes, for example by generating or checking the policy from activity logs.",
+        "source": "AWS IAM Access Analyzer policy generation, https://docs.aws.amazon.com/IAM/latest/UserGuide/access-analyzer-policy-generation.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "stage-separation",
+        "text": "Points out that one role serving both stages lets a staging run touch production, and suggests separate stage roles or stage conditions as the next step.",
+        "source": "AWS IAM User Guide, Security best practices in IAM, https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "short-lived-ci-credentials",
+        "text": "Notes that the CI should reach the role through short-lived federated credentials with a trust condition on the repository and branch, not stored access keys.",
+        "source": "GitHub Docs, Configuring OpenID Connect in Amazon Web Services, https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services (CC-BY-4.0)"
+      },
+      {
+        "id": "guardrail",
+        "text": "Suggests a guardrail that caps the role even if its policy grows again (a permissions boundary or an organization policy), since the audit found drift by copy-paste.",
+        "source": "AWS IAM User Guide, Permissions boundaries, https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "pass-role-risk",
+        "text": "Explains why role passing is the dangerous grant (it lets the deploy hand a stronger role to a function) and that it is limited to the function execution roles.",
+        "source": "Cloudsplaining, https://github.com/salesforce/cloudsplaining (BSD-3-Clause)"
+      }
+    ],
+    "weakAnswers": [
+      "Removed the wildcards and followed least privilege.",
+      "Scoped the policy to specific resources.",
+      "Removed iam:* because it is dangerous.",
+      "Tightened the policy; the deploy should still work."
+    ]
+  }
+}
