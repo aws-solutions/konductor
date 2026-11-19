@@ -7,7 +7,7 @@ Recorded gates are the stops this SOP names; where the run keeps a session file,
 
 ## Overview
 
-Turns PM and design artifacts into a Kiro IDE spec (requirements.md, design.md, tasks.md) via the three kiro-*-generation skills.
+Turns PM and design artifacts into a Kiro IDE spec (requirements.md, design.md, tasks.md) via kiro-requirements-generation, kiro-design-generation, kiro-task-generation.
 
 End-to-end workflow that transforms PM and design artifacts into Kiro IDE spec documents. Chains three skills in sequence: kiro-requirements-generation → kiro-design-generation → kiro-task-generation, producing a complete `.kiro/specs/{feature-name}/` directory (by default — see `spec_dir` below) with requirements.md, design.md, and tasks.md.
 
