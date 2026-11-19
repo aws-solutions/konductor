@@ -12,7 +12,7 @@
   "checks": [
     {
       "type": "tests",
-      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --require ./hidden/gate.js --test hidden/*.test.js",
       "min": 19
     },
     {
@@ -61,7 +61,20 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-19",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 21,
+      "alt": 95,
+      "date": "2026-11-19"
+    }
+  },
   "version": 1,
   "targetSkills": [
     "cost-estimation",

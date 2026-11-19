@@ -47,7 +47,20 @@
     "date": "2026-11-19",
     "source": "original"
   },
-  "pilot": null,
+  "pilot": {
+    "scores": {},
+    "reference": 100,
+    "stub": 0,
+    "decision": "keep",
+    "date": "2026-11-19",
+    "dryRun": {
+      "reference": 100,
+      "stub": 0,
+      "lazy": 11,
+      "alt": 100,
+      "date": "2026-11-19"
+    }
+  },
   "version": 1,
   "twinOf": "t3-adr-cache-sizing",
   "targetSkills": [],

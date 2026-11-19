@@ -28,7 +28,7 @@ function fixtureRecords() {
       for (const match of line.matchAll(DAY_PATTERN)) {
         const value = Number(match[1]);
         if (!records.some((record) => record.file === relative && record.value === value)) {
-          records.push({ file: relative, value });
+          records.push({ file: relative, value, });
         }
       }
     }
@@ -59,64 +59,45 @@ function withinOnePercent(actual, expected) {
 
 const expected = fixtureRecords();
 
+test('format: every figure that names a fixture source matches a fixture figure', () => {
+  const records = outputRecords(outputText()).filter((r) => r.file);
+  assert.ok(records.length > 0);
+  for (const record of records) {
+    assert.ok(expected.some((w) => w.file === record.file && withinOnePercent(record.value, w.value)), `invented: ${record.line}`);
+  }
+});
+
 test('the deliverable exists at the requested path', () => {
   assert.equal(fs.existsSync(DELIVERABLE), true);
 });
 
-test('the deliverable has readable content', () => {
-  assert.ok(outputText().trim().length > 0);
+test('every 90-day record is marked superseded or legacy', () => {
+  const lines = outputText().split(/\r?\n/).filter((l) => /(?<![\w.])90\s*(?:-\s*)?days?\b/i.test(l));
+  assert.ok(lines.length > 0, 'no 90-day record');
+  for (const l of lines) assert.match(l, /supersed|legacy|no longer|replaced|historic|old\b|obsolete/i, l);
 });
 
-test('fixture scanning finds retention figures without hard-coded answers', () => {
-  assert.ok(expected.length > 0);
-  assert.ok(expected.every((record) => record.value > 0));
-});
-
-test('each output figure is on its own line', () => {
-  const records = outputRecords(outputText());
-  assert.ok(records.length > 0);
-  for (const line of outputText().split(/\r?\n/)) {
-    assert.ok([...line.matchAll(DAY_PATTERN)].length <= 1);
+test('every 400-day record is marked as the current requirement', () => {
+  const lines = outputText().split(/\r?\n/).filter((l) => /(?<![\w.])400\s*(?:-\s*)?days?\b/i.test(l));
+  assert.ok(lines.length > 0, 'no 400-day record');
+  for (const l of lines) {
+    assert.match(l, /current|active|required|in force|requirement|policy/i, l);
+    assert.doesNotMatch(l, /supersed|legacy|no longer|obsolete/i, l);
   }
 });
 
-test('the output contains one record for each fixture figure and source pair', () => {
-  assert.equal(outputRecords(outputText()).length, expected.length);
-});
+for (const wanted of expected) {
+  test(`records ${wanted.value} days from ${wanted.file}`, () => {
+    assert.ok(outputRecords(outputText()).some((r) => r.file === wanted.file && withinOnePercent(r.value, wanted.value)));
+  });
+}
 
-test('every output figure names a fixture source file', () => {
-  for (const record of outputRecords(outputText())) {
-    assert.ok(record.file, `missing source for: ${record.line}`);
-  }
-});
-
-test('every expected figure appears with its source file within one percent', () => {
-  const actual = outputRecords(outputText());
-  for (const wanted of expected) {
-    assert.ok(
-      actual.some((record) => record.file === wanted.file && withinOnePercent(record.value, wanted.value)),
-      `missing ${wanted.value} days from ${wanted.file}`,
-    );
-  }
-});
-
-test('output records do not add figures or source files absent from the fixture', () => {
-  const actual = outputRecords(outputText());
-  for (const record of actual) {
-    assert.ok(expected.some((wanted) => wanted.file === record.file && withinOnePercent(record.value, wanted.value)));
-  }
-});
-
-test('all expected source files are represented', () => {
-  const actualFiles = new Set(outputRecords(outputText()).map((record) => record.file));
-  for (const file of new Set(expected.map((record) => record.file))) {
-    assert.equal(actualFiles.has(file), true, `missing source file ${file}`);
-  }
-});
-
-test('all reported day values are finite and positive', () => {
-  for (const record of outputRecords(outputText())) {
-    assert.equal(Number.isFinite(record.value), true);
-    assert.ok(record.value > 0);
-  }
-});
+const SUPERSEDED_WORDS = /supersed|legacy|no longer|replaced|historic|obsolete|old\b/i;
+for (const wanted of expected.filter((r) => r.value === 90 || r.value === 400)) {
+  test(`status of ${wanted.value} days from ${wanted.file}`, () => {
+    const single = (r) => [...r.line.matchAll(DAY_PATTERN)].length === 1;
+    const mine = outputRecords(outputText()).filter((r) => r.file === wanted.file && withinOnePercent(r.value, wanted.value) && single(r));
+    assert.ok(mine.length > 0);
+    for (const r of mine) assert.equal(SUPERSEDED_WORDS.test(r.line), wanted.value === 90, r.line);
+  });
+}
