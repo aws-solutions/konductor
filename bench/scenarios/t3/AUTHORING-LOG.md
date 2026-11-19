@@ -34,3 +34,6 @@
 | t3-db-audit-retention | author | deepseek-3.2 | 5.58 |
 | t3-db-audit-retention | map | glm-5 | 0.62 |
 | t3-db-audit-retention | review | minimax-m2.5 | 5.22 |
+| t3-adr-queue-choice | author | deepseek-3.2 | 10.46 |
+| t3-adr-queue-choice | map | glm-5 | 0.63 |
+| t3-adr-queue-choice | review | minimax-m2.5 | 2.51 |

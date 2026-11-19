@@ -1,0 +1,118 @@
+{
+  "id": "t3-adr-queue-choice",
+  "class": "design",
+  "target": null,
+  "prompt": "We need to choose a managed queue service for our event processing pipeline. Review the requirements, technical design, pricing information, and operational context in the fixture/ directory.\n\nBased on the analysis, select the most appropriate queue service that meets all requirements while staying within budget. Consider message size, throughput needs, ordering requirements, and operational complexity.\n\nCreate an Architecture Decision Record (ADR) at docs/adr/0001-queue.md documenting your decision. The ADR should include:\n- Context and problem statement\n- Considered options with pros and cons\n- Decision and rationale\n- Consequences and implementation notes\n\nInclude a fenced code block with info string `decision` containing JSON with exactly these keys:\n- \"chosen\": the selected option id (e.g., \"sqs_standard\", \"sqs_fifo\", \"kinesis_streams\")\n- \"options\": array of all option ids considered\n- \"limits\": object mapping limit names to {\"limit\": number, \"value\": number} for each hard limit in the requirements\n- \"monthly_cost_usd\": the chosen option's monthly cost computed from the pricing data\n\nEnsure your cost calculations account for message size, chunk billing, and all operations needed for the complete message lifecycle. Verify that the chosen option meets all throughput limits and stays within the $900 monthly budget.",
+  "fixture": "t3-adr-queue-choice",
+  "timeoutSec": 900,
+  "hidden": "t3-adr-queue-choice",
+  "phase": "decisions",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 43
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/adr/0001-queue.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning_quality",
+      "criterion": "Quality of reasoning and tradeoff analysis (not code-checkable: Code cannot evaluate the depth of analysis, consideration of secondary factors, or clarity of thought process in explaining why certain options were rejected and why the chosen option best meets the requirements.)",
+      "weight": 1
+    },
+    {
+      "id": "explanation_clarity",
+      "criterion": "Clarity and completeness of explanation in the ADR (not code-checkable: Automated checks can verify structure and presence of sections, but cannot assess whether the explanation would be understandable to stakeholders, whether it addresses all relevant concerns, or whether it provides sufficient context for future readers.)",
+      "weight": 1
+    },
+    {
+      "id": "professional_writing",
+      "criterion": "Professional writing quality and appropriate tone (not code-checkable: While basic grammar and spelling can be checked, code cannot evaluate whether the writing is persuasive, appropriately technical, well-structured for the audience, or maintains a professional tone suitable for architectural documentation.)",
+      "weight": 1
+    },
+    {
+      "id": "tradeoff_consideration",
+      "criterion": "Consideration of non-quantitative tradeoffs (not code-checkable: Tests can verify numerical calculations and limit checks, but cannot evaluate whether the agent considered operational complexity, team skills, integration effort, future scalability, or other qualitative factors that influence real-world architecture decisions.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/rust-lang/rfcs",
+      "licence": "MIT OR Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "structure"
+    }
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "skill:decision-research",
+    "skill:decision-writing",
+    "skill:cost-estimation"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "skill:decision-research",
+      "skill:decision-writing",
+      "skill:cost-estimation"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "minimax",
+    "model": "minimax-m2.5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks to analyze and select from available options; it does not name or hint at a specific answer. The solution correctly derives kinesis_streams through analysis of provided data."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Requirements clearly state 400/s peak throughput and $900 budget. The FIFO 300/s limit is explicitly in pricing data, making the decision unambiguous for a careful reader."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture files contain the data needed to calculate but do not state the answer. The trap (FIFO appears cheaper but fails throughput) is correctly identified by the solution through its own analysis."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Three options are under budget ($900), so simple cheapest-choice would be wrong. The throughput constraint (400/s) is the key discriminator - FIFO fails it while others pass."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All needed numbers are provided: 8M events/day, 90KB size, 400/s peak, $900 budget, and detailed pricing. Output format is specified clearly."
+      }
+    ]
+  }
+}
