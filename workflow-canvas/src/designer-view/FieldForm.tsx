@@ -4,7 +4,6 @@ import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Textarea from '@cloudscape-design/components/textarea';
-import { useState } from 'react';
 import {
   agentOptions,
   fieldErrors,
@@ -85,16 +84,18 @@ function Control({
 }
 
 /**
- * The form of one stage, built from its `stage_fields`. Each change is
- * checked against the rules of the keys, each error is shown under its key,
- * and `onChange` gets the edited values. It never writes YAML: a key the
- * rules do not name is passed on as it came.
+ * The form of one stage, built from its `stage_fields`. It is controlled:
+ * it shows `values` and keeps no copy, so a parent that switches stages
+ * shows the new stage at once. Each change is checked against the rules of
+ * the keys, each error is shown under its key, and `onChange` gets the
+ * edited values, made from the current `values`. It never writes YAML: a key
+ * the rules do not name is passed on as it came.
  */
 export function FieldForm({
   stageName,
   rules,
   agents,
-  initialValues,
+  values,
   onChange,
 }: {
   /** Names the form for a screen reader. */
@@ -102,14 +103,13 @@ export function FieldForm({
   rules: readonly StageFieldRule[];
   /** The agents of `GET /api/agents`, offered for the `agent` key. */
   agents: readonly AgentOption[];
-  initialValues: FieldValues;
+  /** The keys of the stage now, which the parent owns. */
+  values: FieldValues;
   onChange: (change: FieldFormChange) => void;
 }) {
-  const [values, setValues] = useState(initialValues);
   const errors = fieldErrors(rules, values);
   const edit = (key: string, text: string) => {
     const next = withValue(values, key, text);
-    setValues(next);
     onChange({ values: next, errors: fieldErrors(rules, next) });
   };
   return (

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import createWrapper from '@cloudscape-design/components/test-utils/dom';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { FieldForm, type FieldFormChange } from './FieldForm';
 import type { FieldValues, StageFieldRule } from './field-rules';
@@ -42,19 +43,37 @@ const AGENTS = [
   { id: 'k-developer', summary: 'Backend and frontend code' },
 ];
 
-function renderForm(
-  initialValues: FieldValues = { name: 'draft', agent: 'k-developer' },
-) {
-  const changes: FieldFormChange[] = [];
-  render(
+// A parent that owns the draft, as the Designer will: it keeps each change
+// and passes the values back in.
+function Owner({
+  stageName = 'draft',
+  start,
+  changes,
+}: {
+  stageName?: string;
+  start: FieldValues;
+  changes: FieldFormChange[];
+}) {
+  const [values, setValues] = useState(start);
+  return (
     <FieldForm
-      stageName="draft"
+      stageName={stageName}
       rules={RULES}
       agents={AGENTS}
-      initialValues={initialValues}
-      onChange={(change) => changes.push(change)}
-    />,
+      values={values}
+      onChange={(change) => {
+        changes.push(change);
+        setValues(change.values);
+      }}
+    />
   );
+}
+
+function renderForm(
+  start: FieldValues = { name: 'draft', agent: 'k-developer' },
+) {
+  const changes: FieldFormChange[] = [];
+  render(<Owner start={start} changes={changes} />);
   return changes;
 }
 
@@ -193,7 +212,7 @@ describe('FieldForm', () => {
         stageName={hostile}
         rules={RULES}
         agents={AGENTS}
-        initialValues={{ name: hostile, agent: 'k-developer' }}
+        values={{ name: hostile, agent: 'k-developer' }}
         onChange={() => {}}
       />,
     );
@@ -202,5 +221,64 @@ describe('FieldForm', () => {
     expect(
       screen.getByRole('form', { name: `Keys of ${hostile}` }),
     ).toBeTruthy();
+  });
+
+  it('shows the values it is given, and changes nothing until the parent passes the edit back', () => {
+    const changes: FieldFormChange[] = [];
+    render(
+      <FieldForm
+        stageName="draft"
+        rules={RULES}
+        agents={AGENTS}
+        values={{ name: 'draft', agent: 'k-developer' }}
+        onChange={(change) => changes.push(change)}
+      />,
+    );
+    type('name', 'plan');
+
+    expect(changes.at(-1)?.values.name).toBe('plan');
+    expect(textbox('name').value).toBe('draft');
+  });
+
+  it('shows the new stage when the parent switches stages, and edits only its values', () => {
+    const STAGE_A = {
+      name: 'draft',
+      agent: 'k-developer',
+      prompt: 'Draft it.',
+    };
+    const STAGE_B = {
+      name: 'review',
+      agent: 'k-architect',
+      prompt_file: 'review.md',
+    };
+    const changes: FieldFormChange[] = [];
+    const formOf = (stageName: string, values: FieldValues) => (
+      <FieldForm
+        stageName={stageName}
+        rules={RULES}
+        agents={AGENTS}
+        values={values}
+        onChange={(change) => changes.push(change)}
+      />
+    );
+    const { rerender } = render(formOf('draft', STAGE_A));
+    rerender(formOf('review', STAGE_B));
+
+    expect(screen.getByRole('form', { name: 'Keys of review' })).toBeTruthy();
+    expect(textbox('name').value).toBe('review');
+    expect(textbox('prompt').value).toBe('');
+    expect(textbox('prompt_file').value).toBe('review.md');
+
+    type('name', 'check');
+    expect(changes).toEqual([
+      {
+        values: {
+          name: 'check',
+          agent: 'k-architect',
+          prompt_file: 'review.md',
+        },
+        errors: {},
+      },
+    ]);
   });
 });
