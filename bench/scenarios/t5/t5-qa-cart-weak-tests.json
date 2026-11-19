@@ -5,7 +5,7 @@
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
-  "prompt": "Please make the tests in `test/` trustworthy for the cart and checkout pricing code. We had a wrong charge reach a customer even though the suite reports high coverage. Put the focused cases in `test/qa-edge-cases.test.js`. Cover discount order and stacking, percentage rounding, tax and total amounts in cents, quantity limits, coupon expiry, the exact free-shipping threshold, empty and one-line carts, invalid coupon input, and cart state across calls. Use the existing Node.js 24 CommonJS setup and keep the suite runnable with `node --test`. Do not change anything under `src/`, and do not change package files, data, documentation, CI, or runtime behavior. Add only test files or test-file changes under `test/`; do not add dependencies, generated output, or temporary files.",
+  "prompt": "We had a wrong charge reach a customer last week even though the dashboard says the test suite covers over 90% of the code. I do not trust the tests under test/ for the cart and checkout pricing any more. Please make them trustworthy for the pricing side of this repo: carts, discounts and coupons, tax, shipping and the order total. Put your new cases in test/qa-edge-cases.test.js (you may also fix or extend the existing test files), keep the suite runnable with `node --test`, and use the existing Node.js 24 CommonJS setup. Do not change anything under src/, the package files, data, docs or CI, and add no dependencies or generated files.",
   "fixture": "t5-qa-cart-weak-tests",
   "hidden": "t5-qa-cart-weak-tests",
   "timeoutSec": 1200,

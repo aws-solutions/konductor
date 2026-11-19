@@ -1,0 +1,5 @@
+[
+  { "id": "u-admin", "email": "admin@example.test", "role": "admin" },
+  { "id": "u-editor", "email": "editor@example.test", "role": "editor" },
+  { "id": "u-reviewer", "email": "reviewer@example.test", "role": "reviewer" }
+]

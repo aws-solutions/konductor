@@ -1,6 +1,6 @@
 {
   "runner": "node",
-  "testCmd": "node --test --test-timeout=4000 test",
+  "testCmd": "node --test --test-timeout=4000 test/*.test.js",
   "pristine": [
     "src/cart.js",
     "src/discounts.js",

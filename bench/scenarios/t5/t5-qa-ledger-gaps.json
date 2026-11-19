@@ -5,7 +5,7 @@
   "phase": "testing",
   "role": "qa",
   "questions": "allowed",
-  "prompt": "Please strengthen the ledger test suite for an auditor who is asking whether an interest change would really be noticed. Add focused cases under tests/ in files named test_*.py and keep `python3 -m unittest discover -s tests` passing. Cover Decimal interest rounding as documented, its cents scale and annual-day calculation, statement transactions at the first and last instant, a debit exactly at the overdraft limit, posting the same transaction id twice, reversing an already reversed entry, negative fee input and fee direction, and debit/credit columns in CSV output. Keep the checks fast and compatible with Python 3.12 and the standard library. Do not change anything under the ledger/ library package, the CLI, documentation, configuration, or existing behavior. The work should be limited to new or changed tests under tests/.",
+  "prompt": "An auditor asked how sure we are that a change to the interest code would be noticed, and all I could say was that coverage is 95%. I do not think that is a good answer. Please strengthen the test suite for this ledger library, for the code that moves or counts money: interest, fees, overdrafts, posting and reversal, statements and the CSV export. Add new test files named test_*.py under tests/ (you may also extend the existing ones) and keep `python3 -m unittest discover -s tests` passing, using Python 3.12 and the standard library only. Do not change anything under ledger/ or the CLI, the docs or the configuration; the work is limited to tests under tests/.",
   "fixture": "t5-qa-ledger-gaps",
   "hidden": "t5-qa-ledger-gaps",
   "timeoutSec": 1200,
@@ -23,31 +23,9 @@
     },
     {
       "type": "cmd",
-      "cmd": "python3 -m unittest discover -s tests",
+      "cmd": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests && test \"$(cat tests/*.py | grep -cE '^[[:space:]]*def test_')\" -ge 22",
       "expectExit": 0,
-      "weight": 1,
-      "kind": "substance"
-    },
-    {
-      "type": "min_matches",
-      "path": "tests/test_edge_cases.py",
-      "pattern": "^[ \\t]*def test_[A-Za-z0-9_]+",
-      "min": 8,
-      "weight": 2,
-      "kind": "substance"
-    },
-    {
-      "type": "contains",
-      "path": "tests/test_edge_cases.py",
-      "pattern": "calculate_interest|ROUND_HALF_UP|quantize|Decimal",
-      "weight": 2,
-      "kind": "substance"
-    },
-    {
-      "type": "contains",
-      "path": "tests/test_edge_cases.py",
-      "pattern": "overdraft|revers|transaction.*id|fee|statement.*endpoint|CSV",
-      "weight": 2,
+      "weight": 4,
       "kind": "substance"
     },
     {
@@ -55,12 +33,6 @@
       "path": "ledger/interest.py",
       "weight": 1,
       "kind": "substance"
-    },
-    {
-      "type": "file_exists",
-      "path": "tests/test_edge_cases.py",
-      "weight": 1,
-      "kind": "format"
     }
   ],
   "rubric": [

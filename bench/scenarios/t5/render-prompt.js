@@ -12,7 +12,7 @@ const DIR = __dirname;
 const read = (rel) => fs.readFileSync(path.join(DIR, rel), 'utf8');
 
 const STACKS = {
-  node: { stack: 'Node.js 24, CommonJS, no dependencies and no install step. Tests use node:test and node:assert and run with `node --test`.', runner: 'node', mutcmd: 'node --test --test-timeout=4000 test', pycfg: '' },
+  node: { stack: 'Node.js 24, CommonJS, no dependencies and no install step. Tests use node:test and node:assert and run with `node --test`.', runner: 'node', mutcmd: 'node --test --test-timeout=4000 test/*.test.js', pycfg: '' },
   python: { stack: 'Python 3.12, standard library only, no install step. Tests use unittest, live under `tests/` (files `test_*.py`) and run with `python3 -m unittest discover -s tests`. The repository root is on PYTHONPATH.', runner: 'python', mutcmd: '', pycfg: '"pattern": "test*.py", "perTestSec": 5, ' },
 };
 
