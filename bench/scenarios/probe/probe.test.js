@@ -46,3 +46,14 @@ test('dry run: the good play scores 100 and the bad play less, twice the same', 
     assert.ok(r.deterministic, id);
   }
 });
+
+test('summary keeps the SOP load out of the guard score', () => {
+  const { rowOf } = require('./summary.js');
+  const base = { taskId: 't', replicate: 1, status: 'success', checks: [{ passed: true, weight: 3 }, { passed: false, weight: 1 }] };
+  const loaded = rowOf({ ...base, loadCheck: { mustLoad: [{ unit: 'u', loaded: true, beforeFirstWrite: true }] } });
+  const notLoaded = rowOf({ ...base, loadCheck: { mustLoad: [{ unit: 'u', loaded: false, beforeFirstWrite: false }] } });
+  assert.equal(loaded.score, 75);
+  assert.equal(notLoaded.score, 75);
+  assert.equal(loaded.sopLoaded, 'yes (before write)');
+  assert.equal(notLoaded.sopLoaded, 'no');
+});

@@ -16,6 +16,10 @@ Each task lists its SOP in `targetSop` and `loadCheck.mustLoad`, so the run also
 
 `fixtures/probe-e2e-*` are git repositories with a local bare remote at the relative path `remote.git`. Git cannot store a `.git` directory, so the fixture holds `dotgit/` and `sandbox.copyFixture` renames it to `.git` when it copies the fixture. `remote.git/` is in `.git/info/exclude` so `git add -A` does not stage it. The remote is a path, never a network URL. `build-fixtures.sh` rebuilds the three fixtures from `site-src/` and `checklist-src/` with fixed dates and names, so the commit ids stay the same; `build-tasks.js` writes the task files from the ids.
 
+## Reading a run
+
+`node bench/scenarios/probe/summary.js RUN_DIR` prints one row per run: the guard score (code checks only) and, in its own column, whether the SOP loaded. The load never enters the score. The first run (guard=783603d4) showed the guard held in all five runs; tasks were revised to version 2 where a check or prompt hid that (coverage file name, uncommitted tests, a run that stopped to hand the user a command).
+
 ## Free checks
 
 `node bench/scenarios/probe/dry-run.js` plays a good and a bad scripted agent against every task and scores both with the bench's check code. `node --test bench/scenarios/probe/probe.test.js` runs it with the fixture checks.
