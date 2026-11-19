@@ -2,7 +2,7 @@
 
 Every model call made to write, map or review a T2 task, in order. Calls ran through Kiro CLI 3.5.0 in an empty work dir with an isolated home (no steering, rules, skills, MCP servers; memory disabled). Credits are read from the call's own stream; a call stopped before its final metering event shows "not captured".
 
-Total captured: 189.66 credits over 68 calls.
+Total captured: 203.88 credits over 70 calls.
 
 | Time (UTC) | Task | Step | Model | Seconds | Credits | Result |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -74,3 +74,5 @@ Total captured: 189.66 credits over 68 calls.
 | 2026-11-19T22:20:57Z | t2-pr-avatar-upload | map | glm-5 | 20 | 0.51 | ok |
 | 2026-11-19T22:27:35Z | t2-pr-avatar-upload | review | minimax-m2.5 | 398 | 1.15 | ok |
 | 2026-11-19T22:36:00Z | t2-pr-avatar-upload | fix (killed with the old worktree) | deepseek-3.2 |  | 0.00 | killed |
+| 2026-11-19T22:53:46.009Z | t2-pr-avatar-upload | fix | deepseek-3.2 | 681 | 11.88 | ok |
+| 2026-11-19T23:06:38Z | t2-pr-avatar-upload | review | minimax-m2.5 | 768 | 2.34 | ok |
