@@ -1,0 +1,15 @@
+{
+  "name": "paper-lantern-share",
+  "version": "1.4.0",
+  "private": true,
+  "description": "A small local document-sharing service",
+  "type": "commonjs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

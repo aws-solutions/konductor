@@ -55,8 +55,8 @@ that measure the fix (t4-dev-sql-report-filters) or split so one forgotten path 
 | wave | credits |
 | --- | --- |
 | 1 | 146.42 |
-| 2 | 130.97 |
-| all | 277.39 |
+| 2 | 136.92 |
+| all | 283.34 |
 
 ## Calls
 
@@ -108,3 +108,6 @@ Times are UTC on 2026-11-19. Credits are what each call reported in its stream.
 | 20:35 | t4-secrets-in-repo | author | gpt-5.6-luna | 2 | 351 | 4.90 |  |
 | 20:35 | t4-secrets-in-repo | map | glm-5 | 2 | 16 | 0.51 |  |
 | 20:36 | t4-secrets-in-repo | review | glm-5 | 2 | 99 | 3.82 |  |
+| 20:44 | t4-dev-path-traversal-files | author | gpt-5.6-luna | 2 | 135 | 2.33 |  |
+| 20:45 | t4-dev-path-traversal-files | map | glm-5 | 2 | 30 | 0.74 |  |
+| 20:46 | t4-dev-path-traversal-files | review | glm-5 | 2 | 81 | 2.88 |  |
