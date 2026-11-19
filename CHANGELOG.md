@@ -409,11 +409,12 @@ not per individual commit.
 
 ### Fixed
 
-- `konductor` now declares the 50 role skills the specialists use (such as `dynamodb-design`,
+- `konductor` now declares the 46 role skills the specialists use (such as `dynamodb-design`,
   `code-review`, `program-planning` and `e2e-test-strategy`), so the single-writer `konductor` on
   Kiro CLI can see and load them instead of writing without them. Claude Code could already load
-  them. Cost: about 2,100 tokens more in the Kiro `konductor` prompt and about 300 more in the
-  Claude Code one. The guide's skill counts and "Declared by" columns are updated to match.
+  them. The adversarial-review pass skills and `historical-issues-registry` stay with the
+  specialists, as that SOP requires. Cost: about 2,000 tokens more in the Kiro `konductor` prompt
+  and about 300 more in the Claude Code one. The guide's skill counts and "Declared by" columns are updated to match.
 - The `adversarial-code-review` description says "Use for a second pass after code review"
   (was "Use as"), so a trigger check that looks for "use when/for/after" can read its
   activation condition. The trigger itself is unchanged.

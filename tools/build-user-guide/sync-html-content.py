@@ -312,7 +312,7 @@ EDITS = [
      '"h1":"AGENT","h2":"SKILLS DECLARED · PRELOADED ON CLAUDE CODE"'),
     ("agents bullet: humanize-writing loads on demand",
      '"humanize-writing loads on demand for seven agents. The three orchestrators, k-quality-assurance, k-researcher, k-browser and k-media-analyzer declare it but do not preload it, so the counts above leave it out for them.", "Five agents declare zero SOPs: product-manager',
-     '"Skills is what an agent declares. Claude Code preloads only 1 to 4 of them into a subagent before its first turn; every other declared skill loads on demand through the Skill tool. Kiro CLI, and a top-level Claude Code agent, load every skill on demand.", "konductor declares 75 skills and preloads 2 on Claude Code (constraints, claude-teams-behavior). claude-teams-behavior is only in the spec\'s clientConfig.claudeCli block, so Kiro CLI never sees it.", "Five agents declare zero SOPs: product-manager'),
+     '"Skills is what an agent declares. Claude Code preloads only 1 to 4 of them into a subagent before its first turn; every other declared skill loads on demand through the Skill tool. Kiro CLI, and a top-level Claude Code agent, load every skill on demand.", "konductor declares 71 skills and preloads 2 on Claude Code (constraints, claude-teams-behavior). claude-teams-behavior is only in the spec\'s clientConfig.claudeCli block, so Kiro CLI never sees it.", "Five agents declare zero SOPs: product-manager'),
     # ---- Claude Code does not prefix agent names ----------------------------
     # Spent: the prefix sentences these edits produced have since been removed
     # from the guide entirely, so neither their `old` nor their `new` exists any
@@ -673,7 +673,7 @@ _AWS_MCP_KIRO_CONFIG = """{
 ROSTER = [
     ('ref konductor',
      '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor · 24 · aws-mcp"}',
-     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor · 75 · aws-mcp"}'),
+     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor · 71 · aws-mcp"}'),
     ("ref mux",
      '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 10 · —"}',
      '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 11 · —"}'),
@@ -721,11 +721,11 @@ ROSTER = [
      'No SOPs. 2 skills, constraints and humanize-writing. On Claude Code only constraints is preloaded.'),
     ("skills-per-agent table",
      '"rows":[{"k":"k-architect","v":"38 · 2"},{"k":"k-developer","v":"27 · 4"},{"k":"konductor","v":"25 · 2"},{"k":"k-product-manager","v":"16 · 1"},{"k":"k-tpm","v":"14 · 1"},{"k":"k-quality-assurance","v":"13 · 2"},{"k":"konductor-cmux-orchestrator","v":"11 · 1"},{"k":"konductor-mux-orchestrator","v":"11 · 1"},{"k":"k-researcher","v":"9 · 2"},{"k":"k-browser","v":"5 · 4"},{"k":"k-media-analyzer","v":"2 · 1"}]',
-     '"rows":[{"k":"konductor","v":"75 · 2"},{"k":"k-architect","v":"37 · 2"},{"k":"k-developer","v":"27 · 4"},{"k":"k-product-manager","v":"16 · 1"},{"k":"k-tpm","v":"14 · 1"},{"k":"k-quality-assurance","v":"13 · 2"},{"k":"konductor-cmux-orchestrator","v":"11 · 1"},{"k":"konductor-mux-orchestrator","v":"11 · 1"},{"k":"k-researcher","v":"9 · 2"},{"k":"k-browser","v":"5 · 4"},{"k":"k-media-analyzer","v":"2 · 1"}]'),
+     '"rows":[{"k":"konductor","v":"71 · 2"},{"k":"k-architect","v":"37 · 2"},{"k":"k-developer","v":"27 · 4"},{"k":"k-product-manager","v":"16 · 1"},{"k":"k-tpm","v":"14 · 1"},{"k":"k-quality-assurance","v":"13 · 2"},{"k":"konductor-cmux-orchestrator","v":"11 · 1"},{"k":"konductor-mux-orchestrator","v":"11 · 1"},{"k":"k-researcher","v":"9 · 2"},{"k":"k-browser","v":"5 · 4"},{"k":"k-media-analyzer","v":"2 · 1"}]'),
     # at-a-glance cards
     ('card konductor',
      'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 24 skills · 11 SOPs · aws-mcp',
-     'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 75 skills · 11 SOPs · aws-mcp'),
+     'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 71 skills · 11 SOPs · aws-mcp'),
     ("card mux", 'Coordinator. Delegates every change, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 10 SOPs',
      'Coordinator. Delegates every change, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 11 skills · 10 SOPs'),
     ("card cmux", 'Coordinator. Delegates every change, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 10 SOPs',

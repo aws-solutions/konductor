@@ -171,10 +171,10 @@ Writing and reviewing code.
 | `infra-validation` | Validates CDK and CloudFormation against AWS best practice, security standards, and Well-Architected principles. | Before deploying any infrastructure change. | `k-developer`, `konductor` |
 | `code-review` | Standard review workflow: reviewing a folder, repository, diff or PR, creating PRs, addressing feedback, and post-implementation cycles. Also reviews a source tree with no git history. | Ordinary code review using git and the GitHub CLI, or reviewing a folder or repository that is not under git. | `k-developer`, `konductor` |
 | `adversarial-code-review` | Reviews a diff from an adversarial security-focused stance, arguing against approval. Targets information disclosure, data-integrity failures, and schema/validation gaps. | After standard review, on anything security-sensitive. This is what `k-adversarial-pull-request-review` runs on. | `k-architect`, `k-developer`, `konductor` |
-| `adversarial-code-review-pass-security` | One parallel pass of the adversarial review, scoped to security: information disclosure, authorization, injection, secrets. | You do not invoke it directly; the orchestrator coordinating `k-adversarial-pull-request-review` spawns a `k-developer` session with it, alongside the integrity and schema passes. | `k-architect`, `k-developer`, `konductor` |
-| `adversarial-code-review-pass-integrity` | One parallel pass, scoped to data integrity: multi-item mutations, atomicity, ordering, idempotency. | Same: run in a session the coordinator spawns, not called on its own. | `k-architect`, `k-developer`, `konductor` |
-| `adversarial-code-review-pass-schema` | One parallel pass, scoped to schema and contract: API/schema/type changes, backward compatibility, validation completeness. | Same: run in a session the coordinator spawns, not called on its own. | `k-architect`, `k-developer`, `konductor` |
-| `historical-issues-registry` | Loads prior review state for a pull request, then filters new findings that duplicate ones already fixed or already declined by a human reviewer. | Reviewing a second or third revision of the same change, to stop the same comment reappearing. | `k-architect`, `konductor` |
+| `adversarial-code-review-pass-security` | One parallel pass of the adversarial review, scoped to security: information disclosure, authorization, injection, secrets. | You do not invoke it directly; the orchestrator coordinating `k-adversarial-pull-request-review` spawns a `k-developer` session with it, alongside the integrity and schema passes. | `k-architect`, `k-developer` |
+| `adversarial-code-review-pass-integrity` | One parallel pass, scoped to data integrity: multi-item mutations, atomicity, ordering, idempotency. | Same: run in a session the coordinator spawns, not called on its own. | `k-architect`, `k-developer` |
+| `adversarial-code-review-pass-schema` | One parallel pass, scoped to schema and contract: API/schema/type changes, backward compatibility, validation completeness. | Same: run in a session the coordinator spawns, not called on its own. | `k-architect`, `k-developer` |
+| `historical-issues-registry` | Loads prior review state for a pull request, then filters new findings that duplicate ones already fixed or already declined by a human reviewer. | Reviewing a second or third revision of the same change, to stop the same comment reappearing. | `k-architect` |
 | `k-code-simplifier` | Simplifies code for clarity and consistency without changing behaviour. | Recently modified code is correct but hard to read. | `k-developer`, `konductor` |
 | `k-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer`, `konductor` |
 | `git-workflow` | Atomic commits, branch management, history operations. | Committing, branching, or searching history. | `k-developer`, `konductor` |
@@ -248,7 +248,7 @@ Useful when deciding which agent to talk to directly.
 
 | Agent | Skills declared | Preloaded on Claude Code |
 | --- | --- | --- |
-| `konductor` | 75 | 2 |
+| `konductor` | 71 | 2 |
 | `k-architect` | 37 | 2 |
 | `k-developer` | 27 | 4 |
 | `k-product-manager` | 16 | 1 |
@@ -260,7 +260,7 @@ Useful when deciding which agent to talk to directly.
 | `k-browser` | 5 | 4 |
 | `k-media-analyzer` | 2 | 1 |
 
-`konductor` declares 75 so it can do role work itself. Of the specialists, `k-architect` carries the most,
+`konductor` declares 71 so it can do role work itself. Of the specialists, `k-architect` carries the most,
 which is why design work routed anywhere else tends to come back thinner. `k-media-analyzer` carries `constraints` and `humanize-writing`, and preloads
 only `constraints`. Its capability is the model's ability to interpret PDFs and images, not a
 skill library.
