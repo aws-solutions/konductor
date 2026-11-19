@@ -62,5 +62,53 @@
     }
   },
   "pilot": null,
-  "version": 1
+  "version": 1,
+  "targetSkills": [
+    "skill:system-design-patterns",
+    "skill:trade-off-evaluator",
+    "skill:decision-writing"
+  ],
+  "targetSop": null,
+  "targetAgent": "agent:k-architect",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:system-design-patterns",
+      "skill:trade-off-evaluator",
+      "skill:decision-writing",
+      "agent:k-architect"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "alibaba",
+    "model": "qwen3-coder-next",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks to choose an architecture based on supplied data without naming or hinting a specific method or the answer."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All hard limits are clearly defined in the fixture files with explicit direction (max/min) and numeric values."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture files present both options with their metrics but do not state the answer; analysis is required to determine which meets the latency constraint."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires parsing multiple data files, understanding latency calculations, calculating costs, comparing 6 hard limits, producing a valid OpenAPI spec, and writing a decision.md with specific JSON format."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required numbers are present in fixture files; no unstated format requirements or impossible constraints."
+      }
+    ]
+  }
 }

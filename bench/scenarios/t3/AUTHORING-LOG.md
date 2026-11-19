@@ -11,3 +11,6 @@
 | t3-arch-notification-pipeline | author | gpt-5.6-luna | 2.20 |
 | t3-arch-notification-pipeline | map | glm-5 | 0.62 |
 | t3-arch-notification-pipeline | review | glm-5 | 2.55 |
+| t3-api-search-pagination | author | gpt-5.6-luna | 0.00 |
+| t3-api-search-pagination | map | glm-5 | 0.63 |
+| t3-api-search-pagination | review | qwen3-coder-next | 0.46 |
