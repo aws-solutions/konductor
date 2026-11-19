@@ -111,5 +111,51 @@
         "note": "All necessary numbers are present in fixture files; the cost formula, limits, and computation method are derivable."
       }
     ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "states that the superseded partner page-size setting of 500 must not be used because it was for gateway generation 1 and would exceed the current production response-body limit of 1,048,576 bytes (500 items × 6,144 bytes = 3,072,000 bytes > 1 MiB).",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "computes the monthly cost using the price sheet rates and traffic volumes (cursor: $220 + 2.4×$34 + 0.9×$9 + 0.12×$14 = $311.38; offset: $190 + 2.4×$28 + 0.9×$9 + 0.12×$14 = $266.98) and shows that cursor stays under the $500 budget while offset, though cheaper, fails the response-size constraint.",
+        "source": "original"
+      },
+      {
+        "id": "e3",
+        "text": "verifies that the chosen pagination option (cursor with page size 160) produces a maximum response body of 983,040 bytes (160 × 6,144), which stays within the 1,048,576-byte gateway limit.",
+        "source": "OpenAPI Specification, https://github.com/OAI/OpenAPI-Specification (Apache-2.0); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "confirms that the cursor option's tested capacity (320 rps) exceeds the production peak requirement (240 rps), its p95 latency (240 ms) is under the 350 ms limit, and its RPO (2 min) and RTO (18 min) are within the 5-minute and 30-minute continuity targets.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "explains that cursor pagination avoids the consistency failure mode where offset pagination would miss or duplicate bookings inserted or cancelled while a client pages through a room's date range.",
+        "source": "original"
+      },
+      {
+        "id": "e6",
+        "text": "separates client-controllable fields (roomId, memberId, startsAt, endsAt, idempotency key, pageSize) from server-owned fields (id, status) and documents that the idempotency key enables safe retries after network failures or regional failover without creating duplicate bookings.",
+        "source": "OpenAPI Specification, https://github.com/OAI/OpenAPI-Specification (Apache-2.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "notes that if the booking item serialized size decreased significantly, offset pagination with a smaller page size could become viable, and if the gateway response limit increased, both options would need re-evaluation against the other constraints.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "picks offset pagination because it has the lower monthly cost ($266.98) without checking the response-size constraint against the gateway limit.",
+      "copies the partner's page size of 500 from the archived migration note without verifying it against the current production gateway envelope.",
+      "selects cursor pagination but states the page-size ceiling is 500, ignoring that 500 × 6,144 bytes exceeds the 1 MiB response-body limit.",
+      "lists limits in the decision block but omits the computed values, or copies limit values as computed values without performing the arithmetic.",
+      "describes pagination trade-offs generically without connecting them to the specific numbers in traffic.json, gateway.json, and service-levels.json."
+    ]
   }
 }
