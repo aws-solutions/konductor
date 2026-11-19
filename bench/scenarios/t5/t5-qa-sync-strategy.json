@@ -1,0 +1,195 @@
+{
+  "id": "t5-qa-sync-strategy",
+  "class": "hard",
+  "version": 1,
+  "phase": "testing",
+  "role": "qa",
+  "phases2": [
+    "architecture"
+  ],
+  "questions": "allowed",
+  "prompt": "We migrate customer data to the new store on a weekend two weeks from now, and I own the sync service that does it. I have limited time and want a plan for what to test and in what order, not a tour of every file. Read the repository, including the source, the existing tests and the docs, then write docs/TEST-STRATEGY.md: where the real risk is, how severe it is, the test that should cover each risk, an order we can work through in the two weeks, and what could go wrong if we skip the rest. This is planning only; do not change application code, fixtures, generated files or existing tests. End the document with one fenced `json` block holding an array of objects with exactly these fields: location (the source file path), severity (critical, high, medium or low) and fix (the test to add).",
+  "fixture": "t5-qa-sync-strategy",
+  "hidden": "t5-qa-sync-strategy",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 findings.test.js",
+      "min": 17,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/TEST-STRATEGY.md",
+      "pattern": "\"location\"\\s*:",
+      "min": 6,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/mapping/generated/legacy-field-map.js",
+      "weight": 1,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "decision-quality",
+      "criterion": "The plan makes a defensible migration-weekend decision rule and ties skipped work to concrete customer or operator consequences (code cannot check this because code cannot judge the quality of the trade-off)",
+      "weight": 2
+    }
+  ],
+  "findingsKey": [
+    {
+      "id": "checkpoint-before-commit",
+      "location": [
+        "src/migration/batch-runner.js",
+        "migrateBatches"
+      ],
+      "severity": "critical",
+      "fix": [
+        "checkpoint",
+        "commit",
+        "crash",
+        "atomic",
+        "resume"
+      ]
+    },
+    {
+      "id": "mapper-silent-coercion",
+      "location": [
+        "src/mapping/field-mapper.js",
+        "mapCustomer"
+      ],
+      "severity": "high",
+      "fix": [
+        "precision",
+        "truncat",
+        "coerc",
+        "lossy",
+        "round-trip",
+        "overflow"
+      ]
+    },
+    {
+      "id": "tie-order-dependence",
+      "location": [
+        "src/conflicts/resolve-conflict.js",
+        "resolveConflict"
+      ],
+      "severity": "high",
+      "fix": [
+        "tie",
+        "deterministic",
+        "order",
+        "stable"
+      ]
+    },
+    {
+      "id": "retry-reapplies-change",
+      "location": [
+        "src/capture/apply-change.js",
+        "applyChange"
+      ],
+      "severity": "critical",
+      "fix": [
+        "idempot",
+        "dedup",
+        "exactly once",
+        "change id",
+        "duplicate"
+      ]
+    },
+    {
+      "id": "count-only-verification",
+      "location": [
+        "src/verification/verify-migration.js",
+        "verifyMigration"
+      ],
+      "severity": "high",
+      "fix": [
+        "content",
+        "field-level",
+        "checksum",
+        "hash",
+        "per-record",
+        "row-level"
+      ]
+    },
+    {
+      "id": "timezone-naive-ordering",
+      "location": [
+        "src/conflicts/timestamps.js",
+        "compareTimestamps"
+      ],
+      "severity": "high",
+      "fix": [
+        "timezone",
+        "time zone",
+        "utc",
+        "offset"
+      ]
+    },
+    {
+      "id": "dead-letter-loses-reason",
+      "location": [
+        "src/queue/dead-letter-queue.js",
+        "DeadLetterQueue"
+      ],
+      "severity": "medium",
+      "fix": [
+        "reason",
+        "error message",
+        "preserve",
+        "diagnostic"
+      ]
+    },
+    {
+      "id": "resume-path-unexercised",
+      "location": [
+        "src/migration/resume.js",
+        "resumeMigration"
+      ],
+      "severity": "critical",
+      "fix": [
+        "resume",
+        "restart",
+        "cursor",
+        "end-to-end",
+        "integration"
+      ]
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/OWASP/wstg",
+      "licence": "CC-BY-SA-4.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "pilot": null,
+  "lockedAt": null
+}

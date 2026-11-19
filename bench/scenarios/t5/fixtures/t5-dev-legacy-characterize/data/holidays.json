@@ -1,0 +1,8 @@
+[
+  {"month": 1, "day": 1, "name": "New Year's Day"},
+  {"month": 2, "day": 29, "name": "Leap Day"},
+  {"month": 5, "day": 27, "name": "Memorial Day"},
+  {"month": 7, "day": 4, "name": "Independence Day"},
+  {"month": 11, "day": 28, "name": "Thanksgiving"},
+  {"month": 12, "day": 25, "name": "Christmas Day"}
+]

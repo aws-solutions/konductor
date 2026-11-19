@@ -1,0 +1,2 @@
+{"sequence":1,"id":"c-001","operation":"update","changedAt":"2024-04-01T12:00:00Z","fields":{"email":"ada@example.test"}}
+{"sequence":2,"id":"c-002","operation":"update","changedAt":"2024-04-01T12:01:00Z","fields":{"subscribed":"Y"}}

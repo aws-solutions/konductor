@@ -32,3 +32,5 @@ Author, map and review calls run `kiro-cli chat --no-interactive --trust-all-too
 | t5-qa-flaky-fix | edit | (worker) | 0.00 | stability test and preload rewritten to the scratch-root layout; child suite output stripped from failure messages (the bench's summary parser read it); checks replaced by a time-zone run, an assertion-count floor and the hidden tests |
 | t5-qa-flaky-fix | map | glm-5 | 0.16 | |
 | t5-qa-flaky-fix | review | glm-5 | 7.69 | |
+| t5-qa-parser-gaps | map | glm-5 | 0.16 | |
+| t5-qa-parser-gaps | review | glm-5 | 7.97 | |
