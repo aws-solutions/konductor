@@ -1,6 +1,6 @@
 ---
 name: trade-off-evaluator
-description: 'Scores 2-5 design options on cost, latency, complexity, scalability and operability, then picks one. Use when asked to compare options and choose; not for a quick X-or-Y opinion.'
+description: 'Scores 2-5 design options on cost, latency, complexity, scalability and operability, then picks one. Use when asked to compare options side by side and choose one.'
 version: 1.0.1
 tags: [skill, design, trade-offs, evaluation, decision, architecture]
 ---
