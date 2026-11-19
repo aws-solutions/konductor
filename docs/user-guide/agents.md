@@ -104,22 +104,31 @@ names `fs_write` or `shell`. Claude Code values come from `clientConfig.claudeCl
 (`Write`/`Edit`, `Bash`) — the ceiling, not the prompting behaviour.
 
 These rows describe agents started by `konductor`. `konductor-mux-orchestrator` and
-`konductor-cmux-orchestrator` start each specialist with permission checks off
-(`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so under them
-every granted tool runs without asking, MCP tools included. On Claude Code, deny rules in your
-`settings.json` still block, and an ask rule denies the call, because each specialist runs with `-p`
-and can't prompt. `konductor install --harness claude` sets an ask rule for each AWS MCP tool that
-acts on AWS (`aws___run_script`, `aws___get_presigned_url` and `aws___get_tasks`) in the settings
-file it installs into, so a mux or cmux pane that file applies to cannot call them: every pane for
-the default `$HOME` install, and only panes running in the target project for a `--target` install.
-These rules apply to every Claude Code session using that settings file, not only Konductor's
-agents, because Claude Code has no per-agent permission settings. No ask rule is written for a Claude Code plugin install (add them yourself, see
+`konductor-cmux-orchestrator` start each specialist in its own pane. On Kiro CLI it runs with
+`--trust-all-tools`, so every granted tool runs without asking, MCP tools included. On Claude Code,
+`KONDUCTOR_DISPATCH_PERMISSION_MODE` (or the plugin's `dispatch_permission_mode` option) decides:
+`interactive`, the default, asks you in the pane; `headless` runs with `-p`, accepts file edits and
+denies any other call that would prompt unless your `permissions.allow` allows it; and the opt-in
+`bypass` runs with `--dangerously-skip-permissions`, for isolated environments only. In `headless`
+and `bypass`, deny rules in your `settings.json` still block, and an ask rule denies the call,
+because the child runs with `-p` and can't prompt. An `interactive` Claude Code child completes when
+it writes its `.done` file (`$KONDUCTOR_DONE_FILE`), but its session stays open until you type
+`/exit` in its pane. A mistyped `dispatch_permission_mode` value makes the dispatch stop with an
+error rather than fall back to `interactive`.
+
+`konductor install --harness claude` sets an ask rule for each AWS MCP tool that acts on AWS
+(`aws___run_script`, `aws___get_presigned_url` and `aws___get_tasks`) in the settings file it
+installs into. An `interactive` pane that file applies to asks you before each call, and a `headless`
+or `bypass` pane cannot call them: every pane for the default `$HOME` install, and only panes running
+in the target project for a `--target` install. These rules apply to every Claude Code session using
+that settings file, not only Konductor's agents, because Claude Code has no per-agent permission
+settings. No ask rule is written for a Claude Code plugin install (add them yourself, see
 [Install from the Claude plugin marketplace](tasks/install-claude-plugin-marketplace.md)), when the
 settings file cannot be written (install still succeeds and ends by printing the rules to add by
 hand), or for a tool one of your own `deny` rules covers or one of your `allow` entries names
-exactly (a broad allow such as `mcp__aws-mcp__*` does not count). Calls to
-these tools need a person to approve them; run that work from `konductor`. Add deny rules for anything a
-dispatched agent must never do.
+exactly (a broad allow such as `mcp__aws-mcp__*` does not count). Calls to these tools need a person
+to approve them; run that work from `konductor` or an `interactive` pane. Add deny rules for anything
+a dispatched agent must never do.
 
 Three observations that are not obvious and do affect what you should trust:
 
@@ -263,7 +272,8 @@ Kiro CLI v2 synth replaces that `@builtin` with the same explicit built-in list 
 so only `konductor` holds `subagent` on Kiro CLI v2. Shell
 is how they work: their `mux-dispatch` / `cmux-dispatch` skills ship shell scripts that open a
 pane or surface per specialist, run the runtime's CLI inside it, and poll for a `.done` marker
-file under `/tmp/konductor-mux/` or `/tmp/konductor-cmux/`.
+file in each dispatch's directory under the registry (`/tmp/konductor-mux/` or `/tmp/konductor-cmux/`
+by default; `KONDUCTOR_MUX_REGISTRY_DIR` or `KONDUCTOR_CMUX_REGISTRY_DIR` overrides it).
 
 That is why they are granted shell in Kiro CLI while the plain orchestrator is not. In Claude
 Code the distinction disappears — all three declare `Bash` there.
