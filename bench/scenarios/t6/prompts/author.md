@@ -23,7 +23,8 @@ Idea: {{idea}}
 - Write it in the voice of the colleague described above. Plain words.
 - Do NOT name any method, framework, template or process for how to work (no "interview the stakeholder", "write user stories", "use acceptance criteria", "prioritise with a framework", "do a gap analysis"). Say only what outcome is wanted.
 - {{questionRule}}
-- Do not mention hidden tests, scoring, benchmarks or AI.
+- Do not tell the agent what the traps are or where to look (no "watch out for the duplicate", "check the calendar for holidays", "keep X and Y distinct"): finding them is the task.
+- Do not mention hidden tests, checks, fixtures, scoring, benchmarks or AI.
 - Give every interface the hidden tests rely on: the output path and the exact shape of the JSON block (field names). A test that needs a name the request does not give is unfair.
 
 Keep everything original and free of any real company names, host paths, usernames or secrets. Stop when the files are written and verified.

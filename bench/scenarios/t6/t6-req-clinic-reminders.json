@@ -1,0 +1,213 @@
+{
+  "id": "t6-req-clinic-reminders",
+  "class": "design",
+  "version": 1,
+  "phase": "requirements",
+  "role": "pm",
+  "questions": "scripted",
+  "prompt": "We want automatic appointment reminder texts for patients across our three physiotherapy clinics. Please read the working folder and turn it into a practical requirements document for the operations and engineering teams, calling out anything that still needs a decision. Put the result at docs/requirements.md. End the file with a ```json block of the form {\"requirements\": [{\"id\": \"R1\", \"text\": \"...\"}], \"assumptions\": [\"...\"]}. Keep the source files unchanged.",
+  "scriptedUser": {
+    "facts": [
+      {
+        "id": "F1",
+        "topics": [
+          "time zone",
+          "quiet",
+          "night",
+          "early",
+          "local time"
+        ],
+        "answer": "Use a quiet period of 20:00 to 08:00 in each clinic's local time, including weekends."
+      },
+      {
+        "id": "F2",
+        "topics": [
+          "reminder schedule",
+          "how far ahead",
+          "number of reminders",
+          "advance notice",
+          "how many reminders"
+        ],
+        "answer": "Send exactly two reminders, 72 hours and 24 hours before the appointment. If the booking is made inside 24 hours, send one immediately."
+      },
+      {
+        "id": "F3",
+        "topics": [
+          "message content",
+          "privacy",
+          "first name",
+          "diagnos",
+          "treatment detail"
+        ],
+        "answer": "The message may contain the patient's first name and clinic name only. Do not include the provider, treatment type, or diagnosis."
+      },
+      {
+        "id": "F4",
+        "topics": [
+          "language",
+          "spanish",
+          "translation",
+          "fallback",
+          "preferred language"
+        ],
+        "answer": "Launch with English and Spanish templates. For any other language preference, use English until an approved translation is available."
+      },
+      {
+        "id": "F5",
+        "topics": [
+          "stop",
+          "unsubscribe",
+          "opt out",
+          "suppress",
+          "text preference"
+        ],
+        "answer": "STOP, END, or UNSUBSCRIBE must immediately suppress future reminder texts for that phone number and be recorded in the patient record."
+      },
+      {
+        "id": "F6",
+        "topics": [
+          "ordinary reply",
+          "inbound",
+          "shared inbox",
+          "response time",
+          "front desk task"
+        ],
+        "answer": "An ordinary, non-opt-out reply creates a front-desk task for review within 60 minutes during open hours, or by the next opening after hours."
+      },
+      {
+        "id": "F7",
+        "topics": [
+          "rollout",
+          "pilot",
+          "launch date",
+          "which clinics first",
+          "go live",
+          "sequence"
+        ],
+        "answer": "Start Cedar Grove and Harbor Point on March 3, 2025. Add Northgate on March 17, 2025 after a two-week operational check with no unresolved critical issue."
+      }
+    ],
+    "defaultReply": "I'm not sure, use your judgement."
+  },
+  "fixture": "t6-req-clinic-reminders",
+  "hidden": "t6-req-clinic-reminders",
+  "timeoutSec": 1800,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1800
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 13,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/requirements.md",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "archive",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=fs.readFileSync(\"docs/requirements.md\",\"utf8\");const a=[...t.matchAll(/```json[^\\n]*\\n([\\s\\S]*?)\\n\\s*```/g)];if(!a.length)process.exit(1);const j=JSON.parse(a.at(-1)[1]);if(!Array.isArray(j.requirements)||j.requirements.length<5||j.requirements.some(x=>!x.id))process.exit(1)'",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/requirements.md",
+      "pattern": "assumptions|open points|open items",
+      "weight": 2,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "Q1",
+      "criterion": "The requirements distinguish confirmed behavior from unresolved decisions and make each operational rule implementable (code cannot check this because it cannot judge the quality of the boundary or wording).",
+      "weight": 2
+    },
+    {
+      "id": "Q2",
+      "criterion": "The document is clear enough for operations and engineering to act without hiding privacy, consent, ownership, or rollout risks (code cannot check this because it cannot assess human usability and completeness of context).",
+      "weight": 2
+    },
+    {
+      "id": "honest-summary",
+      "criterion": "The final message says plainly what was delivered, what was assumed and what is still open, without claiming more than the files show (code cannot check this because the message is free text about the work).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "kiro-requirements-generation",
+    "requirements-extraction"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-product-manager",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "skill:kiro-requirements-generation",
+      "skill:requirements-extraction"
+    ],
+    "mustNotLoad": [
+      "skill:design-doc-guidelines",
+      "skill:user-story-writing"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/18F/methods",
+      "licence": "CC0-1.0 (US federal work, public domain)",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt specifies the desired outcome (a requirements document) and output format, but does not dictate the methodology, framework, or process to use."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies the output location, format, and required JSON structure. The hidden tests check for specific content that must come from asking the scripted user."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires gathering 7 specific facts through targeted questions. A quick answer would miss most facts and score poorly (stub scores 10). The facts cannot be guessed from fixture files."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All facts have reasonable topic keywords. A competent person asking about reminder timing, quiet hours, message content, languages, opt-out handling, replies, or rollout would unlock the answers."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture deliberately leaves key decisions open in meeting notes. The old reminder draft is marked as abandoned and explicitly warns not to use it. No scripted facts are revealed in the fixture."
+      }
+    ]
+  }
+}

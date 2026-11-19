@@ -1,0 +1,7 @@
+ticket_id,received_at,channel,tag,free_text,resolved
+P-1842,2024-12-03,email,navigation,"Could not find members in my Workspace",yes
+P-1847,2024-12-04,in-app,search,"Search result opened the wrong note",no
+P-1851,2024-12-05,email,export,"Markdown export has extra blank lines",yes
+P-1860,2024-12-07,chat,permissions,"I left the Workspace and lost the shortcut",yes
+P-1864,2024-12-08,email,onboarding,"I made a Workspace but did not know what to do next",no
+P-1870,2024-12-11,in-app,editor,"Checklist duplicates after reconnect",no
