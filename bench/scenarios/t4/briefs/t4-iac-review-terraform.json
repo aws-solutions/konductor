@@ -1,0 +1,19 @@
+{
+  "id": "t4-iac-review-terraform",
+  "wave": 1,
+  "phase": "code-review",
+  "role": "security",
+  "kind": "findings",
+  "stack": "terraform",
+  "author": "deepseek-3.2",
+  "reviewer": "gpt-5.6-luna",
+  "size": "35 to 60",
+  "source": {
+    "url": "https://github.com/bridgecrewio/checkov",
+    "licence": "Apache-2.0",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "outputFile": "REVIEW.md",
+  "brief": "Phase: code and PR review. Role: security engineer. Repo kind: a Terraform (HCL) infrastructure repo for a small web product: modules (network, storage, database, compute, iam, logging), environments (staging, prod) with tfvars, a CI workflow that runs fmt and validate, README and docs. The pull request under review is given as review/PR-142.md (title and description: it adds a reporting feature) and review/PR-142.diff (a unified diff); the changed files are already in the tree, so the agent can read both. Seed 7 real issues in what the PR changes, each at a specific file: an exports bucket made public through an ACL or a bucket policy with Principal \"*\" and no public access block; a security group opening port 5432 to 0.0.0.0/0; the reporting database with storage_encrypted false and publicly_accessible true; an IAM policy for the reporting task with Action \"*\"; the audit trail changed to single-region with log file validation off; a KMS key with rotation disabled and a key policy granting kms:* to an external account; the database master password as a plain variable default. Also seed 3 decoys that look risky but are fine: port 443 open to the world on the public load balancer; a public-read bucket that is the intended static website behind the CDN, with a comment and a docs page saying so; a wildcard resource on read-only log describe actions. The request: review the PR before it merges and write REVIEW.md, ending with one fenced json block: a list of findings, each with file, line (a number, may be approximate), severity (critical, high, medium or low), issue and fix. Hidden tests read the block with the provided helper: one test per seeded issue (right file and the issue's key idea, generous synonyms), fix tests for the four most serious, one test per decoy that it is not raised at high or critical, and a padding test (no more than 18 items)."
+}

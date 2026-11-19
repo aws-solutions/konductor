@@ -1,0 +1,116 @@
+{
+  "id": "t4-dev-sql-report-filters",
+  "version": 1,
+  "class": "complex",
+  "phase": "security",
+  "phases2": [],
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "Our internal reporting service just came back from a pen test with one line about it: \"the reports API is injectable\". No other detail. Please make it safe without breaking anything people use today. The service lists and exports customers and sales: src/server.py handles the HTTP side and src/database.py has the Database class (Database(db_path)) with get_customers, get_sales, get_customers_csv and get_sales_csv, each taking the filters, sorting and paging arguments they have now. Keep those names and arguments, and keep every filter, sort and page option working as it does for normal input. For an unknown sort column or sort direction, fall back to the default order instead of failing. Bad paging values may raise ValueError. Error messages that reach a caller must not show SQL or table names. Do not add dependencies, and keep the existing tests in tests/ passing (python3 -m unittest discover -s tests). Do not change data/seed.py.",
+  "fixture": "t4-dev-sql-report-filters",
+  "hidden": "t4-dev-sql-report-filters",
+  "timeoutSec": 2400,
+  "limits": {
+    "softSec": 1200,
+    "hardSec": 2400
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/py_bridge.test.js",
+      "min": 19,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "python3 -m unittest discover -s tests",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data/seed.py",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "pyproject.toml",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "python3 - <<\"EOF\"\nimport os, sqlite3, tempfile, shutil\nfrom src import database\nd = tempfile.mkdtemp()\ntry:\n    p = os.path.join(d, \"t.db\")\n    c = sqlite3.connect(p)\n    c.execute(\"CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT, email TEXT, status TEXT, created_at DATE, total_spent REAL)\")\n    c.executemany(\"INSERT INTO customers (name, email, status, created_at, total_spent) VALUES (?,?,?,?,?)\", [(\"A\", \"a@x\", \"active\", \"2023-01-01\", 1), (\"B\", \"b@x\", \"active\", \"2023-01-02\", 2)])\n    c.commit(); c.close()\n    rows, total = database.Database(p).get_customers(name_filter=\"x%\\x27 OR 1=1 --\")\n    raise SystemExit(0 if total == 0 else 1)\nfinally:\n    shutil.rmtree(d)\nEOF",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    }
+  ],
+  "rubric": [],
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "security-remediation",
+    "backend-development"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "security-remediation"
+    ],
+    "mustNotLoad": [
+      "adversarial-code-review",
+      "code-review",
+      "threat-modeling"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.md",
+      "licence": "CC-BY-SA-4.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "minimax",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt names the deliverable (fix SQL injection, no SQL in errors) but doesn't prescribe specific methods like TLD, parameterized queries, or escaping functions."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All hidden tests verify behaviors the prompt clearly states: parameterized queries, LIKE wildcard escaping, sort column allowlisting, error sanitization. No hidden requirements."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "fixed",
+        "note": "The docstring that called the CSV builder old and in need of refactoring was removed in the fix round."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fixed",
+        "note": "Fix round (author): three draft tests sent stacked statements that sqlite3 refuses anyway, so they passed on the vulnerable code; the suite was rebuilt to 33 tests that cover sort, direction, status lists, dates, paging, sales and both CSV paths. The lead rewrote the prompt, which named the defect locations and the CSV builders."
+      },
+      {
+        "check": "floor",
+        "verdict": "fixed",
+        "note": "Fix round (author): src/__init__.py added so hidden tests import from the repository root."
+      }
+    ]
+  }
+}

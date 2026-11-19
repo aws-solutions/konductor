@@ -1,0 +1,18 @@
+{
+  "name": "lantern-static-api",
+  "version": "2.4.1",
+  "private": true,
+  "description": "Deployment tools for the Lantern static site and API",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test",
+    "deploy:staging": "node scripts/deploy.js staging",
+    "deploy:production": "node scripts/deploy.js production",
+    "rollback:staging": "node scripts/rollback.js staging",
+    "rollback:production": "node scripts/rollback.js production",
+    "check-config": "node scripts/validate-config.js"
+  }
+}

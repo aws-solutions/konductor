@@ -1,0 +1,13 @@
+{
+  "id": "t4-iam-lambda-role-split",
+  "wave": 2,
+  "phase": "security",
+  "role": "security",
+  "kind": "policy",
+  "stack": "node",
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "size": "40 to 70",
+  "source": { "url": "https://github.com/salesforce/cloudsplaining", "licence": "BSD-3-Clause", "licenceCheckedAt": "2026-11-19", "use": "idea" },
+  "brief": "Phase: security and IAM. Role: security engineer. Repo kind: a Node.js 24 serverless order service with five functions (create-order, payment-webhook, fulfilment-worker reading a queue, nightly-report, admin-export), all sharing one execution role whose policy (infra/iam/shared-role-policy.json) allows dynamodb:*, sqs:*, s3:*, secretsmanager:GetSecretValue and logs:* on \"*\". Each handler calls a thin in-repo client wrapper (no dependencies; its fake records each call's action and resource ARN) so its cloud calls are visible: tables, indexes, queues, buckets and secrets differ per function, and names come from a per-stage config (staging and prod). The request: give each function its own least-privilege policy file at infra/iam/<function-name>.json (the five names stated in the request), keep everything each function uses, and keep logging working. Traps: the webhook reads only one secret; the worker needs sqs:ReceiveMessage, DeleteMessage, ChangeMessageVisibility and GetQueueAttributes on its own queue, and touches the dead-letter queue only in a redrive path; the report function queries a global secondary index (index ARN needed); the admin export writes under one prefix only; logs permissions belong on each function's own log group. Hidden tests evaluate each of the five files with the provided evaluator: the calls each function makes in both stages (derived by running its handler against the fake client) are allowed; calls only other functions make are denied for that role; generic dangerous requests (another table, s3:DeleteObject, secrets of other functions, iam:*) are denied; each file lints clean."
+}
