@@ -630,6 +630,13 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   `resources` of the installed agent (rule files included); opencode primary agent file and the skill index (names and
   descriptions). Vanilla gets the built-in agent, best effort and unsized. `skills` on an old run sizes rule files from `--repo-root`.
 - Limits: a load is a call that returned text; reading a `SKILL.md` with the file tool is not counted; bytes include JSON framing.
+- Load check (`loadCheck` in `result.json`, null for vanilla arms or with no stream): the units (skills, SOPs, agents) the run loaded, each
+  with the stream index of its first load, and `firstWriteAt`, the index of the first file-writing tool call. A task lists the units it
+  needs in `loadCheck.mustLoad` (default: its target skills and SOP) and the ones it must not trigger in `loadCheck.mustNotLoad`;
+  the result says for each whether it loaded and whether it loaded before the first write (`mustLoadBeforeWrite`, `mustNotLoaded`).
+  The skills report adds a selection-rate table per arm and unit: runs needing it, loaded, loaded before the first write, false loads.
+  A file written only through a shell command (`cat > f`) is not seen as a write, so `firstWriteAt` can come late (`shortcut:` comment in
+  `bench/runner/lib/load-check.js`).
 
 ## Skill evaluation scenarios
 
@@ -686,9 +693,19 @@ node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
   Residual risk: a build script of an arbitrary ref still runs as you and can read any file you can read, including the real CARGO_HOME. Build only
   refs you trust, or build on a host with nothing in that account to lose.
 - `run` records `env.json` with the interpreter versions (node, python3, python, pytest). `tasks/toolchain/pins.json` lists the versions the checks
-  were validated with; a mismatch is logged and kept in `run-config.json` as `toolchainCheck`, and never fails the run. The global
+  were validated with; a mismatch is logged and kept in `run-config.json` as `toolchainCheck`. The global
   pins apply only when a task in the run has check commands or hidden tests, so a plant run (whose gateway uses `--plant-python`
-  and Strands agent `--strands-python`) is not warned about the `python3` on PATH.
+  and Strands agent `--strands-python`) is not warned about the `python3` on PATH. Python is the one pin that is enforced (next item).
+- Python pin. A version manager shim (mise, pyenv) finds its interpreter from the real home, so inside a run, where `HOME` is a
+  scratch dir, a bare `python3` falls back to the system one (3.9 on a common dev host). When a task runs Python (a check or a real
+  repo's test command names python or pytest, or the task is a plant task), `run` and `--prepare-only` first pick an interpreter
+  that matches `global.python3` in `pins.json` (3.12): `--python PATH`, else `BENCH_PYTHON`, else `python3.12`, else `python3` on
+  `PATH`. They link it as `python3`, `python` and `python3.12` in `python-bin` under the run's scratch root and put that dir first on
+  `PATH`, so the agent, the checks and the gateway all see it. They then start `python3` with a scratch `HOME` and refuse when it is
+  not 3.12, or when `--python` or `--plant-python` is another version. With no match the refusal names each candidate tried. The
+  chosen interpreter and the version seen in the sandbox are recorded in `run-config.json` under `python`. Runs with no Python task
+  skip the pin. The pin changes `python3` for every process the run starts, `bench.js` children included; Strands arms set their own
+  `PATH` and use `--strands-python`. The policy plant arm still needs `--plant-python` to name an interpreter with `cedarpy`.
 - `--isolate auto` (default) uses `unshare --user --map-root-user --mount --pid --fork --kill-child`
   and aborts when the probe fails; `--isolate none` is the explicit opt-out. Inside: the real home,
   /tmp, /var/tmp and /dev/shm are read-only and only the run's scratch root is writable. Hidden (empty
