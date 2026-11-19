@@ -154,9 +154,9 @@ the user which one and rerun with `--harness <name>`.
 
 ## MCP servers
 
-The `k-architect` and `k-developer` agent files carry the `aws-mcp` entry
-from their `dependencies.mcpRegistry`, so those two agents launch AWS MCP
-themselves. Kiro does not configure the other `dependencies.mcpRegistry`
+The `konductor`, `k-architect` and `k-developer` agent files carry the
+`aws-mcp` entry from their `dependencies.mcpRegistry`, so those three agents
+launch AWS MCP themselves. Kiro does not configure the other `dependencies.mcpRegistry`
 entries automatically. For `playwright-mcp` and other registry entries, direct
 users to the Kiro Power install guide or `konductor-help` for manual setup.
 `aws-mcp` uses a pinned proxy; the managed

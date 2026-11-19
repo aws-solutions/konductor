@@ -179,10 +179,12 @@ def supports_root():
 
 
 def clamps_fix_cap():
-    """True for an evaluator that lacks the recorded-cap validation message,
-    so it clamps a recorded cap above 2. Read from the binary's bytes so the
-    check does not depend on the behavior the cap cases assert."""
-    return b"run.data.max_fix_cycles is not a non-negative integer" not in KONDUCTOR_BIN.read_bytes()
+    """True for an evaluator that clamps a recorded cap above 2, found by the
+    FIX_CAP_CLAMPED info code only that evaluator carries. The recorded-cap
+    message is no use here: it now names its key with `format!`, so the full
+    text is not in the binary. Read from the binary's bytes so the check does
+    not depend on the behavior the cap cases assert."""
+    return b"FIX_CAP_CLAMPED" in KONDUCTOR_BIN.read_bytes()
 
 
 @pytest.fixture
