@@ -82,6 +82,14 @@ not per individual commit.
 
 ### Changed
 
+- Shorter descriptions for 20 skills and 11 SOPs, so Claude Code's skill listing keeps every
+  description when the SOPs are listed too. Claude Code's listing budget is 30,000 chars on a
+  1M-window model, and past it the skills last in A to Z order become name only. With the 19
+  SOPs listed, the listing drops from 33,836 to 28,561 chars (the method of
+  `tests/test_skill_listing_budget.py`). Each description keeps its "Use when/for" cue, its
+  trigger phrases, its "not for" boundary and its pointers to other skills. Each SOP gets a
+  short first Overview paragraph, which is the one the installer lists; the old paragraph
+  stays below it. Skill patch versions are bumped.
 - 42 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
   plus built-ins fits its 30,000-character budget (28,432 characters, down from 30,406).
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
@@ -444,6 +452,11 @@ not per individual commit.
 
 ### Fixed
 
+- `scope_confirmed=true` in `k-e2e-test-generation`, `k-light-ui-testing` and
+  `k-test-coverage-review` now counts only when it comes from the user: the SOPs tell the model
+  to ignore a flag it set itself. `k-e2e-test-generation` is told not to stage, commit or push
+  without that yes, or to push the default branch. Orchestrators never add the flag to a SOP
+  command unless the user gave it.
 - The `adversarial-code-review` description says "Use for a second pass after code review"
   (was "Use as"), so a trigger check that looks for "use when/for/after" can read its
   activation condition. The trigger itself is unchanged.

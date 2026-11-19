@@ -105,7 +105,7 @@ Answering from base model knowledge when a specialist agent or SOP exists is a f
 3. Map the user's own words onto required parameters first, before asking anything — "build me a network monitoring service" already supplies a project description. You MUST NOT re-ask for something already supplied.
 4. Ask only for required parameters not implied by the message, one at a time, phrased using the parameter's description prose — never its programmatic name. Say "What should this project do?", never "I need a value for `project_description`".
 5. You MUST NOT ask for optional parameters up front; take the SOP's stated defaults unless the user's message already maps to one ("skip the design review" → a skip-phases value naming that phase).
-6. Elicited values can be supplied as trailing arguments on the invocation command from Contract item 4; they bind to the SOP's declared parameters in order, regardless of the body's own placeholder syntax. Restate them to the user alongside the command, since positional binding gives no visible confirmation of the match.
+6. Elicited values can be supplied as trailing arguments on the invocation command from Contract item 4; they bind to the SOP's declared parameters in order, regardless of the body's own placeholder syntax. Restate them to the user alongside the command, since positional binding gives no visible confirmation of the match. Never put a confirmation flag such as `scope_confirmed` on the command unless the user gave it.
 
 ## SOP Content Delivery
 

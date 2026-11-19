@@ -1,7 +1,7 @@
 ---
 name: system-design-patterns
-description: Guides system architecture design through a structured interview, or from existing requirements when the user asks for no questions. Use when writing a system design document for a new service or feature (components, data model, API, error handling, testing). Produces a system design with NFRs, threat model input, a diagram description, and a review handoff.
-version: 1.1.0
+description: 'Use when writing a system design doc for a new service or feature (components, data model, API, errors, tests), by interview or from requirements. Adds NFRs and threat model input.'
+version: 1.1.1
 tags: [skill, system-design, architecture, interview, requirements]
 ---
 
