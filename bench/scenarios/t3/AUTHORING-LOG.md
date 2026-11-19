@@ -51,3 +51,10 @@
 | t3-adr-multiregion-dr | review | minimax-m2.5 | 3.29 |
 | t3-adr-cache-sizing | expertKey | glm-5 | 1.65 |
 | t3-adr-multiregion-dr | expertKey | glm-5 | 1.27 |
+| t3-adr-batch-vs-stream | author | deepseek-3.2 | 6.67 |
+| t3-adr-db-engine | expertKey | glm-5 | 1.74 |
+| t3-adr-batch-vs-stream | map | glm-5 | 0.62 |
+| t3-adr-egress-cdn | expertKey | glm-5 | 1.95 |
+| t3-adr-batch-vs-stream | review | minimax-m2.5 | 3.02 |
+| t3-adr-queue-choice | expertKey | glm-5 | 1.88 |
+| t3-adr-batch-vs-stream | expertKey | glm-5 | 1.85 |

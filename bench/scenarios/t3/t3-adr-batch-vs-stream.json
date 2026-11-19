@@ -57,5 +57,101 @@
     "source": "original"
   },
   "pilot": null,
-  "version": 1
+  "version": 1,
+  "targetSkills": [
+    "skill:decision-writing",
+    "skill:trade-off-evaluator"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "skill:decision-writing",
+      "skill:trade-off-evaluator"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "minimax",
+    "model": "minimax-m2.5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt is neutral - asks for ADR analyzing options for growth through 2025, no method or solution hinted."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All constraints clearly specified (4hr window, $10k budget, 35% growth, 4 quarters). Minor terminology mismatch (Q4 2025 vs Q3 2025 = 4.65 TB) but consistent in tests/solution."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture provides constraints and data but no explicit answer. Solution must calculate processing time scaling (1.5 hr/TB) to discover batch_current fails window at 4.65TB."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "batch_current seems cheapest ($4,316) but fails at 4.65TB (6.98hr > 4hr). batch_3x_scaling works but exceeds budget ($12,948 > $10k). Must pick batch_2x_scaling or streaming."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All needed numbers provided: 1.4TB baseline, 2.1hr processing, 35% growth, pricing, budget. Tests specify exact JSON structure needed. No missing info."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "States that batch_current fails the 4-hour processing window constraint at Q3 2025 volume (4.65 TB × 1.5 hrs/TB = 6.98 hours, exceeding the 4-hour limit), making it unsuitable despite being the cheapest option at $4,316/month.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "States that batch_3x_scaling at $12,948/month exceeds the $10,000 monthly budget constraint and must be rejected as a solution.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e3",
+        "text": "Uses the correct storage cost of $23/TB-month from pricing.json, not the superseded $28/TB-month figure mentioned in the notes section.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "Recognizes that the 4.65 TB Q3 2025 projection (not Q4 2025's 6.28 TB) is the critical planning threshold because the task requires the solution to work through 4 quarters, and Q3 2025 marks the point where batch_current definitively fails the window constraint.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "Addresses the team skill gap for streaming technologies, noting that streaming would require 60 hours of training ($7,000 investment) while batch_2x_scaling leverages existing Spark expertise with no training required.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "Computes monthly cost correctly using the $68/hour batch cluster rate: batch_2x_scaling at 16 nodes × $68/hour × ~8 hours processing × 30 days = approximately $8,632/month, staying within the $10,000 budget.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "Discusses the implementation risk trade-off: batch scaling is incremental with lower risk and 2-week timeline, while streaming is an architectural change with higher risk and 8-week timeline including training.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e8",
+        "text": "Notes that streaming provides near-real-time capability which is not required for nightly reporting, making batch_2x_scaling the pragmatic choice that meets all constraints without over-engineering.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "Selects batch_current because it's the cheapest option at $4,316/month without calculating that 4.65 TB would take 6.98 hours, exceeding the 4-hour window.",
+      "Selects batch_3x_scaling for maximum headroom without checking that $12,948/month exceeds the $10,000 budget constraint.",
+      "Uses the superseded $28/TB-month storage cost instead of the current $23/TB-month rate when computing total cost.",
+      "Recommends streaming solely because it has the lowest monthly infrastructure cost (~$1,824) without considering the $7,000 training investment or the fact that real-time processing is not needed for nightly reports.",
+      "Calculates costs for Q4 2025 (6.28 TB) instead of the 4-quarter planning horizon ending at Q3 2025 (4.65 TB), leading to incorrect constraint analysis."
+    ]
+  }
 }
