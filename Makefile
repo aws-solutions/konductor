@@ -22,12 +22,12 @@
 #                     tree, producing per-harness output under dist/. Used
 #                     by the GitHub Actions release workflow
 #                     (.github/workflows/release.yml).
-#   claude-plugin       Regenerate generated/claude-plugin/{agents,skills}/
+#   claude-plugin       Regenerate dist/claude-plugin/{agents,skills}/
 #                     from agents/*.agent-spec.json, skills/*/SKILL.md, and
 #                     agent-sops/*.sop.md, via `konductor synth` and
 #                     `konductor install --harness claude` against a
 #                     throwaway scratch HOME/target -- see
-#                     generated/claude-plugin/README.md and
+#                     docs/guides/claude-plugin-build.md and
 #                     scripts/generate-claude-plugin.sh for the full
 #                     procedure. Output is gitignored -- see .gitignore --
 #                     so this is a local/CI build step, never something to
@@ -91,7 +91,7 @@ help:
 	@echo "  make link               Symlink cli binary into ~/.local/bin (cli only)"
 	@echo "  make synth              Build the konductor CLI and run 'konductor synth',"
 	@echo "                          producing per-harness output under dist/ (cli only)"
-	@echo "  make claude-plugin      Regenerate generated/claude-plugin/ (gitignored)"
+	@echo "  make claude-plugin      Regenerate dist/claude-plugin/ (gitignored)"
 	@echo "  make claude-plugin-check  Regenerate + validate the flat plugin tree (no commits, no push)"
 	@echo "  make test               Run test in cli/, mcp/, and shared/"
 	@echo "  make test-rust          Run Rust unit tests, cli/mcp/shared (no internet required)"
@@ -187,7 +187,7 @@ synth:
 claude-plugin:
 	$(MAKE) -C cli build TARGET=$(TARGET)
 	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found; run 'make -C cli build' first" >&2; exit 1; }
-	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/generate-claude-plugin.sh
+	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/generate-claude-plugin.sh --out dist/claude-plugin
 
 # ── claude-plugin-check ──────────────────────────────────────────────────────
 # Validates the committed marketplace.json, then assembles and validates the
