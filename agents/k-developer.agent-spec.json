@@ -20,10 +20,10 @@
         "code-review",
         "git-workflow",
         "find-aws-skills",
-        "asdlc-aspect-review",
+        "k-aspect-review",
         "socratic-elicitation",
         "deliberation-panel",
-        "asdlc-code-simplifier",
+        "k-code-simplifier",
         "agents-md-authoring",
         "design-impact-review",
         "persistent-memory",
@@ -45,7 +45,8 @@
           "mcp-proxy-for-aws-cli==1.7.0",
           "https://aws-mcp.us-east-1.api.aws/mcp",
           "--metadata",
-          "AWS_REGION=us-east-1"
+          "AWS_REGION=us-east-1",
+          "--skip-auth"
         ]
       }
     },
@@ -103,31 +104,8 @@
       ],
       "skills": [
         "constraints",
-        "task-decomposition",
-        "progress-tracking",
-        "backend-development",
         "backend-review",
-        "frontend-development",
         "frontend-review",
-        "infra-validation",
-        "code-review",
-        "git-workflow",
-        "find-aws-skills",
-        "asdlc-aspect-review",
-        "socratic-elicitation",
-        "deliberation-panel",
-        "asdlc-code-simplifier",
-        "agents-md-authoring",
-        "design-impact-review",
-        "persistent-memory",
-        "workspace-skills",
-        "kiro-task-generation",
-        "security-remediation",
-        "humanize-writing",
-        "adversarial-code-review",
-        "adversarial-code-review-pass-security",
-        "adversarial-code-review-pass-integrity",
-        "adversarial-code-review-pass-schema",
         "verification"
       ]
     }
