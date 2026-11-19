@@ -46,7 +46,8 @@ function stage(draftDir, briefFile, mapFile, reviewFile) {
     questions: brief.kind === 'scripted' ? 'scripted' : 'allowed',
     prompt: d.prompt,
     ...(brief.kind === 'scripted' ? { scriptedUser: d.scriptedUser } : {}),
-    fixture: id, hidden: id, timeoutSec: softSec * 2,
+    // A twin runs on its real task's fixture, so the folder is not copied twice.
+    fixture: brief.kind === 'twin' ? brief.twinOf : id, hidden: id, timeoutSec: softSec * 2,
     limits: { softSec, hardSec: softSec * 2 },
     checks: d.checks, rubric, tiers: ['full'],
     ...(keys[id] ? { expertKey: keys[id] } : {}),
@@ -62,7 +63,7 @@ function stage(draftDir, briefFile, mapFile, reviewFile) {
   if (task.pilot === null) delete task.pilot;
   if (task.lockedAt === null) delete task.lockedAt;
   fs.writeFileSync(path.join(BATCH, `${id}.json`), `${JSON.stringify(task, null, 2)}\n`);
-  if (brief.kind !== 'twin' || fs.existsSync(path.join(draftDir, 'fixture'))) replaceDir(path.join(draftDir, 'fixture'), path.join(BATCH, 'fixtures', id));
+  if (brief.kind !== 'twin') replaceDir(path.join(draftDir, 'fixture'), path.join(BATCH, 'fixtures', id));
   fs.mkdirSync(path.join(BATCH, 'hidden', id), { recursive: true });
   replaceDir(path.join(draftDir, 'hidden'), path.join(BATCH, 'hidden', id, 'hidden'));
   replaceDir(path.join(draftDir, 'solution'), path.join(BATCH, 'solutions', id));

@@ -1,0 +1,10 @@
+[
+  "Only an account owner or a user granted the Account Data Export permission may submit an export request; Support agents cannot submit one for a customer.",
+  "Deliver a ZIP archive with CSV data files and a JSON manifest. All exported date-times must use UTC with a trailing Z.",
+  "Exclude payment card numbers, Northstar internal support notes, and records deleted before the request. Customer-visible appointment records, including cancelled appointments, remain in scope.",
+  "Start processing within 15 minutes of a valid request and make the completed package available within 72 hours.",
+  "The signed download link expires 7 days after the package becomes ready; after that, the customer must submit a new request.",
+  "The compressed archive limit is 2 GB. If a package would exceed that limit, route the customer to Support rather than splitting it automatically.",
+  "Self-service export is available on Pro and Enterprise plans, not Starter.",
+  "Write export.requested, export.ready, export.downloaded, and export.expired to the immutable audit log, retained for 400 days."
+]

@@ -1,0 +1,7 @@
+{
+  "node": ">=24",
+  "broker": "internal-events",
+  "outboxPollIntervalMs": 500,
+  "workerConcurrency": 8,
+  "logFormat": "json"
+}

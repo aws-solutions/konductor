@@ -1,0 +1,4 @@
+room_id,account_id,name,capacity,location,active
+RM-1,A-104,Studio A,6,Building North,true
+RM-2,A-104,Quiet Room,2,Building South,true
+RM-9,A-219,Boardroom,12,Remote,false

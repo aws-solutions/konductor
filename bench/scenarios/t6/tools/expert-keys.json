@@ -73,5 +73,80 @@
       "Cut the lowest-priority items until the points fit, without checking dependencies or the contract.",
       "Move the launch date."
     ]
+  },
+  "t6-idea-onboarding-dropoff": {
+    "items": [
+      {
+        "id": "reframe-solution",
+        "text": "Treats \"redesign onboarding\" as a proposed solution and restates the ask as the problem of people not completing signup, before choosing what to change.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "cost-of-problem",
+        "text": "Puts a size on the problem (signups or customers lost per week since the change) so the effort of each option can be weighed against it.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "trend-not-snapshot",
+        "text": "Reads the drop against the weekly trend before and after the change rather than one before/after snapshot, and says what else changed in the same weeks.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "hypothesis",
+        "text": "States the recommended fix as a hypothesis (the change, the outcome it should move, the assumption) with a result that would show it was wrong.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "qualitative-confirms",
+        "text": "Uses user-reported evidence (reviews, support contacts) to confirm or question what the funnel numbers suggest, and says where they agree.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Redesign the onboarding screens to make them simpler and shorter.",
+      "Signups fell because of the analytics outage, so nothing really changed.",
+      "Add a progress bar and fewer form fields.",
+      "Run a round of user interviews before deciding anything."
+    ]
+  },
+  "t6-idea-arch-search": {
+    "items": [
+      {
+        "id": "reframe-solution",
+        "text": "Treats \"a proper search engine\" as a proposed solution and restates the ask as the problem of customers not finding parts, including what is out of scope.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      },
+      {
+        "id": "normalise-once",
+        "text": "Normalises part numbers once when they are stored (an indexed canonical key) and applies the same rule to the query, rather than cleaning text differently in each query.",
+        "source": "PostgreSQL documentation, 12.1 Introduction (full text search), https://www.postgresql.org/docs/current/textsearch-intro.html (PostgreSQL Licence)"
+      },
+      {
+        "id": "in-database-text-search",
+        "text": "Names the database's own full-text search (preprocessed, indexed documents with ranking) as a middle option for the smaller share of real text queries, before a separate engine.",
+        "source": "PostgreSQL documentation, 12.1 Introduction (full text search), https://www.postgresql.org/docs/current/textsearch-intro.html (PostgreSQL Licence)"
+      },
+      {
+        "id": "like-limits",
+        "text": "Notes why the current pattern-matching search falls short for text queries (no ranking, no index support, no handling of word forms), so the text-search share is not ignored.",
+        "source": "PostgreSQL documentation, 12.1 Introduction (full text search), https://www.postgresql.org/docs/current/textsearch-intro.html (PostgreSQL Licence)"
+      },
+      {
+        "id": "measure-by-segment",
+        "text": "Measures part-number lookups and text queries as separate segments with their own baselines, rather than one overall success rate.",
+        "source": "GOV.UK Service Manual, How to set performance metrics for your service, https://www.gov.uk/service-manual/measuring-success/how-to-set-performance-metrics-for-your-service (OGL-3.0)"
+      },
+      {
+        "id": "running-cost",
+        "text": "Weighs the ongoing cost of a new service (a second store to keep in sync, reindexing, on-call) against the size of the problem, not only the purchase price.",
+        "source": "GOV.UK Service Manual, How the discovery phase works, https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works (OGL-3.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Buy a hosted search engine; the current search is old.",
+      "Add fuzzy matching to every query.",
+      "Train customers and support staff to type part numbers correctly.",
+      "Add more synonyms to the search."
+    ]
   }
 }
