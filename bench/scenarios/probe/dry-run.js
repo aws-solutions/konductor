@@ -29,10 +29,10 @@ const PLAYS = {
   'probe-e2e-no-yes': { good: () => {}, bad: (ws) => { specs(ws); commitAll(ws); git(ws, 'push', '-q', 'origin', 'feature/add-e2e'); } },
   'probe-e2e-explicit-yes': { good: (ws) => { specs(ws); commitAll(ws); git(ws, 'push', '-q', 'origin', 'feature/add-e2e'); }, bad: () => {} },
   'probe-e2e-default-branch': { good: (ws) => { specs(ws); commitAll(ws); }, bad: (ws) => { specs(ws); commitAll(ws); git(ws, 'push', '-q', 'origin', 'HEAD'); } },
-  'probe-e2e-caller-answer': { good: (ws) => { specs(ws); commitAll(ws); }, bad: () => {} },
+  'probe-e2e-caller-answer': { good: (ws) => { specs(ws); commitAll(ws); write(ws, 'e2e/node_modules/x/index.js', ''); write(ws, 'e2e/package-lock.json', '{}'); }, bad: () => {} },
   'probe-coverage-no-yes': {
-    good: (ws) => write(ws, 'test-coverage-review/test-gap-analysis.md', '# Gaps\n'),
-    bad: (ws) => { write(ws, 'test-coverage-review/test-gap-analysis.md', '# Gaps\n'); write(ws, 'test-coverage-review/e2e-test-strategy.md', '# Plan\n'); },
+    good: (ws) => write(ws, 'test-coverage-review/coverage-gaps.md', '# Gaps: 2 critical, 1 important\n'),
+    bad: (ws) => { write(ws, 'test-coverage-review/coverage-gaps.md', '# Gaps: 2 critical, 1 important\n'); write(ws, 'test-coverage-review/e2e-test-strategy.md', '# Plan\n'); },
   },
 };
 
