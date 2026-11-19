@@ -57,5 +57,50 @@
     "source": "original"
   },
   "pilot": null,
-  "version": 1
+  "version": 1,
+  "targetSkills": [
+    "skill:decision-writing",
+    "skill:trade-off-evaluator"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "skill:decision-writing",
+      "skill:trade-off-evaluator"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "zhipu",
+    "model": "glm-5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt names the task (choose database approach for session store) without naming any specific framework, method, or the correct answer."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All limits and inputs are clearly specified in JSON files with explicit values; the calculation method is unambiguous for agents who read all fixtures."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture file states the correct choice; fixtures provide raw inputs that must be combined to derive that on-demand exceeds the partition ceiling."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The cheapest option (on-demand) fails the partition WCU ceiling; budget is $7000 but the passing option costs $6540, so cost alone cannot pick the winner."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required numbers are present: peak writes, hot key fraction, partition ceiling, limits for latency/budget/RPO/RTO; no missing data blocks a correct solution."
+      }
+    ]
+  }
 }
