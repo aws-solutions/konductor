@@ -168,8 +168,8 @@ in `konductor`'s own SOP trigger table, so a matching request selects the SOP di
 `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`,
 `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, and
 `k-adversarial-pull-request-review`. For the rest, the request falls
-through to the capability routing table, which names each specialist's SOPs, and `konductor`
-delegates to the specialist that declares the SOP — which is why naming the SOP in your request is worth doing either way.
+through to the capability routing table and `konductor` delegates to the specialist that declares
+the SOP — which is why naming the SOP in your request is worth doing either way.
 
 ### Starting a specialist directly
 

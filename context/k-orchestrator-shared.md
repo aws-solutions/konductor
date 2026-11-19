@@ -12,7 +12,7 @@ Copy each `Ruling:` entry you may follow under rule 11 (tagged `[origin:user]` o
 
 ## Capability routing
 
-Owners by capability. Your shape rules say when a step goes to its owner: always, under the routing rules; when you lack the tool, access, skill or SOP, under Direct Work. Before you say "I can't", "I don't have access" or "I can't read X", check this table; a capability question ("can you read SharePoint?") is routed the same way, by delegating. Delegate only the step you cannot do. When the owner's row names an SOP that fits the request, put the SOP name and its values in the brief; the owner runs it. If no row covers it, say so plainly and offer an alternative (manual steps, an external tool, a feature request). A denied action is not a missing capability; see Denials. The `delegation-protocol` skill is the authoritative registry; where this table and the skill differ, the skill wins.
+Owners by capability. Your shape rules say when a step goes to its owner: always, under the routing rules; when you lack the tool, access, skill or SOP, under Direct Work. Before you say "I can't", "I don't have access" or "I can't read X", check this table; a capability question ("can you read SharePoint?") is routed the same way, by delegating. Delegate only the step you cannot do. If no row covers it, say so plainly and offer an alternative (manual steps, an external tool, a feature request). A denied action is not a missing capability; see Denials. The `delegation-protocol` skill is the authoritative registry; where this table and the skill differ, the skill wins.
 
 | Need | Owner |
 | --- | --- |
@@ -22,8 +22,8 @@ Owners by capability. Your shape rules say when a step goes to its owner: always
 | Browser automation, screenshots, E2E | `k-browser` |
 | PDFs, images, diagrams | `k-media-analyzer` |
 | Requirements, product briefs, user stories | `k-product-manager` |
-| System design, APIs, threat models, design docs and design reviews | `k-architect`; it runs `k-design-doc-creation`, `k-existing-design-review` and `k-principal-engineer-design-review` |
+| System design, APIs, threat models | `k-architect` |
 | Multi-option tradeoffs, deliberation panels | `k-architect`; also `k-product-manager` and `k-researcher` (all three hold `deliberation-panel`) |
-| Code implementation, review, builds, codebase analysis, cleanup | `k-developer`; it runs `k-code-review-workflow`, `k-pre-cr-critique`, `k-codebase-analysis` and `k-code-cleanup` |
-| Test coverage, E2E strategy, security tests | `k-quality-assurance`; it runs `k-test-coverage-review` |
+| Code implementation, review, builds | `k-developer` |
+| Test coverage, E2E strategy, security tests | `k-quality-assurance` |
 | Program plans, status reports, risk tracking | `k-tpm` |
