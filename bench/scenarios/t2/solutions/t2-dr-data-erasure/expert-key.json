@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": "e1",
+      "text": "Explains how concurrent account writes, delayed events, and already-created exports are fenced so a late producer cannot recreate or expose data after deletion begins.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e2",
+      "text": "Asks for an explicit abuse and takeover analysis of the verification flow, including rate limits, reauthentication, and operator authorization for requests and holds.",
+      "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+    },
+    {
+      "id": "e3",
+      "text": "Asks how the service sheds load when Search, storage, or another dependency slows down, which work is dropped or deferred first, and how that choice affects the deadline.",
+      "source": "https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0)"
+    },
+    {
+      "id": "e4",
+      "text": "Requests a clear fencing or lease-expiry design for two workers processing one message, rather than relying only on idempotency records to prevent stale work.",
+      "source": "https://github.com/kubernetes/enhancements (Apache-2.0)"
+    },
+    {
+      "id": "e5",
+      "text": "Calls for an access review and key-rotation plan for the restricted evidence database and deletion logs, including who can export evidence and how that access is detected.",
+      "source": "https://cheatsheetseries.owasp.org (CC BY-SA 4.0)"
+    },
+    {
+      "id": "e6",
+      "text": "Asks whether deployment configuration such as replica caps, queue names, and provider endpoints is injected per environment instead of being coupled to the application artifact.",
+      "source": "https://12factor.net (MIT)"
+    }
+  ],
+  "weakAnswers": [
+    "The design is clear and well structured, with good state names and a reasonable rollout.",
+    "Consider scalability and monitoring as traffic grows.",
+    "The queue, retries, and idempotency approach should be tested thoroughly.",
+    "The proposal uses existing services and keeps the user experience asynchronous."
+  ]
+}

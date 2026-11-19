@@ -1,0 +1,12 @@
+{
+  "active_accounts": 4100000,
+  "monthly_verified_deletion_requests": 18000,
+  "p95_requests_per_day": 980,
+  "peak_deletion_requests_per_hour": 140,
+  "search_documents": 3900000,
+  "warehouse_rows_for_accounts": 520000000,
+  "snapshot_storage_tb": 18,
+  "monthly_budget_usd": 4200,
+  "worker_budget_usd": 700,
+  "planned_rollout": "10 percent for one week, then regional expansion"
+}

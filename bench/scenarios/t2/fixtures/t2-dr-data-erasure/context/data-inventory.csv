@@ -1,0 +1,9 @@
+system,record_or_copy,identifier,owner,normal_retention
+Account PostgreSQL,profile and credentials,account_id,Identity,life of account plus legal hold
+Redis,session and device tokens,account_id,Core Services,24 hours after expiry
+OpenSearch,profile search document,account_id,Search,30 days after last update
+Analytics warehouse,customer_activity and attribution rows,account_id,Data Platform,24 months
+Object Storage,avatars and export archives,account_id prefix,Media Platform,12 months
+Notification vendor,recipient and delivery metadata,email address,Messaging,provider terms
+Backup vault,encrypted database snapshots and object manifests,account_id indirectly,Infrastructure,90 days
+Support export,case attachment and account reference,account_id,Support Operations,case policy

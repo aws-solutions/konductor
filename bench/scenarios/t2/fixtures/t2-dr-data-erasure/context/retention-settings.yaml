@@ -1,0 +1,13 @@
+snapshot_policy:
+  database_snapshots: 90d
+  object_manifests: 90d
+  deletion_from_live_systems: immediate_after_verified_request
+  restore_testing: quarterly
+warehouse:
+  partition_retention: 24mo
+  supported_control_topic: data-control-events
+  maximum_event_age: 7d
+vendor_records:
+  provider_account: messaging-prod
+  removal_endpoint: /v2/recipients/remove
+  contract_response_target: 5 calendar days

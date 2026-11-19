@@ -1,0 +1,13 @@
+deletion_service:
+  request_acknowledgement: 15m
+  completion_target: 72h
+  privacy_deadline: 30 calendar days
+  max_queue_age: 30m
+  evidence_retention: 400d
+  retry_limit: 8
+  dead_letter_review: daily
+queue:
+  name: account-deletion
+  visibility_timeout: 10m
+  max_inflight: 500
+  delivery: at_least_once

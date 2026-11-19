@@ -1,0 +1,11 @@
+{
+  "targetSkills": ["design-doc-guidelines", "design-impact-review"],
+  "targetSop": "k-existing-design-review",
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": ["design-impact-review", "k-existing-design-review"],
+    "mustNotLoad": ["code-review", "adversarial-design-review"]
+  },
+  "twinIdea": "Write the account-deletion design doc from scratch given the same context files.",
+  "why": "The task is a pre-implementation design review requiring cross-artifact validation. design-impact-review traces how the design aligns with legal, vendor, retention, and architecture constraints. k-existing-design-review is the exact SOP for this scenario. code-review is for code diffs, not design docs."
+}
