@@ -1707,6 +1707,14 @@ fn cleanup_empty_dirs(target_dir: &Path, touched_dirs: &[PathBuf]) -> usize {
 /// appear in the emitted shape, rather than only confirming the call
 /// site doesn't panic.
 fn build_single_json(target_dir: &str, counts: &UninstallCounts) -> serde_json::Value {
+    let mut value = counts_json(target_dir, counts);
+    value["command"] = serde_json::Value::from("uninstall");
+    value
+}
+
+/// One target's result as `--json` fields, shared by the single-target
+/// document and each `--all` `succeeded` entry.
+fn counts_json(target_dir: &str, counts: &UninstallCounts) -> serde_json::Value {
     // `bin_link_error` is inserted only when `Some` -- mirrors
     // `update.rs`'s own conditional `value["warning"] = ...`
     // pattern for `finalize_index_warning` -- so a `--json`
@@ -1714,7 +1722,6 @@ fn build_single_json(target_dir: &str, counts: &UninstallCounts) -> serde_json::
     // everything else this uninstall did, rather than only on
     // stderr as plain text (finding `f-dd9ebe8a`).
     let mut value = serde_json::json!({
-        "command": "uninstall",
         "target_dir": target_dir,
         "stale": counts.stale,
         "files_deleted": counts.files_deleted,
@@ -1731,6 +1738,34 @@ fn build_single_json(target_dir: &str, counts: &UninstallCounts) -> serde_json::
         value["bin_link_error"] = serde_json::Value::String(failure.message.clone());
     }
     value
+}
+
+/// Builds `report_batch`'s `--json` document.
+fn build_batch_json(
+    succeeded: &[(String, UninstallCounts)],
+    skipped: &[(String, String)],
+    failed: &[(String, String)],
+) -> serde_json::Value {
+    serde_json::json!({
+        "command": "uninstall",
+        "succeeded": succeeded
+            .iter()
+            .map(|(dir, counts)| counts_json(dir, counts))
+            .collect::<Vec<_>>(),
+        "skipped": skipped.iter().map(|(dir, message)| serde_json::json!({
+            "target_dir": dir,
+            "reason": message,
+        })).collect::<Vec<_>>(),
+        "failed": failed.iter().map(|(dir, message)| serde_json::json!({
+            "target_dir": dir,
+            "error": message,
+        })).collect::<Vec<_>>(),
+        "stale_skipped": stale_skipped_count(succeeded),
+    })
+}
+
+fn stale_skipped_count(succeeded: &[(String, UninstallCounts)]) -> usize {
+    succeeded.iter().filter(|(_, counts)| counts.stale).count()
 }
 
 fn join_paths(paths: &[PathBuf]) -> String {
@@ -1799,59 +1834,81 @@ fn kept_backups_warning_lines(kept_backups: &[PathBuf], color: ColorMode) -> Vec
 /// WITHIN `target_dir` ("uninstalled from"/"cleared"), never a verb that
 /// could be misread as `target_dir` itself having been deleted.
 fn report_single(target_dir: &str, counts: &UninstallCounts, json: bool, color: ColorMode) {
-    if json {
-        println!("{}", build_single_json(target_dir, counts));
-        return;
+    for line in single_report_lines(target_dir, counts, json, color) {
+        println!("{line}");
     }
-    // Keyed off `bin_link_symlink_removed` specifically, NOT
-    // `bin_link_untracked` -- the latter is true whenever a tracking
-    // entry existed, even if the physical symlink survives because
-    // another still-installed target shares it (see
-    // `UninstallCounts::bin_link_symlink_removed`'s own doc comment).
-    // Reporting "removed its --link-bin symlink" off the wrong field
-    // would wrongly claim $PATH resolution changed when it did not.
-    let bin_link_note = if counts.bin_link_symlink_removed {
+}
+
+/// Every stdout line `report_single` prints: the `--json` document
+/// alone, or the summary line followed by `target_warning_lines`.
+fn single_report_lines(
+    target_dir: &str,
+    counts: &UninstallCounts,
+    json: bool,
+    color: ColorMode,
+) -> Vec<String> {
+    if json {
+        return vec![build_single_json(target_dir, counts).to_string()];
+    }
+    let bin_link_note = bin_link_note(counts);
+    let diverged_note = format_diverged_paths_note(&counts.diverged_paths);
+    let prefix = crate::cli::output::success_prefix(color, "konductor uninstall:");
+    let summary = if counts.stale {
+        format!(
+            "{prefix} {target_dir} is stale (no manifest found); cleared its \
+             tracked install entry{bin_link_note}"
+        )
+    } else {
+        format!(
+            "{prefix} uninstalled from {target_dir}; deleted {} file(s) ({} with \
+             a hash that had diverged from the manifest), removed {} now-empty \
+             director(y/ies){bin_link_note}{diverged_note}",
+            counts.files_deleted, counts.diverged_deleted, counts.dirs_removed
+        )
+    };
+    std::iter::once(summary)
+        .chain(target_warning_lines(target_dir, counts, color))
+        .collect()
+}
+
+/// Keyed off `bin_link_symlink_removed` specifically, NOT
+/// `bin_link_untracked` -- the latter is true whenever a tracking
+/// entry existed, even if the physical symlink survives because
+/// another still-installed target shares it (see
+/// `UninstallCounts::bin_link_symlink_removed`'s own doc comment).
+/// Reporting "removed its --link-bin symlink" off the wrong field
+/// would wrongly claim $PATH resolution changed when it did not.
+fn bin_link_note(counts: &UninstallCounts) -> &'static str {
+    if counts.bin_link_symlink_removed {
         "; removed its --link-bin symlink"
     } else if counts.bin_link_untracked {
         "; untracked its --link-bin symlink (still shared with another installed target)"
     } else {
         ""
-    };
-    let diverged_note = format_diverged_paths_note(&counts.diverged_paths);
-    if counts.stale {
-        println!(
-            "{} {target_dir} is stale (no manifest found); cleared its \
-             tracked install entry{bin_link_note}",
-            crate::cli::output::success_prefix(color, "konductor uninstall:")
-        );
-    } else {
-        println!(
-            "{} uninstalled from {target_dir}; deleted {} file(s) ({} with \
-             a hash that had diverged from the manifest), removed {} now-empty \
-             director(y/ies){bin_link_note}{diverged_note}",
-            crate::cli::output::success_prefix(color, "konductor uninstall:"),
-            counts.files_deleted,
-            counts.diverged_deleted,
-            counts.dirs_removed
-        );
     }
-    for line in kept_changed_warning_lines(target_dir, &counts.kept_changed_paths, color) {
-        println!("{line}");
-    }
-    for line in kept_backups_warning_lines(&counts.kept_backups, color) {
-        println!("{line}");
-    }
-    // Printed via `println!` (stdout), not `eprintln!` -- see
-    // `bin_link_error`'s own doc comment for why this must not be
-    // stderr-only.
+}
+
+/// The plain-text warnings printed after one target's summary line:
+/// kept changed files, kept Kiro agent backups, and a `--link-bin`
+/// removal failure. Printed on stdout, not stderr -- see
+/// `bin_link_error`'s own doc comment for why this must not be
+/// stderr-only.
+fn target_warning_lines(
+    target_dir: &str,
+    counts: &UninstallCounts,
+    color: ColorMode,
+) -> Vec<String> {
+    let mut lines = kept_changed_warning_lines(target_dir, &counts.kept_changed_paths, color);
+    lines.extend(kept_backups_warning_lines(&counts.kept_backups, color));
     if let Some(failure) = &counts.bin_link_error {
-        println!(
+        lines.push(format!(
             "{} could not remove tracked --link-bin symlink for \
              {target_dir}: {}",
             crate::cli::output::status::warn(color, "konductor uninstall: warning:"),
             failure.message
-        );
+        ));
     }
+    lines
 }
 
 /// Renders `counts.diverged_paths` as a trailing clause -- "; \
@@ -1864,6 +1921,13 @@ fn format_diverged_paths_note(diverged_paths: &[PathBuf]) -> String {
         return String::new();
     }
     format!("; hash-diverged file(s): {}", join_paths(diverged_paths))
+}
+
+/// One line of `report_batch`'s output and the stream it goes to.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ReportLine {
+    Stdout(String),
+    Stderr(String),
 }
 
 /// Same stale-vs-real distinguishability as `report_single`, but
@@ -1884,108 +1948,70 @@ fn report_batch(
     json: bool,
     color: ColorMode,
 ) {
-    let stale_skipped = succeeded.iter().filter(|(_, c)| c.stale).count();
-    if json {
-        println!(
-            "{}",
-            serde_json::json!({
-                "command": "uninstall",
-                "succeeded": succeeded.iter().map(|(dir, counts)| {
-                    // Same conditional-insert as `report_single`:
-                    // `bin_link_error` must land in this same stdout
-                    // document, not only on stderr.
-                    let mut entry = serde_json::json!({
-                        "target_dir": dir,
-                        "stale": counts.stale,
-                        "files_deleted": counts.files_deleted,
-                        "diverged_deleted": counts.diverged_deleted,
-                        "diverged_paths": counts.diverged_paths,
-                        "kept_changed": counts.kept_changed_paths.len(),
-                        "kept_changed_paths": counts.kept_changed_paths,
-                        "kept_backups": paths_json(&counts.kept_backups),
-                        "dirs_removed": counts.dirs_removed,
-                        "bin_link_untracked": counts.bin_link_untracked,
-                        "bin_link_symlink_removed": counts.bin_link_symlink_removed,
-                    });
-                    if let Some(failure) = &counts.bin_link_error {
-                        entry["bin_link_error"] = serde_json::Value::String(failure.message.clone());
-                    }
-                    entry
-                }).collect::<Vec<_>>(),
-                "skipped": skipped.iter().map(|(dir, message)| serde_json::json!({
-                    "target_dir": dir,
-                    "reason": message,
-                })).collect::<Vec<_>>(),
-                "failed": failed.iter().map(|(dir, message)| serde_json::json!({
-                    "target_dir": dir,
-                    "error": message,
-                })).collect::<Vec<_>>(),
-                "stale_skipped": stale_skipped,
-            })
-        );
-        return;
+    for line in batch_report_lines(succeeded, skipped, failed, json, color) {
+        match line {
+            ReportLine::Stdout(text) => println!("{text}"),
+            ReportLine::Stderr(text) => eprintln!("{text}"),
+        }
     }
+}
+
+/// Every line `report_batch` prints, in order.
+fn batch_report_lines(
+    succeeded: &[(String, UninstallCounts)],
+    skipped: &[(String, String)],
+    failed: &[(String, String)],
+    json: bool,
+    color: ColorMode,
+) -> Vec<ReportLine> {
+    if json {
+        return vec![ReportLine::Stdout(
+            build_batch_json(succeeded, skipped, failed).to_string(),
+        )];
+    }
+    let prefix = crate::cli::output::success_prefix(color, "konductor uninstall:");
+    let mut lines = Vec::new();
     for (dir, counts) in succeeded {
-        // Same field choice as `report_single`: `bin_link_symlink_removed`,
-        // not `bin_link_untracked`, is the correct gate for this message.
-        let bin_link_note = if counts.bin_link_symlink_removed {
-            "; removed its --link-bin symlink"
-        } else if counts.bin_link_untracked {
-            "; untracked its --link-bin symlink (still shared with another installed target)"
-        } else {
-            ""
-        };
+        let bin_link_note = bin_link_note(counts);
         let diverged_note = format_diverged_paths_note(&counts.diverged_paths);
-        if counts.stale {
-            println!(
-                "{} {dir} is stale (no manifest found); cleared its \
-                 tracked install entry{bin_link_note}",
-                crate::cli::output::success_prefix(color, "konductor uninstall:")
-            );
+        let summary = if counts.stale {
+            format!(
+                "{prefix} {dir} is stale (no manifest found); cleared its \
+                 tracked install entry{bin_link_note}"
+            )
         } else {
-            println!(
-                "{} uninstalled from {dir}; deleted {} file(s) ({} \
+            format!(
+                "{prefix} uninstalled from {dir}; deleted {} file(s) ({} \
                  diverged), removed {} now-empty director(y/ies){bin_link_note}{diverged_note}",
-                crate::cli::output::success_prefix(color, "konductor uninstall:"),
-                counts.files_deleted,
-                counts.diverged_deleted,
-                counts.dirs_removed
-            );
-        }
-        for line in kept_changed_warning_lines(dir, &counts.kept_changed_paths, color) {
-            println!("{line}");
-        }
-        for line in kept_backups_warning_lines(&counts.kept_backups, color) {
-            println!("{line}");
-        }
-        // Same stdout-not-stderr rationale as `report_single`'s own
-        // `bin_link_error` warning line.
-        if let Some(failure) = &counts.bin_link_error {
-            println!(
-                "{} could not remove tracked --link-bin symlink \
-                 for {dir}: {}",
-                crate::cli::output::status::warn(color, "konductor uninstall: warning:"),
-                failure.message
-            );
-        }
+                counts.files_deleted, counts.diverged_deleted, counts.dirs_removed
+            )
+        };
+        lines.push(ReportLine::Stdout(summary));
+        lines.extend(
+            target_warning_lines(dir, counts, color)
+                .into_iter()
+                .map(ReportLine::Stdout),
+        );
     }
     for (dir, message) in skipped {
-        println!("konductor uninstall: skipped {dir}: {message}");
+        lines.push(ReportLine::Stdout(format!(
+            "konductor uninstall: skipped {dir}: {message}"
+        )));
     }
     for (dir, message) in failed {
-        eprintln!(
+        lines.push(ReportLine::Stderr(format!(
             "{} failed to remove {dir}: {message}",
             crate::cli::output::error_prefix(color, "konductor uninstall:")
-        );
+        )));
     }
-    println!(
-        "{} {} succeeded ({} stale-skipped), {} skipped (harness not tracked), {} failed",
-        crate::cli::output::success_prefix(color, "konductor uninstall:"),
+    lines.push(ReportLine::Stdout(format!(
+        "{prefix} {} succeeded ({} stale-skipped), {} skipped (harness not tracked), {} failed",
         succeeded.len(),
-        stale_skipped,
+        stale_skipped_count(succeeded),
         skipped.len(),
         failed.len()
-    );
+    )));
+    lines
 }
 
 #[cfg(test)]
@@ -6154,6 +6180,197 @@ mod tests {
         let code = report_dry_run_preview(target_dir, None, true, ColorMode::disabled());
         assert_eq!(code, 0);
         fs::remove_dir_all(&target).ok();
+    }
+
+    fn counts_with_kept_files() -> UninstallCounts {
+        UninstallCounts {
+            files_deleted: 1,
+            diverged_deleted: 1,
+            diverged_paths: vec![PathBuf::from(".kiro/agents/a.json")],
+            kept_changed_paths: vec![PathBuf::from(V3_STANDALONE_HOOKS_RELATIVE_PATH)],
+            kept_backups: vec![PathBuf::from("/proj/a/.kiro/agents/a.json.bak")],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn single_report_lines_count_only_removed_files_when_files_are_kept() {
+        let _home = HomeGuard::new("report-lines-kept-count-home");
+        let target = scratch_home("report-lines-kept-count");
+        seed_one_edited_one_untouched(&target);
+        let target_dir = target.to_str().unwrap();
+
+        let counts = uninstall_one(target_dir, None, true, false).unwrap();
+
+        assert_eq!(
+            single_report_lines(target_dir, &counts, false, ColorMode::disabled()),
+            vec![
+                format!(
+                    "konductor uninstall: uninstalled from {target_dir}; deleted 1 file(s) (0 \
+                     with a hash that had diverged from the manifest), removed 0 now-empty \
+                     director(y/ies)"
+                ),
+                format!(
+                    "konductor uninstall: warning: kept 1 file(s) in {target_dir} that changed \
+                     since install. They are still live but no longer tracked; delete them, or \
+                     the Konductor entries named, by hand:"
+                ),
+                "  .kiro/agents/edited.json".to_string(),
+            ]
+        );
+        fs::remove_dir_all(&target).ok();
+    }
+
+    #[test]
+    fn single_report_lines_name_a_kept_hook_document_and_kept_backups() {
+        assert_eq!(
+            single_report_lines(
+                "/proj/a",
+                &counts_with_kept_files(),
+                false,
+                ColorMode::disabled()
+            ),
+            vec![
+                "konductor uninstall: uninstalled from /proj/a; deleted 1 file(s) (1 with a \
+                 hash that had diverged from the manifest), removed 0 now-empty \
+                 director(y/ies); hash-diverged file(s): .kiro/agents/a.json",
+                "konductor uninstall: warning: kept 1 file(s) in /proj/a that changed since \
+                 install. They are still live but no longer tracked; delete them, or the \
+                 Konductor entries named, by hand:",
+                "  .kiro/hooks/konductor-telemetry-hooks.json (Konductor hook entries: \
+                 konductor-telemetry-session-start, konductor-telemetry-subagent-invocation)",
+                "konductor uninstall: warning: left 1 Kiro agent backup(s) that match what \
+                 Konductor installed; remove them by hand if you do not need them:",
+                "  /proj/a/.kiro/agents/a.json.bak",
+            ]
+        );
+    }
+
+    #[test]
+    fn single_report_lines_under_json_are_only_the_document() {
+        let counts = counts_with_kept_files();
+        assert_eq!(
+            single_report_lines("/proj/a", &counts, true, ColorMode::disabled()),
+            vec![build_single_json("/proj/a", &counts).to_string()]
+        );
+    }
+
+    #[test]
+    fn batch_report_lines_under_json_are_only_the_document() {
+        let succeeded = [("/proj/a".to_string(), counts_with_kept_files())];
+        let lines = batch_report_lines(&succeeded, &[], &[], true, ColorMode::disabled());
+        assert_eq!(
+            lines,
+            vec![ReportLine::Stdout(
+                build_batch_json(&succeeded, &[], &[]).to_string()
+            )]
+        );
+    }
+
+    #[test]
+    fn batch_json_carries_every_key_for_each_target() {
+        let succeeded = [("/proj/a".to_string(), counts_with_kept_files())];
+        let value = build_batch_json(
+            &succeeded,
+            &[("/proj/b".to_string(), "not tracked".to_string())],
+            &[("/proj/c".to_string(), "bad manifest".to_string())],
+        );
+        let keys = |value: &serde_json::Value| {
+            value
+                .as_object()
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect::<std::collections::BTreeSet<_>>()
+        };
+        assert_eq!(
+            keys(&value),
+            ["command", "failed", "skipped", "stale_skipped", "succeeded"]
+                .map(String::from)
+                .into()
+        );
+        let entry = &value["succeeded"][0];
+        assert_eq!(
+            keys(entry),
+            [
+                "bin_link_symlink_removed",
+                "bin_link_untracked",
+                "diverged_deleted",
+                "diverged_paths",
+                "dirs_removed",
+                "files_deleted",
+                "kept_backups",
+                "kept_changed",
+                "kept_changed_paths",
+                "stale",
+                "target_dir",
+            ]
+            .map(String::from)
+            .into()
+        );
+        assert_eq!(entry["files_deleted"], 1);
+        assert_eq!(entry["kept_changed"], 1);
+        assert_eq!(
+            entry["kept_changed_paths"],
+            serde_json::json!([V3_STANDALONE_HOOKS_RELATIVE_PATH])
+        );
+        assert_eq!(
+            entry["kept_backups"],
+            serde_json::json!(["/proj/a/.kiro/agents/a.json.bak"])
+        );
+        assert_eq!(
+            value["skipped"],
+            serde_json::json!([{"target_dir": "/proj/b", "reason": "not tracked"}])
+        );
+        assert_eq!(
+            value["failed"],
+            serde_json::json!([{"target_dir": "/proj/c", "error": "bad manifest"}])
+        );
+        assert_eq!(value["stale_skipped"], 0);
+    }
+
+    #[test]
+    fn batch_report_lines_list_warnings_per_target_then_the_summary() {
+        let lines = batch_report_lines(
+            &[("/proj/a".to_string(), counts_with_kept_files())],
+            &[("/proj/b".to_string(), "not tracked".to_string())],
+            &[("/proj/c".to_string(), "bad manifest".to_string())],
+            false,
+            ColorMode::disabled(),
+        );
+        let out = |text: &str| ReportLine::Stdout(text.to_string());
+        assert_eq!(
+            lines,
+            vec![
+                out(
+                    "konductor uninstall: uninstalled from /proj/a; deleted 1 file(s) (1 \
+                     diverged), removed 0 now-empty director(y/ies); hash-diverged file(s): \
+                     .kiro/agents/a.json"
+                ),
+                out(
+                    "konductor uninstall: warning: kept 1 file(s) in /proj/a that changed since \
+                     install. They are still live but no longer tracked; delete them, or the \
+                     Konductor entries named, by hand:"
+                ),
+                out(
+                    "  .kiro/hooks/konductor-telemetry-hooks.json (Konductor hook entries: \
+                     konductor-telemetry-session-start, konductor-telemetry-subagent-invocation)"
+                ),
+                out(
+                    "konductor uninstall: warning: left 1 Kiro agent backup(s) that match what \
+                     Konductor installed; remove them by hand if you do not need them:"
+                ),
+                out("  /proj/a/.kiro/agents/a.json.bak"),
+                out("konductor uninstall: skipped /proj/b: not tracked"),
+                ReportLine::Stderr(
+                    "konductor uninstall: failed to remove /proj/c: bad manifest".to_string()
+                ),
+                out(
+                    "konductor uninstall: 1 succeeded (0 stale-skipped), 1 skipped (harness \
+                     not tracked), 1 failed"
+                ),
+            ]
+        );
     }
 
     /// `--json` mode has no effect on the (now nonexistent) confirmation
