@@ -1,0 +1,5 @@
+[
+  { "currency": "USD", "locale": "en-US", "amount": 125.5 },
+  { "currency": "EUR", "locale": "fr-FR", "amount": 125.5 },
+  { "currency": "JPY", "locale": "ja-JP", "amount": 12550 }
+]

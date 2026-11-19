@@ -1,0 +1,16 @@
+{
+  "id": "t5-qa-cart-twin-config",
+  "phase": "implementation",
+  "role": "developer",
+  "phases2": [],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "node",
+  "kind": "twin",
+  "controlKind": "twin",
+  "twinOf": "t5-qa-cart-weak-tests",
+  "mustNotLoad": [],
+  "size": "same as the twin's fixture",
+  "source": "original",
+  "brief": "Same repository as the cart pricing task. The request is a small feature, not about tests: shipping thresholds and rates are hard-coded; the owner wants them read from a JSON file `config/shipping.json` (a default threshold and rate, plus per-country overrides, an unknown country falling back to the default), with the current behaviour unchanged when no file is present or when it is empty. Hidden tests cover the lookup rules, the fallback, invalid values being rejected with a clear error, and that existing totals do not change. A person asking for this does not need a testing method; a test-gap analysis does not help.\n\nVoice: the shop's developer."
+}

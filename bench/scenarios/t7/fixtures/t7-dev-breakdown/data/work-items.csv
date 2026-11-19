@@ -1,0 +1,32 @@
+id,status,title,estimate_points,owner,updated,comments
+PAY-220,Closed,Pin node runtime version,1,Ivo,2027-03-02,done
+PAY-206,Open,Refresh API error examples,,Uma,2027-04-05,waiting for wording review
+PAY-221,Open,Improve catalog retry message,2,Nell,2027-04-02,empty comment in source export
+PAY-201,Closed,Review catalog naming,2,Mara,2027-03-01,completed with old response examples
+PAY-216,Closed,Add health endpoint,2,Tariq,2027-03-08,already shipped
+PAY-227,Open,Review release checklist,,Nell,2027-04-01,estimate missing
+PAY-211,Closed,Correct SKU export heading,1,Nell,2027-03-18,closed
+PAY-208,Open,Add product fixture samples,2,Ivo,2027-04-06,small test-data cleanup
+PAY-238,Cancelled,Estimate tax-inclusive prices,5,Ivo,2027-03-13,separate initiative
+PAY-222,Open,Refresh smoke-test script,2,Tariq,2027-04-05,
+PAY-231,Closed,Add request correlation id,2,Mara,2027-03-15,done
+PAY-235,Open,Update dependency notes,1,Uma,2027-04-03,
+PAY-217,Open,Review partner delivery logs,1,Uma,2027-04-07,
+PAY-232,Open,Review deployment permissions,2,Ivo,2027-04-07,
+PAY-225,Open,Add catalog response timing metric,3,Mara,2027-04-06,observability only
+PAY-237,Open,Check API response headers,2,Mara,2027-04-08,no product behavior
+PAY-202,Open,Document catalog support runbook,2,Ivo,2027-04-02,
+PAY-203,Cancelled,Prototype market landing page,5,Nell,2027-02-17,cancelled after campaign change
+PAY-233,Cancelled,Draft market analytics dashboard,5,Nell,2027-03-06,cancelled
+PAY-205,Closed,Remove duplicate catalog query,3,Tariq,2027-03-21,released in 3.7
+PAY-218,Cancelled,Explore localized product names,5,Sana,2027-03-28,deferred
+PAY-212,Open,Tidy request logging,2,Uma,2027-04-04,no behavior change expected
+PAY-228,Cancelled,Build market selector UI,8,Tariq,2027-03-20,client team owns this
+PAY-223,Cancelled,Compare foreign payment gateways,8,Uma,2027-03-11,out of scope
+PAY-236,Closed,Repair stale product fixture,2,Sana,2027-03-10,closed
+PAY-240,Closed,Archive retired price parser,1,Tariq,2027-02-19,closed
+PAY-230,Open,Clean old catalog comments,1,Sana,2027-04-04,
+PAY-210,Open,Review database indexes,2,Tariq,2027-04-01,
+PAY-226,Closed,Normalize product names,3,Ivo,2027-02-26,released
+PAY-213,Cancelled,Investigate vendor conversion API,5,Mara,2027-03-25,vendor contract ended
+PAY-207,Cancelled,Prototype exchange-rate widget,3,Mara,2027-03-12,not in this release

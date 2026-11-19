@@ -1,0 +1,152 @@
+{
+  "id": "t3-adr-cache-sizing",
+  "class": "design",
+  "target": null,
+  "prompt": "Review the cache-tier inputs in `fixture/` and choose a production configuration from the candidate list. Write the architecture decision record to `docs/adr/0001-cache.md`. Explain the selected topology, sizing arithmetic, availability behavior, cost, and why the other serious option was not selected. The ADR must contain a fenced block whose info string is exactly `decision`; its JSON must have exactly the keys `chosen`, `options`, `limits`, and `monthly_cost_usd`. Set `chosen` to the selected option id, `options` to the option ids considered, `limits` to an object mapping each hard-limit name to `{\"limit\": number, \"value\": number}`, and `monthly_cost_usd` to the selected option's monthly cost computed from the price sheet. Include one limits entry for every hard limit in the inputs, with the chosen configuration's computed value and the input limit number.",
+  "fixture": "t3-adr-cache-sizing",
+  "timeoutSec": 900,
+  "hidden": "t3-adr-cache-sizing",
+  "phase": "decisions",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 17
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/adr/0001-cache.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning",
+      "criterion": "The ADR explains the sizing arithmetic, including the engine reservation, primary versus replica capacity, and why the selected topology meets the peak working set and availability objectives. (not code-checkable: Tests can recompute reported figures but cannot judge whether the explanation connects the figures into a sound architectural argument.)",
+      "weight": 1
+    },
+    {
+      "id": "tradeoffs",
+      "criterion": "The ADR compares the selected option with a viable alternative and makes a clear cost, capacity, performance, and operational tradeoff rather than asserting a choice. (not code-checkable: Tests can verify option ids and numeric limits but cannot assess whether the comparison is meaningful or the preference is well justified.)",
+      "weight": 1
+    },
+    {
+      "id": "decision-quality",
+      "criterion": "The ADR is readable, specific, and operationally useful, with assumptions and consequences that a platform team could use when revisiting the decision. (not code-checkable: Automated checks cannot reliably assess clarity, completeness of context, or whether the consequences help a human maintainer.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "decision-writing",
+    "trade-off-evaluator"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "decision-writing",
+      "trade-off-evaluator"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "zhipu",
+    "model": "glm-5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks to choose from candidate list and write an ADR without naming methods, frameworks, or revealing which option is correct."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All limits are clearly specified with numeric values and units; the calculation methodology (engine reservation, primary vs replica) is documented in the operating model."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture provides inputs but does not state which candidate to choose; the agent must derive the correct answer by computing limit compliance."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The task requires multi-file synthesis and arithmetic (memory reservation, shard multiplication, cost calculation); picking the cheapest option fails the hit-ratio limit."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All necessary numbers are present: peak working set, throughput target, node specs, prices, reservation percentage, and service limits are fully specified."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "States that the 600 requests/second staging pilot value is superseded by the 800 requests/second production target and must not be used for capacity planning.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "Computes that minimal-105's single primary node provides only 78.75 GB after the 25% engine reservation (105 × 0.75), which covers approximately 66.7% of the 118 GB peak working set and therefore fails the 95% in-memory hit-ratio floor.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e3",
+        "text": "Clarifies that replicas provide failover availability and do not add to primary working-set capacity, so the minimal-105 replica does not compensate for insufficient primary memory.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "Verifies monthly cost by multiplying node count by per-node price from the price sheet: balanced-105 costs 4 × 650 = 2,600 USD/month; wide-209 costs 2 × 1,400 = 2,800 USD/month.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "Compares balanced-105 and wide-209 on at least two trade-off dimensions: cost (balanced costs 200 USD/month less), shard topology (balanced has two primary shards vs one), latency (wide has lower p95 latency), or operational complexity (fewer nodes with wide).",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "States the availability behavior: a replica provides zero-minute RPO and approximately three-minute RTO under the operating model, meeting the service requirements of 0-minute RPO and 5-minute RTO.",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "Notes what would change the decision: the 118 GB peak working set growing beyond the 157.5 GB usable primary memory, or the 2,600 USD monthly spend approaching the 3,000 USD budget limit.",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "Picks minimal-105 because it is the cheapest option with a replica, without computing whether its 78.75 GB primary capacity meets the 118 GB peak requirement.",
+      "Uses the staging pilot value of 600 requests/second instead of the 800 requests/second production target for throughput capacity planning.",
+      "Assumes the replica in minimal-105 doubles capacity to 157.5 GB, not understanding that replicas are for availability and do not serve primary working-set traffic.",
+      "Selects wide-209 solely because it has fewer nodes and lower latency, without comparing the 200 USD/month cost difference against the balanced option.",
+      "Lists the candidates without computing the engine reservation (25%) and its impact on usable memory for each topology."
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "paper-lantern-notifications",
+  "version": "2.4.0",
+  "private": true,
+  "description": "Small notification delivery service",
+  "engines": {"node": ">=24"},
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test",
+    "lint": "node --check src/index.js",
+    "check:secrets": "node scripts/check-secrets.js"
+  }
+}

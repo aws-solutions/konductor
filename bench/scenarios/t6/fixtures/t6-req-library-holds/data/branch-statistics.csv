@@ -1,0 +1,7 @@
+branch,patrons_2023,holds_2023,avg_wait_days,completion_rate,expired_rate
+central,15432,8921,5.2,87%,13%
+westside,8923,5123,4.8,89%,11%
+eastside,4567,2345,6.1,82%,18%
+north_hill,1890,876,7.3,78%,22%
+riverside,2345,1234,5.9,85%,15%
+bookmobile,0,0,0,0%,0%

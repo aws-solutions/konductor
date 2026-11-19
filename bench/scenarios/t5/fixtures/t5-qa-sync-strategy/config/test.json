@@ -1,0 +1,7 @@
+{
+  "batchSize": 2,
+  "checkpointFile": ".runtime/test-checkpoint.json",
+  "deadLetterFile": ".runtime/test-dead-letter.jsonl",
+  "sourceTimezone": "UTC",
+  "maxAttempts": 2
+}

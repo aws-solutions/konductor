@@ -1,0 +1,158 @@
+{
+  "id": "t7-freeze-forecast",
+  "class": "design",
+  "version": 1,
+  "phase": "planning",
+  "role": "tpm",
+  "questions": "allowed",
+  "prompt": "I need a firm forecast for the data-platform migration. Can we really land the work by March 31, 2027, before the freeze, or do I need to reset the release conversation? Please give me a plain yes or no, the earliest realistic completion date, and the specific work, capacity, calendar, leave, handoff, or dependency facts that drive the answer. Call out anything that can slip without moving the date. Put the deliverable in docs/march-forecast.md. Include one fenced JSON block whose info string is forecast. The JSON must have exactly this shape: {can_hit_target: true|false, target_date: YYYY-MM-DD, earliest_date: YYYY-MM-DD, critical_path: [ticket ids], drivers: [{tickets: [ticket ids], why: string}], capacity_by_sprint: {sprint: points}, assumptions: [string]}. The block is how my reporting tooling reads the answer, so keep dates ISO-formatted and use numeric point values.",
+  "fixture": "t7-freeze-forecast",
+  "hidden": "t7-freeze-forecast",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 15,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/march-forecast.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "tickets.json",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/march-forecast.md",
+      "pattern": "```\\s*forecast",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "bottom-line",
+      "criterion": "The prose gives the requester the March 31 yes-or-no answer and the earliest date near the start, rather than making the director infer the conclusion (code cannot check this because it only reads the fenced JSON block).",
+      "weight": 2
+    },
+    {
+      "id": "reasoning",
+      "criterion": "The prose connects the forecast to the calendar, capacity, leave, handoffs, dependency date, and release timing in a way a director can act on (code cannot check this because it checks identifiers and values, not the quality of the explanation).",
+      "weight": 2
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "release-stages",
+        "text": "Treat alpha, beta, release candidate, freeze, and final as distinct gates, and explain that finishing after freeze changes the release decision even if the work finishes before final.",
+        "source": "PEP 745, Python 3.14 Release Schedule, https://peps.python.org/pep-0745/ (public domain or CC0-1.0)"
+      },
+      {
+        "id": "freeze-policy",
+        "text": "Make the freeze a real scope boundary: identify the work that misses it and state the decision or exception needed instead of quietly moving the freeze.",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+      },
+      {
+        "id": "evidence-based-forecast",
+        "text": "Use the available ticket, capacity, leave, holiday, and handoff evidence, and state assumptions where the export cannot prove a precise completion day.",
+        "source": "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "dependency-gates",
+        "text": "Separate work that is merely large from work that gates later acceptance, so the 55-point independent report epic does not distort the date forecast.",
+        "source": "PEP 745, Python 3.14 Release Schedule, https://peps.python.org/pep-0745/ (public domain or CC0-1.0)"
+      },
+      {
+        "id": "capacity-loss",
+        "text": "Show the effect of the holidays and both planned leaves in the affected sprints rather than using nominal capacity as if every person were available.",
+        "source": "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "handoff-latency",
+        "text": "Explain the calendar cost of the limited receiving-team handoff days; point totals alone do not capture that wait.",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Yes, March 31 is fine because the roadmap lists the migration in an early sprint.",
+      "No, the 55-point reporting epic is too large, so all work must move to May.",
+      "The forecast is March 31 because the answer simply trusts the planned sprint dates and ignores leave.",
+      "The date is uncertain because there are too many tickets, without identifying which dependencies actually gate release."
+    ]
+  },
+  "targetSkills": [
+    "sprint-planning",
+    "program-planning",
+    "risk-management"
+  ],
+  "targetSop": "k-plan",
+  "targetAgent": "k-tpm",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "sprint-planning",
+      "program-planning",
+      "risk-management"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://peps.python.org/pep-0745/",
+      "licence": "public domain or CC0-1.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "structure"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for a forecast without naming methods (critical path analysis) or hinting at traps (Dae's leave, the 55-point decoy, handoff constraints). The JSON schema is neutral and does not reveal the answer."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The README clearly states: cross-team handoffs wait for the receiving team's acceptance weekday, holidays/PTO remove one point per person per day, and due_date is the date requested by consuming work. The target date (Mar 31), freeze date (Apr 12), and earliest completion (Apr 30) are all derivable from the data with stated conventions."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No tickets have risk labels, conflict flags, or critical-path markers in comments or titles. The critical chain must be discovered by tracing dependencies through depends_on fields, not from any seeded hint."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer that trusts planned sprints, ignores holidays/leave, and puts the 55-point MIG-142 on the critical path passes only 1/16 tests (target_date recognition). The task requires multi-step dependency analysis, handoff scheduling, and capacity adjustment."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "I independently verified: (1) capacity values S2=71, S7=60, S8=76 follow from 79 minus holidays and leave per README rules; (2) the 7-ticket chain MIG-014→MIG-126 follows from depends_on links; (3) earliest_date Apr 30 follows from handoff constraints (Tue/Wed for Runtime, Mon/Thu for Release Ops) and leave timing. All key values are derivable from fixture data using stated conventions."
+      }
+    ]
+  }
+}

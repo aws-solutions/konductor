@@ -1,0 +1,7 @@
+name,team,backup,timezone
+Asha Nair,runtime,Mira Sol,UTC+05:30
+Mira Sol,storage,Pavel Chen,UTC-05:00
+Jon Bell,tooling,Ruth Ives,UTC+00:00
+Lina Ortiz,gateway,Asha Nair,UTC-06:00
+Pavel Chen,storage,Mira Sol,UTC+01:00
+Ruth Ives,quality,Jon Bell,UTC+00:00

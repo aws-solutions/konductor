@@ -1,0 +1,168 @@
+{
+  "output": "plan/dependency-review.md",
+  "block": "conflicts",
+  "assertions": [
+    {
+      "id": "conflict-atl-007-identity",
+      "desc": "Names the ATL-007 to BCN-012 dependency",
+      "op": "cites",
+      "path": "conflicts",
+      "field": "producer",
+      "ids": [
+        "ATL-007"
+      ],
+      "where": {
+        "consumer": "BCN-012"
+      }
+    },
+    {
+      "id": "conflict-atl-007-dates",
+      "desc": "Reports dates and lateness for ATL-007 to BCN-012",
+      "op": "cites",
+      "path": "conflicts",
+      "field": "producer",
+      "ids": [
+        "ATL-007"
+      ],
+      "where": {
+        "consumer": "BCN-012",
+        "producer_due": "2027-07-20",
+        "needed_by": "2027-07-15",
+        "days_late": 5
+      }
+    },
+    {
+      "id": "conflict-cnd-009-identity",
+      "desc": "Names the CND-009 to BCN-024 dependency",
+      "op": "cites",
+      "path": "conflicts",
+      "field": "producer",
+      "ids": [
+        "CND-009"
+      ],
+      "where": {
+        "consumer": "BCN-024"
+      }
+    },
+    {
+      "id": "conflict-cnd-009-dates",
+      "desc": "Reports dates and lateness for CND-009 to BCN-024",
+      "op": "cites",
+      "path": "conflicts",
+      "field": "producer",
+      "ids": [
+        "CND-009"
+      ],
+      "where": {
+        "consumer": "BCN-024",
+        "producer_due": "2027-08-05",
+        "needed_by": "2027-07-30",
+        "days_late": 6
+      }
+    },
+    {
+      "id": "conflict-cnd-017-identity",
+      "desc": "Names the CND-017 to DLT-011 dependency",
+      "op": "cites",
+      "path": "conflicts",
+      "field": "producer",
+      "ids": [
+        "CND-017"
+      ],
+      "where": {
+        "consumer": "DLT-011"
+      }
+    },
+    {
+      "id": "conflict-cnd-017-dates",
+      "desc": "Reports dates and lateness for CND-017 to DLT-011",
+      "op": "cites",
+      "path": "conflicts",
+      "field": "producer",
+      "ids": [
+        "CND-017"
+      ],
+      "where": {
+        "consumer": "DLT-011",
+        "producer_due": "2027-08-18",
+        "needed_by": "2027-08-10",
+        "days_late": 8
+      }
+    },
+    {
+      "id": "cycle-between-beacon-and-cinder",
+      "desc": "Reports the two-team dependency cycle",
+      "op": "includes",
+      "path": "cycles",
+      "ids": [
+        "BCN-020",
+        "CND-020"
+      ]
+    },
+    {
+      "id": "launch-driver-producer",
+      "desc": "Identifies the dependency that drives the launch",
+      "op": "equals",
+      "path": "launch_driver.producer",
+      "value": "CND-017"
+    },
+    {
+      "id": "launch-driver-consumer",
+      "desc": "Identifies the launch dependency consumer",
+      "op": "equals",
+      "path": "launch_driver.consumer",
+      "value": "DLT-011"
+    },
+    {
+      "id": "planned-launch-date",
+      "desc": "Reports the roadmap launch date",
+      "op": "date",
+      "path": "launch_date_planned",
+      "value": "2027-09-30",
+      "tolDays": 0
+    },
+    {
+      "id": "unresolved-launch-date",
+      "desc": "Reports the launch date if the driver remains unresolved",
+      "op": "date",
+      "path": "launch_date_if_unresolved",
+      "value": "2027-10-08",
+      "tolDays": 1
+    },
+    {
+      "id": "stale-done-milestone",
+      "desc": "Names a milestone marked done while linked work remains open",
+      "op": "includes",
+      "path": "stale_milestones",
+      "ids": [
+        "Atlas ingestion contract"
+      ]
+    },
+    {
+      "id": "cancelled-producer-decoy-absent",
+      "desc": "Does not treat the cancelled producer as a live conflict",
+      "op": "absent",
+      "path": "conflicts",
+      "field": "producer",
+      "ids": [
+        "ATL-018"
+      ]
+    },
+    {
+      "id": "conflict-list-precision",
+      "desc": "Keeps the conflict list focused on actual late dependencies",
+      "op": "precision",
+      "path": "conflicts",
+      "ids": [
+        "ATL-007",
+        "BCN-012",
+        "CND-009",
+        "BCN-024",
+        "CND-017",
+        "DLT-011"
+      ],
+      "min": 0.5,
+      "maxCount": 6
+    }
+  ]
+}

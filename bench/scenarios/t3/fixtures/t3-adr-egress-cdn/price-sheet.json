@@ -1,0 +1,38 @@
+{
+  "currency": "USD",
+  "billing_unit": "GB",
+  "tb_to_gb": 1000,
+  "monthly_volume_source": "traffic.json:monthly_delivery_tb",
+  "tiered_egress": {
+    "cdn-payg": [
+      { "name": "first 10 TB", "tb": 10, "rate_usd_per_gb": 0.020 },
+      { "name": "next 40 TB", "tb": 40, "rate_usd_per_gb": 0.028 },
+      { "name": "next 100 TB", "tb": 100, "rate_usd_per_gb": 0.036 },
+      { "name": "over 150 TB", "tb": null, "rate_usd_per_gb": 0.045 }
+    ],
+    "object-direct": [
+      { "name": "first 10 TB", "tb": 10, "rate_usd_per_gb": 0.012 },
+      { "name": "next 40 TB", "tb": 40, "rate_usd_per_gb": 0.040 },
+      { "name": "next 100 TB", "tb": 100, "rate_usd_per_gb": 0.055 },
+      { "name": "over 150 TB", "tb": null, "rate_usd_per_gb": 0.060 }
+    ]
+  },
+  "options": {
+    "cdn-committed": {
+      "model": "committed",
+      "commit_tb": 150,
+      "commit_monthly_usd": 6800,
+      "overage_rate_usd_per_gb": 0.045,
+      "request_and_delivery_usd": 450
+    },
+    "cdn-payg": {
+      "model": "tiered",
+      "request_and_delivery_usd": 550
+    },
+    "object-direct": {
+      "model": "tiered",
+      "request_and_delivery_usd": 180
+    }
+  },
+  "billing_note": "Tier rows are incremental. The first row applies only to the first 10 TB, and the final row applies only above 150 TB."
+}

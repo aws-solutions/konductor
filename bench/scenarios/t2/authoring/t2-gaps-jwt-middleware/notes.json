@@ -1,0 +1,3 @@
+{
+  "notes": "The verifier has two unit mismatches and mixes algorithm selection with key selection; a quick read of the happy-path tests can miss both. The refresh contract is stated in the authentication document, while the current-role requirement depends on UserStore.updateRole and the admin route. The token leak is visible in the shared 401 helper, not in the route callers. The test-gap item is intentionally about absent expired and tampered cases rather than a failing assertion."
+}

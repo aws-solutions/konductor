@@ -1,0 +1,12 @@
+[project]
+name = "parcel-tool"
+version = "2.4.0"
+description = "Domestic parcel rates and plain-text labels"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+parcel-tool = "cli:main"
+
+[tool.project]
+license = "BSD-3-Clause"

@@ -1,0 +1,19 @@
+{
+  "currency": "USD",
+  "billing_period": "month",
+  "database_retry_table": {
+    "compute_usd_per_unit": 52,
+    "storage_usd_per_gb": 0.22,
+    "backup_usd_per_gb": 0.08,
+    "request_usd_per_million": 0.005
+  },
+  "external_retry_queue": {
+    "worker_usd_per_unit": 52,
+    "storage_usd_per_gb": 0.30,
+    "request_usd_per_million": 0.015
+  },
+  "in_memory_delay_queue": {
+    "fixed_monthly_usd": 0
+  },
+  "rounding": "Report monthly totals to two decimal places after summing unrounded components."
+}

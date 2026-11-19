@@ -1,0 +1,5 @@
+[
+  {"id":"c-001","email":"Ada@example.test","full_name":"Ada Lovelace","credit_limit":"2500","subscribed":"Y","joined_at":"2024-01-01T00:00:00Z","postal_code":"N1 1AA"},
+  {"id":"c-002","email":"ben@example.test","full_name":"Ben Byte","credit_limit":"0","subscribed":"N","joined_at":"2024-02-01T00:00:00Z","postal_code":"90210"},
+  {"id":"c-003","email":"ci@example.test","full_name":"Ci Lang","credit_limit":"100","subscribed":"true","joined_at":"2024-03-01T00:00:00Z","postal_code":"75001"}
+]

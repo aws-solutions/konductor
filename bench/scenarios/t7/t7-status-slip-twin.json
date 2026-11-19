@@ -1,0 +1,110 @@
+{
+  "id": "t7-status-slip-twin",
+  "class": "design",
+  "version": 1,
+  "phase": "planning",
+  "role": "tpm",
+  "questions": "allowed",
+  "prompt": "Finance needs a plain-number reconciliation from this folder. Please report story points closed by assignee across the last two sprint labels in roadmap.md, S29 and S30, plus the number of open tickets in each epic and the total open points. Use the conventions documented with the export so the figures are comparable to the source. Put the requester-facing answer in reports/finance-numbers.md. Include one fenced JSON block with the info string numbers. The block must have exactly this shape: {\"closed_points_by_assignee\": {\"<name>\": number}, \"open_tickets_by_epic\": {\"<epic>\": number}, \"total_open_points\": number}. Names and epic labels are strings, and every value in both maps and the total must be a JSON number. Keep the surrounding text brief and limited to the counting basis.",
+  "fixture": "t7-status-slip",
+  "hidden": "t7-status-slip-twin",
+  "timeoutSec": 600,
+  "limits": {
+    "softSec": 300,
+    "hardSec": 600
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "reports/finance-numbers.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "tickets.csv",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "reports/finance-numbers.md",
+      "pattern": "```\\s*numbers",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "finance-bottom-line",
+      "criterion": "The prose gives the requester the reporting period and the three requested figures plainly before any brief counting note, without adding status, risks, or recommendations (code cannot check this because it only parses the fenced JSON block).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "twin",
+  "twinOf": "t7-status-slip",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": [
+      "status-reporting",
+      "risk-management",
+      "sprint-planning"
+    ]
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/kubernetes/sig-release",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt does not name any specific method, framework, or process; it requests a plain-number reconciliation and specifies the output format. No hints about seeded traps (reopened tickets, cancelled decoys, trailing-space names) appear in the request."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies S29 and S30 as 'the last two sprint labels in roadmap.md'. The README documents open statuses (To Do, In Progress, Blocked) and blank estimate handling. All key values tested follow from these documented conventions with zero tolerance."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture files contain no spoilers: last-week-status.md is generic context, release-notes.md describes features but no ticket data, export-metadata.txt only notes export details. No columns flag conflicts or label seeded traps; PAY-007's reopened status is in data, not a flag column."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fail",
+        "note": "A lazy answer trusting the obvious reading (count all open tickets by epic, sum open points, count closed by Done status) passes 15/16 tests (93.75%). Only the Asha Iyer reopened trap catches the lazy approach; all other traps (cancelled decoys, blank estimates) are correctly handled by documented conventions."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable from the fixture with documented conventions: open epic counts match direct counts of open-status tickets, Eve Grant closed = 3+5+8=16 from RISK-015/031/034, total open points = 597 sums non-blank estimates, Asha Iyer closed = 2 (PAY-018) excluding PAY-007 which is In Progress."
+      }
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "verdicts": [
+    {
+      "check": "leak",
+      "verdict": "pass",
+      "note": "Prompt names broad review areas (failure handling, performance, contract compliance) but doesn't name specific problems or give count. These are standard review categories, not hints."
+    },
+    {
+      "check": "ambiguity",
+      "verdict": "pass",
+      "note": "Prompt clearly specifies output file (REVIEW.md), location format (section numbers), severity levels (critical/high/medium/low/nit), and JSON structure with location/severity/issue/fix fields."
+    },
+    {
+      "check": "ceiling",
+      "verdict": "pass",
+      "note": "Multiple key items require cross-referencing: k5 requires reading customer-contracts.md to see enterprise contract terms, k6 requires reading SDK docs to confirm mandatory headers, k7 requires connecting replication mention to consistency issues, k8 requires understanding circuit breaker pattern not explicitly mentioned. Not all items are trivially surface-level."
+    },
+    {
+      "check": "floor",
+      "verdict": "pass",
+      "note": "All 8 key items have clear evidence in the fixture: k1 (3.4 + incident report), k2 (3.1 + customer-contracts 'rolling window' language), k3 (3.5 + latency-budget cross-AZ numbers), k4 (3.1 code + traffic-growth clock skew), k5 (3.3 table + customer-contracts enterprise details), k6 (3.10 'where appropriate' + SDK mandatory headers), k7 (3.2 failover mention), k8 (3.6 monitoring gaps). Each section number matches the design doc. Severities are defensible: critical for outage risk, high for contract violation and latency budget breach."
+    },
+    {
+      "check": "hidden-answer",
+      "verdict": "pass",
+      "note": "No comments, tests, docs, or file names point at planted problems. Design doc is a plausible internal technical document without obvious flags like TODO, FIXME, or 'BUG HERE' markers."
+    }
+  ],
+  "keyProblems": [],
+  "suggestedFixes": []
+}

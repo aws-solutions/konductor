@@ -1,0 +1,155 @@
+{
+  "id": "t7-dev-breakdown",
+  "class": "design",
+  "version": 1,
+  "phase": "planning",
+  "role": "developer",
+  "questions": "allowed",
+  "prompt": "I need a pick-up-ready plan for adding the multi-currency product prices described in docs/requests/multi-currency-prices.md. Review this folder, including the Node service, tests, migrations, documentation, estimate guide, calendar, and work-item export. Tell me the honest total work estimate first, then the order the team should take the work, so I can judge the Q2 target. No code changes yet. Write the deliverable to docs/multi-currency-plan.md. Include one fenced JSON block with info string breakdown. The JSON must have exactly these top-level keys: tickets, change_order, files_to_change, and total_estimate_days. tickets is an array of objects with id (string), title (string), files (array of path strings), depends_on (array of ticket ID strings), and estimate_days (number). change_order and files_to_change are arrays of path strings. total_estimate_days is a number. Explain the reasoning and assumptions in plain language around the block; the block is how our tooling reads the answer.",
+  "fixture": "t7-dev-breakdown",
+  "hidden": "t7-dev-breakdown",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 12,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/multi-currency-plan.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data/work-items.csv",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/multi-currency-plan.md",
+      "pattern": "```\\s*breakdown",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "bottom-line",
+      "criterion": "The prose gives the requester a clear workday estimate and sequencing conclusion before the supporting detail (code cannot check this because it cannot judge whether the human-facing bottom line is clear or placed first)",
+      "weight": 2
+    },
+    {
+      "id": "reasoning",
+      "criterion": "The prose explains how the estimate, dependencies, parallel work, and uncertainty were read from the supplied material rather than merely repeating the JSON (code cannot check this because it cannot evaluate the quality of the written reasoning)",
+      "weight": 2
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "rollout-compatibility",
+        "text": "Treat the database and application change as a compatibility-sensitive rollout: preserve old USD callers during the transition, make the data operation safe to rerun, and state what must be checked before the new readers are enabled.",
+        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+      },
+      {
+        "id": "operational-checks",
+        "text": "Name a small verification and rollback plan for bad or missing regional data, including how the team would notice wrong-currency responses after release.",
+        "source": "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)"
+      },
+      {
+        "id": "explicit-scope",
+        "text": "Make the scope boundary explicit: this work reads supplied regional prices and does not build an exchange-rate provider, market UI, or tax calculation.",
+        "source": "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
+      },
+      {
+        "id": "done-criteria",
+        "text": "Give each picked-up slice a usable completion condition covering implementation, tests, and the affected API, export, or notification contract instead of treating a code edit as finished.",
+        "source": "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "estimate-vs-elapsed",
+        "text": "Distinguish summed engineer-days from elapsed delivery time and say which work can run in parallel after the storage and read path are ready.",
+        "source": "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "open-questions",
+        "text": "Call out unresolved product or data questions, such as the source and completeness of non-USD prices, as release assumptions rather than silently promising behavior the request does not provide.",
+        "source": "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
+      }
+    ],
+    "weakAnswers": [
+      "It is a small change: add a currency parameter, update one formatter, and ship it in a day.",
+      "Do every open ticket in the export, including unrelated work, and quote the roadmap date as the finish date.",
+      "Change the API first, then make the database and cache adjustments if tests expose problems.",
+      "Update only the main API serializer and leave exports, notifications, shared fixtures, and rollout checks for later.",
+      "Include the legacy pricing module because its name sounds related, without checking whether the service imports it."
+    ]
+  },
+  "targetSkills": [
+    "sprint-planning"
+  ],
+  "targetSop": "k-plan",
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "sprint-planning"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/golang/go",
+      "licence": "BSD-3-Clause",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The request describes a multi-currency pricing feature without naming specific methods, frameworks, or hinting at seeded traps. The legacy module decoy is not mentioned in the request."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The request clearly specifies the deliverable (docs/multi-currency-plan.md with a JSON block containing tickets, change_order, files_to_change, total_estimate_days), the data sources to review, and the acceptance examples. The key values all follow from the fixture's stated conventions (estimate-guide.md conversion table: 5+5+3+3+2+2+3+5 points = 17 days)."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture files reveal the traps or answer. The weekly notes contain only placeholder text. The work-items.csv contains unrelated tickets. The data-dictionary.md states the schema but not the migration filename. The legacy/pricing-legacy.js file comment says 'no current import points' but an agent must still verify this by searching imports."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer that only touches the route, serializer, money service, and route tests passes only 2 of 12 tests (legacy-excluded and files-precise). The task requires discovering the migration, repository, catalog-service, cache, CSV exporter, email notification, and shared fixture helper."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values follow from the fixture. Re-deriving: (1) migration filename 005_add_product_prices.sql follows from existing migrations 001-004; (2) total estimate 17 days = 3+3+2+2+1+1+2+3 from estimate-guide.md conversion table applied to reasonable ticket breakdown; (3) legacy/pricing-legacy.js exclusion verified by grep showing no imports; (4) cache, CSV, and email files all use formatMoney and must be updated for currency awareness."
+      }
+    ]
+  }
+}

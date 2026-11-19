@@ -1,0 +1,13 @@
+{
+  "name": "staywise-booking-widget-logic",
+  "version": "2.4.1",
+  "private": true,
+  "description": "Browser-independent state and view logic for the Staywise booking widget",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test",
+    "test:watch": "node --test --watch"
+  },
+  "engines": { "node": ">=24" },
+  "license": "UNLICENSED"
+}

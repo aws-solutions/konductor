@@ -1,0 +1,220 @@
+{
+  "outputFile": "releases/ledger-v3-rollout.md",
+  "items": [
+    {
+      "id": "cause-is-compatibility-null",
+      "type": "text",
+      "path": "rootCause",
+      "all": [
+        "settlement_code",
+        "null",
+        "(?:v2|2\\.x|old|legacy)"
+      ],
+      "none": [
+        "(caused by|due to|because of|result of) (the )?(db |database )?(pool|connection|replica.?lag|authori[sz]er)"
+      ],
+      "weight": 3
+    },
+    {
+      "id": "canary-evidence",
+      "type": "evidence",
+      "path": "evidence",
+      "groups": [
+        {
+          "file": "logs/ledger-canary\\.log",
+          "all": [
+            "not_null_violation",
+            "settlement_code",
+            "value=NULL"
+          ]
+        },
+        {
+          "file": "logs/ledger-canary\\.log",
+          "all": [
+            "legacy_field_required",
+            "settlement_code"
+          ]
+        }
+      ],
+      "min": 2,
+      "weight": 2
+    },
+    {
+      "id": "expand-before-code",
+      "type": "order",
+      "path": "steps",
+      "first": {
+        "field": "action",
+        "all": [
+          "expand|001"
+        ]
+      },
+      "then": {
+        "field": "action",
+        "all": [
+          "canary|deploy.*3\\.0|application|cohort"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "prepare-before-code",
+      "type": "order",
+      "path": "steps",
+      "first": {
+        "field": "action",
+        "all": [
+          "prepare|backfill|settlement_code"
+        ]
+      },
+      "then": {
+        "field": "action",
+        "all": [
+          "canary|deploy.*3\\.0|application"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "contract-before-close",
+      "type": "order",
+      "path": "steps",
+      "first": {
+        "field": "action",
+        "all": [
+          "contract|003"
+        ]
+      },
+      "then": {
+        "field": "action",
+        "all": [
+          "close|release record|final"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "all-steps-have-gates",
+      "type": "none",
+      "path": "steps",
+      "match": {
+        "all": [
+          "\"percent\":([1-9]|[1-9][0-9]|100)\\b",
+          "\"gate\":null"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "no-freeze-starts",
+      "type": "none",
+      "path": "steps",
+      "match": {
+        "field": "start",
+        "timeIn": [
+          "2025-11-21T18:00:00Z",
+          "2025-12-02T08:00:00Z"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "gate-metrics-are-catalogued",
+      "type": "inSet",
+      "path": "steps",
+      "field": "gate.metric",
+      "fromFile": "metrics/metrics-catalogue.csv",
+      "pattern": "^([a-z0-9_]+),",
+      "min": 6,
+      "weight": 2
+    },
+    {
+      "id": "rollback-metric-is-catalogued",
+      "type": "inSet",
+      "path": "rollback.trigger",
+      "field": "metric",
+      "fromFile": "metrics/metrics-catalogue.csv",
+      "pattern": "^([a-z0-9_]+),",
+      "min": 1,
+      "weight": 1
+    },
+    {
+      "id": "canary-respects-capacity",
+      "type": "some",
+      "path": "steps",
+      "match": {
+        "field": "percent",
+        "num": {
+          "gte": 5,
+          "lte": 8
+        }
+      },
+      "min": 1,
+      "weight": 2
+    },
+    {
+      "id": "canary-start-time",
+      "type": "every",
+      "path": "steps",
+      "match": {
+        "field": "start",
+        "timeIn": [
+          "2025-11-17T15:00:00Z",
+          "2025-11-21T18:00:00Z"
+        ]
+      },
+      "weight": 2
+    },
+    {
+      "id": "rollback-threshold",
+      "type": "number",
+      "path": "rollback.trigger.threshold",
+      "value": 0.5,
+      "tol": 0.05,
+      "weight": 2
+    },
+    {
+      "id": "rollback-trigger-window-and-op",
+      "type": "text",
+      "path": "rollback.trigger",
+      "all": [
+        "\"op\":\">\"",
+        "\"threshold\":0\\.5\\b"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "rollback-restores-previous-version",
+      "type": "text",
+      "path": "rollback.steps",
+      "all": [
+        "previous",
+        "2\\.9",
+        "traffic|cohort|image"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "bounded-rollout-plan",
+      "type": "maxLen",
+      "path": "steps",
+      "min": 6,
+      "max": 14,
+      "weight": 1
+    },
+    {
+      "id": "rota-gap-covered",
+      "type": "text",
+      "path": "coverage",
+      "all": [
+        "wednesday",
+        "secondary",
+        "assign|cover|name|staff|fill"
+      ],
+      "none": [
+        "unassigned"
+      ],
+      "weight": 1
+    }
+  ]
+}

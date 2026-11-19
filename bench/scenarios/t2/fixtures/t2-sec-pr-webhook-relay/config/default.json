@@ -1,0 +1,9 @@
+{
+  "port": 8080,
+  "maxBodyBytes": 262144,
+  "notifyTimeoutMs": 2500,
+  "notifyMaxRedirects": 3,
+  "deliveryWindowSeconds": 300,
+  "publicKeyId": "pub_demo_2025_01",
+  "providers": ["source", "billing"]
+}

@@ -1,0 +1,17 @@
+alerts:
+  - name: login-success-rate-low
+    metric: success_rate_pct
+    region: each
+    threshold: 95
+    for_minutes: 5
+    severity: page
+  - name: tls-handshake-errors
+    metric: tls_handshake_errors
+    threshold: 20
+    for_minutes: 3
+    severity: ticket
+  - name: edge-latency-high
+    metric: p95_latency_ms
+    threshold: 900
+    for_minutes: 10
+    severity: warn

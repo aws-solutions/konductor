@@ -1,0 +1,7 @@
+status,counts_as_open,meaning
+Open,yes,accepted work not started
+In Progress,yes,work underway
+Blocked,yes,work cannot proceed today
+Ready,yes,queued for an owner
+Closed,no,completed and accepted
+Cancelled,no,removed from scope

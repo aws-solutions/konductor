@@ -1,0 +1,7 @@
+code,label,requires_action,active
+OK,within expected condition,no,yes
+MONITOR,watch on next visit,yes,yes
+REPAIR,work needed,yes,yes
+OUT OF SERVICE,remove from service,yes,yes
+NA,not applicable,no,yes
+OLD,legacy code,no,no

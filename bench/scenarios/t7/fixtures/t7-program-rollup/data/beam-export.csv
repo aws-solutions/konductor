@@ -1,0 +1,91 @@
+ticket_id,title,initiative,status,points,sprint,updated,links,depends_on,comments,owner
+BEAM-201,Handoff adapter,Relay,Ready,13,S-07,2027-07-09,,,Acceptance notes are in the linked design.,Priya
+BEAM-202,Cache polish,Relay,Done,5,S-08,2027-07-12,,,Acceptance notes are in the linked design.,Priya
+BEAM-203,Mapping adapter,Relay,Done,2,S-09,2027-07-15,,,Small follow-up from the weekly review.,Tess
+BEAM-204,Cache rules,Harbor,Done,8,S-10,2027-07-18,,,Small follow-up from the weekly review.,Tess
+BEAM-205,Export review,Relay,Done,3,S-11,2027-07-21,,,,Mira
+BEAM-206,Schema rules,Relay,New,13,S-12,2027-07-24,,,Acceptance notes are in the linked design.,Sol
+BEAM-207,Ledger polish,Relay,Done,5,S-13,2027-07-27,,,Acceptance notes are in the linked design.,Mira
+BEAM-208,Retry adapter,Relay,Done,2,S-07,2027-07-30,,,One empty estimate was retained from the export.,Jon
+BEAM-209,Handoff rules,Relay,Done,8,S-08,2027-08-02,,,One empty estimate was retained from the export.,Mira
+BEAM-210,Mapping rules,Relay,Done,3,S-09,2027-08-05,,,Acceptance notes are in the linked design.,Jon
+BEAM-211,Retry service,Relay,Done,13,S-10,2027-08-08,,,,Jon
+BEAM-212,Schema service,Relay,Done,5,S-11,2027-08-11,,,One empty estimate was retained from the export.,Jon
+BEAM-213,Retry review,Relay,Done,,S-12,2027-08-14,,,One empty estimate was retained from the export.,Priya
+BEAM-214,Retry polish,Relay,Done,8,S-13,2027-08-17,,,,Sol
+BEAM-215,Handoff service,Relay,Done,3,S-07,2027-08-20,,,,Mira
+BEAM-216,Schema polish,Relay,Done,13,S-08,2027-08-23,,,One empty estimate was retained from the export.,Priya
+BEAM-217,Handoff adapter,Harbor,Done,5,S-09,2027-08-26,,,Small follow-up from the weekly review.,Priya
+BEAM-218,Ledger rules,Relay,New,2,S-10,2027-08-29,,,,Sol
+BEAM-219,Schema polish,Relay,Done,8,S-11,2027-07-06,,,Waiting for the usual test fixture refresh.,Sol
+BEAM-220,Routing rules,Relay,Done,3,S-12,2027-07-09,,,Small follow-up from the weekly review.,Priya
+BEAM-221,Handoff adapter,Relay,Done,13,S-13,2027-07-12,,,Acceptance notes are in the linked design.,Jon
+BEAM-222,Ledger polish,Relay,Done,5,S-07,2027-07-15,,,Small follow-up from the weekly review.,Jon
+BEAM-223,Ledger rules,Relay,In Progress,2,S-08,2027-07-18,,,Acceptance notes are in the linked design.,Sol
+BEAM-224,Ledger handoff consumer,Relay,Blocked,13,S-09,2027-07-21,,ARC-117,Waiting on the handoff contract.,Mira
+BEAM-225,Schema rules,Relay,Done,3,S-10,2027-07-24,,,Small follow-up from the weekly review.,Jon
+BEAM-226,Cache service,Relay,Done,13,S-11,2027-07-27,,,Small follow-up from the weekly review.,Tess
+BEAM-227,Routing polish,Relay,Done,5,S-12,2027-07-30,,,Acceptance notes are in the linked design.,Jon
+BEAM-228,Retry service,Relay,Done,2,S-13,2027-08-02,,,No customer-visible wording needed.,Mira
+BEAM-229,Mapping review,Relay,Done,8,S-07,2027-08-05,,,No customer-visible wording needed.,Mira
+BEAM-230,Retry adapter,Harbor,Done,3,S-08,2027-08-08,,,,Priya
+BEAM-231,Cache polish,Relay,Done,13,S-09,2027-08-11,,,Waiting for the usual test fixture refresh.,Jon
+BEAM-232,Guard polish,Relay,Done,5,S-10,2027-08-14,,,Acceptance notes are in the linked design.,Priya
+BEAM-233,Guard review,Relay,Done,2,S-11,2027-08-17,,,Small follow-up from the weekly review.,Tess
+BEAM-234,Export polish,Relay,Done,8,S-12,2027-08-20,,,Waiting for the usual test fixture refresh.,Priya
+BEAM-235,Mapping service,Relay,In Progress,3,S-13,2027-08-23,,,No customer-visible wording needed.,Jon
+BEAM-236,Export service,Relay,Done,13,S-07,2027-08-26,,,Acceptance notes are in the linked design.,Sol
+BEAM-237,Schema rules,Relay,Done,5,S-08,2027-08-29,,,One empty estimate was retained from the export.,Tess
+BEAM-238,Schema review,Relay,Done,2,S-09,2027-07-06,,,Acceptance notes are in the linked design.,Sol
+BEAM-239,Routing service,Relay,Done,8,S-10,2027-07-09,,,,Mira
+BEAM-240,Retry polish,Relay,Ready,3,S-11,2027-07-12,,,No customer-visible wording needed.,Tess
+BEAM-241,Mapping adapter,Relay,Done,13,S-12,2027-07-15,,,One empty estimate was retained from the export.,Sol
+BEAM-242,Handoff review,Relay,Done,5,S-13,2027-07-18,,,Acceptance notes are in the linked design.,Sol
+BEAM-243,Schema service,Harbor,Done,2,S-07,2027-07-21,,,Waiting for the usual test fixture refresh.,Jon
+BEAM-244,Schema review,Relay,Done,8,S-08,2027-07-24,,,Waiting for the usual test fixture refresh.,Sol
+BEAM-245,Guard review,Relay,Done,3,S-09,2027-07-27,,,Small follow-up from the weekly review.,Jon
+BEAM-246,Guard adapter,Relay,Done,13,S-10,2027-07-30,,,Small follow-up from the weekly review.,Priya
+BEAM-247,Routing review,Relay,Done,5,S-11,2027-08-02,,,,Sol
+BEAM-248,Session adapter,Relay,Done,2,S-12,2027-08-05,,,Waiting for the usual test fixture refresh.,Tess
+BEAM-249,Routing rules,Relay,Done,8,S-13,2027-08-08,,,One empty estimate was retained from the export.,Priya
+BEAM-250,Ledger review,Relay,Done,3,S-07,2027-08-11,,,No customer-visible wording needed.,Mira
+BEAM-251,Schema polish,Relay,Done,13,S-08,2027-08-14,,,Waiting for the usual test fixture refresh.,Jon
+BEAM-252,Guard adapter,Relay,Ready,5,S-09,2027-08-17,,,,Jon
+BEAM-253,Export adapter,Relay,Done,2,S-10,2027-08-20,,,One empty estimate was retained from the export.,Tess
+BEAM-254,Guard polish,Relay,Done,8,S-11,2027-08-23,,,No customer-visible wording needed.,Sol
+BEAM-255,Handoff polish,Relay,Done,3,S-12,2027-08-26,,,No customer-visible wording needed.,Mira
+BEAM-256,Schema polish,Harbor,Done,13,S-13,2027-08-29,,,Waiting for the usual test fixture refresh.,Jon
+BEAM-257,Export retry rules,Relay,In Progress,8,S-10,2027-07-06,,,The normal retry cases are covered.,Tess
+BEAM-258,Retry rules,Relay,Done,2,S-08,2027-07-09,,,No customer-visible wording needed.,Jon
+BEAM-259,Mapping rules,Relay,Done,8,S-09,2027-07-12,,,Waiting for the usual test fixture refresh.,Sol
+BEAM-260,Session review,Relay,Done,3,S-10,2027-07-15,,,Acceptance notes are in the linked design.,Sol
+BEAM-261,Ledger rules,Relay,Done,13,S-11,2027-07-18,,,One empty estimate was retained from the export.,Priya
+BEAM-262,Schema review,Relay,cancelled,5,S-12,2027-07-21,,,,Sol
+BEAM-263,Session polish,Relay,Done,2,S-13,2027-07-24,,,,Priya
+BEAM-264,Cache polish,Relay,Done,8,S-07,2027-07-27,,,Small follow-up from the weekly review.,Mira
+BEAM-265,Session review,Relay,Done,3,S-08,2027-07-30,,,Waiting for the usual test fixture refresh.,Priya
+BEAM-266,Export review,Relay,Done,13,S-09,2027-08-02,,,Small follow-up from the weekly review.,Priya
+BEAM-267,Handoff review,Relay,Done,5,S-10,2027-08-05,,,Acceptance notes are in the linked design.,Priya
+BEAM-268,Routing rules,Relay,Done,2,S-11,2027-08-08,,,No customer-visible wording needed.,Sol
+BEAM-269,Handoff review,Harbor,New,8,S-12,2027-08-11,,,,Mira
+BEAM-270,Schema rules,Relay,Done,3,S-13,2027-08-14,,,Acceptance notes are in the linked design.,Priya
+BEAM-271,Handoff polish,Relay,Done,13,S-07,2027-08-17,,,No customer-visible wording needed.,Priya
+BEAM-272,Schema service,Relay,Done,5,S-08,2027-08-20,,,,Mira
+BEAM-273,Mapping service,Relay,Done,2,S-09,2027-08-23,,,Small follow-up from the weekly review.,Tess
+BEAM-274,Session rules,Relay,In Progress,8,S-10,2027-08-26,,,One empty estimate was retained from the export.,Jon
+BEAM-275,Session rules,Relay,Done,3,S-11,2027-08-29,,,Waiting for the usual test fixture refresh.,Tess
+BEAM-276,Routing rules,Relay,Done,13,S-12,2027-07-06,,,Small follow-up from the weekly review.,Tess
+BEAM-277,Ledger rules,Relay,Done,5,S-13,2027-07-09,,,One empty estimate was retained from the export.,Sol
+BEAM-278,Session rules,Relay,Done,2,S-07,2027-07-12,,,Waiting for the usual test fixture refresh.,Sol
+BEAM-279,Schema adapter,Relay,Done,8,S-08,2027-07-15,,,One empty estimate was retained from the export.,Sol
+BEAM-280,Schema polish,Relay,Done,3,S-09,2027-07-18,,,Acceptance notes are in the linked design.,Jon
+BEAM-281,Handoff rules,Relay,Done,13,S-10,2027-07-21,,,One empty estimate was retained from the export.,Mira
+BEAM-282,Retry review,Harbor,Done,5,S-11,2027-07-24,,,Small follow-up from the weekly review.,Tess
+BEAM-283,Ledger polish,Relay,Done,2,S-12,2027-07-27,,,Waiting for the usual test fixture refresh.,Jon
+BEAM-284,Guard service,Relay,Done,8,S-13,2027-07-30,,,Acceptance notes are in the linked design.,Priya
+BEAM-285,Mapping review,Relay,Done,3,S-07,2027-08-02,,,,Jon
+BEAM-286,Session review,Relay,In Progress,13,S-08,2027-08-05,,,Acceptance notes are in the linked design.,Sol
+BEAM-287,Export polish,Relay,Done,5,S-09,2027-08-08,,,One empty estimate was retained from the export.,Tess
+BEAM-288,Guard service,Relay,Done,2,S-10,2027-08-11,,,Waiting for the usual test fixture refresh.,Priya
+BEAM-289,Ledger review,Relay,Done,8,S-11,2027-08-14,,,One empty estimate was retained from the export.,Tess
+BEAM-290,Export review,Relay,Done,3,S-12,2027-08-17,,,Acceptance notes are in the linked design.,Sol

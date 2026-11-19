@@ -1,0 +1,13 @@
+sprint,start_date,end_date,completed_points,kind,comment
+S-26-13,2026-08-03,2026-08-14,29,ordinary,Accepted work
+S-26-14,2026-08-17,2026-08-28,31,ordinary,Accepted work
+S-26-15,2026-08-31,2026-09-11,30,ordinary,Accepted work
+S-26-16,2026-09-14,2026-09-25,28,ordinary,Accepted work
+S-26-17,2026-09-28,2026-10-09,32,ordinary,Accepted work
+S-26-18,2026-10-12,2026-10-23,30,ordinary,Accepted work
+S-26-19,2026-10-26,2026-11-06,27,ordinary,Accepted work
+S-26-20,2026-11-09,2026-11-20,30,ordinary,Accepted work
+S-26-21,2026-11-23,2026-12-04,29,ordinary,Accepted work
+S-26-22,2026-12-07,2026-12-18,31,ordinary,Accepted work
+S-26-23,2026-12-21,2027-01-01,30,ordinary,Accepted work; holiday week included
+S-26-24,2027-01-04,2027-01-15,86,hackathon,Experimental build day and demo work

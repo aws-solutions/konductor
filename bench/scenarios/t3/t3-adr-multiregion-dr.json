@@ -1,0 +1,159 @@
+{
+  "id": "t3-adr-multiregion-dr",
+  "class": "design",
+  "target": null,
+  "prompt": "Our GlobalSaaS platform needs to improve its disaster recovery capabilities. The current pilot light implementation doesn't meet our tightened recovery time objectives, and we're approaching our budget limits.\n\nReview the documentation in the fixture directory to understand our requirements, constraints, and the options available. We need you to analyze the three disaster recovery approaches: nightly backup copy to the second region, pilot light with continuous replication, and warm standby.\n\nBased on your analysis, write an Architecture Decision Record at docs/adr/0001-dr.md that recommends the best option. Your decision should consider all business requirements, technical constraints, and financial limitations documented in the fixture files.\n\nThe ADR must include a fenced code block with info string \"decision\" containing JSON with these exact keys:\n- \"chosen\": the ID of the selected option\n- \"options\": array of option IDs you considered\n- \"limits\": object mapping limit names to {\"limit\": number, \"value\": number} - include one entry for each hard limit in the inputs, with value being your computed figure for the chosen option\n- \"monthly_cost_usd\": the chosen option's monthly cost computed from the pricing data\n\nMake sure your numbers are consistent across the documentation and your calculations are correct. Check that the chosen option meets all hard limits including RPO and RTO requirements while staying within budget.",
+  "fixture": "t3-adr-multiregion-dr",
+  "timeoutSec": 900,
+  "hidden": "t3-adr-multiregion-dr",
+  "phase": "decisions",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 22
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/adr/0001-dr.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning-quality",
+      "criterion": "The ADR demonstrates clear, logical reasoning that connects requirements to the chosen option, explaining why alternatives were rejected. (not code-checkable: Automated tests can verify numerical calculations and limit compliance, but cannot evaluate the quality of explanatory prose, logical flow, or persuasiveness of arguments.)",
+      "weight": 1
+    },
+    {
+      "id": "tradeoff-explanation",
+      "criterion": "The decision record explains tradeoffs between options beyond just cost, including complexity, operational overhead, risk factors, and implementation considerations. (not code-checkable: While tests can verify that all options were considered, they cannot assess whether the analysis discusses meaningful tradeoffs or merely lists pros/cons without substantive comparison.)",
+      "weight": 1
+    },
+    {
+      "id": "documentation-clarity",
+      "criterion": "The ADR is well-structured, clearly written, and accessible to both technical and non-technical stakeholders, with appropriate section headers and consistent formatting. (not code-checkable: Automated validation focuses on data correctness and structure, not on writing quality, organization, or communication effectiveness for human readers.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "decision-writing",
+    "trade-off-evaluator",
+    "cost-estimation"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "decision-writing",
+      "trade-off-evaluator",
+      "cost-estimation"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "minimax",
+    "model": "minimax-m2.5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Prompt uses generic DR strategy names (nightly backup, pilot light, warm standby) without hinting which is correct. Agent must analyze requirements to decide."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "Limits (RPO 5min, RTO 45min, budget $12,000) are clearly and consistently stated across multiple fixture documents. No ambiguity about requirements."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture files present all three options with their characteristics but don't explicitly recommend one. Agent must analyze data to determine which option meets all limits."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "Tempting option (nightly backup at $2,524) fails both RPO (24h vs 5m) and RTO (80m vs 45m). Agent must calculate restore time from throughput limits to verify RTO failure. Quick cheap answer fails."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All needed numbers available: RPO 5m, RTO 45m, budget $12,000, DB size 8TB, restore throughput 2x1.2 GB/s, pricing data. Required JSON format clearly specified in prompt."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "states that nightly-backup at $2,524/month fails the RPO requirement of 5 minutes because its 24-hour backup frequency means up to 24 hours of data loss",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "calculates that nightly-backup fails RTO: restoring 8 TB at 2×1.2 GB/s = 2.4 GB/s takes ~57 minutes for restore, plus 23 minutes for application startup and validation, totaling ~80 minutes which exceeds the 45-minute RTO limit",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e3",
+        "text": "states that pilot-light at ~$8,764/month meets the 5-minute RPO requirement but fails the 45-minute RTO because scale-up and validation take approximately 60 minutes",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "identifies that warm-standby at ~$11,904/month is the only option that meets all hard limits: RPO of <2 minutes (under 5-minute requirement), RTO of ~15 minutes (under 45-minute requirement), and monthly cost under the $12,000 budget",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "notes that the pricing data contains a superseded database instance hour rate of $0.72 (replaced by $0.68 after December 2023) and must not be used for cost calculations",
+        "source": "original"
+      },
+      {
+        "id": "e6",
+        "text": "identifies the distractor note in pricing-data.json stating list prices may be 15-20% lower for annual commitments, and explains this does not change the decision because even a 20% discount would not make nightly-backup or pilot-light meet RTO requirements",
+        "source": "original"
+      },
+      {
+        "id": "e7",
+        "text": "discusses the operational trade-off that warm-standby has higher complexity and ongoing operational overhead compared to simpler options, but this is justified by the need to meet RTO requirements",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e8",
+        "text": "notes that database growth (200 GB/month, projected to reach 10.4 TB in 12 months) will increase storage and potentially replication costs, but the chosen warm-standby option has budget headroom of ~$96/month to absorb near-term growth",
+        "source": "original"
+      }
+    ],
+    "weakAnswers": [
+      "picks nightly-backup because it is the cheapest option at $2,524/month without checking whether it meets RPO or RTO requirements",
+      "selects pilot-light because it is already implemented and meets RPO, without verifying that its 60-minute RTO exceeds the 45-minute requirement",
+      "recommends warm-standby but does not explain why it is the only option that meets all constraints, missing the RTO failure of pilot-light",
+      "calculates restore time incorrectly by ignoring the 2-stream, 1.2 GB/s each throughput limits stated in technical-constraints.md and requirements.md",
+      "uses the superseded $0.72 database instance hour price instead of the current $0.68 rate from pricing-data.json"
+    ]
+  }
+}

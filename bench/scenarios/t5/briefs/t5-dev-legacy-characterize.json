@@ -1,0 +1,22 @@
+{
+  "phase": "testing",
+  "role": "developer",
+  "phases2": [
+    "refactor"
+  ],
+  "author": "gpt-5.6-luna",
+  "reviewer": "glm-5",
+  "stack": "python",
+  "kind": "mutants",
+  "size": "20 to 30",
+  "nmut": 10,
+  "source": {
+    "url": "https://github.com/boxed/mutmut",
+    "licence": "BSD-3-Clause",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "voice": "a developer who owns the repo and plans to refactor a module next week, talking to a colleague",
+  "brief": "Phase: testing. Role: developer. Repo kind: a Python 3.12 command line tool, standard library only, for generating shipping labels and rates: a 600-line `rates.py` module grown over years (zone lookup, weight bands, surcharges, holiday calendar, rounding), a label formatter, a CLI, a sample data folder, docs, CI config, and almost no tests (two trivial ones). The developer wants to refactor rates.py next week and first needs a safety net: characterization tests that pin what it does today, including odd behaviour (a surcharge applied before rounding, a weight exactly on a band edge, an unknown zone fallback, a leap-day holiday rule). Inspiration (a testing idea only, nothing copied): public mutation-testing tools and the practice of pinning legacy behaviour before a change.\n\nThe request is from the developer: 'I am about to rework rates.py; write the tests I will need to trust that I did not change what it computes'. The code must not change.",
+  "id": "t5-dev-legacy-characterize"
+}

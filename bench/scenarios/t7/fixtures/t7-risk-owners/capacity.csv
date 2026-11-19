@@ -1,0 +1,17 @@
+sprint,start,end,team,nominal_points,committed_points,public_holiday,notes
+S1,2027-06-07,2027-06-18,Mobile Foundations,34,27,,two-week build
+S2,2027-06-21,2027-07-02,Mobile Foundations,34,29,,two-week build
+S3,2027-07-05,2027-07-16,Mobile Foundations,30,26,2027-07-05,public holiday
+S4,2027-07-19,2027-07-30,Mobile Foundations,34,28,,two-week build
+S5,2027-08-02,2027-08-13,Mobile Foundations,34,30,,two-week build
+S6,2027-08-16,2027-08-27,Mobile Foundations,34,31,,two-week build
+S7,2027-08-30,2027-09-10,Mobile Foundations,30,27,2027-09-06,public holiday
+S8,2027-09-13,2027-09-24,Mobile Foundations,34,20,,launch sprint
+S1,2027-06-07,2027-06-18,Mobile Experience,30,24,,shared design work
+S2,2027-06-21,2027-07-02,Mobile Experience,30,25,,shared design work
+S3,2027-07-05,2027-07-16,Mobile Experience,27,22,2027-07-05,public holiday
+S4,2027-07-19,2027-07-30,Mobile Experience,30,21,,shared design work
+S5,2027-08-02,2027-08-13,Mobile Experience,30,23,,shared design work
+S6,2027-08-16,2027-08-27,Mobile Experience,30,25,,shared design work
+S7,2027-08-30,2027-09-10,Mobile Experience,27,20,2027-09-06,public holiday
+S8,2027-09-13,2027-09-24,Mobile Experience,30,19,,launch sprint

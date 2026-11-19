@@ -1,0 +1,14 @@
+{
+  "service": "user-profile",
+  "environment": "staging",
+  "replicas": 2,
+  "resources": {
+    "cpu": "300m",
+    "memory": "384Mi"
+  },
+  "logLevel": "info",
+  "featureFlags": {
+    "requestTracing": true,
+    "newCheckout": false
+  }
+}

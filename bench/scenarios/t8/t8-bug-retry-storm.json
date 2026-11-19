@@ -1,0 +1,119 @@
+{
+  "id": "t8-bug-retry-storm",
+  "class": "hard",
+  "version": 1,
+  "phase": "bugfix",
+  "role": "sre",
+  "phases2": [
+    "release-ops"
+  ],
+  "questions": "allowed",
+  "prompt": "During the 2025-03-18 partner incident, order-sync kept adding work while the partner was returning errors. The queue grew and the partner saw a burst of repeat calls from us. Please find out from the production evidence in `ops/` why we made it worse, and fix it at the root in the code (more than one caller depends on the shared pieces, so a patch in one caller is not enough). Keep the HTTP client's existing options (injected `transport`, `clock` and `random`) and its `{ status, headers, body }` response shape. Add a test under `test/` that fails on the code as it is today and passes with your fix, without a real network or long sleeps. Keep the Node 24 CommonJS repository dependency-free, and make `node --test test/` pass. The evidence: UTC ISO 8601 JSON-lines logs in `ops/logs/worker-2025-03-18.log`, one-minute CSV rows in `ops/metrics/partner-minute.csv`, plus `ops/deploy-history.json` and `ops/partner-status-note.md`. Do not change the evidence files.",
+  "fixture": "t8-bug-retry-storm",
+  "hidden": "t8-bug-retry-storm",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=60000 hidden-behaviour.test.js regress.test.js",
+      "min": 11,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test $(cat test/*.test.js | grep -c \"test(\") -gt 5",
+      "expectExit": 0,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "ops/logs/worker-2025-03-18.log",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "evidence-use",
+      "criterion": "The change is narrowly scoped and its regression test clearly connects the observed incident timing to the shared client behavior (code cannot check this because intent and evidence traceability are not fully observable).",
+      "weight": 1
+    }
+  ],
+  "targetSkills": [
+    "verification",
+    "code-review",
+    "backend-development"
+  ],
+  "targetSop": "k-verify",
+  "targetAgent": "k-developer",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "verification",
+      "code-review",
+      "backend-development"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://sre.google/sre-book/addressing-cascading-failures/",
+      "licence": "CC BY-NC-ND 4.0 (checked on the page footer); idea only, no text used",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "alibaba",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "Fixed after review: the request no longer names the shared client as the place to fix or the timing as the cause; it gives the symptom, the evidence folder and the contract that must not change. (reviewer: The request explicitly tells the agent to 'trace the user-visible retry storm through the production evidence in ops/', 'make the smallest production fix in the shared HTTP client', and lists evidence formats (UTC ISO 8601 JSON-lines logs, one-minute CSV rows with specific fields). It also states constraints like 'worker's existing client contract must keep accepting injected transport, clock, and random options' - effectively telling the agent how to work and what to find.)"
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The tests in the hidden folder (hidden-behaviour.test.js) make the expected behavior unambiguous: the shipped client incorrectly divides milliseconds by 1000 causing 2ms delays instead of 2000ms after a 429 with Retry-After: 2. The key test 'uses the configured millisecond base delay after a 503' and 'honors a numeric Retry-After header' clarify the expected timing behavior."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture evidence files (worker logs, partner-minute.csv, deploy-history.json, partner-status-note.md) show the retry storm pattern (rapid retry attempts in milliseconds) and partner error responses but do not reveal the specific code bug (the erroneous / 1000 division in the sleep call). The root cause must be inferred from the timing discrepancy in the logs."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A quick wrong answer (e.g., 'the bug is the rate limiter because it was recently updated') would be caught by the CSV data showing rate_limiter_waits=0 during the incident and the tests verifying specific timing behavior (e.g., 'honors a numeric Retry-After header' expects 1500ms delay for Retry-After: 1.5). The reference tests require precise millisecond timing that round numbers or wrong attribution would fail."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All requirements are achievable: the fix (removing '/ 1000') is derivable from evidence (logs show 5ms delay between retries when Retry-After says 2-3 seconds), the client contract preservation is straightforward, and the regression test pattern is clear from existing test files. No key value cannot be derived from the fixture."
+      }
+    ]
+  },
+  "pilot": null,
+  "lockedAt": null
+}

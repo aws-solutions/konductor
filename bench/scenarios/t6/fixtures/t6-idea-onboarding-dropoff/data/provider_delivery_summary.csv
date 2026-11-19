@@ -1,0 +1,9 @@
+provider,period,send_domain,sent,delivered,bounced,delivery_rate,verification_clicks,verified_after_click
+Cloudmail,2025-01-06_to_2025-01-20,mail.harborlight.app,14200,14060,140,99.0%,11200,10520
+PineMail,2025-01-06_to_2025-01-20,mail.harborlight.app,4200,4140,60,98.6%,3170,3000
+Relaybox,2025-01-06_to_2025-01-20,mail.harborlight.app,2600,2550,50,98.1%,1950,1850
+Postbird,2025-01-06_to_2025-01-20,mail.harborlight.app,1300,1260,40,96.9%,890,835
+Cloudmail,2025-01-21_to_2025-02-10,verify.harborlight.app,30700,23640,7060,77.0%,10500,5140
+PineMail,2025-01-21_to_2025-02-10,verify.harborlight.app,8800,8610,190,97.8%,6540,6130
+Relaybox,2025-01-21_to_2025-02-10,verify.harborlight.app,5500,5390,110,98.0%,4100,3860
+Postbird,2025-01-21_to_2025-02-10,verify.harborlight.app,3000,2910,90,97.0%,2150,2040

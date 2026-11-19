@@ -1,0 +1,7 @@
+metric,value,unit,environment,notes
+catalog_items,60000000,items,production,current planning volume
+peak_search_rps,1800,requests_per_second,production,forecast peak sustained rate
+sessions_to_page_40,95,percent,production,share of browser sessions
+crawler_completion,100,percent,production,crawlers may continue until exhausted
+deep_offset_p99,4200,milliseconds,production,measured at a request position of 1000000
+old_staging_p99,120,milliseconds,staging,staging had 10000000 items; superseded by the production measurement above

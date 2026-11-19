@@ -1,0 +1,4 @@
+{
+  "source": { "path": "/hooks/source", "header": "x-source-signature" },
+  "billing": { "path": "/hooks/billing", "header": "x-billing-signature" }
+}

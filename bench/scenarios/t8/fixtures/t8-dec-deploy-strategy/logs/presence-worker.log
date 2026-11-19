@@ -1,0 +1,562 @@
+2025-08-19T00:00:33Z INFO request_id=req-82336177 service=presence-worker slow request method=POST path=/presence latency_ms=1157
+2025-08-19T00:02:56Z INFO request_id=req-36638554 service=presence-worker fanout completed room=room-277 subscribers=10 latency_ms=39
+2025-08-19T00:05:39Z INFO request_id=req-74065684 service=presence-worker checkpoint persisted offset=21188
+2025-08-19T00:08:04Z DEBUG request_id=req-20832204 service=presence-worker slow request method=POST path=/presence latency_ms=1138
+2025-08-19T00:10:40Z INFO request_id=req-33062064 service=presence-worker checkpoint persisted offset=68873
+2025-08-19T00:13:25Z WARN request_id=req-19354713 service=presence-worker fanout completed room=room-766 subscribers=60 latency_ms=126
+2025-08-19T00:15:25Z INFO request_id=req-41937307 service=presence-worker fanout completed room=room-786 subscribers=36 latency_ms=84
+2025-08-19T00:18:00Z DEBUG request_id=req-87735168 service=presence-worker fanout completed room=room-416 subscribers=5 latency_ms=126
+2025-08-19T00:20:54Z WARN request_id=req-92813769 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T00:23:34Z INFO request_id=req-51271777 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T00:26:07Z INFO request_id=req-96991048 service=presence-worker fanout completed room=room-553 subscribers=32 latency_ms=127
+2025-08-19T00:28:30Z DEBUG request_id=req-31754473 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T00:30:55Z WARN request_id=req-94756254 service=presence-worker checkpoint persisted offset=49596
+2025-08-19T00:33:56Z INFO request_id=req-58418085 service=presence-worker health check passed queue_depth=9
+2025-08-19T00:36:06Z DEBUG request_id=req-30285443 service=presence-worker health check passed queue_depth=0
+2025-08-19T00:38:50Z INFO request_id=req-34696420 service=presence-worker slow request method=POST path=/presence latency_ms=1142
+2025-08-19T00:41:26Z WARN request_id=req-21070116 service=presence-worker checkpoint persisted offset=58730
+2025-08-19T00:44:04Z INFO request_id=req-65107563 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T00:46:36Z INFO request_id=req-88609235 service=presence-worker checkpoint persisted offset=74260
+2025-08-19T00:49:20Z WARN request_id=req-68003170 service=presence-worker checkpoint persisted offset=11587
+2025-08-19T00:51:41Z INFO request_id=req-85800018 service=presence-worker slow request method=POST path=/presence latency_ms=914
+2025-08-19T00:54:07Z DEBUG request_id=req-65728743 service=presence-worker checkpoint persisted offset=22558
+2025-08-19T00:57:08Z INFO request_id=req-14743723 service=presence-worker checkpoint persisted offset=43431
+2025-08-19T00:59:37Z WARN request_id=req-91549350 service=presence-worker fanout completed room=room-537 subscribers=41 latency_ms=50
+2025-08-19T01:01:52Z INFO request_id=req-89583644 service=presence-worker slow request method=POST path=/presence latency_ms=1242
+2025-08-19T01:04:21Z INFO request_id=req-84687991 service=presence-worker health check passed queue_depth=39
+2025-08-19T01:07:07Z WARN request_id=req-93117477 service=presence-worker checkpoint persisted offset=34474
+2025-08-19T01:09:25Z INFO request_id=req-42069215 service=presence-worker health check passed queue_depth=34
+2025-08-19T01:12:10Z INFO request_id=req-82396832 service=presence-worker health check passed queue_depth=44
+2025-08-19T01:14:47Z DEBUG request_id=req-62483051 service=presence-worker slow request method=POST path=/presence latency_ms=1227
+2025-08-19T01:17:37Z DEBUG request_id=req-58270911 service=presence-worker slow request method=POST path=/presence latency_ms=777
+2025-08-19T01:20:05Z INFO request_id=req-19812077 service=presence-worker fanout completed room=room-965 subscribers=13 latency_ms=19
+2025-08-19T01:22:42Z INFO request_id=req-97287809 service=presence-worker slow request method=POST path=/presence latency_ms=1191
+2025-08-19T01:25:08Z WARN request_id=req-49865020 service=presence-worker health check passed queue_depth=7
+2025-08-19T01:27:54Z INFO request_id=req-81528377 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T01:30:34Z INFO request_id=req-53652219 service=presence-worker checkpoint persisted offset=31771
+2025-08-19T01:32:49Z INFO request_id=req-86261153 service=presence-worker health check passed queue_depth=37
+2025-08-19T01:35:39Z DEBUG request_id=req-11204875 service=presence-worker slow request method=POST path=/presence latency_ms=789
+2025-08-19T01:38:02Z INFO request_id=req-41299854 service=presence-worker fanout completed room=room-507 subscribers=4 latency_ms=172
+2025-08-19T01:40:48Z INFO request_id=req-88403077 service=presence-worker checkpoint persisted offset=87911
+2025-08-19T01:43:06Z INFO request_id=req-90826392 service=presence-worker slow request method=POST path=/presence latency_ms=671
+2025-08-19T01:45:32Z INFO request_id=req-19155545 service=presence-worker slow request method=POST path=/presence latency_ms=863
+2025-08-19T01:48:01Z INFO request_id=req-94420403 service=presence-worker slow request method=POST path=/presence latency_ms=863
+2025-08-19T01:50:59Z INFO request_id=req-16864312 service=presence-worker slow request method=POST path=/presence latency_ms=1294
+2025-08-19T01:53:15Z WARN request_id=req-30306890 service=presence-worker health check passed queue_depth=9
+2025-08-19T01:55:53Z DEBUG request_id=req-73379992 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T01:58:31Z INFO request_id=req-19876779 service=presence-worker fanout completed room=room-939 subscribers=40 latency_ms=41
+2025-08-19T02:01:10Z INFO request_id=req-87868538 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T02:03:34Z INFO request_id=req-54870128 service=presence-worker fanout completed room=room-639 subscribers=30 latency_ms=154
+2025-08-19T02:06:28Z INFO request_id=req-60290744 service=presence-worker checkpoint persisted offset=22793
+2025-08-19T02:08:35Z DEBUG request_id=req-10598216 service=presence-worker checkpoint persisted offset=21225
+2025-08-19T02:11:41Z INFO request_id=req-43362776 service=presence-worker checkpoint persisted offset=43821
+2025-08-19T02:14:14Z INFO request_id=req-33911026 service=presence-worker checkpoint persisted offset=88565
+2025-08-19T02:16:35Z INFO request_id=req-66089906 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T02:19:13Z INFO request_id=req-28403176 service=presence-worker slow request method=POST path=/presence latency_ms=1434
+2025-08-19T02:21:35Z INFO request_id=req-47078926 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T02:24:18Z WARN request_id=req-72279911 service=presence-worker fanout completed room=room-556 subscribers=53 latency_ms=161
+2025-08-19T02:26:38Z INFO request_id=req-76346014 service=presence-worker fanout completed room=room-573 subscribers=60 latency_ms=20
+2025-08-19T02:29:23Z INFO request_id=req-22869708 service=presence-worker health check passed queue_depth=2
+2025-08-19T02:32:05Z INFO request_id=req-74112417 service=presence-worker checkpoint persisted offset=71257
+2025-08-19T02:34:45Z DEBUG request_id=req-58680062 service=presence-worker health check passed queue_depth=23
+2025-08-19T02:37:03Z INFO request_id=req-49992779 service=presence-worker fanout completed room=room-199 subscribers=61 latency_ms=115
+2025-08-19T02:39:37Z INFO request_id=req-51842209 service=presence-worker fanout completed room=room-696 subscribers=71 latency_ms=82
+2025-08-19T02:42:06Z INFO request_id=req-60145878 service=presence-worker health check passed queue_depth=13
+2025-08-19T02:44:34Z INFO request_id=req-16939674 service=presence-worker health check passed queue_depth=40
+2025-08-19T02:47:23Z WARN request_id=req-64191181 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T02:49:44Z WARN request_id=req-38172067 service=presence-worker slow request method=POST path=/presence latency_ms=1418
+2025-08-19T02:52:45Z DEBUG request_id=req-75970988 service=presence-worker fanout completed room=room-623 subscribers=78 latency_ms=135
+2025-08-19T02:55:15Z INFO request_id=req-41182517 service=presence-worker fanout completed room=room-276 subscribers=56 latency_ms=89
+2025-08-19T02:57:58Z WARN request_id=req-54024531 service=presence-worker checkpoint persisted offset=41095
+2025-08-19T03:00:02Z WARN request_id=req-69222942 service=presence-worker checkpoint persisted offset=30419
+2025-08-19T03:03:07Z INFO request_id=req-13840220 service=presence-worker checkpoint persisted offset=21264
+2025-08-19T03:05:35Z DEBUG request_id=req-77652821 service=presence-worker fanout completed room=room-299 subscribers=48 latency_ms=153
+2025-08-19T03:08:05Z INFO request_id=req-99993198 service=presence-worker slow request method=POST path=/presence latency_ms=1354
+2025-08-19T03:10:47Z WARN request_id=req-89750638 service=presence-worker slow request method=POST path=/presence latency_ms=1232
+2025-08-19T03:13:19Z DEBUG request_id=req-22565963 service=presence-worker health check passed queue_depth=3
+2025-08-19T03:15:39Z INFO request_id=req-92805130 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T03:18:05Z INFO request_id=req-55141493 service=presence-worker slow request method=POST path=/presence latency_ms=1220
+2025-08-19T03:21:06Z INFO request_id=req-72375747 service=presence-worker health check passed queue_depth=15
+2025-08-19T03:23:33Z INFO request_id=req-11791676 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T03:25:44Z INFO request_id=req-11028357 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T03:28:29Z DEBUG request_id=req-14090006 service=presence-worker slow request method=POST path=/presence latency_ms=986
+2025-08-19T03:31:10Z INFO request_id=req-39338218 service=presence-worker fanout completed room=room-594 subscribers=26 latency_ms=89
+2025-08-19T03:33:59Z INFO request_id=req-76154391 service=presence-worker checkpoint persisted offset=19825
+2025-08-19T03:36:04Z WARN request_id=req-21541435 service=presence-worker slow request method=POST path=/presence latency_ms=1359
+2025-08-19T03:38:50Z INFO request_id=req-35850327 service=presence-worker health check passed queue_depth=1
+2025-08-19T03:41:29Z DEBUG request_id=req-19070570 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T03:43:42Z INFO request_id=req-28868961 service=presence-worker checkpoint persisted offset=14177
+2025-08-19T03:46:50Z DEBUG request_id=req-80460030 service=presence-worker slow request method=POST path=/presence latency_ms=690
+2025-08-19T03:49:23Z INFO request_id=req-30690490 service=presence-worker slow request method=POST path=/presence latency_ms=1260
+2025-08-19T03:51:25Z INFO request_id=req-93840384 service=presence-worker fanout completed room=room-323 subscribers=32 latency_ms=34
+2025-08-19T03:54:33Z INFO request_id=req-67090503 service=presence-worker fanout completed room=room-213 subscribers=22 latency_ms=177
+2025-08-19T03:56:41Z DEBUG request_id=req-53656587 service=presence-worker fanout completed room=room-386 subscribers=28 latency_ms=41
+2025-08-19T03:59:36Z INFO request_id=req-41808538 service=presence-worker checkpoint persisted offset=40483
+2025-08-19T04:02:11Z INFO request_id=req-86318295 service=presence-worker checkpoint persisted offset=56341
+2025-08-19T04:04:35Z INFO request_id=req-76184149 service=presence-worker health check passed queue_depth=13
+2025-08-19T04:06:51Z INFO request_id=req-75455357 service=presence-worker fanout completed room=room-648 subscribers=63 latency_ms=105
+2025-08-19T04:09:55Z INFO request_id=req-84707188 service=presence-worker checkpoint persisted offset=47218
+2025-08-19T04:12:01Z INFO request_id=req-76104796 service=presence-worker slow request method=POST path=/presence latency_ms=983
+2025-08-19T04:14:39Z DEBUG request_id=req-38247750 service=presence-worker health check passed queue_depth=6
+2025-08-19T04:17:14Z INFO request_id=req-43547104 service=presence-worker fanout completed room=room-827 subscribers=39 latency_ms=121
+2025-08-19T04:19:52Z DEBUG request_id=req-72009430 service=presence-worker checkpoint persisted offset=89087
+2025-08-19T04:22:41Z WARN request_id=req-15285337 service=presence-worker checkpoint persisted offset=68279
+2025-08-19T04:25:20Z WARN request_id=req-39647473 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T04:27:40Z DEBUG request_id=req-18492761 service=presence-worker fanout completed room=room-908 subscribers=21 latency_ms=108
+2025-08-19T04:30:05Z INFO request_id=req-64068346 service=presence-worker checkpoint persisted offset=29549
+2025-08-19T04:32:46Z WARN request_id=req-40997994 service=presence-worker fanout completed room=room-472 subscribers=57 latency_ms=83
+2025-08-19T04:35:23Z INFO request_id=req-13012530 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T04:37:48Z INFO request_id=req-47266438 service=presence-worker checkpoint persisted offset=12239
+2025-08-19T04:40:49Z INFO request_id=req-85866516 service=presence-worker checkpoint persisted offset=11782
+2025-08-19T04:42:51Z WARN request_id=req-84386799 service=presence-worker slow request method=POST path=/presence latency_ms=668
+2025-08-19T04:45:38Z INFO request_id=req-71709957 service=presence-worker fanout completed room=room-407 subscribers=43 latency_ms=144
+2025-08-19T04:48:01Z INFO request_id=req-27198339 service=presence-worker slow request method=POST path=/presence latency_ms=1199
+2025-08-19T04:51:03Z DEBUG request_id=req-70799418 service=presence-worker fanout completed room=room-230 subscribers=42 latency_ms=162
+2025-08-19T04:53:17Z INFO request_id=req-70012380 service=presence-worker slow request method=POST path=/presence latency_ms=963
+2025-08-19T04:55:49Z INFO request_id=req-27670139 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T04:58:27Z INFO request_id=req-62996450 service=presence-worker health check passed queue_depth=13
+2025-08-19T05:01:20Z INFO request_id=req-66494114 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T05:03:42Z INFO request_id=req-40059461 service=presence-worker slow request method=POST path=/presence latency_ms=663
+2025-08-19T05:06:08Z INFO request_id=req-22026782 service=presence-worker fanout completed room=room-801 subscribers=43 latency_ms=20
+2025-08-19T05:08:59Z INFO request_id=req-84518109 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T05:11:20Z WARN request_id=req-99236136 service=presence-worker slow request method=POST path=/presence latency_ms=1446
+2025-08-19T05:13:57Z DEBUG request_id=req-18129180 service=presence-worker fanout completed room=room-202 subscribers=42 latency_ms=88
+2025-08-19T05:16:20Z INFO request_id=req-35025726 service=presence-worker slow request method=POST path=/presence latency_ms=1360
+2025-08-19T05:18:56Z DEBUG request_id=req-66898014 service=presence-worker health check passed queue_depth=17
+2025-08-19T05:21:54Z INFO request_id=req-25478112 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T05:24:24Z INFO request_id=req-52032903 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T05:26:57Z DEBUG request_id=req-56102567 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T05:29:25Z DEBUG request_id=req-25207936 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T05:31:57Z INFO request_id=req-20885256 service=presence-worker health check passed queue_depth=13
+2025-08-19T05:34:27Z WARN request_id=req-65433962 service=presence-worker checkpoint persisted offset=12598
+2025-08-19T05:37:01Z DEBUG request_id=req-95811071 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T05:39:48Z INFO request_id=req-26431123 service=presence-worker health check passed queue_depth=8
+2025-08-19T05:42:16Z INFO request_id=req-75650453 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T05:45:06Z INFO request_id=req-61954334 service=presence-worker checkpoint persisted offset=77743
+2025-08-19T05:47:34Z DEBUG request_id=req-77654559 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T05:50:11Z INFO request_id=req-19985590 service=presence-worker slow request method=POST path=/presence latency_ms=1392
+2025-08-19T05:52:45Z INFO request_id=req-20066864 service=presence-worker slow request method=POST path=/presence latency_ms=760
+2025-08-19T05:55:21Z INFO request_id=req-93823452 service=presence-worker fanout completed room=room-413 subscribers=26 latency_ms=137
+2025-08-19T05:57:58Z WARN request_id=req-96105855 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T06:00:15Z WARN request_id=req-91078649 service=presence-worker slow request method=POST path=/presence latency_ms=1349
+2025-08-19T06:02:59Z INFO request_id=req-16051894 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T06:05:11Z INFO request_id=req-81183489 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T06:08:14Z DEBUG request_id=req-23116000 service=presence-worker checkpoint persisted offset=83795
+2025-08-19T06:10:43Z WARN request_id=req-36483774 service=presence-worker checkpoint persisted offset=38792
+2025-08-19T06:13:13Z WARN request_id=req-98600298 service=presence-worker fanout completed room=room-384 subscribers=17 latency_ms=50
+2025-08-19T06:15:43Z WARN request_id=req-36185994 service=presence-worker fanout completed room=room-871 subscribers=33 latency_ms=85
+2025-08-19T06:18:31Z DEBUG request_id=req-27573688 service=presence-worker slow request method=POST path=/presence latency_ms=1116
+2025-08-19T06:20:42Z INFO request_id=req-35598740 service=presence-worker fanout completed room=room-141 subscribers=28 latency_ms=55
+2025-08-19T06:23:19Z DEBUG request_id=req-76503733 service=presence-worker health check passed queue_depth=10
+2025-08-19T06:25:55Z DEBUG request_id=req-50579505 service=presence-worker health check passed queue_depth=5
+2025-08-19T06:28:24Z INFO request_id=req-59146994 service=presence-worker slow request method=POST path=/presence latency_ms=1011
+2025-08-19T06:31:16Z DEBUG request_id=req-45962334 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T06:33:43Z WARN request_id=req-34047383 service=presence-worker checkpoint persisted offset=72775
+2025-08-19T06:36:07Z INFO request_id=req-73059362 service=presence-worker health check passed queue_depth=31
+2025-08-19T06:38:52Z INFO request_id=req-14261964 service=presence-worker slow request method=POST path=/presence latency_ms=1318
+2025-08-19T06:41:14Z INFO request_id=req-86107938 service=presence-worker slow request method=POST path=/presence latency_ms=1119
+2025-08-19T06:43:58Z INFO request_id=req-77292438 service=presence-worker fanout completed room=room-140 subscribers=12 latency_ms=119
+2025-08-19T06:46:29Z INFO request_id=req-94914063 service=presence-worker health check passed queue_depth=35
+2025-08-19T06:49:16Z WARN request_id=req-56255775 service=presence-worker slow request method=POST path=/presence latency_ms=992
+2025-08-19T06:51:34Z INFO request_id=req-31089381 service=presence-worker fanout completed room=room-742 subscribers=53 latency_ms=179
+2025-08-19T06:54:31Z INFO request_id=req-43032347 service=presence-worker slow request method=POST path=/presence latency_ms=669
+2025-08-19T06:57:01Z INFO request_id=req-90337953 service=presence-worker slow request method=POST path=/presence latency_ms=1183
+2025-08-19T06:59:08Z INFO request_id=req-17311731 service=presence-worker checkpoint persisted offset=44696
+2025-08-19T07:01:58Z WARN request_id=req-22482233 service=presence-worker checkpoint persisted offset=42774
+2025-08-19T07:04:41Z WARN request_id=req-50329390 service=presence-worker slow request method=POST path=/presence latency_ms=945
+2025-08-19T07:07:16Z DEBUG request_id=req-39400583 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T07:09:34Z WARN request_id=req-29243221 service=presence-worker slow request method=POST path=/presence latency_ms=1311
+2025-08-19T07:12:24Z INFO request_id=req-27893272 service=presence-worker slow request method=POST path=/presence latency_ms=1454
+2025-08-19T07:14:40Z WARN request_id=req-92555220 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T07:17:41Z INFO request_id=req-29317756 service=presence-worker fanout completed room=room-218 subscribers=16 latency_ms=167
+2025-08-19T07:20:07Z WARN request_id=req-94902902 service=presence-worker slow request method=POST path=/presence latency_ms=1098
+2025-08-19T07:22:41Z WARN request_id=req-14743095 service=presence-worker fanout completed room=room-744 subscribers=10 latency_ms=10
+2025-08-19T07:25:00Z DEBUG request_id=req-24317074 service=presence-worker health check passed queue_depth=39
+2025-08-19T07:27:45Z INFO request_id=req-47355507 service=presence-worker health check passed queue_depth=9
+2025-08-19T07:30:07Z INFO request_id=req-33348867 service=presence-worker checkpoint persisted offset=51813
+2025-08-19T07:32:38Z INFO request_id=req-99361582 service=presence-worker slow request method=POST path=/presence latency_ms=972
+2025-08-19T07:35:36Z DEBUG request_id=req-95131117 service=presence-worker slow request method=POST path=/presence latency_ms=1099
+2025-08-19T07:37:58Z INFO request_id=req-38022905 service=presence-worker slow request method=POST path=/presence latency_ms=774
+2025-08-19T07:40:26Z DEBUG request_id=req-20580601 service=presence-worker checkpoint persisted offset=75285
+2025-08-19T07:43:13Z INFO request_id=req-32839039 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T07:45:34Z WARN request_id=req-37231754 service=presence-worker slow request method=POST path=/presence latency_ms=716
+2025-08-19T07:48:15Z DEBUG request_id=req-41021702 service=presence-worker slow request method=POST path=/presence latency_ms=1226
+2025-08-19T07:50:49Z INFO request_id=req-46710417 service=presence-worker checkpoint persisted offset=47999
+2025-08-19T07:53:12Z WARN request_id=req-68596994 service=presence-worker fanout completed room=room-718 subscribers=12 latency_ms=62
+2025-08-19T07:56:03Z INFO request_id=req-42176461 service=presence-worker checkpoint persisted offset=54409
+2025-08-19T07:58:31Z INFO request_id=req-63356892 service=presence-worker slow request method=POST path=/presence latency_ms=803
+2025-08-19T08:01:13Z WARN request_id=req-90239116 service=presence-worker checkpoint persisted offset=20776
+2025-08-19T08:03:51Z INFO request_id=req-63370260 service=presence-worker health check passed queue_depth=21
+2025-08-19T08:06:08Z INFO request_id=req-54847261 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T08:08:34Z INFO request_id=req-55973477 service=presence-worker fanout completed room=room-165 subscribers=36 latency_ms=65
+2025-08-19T08:11:17Z INFO request_id=req-64278049 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T08:13:50Z INFO request_id=req-86874095 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T08:16:41Z INFO request_id=req-31679086 service=presence-worker checkpoint persisted offset=57574
+2025-08-19T08:18:52Z WARN request_id=req-75936737 service=presence-worker fanout completed room=room-719 subscribers=78 latency_ms=139
+2025-08-19T08:21:32Z WARN request_id=req-71904029 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T08:24:11Z DEBUG request_id=req-79634526 service=presence-worker health check passed queue_depth=27
+2025-08-19T08:26:40Z INFO request_id=req-69293299 service=presence-worker slow request method=POST path=/presence latency_ms=1061
+2025-08-19T08:29:08Z WARN request_id=req-43898708 service=presence-worker health check passed queue_depth=4
+2025-08-19T08:31:48Z WARN request_id=req-28477393 service=presence-worker checkpoint persisted offset=60802
+2025-08-19T08:34:44Z INFO request_id=req-82637248 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T08:37:10Z INFO request_id=req-30132584 service=presence-worker checkpoint persisted offset=20269
+2025-08-19T08:39:54Z WARN request_id=req-60046212 service=presence-worker health check passed queue_depth=41
+2025-08-19T08:42:22Z INFO request_id=req-24134245 service=presence-worker slow request method=POST path=/presence latency_ms=786
+2025-08-19T08:44:46Z WARN request_id=req-52991964 service=presence-worker fanout completed room=room-346 subscribers=21 latency_ms=13
+2025-08-19T08:47:36Z INFO request_id=req-65924033 service=presence-worker fanout completed room=room-669 subscribers=46 latency_ms=71
+2025-08-19T08:49:47Z INFO request_id=req-10703992 service=presence-worker slow request method=POST path=/presence latency_ms=652
+2025-08-19T08:52:44Z INFO request_id=req-26988924 service=presence-worker fanout completed room=room-152 subscribers=49 latency_ms=122
+2025-08-19T08:55:16Z WARN request_id=req-69279652 service=presence-worker slow request method=POST path=/presence latency_ms=1425
+2025-08-19T08:57:54Z INFO request_id=req-33820121 service=presence-worker checkpoint persisted offset=66690
+2025-08-19T09:00:19Z INFO request_id=req-70661353 service=presence-worker health check passed queue_depth=17
+2025-08-19T09:02:54Z INFO request_id=req-61788432 service=presence-worker health check passed queue_depth=19
+2025-08-19T09:05:36Z INFO request_id=req-13963979 service=presence-worker fanout completed room=room-604 subscribers=27 latency_ms=63
+2025-08-19T09:07:43Z WARN request_id=req-79472777 service=presence-worker checkpoint persisted offset=80841
+2025-08-19T09:10:24Z INFO request_id=req-83833285 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T09:12:56Z WARN request_id=req-47000898 service=presence-worker fanout completed room=room-647 subscribers=45 latency_ms=8
+2025-08-19T09:15:51Z INFO request_id=req-98076020 service=presence-worker fanout completed room=room-338 subscribers=61 latency_ms=129
+2025-08-19T09:18:05Z INFO request_id=req-88360974 service=presence-worker health check passed queue_depth=37
+2025-08-19T09:21:02Z INFO request_id=req-23014939 service=presence-worker slow request method=POST path=/presence latency_ms=871
+2025-08-19T09:23:22Z DEBUG request_id=req-57792938 service=presence-worker checkpoint persisted offset=64741
+2025-08-19T09:26:02Z INFO request_id=req-64717189 service=presence-worker slow request method=POST path=/presence latency_ms=1426
+2025-08-19T09:28:18Z INFO request_id=req-95829002 service=presence-worker checkpoint persisted offset=85843
+2025-08-19T09:31:14Z WARN request_id=req-70520090 service=presence-worker health check passed queue_depth=22
+2025-08-19T09:33:39Z DEBUG request_id=req-60156873 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T09:36:16Z INFO request_id=req-65653820 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T09:38:47Z INFO request_id=req-35980953 service=presence-worker fanout completed room=room-360 subscribers=7 latency_ms=77
+2025-08-19T09:41:09Z DEBUG request_id=req-61350908 service=presence-worker checkpoint persisted offset=72775
+2025-08-19T09:43:55Z WARN request_id=req-64181286 service=presence-worker slow request method=POST path=/presence latency_ms=1312
+2025-08-19T09:46:50Z INFO request_id=req-66174985 service=presence-worker fanout completed room=room-662 subscribers=38 latency_ms=176
+2025-08-19T09:49:12Z INFO request_id=req-13618429 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T09:51:37Z INFO request_id=req-48665038 service=presence-worker health check passed queue_depth=6
+2025-08-19T09:54:23Z DEBUG request_id=req-87304525 service=presence-worker checkpoint persisted offset=62672
+2025-08-19T09:57:07Z WARN request_id=req-78654679 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T09:59:23Z WARN request_id=req-43817294 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T10:01:57Z DEBUG request_id=req-69716411 service=presence-worker slow request method=POST path=/presence latency_ms=1007
+2025-08-19T10:04:46Z INFO request_id=req-94223679 service=presence-worker checkpoint persisted offset=26340
+2025-08-19T10:06:55Z INFO request_id=req-61512076 service=presence-worker checkpoint persisted offset=22061
+2025-08-19T10:09:44Z INFO request_id=req-43327634 service=presence-worker fanout completed room=room-172 subscribers=5 latency_ms=170
+2025-08-19T10:12:21Z INFO request_id=req-50433765 service=presence-worker slow request method=POST path=/presence latency_ms=946
+2025-08-19T10:14:37Z WARN request_id=req-68909723 service=presence-worker fanout completed room=room-310 subscribers=23 latency_ms=42
+2025-08-19T10:17:20Z WARN request_id=req-69101538 service=presence-worker checkpoint persisted offset=81291
+2025-08-19T10:20:09Z WARN request_id=req-99138100 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T10:22:25Z INFO request_id=req-23811677 service=presence-worker fanout completed room=room-790 subscribers=2 latency_ms=60
+2025-08-19T10:25:00Z INFO request_id=req-42302032 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T10:27:58Z INFO request_id=req-68312169 service=presence-worker fanout completed room=room-131 subscribers=70 latency_ms=87
+2025-08-19T10:30:00Z INFO request_id=req-50054624 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T10:32:34Z INFO request_id=req-27040566 service=presence-worker fanout completed room=room-787 subscribers=7 latency_ms=166
+2025-08-19T10:35:29Z INFO request_id=req-48315944 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T10:38:15Z INFO request_id=req-11057020 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T10:40:17Z INFO request_id=req-57398692 service=presence-worker fanout completed room=room-304 subscribers=31 latency_ms=115
+2025-08-19T10:43:01Z INFO request_id=req-64788889 service=presence-worker health check passed queue_depth=12
+2025-08-19T10:45:29Z INFO request_id=req-25802796 service=presence-worker checkpoint persisted offset=46036
+2025-08-19T10:48:08Z WARN request_id=req-50804962 service=presence-worker slow request method=POST path=/presence latency_ms=967
+2025-08-19T10:51:06Z INFO request_id=req-85453149 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T10:53:19Z INFO request_id=req-26395158 service=presence-worker health check passed queue_depth=4
+2025-08-19T10:56:14Z INFO request_id=req-44662220 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T10:58:35Z WARN request_id=req-19051433 service=presence-worker slow request method=POST path=/presence latency_ms=1092
+2025-08-19T11:01:02Z WARN request_id=req-35450523 service=presence-worker health check passed queue_depth=33
+2025-08-19T11:03:42Z DEBUG request_id=req-21282802 service=presence-worker slow request method=POST path=/presence latency_ms=934
+2025-08-19T11:06:28Z DEBUG request_id=req-54344560 service=presence-worker checkpoint persisted offset=75781
+2025-08-19T11:08:41Z INFO request_id=req-23310128 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T11:11:42Z DEBUG request_id=req-76333541 service=presence-worker fanout completed room=room-554 subscribers=52 latency_ms=168
+2025-08-19T11:14:16Z INFO request_id=req-90065997 service=presence-worker checkpoint persisted offset=36490
+2025-08-19T11:16:47Z INFO request_id=req-74826886 service=presence-worker fanout completed room=room-915 subscribers=26 latency_ms=62
+2025-08-19T11:19:24Z WARN request_id=req-23166369 service=presence-worker checkpoint persisted offset=62662
+2025-08-19T11:21:30Z INFO request_id=req-39404108 service=presence-worker health check passed queue_depth=43
+2025-08-19T11:24:06Z WARN request_id=req-17553010 service=presence-worker slow request method=POST path=/presence latency_ms=845
+2025-08-19T11:26:41Z WARN request_id=req-33230780 service=presence-worker fanout completed room=room-106 subscribers=72 latency_ms=174
+2025-08-19T11:29:33Z INFO request_id=req-22207156 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T11:31:56Z INFO request_id=req-86372516 service=presence-worker fanout completed room=room-132 subscribers=34 latency_ms=41
+2025-08-19T11:34:32Z DEBUG request_id=req-23478150 service=presence-worker health check passed queue_depth=21
+2025-08-19T11:36:55Z DEBUG request_id=req-58457262 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T11:39:29Z INFO request_id=req-25563370 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T11:42:30Z WARN request_id=req-11768260 service=presence-worker fanout completed room=room-842 subscribers=7 latency_ms=16
+2025-08-19T11:44:34Z INFO request_id=req-41014229 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T11:47:36Z INFO request_id=req-86967171 service=presence-worker fanout completed room=room-399 subscribers=64 latency_ms=57
+2025-08-19T11:49:42Z INFO request_id=req-58071507 service=presence-worker checkpoint persisted offset=50871
+2025-08-19T11:52:21Z DEBUG request_id=req-54835766 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T11:54:52Z DEBUG request_id=req-46982460 service=presence-worker fanout completed room=room-215 subscribers=39 latency_ms=175
+2025-08-19T11:57:35Z INFO request_id=req-47311085 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T12:00:01Z INFO request_id=req-45651166 service=presence-worker health check passed queue_depth=24
+2025-08-19T12:03:02Z WARN request_id=req-72750208 service=presence-worker fanout completed room=room-264 subscribers=78 latency_ms=108
+2025-08-19T12:05:26Z INFO request_id=req-13291190 service=presence-worker fanout completed room=room-579 subscribers=18 latency_ms=60
+2025-08-19T12:08:00Z WARN request_id=req-16594560 service=presence-worker fanout completed room=room-892 subscribers=3 latency_ms=158
+2025-08-19T12:10:30Z INFO request_id=req-97285246 service=presence-worker health check passed queue_depth=10
+2025-08-19T12:12:53Z DEBUG request_id=req-12939560 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T12:15:31Z DEBUG request_id=req-67979258 service=presence-worker health check passed queue_depth=39
+2025-08-19T12:18:07Z WARN request_id=req-21120117 service=presence-worker slow request method=POST path=/presence latency_ms=832
+2025-08-19T12:20:36Z INFO request_id=req-69769159 service=presence-worker checkpoint persisted offset=10703
+2025-08-19T12:23:13Z INFO request_id=req-66721178 service=presence-worker health check passed queue_depth=11
+2025-08-19T12:25:46Z INFO request_id=req-24289621 service=presence-worker fanout completed room=room-158 subscribers=44 latency_ms=120
+2025-08-19T12:28:18Z INFO request_id=req-69930824 service=presence-worker fanout completed room=room-443 subscribers=18 latency_ms=64
+2025-08-19T12:31:16Z INFO request_id=req-35783362 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T12:33:38Z INFO request_id=req-48955797 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T12:36:07Z INFO request_id=req-64398433 service=presence-worker fanout completed room=room-963 subscribers=29 latency_ms=178
+2025-08-19T12:38:36Z INFO request_id=req-38721917 service=presence-worker health check passed queue_depth=29
+2025-08-19T12:41:14Z INFO request_id=req-86766341 service=presence-worker health check passed queue_depth=18
+2025-08-19T12:43:50Z INFO request_id=req-87091911 service=presence-worker fanout completed room=room-191 subscribers=47 latency_ms=70
+2025-08-19T12:46:31Z DEBUG request_id=req-73383969 service=presence-worker fanout completed room=room-210 subscribers=60 latency_ms=87
+2025-08-19T12:49:12Z INFO request_id=req-80998615 service=presence-worker slow request method=POST path=/presence latency_ms=1471
+2025-08-19T12:51:38Z WARN request_id=req-99515787 service=presence-worker fanout completed room=room-897 subscribers=15 latency_ms=152
+2025-08-19T12:54:32Z WARN request_id=req-42469138 service=presence-worker slow request method=POST path=/presence latency_ms=1179
+2025-08-19T12:56:40Z WARN request_id=req-63533492 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T12:59:36Z WARN request_id=req-18321743 service=presence-worker checkpoint persisted offset=88811
+2025-08-19T13:01:43Z INFO request_id=req-93143694 service=presence-worker health check passed queue_depth=29
+2025-08-19T13:04:34Z INFO request_id=req-98593634 service=presence-worker fanout completed room=room-381 subscribers=72 latency_ms=157
+2025-08-19T13:07:09Z INFO request_id=req-40484694 service=presence-worker fanout completed room=room-951 subscribers=21 latency_ms=163
+2025-08-19T13:09:48Z INFO request_id=req-65200377 service=presence-worker fanout completed room=room-906 subscribers=35 latency_ms=128
+2025-08-19T13:12:24Z INFO request_id=req-23091218 service=presence-worker slow request method=POST path=/presence latency_ms=989
+2025-08-19T13:14:55Z INFO request_id=req-39688182 service=presence-worker health check passed queue_depth=26
+2025-08-19T13:17:27Z INFO request_id=req-60320709 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T13:20:01Z INFO request_id=req-52093340 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T13:22:41Z INFO request_id=req-49110150 service=presence-worker fanout completed room=room-120 subscribers=6 latency_ms=65
+2025-08-19T13:25:02Z DEBUG request_id=req-65309904 service=presence-worker slow request method=POST path=/presence latency_ms=723
+2025-08-19T13:27:38Z DEBUG request_id=req-31559350 service=presence-worker health check passed queue_depth=37
+2025-08-19T13:30:31Z INFO request_id=req-64955293 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T13:33:07Z DEBUG request_id=req-92546743 service=presence-worker health check passed queue_depth=14
+2025-08-19T13:35:27Z INFO request_id=req-43912265 service=presence-worker health check passed queue_depth=28
+2025-08-19T13:37:57Z INFO request_id=req-39556401 service=presence-worker checkpoint persisted offset=10307
+2025-08-19T13:40:17Z WARN request_id=req-98517399 service=presence-worker fanout completed room=room-584 subscribers=67 latency_ms=145
+2025-08-19T13:43:05Z INFO request_id=req-11508613 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T13:45:42Z INFO request_id=req-86185241 service=presence-worker fanout completed room=room-992 subscribers=2 latency_ms=50
+2025-08-19T13:48:18Z DEBUG request_id=req-89940154 service=presence-worker fanout completed room=room-195 subscribers=77 latency_ms=34
+2025-08-19T13:51:03Z WARN request_id=req-28965951 service=presence-worker slow request method=POST path=/presence latency_ms=1312
+2025-08-19T13:53:35Z INFO request_id=req-96071435 service=presence-worker fanout completed room=room-350 subscribers=47 latency_ms=136
+2025-08-19T13:56:01Z DEBUG request_id=req-49404202 service=presence-worker slow request method=POST path=/presence latency_ms=1027
+2025-08-19T13:58:49Z INFO request_id=req-24821873 service=presence-worker checkpoint persisted offset=35245
+2025-08-19T14:01:15Z INFO request_id=req-18482720 service=presence-worker checkpoint persisted offset=61148
+2025-08-19T14:03:35Z INFO request_id=req-93856273 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T14:06:19Z INFO request_id=req-50714339 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T14:08:38Z INFO request_id=req-22443941 service=presence-worker checkpoint persisted offset=46597
+2025-08-19T14:11:19Z DEBUG request_id=req-22245445 service=presence-worker checkpoint persisted offset=69514
+2025-08-19T14:13:47Z WARN request_id=req-33677829 service=presence-worker health check passed queue_depth=18
+2025-08-19T14:16:40Z INFO request_id=req-69150431 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T14:18:52Z DEBUG request_id=req-47059820 service=presence-worker checkpoint persisted offset=29106
+2025-08-19T14:21:29Z WARN request_id=req-98745655 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T14:24:33Z INFO request_id=req-55603264 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T14:26:38Z INFO request_id=req-85106534 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T14:29:24Z DEBUG request_id=req-87532180 service=presence-worker fanout completed room=room-584 subscribers=21 latency_ms=128
+2025-08-19T14:31:52Z DEBUG request_id=req-25245428 service=presence-worker health check passed queue_depth=28
+2025-08-19T14:33:10Z WARN request_id=req-88182263 service=presence-worker presence lag elevated seconds=41 cause=upstream_backpressure
+2025-08-19T14:34:39Z WARN request_id=req-43129220 service=presence-worker slow request method=POST path=/presence latency_ms=1472
+2025-08-19T14:37:07Z INFO request_id=req-27900299 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T14:39:10Z INFO request_id=req-15718599 service=presence-worker queue depth recovered depth=12
+2025-08-19T14:39:29Z INFO request_id=req-53051952 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T14:42:20Z WARN request_id=req-27509550 service=presence-worker health check passed queue_depth=9
+2025-08-19T14:45:05Z INFO request_id=req-13687653 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T14:47:40Z WARN request_id=req-46130945 service=presence-worker fanout completed room=room-898 subscribers=50 latency_ms=129
+2025-08-19T14:49:57Z DEBUG request_id=req-58367103 service=presence-worker checkpoint persisted offset=68012
+2025-08-19T14:52:40Z INFO request_id=req-94870773 service=presence-worker checkpoint persisted offset=58730
+2025-08-19T14:55:06Z INFO request_id=req-22334469 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T14:57:47Z WARN request_id=req-47002510 service=presence-worker slow request method=POST path=/presence latency_ms=653
+2025-08-19T15:00:13Z WARN request_id=req-85417555 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T15:02:39Z INFO request_id=req-44448637 service=presence-worker fanout completed room=room-167 subscribers=71 latency_ms=91
+2025-08-19T15:05:35Z DEBUG request_id=req-22124363 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T15:08:12Z DEBUG request_id=req-19711258 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T15:10:43Z WARN request_id=req-21601039 service=presence-worker fanout completed room=room-541 subscribers=28 latency_ms=61
+2025-08-19T15:12:51Z INFO request_id=req-11850596 service=presence-worker slow request method=POST path=/presence latency_ms=976
+2025-08-19T15:15:33Z WARN request_id=req-15710946 service=presence-worker health check passed queue_depth=41
+2025-08-19T15:18:14Z WARN request_id=req-91044266 service=presence-worker health check passed queue_depth=42
+2025-08-19T15:20:48Z INFO request_id=req-79827814 service=presence-worker health check passed queue_depth=22
+2025-08-19T15:23:20Z INFO request_id=req-28982242 service=presence-worker health check passed queue_depth=11
+2025-08-19T15:25:43Z DEBUG request_id=req-16700675 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T15:28:39Z WARN request_id=req-65006144 service=presence-worker health check passed queue_depth=38
+2025-08-19T15:30:54Z INFO request_id=req-35737951 service=presence-worker fanout completed room=room-970 subscribers=64 latency_ms=68
+2025-08-19T15:33:41Z DEBUG request_id=req-25381051 service=presence-worker slow request method=POST path=/presence latency_ms=959
+2025-08-19T15:36:11Z INFO request_id=req-60361508 service=presence-worker health check passed queue_depth=18
+2025-08-19T15:38:42Z DEBUG request_id=req-20748807 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T15:41:25Z INFO request_id=req-99626062 service=presence-worker checkpoint persisted offset=24841
+2025-08-19T15:44:04Z INFO request_id=req-31380357 service=presence-worker fanout completed room=room-803 subscribers=65 latency_ms=129
+2025-08-19T15:46:37Z WARN request_id=req-42141175 service=presence-worker slow request method=POST path=/presence latency_ms=1283
+2025-08-19T15:49:12Z DEBUG request_id=req-69374765 service=presence-worker fanout completed room=room-688 subscribers=22 latency_ms=147
+2025-08-19T15:51:38Z INFO request_id=req-69137230 service=presence-worker fanout completed room=room-769 subscribers=67 latency_ms=80
+2025-08-19T15:54:17Z INFO request_id=req-45646109 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T15:56:39Z DEBUG request_id=req-12468961 service=presence-worker slow request method=POST path=/presence latency_ms=991
+2025-08-19T15:59:23Z INFO request_id=req-39726531 service=presence-worker slow request method=POST path=/presence latency_ms=1003
+2025-08-19T16:01:43Z WARN request_id=req-24923037 service=presence-worker fanout completed room=room-274 subscribers=53 latency_ms=52
+2025-08-19T16:04:27Z INFO request_id=req-79487470 service=presence-worker slow request method=POST path=/presence latency_ms=860
+2025-08-19T16:07:04Z INFO request_id=req-95672772 service=presence-worker fanout completed room=room-788 subscribers=66 latency_ms=70
+2025-08-19T16:09:35Z INFO request_id=req-83723028 service=presence-worker checkpoint persisted offset=42082
+2025-08-19T16:12:14Z INFO request_id=req-76680070 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T16:14:36Z INFO request_id=req-33094002 service=presence-worker health check passed queue_depth=13
+2025-08-19T16:17:31Z INFO request_id=req-21329434 service=presence-worker checkpoint persisted offset=40977
+2025-08-19T16:20:02Z INFO request_id=req-57648082 service=presence-worker slow request method=POST path=/presence latency_ms=1267
+2025-08-19T16:22:36Z INFO request_id=req-79475402 service=presence-worker fanout completed room=room-125 subscribers=78 latency_ms=159
+2025-08-19T16:24:56Z DEBUG request_id=req-81732259 service=presence-worker health check passed queue_depth=20
+2025-08-19T16:27:30Z DEBUG request_id=req-21394253 service=presence-worker health check passed queue_depth=28
+2025-08-19T16:30:02Z INFO request_id=req-88971462 service=presence-worker slow request method=POST path=/presence latency_ms=1126
+2025-08-19T16:32:55Z DEBUG request_id=req-13310581 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T16:35:24Z INFO request_id=req-98408868 service=presence-worker slow request method=POST path=/presence latency_ms=933
+2025-08-19T16:37:50Z WARN request_id=req-62904949 service=presence-worker checkpoint persisted offset=86834
+2025-08-19T16:40:29Z WARN request_id=req-93895799 service=presence-worker fanout completed room=room-880 subscribers=45 latency_ms=40
+2025-08-19T16:43:10Z DEBUG request_id=req-97305799 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T16:45:54Z INFO request_id=req-23240722 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T16:48:12Z INFO request_id=req-94832368 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T16:51:03Z INFO request_id=req-31342809 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T16:53:09Z INFO request_id=req-72999915 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T16:55:47Z INFO request_id=req-29266911 service=presence-worker checkpoint persisted offset=79334
+2025-08-19T16:58:29Z INFO request_id=req-51809318 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T17:01:24Z WARN request_id=req-25718088 service=presence-worker checkpoint persisted offset=34542
+2025-08-19T17:03:36Z INFO request_id=req-88195402 service=presence-worker slow request method=POST path=/presence latency_ms=1102
+2025-08-19T17:06:16Z DEBUG request_id=req-61197772 service=presence-worker health check passed queue_depth=7
+2025-08-19T17:09:02Z INFO request_id=req-81192144 service=presence-worker checkpoint persisted offset=66755
+2025-08-19T17:11:28Z INFO request_id=req-95279623 service=presence-worker fanout completed room=room-984 subscribers=70 latency_ms=153
+2025-08-19T17:13:57Z DEBUG request_id=req-67542173 service=presence-worker fanout completed room=room-250 subscribers=16 latency_ms=96
+2025-08-19T17:16:18Z DEBUG request_id=req-60648548 service=presence-worker checkpoint persisted offset=38393
+2025-08-19T17:18:53Z INFO request_id=req-45585181 service=presence-worker slow request method=POST path=/presence latency_ms=779
+2025-08-19T17:21:25Z WARN request_id=req-19036422 service=presence-worker fanout completed room=room-962 subscribers=64 latency_ms=101
+2025-08-19T17:24:04Z INFO request_id=req-21031663 service=presence-worker fanout completed room=room-530 subscribers=12 latency_ms=110
+2025-08-19T17:26:34Z INFO request_id=req-46046389 service=presence-worker checkpoint persisted offset=20854
+2025-08-19T17:29:21Z INFO request_id=req-63502241 service=presence-worker slow request method=POST path=/presence latency_ms=1439
+2025-08-19T17:31:58Z DEBUG request_id=req-53338419 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T17:34:45Z INFO request_id=req-51564780 service=presence-worker health check passed queue_depth=24
+2025-08-19T17:37:00Z WARN request_id=req-24027038 service=presence-worker slow request method=POST path=/presence latency_ms=754
+2025-08-19T17:39:27Z WARN request_id=req-60301065 service=presence-worker health check passed queue_depth=30
+2025-08-19T17:42:11Z DEBUG request_id=req-49988594 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T17:44:44Z INFO request_id=req-61202411 service=presence-worker health check passed queue_depth=22
+2025-08-19T17:47:27Z DEBUG request_id=req-31292659 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T17:49:42Z WARN request_id=req-75618466 service=presence-worker slow request method=POST path=/presence latency_ms=783
+2025-08-19T17:52:46Z INFO request_id=req-97914753 service=presence-worker slow request method=POST path=/presence latency_ms=1018
+2025-08-19T17:55:24Z INFO request_id=req-95139730 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T17:57:43Z INFO request_id=req-12469468 service=presence-worker checkpoint persisted offset=15361
+2025-08-19T18:00:21Z INFO request_id=req-96453424 service=presence-worker health check passed queue_depth=26
+2025-08-19T18:02:41Z WARN request_id=req-73165043 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T18:05:14Z WARN request_id=req-71225083 service=presence-worker checkpoint persisted offset=85089
+2025-08-19T18:07:44Z INFO request_id=req-67163683 service=presence-worker slow request method=POST path=/presence latency_ms=1485
+2025-08-19T18:10:36Z INFO request_id=req-32028814 service=presence-worker health check passed queue_depth=35
+2025-08-19T18:13:09Z DEBUG request_id=req-56797519 service=presence-worker fanout completed room=room-113 subscribers=50 latency_ms=138
+2025-08-19T18:15:27Z DEBUG request_id=req-73630908 service=presence-worker health check passed queue_depth=33
+2025-08-19T18:18:22Z DEBUG request_id=req-90756136 service=presence-worker fanout completed room=room-949 subscribers=14 latency_ms=30
+2025-08-19T18:21:08Z WARN request_id=req-16010647 service=presence-worker fanout completed room=room-305 subscribers=41 latency_ms=113
+2025-08-19T18:23:38Z INFO request_id=req-71231285 service=presence-worker fanout completed room=room-590 subscribers=33 latency_ms=169
+2025-08-19T18:25:43Z INFO request_id=req-44616075 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T18:28:50Z INFO request_id=req-91574770 service=presence-worker checkpoint persisted offset=75016
+2025-08-19T18:30:52Z WARN request_id=req-71076749 service=presence-worker slow request method=POST path=/presence latency_ms=1063
+2025-08-19T18:33:31Z WARN request_id=req-49122862 service=presence-worker slow request method=POST path=/presence latency_ms=1330
+2025-08-19T18:36:26Z DEBUG request_id=req-46702339 service=presence-worker health check passed queue_depth=6
+2025-08-19T18:38:45Z DEBUG request_id=req-51142327 service=presence-worker health check passed queue_depth=26
+2025-08-19T18:41:08Z INFO request_id=req-68504560 service=presence-worker slow request method=POST path=/presence latency_ms=656
+2025-08-19T18:44:07Z INFO request_id=req-64717832 service=presence-worker slow request method=POST path=/presence latency_ms=1377
+2025-08-19T18:46:47Z WARN request_id=req-94258159 service=presence-worker slow request method=POST path=/presence latency_ms=1301
+2025-08-19T18:48:59Z INFO request_id=req-56464454 service=presence-worker checkpoint persisted offset=14342
+2025-08-19T18:51:35Z INFO request_id=req-86399615 service=presence-worker checkpoint persisted offset=17066
+2025-08-19T18:54:15Z WARN request_id=req-50160603 service=presence-worker health check passed queue_depth=39
+2025-08-19T18:57:02Z INFO request_id=req-41809982 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T18:59:21Z INFO request_id=req-73632298 service=presence-worker fanout completed room=room-110 subscribers=21 latency_ms=162
+2025-08-19T19:01:52Z DEBUG request_id=req-42859016 service=presence-worker fanout completed room=room-770 subscribers=25 latency_ms=34
+2025-08-19T19:04:38Z INFO request_id=req-60631099 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T19:07:15Z DEBUG request_id=req-53438104 service=presence-worker checkpoint persisted offset=52316
+2025-08-19T19:09:41Z DEBUG request_id=req-27400803 service=presence-worker slow request method=POST path=/presence latency_ms=1486
+2025-08-19T19:12:30Z INFO request_id=req-83560601 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T19:14:55Z INFO request_id=req-36697191 service=presence-worker fanout completed room=room-520 subscribers=18 latency_ms=131
+2025-08-19T19:17:27Z WARN request_id=req-95125607 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T19:20:08Z INFO request_id=req-65892690 service=presence-worker fanout completed room=room-646 subscribers=30 latency_ms=144
+2025-08-19T19:22:34Z INFO request_id=req-13572957 service=presence-worker checkpoint persisted offset=79885
+2025-08-19T19:25:23Z DEBUG request_id=req-48408090 service=presence-worker slow request method=POST path=/presence latency_ms=863
+2025-08-19T19:27:59Z INFO request_id=req-25706743 service=presence-worker checkpoint persisted offset=28268
+2025-08-19T19:30:26Z INFO request_id=req-25432677 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T19:32:36Z INFO request_id=req-57346094 service=presence-worker slow request method=POST path=/presence latency_ms=1453
+2025-08-19T19:35:10Z INFO request_id=req-90636248 service=presence-worker checkpoint persisted offset=18839
+2025-08-19T19:37:56Z WARN request_id=req-93297879 service=presence-worker slow request method=POST path=/presence latency_ms=713
+2025-08-19T19:40:32Z INFO request_id=req-88251445 service=presence-worker fanout completed room=room-541 subscribers=43 latency_ms=135
+2025-08-19T19:42:57Z WARN request_id=req-67800130 service=presence-worker checkpoint persisted offset=86448
+2025-08-19T19:45:44Z INFO request_id=req-97731242 service=presence-worker health check passed queue_depth=13
+2025-08-19T19:48:27Z DEBUG request_id=req-85115557 service=presence-worker checkpoint persisted offset=39888
+2025-08-19T19:51:01Z DEBUG request_id=req-26907081 service=presence-worker checkpoint persisted offset=54452
+2025-08-19T19:53:34Z WARN request_id=req-65241194 service=presence-worker health check passed queue_depth=44
+2025-08-19T19:56:02Z INFO request_id=req-80859689 service=presence-worker slow request method=POST path=/presence latency_ms=664
+2025-08-19T19:58:39Z WARN request_id=req-25263391 service=presence-worker slow request method=POST path=/presence latency_ms=795
+2025-08-19T20:01:01Z INFO request_id=req-75792770 service=presence-worker fanout completed room=room-855 subscribers=78 latency_ms=143
+2025-08-19T20:03:38Z WARN request_id=req-15845358 service=presence-worker fanout completed room=room-827 subscribers=67 latency_ms=159
+2025-08-19T20:06:03Z WARN request_id=req-94783488 service=presence-worker slow request method=POST path=/presence latency_ms=924
+2025-08-19T20:09:05Z INFO request_id=req-87027126 service=presence-worker health check passed queue_depth=27
+2025-08-19T20:11:33Z INFO request_id=req-25579150 service=presence-worker health check passed queue_depth=4
+2025-08-19T20:13:42Z INFO request_id=req-74831137 service=presence-worker fanout completed room=room-740 subscribers=27 latency_ms=132
+2025-08-19T20:16:27Z INFO request_id=req-86764782 service=presence-worker checkpoint persisted offset=67265
+2025-08-19T20:18:53Z WARN request_id=req-64635645 service=presence-worker checkpoint persisted offset=63454
+2025-08-19T20:21:56Z DEBUG request_id=req-54822153 service=presence-worker fanout completed room=room-350 subscribers=27 latency_ms=18
+2025-08-19T20:24:10Z INFO request_id=req-76198647 service=presence-worker slow request method=POST path=/presence latency_ms=1302
+2025-08-19T20:26:47Z DEBUG request_id=req-10769403 service=presence-worker fanout completed room=room-865 subscribers=25 latency_ms=165
+2025-08-19T20:29:29Z DEBUG request_id=req-99213158 service=presence-worker slow request method=POST path=/presence latency_ms=1383
+2025-08-19T20:32:02Z DEBUG request_id=req-45276087 service=presence-worker slow request method=POST path=/presence latency_ms=1329
+2025-08-19T20:34:32Z INFO request_id=req-17061183 service=presence-worker checkpoint persisted offset=45742
+2025-08-19T20:37:03Z INFO request_id=req-14949533 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T20:39:55Z INFO request_id=req-17541099 service=presence-worker health check passed queue_depth=22
+2025-08-19T20:42:22Z INFO request_id=req-67490265 service=presence-worker fanout completed room=room-664 subscribers=69 latency_ms=39
+2025-08-19T20:44:52Z WARN request_id=req-37322366 service=presence-worker fanout completed room=room-610 subscribers=74 latency_ms=71
+2025-08-19T20:47:26Z DEBUG request_id=req-61799950 service=presence-worker health check passed queue_depth=23
+2025-08-19T20:50:08Z DEBUG request_id=req-93252059 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T20:52:33Z INFO request_id=req-35435808 service=presence-worker fanout completed room=room-858 subscribers=19 latency_ms=93
+2025-08-19T20:55:03Z INFO request_id=req-41424869 service=presence-worker health check passed queue_depth=40
+2025-08-19T20:57:54Z WARN request_id=req-66230435 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T21:00:01Z WARN request_id=req-64438974 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T21:02:44Z INFO request_id=req-99174784 service=presence-worker slow request method=POST path=/presence latency_ms=1283
+2025-08-19T21:05:20Z WARN request_id=req-59166960 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T21:07:55Z INFO request_id=req-18180578 service=presence-worker fanout completed room=room-130 subscribers=51 latency_ms=59
+2025-08-19T21:10:49Z WARN request_id=req-88014241 service=presence-worker fanout completed room=room-153 subscribers=23 latency_ms=147
+2025-08-19T21:13:01Z INFO request_id=req-46421656 service=presence-worker checkpoint persisted offset=47805
+2025-08-19T21:15:46Z DEBUG request_id=req-86601543 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T21:18:16Z INFO request_id=req-56477723 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T21:20:34Z WARN request_id=req-13470541 service=presence-worker health check passed queue_depth=9
+2025-08-19T21:23:33Z INFO request_id=req-19560014 service=presence-worker fanout completed room=room-591 subscribers=34 latency_ms=125
+2025-08-19T21:25:43Z WARN request_id=req-24471340 service=presence-worker slow request method=POST path=/presence latency_ms=1062
+2025-08-19T21:28:46Z DEBUG request_id=req-12750857 service=presence-worker slow request method=POST path=/presence latency_ms=758
+2025-08-19T21:31:09Z DEBUG request_id=req-78358733 service=presence-worker health check passed queue_depth=11
+2025-08-19T21:33:30Z DEBUG request_id=req-21391710 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T21:36:02Z DEBUG request_id=req-85972984 service=presence-worker health check passed queue_depth=29
+2025-08-19T21:38:37Z INFO request_id=req-62560290 service=presence-worker slow request method=POST path=/presence latency_ms=1211
+2025-08-19T21:41:34Z INFO request_id=req-93233240 service=presence-worker checkpoint persisted offset=12048
+2025-08-19T21:44:01Z DEBUG request_id=req-87865328 service=presence-worker health check passed queue_depth=31
+2025-08-19T21:46:36Z DEBUG request_id=req-91549130 service=presence-worker checkpoint persisted offset=59146
+2025-08-19T21:48:55Z INFO request_id=req-95520617 service=presence-worker fanout completed room=room-431 subscribers=31 latency_ms=150
+2025-08-19T21:51:41Z INFO request_id=req-57395385 service=presence-worker slow request method=POST path=/presence latency_ms=1125
+2025-08-19T21:54:27Z INFO request_id=req-25603204 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T21:56:49Z INFO request_id=req-29977843 service=presence-worker fanout completed room=room-975 subscribers=32 latency_ms=178
+2025-08-19T21:59:19Z INFO request_id=req-42987954 service=presence-worker checkpoint persisted offset=23247
+2025-08-19T22:01:52Z DEBUG request_id=req-40116897 service=presence-worker checkpoint persisted offset=81287
+2025-08-19T22:04:29Z INFO request_id=req-95397127 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T22:06:53Z INFO request_id=req-59034348 service=presence-worker slow request method=POST path=/presence latency_ms=1425
+2025-08-19T22:09:30Z INFO request_id=req-62866415 service=presence-worker checkpoint persisted offset=88569
+2025-08-19T22:12:29Z INFO request_id=req-12816299 service=presence-worker slow request method=POST path=/presence latency_ms=940
+2025-08-19T22:14:43Z DEBUG request_id=req-77645425 service=presence-worker checkpoint persisted offset=18939
+2025-08-19T22:17:24Z INFO request_id=req-78915311 service=presence-worker checkpoint persisted offset=47608
+2025-08-19T22:20:03Z DEBUG request_id=req-42782499 service=presence-worker fanout completed room=room-142 subscribers=39 latency_ms=22
+2025-08-19T22:22:26Z DEBUG request_id=req-64217797 service=presence-worker slow request method=POST path=/presence latency_ms=1463
+2025-08-19T22:25:16Z WARN request_id=req-56808091 service=presence-worker slow request method=POST path=/presence latency_ms=1345
+2025-08-19T22:27:53Z INFO request_id=req-65886777 service=presence-worker checkpoint persisted offset=34032
+2025-08-19T22:30:32Z WARN request_id=req-24486626 service=presence-worker checkpoint persisted offset=50366
+2025-08-19T22:33:02Z INFO request_id=req-81950798 service=presence-worker slow request method=POST path=/presence latency_ms=1424
+2025-08-19T22:35:20Z WARN request_id=req-25131986 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T22:37:55Z WARN request_id=req-81061488 service=presence-worker fanout completed room=room-433 subscribers=30 latency_ms=117
+2025-08-19T22:40:30Z INFO request_id=req-78856263 service=presence-worker checkpoint persisted offset=18797
+2025-08-19T22:43:09Z INFO request_id=req-17726969 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T22:45:39Z INFO request_id=req-42063716 service=presence-worker slow request method=POST path=/presence latency_ms=662
+2025-08-19T22:48:20Z INFO request_id=req-13070560 service=presence-worker slow request method=POST path=/presence latency_ms=699
+2025-08-19T22:51:02Z INFO request_id=req-37146433 service=presence-worker fanout completed room=room-719 subscribers=3 latency_ms=88
+2025-08-19T22:53:16Z INFO request_id=req-97270465 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T22:56:15Z INFO request_id=req-69345367 service=presence-worker checkpoint persisted offset=29570
+2025-08-19T22:58:23Z WARN request_id=req-51149729 service=presence-worker health check passed queue_depth=38
+2025-08-19T23:01:18Z INFO request_id=req-75201702 service=presence-worker slow request method=POST path=/presence latency_ms=1001
+2025-08-19T23:03:57Z DEBUG request_id=req-86475900 service=presence-worker health check passed queue_depth=10
+2025-08-19T23:06:24Z INFO request_id=req-86691426 service=presence-worker checkpoint persisted offset=10380
+2025-08-19T23:09:02Z INFO request_id=req-61106631 service=presence-worker checkpoint persisted offset=12335
+2025-08-19T23:11:40Z DEBUG request_id=req-19475155 service=presence-worker checkpoint persisted offset=44764
+2025-08-19T23:14:09Z DEBUG request_id=req-42899049 service=presence-worker health check passed queue_depth=22
+2025-08-19T23:16:39Z DEBUG request_id=req-95932763 service=presence-worker checkpoint persisted offset=58823
+2025-08-19T23:19:11Z INFO request_id=req-21096515 service=presence-worker fanout completed room=room-971 subscribers=48 latency_ms=80
+2025-08-19T23:21:48Z WARN request_id=req-23984901 service=presence-worker health check passed queue_depth=14
+2025-08-19T23:24:23Z WARN request_id=req-11046927 service=presence-worker checkpoint persisted offset=60955
+2025-08-19T23:26:44Z INFO request_id=req-21758791 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T23:29:20Z INFO request_id=req-86761834 service=presence-worker slow request method=POST path=/presence latency_ms=1197
+2025-08-19T23:31:47Z WARN request_id=req-87735361 service=presence-worker slow request method=POST path=/presence latency_ms=1181
+2025-08-19T23:34:39Z INFO request_id=req-44301727 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T23:36:56Z INFO request_id=req-92458816 service=presence-worker slow request method=POST path=/presence latency_ms=1256
+2025-08-19T23:39:50Z INFO request_id=req-64548799 service=presence-worker checkpoint persisted offset=31210
+2025-08-19T23:42:31Z INFO request_id=req-74028566 service=presence-worker slow request method=POST path=/presence latency_ms=1267
+2025-08-19T23:44:49Z INFO request_id=req-51276321 service=presence-worker health check passed queue_depth=8
+2025-08-19T23:47:20Z WARN request_id=req-59438538 service=presence-worker health check passed queue_depth=12
+2025-08-19T23:50:07Z WARN request_id=req-52596895 service=presence-worker fanout completed room=room-171 subscribers=36 latency_ms=47
+2025-08-19T23:52:41Z INFO request_id=req-69441204 service=presence-worker fanout completed room=room-426 subscribers=50 latency_ms=156
+2025-08-19T23:54:53Z INFO request_id=req-55194854 service=presence-worker retrying presence publish attempt=1 reason=temporary_unavailable
+2025-08-19T23:57:39Z DEBUG request_id=req-58752059 service=presence-worker health check passed queue_depth=20

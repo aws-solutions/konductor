@@ -1,0 +1,4 @@
+{
+  "production_max_body_bytes": 262144,
+  "batch_envelope_bytes": 512
+}

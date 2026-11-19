@@ -1,0 +1,11 @@
+service,cost_unit,price,notes
+storage,GB-month,$0.10,Provisioned SSD volume
+iops,1000 IOPS-month,$0.10,Burstable up to 16,000 IOPS
+throughput,MB/s-month,$0.08,Sustained read/write throughput
+backup,GB-month,$0.05,Daily incremental backups
+snapshot,GB,$0.02,One-time charge per snapshot
+data-transfer-out,GB,$0.09,To internet (first 10 GB free)
+support,basic,monthly,$0.00,24/7 ticket support
+support,premium,monthly,$500.00,Includes 1-hour response SLA
+volume-standard,TB,monthly,$50.00,Base fee for Standard volume class (2.5 TB included)
+volume-premium,TB,monthly,$150.00,Base fee for Premium volume class (5 TB included, 30,000 IOPS base)

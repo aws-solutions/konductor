@@ -1,0 +1,157 @@
+{
+  "id": "t7-pm-launch-cut",
+  "class": "design",
+  "version": 1,
+  "phase": "planning",
+  "role": "pm",
+  "questions": "allowed",
+  "prompt": "We have eight weeks before the 2027 conference launch, and engineering needs a scope it can start on Monday. Review backlog.csv, the launch brief, roadmap export, sales commitments, capacity sheet, and interview notes in this folder. Decide what is in, what is out, and why for the regional operations launch audience. Reconcile customer evidence, commitments, dependencies, estimates, sprint capacity, and the launch date. Write the director-ready answer to docs/launch-scope.md. Include one fenced JSON block whose info string is exactly launch-scope so our tooling can read it. The JSON shape is {in: [feature IDs], out: [feature IDs], capacity_points: number, planned_points: number, must_haves: [feature IDs], dependencies_pulled_in: [feature IDs], open_questions: [strings]}. Use every key shown, keep feature IDs as IDs from the backlog, and make the prose explain the bottom line, trade-offs, assumptions, and unresolved questions.",
+  "fixture": "t7-pm-launch-cut",
+  "hidden": "t7-pm-launch-cut",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/launch-scope.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "backlog.csv",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "docs/launch-scope.md",
+      "pattern": "```\\s*launch-scope",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "director-bottom-line",
+      "criterion": "The prose gives the requester a clear bottom line about the launch commitment before the supporting detail (code cannot check this because it only reads the structured block)",
+      "weight": 2
+    },
+    {
+      "id": "decision-reasoning",
+      "criterion": "The prose connects the scope decision to the audience, commitments, capacity, dependencies, and uncertainty rather than merely listing IDs (code cannot check this because it cannot judge the quality of the explanation)",
+      "weight": 3
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "audience-value",
+        "text": "Explain why the selected workflow forms a usable first slice for regional operations teams, and distinguish that value from the internal appeal of a presentation wallboard.",
+        "source": "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "commitment-acceptance",
+        "text": "Turn the signed export promise into a concrete acceptance conversation by naming the signature page and delivery manifest, rather than treating a backlog priority label as the promise.",
+        "source": "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "usable-increment",
+        "text": "Describe what must be finished and accepted for the launch slice to be usable, especially the import error report, approval actions, event version visibility, and dashboard first slice.",
+        "source": "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "protect-focus",
+        "text": "Make the five-point buffer a protection for integration and acceptance work, not an invitation to add the next loud request during the four-sprint window.",
+        "source": "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "decision-record",
+        "text": "Record the reason for deferring mobile approvals and the internal wallboard, including the audience mismatch or missing evidence, so a later revisit does not reopen the same debate without new information.",
+        "source": "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
+      },
+      {
+        "id": "questions-with-next-step",
+        "text": "Give each open question a useful next action and owner or decision point, particularly acceptance wording for the committed export, dashboard metrics, and adoption measures.",
+        "source": "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Take every High-priority row and call the result the launch scope without checking the customer segment or capacity.",
+      "Include the mobile approvals request and executive wallboard because they sound visible, while omitting the signed export commitment.",
+      "List a total that exceeds the capacity sheet and say engineering can make up the difference during the last sprint.",
+      "Mention dependencies and risks in vague terms without naming the prerequisite or giving any next decision.",
+      "Treat the roadmap window as a guarantee and ignore closed, cancelled, blank-estimate, and post-launch rows."
+    ]
+  },
+  "targetSkills": [
+    "program-planning",
+    "decision-writing"
+  ],
+  "targetSop": null,
+  "targetAgent": "k-product-manager",
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "program-planning",
+      "decision-writing"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/rust-lang/rfcs",
+      "licence": "MIT OR Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for a scope decision without naming methods, frameworks, or hinting at seeded traps. It describes the task generically: review inputs, reconcile evidence, write a decision document with a structured JSON block."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The README clearly documents status values (Backlog/Ready/In Progress are open, Closed/Cancelled are not), dependency handling, and capacity calculation. All key values (capacity=63, planned=58) follow directly from the stated conventions."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture files reveal traps or answers. The sales-commitments.md names the conference launch package (F-014, F-010) without flagging it as a trap. The backlog shows F-014 as Medium priority and F-044 as High priority with no customer evidence, requiring the agent to reason from commitments and audience, not labels."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer that takes all High-priority items passes only 5 of 15 tests. It fails to include the Medium-priority committed export (F-014), pulls in the wallboard decoy (F-044), exceeds capacity, and misses the dashboard prerequisite (F-031). More than half the tests require genuine reasoning."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values are derivable from the fixture: capacity=63 (sum of four sprints per team-capacity.csv), planned=58 (sum of F-004, F-010, F-014, F-021, F-031, F-038, F-052, F-063), F-014 is required by sales-commitments.md, F-031 is a dependency of F-052, F-044 has no customer evidence, F-057 serves field sales (not the launch audience). The task is challenging but fair."
+      }
+    ]
+  }
+}

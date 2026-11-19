@@ -1,0 +1,110 @@
+{
+  "id": "t7-dep-conflicts",
+  "class": "design",
+  "version": 1,
+  "phase": "planning",
+  "role": "tpm",
+  "questions": "allowed",
+  "prompt": "Before the planning review, please reconcile our roadmap, ticket dates, and dependency register. I need a short dependency review that tells me where our plans contradict each other and what that means for the Q3 customer launch. Call out the affected tickets and dates, any circular handoff, any milestone whose status does not match its tickets, and the launch date if the dependency that drives it stays unresolved. Write the requester-facing document to `plan/dependency-review.md`. Include one fenced JSON block whose info string is `conflicts`; the JSON must have `conflicts` (an array of objects with producer, consumer, producer_due, needed_by, and days_late), `cycles` (an array of arrays of ticket IDs), `launch_driver` (an object with producer and consumer), `launch_date_planned` (an ISO date string), `launch_date_if_unresolved` (an ISO date string), and `stale_milestones` (an array of names).",
+  "fixture": "t7-dep-conflicts",
+  "hidden": "t7-dep-conflicts",
+  "timeoutSec": 1200,
+  "limits": {
+    "softSec": 600,
+    "hardSec": 1200
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 14,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "plan/dependency-review.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data/ticket-export.csv",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "plan/dependency-review.md",
+      "pattern": "```\\s*conflicts",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "bottom-line-first",
+      "criterion": "The prose gives the director the honest launch-date bottom line before the supporting detail (code cannot check this because it only reads the structured block).",
+      "weight": 2
+    },
+    {
+      "id": "reasoning-shown",
+      "criterion": "The prose explains how the reported dates and launch impact follow from the supplied records without claiming more certainty than the records support (code cannot check this because it cannot evaluate written reasoning).",
+      "weight": 2
+    }
+  ],
+  "targetSkills": [],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/kubernetes/enhancements",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for dependency reconciliation without naming specific methods, frameworks, or processes. It mentions 'circular handoff' and 'milestone shown as done but is not' as findings to report, but these are expected outputs, not hints to seeded traps."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The README clearly defines 'days_late' as calendar-day difference with same-day equal to zero. The roadmap date (2027-09-30) is explicit. The launch date calculation (planned + days_late of driver = 2027-10-08) follows from the stated convention that misses carry to linked work."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture file reveals traps or answers directly. The release-notes.md mentions that 'a few archived tickets can remain in exports after a replacement is created' which hints at the ATL-018 decoy, but does not name it or reveal the solution. No column flags conflicts, and no ticket has a risk label."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer that trusts the roadmap status and skips dependency analysis passes only 2/14 tests (planned-launch-date and cancelled-producer-decoy-absent), well below half. Finding the three late dependencies, the cycle, the stale milestone, and the launch driver requires joining ticket-export.csv with dependency-register.csv and tracing chains to DLT-045."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All key values derive from the fixture data: ATL-007 due 2027-07-20, needed by 2027-07-15 → 5 days late (verified). CND-009 due 2027-08-05, needed by 2027-07-30 → 6 days late (verified). CND-017 due 2027-08-18, needed by 2027-08-10 → 8 days late (verified). BCN-020→CND-020 and CND-020→BCN-020 form a cycle (verified). CND-017→DLT-011→DLT-025→CND-030→DLT-039→DLT-041→DLT-043→DLT-045 is the longest chain (7 edges, chain_score 6) making it the launch driver. Atlas ingestion contract is marked Done but ATL-007 is Open (verified)."
+      }
+    ]
+  }
+}

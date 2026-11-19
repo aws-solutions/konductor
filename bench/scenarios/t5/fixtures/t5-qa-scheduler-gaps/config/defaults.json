@@ -1,0 +1,6 @@
+{
+  "timezone": "UTC",
+  "max_attempts": 4,
+  "retry_cap_seconds": 300,
+  "queue_priority": 10
+}

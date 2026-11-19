@@ -1,7 +1,7 @@
 ---
 name: verification
-description: Use before saying a change is done, to prove it works, to run tests before and after a change, or when asked to show the commands you ran and their output. No code, build, doc, or infra change counts as complete without the command, its output, and the matching checker skill. Covers test-first and spec-first work, TDD, and the maker-checker pattern.
-version: 1.0.0
+description: 'Use before saying a change is done: run tests before and after, show the commands and output, and run the matching checker skill. Covers TDD, test-first, spec-first and maker-checker.'
+version: 1.0.1
 tags: [skill, behavioral, verification, tdd, evidence, quality]
 ---
 

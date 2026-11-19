@@ -1,0 +1,163 @@
+{
+  "id": "t4-iam-bucket-policy-oac",
+  "version": 1,
+  "class": "complex",
+  "phase": "security",
+  "phases2": [],
+  "role": "security",
+  "questions": "allowed",
+  "prompt": "The marketing site now sits behind our CDN, so the S3 buckets no longer need to be open. Please lock down the three bucket policies in infra/buckets/ (assets-policy.json, downloads-policy.json, logs-policy.json; each covers the staging and the production bucket of its kind). Readers should get objects only through the CDN, each stage only through its own distribution (ids, ARNs, bucket names and the account id are in infra/cdn-config.json). Nothing may be read over plain HTTP. Files under downloads/private/ must not be served to anyone, CDN included. The deploy role (infra/iam/deploy-role-policy.json) must still be able to publish to the assets buckets, and access-log delivery must keep working into the logs buckets. Do not change infra/iam/deploy-role-policy.json, the CDN config or the scripts and tests. Keep the files valid IAM policy JSON.",
+  "fixture": "t4-iam-bucket-policy-oac",
+  "hidden": "t4-iam-bucket-policy-oac",
+  "timeoutSec": 2400,
+  "limits": {
+    "softSec": 1200,
+    "hardSec": 2400
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.js",
+      "min": 31,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e \"const fs=require('fs');let bad=false;for(const f of ['assets','downloads','logs']){const d=JSON.parse(fs.readFileSync('infra/buckets/'+f+'-policy.json','utf8'));for(const s of [].concat(d.Statement))if(s.Effect==='Allow'&&(s.Principal==='*'||(s.Principal&&[].concat(s.Principal.AWS||[]).includes('*'))))bad=true;}process.exit(bad?1:0)\"",
+      "expectExit": 0,
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "infra/buckets/assets-policy.json",
+      "pattern": "aws:SecureTransport",
+      "weight": 2,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "infra/iam/deploy-role-policy.json",
+      "weight": 1,
+      "kind": "format"
+    },
+    {
+      "type": "cmd",
+      "cmd": "npm test",
+      "expectExit": 0,
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "no_wildcard_sourcearn",
+      "criterion": "Does not use wildcard (*) in aws:SourceArn condition that would let staging distribution read prod bucket or vice versa (code cannot check this because the evaluator treats exact ARNs and wildcards differently)",
+      "weight": 2
+    },
+    {
+      "id": "proper_private_handling",
+      "criterion": "Handles downloads/private/ restriction cleanly, not with a separate bucket or complex workaround (code cannot check this because implementation approach varies)",
+      "weight": 1
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "block-public-access",
+        "text": "Recommends turning on S3 Block Public Access for these buckets (or the account) so a later policy edit cannot make them public again.",
+        "source": "AWS S3 User Guide, Blocking public access to your Amazon S3 storage, https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "origin-access-setup",
+        "text": "Notes that the CDN must be set to sign its origin requests (origin access control) for the service-principal grant to work, and that the old public website endpoint stops working.",
+        "source": "AWS CloudFront Developer Guide, Restricting access to an Amazon S3 origin, https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "kms-objects",
+        "text": "Mentions that objects encrypted with a customer managed key also need the CDN allowed to decrypt with that key, or confirms the buckets use S3-managed keys.",
+        "source": "AWS CloudFront Developer Guide, Restricting access to an Amazon S3 origin, https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "source-arn-why",
+        "text": "Explains that the distribution ARN condition is what stops another account's distribution from reading through the same service principal.",
+        "source": "AWS IAM User Guide, The confused deputy problem, https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "private-prefix-placement",
+        "text": "Questions keeping private files in a bucket that the CDN serves at all, and suggests a separate bucket or a deny that cannot be removed by accident.",
+        "source": "CloudGoat, https://github.com/RhinoSecurityLabs/cloudgoat (BSD-3-Clause)"
+      }
+    ],
+    "weakAnswers": [
+      "Removed public access from the buckets.",
+      "Only CloudFront can read the buckets now.",
+      "Added HTTPS enforcement.",
+      "Applied least privilege to bucket policies."
+    ]
+  },
+  "tiers": [
+    "full"
+  ],
+  "targetSkills": [
+    "iam-policy-design",
+    "policy-validation"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "iam-policy-design"
+    ],
+    "mustNotLoad": [
+      "threat-modeling",
+      "security-remediation",
+      "infra-validation"
+    ]
+  },
+  "effectSubset": false,
+  "authorship": {
+    "family": "deepseek",
+    "model": "deepseek-3.2",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/RhinoSecurityLabs/cloudgoat",
+      "licence": "BSD-3-Clause",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "gpt",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt names the policy deliverable and required IAM fields, but it does not prescribe a named workflow, threat method, or testing process."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "fixed",
+        "note": "The deploy-role test now evaluates the unchanged identity policy and the bucket policy together (same account), so relying on the identity policy is correct."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "fixed",
+        "note": "Reviewer showed a deny-all policy passed every test. The lead added a test that each stage CDN reads its own assets and public downloads over TLS, merged the lint tests, and removed log tests that passed on the fixture for unrelated reasons: 7 of 31 pass on the fixture, 31 of 31 on the reference. The prompt no longer lists the traps."
+      },
+      {
+        "check": "floor",
+        "verdict": "fixed",
+        "note": "The deploy-role test now evaluates the unchanged identity policy and the bucket policy together (same account), so relying on the identity policy is correct."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "Fixture documentation repeats the current defects and high-level desired state already stated in the prompt, but it contains no leftover solution, finished-behaviour test, or exact policy implementation."
+      }
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "t7-risk-owners",
+  "phase": "planning",
+  "role": "tpm",
+  "author": "gpt-5.6-luna",
+  "source": {
+    "url": "https://github.com/golang/go",
+    "licence": "BSD-3-Clause",
+    "licenceCheckedAt": "2026-11-19",
+    "use": "idea"
+  },
+  "kind": "a program folder for a mobile app re-platform: roadmap.md, a ticket export (JSON, 150 to 220 tickets), a vendor contract summary with dates, an org chart with owners and a meeting-notes folder (6 to 10 short notes)",
+  "scenario": "A director asks: what could stop us shipping in September, and who owns each one? I need this for the steering review.",
+  "seeds": "(1) a single person is the only assignee on every ticket of one critical component (key-person risk); (2) the vendor contract notes an API deprecation date that falls before the launch; (3) an unowned ticket on the critical chain; (4) scope creep: a meeting note quietly adds a requirement that has no ticket yet; (5) a code freeze in the roadmap that collides with a public holiday week; (6) a decoy: a scary-sounding risk in one meeting note that a later note says is resolved.",
+  "block": "risks",
+  "output": "docs/risk-register.md",
+  "shape": "{\"risks\": [{\"id\": str, \"tickets\": [ids], \"kind\": \"key-person|vendor|unowned|scope|schedule|other\", \"likelihood\": \"low|medium|high\", \"impact\": \"low|medium|high\", \"owner\": str, \"mitigation\": str, \"trigger_date\": \"YYYY-MM-DD or null\"}], \"top_three\": [risk ids]}",
+  "expert": true,
+  "controlKind": "none",
+  "reviewer": "glm-5",
+  "date": "2026-11-19",
+  "expertSources": [
+    "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)",
+    "Site Reliability Engineering (book), Release Engineering, https://sre.google/sre-book/release-engineering/ (CC BY-NC-ND 4.0, idea only)",
+    "Kubernetes Enhancement Proposals process, https://github.com/kubernetes/enhancements/blob/master/keps/README.md (Apache-2.0)"
+  ],
+  "replaces": "t7-risk-register",
+  "authorChange": "author switched from deepseek-3.2 to gpt-5.6-luna on 2026-11-19: three deepseek-3.2 drafts in a row (t7-march-date, t7-sprint-plan, t7-risk-register) were unusable on first pass"
+}

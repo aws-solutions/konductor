@@ -1,0 +1,5 @@
+{
+  "taxRateBps": 825,
+  "shipping": {"freeShippingThresholdCents": 5000, "standardShippingCents": 799},
+  "currency": "USD"
+}

@@ -1,0 +1,157 @@
+{
+  "id": "t3-adr-db-engine",
+  "class": "design",
+  "target": null,
+  "prompt": "Choose the database approach for the launch-day session store using the requirements, traffic profile, platform limits, and price sheet in `fixture/`. Write the architecture decision record to `docs/adr/0001-database.md`. Compare the key-value table on-demand, key-value provisioned with autoscaling, and relational cluster options, including the hot-key distribution, recovery objectives, latency, and monthly cost. Recompute the figures from the supplied inputs and explain the important tradeoffs and rejected alternatives in the record. The output must contain a fenced block whose info string is exactly `decision`; the block must hold JSON with exactly the keys `chosen`, `options`, `limits`, and `monthly_cost_usd`. Use the option id for `chosen`, an array of considered option ids for `options`, and make `limits` an object mapping each hard-limit name to `{ \"limit\": number, \"value\": number }`, where `value` is the computed figure for the chosen option and `monthly_cost_usd` is the chosen option's monthly cost from the price sheet.",
+  "fixture": "t3-adr-db-engine",
+  "timeoutSec": 900,
+  "hidden": "t3-adr-db-engine",
+  "phase": "decisions",
+  "role": "architect",
+  "questions": "allowed",
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "cp hidden/meta.json meta.json && mkdir -p fixture && cp -r hidden/_pristine/. fixture/ && ln -sfn . solution && node --test hidden/*.test.js",
+      "min": 18
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/adr/0001-database.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reasoning-quality",
+      "criterion": "The ADR shows a clear, technically sound chain from the traffic skew and service ceilings to the selected architecture, with calculations a reviewer can audit. (not code-checkable: Tests can recompute reported figures but cannot judge whether the reasoning connects the figures to a defensible architectural decision.)",
+      "weight": 1
+    },
+    {
+      "id": "tradeoff-explanation",
+      "criterion": "The ADR fairly explains the cost, scalability, latency, recovery, and operational tradeoffs of the rejected options rather than only naming a winner. (not code-checkable: Automated checks cannot determine whether prose gives a balanced explanation of alternatives or omits an important tradeoff.)",
+      "weight": 1
+    },
+    {
+      "id": "decision-record-quality",
+      "criterion": "The record is concise, readable, and actionable, including consequences and follow-up concerns for operating the selected design. (not code-checkable: A script can validate the path and JSON shape but cannot reliably assess clarity, completeness, or usefulness to an architecture reviewer.)",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ],
+  "controlKind": "none",
+  "effectSubset": false,
+  "limits": {
+    "softSec": 900,
+    "hardSec": 1500
+  },
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": "original"
+  },
+  "pilot": null,
+  "version": 1,
+  "targetSkills": [
+    "decision-writing",
+    "trade-off-evaluator"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "loadCheck": {
+    "mustLoad": [
+      "decision-writing",
+      "trade-off-evaluator"
+    ],
+    "mustNotLoad": []
+  },
+  "review": {
+    "family": "zhipu",
+    "model": "glm-5",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt names the task (choose database approach for session store) without naming any specific framework, method, or the correct answer."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "All limits and inputs are clearly specified in JSON files with explicit values; the calculation method is unambiguous for agents who read all fixtures."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "No fixture file states the correct choice; fixtures provide raw inputs that must be combined to derive that on-demand exceeds the partition ceiling."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "The cheapest option (on-demand) fails the partition WCU ceiling; budget is $7000 but the passing option costs $6540, so cost alone cannot pick the winner."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "All required numbers are present: peak writes, hot key fraction, partition ceiling, limits for latency/budget/RPO/RTO; no missing data blocks a correct solution."
+      }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "e1",
+        "text": "states that kv-on-demand is rejected because the hot-write rate per partition (15,000 hot writes / 8 partitions = 1,875 WCU) exceeds the 1,000 WCU per partition ceiling from platform-limits.json",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e2",
+        "text": "states that the 8,000 writes per second staging figure from README.md is superseded and must not be used, because traffic-profile.json specifies 25,000 peak writes per second for launch day",
+        "source": "original"
+      },
+      {
+        "id": "e3",
+        "text": "computes monthly cost for the chosen option using the price sheet inputs: 3,000 WCU for 700 hours, 30,000 WCU for 30 launch hours, 5,000 RCU for 730 hours, and storage/backup charges, yielding approximately USD 6,540",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e4",
+        "text": "explains that the 60% hot-key fraction (traffic-profile.json) combined with 25,000 peak writes yields 15,000 hot writes per second, and that without write-distribution shards the on-demand option cannot stay under the partition ceiling",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e5",
+        "text": "states that relational-cluster is rejected because its four-node monthly cost (USD 8,075) exceeds the USD 7,000 budget constraint from requirements.json",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      },
+      {
+        "id": "e6",
+        "text": "verifies that the chosen option's RPO (45 seconds) and RTO (240 seconds) from price-sheet.json meet the recovery objectives of 60 seconds RPO and 300 seconds RTO from recovery.json",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e7",
+        "text": "identifies operational consequences such as the need to route hot-key writes through two shards, monitor shard skew, and run a launch rehearsal to verify p99 latency stays within 15 ms",
+        "source": "Google SRE Book, https://sre.google/sre-book/table-of-contents/ (CC BY-NC-ND 4.0); idea only"
+      },
+      {
+        "id": "e8",
+        "text": "explains that kv-on-demand has the lowest computed cost (approximately USD 4,965) but cannot be chosen because exceeding the partition ceiling would cause launch-day capacity failures, demonstrating that cost alone is insufficient for architectural decisions",
+        "source": "AWS Well-Architected Framework, https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html (AWS copyright, idea only); idea only"
+      }
+    ],
+    "weakAnswers": [
+      "picks kv-on-demand because it has the lowest monthly cost without checking the hot-write partition ceiling",
+      "uses the 8,000 writes per second staging figure instead of the 25,000 peak from traffic-profile.json, yielding incorrect capacity sizing",
+      "selects relational-cluster because it has the highest write capacity without computing whether its cost fits the budget",
+      "reports only the chosen option without explaining why the alternatives were rejected or what tradeoffs exist",
+      "calculates monthly cost using only average write rates instead of provisioning for peak, ignoring launch-day traffic requirements"
+    ]
+  }
+}

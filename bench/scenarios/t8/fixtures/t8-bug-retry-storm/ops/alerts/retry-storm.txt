@@ -1,0 +1,7 @@
+ALERT: order-sync partner retry pressure
+opened: 2025-03-18T02:18:00Z
+closed: 2025-03-18T03:19:00Z
+service: order-sync
+severity: page
+
+The queue exceeded 1,000 items while partner request attempts rose above the normal band. The partner status note covers the same interval. Primary evidence: worker logs, partner-minute metrics, and deploy history.

@@ -1,0 +1,45 @@
+{
+  "branch": "release/27.05",
+  "as_of": "2027-04-30",
+  "window_start": "2027-04-24",
+  "window_end": "2027-04-30",
+  "pass_rate_unit": "percent",
+  "jobs": [
+    {
+      "name": "linux-integration",
+      "required": true,
+      "runs": 20,
+      "passes": 10,
+      "pass_rate_7d": 50,
+      "first_failure_commit": "c9f1e2a",
+      "failure_pattern": "every run after the first failure commit"
+    },
+    {
+      "name": "windows-smoke",
+      "required": true,
+      "runs": 20,
+      "passes": 17,
+      "pass_rate_7d": 85,
+      "first_failure_commit": "",
+      "failure_pattern": "intermittent; failures on 2027-04-25, 2027-04-28, 2027-04-30"
+    },
+    {
+      "name": "api-contract",
+      "required": true,
+      "runs": 20,
+      "passes": 20,
+      "pass_rate_7d": 100,
+      "first_failure_commit": "",
+      "failure_pattern": "none"
+    },
+    {
+      "name": "docs-linkcheck",
+      "required": false,
+      "runs": 20,
+      "passes": 19,
+      "pass_rate_7d": 95,
+      "first_failure_commit": "",
+      "failure_pattern": "one transient timeout"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+service: relayroom
+fleet:
+  hosts: 40
+  zones: [north, central, south]
+release:
+  health_signal_window_minutes: 5
+  change_record_required: true
+websocket:
+  upstream_pool_per_host: 240
+  drain_poll_seconds: 30
+  retry_attempts: 2
+alerts:
+  - websocket_connect_error_rate
+  - room_operation_error_rate
+  - upstream_pool_wait_ms
+  - presence_lag_seconds

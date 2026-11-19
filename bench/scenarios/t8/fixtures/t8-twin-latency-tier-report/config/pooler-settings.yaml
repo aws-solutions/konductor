@@ -1,0 +1,14 @@
+service: db-pooler
+postgres:
+  host: postgres-primary.internal
+  max_connections: 40
+routes:
+  checkout:
+    pool_size: 40
+    acquire_timeout_ms: 800
+  reporting:
+    pool_size: 6
+    acquire_timeout_ms: 2500
+admin:
+  restart_policy: on-failure
+  last_known_good: checkout.pool_size=40

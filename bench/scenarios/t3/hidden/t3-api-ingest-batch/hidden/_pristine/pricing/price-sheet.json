@@ -1,0 +1,14 @@
+{
+  "currency": "USD",
+  "unit": "month",
+  "rates": {
+    "gateway_request_million": 0.42,
+    "queue_reading_million": 0.03,
+    "worker_hour": 0.09,
+    "storage_gib_month": 0.15,
+    "backup_gib_month": 0.04,
+    "database_write_million": 0.06,
+    "monitoring_flat": 42,
+    "replication_flat": 120
+  }
+}

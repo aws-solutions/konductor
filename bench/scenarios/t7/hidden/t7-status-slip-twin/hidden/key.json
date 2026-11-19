@@ -1,0 +1,118 @@
+{
+  "output": "reports/finance-numbers.md",
+  "block": "numbers",
+  "assertions": [
+    {
+      "id": "open-points-total",
+      "desc": "total open points treats blank estimates as zero",
+      "op": "number",
+      "path": "total_open_points",
+      "value": 597,
+      "tol": 0
+    },
+    {
+      "id": "open-epic-account-recovery",
+      "desc": "open ticket count for Account Recovery",
+      "op": "number",
+      "path": "open_tickets_by_epic.Account Recovery",
+      "value": 25,
+      "tol": 0
+    },
+    {
+      "id": "open-epic-checkout-experience",
+      "desc": "open ticket count for Checkout Experience",
+      "op": "number",
+      "path": "open_tickets_by_epic.Checkout Experience",
+      "value": 1,
+      "tol": 0
+    },
+    {
+      "id": "open-epic-merchant-console",
+      "desc": "open ticket count for Merchant Console",
+      "op": "number",
+      "path": "open_tickets_by_epic.Merchant Console",
+      "value": 33,
+      "tol": 0
+    },
+    {
+      "id": "open-epic-order-history",
+      "desc": "open ticket count for Order History",
+      "op": "number",
+      "path": "open_tickets_by_epic.Order History",
+      "value": 42,
+      "tol": 0
+    },
+    {
+      "id": "open-epic-payments-core",
+      "desc": "open ticket count for Payments Core",
+      "op": "number",
+      "path": "open_tickets_by_epic.Payments Core",
+      "value": 1,
+      "tol": 0
+    },
+    {
+      "id": "open-epic-payments-and-checkout-launch",
+      "desc": "open ticket count for Payments and Checkout Launch",
+      "op": "number",
+      "path": "open_tickets_by_epic.Payments and Checkout Launch",
+      "value": 9,
+      "tol": 0
+    },
+    {
+      "id": "open-epic-reliability-follow-ups",
+      "desc": "open ticket count for Reliability Follow-ups",
+      "op": "number",
+      "path": "open_tickets_by_epic.Reliability Follow-ups",
+      "value": 37,
+      "tol": 0
+    },
+    {
+      "id": "closed-asha-iyer",
+      "desc": "closed points for Asha Iyer across the last two sprint labels",
+      "op": "number",
+      "path": "closed_points_by_assignee.Asha Iyer",
+      "value": 2,
+      "tol": 0
+    },
+    {
+      "id": "closed-jules-ray",
+      "desc": "closed points for Jules Ray across the last two sprint labels",
+      "op": "number",
+      "path": "closed_points_by_assignee.Jules Ray",
+      "value": 0,
+      "tol": 0
+    },
+    {
+      "id": "closed-eve-grant",
+      "desc": "closed points for Eve Grant across the last two sprint labels",
+      "op": "number",
+      "path": "closed_points_by_assignee.Eve Grant",
+      "value": 16,
+      "tol": 0
+    },
+    {
+      "id": "closed-lana-price",
+      "desc": "closed points for Lana Price across the last two sprint labels",
+      "op": "number",
+      "path": "closed_points_by_assignee.Lana Price",
+      "value": 20,
+      "tol": 0
+    },
+    {
+      "id": "closed-nia-cole",
+      "desc": "closed points for Nia Cole across the last two sprint labels",
+      "op": "number",
+      "path": "closed_points_by_assignee.Nia Cole",
+      "value": 19,
+      "tol": 0
+    },
+    {
+      "id": "closed-dev-patel",
+      "desc": "closed points for Dev Patel across the last two sprint labels",
+      "op": "number",
+      "path": "closed_points_by_assignee.Dev Patel",
+      "value": 13,
+      "tol": 0
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "service": "ground",
+  "currency": "USD",
+  "fallback_zone": 5,
+  "printer_width": 32
+}

@@ -1,0 +1,154 @@
+{
+  "id": "t7-sprint-capacity",
+  "class": "design",
+  "version": 1,
+  "phase": "planning",
+  "role": "tpm",
+  "questions": "allowed",
+  "prompt": "I need a practical plan for the next three sprints so the beta work is visible and I know what will not fit. Please use the backlog, roster, calendar, holidays, on-call rotation, roadmap and notes in this folder. Write the deliverable to plan/next-three-sprints.md. Put one fenced JSON block in that file with the info string sprint-plan. The JSON must have exactly these named areas: capacity_by_sprint, an object mapping each sprint name to a number; sprints, an object mapping each sprint name to an array of ticket IDs; not_fitting, an array of ticket IDs; pulled_in_dependencies, an array of ticket IDs; over_allocated, an array of objects with person and sprint strings plus assigned and capacity numbers; and unestimated, an array of ticket IDs. Explain the bottom line and the assumptions behind the numbers in plain words before the block.",
+  "fixture": "t7-sprint-capacity",
+  "hidden": "t7-sprint-capacity",
+  "timeoutSec": 840,
+  "limits": {
+    "softSec": 420,
+    "hardSec": 840
+  },
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test --test-timeout=15000 hidden/*.test.*",
+      "min": 10,
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "file_exists",
+      "path": "plan/next-three-sprints.md",
+      "weight": 3,
+      "kind": "substance"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "backlog_export.csv",
+      "weight": 1,
+      "kind": "substance"
+    },
+    {
+      "type": "contains",
+      "path": "plan/next-three-sprints.md",
+      "pattern": "```\\s*sprint-plan",
+      "weight": 1,
+      "kind": "format"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "bottom-line",
+      "criterion": "The prose gives the requester a clear bottom line about beta scope, unresolved work, and any conditional commitment before the JSON block (code cannot check this because it only reads the structured block).",
+      "weight": 3
+    },
+    {
+      "id": "reasoning",
+      "criterion": "The prose explains how the capacity numbers, sequencing, dependency treatment, and specialist constraint were obtained without silently treating uncertainty as zero (code cannot check this because it cannot evaluate narrative reasoning).",
+      "weight": 2
+    }
+  ],
+  "expertKey": {
+    "items": [
+      {
+        "id": "transparent-release-scope",
+        "text": "State which beta scope is actually committed and make the payment capability conditional instead of presenting an overloaded specialist as a guaranteed delivery.",
+        "source": "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "inspectable-plan",
+        "text": "Give the director a short explanation of the ordering so the prerequisite work and the work it enables can be inspected together.",
+        "source": "The Scrum Guide 2020, https://scrumguides.org/scrum-guide.html (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "capacity-evidence",
+        "text": "Show the working-day, holiday, focus, and on-call assumptions behind capacity rather than reporting a bare point total that cannot be checked.",
+        "source": "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "dependency-visibility",
+        "text": "Keep prerequisite work visible in the sprint narrative and explain why a lower-priority prerequisite is included when its dependent beta item is discussed.",
+        "source": "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)"
+      },
+      {
+        "id": "unfinished-estimate",
+        "text": "Treat the blank estimate as an explicit planning decision and name the follow-up needed before the dashboard can be committed.",
+        "source": "Kubernetes release phases, https://github.com/kubernetes/sig-release/blob/master/releases/release_phases.md (Apache-2.0)"
+      },
+      {
+        "id": "historical-noise",
+        "text": "Separate active beta scope from completed, cancelled, and historical export rows so the director is not given a misleading total.",
+        "source": "GitLab Handbook, Product processes, https://handbook.gitlab.com/handbook/product/product-processes/ (CC BY-SA 4.0, idea only)"
+      }
+    ],
+    "weakAnswers": [
+      "Put every ticket marked Must into the first sprint and report one round capacity total.",
+      "Treat the blank estimate as zero and say the beta is fully covered.",
+      "List the payment checkout without calling out the sole specialist's available capacity.",
+      "Copy the roadmap items into sprint lists without showing prerequisites or excluded historical rows."
+    ]
+  },
+  "targetSkills": [
+    "sprint-planning"
+  ],
+  "targetSop": null,
+  "targetAgent": null,
+  "controlKind": "none",
+  "loadCheck": {
+    "mustLoad": [
+      "sprint-planning"
+    ],
+    "mustNotLoad": []
+  },
+  "effectSubset": false,
+  "tiers": [
+    "full"
+  ],
+  "authorship": {
+    "family": "openai",
+    "model": "gpt-5.6-luna",
+    "date": "2026-11-19",
+    "source": {
+      "url": "https://github.com/openstack/releases",
+      "licence": "Apache-2.0",
+      "licenceCheckedAt": "2026-11-19",
+      "use": "idea"
+    }
+  },
+  "review": {
+    "family": "zhipu",
+    "date": "2026-11-19",
+    "verdicts": [
+      {
+        "check": "leak",
+        "verdict": "pass",
+        "note": "The prompt asks for a sprint plan with specific JSON fields but does not name methods, hint at the seeded traps (holidays, on-call, specialist overload, blank estimate, dependencies, completed rows), or reveal the critical path."
+      },
+      {
+        "check": "ambiguity",
+        "verdict": "pass",
+        "note": "The README and capacity_policy.md clearly state how to count working days, apply focus factors, handle on-call, and treat blank estimates. Status legend clearly defines open vs closed statuses. The roadmap names beta scope items matching ticket titles. All three capacity values I computed independently matched the key within tolerance."
+      },
+      {
+        "check": "hidden-answer",
+        "verdict": "pass",
+        "note": "The fixture contains no columns flagging conflicts, risk labels, or notes naming the critical path. The release_checklist.csv is marked as a decoy in README. The backlog has typical export noise but no hidden hints about which tickets to prioritize or exclude."
+      },
+      {
+        "check": "ceiling",
+        "verdict": "pass",
+        "note": "A lazy answer putting all Must tickets in S1 with flat capacity numbers passed only 2 of 16 tests (12.5%), well below the half threshold. The task requires calculating actual capacity from holidays/focus/on-call, sequencing dependencies, identifying the single payments specialist constraint, and flagging the blank estimate."
+      },
+      {
+        "check": "floor",
+        "verdict": "pass",
+        "note": "I independently verified three key values: S1 capacity = 35.23 (matches), Gale Park S1 capacity = 3.6 (matches), T-068 + T-074 bundle = 11 points vs 3.6 capacity (matches). All values follow directly from the stated conventions in capacity_policy.md, team_roster.csv, sprint_calendar.csv, holidays.csv, and on_call.csv."
+      }
+    ]
+  }
+}

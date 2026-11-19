@@ -1,7 +1,7 @@
 ---
 name: app-discovery
-version: 1.0.0
-description: Navigates a deployed web application and maps its pages and interactive elements into a discovery report. Use when a test plan or spec needs a map of a live web app's pages, controls and form rules, or the user asks to crawl an app before writing E2E tests. Loads dom-inspection for form rules and conditional visibility.
+version: 1.0.1
+description: 'Use before writing E2E tests or a test plan, or when asked to crawl a deployed web app: maps its pages, controls and form rules into a discovery report. Loads dom-inspection for form rules.'
 tags: [discovery, browser, dom, testing, playwright, app-inspection]
 ---
 
