@@ -1,0 +1,4 @@
+[
+  { "id": "sh-1", "date": "2025-03-03", "start": "09:00", "end": "17:00", "assignee": "u-100", "notes": "handover at lunch" },
+  { "id": "sh-2", "date": "2025-03-04", "start": "10:00", "end": "18:00", "assignee": "u-101", "notes": "" }
+]

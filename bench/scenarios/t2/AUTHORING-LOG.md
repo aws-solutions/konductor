@@ -2,7 +2,7 @@
 
 Every model call made to write, map or review a T2 task, in order. Calls ran through Kiro CLI 3.5.0 in an empty work dir with an isolated home (no steering, rules, skills, MCP servers; memory disabled). Credits are read from the call's own stream; a call stopped before its final metering event shows "not captured".
 
-Total captured: 20.59 credits over 13 calls.
+Total captured: 20.91 credits over 14 calls.
 
 | Time (UTC) | Task | Step | Model | Seconds | Credits | Result |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -19,3 +19,4 @@ Total captured: 20.59 credits over 13 calls.
 | 2026-11-19T18:01:15Z | t2-dr-notify-fanout | review | minimax-m2.5 | 117 | 1.22 | ok |
 | 2026-11-19T18:06:13Z | t2-gaps-jwt-middleware | author | gpt-5.6-luna | 297 | 6.59 | ok |
 | 2026-11-19T18:06:37Z | t2-gaps-jwt-middleware | map | glm-5 | 19 | 0.51 | ok |
+| 2026-11-19T18:08:08Z | t2-gaps-jwt-middleware | review | qwen3-coder-next | 90 | 0.32 | ok |
