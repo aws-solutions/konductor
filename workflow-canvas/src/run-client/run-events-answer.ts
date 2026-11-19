@@ -59,13 +59,13 @@ function consoleOf(seq: number, fields: Fields): RunEvent | undefined {
 }
 
 function runFinishedOf(seq: number, fields: Fields): RunEvent | undefined {
-  const { status, exit_code } = fields;
-  if (!RUN_STATUSES.has(status) || !isWholeAtLeast(exit_code, 0)) {
-    return undefined;
-  }
+  const { at, status, exit_code } = fields;
+  if (!isText(at) || !RUN_STATUSES.has(status)) return undefined;
+  if (!isWholeAtLeast(exit_code, 0)) return undefined;
   return {
     seq,
     type: 'run_finished',
+    at,
     status: status as 'passed' | 'halted',
     exit_code: exit_code as number,
   };

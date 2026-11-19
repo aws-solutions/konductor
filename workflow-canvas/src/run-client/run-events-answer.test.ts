@@ -55,7 +55,13 @@ describe('parseRunEventsAnswer', () => {
           status: 'blocked',
           reason: 'TIMEOUT',
         },
-        { seq: 4, type: 'run_finished', status: 'halted', exit_code: 1 },
+        {
+          seq: 4,
+          type: 'run_finished',
+          at: '2026-10-24T04:12:05Z',
+          status: 'halted',
+          exit_code: 1,
+        },
       ],
       next: 4,
       finished: true,
@@ -136,6 +142,12 @@ describe('parseRunEventsAnswer', () => {
       'a run_finished of a running run',
       answerWith([
         { seq: 1, type: 'run_finished', status: 'running', exit_code: 0 },
+      ]),
+    ],
+    [
+      'a run_finished with no at',
+      answerWith([
+        { seq: 1, type: 'run_finished', status: 'passed', exit_code: 0 },
       ]),
     ],
     [
