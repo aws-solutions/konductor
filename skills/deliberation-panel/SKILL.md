@@ -1,6 +1,6 @@
 ---
 name: deliberation-panel
-description: 'Use for a high-stakes choice between options, once the user accepts the cost (2-3 min, several subagents; consent_confirmed). Returns a scored pick. To question a person, use `socratic-elicitation`.'
+description: 'Use for a high-stakes choice between options, once the user accepts the cost (2-3 min, several subagents; consent_confirmed=true only after the user agrees). Returns a scored pick. To question a person, use `socratic-elicitation`.'
 version: 1.1.1
 tags:
   [skill, deliberation, tradeoff, decision, design, research, viability, panel]
