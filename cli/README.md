@@ -265,7 +265,11 @@ YAML) is skipped with a `konductor install: warning:` naming the file.
   broad `mcp__aws-mcp__*` allow.
 - The union of those agents' Kiro `allowedTools` for `aws-mcp` in `permissions.allow`, as
   `mcp__aws-mcp__<tool>`, so Claude Code pre-approves the same read-only tools Kiro CLI
-  does. `synth` records them in `dist/claude/agents/_mcp_allowed_tools.json`. A dist
+  does. Only the five read-only tools (`aws___retrieve_skill`, `aws___search_documentation`,
+  `aws___read_documentation`, `aws___list_regions`, `aws___get_regional_availability`) can
+  get an allow rule: `synth` leaves any other `aws-mcp` tool out with a
+  `konductor: warning:`, and install never writes one, even from a hand-edited sidecar.
+  `synth` records them in `dist/claude/agents/_mcp_allowed_tools.json`. A dist
   without that file (synthed by an older konductor) gets only the ask rules, and install
   says so. Only single named tools are recorded: `synth` leaves out a whole-server
   (`@aws-mcp`) or wildcard (`@aws-mcp/*`) entry, or any name that is not letters, digits,
@@ -277,7 +281,16 @@ The merge only appends. It never removes or reorders your entries, and a reinsta
 adds nothing leaves the file untouched. If one of your entries already covers a rule (a
 `deny` rule, an exact `allow` of an ask-gated tool, or an `ask` rule covering a read-only
 tool), install keeps yours, leaves that rule out and prints one line naming your entry.
-`uninstall` leaves the rules in place, like the rest of `settings.json`.
+Install records in its manifest the entries it appended, and `uninstall` removes exactly
+those. It keeps the entries you already had, the rest of `settings.json` and the file
+itself, and it refuses a symlinked `.claude` or `settings.json` with a warning naming the
+entries to remove by hand. A second `uninstall` changes nothing.
+
+These rules live in that settings file's scope, so they apply to every Claude Code session
+that reads it, not only to Konductor's agents: every session for the default `$HOME` install
+(`~/.claude/settings.json`), and every session in the project for a `--target` install
+(`<target>/.claude/settings.json`, which a team may commit). Claude Code has no per-agent
+permission settings.
 
 When the settings file cannot take the rules (a symlinked `.claude` or `settings.json`,
 malformed JSON, a `permissions` that is not an object, or a `permissions.ask`, `allow` or

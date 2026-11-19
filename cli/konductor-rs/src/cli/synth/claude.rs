@@ -34,6 +34,7 @@ use super::path_safety::reject_unsafe_agent_name;
 use super::spawn_policy::{is_claude_spawn_tool, is_specialist, CLAUDE_SPAWN_TOOLS};
 use super::staging::stage_content_type;
 use super::HarnessTransformer;
+use crate::cli::install::resource_rewrite::{AWS_MCP_READ_ONLY_TOOLS, AWS_MCP_SERVER_NAME};
 
 /// Content-type segment of the agent output directory. Joined onto
 /// `name()` to form the full path relative to `output_root`.
@@ -395,8 +396,10 @@ type McpAllowedToolsByAgent<'a> = BTreeMap<&'a str, BTreeMap<&'a str, BTreeSet<&
 /// The sidecar content, plus one warning per registry-server `allowedTools`
 /// entry left out of it. A whole-server (`@aws-mcp`) or wildcard
 /// (`@aws-mcp/*`) entry is left out because, as a Claude Code allow rule, it
-/// would also cover the ask tools. Any other server or tool name that is not
-/// rule-safe is left out because install would reject the whole sidecar.
+/// would also cover the ask tools. An `aws-mcp` tool outside
+/// `AWS_MCP_READ_ONLY_TOOLS` is left out because only read-only tools may be
+/// pre-approved. Any other server or tool name that is not rule-safe is left
+/// out because install would reject the whole sidecar.
 fn mcp_allowed_tools_by_agent(
     agents: &[super::parser::ParsedAgentSpec],
 ) -> (McpAllowedToolsByAgent<'_>, Vec<String>) {
@@ -433,7 +436,18 @@ fn mcp_allowed_tools_by_agent(
             let Some(tools) = per_server.get_mut(server) else {
                 continue;
             };
-            if is_mcp_rule_safe_name(tool) {
+            if server == AWS_MCP_SERVER_NAME
+                && is_mcp_rule_safe_name(tool)
+                && !AWS_MCP_READ_ONLY_TOOLS.contains(&tool)
+            {
+                warnings.push(format!(
+                    "agent '{}': allowedTools entry {entry:?} left out of \
+                     {MCP_ALLOWED_TOOLS_SIDECAR_FILE}; only the read-only {AWS_MCP_SERVER_NAME} \
+                     tools ({}) become Claude Code allow rules",
+                    agent.name,
+                    AWS_MCP_READ_ONLY_TOOLS.join(", ")
+                ));
+            } else if is_mcp_rule_safe_name(tool) {
                 tools.insert(tool);
             } else {
                 warnings.push(format!(
@@ -2404,8 +2418,8 @@ mod tests {
                 "k-x",
                 "aws-mcp",
                 &[
-                    "@aws-mcp/b",
-                    "@aws-mcp/a",
+                    "@aws-mcp/aws___search_documentation",
+                    "@aws-mcp/aws___list_regions",
                     "@builtin",
                     "fs_read",
                     "@other/x",
@@ -2417,10 +2431,60 @@ mod tests {
 
         assert_eq!(
             read_mcp_allowed_tools_sidecar(&dir),
-            serde_json::json!({"k-x": {"aws-mcp": ["a", "b"]}})
+            serde_json::json!({"k-x": {"aws-mcp": [
+                "aws___list_regions",
+                "aws___search_documentation"
+            ]}})
         );
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_keeps_only_read_only_aws_mcp_tools() {
+        let agents = vec![agent_with_mcp_server(
+            "k-x",
+            "aws-mcp",
+            &[
+                "@aws-mcp/aws___run_script",
+                "@aws-mcp/aws___get_tasks",
+                "@aws-mcp/aws___not_a_known_tool",
+                "@aws-mcp/aws___read_documentation",
+            ],
+        )];
+
+        let (allowed, warnings) = mcp_allowed_tools_by_agent(&agents);
+
+        assert_eq!(
+            serde_json::to_value(&allowed).unwrap(),
+            serde_json::json!({"k-x": {"aws-mcp": ["aws___read_documentation"]}})
+        );
+        assert_eq!(warnings.len(), 3, "{warnings:?}");
+        for entry in [
+            "@aws-mcp/aws___run_script",
+            "@aws-mcp/aws___get_tasks",
+            "@aws-mcp/aws___not_a_known_tool",
+        ] {
+            assert!(
+                warnings
+                    .iter()
+                    .any(|w| w.contains(&format!("{entry:?}")) && w.contains("read-only")),
+                "no read-only warning for {entry}: {warnings:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn mcp_allowed_tools_sidecar_does_not_restrict_other_servers_to_the_aws_mcp_set() {
+        let agents = vec![agent_with_mcp_server("k-x", "other", &["@other/run"])];
+
+        let (allowed, warnings) = mcp_allowed_tools_by_agent(&agents);
+
+        assert_eq!(
+            serde_json::to_value(&allowed).unwrap(),
+            serde_json::json!({"k-x": {"other": ["run"]}})
+        );
+        assert!(warnings.is_empty(), "{warnings:?}");
     }
 
     #[test]

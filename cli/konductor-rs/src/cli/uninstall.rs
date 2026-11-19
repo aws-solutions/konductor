@@ -38,8 +38,9 @@ use super::install::kiro_cli::{
 use super::install::manifest::{self, ManifestError, Provenance, StrategyManifest};
 use super::install::resource_rewrite::{
     claude_hooks_settings_relative_path, is_claude_settings_path, remove_claude_konductor_hooks,
-    V3_ORCHESTRATION_HOOKS_RELATIVE_PATH, V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME,
-    V3_STANDALONE_HOOKS_RELATIVE_PATH, V3_STANDALONE_HOOK_LOCK_FILE_NAME,
+    remove_claude_settings_mcp_rules, V3_ORCHESTRATION_HOOKS_RELATIVE_PATH,
+    V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME, V3_STANDALONE_HOOKS_RELATIVE_PATH,
+    V3_STANDALONE_HOOK_LOCK_FILE_NAME,
 };
 use crate::cli::output::ColorMode;
 use crate::cli::synth::kiro_cli_v2::SKILLS_CONTENT_TYPE_DIR;
@@ -1186,6 +1187,7 @@ fn uninstall_one_impl(
                 &selected_name,
                 |fresh_slot| {
                     delete_eligible_files(target_path, fresh_slot, &mut counts, &mut touched_dirs)?;
+                    remove_recorded_aws_mcp_rules(target_path, fresh_slot);
                     counts.dirs_removed += cleanup_empty_dirs(target_path, &touched_dirs);
                     touched_dirs.clear();
                     Ok(())
@@ -1350,6 +1352,31 @@ fn uninstall_one_impl(
     }
 
     Ok(counts)
+}
+
+/// Removes from `.claude/settings.json` the `aws-mcp` entries `slot`'s
+/// install recorded as appended, leaving the user's own entries. Non-fatal,
+/// like the hook removal: a failure names the entries left behind.
+fn remove_recorded_aws_mcp_rules(target_dir: &Path, slot: &StrategyManifest) {
+    let Some(added) = slot.aws_mcp_rules.as_ref().map(|record| &record.added) else {
+        return;
+    };
+    if let Err(err) = remove_claude_settings_mcp_rules(target_dir, added) {
+        let entries: Vec<&str> = added
+            .ask
+            .iter()
+            .chain(&added.allow)
+            .map(String::as_str)
+            .collect();
+        eprintln!(
+            "konductor uninstall: warning: could not remove the AWS MCP permission rules \
+             Konductor added ({err}); remove these entries from {} by hand: {}",
+            target_dir
+                .join(super::install::resource_rewrite::CLAUDE_SETTINGS_RELATIVE_PATH)
+                .display(),
+            entries.join(", ")
+        );
+    }
 }
 
 /// Validates that a manifest-recorded relative path stays within
@@ -2817,15 +2844,9 @@ mod tests {
         fs::remove_dir_all(&target).ok();
     }
 
-    /// Like the `konductor-skills` grant, the aws-mcp `ask`/`allow` rules a
-    /// Claude install merges into `.claude/settings.json` stay after uninstall.
-    #[test]
-    fn uninstall_keeps_the_aws_mcp_permission_rules_a_claude_install_wrote() {
+    fn install_aws_mcp_claude_fixture(target: &Path, repo_root: &Path) {
         use super::super::install::InstallStrategy;
 
-        let _home = HomeGuard::new("uninstall-keeps-aws-rules-home");
-        let target = scratch_home("uninstall-keeps-aws-rules");
-        let repo_root = scratch_home("uninstall-keeps-aws-rules-repo");
         let agents_dir = repo_root.join("dist/claude/agents");
         fs::create_dir_all(&agents_dir).unwrap();
         fs::write(
@@ -2835,38 +2856,96 @@ mod tests {
         .unwrap();
         fs::write(
             agents_dir.join("_mcp_allowed_tools.json"),
-            r#"{"k-x": {"aws-mcp": ["aws___list_regions"]}}"#,
+            r#"{"k-x": {"aws-mcp": ["aws___list_regions", "aws___read_documentation"]}}"#,
         )
         .unwrap();
         super::super::install::claude::ClaudeInstallStrategy
             .install_from_local(
-                &target,
+                target,
                 Some(repo_root.to_str().unwrap()),
                 "2026-01-01T00:00:00Z",
                 true,
             )
             .expect("install must succeed");
+    }
+
+    /// Uninstall removes the aws-mcp `ask`/`allow` entries the Claude
+    /// install appended, keeps the ones the user already had, and keeps
+    /// the rest of `.claude/settings.json`.
+    #[test]
+    fn uninstall_removes_only_the_aws_mcp_permission_entries_install_added() {
+        let _home = HomeGuard::new("uninstall-aws-rules-home");
+        let target = scratch_home("uninstall-aws-rules");
+        let repo_root = scratch_home("uninstall-aws-rules-repo");
+        fs::create_dir_all(target.join(".claude")).unwrap();
+        let settings_path = target.join(".claude/settings.json");
+        let user_settings = serde_json::json!({
+            "env": {"FOO": "bar"},
+            "permissions": {
+                "ask": ["mcp__aws-mcp__aws___get_tasks"],
+                "allow": ["Bash(npm test)", "mcp__aws-mcp__aws___list_regions"]
+            }
+        });
+        fs::write(
+            &settings_path,
+            serde_json::to_vec_pretty(&user_settings).unwrap(),
+        )
+        .unwrap();
+
+        install_aws_mcp_claude_fixture(&target, &repo_root);
+        let installed: serde_json::Value =
+            serde_json::from_slice(&fs::read(&settings_path).unwrap()).unwrap();
+        assert_eq!(
+            installed["permissions"]["ask"],
+            serde_json::json!([
+                "mcp__aws-mcp__aws___get_tasks",
+                "mcp__aws-mcp__aws___get_presigned_url",
+                "mcp__aws-mcp__aws___run_script"
+            ])
+        );
 
         uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
 
         assert!(!target.join(".claude/agents/k-x.md").exists());
-        let settings: serde_json::Value =
-            serde_json::from_slice(&fs::read(target.join(".claude/settings.json")).unwrap())
-                .unwrap();
+        let after: serde_json::Value =
+            serde_json::from_slice(&fs::read(&settings_path).unwrap()).unwrap();
+        assert_eq!(after, user_settings);
+
+        let bytes = fs::read(&settings_path).unwrap();
+        uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert_eq!(
-            settings["permissions"]["ask"],
-            serde_json::json!([
-                "mcp__aws-mcp__aws___get_presigned_url",
-                "mcp__aws-mcp__aws___get_tasks",
-                "mcp__aws-mcp__aws___run_script"
-            ])
-        );
-        assert_eq!(
-            settings["permissions"]["allow"],
-            serde_json::json!(["mcp__aws-mcp__aws___list_regions"])
+            fs::read(&settings_path).unwrap(),
+            bytes,
+            "a second uninstall must leave settings.json alone"
         );
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn uninstall_refuses_to_follow_a_symlinked_settings_file_and_still_succeeds() {
+        let _home = HomeGuard::new("uninstall-aws-rules-symlink-home");
+        let target = scratch_home("uninstall-aws-rules-symlink");
+        let repo_root = scratch_home("uninstall-aws-rules-symlink-repo");
+        let elsewhere = scratch_home("uninstall-aws-rules-symlink-elsewhere");
+        install_aws_mcp_claude_fixture(&target, &repo_root);
+        let settings_path = target.join(".claude/settings.json");
+        let installed = fs::read(&settings_path).unwrap();
+        fs::write(elsewhere.join("settings.json"), &installed).unwrap();
+        fs::remove_file(&settings_path).unwrap();
+        std::os::unix::fs::symlink(elsewhere.join("settings.json"), &settings_path).unwrap();
+
+        uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+
+        assert!(!target.join(".claude/agents/k-x.md").exists());
+        assert_eq!(
+            fs::read(elsewhere.join("settings.json")).unwrap(),
+            installed
+        );
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+        fs::remove_dir_all(&elsewhere).ok();
     }
 
     #[test]

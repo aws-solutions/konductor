@@ -1531,13 +1531,21 @@ fn report_install_success(
     print_unwritten_aws_mcp_rules(destination, &slot);
 }
 
+/// The record of this install's `aws-mcp` rules, `None` when it had none
+/// to merge (the record may still exist to track earlier appended entries).
+fn aws_mcp_rules_this_run(
+    record: Option<&manifest::AwsMcpRulesRecord>,
+) -> Option<&manifest::AwsMcpRulesRecord> {
+    record.filter(|record| !(record.ask.is_empty() && record.allow.is_empty()))
+}
+
 /// The `--json` `aws_mcp_rules` field: `null` when this install had no
 /// `aws-mcp` rules to merge.
 fn aws_mcp_rules_json(
     destination: &Path,
     record: Option<&manifest::AwsMcpRulesRecord>,
 ) -> serde_json::Value {
-    let Some(record) = record else {
+    let Some(record) = aws_mcp_rules_this_run(record) else {
         return serde_json::Value::Null;
     };
     serde_json::json!({
@@ -1570,7 +1578,7 @@ fn format_unwritten_aws_mcp_rules(
     destination: &Path,
     record: Option<&manifest::AwsMcpRulesRecord>,
 ) -> Option<String> {
-    let record = record.filter(|record| !record.written)?;
+    let record = aws_mcp_rules_this_run(record).filter(|record| !record.written)?;
     let fragment = serde_json::to_string_pretty(&aws_mcp_rules_settings_fragment(record))
         .expect("a JSON value always serializes");
     Some(format!(
@@ -4723,6 +4731,7 @@ mod tests {
             ),
             ask: vec!["mcp__aws-mcp__aws___run_script".to_string()],
             allow: vec!["mcp__aws-mcp__aws___list_regions".to_string()],
+            added: manifest::AddedPermissionRules::default(),
         }
     }
 

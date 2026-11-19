@@ -320,6 +320,27 @@ pub struct AwsMcpRulesRecord {
     pub ask: Vec<String>,
     #[serde(default)]
     pub allow: Vec<String>,
+    /// The entries Konductor itself appended to the settings file, over
+    /// this and earlier installs, and that are still there. Uninstall
+    /// removes exactly these, never an entry the user already had.
+    #[serde(default, skip_serializing_if = "AddedPermissionRules::is_empty")]
+    pub added: AddedPermissionRules,
+}
+
+/// `permissions.ask` and `permissions.allow` entries Konductor appended to
+/// a Claude Code settings file.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct AddedPermissionRules {
+    #[serde(default)]
+    pub ask: Vec<String>,
+    #[serde(default)]
+    pub allow: Vec<String>,
+}
+
+impl AddedPermissionRules {
+    pub fn is_empty(&self) -> bool {
+        self.ask.is_empty() && self.allow.is_empty()
+    }
 }
 
 impl StrategyManifest {

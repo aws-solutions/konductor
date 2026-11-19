@@ -65,7 +65,12 @@ not per individual commit.
   ask rules. Synth leaves a whole-server (`@aws-mcp`), wildcard
   (`@aws-mcp/*`) or other non rule-safe entry out of that file with a warning naming the agent
   and entry, so a wildcard allow never covers an ask-gated tool and never breaks install.
-  A user `deny` or `ask` entry that covers a tool is kept and that tool is left out.
+  Only the five read-only tools can get an allow rule: synth leaves any other `aws-mcp` tool
+  out of the file with a warning, and install never writes one. A user `deny` or `ask` entry
+  that covers a tool is kept and that tool is left out. The rules apply to every Claude Code
+  session using that settings file (all of `~/.claude` for a `$HOME` install, or the
+  project's `.claude` for `--target`), not only Konductor's agents; Claude Code has no
+  per-agent permission settings.
 - `synth` warns when an agent's Claude Code skill preload (`clientConfig.claudeCli.skills`) is over
   32 KiB or 32 names, and names the skills Claude Code would drop. `-v` prints one
   `claude preload:` line per agent, and `synth --json` adds a `claude_preload` array. Each Claude
@@ -573,7 +578,8 @@ not per individual commit.
   rules' settings file applies to cannot call them (every pane for the default `$HOME` install;
   for a `--target` install, only panes running in that project); run that work from
   `konductor`. The merge only appends, keeps any user entry that already covers a rule and says
-  so, and `uninstall` leaves the rules in place. When the settings file cannot take the rules (a
+  so. Install records the entries it appended in its manifest, and `uninstall` removes exactly
+  those, keeping entries the user already had and the rest of the file. When the settings file cannot take the rules (a
   symlinked `.claude` or `settings.json`, malformed JSON, or a `permissions`, `ask`, `allow` or
   `deny` key of the wrong shape), install writes none of them, still exits 0, and ends with a
   stderr block naming the file, the reason and the rules as JSON to add by hand; `install --json`

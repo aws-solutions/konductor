@@ -14,7 +14,7 @@
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
-use super::super::manifest::{ManifestFile, Provenance};
+use super::super::manifest::{AddedPermissionRules, ManifestFile, Provenance};
 use super::mcp_server::{MCP_SERVER_ALLOWED_TOOLS_GRANTS, MCP_SERVER_NAME};
 
 // ── V3/Claude Code permission grant ─────────────────────────────────────
@@ -450,9 +450,11 @@ pub(super) fn apply_claude_settings_grant(
 // `allowedTools`. Claude Code evaluates deny, then ask, then allow, so the
 // ask rules prompt even under a broad `mcp__aws-mcp__*` allow. Unlike the
 // `konductor-skills` grant, a conflicting user entry skips only the entry it
-// covers. Uninstall leaves the entries in place, like the grant.
+// covers. The manifest records the entries install appended
+// (`AddedPermissionRules`), and uninstall removes only those
+// (`remove_claude_settings_mcp_rules`).
 
-pub(in crate::cli::install) const AWS_MCP_SERVER_NAME: &str = "aws-mcp";
+pub(crate) const AWS_MCP_SERVER_NAME: &str = "aws-mcp";
 
 /// Every tool the `aws-mcp` server lists (`tools/list` of
 /// `mcp-proxy-for-aws-cli` 1.7.0, the version the agent specs pin). Fixed
@@ -468,8 +470,9 @@ pub(in crate::cli::install) const AWS_MCP_KNOWN_TOOLS: &[&str] = &[
     "aws___search_documentation",
 ];
 
-/// The read-only `aws-mcp` tools, the only ones install may pre-approve.
-pub(in crate::cli::install) const AWS_MCP_READ_ONLY_TOOLS: &[&str] = &[
+/// The read-only `aws-mcp` tools, the only ones synth records and install
+/// may pre-approve in `permissions.allow`.
+pub(crate) const AWS_MCP_READ_ONLY_TOOLS: &[&str] = &[
     "aws___get_regional_availability",
     "aws___list_regions",
     "aws___read_documentation",
@@ -515,10 +518,35 @@ struct SkippedRule {
 }
 
 /// `bytes` is what is on disk after the merge, empty when no file exists.
+/// `added` is every entry Konductor appended that is now in the file.
 #[derive(Debug)]
 struct MergeOutcome {
     bytes: Vec<u8>,
     skipped: Vec<SkippedRule>,
+    added: AddedPermissionRules,
+}
+
+/// The settings file for the manifest (`None` when nothing is on disk) and
+/// the entries Konductor appended that are now in it.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub(in crate::cli::install) struct AppliedMcpRules {
+    pub(in crate::cli::install) file: Option<ManifestFile>,
+    pub(in crate::cli::install) added: AddedPermissionRules,
+}
+
+/// `previous` entries still present in `current`, then `appended`.
+fn still_added(previous: &[String], current: &[String], appended: &[String]) -> Vec<String> {
+    let mut added: Vec<String> = previous
+        .iter()
+        .filter(|entry| current.contains(entry))
+        .cloned()
+        .collect();
+    for entry in appended {
+        if !added.contains(entry) {
+            added.push(entry.clone());
+        }
+    }
+    added
 }
 
 /// The string entries of `permissions.<key>`, or an error naming the key
@@ -567,11 +595,15 @@ fn covering_user_entry(
 /// exists to take precedence over it). An allow rule is skipped when a
 /// `deny` or `ask` entry covers it. Each skip is reported in `skipped`.
 ///
+/// `previously_added` is what earlier installs recorded as appended. The
+/// outcome's `added` keeps the ones still in the file and adds this run's.
+///
 /// Same lock, symlink refusal, mode preservation and no-op behavior as
 /// `merge_claude_settings_permissions`.
 fn merge_claude_settings_mcp_rules(
     target_dir: &Path,
     rules: &McpPermissionRules,
+    previously_added: &AddedPermissionRules,
 ) -> Result<MergeOutcome, ClaudeGrantError> {
     let (settings_path, claude_dir) = settings_paths(target_dir, CLAUDE_SETTINGS_RELATIVE_PATH)?;
     let _lock_guard = crate::cli::config_lock::acquire_named(&claude_dir, ".settings.lock")
@@ -641,9 +673,17 @@ fn merge_claude_settings_mcp_rules(
         }
     }
 
+    let added = AddedPermissionRules {
+        ask: still_added(&previously_added.ask, &ask, &ask_additions),
+        allow: still_added(&previously_added.allow, &allow, &allow_additions),
+    };
     if ask_additions.is_empty() && allow_additions.is_empty() {
         let bytes = original_text.map(String::into_bytes).unwrap_or_default();
-        return Ok(MergeOutcome { bytes, skipped });
+        return Ok(MergeOutcome {
+            bytes,
+            skipped,
+            added,
+        });
     }
 
     let permissions = root_obj
@@ -664,22 +704,28 @@ fn merge_claude_settings_mcp_rules(
     }
 
     let bytes = write_settings_file(&settings_path, &claude_dir, &root, original_mode)?;
-    Ok(MergeOutcome { bytes, skipped })
+    Ok(MergeOutcome {
+        bytes,
+        skipped,
+        added,
+    })
 }
 
 /// Merges `rules` into `<target_dir>/.claude/settings.json` and returns the
-/// file for the manifest, `Ok(None)` when nothing is on disk, or `Err` with
+/// file for the manifest with the entries Konductor appended (see
+/// `merge_claude_settings_mcp_rules` for `previously_added`), or `Err` with
 /// the reason the file could not take the rules (a symlink, malformed JSON
 /// or a key of the wrong shape). The caller still finishes the install and
 /// reports the rules to add by hand. Each skipped rule is reported on stderr.
 pub(in crate::cli::install) fn apply_claude_settings_mcp_rules(
     target_dir: &Path,
     rules: &McpPermissionRules,
-) -> Result<Option<ManifestFile>, String> {
-    if rules.is_empty() {
-        return Ok(None);
+    previously_added: &AddedPermissionRules,
+) -> Result<AppliedMcpRules, String> {
+    if rules.is_empty() && previously_added.is_empty() {
+        return Ok(AppliedMcpRules::default());
     }
-    match merge_claude_settings_mcp_rules(target_dir, rules) {
+    match merge_claude_settings_mcp_rules(target_dir, rules, previously_added) {
         Ok(outcome) => {
             let settings_path = target_dir.join(CLAUDE_SETTINGS_RELATIVE_PATH);
             for skip in &outcome.skipped {
@@ -692,14 +738,15 @@ pub(in crate::cli::install) fn apply_claude_settings_mcp_rules(
                     skip.user_entry
                 );
             }
-            if outcome.bytes.is_empty() {
-                return Ok(None);
-            }
-            Ok(Some(ManifestFile {
+            let file = (!outcome.bytes.is_empty()).then(|| ManifestFile {
                 path: CLAUDE_SETTINGS_RELATIVE_PATH.to_string(),
                 sha256: Some(super::super::artifact::sha256_hex(&outcome.bytes)),
                 provenance: Provenance::Created,
-            }))
+            });
+            Ok(AppliedMcpRules {
+                file,
+                added: outcome.added,
+            })
         }
         Err(err) => {
             eprintln!(
@@ -709,6 +756,87 @@ pub(in crate::cli::install) fn apply_claude_settings_mcp_rules(
             Err(err.to_string())
         }
     }
+}
+
+/// Removes from `<target_dir>/.claude/settings.json` one occurrence of each
+/// `added` entry, the entries an install recorded as appended, and nothing
+/// else. A list or `permissions` object this leaves empty is dropped; the
+/// file itself always stays. Returns whether the file changed. Missing file,
+/// `permissions` or list is not an error. Same lock, symlink refusal and
+/// mode preservation as the merges.
+pub(crate) fn remove_claude_settings_mcp_rules(
+    target_dir: &Path,
+    added: &AddedPermissionRules,
+) -> Result<bool, String> {
+    if added.is_empty() {
+        return Ok(false);
+    }
+    let (settings_path, claude_dir) =
+        settings_paths(target_dir, CLAUDE_SETTINGS_RELATIVE_PATH).map_err(|err| err.to_string())?;
+    if !claude_dir.is_dir() {
+        return Ok(false);
+    }
+    let _lock_guard = crate::cli::config_lock::acquire_named(&claude_dir, ".settings.lock")
+        .map_err(|source| format!("failed to lock {}: {source}", claude_dir.display()))?;
+    let SettingsFileState {
+        mut root,
+        original_text,
+        original_mode,
+    } = read_settings_file(&settings_path, &claude_dir).map_err(|err| err.to_string())?;
+    if original_text.is_none() {
+        return Ok(false);
+    }
+    let Some(root_obj) = root.as_object_mut() else {
+        return Err(format!(
+            "{} does not contain a JSON object at its top level",
+            settings_path.display()
+        ));
+    };
+    let Some(permissions_value) = root_obj.get_mut("permissions") else {
+        return Ok(false);
+    };
+    let Some(permissions) = permissions_value.as_object_mut() else {
+        return Err(format!(
+            "{}'s \"permissions\" key is not a JSON object",
+            settings_path.display()
+        ));
+    };
+
+    let mut changed = false;
+    for (key, entries) in [("ask", &added.ask), ("allow", &added.allow)] {
+        let Some(list_value) = permissions.get_mut(key) else {
+            continue;
+        };
+        let Some(list) = list_value.as_array_mut() else {
+            return Err(format!(
+                "{}'s \"permissions.{key}\" key is not a JSON array",
+                settings_path.display()
+            ));
+        };
+        let mut list_changed = false;
+        for entry in entries {
+            if let Some(index) = list
+                .iter()
+                .rposition(|value| value.as_str() == Some(entry.as_str()))
+            {
+                list.remove(index);
+                list_changed = true;
+            }
+        }
+        if list_changed && list.is_empty() {
+            permissions.remove(key);
+        }
+        changed |= list_changed;
+    }
+    if !changed {
+        return Ok(false);
+    }
+    if permissions.is_empty() {
+        root_obj.remove("permissions");
+    }
+    write_settings_file(&settings_path, &claude_dir, &root, original_mode)
+        .map_err(|err| err.to_string())?;
+    Ok(true)
 }
 
 // ── V3/Claude Code telemetry hook wiring ──
@@ -2122,9 +2250,11 @@ mod tests {
         let dir = scratch_dir("aws-rules-fresh");
         fs::create_dir_all(dir.join(".claude")).unwrap();
 
-        let file = apply_claude_settings_mcp_rules(&dir, &aws_rules())
-            .unwrap()
-            .expect("a fresh target must get a settings file");
+        let file =
+            apply_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .unwrap()
+                .file
+                .expect("a fresh target must get a settings file");
         assert_eq!(file.path, CLAUDE_SETTINGS_RELATIVE_PATH);
 
         let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
@@ -2161,8 +2291,9 @@ mod tests {
             }),
         );
 
-        apply_claude_settings_mcp_rules(&dir, &aws_rules())
+        apply_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
             .unwrap()
+            .file
             .expect("the merge must write");
 
         let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
@@ -2194,16 +2325,20 @@ mod tests {
         fs::create_dir_all(dir.join(".claude")).unwrap();
         let path = dir.join(CLAUDE_SETTINGS_RELATIVE_PATH);
 
-        let first = apply_claude_settings_mcp_rules(&dir, &aws_rules())
-            .unwrap()
-            .unwrap();
+        let first =
+            apply_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .unwrap()
+                .file
+                .unwrap();
         let bytes_before = fs::read(&path).unwrap();
         let mtime_before = fs::metadata(&path).unwrap().modified().unwrap();
         std::thread::sleep(std::time::Duration::from_millis(20));
 
-        let second = apply_claude_settings_mcp_rules(&dir, &aws_rules())
-            .unwrap()
-            .unwrap();
+        let second =
+            apply_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .unwrap()
+                .file
+                .unwrap();
         assert_eq!(fs::read(&path).unwrap(), bytes_before);
         assert_eq!(
             fs::metadata(&path).unwrap().modified().unwrap(),
@@ -2219,8 +2354,9 @@ mod tests {
         let path = dir.join(CLAUDE_SETTINGS_RELATIVE_PATH);
         fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
 
-        apply_claude_settings_mcp_rules(&dir, &aws_rules())
+        apply_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
             .unwrap()
+            .file
             .unwrap();
 
         assert_eq!(
@@ -2237,7 +2373,9 @@ mod tests {
             serde_json::json!({"permissions": {"allow": [RUN_SCRIPT]}}),
         );
 
-        let outcome = merge_claude_settings_mcp_rules(&dir, &aws_rules()).unwrap();
+        let outcome =
+            merge_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .unwrap();
 
         assert_eq!(
             outcome.skipped,
@@ -2267,7 +2405,9 @@ mod tests {
             serde_json::json!({"permissions": {"allow": ["mcp__aws-mcp__*"]}}),
         );
 
-        let outcome = merge_claude_settings_mcp_rules(&dir, &aws_rules()).unwrap();
+        let outcome =
+            merge_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .unwrap();
 
         assert!(outcome.skipped.is_empty());
         let parsed = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
@@ -2292,8 +2432,12 @@ mod tests {
                 serde_json::json!({"permissions": {"deny": [deny]}}),
             );
 
-            let outcome = merge_claude_settings_mcp_rules(&dir, &aws_rules())
-                .unwrap_or_else(|err| panic!("deny {deny} must not fail the merge: {err}"));
+            let outcome = merge_claude_settings_mcp_rules(
+                &dir,
+                &aws_rules(),
+                &AddedPermissionRules::default(),
+            )
+            .unwrap_or_else(|err| panic!("deny {deny} must not fail the merge: {err}"));
 
             let expected_skips = if covers_reads {
                 ASK_TOOLS.len() + READ_TOOLS.len()
@@ -2335,7 +2479,9 @@ mod tests {
             serde_json::json!({"permissions": {"ask": ["mcp__aws-mcp__*"]}}),
         );
 
-        let outcome = merge_claude_settings_mcp_rules(&dir, &aws_rules()).unwrap();
+        let outcome =
+            merge_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .unwrap();
 
         assert_eq!(outcome.skipped.len(), READ_TOOLS.len());
         assert!(outcome
@@ -2358,12 +2504,14 @@ mod tests {
         let original = serde_json::json!({"permissions": {"ask": "mcp__aws-mcp__*"}});
         let dir = settings_dir_with("aws-rules-bad-ask", original.clone());
 
-        let err = merge_claude_settings_mcp_rules(&dir, &aws_rules())
-            .expect_err("a non-array ask key must be refused");
+        let err =
+            merge_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .expect_err("a non-array ask key must be refused");
         assert!(matches!(err, ClaudeGrantError::Other(_)));
         assert!(err.contains("permissions.ask"));
-        let reason = apply_claude_settings_mcp_rules(&dir, &aws_rules())
-            .expect_err("the failure reason must reach the caller");
+        let reason =
+            apply_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .expect_err("the failure reason must reach the caller");
         assert!(reason.contains(".claude"), "{reason}");
         assert_eq!(
             read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)),
@@ -2379,11 +2527,13 @@ mod tests {
         let real_elsewhere = scratch_dir("aws-rules-symlink-dir-target");
         std::os::unix::fs::symlink(&real_elsewhere, dir.join(".claude")).unwrap();
 
-        let err = merge_claude_settings_mcp_rules(&dir, &aws_rules())
-            .expect_err("a symlinked .claude directory must be refused");
+        let err =
+            merge_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .expect_err("a symlinked .claude directory must be refused");
         assert!(err.contains("symlink"));
-        let reason = apply_claude_settings_mcp_rules(&dir, &aws_rules())
-            .expect_err("the failure reason must reach the caller");
+        let reason =
+            apply_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .expect_err("the failure reason must reach the caller");
         assert!(reason.contains(".claude"), "{reason}");
         assert!(!real_elsewhere.join("settings.json").exists());
         fs::remove_dir_all(&dir).ok();
@@ -2401,8 +2551,9 @@ mod tests {
         fs::write(&real_file, "{}").unwrap();
         std::os::unix::fs::symlink(&real_file, claude_dir.join("settings.json")).unwrap();
 
-        let err = merge_claude_settings_mcp_rules(&dir, &aws_rules())
-            .expect_err("a symlinked settings.json must be refused");
+        let err =
+            merge_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .expect_err("a symlinked settings.json must be refused");
         assert!(err.contains("symlink"));
         assert_eq!(fs::read_to_string(&real_file).unwrap(), "{}");
         assert!(fs::symlink_metadata(claude_dir.join("settings.json"))
@@ -2421,9 +2572,151 @@ mod tests {
             ..Default::default()
         };
 
-        assert_eq!(apply_claude_settings_mcp_rules(&dir, &rules), Ok(None));
+        assert_eq!(
+            apply_claude_settings_mcp_rules(&dir, &rules, &AddedPermissionRules::default()),
+            Ok(AppliedMcpRules::default())
+        );
         assert!(!dir.join(".claude").exists());
         fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn aws_mcp_rules_record_only_the_entries_konductor_appended() {
+        let dir = settings_dir_with(
+            "aws-rules-added",
+            serde_json::json!({"permissions": {
+                "ask": ["mcp__aws-mcp__aws___get_tasks"],
+                "allow": ["mcp__aws-mcp__aws___list_regions"]
+            }}),
+        );
+
+        let applied =
+            apply_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .unwrap();
+
+        assert!(!applied
+            .added
+            .ask
+            .contains(&"mcp__aws-mcp__aws___get_tasks".to_string()));
+        assert_eq!(applied.added.ask.len(), ASK_TOOLS.len() - 1);
+        assert!(!applied
+            .added
+            .allow
+            .contains(&"mcp__aws-mcp__aws___list_regions".to_string()));
+        assert_eq!(applied.added.allow.len(), READ_TOOLS.len() - 1);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn aws_mcp_rules_carry_earlier_added_entries_still_in_the_file() {
+        let dir = scratch_dir("aws-rules-carry");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        let first =
+            apply_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .unwrap();
+
+        let second = apply_claude_settings_mcp_rules(&dir, &aws_rules(), &first.added).unwrap();
+        assert_eq!(second.added, first.added);
+
+        let gone = AddedPermissionRules {
+            ask: vec!["mcp__aws-mcp__aws___removed_by_hand".to_string()],
+            allow: Vec::new(),
+        };
+        let third = apply_claude_settings_mcp_rules(&dir, &aws_rules(), &gone).unwrap();
+        assert!(third.added.is_empty(), "{:?}", third.added);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn removing_aws_mcp_rules_keeps_user_entries_and_other_keys() {
+        let dir = settings_dir_with(
+            "aws-rules-remove",
+            serde_json::json!({
+                "env": {"FOO": "bar"},
+                "permissions": {
+                    "ask": ["Bash(git push:*)", RUN_SCRIPT],
+                    "allow": ["mcp__aws-mcp__aws___list_regions"],
+                    "deny": ["Read(./.env)"]
+                }
+            }),
+        );
+        let added = AddedPermissionRules {
+            ask: vec![RUN_SCRIPT.to_string()],
+            allow: vec!["mcp__aws-mcp__aws___list_regions".to_string()],
+        };
+
+        assert_eq!(remove_claude_settings_mcp_rules(&dir, &added), Ok(true));
+
+        assert_eq!(
+            read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)),
+            serde_json::json!({
+                "env": {"FOO": "bar"},
+                "permissions": {
+                    "ask": ["Bash(git push:*)"],
+                    "deny": ["Read(./.env)"]
+                }
+            })
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn removing_aws_mcp_rules_twice_leaves_the_file_alone_the_second_time() {
+        let dir = scratch_dir("aws-rules-remove-twice");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        let applied =
+            apply_claude_settings_mcp_rules(&dir, &aws_rules(), &AddedPermissionRules::default())
+                .unwrap();
+        let path = dir.join(CLAUDE_SETTINGS_RELATIVE_PATH);
+
+        assert_eq!(
+            remove_claude_settings_mcp_rules(&dir, &applied.added),
+            Ok(true)
+        );
+        assert_eq!(read_json(&path), serde_json::json!({}));
+        let bytes = fs::read(&path).unwrap();
+        assert_eq!(
+            remove_claude_settings_mcp_rules(&dir, &applied.added),
+            Ok(false)
+        );
+        assert_eq!(fs::read(&path).unwrap(), bytes);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn removing_aws_mcp_rules_with_no_file_is_a_no_op() {
+        let dir = scratch_dir("aws-rules-remove-missing");
+        let added = AddedPermissionRules {
+            ask: vec![RUN_SCRIPT.to_string()],
+            allow: Vec::new(),
+        };
+        assert_eq!(remove_claude_settings_mcp_rules(&dir, &added), Ok(false));
+        assert!(!dir.join(".claude").exists());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn removing_aws_mcp_rules_refuses_a_symlinked_settings_file() {
+        let dir = scratch_dir("aws-rules-remove-symlink");
+        let claude_dir = dir.join(".claude");
+        fs::create_dir_all(&claude_dir).unwrap();
+        let elsewhere = scratch_dir("aws-rules-remove-symlink-target");
+        let real_file = elsewhere.join("settings.json");
+        let original = serde_json::json!({"permissions": {"ask": [RUN_SCRIPT]}}).to_string();
+        fs::write(&real_file, &original).unwrap();
+        std::os::unix::fs::symlink(&real_file, claude_dir.join("settings.json")).unwrap();
+        let added = AddedPermissionRules {
+            ask: vec![RUN_SCRIPT.to_string()],
+            allow: Vec::new(),
+        };
+
+        let err = remove_claude_settings_mcp_rules(&dir, &added)
+            .expect_err("a symlinked settings.json must be refused");
+        assert!(err.contains("symlink"), "{err}");
+        assert_eq!(fs::read_to_string(&real_file).unwrap(), original);
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&elsewhere).ok();
     }
 
     // ── Claude telemetry hook wiring ─────────────────────────────────

@@ -268,6 +268,9 @@ exception on Claude Code is the three AWS MCP tools that act on AWS: `aws___run_
 rule for each in the settings file it installs into, and a pane that file applies to cannot call
 them. That is every pane for the default `$HOME` install (`~/.claude/settings.json`), but only
 panes running in the target project for a `--target` install (`<target>/.claude/settings.json`).
+The rules, and the allow rules for the five read-only AWS MCP tools, apply to every Claude Code
+session using that settings file, not only Konductor's agents: Claude Code has no per-agent
+permission settings. `konductor uninstall` removes the entries install added and keeps yours.
 No ask rule is written for a Claude Code plugin install, when that settings file cannot be written
 (install still succeeds and ends by printing the rules to add by hand), or for a tool one of your own
 entries already covers. For a plugin install, add `mcp__plugin_konductor_aws-mcp__<tool>` for each of

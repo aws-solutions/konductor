@@ -30,8 +30,10 @@
 // tools in frontmatter `tools`, install merges Claude Code permission rules
 // into `<target_dir>/.claude/settings.json`:
 // `permissions.ask` for every tool outside the read-only set
-// (`aws_mcp_ask_tools`), and `permissions.allow` for the
-// agents' Kiro `allowedTools`, read from synth's `_mcp_allowed_tools.json`.
+// (`aws_mcp_ask_tools`), and `permissions.allow` for the agents' Kiro
+// `allowedTools` that are read-only tools, read from synth's
+// `_mcp_allowed_tools.json`. The manifest records the entries it appended
+// so uninstall can remove exactly those.
 //
 // `ClaudeTransformer`, the synth side that produces `dist/claude/...`,
 // lives on a separate, unmerged branch and is not imported here.
@@ -47,12 +49,14 @@ use super::kiro_cli::{
     plan_skill_dir_recursive, reject_unsafe_file_name, PlannedFile, KONDUCTOR_DESTINATION_ROOT,
 };
 use super::manifest::{
-    classify_provenance, AwsMcpRulesRecord, ManifestFile, Status, StrategyManifest,
+    classify_provenance, AddedPermissionRules, AwsMcpRulesRecord, ManifestFile, Status,
+    StrategyManifest,
 };
 use super::phases::{run_all_phases, InstallPhase, PhaseOutputs, SopInstallPhase};
 use super::resource_rewrite::{
     apply_claude_settings_hooks_only, apply_claude_settings_mcp_rules, aws_mcp_ask_tools,
-    mcp_tool_rule, McpPermissionRules, AWS_MCP_SERVER_NAME, CLAUDE_SETTINGS_RELATIVE_PATH,
+    mcp_tool_rule, AppliedMcpRules, McpPermissionRules, AWS_MCP_READ_ONLY_TOOLS,
+    AWS_MCP_SERVER_NAME, CLAUDE_SETTINGS_RELATIVE_PATH,
 };
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
@@ -178,7 +182,14 @@ impl InstallStrategy for ClaudeInstallStrategy {
         // Computed before anything is written, so a malformed sidecar
         // fails the install up front like a planning error.
         let aws_mcp = claude_aws_mcp_permission_rules(&harness_dir)?;
-        if !aws_mcp.rules.is_empty()
+        let prior_aws_mcp_rules = prior_manifest
+            .as_ref()
+            .and_then(|prior| prior.aws_mcp_rules.clone());
+        let previously_added = prior_aws_mcp_rules
+            .as_ref()
+            .map(|record| record.added.clone())
+            .unwrap_or_default();
+        if !(aws_mcp.rules.is_empty() && previously_added.is_empty())
             && !plan
                 .iter()
                 .any(|planned| planned.manifest_path == CLAUDE_SETTINGS_RELATIVE_PATH)
@@ -201,7 +212,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
                 provenance: planned.provenance,
             })
             .collect();
-        let write_ahead = StrategyManifest::new(
+        let mut write_ahead = StrategyManifest::new(
             self.name(),
             installed_at,
             ".",
@@ -209,6 +220,9 @@ impl InstallStrategy for ClaudeInstallStrategy {
             Status::InProgress,
             in_progress_files,
         );
+        // Keeps the record of entries earlier installs appended, so an
+        // interrupted run still lets uninstall remove them.
+        write_ahead.aws_mcp_rules = prior_aws_mcp_rules;
         super::manifest::upsert_strategy(target_dir, write_ahead)?;
 
         let mut raw_files = run_all_phases(
@@ -248,9 +262,15 @@ impl InstallStrategy for ClaudeInstallStrategy {
         // write's hash replaces the hooks entry. A failed write does not
         // fail the install: the manifest records it, and the install
         // report lists the rules to add by hand.
-        let rules_result = apply_claude_settings_mcp_rules(target_dir, &aws_mcp.rules);
-        let aws_mcp_rules_record = aws_mcp_rules_record(&aws_mcp.rules, &rules_result);
-        if let Ok(Some(settings_file)) = rules_result {
+        let rules_result =
+            apply_claude_settings_mcp_rules(target_dir, &aws_mcp.rules, &previously_added);
+        let aws_mcp_rules_record =
+            aws_mcp_rules_record(&aws_mcp.rules, &rules_result, previously_added);
+        if let Ok(AppliedMcpRules {
+            file: Some(settings_file),
+            ..
+        }) = rules_result
+        {
             raw_files.retain(|file| file.path != settings_file.path);
             raw_files.push(settings_file);
             if aws_mcp.sidecar_missing {
@@ -417,7 +437,7 @@ type McpAllowedTools = BTreeMap<String, BTreeMap<String, Vec<String>>>;
 /// Empty when no agent's frontmatter uses `aws-mcp` (see
 /// `agent_uses_mcp_server`). Otherwise `ask`
 /// holds the `aws_mcp_ask_tools` rules and `allow` the union of those
-/// agents' sidecar tools, minus any ask tool.
+/// agents' sidecar tools that are in `AWS_MCP_READ_ONLY_TOOLS`.
 fn claude_aws_mcp_permission_rules(harness_dir: &Path) -> Result<AwsMcpRulePlan, String> {
     let agents_dir = harness_dir.join(AGENTS_CONTENT_TYPE_DIR);
     let mut aws_agents = Vec::new();
@@ -447,8 +467,7 @@ fn claude_aws_mcp_permission_rules(harness_dir: &Path) -> Result<AwsMcpRulePlan,
             sidecar_missing: false,
         });
     }
-    let ask_tools = aws_mcp_ask_tools();
-    rules.ask = ask_tools
+    rules.ask = aws_mcp_ask_tools()
         .iter()
         .map(|tool| mcp_tool_rule(AWS_MCP_SERVER_NAME, tool))
         .collect();
@@ -459,13 +478,22 @@ fn claude_aws_mcp_permission_rules(harness_dir: &Path) -> Result<AwsMcpRulePlan,
             sidecar_missing: true,
         });
     };
-    let allowed: BTreeSet<&str> = aws_agents
+    let sidecar_tools: BTreeSet<&str> = aws_agents
         .iter()
         .filter_map(|agent| sidecar.get(agent)?.get(AWS_MCP_SERVER_NAME))
         .flatten()
         .map(String::as_str)
-        .filter(|tool| !ask_tools.contains(tool))
         .collect();
+    let (allowed, refused): (BTreeSet<&str>, BTreeSet<&str>) = sidecar_tools
+        .into_iter()
+        .partition(|tool| AWS_MCP_READ_ONLY_TOOLS.contains(tool));
+    for tool in refused {
+        eprintln!(
+            "konductor install: warning: {} lists {AWS_MCP_SERVER_NAME} tool {tool:?}, which is \
+             not one of the read-only tools install pre-approves; it gets no allow rule",
+            agents_dir.join(MCP_ALLOWED_TOOLS_SIDECAR_FILE).display()
+        );
+    }
     rules.allow = allowed
         .into_iter()
         .map(|tool| mcp_tool_rule(AWS_MCP_SERVER_NAME, tool))
@@ -477,12 +505,18 @@ fn claude_aws_mcp_permission_rules(harness_dir: &Path) -> Result<AwsMcpRulePlan,
 }
 
 /// The manifest record of this run's rules merge, `None` when there were
-/// no rules to merge.
+/// no rules to merge and no earlier appended entries to keep track of. A
+/// failed merge keeps `previously_added`, since nothing was removed.
 fn aws_mcp_rules_record(
     rules: &McpPermissionRules,
-    result: &Result<Option<ManifestFile>, String>,
+    result: &Result<AppliedMcpRules, String>,
+    previously_added: AddedPermissionRules,
 ) -> Option<AwsMcpRulesRecord> {
-    if rules.is_empty() {
+    let added = match result {
+        Ok(applied) => applied.added.clone(),
+        Err(_) => previously_added,
+    };
+    if rules.is_empty() && added.is_empty() {
         return None;
     }
     Some(AwsMcpRulesRecord {
@@ -490,6 +524,7 @@ fn aws_mcp_rules_record(
         reason: result.as_ref().err().cloned(),
         ask: rules.ask.clone(),
         allow: rules.allow.clone(),
+        added,
     })
 }
 
@@ -2049,6 +2084,51 @@ mod tests {
     }
 
     #[test]
+    fn install_never_allows_a_sidecar_tool_outside_the_read_only_set() {
+        let target_dir = scratch_dir("aws-rules-read-only-target");
+        let repo_root = scratch_dir("aws-rules-read-only-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+        seed_mcp_allowed_tools_sidecar(
+            &repo_root,
+            serde_json::json!({"k-x": {"aws-mcp": [
+                "aws___run_script",
+                "aws___get_presigned_url",
+                "aws___some_future_tool",
+                "aws___list_regions"
+            ]}}),
+        );
+
+        install(&target_dir, &repo_root).expect("install must succeed");
+
+        let settings = read_project_settings(&target_dir);
+        assert_eq!(
+            settings["permissions"]["allow"],
+            serde_json::json!(["mcp__aws-mcp__aws___list_regions"])
+        );
+        assert_eq!(settings["permissions"]["ask"], serde_json::json!(ASK_RULES));
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn reinstall_keeps_the_record_of_appended_entries() {
+        let target_dir = scratch_dir("aws-rules-reinstall-record-target");
+        let repo_root = scratch_dir("aws-rules-reinstall-record-repo");
+        seed_synthed_agent(&repo_root, "k-x", AWS_AGENT_MD);
+
+        install(&target_dir, &repo_root).expect("first install must succeed");
+        let first = recorded_aws_mcp_rules(&target_dir).unwrap().added;
+        install(&target_dir, &repo_root).expect("second install must succeed");
+
+        assert_eq!(first.ask, ASK_RULES.map(String::from).to_vec());
+        assert_eq!(recorded_aws_mcp_rules(&target_dir).unwrap().added, first);
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
     fn install_fails_on_a_sidecar_tool_name_unsafe_for_a_rule() {
         let target_dir = scratch_dir("aws-rules-bad-name-target");
         let repo_root = scratch_dir("aws-rules-bad-name-repo");
@@ -2122,6 +2202,10 @@ mod tests {
                 reason: None,
                 ask: ASK_RULES.map(String::from).to_vec(),
                 allow: vec!["mcp__aws-mcp__aws___list_regions".to_string()],
+                added: AddedPermissionRules {
+                    ask: ASK_RULES.map(String::from).to_vec(),
+                    allow: vec!["mcp__aws-mcp__aws___list_regions".to_string()],
+                },
             })
         );
 
