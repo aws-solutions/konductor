@@ -1,7 +1,7 @@
 ---
 name: code-review
-description: Use when reviewing a folder, repo, diff or PR, creating or submitting a PR, addressing PR feedback, or reviewing your own changes after implementation. Checks for bugs and error handling, even with no git history; adversarial or security passes go to adversarial-code-review. Uses git and `gh`; findings are CRITICAL/IMPORTANT/SUGGESTION.
-version: 1.4.0
+description: 'Use when reviewing a folder, repo, diff or PR, creating a PR, addressing PR feedback, or self-reviewing. Checks bugs and error handling; adversarial or security passes go to adversarial-code-review.'
+version: 1.4.1
 tags: [skill, code-review, pr, git, workflow, humanize-writing]
 ---
 

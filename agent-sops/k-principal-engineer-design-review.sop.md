@@ -7,6 +7,8 @@ Recorded gates are the stops this SOP names; where the run keeps a session file,
 
 ## Overview
 
+Gate for a design doc before Principal Engineer review: slop detection, architecture principles and an adversarial loop.
+
 This SOP runs a pre-submission quality gate on a design document before it goes to a Principal Engineer for review. It combines slop detection, architecture principles evaluation, and an adversarial review loop to eliminate the most common review comments before the human reviewer sees the document.
 
 Adversarial review uses the `adversarial-design-review` skill.
