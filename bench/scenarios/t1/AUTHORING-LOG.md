@@ -31,6 +31,10 @@ Notes on hand edits after review (no model call): `t1-bug-cache-ttl` was changed
 
 `limits`: an author guesses its own run time, and every guess was far too short (90 to 240 s), so `stage.js assemble` sets at least 600 s soft and twice the soft limit as hard; the plan sets final limits from the pilot (3x the longest pilot run).
 
+Author families (2026-11-19, after five of six deepseek-3.2 drafts failed): the remaining deepseek briefs, and the re-author of a failed one, go to minimax-m2.5 and qwen3-coder-next in turn, with gpt-5.6-luna as their reviewer, so the batch keeps a second author family. Lazy and alternative answers (`answers/<id>/lazy`, `answers/<id>/alt`) are written by a family other than the author's (qwen3-coder-next for gpt tasks, gpt-5.6-luna otherwise), from the fixture and the request only; `dry-run.js` scores them and requires lazy 40 or less and alt 80 or more; `stage.js record` writes the four scores into `pilot.dryRun`.
+
+Blindness audit (`audit.js`): every author, map and review stream is scanned for tool calls that read a konductor `skills/`, `agent-sops/`, `agents/` or `context/` path, for reads of another batch's scratch dir, and for attached account memories. The 42 streams up to 2026-11-19 22:30 UTC: none.
+
 ## Dropped tasks
 
 | task | author | why | what happened |
