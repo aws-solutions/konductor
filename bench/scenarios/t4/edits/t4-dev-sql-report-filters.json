@@ -4,7 +4,8 @@
     "prompt rewritten by the lead (no defect locations, default-order rule stated so every sort test is fair)",
     "source-text regex checks replaced by a behavioural injection check and the visible suite",
     "limits 1200/2400 s",
-    "lead: removed 10 hidden tests that pass on the vulnerable code too (sqlite3 rejects their payloads anyway), and merged the 5 normal-use regression tests into one test with subtests, so the suite (19 tests) measures the fix: 1 of 19 passes on the fixture"
+    "lead: removed 10 hidden tests that pass on the vulnerable code too (sqlite3 rejects their payloads anyway), and merged the 5 normal-use regression tests into one test with subtests, so the suite (19 tests) measures the fix: 1 of 19 passes on the fixture",
+    "expertKey added (judge-only; items the hidden tests or evaluator already check are left out)"
   ],
   "prompt": "Our internal reporting service just came back from a pen test with one line about it: \"the reports API is injectable\". No other detail. Please make it safe without breaking anything people use today. The service lists and exports customers and sales: src/server.py handles the HTTP side and src/database.py has the Database class (Database(db_path)) with get_customers, get_sales, get_customers_csv and get_sales_csv, each taking the filters, sorting and paging arguments they have now. Keep those names and arguments, and keep every filter, sort and page option working as it does for normal input. For an unknown sort column or sort direction, fall back to the default order instead of failing. Bad paging values may raise ValueError. Error messages that reach a caller must not show SQL or table names. Do not add dependencies, and keep the existing tests in tests/ passing (python3 -m unittest discover -s tests). Do not change data/seed.py.",
   "checks": [
@@ -93,6 +94,41 @@
         "verdict": "fixed",
         "note": "Fix round (author): src/__init__.py added so hidden tests import from the repository root."
       }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "identifiers-allowlist",
+        "text": "Explains in the final message why the sort column and direction use a fixed allowlist: identifiers cannot be bound as parameters, and escaping them is not safe.",
+        "source": "OWASP SQL Injection Prevention Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "one-builder",
+        "text": "Moves the list and CSV paths onto one shared query builder (or says why not), so a fix cannot miss one path again.",
+        "source": "OWASP SQL Injection Prevention Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "regression-tests",
+        "text": "Adds visible tests with injection payloads (value, LIKE wildcard, sort, paging, CSV) so the fix stays in place.",
+        "source": "OWASP SQL Injection Prevention Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "log-detail-return-generic",
+        "text": "Logs the database error detail on the server side and returns a generic message, rather than dropping the detail altogether.",
+        "source": "OWASP Error Handling Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Error_Handling_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      },
+      {
+        "id": "least-privilege-db",
+        "text": "Mentions running report queries with read-only database access as defence in depth (for sqlite, a read-only connection).",
+        "source": "OWASP SQL Injection Prevention Cheat Sheet, https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.md (CC-BY-SA-4.0)"
+      }
+    ],
+    "weakAnswers": [
+      "Used parameterized queries to fix SQL injection.",
+      "Sanitized the user input.",
+      "Escaped special characters in the query.",
+      "Added input validation."
     ]
   }
 }

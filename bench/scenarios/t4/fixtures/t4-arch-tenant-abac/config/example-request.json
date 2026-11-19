@@ -1,0 +1,6 @@
+{
+  "requestId": "req-example-0007",
+  "operation": "document.read",
+  "tenantId": "tenant-07",
+  "documentName": "brief.pdf"
+}

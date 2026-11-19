@@ -1,0 +1,29 @@
+"""Command line entry point."""
+
+import argparse
+from .database import ReportDatabase
+from .formatters import write_csv, write_json
+from .report import ReportBuilder
+
+
+def parser() -> argparse.ArgumentParser:
+    result = argparse.ArgumentParser(description="Write a monthly customer order report")
+    result.add_argument("--db", required=True, help="SQLite database path")
+    result.add_argument("--month", required=True, help="month in YYYY-MM form")
+    result.add_argument("--format", choices=("csv", "json"), required=True)
+    result.add_argument("--output", required=True, help="output path, or - for stdout")
+    return result
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parser().parse_args(argv)
+    rows = ReportBuilder(ReportDatabase(args.db)).iter_rows(args.month)
+    if args.format == "csv":
+        write_csv(rows, args.output)
+    else:
+        write_json(rows, args.output)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

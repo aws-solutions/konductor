@@ -2,7 +2,8 @@
   "edits": [
     "prompt rewritten (traps removed)",
     "checks: the text checks on one file replaced by one check that no function policy holds a wildcard action or resource",
-    "limits raised from 15/30 to 1200/2400 s"
+    "limits raised from 15/30 to 1200/2400 s",
+    "expertKey added (judge-only; items the hidden tests or evaluator already check are left out)"
   ],
   "prompt": "All five functions of the order service still share one execution role, and its policy (infra/iam/shared-role-policy.json) can do nearly anything. Please give each function its own least-privilege policy instead, in these files: infra/iam/create-order.json, infra/iam/payment-webhook.json, infra/iam/fulfilment-worker.json, infra/iam/nightly-report.json and infra/iam/admin-export.json. Each has to work in both staging and prod (the names per stage are in config/stages.js) and keep its logging working. Read the handlers to see what each one really calls: every handler exports handler(event, context, { client }), and the FakeCloudClient in src/cloud/fake-client.js records each client.request(action, resource, details) in calls. Do not change the handlers, the stage config, the existing tests, the dependencies or shared-role-policy.json. Keep the files valid IAM policy JSON.",
   "checks": [
@@ -89,6 +90,41 @@
         "verdict": "pass",
         "note": "All hidden tests verify reasonable requirements stated in the prompt: allow actual calls, deny legacy resources, deny cross-function access. A careful engineer reading handlers and stages.js can derive correct policies without guessing."
       }
+    ]
+  },
+  "expertKey": {
+    "items": [
+      {
+        "id": "role-per-function",
+        "text": "Makes clear that each function needs its own execution role carrying its own policy (a policy file alone changes nothing until each function uses its role), and gives a cut-over order that avoids an outage.",
+        "source": "AWS IAM User Guide, Security best practices in IAM, https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "trust-policy",
+        "text": "Covers the execution role trust: only the function service may assume it, with a source account or source ARN condition against confused-deputy use.",
+        "source": "AWS IAM User Guide, The confused deputy problem, https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "secret-key",
+        "text": "Notes that reading a secret encrypted with a customer managed key also needs decrypt on that key (or confirms the default key is used), so the webhook does not fail at run time.",
+        "source": "AWS IAM User Guide, Security best practices in IAM, https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html (AWS documentation; idea only, paraphrased)"
+      },
+      {
+        "id": "validate-in-ci",
+        "text": "Suggests linting or validating the policy files in CI so a later edit cannot widen them unnoticed.",
+        "source": "Parliament, https://github.com/duo-labs/parliament (BSD-3-Clause)"
+      },
+      {
+        "id": "retire-shared-role",
+        "text": "Says what happens to the old shared role (remove it after cut-over), since leaving it attached keeps all the old access.",
+        "source": "Cloudsplaining, https://github.com/salesforce/cloudsplaining (BSD-3-Clause)"
+      }
+    ],
+    "weakAnswers": [
+      "Split the role into five least-privilege policies.",
+      "Each function now only has the permissions it needs.",
+      "Removed the wildcard actions.",
+      "Scoped resources to staging and prod."
     ]
   }
 }
