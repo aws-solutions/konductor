@@ -46,3 +46,8 @@
 | t3-pm-feature-scope | map | glm-5 | 0.63 |
 | t3-pm-feature-scope | review | minimax-m2.5 | 2.59 |
 | t3-pm-feature-scope | expertKey | glm-5 | 1.60 |
+| t3-adr-multiregion-dr | author | deepseek-3.2 | 10.60 |
+| t3-adr-multiregion-dr | map | glm-5 | 0.63 |
+| t3-adr-multiregion-dr | review | minimax-m2.5 | 3.29 |
+| t3-adr-cache-sizing | expertKey | glm-5 | 1.65 |
+| t3-adr-multiregion-dr | expertKey | glm-5 | 1.27 |
