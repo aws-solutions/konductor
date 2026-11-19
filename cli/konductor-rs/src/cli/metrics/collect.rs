@@ -43,6 +43,9 @@ pub(crate) enum Status {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub(crate) struct ModelUsage {
     pub model: String,
+    /// Harness-native count, never comparable across harnesses: API
+    /// requests (deduplicated assistant messages) for Claude Code,
+    /// `total_request_count` for Kiro CLI v2, prompt turns for Kiro v3.
     pub requests: u64,
     pub input_tokens: Option<u64>,
     pub cache_write_tokens: Option<u64>,
@@ -394,17 +397,35 @@ pub(crate) fn collect_kiro_v2(path: &Path, mtime: u64, size: u64) -> Record {
 
 // ── Kiro v3 (KAS) ───────────────────────────────────────────────────────
 
-#[derive(Deserialize, Default)]
-#[serde(default)]
+#[derive(Default)]
 struct V3SessionJson {
-    #[serde(rename = "modelId")]
     model_id: Option<String>,
-    #[serde(rename = "workspacePaths")]
-    workspace_paths: Vec<String>,
-    #[serde(rename = "agentMode")]
+    workspace_path: Option<String>,
     agent_mode: Option<String>,
-    #[serde(rename = "schemaVersion")]
-    schema_version: Option<String>,
+}
+
+/// `Ok(default)` when `session.json` is absent; `Err` when it exists but
+/// isn't a JSON object. Each field is read on its own, so one field
+/// changing type loses only that field.
+fn read_v3_session_json(path: &Path) -> Result<V3SessionJson, ()> {
+    let bytes = match std::fs::read(path) {
+        Ok(b) => b,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(V3SessionJson::default()),
+        Err(_) => return Err(()),
+    };
+    let value: serde_json::Value = serde_json::from_slice(&bytes).map_err(|_| ())?;
+    let obj = value.as_object().ok_or(())?;
+    let text = |k: &str| obj.get(k).and_then(|v| v.as_str()).map(str::to_string);
+    Ok(V3SessionJson {
+        model_id: text("modelId"),
+        workspace_path: obj
+            .get("workspacePaths")
+            .and_then(|v| v.as_array())
+            .and_then(|a| a.first())
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        agent_mode: text("agentMode"),
+    })
 }
 
 #[derive(Deserialize)]
@@ -442,12 +463,13 @@ pub(crate) fn collect_kiro_v3(path: &Path, mtime: u64, size: u64) -> Record {
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_default();
     let mut rec = Record::new(Harness::KiroV3, path, mtime, size, session_id);
-    let session: V3SessionJson = std::fs::read(dir.join("session.json"))
-        .ok()
-        .and_then(|b| serde_json::from_slice(&b).ok())
-        .unwrap_or_default();
-    rec.repo = session.workspace_paths.into_iter().next();
-    rec.harness_version = session.schema_version;
+    let Ok(session) = read_v3_session_json(&dir.join("session.json")) else {
+        return rec.unparsed();
+    };
+    rec.repo = session.workspace_path;
+    // session.json's schemaVersion is "1.0.0" in every session seen, and KAS
+    // writes no app version per session, so there's no version to record.
+    // Credits are per session, so they go to the session's (last) model.
     let model = session.model_id.unwrap_or_else(|| "unknown".to_string());
 
     let Ok(file) = File::open(path) else {
@@ -503,6 +525,10 @@ pub(crate) fn collect_kiro_v3(path: &Path, mtime: u64, size: u64) -> Record {
     if usage_failed || (parsed == 0 && failed > 0) {
         return rec.unparsed();
     }
+    // KAS often omits session_start.agentType for custom agents and keeps
+    // the agent name in session.json agentMode (telemetry_hook.rs relies on
+    // the same field). Built-in modes like "vibe" never match an installed
+    // Konductor agent, so the fallback can't misattribute.
     rec.agent = agent_type.or(session.agent_mode);
     rec.subagent_runs = Some(subagents);
     rec.models = vec![ModelUsage {
@@ -751,6 +777,99 @@ mod tests {
         bytes.extend_from_slice(b"\n\xff\xfe not utf-8\n");
         std::fs::write(&p, bytes).unwrap();
         assert_eq!(collect_kiro_v3(&p, 0, 0).status, Status::Unparsed);
+    }
+
+    #[test]
+    fn kiro_v3_malformed_session_json_marks_record_unparsed() {
+        let d = tmp("v3-bad-session");
+        write(&d, "ws/s/session.json", "{ not json");
+        let p = write(
+            &d,
+            "ws/s/messages.jsonl",
+            r#"{"id":"1","timestamp":"2026-11-01T10:00:00Z","payload":{"type":"session_start","agentType":"konductor"}}"#,
+        );
+        assert_eq!(collect_kiro_v3(&p, 0, 0).status, Status::Unparsed);
+    }
+
+    #[test]
+    fn kiro_v3_missing_session_json_defaults_and_one_bad_field_loses_only_itself() {
+        let d = tmp("v3-session-fields");
+        let line = r#"{"id":"1","timestamp":"2026-11-01T10:00:00Z","payload":{"type":"session_start","agentType":"konductor"}}"#;
+        let p = write(&d, "ws/a/messages.jsonl", line);
+        let r = collect_kiro_v3(&p, 0, 0);
+        assert_eq!(
+            (r.status, r.models[0].model.as_str(), r.repo.as_deref()),
+            (Status::Ok, "unknown", None)
+        );
+
+        write(
+            &d,
+            "ws/b/session.json",
+            r#"{"modelId":42,"workspacePaths":["/repo"],"schemaVersion":2}"#,
+        );
+        let p = write(&d, "ws/b/messages.jsonl", line);
+        let r = collect_kiro_v3(&p, 0, 0);
+        assert_eq!(
+            (r.status, r.models[0].model.as_str(), r.repo.as_deref()),
+            (Status::Ok, "unknown", Some("/repo"))
+        );
+    }
+
+    #[test]
+    fn kiro_v3_all_garbage_messages_file_is_unparsed() {
+        let d = tmp("v3-garbage");
+        let p = write(
+            &d,
+            "ws/s/messages.jsonl",
+            "{\"payload\": \"session_start\" oops\nmore \"turn_start\" junk",
+        );
+        assert_eq!(collect_kiro_v3(&p, 0, 0).status, Status::Unparsed);
+    }
+
+    #[test]
+    fn kiro_v3_agent_falls_back_to_session_agent_mode() {
+        let d = tmp("v3-agent-mode");
+        write(&d, "ws/s/session.json", r#"{"agentMode":"konductor"}"#);
+        let p = write(
+            &d,
+            "ws/s/messages.jsonl",
+            r#"{"id":"1","timestamp":"2026-11-01T10:00:00Z","payload":{"type":"session_start"}}"#,
+        );
+        assert_eq!(
+            collect_kiro_v3(&p, 0, 0).agent.as_deref(),
+            Some("konductor")
+        );
+    }
+
+    #[test]
+    fn non_credit_units_are_not_counted_as_credits() {
+        let d = tmp("units");
+        let p = write(
+            &d,
+            "cli/u.json",
+            r#"{"session_state":{"agent_name":"k","conversation_metadata":{"user_turn_metadatas":[
+                 {"model":"m","total_request_count":1,"metering_usage":[{"value":1.0,"unit":"credit"},{"value":9.0,"unit":"token"}]}]}}}"#,
+        );
+        assert_eq!(collect_kiro_v2(&p, 0, 0).models[0].credits, Some(1.0));
+        let p = write(
+            &d,
+            "ws/s/messages.jsonl",
+            r#"{"id":"1","timestamp":"2026-11-01T10:00:00Z","payload":{"type":"usage_summary","promptTurnSummaries":[{"unit":"credit","usage":0.5},{"unit":"token","usage":9.0}]}}"#,
+        );
+        assert_eq!(collect_kiro_v3(&p, 0, 0).models[0].credits, Some(0.5));
+    }
+
+    #[test]
+    fn kiro_v2_turn_with_empty_metering_leaves_credits_null() {
+        let d = tmp("v2-empty-metering");
+        let p = write(
+            &d,
+            "cli/e.json",
+            r#"{"session_state":{"agent_name":"k","conversation_metadata":{"user_turn_metadatas":[
+                 {"model":"m","total_request_count":2,"metering_usage":[]}]}}}"#,
+        );
+        let m = &collect_kiro_v2(&p, 0, 0).models[0];
+        assert_eq!((m.requests, m.credits), (2, None));
     }
 
     #[test]
